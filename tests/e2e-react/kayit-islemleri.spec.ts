@@ -102,6 +102,24 @@ async function closeModule(client: ApiClient, moduleKey: string) {
   expect(response.status()).toBe(200)
 }
 
+const CONSENT_LABEL = 'Fotoğraf ve video: kurum içi platform ve sınıf panosu'
+
+/** Yalnız fotoğraf/video amacının metni yayımlanır; öteki amaçlar "metni yok" kalır. */
+async function publishConsentText(admin: ApiClient) {
+  const result = await admin.post(
+    '/api/v1/privacy-notices',
+    {
+      kind: 'consent_text',
+      purpose: 'photo_video_sharing',
+      title: 'Fotoğraf ve video kullanımı rızası',
+      body: 'Çocuğumun fotoğraf ve videolarının kurum içi platformda paylaşılmasını onaylıyorum.',
+      requiresReconsent: false,
+    },
+    { 'idempotency-key': randomUUID() },
+  )
+  expect(result.status).toBe(201)
+}
+
 /** Yetki ve modül sınırını sınar; gövde doğrulamadan önce reddedilir. */
 const enrollBody = () => ({
   classId: 'c1',
@@ -524,6 +542,93 @@ test.describe('Kayıt İşlemleri', () => {
 
     const saved = await prospectOf(client, 'e2e-kyt-yetiskin')
     expect(saved.record.stage).toBe('Kayıt oldu')
+  })
+
+  test('IST-017, DOM-YTK-057: ön büro rıza almaz, form kilitlenmez; kayıttan sonra beklenen rıza ve yeri yazılır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const name = 'Rıza Adayı'
+    const school = await tenant({
+      roles: ['onburo'],
+      tariffYears: ['current'],
+      records: [
+        prospect('e2e-kyt-riza', name, {
+          privacyNotice: { version: 'aydinlatma-2026-1', shownAt: at(-1, 9) },
+        }),
+      ],
+    })
+    await publishConsentText(await api(school.user('yonetici')))
+    await loginAs(school.user('onburo'))
+    const client = await api(school.user('onburo'))
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-riza`)
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+    await proceed.click()
+    await page.getByLabel('Kimlik numarası').fill('10000000146')
+    await page.getByLabel('Doğum tarihi').fill('2013-03-01')
+    await page.getByLabel('Veli adı soyadı').fill('Rıza Velisi')
+    await page.getByLabel('Veli telefonu').fill('05559990071')
+    await proceed.click()
+    await proceed.click()
+
+    // Kontrol: rıza seçeneği yok, form rızayı beklemez; adayın aydınlatma sürümü görünür.
+    await expect(page.getByRole('note').filter({ hasText: 'kaydı engellemez' })).toBeVisible()
+    await expect(page.getByRole('radio', { name: 'Onaylıyorum' })).toHaveCount(0)
+    await expect(page.getByText(/aydinlatma-2026-1/)).toBeVisible()
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+    await expect(page.getByRole('heading', { name: `${name} kaydedildi` })).toBeVisible()
+
+    const notice = page.getByRole('region', { name: 'Açık rıza durumu' })
+    await expect(notice.getByRole('listitem').filter({ hasText: CONSENT_LABEL })).toBeVisible()
+    await expect(notice).toContainText('velayet sahibi veli kendi hesabından verir')
+    await expect(notice).toContainText('Ayarlar, Rızalarım')
+    // Öteki amaçların metni yayımlanmadı; beklenmez, ayrı söylenir.
+    await expect(notice).toContainText('Rıza metni henüz yayımlanmadığı için')
+    await expect(notice).toContainText('Konuşma görevi ses kaydı')
+    await expect(notice).toContainText('Rıza vermek zorunlu değildir')
+    await expect(page.getByRole('button', { name: `${name} sözleşmesini görüntüle` })).toBeVisible()
+
+    const saved = await prospectOf(client, 'e2e-kyt-riza')
+    const consents = await client.get(
+      `/api/v1/consents?studentId=${String(saved.record.studentId)}&status=all`,
+    )
+    expect(consents.status).toBe(200)
+    expect((consents.body as { data: unknown[] }).data).toEqual([])
+  })
+
+  test('DOM-YTK-057: 18 yaşını doldurmuş kursiyerde rızayı kendisinin vereceği yazılır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const name = 'Reşit Kursiyer'
+    const school = await tenant({
+      type: 'language_school',
+      roles: ['onburo'],
+      tariffYears: ['current'],
+      records: [prospect('e2e-kyt-rizay', name, { interest: 'B1 İngilizce', minor: false })],
+    })
+    await publishConsentText(await api(school.user('yonetici')))
+    await loginAs(school.user('onburo'))
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-rizay`)
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+    await proceed.click()
+    await page.getByLabel('Kimlik numarası').fill('10000000146')
+    await page.getByLabel('Doğum tarihi').fill(`${new Date().getUTCFullYear() - 25}-01-15`)
+    await proceed.click()
+    await page.getByLabel('Paket ders saati').fill('20')
+    await proceed.click()
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+    await expect(page.getByRole('heading', { name: `${name} kaydedildi` })).toBeVisible()
+
+    const notice = page.getByRole('region', { name: 'Açık rıza durumu' })
+    await expect(notice).toContainText('rızayı kendisi verir')
+    await expect(notice).not.toContainText('velayet sahibi veli')
   })
 
   test('DOM-YTK-040: finans modülü kapalıyken aday detayında kesin kayıt devre dışıdır, nedeni yazılır; API 403 verir', async ({

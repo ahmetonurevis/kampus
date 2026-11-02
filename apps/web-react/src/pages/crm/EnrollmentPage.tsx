@@ -44,7 +44,14 @@ import { useCoreAll, useCoreCounts } from '@/hooks/use-core-collection.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
+import { STAFF_CONSENT_INFO } from '@/components/consent/consent-model.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
+import {
+  ENROLLMENT_CONSENT_NOTE,
+  isAdultOnForm,
+  prospectNoticeLabel,
+} from './enrollment-consent.ts'
 import { enrollmentServerError, guardianModeFor, prospectChangeValues } from './enrollment-form.ts'
 import { awardablePrograms, programValueLabel } from '../finance/scholarship-forms.ts'
 
@@ -58,13 +65,19 @@ const GUARDIAN_MODE_LABELS = {
   self: 'Kursiyerin kendisi (18 yaş ve üstü)',
 } as const
 
-type Done = { studentName: string; contractId: string | null }
+type Done = {
+  studentName: string
+  contractId: string | null
+  studentId: string | null
+  adult: boolean
+}
 
 /**
  * Kayıt İşlemleri (ön büro `/kayit-islemleri`; DOM-KAY-001, -011…-013, -035, DOM-FIN-002, -003,
  * -010, -011, -020…-022): adımlı kesin kayıt. Tutar girilmez, yayındaki tarifeden hesaplanır;
  * önizleme sunucuyla aynı core kuralıdır, kesin hesabı sunucu yapar. Kimlik yanıtta ve listelerde
- * dönmez. Yayımlanmış tarife yoksa form açılmaz.
+ * dönmez. Yayımlanmış tarife yoksa form açılmaz. Rıza alınmaz: personel rıza veremez, kayıttan
+ * sonra beklenen rızalar bildirilir (IST-017, DOM-YTK-057).
  */
 export function EnrollmentPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -100,6 +113,13 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
           <p className="text-sm text-muted-foreground">
             Öğrenci, veli, sözleşme ve taksit planı oluşturuldu.
           </p>
+          {done.studentId ? (
+            <EnrollmentConsentNotice studentId={done.studentId} adult={done.adult} />
+          ) : (
+            <p role="note" className="text-sm">
+              {STAFF_CONSENT_INFO}
+            </p>
+          )}
           <div className="flex flex-wrap gap-3">
             {done.contractId ? (
               <PdfButton
@@ -286,7 +306,12 @@ function EnrollmentForm({
     if (outcome.status === 'success') {
       notify.success('Kesin kayıt, sözleşme ve taksit planı oluşturuldu.')
       const contract = outcome.data.data.records.find((row) => row.collection === 'contracts')
-      onDone({ studentName: prospect.record.name, contractId: contract?.id ?? null })
+      onDone({
+        studentName: prospect.record.name,
+        contractId: contract?.id ?? null,
+        studentId: outcome.data.data.entity?.id ?? null,
+        adult: isAdultOnForm(data.birthDate),
+      })
     }
   })
 
@@ -324,6 +349,7 @@ function EnrollmentForm({
           : values.guardianName,
     ],
     ['Taksit', `${values.installmentCount} taksit · İlk vade ${values.firstDueDate}`],
+    ['Aday aydınlatması', prospectNoticeLabel(prospect?.record.privacyNotice)],
   ]
 
   return (
@@ -689,14 +715,19 @@ function EnrollmentForm({
           ) : null}
 
           {step === 3 ? (
-            <dl className="grid gap-1 text-sm">
-              {summary.map(([label, value]) => (
-                <div key={label} className="flex flex-wrap justify-between gap-3 border-b py-1.5">
-                  <dt className="text-muted-foreground">{label}</dt>
-                  <dd className="font-medium">{value}</dd>
-                </div>
-              ))}
-            </dl>
+            <>
+              <dl className="grid gap-1 text-sm">
+                {summary.map(([label, value]) => (
+                  <div key={label} className="flex flex-wrap justify-between gap-3 border-b py-1.5">
+                    <dt className="text-muted-foreground">{label}</dt>
+                    <dd className="font-medium">{value}</dd>
+                  </div>
+                ))}
+              </dl>
+              <p role="note" className="rounded-xl border bg-surface-soft p-4 text-sm">
+                {ENROLLMENT_CONSENT_NOTE}
+              </p>
+            </>
           ) : null}
 
           {errors.root?.server?.message ? (

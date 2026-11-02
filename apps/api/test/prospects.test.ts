@@ -1250,6 +1250,34 @@ describe('aday uçları', () => {
     assertError(await a_get(b.adminCookie, url), 404)
   })
 
+  test('IST-017, DOM-YTK-057: kesin kayıttan sonra ön büro yeni öğrencinin rıza durumunu okur; rıza yazılmaz', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const response = await enroll(cookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(response.statusCode, 201, response.body)
+    const studentId = response.json().data.entity.id as string
+
+    const status = await a_get(cookie, `/api/v1/consents/status?studentId=${studentId}`)
+    assert.equal(status.statusCode, 200, status.body)
+    const rows = status.json().data as { purpose: string; valid: boolean; grantor: string }[]
+    assert.deepEqual(rows.map((row) => row.purpose).sort(), [
+      'photo_video_print',
+      'photo_video_sharing',
+      'photo_video_social_media',
+      'photo_video_website',
+      'speaking_recording',
+    ])
+    for (const row of rows) {
+      assert.equal(row.valid, false, row.purpose)
+      assert.equal(row.grantor, 'guardian', row.purpose)
+    }
+    assert.equal(status.body.includes('birthDate'), false)
+
+    const consents = await a_get(cookie, `/api/v1/consents?studentId=${studentId}&status=all`)
+    assert.equal(consents.statusCode, 200, consents.body)
+    assert.deepEqual(consents.json().data, [])
+  })
+
   test('DOM-KAY-011: aynı kimlikle ikinci aday aynı yıl kayda alınamaz (409), yanıt kimlik taşımaz', async () => {
     const a = await pricedInstitution()
     const cookie = await frontDesk(a.id)

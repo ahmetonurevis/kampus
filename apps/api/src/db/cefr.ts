@@ -1,10 +1,11 @@
 import { randomUUID } from 'node:crypto'
 
-import { and, asc, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
 
 import type {
   LearnerKind,
   PlacementDecisionDraft,
+  PlacementSectionEntry,
   PlacementSessionDraft,
   PlacementSessionRow,
 } from '@kampus/school-core/cefr/placement.ts'
@@ -29,6 +30,16 @@ import { levelDecisions, placementSessions, progressionDecisions } from './schem
 /** Tespite giren kişi: öğrenci veya CRM adayı (`records` kimliği). */
 export type Learner = { kind: LearnerKind; id: string }
 
+/**
+ * Saklanan tespit oturumu: core `PlacementSessionRow`, bölüm girişleri ve satır sürümü (iyimser
+ * kilit; OG-054).
+ */
+export type StoredPlacementSession = PlacementSessionRow & {
+  sectionEntries: PlacementSectionEntry[]
+  rowVersion: number
+  updatedAt: string
+}
+
 /** Seviye kararı satırı: core `LevelDecisionRow` ve kişisi; yerleştirmede tespit oturumu. */
 export type StoredLevelDecision = LevelDecisionRow & {
   learnerKind: LearnerKind
@@ -51,8 +62,11 @@ type SessionRow = typeof placementSessions.$inferSelect
 type LevelRow = typeof levelDecisions.$inferSelect
 type ProgressionRow = typeof progressionDecisions.$inferSelect
 
-function toSession(row: SessionRow): PlacementSessionRow {
+function toSession(row: SessionRow): StoredPlacementSession {
   return {
+    sectionEntries: row.sectionEntries,
+    rowVersion: row.version,
+    updatedAt: row.updatedAt.toISOString(),
     id: row.id,
     learnerKind: row.learnerKind,
     learnerId: row.learnerId,
@@ -108,7 +122,7 @@ export async function insertPlacementSession(
   institutionId: string,
   draft: PlacementSessionDraft,
   id: string = randomUUID(),
-): Promise<PlacementSessionRow> {
+): Promise<StoredPlacementSession> {
   const [row] = await db
     .insert(placementSessions)
     .values({
@@ -132,7 +146,7 @@ export async function findPlacementSession(
   db: Database,
   institutionId: string,
   sessionId: string,
-): Promise<PlacementSessionRow | null> {
+): Promise<StoredPlacementSession | null> {
   const [row] = await db
     .select()
     .from(placementSessions)
@@ -154,7 +168,7 @@ export async function listPlacementSessions(
   db: Database,
   institutionId: string,
   learner: Learner,
-): Promise<PlacementSessionRow[]> {
+): Promise<StoredPlacementSession[]> {
   const rows = await db
     .select()
     .from(placementSessions)
@@ -168,6 +182,58 @@ export async function listPlacementSessions(
     )
     .orderBy(asc(placementSessions.startedAt), asc(placementSessions.id))
   return rows.map(toSession)
+}
+
+/**
+ * Oturumu sürüm koşuluyla günceller (bölüm girişi, bitiş, karar sonrası sürüm artışı; OG-054).
+ * Verilmeyen alan değişmez; sürüm bir artar. Sürüm tutmazsa ya da oturum yoksa `null`.
+ */
+export async function savePlacementSession(
+  db: Database,
+  institutionId: string,
+  sessionId: string,
+  expectedVersion: number,
+  patch: { sectionEntries?: readonly PlacementSectionEntry[]; completedAt?: string },
+  now: Date,
+): Promise<StoredPlacementSession | null> {
+  const [row] = await db
+    .update(placementSessions)
+    .set({
+      ...(patch.sectionEntries === undefined ? {} : { sectionEntries: [...patch.sectionEntries] }),
+      ...(patch.completedAt === undefined ? {} : { completedAt: new Date(patch.completedAt) }),
+      updatedAt: now,
+      version: sql`${placementSessions.version} + 1`,
+    })
+    .where(
+      and(
+        eq(placementSessions.institutionId, institutionId),
+        eq(placementSessions.id, sessionId),
+        eq(placementSessions.version, expectedVersion),
+        isNull(placementSessions.archivedAt),
+      ),
+    )
+    .returning()
+  return row === undefined ? null : toSession(row)
+}
+
+/** Oturumun seviye kararları (yerleştirme), karar anına göre eskiden yeniye. */
+export async function listSessionDecisions(
+  db: Database,
+  institutionId: string,
+  sessionId: string,
+): Promise<StoredLevelDecision[]> {
+  const rows = await db
+    .select()
+    .from(levelDecisions)
+    .where(
+      and(
+        eq(levelDecisions.institutionId, institutionId),
+        eq(levelDecisions.placementSessionId, sessionId),
+        isNull(levelDecisions.archivedAt),
+      ),
+    )
+    .orderBy(asc(levelDecisions.decidedAt), asc(levelDecisions.id))
+  return rows.map(toLevelDecision)
 }
 
 // --- Seviye kararı ------------------------------------------------------------------------

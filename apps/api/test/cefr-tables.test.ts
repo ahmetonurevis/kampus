@@ -18,6 +18,7 @@ import {
   listPlacementSessions,
   listProgressionDecisions,
   loadCurrentLevels,
+  savePlacementSession,
   type GroupProgressionDraft,
   type LevelDecisionDraft,
 } from '../src/db/cefr.ts'
@@ -278,6 +279,70 @@ describe('0034: CEFR tabloları ve deposu', () => {
     assert.deepEqual(
       await listPlacementSessions(db, t.institution.id, { kind: 'student', id: t.prospect }),
       [],
+    )
+  })
+
+  test('0035 IST-058, DOM-DIL-010: bölüm girişleri sürüm koşuluyla yazılır; dizi ve beş bölüm sınırı', async () => {
+    const t = await tenant()
+    const other = await tenant()
+    const open = await insertPlacementSession(
+      db,
+      t.institution.id,
+      t.session({ completedAt: null }),
+    )
+    assert.deepEqual(open.sectionEntries, [])
+    assert.equal(open.rowVersion, 1)
+    const entry = {
+      mode: 'auto' as const,
+      section: 'reading' as const,
+      answers: {},
+      enteredByUserId: t.teacher.id,
+      enteredAt: minutes(10),
+    }
+    const later = new Date(minutes(20))
+    // Sürüm tutmazsa ya da başka kurumdan yazılırsa satır değişmez.
+    assert.equal(
+      await savePlacementSession(
+        db,
+        t.institution.id,
+        open.id,
+        2,
+        { sectionEntries: [entry] },
+        later,
+      ),
+      null,
+    )
+    assert.equal(
+      await savePlacementSession(
+        db,
+        other.institution.id,
+        open.id,
+        1,
+        { completedAt: minutes(30) },
+        later,
+      ),
+      null,
+    )
+    const saved = await savePlacementSession(
+      db,
+      t.institution.id,
+      open.id,
+      1,
+      { sectionEntries: [entry], completedAt: minutes(30) },
+      later,
+    )
+    assert.deepEqual(saved?.sectionEntries, [entry])
+    assert.equal(saved?.completedAt, minutes(30))
+    assert.equal(saved?.rowVersion, 2)
+    await violates(
+      db.execute(sql`update placement_sessions set section_entries = '{}'::jsonb
+        where institution_id = ${t.institution.id} and id = ${open.id}`),
+      'placement_sessions_section_entries_check',
+    )
+    await violates(
+      db.execute(sql`update placement_sessions set section_entries = '[1,2,3,4,5,6]'::jsonb
+        where institution_id = ${t.institution.id} and id = ${open.id}`),
+      'placement_sessions_section_entries_check',
     )
   })
 

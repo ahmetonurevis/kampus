@@ -64,6 +64,13 @@ export const EASY_LOGIN_ACCOUNTS: readonly EasyLoginAccount[] = [
     email: 'deniz.yilmaz@kampus.example',
   },
   { institution: AKADEMI, role: 'veli', name: 'Ayşe Yılmaz', email: 'ayse.yilmaz@kampus.example' },
+  // Velayetsiz ve iletişim kısıtlı demo velisi (DOM-ILT-074): çocuğu görmez.
+  {
+    institution: AKADEMI,
+    role: 'veli',
+    name: 'Kemal Yılmaz',
+    email: 'kemal.yilmaz@kampus.example',
+  },
   {
     institution: KAMPUS_DIL,
     role: 'yonetici',

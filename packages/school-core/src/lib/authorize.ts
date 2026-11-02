@@ -389,6 +389,11 @@ function decide(
     case 'academicYear.read':
     case 'academicYear.manage':
       return ALLOWED
+    // Veli bağı: öğrencinin varlığı ve velinin kendi bağı serviste denetlenir (kapsam dışı 404);
+    // okuma alanları `lib/guardianship.ts` `guardianLinksView`'da daralır (DOM-ILT-073).
+    case 'guardian.read':
+    case 'guardian.manage':
+      return ALLOWED
     case 'consent.read':
     case 'consent.status': {
       // Kapsam dışı öğrenci olmayan kayıtla aynı 404'tür; öğrencinin varlığı sızdırılmaz

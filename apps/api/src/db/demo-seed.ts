@@ -1,5 +1,9 @@
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
 import { createAcademicYears } from '@kampus/school-core/platform/seed-academic.ts'
+import {
+  createGuardianLinks,
+  type GuardianSeedAccount,
+} from '@kampus/school-core/platform/seed-guardians.ts'
 
 import type { Auth, InstitutionType, Role } from '../auth.ts'
 import { AppError, MESSAGES } from '../errors.ts'
@@ -15,6 +19,7 @@ import { ensureAcademicYears } from './academic-years.ts'
 import type { Database } from './client.ts'
 import { recordKey, STORED_COLLECTIONS, type RecordData } from './collections.ts'
 import { insertMissingRecords } from './records.ts'
+import { ensureGuardianLinks } from './student-guardians.ts'
 
 /** Üretim dışında `DEMO_PASSWORD` verilmezse kullanılan demo parolası. */
 export const DEFAULT_DEMO_PASSWORD = 'Demo-Giris-2026!'
@@ -28,7 +33,13 @@ interface DemoInstitution {
 interface DemoMember {
   name: string
   email: string
-  memberships: { institution: string; role: Role; links?: MembershipLinkInput[] }[]
+  memberships: {
+    institution: string
+    role: Role
+    links?: MembershipLinkInput[]
+    /** Örnek veli bağlarındaki hesap (`platform/seed-guardians.ts`; IST-019). */
+    guardian?: GuardianSeedAccount
+  }[]
 }
 
 export const DEMO_INSTITUTIONS = [
@@ -80,12 +91,20 @@ export const DEMO_MEMBERS: readonly DemoMember[] = [
       {
         institution: 'akademi',
         role: 'veli',
+        guardian: 'parent',
         links: [
           { kind: 'child', recordId: 's1' },
           { kind: 'child', recordId: 's2' },
         ],
       },
     ],
+  },
+  {
+    // Deniz'in velayeti olmayan ve iletişim kısıtlı babası (DOM-ILT-070, -074): çocuk bağlantısı
+    // yoktur, öğrencinin verisini görmez, rıza veremez.
+    name: 'Kemal Yılmaz',
+    email: 'kemal.yilmaz@kampus.example',
+    memberships: [{ institution: 'akademi', role: 'veli', guardian: 'restrictedParent' }],
   },
   {
     name: 'Gizem Tunç',
@@ -113,6 +132,7 @@ export const DEMO_MEMBERS: readonly DemoMember[] = [
       {
         institution: 'kampus-dil',
         role: 'veli',
+        guardian: 'parent',
         links: [
           { kind: 'child', recordId: 's1' },
           { kind: 'child', recordId: 's2' },
@@ -121,6 +141,9 @@ export const DEMO_MEMBERS: readonly DemoMember[] = [
     ],
   },
 ]
+
+/** Örnek veli bağı yakınlığı: Akademi'de Ayşe anne, dil akademisinde Hakan baba. */
+const GUARDIAN_RELATIONSHIP = { akademi: 'mother', 'kampus-dil': 'father' } as const
 
 /**
  * TODO(F-dil-okulu): dil okuluna özgü örnek veri (CEFR düzeyleri, beceriler) gelince bu
@@ -164,6 +187,24 @@ export function stateRecords(state: State) {
   })
 }
 
+/** Üyeliğin örnek veli bağları (`platform/seed-guardians.ts`), üyelik kimliğiyle. */
+function guardianSeedsFor(membership: DemoMember['memberships'][number], membershipId: string) {
+  const slug = membership.institution as DemoSlug
+  return createGuardianLinks({ parentRelationship: GUARDIAN_RELATIONSHIP[slug] })
+    .filter((seed) => seed.account === membership.guardian)
+    .map((seed) => ({
+      id: seed.id,
+      studentId: seed.studentId,
+      parentId: seed.parentId,
+      membershipId,
+      relationship: seed.relationship,
+      custody: seed.custody,
+      contactRestricted: seed.contactRestricted,
+      isPayer: seed.isPayer,
+      canPickUp: seed.canPickUp,
+    }))
+}
+
 export interface SeedOptions {
   /** Örnek verinin başlangıç günü; betik o anı, testler sabit tarihi verir. */
   now: Date
@@ -187,12 +228,16 @@ export async function seedDemo(auth: Auth, db: Database, password: string, optio
     for (const membership of member.memberships) {
       const institutionId = institutionIds.get(membership.institution)
       if (!institutionId) continue
-      if (membership.role === 'veli') sampleParentUsers.set(membership.institution, user.id)
+      if (membership.guardian === 'parent') sampleParentUsers.set(membership.institution, user.id)
       const { id } = await ensureMember(auth, db, {
         institutionId,
         userId: user.id,
         role: membership.role,
       })
+      // Örnek bağlar bağlantıdan önce: çocuk bağlantısının varsayılan (velayetli) bağı onların
+      // yerini almaz.
+      if (membership.guardian !== undefined)
+        await ensureGuardianLinks(db, institutionId, guardianSeedsFor(membership, id))
       await ensureMembershipLinks(db, institutionId, id, membership.links ?? [])
     }
   }

@@ -94,7 +94,7 @@ describe('aydınlatma ve açık rıza uçları', () => {
   }
 
   function send(
-    method: 'POST' | 'GET',
+    method: 'POST' | 'GET' | 'PATCH',
     url: string,
     cookie: string | null,
     body?: unknown,
@@ -622,6 +622,76 @@ describe('aydınlatma ve açık rıza uçları', () => {
       (await read(w.frontDesk.cookie, '/api/v1/consents?studentId=s5&order=asc')).statusCode,
       400,
     )
+  })
+
+  test('DOM-YTK-057 DOM-ILT-070 velayeti olmayan veli rıza veremez (403); velayetli veli verir', async () => {
+    const w = await world()
+    // Öbür velinin hesabı üyelik bağlantısıyla velayetli bağ alır (okuma kapsamı bağlantıdan).
+    const coParent = await member(w.id, 'veli', [{ kind: 'child', recordId: 's1' }])
+    const bonds = await read(w.admin, '/api/v1/students/s1/guardians')
+    const own = (bonds.json().data as Json[]).find(
+      (item) => item.membershipId === w.parent.membershipId,
+    )
+    assert.ok(own)
+    const revoked = await app.inject({
+      method: 'PATCH',
+      url: `/api/v1/students/s1/guardians/${own.id}`,
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie: w.admin,
+        'content-type': 'application/json',
+        'if-match': `"${own.rowVersion}"`,
+      },
+      payload: JSON.stringify({ custody: 'none' }),
+    })
+    assert.equal(revoked.statusCode, 200, revoked.body)
+
+    const body = { purpose: 'photo_video_sharing', studentId: 's1', textId: w.texts.sharing.id }
+    const denied = await give(w.parent.cookie, body)
+    assert.equal(denied.statusCode, 403, denied.body)
+    assert.equal(denied.json().code, 'consent_custody_required')
+    assert.equal((await consentRows(w.id)).length, 0)
+    // Velayetli öbür veli rızayı verir.
+    const granted = await give(coParent.cookie, body)
+    assert.equal(granted.statusCode, 201, granted.body)
+    assert.equal((await consentRows(w.id)).length, 1)
+  })
+
+  test('DOM-ILT-071 DOM-YTK-059 velayeti kaldırılan velinin verdiği rıza geçerli kalır; yenisini veremez, kendi rızasını geri çekebilir', async () => {
+    const w = await world()
+    const coParent = await member(w.id, 'veli', [{ kind: 'child', recordId: 's1' }])
+    const sharing = { purpose: 'photo_video_sharing', studentId: 's1', textId: w.texts.sharing.id }
+    const given = await give(w.parent.cookie, sharing)
+    assert.equal(given.statusCode, 201, given.body)
+    const bonds = await read(w.admin, '/api/v1/students/s1/guardians')
+    const own = (bonds.json().data as Json[]).find(
+      (item) => item.membershipId === w.parent.membershipId,
+    )
+    assert.ok(own)
+    const revoked = await send(
+      'PATCH',
+      `/api/v1/students/s1/guardians/${own.id}`,
+      w.admin,
+      { custody: 'none' },
+      { 'if-match': `"${own.rowVersion}"` },
+    )
+    assert.equal(revoked.statusCode, 200, revoked.body)
+
+    // Rıza kendiliğinden düşmez: işlemenin dayanağı kesintisiz kalır.
+    assert.equal((await status(w.admin, 'studentId=s1')).photo_video_sharing, true)
+    // Velayetsiz veli yeni rıza veremez.
+    const speaking = { purpose: 'speaking_recording', studentId: 's1', textId: w.texts.speaking.id }
+    const denied = await give(w.parent.cookie, speaking)
+    assert.equal(denied.statusCode, 403, denied.body)
+    assert.equal(denied.json().code, 'consent_custody_required')
+    // Kendi verdiği rızayı geri çeker (öğrenci lehine daraltma); rıza o anda düşer.
+    const withdrawn = await withdraw(w.parent.cookie, given.json().data.id)
+    assert.equal(withdrawn.statusCode, 200, withdrawn.body)
+    assert.equal((await status(w.admin, 'studentId=s1')).photo_video_sharing, false)
+    // Velayetli öteki veli yeniden karar verir.
+    const regranted = await give(coParent.cookie, sharing)
+    assert.equal(regranted.statusCode, 201, regranted.body)
+    assert.equal((await status(w.admin, 'studentId=s1')).photo_video_sharing, true)
   })
 
   test('400: geçersiz gövde ve gövdedeki institutionId reddedilir, kayıt açılmaz', async () => {

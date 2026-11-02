@@ -158,4 +158,8 @@ export const PLATFORM_OPERATION_COMMANDS = {
   // koleksiyon yüklenmez, liste yalnız tablo okumasıdır.
   'academicYear.read': spec(null, [...SCOPE]),
   'academicYear.manage': spec(null, [...SCOPE]),
+  // Veli–öğrenci bağı (`lib/guardianship.ts`; DOM-ILT-070…075): platform yeteneğidir (velayet
+  // rıza ve kapsamın girdisidir), modül kapatılamaz. Kayıtlar `student_guardians` tablosundadır.
+  'guardian.read': spec(null, [...SCOPE]),
+  'guardian.manage': spec(null, [...SCOPE]),
 } as const satisfies Record<string, CommandSpec>

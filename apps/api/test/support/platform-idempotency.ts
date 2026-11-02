@@ -60,4 +60,6 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   'POST /api/v1/consents',
   // Eğitim yılı oluşturma (routes/academic-years.ts; DOM-YTK-063).
   'POST /api/v1/academic-years',
+  // Veli–öğrenci bağı kurma (routes/student-guardians.ts; DOM-ILT-070…075).
+  'POST /api/v1/students/{studentId}/guardians',
 ]

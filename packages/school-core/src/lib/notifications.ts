@@ -1,17 +1,31 @@
 import { z } from 'zod'
 import type { State } from '../data/seed.ts'
-import type { InstitutionType } from '../modules/collection-modules.ts'
+import type { InstitutionType, ModuleKey } from '../modules/collection-modules.ts'
+import {
+  NOTIFICATION_TYPE_NAMES,
+  NOTIFICATION_TYPES,
+  type NotificationType,
+} from '../modules/notification-types.ts'
 import { isUnderAdultAge } from './age.ts'
 import { requireAuthorized } from './authorize.ts'
 import type { Participant } from './communication.ts'
 import type { MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
+import {
+  NOTIFICATION_AUDIENCES,
+  NOTIFICATION_TOPICS,
+  type NotificationAudience,
+  type NotificationCategory,
+  type NotificationTopic,
+  type NotificationTypeSpec,
+} from './notification-type.ts'
 import type { Actor } from './scope.ts'
 
 /**
  * Uygulama içi bildirim merkezi (docs/domain/iletisim-ve-veli.md DOM-ILT-020, -022, -023, -073;
- * IST-065'in ilk parçası). Saf kurallar: bildirim türleri kaydı, alıcı kapsamı, okundu durumu ve
- * gösterilen başlık. Web, mobil ve API aynı kuralları çalıştırır; çevrimdışı demo bildirim
+ * IST-065). Saf kurallar: tür kaydına erişim (türler alan başına dosyalardadır, birleşimi
+ * `modules/notification-types.ts`), üretim kararı (modül, kitle, veri şeması), alıcı kapsamı,
+ * okundu durumu ve gösterilen başlık. API üretimi `services/notify.ts` `notify`'dadır. Web, mobil ve API aynı kuralları çalıştırır; çevrimdışı demo bildirim
  * üretmez.
  *
  * - Bildirim (`notifications`) bir öğrenciye ait olaydır ve bir alıcı kitlesine (`audience`)
@@ -39,80 +53,22 @@ import type { Actor } from './scope.ts'
 // TODO(velayet-kapsam): velayeti olmayan ebeveyn (DOM-ILT-070) bugün de bağlı çocuğunun
 // bildirimini görür; bağ velayet durumunu taşımaz.
 
-export const NOTIFICATION_AUDIENCES = ['student', 'parent'] as const
-export type NotificationAudience = (typeof NOTIFICATION_AUDIENCES)[number]
-
-/**
- * Bildirim konuları (DOM-ILT-020 listesi). `enrollment` listede yoktur: kesin kayıt bildirimi
- * için eklendi (kayıt ve kurumla ilişki; tercih ekranı geldiğinde konu adı gözden geçirilir).
- */
-export const NOTIFICATION_TOPICS = [
-  'homework',
-  'grade',
-  'attendance',
-  'payment',
-  'announcement',
-  'message',
-  'appointment',
-  'consent',
-  'bulletin',
-  'enrollment',
-] as const
-export type NotificationTopic = (typeof NOTIFICATION_TOPICS)[number]
-
-/** Hizmet bildirimi ve ticari ileti (DOM-ILT-022). Ticari tür ileti onayı gelmeden eklenmez. */
-export type NotificationCategory = 'service' | 'commercial'
-
-type KindSpec = {
-  readonly topic: NotificationTopic
-  readonly category: NotificationCategory
-  /** Kapatılamayan bildirim (DOM-ILT-020: acil durum, devamsızlık, onay son tarihi). */
-  readonly mandatory: boolean
-  /** Alıcı kitlesi: 18 yaş altı öğrencide ve yetişkin kursiyerde. */
-  readonly audiences: {
-    readonly minor: readonly NotificationAudience[]
-    readonly adult: readonly NotificationAudience[]
-  }
-  /** Konu kaydının türü (istemci bağlantısı için). */
-  readonly subjectType: string
-  /**
-   * Gösterilen başlık şablonu; `{öğrenci}` öğrencinin ilk adıyla değişir. Ayrıntı (puan, geri
-   * bildirim metni, tutar) yazılmaz (DOM-ILT-023).
-   */
-  readonly titles: Readonly<Record<NotificationAudience, string>>
+export {
+  NOTIFICATION_AUDIENCES,
+  NOTIFICATION_TOPICS,
+  type NotificationAudience,
+  type NotificationCategory,
+  type NotificationTopic,
 }
 
-/** Bildirim türleri kaydı. Yeni tür buraya eklenir; üreten işlem yalnız kayıtlı türü yazar. */
-export const NOTIFICATION_KINDS = {
-  /** Öğretmen geri bildirimi açıldı: puan kesinleşti ve kursiyere açıldı (DOM-BEC-045). */
-  feedback_released: {
-    topic: 'homework',
-    category: 'service',
-    mandatory: false,
-    audiences: { minor: ['student', 'parent'], adult: ['student'] },
-    subjectType: 'task_submission',
-    titles: {
-      student: 'Görevine öğretmen geri bildirimi geldi.',
-      parent: '{öğrenci} için öğretmen geri bildirimi geldi.',
-    },
-  },
-  /** Kesin kayıt tamamlandı (DOM-KAY-011); 18 yaş altında veliye, yetişkinde kursiyere. */
-  enrollment_completed: {
-    topic: 'enrollment',
-    category: 'service',
-    mandatory: false,
-    audiences: { minor: ['parent'], adult: ['student'] },
-    subjectType: 'students',
-    titles: {
-      student: 'Kesin kaydın tamamlandı.',
-      parent: '{öğrenci} için kesin kayıt tamamlandı.',
-    },
-  },
-} as const satisfies Record<string, KindSpec>
-
-export type NotificationKind = keyof typeof NOTIFICATION_KINDS
-export const NOTIFICATION_KIND_NAMES = Object.keys(NOTIFICATION_KINDS) as NotificationKind[]
-const KINDS: Readonly<Record<string, KindSpec>> = NOTIFICATION_KINDS
+/**
+ * Bildirim türleri kaydı (birleşik; `modules/notification-types.ts`). Yeni tür alanın kendi tür
+ * dosyasına eklenir; üreten işlem yalnız kayıtlı türü yazar.
+ */
+export const NOTIFICATION_KINDS = NOTIFICATION_TYPES
+export type NotificationKind = NotificationType
+export const NOTIFICATION_KIND_NAMES = NOTIFICATION_TYPE_NAMES
+const KINDS: Readonly<Record<string, NotificationTypeSpec>> = NOTIFICATION_KINDS
 
 const identifier = z.string().trim().min(1).max(200)
 
@@ -141,7 +97,53 @@ export type NotificationReadRecord = z.infer<typeof notificationReadRecordSchema
 export const notificationReadId = (notificationId: string, userId: string) =>
   `${notificationId}:${userId}`
 
-export const notificationSpec = (kind: NotificationKind): KindSpec => NOTIFICATION_KINDS[kind]
+export const notificationSpec = (kind: NotificationKind): NotificationTypeSpec =>
+  NOTIFICATION_KINDS[kind]
+
+/**
+ * Tür bu kurumda üretilir mi: bildirim merkezi (`communication`) ve türün ilgili modülü açık
+ * olmalıdır (DOM-YTK-040). Kapalıysa bildirim hiç yazılmaz; modül sonradan açılınca geçmiş
+ * olaylar için bildirim oluşmaz.
+ */
+export function notificationEnabled(
+  kind: NotificationKind,
+  modules: Partial<Readonly<Record<ModuleKey, boolean>>>,
+): boolean {
+  const spec = notificationSpec(kind)
+  return modules.communication === true && (spec.module === null || modules[spec.module] === true)
+}
+
+/** Alıcı öğrenciye ait karar: türün kitlesinden hangileri (`learnerIsMinor`). */
+export function notificationAudiences(
+  kind: NotificationKind,
+  minor: boolean,
+): readonly NotificationAudience[] {
+  const spec = notificationSpec(kind)
+  return minor ? spec.audiences.minor : spec.audiences.adult
+}
+
+/**
+ * Çağıranın verisini türün şemasıyla doğrular ve konu kaydını döndürür. Bilinmeyen tür, eksik ya
+ * da fazla alan programlama hatasıdır (`Error`; API'de 500): veri kullanıcıdan gelmez. Ticari
+ * tür ileti onayı denetimi gelmeden üretilmez (DOM-ILT-022).
+ */
+export function notificationSubject(
+  kind: string,
+  data: unknown,
+): { kind: NotificationKind; subject: NotificationRecord['subject'] } {
+  if (!Object.hasOwn(KINDS, kind)) throw new Error(`unknown notification kind: ${kind}`)
+  const known = kind as NotificationKind
+  const spec = notificationSpec(known)
+  // TODO(F6-ticari-ileti): ticari tür, kanal bazında ileti onayı (DOM-KAY-004) denetimiyle gelir.
+  if (spec.category !== 'service') throw new Error('commercial notification needs consent check')
+  const parsed = spec.data.safeParse(data)
+  if (!parsed.success)
+    throw new Error(`invalid notification data: ${kind}`, { cause: parsed.error })
+  return {
+    kind: known,
+    subject: { type: spec.subjectType, id: identifier.parse(spec.subjectId(parsed.data)) },
+  }
+}
 
 /** Öğrencinin yaşına dair bilinenler (`learnerIsMinor`). */
 export type LearnerAgeFacts = {
@@ -190,7 +192,9 @@ export type StudentEvent = {
 
 /**
  * Öğrenciye ait olay için bildirimleri yazar: türün alıcı kitlesi başına bir kayıt. Ticari tür
- * ileti onayı denetimi gelmeden yazılmaz (DOM-ILT-022). Yalnız `notifications` yazılır.
+ * ileti onayı denetimi gelmeden yazılmaz (DOM-ILT-022). Yalnız `notifications` yazılır. State
+ * üzerinde çalışan saf karşılıktır; API üretimi modül, alıcı ve mükerrer denetimiyle
+ * `apps/api/src/services/notify.ts` `notify`'dadır.
  */
 export function notifyStudentEvent(
   state: Pick<State, 'notifications'>,
@@ -202,8 +206,7 @@ export function notifyStudentEvent(
   if (spec === undefined) throw new Error(`unknown notification kind: ${event.kind}`)
   // TODO(F6-ticari-ileti): ticari tür, kanal bazında ileti onayı (DOM-KAY-004) denetimiyle gelir.
   if (spec.category !== 'service') throw new Error('commercial notification needs consent check')
-  const audiences = event.minor ? spec.audiences.minor : spec.audiences.adult
-  const created = audiences.map((audience) =>
+  const created = notificationAudiences(event.kind, event.minor).map((audience) =>
     notificationRecordSchema.parse({
       id: makeId('ntf'),
       kind: event.kind,

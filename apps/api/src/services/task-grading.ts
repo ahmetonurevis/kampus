@@ -22,7 +22,6 @@ import {
 } from '@kampus/school-core/skills/rubric.ts'
 import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 import { versionAllowance } from '@kampus/school-core/skills/submission.ts'
-import { notifyStudentEvent } from '@kampus/school-core/lib/notifications.ts'
 
 import type { Database } from '../db/client.ts'
 import { activeDutiesOf } from '../db/coordinator-duties.ts'
@@ -51,7 +50,7 @@ import {
 } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { listMembershipLinks } from './memberships.ts'
-import { studentNotice } from './notifications.ts'
+import { notify } from './notify.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { coordinates, viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
@@ -302,7 +301,7 @@ async function writeScore(
 ): Promise<CommandResponse> {
   const viewer = await viewerOf(ctx)
   const out: { body?: unknown } = {}
-  type Score = Graded & { viewer: Viewer; draft: RubricScoreDraft }
+  type Score = Graded & { viewer: Viewer; draft: RubricScoreDraft; released: boolean }
   const action = SCORE_ACTIONS[role]
   const load = async (tx: Database): Promise<Graded & { viewer: Viewer }> =>
     role === 'final'
@@ -315,12 +314,9 @@ async function writeScore(
     ctx,
     {
       action,
-      // Bildirim yalnız eklenir; var olan bildirimler yüklenmez (F6a). Puanın denetim satırı
-      // `after`'dadır; farktaki bildirim kaydı ayrı eylemle yazılır ki puan iki kez yazılmış
-      // görünmesin.
-      auditAction: 'notification.create',
-      collections: ['notifications'],
-      loadScope: { notifications: { ids: [] } },
+      // Puan ve bildirim `after`'da yazılır; State farkı yoktur. Bildirimin denetim satırı
+      // `notify`'ın ayrı `notification.create` eylemidir ki puan iki kez yazılmış görünmesin.
+      collections: [],
       entity: { type: ENTITY, id: input.submissionId },
       load: async (tx) => {
         const { viewer: current, ...graded } = await load(tx)
@@ -331,7 +327,6 @@ async function writeScore(
         if (rubricVersion === null) throw new NotFoundError()
         // Bilinmeyen sürüm numarası core'un `submission_version_not_found` (404) yoluna düşer.
         const version = work.versions.find((v) => v.number === input.versionNumber)
-        const notice = await studentNotice(tx, ctx, work.submission.learnerId)
         return {
           run: (state, tools) => {
             const secondRatingRequested = secondRatingFor(grading, version)
@@ -354,8 +349,9 @@ async function writeScore(
             })
             // Puanı kesinleştiren yazma geri bildirimi o anda açar (DOM-BEC-045): ilk puan,
             // uyuşan ikinci puan ya da uyuşmazlıkta koordinatör son puanı. Öğrenciye ve (18 yaş
-            // altında) veliye uygulama içi bildirim aynı transaction'da eklenir; yazma başarısızsa
-            // bildirim de geri alınır. Bildirim puan ve geri bildirim metni taşımaz (DOM-ILT-023).
+            // altında) veliye uygulama içi bildirim `after`'da aynı transaction'da eklenir;
+            // yazma başarısızsa bildirim de geri alınır. Bildirim puan ve geri bildirim metni
+            // taşımaz (DOM-ILT-023).
             const released = releasesFeedback({
               scores: grading.scores.filter(
                 (s) => s.submissionVersionId === draft.submissionVersionId,
@@ -363,23 +359,18 @@ async function writeScore(
               added: { id: 'pending', ...draft },
               secondRatingRequested,
             })
-            if (notice.enabled && released)
-              notifyStudentEvent(
-                state,
-                {
-                  kind: 'feedback_released',
-                  studentId: work.submission.learnerId,
-                  subjectId: work.submission.id,
-                  minor: notice.minor,
-                },
-                tools.makeId,
-                tools.now,
-              )
-            return { ...graded, viewer: current, draft }
+            return { ...graded, viewer: current, draft, released }
           },
         }
       },
-      after: async (tx, { work, assignment, draft, viewer: current }) => {
+      after: async (tx, { work, assignment, draft, released, viewer: current }) => {
+        // İletişim ya da öğrenme modülü kapalıysa `notify` yazmadan döner (DOM-YTK-040).
+        if (released)
+          await notify(tx, ctx, {
+            type: 'feedback_released',
+            recipients: { studentIds: [work.submission.learnerId] },
+            data: { submissionId: work.submission.id },
+          })
         await insertRubricScore(tx, ctx.institutionId, { id: randomUUID(), ...draft }, ctx.now)
         await touchSubmission(tx, ctx.institutionId, work.submission, ctx.now)
         await auditWork(tx, ctx, action, { type: ENTITY, id: work.submission.id }, [

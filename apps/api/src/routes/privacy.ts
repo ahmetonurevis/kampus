@@ -29,6 +29,7 @@ import {
   consentStatusResponseSchema,
   consentTextParamsSchema,
   consentTextResponseSchema,
+  currentNoticeQuerySchema,
   currentNoticeResponseSchema,
   noticeParamsSchema,
   privacyNoticeBodySchema,
@@ -113,11 +114,14 @@ export function registerPrivacyRoutes(app: FastifyInstance) {
         operationId: 'getCurrentPrivacyNotice',
         tags: ['privacy'],
         summary: 'Güncel aydınlatma metni',
-        description: `Oturum rolünün kitlesine ait son aydınlatma metni ve kullanıcının bu sürümü görüp görmediği (IST-016, DOM-YTK-056). İlk girişte ve yeni sürüm yayımlanınca \`needsAcknowledgement\` doğrudur; istemci metni gösterip \`POST /privacy-notices/{noticeId}/acknowledge\` çağırır. Yayımlanmış metin yoksa \`notice\` boştur. Roller: ${rolesOf('notice.acknowledge')}.`,
+        description: `Oturum rolünün kitlesine ait son aydınlatma metni ve kullanıcının bu sürümü görüp görmediği (IST-016, DOM-YTK-056). İlk girişte ve yeni sürüm yayımlanınca \`needsAcknowledgement\` doğrudur; istemci metni gösterip \`POST /privacy-notices/{noticeId}/acknowledge\` çağırır. Yayımlanmış metin yoksa \`notice\` boştur. \`audience=aday\` aday formunun metnini döndürür (DOM-KAY-003): yalnız yönetici ve ön büro okur, aday oturum açmadığından gösterim kaydı yoktur (\`needsAcknowledgement\` hep yanlış, \`acknowledgedAt\` boş); aday kaydı gösterilen sürümü (\`notice.id\`, \`notice.version\`) kendisi saklar. Başka rolün aday okuması ve başka hesap kitlesi 403 \`notice_audience_forbidden\`; bilinmeyen kitle ya da parametre 400. Roller: ${rolesOf('notice.acknowledge')}.`,
+        querystring: currentNoticeQuerySchema,
         response: { 200: currentNoticeResponseSchema, ...readErrors },
       },
     },
-    async (request) => ({ data: await currentNotice(contextOf(request)) }),
+    async (request) => ({
+      data: await currentNotice(contextOf(request), request.query.audience),
+    }),
   )
 
   typed.post(

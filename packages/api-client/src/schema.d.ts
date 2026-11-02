@@ -3617,7 +3617,7 @@ export interface paths {
         };
         /**
          * Güncel aydınlatma metni
-         * @description Oturum rolünün kitlesine ait son aydınlatma metni ve kullanıcının bu sürümü görüp görmediği (IST-016, DOM-YTK-056). İlk girişte ve yeni sürüm yayımlanınca `needsAcknowledgement` doğrudur; istemci metni gösterip `POST /privacy-notices/{noticeId}/acknowledge` çağırır. Yayımlanmış metin yoksa `notice` boştur. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.
+         * @description Oturum rolünün kitlesine ait son aydınlatma metni ve kullanıcının bu sürümü görüp görmediği (IST-016, DOM-YTK-056). İlk girişte ve yeni sürüm yayımlanınca `needsAcknowledgement` doğrudur; istemci metni gösterip `POST /privacy-notices/{noticeId}/acknowledge` çağırır. Yayımlanmış metin yoksa `notice` boştur. `audience=aday` aday formunun metnini döndürür (DOM-KAY-003): yalnız yönetici ve ön büro okur, aday oturum açmadığından gösterim kaydı yoktur (`needsAcknowledgement` hep yanlış, `acknowledgedAt` boş); aday kaydı gösterilen sürümü (`notice.id`, `notice.version`) kendisi saklar. Başka rolün aday okuması ve başka hesap kitlesi 403 `notice_audience_forbidden`; bilinmeyen kitle ya da parametre 400. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.
          */
         get: operations["getCurrentPrivacyNotice"];
         put?: never;
@@ -5821,7 +5821,7 @@ export interface components {
              */
             kind: "notice" | "consent_text";
             /** @description Aydınlatma kitlesi */
-            audience: ("veli" | "ogrenci" | "personel") | null;
+            audience: ("veli" | "ogrenci" | "personel" | "aday") | null;
             purpose: ("photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording") | null;
             /** @description Konu içinde artan sürüm */
             version: number;
@@ -5834,15 +5834,15 @@ export interface components {
         };
         CurrentPrivacyNoticeInput: {
             /**
-             * @description Oturum rolünün kitlesi
+             * @description Okunan kitle: istenen `audience` ya da oturum rolünün kitlesi
              * @enum {string}
              */
-            audience: "veli" | "ogrenci" | "personel";
+            audience: "veli" | "ogrenci" | "personel" | "aday";
             /** @description Kitlenin son sürümü; yayımlanmamışsa boş */
             notice: components["schemas"]["PrivacyNoticeInput"] | null;
-            /** @description Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli */
+            /** @description Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli. Aday kitlesinde hep yanlış */
             needsAcknowledgement: boolean;
-            /** @description Son sürümün gösterim anı */
+            /** @description Son sürümün gösterim anı; aday kitlesinde hep boş */
             acknowledgedAt: string | null;
         };
         NoticeAcknowledgementInput: {
@@ -9049,7 +9049,7 @@ export interface components {
              */
             kind: "notice" | "consent_text";
             /** @description Aydınlatma kitlesi */
-            audience: ("veli" | "ogrenci" | "personel") | null;
+            audience: ("veli" | "ogrenci" | "personel" | "aday") | null;
             purpose: ("photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording") | null;
             /** @description Konu içinde artan sürüm */
             version: number;
@@ -9062,15 +9062,15 @@ export interface components {
         };
         CurrentPrivacyNotice: {
             /**
-             * @description Oturum rolünün kitlesi
+             * @description Okunan kitle: istenen `audience` ya da oturum rolünün kitlesi
              * @enum {string}
              */
-            audience: "veli" | "ogrenci" | "personel";
+            audience: "veli" | "ogrenci" | "personel" | "aday";
             /** @description Kitlenin son sürümü; yayımlanmamışsa boş */
             notice: components["schemas"]["PrivacyNotice"] | null;
-            /** @description Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli */
+            /** @description Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli. Aday kitlesinde hep yanlış */
             needsAcknowledgement: boolean;
-            /** @description Son sürümün gösterim anı */
+            /** @description Son sürümün gösterim anı; aday kitlesinde hep boş */
             acknowledgedAt: string | null;
         };
         NoticeAcknowledgement: {
@@ -33406,7 +33406,7 @@ export interface operations {
                     /** @enum {string} */
                     kind: "notice";
                     /** @enum {string} */
-                    audience: "veli" | "ogrenci" | "personel";
+                    audience: "veli" | "ogrenci" | "personel" | "aday";
                     title: string;
                     body: string;
                 } | {
@@ -33509,7 +33509,10 @@ export interface operations {
     };
     getCurrentPrivacyNotice: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Okunacak kitle; yoksa oturum rolünün kitlesi. `aday` yalnız yönetici ve ön büro (aday formu) */
+                audience?: "veli" | "ogrenci" | "personel" | "aday";
+            };
             header?: never;
             path?: never;
             cookie?: never;

@@ -22,11 +22,15 @@ import {
   type ConsentStudent,
   type GuardianBond,
 } from '../packages/school-core/src/lib/consents.ts'
+import { WRITE_ACTION_ROLES } from '../packages/school-core/src/lib/authorize.ts'
 import {
   latestNotice,
   minimumConsentTextVersion,
   needsNoticeAcknowledgement,
+  NOTICE_AUDIENCES,
+  noticeAudienceForRead,
   noticeAudienceForRole,
+  PROSPECT_NOTICE_READERS,
   planNoticeAcknowledgement,
   planNoticePublication,
   type PrivacyNotice,
@@ -247,6 +251,88 @@ describe('aydınlatma metni (IST-016, DOM-YTK-056)', () => {
       isDomainError('notice_already_acknowledged', 'conflict'),
     )
     assert.equal(acknowledgements.length, 1)
+  })
+})
+
+describe('aday aydınlatma kitlesi (DOM-KAY-003, DOM-YTK-056, #14)', () => {
+  const PROSPECT_NOTICE = text(13, { kind: 'notice', audience: 'aday' })
+  const NOTICES = Object.freeze([...TEXTS, PROSPECT_NOTICE])
+  const ROLES = ['yonetici', 'onburo', 'ogretmen', 'veli', 'ogrenci'] as const
+
+  test('DOM-KAY-003 aday kitlesi yayımlanır; sürüm aday konusunda ayrı sayılır', () => {
+    assert.equal(NOTICE_AUDIENCES.aday.label, 'Aday')
+    const plan = (notices: readonly PrivacyNotice[]) =>
+      planNoticePublication({
+        notices,
+        publishedByUserId: 'u-admin',
+        input: { kind: 'notice', audience: 'aday', title: ' Aday aydınlatma ', body: 'Metin' },
+        now: NOW,
+      })
+    assert.deepEqual(plan(TEXTS), {
+      kind: 'notice',
+      audience: 'aday',
+      purpose: null,
+      version: 1,
+      title: 'Aday aydınlatma',
+      body: 'Metin',
+      requiresReconsent: false,
+      publishedAt: NOW,
+      publishedByUserId: 'u-admin',
+    })
+    assert.equal(plan(NOTICES).version, 2)
+    assert.equal(
+      latestNotice(NOTICES, { kind: 'notice', audience: 'aday' })?.id,
+      PROSPECT_NOTICE.id,
+    )
+  })
+
+  test('DOM-KAY-003 aday metnini yalnız aday formunu açan roller okur; kitle verilmezse rolün kitlesi', () => {
+    assert.deepEqual([...PROSPECT_NOTICE_READERS], [...WRITE_ACTION_ROLES['prospect.create']])
+    for (const role of ROLES) {
+      assert.equal(noticeAudienceForRead(role), noticeAudienceForRole(role))
+      assert.equal(
+        noticeAudienceForRead(role, noticeAudienceForRole(role)),
+        noticeAudienceForRole(role),
+      )
+    }
+    for (const role of PROSPECT_NOTICE_READERS)
+      assert.equal(noticeAudienceForRead(role, 'aday'), 'aday')
+    for (const role of ['ogretmen', 'veli', 'ogrenci'] as const)
+      assert.throws(
+        () => noticeAudienceForRead(role, 'aday'),
+        isDomainError('notice_audience_forbidden', 'forbidden'),
+      )
+    // Başka hesap kitlesinin güncel metni bu yoldan okunmaz (yönetici listeyi kullanır).
+    assert.throws(
+      () => noticeAudienceForRead('yonetici', 'veli'),
+      isDomainError('notice_audience_forbidden', 'forbidden'),
+    )
+    assert.throws(
+      () => noticeAudienceForRead('veli', 'personel'),
+      isDomainError('notice_audience_forbidden', 'forbidden'),
+    )
+  })
+
+  test('DOM-KAY-003 aday kitlesi hesaba bağlı değil: hiçbir rolün kitlesi değil, gösterim kaydı açılmaz', () => {
+    assert.equal(NOTICE_AUDIENCES.aday.account, false)
+    for (const audience of ['veli', 'ogrenci', 'personel'] as const)
+      assert.equal(NOTICE_AUDIENCES[audience].account, true)
+    for (const role of ROLES) {
+      assert.notEqual(noticeAudienceForRole(role), 'aday')
+      const user = { userId: `u-${role}`, role }
+      assert.notEqual(needsNoticeAcknowledgement(NOTICES, [], user)?.id, PROSPECT_NOTICE.id)
+      assert.throws(
+        () =>
+          planNoticeAcknowledgement({
+            notices: NOTICES,
+            acknowledgements: [],
+            user,
+            input: { noticeId: PROSPECT_NOTICE.id, channel: 'web' },
+            now: NOW,
+          }),
+        isDomainError('notice_not_found', 'not_found'),
+      )
+    }
   })
 })
 

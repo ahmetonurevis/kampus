@@ -2,7 +2,10 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import {
+  ALL_BRANCHES,
   RISK_LEVELS,
+  branchFilterValue,
+  filterByBranch,
   riskLevel,
   riskReasons,
   riskRows,
@@ -97,6 +100,7 @@ test('riskRows (DOM-YTK-020, DOM-ILT-041): satırlar yalnız ölçülen alanlar�
     assert.deepEqual(Object.keys(row).sort(), [
       'absent',
       'branch',
+      'branchId',
       'class',
       'classId',
       'id',
@@ -113,4 +117,44 @@ test('riskReasons: nedenler yalnız aşılan eşiklerden yazılır', () => {
     'Not ortalaması 60/100',
   ])
   assert.deepEqual(riskReasons({ score: null, absent: 2 }), [])
+})
+
+test('filterByBranch (IST-121): kampüs seçilince yalnız o kampüsün öğrencileri kalır, boş değer hepsini döndürür', () => {
+  const [a, b] = seed.branches
+  assert.ok(a && b)
+  const inBranch = (branchId: string) =>
+    seed.students.filter(
+      (student) => seed.classes.find((item) => item.id === student.classId)?.branchId === branchId,
+    )
+  const first = inBranch(a.id)[0]
+  const second = inBranch(b.id)[0]
+  assert.ok(first && second)
+  const rows = riskRows(
+    wrap([first, second]),
+    lookups,
+    undefined,
+    counts([
+      { value: first.id, count: 7 },
+      { value: second.id, count: 9 },
+    ]),
+  )
+  assert.equal(rows.length, 2)
+  assert.deepEqual(filterByBranch(rows, ALL_BRANCHES), rows)
+  assert.deepEqual(
+    filterByBranch(rows, a.id).map((row) => row.id),
+    [first.id],
+  )
+  assert.deepEqual(
+    filterByBranch(rows, b.id).map((row) => row.id),
+    [second.id],
+  )
+  assert.deepEqual(filterByBranch(rows, 'yok-kampus'), [])
+})
+
+test('branchFilterValue: bilinmeyen ya da boş kampüs değeri "tümü" sayılır', () => {
+  const [a] = seed.branches
+  assert.ok(a)
+  assert.equal(branchFilterValue(a.id, lookups.branches), a.id)
+  assert.equal(branchFilterValue(null, lookups.branches), ALL_BRANCHES)
+  assert.equal(branchFilterValue('bozuk', lookups.branches), ALL_BRANCHES)
 })

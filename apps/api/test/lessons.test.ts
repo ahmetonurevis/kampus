@@ -522,16 +522,37 @@ describe('ders programı uçları', () => {
     assert.equal(stored?.data.teacherId, 't1')
   })
 
-  test('DOM-YTK-069: geçmiş ders düzenlenemez (422); başka kurumun dersi 404 ve o ders değişmez', async () => {
+  test('DOM-YTK-069: geçmiş ders düzenlenemez (422)', async () => {
     const a = await institution()
-    const b = await institution({}, { schedule: [lesson('lesson-only-b', { date: FREE })] })
     await unchanged(a.id, async () => {
       assertError(await patch(a.adminCookie, PAST.id, { room: '102' }), 422, 'lesson_in_past')
     })
-    await unchanged(b.id, async () => {
-      assertError(await patch(a.adminCookie, 'lesson-only-b', { room: '102' }), 404, 'not_found')
-      assertError(await cancel(a.adminCookie, 'lesson-only-b', { reason: REASON }), 404)
-    })
+  })
+
+  test('IST-002, DOM-YTK-068: başka kurumun dersi düzenleme, yedek ve iptalde olmayan dersle aynı 404; iki kurum değişmez', async () => {
+    const a = await institution()
+    const b = await institution({}, { schedule: [lesson('lesson-only-b', { date: FREE })] })
+    const writes = [
+      (id: string) => patch(a.adminCookie, id, { room: '102' }),
+      (id: string) =>
+        substitute(a.adminCookie, id, { teacherId: 'teacher-backup', reason: REASON }),
+      (id: string) => cancel(a.adminCookie, id, { reason: REASON }),
+    ]
+    const outcome = (response: Awaited<ReturnType<typeof send>>) => {
+      const body = response.json() as { code?: string; message?: string }
+      return [response.statusCode, body.code, body.message]
+    }
+    await unchanged(a.id, () =>
+      unchanged(b.id, async () => {
+        for (const write of writes) {
+          const foreign = await write('lesson-only-b')
+          assertError(foreign, 404, 'not_found')
+          assert.deepEqual(outcome(foreign), outcome(await write('lesson-yok')))
+        }
+      }),
+    )
+    // Aynı istek A'nın kendi dersinde çalışır: 404 rol ya da gövdeden gelmiyor.
+    assert.equal((await writes[0]!(L1.id)).statusCode, 200)
   })
 
   // --- Yedek öğretmen --------------------------------------------------------------------------

@@ -62,6 +62,11 @@ const CONSENT = kayit('consents.test.ts', 'başka kurum: kayıt ve metin 404, B 
 const DUTY = kayit('coordinator-duties.test.ts', 'başka kurumun yöneticisi 404')
 const GUARDIAN = kayit('student-guardians.test.ts', 'başka kurum: öğrenci ve bağ 404, B değişmez')
 const YEAR = kayit('academic-years.test.ts', 'başka kurum: yılı 404, yazma B yılını değiştirmez')
+const LESSON_READ = kayit('lessons.test.ts', 'başka kurumun dersi listede yok ve 404')
+const LESSON_WRITE = kayit(
+  'lessons.test.ts',
+  'başka kurumun dersi düzenleme, yedek ve iptalde olmayan dersle aynı 404',
+)
 const RESOURCE_READ = kayit('resources.test.ts', 'başka kurumun kaynağı 404 ve listede yok')
 const RESOURCE_WRITE = kayit(
   'resource-commands.test.ts',
@@ -391,6 +396,14 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     "'cancel'",
   ),
   'POST /api/v1/groups/:groupId/merge': GROUP_COMMAND('merge'),
+
+  // --- Ders programı ---------------------------------------------------------------------------
+  'GET /api/v1/lessons': LESSON_READ,
+  'GET /api/v1/lessons/:lessonId': LESSON_READ,
+  'POST /api/v1/lessons': govde('lessons.test.ts', 'bilinmeyen alan (institutionId) 400'),
+  'PATCH /api/v1/lessons/:lessonId': LESSON_WRITE,
+  'POST /api/v1/lessons/:lessonId/substitute': LESSON_WRITE,
+  'POST /api/v1/lessons/:lessonId/cancel': LESSON_WRITE,
 
   // --- Dosya ----------------------------------------------------------------------------------
   'GET /api/v1/files/:fileId': kayit('files.test.ts', 'başka kurum ve başkası 404'),

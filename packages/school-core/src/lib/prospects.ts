@@ -30,7 +30,7 @@ import { intervalsOverlap, tutorConflict } from './tutor-conflicts.ts'
  *   çakışamaz (DOM-KAY-006, -033). Deneme dersi yalnız dil okulunda, gerçek bir derse bir kez, kapasite
  *   ve 18 yaş altında veli onayıyla planlanır (DOM-DIL-030, DOM-KAY-034).
  *
- * Kesin kayıt (aday → öğrenci) `enrollProspectWithPlan` işlemidir (`lib/domain.ts`, DOM-KAY-001,
+ * Kesin kayıt (aday → öğrenci) `enrollProspectWithPlan` işlemidir (`lib/enrollment.ts`, DOM-KAY-001,
  * DOM-KAY-011, DOM-KAY-035); `Kayıt oldu` aşamasını yalnız o yazar ve yalnız açık adayı kabul
  * eder. Yetki eylemi `prospect.enroll`'dur; işlem `payInvoice` gibi yetkiyi kendisi denetlemez.
  *

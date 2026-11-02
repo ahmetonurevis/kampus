@@ -3,8 +3,16 @@ import { z } from 'zod'
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { ADULT_AGE, ageOn, isCalendarDay } from './age.ts'
-import { applyEnrollment, daySchema, requiredText, type MakeId } from './domain.ts'
+import {
+  daySchema,
+  installmentAmounts,
+  requiredText,
+  type ContractTerms,
+  type MakeId,
+} from './domain.ts'
 import { DomainError } from './errors.ts'
+import { dayKey } from './format.ts'
+import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 import { renewalQuote, workflowSchemas } from './school-workflows.ts'
 import {
   FEE_DISCOUNT_KINDS,
@@ -710,4 +718,213 @@ export function assertRenewalWithinTariff(
         path: ['discount'],
       },
     )
+}
+
+// --- Kesin kaydı yazan işlem (çevrimdışı demo girişi ve tarifeli kayıt ortak çekirdeği) ---
+
+export const registrationSchema = z.object({
+  prospectId: requiredText,
+  classId: requiredText,
+  total: z.coerce
+    .number()
+    .int('Tutar tam sayı olmalıdır.')
+    .min(100, 'Tutar en az 100 ₺ olmalıdır.')
+    .max(1000000, 'Tutar en fazla 1.000.000 ₺ olabilir.'),
+  count: z.coerce.number().int().min(1).max(12),
+  startDate: z.string().regex(/^\d{4}-\d{2}-\d{2}$/, 'İlk ödeme tarihini seçin.'),
+})
+type Enrollment = {
+  prospectId: string
+  classId: string
+  totalCents: number
+  count: number
+  startDate: string
+  contractTitle: string
+  /** Tarifeli kayıtta dolu (`lib/enrollment.ts`); çevrimdışı demo vermez. */
+  academicYear?: number
+  extras?: readonly { kind: FeeItemKind; amountCents: number }[]
+  guardian?:
+    | { kind: 'self' }
+    | { kind: 'existing'; parentId: string }
+    | { kind: 'new'; name: string; phone: string; relationship: string }
+  terms?: ContractTerms
+  /**
+   * Veli zorunlu mu (DOM-KAY-003, DOM-KAY-012; okulda her yaşta, kursta 18 yaş altında): `true` ise
+   * adayın telefonu ve e-postası velinindir, öğrenciye yazılmaz. Tarifeli kayıt verir; çevrimdışı
+   * demo vermez (`undefined`, eski davranış).
+   */
+  guardianContact?: boolean
+  /** Öğrencinin kendi iletişimi (isteğe bağlı); verilen alan öğrenciye yazılır. */
+  studentContact?: { phone?: string | undefined; email?: string | undefined }
+  /** Başka kampüsün sınıfı bilinçli seçildi; yoksa 422 `class_campus_mismatch`. */
+  allowOtherCampus?: boolean
+}
+const SCHOOL_CONTRACT_TITLE = 'Özel okul eğitim sözleşmesi'
+
+/**
+ * Çevrimdışı demo girişi: `registrationSchema` (tam TL).
+ * TODO(crm-enroll): çevrimdışı demo çağıranları (Vue `Crm.vue`, mobil `model/operations.ts`) yetki
+ * denetlemez; demo kalıcılığı silinince kalkar.
+ */
+export function enrollProspect(
+  state: State,
+  input: unknown,
+  makeId: MakeId,
+  now = new Date().toISOString(),
+) {
+  const data = registrationSchema.parse(input)
+  return applyEnrollment(
+    state,
+    {
+      prospectId: data.prospectId,
+      classId: data.classId,
+      totalCents: data.total * 100,
+      count: data.count,
+      startDate: data.startDate,
+      contractTitle: SCHOOL_CONTRACT_TITLE,
+      // Demo formu her kampüsün sınıfını listeler; seçim bilinçli sayılır (eski davranış).
+      allowOtherCampus: true,
+    },
+    makeId,
+    now,
+  )
+}
+
+/**
+ * Kesin kayıt: açık aşamadaki adayı öğrenci, veli, taksit ve sözleşmeyle birlikte kayda alır
+ * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Sözleşme yalnız kendi taksitlerini listeler
+ * (`invoiceIds`, DOM-FIN-012).
+ */
+export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, now: string) {
+  const prospect = state.prospects.find((p) => p.id === data.prospectId)
+  const cls = state.classes.find((c) => c.id === data.classId && c.isActive)
+  if (!prospect || !cls || !state.branches.some((b) => b.id === cls.branchId && b.isActive))
+    throw new DomainError('prospect_or_class_not_found', 'Aday veya sınıf bulunamadı.', {
+      kind: 'not_found',
+    })
+  if (prospect.studentId || prospect.stage === 'Kayıt oldu')
+    throw new DomainError('prospect_already_enrolled', 'Bu adayın kaydı zaten tamamlanmış.', {
+      kind: 'conflict',
+    })
+  // Yalnız açık aşamadaki aday kayda alınır; vazgeçen aday önce yeniden açılır (DOM-KAY-035).
+  if (!(OPEN_PROSPECT_STAGES as readonly (string | undefined)[]).includes(prospect.stage))
+    throw new DomainError(
+      'prospect_closed',
+      'Yalnız açık aşamadaki aday kayda alınır; vazgeçen adayı önce yeniden açın.',
+      { kind: 'conflict' },
+    )
+  // Aday bir kampüse başvurur; başka kampüsün sınıfı yalnız açık onayla seçilir.
+  if (cls.branchId !== prospect.branchId && data.allowOtherCampus !== true)
+    throw new DomainError(
+      'class_campus_mismatch',
+      'Seçilen sınıf adayın kampüsünde değil; başka kampüsün sınıfı için seçimi onaylayın.',
+      { path: ['classId'] },
+    )
+  if (state.students.filter((s) => s.classId === cls.id && s.isActive).length >= cls.capacity)
+    throw new DomainError('class_capacity_full', 'Seçilen sınıfın kontenjanı dolu.')
+  const guardian = data.guardian
+  const existingParent =
+    guardian?.kind === 'existing'
+      ? state.parents.find((p) => p.id === guardian.parentId)
+      : undefined
+  const student = {
+    id: makeId('s'),
+    name: prospect.name,
+    classId: cls.id,
+    parentId: existingParent?.id ?? makeId('p'),
+    // Veli zorunluyken adayın iletişimi velinindir; öğrenciye yazılmaz (DOM-KAY-003). Öğrencinin
+    // kendi iletişimi istenirse ayrıca verilir (DOM-KAY-012).
+    email: data.studentContact?.email ?? (data.guardianContact === true ? '' : prospect.email),
+    phone: data.studentContact?.phone ?? (data.guardianContact === true ? '' : prospect.phone),
+    joinedAt: now,
+    isActive: true,
+    progress: 0,
+  }
+  const amounts = installmentAmounts(data.totalCents, data.count)
+  const start = new Date(`${data.startDate}T09:00:00.000Z`)
+  if (Number.isNaN(+start) || dayKey(start) !== data.startDate)
+    throw new DomainError('invalid_payment_date', 'Geçerli bir ödeme tarihi girin.')
+  const invoices = amounts.map((amount, i) => {
+    const lastDay = new Date(
+      Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i + 1, 0),
+    ).getUTCDate()
+    const due = new Date(
+      Date.UTC(
+        start.getUTCFullYear(),
+        start.getUTCMonth() + i,
+        Math.min(start.getUTCDate(), lastDay),
+        9,
+      ),
+    )
+    return {
+      id: makeId('inv'),
+      studentId: student.id,
+      installment: i + 1,
+      amount,
+      dueDate: due.toISOString(),
+      paidAt: null,
+      method: null,
+      reminderAt: null,
+      ...(data.terms ? { feeKind: 'tuition' as const } : {}),
+      ...(data.academicYear === undefined ? {} : { academicYear: data.academicYear }),
+    }
+  })
+  // Ek hizmetler ayrı borç kalemidir, öğrenim ücretine gömülmez (DOM-FIN-003).
+  const extraInvoices = (data.extras ?? []).map((extra, i) => ({
+    id: makeId('inv'),
+    studentId: student.id,
+    installment: amounts.length + i + 1,
+    amount: extra.amountCents,
+    dueDate: start.toISOString(),
+    paidAt: null,
+    method: null,
+    reminderAt: null,
+    feeKind: extra.kind,
+    ...(data.academicYear === undefined ? {} : { academicYear: data.academicYear }),
+  }))
+  if (existingParent) {
+    existingParent.studentIds.push(student.id)
+    // Mevcut velinin eksik iletişimi adayınkiyle tamamlanır; var olan telefon, e-posta ve ad
+    // değişmez, adayın kendi kaydında kalır (ör. diğer ebeveynin telefonu) (DOM-KAY-003).
+    if (data.guardianContact === true) {
+      if (!existingParent.phone && prospect.phone) existingParent.phone = prospect.phone
+      if (!existingParent.email && prospect.email) existingParent.email = prospect.email
+    }
+  } else
+    state.parents.push({
+      id: student.parentId,
+      name:
+        guardian?.kind === 'new'
+          ? guardian.name
+          : guardian?.kind === 'self'
+            ? student.name
+            : `${student.name} velisi`,
+      studentIds: [student.id],
+      ...(guardian?.kind === 'new'
+        ? { phone: guardian.phone, relationship: guardian.relationship }
+        : {}),
+      // Yetişkin kursiyerin kendi satırı veli değildir; kardeşe önerilmez (DOM-KAY-013).
+      ...(guardian?.kind === 'self' ? { relationship: 'self' } : {}),
+      // kvkk: K — 18 yaş altı adayın e-postası velinindir (DOM-KAY-003).
+      ...(guardian?.kind === 'new' && data.guardianContact === true && prospect.email
+        ? { email: prospect.email }
+        : {}),
+    })
+  state.students.push(student)
+  const allInvoices = [...invoices, ...extraInvoices]
+  state.invoices.push(...allInvoices)
+  const contract = {
+    id: makeId('contract'),
+    studentId: student.id,
+    date: now,
+    amount: allInvoices.reduce((sum, invoice) => sum + invoice.amount, 0),
+    title: data.contractTitle,
+    invoiceIds: allInvoices.map((invoice) => invoice.id),
+    ...(data.academicYear === undefined ? {} : { academicYear: data.academicYear }),
+    ...(data.terms ?? {}),
+  }
+  state.contracts.push(contract)
+  prospect.studentId = student.id
+  prospect.stage = 'Kayıt oldu'
+  return { student, contract }
 }

@@ -2,12 +2,12 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { createSeed } from '../packages/school-core/src/data/seed.ts'
-import { enrollProspect } from '../packages/school-core/src/lib/domain.ts'
 import {
   allowedGuardianModes,
   assertRenewalWithinTariff,
   enrollmentFormSchema,
   enrollmentFormToBody,
+  enrollProspect,
   enrollProspectSchema,
   enrollProspectWithTariff,
   findParentMatches,

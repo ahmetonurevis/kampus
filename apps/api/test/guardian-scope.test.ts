@@ -2,10 +2,16 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
+import { and, eq } from 'drizzle-orm'
+
+import { createSeed } from '@kampus/school-core/data/seed.ts'
+
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
+import { records } from '../src/db/schema/records.ts'
+import { studentGuardians } from '../src/db/schema/student-guardians.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { defineFileAttachment } from '../src/services/file-registry.ts'
 import { attachFile, recordFileCheck } from '../src/services/files.ts'
@@ -34,6 +40,8 @@ import { multipart, PDF, tempStorage, uploadParts } from './support/files-sample
  */
 
 type Json = ReturnType<typeof JSON.parse>
+
+const SEED = createSeed(FIXED_NOW)
 
 /**
  * Testin bağlı kayıt türü: dosya bağlı öğrenciyi okuma kapsamında görebilene açılır. Kapsam
@@ -383,6 +391,154 @@ describe('velayet ve iletişim kısıtı okuma kapsamı', () => {
     assert.equal(await unread(w.father.cookie), 1)
     assert.equal(await seen(w.mother.cookie), 0)
     assert.equal(await unread(w.mother.cookie), 0)
+  })
+
+  test('IST-019 DOM-ILT-074 kısıtlı veliye gelen bildirim kısıt kalkınca görünür (bugünkü davranış; kısıt dönemi süzülmez)', async () => {
+    const w = await world()
+    await restrict(w)
+    await db.transaction((tx) =>
+      notify(tx, w.ctx, {
+        type: 'feedback_released',
+        recipients: { studentIds: ['s1'] },
+        data: { submissionId: 'sub-kisit' },
+      }),
+    )
+    const seen = async () =>
+      ((await data(w.mother.cookie, '/api/v1/notifications')) as Json[]).filter(
+        (item) => item.studentId === 's1',
+      ).length
+    assert.equal(await seen(), 0)
+    // DOM-ILT-074 açık soru: kısıt döneminde üretilen bildirim kısıt kalkınca açılır.
+    await lift(w)
+    assert.equal(await seen(), 1)
+  })
+
+  test('IST-019 DOM-ILT-074 kısıtlı veli fatura, tahsilat ve randevu okumasında öğrenciyi görmez', async () => {
+    const w = await world()
+    await insertMissingRecords(
+      db,
+      w.institution.id,
+      [
+        {
+          collection: 'invoices',
+          id: 'test-inv-kisit',
+          data: {
+            id: 'test-inv-kisit',
+            studentId: 's1',
+            installment: 9,
+            amount: 10_000,
+            dueDate: '2026-11-15T09:00:00.000Z',
+            paidAt: null,
+            method: null,
+            reminderAt: null,
+          },
+        },
+        ...SEED.appointments
+          .filter((item) => item.studentId === 's1')
+          .map((item) => ({ collection: 'appointments' as const, id: item.id, data: item })),
+      ],
+      FIXED_NOW,
+    )
+    const paid = await call('POST', '/api/v1/payments', w.admin.cookie, {
+      studentId: 's1',
+      amountCents: 1_000,
+      method: 'Banka havalesi',
+      reference: 'TR-KISIT-1',
+    })
+    assert.equal(paid.statusCode, 201, paid.body)
+    const paymentId = paid.json().data.id as string
+    const payments = async (cookie: string) =>
+      ((await data(cookie, '/api/v1/payments')) as Json[]).map((row) => row.id as string)
+    const appointments = (cookie: string) => studentIdsOf(cookie, 'appointments')
+    assert.ok((await studentIdsOf(w.mother.cookie, 'invoices')).includes('s1'))
+    assert.deepEqual(await payments(w.mother.cookie), [paymentId])
+    assert.deepEqual(await appointments(w.mother.cookie), ['s1'])
+
+    await restrict(w)
+    assert.ok(!(await studentIdsOf(w.mother.cookie, 'invoices')).includes('s1'))
+    assert.deepEqual(await payments(w.mother.cookie), [])
+    const detail = await get(w.mother.cookie, `/api/v1/payments/${paymentId}`)
+    assert.equal(detail.statusCode, 404, detail.body)
+    assert.deepEqual(await appointments(w.mother.cookie), [])
+    // Velayetli baba etkilenmez.
+    assert.deepEqual(await payments(w.father.cookie), [paymentId])
+    assert.deepEqual(await appointments(w.father.cookie), ['s1'])
+  })
+
+  test('IST-019 DOM-ILT-074 kısıtlı veli childId ile iş akışında çocuğun kayıt durumunu öğrenemez: etkin, pasif ve olmayan öğrenci aynı 403', async () => {
+    const w = await world()
+    const event = SEED.schoolEvents.find((item) => item.id === 'event-science')
+    assert.ok(event)
+    await insertMissingRecords(
+      db,
+      w.institution.id,
+      [{ collection: 'schoolEvents', id: event.id, data: event }],
+      FIXED_NOW,
+    )
+    const consent = (cookie: string, childId: string) =>
+      call('POST', `/api/v1/workflows/consent/${event.id}?childId=${childId}`, cookie, {
+        decision: 'Onaylandı',
+      })
+    const denied = async (childId: string) => {
+      const response = await consent(w.mother.cookie, childId)
+      assert.equal(response.statusCode, 403, `${childId}: ${response.body}`)
+      assert.equal(response.json().code, 'student_scope_denied')
+    }
+    await restrict(w)
+    await denied('s1')
+    await denied('olmayan-ogrenci')
+    const s1 = SEED.students.find((item) => item.id === 's1')
+    assert.ok(s1)
+    await db
+      .update(records)
+      .set({ data: { ...s1, isActive: false } })
+      .where(
+        and(
+          eq(records.institutionId, w.institution.id),
+          eq(records.collection, 'students'),
+          eq(records.id, 's1'),
+        ),
+      )
+    await denied('s1')
+    // Velayetli baba kendi çocuğunun pasif olduğunu görür (422).
+    const father = await consent(w.father.cookie, 's1')
+    assert.equal(father.statusCode, 422, father.body)
+    assert.equal(father.json().code, 'record_inactive')
+  })
+
+  test('IST-019 DOM-ILT-071 bağı kaldırılan (arşivli) veli öğrenciyi görmez', async () => {
+    const w = await world()
+    const bonds = (await data(w.admin.cookie, '/api/v1/students/s1/guardians')) as Json[]
+    const own = bonds.find((bond) => bond.membershipId === w.mother.membershipId)
+    assert.ok(own)
+    const removed = await app.inject({
+      method: 'DELETE',
+      url: `/api/v1/students/s1/guardians/${own.id}`,
+      headers: { origin: TEST_ORIGIN, cookie: w.admin.cookie, 'if-match': `"${own.rowVersion}"` },
+    })
+    assert.equal(removed.statusCode, 200, removed.body)
+    assert.ok(removed.json().data.archivedAt)
+    assert.deepEqual(await children(w.mother.cookie), ['s2'])
+    assert.deepEqual(await studentIdsOf(w.mother.cookie, 'grades'), ['s2'])
+    assert.equal((await get(w.mother.cookie, '/api/v1/dashboard?studentId=s1')).statusCode, 404)
+    assert.deepEqual(await children(w.father.cookie), ['s1'])
+  })
+
+  test('IST-019 DOM-ILT-070 student_guardians bağı olmayan çocuk bağlantısı kapsam vermez (kapalı başarısız)', async () => {
+    const w = await world()
+    await db
+      .delete(studentGuardians)
+      .where(
+        and(
+          eq(studentGuardians.institutionId, w.institution.id),
+          eq(studentGuardians.studentId, 's1'),
+          eq(studentGuardians.membershipId, w.mother.membershipId),
+        ),
+      )
+    assert.deepEqual(await children(w.mother.cookie), ['s2'])
+    assert.deepEqual(await studentIdsOf(w.mother.cookie, 'grades'), ['s2'])
+    assert.equal((await get(w.mother.cookie, '/api/v1/collections/students/s1')).statusCode, 404)
+    assert.deepEqual(await children(w.father.cookie), ['s1'])
   })
 
   test('IST-019 DOM-ILT-074 öğrenciye bağlı dosya kısıtlı veliye 404; kısıt kalkınca açılır', async () => {

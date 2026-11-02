@@ -81,7 +81,12 @@ import { resources, resourceVersions } from './resources.ts'
 
 const required = requiredColumns
 
-/** Tespite giren kişinin `records` koleksiyonu (ADR 0004 karar 8: öğrenci veya CRM adayı). */
+/**
+ * Tespite giren kişinin `records` koleksiyonu (ADR 0004 karar 8: öğrenci veya CRM adayı).
+ * TODO(cefr-aday-donusum): aday kesin kayıtla öğrenciye dönüşünce tespit oturumları ve seviye
+ * kararları aday (`prospect`) kimliğinde kalır; öğrencinin CEFR profili onları görmez. Dönüşümde
+ * bağlama ya da aktarma kayıt akışıyla birlikte kararlaştırılır.
+ */
 export const LEARNER_COLLECTIONS = {
   student: 'students',
   prospect: 'prospects',

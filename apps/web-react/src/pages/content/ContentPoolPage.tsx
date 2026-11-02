@@ -21,7 +21,8 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import type { FilterField } from '@/lib/list-query.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
-import { ContentDraftForm, NEW_CONTENT } from './ContentDraftForm.tsx'
+import { NEW_CONTENT } from './content-form-targets.ts'
+import { ContentDraftForm } from './ContentDraftForm.tsx'
 import { ContentPoolPanel } from './ContentPoolPanel.tsx'
 import {
   CEFR_OPTIONS,
@@ -198,7 +199,7 @@ export function ContentPoolPage({ page }: { page: NavPage }) {
             İçerikler
           </h2>
           <p className="text-sm text-muted-foreground">
-            {total} kayıt · okuma parçası ve çoktan seçmeli soru
+            {total} kayıt · okuma parçası, çoktan seçmeli soru ve materyal dosyası
           </p>
         </header>
         <ServerDataTable

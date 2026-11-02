@@ -1,5 +1,6 @@
 import { Controller, get, useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form'
 import type { AuthorableType } from '@kampus/react-shared/resource-model.ts'
+import { FileUploadField, type FileUploadItem } from '@/components/FileUploadField.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ import {
   GRADE_OPTIONS,
   LICENSE_NOTES,
   LICENSE_OPTIONS,
+  MATERIAL_FILE_RULE,
   MAX_OPTIONS,
   MIN_OPTIONS,
   nextOptionId,
@@ -47,8 +49,32 @@ export function fieldError(form: DraftForm, path: string): { message: string } |
 
 const nullable = (value: string) => (value === '' ? null : value)
 
-/** İçerik gövdesi: okuma metni ya da çoktan seçmeli soru (kök, seçenekler, doğru cevap, çözüm). */
-export function ContentFields({ form, type, busy }: Omit<FieldsProps, 'languageSchool'>) {
+/**
+ * Dosya alanının hatası: formun kendi uyarısı (`files`), sunucunun liste ya da sıra maddesi
+ * (`fileIds`, `fileIds.<sıra>`) ve içerikteki dosya (`content.fileId`), bu sırayla ilk bulunan.
+ */
+export function filesError(form: DraftForm): { message: string } | undefined {
+  const direct = fieldError(form, 'files') ?? fieldError(form, 'fileIds')
+  if (direct) return direct
+  const list = get(form.formState.errors, 'fileIds') as Record<string, unknown> | undefined
+  if (list && typeof list === 'object')
+    for (const key of Object.keys(list)) {
+      const found = fieldError(form, `fileIds.${key}`)
+      if (found) return found
+    }
+  return fieldError(form, 'content.fileId')
+}
+
+type ContentProps = Omit<FieldsProps, 'languageSchool'> & {
+  /** Dosya yüklemesi sürerken `true`; form kaydet düğmesini kilitler. */
+  onUploadingChange: (uploading: boolean) => void
+}
+
+/**
+ * İçerik gövdesi: okuma metni, çoktan seçmeli soru (kök, seçenekler, doğru cevap, çözüm) ya da
+ * materyal dosyaları.
+ */
+export function ContentFields({ form, type, busy, onUploadingChange }: ContentProps) {
   return (
     <div className="grid gap-5">
       {type === 'reading_passage' ? (
@@ -57,10 +83,64 @@ export function ContentFields({ form, type, busy }: Omit<FieldsProps, 'languageS
             <Textarea {...control} {...form.register('content.body')} rows={10} disabled={busy} />
           )}
         </FormField>
+      ) : type === 'file' ? (
+        <MaterialFileFields form={form} busy={busy} onUploadingChange={onUploadingChange} />
       ) : (
         <QuestionFields form={form} busy={busy} />
       )}
     </div>
+  )
+}
+
+/**
+ * Materyal dosyaları (DOM-KYN-006): yüklenen dosya listeye eklenir, sıra yükleme sırasıdır; ilk
+ * dosya içeriğin ana dosyasıdır. Liste bütün olarak gönderilir: çıkarılan dosyanın bağını sunucu
+ * kaldırır, sunucudaki kayıt başka kayda bağlanmazsa kendiliğinden temizlenir.
+ */
+function MaterialFileFields({
+  form,
+  busy,
+  onUploadingChange,
+}: {
+  form: DraftForm
+  busy: boolean
+  onUploadingChange: (uploading: boolean) => void
+}) {
+  const files = useWatch({ control: form.control, name: 'files' }) ?? []
+  const clear = () => {
+    for (const path of ['files', 'fileIds', 'content.fileId'] as const) form.clearErrors(path)
+  }
+  function add(item: FileUploadItem) {
+    clear()
+    form.setValue('files', [...form.getValues('files'), item], { shouldDirty: true })
+  }
+  function remove(id: string) {
+    clear()
+    form.setValue(
+      'files',
+      form.getValues('files').filter((file) => file.id !== id),
+      { shouldDirty: true },
+    )
+  }
+  return (
+    <FileUploadField
+      id="icerik-dosya"
+      label="Materyal dosyaları"
+      purpose="material"
+      multiple
+      maxFiles={MATERIAL_FILE_RULE.maxFiles}
+      description={`PDF, Word, PowerPoint, Excel, görsel, ses ya da video; en çok ${MATERIAL_FILE_RULE.maxFiles} dosya. İlk dosya materyalin ana dosyasıdır.`}
+      listLabel="Materyal dosyaları"
+      items={files}
+      error={filesError(form)}
+      disabled={busy}
+      onUploaded={add}
+      onRemoved={remove}
+      onBusyChange={(uploading) => {
+        onUploadingChange(uploading)
+        if (uploading) clear()
+      }}
+    />
   )
 }
 

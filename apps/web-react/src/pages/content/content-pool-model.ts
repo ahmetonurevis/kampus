@@ -3,10 +3,12 @@
 import { z } from 'zod'
 import {
   isAuthorableType,
+  resourceFileName,
   type AuthorableType,
   type StaffResourceListItem,
   type StaffResourceVersion,
 } from '@kampus/react-shared/resource-model.ts'
+import { resourceFileCountIssue } from '@kampus/school-core/content/resource-files.ts'
 import {
   RESOURCE_STATUSES,
   resourceVersionInputSchema,
@@ -21,11 +23,13 @@ import {
   OPEN_LICENSES,
   OUTCOME_SOURCES,
   PRIMARY_SKILLS,
+  RESOURCE_FILE_RULES,
   SHARE_SCOPES,
   SKILLS,
   type ContentType,
   type LicenseKind,
 } from '@kampus/school-core/content/taxonomy.ts'
+import type { FileUploadItem } from '@/components/file-upload-model.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 export const STATUS_TONES = {
@@ -102,10 +106,16 @@ export const GRADE_OPTIONS = Array.from(
 
 // --- Taslak formu -------------------------------------------------------------------------
 
+export const MATERIAL_TYPE_LABEL = `${CONTENT_TYPES.file.label} (materyal)`
+/** Materyal dosyası türünün kuralı (DOM-KYN-006): amaç `material`, sürüm başına en çok 10 dosya. */
+export const MATERIAL_FILE_RULE = RESOURCE_FILE_RULES.file
+export const MATERIAL_FILE_REQUIRED = 'En az bir dosya ekleyin.'
+
 /** Bu dilimde oluşturulabilen türler (diğerleri TODO(F3c2) ile sonraki dilimde). */
 export const AUTHORABLE_OPTIONS: { value: AuthorableType; label: string }[] = [
   { value: 'reading_passage', label: CONTENT_TYPES.reading_passage.label },
   { value: 'question', label: `${CONTENT_TYPES.question.label} (çoktan seçmeli)` },
+  { value: 'file', label: MATERIAL_TYPE_LABEL },
 ]
 
 // TODO(F3c2): lisanslı yayın (sözleşme, kapsam, bitiş günü) ve Kampüs örnek içeriğinden
@@ -145,11 +155,36 @@ export function skillOptionsFor(type: AuthorableType) {
 }
 
 /**
+ * Form değerinden core girdisi: dosya alanındaki liste (`files`, adlarıyla) sıralı `fileIds` olur;
+ * materyal dosyasında içeriğin ana dosyası (`content.fileId`) listenin ilkidir, böylece içerikteki
+ * dosya her zaman listededir (DOM-KYN-006). `files` taşımayan değer olduğu gibi geçer.
+ */
+export function coreInputFromForm(values: unknown): unknown {
+  if (typeof values !== 'object' || values === null || !('files' in values)) return values
+  const { files, ...rest } = values as { files: unknown; content?: unknown }
+  if (!Array.isArray(files)) return values
+  const fileIds = files.map((file: Pick<FileUploadItem, 'id'>) => file.id)
+  const content = rest.content as { type?: unknown } | undefined
+  return {
+    ...rest,
+    fileIds,
+    ...(content?.type === 'file' ? { content: { type: 'file', fileId: fileIds[0] ?? '' } } : {}),
+  }
+}
+
+/**
  * Form şeması: core sürüm girdisi + formun kuralları. Taslak eksik kaydedilebilir (API bunu
  * kabul eder) ama lisans bu ekranda zorunludur; yalnız bu dilimde oluşturulabilen türler ve
- * çoktan seçmeli soru kabul edilir.
+ * çoktan seçmeli soru kabul edilir. Materyal dosyası en az bir dosya ister; sayı sınırı core
+ * `resourceFileCountIssue` ile sunucuyla aynı iletiyi verir (DOM-KYN-006).
  */
-export const draftFormSchema = resourceVersionInputSchema.superRefine((value, ctx) => {
+const draftCoreSchema = resourceVersionInputSchema.superRefine((value, ctx) => {
+  if (value.content.type === 'file') {
+    const issue = resourceFileCountIssue('file', value.fileIds)
+    if (value.fileIds.length === 0)
+      ctx.addIssue({ code: 'custom', message: MATERIAL_FILE_REQUIRED, path: ['files'] })
+    else if (issue) ctx.addIssue({ code: 'custom', message: issue.message, path: ['files'] })
+  }
   if (value.license === null) {
     ctx.addIssue({ code: 'custom', message: 'Menşe ve lisans türünü seçin.', path: ['license'] })
   }
@@ -176,8 +211,9 @@ export const draftFormSchema = resourceVersionInputSchema.superRefine((value, ct
     }
   }
 })
-export type DraftFormInput = z.input<typeof draftFormSchema>
-export type DraftFormOutput = z.output<typeof draftFormSchema>
+export const draftFormSchema = z.preprocess(coreInputFromForm, draftCoreSchema)
+export type DraftFormInput = z.input<typeof draftCoreSchema>
+export type DraftFormOutput = z.output<typeof draftCoreSchema>
 
 /**
  * Form değerleri: core girdisinin düz (birleşimsiz) hâli. `register` yolları tipli kalsın diye
@@ -188,6 +224,8 @@ export type DraftFormValues = Omit<DraftFormInput, 'content' | 'answerKey'> & {
   content: {
     type: AuthorableType
     body?: string
+    /** Materyal dosyasının ana dosyası; çözümleyici listenin ilkiyle doldurur. */
+    fileId?: string | null
     question?: {
       questionType: 'multiple_choice'
       stem: string
@@ -200,6 +238,8 @@ export type DraftFormValues = Omit<DraftFormInput, 'content' | 'answerKey'> & {
     correctOptionId: string
     explanation: string
   } | null
+  /** Sürümün dosyaları, sırasıyla (adı gösterim içindir; gövdeye yalnız kimlik gider). */
+  files: FileUploadItem[]
 }
 
 /** Seçenek kimlikleri `a`, `b`, … biçiminde üretilir (core kimlik kuralına uyar). */
@@ -228,6 +268,18 @@ export function defaultDraft(type: AuthorableType): DraftFormValues {
       tags: { ...emptyTags, primarySkill: 'reading' },
       license: null,
       attributions: [],
+      files: [],
+    }
+  }
+  if (type === 'file') {
+    return {
+      title: '',
+      content: { type: 'file', fileId: null },
+      answerKey: null,
+      tags: { ...emptyTags },
+      license: null,
+      attributions: [],
+      files: [],
     }
   }
   return {
@@ -245,7 +297,18 @@ export function defaultDraft(type: AuthorableType): DraftFormValues {
     tags: { ...emptyTags },
     license: null,
     attributions: [],
+    files: [],
   }
+}
+
+/**
+ * Sürümün dosyaları form listesine: silinmiş (imha edilmiş) dosya yeni listeye taşınamaz (422
+ * `file_unavailable`), bu yüzden başlangıç değerine girmez. Yeni sürümde liste temel sürümünkidir.
+ */
+export function draftFiles(head: Pick<StaffResourceVersion, 'files'>): FileUploadItem[] {
+  return head.files.flatMap((file, index) =>
+    file.status === 'deleted' ? [] : [{ id: file.id, name: resourceFileName(file, index) }],
+  )
 }
 
 /**
@@ -262,9 +325,13 @@ export function draftFromHead(head: StaffResourceVersion): DraftFormValues | nul
     attributions: head.attributions,
   })
   if (!parsed.success) return null
-  const { content, answerKey, ...rest } = parsed.data
+  const { content, answerKey, title, tags, license, attributions } = parsed.data
+  // Liste sürüm yanıtının `files` alanından gelir (adlarıyla); `fileIds` ön işlemde yeniden kurulur.
+  const rest = { title, tags, license, attributions, files: draftFiles(head) }
   if (content.type === 'reading_passage')
     return { ...rest, content: { type: 'reading_passage', body: content.body }, answerKey: null }
+  if (content.type === 'file')
+    return { ...rest, content: { type: 'file', fileId: content.fileId }, answerKey: null }
   if (content.type === 'question' && content.question.questionType === 'multiple_choice') {
     const key = answerKey?.questionType === 'multiple_choice' ? answerKey : null
     return {
@@ -288,7 +355,11 @@ export function draftFromHead(head: StaffResourceVersion): DraftFormValues | nul
   return null
 }
 
-/** PATCH gövdesi: taslağın bütün alanları (tür değişmez). */
+/**
+ * Gövde (yeni içerik ve taslak PATCH): taslağın bütün alanları (tür değişmez). Dosya listesi yalnız
+ * materyal dosyasında gider ve bütün olarak değişir; listeden çıkan dosyanın bağını sunucu kaldırır.
+ * Diğer türlerde liste gönderilmez, sürümdeki liste aynen kalır (DOM-KYN-006).
+ */
 export function patchFromDraft(values: DraftFormOutput) {
   return {
     title: values.title,
@@ -297,6 +368,7 @@ export function patchFromDraft(values: DraftFormOutput) {
     tags: values.tags,
     license: values.license,
     attributions: values.attributions,
+    ...(values.content.type === 'file' ? { fileIds: values.fileIds } : {}),
   }
 }
 
@@ -314,6 +386,7 @@ export type ContentPreview =
       options: { id: string; text: string; correct: boolean }[]
       explanation: string
     }
+  | { kind: 'file' }
   | { kind: 'other' }
   | { kind: 'removed' }
 
@@ -331,6 +404,8 @@ export function previewFromHead(head: StaffResourceVersion): ContentPreview {
   if (!parsed.success) return { kind: 'other' }
   const { content, answerKey } = parsed.data
   if (content.type === 'reading_passage') return { kind: 'reading', body: content.body }
+  // Materyal dosyasının içeriği dosyalarıdır; panel onları ayrı listeler.
+  if (content.type === 'file') return { kind: 'file' }
   if (content.type === 'question' && content.question.questionType === 'multiple_choice') {
     const correct = answerKey?.questionType === 'multiple_choice' ? answerKey.correctOptionId : null
     return {

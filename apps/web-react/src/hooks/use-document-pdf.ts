@@ -5,7 +5,11 @@ import { institutionKey } from '@kampus/react-shared/query-keys.ts'
 import { useActiveInstitutionId } from '@kampus/react-shared/use-active-institution.ts'
 import { documentData } from '@kampus/school-core/lib/document-data.ts'
 import { useAuth } from '@/auth/use-auth.ts'
-import { documentErrorMessage, loadDocumentState } from '@/lib/pdf/document-state.ts'
+import {
+  documentErrorMessage,
+  loadDocumentState,
+  studentPaidCents,
+} from '@/lib/pdf/document-state.ts'
 import { contractDocument } from '@/lib/pdf/templates/contract.ts'
 import { homeworkDocument } from '@/lib/pdf/templates/homework.ts'
 import { materialDocument } from '@/lib/pdf/templates/material.ts'
@@ -78,11 +82,15 @@ export function useDocumentPdf(
           )
           return { blob, pages, filename: documentFilename(type, recordId) }
         }
-        const state = await loadDocumentState(
-          client,
-          { type, recordId, ...(studentId ? { studentId } : {}) },
-          signal,
-        )
+        // Taahhütnamede kayıt kimliği öğrenci kimliğidir; bakiye belge kayıtlarıyla paralel okunur.
+        const [state, collectedCents] = await Promise.all([
+          loadDocumentState(
+            client,
+            { type, recordId, ...(studentId ? { studentId } : {}) },
+            signal,
+          ),
+          type === 'payment-plan' ? studentPaidCents(client, recordId, signal) : undefined,
+        ])
         const { blob, pages } = await renderPdf((measurer) => {
           switch (type) {
             case 'receipt':
@@ -95,7 +103,7 @@ export function useDocumentPdf(
               return paymentPlanDocument(
                 measurer,
                 documentData(state, 'payment-plan', recordId),
-                options,
+                collectedCents === undefined ? options : { ...options, collectedCents },
               )
             case 'homework':
               return homeworkDocument(

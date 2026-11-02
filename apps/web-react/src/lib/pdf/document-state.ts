@@ -6,6 +6,7 @@
 // TODO(api-document-data): belge için tek uç (`GET /documents/:type/:id/data`) gelince bu
 // zincirleme okuma (dekontta 5, sözleşmede 6 istek) kalkar.
 import type { KampusClient } from '@kampus/api-client/client.ts'
+import { runRequest } from '@kampus/react-shared/api-result.ts'
 import {
   fetchAllCollectionPages,
   fetchCollectionItem,
@@ -146,6 +147,27 @@ async function studentRecords(
     parents: parent ? [parent] : [],
     branches: branch ? [branch] : [],
   }
+}
+
+/**
+ * Taahhütnamenin "tahsil edilen" tutarı sunucu bakiyesinden gelir: kısmi ödemeler de sayılır
+ * (DOM-FIN-051). Bakiye okunamazsa (rolün yetkisi yok ya da finans modülü kapalı) `undefined`
+ * döner ve şablon core hesabına (yalnız tam kapanan taksitler) düşer; başka hata belgeyi engeller.
+ */
+export async function studentPaidCents(
+  client: KampusClient,
+  studentId: string,
+  signal?: AbortSignal,
+): Promise<number | undefined> {
+  const balance = await optional(
+    runRequest(() =>
+      client.GET('/api/v1/finance/students/{studentId}/balance', {
+        params: { path: { studentId } },
+        ...(signal ? { signal } : {}),
+      }),
+    ),
+  )
+  return balance?.data.paidCents
 }
 
 /** Kullanıcıya gösterilen ileti: core'un Türkçe kullanıcı hatası aynen, teknik hata genel ileti. */

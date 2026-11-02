@@ -43998,7 +43998,7 @@
         }
       }
     },
-    "/api/v1/finance-summary": {
+    "/api/v1/finance/overview": {
       "get": {
         "operationId": "getFinanceOverview",
         "summary": "Finans özeti: tahsilat, açık ve gecikmiş tutar",

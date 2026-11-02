@@ -611,15 +611,15 @@ const ACCESS: Readonly<Record<string, Proof>> = {
 const FINANCE: Readonly<Record<string, Proof>> = {
   'GET /api/v1/finance/totals': liste(
     'cross-institution-finance.test.ts',
-    'GET /api/v1/finance/totals, /finance/summary ve /finance-summary: başka kurumun tahsilatı',
+    'GET /api/v1/finance/totals, /finance/summary ve /finance/overview: başka kurumun tahsilatı',
   ),
   'GET /api/v1/finance/summary': liste(
     'cross-institution-finance.test.ts',
-    'GET /api/v1/finance/totals, /finance/summary ve /finance-summary: başka kurumun tahsilatı',
+    'GET /api/v1/finance/totals, /finance/summary ve /finance/overview: başka kurumun tahsilatı',
   ),
-  'GET /api/v1/finance-summary': liste(
+  'GET /api/v1/finance/overview': liste(
     'cross-institution-finance.test.ts',
-    'GET /api/v1/finance/totals, /finance/summary ve /finance-summary: başka kurumun tahsilatı',
+    'GET /api/v1/finance/totals, /finance/summary ve /finance/overview: başka kurumun tahsilatı',
   ),
   'GET /api/v1/bank-accounts': liste(
     'cross-institution-finance.test.ts',

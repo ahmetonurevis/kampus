@@ -97,7 +97,7 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
   )
 
   typed.get(
-    '/api/v1/finance-summary',
+    '/api/v1/finance/overview',
     {
       preValidation: [app.authenticate, finance, app.requireRole(['yonetici', 'onburo'])],
       schema: {

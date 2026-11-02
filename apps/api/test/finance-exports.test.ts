@@ -97,7 +97,7 @@ describe('muhasebe dışa aktarımı', () => {
   const summary = (cookie: string | null, query = PERIOD) =>
     get(cookie, `/api/v1/finance/summary?${query}`)
   const overview = (cookie: string | null, query = '', target: App = app) =>
-    get(cookie, `/api/v1/finance-summary${query === '' ? '' : `?${query}`}`, target)
+    get(cookie, `/api/v1/finance/overview${query === '' ? '' : `?${query}`}`, target)
   const pay = (cookie: string, amountCents: number, reference: string) =>
     app.inject({
       method: 'POST',

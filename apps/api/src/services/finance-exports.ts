@@ -80,7 +80,7 @@ export function financeTotalsFor(ctx: ServiceContext): Promise<FinanceTotals> {
 }
 
 /**
- * Finans özeti (`GET /finance-summary`; IST-116, IST-121): dönemin tahsilatı ve ay kırılımı, bugünkü
+ * Finans özeti (`GET /finance/overview`; IST-116, IST-121): dönemin tahsilatı ve ay kırılımı, bugünkü
  * açık ve gecikmiş tutar, gecikmiş borcu olan öğrenciler. Dönem verilmezse son altı takvim ayı.
  */
 export function financeOverviewFor(

@@ -2020,7 +2020,7 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
-    "/api/v1/finance-summary": {
+    "/api/v1/finance/overview": {
         parameters: {
             query?: never;
             header?: never;

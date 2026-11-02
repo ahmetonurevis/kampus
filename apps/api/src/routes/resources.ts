@@ -38,7 +38,7 @@ export function registerResourceRoutes(app: FastifyInstance) {
         operationId: 'listResources',
         tags: ['resources'],
         summary: 'İçerik havuzu',
-        description: `Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve \`view: 'staff'\` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü \`view: 'learner'\` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Baş sürümü arşivli veya kaldırılmış kaynak varsayılan olarak listede ve aramada yoktur; yalnız \`status=archived\` / \`status=removed\` ile gelir (DOM-KYN-051). Normalleşince terim kalmayan \`q\` (ör. \`!!!\`) boş sonuç döner. Süzgeçler baş sürüme uygulanır; bilinmeyen parametre 400. ${ACCESS}`,
+        description: `Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve \`view: 'staff'\` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü \`view: 'learner'\` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Baş sürümü arşivli veya kaldırılmış kaynak varsayılan olarak listede ve aramada yoktur; yalnız \`status=archived\` / \`status=removed\` ile gelir (DOM-KYN-051). Velide \`studentId\` görünümü seçili çocuğa daraltır (veli materyal sayfası; bağlı olmayan çocuk 404). Normalleşince terim kalmayan \`q\` (ör. \`!!!\`) boş sonuç döner. Süzgeçler baş sürüme uygulanır; bilinmeyen parametre 400. ${ACCESS}`,
         querystring: resourceListQuerySchema,
         response: { 200: resourceListResponseSchema, ...readErrors },
       },

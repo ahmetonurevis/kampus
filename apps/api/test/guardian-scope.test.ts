@@ -30,6 +30,7 @@ import {
 } from './support/app.ts'
 import { sampleRows } from './support/collections-sample.ts'
 import { multipart, PDF, tempStorage, uploadParts } from './support/files-sample.ts'
+import { seedResource } from './support/resources-sample.ts'
 
 /**
  * Velayet ve iletişim kısıtının okuma kapsamı (IST-019, OG-032; docs/domain/iletisim-ve-veli.md
@@ -189,6 +190,36 @@ describe('velayet ve iletişim kısıtı okuma kapsamı', () => {
     assert.equal((await get(w.mother.cookie, '/api/v1/dashboard?studentId=s1')).statusCode, 404)
     await setMotherBond(w, { custody: 'full' })
     assert.deepEqual(await children(w.mother.cookie), ['s1', 's2'])
+  })
+
+  test('IST-019 DOM-KYN-041 kısıtlı veli çocuğa paylaşılan kaynağı görmez, studentId ile 404; velayetli veli etkilenmez, kısıt kalkınca yeniden görür', async () => {
+    const w = await world()
+    // `s1` 7-A (7. sınıf), `s2` 5-A (5. sınıf).
+    const shared = (studentId: string, grade: number) =>
+      seedResource(db, w.institution.id, {
+        ownerUserId: w.admin.id,
+        shareScope: 'students',
+        sharedStudentIds: [studentId],
+        versions: [{ status: 'published', input: { tags: { gradeLevels: [grade] } } }],
+      })
+    const deniz = (await shared('s1', 7)).resource.id
+    const ece = (await shared('s2', 5)).resource.id
+    const ids = async (cookie: string, query = '') =>
+      ((await data(cookie, `/api/v1/resources${query}`)) as Json[]).map((row) => row.id).sort()
+    assert.deepEqual(await ids(w.mother.cookie, '?studentId=s1'), [deniz])
+    assert.deepEqual(await ids(w.mother.cookie, '?studentId=s2'), [ece])
+
+    await restrict(w)
+    assert.equal((await get(w.mother.cookie, '/api/v1/resources?studentId=s1')).statusCode, 404)
+    assert.equal((await get(w.mother.cookie, `/api/v1/resources/${deniz}`)).statusCode, 404)
+    assert.deepEqual(await ids(w.mother.cookie), [ece])
+    assert.deepEqual(await ids(w.mother.cookie, '?studentId=s2'), [ece])
+    // Velayetli baba etkilenmez; bağlı olmadığı Ece'yi seçemez.
+    assert.deepEqual(await ids(w.father.cookie, '?studentId=s1'), [deniz])
+    assert.equal((await get(w.father.cookie, '/api/v1/resources?studentId=s2')).statusCode, 404)
+
+    await lift(w)
+    assert.deepEqual(await ids(w.mother.cookie, '?studentId=s1'), [deniz])
   })
 
   test('IST-019 DOM-ILT-074 kısıtlı veli yazışmasını görmez; öğretmenin veli listesinde yoktur, yazışma başlatılamaz', async () => {

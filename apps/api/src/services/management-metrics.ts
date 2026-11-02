@@ -37,7 +37,7 @@ export interface TeacherMetric {
   questions: number
   /** 24 saat yanıt hedefini aşan soru. */
   breaches: number
-  /** Hedefe uyan soruların yüzdesi (yuvarlanmış); soru yoksa 100. */
+  /** Hedefe uyan soruların yüzdesi (yuvarlanmış, 0–100); soru yoksa 100. */
   slaRate: number
   /**
    * Yoklama, ödev takibi ve soru süresi uyumunun ortalaması (0–100, yuvarlanmış; Vue
@@ -46,22 +46,30 @@ export interface TeacherMetric {
   performance: number | null
 }
 
-/** Uyum oranı yuvarlanmadan ortalamaya girer (Vue ile aynı sonuç). */
+const clampPercent = (value: number) => Math.min(100, Math.max(0, value))
+
+/**
+ * Uyum oranı yuvarlanmadan ortalamaya girer (Vue ile aynı sonuç). Kayıttaki yoklama ve ödev oranı
+ * bozuk olabilir (`-5`, `140`); yanıt şeması 0–100 tam sayıdır, bu yüzden oranlar 0–100'e
+ * sıkıştırılır ve uç 500'e düşmez.
+ */
 export function teacherPerformance(row: {
   attendanceRate: number | null
   homeworkRate: number | null
   questions: number
   breaches: number
 }): Pick<TeacherMetric, 'slaRate' | 'performance'> {
-  const exact = row.questions ? ((row.questions - row.breaches) / row.questions) * 100 : 100
+  const exact = clampPercent(
+    row.questions ? ((row.questions - row.breaches) / row.questions) * 100 : 100,
+  )
   const performance =
     row.attendanceRate === null || row.homeworkRate === null
       ? null
-      : Math.round((row.attendanceRate + row.homeworkRate + exact) / 3)
+      : Math.round((clampPercent(row.attendanceRate) + clampPercent(row.homeworkRate) + exact) / 3)
   return { slaRate: Math.round(exact), performance }
 }
 
-/** Öğretmen başına soru süresi uyumu ve performans; arşivdeki öğretmen de döner. */
+/** Öğretmen başına soru süresi uyumu ve performans; arşivlenmiş öğretmen ve soru dışlanır. */
 export async function getTeacherMetrics(ctx: ServiceContext): Promise<TeacherMetric[]> {
   requireWhole(await readScope(ctx), ['teachers', 'questions'])
   const rows = await teacherQuestionRows(ctx.db, ctx.institutionId, ctx.now)

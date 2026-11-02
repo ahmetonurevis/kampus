@@ -12,8 +12,18 @@ import { records } from './schema/records.ts'
 
 /** Soru yanıt süresi hedefi (Vue `slaStatus`, web SLA Raporu `SLA_HOURS` ile aynı). */
 const SLA_INTERVAL = sql`interval '24 hours'`
-/** Bozuk tarihli kayıt sorguyu düşürmesin: yalnız ISO biçimli değer zamana çevrilir. */
-const ISO_PATTERN = '^\\d{4}-\\d{2}-\\d{2}T'
+/**
+ * Bozuk tarihli kayıt sorguyu düşürmesin: yalnız saat dilimli ISO anı (`2026-01-31T10:00:00Z`)
+ * zamana çevrilir. Biçime uyup geçersiz olan değer (`2026-13-01T…`, `2026-02-30T…`) `pg_input_is_valid`
+ * ile elenir, `timestamptz` dönüşümü hata vermez. Web `sla-rows.ts` `parseInstant` ile aynı kural:
+ * geçerli `createdAt`'i olmayan soru hiçbir sayıya girmez, geçersiz `answeredAt` yanıtsız sayılır.
+ */
+const ISO_INSTANT =
+  '^\\d{4}-\\d{2}-\\d{2}T([01]\\d|2[0-3]):[0-5]\\d(:[0-5]\\d(\\.\\d+)?)?(Z|[+-]([01]\\d|2[0-3]):[0-5]\\d)$'
+const instant = (value: ReturnType<typeof sql>) => sql`(case
+  when coalesce(${value}, '') ~ ${ISO_INSTANT} and pg_input_is_valid(${value}, 'timestamptz')
+    then (${value})::timestamptz
+end)`
 
 export interface ClassGradeRow {
   classId: string
@@ -24,9 +34,15 @@ export interface ClassGradeRow {
 
 /**
  * Sınıf başına aktif öğrenci sayısı ve not ortalaması (Vue `SchoolManagement.vue` "Ortalama"):
- * önce öğrencinin notlarının yuvarlanmış ortalaması, sonra sınıftaki notu olan öğrencilerin
- * ortalaması (yuvarlanmış). Öğrencinin güncel sınıfı esastır; notu olmayan öğrenci ortalamaya
- * girmez (Vue 0 sayıyordu, bilerek düzeltildi). Sayısal olmayan puan sayılmaz.
+ * önce öğrencinin notlarının yuvarlanmamış ortalaması, sonra sınıftaki notu olan öğrencilerin
+ * ortalaması; yuvarlama yalnız sonda, bir kez (DOM-AKD-003 "erken yuvarlama sonucu değiştirir").
+ * Not kaydında öğretim yılı alanı olmadığından öğrencinin güncel sınıfı esastır (kısıt:
+ * `docs/domain/akademik-olcme.md` DOM-AKD-003). Notu olmayan öğrenci ortalamaya girmez (Vue 0
+ * sayıyordu, bilerek düzeltildi). 0–100 aralığı dışındaki ve sayı olmayan puan geçersizdir, atlanır.
+ *
+ * TODO(kg-not): DOM-AKD-013 `K`/`G` durumu ortalamada 0 sayılmalıdır; not kaydı yalnız 0–100 tam
+ * sayı puan saklıyor (`gradeRecordSchema`), `K`/`G` değeri henüz yok. Saklanmaya başlayınca
+ * `g` CTE'sine `score = 'K'|'G'` kayıtları 0 olarak eklenir.
  */
 export async function classGradeRows(
   db: Database,
@@ -43,12 +59,14 @@ export async function classGradeRows(
          and r."data" ->> 'classId' is not null
     ), g as (
       select r."data" ->> 'studentId' as student_id,
-             round(avg((r."data" ->> 'score')::numeric)) as average
+             avg((r."data" ->> 'score')::numeric) as average
         from ${records} as r
        where r."institution_id" = ${institutionId}
          and r."collection" = 'grades'
          and r."archived_at" is null
-         and jsonb_typeof(r."data" -> 'score') = 'number'
+         and case when jsonb_typeof(r."data" -> 'score') = 'number'
+               then (r."data" ->> 'score')::numeric between 0 and 100
+               else false end
        group by 1
     )
     select s.class_id as "classId",
@@ -78,30 +96,35 @@ export interface TeacherQuestionRow {
 /**
  * Öğretmen başına soru sayısı ve süre ihlali (web `sla-rows.ts` `isBreach` ile aynı): yanıtlanan
  * soruda yanıt 24 saati aştıysa, yanıtsız soruda `now` soru anından 24 saat sonrasına ulaştıysa
- * ihlaldir. Geri çekilen soru sayılmaz (DOM-ILT-091). Arşivdeki öğretmen de döner (Arşiv sekmesi).
+ * ihlaldir. Geri çekilen (DOM-ILT-091) ve geçerli `createdAt`'i olmayan soru sayılmaz; arşivlenmiş
+ * soru ve öğretmen dışlanır.
  */
 export async function teacherQuestionRows(
   db: Database,
   institutionId: string,
   now: Date,
 ): Promise<TeacherQuestionRow[]> {
-  const created = sql`(q."data" ->> 'createdAt')::timestamptz`
-  const answered = sql`(q."data" ->> 'answeredAt')::timestamptz`
+  const created = instant(sql`q."data" ->> 'createdAt'`)
+  const answered = instant(sql`q."data" ->> 'answeredAt'`)
   const result = await db.execute<Record<string, unknown>>(sql`
-    with qs as (
+    with dated as (
       select q."data" ->> 'teacherId' as teacher_id,
-             count(*)::int as questions,
-             count(*) filter (where case
-               when coalesce(q."data" ->> 'answeredAt', '') ~ ${ISO_PATTERN}
-                 then ${answered} - ${created} > ${SLA_INTERVAL}
-               else ${now.toISOString()}::timestamptz - ${created} >= ${SLA_INTERVAL}
-             end)::int as breaches
+             ${created} as created_at,
+             ${answered} as answered_at
         from ${records} as q
        where q."institution_id" = ${institutionId}
          and q."collection" = 'questions'
          and q."archived_at" is null
          and coalesce(q."data" ->> 'withdrawnAt', '') = ''
-         and coalesce(q."data" ->> 'createdAt', '') ~ ${ISO_PATTERN}
+    ), qs as (
+      select teacher_id,
+             count(*)::int as questions,
+             count(*) filter (where case
+               when answered_at is not null then answered_at - created_at > ${SLA_INTERVAL}
+               else ${now.toISOString()}::timestamptz - created_at >= ${SLA_INTERVAL}
+             end)::int as breaches
+        from dated
+       where created_at is not null
        group by 1
     )
     select t."id" as "teacherId",

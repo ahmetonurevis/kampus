@@ -36,7 +36,7 @@ export function registerManagementMetricRoutes(app: FastifyInstance) {
         tags: ['school-management'],
         summary: 'Sınıf ölçüleri',
         description:
-          "Sınıf başına aktif öğrenci sayısı ve not ortalaması (IST-010): önce öğrencinin notlarının yuvarlanmış ortalaması, sonra sınıfta notu olan öğrencilerin ortalaması. Öğrencinin güncel sınıfı esastır; aktif öğrencisi olmayan sınıf dönmez. Toplam SQL'dedir. Yalnız yönetici (diğer roller 403); `academic` modülü kapalıysa 403 `module_disabled`.",
+          "Sınıf başına aktif öğrenci sayısı ve not ortalaması (IST-010): önce öğrencinin notlarının yuvarlanmamış ortalaması, sonra sınıfta notu olan öğrencilerin ortalaması; yuvarlama yalnız sonda bir kez (DOM-AKD-003). Güncel sınıf esastır (öğretim yılı alanı yok); sayı olmayan ve 0-100 dışı puan atlanır. Öğrencinin güncel sınıfı esastır; aktif öğrencisi olmayan sınıf dönmez. Toplam SQL'dedir. Yalnız yönetici (diğer roller 403); `academic` modülü kapalıysa 403 `module_disabled`.",
         querystring: metricsQuerySchema,
         response: response(classMetricsResponseSchema),
       },
@@ -53,7 +53,7 @@ export function registerManagementMetricRoutes(app: FastifyInstance) {
         tags: ['school-management'],
         summary: 'Öğretmen ölçüleri',
         description:
-          "Öğretmen başına soru sayısı, 24 saat yanıt hedefini aşan soru, hedef uyumu ve performans (yoklama, ödev takibi ve hedef uyumunun ortalaması; IST-010). Yanıtlanan soruda yanıt süresi, yanıtsız soruda geçen süre ölçülür; geri çekilen soru sayılmaz (DOM-ILT-091). Arşivdeki öğretmen de döner. Toplam SQL'dedir. Yalnız yönetici (diğer roller 403); `learning` modülü kapalıysa 403 `module_disabled`.",
+          "Öğretmen başına soru sayısı, 24 saat yanıt hedefini aşan soru, hedef uyumu ve performans (yoklama, ödev takibi ve hedef uyumunun ortalaması; IST-010). Yanıtlanan soruda yanıt süresi, yanıtsız soruda geçen süre ölçülür; geri çekilen soru sayılmaz (DOM-ILT-091). Arşivlenmiş öğretmen ve soru dışlanır; geçerli oluşturma tarihi olmayan soru sayılmaz. Toplam SQL'dedir. Yalnız yönetici (diğer roller 403); `learning` modülü kapalıysa 403 `module_disabled`.",
         querystring: metricsQuerySchema,
         response: response(teacherMetricsResponseSchema),
       },

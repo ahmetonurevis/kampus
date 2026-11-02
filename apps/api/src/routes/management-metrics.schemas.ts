@@ -15,12 +15,10 @@ export const classMetricSchema = z
     classId: z.string().describe('Sınıf kimliği'),
     students: count.describe('Sınıftaki aktif öğrenci'),
     gradedStudents: count.describe('Notu olan aktif öğrenci'),
-    averageScore: z
-      .number()
-      .int()
+    averageScore: percent
       .nullable()
       .describe(
-        'Notu olan öğrencilerin yuvarlanmış not ortalamalarının yuvarlanmış ortalaması; not yoksa `null`',
+        'Notu olan öğrencilerin (yuvarlanmamış) not ortalamalarının ortalaması, bir kez yuvarlanmış; not yoksa `null`',
       ),
   })
   .meta({ id: 'ClassMetric' })

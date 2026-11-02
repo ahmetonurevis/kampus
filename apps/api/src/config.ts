@@ -136,6 +136,21 @@ export const configSchema = z
      */
     FFMPEG_PATH: optional(z.string().min(1)).transform((value) => value ?? 'ffmpeg'),
     FFPROBE_PATH: optional(z.string().min(1)).transform((value) => value ?? 'ffprobe'),
+    /**
+     * Dosya taraması (`file.scan`, ADR 0003 karar 8): `clamav` belge, görsel ve video yüklemelerini
+     * `clamd`'ye TCP ile gönderir; `off` taramaz, dosya `pending` kalır ve bağlanamaz (clamd'siz
+     * yerel geliştirme ve e2e). Verilmezse üretimde `clamav`, başka ortamda `off`; üretimde `off`
+     * reddedilir (taramasız dosya dağıtılmaz). Testteki sahte tarayıcı `buildApp` seçeneğidir.
+     */
+    FILE_SCANNER: optional(z.enum(['clamav', 'off'])),
+    /** `clamd` TCP adresi (`compose.yaml` `clamav` profili: 127.0.0.1:3310). */
+    CLAMAV_HOST: optional(z.string().min(1)).transform((value) => value ?? '127.0.0.1'),
+    CLAMAV_PORT: z.coerce.number().int().min(1).max(65535).default(3310),
+    /**
+     * Tek taramanın üst süresi (ms): bağlantı, akış ve yanıt dahil. Aşılırsa tarama geçici hatadır
+     * ve iş yeniden denenir. En büyük yükleme (200 MB video) yerel ağda bu sürede taranır.
+     */
+    CLAMAV_TIMEOUT_MS: z.coerce.number().int().min(1000).max(600_000).default(120_000),
   })
   .superRefine((config, ctx) => {
     if (config.NODE_ENV !== 'production') return
@@ -145,6 +160,8 @@ export const configSchema = z
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_URL'], message: 'required' })
     if (isPlaceholderSecret(config.BETTER_AUTH_SECRET))
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_SECRET'], message: 'placeholder' })
+    if (config.FILE_SCANNER === 'off')
+      ctx.addIssue({ code: 'custom', path: ['FILE_SCANNER'], message: 'not_for_production' })
   })
 
 export type Config = z.infer<typeof configSchema>
@@ -221,6 +238,11 @@ export const DEFAULT_STORAGE_DIR = 'var/storage'
 /** Disk deposunun kök klasörü: verilen değer veya varsayılan (disk üretimde kullanılmaz). */
 export function storageDir(config: Config): string {
   return config.STORAGE_DIR ?? DEFAULT_STORAGE_DIR
+}
+
+/** Dosya tarayıcısı: `FILE_SCANNER` ya da ortamın varsayılanı (yalnız üretimde `clamav`). */
+export function fileScannerDriver(config: Config): 'clamav' | 'off' {
+  return config.FILE_SCANNER ?? (config.NODE_ENV === 'production' ? 'clamav' : 'off')
 }
 
 /** İş kuyruğu açık mı: `JOBS_ENABLED` ya da ortamın varsayılanı (testte kapalı). */

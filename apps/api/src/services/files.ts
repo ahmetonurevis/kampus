@@ -45,6 +45,7 @@ import { needsTranscode } from './audio-transcoder.ts'
 import { actorStudentConsent, actorStudentHasConsent } from './consents.ts'
 import { contentTypeMismatch, detectContentType, dispositionFor } from './file-detection.ts'
 import { FILE_PURPOSE_ACCESS, fileAttachmentKind } from './file-registry.ts'
+import type { FileScanScheduler } from './file-scan.ts'
 import { requestFingerprint } from './idempotency.ts'
 import { grantListeningPlay, listeningWindowMs } from './listening-plays.ts'
 import type { MediaTranscodeScheduler } from './media-transcode.ts'
@@ -225,15 +226,22 @@ async function storeStream(
  * aynı transaction'da kuyruğa girer (ADR 0003 karar 10); kuyruk kapalıysa dönüşüm yanıtı
  * beklemeden süreç içinde, arka planda bir kez denenir (`scheduler.afterCommit`). Tekrarlanan istek
  * iş açmaz.
+ *
+ * Tarayıcı açıkken (`scan` verilmişse) ses dışı amaçlar da `processing` başlar ve `file.scan` işi
+ * aynı transaction'da kuyruğa girer (karar 8, OG-092); tarama bitene kadar dosya bağlanamaz ve
+ * bağlantı verilmez (409 `file_processing`). Tarayıcı kapalıyken (`FILE_SCANNER=off`, üretim
+ * dışı) dosya `pending` kalır. TODO(ses-taramasi): ses de taranmalı (karar 8); dönüşüm bugün
+ * taramasız `ready` olur.
  */
 export async function uploadFile(
   ctx: ServiceContext,
   storage: StorageDriver,
   input: UploadInput,
-  scheduler: MediaTranscodeScheduler,
+  schedulers: { transcode: MediaTranscodeScheduler; scan: FileScanScheduler | null },
 ): Promise<CommandResponse> {
   const { purpose } = input
   const transcode = needsTranscode(purpose)
+  const scan = transcode ? null : schedulers.scan
   await assertCanUpload(ctx, purpose)
   const fileId = randomUUID()
   const storageKey = storageKeyFor({
@@ -301,9 +309,11 @@ export async function uploadFile(
               uploadedByUserId: ctx.actor.userId,
             },
             ctx.now,
-            transcode ? 'processing' : 'pending',
+            transcode || scan !== null ? 'processing' : 'pending',
           )
-          if (transcode) await scheduler.enqueue(tx, { institutionId: ctx.institutionId, fileId })
+          const job = { institutionId: ctx.institutionId, fileId }
+          if (transcode) await schedulers.transcode.enqueue(tx, job)
+          if (scan !== null) await scan.enqueue(tx, job)
           await audit(tx, ctx, 'file.upload', fileId, [
             'purpose',
             'contentType',
@@ -321,8 +331,13 @@ export async function uploadFile(
       { key: input.idempotencyKey, fingerprint },
     )
     keep = !response.replayed
-    // Kuyruksuz yolda dönüşüm arka planda başlar; yanıt beklemez (hatası zamanlayıcıda loglanır).
-    if (transcode && keep) void scheduler.afterCommit({ institutionId: ctx.institutionId, fileId })
+    // Kuyruksuz yolda dönüşüm ve tarama arka planda başlar; yanıt beklemez (hatası zamanlayıcıda
+    // loglanır).
+    if (keep) {
+      const job = { institutionId: ctx.institutionId, fileId }
+      if (transcode) void schedulers.transcode.afterCommit(job)
+      if (scan !== null) void scan.afterCommit(job)
+    }
     ctx.log.info({
       event: 'file.uploaded',
       purpose,
@@ -566,10 +581,10 @@ export async function detachFile(
  * görür). Aynı dosya için ret yeniden bildirilirse (iş yeniden denemesi) durum ve denetim
  * değişmeden yalnız nesne silme yeniden çalışır; `ready` bildirimi 409 `file_already_checked`
  * kalır. Hiç yeniden denenmeyen nesne `TODO(F3c2-orphans)` taramasıyla silinir.
- * TODO(F3c2-scan): `file.scan` işi (ClamAV) ve `sharp` meta veri temizliği bu fonksiyonu çağırır
- * (OG-092). Kuyruk altyapısı `src/jobs`'tadır; iş, kurum başına zamanlanmış işten farklı olarak
- * yüklemeden sonra `{ institutionId, fileId }` yüküyle kuyruğa konur. O gelene kadar tarama
- * yoktur ve dosya `pending` kalır (yalnız yükleyen okur, bağlanamaz).
+ * Çağıranlar: `file.scan` (`services/file-scan.ts`, ClamAV; OG-092) ve ses dönüşümünün reddi.
+ * Tarayıcı kapalıyken (`FILE_SCANNER=off`) dosya `pending` kalır (yalnız yükleyen okur,
+ * bağlanamaz). TODO(gorsel-meta-veri): `sharp` ile görsel meta veri temizliği (karar 7, OG-263)
+ * de bu fonksiyonu çağıracak.
  */
 export async function recordFileCheck(
   db: Database,

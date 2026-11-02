@@ -30,6 +30,7 @@
     "@fastify/swagger-ui": "6.1.2",
     "@kampus/school-core": "workspace:*",
     "better-auth": "1.7.10",
+    "clamscan": "2.4.0",
     "drizzle-orm": "0.45.4",
     "fastify": "5.12.7",
     "fastify-type-provider-zod": "7.0.0",
@@ -40,6 +41,7 @@
   },
   "devDependencies": {
     "@electric-sql/pglite": "0.5.10",
+    "@types/clamscan": "2.4.1",
     "@types/pg": "8.23.1",
     "auth": "1.7.10",
     "drizzle-kit": "0.31.11"

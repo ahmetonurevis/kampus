@@ -314,7 +314,9 @@ test.describe('öğrenci görevleri: yazma', () => {
     })
     await loginAs(school.tenant.user('ogrenci'))
     await page.goto('/ogrenci/odevler')
-    await expect(taskTable(page, 'Atanan yazma ödevleri')).toContainText('Hafta sonu yazısı')
+    await expect(taskTable(page, 'Atanan yazma ve konuşma görevleri')).toContainText(
+      'Hafta sonu yazısı',
+    )
     await openFromList(page, 'Hafta sonu yazısı', 'Yazmaya başla')
     await expect(page).toHaveURL(new RegExp(`yaz=${assignmentId}`))
     // Yönerge atamada sabitlenen sürümden gelir (DOM-KYN-024); kaynak öğrenciyle paylaşılmasa da

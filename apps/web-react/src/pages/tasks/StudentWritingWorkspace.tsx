@@ -17,16 +17,19 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useNow } from '@/hooks/use-now.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { Facts } from '../learning/LearningParts.tsx'
+import { SpeakingTask } from './SpeakingRecorder.tsx'
 import { SubmissionVersions } from './SubmissionVersions.tsx'
 import {
   isLearnerAssignment,
   isNotFoundError,
+  isSpeakingTask,
   resubmissionPending,
   taskKindLabel,
   taskTypeLabel,
   writingBrief,
   writingInitialBody,
   writingProgress,
+  versionLimit,
 } from './student-task-model.ts'
 import { WritingEditor } from './WritingEditor.tsx'
 
@@ -39,7 +42,9 @@ const stamp = (iso: string) => `${dateLabel(iso, { year: 'numeric' })} ${timeLab
  * gösterimi (DOM-KYN-024, atama ayrıntısından), metin editörü (taslak + teslim) ve
  * gönderilen sürümler. Gönderebilirlik sunucunun `allowance`'ındandır; engel nedeni puanlamadan
  * bağımsız anlatılır (`locked` dahil). Puan ve geri bildirim açılmadıysa hiçbir iz yoktur
- * (DOM-BEC-045). Dosyalı ve sesli teslim F4b4'tedir; bu ekran metin teslimini açar.
+ * (DOM-BEC-045). Konuşma görevinde (`submissionKind: 'audio'`) editör yerine ses kaydı açılır
+ * (`SpeakingRecorder.tsx`; IST-051): sınırlar ve kalan deneme atamadan ve `allowance`'tan gelir.
+ * El yazısı (dosyalı) teslim ekranı henüz yok.
  */
 export function StudentWritingWorkspace({
   page,
@@ -112,6 +117,10 @@ export function StudentWritingWorkspace({
   const progress = writingProgress(assignment, detail ?? summary ?? null, new Date(nowMs))
   const settings = assignment.submission
   const textKind = settings?.submissionKind === 'text'
+  const speaking = isSpeakingTask(assignment)
+  const remaining =
+    detail?.allowance?.remaining ??
+    Math.max(0, (versionLimit(assignment) ?? 0) - (summary?.versionCount ?? 0))
   const draft = draftQuery.data?.data ?? null
   // Yeniden teslimde editör son sürümle açılır; taslak yalnız son sürümden yeniyse önceliklidir.
   const initialBody = writingInitialBody(draft, detail, resubmissionPending(detail))
@@ -165,7 +174,7 @@ export function StudentWritingWorkspace({
           <Facts
             items={[
               ['Durum', <StatusBadge key="d" text={progress.status} tone={progress.tone} />],
-              ['Sürüm hakkı', progress.rights],
+              [speaking ? 'Deneme hakkı' : 'Sürüm hakkı', progress.rights],
               [
                 'Son teslim',
                 assignment.deadline.dueAt ? stamp(assignment.deadline.dueAt) : 'Belirtilmemiş',
@@ -188,12 +197,20 @@ export function StudentWritingWorkspace({
           className="panel rounded-card border bg-surface p-6 max-[650px]:p-4"
         >
           <h2 id="teslim-alani" className="mb-3 text-lg font-semibold">
-            Teslim
+            {speaking ? 'Konuşma kaydı' : 'Teslim'}
           </h2>
-          {!textKind ? (
+          {settings?.submissionKind === 'audio' ? (
+            // Anahtar yok: teslimden sonra da kayıt durumu (atılan kayıt sayısı) korunur.
+            <SpeakingTask
+              assignmentId={assignmentId}
+              limits={settings}
+              remaining={remaining}
+              canSubmit={progress.canAct}
+              blockedReason={progress.blockedReason}
+            />
+          ) : !textKind ? (
             <p role="status" className="text-sm text-muted-foreground">
-              Bu görev metin yerine dosya veya ses kaydıyla teslim edilir; bu teslim türü henüz açık
-              değil.
+              Bu görev el yazısı dosyasıyla teslim edilir; dosya yükleme ekranı henüz açık değil.
             </p>
           ) : (
             <>

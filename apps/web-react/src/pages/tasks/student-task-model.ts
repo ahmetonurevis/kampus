@@ -45,8 +45,15 @@ const CONTENT_LABELS: Record<TaskAssignmentLearner['contentType'], string> = {
   book_reference: 'Kitap',
 }
 
-export const taskTypeLabel = (assignment: Pick<TaskAssignmentLearner, 'contentType'>) =>
-  CONTENT_LABELS[assignment.contentType]
+type SubmissionOf = Partial<Pick<TaskAssignmentLearner, 'submission'>>
+
+/** Konuşma görevi: ses kaydıyla teslim edilen öğretmen puanlı görev (IST-051). */
+export const isSpeakingTask = (assignment: SubmissionOf) =>
+  assignment.submission?.submissionKind === 'audio'
+
+export const taskTypeLabel = (
+  assignment: Pick<TaskAssignmentLearner, 'contentType'> & SubmissionOf,
+) => (isSpeakingTask(assignment) ? 'Konuşma görevi' : CONTENT_LABELS[assignment.contentType])
 
 export const taskKindLabel = (assignment: Pick<TaskAssignmentLearner, 'kind'>) =>
   assignment.kind === 'evaluation' ? 'Değerlendirme' : 'Alıştırma'
@@ -125,15 +132,25 @@ export function autoProgress(
     : { status: 'Başlanmadı', tone: 'gray', rights, score, canAct, blockedReason }
 }
 
-/** `allowance.blockedBy` için neden metni; puanlamadan bağımsız (DOM-BEC-045). */
-export function blockedByMessage(blockedBy: 'limit' | 'graded' | 'locked'): string {
+/**
+ * `allowance.blockedBy` için neden metni; puanlamadan bağımsız (DOM-BEC-045). Konuşma görevinde
+ * gönderilen her kayıt bir denemedir (IST-051), metin deneme hakkını anar.
+ */
+export function blockedByMessage(
+  blockedBy: 'limit' | 'graded' | 'locked',
+  speaking = false,
+): string {
   switch (blockedBy) {
     case 'limit':
-      return 'Sürüm hakkınız doldu.'
+      return speaking ? 'Konuşma deneme hakkınız doldu.' : 'Sürüm hakkınız doldu.'
     case 'graded':
-      return 'Teslim değerlendirildi; yeni sürüm için öğretmeninizin yeniden teslim istemesi gerekir.'
+      return speaking
+        ? 'Kaydınız değerlendirildi; yeni kayıt için öğretmeninizin yeniden teslim istemesi gerekir.'
+        : 'Teslim değerlendirildi; yeni sürüm için öğretmeninizin yeniden teslim istemesi gerekir.'
     case 'locked':
-      return 'Teslim süresi doldu; yeni sürüm gönderilemez.'
+      return speaking
+        ? 'Teslim süresi doldu; yeni kayıt gönderilemez.'
+        : 'Teslim süresi doldu; yeni sürüm gönderilemez.'
     default:
       return blockedBy satisfies never
   }
@@ -145,8 +162,14 @@ type SubmissionLike = Pick<
 > &
   Partial<Pick<TaskSubmissionDetail, 'allowance'>>
 
-const versionLimit = (assignment: TaskAssignmentLearner) =>
-  assignment.submission?.maxVersions ?? null
+/** Etkin sürüm sınırı; konuşmada deneme hakkıyla birlikte (core `versionAllowance`). */
+export function versionLimit(assignment: SubmissionOf): number | null {
+  const settings = assignment.submission
+  if (!settings) return null
+  return settings.submissionKind === 'audio'
+    ? Math.min(settings.maxVersions, settings.speakingAttempts)
+    : settings.maxVersions
+}
 
 /** Açılmış (kesinleşmiş) puan; açılmadıysa `null` (DOM-BEC-045). */
 export function releasedScore(submission: SubmissionLike | null | undefined): number | null {
@@ -172,8 +195,9 @@ export function writingProgress(
 ): TaskProgress {
   const closed = taskClosed(assignment, now)
   const limit = versionLimit(assignment)
+  const speaking = isSpeakingTask(assignment)
   const used = submission?.versionCount ?? 0
-  const rights = limit === null ? '—' : `${used} / ${limit} sürüm`
+  const rights = limit === null ? '—' : `${used} / ${limit} ${speaking ? 'deneme' : 'sürüm'}`
   const score = scoreLabel(releasedScore(submission))
 
   // Ayrıntı okunduysa düğme kararı sunucunun `allowance`'ındandır; okunmadıysa pencereye bakılır
@@ -183,9 +207,9 @@ export function writingProgress(
   const blockedReason = canAct
     ? null
     : allowance
-      ? blockedByMessage(allowance.blockedBy ?? 'locked')
+      ? blockedByMessage(allowance.blockedBy ?? 'locked', speaking)
       : submission && submission.versionCount > 0
-        ? blockedByMessage('locked')
+        ? blockedByMessage('locked', speaking)
         : 'Teslim süresi doldu.'
 
   if (!submission || submission.versionCount === 0)
@@ -221,6 +245,7 @@ const WRITING_STATUS: Record<ProgressStatus, Pick<TaskProgress, 'status' | 'tone
 export function summaryBlockedReason(
   mode: StudentTaskMode,
   progress: Pick<LearnerTaskProgress, 'blockedBy' | 'used'>,
+  speaking = false,
 ): string | null {
   switch (progress.blockedBy) {
     case null:
@@ -234,14 +259,14 @@ export function summaryBlockedReason(
     case 'unavailable':
       return 'Görev içeriği şu an kullanılamıyor; öğretmeninize danışın.'
     case 'limit':
-      return mode === 'auto' ? 'Deneme hakkınız doldu.' : blockedByMessage('limit')
+      return mode === 'auto' ? 'Deneme hakkınız doldu.' : blockedByMessage('limit', speaking)
     case 'graded':
-      return blockedByMessage('graded')
+      return blockedByMessage('graded', speaking)
     case 'locked':
       return mode === 'auto'
         ? 'Teslim süresi doldu; yeni deneme başlatılamaz.'
         : progress.used > 0
-          ? blockedByMessage('locked')
+          ? blockedByMessage('locked', speaking)
           : 'Teslim süresi doldu.'
     default:
       return progress.blockedBy satisfies never
@@ -279,7 +304,8 @@ export function summaryProgress(
   const progress: LearnerTaskProgress = expired
     ? { ...entry, status: 'not_submitted', canAct: false, blockedBy: 'locked' }
     : entry
-  const unit = mode === 'auto' ? 'deneme' : 'sürüm'
+  const speaking = isSpeakingTask(assignment)
+  const unit = mode === 'auto' || speaking ? 'deneme' : 'sürüm'
   const rights =
     progress.limit === null
       ? mode === 'auto'
@@ -300,7 +326,7 @@ export function summaryProgress(
       ? LAPSED_REASON
       : progress.canAct
         ? null
-        : summaryBlockedReason(mode, progress),
+        : summaryBlockedReason(mode, progress, speaking),
   }
 }
 

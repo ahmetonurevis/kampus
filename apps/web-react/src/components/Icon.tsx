@@ -104,6 +104,8 @@ import {
   EyeOff,
   KeyRound,
   Smartphone,
+  Mic,
+  Square,
 } from 'lucide-react'
 
 // Vue `Icon.vue` ile aynı ad listesi: school-core navigasyonu ikonları bu adlarla verir.
@@ -212,6 +214,8 @@ const icons = {
   EyeOff,
   KeyRound,
   Smartphone,
+  Mic,
+  Square,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof icons

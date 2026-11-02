@@ -7,7 +7,6 @@ import {
   attemptResult,
   deliverySummary,
   homeworkRow,
-  HOMEWORK_LIST,
   materialRow,
   MATERIAL_LIST,
   QUIZ_LIST,
@@ -69,9 +68,8 @@ test('activeRoster pasif öğrenciyi saymaz ve Türkçe ad sırasıyla verir', (
 
 test('homeworkRow durumu core homeworkStatus ile verir ve yalnız o öğrencinin teslimini sayar', () => {
   const { homework } = setup()
-  const future = wrap([homework('hw-f', FUTURE)])[0]
-  const past = wrap([homework('hw-p', PAST)])[0]
-  assert.ok(future && past)
+  const future = homework('hw-f', FUTURE)
+  const past = homework('hw-p', PAST)
 
   assert.equal(homeworkRow(future, [], 's1', NOW).status, 'Bekliyor')
   assert.equal(homeworkRow(past, [], 's1', NOW).status, 'Gecikmiş')
@@ -131,19 +129,26 @@ test('deliverySummary kimlikli teslimi değerlendirme formuna bağlar; teslimsiz
   assert.equal(idOf(b.id), null)
 })
 
-test('teacherHomeworkRow sınıf adını joined alanından, sayıları sunucu sayımından alır', () => {
+test('teacherHomeworkRow sayıları /homework satırından, sınıf adını sınıf kaydından alır (DOM-AKD-074)', () => {
   const { homework } = setup()
-  const item = wrap([homework('hw-t', PAST)], { className: '7-A' })[0]
-  assert.ok(item)
-  const row = teacherHomeworkRow(item, { delivered: 1, total: 24 })
+  const item = {
+    ...homework('hw-t', PAST),
+    version: 2,
+    allowLate: true,
+    status: 'closed' as const,
+    createdAt: null,
+    updatedAt: PAST,
+    submissionCounts: { submitted: 3, graded: 1, late: 1 },
+  }
+  const row = teacherHomeworkRow(item, { className: '7-A', total: 24 })
   assert.equal(row.className, '7-A')
-  assert.equal(row.delivered, 1)
+  assert.equal(row.delivered, 3)
+  assert.equal(row.graded, 1)
   assert.equal(row.total, 24)
+  assert.equal(row.status, 'closed')
 
   // Kapsam dışı sınıfın adı gelmez: "—".
-  const [bare] = wrap([homework('hw-u', PAST)])
-  assert.ok(bare)
-  assert.equal(teacherHomeworkRow(bare, { delivered: 0, total: 0 }).className, '—')
+  assert.equal(teacherHomeworkRow(item, { className: undefined, total: 0 }).className, '—')
 })
 
 function quizFixture() {
@@ -243,11 +248,11 @@ test('materialRow tablo alanlarını eşler; uniqueValues tekrarı atar', () => 
 test('liste yapılandırmaları API beyaz listesindeki alanları kullanır', () => {
   // api-tasarimi.md §3: sıralama ve eşitlik filtresi alanları sunucuda beyaz listedir.
   const sortable = new Set(['id', 'title', 'dueDate'])
-  for (const config of [HOMEWORK_LIST, QUIZ_LIST, MATERIAL_LIST]) {
+  for (const config of [QUIZ_LIST, MATERIAL_LIST]) {
     for (const field of Object.values(config.sortFields)) assert.ok(sortable.has(field), field)
     for (const field of config.defaultSort) assert.ok(sortable.has(field.replace(/^-/, '')), field)
   }
   const filterable = new Set(['classId', 'subjectId'])
-  for (const config of [HOMEWORK_LIST, QUIZ_LIST, MATERIAL_LIST])
+  for (const config of [QUIZ_LIST, MATERIAL_LIST])
     for (const field of Object.values(config.filterFields)) assert.ok(filterable.has(field), field)
 })

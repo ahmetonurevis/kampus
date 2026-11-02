@@ -13,6 +13,7 @@ import {
   type LessonCancelledFilter,
   type LessonFormKind,
 } from '@kampus/react-shared/lessons.ts'
+import { istanbulToIso, isoToIstanbul } from '../../lib/istanbul-time.ts'
 import { addDays, isDayKey, weekDays, weekStart, type AcademicLookups } from './academic-rows.ts'
 
 export type { Lesson }
@@ -224,22 +225,6 @@ export function openedLesson(
 }
 
 // --- Formlar -----------------------------------------------------------------
-
-const ISTANBUL_OFFSET = '+03:00'
-const LOCAL_DATE_TIME = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}$/
-
-/** `datetime-local` değeri (Europe/Istanbul, sabit +03:00) → ISO 8601 UTC; geçersizse olduğu gibi. */
-export function istanbulToIso(value: string): string {
-  if (!LOCAL_DATE_TIME.test(value)) return value
-  const time = Date.parse(`${value}:00${ISTANBUL_OFFSET}`)
-  return Number.isFinite(time) ? new Date(time).toISOString() : value
-}
-
-/** ISO an → `datetime-local` değeri (Europe/Istanbul). */
-export function isoToIstanbul(value: string): string {
-  if (!Number.isFinite(Date.parse(value))) return ''
-  return `${dayKey(value)}T${timeLabel(value)}`
-}
 
 const coreLesson = workflowSchemas.lesson
 

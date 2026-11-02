@@ -21,6 +21,7 @@ interface Sent {
   path: string
   headers: Headers
   form: FormData
+  signal: AbortSignal
 }
 
 /** Gerçek istemci + sahte fetch: giden çok parçalı istek ayrıştırılarak kaydedilir. */
@@ -37,6 +38,7 @@ function fakeClient() {
         path: new URL(request.url).pathname,
         headers: request.headers,
         form: await request.formData(),
+        signal: request.signal,
       })
       return new Response(JSON.stringify({ data: { id: 'file-1' } }), {
         status: 201,
@@ -76,6 +78,21 @@ describe('dosya yükleme isteği', () => {
     assert.ok(file instanceof File)
     assert.equal(file.name, 'odev.pdf')
     assert.equal(await file.text(), '%PDF-1.7 test')
+  })
+
+  test('OG-047 signal verilirse istek o sinyali taşır (panel kapanınca yükleme durur)', async () => {
+    const { client, sent } = fakeClient()
+    const controller = new AbortController()
+    const input = {
+      purpose: 'submission' as const,
+      file: pdf,
+      fileKey: 'k',
+      signal: controller.signal,
+    }
+    await runRequest(() => uploadFileRequest(client, input, commandHeaders('a-1', null)))
+    assert.equal(sent[0]!.signal.aborted, false)
+    controller.abort()
+    assert.equal(sent[0]!.signal.aborted, true, 'istek sinyale bağlı: abort isteği düşürür')
   })
 
   test('fileUploadForm alan sırasını korur', () => {

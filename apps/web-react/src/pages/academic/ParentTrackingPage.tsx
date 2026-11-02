@@ -87,7 +87,7 @@ export function ParentTrackingPage({ page }: { page: NavPage }) {
         <ScheduleView audience="student" studentId={childId} />
       ) : student ? (
         tab === 'odevler' ? (
-          <StudentHomeworkView student={student} title="Ödev durumu" />
+          <StudentHomeworkView student={student} title="Ödev durumu" mode="parent" />
         ) : (
           <StudentQuizzesView student={student} title="Quiz sonuçları" />
         )

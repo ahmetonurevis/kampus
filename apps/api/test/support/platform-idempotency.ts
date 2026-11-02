@@ -58,4 +58,6 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   // Aydınlatma/rıza metni yayımı ve açık rıza (routes/privacy.ts; DOM-YTK-056, -057, -060).
   'POST /api/v1/privacy-notices',
   'POST /api/v1/consents',
+  // Eğitim yılı oluşturma (routes/academic-years.ts; DOM-YTK-063).
+  'POST /api/v1/academic-years',
 ]

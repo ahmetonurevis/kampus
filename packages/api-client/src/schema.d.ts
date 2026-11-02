@@ -3528,6 +3528,158 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/academic-years": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eğitim yılları
+         * @description Kurumun eğitim yılları (yeni yıl önce) ve dönemleri (gün sırasıyla), sayfalı. Yıl kimliği başlangıç yılıdır (`startYear`; tarife ve sözleşmedeki `academicYear` sayısı). Bilinmeyen parametre 400. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`. Öğrenci ve veli yalnız ad, tarih ve etkinlik bilgisini görür (durum, işlem anları, sürüm ve dönem kimliği personele döner; DOM-YTK-067).
+         */
+        get: operations["listAcademicYears"];
+        put?: never;
+        /**
+         * Eğitim yılı oluştur
+         * @description Yeni eğitim yılı `planned` durumunda açılır (core `planAcademicYearCreation`, DOM-YTK-063, -064). Tarih verilmezse 1 Eylül – 31 Ağustos. Başlangıç günü başlangıç yılında olmalı (422 `academic_year_start_mismatch`), bitiş başlangıçtan sonra (422 `academic_year_dates_invalid`) ve bir yıldan kısa (422 `academic_year_too_long`); başka yılla örtüşme 422 `academic_year_overlap`; aynı başlangıç yılı 409 `academic_year_exists`. İlk dönemler isteğe bağlıdır: yılın içinde (422 `academic_term_outside_year`), örtüşmeden (422 `academic_term_overlap`), ad yılda tekil (409 `academic_term_name_exists`). `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Yalnız `yonetici`; diğer roller 403. Denetime yalnız alan adları yazılır.
+         */
+        post: operations["createAcademicYear"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/academic-years/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Güncel eğitim yılı ve dönem
+         * @description Bugünün (Europe/Istanbul) eğitim yılı ve dönemi (DOM-YTK-067): gün etkin yılın içindeyse etkin yıl, değilse günü içeren yıl, o da yoksa etkin yıl. Dönem yalnız gün bir döneme düşüyorsa doludur (tatilde `null`). Yıl tanımlı değilse `year` ve `term` boştur. Yıl seçicilerin varsayılanıdır. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`. Öğrenci ve veli yalnız ad, tarih ve etkinlik bilgisini görür (durum, işlem anları, sürüm ve dönem kimliği personele döner; DOM-YTK-067).
+         */
+        get: operations["getCurrentAcademicPeriod"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/academic-years/{startYear}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Eğitim yılı
+         * @description Tek eğitim yılı ve dönemleri; olmayan ya da başka kurumun yılı 404. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`. Öğrenci ve veli yalnız ad, tarih ve etkinlik bilgisini görür (durum, işlem anları, sürüm ve dönem kimliği personele döner; DOM-YTK-067).
+         */
+        get: operations["getAcademicYear"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Eğitim yılının tarihlerini değiştir
+         * @description Yılın başlangıç ve bitiş gününü değiştirir (DOM-YTK-063); aralık kuralları oluşturmadaki gibidir ve var olan dönemler yeni aralığın içinde kalmalıdır (422 `academic_term_outside_year`). `If-Match` yılın `rowVersion`'ı (zorunlu; yıl ve dönemlerinin ortak sürümü), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun yılı 404. Kapanmış yıl değişmez: 409 `academic_year_closed`. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`; diğer roller 403. Denetime yalnız alan adları yazılır.
+         */
+        patch: operations["updateAcademicYear"];
+        trace?: never;
+    };
+    "/api/v1/academic-years/{startYear}/terms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Dönem ekle
+         * @description Yıla dönem ekler (DOM-YTK-064): dönem yılın içinde kalır (422 `academic_term_outside_year`), diğer dönemlerle örtüşmez (422 `academic_term_overlap`), adı yılda tekildir (409 `academic_term_name_exists`), yılda en çok 12 dönem (422 `academic_term_limit`). Sıra başlangıç gününden hesaplanır. Başarı 201; yanıt yılın yeni hâlidir. `If-Match` yılın `rowVersion`'ı (zorunlu; yıl ve dönemlerinin ortak sürümü), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun yılı 404. Kapanmış yıl değişmez: 409 `academic_year_closed`. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`; diğer roller 403. Denetime yalnız alan adları yazılır.
+         */
+        post: operations["addAcademicTerm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/academic-years/{startYear}/terms/{termId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Dönemi kaldır
+         * @description Dönemi kaldırır (arşiv; DOM-YTK-064). Okulda (`school`) etkin yılın son dönemi kaldırılamaz: 422 `academic_terms_required` (DOM-YTK-065). Olmayan, kaldırılmış ya da başka yılın dönemi 404. Yanıt yılın yeni hâlidir. `If-Match` yılın `rowVersion`'ı (zorunlu; yıl ve dönemlerinin ortak sürümü), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun yılı 404. Kapanmış yıl değişmez: 409 `academic_year_closed`. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`; diğer roller 403. Denetime yalnız alan adları yazılır.
+         */
+        delete: operations["removeAcademicTerm"];
+        options?: never;
+        head?: never;
+        /**
+         * Dönemi değiştir
+         * @description Dönemin adını ya da tarihlerini değiştirir (DOM-YTK-064); kurallar eklemedeki gibidir. Olmayan, kaldırılmış ya da başka yılın dönemi 404. `If-Match` yılın `rowVersion`'ı (zorunlu; yıl ve dönemlerinin ortak sürümü), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun yılı 404. Kapanmış yıl değişmez: 409 `academic_year_closed`. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`; diğer roller 403. Denetime yalnız alan adları yazılır.
+         */
+        patch: operations["updateAcademicTerm"];
+        trace?: never;
+    };
+    "/api/v1/academic-years/{startYear}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eğitim yılını etkinleştir
+         * @description Yılı etkinleştirir (DOM-YTK-065). Kurumda tek etkin yıl bulunur: önceki etkin yıl aynı işlemde kapanır (yıl geçişi) ve kurumun güncel yılı (`academicYear`: yenileme, rıza süresi, tarife varsayılanı) bu yıla eşitlenir. Zaten etkin 409 `academic_year_already_active`; daha yeni bir yıl etkinken eski yıl 422 `academic_year_activation_order`; bitmiş yıl 422 `academic_year_ended`; okulda (`school`) dönemsiz yıl 422 `academic_terms_required` (dil okulunda dönem isteğe bağlı). Gövde yok ya da boş nesne. `If-Match` yılın `rowVersion`'ı (zorunlu; yıl ve dönemlerinin ortak sürümü), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun yılı 404. Kapanmış yıl değişmez: 409 `academic_year_closed`. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`; diğer roller 403. Denetime yalnız alan adları yazılır.
+         */
+        post: operations["activateAcademicYear"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/academic-years/{startYear}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Eğitim yılını kapat
+         * @description Etkin yılı kapatır (DOM-YTK-066). Yalnız etkin yıl (422 `academic_year_not_active`) ve yalnız son gününden itibaren (422 `academic_year_not_ended`; yıl ortasında geçiş yeni yılın etkinleştirilmesiyle yapılır). Kapanan yıl değişmez, yeniden açılmaz. Gövde yok ya da boş nesne. `If-Match` yılın `rowVersion`'ı (zorunlu; yıl ve dönemlerinin ortak sürümü), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun yılı 404. Kapanmış yıl değişmez: 409 `academic_year_closed`. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`; diğer roller 403. Denetime yalnız alan adları yazılır.
+         */
+        post: operations["closeAcademicYear"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -5713,6 +5865,54 @@ export interface components {
             /** @description Atamanın yeni satır sürümü */
             rowVersion: number;
         };
+        AcademicTermInput: {
+            /**
+             * Format: uuid
+             * @description Dönem kimliği; yalnız personele döner
+             */
+            id?: string;
+            name: string;
+            /** @description Yıl içindeki sıra; başlangıç gününden hesaplanır */
+            sequence: number;
+            startDate: string;
+            endDate: string;
+        };
+        AcademicYearInput: {
+            /** @description Başlangıç yılı; tarife ve sözleşmedeki `academicYear` */
+            startYear: number;
+            /** @description Gösterim adı, ör. `2026–2027` */
+            name: string;
+            startDate: string;
+            endDate: string;
+            /** @description Kurumun etkin yılı mı (en çok bir yıl) */
+            isActive: boolean;
+            /**
+             * @description `planned`, `active`, `closed`; yalnız personele döner
+             * @enum {string}
+             */
+            status?: "planned" | "active" | "closed";
+            /** @description Yalnız personele döner */
+            activatedAt?: string | null;
+            /** @description Yalnız personele döner */
+            closedAt?: string | null;
+            /** @description Yıl ve dönemlerinin ortak sürümü; yazmada `If-Match`. Yalnız personele döner */
+            rowVersion?: number;
+            /**
+             * Format: date-time
+             * @description Yalnız personele döner
+             */
+            updatedAt?: string;
+            /** @description Dönemler, gün sırasıyla */
+            terms: components["schemas"]["AcademicTermInput"][];
+        };
+        CurrentAcademicPeriodInput: {
+            /** @description Bugün (Europe/Istanbul) */
+            date: string;
+            /** @description Günün eğitim yılı; yoksa etkin yıl; o da yoksa `null` */
+            year: components["schemas"]["AcademicYearInput"] | null;
+            /** @description Günün dönemi; tatilde ve yıl dışında `null` */
+            term: components["schemas"]["AcademicTermInput"] | null;
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -7812,6 +8012,54 @@ export interface components {
             submissionIds: string[];
             /** @description Atamanın yeni satır sürümü */
             rowVersion: number;
+        };
+        AcademicTerm: {
+            /**
+             * Format: uuid
+             * @description Dönem kimliği; yalnız personele döner
+             */
+            id?: string;
+            name: string;
+            /** @description Yıl içindeki sıra; başlangıç gününden hesaplanır */
+            sequence: number;
+            startDate: string;
+            endDate: string;
+        };
+        AcademicYear: {
+            /** @description Başlangıç yılı; tarife ve sözleşmedeki `academicYear` */
+            startYear: number;
+            /** @description Gösterim adı, ör. `2026–2027` */
+            name: string;
+            startDate: string;
+            endDate: string;
+            /** @description Kurumun etkin yılı mı (en çok bir yıl) */
+            isActive: boolean;
+            /**
+             * @description `planned`, `active`, `closed`; yalnız personele döner
+             * @enum {string}
+             */
+            status?: "planned" | "active" | "closed";
+            /** @description Yalnız personele döner */
+            activatedAt?: string | null;
+            /** @description Yalnız personele döner */
+            closedAt?: string | null;
+            /** @description Yıl ve dönemlerinin ortak sürümü; yazmada `If-Match`. Yalnız personele döner */
+            rowVersion?: number;
+            /**
+             * Format: date-time
+             * @description Yalnız personele döner
+             */
+            updatedAt?: string;
+            /** @description Dönemler, gün sırasıyla */
+            terms: components["schemas"]["AcademicTerm"][];
+        };
+        CurrentAcademicPeriod: {
+            /** @description Bugün (Europe/Istanbul) */
+            date: string;
+            /** @description Günün eğitim yılı; yoksa etkin yıl; o da yoksa `null` */
+            year: components["schemas"]["AcademicYear"] | null;
+            /** @description Günün dönemi; tatilde ve yıl dışında `null` */
+            term: components["schemas"]["AcademicTerm"] | null;
         };
     };
     responses: never;
@@ -29368,6 +29616,1000 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["Consent"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listAcademicYears: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AcademicYear"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createAcademicYear: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    startYear: number;
+                    startDate?: string;
+                    endDate?: string;
+                    terms?: {
+                        name: string;
+                        startDate: string;
+                        endDate: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AcademicYear"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCurrentAcademicPeriod: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CurrentAcademicPeriod"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getAcademicYear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                startYear: number;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AcademicYear"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateAcademicYear: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                startYear: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    startDate?: string;
+                    endDate?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AcademicYear"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    addAcademicTerm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                startYear: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    startDate: string;
+                    endDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AcademicYear"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeAcademicTerm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                startYear: number;
+                /** @description Dönem kimliği */
+                termId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AcademicYear"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateAcademicTerm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                startYear: number;
+                /** @description Dönem kimliği */
+                termId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    startDate?: string;
+                    endDate?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AcademicYear"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    activateAcademicYear: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                startYear: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AcademicYear"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeAcademicYear: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Eğitim yılının başlangıç yılı (2026 → 2026–2027) */
+                startYear: number;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["AcademicYear"];
                     };
                 };
             };

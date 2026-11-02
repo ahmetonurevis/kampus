@@ -11,6 +11,7 @@ import { institutions } from '../src/db/schema/auth.ts'
 import { files } from '../src/db/schema/files.ts'
 import { records } from '../src/db/schema/records.ts'
 import { resourceVersionFiles, resourceVersions } from '../src/db/schema/resources.ts'
+import { taskAssignments } from '../src/db/schema/skills.ts'
 import { recordFileCheck } from '../src/services/files.ts'
 import {
   buildTestApp,
@@ -815,5 +816,36 @@ describe('kaynak sürümü dosyaları', () => {
     )
     for (const cookie of [t.cookies.otherStudent, t.cookies.siblingsParent, t.cookies.student])
       fails(await fileUrl(cookie, image), 404, 'not_found')
+  })
+
+  test('DOM-KYN-006, DOM-YTK-028: sınıfın öğretmeni paylaşılmayan kaynağın dosyasını atama üzerinden açar; arşivlenen atama dosyayı kapatır', async () => {
+    const t = await tenant()
+    // Yöneticinin özel kaynağı: öğretmen ve kursiyer içerik havuzundan okuyamaz.
+    const fileId = await upload(t, t.cookies.admin, { purpose: 'question_image' })
+    const data = await create(t, question(fileId), t.cookies.admin)
+    await publish(t.cookies.admin, data)
+    for (const cookie of [t.cookies.teacher, t.cookies.student, t.cookies.parent])
+      fails(await fileUrl(cookie, fileId), 404, 'not_found')
+
+    // Yönetici 9-A'ya atar: sınıfın öğretmeni (atayan değil), öğrenci ve velisi açar.
+    const assignmentId = await assign(t, data.version.id, '9-A')
+    for (const cookie of [t.cookies.teacher, t.cookies.student, t.cookies.parent])
+      await ok(await fileUrl(cookie, fileId))
+    for (const cookie of [t.cookies.otherTeacher, t.cookies.otherStudent])
+      fails(await fileUrl(cookie, fileId), 404, 'not_found')
+
+    // Arşivlenen atama hiçbir kişiye dosya açmaz; kaynağı okuyabilen yönetici açmaya devam eder.
+    await db
+      .update(taskAssignments)
+      .set({ archivedAt: FIXED_NOW })
+      .where(
+        and(
+          eq(taskAssignments.institutionId, t.institution.id),
+          eq(taskAssignments.id, assignmentId),
+        ),
+      )
+    for (const cookie of [t.cookies.teacher, t.cookies.student, t.cookies.parent])
+      fails(await fileUrl(cookie, fileId), 404, 'not_found')
+    await ok(await fileUrl(t.cookies.admin, fileId))
   })
 })

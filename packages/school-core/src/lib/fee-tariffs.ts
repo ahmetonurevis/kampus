@@ -382,3 +382,73 @@ export function tariffFormToBody(values: FeeTariffFormValues): {
     ),
   }
 }
+
+// --- Mevzuat hesapları (saf; uygulanacakları yer yenileme API'si, ON-030) ---------------------
+
+/** Artış tavanındaki ek puan (DOM-FIN-005): bugün 5 puan; on binde birlik. */
+export const TUITION_INCREASE_EXTRA_BASIS_POINTS = 500
+/** Ücretsiz okutma oranı (DOM-FIN-026): bugün %3; on binde birlik, profil parametresidir. */
+export const FREE_QUOTA_BASIS_POINTS = 300
+
+/** Bir yılın ÜFE ve TÜFE ortalaması, on binde birlik (%42,5 → 4250); TÜİK bülteninden girilir. */
+export type PriceIndexRates = { ppiBasisPoints: number; cpiBasisPoints: number }
+
+function requireMoney(cents: number) {
+  if (!Number.isSafeInteger(cents) || cents < 0)
+    throw new DomainError('tuition_base_invalid', 'Ücret tutarı geçersiz.')
+}
+function requireRate(value: number) {
+  if (!Number.isSafeInteger(value) || value < 0)
+    throw new DomainError('tuition_rate_invalid', 'ÜFE ve TÜFE oranı geçersiz.')
+}
+
+/**
+ * Devam eden öğrencinin yeni yıl ücret tavanı (DOM-FIN-005, ÖÖKY md. 53/1):
+ * `baz × (1 + ((ÜFE + TÜFE) / 2 + ek puan) / 100)`. Tavan aşılmasın diye aşağı yuvarlanır.
+ * Hesap kuruş tamsayısıyla yapılır; ara sonuç güvenli aralığı aşarsa reddedilir.
+ */
+export function tuitionIncreaseCeiling(
+  baseCents: number,
+  rates: PriceIndexRates,
+  extraBasisPoints = TUITION_INCREASE_EXTRA_BASIS_POINTS,
+): number {
+  requireMoney(baseCents)
+  requireRate(rates.ppiBasisPoints)
+  requireRate(rates.cpiBasisPoints)
+  requireRate(extraBasisPoints)
+  const factor = 20_000 + rates.ppiBasisPoints + rates.cpiBasisPoints + 2 * extraBasisPoints
+  const product = baseCents * factor
+  if (!Number.isSafeInteger(product))
+    throw new DomainError('tuition_base_invalid', 'Ücret tutarı geçersiz.')
+  return Math.floor(product / 20_000)
+}
+
+/**
+ * İndirim koşulu kalkan öğrencinin sonraki yıl ücreti (DOM-FIN-023, ÖÖKY md. 53/1 son cümle):
+ * kayıt yılındaki indirimsiz ücrete her öğrenim yılı için `DOM-FIN-005` oranı sırayla uygulanır.
+ * `yearlyRates` kayıt yılından sonraki yılların oranlarıdır, eskiden yeniye.
+ */
+export function tuitionAfterDiscountLoss(
+  undiscountedCents: number,
+  yearlyRates: readonly PriceIndexRates[],
+  extraBasisPoints = TUITION_INCREASE_EXTRA_BASIS_POINTS,
+): number {
+  return yearlyRates.reduce(
+    (cents, rates) => tuitionIncreaseCeiling(cents, rates, extraBasisPoints),
+    undiscountedCents,
+  )
+}
+
+/**
+ * Ücretsiz okutulacak öğrenci sayısı (DOM-FIN-026, 5580 md. 13/3): öğrenci sayısının oranı; kesirli
+ * sonuç 0,5 ve üstündeyse yukarı yuvarlanır.
+ */
+export function freeQuotaCount(
+  studentCount: number,
+  basisPoints = FREE_QUOTA_BASIS_POINTS,
+): number {
+  if (!Number.isSafeInteger(studentCount) || studentCount < 0)
+    throw new DomainError('free_quota_input_invalid', 'Öğrenci sayısı geçersiz.')
+  requireRate(basisPoints)
+  return Math.floor((studentCount * basisPoints + 5_000) / 10_000)
+}

@@ -64,8 +64,12 @@ export type Timestamps = { createdAt?: string; updatedAt?: string }
 export type PlatformStatePatches<S extends Record<SeedCollections, unknown>> = {
   // Not girişinin alanları; örnek veri ve eski kayıtlar bunları taşımaz (lib/grades.ts).
   grades: (Item<S, 'grades'> & Partial<OfficialGradeFields>)[]
-  // Düzeltme geçmişi; ilk kez alınan yoklama ve örnek veri taşımaz (DOM-AKD-035).
-  attendance: (Item<S, 'attendance'> & { corrections?: AttendanceCorrection[] })[]
+  // Düzeltme geçmişi; ilk kez alınan yoklama ve örnek veri taşımaz (DOM-AKD-035). `lateMinutes`
+  // yalnız `late` durumunda ve isteğe bağlıdır (DOM-AKD-036).
+  attendance: (Item<S, 'attendance'> & {
+    corrections?: AttendanceCorrection[]
+    lateMinutes?: number
+  })[]
   // İş akışıyla eklenen dersin adı ders listesinden okunur; listede yoksa boş kalır. Eski
   // kayıtlarda ders adı `subject` alanındadır.
   schedule: (Patch<Item<S, 'schedule'>, { title?: string; subject?: string }> &

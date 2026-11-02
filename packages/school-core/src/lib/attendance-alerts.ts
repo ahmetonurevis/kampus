@@ -11,6 +11,9 @@ import { dayKey } from './format.ts'
  * - Öğrenci "gelmedi" (`absent`) durumuna geçtiyse ve yoklamanın günü bugünse `absence_recorded`:
  *   yeni kayıtta ya da önceki durumdan farklıysa. Aynı durumu yeniden kaydetmek bildirim üretmez;
  *   geçmiş güne ilk kez yazılan "gelmedi" "aynı gün" bildirimi değildir, üretmez.
+ * - Geç gelme (`late`) devamsızlık değildir (DOM-AKD-036): "gelmedi" bildirimi üretmez; geç kalma
+ *   dakikasının değişmesi de bildirim üretmez (karar yalnız durumdan verilir). Önceki "gelmedi"
+ *   "geç geldi"ye düzeltilirse düzeltme bildirimi gider (aşağıdaki kural).
  * - "Gelmedi"den başka duruma düzeltme `absence_corrected` üretir; önceki bildirim geri
  *   çekilmez, düzeltme ayrı bildirimle belirtilir. Düzeltmenin gerçekten bir "gelmedi"
  *   bildirimine karşılık geldiğini API denetler (`origin`).

@@ -176,6 +176,13 @@
       "when": 1793583414491,
       "tag": "0024_create_privacy_consents",
       "breakpoints": true
+    },
+    {
+      "idx": 25,
+      "version": "7",
+      "when": 1793586167423,
+      "tag": "0025_index_notifications",
+      "breakpoints": true
     }
   ]
 }

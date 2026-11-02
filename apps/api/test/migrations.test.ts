@@ -687,6 +687,27 @@ describe('0013: beceri görevi tabloları', () => {
     }
   })
 
+  test('0025: bildirim ifade indeksi kısmi ve sorgunun ifadesiyle kurulur (IST-065)', async () => {
+    const client = newPGlite()
+    try {
+      const fresh = drizzle({ client, schema })
+      await migrate(fresh, { migrationsFolder: MIGRATIONS_FOLDER })
+      const { rows } = (await fresh.execute(
+        sql`select indexdef from pg_indexes where indexname = 'records_notifications_idx'`,
+      )) as unknown as { rows: { indexdef: string }[] }
+      assert.equal(rows.length, 1)
+      const definition = rows[0]!.indexdef
+      assert.match(
+        definition,
+        /\(institution_id, \(\(data ->> 'studentId'::text\)\), "position", id\)/,
+      )
+      assert.match(definition, /collection = 'notifications'::text/)
+      assert.match(definition, /archived_at IS NULL/)
+    } finally {
+      await client.close()
+    }
+  })
+
   test('migration ikinci kez uygulanınca hiçbir adım yeniden çalışmaz', async () => {
     const client = newPGlite()
     try {
@@ -703,7 +724,7 @@ describe('0013: beceri görevi tabloları', () => {
         await readFile(path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'),
       )
       assert.equal(first, journal.entries.length)
-      assert.equal(journal.entries.at(-1)?.tag, '0024_create_privacy_consents')
+      assert.equal(journal.entries.at(-1)?.tag, '0025_index_notifications')
       await migrate(fresh, { migrationsFolder: MIGRATIONS_FOLDER })
       assert.equal(await count(), first)
     } finally {

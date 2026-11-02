@@ -123,7 +123,7 @@ describe('bildirim merkezi kancaları', () => {
   })
 
   test('okunmamış sayısı dakikada bir sorgulanmaz: yedek aralık en az 5 dk, odak dönüşü bayat sayıyı tazeler', () => {
-    // Sayım indekssiz tarar (TODO(F6-bildirim-indeksi)); sık aralık büyük kurumda yük olur.
+    // Sayım indeksli olsa da sık aralık, açık ekran sayısıyla çarpılan yük olur.
     assert.ok(UNREAD_NOTIFICATIONS_REFRESH_MS >= 5 * 60_000)
     assert.ok(UNREAD_NOTIFICATIONS_REFRESH_MS > DEFAULT_STALE_TIME_MS)
     const queries = createKampusQueryClient().getDefaultOptions().queries

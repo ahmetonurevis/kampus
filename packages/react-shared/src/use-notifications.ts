@@ -34,8 +34,8 @@ export type NotificationKind = NotificationView['kind']
 /** Bir sayfadaki bildirim sayısı (API `limit` ≤ 100); daha eskiler istek üzerine gelir. */
 export const NOTIFICATION_PAGE_SIZE = 25
 /**
- * Okunmamış sayısının açık ekrandaki yedek tazeleme aralığı (5 dk). Sayım ifade indeksi gelene
- * kadar kurumun bildirim satırlarını tarar (API `TODO(F6-bildirim-indeksi)`); yüzlerce açık
+ * Okunmamış sayısının açık ekrandaki yedek tazeleme aralığı (5 dk). Sayım ve liste
+ * `records_notifications_idx` indeksinden gelir, yine de yüzlerce açık
  * ekranın dakikada bir sorgusu yerine sayı, sekme odağa döndüğünde bayatsa
  * (`DEFAULT_STALE_TIME_MS`) TanStack'in odak tazelemesiyle ve okundu işaretinde yenilenir. Anlık
  * bildirim (push) kapsam dışıdır.

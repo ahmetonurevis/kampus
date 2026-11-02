@@ -19,6 +19,7 @@ import {
   type UpdateHomeworkBody,
 } from '@kampus/react-shared/homework.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
+import type { FileUploadItem } from '../../components/file-upload-model.ts'
 import { istanbulToIso, isoToIstanbul } from '../../lib/istanbul-time.ts'
 
 export { HOMEWORK_FEEDBACK_MAX_LENGTH, SUBMISSION_FILE_LIMIT, SUBMISSION_NOTE_MAX_LENGTH }
@@ -238,7 +239,7 @@ export function pickSubject(current: string, options: readonly Option[]): string
  * dosyanın yerel kimliğidir (ad, boyut, değişiklik zamanı); aynı dosyanın yeniden seçilmesini
  * yüklemeden önce yakalar (her yükleme farklı `id` üretir).
  */
-export type SubmissionFile = { id: string; name: string; key?: string }
+export type SubmissionFile = FileUploadItem
 
 export const submissionFormSchema = z
   .object({
@@ -250,7 +251,13 @@ export const submissionFormSchema = z
         `En fazla ${SUBMISSION_NOTE_MAX_LENGTH} karakter yazabilirsiniz.`,
       ),
     files: z
-      .array(z.object({ id: z.string().min(1), name: z.string(), key: z.string().optional() }))
+      .array(
+        z.object({
+          id: z.string().min(1),
+          name: z.string(),
+          key: z.string().optional(),
+        }) satisfies z.ZodType<FileUploadItem>,
+      )
       .max(SUBMISSION_FILE_LIMIT, `En fazla ${SUBMISSION_FILE_LIMIT} dosya ekleyebilirsiniz.`),
   })
   .refine((value) => value.note.length > 0 || value.files.length > 0, {

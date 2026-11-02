@@ -1,8 +1,7 @@
 // Dosya yükleme alanının saf mantığı (`FileUploadField`; OG-224, ADR 0003, DOM-KYN-004): amaçtan
 // `accept`, seçimin sığdırılması, sıralı yükleme kuyruğu ve belirsiz hatada yeniden deneme kuyruğu.
 // Çizimden ayrıdır; `node --test` ile sınanır.
-import type { ApiError } from '@kampus/api-client/errors.ts'
-import { keepsIdempotencyKey } from '@kampus/react-shared/commands.ts'
+import { keepsIdempotencyKey, type CommandOutcome } from '@kampus/react-shared/commands.ts'
 import { fileIdentity, type UploadedFile } from '@kampus/react-shared/use-file-upload.ts'
 import {
   FILE_PURPOSES,
@@ -65,18 +64,21 @@ export type UploadAttempt =
   /** Önceki gönderim sürüyor; istek atılmadı. */
   | { kind: 'busy' }
 
-/** `useFileUpload().upload` sonucu (yapısal; kanca tipine bağlanmaz). */
-export type UploadOutcome =
-  | { ok: false; message: string }
-  | { status: 'success'; data: { data: UploadedFile } }
-  | { status: 'failed'; error: ApiError }
-  | { status: 'busy' }
+/** `useFileUpload().upload` sonucu: amaç kuralına uymayan dosya ya da ortak komut sonucu. */
+export type UploadOutcome = { ok: false; message: string } | CommandOutcome<{ data: UploadedFile }>
 
 export function attemptFrom(outcome: UploadOutcome): UploadAttempt {
   if ('ok' in outcome) return { kind: 'rejected', message: outcome.message }
-  if (outcome.status === 'success') return { kind: 'uploaded', file: outcome.data.data }
-  if (outcome.status === 'busy') return { kind: 'busy' }
-  return { kind: 'failed', retryable: keepsIdempotencyKey(outcome.error) }
+  switch (outcome.status) {
+    case 'success':
+      return { kind: 'uploaded', file: outcome.data.data }
+    case 'busy':
+      return { kind: 'busy' }
+    case 'failed':
+      return { kind: 'failed', retryable: keepsIdempotencyKey(outcome.error) }
+    default:
+      return outcome satisfies never
+  }
 }
 
 export type UploadQueueInput = {

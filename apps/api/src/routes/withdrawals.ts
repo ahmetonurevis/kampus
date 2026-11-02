@@ -39,6 +39,10 @@ const breakdownSchema = z.object({
   attendedUnits: z.number().int(),
   totalUnits: z.number().int(),
   publicSchoolExemption: z.boolean(),
+  scholarshipExempt: z
+    .boolean()
+    .optional()
+    .describe('Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025)'),
   deductionBasisPoints: z.number().int().describe('Kesinti oranı, on binde birlik'),
   baseCents: z.number().int().describe('Hesap tabanı: sözleşmenin net ücreti (kuruş)'),
   deductionCents: z.number().int(),

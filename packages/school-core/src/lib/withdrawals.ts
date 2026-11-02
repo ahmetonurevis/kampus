@@ -108,6 +108,8 @@ export interface WithdrawalBreakdown {
   attendedUnits: number
   totalUnits: number
   publicSchoolExemption: boolean
+  /** Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025). Eski kayıtta yoktur. */
+  scholarshipExempt?: boolean
   deductionBasisPoints: number
   baseCents: number
   deductionCents: number
@@ -220,10 +222,13 @@ export function quoteWithdrawal(
     ? 0
     : Math.floor((baseCents * REFUND_DEDUCTION_BASIS_POINTS) / BASIS)
   const usageCents = started ? share(baseCents) : 0
-  const entitledCents = Math.min(baseCents, deductionCents + usageCents)
   const paidCents = invoices
     .filter(isTuition)
     .reduce((sum, invoice) => sum + paidOf(invoice, context.allocated), 0)
+  const scholarshipExempt = contract.scholarship !== undefined
+  const computedCents = Math.min(baseCents, deductionCents + usageCents)
+  // Burs öğrenim ücretini kapsar: ek hizmetin kullanılan payı bursludan da istenir.
+  const entitledCents = scholarshipExempt ? Math.min(computedCents, paidCents) : computedCents
 
   const extras = invoices
     .filter((invoice) => !isTuition(invoice))
@@ -251,6 +256,7 @@ export function quoteWithdrawal(
       attendedUnits: data.attendedUnits,
       totalUnits: data.totalUnits,
       publicSchoolExemption: data.publicSchoolExemption,
+      scholarshipExempt,
       deductionBasisPoints: REFUND_DEDUCTION_BASIS_POINTS,
       baseCents,
       deductionCents,

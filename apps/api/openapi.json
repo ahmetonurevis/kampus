@@ -51613,6 +51613,10 @@
                             "publicSchoolExemption": {
                               "type": "boolean"
                             },
+                            "scholarshipExempt": {
+                              "description": "Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025)",
+                              "type": "boolean"
+                            },
                             "deductionBasisPoints": {
                               "type": "integer",
                               "minimum": -9007199254740991,
@@ -51994,6 +51998,10 @@
                               "maximum": 9007199254740991
                             },
                             "publicSchoolExemption": {
+                              "type": "boolean"
+                            },
+                            "scholarshipExempt": {
+                              "description": "Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025)",
                               "type": "boolean"
                             },
                             "deductionBasisPoints": {
@@ -52393,6 +52401,10 @@
                               "publicSchoolExemption": {
                                 "type": "boolean"
                               },
+                              "scholarshipExempt": {
+                                "description": "Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025)",
+                                "type": "boolean"
+                              },
                               "deductionBasisPoints": {
                                 "type": "integer",
                                 "minimum": -9007199254740991,
@@ -52763,6 +52775,10 @@
                               "maximum": 9007199254740991
                             },
                             "publicSchoolExemption": {
+                              "type": "boolean"
+                            },
+                            "scholarshipExempt": {
+                              "description": "Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025)",
                               "type": "boolean"
                             },
                             "deductionBasisPoints": {
@@ -53180,6 +53196,10 @@
                               "maximum": 9007199254740991
                             },
                             "publicSchoolExemption": {
+                              "type": "boolean"
+                            },
+                            "scholarshipExempt": {
+                              "description": "Burslu ayrılışı: öğrenim için ödenenden fazlası istenmez (DOM-FIN-025)",
                               "type": "boolean"
                             },
                             "deductionBasisPoints": {

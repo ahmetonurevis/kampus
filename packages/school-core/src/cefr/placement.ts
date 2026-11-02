@@ -10,6 +10,13 @@ import {
   type PrimarySkill,
 } from '../content/taxonomy.ts'
 import {
+  answersSchema,
+  assertResponsesFit,
+  scoreAttempt,
+  type ScoringItem,
+} from '../skills/scoring.ts'
+import { rubricScore, rubricScoreInputSchema, type RubricVersionData } from '../skills/rubric.ts'
+import {
   EVIDENCE_WINDOW_DAYS,
   evidenceSnapshotOf,
   suggestCefrLevels,
@@ -492,4 +499,254 @@ export function planPlacementDecision(input: {
     snapshot,
     differsFromSuggestion: overall.status !== 'suggested' || overall.level !== data.level,
   }
+}
+
+// --- Bölüm girişi ve bitiş ----------------------------------------------------------------
+
+/** Otomatik puanlanan bölümler: cevaplar formun o bölümdeki sorularıyla puanlanır. */
+export const PLACEMENT_ANSWER_SECTIONS = [
+  'language_use',
+  'reading',
+  'listening',
+] as const satisfies readonly PlacementSection[]
+/** Rubrikle puanlanan bölümler: koordinatör ya da öğretmen kriter bantlarını girer. */
+export const PLACEMENT_RUBRIC_SECTIONS = [
+  'writing',
+  'speaking',
+] as const satisfies readonly PlacementSection[]
+
+const rowVersion = z.number().int().min(1).max(2_147_483_647)
+const instant = z.iso.datetime({ error: 'Geçerli bir tarih ve saat girin.' })
+const rubricCriteria = rubricScoreInputSchema.shape.criteria
+
+/**
+ * Bölüm girişi gövdesi (DOM-DIL-010, IST-058). `version` oturumun satır sürümüdür (iyimser kilit).
+ * Otomatik bölüm cevapları taşır; puan sunucuda formun anahtarıyla hesaplanır, istemcinin puanı
+ * alınmaz. Rubrikli bölüm rubrik sürümünü, üretim görevinin hedef seviyesini ve kriter bantlarını
+ * taşır; toplam sunucuda hesaplanır.
+ */
+export const placementScoreInputSchema = z.discriminatedUnion('section', [
+  z.strictObject({
+    version: rowVersion,
+    section: z.enum(PLACEMENT_ANSWER_SECTIONS),
+    // kvkk: Ç (kursiyerin ölçme cevapları; loglanmaz)
+    answers: answersSchema,
+  }),
+  z.strictObject({
+    version: rowVersion,
+    section: z.enum(PLACEMENT_RUBRIC_SECTIONS),
+    rubricVersionId: identifier,
+    targetLevel: cefrLevel,
+    // kvkk: Ç (kursiyerin üretim değerlendirmesi; loglanmaz)
+    criteria: rubricCriteria,
+  }),
+])
+export type PlacementScoreInput = z.input<typeof placementScoreInputSchema>
+
+/**
+ * Oturumda saklanan bölüm girişi (`placement_sessions.section_entries`). Puan saklanmaz (ADR 0004
+ * karar 5): otomatik bölümde cevaplar, rubrikli bölümde bantlar durur; sonuç her okumada formun
+ * anahtarı ve rubrik sürümüyle hesaplanır (`placementSectionRow`).
+ */
+export const placementSectionEntrySchema = z.discriminatedUnion('mode', [
+  z.object({
+    mode: z.literal('auto'),
+    section: z.enum(PLACEMENT_ANSWER_SECTIONS),
+    // kvkk: Ç
+    answers: answersSchema,
+    // kvkk: K
+    enteredByUserId: identifier,
+    enteredAt: instant,
+  }),
+  z.object({
+    mode: z.literal('rubric'),
+    section: z.enum(PLACEMENT_RUBRIC_SECTIONS),
+    rubricVersionId: identifier,
+    targetLevel: cefrLevel,
+    // kvkk: Ç
+    criteria: rubricCriteria,
+    // kvkk: K
+    enteredByUserId: identifier,
+    enteredAt: instant,
+  }),
+])
+export type PlacementSectionEntry = z.output<typeof placementSectionEntrySchema>
+
+/**
+ * Bölümün puanlama bağlamı (servis yükler): otomatik bölümde formun o bölümdeki maddeleri ve
+ * bölümün hedef seviyesi, rubrikli bölümde girişin rubrik sürümü.
+ */
+export type PlacementSectionScoring =
+  | { mode: 'auto'; items: readonly ScoringItem[]; targetLevel: CefrLevel | null }
+  | { mode: 'rubric'; rubric: Pick<RubricVersionData, 'criteria'> }
+
+/**
+ * Otomatik bölümün hedef seviyesi: bölüm sorularının ortak CEFR seviyesi. Sorular farklı
+ * seviyelerdeyse ya da seviyesizse bölüm kanıt olamaz (`no_target_level`).
+ */
+// TODO(cefr-tespit-bolum-seviyesi): Çok seviyeli tespit formunda bölümün hangi seviyeyi
+// gösterdiği (soru seviyesine göre ayrı tally) domain'de tanımlı değil; en muhafazakâr yorumla
+// karışık seviyeli bölüm seviye kanıtı sayılmaz.
+export function placementSectionLevel(levels: readonly (CefrLevel | null)[]): CefrLevel | null {
+  const distinct = new Set(levels)
+  const [only] = distinct
+  return distinct.size === 1 && only !== undefined ? only : null
+}
+
+function assertDecider(decider: PlacementDecider, message: string): void {
+  if (!(PLACEMENT_DECIDER_ROLES as readonly Role[]).includes(decider.role)) {
+    throw new DomainError('permission_denied', message, { kind: 'forbidden' })
+  }
+}
+
+function assertCriteriaFit(
+  rubric: Pick<RubricVersionData, 'criteria'>,
+  criteria: readonly { criterionId: string }[],
+): void {
+  const known = new Set(rubric.criteria.map((c) => c.id))
+  const seen = new Set<string>()
+  criteria.forEach((entry, index) => {
+    if (!known.has(entry.criterionId) || seen.has(entry.criterionId)) {
+      throw new DomainError(
+        'rubric_criterion_invalid',
+        'Kriter bu rubrikte yok veya tekrar ediyor.',
+        {
+          path: ['criteria', String(index), 'criterionId'],
+        },
+      )
+    }
+    seen.add(entry.criterionId)
+  })
+}
+
+/**
+ * Bölüm girişi (DOM-DIL-010, IST-058): dil kullanımı, okuma ve dinleme cevaplarla, yazma ve
+ * konuşma rubrikle; girişi öğretmen ya da akademik koordinatör yapar. Her bölüm bir kez girilir;
+ * otomatik bölüm yalnız süren oturuma, rubrikli bölüm yerleştirme kararına kadar girilir (yazma ve
+ * konuşma oturum bittikten sonra puanlanabilir). Cevaplar formun o bölümdeki sorularına uymalıdır.
+ */
+export function planPlacementSectionEntry(input: {
+  institutionType: InstitutionType
+  session: PlacementSessionRow
+  entries: readonly PlacementSectionEntry[]
+  /** Oturuma yerleştirme kararı verildi mi. */
+  decided: boolean
+  scorer: PlacementDecider
+  scoring: PlacementSectionScoring
+  input: unknown
+  now: Instant
+}): PlacementSectionEntry {
+  assertLanguageSchool(input.institutionType)
+  assertDecider(input.scorer, 'Tespit bölümünü öğretmen veya akademik koordinatör puanlar.')
+  const data = placementScoreInputSchema.parse(input.input)
+  if (input.decided) {
+    throw new DomainError(
+      'placement_already_decided',
+      'Bu tespit için yerleştirme kararı verildi; bölüm puanı değişmez.',
+      { kind: 'conflict' },
+    )
+  }
+  if (input.entries.some((entry) => entry.section === data.section)) {
+    throw new DomainError('placement_section_scored', 'Bu bölüm daha önce puanlandı.', {
+      kind: 'conflict',
+      path: ['section'],
+    })
+  }
+  const enteredAt = toIso(toMs(input.now))
+  const enteredByUserId = input.scorer.userId
+  if ('answers' in data) {
+    if (input.session.completedAt !== null) {
+      throw new DomainError(
+        'placement_completed',
+        'Seviye tespiti bitti; otomatik bölüm cevapları eklenemez.',
+        { kind: 'conflict' },
+      )
+    }
+    if (input.scoring.mode !== 'auto' || input.scoring.items.length === 0) {
+      throw new DomainError('placement_section_empty', 'Tespit formunda bu bölüm yok.', {
+        path: ['section'],
+      })
+    }
+    assertResponsesFit(input.scoring.items, data.answers)
+    return {
+      mode: 'auto',
+      section: data.section,
+      answers: data.answers,
+      enteredByUserId,
+      enteredAt,
+    }
+  }
+  if (input.scoring.mode !== 'rubric') {
+    throw new DomainError(
+      'placement_section_mismatch',
+      'Bölümün puanlama türü sonuçla uyuşmuyor.',
+      {
+        path: ['section'],
+      },
+    )
+  }
+  assertCriteriaFit(input.scoring.rubric, data.criteria)
+  rubricScore(input.scoring.rubric, data.criteria)
+  return {
+    mode: 'rubric',
+    section: data.section,
+    rubricVersionId: data.rubricVersionId,
+    targetLevel: data.targetLevel,
+    criteria: data.criteria,
+    enteredByUserId,
+    enteredAt,
+  }
+}
+
+/**
+ * Girişin bölüm sonucu satırı (`PlacementSectionRow`): otomatik bölümde `scoreAttempt`, rubrikli
+ * bölümde `rubricScore`; her okumada hesaplanır. Sonuç kimliği oturum ve bölümdür.
+ */
+export function placementSectionRow(
+  sessionId: string,
+  entry: PlacementSectionEntry,
+  scoring: PlacementSectionScoring,
+): PlacementSectionRow {
+  const resultId = `${sessionId}:${entry.section}`
+  if (entry.mode === 'auto') {
+    if (scoring.mode !== 'auto') throw new Error('placement section scoring mismatch')
+    const score = scoreAttempt(scoring.items, entry.answers)
+    return {
+      section: entry.section,
+      resultId,
+      targetLevel: scoring.targetLevel,
+      result: {
+        mode: 'auto',
+        score: { ratio: score.ratio, percent: score.percent, items: score.items },
+      },
+    }
+  }
+  if (scoring.mode !== 'rubric') throw new Error('placement section scoring mismatch')
+  const score = rubricScore(scoring.rubric, entry.criteria)
+  return {
+    section: entry.section,
+    resultId,
+    targetLevel: entry.targetLevel,
+    result: { mode: 'rubric', score: { percent: score.percent, criteria: score.criteria } },
+  }
+}
+
+/**
+ * Oturumu bitirir (DOM-DIL-010, 012): bitiş anı sunucu saatidir ve 90 günlük geçerlilik ondan
+ * sayılır. Yalnız süren oturum biter; bitiren öğretmen ya da akademik koordinatördür.
+ */
+export function planPlacementCompletion(input: {
+  institutionType: InstitutionType
+  session: PlacementSessionRow
+  decider: PlacementDecider
+  now: Instant
+}): { completedAt: string } {
+  assertLanguageSchool(input.institutionType)
+  assertDecider(input.decider, 'Seviye tespitini öğretmen veya akademik koordinatör bitirir.')
+  if (input.session.completedAt !== null) {
+    throw new DomainError('placement_completed', 'Seviye tespiti zaten bitti.', {
+      kind: 'conflict',
+    })
+  }
+  return { completedAt: toIso(toMs(input.now)) }
 }

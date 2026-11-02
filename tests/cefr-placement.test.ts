@@ -1,6 +1,7 @@
 import test, { describe } from 'node:test'
 import assert from 'node:assert/strict'
 import { bandMeaning } from '../packages/school-core/src/skills/rubric.ts'
+import type { ScoringItem } from '../packages/school-core/src/skills/scoring.ts'
 import type { PrimarySkill } from '../packages/school-core/src/content/taxonomy.ts'
 import {
   PLACEMENT_ATTEMPTS_PER_TERM,
@@ -11,9 +12,18 @@ import {
   placementRequired,
   placementSectionResults,
   placementSummary,
+  PLACEMENT_ANSWER_SECTIONS,
+  PLACEMENT_RUBRIC_SECTIONS,
+  PLACEMENT_SECTIONS,
+  placementSectionLevel,
+  placementSectionRow,
   placementValidity,
+  planPlacementCompletion,
   planPlacementDecision,
+  planPlacementSectionEntry,
   planPlacementSession,
+  type PlacementSectionEntry,
+  type PlacementSectionScoring,
   type PlacementSessionRow,
   type PlacementSectionRow,
 } from '../packages/school-core/src/cefr/placement.ts'
@@ -602,6 +612,175 @@ describe('yerleştirme kararı (DOM-DIL-010, 011, 012)', () => {
     })
     assert.deepEqual(plan.snapshot.overall, { status: 'suggested', level: 'B1' })
     assert.equal(plan.differsFromSuggestion, false)
+  })
+})
+
+describe('bölüm girişi ve bitiş (DOM-DIL-010, IST-058)', () => {
+  const mc = (id: string, correctOptionId: string): ScoringItem => ({
+    questionVersionId: id,
+    points: 1,
+    question: {
+      questionType: 'multiple_choice',
+      stem: `Soru ${id}`,
+      options: [
+        { id: 'a', text: 'A' },
+        { id: 'b', text: 'B' },
+      ],
+    },
+    answerKey: { questionType: 'multiple_choice', correctOptionId, explanation: null },
+    locale: 'en',
+  })
+  const readingItems = [mc('test-q1', 'a'), mc('test-q2', 'b')]
+  const autoScoring: PlacementSectionScoring = {
+    mode: 'auto',
+    items: readingItems,
+    targetLevel: 'B1',
+  }
+  const rubricScoring: PlacementSectionScoring = {
+    mode: 'rubric',
+    rubric: {
+      criteria: [
+        { id: 'test-c1', title: 'Görev', weight: 1, bands: [] },
+        { id: 'test-c2', title: 'Dil', weight: 1, bands: [] },
+      ] as never,
+    },
+  }
+  const choice = (optionId: string) => ({ questionType: 'multiple_choice', optionId })
+  const enter = (over: Partial<Parameters<typeof planPlacementSectionEntry>[0]> = {}) =>
+    planPlacementSectionEntry({
+      institutionType: 'language_school',
+      session: session({ completedAt: null }),
+      entries: [],
+      decided: false,
+      scorer: { userId: 'test-u-teacher', role: 'ogretmen' },
+      scoring: autoScoring,
+      input: {
+        version: 1,
+        section: 'reading',
+        answers: { 'test-q1': choice('a'), 'test-q2': choice('a') },
+      },
+      now,
+      ...over,
+    })
+  const writing = {
+    version: 1,
+    section: 'writing',
+    rubricVersionId: 'test-rv1',
+    targetLevel: 'B1',
+    criteria: [
+      { criterionId: 'test-c1', band: 3, comment: null },
+      { criterionId: 'test-c2', band: 4, comment: null },
+    ],
+  }
+
+  test('DOM-DIL-010 bölüm türleri sabittir: üç otomatik, iki rubrikli', () => {
+    for (const section of PLACEMENT_ANSWER_SECTIONS)
+      assert.equal(PLACEMENT_SECTIONS[section].scoring, 'auto')
+    for (const section of PLACEMENT_RUBRIC_SECTIONS)
+      assert.equal(PLACEMENT_SECTIONS[section].scoring, 'rubric')
+  })
+
+  test('DOM-DIL-010 otomatik bölüm cevapları saklar; puan anahtardan hesaplanır', () => {
+    const entry = enter()
+    assert.equal(entry.mode, 'auto')
+    assert.equal(entry.enteredAt, now)
+    assert.equal(entry.enteredByUserId, 'test-u-teacher')
+    const row = placementSectionRow('test-ps1', entry, autoScoring)
+    assert.equal(row.resultId, 'test-ps1:reading')
+    assert.equal(row.targetLevel, 'B1')
+    assert.equal(row.result?.mode, 'auto')
+    assert.equal(row.result?.score.percent, 50)
+  })
+
+  test('DOM-DIL-010 rubrikli bölüm bantları saklar; toplam rubrikten hesaplanır', () => {
+    const entry = enter({ scoring: rubricScoring, input: writing })
+    assert.equal(entry.mode, 'rubric')
+    const row = placementSectionRow('test-ps1', entry, rubricScoring)
+    assert.equal(row.targetLevel, 'B1')
+    assert.equal(row.result?.score.percent, 70)
+    assert.equal(placementSectionResults([row])[3]?.status, 'scored')
+  })
+
+  test('DOM-DIL-010 yazma ve konuşma oturum bittikten sonra da puanlanır; cevap girilmez', () => {
+    const done = session()
+    assert.equal(enter({ session: done, scoring: rubricScoring, input: writing }).mode, 'rubric')
+    assert.throws(() => enter({ session: done }), isDomainError('placement_completed', 'conflict'))
+  })
+
+  test('DOM-DIL-010 bölüm bir kez girilir; karar verilmiş oturumda giriş yok', () => {
+    const entries: PlacementSectionEntry[] = [enter()]
+    assert.throws(() => enter({ entries }), isDomainError('placement_section_scored', 'conflict'))
+    assert.throws(
+      () => enter({ decided: true }),
+      isDomainError('placement_already_decided', 'conflict'),
+    )
+  })
+
+  test('DOM-DIL-010 girişi yalnız öğretmen veya koordinatör yapar; okulda tespit yok', () => {
+    for (const role of ['onburo', 'ogrenci', 'veli'] as const)
+      assert.throws(
+        () => enter({ scorer: { userId: 'test-u', role } }),
+        isDomainError('permission_denied', 'forbidden'),
+      )
+    assert.throws(
+      () => enter({ institutionType: 'school' }),
+      isDomainError('module_unavailable_for_type', 'not_found'),
+    )
+  })
+
+  test('DOM-DIL-010 formda olmayan bölüm, yabancı soru ve uyuşmayan kriter reddedilir', () => {
+    assert.throws(
+      () => enter({ scoring: { mode: 'auto', items: [], targetLevel: null } }),
+      isDomainError('placement_section_empty'),
+    )
+    assert.throws(() =>
+      enter({ input: { version: 1, section: 'reading', answers: { 'test-x': choice('a') } } }),
+    )
+    assert.throws(
+      () =>
+        enter({
+          scoring: rubricScoring,
+          input: { ...writing, criteria: [{ criterionId: 'test-cx', band: 3, comment: null }] },
+        }),
+      isDomainError('rubric_criterion_invalid'),
+    )
+    assert.throws(
+      () =>
+        enter({
+          scoring: rubricScoring,
+          input: { ...writing, criteria: [{ criterionId: 'test-c1', band: 3, comment: null }] },
+        }),
+      isDomainError('rubric_criterion_missing'),
+    )
+    assert.throws(() => enter({ input: { ...writing, section: 'reading' } }), ZodError)
+    assert.throws(() => enter({ input: { version: 1, section: 'reading', percent: 90 } }), ZodError)
+  })
+
+  test('DOM-DIL-010 bölümün hedef seviyesi soruların ortak seviyesidir; karışıksa yok', () => {
+    assert.equal(placementSectionLevel(['B1', 'B1']), 'B1')
+    assert.equal(placementSectionLevel(['B1', 'B2']), null)
+    assert.equal(placementSectionLevel(['B1', null]), null)
+    assert.equal(placementSectionLevel([]), null)
+  })
+
+  test('DOM-DIL-012 oturum bir kez biter; bitiş anı sunucu saatidir', () => {
+    const finish = (over: Partial<Parameters<typeof planPlacementCompletion>[0]> = {}) =>
+      planPlacementCompletion({
+        institutionType: 'language_school',
+        session: session({ completedAt: null }),
+        decider: { userId: 'test-u', role: 'yonetici' },
+        now,
+        ...over,
+      })
+    assert.deepEqual(finish(), { completedAt: now })
+    assert.throws(
+      () => finish({ session: session() }),
+      isDomainError('placement_completed', 'conflict'),
+    )
+    assert.throws(
+      () => finish({ decider: { userId: 'test-u', role: 'onburo' } }),
+      isDomainError('permission_denied', 'forbidden'),
+    )
   })
 })
 

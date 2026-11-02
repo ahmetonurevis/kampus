@@ -690,9 +690,19 @@ export type LevelDecisionRow = {
   evidenceSnapshot: EvidenceSnapshot
 }
 
-/** Profili görebilen roller (IST-060: koordinatör, öğretmen, öğrenci, veli). */
-// TODO(cefr-profil-kapsam): Öğretmenin hangi kursiyerleri gördüğü (sınıf/grup) `lib/scope.ts`
-// `scopeFor` ile serviste daraltılır; burada yalnız rol ve öğrenci/veli bağlantısı denetlenir.
+/** Profili görebilen roller (IST-060: koordinatör, öğretmen, öğrenci, veli); ön büro göremez. */
+export const CEFR_PROFILE_ROLES = [
+  'yonetici',
+  'ogretmen',
+  'ogrenci',
+  'veli',
+] as const satisfies readonly Actor['role'][]
+
+/**
+ * Profili görme kararı (IST-060): öğrenci kendisi, veli bağlı çocuğu, öğretmen ve yönetici. Öğretmen
+ * dil okulunda serviste ayrıca kursiyerin grubuna daraltılır (kendi grubu ya da akademik
+ * koordinatörü olduğu seviyenin grubu; API `services/cefr.ts`).
+ */
 export function canViewCefrProfile(actor: Actor, learnerId: string): boolean {
   switch (actor.role) {
     case 'yonetici':

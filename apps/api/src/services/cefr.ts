@@ -1,5 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
+import type { z } from 'zod'
+
 import {
   PLACEMENT_SECTIONS,
   placementEvidence,
@@ -12,6 +14,8 @@ import {
   planPlacementDecision,
   planPlacementSectionEntry,
   planPlacementSession,
+  type placementDecisionInputSchema,
+  type placementScoreInputSchema,
   type LearnerKind,
   type PlacementSection,
   type PlacementSectionRow,
@@ -503,10 +507,8 @@ async function saveOrConflict(
   if (saved === null) throw new ConflictError()
 }
 
-export type PlacementScoreBody = { version: number; section: PlacementSection } & Record<
-  string,
-  unknown
->
+/** Bölüm girişi gövdesi: core `placementScoreInputSchema` çıktısı (`version` dahil). */
+export type PlacementScoreBody = z.output<typeof placementScoreInputSchema>
 
 /**
  * Bölüm puanı girişi (DOM-DIL-010; core `planPlacementSectionEntry`): otomatik bölümde cevaplar
@@ -528,11 +530,11 @@ export function scorePlacementSection(
       plan: async (tx, session, institutionType) => {
         const decided = (await listSessionDecisions(tx, ctx.institutionId, session.id)).length > 0
         let scoring: PlacementSectionScoring
-        if (PLACEMENT_SECTIONS[body.section].scoring === 'auto') {
+        if ('answers' in body) {
           const form = await loadFormScoring(tx, ctx, session.formVersionId)
           scoring = form.auto.get(body.section) ?? { mode: 'auto', items: [], targetLevel: null }
         } else {
-          const rubric = await loadRubric(tx, ctx, String(body.rubricVersionId))
+          const rubric = await loadRubric(tx, ctx, body.rubricVersionId)
           if (rubric.status !== 'published') {
             throw mapOperationError(
               new DomainError(
@@ -602,12 +604,14 @@ export function completePlacementSession(
   )
 }
 
-export type PlacementDecisionBody = {
-  version: number
-  level: string
-  skillLevels?: { skill: string; level: string }[] | undefined
-  rationale: string
-}
+/**
+ * Karar gövdesi: core `placementDecisionInputSchema` çıktısı; oturum kimliği yoldan gelir, `version`
+ * satır sürümüdür (rota şeması `decidePlacementBodySchema`).
+ */
+export type PlacementDecisionBody = Omit<
+  z.output<typeof placementDecisionInputSchema>,
+  'sessionId'
+> & { version: number }
 
 /**
  * Yerleştirme kararı (DOM-DIL-010…012; core `planPlacementDecision`): genel ve isteğe bağlı beceri

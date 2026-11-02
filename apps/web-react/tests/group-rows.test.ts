@@ -15,6 +15,10 @@ import {
   canCreateGroup,
   groupActions,
   groupCsvRow,
+  groupCsvRows,
+  groupFilters,
+  groupFormTarget,
+  groupQuery,
   groupRow,
   groupStatusTone,
   mergeCandidates,
@@ -291,4 +295,59 @@ test('birleştirme formu hata eşlemesi: kaynak seçimi ve onay kutusu (DOM-DIL-
   )
   assert.equal(mergeFormErrorField(apiError(422, 'group_teacher_conflict')), undefined)
   assert.equal(mergeFormErrorField(apiError(404, 'not_found')), undefined)
+})
+
+test('?grup-form= adresi yazma yetkisi olmayan rolde açılmaz; yönetici ve koordinatörde açılır (DOM-YTK-027)', () => {
+  const none = new Set<string>()
+  const a1 = new Set(['A1'])
+  assert.equal(groupFormTarget('yeni', 'onburo', none), '')
+  assert.equal(groupFormTarget('g-1', 'onburo', none), '')
+  assert.equal(groupFormTarget('yeni', 'ogretmen', none), '')
+  assert.equal(groupFormTarget('yeni', 'ogrenci', none), '')
+  assert.equal(groupFormTarget('yeni', 'veli', none), '')
+  assert.equal(groupFormTarget('yeni', undefined, none), '')
+  assert.equal(groupFormTarget('yeni', 'yonetici', none), 'yeni')
+  assert.equal(groupFormTarget('g-1', 'yonetici', none), 'g-1')
+  assert.equal(groupFormTarget('yeni', 'ogretmen', a1), 'yeni')
+  assert.equal(groupFormTarget('', 'yonetici', none), '')
+})
+
+test('CSV bütün süzülmüş grupları yaş bandıyla yazar; sayfa ve sayfa boyutu süzgece girmez (IST-077)', () => {
+  const state = {
+    page: 3,
+    pageSize: 8,
+    filters: { courseId: COURSE_ID, status: 'open', baska: 'x', bos: '' },
+  }
+  assert.deepEqual(groupQuery(state), {
+    page: 3,
+    pageSize: 8,
+    courseId: COURSE_ID,
+    status: 'open',
+  })
+  assert.deepEqual(groupFilters(state.filters), { courseId: COURSE_ID, status: 'open' })
+  assert.deepEqual(groupFilters({ status: '' }), {})
+
+  // Sayfa boyutundan fazla grup: hiçbiri düşmez, sunucu sırası korunur.
+  const groups = Array.from({ length: 21 }, (_, index) =>
+    group({ id: `g-${index}`, name: `Grup ${index}`, ageBand: index % 2 ? 'child' : 'adult' }),
+  )
+  const rows = groupCsvRows(groups, names)
+  assert.equal(rows.length, 21)
+  assert.deepEqual(
+    rows.map((row) => row.name),
+    groups.map((item) => item.name),
+  )
+  assert.equal(rows[0]?.ageBand, 'Yetişkin (18+)')
+  assert.deepEqual(Object.keys(rows[0] ?? {}), [
+    'name',
+    'course',
+    'level',
+    'status',
+    'ageBand',
+    'schedule',
+    'period',
+    'teacher',
+    'room',
+    'occupancy',
+  ])
 })

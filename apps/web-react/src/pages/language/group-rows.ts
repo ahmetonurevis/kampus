@@ -9,7 +9,11 @@ import {
   WEEKDAY_LABELS,
   type GroupStatus,
 } from '@kampus/school-core/lib/language-groups.ts'
-import type { GroupSlot, LanguageGroup } from '@kampus/react-shared/language-groups.ts'
+import type {
+  GroupListQuery,
+  GroupSlot,
+  LanguageGroup,
+} from '@kampus/react-shared/language-groups.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 import type { FilterField } from '@/lib/list-query.ts'
 import type { ListColumn } from '@/lib/list-view.ts'
@@ -116,6 +120,29 @@ export function groupRow(
   }
 }
 
+const text = (value: unknown) => (typeof value === 'string' && value !== '' ? value : undefined)
+
+/** Liste durumundan sunucu süzgeçleri (sayfasız): CSV bütün süzülmüş sonucu bununla çeker. */
+export function groupFilters(
+  filters: Readonly<Record<string, unknown>>,
+): Omit<GroupListQuery, 'page' | 'pageSize'> {
+  const courseId = text(filters.courseId)
+  const status = text(filters.status) as GroupListQuery['status']
+  return {
+    ...(courseId ? { courseId } : {}),
+    ...(status ? { status } : {}),
+  }
+}
+
+/** Liste durumundan sayfalı sunucu sorgusu (sayfa, kur ve durum süzgeci). */
+export function groupQuery(state: {
+  page: number
+  pageSize: number
+  filters: Readonly<Record<string, unknown>>
+}): GroupListQuery {
+  return { page: state.page, pageSize: state.pageSize, ...groupFilters(state.filters) }
+}
+
 /** Sunucu süzgeci: durum (verilmezse iptaller dışlanır). */
 export const GROUP_STATUS_FILTER: FilterField = {
   key: 'status',
@@ -142,6 +169,15 @@ export function groupCsvRow(row: GroupRow): Record<string, string> {
   )
 }
 
+/** CSV satırları: verilen bütün grup (sayfa dışı kalanlar dahil), ekrandaki metinlerle aynı. */
+export function groupCsvRows(
+  groups: readonly LanguageGroup[],
+  names: TeacherNames | null,
+  selfMembershipId?: string,
+): Record<string, string>[] {
+  return groups.map((group) => groupCsvRow(groupRow(group, names, selfMembershipId)))
+}
+
 /** Grup işlemleri: yönetici ya da seviyenin koordinatörü öğretmen; kapanmış grupta işlem yok. */
 export function groupActions(
   group: Pick<LanguageGroup, 'status' | 'level'>,
@@ -161,6 +197,15 @@ export function groupActions(
 /** Yeni grup planlayabilir mi: yönetici ya da en az bir seviyenin koordinatörü. */
 export const canCreateGroup = (role: RoleKey | undefined, levels: ReadonlySet<string>) =>
   role === 'yonetici' || (role === 'ogretmen' && levels.size > 0)
+
+/** `?grup-form=` adresiyle açılan formun etkin hedefi: yazma yetkisi yoksa form açılmaz (`''`). */
+export function groupFormTarget(
+  target: string,
+  role: RoleKey | undefined,
+  levels: ReadonlySet<string>,
+): string {
+  return canCreateGroup(role, levels) ? target : ''
+}
 
 /**
  * Birleştirilebilecek kaynak gruplar (DOM-DIL-042): aynı kur ve yaş bandı, kapanmamış, hedefin

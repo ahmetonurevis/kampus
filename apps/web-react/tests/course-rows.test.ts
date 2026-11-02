@@ -2,6 +2,8 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { ApiError } from '@kampus/api-client/errors.ts'
 import type { Course } from '@kampus/react-shared/courses.ts'
+import { initialListState, listReducer } from '../src/lib/list-state.ts'
+import { listView, tableFields, tableSearchKeys } from '../src/lib/list-view.ts'
 import {
   activationBlocked,
   courseDefaults,
@@ -17,7 +19,9 @@ import {
   canCreateCourse,
   canManageLevel,
   courseActions,
+  COURSE_FILTERS,
   courseCsvRow,
+  courseFormTarget,
   courseRow,
   courseRows,
 } from '../src/pages/language/course-rows.ts'
@@ -208,4 +212,52 @@ test('DOM-DIL-006: e-Özel formu ve belgeli kurun etkinleşme engeli', () => {
     null,
   )
   assert.equal(activationBlocked(course()), null)
+})
+
+test('?kur-form= adresi yazma yetkisi olmayan rolde açılmaz; yönetici ve koordinatörde açılır (DOM-YTK-027)', () => {
+  const none = new Set<string>()
+  assert.equal(courseFormTarget('yeni', 'onburo', none), '')
+  assert.equal(courseFormTarget('k-1', 'onburo', none), '')
+  assert.equal(courseFormTarget('yeni', 'ogretmen', none), '')
+  assert.equal(courseFormTarget('yeni', 'ogrenci', none), '')
+  assert.equal(courseFormTarget('yeni', 'veli', none), '')
+  assert.equal(courseFormTarget('yeni', undefined, none), '')
+  assert.equal(courseFormTarget('yeni', 'yonetici', none), 'yeni')
+  assert.equal(courseFormTarget('k-1', 'ogretmen', new Set(['A1'])), 'k-1')
+})
+
+test('CSV bütün süzülmüş ve sıralanmış kurları içerir, tek sayfayı değil (IST-076)', () => {
+  const columns = [
+    { key: 'name', label: 'Kur' },
+    { key: 'level', label: 'Seviye' },
+    { key: 'language', label: 'Dil' },
+    { key: 'status', label: 'Durum' },
+    { key: 'hours', label: 'Ders saati' },
+  ]
+  const courses = Array.from({ length: 30 }, (_, index) =>
+    course({
+      id: `00000000-0000-4000-8000-${String(index).padStart(12, '0')}`,
+      name: `Kur ${String(index).padStart(2, '0')}`,
+      status: index % 3 === 0 ? 'active' : 'draft',
+    }),
+  )
+  const rows = courseRows(courses)
+  const config = {
+    fields: tableFields(columns, COURSE_FILTERS, []),
+    searchKeys: tableSearchKeys(columns),
+  }
+  let state = listReducer(initialListState(8), { type: 'filter', key: 'status', value: 'Taslak' })
+  state = listReducer(state, { type: 'sort', key: 'name' })
+  state = listReducer(state, { type: 'sort', key: 'name' })
+  const view = listView(rows, state, config)
+  // 20 taslak kur, sayfada 8: CSV yirmisini ve ekrandaki ters ad sırasını yazar.
+  assert.equal(view.visible.length, 8)
+  const csv = view.rows.map(courseCsvRow)
+  assert.equal(csv.length, 20)
+  assert.ok(csv.every((row) => row.status === 'Taslak'))
+  assert.deepEqual(
+    csv.map((row) => row.name),
+    [...csv.map((row) => row.name)].sort().reverse(),
+  )
+  assert.equal(csv[0]?.name, 'Kur 29')
 })

@@ -125,11 +125,20 @@ function GroupCreate(handlers: Handlers) {
   return <GroupForm {...handlers} courses={usable} />
 }
 
+const NOT_ALLOWED = 'Bu grubu düzenleme yetkiniz yok.'
+
 function GroupEdit({ groupId, ...handlers }: Handlers & { groupId: string }) {
   const item = useLanguageGroup(groupId)
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   const group = item.data?.data
   if (!group) return <SummaryLoading />
+  // Koordinatör öğretmen yalnız kendi seviyesindeki grubu düzenler (`?grup-form=<id>` adresi dahil).
+  if (handlers.levels !== null && !handlers.levels.has(group.level))
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        {NOT_ALLOWED}
+      </p>
+    )
   if (group.status === 'completed' || group.status === 'cancelled')
     return (
       <p role="status" className="text-sm text-muted-foreground">

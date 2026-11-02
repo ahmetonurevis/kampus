@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import type { GroupListQuery, LanguageGroup } from '@kampus/react-shared/language-groups.ts'
+import type { LanguageGroup } from '@kampus/react-shared/language-groups.ts'
 import { useAllCourses } from '@kampus/react-shared/use-courses.ts'
 import { useInstitutionMembersAll } from '@kampus/react-shared/use-institution-lists.ts'
 import {
@@ -24,8 +24,13 @@ import { GroupFormModal, NEW_GROUP, type TeacherOption } from './GroupFormModal.
 import { GroupSummaryPanel } from './GroupSummaryPanel.tsx'
 import {
   canCreateGroup,
+  GROUP_CSV_COLUMNS,
   GROUP_STATUS_FILTER,
   groupActions,
+  groupCsvRows,
+  groupFilters,
+  groupFormTarget,
+  groupQuery,
   groupRow,
   groupStatusTone,
   type GroupRow,
@@ -36,29 +41,6 @@ import { useLanguageAccess } from './use-language-access.ts'
 const URL_FILTERS = { courseId: 'kur', status: 'durum' }
 const MOBILE_COLUMNS = ['course', 'schedule', 'status']
 const NO_SORT: readonly string[] = []
-
-const text = (value: unknown) => (typeof value === 'string' && value !== '' ? value : undefined)
-
-/** Liste durumundan sunucu sorgusu (sayfa, kur ve durum süzgeci). */
-/** Sunucu süzgeçleri (sayfasız): CSV tüm süzülmüş sonuçları bununla çeker. */
-function groupFilters(
-  filters: Readonly<Record<string, unknown>>,
-): Omit<GroupListQuery, 'page' | 'pageSize'> {
-  const courseId = text(filters.courseId)
-  const status = text(filters.status) as GroupListQuery['status']
-  return {
-    ...(courseId ? { courseId } : {}),
-    ...(status ? { status } : {}),
-  }
-}
-
-function groupQuery(state: {
-  page: number
-  pageSize: number
-  filters: Readonly<Record<string, unknown>>
-}): GroupListQuery {
-  return { page: state.page, pageSize: state.pageSize, ...groupFilters(state.filters) }
-}
 
 /**
  * Gruplar (dil okulu; IST-077, DOM-DIL-008, -040…043): kurların tarihli açılışları, sunucu sayfalı
@@ -193,14 +175,8 @@ export function GroupsPage({ page }: { page: NavPage }) {
 
   function download() {
     const filtersOnly = groupFilters(list.state.filters)
-    void csv.download(
-      page.title,
-      columns.filter((column) => column.key !== ACTIONS_KEY),
-      async () =>
-        (await fetchAll(filtersOnly)).map((group) => {
-          const row = groupRow(group, names, membershipId)
-          return { ...row, course: `${row.course} · ${row.level}` }
-        }),
+    void csv.download(page.title, GROUP_CSV_COLUMNS, async () =>
+      groupCsvRows(await fetchAll(filtersOnly), names, membershipId),
     )
   }
 
@@ -270,7 +246,7 @@ export function GroupsPage({ page }: { page: NavPage }) {
         onMerge={setMergeTarget}
       />
       <GroupFormModal
-        target={formPanel.selectedId}
+        target={groupFormTarget(formPanel.selectedId, role, levels)}
         teacherOptions={teacherOptions}
         levels={isAdmin ? null : levels}
         onClose={formPanel.close}

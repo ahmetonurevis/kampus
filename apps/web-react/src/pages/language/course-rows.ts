@@ -146,6 +146,19 @@ export function canCreateCourse(role: RoleKey | undefined, coordinatedLevels: Re
   return role === 'yonetici' || (role === 'ogretmen' && coordinatedLevels.size > 0)
 }
 
+/**
+ * `?kur-form=` adresiyle açılan formun etkin hedefi: yazma yetkisi olmayan rolde (ön büro,
+ * koordinatör olmayan öğretmen, öğrenci, veli) form açılmaz (`''`). Yetki sunucudadır; bu yalnız
+ * arayüzün yanıltıcı form göstermesini önler.
+ */
+export function courseFormTarget(
+  target: string,
+  role: RoleKey | undefined,
+  coordinatedLevels: ReadonlySet<string>,
+): string {
+  return canCreateCourse(role, coordinatedLevels) ? target : ''
+}
+
 /** e-Özel kaydını yalnız yönetici işaretler (DOM-DIL-006). */
 export const canRecordEOzel = (role: RoleKey | undefined) => role === 'yonetici'
 

@@ -101,6 +101,13 @@ function CourseEdit({ courseId, ...handlers }: FormHandlers & { courseId: string
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   const course = item.data?.data
   if (!course) return <SummaryLoading />
+  // Koordinatör öğretmen yalnız kendi seviyesindeki kuru düzenler (`?kur-form=<id>` adresi dahil).
+  if (handlers.levels !== null && !handlers.levels.has(course.level))
+    return (
+      <p role="status" className="text-sm text-muted-foreground">
+        Bu kuru düzenleme yetkiniz yok.
+      </p>
+    )
   if (course.status === 'archived')
     return (
       <p role="status" className="text-sm text-muted-foreground">

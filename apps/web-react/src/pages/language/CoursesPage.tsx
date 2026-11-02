@@ -1,6 +1,6 @@
 import { useMemo, useRef, useState } from 'react'
 import type { Course } from '@kampus/react-shared/courses.ts'
-import { useActivateCourse, useAllCourses } from '@kampus/react-shared/use-courses.ts'
+import { useActivateCourse, useAllCourses, useCourse } from '@kampus/react-shared/use-courses.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { DataTable, type DataColumn, type DataTableHandle } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -25,12 +25,14 @@ import {
 import { CourseArchiveDialog, EOzelModal } from './CourseDialogs.tsx'
 import { CourseFormModal, NEW_COURSE } from './CourseFormModal.tsx'
 import { activationBlocked } from './course-forms.ts'
+import { RECORD_UNAVAILABLE_MESSAGE, submitWithFreshRecord } from './fresh-submit.ts'
 import {
   canCreateCourse,
   COURSE_CSV_COLUMNS,
   COURSE_FILTERS,
   courseActions,
   courseCsvRow,
+  courseFormTarget,
   courseRows,
   courseStatusTone,
   type CourseRow,
@@ -191,7 +193,7 @@ export function CoursesPage({ page }: { page: NavPage }) {
         onEOzel={setEOzelTarget}
       />
       <CourseFormModal
-        target={formPanel.selectedId}
+        target={courseFormTarget(formPanel.selectedId, role, levels)}
         levels={role === 'yonetici' ? null : levels}
         onClose={formPanel.close}
       />
@@ -220,14 +222,20 @@ function CourseSummaryPanel({
 }) {
   const access = useLanguageAccess()
   const activate = useActivateCourse()
+  const item = useCourse(course?.id ?? '')
   const row = course ? courseRows([course])[0] : undefined
   const actions = course ? courseActions(course, access.role, access.levels) : null
   const blocked = course ? activationBlocked(course) : null
 
   async function activateCourse() {
     if (!course) return
-    const outcome = await activate.submit({ courseId: course.id, version: course.rowVersion ?? 0 })
-    if (outcome.status === 'success') notify.success(`${course.name} etkinleştirildi.`)
+    // Liste kopyası bayat olabilir: sürüm gönderimde kimlikle yeniden okunur.
+    const result = await submitWithFreshRecord(
+      async () => (await item.refetch()).data?.data,
+      (fresh) => activate.submit({ courseId: fresh.id, version: fresh.rowVersion ?? 0 }),
+    )
+    if (result.status === 'missing') notify.error(RECORD_UNAVAILABLE_MESSAGE)
+    else if (result.outcome.status === 'success') notify.success(`${course.name} etkinleştirildi.`)
   }
 
   const footer =

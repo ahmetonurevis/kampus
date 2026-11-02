@@ -145,3 +145,92 @@ test('DOM-YTK-027: koordinatör olmayan öğretmen kur ve grup yazma işlemlerin
   )
   expect(denied.status, JSON.stringify(denied.body)).toBe(403)
 })
+
+test('DOM-YTK-027, DOM-DIL-043: ön büro kur ve grupları ile bekleme sırasını okur, yazma düğmelerini ve adresle açılan formları görmez; e-Özel yalnız yöneticide görünür', async ({
+  loginAs,
+  api,
+  tenant,
+}) => {
+  const school = await tenant({ type: 'language_school', roles: ['onburo'] })
+  const admin = await api(school.user('yonetici'))
+  const write = (path: string, data: unknown, version?: number) =>
+    admin.post(path, data, {
+      'idempotency-key': randomUUID(),
+      ...(version === undefined ? {} : { 'if-match': `"${version}"` }),
+    })
+
+  // Test verisi API'den kurulur: etkin kur ve bu kurdan planlı grup.
+  const created = await write('/api/v1/courses', {
+    name: COURSE,
+    level: 'A1',
+    totalHours: 24,
+    weeklyHours: 2,
+    sessionMinutes: 90,
+    minLearners: 2,
+    maxLearners: 12,
+  })
+  expect(created.status, JSON.stringify(created.body)).toBe(201)
+  const course = (created.body as { data: { id: string; rowVersion: number } }).data
+  const activated = await write(`/api/v1/courses/${course.id}/activate`, {}, course.rowVersion)
+  expect(activated.status, JSON.stringify(activated.body)).toBe(200)
+  const start = new Date(Date.now() + 14 * 86_400_000).toISOString().slice(0, 10)
+  const group = await write('/api/v1/groups', {
+    courseId: course.id,
+    name: 'A1 Hafta İçi',
+    ageBand: 'adult',
+    delivery: 'in_person',
+    room: '101',
+    schedule: [{ weekday: 2, startTime: '18:00' }],
+    startDate: start,
+    capacity: 12,
+  })
+  expect(group.status, JSON.stringify(group.body)).toBe(201)
+
+  // Yönetici: e-Özel kaydı kur özetinde görünür.
+  const adminPage = await loginAs(school.user('yonetici'))
+  await adminPage.goto('/yonetici/kurlar')
+  await adminPage.getByRole('button', { name: `${COURSE} özeti` }).click()
+  await expect(
+    adminPage
+      .getByRole('dialog', { name: 'Kur özeti' })
+      .getByRole('button', { name: 'e-Özel kaydı' }),
+  ).toBeVisible()
+
+  // Ön büro: kurlar okunur, yazma ve e-Özel düğmeleri yoktur.
+  const page = await loginAs(school.user('onburo'))
+  await page.goto('/onburo/kurlar')
+  await expect(page.getByRole('button', { name: `${COURSE} özeti` })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Kur tanımla' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: `${COURSE} düzenle` })).toHaveCount(0)
+  await page.getByRole('button', { name: `${COURSE} özeti` }).click()
+  const coursePanel = page.getByRole('dialog', { name: 'Kur özeti' })
+  await expect(coursePanel.getByText(COURSE)).toBeVisible()
+  for (const name of ['Etkinleştir', 'Düzenle', 'e-Özel kaydı', 'Arşivle'])
+    await expect(coursePanel.getByRole('button', { name })).toHaveCount(0)
+  await page.keyboard.press('Escape')
+
+  // Adresle açılan kur formu yetkisiz rolde açılmaz.
+  await page.goto('/onburo/kurlar?kur-form=yeni')
+  await expect(page.getByRole('button', { name: `${COURSE} özeti` })).toBeVisible()
+  await expect(page.getByRole('form', { name: 'Kur tanımla' })).toHaveCount(0)
+
+  // Ön büro: gruplar ve bekleme sırası okunur, yazma düğmeleri yoktur.
+  await page.goto('/onburo/gruplar')
+  await expect(page.getByRole('button', { name: 'A1 Hafta İçi özeti' })).toBeVisible()
+  await expect(page.getByRole('button', { name: 'Grup planla' })).toHaveCount(0)
+  await expect(page.getByRole('button', { name: 'A1 Hafta İçi düzenle' })).toHaveCount(0)
+  await page.getByRole('button', { name: 'A1 Hafta İçi özeti' }).click()
+  const groupPanel = page.getByRole('dialog', { name: 'Grup özeti' })
+  await expect(groupPanel.getByText('Planlandı')).toBeVisible()
+  for (const name of ['Grubu aç', 'Düzenle', 'Birleştir', 'İptal et'])
+    await expect(groupPanel.getByRole('button', { name })).toHaveCount(0)
+  await groupPanel.getByRole('button', { name: 'Bekleme sırası' }).click()
+  await expect(groupPanel.getByText('Bu grup için bekleyen yok.')).toBeVisible()
+  await page.keyboard.press('Escape')
+
+  // Adresle açılan grup formu açılmaz; yanıltıcı "önce etkin bir kur gerekir" metni de çıkmaz.
+  await page.goto('/onburo/gruplar?grup-form=yeni')
+  await expect(page.getByRole('button', { name: 'A1 Hafta İçi özeti' })).toBeVisible()
+  await expect(page.getByRole('form', { name: 'Grup planla' })).toHaveCount(0)
+  await expect(page.getByText('önce etkin bir kur gerekir')).toHaveCount(0)
+})

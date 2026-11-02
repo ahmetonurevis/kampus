@@ -16,6 +16,7 @@ import * as privacySchema from './schema/privacy.ts'
 import * as recordsSchema from './schema/records.ts'
 import * as resourcesSchema from './schema/resources.ts'
 import * as skillsSchema from './schema/skills.ts'
+import * as studentGuardiansSchema from './schema/student-guardians.ts'
 
 export const schema = {
   ...authSchema,
@@ -30,6 +31,7 @@ export const schema = {
   ...filesSchema,
   ...privacySchema,
   ...academicYearsSchema,
+  ...studentGuardiansSchema,
 }
 export type Schema = typeof schema
 

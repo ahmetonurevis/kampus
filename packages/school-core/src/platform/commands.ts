@@ -174,4 +174,13 @@ export const PLATFORM_OPERATION_COMMANDS = {
   'group.read': spec(null, [...SCOPE]),
   'group.manage': spec(null, [...SCOPE]),
   'group.waitlist': spec(null, [...SCOPE]),
+  // Quiz (`lib/quiz.ts`; IST-095, DOM-AKD-075…078). Soru bankası soru denetimi, deneme sırasında
+  // anahtarsız soru listesi ve puan için okunur. API quiz hazırlarken quizleri ve denemeleri hiç,
+  // düzenleme ve arşivde hedef quizi ve denemelerini, başlatma ve gönderimde hedef quizi ve
+  // yalnız öğrencinin o quizdeki denemesini, bankadan yalnız quizin sorularını yükler.
+  'quiz.create': spec('learning', [...SCOPE, 'subjects', 'bank', 'quizzes']),
+  'quiz.update': spec('learning', [...SCOPE, 'bank', 'quizzes', 'quizAttempts']),
+  'quiz.archive': spec('learning', [...SCOPE, 'quizzes', 'quizAttempts']),
+  'quiz.start': spec('learning', [...SCOPE, 'bank', 'quizzes', 'quizAttempts']),
+  'quiz.submit': spec('learning', [...SCOPE, 'bank', 'quizzes', 'quizAttempts']),
 } as const satisfies Record<string, CommandSpec>

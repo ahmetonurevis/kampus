@@ -19,6 +19,7 @@ import type {
   LessonSubstitution,
 } from '../lib/school-workflows.ts'
 import type { OpticalEvaluation, TutorSession } from '../lib/assessment-automation.ts'
+import type { QuizAttemptFields, QuizFields } from '../lib/quiz.ts'
 
 /**
  * `State` tipinin Oğuzhan'a ait yama alanları: örnek veride boş başlayan koleksiyonlar ile
@@ -50,6 +51,8 @@ export type SeedCollections =
   | 'clubs'
   | 'clubMemberships'
   | 'socialAchievements'
+  | 'quizzes'
+  | 'quizAttempts'
 
 export type Patch<T, P> = Omit<T, keyof P> & P
 export type Item<S, K extends keyof S> = S[K] extends readonly (infer T)[] ? T : never
@@ -151,4 +154,8 @@ export type PlatformStatePatches<S extends Record<SeedCollections, unknown>> = {
   socialAchievements: (Item<S, 'socialAchievements'> & { updatedAt?: string })[]
   opticalEvaluations: OpticalEvaluation[]
   tutorSessions: TutorSession[]
+  // Quiz ve deneme işlemlerinin alanları (son tarih, deneme durumu ve süresi); örnek veri ve eski
+  // kayıtlar taşımaz, alanı olmayan deneme tamamlanmıştır (lib/quiz.ts).
+  quizzes: (Item<S, 'quizzes'> & QuizFields)[]
+  quizAttempts: (Item<S, 'quizAttempts'> & QuizAttemptFields)[]
 }

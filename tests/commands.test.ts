@@ -70,6 +70,13 @@ import {
   scheduleProspectMeeting,
   scheduleTrialLesson,
 } from '../packages/school-core/src/lib/prospects.ts'
+import {
+  archiveQuiz,
+  createQuiz,
+  startQuiz,
+  submitQuiz,
+  updateQuiz,
+} from '../packages/school-core/src/lib/quiz.ts'
 import { csvTemplate } from '../packages/school-core/src/lib/workflow-presentation.ts'
 import type { Session } from '../packages/school-core/src/lib/domain.ts'
 import { isDomainError } from './support/domain-error.ts'
@@ -703,4 +710,32 @@ test('Aday/CRM işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır
     id,
     now,
   )
+})
+
+test('Quiz işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır (DOM-AKD-075…078)', () => {
+  const state = seed()
+  const student = {
+    role: 'ogrenci' as const,
+    links: [{ kind: 'student' as const, recordId: 's1' }],
+    userId: 'u-s1',
+  }
+  const teacher = {
+    role: 'ogretmen' as const,
+    links: [{ kind: 'teacher' as const, recordId: 't1' }],
+    userId: 'u-t1',
+  }
+  const input = { classId: 'c1', title: 'Denklem', duration: 15, questionIds: ['q-math-7-0'] }
+  const quiz = createQuiz(operation(state, 'quiz.create'), teacher, input, id, now)
+  updateQuiz(operation(state, 'quiz.update'), teacher, quiz.id, { title: 'Yeni' }, now)
+  const { attempt } = startQuiz(operation(state, 'quiz.start'), student, quiz.id, id, now)
+  submitQuiz(
+    operation(state, 'quiz.submit'),
+    student,
+    quiz.id,
+    { answers: { 'q-math-7-0': 0 } },
+    now,
+  )
+  assert.equal(attempt.status, 'completed')
+  const spare = createQuiz(operation(state, 'quiz.create'), teacher, input, id, now)
+  archiveQuiz(operation(state, 'quiz.archive'), teacher, spare.id)
 })

@@ -133,6 +133,8 @@ export function StudentQuizWorkspace({
             key={attempt.id}
             title={assignment.title}
             attempt={attempt}
+            timeLimitMinutes={assignment.timeLimitMinutes}
+            dueAt={assignment.deadline.dueAt}
             fetchedAt={detail.dataUpdatedAt}
             onExpired={refreshExpired}
             onLeave={workspace.close}

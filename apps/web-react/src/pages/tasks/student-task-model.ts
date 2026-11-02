@@ -14,6 +14,7 @@ import type {
   TaskSubmissionDetail,
 } from '@kampus/react-shared/use-task-submissions.ts'
 import { isApiError } from '@kampus/api-client/errors.ts'
+import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 
@@ -533,6 +534,41 @@ export function formatRemaining(ms: number): string {
   const seconds = total % 60
   const two = (value: number) => String(value).padStart(2, '0')
   return hours > 0 ? `${hours}:${two(minutes)}:${two(seconds)}` : `${two(minutes)}:${two(seconds)}`
+}
+
+/**
+ * Çözme ekranının saat etiketi (DOM-BEC-043). Sunucunun `remainingMs`'i süre ile teslim penceresinin
+ * erken kapananına göredir; süre sınırı yoksa bu son teslime (geç kabul dahil) kadarki saattir ve
+ * geri sayım olarak gösterilmez: yerine son teslim tarihi yazılır (Europe/Istanbul), son teslim
+ * yoksa etiket yoktur. Pencere kapandıysa (sunucu kaydedilmiş cevaplarla teslim eder) söylenir.
+ * Süreli denemede kalan süre geri sayılır; son dakika kırmızıdır.
+ */
+export function attemptClock({
+  timeLimitMinutes,
+  dueAt,
+  remainingMs,
+}: {
+  timeLimitMinutes: number | null
+  dueAt: string | null
+  /** Şu an kalan süre (ms); sunucu `null` döndüyse `null`. */
+  remainingMs: number | null
+}): { text: string; tone: 'gray' | 'red' } | null {
+  const over = remainingMs !== null && remainingMs <= 0
+  if (timeLimitMinutes === null) {
+    if (over) return { text: 'Teslim süresi doldu', tone: 'red' }
+    return dueAt === null
+      ? null
+      : {
+          text: `Son teslim: ${dateLabel(dueAt, { year: 'numeric' })} ${timeLabel(dueAt)}`,
+          tone: 'gray',
+        }
+  }
+  if (remainingMs === null) return null
+  if (over) return { text: 'Süre doldu', tone: 'red' }
+  return {
+    text: `Kalan süre ${formatRemaining(remainingMs)}`,
+    tone: remainingMs < 60_000 ? 'red' : 'gray',
+  }
 }
 
 /** Kaydedilen cevapların kararlı karşılaştırma anahtarı (değişiklik algısı). */

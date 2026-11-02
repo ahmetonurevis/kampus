@@ -10,6 +10,7 @@ import type { TaskSubmission } from '@kampus/react-shared/use-task-submissions.t
 import {
   acceptedText,
   answeredCount,
+  attemptClock,
   autoProgress,
   blockedByMessage,
   describeKey,
@@ -343,6 +344,39 @@ describe('OG-985 içerik kapısı engeli (DOM-KYN-025, DOM-KYN-021)', () => {
     assert.equal(late.blockedReason, 'Teslim süresi doldu; yeni deneme başlatılamaz.')
     // Özet engel söylemiyorsa yerel karar değişmez.
     assert.equal(autoProgress(auto({ progress: [entry()] }), [], NOW).canAct, true)
+  })
+})
+
+describe('OG-986 deneme saati (DOM-BEC-043)', () => {
+  test('DOM-BEC-043: süre sınırı olmayan denemede geri sayım yok; son teslim Europe/Istanbul tarihiyle', () => {
+    // 119 saatlik pencere geri sayım olarak gösterilmez.
+    const untimed = attemptClock({
+      timeLimitMinutes: null,
+      dueAt: FUTURE,
+      remainingMs: 431_998_000,
+    })
+    assert.deepEqual(untimed, { text: 'Son teslim: 20 Eki 2026 23:59', tone: 'gray' })
+    assert.equal(attemptClock({ timeLimitMinutes: null, dueAt: null, remainingMs: null }), null)
+    // Pencere kapandıysa sunucu teslim eder; ekran bunu söyler.
+    assert.deepEqual(attemptClock({ timeLimitMinutes: null, dueAt: PAST, remainingMs: 0 }), {
+      text: 'Teslim süresi doldu',
+      tone: 'red',
+    })
+  })
+
+  test('DOM-BEC-043: süreli denemede kalan süre geri sayılır; son dakika kırmızı', () => {
+    assert.deepEqual(attemptClock({ timeLimitMinutes: 20, dueAt: FUTURE, remainingMs: 600_000 }), {
+      text: 'Kalan süre 10:00',
+      tone: 'gray',
+    })
+    assert.deepEqual(attemptClock({ timeLimitMinutes: 20, dueAt: null, remainingMs: 59_000 }), {
+      text: 'Kalan süre 00:59',
+      tone: 'red',
+    })
+    assert.deepEqual(attemptClock({ timeLimitMinutes: 20, dueAt: null, remainingMs: -5 }), {
+      text: 'Süre doldu',
+      tone: 'red',
+    })
   })
 })
 

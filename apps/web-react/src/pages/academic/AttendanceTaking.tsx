@@ -1,4 +1,5 @@
 import { useId, useMemo, useState } from 'react'
+import { LATE_MINUTES_MIN } from '@kampus/school-core/lib/domain.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
 import { useRecordAttendance } from '@kampus/react-shared/use-academic-commands.ts'
 import { Avatar } from '@/components/Avatar.tsx'
@@ -166,13 +167,23 @@ function AttendanceSheet({ classId, className, classVersion, lookups }: SheetPro
   const counts = markCounts(marks)
   const alreadyTaken = savedRecords.length > 0
   const busy = record.isPending
+  // Değer ya da durum değişince o öğrencinin eski dakika hatası kalkar; gönderimde yeniden hesaplanır.
+  const clearMinuteErrors = (ids: Iterable<string>) =>
+    setMinuteErrors((current) => {
+      const next = { ...current }
+      for (const id of ids) delete next[id]
+      return next
+    })
   const mark = (studentId: string, status: AttendanceStatus) => {
     setResult('')
+    clearMinuteErrors([studentId])
     setEdits((current) => ({ ...current, [studentId]: status }))
   }
   const markMany = (ids: Iterable<string>, status: AttendanceStatus) => {
+    const list = [...ids]
     setResult('')
-    setEdits((current) => bulkMark(current, ids, status))
+    clearMinuteErrors(list)
+    setEdits((current) => bulkMark(current, list, status))
   }
   const allSelected = students.length > 0 && students.every((student) => selected.has(student.id))
   const toggleSelected = (studentId: string, on: boolean) =>
@@ -341,7 +352,7 @@ function AttendanceSheet({ classId, className, classVersion, lookups }: SheetPro
                     <Input
                       type="number"
                       inputMode="numeric"
-                      min={1}
+                      min={LATE_MINUTES_MIN}
                       step={1}
                       value={minuteText[student.id] ?? ''}
                       disabled={busy}
@@ -352,6 +363,7 @@ function AttendanceSheet({ classId, className, classVersion, lookups }: SheetPro
                       }
                       onChange={(event) => {
                         setResult('')
+                        clearMinuteErrors([student.id])
                         setMinuteEdits((current) => ({
                           ...current,
                           [student.id]: event.target.value,

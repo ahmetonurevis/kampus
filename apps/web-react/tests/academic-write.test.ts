@@ -1,10 +1,11 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
+
+import { LATE_MINUTES_MIN, lateMinutesSchema } from '@kampus/school-core/lib/domain.ts'
 import {
   attendanceMarks,
   bulkMark,
   defaultTerm,
-  LATE_MINUTES_INVALID,
   lateMinutesPayload,
   savedLateMinutes,
   gradeTypeOptions,
@@ -110,7 +111,7 @@ test('DOM-AKD-036: dakika yalnız geç gelen öğrenci için gönderilir; boş a
   assert.deepEqual(lateMinutesPayload(marks, {}), { minutes: {}, errors: {} })
 })
 
-test('DOM-AKD-036: pozitif tamsayı olmayan dakika o öğrencinin hatasıdır', () => {
+test('DOM-AKD-036: geçersiz dakika o öğrencinin hatasıdır ve ileti core şemasındandır', () => {
   const marks = { s1: 'late', s2: 'late', s3: 'late', s4: 'late', s5: 'late' } as const
   const result = lateMinutesPayload(marks, {
     s1: '0',
@@ -121,5 +122,17 @@ test('DOM-AKD-036: pozitif tamsayı olmayan dakika o öğrencinin hatasıdır', 
   })
   assert.deepEqual(result.minutes, { s5: 10 })
   assert.deepEqual(Object.keys(result.errors).sort(), ['s1', 's2', 's3', 's4'])
-  assert.equal(result.errors.s1, LATE_MINUTES_INVALID)
+  // İletiler `attendanceInputSchema.lateMinutes` ile birebir aynıdır (elle yazılmış metin yok).
+  const core = (value: unknown) =>
+    lateMinutesSchema.safeParse(value).error?.issues[0]?.message ?? ''
+  assert.equal(result.errors.s1, core(0))
+  assert.equal(result.errors.s2, core(-5))
+  assert.equal(result.errors.s4, core(Number.NaN))
+  assert.equal(result.errors.s1, 'Geç kalma süresi en az 1 dakika olmalıdır.')
+})
+
+test('DOM-AKD-036: şemanın ürettiği dakika sınırı alanın min değeriyle aynıdır', () => {
+  assert.equal(LATE_MINUTES_MIN, 1)
+  assert.equal(lateMinutesSchema.safeParse(LATE_MINUTES_MIN).success, true)
+  assert.equal(lateMinutesSchema.safeParse(LATE_MINUTES_MIN - 1).success, false)
 })

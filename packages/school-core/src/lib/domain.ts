@@ -70,6 +70,14 @@ const attendanceReasonSchema = z
   .max(500, 'En fazla 500 karakter girebilirsiniz.')
   .optional()
 
+/** Geç kalma dakikası alt sınırı; üst sınır günün ders süresidir (`lateMinutesLimit`). */
+export const LATE_MINUTES_MIN = 1
+/** Tek öğrencinin geç kalma dakikası; ileti web formunda da aynen kullanılır (DOM-AKD-036). */
+export const lateMinutesSchema = z
+  .number('Geç kalma süresini dakika olarak girin.')
+  .int('Geç kalma süresi tam dakika olmalıdır.')
+  .min(LATE_MINUTES_MIN, `Geç kalma süresi en az ${LATE_MINUTES_MIN} dakika olmalıdır.`)
+
 /**
  * Sınıf yoklaması girdisi; API gövde şeması ve web/mobil form şemasıdır. `marks` sınıfın bütün
  * aktif öğrencilerini içermelidir (işlem denetler).
@@ -83,15 +91,7 @@ export const attendanceInputSchema = z.object({
    * Alan verilirse yoklamadaki bütün geç gelenlerin dakikasını belirler (anahtarı olmayan
    * `late` öğrencinin dakikası boşalır); hiç verilmezse kayıtlı dakikalara dokunulmaz.
    */
-  lateMinutes: z
-    .record(
-      z.string().min(1).max(200),
-      z
-        .number('Geç kalma süresini dakika olarak girin.')
-        .int('Geç kalma süresi tam dakika olmalıdır.')
-        .min(1, 'Geç kalma süresi en az 1 dakika olmalıdır.'),
-    )
-    .optional(),
+  lateMinutes: z.record(z.string().min(1).max(200), lateMinutesSchema).optional(),
   reason: attendanceReasonSchema,
 })
 export type AttendanceInput = z.input<typeof attendanceInputSchema>

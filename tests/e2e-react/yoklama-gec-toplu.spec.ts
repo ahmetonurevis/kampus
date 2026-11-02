@@ -66,6 +66,7 @@ const save = (page: Page) => page.getByRole('button', { name: 'Yoklamayı kaydet
 const row = (page: Page, name: string) => page.getByRole('checkbox', { name: `${name} seç` })
 const status = (page: Page, name: string, label: string) =>
   page.getByRole('radio', { name: `${name}: ${label}` })
+const resultCount = (page: Page) => page.locator('.result-count')
 const minutes = (page: Page, name: string) => page.getByLabel(`${name} geç kalma süresi (dakika)`)
 
 test.describe('öğretmen: geç gelme ve toplu işaretleme', () => {
@@ -91,7 +92,7 @@ test.describe('öğretmen: geç gelme ve toplu işaretleme', () => {
     ).toBeDisabled()
     await row(page, a!.name).click()
     await row(page, b!.name).click()
-    await expect(page.getByText('2 öğrenci seçili')).toBeVisible()
+    await expect(page.getByText('2 öğrenci seçili', { exact: true })).toBeVisible()
     await page.getByRole('button', { name: 'Seçilenleri geç geldi işaretle' }).click()
     await expect(status(page, a!.name, 'Geç geldi')).toHaveAttribute('aria-checked', 'true')
     await expect(status(page, b!.name, 'Geç geldi')).toHaveAttribute('aria-checked', 'true')
@@ -148,14 +149,17 @@ test.describe('öğretmen: geç gelme ve toplu işaretleme', () => {
     await status(page, a!.name, 'Geç geldi').click()
     await minutes(page, a!.name).fill('0')
     await save(page).click()
-    await expect(
-      page.getByRole('alert').filter({ hasText: 'Dakikayı 1 veya daha büyük bir tam sayı' }),
-    ).toBeVisible()
+    const invalid = page
+      .getByRole('alert')
+      .filter({ hasText: 'Geç kalma süresi en az 1 dakika olmalıdır.' })
+    await expect(invalid).toBeVisible()
     expect(posts).toHaveLength(0)
     expect((await todays(client)).size).toBe(0)
 
     // Sunucu üst sınırı (ders süresi) denetler; kayıt yazılmaz.
     await minutes(page, a!.name).fill('999')
+    // Değer düzelince eski alan hatası kalkar (gönderimden önce).
+    await expect(invalid).toBeHidden()
     await save(page).click()
     await expect(page.getByText(/Geç kalma süresi 1 ile \d+ dakika arasında/)).toBeVisible()
     expect(posts).toHaveLength(1)
@@ -192,13 +196,13 @@ test.describe('öğretmen: yoklama geçmişi tarih aralığı', () => {
     await page.getByLabel('Yoklama bitiş tarihi').fill(to)
     await expect(page).toHaveURL(new RegExp(`[?&]baslangic=${from}`))
     await expect(page).toHaveURL(new RegExp(`[?&]bitis=${to}`))
-    await expect(page.locator('.result-count')).toContainText(`/ ${inRange.length} kayıt`)
+    await expect(resultCount(page)).toContainText(`/ ${inRange.length} kayıt`)
 
     // Adres yenilenince ve doğrudan açılınca aralık korunur.
     await page.reload()
     await expect(page.getByLabel('Yoklama başlangıç tarihi')).toHaveValue(from)
     await expect(page.getByLabel('Yoklama bitiş tarihi')).toHaveValue(to)
-    await expect(page.locator('.result-count')).toContainText(`/ ${inRange.length} kayıt`)
+    await expect(resultCount(page)).toContainText(`/ ${inRange.length} kayıt`)
 
     // Bitiş başlangıçtan önce: uyarı çıkar, aralık uygulanmaz.
     await page.getByLabel('Yoklama bitiş tarihi').fill(days[0]!)

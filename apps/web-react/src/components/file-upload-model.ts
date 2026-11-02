@@ -145,3 +145,15 @@ export function pickProblems(
   }
   return all.length > 0 ? all.join(' ') : null
 }
+
+/**
+ * Alanın altında görünen hata: dışarıdan gelen alan hatası (form doğrulaması, sunucu `files` hatası)
+ * alanın eski uyarısını geçersiz kılar; yoksa alanın kendi uyarısı gösterilir.
+ */
+export function fieldError(
+  problem: string | null,
+  external: { message?: string } | undefined,
+): { message: string } | undefined {
+  if (external?.message) return { message: external.message }
+  return problem !== null ? { message: problem } : undefined
+}

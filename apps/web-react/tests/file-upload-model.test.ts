@@ -11,6 +11,7 @@ import {
   attemptFrom,
   defaultMaxFiles,
   fitFiles,
+  fieldError,
   pickProblems,
   runUploadQueue,
   type FileUploadItem,
@@ -275,6 +276,22 @@ describe('belirsiz hata ve yeniden deneme: aynı anahtar (DOM-KYN-004)', () => {
       }),
       { kind: 'failed', retryable: true },
     )
+  })
+})
+
+describe('alan hatası önceliği (DOM-AKD-072)', () => {
+  test('sunucudan gelen alan hatası, alanın eski uyarısını geçersiz kılar', () => {
+    const stale = '1 dosya zaten ekli olduğu için atlandı.'
+    assert.deepEqual(fieldError(stale, { message: 'Dosya henüz hazır değil.' }), {
+      message: 'Dosya henüz hazır değil.',
+    })
+  })
+
+  test('dış hata yoksa alanın kendi uyarısı, ikisi de yoksa hiçbir şey gösterilir', () => {
+    assert.deepEqual(fieldError('Uyarı.', undefined), { message: 'Uyarı.' })
+    assert.deepEqual(fieldError('Uyarı.', {}), { message: 'Uyarı.' })
+    assert.equal(fieldError(null, undefined), undefined)
+    assert.deepEqual(fieldError(null, { message: 'Hata.' }), { message: 'Hata.' })
   })
 })
 

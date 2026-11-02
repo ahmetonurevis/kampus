@@ -18,6 +18,7 @@ import {
   acceptFor,
   attemptFrom,
   defaultMaxFiles,
+  fieldError,
   fitFiles,
   pickProblems,
   runUploadQueue,
@@ -42,7 +43,7 @@ type Props = {
   multiple?: boolean
   /** En çok dosya; verilmezse amacın sınırı (çoklu) ya da 1 (tekil). */
   maxFiles?: number
-  /** Dışarıdan gelen alan hatası (ör. form doğrulaması); alandaki kendi uyarı varsa o gösterilir. */
+  /** Dışarıdan gelen alan hatası (ör. form doğrulaması); varsa alanın kendi uyarısından önce gösterilir. */
   error?: { message?: string } | undefined
   disabled?: boolean
   /** Yükleme başlayınca `true`, bitince `false`; çağıran gönderim düğmesini kilitler. */
@@ -147,7 +148,7 @@ export function FileUploadField({
       <FormField
         id={id}
         label={label}
-        error={problem !== null ? { message: problem } : error}
+        error={fieldError(problem, error)}
         {...(description ? { description } : {})}
       >
         {(control) => (

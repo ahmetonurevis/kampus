@@ -129,7 +129,8 @@ Migration `0013_create_skill_tasks`; şema `apps/api/src/db/schema/skills.ts`, d
 - Benzersizlik ihlali (eşzamanlı ikinci yazma) depoda kısıt adına göre 409'a çevrilir (`constraintAs`): `open_rubric_version_exists`, `rubric_version_exists` (sürüm numarası), `published_rubric_version_exists`, `assignment_target_exists`, `attempt_in_progress`, `submission_exists`, `version_conflict`, `resubmission_exists`, `rubric_score_exists`, `appeal_exists`, `score_transfer_exists`. Eşlenmemiş kısıt ihlali beklenmeyen hatadır (500). Taslak iyimser kilidi tutmazsa 409 `draft_conflict`; eşzamanlı iki pencere `test:pg`'de (`pg-skill-drafts.test.ts`) sınanır.
 - Okumalar (`loadAttempts`, `loadSubmission`, `loadDraft`, `loadAppeals`, `loadResourceAssignments`, hedefler) arşivli satırı dışlar; rubrik sürümleri istisnadır (arşivli sürüm sabitlendiği atamada puanlanır).
 - Dosyalı ve sesli teslim sürümü (`fileIds` dolu) teslim dosyayı `files`'a bağlayana kadar (F4b4) 422 `submission_kind_unavailable` ile reddedilir (`TODO(F3c2-files)`).
-- Ertelenen: `attempt_media_plays` ve teslim dosya bağlantıları `TODO(F3c2-files)`, bireysel ek süre `TODO(F4b-ek-sure)`, aktarılmış notun düzeltilmesi `TODO(F4b-aktarim-duzeltme)`. F4b2'ye kalan depo ve servis işleri ADR 0004 karar 6'nın "F4b2 için" uygulama notundadır.
+- Dinleme hakkı `attempt_media_plays`'te sayılır (migration 0030, OG-049; değişmez satır, deneme × dosya × sıra tekil).
+- Ertelenen: teslim dosya bağlantıları `TODO(F3c2-files)`, bireysel ek süre `TODO(F4b-ek-sure)`, aktarılmış notun düzeltilmesi `TODO(F4b-aktarim-duzeltme)`. F4b2'ye kalan depo ve servis işleri ADR 0004 karar 6'nın "F4b2 için" uygulama notundadır.
 
 ### Dosya tablosu (ADR 0003 karar 4, 5)
 

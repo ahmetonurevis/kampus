@@ -42,7 +42,7 @@
 - **Gerekçe:** Transkript öğretmen kontrolü ve erişilebilirlik için gerekir; dinleme sayısı ölçmenin koşuludur.
 - **Kaynak:** İşletme kuralı (iki dinleme, yaygın sınav uygulaması).
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/assignment.ts` `assignmentSettingsSchema` (dinleme hakkı 1, 2 veya sınırsız, varsayılan 2; alıştırmada da 2, `TODO(beceri-dinleme-alistirma)`; değerlendirmede atama düzeyinde döküm açılamaz) ve `resolveAssignmentSettings` (dinleme hakkı yalnız dinleme görevinde sabitlenir); dökümün gizlenmesi `content/resource.ts` `learnerView`. Hakkın sayılması API'dedir (ADR 0003 karar 6). API: `attempt_media_plays` gelene kadar `POST /api/v1/task-assignments` gönderilmeyen hakkı sınırsız saklar, 1 veya 2 seçimine 422 `listening_plays_unavailable` verir (ADR 0004 karar 6 uygulama notu, F4b2b).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/assignment.ts` `assignmentSettingsSchema` (dinleme hakkı 1, 2 veya sınırsız, varsayılan 2; alıştırmada da 2, `TODO(beceri-dinleme-alistirma)`; değerlendirmede atama düzeyinde döküm açılamaz) ve `resolveAssignmentSettings` (dinleme hakkı yalnız dinleme görevinde sabitlenir); dökümün gizlenmesi `content/resource.ts` `learnerView`. Hakkın sayılması API'dedir (ADR 0003 karar 6): `GET /api/v1/files/:fileId/url` öğrencinin süren denemesinde hakkı deneme × kayıt başına `attempt_media_plays`'e yazar, hak bitince 422 `listening_plays_exhausted`, deneme dışında teslimi açık görevde 422 `listening_attempt_required`; dinleme sayısı deneme ayrıntısında (`listening`) okunur (`apps/api/src/services/listening-plays.ts`; ADR 0004 karar 6 uygulama notu, OG-049). Kayıt bağlama (içerik sürümüne ses dosyası) F4b4'tedir.
 
 ## Otomatik puanlama
 

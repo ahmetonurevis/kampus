@@ -6,7 +6,11 @@ import { sql } from 'drizzle-orm'
 
 import type { PlacementSessionDraft } from '@kampus/school-core/cefr/placement.ts'
 import type { ProgressionBasis } from '@kampus/school-core/cefr/progression.ts'
-import type { EvidenceSnapshot } from '@kampus/school-core/cefr/suggestion.ts'
+import {
+  cefrProfileView,
+  suggestCefrLevels,
+  type EvidenceSnapshot,
+} from '@kampus/school-core/cefr/suggestion.ts'
 
 import type { App } from '../src/app.ts'
 import {
@@ -17,7 +21,6 @@ import {
   listLevelDecisions,
   listPlacementSessions,
   listProgressionDecisions,
-  loadCurrentLevels,
   savePlacementSession,
   type GroupProgressionDraft,
   type LevelDecisionDraft,
@@ -538,15 +541,22 @@ describe('0034: CEFR tabloları ve deposu', () => {
       timeline.map((d) => d.id),
       [later.id, middle.id, ...[overall.id, reading.id].sort().reverse()],
     )
-    const current = await loadCurrentLevels(db, t.institution.id, learner)
+    // Profil güncel seviyeyi bu sıradan core `cefrProfileView` ile çıkarır (servis aynısını yapar).
+    const view = cefrProfileView({
+      institutionType: 'language_school',
+      suggestion: suggestCefrLevels({ candidates: [], now: FIXED_NOW.toISOString() }),
+      decisions: timeline,
+    })
     assert.deepEqual(
       Object.fromEntries(
-        current.map((c) => [c.skill ?? 'overall', [c.decision.id, c.decision.level]]),
+        (view.decisions?.current ?? []).map((c) => [
+          c.skill ?? 'overall',
+          [c.decision.id, c.decision.level],
+        ]),
       ),
       { overall: [later.id, 'B1'], reading: [reading.id, 'B1'] },
     )
     assert.deepEqual(await listLevelDecisions(db, other.institution.id, learner), [])
-    assert.deepEqual(await loadCurrentLevels(db, other.institution.id, learner), [])
   })
 
   test('IST-060: seviye kararı değişmez; güncelleme ve silme 55000 ile reddedilir', async () => {

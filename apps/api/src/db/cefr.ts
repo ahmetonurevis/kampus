@@ -16,7 +16,6 @@ import type {
   ProgressionDecisionRecord,
 } from '@kampus/school-core/cefr/progression.ts'
 import type { LevelDecisionRow } from '@kampus/school-core/cefr/suggestion.ts'
-import type { PrimarySkill } from '@kampus/school-core/content/taxonomy.ts'
 
 import type { Database } from './client.ts'
 import { levelDecisions, placementSessions, progressionDecisions } from './schema/cefr.ts'
@@ -300,23 +299,6 @@ export async function listLevelDecisions(
     .where(learnerDecisions(institutionId, learner))
     .orderBy(desc(levelDecisions.decidedAt), desc(levelDecisions.id))
   return rows.map(toLevelDecision)
-}
-
-/**
- * Beceri başına (genel için `null`) güncel seviye: en son karar; aynı anda verilmişse kimliği
- * büyük olan (core `cefrProfileView` ile aynı eşitlik bozucu).
- */
-export async function loadCurrentLevels(
-  db: Database,
-  institutionId: string,
-  learner: Learner,
-): Promise<{ skill: PrimarySkill | null; decision: StoredLevelDecision }[]> {
-  const rows = await db
-    .selectDistinctOn([levelDecisions.skill])
-    .from(levelDecisions)
-    .where(learnerDecisions(institutionId, learner))
-    .orderBy(levelDecisions.skill, desc(levelDecisions.decidedAt), desc(levelDecisions.id))
-  return rows.map((row) => ({ skill: row.skill, decision: toLevelDecision(row) }))
 }
 
 // --- Kur sonu kararı ----------------------------------------------------------------------

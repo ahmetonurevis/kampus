@@ -7,6 +7,7 @@ import {
   CONSENT_PURPOSES,
 } from '../packages/school-core/src/lib/consent-purposes.ts'
 import {
+  academicYearEndsAt,
   adulthoodStartsAt,
   canGiveConsent,
   hasValidConsent,
@@ -869,4 +870,9 @@ describe('öğrenci itirazı (DOM-YTK-062)', () => {
     // Velinin açık rızası öğrencinin itirazını engellemez (karar farklı).
     assert.equal(objection({ consents: [record(1)] }).close.length, 0)
   })
+})
+
+test('DOM-YTK-058 eğitim yılı rızası ertesi yılın 1 Eylül Europe/Istanbul gün başında biter', () => {
+  assert.equal(academicYearEndsAt(2026), '2027-08-31T21:00:00.000Z')
+  assert.equal(academicYearEndsAt(2027), '2028-08-31T21:00:00.000Z')
 })

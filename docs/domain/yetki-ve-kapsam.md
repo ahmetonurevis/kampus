@@ -278,7 +278,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 
 ## Aydınlatma ve açık rıza
 
-Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts`, `lib/privacy-notices.ts`, `lib/consents.ts`); tablolar `privacy_notices`, `notice_acknowledgements`, `consents` (migration `0024`). Uçlar ve ekranlar henüz yok (OG-016, OG-017). Mühendislik çerçevesi `docs/muhendislik/guvenlik-kvkk.md` §9.
+Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts`, `lib/privacy-notices.ts`, `lib/consents.ts`); tablolar `privacy_notices`, `notice_acknowledgements`, `consents` (migration `0024`). API uçları `apps/api/src/routes/privacy.ts` (servisler `services/privacy-notices.ts`, `services/consents.ts`; OG-016); ekranlar OG-017'dedir. Mühendislik çerçevesi `docs/muhendislik/guvenlik-kvkk.md` §9.
 
 ### DOM-YTK-056 · Aydınlatma metni sürümlü ve rol bazlıdır
 
@@ -286,7 +286,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Gerekçe:** Aydınlatma veri toplanırken yapılır ve ispatı veri sorumlusundadır; metin değişince eski gösterim yeni metni ispatlamaz.
 - **Kaynak:** KVKK md. 10; Aydınlatma Yükümlülüğünün Yerine Getirilmesinde Uyulacak Usul ve Esaslar Hakkında Tebliğ. IST-016.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core `lib/privacy-notices.ts` (`planNoticePublication`, `needsNoticeAcknowledgement`, `planNoticeAcknowledgement`); tablolar `privacy_notices` (yayımlanmış metin tetikleyiciyle değişmez ve arşivlenmez) ve `notice_acknowledgements` (değişmez satır). Uç ve ekran yok (OG-016/017). Çocuğun algı düzeyine uygun ayrı öğrenci metni kitle içinde tek sürümdür (`TODO(cocuk-aydinlatma)`).
+- **Kodda:** kısmen — core `lib/privacy-notices.ts` (`planNoticePublication`, `needsNoticeAcknowledgement`, `planNoticeAcknowledgement`); tablolar `privacy_notices` (yayımlanmış metin tetikleyiciyle değişmez ve arşivlenmez) ve `notice_acknowledgements` (değişmez satır). API: `GET/POST /api/v1/privacy-notices` (yalnız yönetici yayımlar), `GET /api/v1/privacy-notices/current` (rolün kitlesindeki son sürüm ve `needsAcknowledgement`), `POST /api/v1/privacy-notices/:noticeId/acknowledge` (ilk 201, aynı sürüm 200, eski sürüm 409 `notice_outdated`); test `apps/api/test/consents.test.ts`. Ekran yok (OG-017). Çocuğun algı düzeyine uygun ayrı öğrenci metni kitle içinde tek sürümdür (`TODO(cocuk-aydinlatma)`).
 
 ### DOM-YTK-057 · Rızayı kim verir
 
@@ -294,7 +294,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Gerekçe:** Reşit olmayanın yasal temsilcisi velayet sahibidir; ergin kişinin rızasını başkası veremez (`DOM-YTK-025`, `DOM-YTK-031`).
 - **Kaynak:** TMK md. 11, 335, 342; KVKK md. 3/1-a, 5. Velayeti olmayan ebeveynin rıza veremeyeceği yorumu **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `lib/consents.ts` `requireConsentAuthority`, `canGiveConsent`, `isAdultStudent`; geçerlilikte güncel yaş `hasValidConsent` (veri sahibi öğrenci kaydıyla sorgulanır). Velayet ve doğrulama bilgisi çağırandan (`GuardianBond`) gelir; üyelik bağlantısı bugün velayet taşımaz (`TODO(velayet-kapsam)`). Ergin kılınma ve kısıtlılık (`DOM-YTK-031`, `DOM-YTK-032`) yok.
+- **Kodda:** kısmen — `lib/consents.ts` `requireConsentAuthority`, `canGiveConsent`, `isAdultStudent`; geçerlilikte güncel yaş `hasValidConsent` (veri sahibi öğrenci kaydıyla sorgulanır). Velayet ve doğrulama bilgisi çağırandan (`GuardianBond`) gelir. API'de bağın tek kaynağı `apps/api/src/services/consents.ts` `guardianBondsOf`'tur ve geçici kuraldır: üyelik bağlantısı (`child`) kurum tarafından kurulur, doğrulanmış sayılır ve velayet bilgisi taşımadığından her bağlı veli velayetli sayılır (`TODO(OG-031-velayet)`; velayet bağa yazılınca velayetsiz ebeveyn 403 `consent_custody_required` alır). Personel rıza veremez (403); kâğıt/yüz yüze rızanın personelce kaydı yok. Uçlar `POST /api/v1/consents`, `POST /api/v1/consents/:consentId/withdraw` (veli, öğrenci); okuma `GET /api/v1/consents` (yönetici, ön büro, veli, öğrenci) ve `GET /api/v1/consents/status` (öğretmen dahil); kapsam dışı öğrenci 404. Ergin kılınma ve kısıtlılık (`DOM-YTK-031`, `DOM-YTK-032`) yok.
 
 ### DOM-YTK-058 · Rıza amaca ve metin sürümüne bağlıdır, tek etkin rıza
 
@@ -302,7 +302,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Gerekçe:** Açık rıza belirli konuya ilişkin olmalı ve ispatlanabilmelidir (`DOM-ILT-034`).
 - **Kaynak:** KVKK md. 3/1-a, 5/1. Velinin rızasının erginlikte düşmesi muhafazakâr yorumdur, **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `lib/consents.ts` `planConsent`; `consents` tablosunda kısmi benzersiz indeks `consents_subject_purpose_decision_key` (geri çekilmemiş, arşivlenmemiş satır). Islak imza taramasıyla kayıt yok.
+- **Kodda:** kısmen — `lib/consents.ts` `planConsent`; `consents` tablosunda kısmi benzersiz indeks `consents_subject_purpose_decision_key` (geri çekilmemiş, arşivlenmemiş satır). Eğitim yılı bitişi core `academicYearEndsAt`: kurum ayarındaki başlangıç yılının (`institution_settings.academic_year`) ertesi yılında 1 Eylül 00:00 Europe/Istanbul; eğitim yılı tanımsız kurumda eğitim yılı rızası 422 `academic_year_required`. Eski metin sürümüne rıza 409 `consent_text_outdated`, mükerrer 409 `consent_exists`; süresi dolmuş satır yeni rızada `renewed` ile kapanır (`POST /api/v1/consents`). Islak imza taramasıyla kayıt yok.
 
 ### DOM-YTK-059 · Geri çekme tek işlem ve anında etkili
 
@@ -310,7 +310,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Gerekçe:** Rızaya dayalı işleme geri çekmeyle durur; kayıt ispat için silinmez.
 - **Kaynak:** KVKK md. 5, 11; guvenlik-kvkk §9.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `lib/consents.ts` `planConsentWithdrawal`; `consents` tetikleyicisi yalnız bir kez geri çekme kolonlarının yazılmasına izin verir. Geri çekmenin ardından rızaya dayalı kayıtların imhası (konuşma kaydı, ADR 0003 karar 9) yok.
+- **Kodda:** kısmen — `lib/consents.ts` `planConsentWithdrawal`; `consents` tetikleyicisi yalnız bir kez geri çekme kolonlarının yazılmasına izin verir. API `POST /api/v1/consents/:consentId/withdraw` geri çekmeyi tek transaction'da yazar (ikinci geri çekme 409 `consent_already_withdrawn`); konuşma kaydı rızası geri çekilince öğrencinin bağlı ve hesabının yüklediği henüz bağlanmamış `speaking_recording` dosyaları aynı işlemde imhaya işaretlenir; bağlama (`attachFile`) veri sahibini yükleyenin öğrenci kaydından türetir ve rızayı yeniden denetler (yoksa 403 `consent_required`) (`retention_until = now`, `file.purge_scheduled` denetimi; `apps/api/src/db/files.ts` `scheduleSubjectFilesPurge`). Nesneyi silen imha işi yok (`TODO(F3c2-imha)`, pg-boss kurulmadı).
 
 ### DOM-YTK-060 · Yeni rıza metni sürümü eski rızayı yeni amaca taşımaz
 
@@ -318,7 +318,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Gerekçe:** Rıza bilgilendirilmiş olmalıdır; kişi görmediği amaca rıza vermiş sayılmaz.
 - **Kaynak:** KVKK md. 3/1-a; guvenlik-kvkk §9. Düzeltme sürümünün yeniden rıza istemeyeceği yorumu **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `lib/privacy-notices.ts` `minimumConsentTextVersion`; `hasValidConsent` alt sınırı çağıranın verdiği metin listesinden kendisi hesaplar (ayrı sayı almaz, unutulamaz). Yayımlanmış metin arşivlenemez ve sürüm numarası yeniden kullanılmaz (`privacy_notices` değişmez satır); yeniden rıza şartı böylece listeden düşmez.
+- **Kodda:** kısmen — `lib/privacy-notices.ts` `minimumConsentTextVersion`; `hasValidConsent` alt sınırı çağıranın verdiği metin listesinden kendisi hesaplar (ayrı sayı almaz, unutulamaz). API `GET /api/v1/consent-texts/:purpose` güncel metni ve `minimumVersion`'ı döndürür. Yayımlanmış metin arşivlenemez ve sürüm numarası yeniden kullanılmaz (`privacy_notices` değişmez satır); yeniden rıza şartı böylece listeden düşmez.
 
 ### DOM-YTK-061 · Rızaya bağlı işlem geçerli rıza ister
 
@@ -326,7 +326,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Gerekçe:** Geri çekme ve süre dolması anında etkili olmalıdır.
 - **Kaynak:** KVKK md. 5; IST-017.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `lib/consents.ts` `hasValidConsent`; dosya yüklemesi henüz bağlı değil (`apps/api/src/services/files.ts` `TODO(F3c2-consents)`, OG-016).
+- **Kodda:** kısmen — `lib/consents.ts` `hasValidConsent`; API `GET /api/v1/consents/status` amaç başına yalnız var/yok döndürür (öğretmen satırları değil yalnız bunu görür). Konuşma kaydı yüklemesi bağlı: `apps/api/src/services/files.ts` `assertCanUpload` yükleyen öğrencinin kendi kaydı için geçerli rıza arar, yoksa 403 `consent_required`. Bülten fotoğrafı (IST-068) ve tanıtım iletisi gönderimi henüz denetlemiyor.
 
 ### DOM-YTK-062 · Öğrencinin fotoğraf itirazı
 

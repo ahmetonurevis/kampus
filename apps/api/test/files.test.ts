@@ -10,10 +10,12 @@ import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { institutions } from '../src/db/schema/auth.ts'
 import { markFileDeleted } from '../src/db/files.ts'
+import { insertMissingRecords } from '../src/db/records.ts'
 import { files } from '../src/db/schema/files.ts'
 import { institutionSettings } from '../src/db/schema/institution-settings.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { defineFileAttachment } from '../src/services/file-registry.ts'
+import type { MembershipLinkInput } from '../src/services/identity.ts'
 import { attachFile, purgeUnattachedFiles, recordFileCheck } from '../src/services/files.ts'
 import {
   buildTestApp,
@@ -40,6 +42,12 @@ const TEST_ATTACHMENT = 'test_record'
 const readers = new Set<string>()
 defineFileAttachment(TEST_ATTACHMENT, {
   purposes: ['submission'],
+  canRead: async (_tx, ctx) => readers.has(ctx.actor.userId),
+})
+/** Konuşma kaydının bağlandığı test kaydı (rıza gereken amaç). */
+const TEST_SPEAKING_ATTACHMENT = 'test_speaking_record'
+defineFileAttachment(TEST_SPEAKING_ATTACHMENT, {
+  purposes: ['speaking_recording'],
   canRead: async (_tx, ctx) => readers.has(ctx.actor.userId),
 })
 
@@ -215,6 +223,253 @@ describe('dosya uçları', () => {
     assert.equal(response.statusCode, 403)
     assert.equal(response.json().code, 'consent_required')
     assert.equal((await store.files()).length, before)
+  })
+
+  test('DOM-BEC-050 DOM-YTK-059 DOM-YTK-061 konuşma kaydı geçerli veli rızasıyla yüklenir; rıza geri çekilince dosya imhaya işaretlenir ve yükleme yeniden 403', async () => {
+    const t = await tenant()
+    // 17 yaşındaki öğrenci: rızayı velayet sahibi veli verir.
+    await insertMissingRecords(
+      db,
+      t.institution.id,
+      [
+        {
+          collection: 'students',
+          id: 's1',
+          data: { id: 's1', name: 'Öğrenci', birthDate: '2009-10-07' },
+        },
+      ],
+      now,
+    )
+    const linked = async (role: Role, links: MembershipLinkInput[]) => {
+      const user = await createMember(app, t.institution.id, role, links)
+      return { ...user, cookie: await signInAs(app, user) }
+    }
+    const student = await linked('ogrenci', [{ kind: 'student', recordId: 's1' }])
+    const parent = await linked('veli', [{ kind: 'child', recordId: 's1' }])
+    const json = (cookie: string, url: string, body: unknown) =>
+      app.inject({
+        method: 'POST',
+        url,
+        headers: {
+          origin: TEST_ORIGIN,
+          cookie,
+          'content-type': 'application/json',
+          'idempotency-key': nextKey(),
+        },
+        payload: JSON.stringify(body),
+      })
+    const recording = () =>
+      upload(student.cookie, uploadParts('speaking_recording', MP3, 'kayit.mp3', 'audio/mpeg'))
+
+    const text = await json(t.admin.cookie, '/api/v1/privacy-notices', {
+      kind: 'consent_text',
+      purpose: 'speaking_recording',
+      title: 'Konuşma kaydı rızası',
+      body: 'Ses kaydı yalnız değerlendirme için işlenir.',
+    })
+    assert.equal(text.statusCode, 201, text.body)
+    // Metin var ama rıza yok: yine 403.
+    assert.equal((await recording()).statusCode, 403)
+
+    const consent = await json(parent.cookie, '/api/v1/consents', {
+      purpose: 'speaking_recording',
+      studentId: 's1',
+      textId: text.json().data.id,
+      channel: 'web',
+    })
+    assert.equal(consent.statusCode, 201, consent.body)
+    const uploaded = await recording()
+    assert.equal(uploaded.statusCode, 201, uploaded.body)
+    const fileId = uploaded.json().data.id as string
+    // Bağlama `data_subject_id`'yi yazar; bağlama akışı bu testin konusu değil.
+    await db
+      .update(files)
+      .set({ dataSubjectId: 's1' })
+      .where(and(eq(files.institutionId, t.institution.id), eq(files.id, fileId)))
+
+    const withdrawn = await json(
+      parent.cookie,
+      `/api/v1/consents/${consent.json().data.id}/withdraw`,
+      {},
+    )
+    assert.equal(withdrawn.statusCode, 200, withdrawn.body)
+    const [row] = await db
+      .select()
+      .from(files)
+      .where(and(eq(files.institutionId, t.institution.id), eq(files.id, fileId)))
+    assert.equal(row?.retentionUntil?.toISOString(), now.toISOString())
+    const purge = await db
+      .select()
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.institutionId, t.institution.id),
+          eq(auditLog.action, 'file.purge_scheduled'),
+        ),
+      )
+    assert.deepEqual(
+      purge.map((item) => [item.entityId, item.changes?.fields]),
+      [[fileId, ['retentionUntil']]],
+    )
+
+    const after = await recording()
+    assert.equal(after.statusCode, 403)
+    assert.equal(after.json().code, 'consent_required')
+  })
+
+  /**
+   * Konuşma kaydı dünyası: 17 yaşındaki s1 öğrencisi, velisi, yayımlanmış rıza metni ve velinin
+   * verdiği geçerli rıza. s5'in hesabı karşılaştırma için.
+   */
+  async function speakingWorld() {
+    const t = await tenant()
+    await insertMissingRecords(
+      db,
+      t.institution.id,
+      [
+        {
+          collection: 'students',
+          id: 's1',
+          data: { id: 's1', name: 'Öğrenci', birthDate: '2009-10-07' },
+        },
+        {
+          collection: 'students',
+          id: 's5',
+          data: { id: 's5', name: 'Öğrenci', birthDate: '2012-03-15' },
+        },
+      ],
+      now,
+    )
+    const linked = async (role: Role, links: MembershipLinkInput[]) => {
+      const user = await createMember(app, t.institution.id, role, links)
+      return { ...user, cookie: await signInAs(app, user) }
+    }
+    const student = await linked('ogrenci', [{ kind: 'student', recordId: 's1' }])
+    const parent = await linked('veli', [{ kind: 'child', recordId: 's1' }])
+    const json = (cookie: string, url: string, body: unknown) =>
+      app.inject({
+        method: 'POST',
+        url,
+        headers: {
+          origin: TEST_ORIGIN,
+          cookie,
+          'content-type': 'application/json',
+          'idempotency-key': nextKey(),
+        },
+        payload: JSON.stringify(body),
+      })
+    const text = await json(t.admin.cookie, '/api/v1/privacy-notices', {
+      kind: 'consent_text',
+      purpose: 'speaking_recording',
+      title: 'Konuşma kaydı rızası',
+      body: 'Ses kaydı yalnız değerlendirme için işlenir.',
+    })
+    assert.equal(text.statusCode, 201, text.body)
+    const consent = await json(parent.cookie, '/api/v1/consents', {
+      purpose: 'speaking_recording',
+      studentId: 's1',
+      textId: text.json().data.id,
+      channel: 'web',
+    })
+    assert.equal(consent.statusCode, 201, consent.body)
+    const recording = async () => {
+      const response = await upload(
+        student.cookie,
+        uploadParts('speaking_recording', MP3, 'kayit.mp3', 'audio/mpeg'),
+      )
+      assert.equal(response.statusCode, 201, response.body)
+      return response.json().data.id as string
+    }
+    const withdraw = async () => {
+      const response = await json(
+        parent.cookie,
+        `/api/v1/consents/${consent.json().data.id}/withdraw`,
+        {},
+      )
+      assert.equal(response.statusCode, 200, response.body)
+    }
+    const ready = (fileId: string) =>
+      recordFileCheck(db, store.storage, {
+        institutionId: t.institution.id,
+        fileId,
+        outcome: 'ready',
+        now,
+        log: app.log,
+      })
+    const attach = (fileId: string, dataSubjectId: string | null) =>
+      db.transaction((tx) =>
+        attachFile(tx, contextFor(t.institution.id, student, 'ogrenci'), {
+          fileId,
+          attachedType: TEST_SPEAKING_ATTACHMENT,
+          attachedId: 'konusma-1',
+          dataSubjectId,
+        }),
+      )
+    const rowOf = async (fileId: string) =>
+      (await rowsOf(t.institution.id)).find((row) => row.id === fileId)
+    return { t, student, recording, withdraw, ready, attach, rowOf }
+  }
+
+  test('DOM-YTK-059 rıza geri çekilince öğrencinin henüz bağlanmamış konuşma kayıtları da imhaya işaretlenir; başka amaç işaretlenmez', async () => {
+    const w = await speakingWorld()
+    const pending = await w.recording()
+    const ready = await w.recording()
+    await w.ready(ready)
+    const submission: string = (
+      await upload(w.student.cookie, uploadParts('submission', PDF))
+    ).json().data.id
+    await w.withdraw()
+    for (const id of [pending, ready]) {
+      const row = await w.rowOf(id)
+      assert.equal(row?.attachedId, null)
+      assert.equal(row?.retentionUntil?.toISOString(), now.toISOString(), id)
+    }
+    assert.equal((await w.rowOf(submission))?.retentionUntil, null)
+    const purge = await db
+      .select()
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.institutionId, w.t.institution.id),
+          eq(auditLog.action, 'file.purge_scheduled'),
+        ),
+      )
+    assert.deepEqual(purge.map((item) => item.entityId).sort(), [pending, ready].sort())
+  })
+
+  test('DOM-YTK-059 DOM-YTK-061 rıza yükleme sonrasında geri çekildiyse bağlama 403 consent_required; dosya satırı değişmez', async () => {
+    const w = await speakingWorld()
+    const id = await w.recording()
+    await w.ready(id)
+    await w.withdraw()
+    const before = await w.rowOf(id)
+    await assert.rejects(w.attach(id, 's1'), (error: { statusCode?: number; code?: string }) => {
+      assert.equal(error.statusCode, 403)
+      assert.equal(error.code, 'consent_required')
+      return true
+    })
+    const after = await w.rowOf(id)
+    assert.deepEqual(after, before)
+    assert.equal(after?.attachedId, null)
+    assert.equal(after?.dataSubjectId, null)
+  })
+
+  test('DOM-BEC-050 konuşma kaydında veri sahibi yükleyenin öğrenci kaydından türer; çağıranın dataSubjectId değeri etkisizdir', async () => {
+    const w = await speakingWorld()
+    const forged = await w.recording()
+    await w.ready(forged)
+    const attached = await w.attach(forged, 's5')
+    assert.equal(attached.attachedId, 'konusma-1')
+    assert.equal(attached.dataSubjectId, 's1')
+    const missing = await w.recording()
+    await w.ready(missing)
+    assert.equal((await w.attach(missing, null)).dataSubjectId, 's1')
+    // Geri çekme s1'in bağlı kayıtlarını işaretler; s5'e yazılmış hiçbir dosya yoktur.
+    await w.withdraw()
+    for (const id of [forged, missing])
+      assert.equal((await w.rowOf(id))?.retentionUntil?.toISOString(), now.toISOString())
+    const s5 = (await rowsOf(w.t.institution.id)).filter((row) => row.dataSubjectId === 's5')
+    assert.equal(s5.length, 0)
   })
 
   test('modül kapalı: learning amaçları 403 module_disabled, kurum belgesi açık', async () => {

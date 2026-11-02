@@ -4063,6 +4063,356 @@
           "readAt"
         ]
       },
+      "PrivacyNoticeInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "notice",
+              "consent_text"
+            ],
+            "description": "`notice` aydınlatma metni (kitleye), `consent_text` rıza metni (amaca)"
+          },
+          "audience": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "veli",
+                  "ogrenci",
+                  "personel"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aydınlatma kitlesi"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "photo_video_sharing",
+                  "photo_video_website",
+                  "photo_video_social_media",
+                  "photo_video_print",
+                  "promotional_messages",
+                  "speaking_recording"
+                ],
+                "description": "Rıza amacı kodu"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Konu içinde artan sürüm"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "requiresReconsent": {
+            "type": "boolean",
+            "description": "Bu sürümden eski metne verilmiş rıza geçersizdir (DOM-YTK-060)"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "audience",
+          "purpose",
+          "version",
+          "title",
+          "body",
+          "requiresReconsent",
+          "publishedAt"
+        ]
+      },
+      "CurrentPrivacyNoticeInput": {
+        "type": "object",
+        "properties": {
+          "audience": {
+            "type": "string",
+            "enum": [
+              "veli",
+              "ogrenci",
+              "personel"
+            ],
+            "description": "Oturum rolünün kitlesi"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrivacyNoticeInput"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kitlenin son sürümü; yayımlanmamışsa boş"
+          },
+          "needsAcknowledgement": {
+            "type": "boolean",
+            "description": "Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli"
+          },
+          "acknowledgedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Son sürümün gösterim anı"
+          }
+        },
+        "required": [
+          "audience",
+          "notice",
+          "needsAcknowledgement",
+          "acknowledgedAt"
+        ]
+      },
+      "NoticeAcknowledgementInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "noticeId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "web",
+              "mobile"
+            ]
+          },
+          "acknowledgedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "noticeId",
+          "userId",
+          "channel",
+          "acknowledgedAt"
+        ]
+      },
+      "ConsentTextInput": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/PrivacyNoticeInput"
+          },
+          "minimumVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Geçerli rıza için gereken en düşük metin sürümü (DOM-YTK-060)"
+          }
+        },
+        "required": [
+          "text",
+          "minimumVersion"
+        ]
+      },
+      "ConsentInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "subjectKind": {
+            "type": "string",
+            "enum": [
+              "student",
+              "user"
+            ],
+            "description": "`student` öğrenci kaydı, `user` hesabın kendisi"
+          },
+          "subjectId": {
+            "type": "string",
+            "description": "Öğrenci kaydı ya da kullanıcı kimliği"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "photo_video_sharing",
+              "photo_video_website",
+              "photo_video_social_media",
+              "photo_video_print",
+              "promotional_messages",
+              "speaking_recording"
+            ],
+            "description": "Rıza amacı kodu"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "granted",
+              "objected"
+            ],
+            "description": "`granted` rıza, `objected` öğrenci itirazı"
+          },
+          "grantedByUserId": {
+            "description": "Rızayı veren kullanıcı; yalnız yönetici ve ön büroya döner",
+            "type": "string"
+          },
+          "grantorRelation": {
+            "type": "string",
+            "enum": [
+              "self",
+              "guardian"
+            ],
+            "description": "`self` kendisi, `guardian` veli"
+          },
+          "textId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "textVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "web",
+              "mobile"
+            ]
+          },
+          "givenAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Eğitim yılı sonu ya da öğrencinin 18. yaş günü"
+          },
+          "withdrawnAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "withdrawalReason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "withdrawn",
+                  "renewed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`withdrawn` geri çekme, `renewed` yenilenerek kapanma"
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "subjectKind",
+          "subjectId",
+          "purpose",
+          "decision",
+          "grantorRelation",
+          "textId",
+          "textVersion",
+          "channel",
+          "givenAt",
+          "expiresAt",
+          "withdrawnAt",
+          "withdrawalReason",
+          "rowVersion"
+        ]
+      },
+      "ConsentStatusInput": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "photo_video_sharing",
+              "photo_video_website",
+              "photo_video_social_media",
+              "photo_video_print",
+              "promotional_messages",
+              "speaking_recording"
+            ],
+            "description": "Rıza amacı kodu"
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "Şu anda geçerli rıza var ve etkin itiraz yok (DOM-YTK-061)"
+          }
+        },
+        "required": [
+          "purpose",
+          "valid"
+        ]
+      },
       "BookableSlotInput": {
         "type": "object",
         "properties": {
@@ -12598,6 +12948,362 @@
           "title",
           "createdAt",
           "readAt"
+        ],
+        "additionalProperties": false
+      },
+      "PrivacyNotice": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "notice",
+              "consent_text"
+            ],
+            "description": "`notice` aydınlatma metni (kitleye), `consent_text` rıza metni (amaca)"
+          },
+          "audience": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "veli",
+                  "ogrenci",
+                  "personel"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Aydınlatma kitlesi"
+          },
+          "purpose": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "photo_video_sharing",
+                  "photo_video_website",
+                  "photo_video_social_media",
+                  "photo_video_print",
+                  "promotional_messages",
+                  "speaking_recording"
+                ],
+                "description": "Rıza amacı kodu"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Konu içinde artan sürüm"
+          },
+          "title": {
+            "type": "string"
+          },
+          "body": {
+            "type": "string"
+          },
+          "requiresReconsent": {
+            "type": "boolean",
+            "description": "Bu sürümden eski metne verilmiş rıza geçersizdir (DOM-YTK-060)"
+          },
+          "publishedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "audience",
+          "purpose",
+          "version",
+          "title",
+          "body",
+          "requiresReconsent",
+          "publishedAt"
+        ],
+        "additionalProperties": false
+      },
+      "CurrentPrivacyNotice": {
+        "type": "object",
+        "properties": {
+          "audience": {
+            "type": "string",
+            "enum": [
+              "veli",
+              "ogrenci",
+              "personel"
+            ],
+            "description": "Oturum rolünün kitlesi"
+          },
+          "notice": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/PrivacyNotice"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kitlenin son sürümü; yayımlanmamışsa boş"
+          },
+          "needsAcknowledgement": {
+            "type": "boolean",
+            "description": "Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli"
+          },
+          "acknowledgedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Son sürümün gösterim anı"
+          }
+        },
+        "required": [
+          "audience",
+          "notice",
+          "needsAcknowledgement",
+          "acknowledgedAt"
+        ],
+        "additionalProperties": false
+      },
+      "NoticeAcknowledgement": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "noticeId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "web",
+              "mobile"
+            ]
+          },
+          "acknowledgedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "noticeId",
+          "userId",
+          "channel",
+          "acknowledgedAt"
+        ],
+        "additionalProperties": false
+      },
+      "ConsentText": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "$ref": "#/components/schemas/PrivacyNotice"
+          },
+          "minimumVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Geçerli rıza için gereken en düşük metin sürümü (DOM-YTK-060)"
+          }
+        },
+        "required": [
+          "text",
+          "minimumVersion"
+        ],
+        "additionalProperties": false
+      },
+      "Consent": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "subjectKind": {
+            "type": "string",
+            "enum": [
+              "student",
+              "user"
+            ],
+            "description": "`student` öğrenci kaydı, `user` hesabın kendisi"
+          },
+          "subjectId": {
+            "type": "string",
+            "description": "Öğrenci kaydı ya da kullanıcı kimliği"
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "photo_video_sharing",
+              "photo_video_website",
+              "photo_video_social_media",
+              "photo_video_print",
+              "promotional_messages",
+              "speaking_recording"
+            ],
+            "description": "Rıza amacı kodu"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "granted",
+              "objected"
+            ],
+            "description": "`granted` rıza, `objected` öğrenci itirazı"
+          },
+          "grantedByUserId": {
+            "description": "Rızayı veren kullanıcı; yalnız yönetici ve ön büroya döner",
+            "type": "string"
+          },
+          "grantorRelation": {
+            "type": "string",
+            "enum": [
+              "self",
+              "guardian"
+            ],
+            "description": "`self` kendisi, `guardian` veli"
+          },
+          "textId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "textVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "channel": {
+            "type": "string",
+            "enum": [
+              "web",
+              "mobile"
+            ]
+          },
+          "givenAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "expiresAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Eğitim yılı sonu ya da öğrencinin 18. yaş günü"
+          },
+          "withdrawnAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "withdrawalReason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "withdrawn",
+                  "renewed"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "`withdrawn` geri çekme, `renewed` yenilenerek kapanma"
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "subjectKind",
+          "subjectId",
+          "purpose",
+          "decision",
+          "grantorRelation",
+          "textId",
+          "textVersion",
+          "channel",
+          "givenAt",
+          "expiresAt",
+          "withdrawnAt",
+          "withdrawalReason",
+          "rowVersion"
+        ],
+        "additionalProperties": false
+      },
+      "ConsentStatus": {
+        "type": "object",
+        "properties": {
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "photo_video_sharing",
+              "photo_video_website",
+              "photo_video_social_media",
+              "photo_video_print",
+              "promotional_messages",
+              "speaking_recording"
+            ],
+            "description": "Rıza amacı kodu"
+          },
+          "valid": {
+            "type": "boolean",
+            "description": "Şu anda geçerli rıza var ve etkin itiraz yok (DOM-YTK-061)"
+          }
+        },
+        "required": [
+          "purpose",
+          "valid"
         ],
         "additionalProperties": false
       },
@@ -55537,6 +56243,1329 @@
         }
       }
     },
+    "/api/v1/privacy-notices": {
+      "get": {
+        "operationId": "listPrivacyNotices",
+        "summary": "Aydınlatma ve rıza metinleri",
+        "tags": [
+          "privacy"
+        ],
+        "description": "Kurumun yayımlanmış bütün aydınlatma (`notice`) ve rıza (`consent_text`) metni sürümleri, konu ve sürüm sırasıyla, sayfalı. Yayımlanmış metin değişmez. Bilinmeyen parametre 400. Roller: `yonetici`; diğer roller 403.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PrivacyNotice"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "publishPrivacyNotice",
+        "summary": "Aydınlatma veya rıza metni yayımla",
+        "tags": [
+          "privacy"
+        ],
+        "description": "Yeni metin sürümü yayımlar (core `planNoticePublication`, DOM-YTK-056, DOM-YTK-060): sürüm konunun (kitle ya da amaç) son sürümünün bir fazlasıdır; yayımlanmış metin değiştirilmez, düzeltme yeni sürümdür. Rıza metninde `requiresReconsent` doğruysa eski sürüme verilmiş rızalar geçersiz sayılır ve yeniden rıza istenir. Eşzamanlı yayım çakışırsa 409. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Denetime yalnız alan adları (metin gövdesi loglanmaz). Roller: `yonetici`; diğer roller 403.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "notice"
+                        ]
+                      },
+                      "audience": {
+                        "type": "string",
+                        "enum": [
+                          "veli",
+                          "ogrenci",
+                          "personel"
+                        ]
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50000
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "audience",
+                      "title",
+                      "body"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "kind": {
+                        "type": "string",
+                        "enum": [
+                          "consent_text"
+                        ]
+                      },
+                      "purpose": {
+                        "type": "string",
+                        "enum": [
+                          "photo_video_sharing",
+                          "photo_video_website",
+                          "photo_video_social_media",
+                          "photo_video_print",
+                          "promotional_messages",
+                          "speaking_recording"
+                        ]
+                      },
+                      "title": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      "body": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 50000
+                      },
+                      "requiresReconsent": {
+                        "default": false,
+                        "type": "boolean"
+                      }
+                    },
+                    "required": [
+                      "kind",
+                      "purpose",
+                      "title",
+                      "body"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PrivacyNotice"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy-notices/current": {
+      "get": {
+        "operationId": "getCurrentPrivacyNotice",
+        "summary": "Güncel aydınlatma metni",
+        "tags": [
+          "privacy"
+        ],
+        "description": "Oturum rolünün kitlesine ait son aydınlatma metni ve kullanıcının bu sürümü görüp görmediği (IST-016, DOM-YTK-056). İlk girişte ve yeni sürüm yayımlanınca `needsAcknowledgement` doğrudur; istemci metni gösterip `POST /privacy-notices/{noticeId}/acknowledge` çağırır. Yayımlanmış metin yoksa `notice` boştur. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CurrentPrivacyNotice"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/privacy-notices/{noticeId}/acknowledge": {
+      "post": {
+        "operationId": "acknowledgePrivacyNotice",
+        "summary": "Aydınlatma metninin gösterildiğini kaydet",
+        "tags": [
+          "privacy"
+        ],
+        "description": "Aydınlatma metninin kullanıcıya gösterildiğini kaydeder (DOM-YTK-056); aydınlatma onay değildir, yalnız gösterim kaydıdır. Yalnız kitlenin son sürümü kaydedilir: eski sürüm 409 `notice_outdated`, başka kitlenin metni, rıza metni, olmayan ya da başka kurumun metni 404. İlk kayıt 201; aynı sürümün ikinci kaydı yeni satır açmaz, ilk gösterimi 200 ile döndürür. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "web",
+                      "mobile"
+                    ]
+                  }
+                },
+                "required": [
+                  "channel"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "noticeId",
+            "required": true,
+            "description": "Aydınlatma metni sürümünün kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NoticeAcknowledgement"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NoticeAcknowledgement"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consent-texts/{purpose}": {
+      "get": {
+        "operationId": "getConsentText",
+        "summary": "Amacın güncel rıza metni",
+        "tags": [
+          "privacy"
+        ],
+        "description": "Amacın son yayımlanmış rıza metni ve geçerli rıza için gereken en düşük metin sürümü (DOM-YTK-058, DOM-YTK-060). Rıza formu bu metni gösterir ve `textId` olarak gönderir. Metin yoksa 404 `consent_text_not_found` (o amaçta rıza alınamaz). Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "photo_video_sharing",
+                "photo_video_website",
+                "photo_video_social_media",
+                "photo_video_print",
+                "promotional_messages",
+                "speaking_recording"
+              ]
+            },
+            "in": "path",
+            "name": "purpose",
+            "required": true,
+            "description": "Rıza amacı kodu"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/ConsentText"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consents": {
+      "get": {
+        "operationId": "listConsents",
+        "summary": "Rıza kayıtları",
+        "tags": [
+          "privacy"
+        ],
+        "description": "Veri sahibinin rıza ve itiraz satırları, amaç ve veriliş sırasıyla, sayfalı (DOM-ILT-034). `studentId` verilirse öğrenci amaçları, verilmezse oturum sahibinin hesap amaçları (tanıtım iletisi). `status=open` geri çekilmemiş satırlar (varsayılan), `all` geçmiş dahil; bugün geçerli olup olmadığı `GET /consents/status`'tadır. Kapsam: yönetici ve ön büro kurumun öğrencileri, veli bağlı çocukları, öğrenci kendi kaydı; kapsam dışı ya da başka kurumun öğrencisi 404 `not_found`. Öğretmen satırları okuyamaz (403), yalnız var/yok sonucunu görür (DOM-YTK-061). Rızayı veren kullanıcının kimliği (`grantedByUserId`) yalnız yönetici ve ön büroya döner; veli ve öğrenci yalnız ilişkiyi (`grantorRelation`) görür. Bilinmeyen parametre 400. Roller: `yonetici`, `onburo`, `ogrenci`, `veli`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Veri sahibi öğrenci; yoksa oturum sahibinin hesap rızaları"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "photo_video_sharing",
+                "photo_video_website",
+                "photo_video_social_media",
+                "photo_video_print",
+                "promotional_messages",
+                "speaking_recording"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "Rıza amacı kodu"
+          },
+          {
+            "schema": {
+              "default": "open",
+              "type": "string",
+              "enum": [
+                "open",
+                "all"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`open` geri çekilmemiş satırlar, `all` geçmiş dahil"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Consent"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "giveConsent",
+        "summary": "Açık rıza ver veya itiraz kaydet",
+        "tags": [
+          "privacy"
+        ],
+        "description": "Amaç ve metin sürümüne bağlı açık rıza ya da öğrenci itirazı kaydeder (IST-017, core `planConsent`; DOM-YTK-057, -058, -062). Öğrenci amaçlarında `studentId` zorunludur: 18 yaş altında yalnız doğrulanmış velayet sahibi veli (aksi 403 `consent_guardian_required` / `consent_custody_required`), 18 ve üstünde yalnız öğrencinin kendisi (veli 403 `consent_adult_self`); yaş güncel doğum tarihinden, Europe/Istanbul gününe göre. Hesap amaçlarında `studentId` verilmez. `textId` amacın güncel metni olmalı: eski sürüm 409 `consent_text_outdated`, olmayan metin 404 `consent_text_not_found`. Aynı amaçta geçerli rıza varsa 409 `consent_exists`; süresi dolmuş satır aynı işlemde `renewed` ile kapanır. Eğitim yılı amaçları kurum eğitim yılının sonunda (ertesi yılın 1 Eylül 00:00 Europe/Istanbul) düşer; eğitim yılı tanımsızsa 422 `academic_year_required`. Kapsam dışı ya da başka kurumun öğrencisi 404. Gövdedeki bilinmeyen alan (`institutionId` dahil) 400. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Denetime yalnız alan adları. Roller: `ogrenci`, `veli`; personel rıza veremez (403).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "purpose": {
+                    "type": "string",
+                    "enum": [
+                      "photo_video_sharing",
+                      "photo_video_website",
+                      "photo_video_social_media",
+                      "photo_video_print",
+                      "promotional_messages",
+                      "speaking_recording"
+                    ]
+                  },
+                  "decision": {
+                    "default": "granted",
+                    "type": "string",
+                    "enum": [
+                      "granted",
+                      "objected"
+                    ]
+                  },
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "textId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "channel": {
+                    "type": "string",
+                    "enum": [
+                      "web",
+                      "mobile"
+                    ]
+                  }
+                },
+                "required": [
+                  "purpose",
+                  "textId",
+                  "channel"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Consent"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consents/status": {
+      "get": {
+        "operationId": "getConsentStatus",
+        "summary": "Amaç başına geçerli rıza sonucu",
+        "tags": [
+          "privacy"
+        ],
+        "description": "Amaç başına yalnız var/yok sonucu (DOM-YTK-061): geçerli rıza var ve etkin itiraz yok. Süresi dolmuş (eğitim yılı sonu, 18. yaş günü), geri çekilmiş ya da yeniden rıza gerektiren eski metne verilmiş rıza geçersizdir; geri çekme anında yansır. `studentId` verilirse öğrenci amaçları, verilmezse oturum sahibinin hesap amaçları. Kapsam: yönetici ve ön büro kurumun, öğretmen yalnız ders verdiği sınıfların öğrencileri, veli bağlı çocukları, öğrenci kendisi; kapsam dışı ya da başka kurumun öğrencisi 404 `not_found`. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Veri sahibi öğrenci; yoksa oturum sahibinin hesap amaçları"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "photo_video_sharing",
+                "photo_video_website",
+                "photo_video_social_media",
+                "photo_video_print",
+                "promotional_messages",
+                "speaking_recording"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "Rıza amacı kodu"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ConsentStatus"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/consents/{consentId}/withdraw": {
+      "post": {
+        "operationId": "withdrawConsent",
+        "summary": "Rızayı veya itirazı geri çek",
+        "tags": [
+          "privacy"
+        ],
+        "description": "Rızayı ya da itirazı geri çeker (DOM-YTK-059): tek işlem, anında etkili; `GET /consents/status` hemen yok döner. Geri çekme rızayı veren tarafındır (18 yaş altında velayetli veli, 18 ve üstünde öğrenci). Konuşma kaydı rızası geri çekilirse öğrencinin o amaçtaki dosyaları (kayda bağlanmış ve öğrencinin hesabının yüklediği henüz bağlanmamış) aynı işlemde imhaya işaretlenir (`retention_until = now`); bağlanmamış kayıt artık bağlanamaz. İkinci geri çekme 409 `consent_already_withdrawn`; olmayan, kapsam dışı ya da başka kurumun kaydı 404. Gövde yok ya da boş nesne. `Idempotency-Key` isteğe bağlı. Roller: `ogrenci`, `veli`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "consentId",
+            "required": true,
+            "description": "Rıza kaydı kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/Consent"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/files": {
       "post": {
         "operationId": "uploadFile",
@@ -55544,7 +57573,7 @@
         "tags": [
           "files"
         ],
-        "description": "Tek dosya, `multipart/form-data`: önce `purpose`, sonra `file` alanı (DOM-KYN-004; ADR 0003 karar 2, 3). Dosya akışla depoya yazılır; boyut ve SHA-256 aynı geçişte hesaplanır. Tür içerikten (sihirli bayt) bulunur: amaçta olmayan tür 422 `file_type_not_allowed`, bildirilen tür veya ad uzantısı içerikle çelişirse 422 `file_type_mismatch`, boş dosya 422 `file_empty`. Amacın (türe özel) boyut sınırı aşılırsa akış kesilir, nesne silinir, 413 `file_too_large`. Kurum kotası aşılırsa 422 `storage_quota_exceeded`. Konuşma kaydı rıza kaydı gelene kadar 403 `consent_required` (DOM-BEC-050). Multipart olmayan gövde 415. Dosya `pending` başlar ve 24 saat içinde bir kayda bağlanmazsa silinir. Kurum kimliği oturumdan gelir. `Idempotency-Key` zorunlu (aynı anahtar + aynı içerik ilk yanıtı tekrarlar); `If-Match` desteklenmez. Başarı 201 ve dosyanın `Location`'ı. Özgün ad log ve denetim kaydına yazılmaz. Roller amaca göre: `submission` ve `speaking_recording` öğrenci; `material`, `question_image`, `listening_audio` yönetici ve öğretmen (modül `learning`, kapalıysa 403 `module_disabled`); `document` yönetici ve ön büro. Diğer roller 403.",
+        "description": "Tek dosya, `multipart/form-data`: önce `purpose`, sonra `file` alanı (DOM-KYN-004; ADR 0003 karar 2, 3). Dosya akışla depoya yazılır; boyut ve SHA-256 aynı geçişte hesaplanır. Tür içerikten (sihirli bayt) bulunur: amaçta olmayan tür 422 `file_type_not_allowed`, bildirilen tür veya ad uzantısı içerikle çelişirse 422 `file_type_mismatch`, boş dosya 422 `file_empty`. Amacın (türe özel) boyut sınırı aşılırsa akış kesilir, nesne silinir, 413 `file_too_large`. Kurum kotası aşılırsa 422 `storage_quota_exceeded`. Konuşma kaydı yükleyen öğrencinin kendi kaydı için geçerli rıza ister (18 yaş altında velayet sahibi velinin, 18 ve üstünde kendi rızası; geri çekilmiş, süresi dolmuş ya da itirazlı rıza sayılmaz): yoksa 403 `consent_required` (DOM-BEC-050, DOM-YTK-061). Multipart olmayan gövde 415. Dosya `pending` başlar ve 24 saat içinde bir kayda bağlanmazsa silinir. Kurum kimliği oturumdan gelir. `Idempotency-Key` zorunlu (aynı anahtar + aynı içerik ilk yanıtı tekrarlar); `If-Match` desteklenmez. Başarı 201 ve dosyanın `Location`'ı. Özgün ad log ve denetim kaydına yazılmaz. Roller amaca göre: `submission` ve `speaking_recording` öğrenci; `material`, `question_image`, `listening_audio` yönetici ve öğretmen (modül `learning`, kapalıysa 403 `module_disabled`); `document` yönetici ve ön büro. Diğer roller 403.",
         "requestBody": {
           "required": true,
           "content": {

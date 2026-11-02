@@ -78,6 +78,12 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'prospect.enroll': ['yonetici', 'onburo'],
     'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
     'notification.read_all': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'notice.publish': ['yonetici'],
+    'notice.acknowledge': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'consent.give': ['ogrenci', 'veli'],
+    'consent.withdraw': ['ogrenci', 'veli'],
+    'consent.read': ['yonetici', 'onburo', 'ogrenci', 'veli'],
+    'consent.status': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
   })
   // Sıra anlamsızdır: komut tablosu iki kaynaktan birleşir (platform ve Onur bloğu).
   assert.deepEqual(Object.keys(WRITE_ACTION_ROLES).sort(), [...WRITE_ACTIONS].sort())
@@ -314,4 +320,43 @@ test('Çevrimdışı demo oturumu sessionActor ile aynı kararı alır', () => {
     ),
     'allowed',
   )
+})
+
+test('DOM-YTK-057 rıza okuması: personel rıza vermez, öğretmen yalnız sonucu ve yalnız kendi öğrencisinde; kapsam dışı 404', () => {
+  const state = seed()
+  const outside = state.students.find(
+    (student) =>
+      !state.assignments.some((a) => a.classId === student.classId && a.teacherId === 't1') &&
+      !state.classes.some((c) => c.id === student.classId && c.teacherId === 't1'),
+  )
+  assert.ok(outside, 'örnek veride t1 kapsamı dışında öğrenci yok')
+  const decide = (role: Role, action: 'consent.read' | 'consent.status', studentId: string) =>
+    code(authorize(actors[role], action, { studentId }, state))
+  for (const role of roles) {
+    for (const action of ['consent.give', 'consent.withdraw'] as const)
+      assert.equal(
+        code(authorize(actors[role], action, {}, state)),
+        role === 'ogrenci' || role === 'veli' ? 'allowed' : 'permission_denied',
+        `${role} ${action}`,
+      )
+  }
+  assert.equal(decide('yonetici', 'consent.read', outside.id), 'allowed')
+  assert.equal(decide('onburo', 'consent.status', outside.id), 'allowed')
+  assert.equal(decide('ogretmen', 'consent.read', 's1'), 'permission_denied')
+  assert.equal(decide('ogretmen', 'consent.status', 's1'), 'allowed')
+  assert.equal(decide('ogretmen', 'consent.status', outside.id), 'consent_student_not_found')
+  assert.equal(decide('veli', 'consent.read', 's1'), 'allowed')
+  assert.equal(decide('veli', 'consent.read', outside.id), 'consent_student_not_found')
+  assert.equal(decide('ogrenci', 'consent.status', 's2'), 'consent_student_not_found')
+  // Öğrenci kimliği yoksa aktörün kendi hesap rızaları okunur.
+  assert.equal(
+    code(authorize(actors.ogrenci, 'consent.read', { studentId: undefined }, state)),
+    'allowed',
+  )
+  // Platform yeteneğidir: modüller kapalıyken de açıktır.
+  const closed = seed()
+  for (const key of Object.keys(closed.modules))
+    closed.modules[key as keyof typeof closed.modules] = false
+  assert.equal(code(authorize(actors.veli, 'consent.withdraw', {}, closed)), 'allowed')
+  assert.equal(code(authorize(actors.ogretmen, 'notice.acknowledge', {}, closed)), 'allowed')
 })

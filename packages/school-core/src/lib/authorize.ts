@@ -378,6 +378,21 @@ function decide(
     case 'notification.read':
     case 'notification.read_all':
       return ALLOWED
+    // Rıza ve gösterim kararı veri sahibine göre `lib/consents.ts` ve `lib/privacy-notices.ts`
+    // içindedir (DOM-YTK-056…062); burada yalnız rol denetlenir.
+    case 'notice.publish':
+    case 'notice.acknowledge':
+    case 'consent.give':
+    case 'consent.withdraw':
+      return ALLOWED
+    case 'consent.read':
+    case 'consent.status': {
+      // Kapsam dışı öğrenci olmayan kayıtla aynı 404'tür; öğrencinin varlığı sızdırılmaz
+      // (DOM-YTK-057). Öğretmen yalnız ders verdiği sınıfların öğrencisini görür (DOM-YTK-022).
+      const { studentId } = request.target
+      if (studentId === undefined || scope.studentIds.has(studentId)) return ALLOWED
+      return deny('consent_student_not_found', 'Öğrenci bulunamadı.', 'DOM-YTK-057', 'not_found')
+    }
     default:
       return request satisfies never
   }

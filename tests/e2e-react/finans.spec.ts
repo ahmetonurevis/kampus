@@ -432,7 +432,11 @@ test.describe('Finans: tahsilat', () => {
     await editor.getByRole('button', { name: 'Taslağı kaydet' }).click()
     await expect(editor.getByText(/biçiminde girin/).first()).toBeVisible()
     await editor.getByLabel('Tutar (₺)', { exact: true }).fill('300.000,00')
+    await editor.getByLabel('MEBBİS onaylı tutar (₺)').fill('299.999,99')
+    const overAnnounced = editor.getByText('Tutar, MEBBİS onaylı tutarı aşıyor.')
+    await expect(overAnnounced).toBeVisible()
     await editor.getByLabel('MEBBİS onaylı tutar (₺)').fill('300.000,00')
+    await expect(overAnnounced).toHaveCount(0)
     await editor.getByRole('button', { name: 'Taslağı kaydet' }).click()
     await expect(page.getByText('Tarife kaydedildi.')).toBeVisible()
 

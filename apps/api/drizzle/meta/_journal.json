@@ -169,6 +169,13 @@
       "when": 1793574490440,
       "tag": "0023_create_coordinator_duties",
       "breakpoints": true
+    },
+    {
+      "idx": 24,
+      "version": "7",
+      "when": 1793583414491,
+      "tag": "0024_create_privacy_consents",
+      "breakpoints": true
     }
   ]
 }

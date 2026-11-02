@@ -11,6 +11,7 @@ import * as filesSchema from './schema/files.ts'
 import * as idempotencyKeysSchema from './schema/idempotency-keys.ts'
 import * as institutionSettingsSchema from './schema/institution-settings.ts'
 import * as membershipLinksSchema from './schema/membership-links.ts'
+import * as privacySchema from './schema/privacy.ts'
 import * as recordsSchema from './schema/records.ts'
 import * as resourcesSchema from './schema/resources.ts'
 import * as skillsSchema from './schema/skills.ts'
@@ -26,6 +27,7 @@ export const schema = {
   ...resourcesSchema,
   ...skillsSchema,
   ...filesSchema,
+  ...privacySchema,
 }
 export type Schema = typeof schema
 

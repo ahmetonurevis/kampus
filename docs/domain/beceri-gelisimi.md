@@ -153,6 +153,7 @@
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
 - **Kodda:** core kuralı — `packages/school-core/src/cefr/suggestion.ts` `cefrProfileView` (öneri ve kararlar ayrı alan; okulda "Kurum içi beceri profili", karar yok) ve `canViewCefrProfile` (öğretmenin sınıf kapsamı serviste, `TODO(cefr-profil-kapsam)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
+- **Not:** Profil yalnız öğrenci (`student`) kimliğindeki tespit oturumlarını ve seviye kararlarını gösterir. Aday (`prospect`) döneminde yapılan tespit ve verilen yerleştirme kararı aday kimliğinde kalır; aday kesin kayıtla öğrenciye dönüşünce profilde görünmez. Dönüşümde kararların bağlanması ya da aktarılması kayıt akışıyla birlikte kararlaştırılır (`TODO(cefr-aday-donusum)`); o zamana kadar aday döneminin kararı tespit uçlarından aday kimliğiyle okunur.
 
 ## Teslim kuralları
 

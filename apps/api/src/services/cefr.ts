@@ -671,6 +671,9 @@ export function decidePlacement(
  */
 // TODO(cefr-gorev-kaniti): Görev kanıtları (F4a sayılan deneme ve kesinleşmiş rubrik puanı)
 // henüz yüklenmiyor; öneri bitmiş tespit oturumlarının bölümlerinden çıkar.
+// TODO(cefr-aday-donusum): Profil yalnız öğrenci kimliğini okur; aday döneminde yapılan tespit ve
+// yerleştirme kararı aday kimliğinde kalır ve dönüşümden sonra burada görünmez
+// (docs/domain/beceri-gelisimi.md DOM-BEC-034 notu).
 export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   const [record] = await loadRecordsByIds(ctx.db, ctx.institutionId, 'students', [studentId])
   if (record === undefined) throw new NotFoundError()

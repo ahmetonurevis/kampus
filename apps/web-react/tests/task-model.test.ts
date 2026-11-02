@@ -4,6 +4,7 @@ import { rubricScoreInputSchema } from '@kampus/school-core/skills/rubric.ts'
 import {
   assignmentBody,
   assignmentFormSchema,
+  assignmentScopeNote,
   canChangeAssignment,
   defaultAssignment,
   defaultResubmissionLocal,
@@ -236,5 +237,18 @@ describe('görev yetkisi ve hedef özeti (DOM-YTK-028)', () => {
     assert.equal(scoreState(version(null)).label, 'Puan bekliyor')
     assert.equal(scoreState(version({ settled: true, percent: 80 })).label, 'Puanlandı · %80')
     assert.equal(scoreState(version({ settled: false, percent: 80 })).label, 'Kesinleşmedi · %80')
+  })
+})
+
+describe('görev listesi kapsam notu (OG-993, DOM-YTK-028)', () => {
+  test('yönetici kurumun bütün sınıflarının görevlerini görür, öğretmen kendi kapsamını', () => {
+    assert.equal(assignmentScopeNote('yonetici'), 'Kurumdaki bütün sınıfların görevleri')
+    assert.equal(assignmentScopeNote('ogretmen'), 'Atadıklarınız ve sınıflarınızı hedefleyenler')
+  })
+
+  test('yönetici başkasının atadığı görevi de değiştirir, öğretmen yalnız kendisininkini', () => {
+    const item = { assignedByUserId: 'u-baska' }
+    assert.equal(canChangeAssignment(item, 'u-yonetici', 'yonetici'), true)
+    assert.equal(canChangeAssignment(item, 'u-ogretmen', 'ogretmen'), false)
   })
 })

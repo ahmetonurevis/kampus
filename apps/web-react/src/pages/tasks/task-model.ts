@@ -122,6 +122,17 @@ export function assignmentRow(
   }
 }
 
+/**
+ * Görev listesinin kapsam notu. Yönetici kurumun bütün atamalarını görür (OG-993), öğretmen
+ * atadıklarını ve sınıflarını hedefleyenleri (DOM-YTK-028); kapsamı sunucu uygular, metin yalnız
+ * bilgidir.
+ */
+export function assignmentScopeNote(role: string): string {
+  return role === 'yonetici'
+    ? 'Kurumdaki bütün sınıfların görevleri'
+    : 'Atadıklarınız ve sınıflarınızı hedefleyenler'
+}
+
 /** Atamayı yalnız atayan değiştirir (DOM-YTK-028); yönetici de değiştirebilir. */
 export function canChangeAssignment(
   item: Pick<TaskAssignmentStaff, 'assignedByUserId'>,

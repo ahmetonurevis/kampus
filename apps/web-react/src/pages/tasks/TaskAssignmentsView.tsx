@@ -16,6 +16,7 @@ import { SubmissionGradingModal } from './SubmissionGradingModal.tsx'
 import { ATTEMPT_PARAM, AttemptReviewModal } from './AttemptReviewModal.tsx'
 import {
   assignmentRow,
+  assignmentScopeNote,
   dateTimeLabel,
   isStaffAssignment,
   KIND_OPTIONS,
@@ -128,7 +129,7 @@ export function TaskAssignmentsView() {
             Görev atamaları
           </h2>
           <p className="text-sm text-muted-foreground">
-            {assignments.data?.meta.total ?? 0} görev · Atadıklarınız ve sınıflarınızı hedefleyenler
+            {assignments.data?.meta.total ?? 0} görev · {assignmentScopeNote(session?.role ?? '')}
           </p>
         </div>
         <Button onClick={() => form.open(NEW_ASSIGNMENT)}>

@@ -187,6 +187,27 @@ test('İçerik Havuzu yalnız yönetici ve öğretmende, learning modülüne ba�
   assert.ok(admin.indexOf('icerik-havuzu') < admin.indexOf('kayit-raporlari'))
 })
 
+test('Beceri Görevleri yalnız yöneticide, öğretmenin Ödevler sayfasıyla aynı adreste ve learning modülünde (OG-993)', () => {
+  for (const role of roleKeys) {
+    const page = navigation[role].find((p) => p.path === 'odevler' && p.apiOnly)
+    if (role !== 'yonetici') {
+      assert.equal(page, undefined, `${role} için ayrı API sayfası olmamalı`)
+      continue
+    }
+    assert.ok(page, 'yönetici menüsünde beceri görevleri yok')
+    assert.equal(page.module, 'learning')
+    assert.equal(page.group, 'ÖĞRENME')
+    assert.equal(page.title, 'Beceri Görevleri')
+  }
+  // Öğretmendeki sayfa aynı adresle durur, modül aynıdır.
+  const teacher = navigation.ogretmen.find((p) => p.path === 'odevler')
+  assert.ok(teacher)
+  assert.equal(teacher.module, 'learning')
+  const admin = navigation.yonetici.map((p) => p.path)
+  assert.equal(admin[admin.indexOf('icerik-havuzu') + 1], 'odevler')
+  assert.ok(!demoNavigation.yonetici.some((p) => p.path === 'odevler'))
+})
+
 test('Vue demosu apiOnly sayfaları almaz ve temel menü + okul iş akışlarını korur', () => {
   for (const role of roleKeys) {
     assert.ok(demoNavigation[role].every((p) => !p.apiOnly))

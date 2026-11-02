@@ -105,6 +105,20 @@ const contentPoolPage = (description: string): NavigationPage => ({
 export const API_LEARNING_PAGES: Record<Role, readonly NavigationPage[]> = {
   yonetici: [
     contentPoolPage('Kurumun okuma parçası ve soru havuzunu inceleyin, onaylayın ve yönetin.'),
+    // Beceri görevleri (OG-993; DOM-YTK-028): öğretmenin "Ödevler & Değerlendirme" sayfasındaki
+    // Görevler sekmesinin yönetici karşılığı. Yönetici kurumun bütün atamalarını okur ve atar;
+    // adres öğretmendekiyle aynı adı taşır (`/yonetici/odevler`), modül aynıdır (`learning`).
+    {
+      path: 'odevler',
+      title: 'Beceri Görevleri',
+      icon: 'ListChecks',
+      module: 'learning',
+      view: 'Learning',
+      description:
+        'Kurumun beceri görevlerini izleyin, sınıflara görev atayın ve teslimleri görün.',
+      group: 'ÖĞRENME',
+      apiOnly: true,
+    },
   ],
   onburo: [],
   ogretmen: [

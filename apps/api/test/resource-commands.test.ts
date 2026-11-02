@@ -235,8 +235,9 @@ describe('içerik havuzu yazma uçları', () => {
       ...publishable(),
       content: { type: 'file', fileId: 'dosya-1' },
     })
+    // İçerikteki dosya sürümün dosya listesinde değil (DOM-KYN-006); ayrıntı resource-files.test.ts.
     assert.equal(file.statusCode, 422)
-    assert.equal(file.json().code, 'resource_files_unsupported')
+    assert.equal(file.json().code, 'resource_file_unlinked')
     const quiz = await post('/resources', t.cookies.teacher, {
       ...publishable(),
       content: {

@@ -2163,6 +2163,7 @@
               "submission",
               "material",
               "question_image",
+              "student_question_photo",
               "listening_audio",
               "speaking_recording",
               "document"
@@ -2195,6 +2196,7 @@
               "submission",
               "material",
               "question_image",
+              "student_question_photo",
               "listening_audio",
               "speaking_recording",
               "document"
@@ -3153,6 +3155,76 @@
           "year"
         ]
       },
+      "ResourceFileInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "description": "Temizlenmiş özgün ad; yalnız gösterim için",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contentType": {
+            "type": "string",
+            "description": "İçerikten tespit edilen MIME türü"
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "submission",
+              "material",
+              "question_image",
+              "student_question_photo",
+              "listening_audio",
+              "speaking_recording",
+              "document"
+            ],
+            "description": "Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)"
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ses/video süresi; ölçülmediyse `null`"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "ready",
+              "deleted"
+            ],
+            "description": "`processing` dönüştürülüyor (bağlantı verilmez); `deleted` saklama sonunda silindi"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "contentType",
+          "byteSize",
+          "purpose",
+          "durationMs",
+          "status"
+        ]
+      },
       "ResourceVersionSummaryInput": {
         "type": "object",
         "properties": {
@@ -3463,6 +3535,13 @@
               "null"
             ]
           },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceFileInput"
+            },
+            "description": "Sürümün dosyaları, `fileIds` sırasıyla; kaldırılan sürümde boş (DOM-KYN-051)"
+          },
           "rowVersion": {
             "type": "integer",
             "minimum": 1,
@@ -3492,6 +3571,7 @@
           "reviewedAt",
           "rejectionReason",
           "removalReason",
+          "files",
           "rowVersion"
         ]
       },
@@ -3546,6 +3626,13 @@
                 "type": "null"
               }
             ]
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceFileInput"
+            },
+            "description": "Sürümün dosyaları, `fileIds` sırasıyla; kaldırılan sürümde boş (DOM-KYN-051)"
           }
         },
         "required": [
@@ -3555,7 +3642,8 @@
           "content",
           "tags",
           "attributions",
-          "licenseKind"
+          "licenseKind",
+          "files"
         ]
       },
       "StaffResourceInput": {
@@ -15212,6 +15300,7 @@
               "submission",
               "material",
               "question_image",
+              "student_question_photo",
               "listening_audio",
               "speaking_recording",
               "document"
@@ -15245,6 +15334,7 @@
               "submission",
               "material",
               "question_image",
+              "student_question_photo",
               "listening_audio",
               "speaking_recording",
               "document"
@@ -16226,6 +16316,77 @@
         ],
         "additionalProperties": false
       },
+      "ResourceFile": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "name": {
+            "description": "Temizlenmiş özgün ad; yalnız gösterim için",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "contentType": {
+            "type": "string",
+            "description": "İçerikten tespit edilen MIME türü"
+          },
+          "byteSize": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "purpose": {
+            "type": "string",
+            "enum": [
+              "submission",
+              "material",
+              "question_image",
+              "student_question_photo",
+              "listening_audio",
+              "speaking_recording",
+              "document"
+            ],
+            "description": "Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)"
+          },
+          "durationMs": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Ses/video süresi; ölçülmediyse `null`"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "processing",
+              "ready",
+              "deleted"
+            ],
+            "description": "`processing` dönüştürülüyor (bağlantı verilmez); `deleted` saklama sonunda silindi"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "contentType",
+          "byteSize",
+          "purpose",
+          "durationMs",
+          "status"
+        ],
+        "additionalProperties": false
+      },
       "ResourceVersionSummary": {
         "type": "object",
         "properties": {
@@ -16537,6 +16698,13 @@
               "null"
             ]
           },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceFile"
+            },
+            "description": "Sürümün dosyaları, `fileIds` sırasıyla; kaldırılan sürümde boş (DOM-KYN-051)"
+          },
           "rowVersion": {
             "type": "integer",
             "minimum": 1,
@@ -16566,6 +16734,7 @@
           "reviewedAt",
           "rejectionReason",
           "removalReason",
+          "files",
           "rowVersion"
         ],
         "additionalProperties": false
@@ -16621,6 +16790,13 @@
                 "type": "null"
               }
             ]
+          },
+          "files": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ResourceFile"
+            },
+            "description": "Sürümün dosyaları, `fileIds` sırasıyla; kaldırılan sürümde boş (DOM-KYN-051)"
           }
         },
         "required": [
@@ -16630,7 +16806,8 @@
           "content",
           "tags",
           "attributions",
-          "licenseKind"
+          "licenseKind",
+          "files"
         ],
         "additionalProperties": false
       },
@@ -54768,7 +54945,7 @@
         "tags": [
           "questions"
         ],
-        "description": "Öğrenci kendi sınıfının o dersine atanmış öğretmene soru gönderir; öğretmen ders atamasından çözülür (core `askQuestion`, DOM-ILT-090). Öğrenci oturumdan gelir, gövdede `studentId` ve bilinmeyen alan 400 `validation_failed`; başlık 2–120, metin 10–2000 karakter. Kapsam dışı ders veya öğretmen 403 `question_scope_denied` (varlık sızdırılmaz), bağlantısız öğrenci 403 `student_scope_denied`; pasif öğrenci 422 `student_inactive`, öğretmeni pasif ders 422 `question_teacher_unavailable`, ortak derste öğretmen seçilmezse 422 `question_teacher_required`, dersin listesinde olmayan kazanım 422 `question_topic_unknown`, dosya 422 `question_files_unsupported`. Modül `learning`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `ogrenci`.",
+        "description": "Öğrenci kendi sınıfının o dersine atanmış öğretmene soru gönderir; öğretmen ders atamasından çözülür (core `askQuestion`, DOM-ILT-090). Öğrenci oturumdan gelir, gövdede `studentId` ve bilinmeyen alan 400 `validation_failed`; başlık 2–120, metin 10–2000 karakter. Kapsam dışı ders veya öğretmen 403 `question_scope_denied` (varlık sızdırılmaz), bağlantısız öğrenci 403 `student_scope_denied`; pasif öğrenci 422 `student_inactive`, öğretmeni pasif ders 422 `question_teacher_unavailable`, ortak derste öğretmen seçilmezse 422 `question_teacher_required`, dersin listesinde olmayan kazanım 422 `question_topic_unknown`. Fotoğraf `fileIds` ile gelir (DOM-ILT-094): en çok 3, 4. fotoğraf 422 `question_photo_limit`; öğrencinin kendi yüklediği `student_question_photo` dosyası olmalı, değilse 422 `question_photo_unavailable` ya da `question_photo_purpose`. Modül `learning`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `ogrenci`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -54801,8 +54978,8 @@
                     "minLength": 10,
                     "maxLength": 2000
                   },
-                  "files": {
-                    "maxItems": 3,
+                  "fileIds": {
+                    "maxItems": 20,
                     "type": "array",
                     "items": {
                       "type": "string",
@@ -55561,7 +55738,7 @@
         "tags": [
           "resources"
         ],
-        "description": "Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`; dosyalı içerik henüz 422 `resource_files_unsupported`. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
+        "description": "Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
         "requestBody": {
           "required": true,
           "content": {
@@ -57008,6 +57185,15 @@
                         "source"
                       ]
                     }
+                  },
+                  "fileIds": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
                   }
                 },
                 "required": [
@@ -57403,7 +57589,7 @@
         "tags": [
           "resources"
         ],
-        "description": "Taslak veya reddedilmiş sürümün alanlarını değiştirir (DOM-KYN-030, 032); verilmeyen alan aynen kalır, `tags` bütün olarak değişir. Yalnız yazar (403). Yayımlanmış, incelemedeki veya arşivli sürüm 409 `version_immutable`; içerik türü değişmez (422 `content_type_immutable`). Kopyada miras lisans ve kaynak gösterimi değişmez (422 `license_inherited`, `attribution_inherited`; DOM-KYN-050). Reddedilen sürüm taslağa döner. `If-Match` zorunlu: sürümün `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
+        "description": "Taslak veya reddedilmiş sürümün alanlarını değiştirir (DOM-KYN-030, 032); verilmeyen alan aynen kalır, `tags` bütün olarak değişir. Yalnız yazar (403). Yayımlanmış, incelemedeki veya arşivli sürüm 409 `version_immutable`; içerik türü değişmez (422 `content_type_immutable`). Kopyada miras lisans ve kaynak gösterimi değişmez (422 `license_inherited`, `attribution_inherited`; DOM-KYN-050). Reddedilen sürüm taslağa döner. `fileIds` verilirse liste bütün olarak değişir; taslakta zaten bulunan dosya yeniden denetlenmez, listeden çıkan ve yalnız bu taslağa bağlı dosyanın bağı kalkar. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. `If-Match` zorunlu: sürümün `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
         "requestBody": {
           "required": true,
           "content": {
@@ -58849,6 +59035,16 @@
                         "source"
                       ]
                     }
+                  },
+                  "fileIds": {
+                    "description": "Sürümün sıralı dosya listesi, bütün olarak değişir; içerikteki dosya listede bulunmalıdır (DOM-KYN-006)",
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
                   }
                 },
                 "additionalProperties": false
@@ -59010,14 +59206,25 @@
         "tags": [
           "resources"
         ],
-        "description": "Yayındaki (yoksa son) sürümün içeriğinden yeni taslak sürüm açar (DOM-KYN-032); numara bir artar. Sahip, zümre başkanı veya yönetici (403). Açık sürüm varken 409 `open_version_exists`, kaldırılmış kaynakta 409 `resource_removed`. Arşivlenmiş kaynak yeniden açılır. Başarı 201. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
+        "description": "Yayındaki (yoksa son) sürümün içeriğinden yeni taslak sürüm açar (DOM-KYN-032); numara bir artar. Sahip, zümre başkanı veya yönetici (403). Açık sürüm varken 409 `open_version_exists`, kaldırılmış kaynakta 409 `resource_removed`. Arşivlenmiş kaynak yeniden açılır. Yeni sürüm temel sürümün dosyalarını miras alır (aynı dosyaya yeni bağ); `fileIds` verilirse liste onun yerine geçer, temel sürümün dosyaları yeniden denetlenmez. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Başarı 201. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
         "requestBody": {
           "required": true,
           "content": {
             "application/json": {
               "schema": {
                 "type": "object",
-                "properties": {},
+                "properties": {
+                  "fileIds": {
+                    "description": "Yeni sürümün sıralı dosya listesi; temel sürümün dosyaları yeniden denetlenmez",
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  }
+                },
                 "additionalProperties": false
               }
             }
@@ -60900,7 +61107,7 @@
         "tags": [
           "resources"
         ],
-        "description": "Yayındaki güncel sürümü yeni kaynağa kopyalar (DOM-KYN-050): sahibi kopyalayan, kapsam `private`, durum `Taslak`; `derivedFromVersionId`, lisans ve kaynak gösterimleri miras alınır ve sonraki taslaklarda değiştirilemez. Yayında sürüm yoksa 409 `copy_source_not_published`; uyarlamaya izin vermeyen lisans 403 `license_forbids_copy`; süresi dolan lisans 409 `license_expired`. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
+        "description": "Yayındaki güncel sürümü yeni kaynağa kopyalar (DOM-KYN-050): sahibi kopyalayan, kapsam `private`, durum `Taslak`; `derivedFromVersionId`, lisans ve kaynak gösterimleri miras alınır ve sonraki taslaklarda değiştirilemez. Dosyalar kopyalanmaz: kopya aynı dosyalara yeni bağ açar (DOM-KYN-006). Yayında sürüm yoksa 409 `copy_source_not_published`; uyarlamaya izin vermeyen lisans 403 `license_forbids_copy`; süresi dolan lisans 409 `license_expired`. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
         "requestBody": {
           "required": true,
           "content": {
@@ -81934,7 +82141,7 @@
         "tags": [
           "files"
         ],
-        "description": "Dosyanın meta verisi ve durumu (ADR 0003 karar 4). Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.",
+        "description": "Dosyanın meta verisi ve durumu (ADR 0003 karar 4). Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Kaynak sürümüne bağlı dosyayı (materyal, dinleme kaydı, soru görseli; DOM-KYN-006) dosyaya bağ açan sürümlerden birini okuyabilen görür: öğrenci ve veli yalnız kendisine paylaşılmış yayındaki sürümün dosyasını; kaldırılan sürüm dosya açmaz. Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {
@@ -82048,7 +82255,7 @@
         "tags": [
           "files"
         ],
-        "description": "Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk, dinleme kaydında kayıt süresi + 60 sn (en az 5 dk; süre ölçülmemişse 16 dk). Tür ve `Content-Disposition` (belge `attachment`, görsel/ses/görüntü `inline`) imzaya dahildir. Dosya işlenirken 409 `file_processing`. Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına `file.access` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Dinleme hakkı altyapısı (IST-045, DOM-BEC-005; bugün devrede değil, atama dolu hakkı 422 `listening_plays_unavailable` ile reddeder): öğrenci, hakkı sınırlı atamanın içerik sürümüne bağlı `listening_audio` kaydını süren denemesinde istediğinde hak deneme × kayıt başına sayılır ve yanıtın `listening` alanında döner; hak bitince 422 `listening_plays_exhausted`, süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`. Son sayımın bağlantısı geçerliyken yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner; aralık istekleri sayılmaz. Öğretmen, yönetici ve veli bağlantısı, sınırsız atamanın denemesi ve teslim kapandıktan sonraki bağlantı sayılmaz. Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.",
+        "description": "Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk, dinleme kaydında kayıt süresi + 60 sn (en az 5 dk; süre ölçülmemişse 16 dk). Tür ve `Content-Disposition` (belge `attachment`, görsel/ses/görüntü `inline`) imzaya dahildir. Dosya işlenirken 409 `file_processing`. Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına `file.access` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Dinleme hakkı altyapısı (IST-045, DOM-BEC-005; bugün devrede değil, atama dolu hakkı 422 `listening_plays_unavailable` ile reddeder): öğrenci, hakkı sınırlı atamanın içerik sürümüne bağlı `listening_audio` kaydını süren denemesinde istediğinde hak deneme × kayıt başına sayılır ve yanıtın `listening` alanında döner; hak bitince 422 `listening_plays_exhausted`, süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`. Son sayımın bağlantısı geçerliyken yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner; aralık istekleri sayılmaz. Öğretmen, yönetici ve veli bağlantısı, sınırsız atamanın denemesi ve teslim kapandıktan sonraki bağlantı sayılmaz. Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Kaynak sürümüne bağlı dosyayı (materyal, dinleme kaydı, soru görseli; DOM-KYN-006) dosyaya bağ açan sürümlerden birini okuyabilen görür: öğrenci ve veli yalnız kendisine paylaşılmış yayındaki sürümün dosyasını; kaldırılan sürüm dosya açmaz. Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {

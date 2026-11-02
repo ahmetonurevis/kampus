@@ -4,12 +4,15 @@ import { createSeed, type State } from '../packages/school-core/src/data/seed.ts
 import type { Participant } from '../packages/school-core/src/lib/communication.ts'
 import {
   QUESTION_ANSWER_LIMIT,
+  QUESTION_PHOTO_LIMIT,
+  QUESTION_PHOTO_PURPOSE,
   QUESTION_SENSITIVE_NOTICE,
   QUESTION_STATUS_LABELS,
   answerQuestion,
   askQuestion,
   askQuestionSchema,
   isOpenQuestion,
+  type QuestionFile,
   questionResponse,
   questionStatus,
   withdrawQuestion,
@@ -219,7 +222,7 @@ test('DOM-ILT-090: dersi iki öğretmen paylaşıyorsa öğretmen seçilmeden so
   assert.equal(askQuestion(state, student(), ask({ teacherId: 't3' }), id, now).teacherId, 't3')
 })
 
-test('DOM-ILT-090: metin sınırları Zod ile; öğrenci kimliği ve bilinmeyen alan reddedilir; dosya 422', () => {
+test('DOM-ILT-090: metin sınırları Zod ile; öğrenci kimliği ve bilinmeyen alan reddedilir', () => {
   const state = seed()
   for (const input of [
     ask({ title: 'a' }),
@@ -232,11 +235,78 @@ test('DOM-ILT-090: metin sınırları Zod ile; öğrenci kimliği ve bilinmeyen 
   ])
     unchangedOnFailure(state, () => askQuestion(state, student(), input, id, now), zodError)
   assert.equal(askQuestionSchema.safeParse(ask({ text: 'x'.repeat(2000) })).success, true)
+  // Eski demo alanı `files` (dosya adı) artık bilinmeyen alandır.
   unchangedOnFailure(
     state,
     () => askQuestion(state, student(), ask({ files: ['soru.jpg'] }), id, now),
-    isDomainError('question_files_unsupported'),
+    zodError,
   )
+})
+
+// --- Fotoğraf (DOM-ILT-094) ----------------------------------------------------------------
+
+const photo = (fileId: string, overrides: Partial<QuestionFile> = {}): QuestionFile => ({
+  id: fileId,
+  purpose: QUESTION_PHOTO_PURPOSE,
+  contentType: 'image/jpeg',
+  byteSize: 200_000,
+  ...overrides,
+})
+
+test('DOM-ILT-094: öğrenci sorusuna en çok 3 fotoğraf ekler; kayda yalnız dosya kimlikleri girer', () => {
+  const state = seed()
+  const files = [photo('f1'), photo('f2', { contentType: 'image/png' }), photo('f3')]
+  const created = askQuestion(state, student(), ask({ fileIds: ['f1', 'f2', 'f3'] }), id, now, {
+    files,
+  })
+  assert.equal(QUESTION_PHOTO_LIMIT, 3)
+  assert.deepEqual(created.fileIds, ['f1', 'f2', 'f3'])
+  assert.equal(created.fileName, null)
+  // Dosya adı ve içerik kayda girmez.
+  assert.equal(JSON.stringify(created).includes('image/'), false)
+  // Fotoğrafsız soru boş liste taşır.
+  assert.deepEqual(askQuestion(state, student(), ask(), id, now).fileIds, [])
+})
+
+test('DOM-ILT-094: 4. fotoğraf, bulunmayan ya da başka amaçlı dosya 422; kayıt değişmez', () => {
+  const state = seed()
+  const files = [
+    photo('f1'),
+    photo('f2'),
+    photo('f3'),
+    photo('f4'),
+    photo('odev', { purpose: 'submission', contentType: 'application/pdf' }),
+    photo('svg', { contentType: 'image/svg+xml' }),
+    photo('buyuk', { byteSize: 5 * 1024 * 1024 + 1 }),
+  ]
+  const cases: [string[], string][] = [
+    [['f1', 'f2', 'f3', 'f4'], 'question_photo_limit'],
+    [['f1', 'baskasinin'], 'question_photo_unavailable'],
+    [['odev'], 'question_photo_purpose'],
+    [['svg'], 'file_type_not_allowed'],
+    [['buyuk'], 'file_too_large'],
+  ]
+  for (const [fileIds, code] of cases) {
+    unchangedOnFailure(
+      state,
+      () => askQuestion(state, student(), ask({ fileIds }), id, now, { files }),
+      (error) =>
+        isDomainError(code)(error) && (error as { path?: string[] }).path?.[0] === 'fileIds',
+    )
+  }
+  // Dosya listesi verilmeyen çağrıda (ör. servis yüklemedi) hiçbir kimlik kabul edilmez.
+  unchangedOnFailure(
+    state,
+    () => askQuestion(state, student(), ask({ fileIds: ['f1'] }), id, now),
+    isDomainError('question_photo_unavailable'),
+  )
+  // Aynı kimlik iki kez ve kötüye kullanım sınırı gövde şemasındadır (400).
+  for (const fileIds of [['f1', 'f1'], Array.from({ length: 21 }, (_, i) => `f${i}`), ['']])
+    unchangedOnFailure(
+      state,
+      () => askQuestion(state, student(), ask({ fileIds }), id, now, { files }),
+      zodError,
+    )
 })
 
 test('DOM-ILT-014: soru formu özel nitelikli veri uyarısını taşır', () => {

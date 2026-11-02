@@ -14,6 +14,7 @@ import {
   OPEN_LICENSES,
   OUTCOME_SOURCES,
   PRIMARY_SKILLS,
+  RESOURCE_FILE_LIST_MAX,
   SHARE_SCOPES,
   SKILLS,
   SUBMISSION_KINDS,
@@ -66,6 +67,14 @@ const itemId = z
   .regex(/^[A-Za-z0-9_-]{1,40}$/, 'Kimlik yalnız harf, rakam, - ve _ içerebilir.')
 const item = z.object({ id: itemId, text: text(500, 'Metni yazın.') })
 const fileRef = identifier
+/**
+ * Sürümün sıralı dosya listesi (DOM-KYN-006); yinelenen kimlik tek sayılır. Varsayılansız: taslak
+ * düzenleme ve yeni sürüm gövdesinde verilmeyen liste "değişmedi" demektir.
+ */
+export const resourceFileIdsSchema = z
+  .array(fileRef)
+  .max(RESOURCE_FILE_LIST_MAX)
+  .transform(distinct)
 
 // --- Durum ve aktör -----------------------------------------------------------------------
 
@@ -520,6 +529,12 @@ export const resourceVersionInputSchema = z
     tags: resourceTagsSchema.prefault({}),
     license: resourceLicenseSchema.nullable().default(null),
     attributions: z.array(attributionSchema).max(30).default([]),
+    /**
+     * Sürüme bağlı dosyalar, sırasıyla (DOM-KYN-006). İçerikteki dosya alanı (`fileId`,
+     * `imageFileId`) bu listede bulunmalıdır; tür başına amaç ve sayı `RESOURCE_FILE_RULES`
+     * (`resource-files.ts` `planVersionFiles`, 422). Yinelenen kimlik tek sayılır.
+     */
+    fileIds: resourceFileIdsSchema.default([]),
   })
   .superRefine((version, ctx) => {
     if (version.answerKey === null) return
@@ -1154,7 +1169,9 @@ export function planResourceRemoval(input: ResourceRemovalInput): ResourceRemova
   }
   const versionIds = [...own].sort((a, b) => a.versionNumber - b.versionNumber).map((v) => v.id)
   const removedIds = new Set(versionIds)
-  const fileIds = distinct(own.flatMap((v) => contentFileRefs(v.content).map((ref) => ref.fileId)))
+  const fileIds = distinct(
+    own.flatMap((v) => [...v.fileIds, ...contentFileRefs(v.content).map((ref) => ref.fileId)]),
+  )
   const affectedCopyIds = (input.copies ?? [])
     .filter(
       (copy) => copy.derivedFromVersionId !== null && removedIds.has(copy.derivedFromVersionId),
@@ -1367,6 +1384,7 @@ export function versionData(version: ResourceVersionData): ResourceVersionData {
     tags: version.tags,
     license: version.license,
     attributions: version.attributions,
+    fileIds: version.fileIds,
   }
 }
 

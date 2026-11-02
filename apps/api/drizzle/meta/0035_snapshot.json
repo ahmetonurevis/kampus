@@ -1,5 +1,5 @@
 {
-  "id": "ed637443-d9db-405d-b4bc-5d779f196d6e",
+  "id": "5047dec5-e1b7-4810-9dba-60e261a28120",
   "prevId": "0caf9040-ad1e-4e76-915d-d828db3554d8",
   "version": "7",
   "dialect": "postgresql",
@@ -1541,13 +1541,6 @@
           "primaryKey": false,
           "notNull": false
         },
-        "section_entries": {
-          "name": "section_entries",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "'[]'::jsonb"
-        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -1760,10 +1753,6 @@
       },
       "policies": {},
       "checkConstraints": {
-        "placement_sessions_section_entries_check": {
-          "name": "placement_sessions_section_entries_check",
-          "value": "jsonb_typeof(\"placement_sessions\".\"section_entries\") = 'array' and jsonb_array_length(\"placement_sessions\".\"section_entries\") <= 5"
-        },
         "placement_sessions_learner_kind_check": {
           "name": "placement_sessions_learner_kind_check",
           "value": "\"placement_sessions\".\"learner_kind\" in ('student', 'prospect')"
@@ -3307,7 +3296,7 @@
       "checkConstraints": {
         "files_purpose_check": {
           "name": "files_purpose_check",
-          "value": "\"files\".\"purpose\" in ('submission', 'material', 'question_image', 'listening_audio', 'speaking_recording', 'document')"
+          "value": "\"files\".\"purpose\" in ('submission', 'material', 'question_image', 'student_question_photo', 'listening_audio', 'speaking_recording', 'document')"
         },
         "files_status_check": {
           "name": "files_status_check",

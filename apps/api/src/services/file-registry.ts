@@ -32,6 +32,13 @@ export const FILE_PURPOSE_ACCESS = {
   },
   material: { module: 'learning', uploaders: STAFF, linkTtlSeconds: 300, auditAccess: false },
   question_image: { module: 'learning', uploaders: STAFF, linkTtlSeconds: 300, auditAccess: false },
+  // Öğrencinin sorusuna eklediği fotoğraf (DOM-ILT-094): çocuk verisi, her bağlantı denetimde.
+  student_question_photo: {
+    module: 'learning',
+    uploaders: ['ogrenci'],
+    linkTtlSeconds: 300,
+    auditAccess: true,
+  },
   // En kısa ömür; dinleme bağlantısı kayıt süresi + 60 sn yaşar (`listeningWindowMs`, OG-049).
   listening_audio: {
     module: 'learning',

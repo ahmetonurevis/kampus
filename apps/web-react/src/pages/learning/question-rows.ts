@@ -57,6 +57,8 @@ export type QuestionRow = {
   topic: string
   title: string
   text: string
+  /** Soruya bağlı fotoğrafların dosya kimlikleri (DOM-ILT-094). */
+  fileIds: readonly string[]
   /** Durumun Türkçe etiketi (filtre ve rozet). */
   status: string
   state: QuestionStatus
@@ -158,6 +160,7 @@ export function questionRow(
     topic: record.topic ?? '',
     title: record.title,
     text: record.text,
+    fileIds: record.fileIds ?? [],
     status: QUESTION_STATUS_LABELS[state],
     state,
     createdAt: record.createdAt,

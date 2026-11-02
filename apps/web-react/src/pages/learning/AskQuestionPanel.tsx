@@ -1,14 +1,17 @@
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import type { z } from 'zod'
 import {
+  QUESTION_PHOTO_LIMIT,
+  QUESTION_PHOTO_PURPOSE,
   QUESTION_SENSITIVE_NOTICE,
   QUESTION_TEXT_MAX_LENGTH,
   QUESTION_TEXT_MIN_LENGTH,
   QUESTION_TITLE_MAX_LENGTH,
 } from '@kampus/school-core/lib/questions.ts'
 import { useAskQuestion } from '@kampus/react-shared/use-question-commands.ts'
+import { FileUploadField, type FileUploadItem } from '@/components/FileUploadField.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -22,7 +25,9 @@ import { FormActions, RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { focusFirstError } from '../requests/request-forms.ts'
 import {
+  addQuestionPhoto,
   askDefaults,
+  askFieldName,
   askFormSchema,
   askOptions,
   askQuestionBody,
@@ -42,6 +47,8 @@ export const NEW_QUESTION = 'yeni'
  * seçenekleri sunucunun kapsamladığı atamalardan kurulur: öğrenci yalnız kendi sınıfının ders
  * öğretmenlerine soru gönderir (DOM-ILT-090). Soru dersin öğretmenine düşer; mükerrer gönderim
  * `Idempotency-Key` ile önlenir. Özel nitelikli bilgi uyarısı formda görünür (DOM-ILT-014).
+ * En çok 3 fotoğraf seçilir seçilmez yüklenir (`student_question_photo`) ve gönderimde aynı
+ * işlemle soruya bağlanır (DOM-ILT-094); yükleme sürerken gönderim kilitlidir.
  */
 export function AskQuestionPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -101,9 +108,25 @@ function AskQuestionForm({
     resolver: zodResolver(askFormSchema),
     defaultValues: askDefaults(),
   })
-  const busy = ask.isPending || form.formState.isSubmitting
+  const [uploading, setUploading] = useState(false)
+  const busy = ask.isPending || uploading || form.formState.isSubmitting
   const errors = form.formState.errors
   const option = optionOf(options, useWatch({ control: form.control, name: 'subjectId' }))
+  const photos = useWatch({ control: form.control, name: 'files' })
+
+  function addPhoto(item: FileUploadItem) {
+    form.clearErrors('files')
+    form.setValue('files', addQuestionPhoto(form.getValues('files'), item), { shouldDirty: true })
+  }
+
+  function removePhoto(id: string) {
+    form.clearErrors('files')
+    form.setValue(
+      'files',
+      form.getValues('files').filter((file) => file.id !== id),
+      { shouldDirty: true },
+    )
+  }
 
   const onSubmit = form.handleSubmit(async (values) => {
     const result = askQuestionBody(values, options)
@@ -115,7 +138,11 @@ function AskQuestionForm({
       )
       return
     }
-    const outcome = await ask.submit(result.body, { setError: focusFirstError(form.setError) })
+    const focus = focusFirstError(form.setError)
+    const outcome = await ask.submit(result.body, {
+      // Sunucunun `fileIds` maddesi formdaki fotoğraf listesinde görünür.
+      setError: (name: string, error) => focus(askFieldName(name), error),
+    })
     if (outcome.status === 'success') {
       notify.success('Sorunuz öğretmeninize iletildi.')
       onClose()
@@ -234,6 +261,24 @@ function AskQuestionForm({
           />
         )}
       </FormField>
+      <FileUploadField
+        id="soru-fotograf"
+        label="Fotoğraf ekle (isteğe bağlı)"
+        purpose={QUESTION_PHOTO_PURPOSE}
+        multiple
+        maxFiles={QUESTION_PHOTO_LIMIT}
+        description={`Defter ya da kitap sayfasının fotoğrafı; JPEG, PNG ya da WEBP, en çok ${QUESTION_PHOTO_LIMIT} fotoğraf.`}
+        listLabel="Eklenen fotoğraflar"
+        items={photos}
+        error={errors.files}
+        disabled={ask.isPending || form.formState.isSubmitting}
+        onUploaded={addPhoto}
+        onRemoved={removePhoto}
+        onBusyChange={(next) => {
+          setUploading(next)
+          if (next) form.clearErrors('files')
+        }}
+      />
       <RootError message={errors.root?.server?.message} />
       <FormActions busy={busy} onCancel={onClose} submitLabel="Soruyu gönder" icon="ArrowRight" />
     </form>

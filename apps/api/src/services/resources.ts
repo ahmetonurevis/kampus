@@ -18,6 +18,8 @@ import {
 } from '@kampus/school-core/content/visibility.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 
+import type { Database } from '../db/client.ts'
+import { loadFilesByIds, type StoredFile } from '../db/files.ts'
 import {
   asCoreVersion,
   findResource,
@@ -106,9 +108,63 @@ function versionSummary(version: StoredResourceVersion) {
   }
 }
 
-export function fullVersion(version: StoredResourceVersion) {
+/** Sürüm dosyasının yanıttaki meta verisi (`ResourceFile`); içerik bağlantısı `GET /files/:id/url`. */
+export type ResourceFileView = {
+  id: string
+  name: string | null
+  contentType: string
+  byteSize: number
+  purpose: StoredFile['purpose']
+  durationMs: number | null
+  status: 'processing' | 'ready' | 'deleted'
+}
+
+/** Sürüm başına dosya meta verisi (sürüm kimliği → sıralı liste). */
+export type VersionFiles = ReadonlyMap<string, readonly ResourceFileView[]>
+
+function fileMeta(row: StoredFile): ResourceFileView | null {
+  const status = row.status
+  if (status !== 'processing' && status !== 'ready' && status !== 'deleted') return null
+  return {
+    id: row.id,
+    name: row.originalName,
+    contentType: row.contentType,
+    byteSize: row.byteSize,
+    purpose: row.purpose,
+    durationMs: row.durationMs,
+    status,
+  }
+}
+
+/**
+ * Sürümlerin dosyaları, `fileIds` sırasıyla (DOM-KYN-006). Kaldırılan sürümün içeriği gibi dosya
+ * listesi de gösterilmez (DOM-KYN-051). Bağlanamayan durumdaki (`pending`, `rejected`) satır
+ * listeye girmez; bağlama `ready` ister, bu yalnız güvencedir.
+ */
+export async function loadVersionFiles(
+  db: Database,
+  institutionId: string,
+  versions: readonly StoredResourceVersion[],
+): Promise<VersionFiles> {
+  const shown = versions.filter((version) => version.status !== 'removed')
+  const rows = await loadFilesByIds(
+    db,
+    institutionId,
+    shown.flatMap((version) => version.fileIds),
+  )
+  const byId = new Map(rows.map((row) => [row.id, fileMeta(row)]))
+  return new Map(
+    shown.map((version) => [
+      version.id,
+      version.fileIds.flatMap((fileId) => byId.get(fileId) ?? []),
+    ]),
+  )
+}
+
+export function fullVersion(version: StoredResourceVersion, files: VersionFiles) {
   return {
     ...versionSummary(version),
+    files: [...(files.get(version.id) ?? [])],
     content: version.content,
     answerKey: version.answerKey,
     license: version.license,
@@ -147,10 +203,17 @@ export function staffResource(resource: StoredResource) {
 }
 
 /** Öğrenci/veli görünümü; karıştırma kişi ve sürüm başına sabittir (yenilemede değişmez). */
-function learnerVersion(ctx: ServiceContext, version: StoredResourceVersion): LearnerResourceView {
-  return learnerView(asCoreVersion(version), {
-    random: seededRandom(`${version.id}:${ctx.actor.userId}`),
-  })
+function learnerVersion(
+  ctx: ServiceContext,
+  version: StoredResourceVersion,
+  files: VersionFiles,
+): LearnerResourceView & { files: ResourceFileView[] } {
+  return {
+    ...learnerView(asCoreVersion(version), {
+      random: seededRandom(`${version.id}:${ctx.actor.userId}`),
+    }),
+    files: [...(files.get(version.id) ?? [])],
+  }
 }
 
 // --- Liste --------------------------------------------------------------------------------
@@ -272,18 +335,19 @@ export async function getResource(ctx: ServiceContext, resourceId: string) {
   const { viewer, institutionType, resource, readable } = await loadReadable(ctx, resourceId)
   const head = headOf(readable)
   if (!head) throw new NotFoundError()
+  const files = await loadVersionFiles(ctx.db, ctx.institutionId, [head])
   if (viewer.kind !== 'staff') {
     return {
       view: 'learner' as const,
       resource: { id: resource.id, contentType: resource.contentType },
-      version: learnerVersion(ctx, head),
+      version: learnerVersion(ctx, head, files),
     }
   }
   return {
     view: 'staff' as const,
     resource: staffResource(resource),
     versions: readable.map(versionSummary),
-    head: fullVersion(head),
+    head: fullVersion(head, files),
     publicationIssues: await issuesOf(ctx, institutionType, head),
   }
 }
@@ -297,7 +361,8 @@ export async function getResourceVersion(
   const { viewer, readable } = await loadReadable(ctx, resourceId, [versionId])
   const [version] = readable
   if (!version) throw new NotFoundError()
+  const files = await loadVersionFiles(ctx.db, ctx.institutionId, [version])
   return viewer.kind === 'staff'
-    ? { view: 'staff' as const, version: fullVersion(version) }
-    : { view: 'learner' as const, version: learnerVersion(ctx, version) }
+    ? { view: 'staff' as const, version: fullVersion(version, files) }
+    : { view: 'learner' as const, version: learnerVersion(ctx, version, files) }
 }

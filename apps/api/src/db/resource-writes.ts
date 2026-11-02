@@ -21,6 +21,7 @@ import {
 import {
   resources,
   resourceShares,
+  resourceVersionFiles,
   resourceVersionItems,
   resourceVersionOutcomes,
   resourceVersions,
@@ -32,7 +33,7 @@ import {
  *
  * - Satır sürümü (`version`) her yazmada bir artar. İyimser kilit beklenen sürümle yazılır:
  *   0 satır → 409 `version_conflict` (kurum kilidi zaten sıralar; koşul ikinci güvencedir).
- * - Bağlantı tabloları (kazanım, soru, paylaşım) silinmez: önce etkin satırlar arşivlenir, sonra
+ * - Bağlantı tabloları (kazanım, soru, dosya, paylaşım) silinmez: önce etkin satırlar arşivlenir, sonra
  *   yeni küme `on conflict` ile geri açılır (veritabani.md §7).
  */
 
@@ -72,7 +73,7 @@ export async function insertNewVersion(
   }
 }
 
-/** Taslağın içerik ve etiket kolonları, durumu, kazanım ve soru bağlantıları. */
+/** Taslağın içerik ve etiket kolonları, durumu, kazanım, dosya ve soru bağlantıları. */
 export async function updateDraft(
   tx: Database,
   institutionId: string,
@@ -98,6 +99,7 @@ export async function updateDraft(
     .returning({ id: resourceVersions.id })
   if (updated.length === 0) throw new ConflictError()
   await syncOutcomes(tx, institutionId, version.id, version.tags.outcomes, now)
+  await syncFiles(tx, institutionId, version.id, version.fileIds, now)
   await syncItems(tx, institutionId, version.id, version.content, now)
 }
 
@@ -280,6 +282,51 @@ async function syncOutcomes(
         archivedAt: null,
         updatedAt: now,
         version: sql`${resourceVersionOutcomes.version} + 1`,
+      },
+    })
+}
+
+async function syncFiles(
+  tx: Database,
+  institutionId: string,
+  versionId: string,
+  fileIds: readonly string[],
+  now: Date,
+): Promise<void> {
+  await tx
+    .update(resourceVersionFiles)
+    .set({ archivedAt: now, updatedAt: now, version: sql`${resourceVersionFiles.version} + 1` })
+    .where(
+      and(
+        eq(resourceVersionFiles.institutionId, institutionId),
+        eq(resourceVersionFiles.versionId, versionId),
+        isNull(resourceVersionFiles.archivedAt),
+      ),
+    )
+  if (fileIds.length === 0) return
+  await tx
+    .insert(resourceVersionFiles)
+    .values(
+      fileIds.map((fileId, position) => ({
+        institutionId,
+        versionId,
+        fileId,
+        position,
+        createdAt: now,
+        updatedAt: now,
+      })),
+    )
+    .onConflictDoUpdate({
+      target: [
+        resourceVersionFiles.institutionId,
+        resourceVersionFiles.versionId,
+        resourceVersionFiles.fileId,
+      ],
+      set: {
+        position: sql`excluded.position`,
+        archivedAt: null,
+        updatedAt: now,
+        version: sql`${resourceVersionFiles.version} + 1`,
       },
     })
 }

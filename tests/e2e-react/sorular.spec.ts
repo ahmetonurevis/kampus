@@ -1,8 +1,10 @@
 import { randomUUID } from 'node:crypto'
 
 import type { Page } from '@playwright/test'
+import pg from 'pg'
 
 import type { ApiClient } from './support/api.ts'
+import { e2e } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
 import type { Tenant, TenantOptions, TenantUser } from './support/tenant.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
@@ -76,6 +78,7 @@ interface QuestionItem {
     answeredAt: string | null
     withdrawnAt?: string
     followUps?: { text: string }[]
+    fileIds?: string[]
   }
 }
 
@@ -786,5 +789,80 @@ test.describe('dar ekran', () => {
       }),
     ).toBeVisible()
     await expectNoHorizontalOverflow(page)
+  })
+})
+
+/**
+ * Dosya tarama işi (TODO(F3c2-scan)) yokken yüklenen dosya `pending` kalır; test kendi kurumunun
+ * dosyalarını doğrudan `ready` yapar (taramadan geçmiş gibi; `odevler.spec.ts` ile aynı).
+ */
+async function markFilesReady(institutionId: string): Promise<void> {
+  const client = new pg.Client({ connectionString: e2e.databaseUrl })
+  await client.connect()
+  try {
+    const result = await client.query(
+      "update files set status = 'ready' where institution_id = $1 and status = 'pending'",
+      [institutionId],
+    )
+    expect(result.rowCount).toBeGreaterThan(0)
+  } finally {
+    await client.end()
+  }
+}
+
+/** İmzası geçerli küçük PNG (içerikten tür tespiti için yeterli). */
+const PHOTO = {
+  name: 'defter-sayfasi.png',
+  mimeType: 'image/png',
+  buffer: Buffer.concat([
+    Buffer.from('89504e470d0a1a0a0000000d49484452000000010000000108060000001f15c489', 'hex'),
+    Buffer.alloc(64),
+  ]),
+}
+
+test.describe('soru fotoğrafı', () => {
+  test('öğrenci fotoğraflı soru sorar; öğretmen soru ayrıntısında fotoğrafı görür ve açar (DOM-ILT-094)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await questionTenant(tenant)
+    const title = 'E2E fotoğraflı soru'
+
+    await loginAs(school.user('ogrenci'))
+    await page.goto('/ogrenci/soru-sor')
+    await page.getByRole('button', { name: 'Yeni soru' }).click()
+    const form = page.getByRole('dialog', { name: 'Yeni soru' })
+    await form.getByLabel('Ders').selectOption({ label: 'Matematik' })
+    await form.getByLabel('Konu başlığı').fill(title)
+    await form.getByLabel('Sorunuz').fill(TEXT)
+    await form.getByLabel('Fotoğraf ekle (isteğe bağlı)').setInputFiles(PHOTO)
+    const attached = form.getByRole('list', { name: 'Eklenen fotoğraflar' })
+    await expect(attached.getByRole('listitem')).toHaveCount(1)
+    await expect(attached).toContainText(PHOTO.name)
+
+    await markFilesReady(school.institutionId)
+    await form.getByRole('button', { name: 'Soruyu gönder' }).click()
+    await expect(toast(page, 'Sorunuz öğretmeninize iletildi.')).toBeVisible()
+    await expect(form).toBeHidden()
+
+    const student = await api(school.user('ogrenci'))
+    const created = await questionTitled(student, title)
+    expect(created.record.fileIds).toHaveLength(1)
+    // Kayda dosya adı girmez; yalnız kimlik.
+    expect(JSON.stringify(created.record)).not.toContain(PHOTO.name)
+
+    // Öğretmen: soru ayrıntısında fotoğraf listelenir ve imzalı bağlantıyla açılır.
+    await page.context().clearCookies()
+    await loginAs(school.user('ogretmen'))
+    await page.goto('/ogretmen/sorular')
+    await titleButton(page, title).click()
+    const panel = page.getByRole('dialog', { name: 'Soru ayrıntısı' })
+    const photos = panel.getByRole('list', { name: 'Soru fotoğrafları' })
+    await expect(photos).toContainText(PHOTO.name)
+    const popup = page.waitForEvent('popup')
+    await photos.getByRole('button', { name: `${PHOTO.name} dosyasını aç` }).click()
+    await expect.poll(async () => (await popup).url()).toContain('/api/v1/files/download')
   })
 })

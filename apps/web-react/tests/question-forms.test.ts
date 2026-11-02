@@ -5,7 +5,9 @@ import { askQuestionSchema } from '@kampus/school-core/lib/questions.ts'
 import {
   answerDefaults,
   answerFormSchema,
+  addQuestionPhoto,
   askDefaults,
+  askFieldName,
   askFormSchema,
   askOptions,
   askQuestionBody,
@@ -124,6 +126,7 @@ test('DOM-ILT-090: soru gövdesi core şemasına uyar; kapsam dışı ders ve ka
     topic: '',
     title: '  Konu başlığı  ',
     text: '  Bu soruda iki seçenek arasında kaldım.  ',
+    files: [],
   }
   const result = askQuestionBody(values, [option])
   assert.ok(result.ok)
@@ -183,4 +186,49 @@ test('DOM-ILT-092: yanıt formu boşu ve 2000 karakteri aşanı reddeder', () =>
       .success,
     true,
   )
+})
+
+test('DOM-ILT-094: soru fotoğrafları gövdeye yalnız kimlikle gider; en çok 3 fotoğraf, aynı dosya bir kez', () => {
+  const [option] = options()
+  assert.ok(option)
+  const photo = (id: string) => ({ id, name: `${id}.jpg` })
+  const values = {
+    ...askDefaults(),
+    subjectId: option.subjectId,
+    title: 'Konu başlığı',
+    text: 'Bu soruda iki seçenek arasında kaldım.',
+    files: [photo('f1'), photo('f2')],
+  }
+  const result = askQuestionBody(values, [option])
+  assert.ok(result.ok)
+  assert.deepEqual(result.body.fileIds, ['f1', 'f2'])
+  assert.equal(JSON.stringify(result.body).includes('.jpg'), false)
+  assert.equal(askQuestionSchema.safeParse(result.body).success, true)
+  // Fotoğrafsız soruda alan gönderilmez.
+  const plain = askQuestionBody({ ...values, files: [] }, [option])
+  assert.equal(plain.ok && 'fileIds' in plain.body, false)
+
+  let list = addQuestionPhoto([], photo('f1'))
+  list = addQuestionPhoto(list, photo('f1'))
+  assert.deepEqual(
+    list.map((item) => item.id),
+    ['f1'],
+  )
+  for (const id of ['f2', 'f3', 'f4']) list = addQuestionPhoto(list, photo(id))
+  assert.deepEqual(
+    list.map((item) => item.id),
+    ['f1', 'f2', 'f3'],
+  )
+  const tooMany = askFormSchema.safeParse({
+    ...values,
+    files: [1, 2, 3, 4].map((n) => photo(`p${n}`)),
+  })
+  assert.equal(tooMany.success, false)
+  assert.equal(tooMany.error?.issues[0]?.message, 'En fazla 3 fotoğraf ekleyebilirsiniz.')
+
+  assert.equal(askFieldName('fileIds'), 'files')
+  assert.equal(askFieldName('fileIds.0'), 'files')
+  assert.equal(askFieldName('topic'), 'topic')
+  assert.equal(askFieldName('root.server'), 'root.server')
+  assert.equal(askFieldName('bilinmeyen'), 'root.server')
 })

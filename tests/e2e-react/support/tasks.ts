@@ -31,7 +31,7 @@ const SECRET_EXPLANATION = 'GIZLI-ACIKLAMA'
 
 export const QUIZ_QUESTIONS = ['Where does Ann live?', 'What is the main idea?'] as const
 
-const tags = (skill: 'reading' | 'writing') => ({
+const tags = (skill: 'reading' | 'writing' | 'speaking') => ({
   subjectId: 'ingilizce',
   gradeLevels: [9],
   primarySkill: skill,
@@ -153,6 +153,21 @@ export function seedHomework(institutionId: string, ownerUserId: string, title: 
   })
 }
 
+/** Sesli (konuşma) teslimli ödev şablonu (IST-051). */
+export function seedSpeakingHomework(institutionId: string, ownerUserId: string, title: string) {
+  return seed(institutionId, ownerUserId, {
+    title,
+    content: {
+      type: 'homework_template',
+      instructions: 'Record a short answer about your favourite place.',
+      submissionKinds: ['audio'],
+      criteria: 'Akıcılık ve doğruluk.',
+      rubricId: null,
+    },
+    tags: tags('speaking'),
+  })
+}
+
 const bands = (aspect: string) =>
   [0, 1, 2, 3, 4, 5].map((band) => ({
     band,
@@ -166,16 +181,44 @@ const bands = (aspect: string) =>
   }))
 
 /** Analitik yazma rubriği (iki kriter: `task`, `grammar`); yayındaki sürüm kimliğini döndürür. */
-export async function seedRubric(institutionId: string, ownerUserId: string): Promise<string> {
-  const data: RubricVersionData = rubricVersionInputSchema.parse({
-    title: 'Yazma rubriği',
-    kind: 'analytic',
-    skill: 'writing',
-    criteria: [
-      { id: 'task', aspect: 'task_fulfilment', bands: bands('Görev') },
-      { id: 'grammar', aspect: 'grammatical_accuracy', bands: bands('Dilbilgisi') },
-    ],
-  })
+export function seedRubric(institutionId: string, ownerUserId: string): Promise<string> {
+  return insertRubric(
+    institutionId,
+    ownerUserId,
+    rubricVersionInputSchema.parse({
+      title: 'Yazma rubriği',
+      kind: 'analytic',
+      skill: 'writing',
+      criteria: [
+        { id: 'task', aspect: 'task_fulfilment', bands: bands('Görev') },
+        { id: 'grammar', aspect: 'grammatical_accuracy', bands: bands('Dilbilgisi') },
+      ],
+    }),
+  )
+}
+
+/** Analitik konuşma rubriği (iki kriter: `fluency`, `accuracy`); yayındaki sürüm kimliği. */
+export function seedSpeakingRubric(institutionId: string, ownerUserId: string): Promise<string> {
+  return insertRubric(
+    institutionId,
+    ownerUserId,
+    rubricVersionInputSchema.parse({
+      title: 'Konuşma rubriği',
+      kind: 'analytic',
+      skill: 'speaking',
+      criteria: [
+        { id: 'fluency', aspect: 'fluency', bands: bands('Akıcılık') },
+        { id: 'accuracy', aspect: 'accuracy', bands: bands('Doğruluk') },
+      ],
+    }),
+  )
+}
+
+async function insertRubric(
+  institutionId: string,
+  ownerUserId: string,
+  data: RubricVersionData,
+): Promise<string> {
   const { db, close } = connectPostgres(e2e.databaseUrl)
   try {
     const now = new Date()

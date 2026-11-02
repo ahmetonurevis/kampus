@@ -180,7 +180,7 @@ test.describe('Öğrenme: öğretmen', () => {
     await page.goto(`${TEACHER_HOMEWORK}?odev=${homework?.id}`)
     await expect(panelOf(page, 'Ödev teslim durumu')).toContainText(NOT_FOUND)
 
-    expect((await teacher.get(`/api/v1/collections/quizzes/${quiz?.id}`)).status).toBe(404)
+    expect((await teacher.get(`/api/v1/quizzes/${quiz?.id}`)).status).toBe(404)
     await page.goto(`${TEACHER_QUIZZES}?quiz=${quiz?.id}`)
     await expect(panelOf(page, 'Quiz sonuçları')).toContainText(NOT_FOUND)
   })

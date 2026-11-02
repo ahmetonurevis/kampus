@@ -243,7 +243,7 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
     <div className="grid items-start gap-5 lg:grid-cols-2">
       <ReadingPassage
         passage={attempt.passage}
-        className="min-w-0 lg:sticky lg:top-[100px] lg:max-h-[calc(100dvh-116px)] lg:overflow-y-auto"
+        className="min-w-0 lg:sticky lg:top-(--topbar-clearance) lg:max-h-[calc(100dvh-var(--topbar-clearance)-16px)] lg:overflow-y-auto"
       />
       {player}
     </div>

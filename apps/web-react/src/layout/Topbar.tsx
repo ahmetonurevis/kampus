@@ -21,7 +21,7 @@ const iconButton =
 export function Topbar({ session, title, narrow, menuOpen, onOpenMenu, onSignOut }: TopbarProps) {
   const { theme, toggleTheme } = useTheme()
   return (
-    <header className="topbar glass sticky top-3 z-20 mx-3 mt-3 flex min-h-[72px] items-center justify-between gap-3 rounded-card px-5 py-2.5 max-[860px]:px-3 max-[650px]:flex-wrap">
+    <header className="topbar glass sticky top-shell z-20 mx-3 mt-shell flex min-h-topbar items-center justify-between gap-3 rounded-card px-5 py-2.5 max-[860px]:px-3 max-[650px]:flex-wrap">
       <div className="flex min-w-0 items-center gap-2">
         {narrow ? (
           <button

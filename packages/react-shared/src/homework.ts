@@ -5,6 +5,7 @@ import type { components, operations } from '@kampus/api-client/schema.d.ts'
 import { runRequest } from './api-result.ts'
 import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
+import { FILE_REJECTED_MESSAGE, FILE_SCAN_WAIT_MESSAGE } from './files.ts'
 import { fetchAllPages, type ListPage } from './institution-lists.ts'
 
 /**
@@ -70,7 +71,8 @@ export const HOMEWORK_MESSAGES = {
   submission_graded: 'Teslimin değerlendirildi; değerlendirilmiş teslim değiştirilemez.',
   student_inactive: 'Kaydınız pasif olduğu için ödev teslim edilemez.',
   file_unavailable: 'Eklenen dosyalardan biri bulunamadı. Dosyayı kaldırıp yeniden yükleyin.',
-  file_not_ready: 'Dosyanız güvenlik taramasında, birazdan yeniden deneyin.',
+  file_not_ready: FILE_SCAN_WAIT_MESSAGE,
+  file_rejected: FILE_REJECTED_MESSAGE,
   file_already_attached:
     'Eklenen dosyalardan biri başka bir kayda bağlı. Dosyayı kaldırıp yeniden yükleyin.',
 } as const satisfies CommandMessages
@@ -103,6 +105,7 @@ export const HOMEWORK_ERROR_FIELDS = {
   record_inactive: 'classId',
   file_unavailable: 'fileIds',
   file_not_ready: 'fileIds',
+  file_rejected: 'fileIds',
   file_already_attached: 'fileIds',
   // Ödev ya da teslim artık bu işleme kapalı: açık formun içinde, formu kapatmadan gösterilir.
   homework_closed: HOMEWORK_FORM_ROOT,

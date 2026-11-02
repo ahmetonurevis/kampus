@@ -106,6 +106,7 @@ function ContactField({
   }
   const value = contact.valueOf(input)
   const subject = `${row.parentName} (${row.student.name} velisi) ${FIELD_NOUNS[field]}`
+  const locked = value === undefined && contact.isPending
   return (
     <div className="flex min-h-9 items-center justify-between gap-3">
       <dt className="text-muted-foreground">{FIELD_LABELS[field]}</dt>
@@ -122,11 +123,15 @@ function ContactField({
                 variant="outline"
                 size="sm"
                 aria-label={`${subject} ${value === undefined ? 'göster' : 'gizle'}`}
-                aria-busy={(value === undefined && contact.isPending) || undefined}
-                disabled={value === undefined && contact.isPending}
-                onClick={() =>
-                  value === undefined ? void contact.reveal(input) : contact.hide(input)
-                }
+                // `disabled` odağı düğmeden düşürür; istek sürerken kilit `aria-disabled` ile.
+                aria-busy={locked || undefined}
+                aria-disabled={locked || undefined}
+                className="aria-disabled:cursor-not-allowed aria-disabled:opacity-50"
+                onClick={() => {
+                  if (locked) return
+                  if (value === undefined) void contact.reveal(input)
+                  else contact.hide(input)
+                }}
               >
                 {value === undefined ? 'Göster' : 'Gizle'}
               </Button>

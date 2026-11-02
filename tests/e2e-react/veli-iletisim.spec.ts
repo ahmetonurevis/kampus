@@ -37,9 +37,19 @@ test.describe('veli iletişimi', () => {
     await expect(contacts.getByText(PHONE)).toHaveCount(0)
 
     // Klavye: düğmeye odaklanıp Enter; aynı düğme "Gizle" olur ve odak yerinde kalır.
+    // İstek yanıtı tutulur: düğme meşgulken de odak düğmede kalmalı (`disabled` odağı düşürür).
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => (release = resolve))
+    await page.route('**/api/v1/parents/*/reveal-contact', async (route) => {
+      await held
+      await route.continue()
+    })
     const show = contacts.getByRole('button', { name: `${SUBJECT} telefonunu göster` })
     await show.focus()
     await page.keyboard.press('Enter')
+    await expect(show).toHaveAttribute('aria-busy', 'true')
+    await expect(show).toBeFocused()
+    release()
     await expect(contacts.getByText(PHONE)).toBeVisible()
     const hide = contacts.getByRole('button', { name: `${SUBJECT} telefonunu gizle` })
     await expect(hide).toBeFocused()

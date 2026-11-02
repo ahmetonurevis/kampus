@@ -148,6 +148,23 @@ export function authAfterHook(ctx: HookContext) {
         })
         return
       }
+      case '/request-password-reset': {
+        // Hesap varsa kayıt gönderimde yazılır (`deliverPasswordReset`); burada yalnız bilinmeyen
+        // e-posta (hesap tarama denemesi). Yanıt iki durumda da aynıdır.
+        if (failed) return
+        const email = stringField(context.body, 'email')?.trim().toLowerCase()
+        const [user] = email
+          ? await ctx.db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1)
+          : []
+        if (user) return
+        await recordAudit(ctx, {
+          action: 'auth.password_reset_requested',
+          requestId,
+          ip,
+          changes: { reason: 'unknown_user' },
+        })
+        return
+      }
       default:
         return
     }

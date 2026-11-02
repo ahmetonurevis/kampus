@@ -93,6 +93,12 @@ export const configSchema = z
     BETTER_AUTH_URL: optional(z.url()),
     /** İzinli web kökenleri (tam eşleşme). CORS ve Better Auth `trustedOrigins` aynı listeyi kullanır. */
     CORS_ORIGINS: csv.pipe(z.array(z.url())),
+    /**
+     * Web uygulamasının dışarıdan görünen kök adresi; parola sıfırlama bağlantısı
+     * (`/parola-sifirla?token=…`) buna kurulur, istek başlığından türetilmez (Host sahteleme).
+     * Geliştirme/testte verilmezse `http://localhost:5174`; üretimde verilmezse iletisi gönderilmez.
+     */
+    WEB_URL: optional(z.url({ protocol: /^https?$/ })),
     /** Mobil uygulama şeması gibi tarayıcı dışı güvenilen kökenler. */
     TRUSTED_ORIGINS: csv.default(['kampus://']),
     /** Yalnız `db:seed`: demo kullanıcılarının parolası. Üretimde verilmezse tohum çalışmaz. */
@@ -175,6 +181,15 @@ export function loadTestPgUrl(
 
 export function publicUrl(config: Config): string {
   return config.BETTER_AUTH_URL ?? `http://localhost:${config.PORT}`
+}
+
+/** `WEB_URL` verilmediğinde geliştirme ve testte web-react geliştirme sunucusu. */
+export const DEFAULT_DEV_WEB_URL = 'http://localhost:5174'
+
+/** Web kök adresi (sonda `/` yok); üretimde `WEB_URL` yoksa `null` (bağlantı kurulmaz). */
+export function webUrl(config: Config): string | null {
+  const value = config.WEB_URL ?? (isDevelopmentLike(config) ? DEFAULT_DEV_WEB_URL : null)
+  return value ? value.replace(/\/+$/, '') : null
 }
 
 /** Yerel geliştirme ve testte `STORAGE_DIR` verilmezse kullanılan klasör (git'e girmez). */

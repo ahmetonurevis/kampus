@@ -10,6 +10,7 @@ import { buildApp, type App, type Clock } from '../../src/app.ts'
 import type { InstitutionType, Role } from '../../src/auth.ts'
 import { parseConfig, type Config } from '../../src/config.ts'
 import { MIGRATIONS_FOLDER, schema, type Database } from '../../src/db/client.ts'
+import type { Mailer } from '../../src/services/mailer.ts'
 import type { DiskStorage } from '../../src/storage/disk.ts'
 import {
   ensureInstitution,
@@ -66,6 +67,8 @@ export interface TestAppOptions {
   storage?: DiskStorage
   /** `ready` öncesi yalnız teste özgü rota eklemek için. */
   extend?: (app: App) => void
+  /** Parola sıfırlama iletisi (ör. `MemoryMailer`; kutusu testten okunur). */
+  mailer?: Mailer
 }
 
 export async function buildTestApp(db: Database, options: TestAppOptions = {}): Promise<App> {
@@ -85,6 +88,7 @@ export async function buildTestApp(db: Database, options: TestAppOptions = {}): 
     clock: options.clock ?? (() => FIXED_NOW),
     ...(options.storage ? { storage: options.storage } : {}),
     ...(logStream ? { logStream } : {}),
+    ...(options.mailer ? { mailer: options.mailer } : {}),
   })
   options.extend?.(app)
   await app.ready()

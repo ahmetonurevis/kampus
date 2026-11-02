@@ -3,7 +3,7 @@ import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { requireAuthorized } from './authorize.ts'
 import type { Participant } from './communication.ts'
-import type { MakeId } from './domain.ts'
+import { requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import type { RequestActor } from './requests.ts'
 import { intervalsOverlap, tutorConflict } from './tutor-conflicts.ts'
@@ -186,6 +186,20 @@ const personName = z
   .trim()
   .min(2, 'En az 2 karakter girin.')
   .max(80, 'En fazla 80 karakter girebilirsiniz.')
+
+/**
+ * Çevrimdışı demo aday formu (Vue `Crm.vue`, mobil `operations.ts`): tek tip, e-posta zorunlu,
+ * aydınlatma ve onay alanı yok. API ve React `createProspectSchema`'yı kullanır; demo kalıcılığı
+ * silinince bu şema da kalkar.
+ */
+export const prospectSchema = z.object({
+  name: requiredText.max(80),
+  phone: z.string().regex(/^0\d{10}$/, 'Telefonu 05XXXXXXXXX biçiminde girin.'),
+  email: z.email('Geçerli bir e-posta adresi girin.'),
+  branchId: requiredText,
+  interest: requiredText,
+  source: requiredText,
+})
 
 /**
  * Yeni aday (DOM-KAY-003, -007, -009). Gövde katıdır; T.C. kimlik no, doğum tarihi, adres gibi

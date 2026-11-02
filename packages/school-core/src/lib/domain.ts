@@ -13,14 +13,6 @@ export const requiredText = z
   .trim()
   .min(2, 'En az 2 karakter girin.')
   .max(2000, 'En fazla 2000 karakter girebilirsiniz.')
-export const prospectSchema = z.object({
-  name: requiredText.max(80),
-  phone: z.string().regex(/^0\d{10}$/, 'Telefonu 05XXXXXXXXX biçiminde girin.'),
-  email: z.email('Geçerli bir e-posta adresi girin.'),
-  branchId: requiredText,
-  interest: requiredText,
-  source: requiredText,
-})
 export type MakeId = (prefix: string) => string
 /** Tarifeli sözleşmenin karar anı kopyası (DOM-FIN-010). */
 export interface ContractTerms {

@@ -10,6 +10,7 @@ import {
   planTariffPublish,
   planTariffUpdate,
   tariffFormToBody,
+  tariffItemExceedsAnnounced,
   tariffToForm,
   tuitionAfterDiscountLoss,
   tuitionIncreaseCeiling,
@@ -104,6 +105,18 @@ test('DOM-FIN-002: öğrenim ücreti olmadan ve onaylı tutarsız okul tarifesi 
     isDomainError('tariff_amount_exceeds_announced'),
   )
   assert.deepEqual(planTariffPublish(draft([tuition, meal]), publishInput, school), publishInput)
+})
+
+test('IST-104: ilan tutarını aşan fiyat girilince uyarı koşulu doğar', () => {
+  const exceeds = (amount: string, announcedAmount: string) =>
+    tariffItemExceedsAnnounced({ amount, announcedAmount })
+  assert.equal(exceeds('300.000,01', '300.000,00'), true)
+  assert.equal(exceeds('300.000,00', '300.000,00'), false)
+  assert.equal(exceeds('299.999,99', '300.000,00'), false)
+  assert.equal(exceeds('300.000,00', ''), false)
+  assert.equal(exceeds('', '300.000,00'), false)
+  assert.equal(exceeds('üç yüz bin', '300.000,00'), false)
+  assert.equal(exceeds('300.000,00', 'bilinmiyor'), false)
 })
 
 test('DOM-FIN-006: öğrenim ücreti birimi kurum türüne uyar', () => {

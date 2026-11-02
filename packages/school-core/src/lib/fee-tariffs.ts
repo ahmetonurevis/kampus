@@ -297,6 +297,20 @@ export const feeTariffFormSchema = z.object({
 })
 export type FeeTariffFormValues = z.output<typeof feeTariffFormSchema>
 
+/**
+ * Girilen ücret ilan tutarını aşıyor mu (IST-104). Form anında uyarmak içindir, kaydı engellemez:
+ * taslak eksik ya da hatalı olabilir, asıl ret yayımdadır (`planTariffPublish`). Boş ya da
+ * çözümlenemeyen tutar karşılaştırılmaz; onun mesajı alanın kendi doğrulamasıdır.
+ */
+export function tariffItemExceedsAnnounced(item: {
+  amount: string
+  announcedAmount: string
+}): boolean {
+  const amount = parseAmountInput(item.amount)
+  const announced = parseAmountInput(item.announcedAmount)
+  return amount !== null && announced !== null && amount > announced
+}
+
 export function emptyTariffForm(academicYear: number, today: string): FeeTariffFormValues {
   return {
     academicYear: String(academicYear),

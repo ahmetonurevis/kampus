@@ -145,6 +145,9 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'GET /api/v1/collections/:collection/:id': 'collection',
   // Akademik yazma (yoklama, not, izin/mazeret).
   'POST /api/v1/classes/:classId/attendance': ['academic'],
+  // Kampüs ve kadro ekranı toplu ölçüleri (IST-010): not ortalaması ve soru süresi uyumu.
+  'GET /api/v1/class-metrics': ['academic'],
+  'GET /api/v1/teacher-metrics': ['learning'],
   'POST /api/v1/grades': ['academic'],
   'PATCH /api/v1/grades/:gradeId': ['academic'],
   'POST /api/v1/absences': ['academic'],

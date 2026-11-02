@@ -3948,6 +3948,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/class-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Sınıf ölçüleri
+         * @description Sınıf başına aktif öğrenci sayısı ve not ortalaması (IST-010): önce öğrencinin notlarının yuvarlanmış ortalaması, sonra sınıfta notu olan öğrencilerin ortalaması. Öğrencinin güncel sınıfı esastır; aktif öğrencisi olmayan sınıf dönmez. Toplam SQL'dedir. Yalnız yönetici (diğer roller 403); `academic` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listClassMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/teacher-metrics": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğretmen ölçüleri
+         * @description Öğretmen başına soru sayısı, 24 saat yanıt hedefini aşan soru, hedef uyumu ve performans (yoklama, ödev takibi ve hedef uyumunun ortalaması; IST-010). Yanıtlanan soruda yanıt süresi, yanıtsız soruda geçen süre ölçülür; geri çekilen soru sayılmaz (DOM-ILT-091). Arşivdeki öğretmen de döner. Toplam SQL'dedir. Yalnız yönetici (diğer roller 403); `learning` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listTeacherMetrics"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -6408,6 +6448,28 @@ export interface components {
             offeredAt: string | null;
             offerExpiresAt: string | null;
         };
+        ClassMetricInput: {
+            /** @description Sınıf kimliği */
+            classId: string;
+            /** @description Sınıftaki aktif öğrenci */
+            students: number;
+            /** @description Notu olan aktif öğrenci */
+            gradedStudents: number;
+            /** @description Notu olan öğrencilerin yuvarlanmış not ortalamalarının yuvarlanmış ortalaması; not yoksa `null` */
+            averageScore: number | null;
+        };
+        TeacherMetricInput: {
+            /** @description Öğretmen kimliği */
+            teacherId: string;
+            /** @description Geri çekilmemiş soru */
+            questions: number;
+            /** @description 24 saat yanıt hedefini aşan soru */
+            breaches: number;
+            /** @description Hedefe uyan soru yüzdesi; soru yoksa 100 */
+            slaRate: number;
+            /** @description Yoklama, ödev takibi ve soru süresi uyumunun ortalaması; oran yoksa `null` */
+            performance: number | null;
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -8782,6 +8844,28 @@ export interface components {
             offerGroupId: string | null;
             offeredAt: string | null;
             offerExpiresAt: string | null;
+        };
+        ClassMetric: {
+            /** @description Sınıf kimliği */
+            classId: string;
+            /** @description Sınıftaki aktif öğrenci */
+            students: number;
+            /** @description Notu olan aktif öğrenci */
+            gradedStudents: number;
+            /** @description Notu olan öğrencilerin yuvarlanmış not ortalamalarının yuvarlanmış ortalaması; not yoksa `null` */
+            averageScore: number | null;
+        };
+        TeacherMetric: {
+            /** @description Öğretmen kimliği */
+            teacherId: string;
+            /** @description Geri çekilmemiş soru */
+            questions: number;
+            /** @description 24 saat yanıt hedefini aşan soru */
+            breaches: number;
+            /** @description Hedefe uyan soru yüzdesi; soru yoksa 100 */
+            slaRate: number;
+            /** @description Yoklama, ödev takibi ve soru süresi uyumunun ortalaması; oran yoksa `null` */
+            performance: number | null;
         };
     };
     responses: never;
@@ -33345,6 +33429,158 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listClassMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ClassMetric"][];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTeacherMetrics: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TeacherMetric"][];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

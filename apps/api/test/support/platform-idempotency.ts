@@ -68,4 +68,8 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   'POST /api/v1/courses',
   // Grup planlama (routes/language-groups.ts; IST-077, DOM-DIL-008).
   'POST /api/v1/groups',
+  // Ödev verme ve teslim: yeniden denemede ikinci ödev ya da teslim açılmaz (routes/homework.ts;
+  // DOM-AKD-070, DOM-AKD-072).
+  'POST /api/v1/homework',
+  'POST /api/v1/homework/{homeworkId}/submissions',
 ]

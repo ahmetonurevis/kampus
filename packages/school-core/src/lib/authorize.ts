@@ -387,6 +387,46 @@ function decide(
         ? ALLOWED
         : deny('question_not_found', 'Soru bulunamadı.', 'DOM-ILT-091', 'not_found')
     }
+    case 'homework.assign': {
+      // Öğretmen yalnız derse girdiği sınıf ve branşa ödev verir; yönetici her sınıfa
+      // (DOM-AKD-070, DOM-YTK-022).
+      if (actor.role === 'yonetici') return ALLOWED
+      const { classId, subjectId } = request.target
+      return teaches(classId, subjectId)
+        ? ALLOWED
+        : deny(
+            'homework_scope_denied',
+            'Yalnız derse girdiğiniz sınıf ve branşa ödev verebilirsiniz.',
+            'DOM-AKD-070',
+          )
+    }
+    case 'homework.update':
+    case 'homework.archive':
+    case 'homework.grade': {
+      // Ödevin öğretmeni ya da yönetici (DOM-AKD-071, -073). Ödevi okuyabilen başka öğretmen
+      // (aynı sınıfa giren) 403 alır; okuyamayan için ret 404'tür, ödevin varlığı sızdırılmaz.
+      const homework = request.target.homework
+      if (homework === undefined || actor.role === 'yonetici') return ALLOWED
+      if (teacher && homework.teacherId === teacher.id) return ALLOWED
+      return scope.classIds.has(homework.classId)
+        ? deny('homework_not_owner', 'Bu ödevin öğretmeni değilsiniz.', 'DOM-AKD-071')
+        : deny('homework_not_found', 'Ödev bulunamadı.', 'DOM-AKD-071', 'not_found')
+    }
+    case 'homework.submit': {
+      // Öğrenci yalnız kendisi için ve kendi sınıfının ödevini teslim eder (DOM-AKD-072); başka
+      // sınıfın ödevi olmayan ödevle aynı 404'tür.
+      const { studentId, homework } = request.target
+      if (studentId === undefined || !scope.studentIds.has(studentId))
+        return deny(
+          'student_scope_denied',
+          'Bu öğrenci için işlem yetkiniz bulunmuyor.',
+          'DOM-AKD-072',
+        )
+      if (homework === undefined) return ALLOWED
+      return classOf(studentId) === homework.classId
+        ? ALLOWED
+        : deny('homework_not_found', 'Ödev bulunamadı.', 'DOM-AKD-072', 'not_found')
+    }
     // Deneme dersinin kurum türü (yalnız dil okulu, DOM-DIL-030) `authorize` içinde rolden önce
     // denetlenir.
     case 'prospect.create':

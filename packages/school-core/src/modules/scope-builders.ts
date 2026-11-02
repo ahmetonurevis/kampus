@@ -22,6 +22,8 @@ export type Context = {
   grades: ReadonlySet<number>
   levels: ReadonlySet<string>
   clubIds: ReadonlySet<string>
+  /** Öğretmenin verdiği ödevler (kapsam kaynağında ödev varsa; DOM-AKD-074). */
+  homeworkIds: ReadonlySet<string>
   classTeacherIds: ReadonlySet<string>
   studentClass: ReadonlyMap<string, string>
   examGrade: ReadonlyMap<string, number>
@@ -66,6 +68,13 @@ export const ownClub: Rule = (c, r) => member(c.clubIds, text(r, 'clubId'))
 // Sınıfa özel kayıt kendi sınıfında, sınıfsız kayıt kendi kampüsünde görünür.
 export const classOrBranch: Rule = (c, r) => (text(r, 'classId') ? ownClass(c, r) : ownBranch(c, r))
 export const classOrEveryone: Rule = (c, r) => !text(r, 'classId') || ownClass(c, r)
+// Öğrencinin güncel sınıfının rehber öğretmeni (DOM-YTK-022).
+export const homeroomStudent: Rule = (c, r) =>
+  ownStudent(c, r) && member(c.homeroomIds, c.studentClass.get(text(r, 'studentId') ?? ''))
+// Teslimi ödevin öğretmeni (öğrenci ya da öğretmen sınıftan ayrılmış olsa da) ve öğrencinin
+// sınıf rehber öğretmeni okur; aynı sınıfa başka dersle giren öğretmen okumaz (DOM-AKD-074).
+export const submissionReader: Rule = (c, r) =>
+  member(c.homeworkIds, text(r, 'homeworkId')) || homeroomStudent(c, r)
 export const subjectOrHomeroom: Rule = (c, r) => {
   const classId = c.studentClass.get(text(r, 'studentId') ?? '')
   return (

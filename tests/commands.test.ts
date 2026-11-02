@@ -65,6 +65,13 @@ import {
   withdrawQuestion,
 } from '../packages/school-core/src/lib/questions.ts'
 import {
+  archiveHomework,
+  assignHomework,
+  gradeSubmission,
+  submitHomework,
+  updateHomework,
+} from '../packages/school-core/src/lib/homework.ts'
+import {
   addProspectNote,
   changeProspectStage,
   createProspect,
@@ -632,6 +639,50 @@ test('Öğretmenime Sor işlemleri yalnız komut tablosundaki koleksiyonlarla ç
     now,
   )
   withdrawQuestion(operation(state, 'question.withdraw'), student, 'ask1', { withdrawn: true }, now)
+})
+
+test('Ödev işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır (DOM-AKD-070…073)', () => {
+  const state = seed()
+  const student = {
+    role: 'ogrenci' as const,
+    links: [{ kind: 'student' as const, recordId: 's1' }],
+    userId: 'u-s1',
+  }
+  const teacher = {
+    role: 'ogretmen' as const,
+    links: [{ kind: 'teacher' as const, recordId: 't1' }],
+    userId: 'u-t1',
+  }
+  const homework = assignHomework(
+    operation(state, 'homework.assign'),
+    teacher,
+    {
+      classId: 'c1',
+      title: 'Denklem',
+      description: 'Soruları çözün.',
+      dueDate: '2026-12-01T20:59:00.000Z',
+    },
+    id,
+    now,
+  )
+  updateHomework(operation(state, 'homework.update'), teacher, 'hw1', { title: 'Yeni' }, now)
+  const { submission } = submitHomework(
+    operation(state, 'homework.submit'),
+    student,
+    'hw1',
+    { note: 'Çözümler.' },
+    id,
+    now,
+  )
+  gradeSubmission(
+    operation(state, 'homework.grade'),
+    teacher,
+    'hw1',
+    submission.id,
+    { score: 90, feedback: 'İyi.' },
+    now,
+  )
+  archiveHomework(operation(state, 'homework.archive'), teacher, homework.id)
 })
 
 test('Aday/CRM işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır', () => {

@@ -8,6 +8,7 @@ import type {
 import type { AbsenceReasonCategory, RequestActor, RequestFields } from '../lib/requests.ts'
 import type { AppointmentFields } from '../lib/appointments.ts'
 import type { QuestionFields } from '../lib/questions.ts'
+import type { HomeworkFields, SubmissionFields } from '../lib/homework.ts'
 import type { NotificationReadRecord, NotificationRecord } from '../lib/notifications.ts'
 import type {
   AuditEntry,
@@ -32,6 +33,7 @@ export type SeedCollections =
   | 'schedule'
   | 'requests'
   | 'questions'
+  | 'homework'
   | 'submissions'
   | 'materials'
   | 'announcements'
@@ -101,12 +103,16 @@ export type PlatformStatePatches<S extends Record<SeedCollections, unknown>> = {
       // kvkk: Ç — öğrencinin yüklediği dosyanın yolu.
       fileUri?: string | null
     })[]
-  submissions: (Item<S, 'submissions'> & {
-    // kvkk: Ç — öğrencinin yüklediği ödev dosyasının yolu.
-    fileUri?: string | null
-    // kvkk: Ç — öğrencinin öğretmene teslim notu.
-    note?: string
-  })[]
+  // Ödev ve teslim işlemlerinin alanları (geç teslim, dosya kimlikleri, değerlendiren);
+  // örnek veri ve eski kayıtlar taşımaz (lib/homework.ts).
+  homework: (Item<S, 'homework'> & HomeworkFields)[]
+  submissions: (Item<S, 'submissions'> &
+    SubmissionFields & {
+      // kvkk: Ç — öğrencinin yüklediği ödev dosyasının yolu.
+      fileUri?: string | null
+      // kvkk: Ç — öğrencinin öğretmene teslim notu.
+      note?: string
+    })[]
   materials: (Item<S, 'materials'> & { fileUri?: string | null })[]
   // İletişim işlemlerinin alanları; örnek veri ve eski kayıtlar taşımaz (lib/communication.ts).
   announcements: (Item<S, 'announcements'> & AnnouncementFields)[]

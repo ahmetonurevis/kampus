@@ -11,6 +11,7 @@ import {
 } from '@kampus/school-core/lib/assessment-automation.ts'
 import type { Session } from '@kampus/school-core/lib/domain.ts'
 import type { CollectionName } from '@kampus/school-core/modules/collection-modules.ts'
+import { OUTCOME_LABELS, percentText } from '../academic/exam-analysis-model.ts'
 
 /** Optik sayfasının okuduğu koleksiyonlar; ilki ana koleksiyondur. */
 export const OPTICAL_SOURCES = [
@@ -122,6 +123,31 @@ export function examsWithoutProfile(
     .map((exam) => ({ id: exam.id, title: exam.title }))
 }
 
+/** Kazanım başarısı satırı: doğru/yanlış/boş sayıları ve core'un hesapladığı başarı yüzdesi. */
+export type TopicRow = {
+  id: string
+  topic: string
+  /** İptal edilmemiş soru sayısı (başarı paydası). */
+  total: number
+  correct: number
+  /** Çoklu işaretler yanlış sayılır (core `summarize`). */
+  wrong: number
+  blank: number
+  /** `%75`; bütün soruları iptal edilen kazanım için "—". */
+  percent: string
+  weak: boolean
+}
+
+/** Soru ayrıntısı satırı: öğrencinin işareti, anahtardaki doğru cevap ve sonuç. */
+export type QuestionDetailRow = {
+  id: string
+  number: number
+  topic: string
+  response: string
+  answer: string
+  outcome: string
+}
+
 export type EvaluationRow = {
   id: string
   student: string
@@ -137,6 +163,50 @@ export type EvaluationRow = {
   /** Etüt planlamasında kullanılabilir mi; değilse neden (eski analiz). */
   current: boolean
   staleReason: string
+  /** Ayrıntı paneli: kazanım başarıları ve soru sonuçları (kayıtlı analizden, yeniden hesaplanmaz). */
+  topics: TopicRow[]
+  questions: QuestionDetailRow[]
+}
+
+type Evaluation = State['opticalEvaluations'][number]
+
+/** Öğrencinin işareti: boş işaret karakterleri "Boş", çoklu işaret açık yazılır. */
+function responseText(response: string | undefined): string {
+  const mark = (response ?? '').trim()
+  if (mark === '' || '-._'.includes(mark)) return 'Boş'
+  return mark === '*' ? 'Çoklu işaret' : mark
+}
+
+/**
+ * Kayıtlı analizin kazanım başarıları. Başarı yüzdesi ve zayıf kazanım işareti analizle birlikte
+ * saklanan `topicScores`/`weakTopics` alanlarından gelir (core `summarize`); yanlış ve boş
+ * sayıları aynı analizdeki soru sonuçlarından sayılır.
+ */
+export function topicRows(evaluation: Evaluation): TopicRow[] {
+  return evaluation.topicScores.map((score) => {
+    const questions = evaluation.questionResults.filter((q) => q.topic === score.topic)
+    return {
+      id: score.topic,
+      topic: score.topic,
+      total: score.total,
+      correct: score.correct,
+      wrong: questions.filter((q) => q.outcome === 'wrong' || q.outcome === 'multiple').length,
+      blank: questions.filter((q) => q.outcome === 'blank').length,
+      percent: percentText(score.percent),
+      weak: evaluation.weakTopics.includes(score.topic),
+    }
+  })
+}
+
+export function questionDetailRows(evaluation: Evaluation): QuestionDetailRow[] {
+  return evaluation.questionResults.map((question) => ({
+    id: `${evaluation.id}-${question.number}`,
+    number: question.number,
+    topic: question.topic,
+    response: responseText(question.response),
+    answer: question.answer === '-' ? '—' : question.answer,
+    outcome: OUTCOME_LABELS[question.outcome],
+  }))
 }
 
 /**
@@ -164,11 +234,13 @@ export function evaluationRows(state: State, session: Session): EvaluationRow[] 
       const current = usable.has(evaluation.id)
       const staleReason = current
         ? ''
-        : profile?.revision !== evaluation.keyRevision
-          ? 'Cevap anahtarı değişti; dosyayı yeniden değerlendirin.'
-          : result?.evaluationId !== evaluation.id
-            ? 'Deneme sonucu değişti; dosyayı yeniden değerlendirin.'
-            : 'Bu analiz kapsamınızda kullanılamaz.'
+        : !profile
+          ? 'Optik profili bulunamadı; profili yeniden oluşturup dosyayı değerlendirin.'
+          : profile.revision !== evaluation.keyRevision
+            ? 'Cevap anahtarı değişti; dosyayı yeniden değerlendirin.'
+            : result?.evaluationId !== evaluation.id
+              ? 'Deneme sonucu değişti; dosyayı yeniden değerlendirin.'
+              : 'Bu analiz kapsamınızda kullanılamaz.'
       return {
         id: evaluation.id,
         student: state.students.find((s) => s.id === evaluation.studentId)?.name ?? '—',
@@ -184,6 +256,8 @@ export function evaluationRows(state: State, session: Session): EvaluationRow[] 
         net: evaluation.net,
         current,
         staleReason,
+        topics: topicRows(evaluation),
+        questions: questionDetailRows(evaluation),
       }
     })
 }

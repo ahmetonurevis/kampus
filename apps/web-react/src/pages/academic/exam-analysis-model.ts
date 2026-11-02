@@ -188,7 +188,8 @@ export function currentEvaluationsOf(
   })
 }
 
-const OUTCOME_LABELS = {
+/** Soru sonucunun Türkçe etiketi (optik analiz tabloları ve değerlendirme ayrıntı paneli). */
+export const OUTCOME_LABELS = {
   correct: 'Doğru',
   wrong: 'Yanlış',
   blank: 'Boş',

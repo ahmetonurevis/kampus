@@ -10,7 +10,6 @@ import {
   PERMISSION_TOPIC_LABELS,
   permissionErrorField,
   type PermissionFormDecision,
-  type PermissionFormDetail,
   type PermissionFormKind,
   type PermissionFormListItem,
   type PermissionFormStudent,
@@ -317,11 +316,15 @@ export type DecisionFormValues = z.input<typeof decisionFormSchema>
 /** Kararı kim veriyor: `guardian` 18 yaş altı çocuk için veli, `student` öğrencinin kendisi. */
 export type DecisionAudience = 'guardian' | 'student'
 
-/** Seçili çocuğun (öğrencinin) bu formdaki hedef satırı; hedef değilse `undefined`. */
+/**
+ * Seçili çocuğun (öğrencinin) bu formdaki hedef satırı; hedef değilse ya da satır gelmediyse
+ * `undefined`. Veli ve öğrenci liste satırı da öğrenci satırlarını taşır.
+ */
 export const studentEntry = (
-  form: Pick<PermissionFormDetail, 'students'>,
+  form: { students?: readonly PermissionFormStudent[] | undefined },
   studentId: string,
-): PermissionFormStudent | undefined => form.students.find((entry) => entry.studentId === studentId)
+): PermissionFormStudent | undefined =>
+  form.students?.find((entry) => entry.studentId === studentId)
 
 /**
  * Okuyanın verdiği son karar: sunucu kararları karar anına göre sıralar ve veliye yalnız kendi

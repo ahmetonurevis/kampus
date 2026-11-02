@@ -13,8 +13,9 @@ import { formsForStudent, type DecisionAudience } from './permission-forms.ts'
  * İzin formlarım / Onay bekleyenler (veli ve öğrenci; IST-067, DOM-ILT-030, -037, -038): seçili
  * çocuğun (öğrencide kendisinin) hedef olduğu formlar ve onay ya da ret kararı. Veli çocuk seçicisi
  * kabuktan gelir (`ViewScopeContext`, `?cocuk=`); listeyi sunucu velinin 18 yaş altındaki çocuklarına,
- * öğrencide kendisine daraltır, burada çocuk bazında süzülür. 18 yaşından küçük öğrenci durumu
- * izler; kararı velisi verir (sunucu 403, mesaj kartta).
+ * öğrencide kendisine daraltır, burada çocuk bazında süzülür. Liste satırı kartın ihtiyacı olan
+ * öğrenci satırlarını (durum, kendi kararı, `canDecide`) taşır: sayfa tek liste sorgusudur, kart
+ * başına ayrıntı isteği atılmaz. 18 yaşından küçük öğrenci durumu izler; kararı velisi verir.
  */
 export function FamilyPermissionFormsPage({
   page,

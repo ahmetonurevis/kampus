@@ -263,27 +263,39 @@ test.describe('İzin formları: öğrenci kararı', () => {
     await expect(page.getByRole('heading', { name: 'İzin formu yok.' })).toBeVisible()
   })
 
-  test('18 yaşından küçük öğrenci durumu izler; karar vermeye çalışırsa mesaj formda görünür ve kayıt yazılmaz (DOM-ILT-037)', async ({
+  test('18 yaşından küçük öğrenci durumu izler, karar düğmesi görmez; velisinin onayı durumda görünür (DOM-ILT-030, DOM-ILT-037)', async ({
     page,
     loginAs,
     api,
     tenant,
   }) => {
-    const school = await tenant({ roles: ['yonetici', 'ogrenci'], classes: ['c1'] })
+    const school = await tenant({ roles: ['yonetici', 'ogrenci', 'veli'], classes: ['c1'] })
     const admin = await api(school.user('yonetici'))
     const student = await api(school.user('ogrenci'), { fresh: true })
+    const parent = await api(school.user('veli'), { fresh: true })
     const created = await openForm(admin, 'Küçük öğrenci gezisi', ['c1'])
 
     await loginAs(school.user('ogrenci'), { fresh: true })
     await page.goto(STUDENT_PAGE)
     const card = cardOf(page, 'Küçük öğrenci gezisi')
     await expect(card).toContainText('Bekliyor')
-    await card.getByRole('button', { name: 'Onayla' }).click()
-    await expect(card.getByRole('alert')).toContainText(
-      '18 yaşından küçük öğrenci için izni velayet sahibi veli verir',
+    await expect(card).toContainText('bu izni veliniz verir')
+    await expect(card.getByRole('button', { name: 'Onayla' })).toHaveCount(0)
+    await expect(card.getByRole('button', { name: 'Reddet' })).toHaveCount(0)
+    await expect(card).not.toContainText('Henüz karar vermediniz')
+
+    // Veli onaylar: öğrenci onaylandığını görür, kendi kararı yokmuş gibi metin görmez.
+    const decided = await parent.post(
+      `/api/v1/permission-forms/${created.id}/decisions`,
+      { studentId: 's1', decision: 'approved' },
+      { 'idempotency-key': randomUUID() },
     )
-    const unchanged = entryOf(await detailOf(student, created.id), 's1')
-    expect(unchanged.status).toBe('pending')
-    expect(unchanged.decisions).toHaveLength(0)
+    expect(decided.status, JSON.stringify(decided.body)).toBe(201)
+    await page.reload()
+    await expect(card).toContainText('Onaylandı')
+    await expect(card).toContainText('bu izni veliniz verir')
+    await expect(card.getByRole('button', { name: 'Kararını değiştir' })).toHaveCount(0)
+    const seen = entryOf(await detailOf(student, created.id), 's1')
+    expect(seen.status).toBe('approved')
   })
 })

@@ -1,10 +1,12 @@
 // Tek izin formu için çocuğun (ya da öğrencinin kendisinin) kararı (IST-067; DOM-ILT-030, -031,
 // -037, -038). Onay ya da ret, isteğe bağlı kısa notla verilir; son güne kadar değiştirilebilir
-// (her karar yeni satırdır). Karar verilebilirliğin hakemi sunucudur (`acceptingDecisions`): form
-// kapatılmış ya da son günü geçmişse düğmeler gerekçesiyle kapalıdır, istemci saati karar vermez ve
-// yazılan not silinmez. 18 yaş altı öğrenci için sunucu 403 `permission_guardian_required` verir;
-// mesaj formun içinde gösterilir. Gönderim sürerken düğmeler kilitlidir (`useApiCommand`
-// `Idempotency-Key` ile mükerrer karar yazmaz).
+// (her karar yeni satırdır). Kartın verisi liste satırıdır (veli ve öğrenci satırı öğrenci
+// satırlarını taşır; kart ayrıntı isteği atmaz). Hakem sunucudur: kimin karar verdiği öğrenci
+// satırındaki `canDecide`'dan (core `permissionDecider`; 18 yaş altında veli, yetişkinde öğrenci),
+// karar alınıp alınmadığı `acceptingDecisions`'tan gelir. Karar veremeyen (18 yaş altı öğrenci)
+// durumu izler, düğme görmez; kapalı ya da son günü geçmiş formda düğmeler gerekçesiyle kapalıdır,
+// istemci saati karar vermez ve yazılan not silinmez. Gönderim sürerken düğmeler kilitlidir
+// (`useApiCommand` `Idempotency-Key` ile mükerrer karar yazmaz).
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useState } from 'react'
 import { useForm } from 'react-hook-form'
@@ -15,14 +17,10 @@ import {
   type PermissionDecisionValue,
   type PermissionFormListItem,
 } from '@kampus/react-shared/permission-forms.ts'
-import {
-  useDecidePermission,
-  usePermissionForm,
-} from '@kampus/react-shared/use-permission-forms.ts'
+import { useDecidePermission } from '@kampus/react-shared/use-permission-forms.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
-import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -51,7 +49,7 @@ const SUCCESS_TEXT = {
 } as const satisfies Record<PermissionDecisionValue, string>
 
 type Props = {
-  /** Liste satırı (başlık, son gün, durum); ayrıntı kartın içinde okunur. */
+  /** Liste satırı: başlık, son gün, durum ve öğrenci satırları (`students`). */
   item: PermissionFormListItem
   studentId: string
   /** Kararı kimin verdiği metinlerde ve yaş uyarısında farkı belirler. */
@@ -59,7 +57,6 @@ type Props = {
 }
 
 export function PermissionDecisionCard({ item, studentId, audience }: Props) {
-  const detail = usePermissionForm(item.id)
   const decide = useDecidePermission()
   const [editing, setEditing] = useState(false)
   const form = useForm<DecisionFormValues>({
@@ -67,14 +64,14 @@ export function PermissionDecisionCard({ item, studentId, audience }: Props) {
     defaultValues: { note: '' },
   })
   const errors = form.formState.errors
-  const full = detail.data?.data
   const state = permissionFormState(item)
-  const entry = full ? studentEntry(full, studentId) : undefined
+  const entry = studentEntry(item, studentId)
+  const canDecide = entry?.canDecide === true
   const mine = myDecision(entry)
-  const blocked = full ? decisionBlockedReason(full) : null
+  const blocked = decisionBlockedReason(item)
   const busy = decide.isPending || form.formState.isSubmitting
   const decided = mine !== undefined
-  const showForm = entry !== undefined && (!decided || editing)
+  const showForm = canDecide && (!decided || editing)
   const reasonId = `izin-gerekce-${item.id}`
   const noteId = `izin-not-${item.id}`
 
@@ -111,13 +108,7 @@ export function PermissionDecisionCard({ item, studentId, audience }: Props) {
         <StatusBadge text={state} tone={permissionFormTone(state)} />
       </header>
       <p className="text-sm [overflow-wrap:anywhere] whitespace-pre-line">{item.description}</p>
-      {detail.error ? (
-        <QueryError error={detail.error} onRetry={() => void detail.refetch()} />
-      ) : !full ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          Karar durumu yükleniyor…
-        </p>
-      ) : entry === undefined ? (
+      {entry === undefined ? (
         <p className="text-sm text-muted-foreground">Bu form bu öğrenci için istenmiyor.</p>
       ) : (
         <>
@@ -128,7 +119,13 @@ export function PermissionDecisionCard({ item, studentId, audience }: Props) {
               tone={permissionStatusTone(entry.status)}
             />
           </div>
-          {decided ? (
+          {!canDecide ? (
+            <p className="text-sm text-muted-foreground">
+              {audience === 'student'
+                ? '18 yaşından küçük olduğunuz için bu izni veliniz verir. Durumu buradan izleyebilirsiniz.'
+                : 'Bu öğrenci için izni öğrencinin kendisi verir.'}
+            </p>
+          ) : decided ? (
             <div className="grid gap-1 rounded-xl border bg-surface-soft px-4 py-3 text-sm">
               <p className="font-medium">
                 {myDecisionText(mine)} <span className="font-normal">({when(mine.decidedAt)})</span>
@@ -142,12 +139,12 @@ export function PermissionDecisionCard({ item, studentId, audience }: Props) {
                 : 'Henüz karar vermediniz. Karar vermezseniz çocuğunuzun katılımı onaylanmış sayılmaz.'}
             </p>
           )}
-          {blocked ? (
+          {canDecide && blocked ? (
             <p id={reasonId} role="status" className="text-sm font-medium text-warning">
               {blocked}
             </p>
           ) : null}
-          {decided && !editing ? (
+          {canDecide && decided && !editing ? (
             <div>
               <Button
                 type="button"

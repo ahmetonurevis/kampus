@@ -318,6 +318,8 @@ describe('veli ve öğrenci kararı (DOM-ILT-030, DOM-ILT-037, DOM-ILT-038)', ()
     ]
     assert.equal(studentEntry({ students }, 's2')?.status, 'approved')
     assert.equal(studentEntry({ students }, 's9'), undefined)
+    // Personel liste satırı öğrenci satırı taşımaz.
+    assert.equal(studentEntry({}, 's1'), undefined)
   })
 
   test('çocuk bazlı liste: karar alanlar önce, sonra yakın son gün; başka çocuğun formu yok', () => {

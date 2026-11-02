@@ -1,15 +1,14 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed } from '../apps/web/src/data/seed.js'
+import { gradeQuiz, recordAttendance } from '../apps/web/src/lib/domain.js'
 import {
   installmentAmounts,
-  gradeQuiz,
   payInvoice,
-  recordAttendance,
   PAYMENT_METHODS,
   PAYMENT_METHOD_LABELS,
   paymentInputSchema,
-} from '../apps/web/src/lib/domain.js'
+} from '../apps/web/src/lib/payments.js'
 import { enrollProspect } from '../apps/web/src/lib/enrollment.js'
 import { dayKey } from '../apps/web/src/lib/format.js'
 import { isDomainError } from './support/domain-error.ts'

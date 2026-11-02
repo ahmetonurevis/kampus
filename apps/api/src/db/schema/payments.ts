@@ -14,8 +14,7 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 
-import type { PaymentMethod } from '@kampus/school-core/lib/domain.ts'
-
+import type { PaymentMethod } from '@kampus/school-core/lib/payments.ts'
 import { institutions } from './auth.ts'
 import { oneOf, requiredColumns } from './columns.ts'
 

@@ -5,10 +5,10 @@ import { addConversationMessage } from '@kampus/school-core/lib/communication.ts
 import {
   requiredText,
   prospectSchema,
-  payInvoice,
   type MakeId,
   type Session,
 } from '@kampus/school-core/lib/domain.ts'
+import { payInvoice } from '@kampus/school-core/lib/payments.ts'
 import { enrollProspect } from '@kampus/school-core/lib/enrollment.ts'
 import type { DocumentType } from '@kampus/school-core/lib/document-data.ts'
 import { dayKey, dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'

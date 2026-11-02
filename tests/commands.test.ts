@@ -25,7 +25,8 @@ import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '../packages/school-core/sr
 import { WRITE_ACTIONS, requireAuthorized } from '../packages/school-core/src/lib/authorize.ts'
 import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
 import { runAssessment } from '../packages/school-core/src/lib/assessment-automation.ts'
-import { payInvoice, recordAttendance } from '../packages/school-core/src/lib/domain.ts'
+import { recordAttendance } from '../packages/school-core/src/lib/domain.ts'
+import { payInvoice } from '../packages/school-core/src/lib/payments.ts'
 import { enrollProspect } from '../packages/school-core/src/lib/enrollment.ts'
 import { recordGrade, updateGrade } from '../packages/school-core/src/lib/grades.ts'
 import {

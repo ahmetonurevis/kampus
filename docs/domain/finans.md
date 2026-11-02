@@ -28,7 +28,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat bu hizmetleri ayrı tespit ve ilan ettirir; hizmetten talep eden veli yararlanır.
 - **Kaynak:** ÖÖKY md. 53/5, 54/1-a son cümle.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API, kesin kayıt) — ek hizmet ayrı taksit kaydıdır (`feeKind`, `lib/domain.ts`). Yenileme henüz kalem ayırmaz.
+- **Kodda:** var (API, kesin kayıt) — ek hizmet ayrı taksit kaydıdır (`feeKind`, `lib/enrollment.ts`). Yenileme henüz kalem ayırmaz.
 
 ### DOM-FIN-004 · İlan dışı ad altında tahsilat yok
 

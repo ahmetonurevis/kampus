@@ -2060,6 +2060,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/students/{studentId}/statement": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrencinin cari ekstresi
+         * @description Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.
+         */
+        get: operations["getStudentStatement"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/summary": {
         parameters: {
             query?: never;
@@ -23147,6 +23167,147 @@ export interface operations {
                                 date: string;
                                 amountCents: number;
                             } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStudentStatement: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            totalCents: number;
+                            paidCents: number;
+                            openCents: number;
+                            overdueCents: number;
+                            overdueCount: number;
+                            nextDue: {
+                                date: string;
+                                amountCents: number;
+                            } | null;
+                            /** @description Borç sütunu toplamı (kuruş) */
+                            debitTotalCents: number;
+                            /** @description Alacak sütunu toplamı (kuruş) */
+                            creditTotalCents: number;
+                            /** @description Taksite dağıtılmayan, iade alacağı olan tutar (kuruş) */
+                            unappliedCents: number;
+                            lines: {
+                                /**
+                                 * @description Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme
+                                 * @enum {string}
+                                 */
+                                kind: "installment" | "payment" | "payment_reversal" | "legacy_payment";
+                                /** @description İşlem günü (YYYY-MM-DD, Europe/Istanbul) */
+                                date: string;
+                                /** @description Borç (kuruş) */
+                                debitCents: number;
+                                /** @description Alacak (kuruş) */
+                                creditCents: number;
+                                /** @description Satır sonrası bakiye (kuruş) */
+                                balanceCents: number;
+                                invoiceId: string | null;
+                                installment: number | null;
+                                /** @description Taksitin açık kalan kısmı (kuruş) */
+                                openCents: number | null;
+                                isOverdue: boolean;
+                                paymentId: string | null;
+                                method: string | null;
+                                reference: string | null;
+                                receiptYear: number | null;
+                                receiptNumber: number | null;
+                                /** @description Tahsilatın taksite dağıtılmayan kısmı (kuruş) */
+                                unappliedCents: number;
+                            }[];
                         };
                     };
                 };

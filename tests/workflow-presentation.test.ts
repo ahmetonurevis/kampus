@@ -684,6 +684,9 @@ test('Ders formları kayıt değerlerini ve sınıfın kampüsündeki branş ö�
     cancel.fields({}).map((f) => f.key),
     ['reason'],
   )
+  // Gerekçe alanı şemanın sınırını taşır (DOM-YTK-069: en çok 500 karakter).
+  assert.equal(cancel.fields({})[0]!.maxLength, 500)
+  assert.equal(substitute.fields({}).find((f) => f.key === 'reason')!.maxLength, 500)
 })
 
 test('Çalışma planı onay, teslim ve değerlendirme aşamalarında doğru işlemi ve formu sunar', () => {

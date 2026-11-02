@@ -10,6 +10,7 @@ import {
   examProgress,
   eventStudents,
   goalProgress,
+  workflowSchemas,
 } from './school-workflows.ts'
 import { dateLabel, money, timeLabel, dayKey } from './format.ts'
 import { DEMO_TEACHER_ID, sessionTeacherId, type Redacted } from './scope.ts'
@@ -759,6 +760,9 @@ const field = (
   type: FieldType = 'text',
   extra: FieldExtra = {},
 ): WorkflowField => ({ key, label, type, ...extra })
+/** Gerekçe alanının sınırı şemadan gelir (denetim kaydı en çok 500 karakter; DOM-YTK-069). */
+const reasonLimit = (command: 'substitute' | 'lesson-cancel') =>
+  workflowSchemas[command].shape.reason.maxLength ?? undefined
 function options<T extends { id: string; name: string }>(items: readonly T[]): FieldOption[]
 function options<T extends { id: string }>(
   items: readonly T[],
@@ -1166,7 +1170,9 @@ export function workflowForm(
             }),
           ),
         ),
-        field('reason', 'Görevlendirme nedeni', 'textarea'),
+        field('reason', 'Görevlendirme nedeni', 'textarea', {
+          maxLength: reasonLimit('substitute'),
+        }),
       ],
     })
   }
@@ -1175,7 +1181,9 @@ export function workflowForm(
       title: 'Dersi iptal et',
       hint: 'Ders günlük programlardan kaldırılır. Yönetim ekranında iptal kaydı korunur.',
       initial: { reason: '' },
-      fields: () => [field('reason', 'İptal gerekçesi', 'textarea')],
+      fields: () => [
+        field('reason', 'İptal gerekçesi', 'textarea', { maxLength: reasonLimit('lesson-cancel') }),
+      ],
     })
   if (command === 'study-task')
     assignForm({

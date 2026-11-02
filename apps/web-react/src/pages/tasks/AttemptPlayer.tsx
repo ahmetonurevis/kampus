@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { SUBSKILLS } from '@kampus/school-core/content/taxonomy.ts'
+import { TASK_CONTENT_UNAVAILABLE_MESSAGE } from '@kampus/react-shared/use-task-assignments.ts'
 import {
   useSubmitTaskAttempt,
   type TaskAttemptDetail,
@@ -97,7 +98,13 @@ export function AttemptPlayer({
     onLeave()
   }
 
-  if (!question) return null
+  // Kapalı içerikte soru gelmez (`contentUnavailable`; DOM-KYN-025, 051): çözme ekranı çizilmez.
+  if (!question)
+    return attempt.contentUnavailable ? (
+      <p role="status" className="text-sm text-muted-foreground">
+        {TASK_CONTENT_UNAVAILABLE_MESSAGE}
+      </p>
+    ) : null
   const player = (
     <section
       aria-labelledby="deneme-baslik"

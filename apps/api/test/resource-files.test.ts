@@ -971,4 +971,54 @@ describe('kaynak sürümü dosyaları', () => {
     assert.equal(await detail(t.cookies.student), null)
     assert.equal(await detail(t.cookies.otherStudent), 'unavailable')
   })
+
+  test('DOM-KYN-006, DOM-KYN-051: kopyanın kaldırılması aşağı yayılır; orijinal ve kardeş kopya açık kalır, kopyanın kopyası kapanır', async () => {
+    const t = await tenant()
+    const fileId = await upload(t, t.cookies.teacher)
+    // Orijinal: 9-A ile paylaşılır, Deniz okur.
+    const data = await create(t, text([fileId]))
+    await publishToClass(t, data)
+    const copier = await createMember(app, t.institution.id, 'ogretmen')
+    const sibling = await createMember(app, t.institution.id, 'ogretmen')
+    const cookies = { copier: await signInAs(app, copier), sibling: await signInAs(app, sibling) }
+    const copyOf = (ownerUserId: string, derivedFromVersionId: string, gradeLevels = [9]) =>
+      seedResource(db, t.institution.id, {
+        ownerUserId,
+        derivedFromVersionId,
+        ...(gradeLevels[0] === 10 ? { shareScope: 'classes', sharedClassIds: ['10-B'] } : {}),
+        versions: [
+          {
+            status: 'published',
+            input: {
+              ...text([fileId]),
+              tags: { subjectId: 'matematik', gradeLevels, outcomes },
+            } as never,
+          },
+        ],
+      })
+    // Kopya (sahibi okur), kopyanın kopyası (10-B ile paylaşılır, Ece okur), kardeş kopya.
+    const copy = await copyOf(copier.id, data.version.id)
+    await copyOf(t.institution.admin.id, copy.versions[0]!.id, [10])
+    await copyOf(sibling.id, data.version.id)
+    for (const cookie of [
+      t.cookies.student,
+      cookies.copier,
+      t.cookies.otherStudent,
+      cookies.sibling,
+    ])
+      await ok(await fileUrl(cookie, fileId))
+
+    // Kopya kaldırılır (sabah kararı 39): kopya ve ondan türeyen kopya kapanır; orijinal (ata) ve
+    // kardeş kopya açık kalır. Orijinal de aynı içeriği taşıyorsa yönetici onu ayrıca kaldırır.
+    const removed = await ok(
+      await post(`/resources/${copy.resource.id}/remove`, t.cookies.admin, {
+        reason: 'Telif bildirimi doğrulandı.',
+      }),
+    )
+    assert.equal(removed.affectedCopyIds.length, 1)
+    for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.teacher, cookies.sibling])
+      await ok(await fileUrl(cookie, fileId))
+    for (const cookie of [cookies.copier, t.cookies.otherStudent])
+      fails(await fileUrl(cookie, fileId), 404, 'not_found')
+  })
 })

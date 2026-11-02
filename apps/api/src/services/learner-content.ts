@@ -16,7 +16,8 @@ import { targetedLearners, type Viewer } from './task-assignments.ts'
  * kuraldır; üç yüzü vardır:
  *
  * - Okuma (`learnerContentGate`): görev ayrıntısındaki içerik (`services/task-progress.ts`,
- *   `surface: 'content'`) ve görevden dosya açma (`services/resource-files.ts`, `surface: 'file'`).
+ *   `surface: 'content'`) ve görevden dosya açma (`services/resource-files.ts`, `surface: 'file'`);
+ *   deneme ayrıntısının soru ve parça metni (`attemptContentGate`, `services/task-attempts.ts`).
  * - Yazma (`assertLearnerWork`): deneme başlatma, cevap kaydı ve deneme teslimi
  *   (`services/task-attempts.ts`), taslak ve teslim (`services/task-submissions.ts`; konuşma kaydı
  *   da teslim sürümüdür). Dinleme hakkı dosya bağlantısıyla sayılır, okuma yüzünden geçer.
@@ -111,7 +112,7 @@ async function contentClosure(ctx: ServiceContext, input: ClosureInput) {
  * hedeflediği kişilerden biri (velide çocuklarından biri) kitap sahibi olmalıdır. Telif askısında
  * görev içeriği (`content`) süren işi olana açıktır (Sabah kararı 47); dosya (`file`) kapalıdır.
  */
-export async function learnerContentGate(
+export function learnerContentGate(
   ctx: ServiceContext,
   viewer: Extract<Viewer, { kind: 'learner' }>,
   assignment: StoredAssignment,
@@ -120,9 +121,41 @@ export async function learnerContentGate(
   surface: 'content' | 'file',
 ): Promise<LearnerContentGate> {
   const learners = targetedLearners(viewer.classOf, assignment)
-  const closure = await contentClosure(ctx, { learners, pairs, hasWork })
+  return gateOf(ctx, { learners, pairs, hasWork }, surface)
+}
+
+async function gateOf(
+  ctx: ServiceContext,
+  input: ClosureInput,
+  surface: 'content' | 'file',
+): Promise<LearnerContentGate> {
+  const closure = await contentClosure(ctx, input)
   if (closure !== 'in_review') return closure
-  return surface === 'content' && (await hasWork()) ? null : 'unavailable'
+  return surface === 'content' && (await input.hasWork()) ? null : 'unavailable'
+}
+
+/**
+ * Denemenin soru ve parça metni kime görünür (`GET /task-attempts/:id`; DOM-KYN-025, 051). Öğrenci
+ * ve veli görev içeriğiyle aynı `content` yüzünden geçer; kitap sahibi sınırı atamanın şu anki
+ * hedefine değil kaydın kursiyerine uygulanır (sınıf değiştiren öğrenci eski denemesini okur).
+ * `hasWork` kursiyerin bu atamada süren denemesidir: telif askısında süren denemesi olan görür
+ * (Sabah kararı 47), olmayan görmez. Personel kaynak ayrıntısıyla tutarlıdır: kaldırılan sürümün
+ * içeriği silinmiştir ve personele de gösterilmez (DOM-KYN-051), askıdaki ve lisansı dolmuş içerik
+ * personele açıktır. Kapanan yalnız metindir; cevaplar ve puan görünür kalır.
+ */
+export async function attemptContentGate(
+  ctx: ServiceContext,
+  viewer: Viewer,
+  learnerId: string,
+  pairs: readonly (VersionPair | undefined)[],
+  hasWork: () => Promise<boolean>,
+): Promise<LearnerContentGate> {
+  if (viewer.kind === 'learner')
+    return gateOf(ctx, { learners: [learnerId], pairs, hasWork }, 'content')
+  if (pairs.some((pair) => !pair || pair.version.content === null)) return 'unavailable'
+  const ids = pairs.flatMap((pair) => (pair ? [pair.resource.id] : []))
+  const withdrawn = await withdrawnResources(ctx.db, ctx.institutionId, [...new Set(ids)])
+  return [...withdrawn.values()].includes('removed') ? 'unavailable' : null
 }
 
 export const CONTENT_MESSAGES = {

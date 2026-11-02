@@ -32,6 +32,7 @@ import {
 } from '../db/skills.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { attemptContentGate } from './learner-content.ts'
 import { listeningSummary } from './listening-plays.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { viewerOf, visible, type Viewer } from './task-assignments.ts'
@@ -40,8 +41,10 @@ import {
   auditWork,
   canReadLearner,
   learnerFilter,
+  loadWorkPairs,
   ownedLearners,
   ownRecord,
+  pairsScoringContext,
   passageFor,
   questionsFor,
   readableLearners,
@@ -49,6 +52,7 @@ import {
   scoringLicenseExpired,
   targetedLearner,
   timingOf,
+  workPairsOf,
   type ReadableLearners,
   type ScoringContext,
 } from './task-work.ts'
@@ -248,6 +252,13 @@ export function learnerAttemptProgress(
   }
 }
 
+/**
+ * Denemenin ayrıntısı: soruları, okuma parçası ve dinleme hakkı. Soru ve parça metni içerik
+ * kapısından geçer (`attemptContentGate`; DOM-KYN-025, 051): kaldırılmış içerikte süren ya da
+ * tamamlanmış hiçbir denemede, telif askısında süren denemesi olmayan kursiyerde, lisansı dolmuş
+ * içerikte süren denemesi olmayan kursiyerde metin dönmez (`questions: []`, `passage: null`) ve
+ * `contentUnavailable` nedeni söyler. Cevaplar, puan ve madde sonuçları görünür kalır.
+ */
 async function detailView(
   db: Database,
   ctx: ServiceContext,
@@ -255,17 +266,32 @@ async function detailView(
   assignment: StoredAssignment,
   attempt: StoredAttempt,
 ) {
-  const context = await scoringContext(db, ctx.institutionId, assignment)
+  const pairs = await loadWorkPairs(db, ctx.institutionId, [assignment])
+  const context = pairsScoringContext(assignment, pairs)
   const learnerAttempts = await loadAttempts(
     db,
     ctx.institutionId,
     assignment.id,
     attempt.learnerId,
   )
+  const now = ctx.now.toISOString()
+  const timing = timingOf(assignment)
+  const running = learnerAttempts.some(
+    (own) => attemptState(own, timing, now).status === 'in_progress',
+  )
+  const contentUnavailable = await attemptContentGate(
+    { ...ctx, db },
+    viewer,
+    attempt.learnerId,
+    workPairsOf(assignment, pairs),
+    () => Promise.resolve(running),
+  )
+  const open = contentUnavailable === null
   return {
-    ...attemptView(viewer, assignment, context, attempt, learnerAttempts, ctx.now.toISOString()),
-    questions: questionsFor(context, attempt.id),
-    passage: passageFor(context),
+    ...attemptView(viewer, assignment, context, attempt, learnerAttempts, now),
+    questions: open ? questionsFor(context, attempt.id) : [],
+    passage: open ? passageFor(context) : null,
+    contentUnavailable,
     listening: await listeningSummary(db, ctx.institutionId, assignment, attempt.id),
   }
 }

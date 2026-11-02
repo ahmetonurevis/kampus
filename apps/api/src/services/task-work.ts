@@ -241,15 +241,23 @@ export function scoringContexts(
   const contexts = new Map<string, ScoringContext | Error>()
   for (const assignment of assignments) {
     try {
-      contexts.set(
-        assignment.id,
-        buildScoringContext(pairs.get(assignment.scoringVersionId)?.version, pairs),
-      )
+      contexts.set(assignment.id, pairsScoringContext(assignment, pairs))
     } catch (error) {
       contexts.set(assignment.id, error instanceof Error ? error : new Error('scoring context'))
     }
   }
   return contexts
+}
+
+/**
+ * Atamanın puanlama bağlamı, okunmuş sürümlerden (`loadWorkPairs`); kurallar `scoringContext` ile
+ * aynıdır, kurulamazsa aynı hatayı fırlatır. Deneme ayrıntısı içerik kapısını aynı okumayla sınar.
+ */
+export function pairsScoringContext(
+  assignment: StoredAssignment,
+  pairs: WorkPairs,
+): ScoringContext {
+  return buildScoringContext(pairs.get(assignment.scoringVersionId)?.version, pairs)
 }
 
 /** Quiz ve alıştırma setinin soru sürümleri ve okuma parçası; diğer türlerde okunmaz. */

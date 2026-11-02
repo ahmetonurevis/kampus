@@ -6648,7 +6648,7 @@ export interface components {
             result: components["schemas"]["TaskAttemptResultInput"] | null;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
-            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık */
+            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş */
             questions: {
                 questionVersionId: string;
                 points: number;
@@ -6711,7 +6711,7 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
-            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner */
+            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner */
             passage: {
                 /**
                  * Format: uuid
@@ -6732,6 +6732,8 @@ export interface components {
                 /** @description Kaynak gösterimi (DOM-KYN-024) */
                 attributions: components["schemas"]["ResourceAttributionInput"][];
             } | null;
+            /** @description Soru ve parça metni gösterilmiyorsa neden (DOM-KYN-021, 025, 051): kaldırılmış içerik herkese ve her denemede; öğrenci ve velide ayrıca telif bildirimiyle incelemedeki içerik ya da lisansı dolmuş içerik (yalnız kursiyerin bu görevde süren denemesi yoksa; Sabah kararı 47) ve kitap sahibi sınırı. Cevaplar ve puan görünür kalır */
+            contentUnavailable: ("license_expired" | "unavailable") | null;
             /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
             listening: {
                 /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
@@ -9916,7 +9918,7 @@ export interface components {
             result: components["schemas"]["TaskAttemptResult"] | null;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
-            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık */
+            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş */
             questions: {
                 questionVersionId: string;
                 points: number;
@@ -9978,7 +9980,7 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
-            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner */
+            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner */
             passage: {
                 /**
                  * Format: uuid
@@ -9999,6 +10001,8 @@ export interface components {
                 /** @description Kaynak gösterimi (DOM-KYN-024) */
                 attributions: components["schemas"]["ResourceAttribution"][];
             } | null;
+            /** @description Soru ve parça metni gösterilmiyorsa neden (DOM-KYN-021, 025, 051): kaldırılmış içerik herkese ve her denemede; öğrenci ve velide ayrıca telif bildirimiyle incelemedeki içerik ya da lisansı dolmuş içerik (yalnız kursiyerin bu görevde süren denemesi yoksa; Sabah kararı 47) ve kitap sahibi sınırı. Cevaplar ve puan görünür kalır */
+            contentUnavailable: ("license_expired" | "unavailable") | null;
             /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
             listening: {
                 /** @description Atamanın dinleme hakkı (DOM-BEC-005) */

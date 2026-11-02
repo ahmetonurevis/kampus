@@ -33,6 +33,7 @@ import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
 // Onur: kayıt ve finans sonu
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
+import type { Mailer } from './services/mailer.ts'
 import { createStorage } from './storage/create.ts'
 import type { DiskStorage } from './storage/disk.ts'
 
@@ -175,6 +176,10 @@ export interface BuildAppOptions {
   storage?: DiskStorage
   /** Testlerde log çıktısını yakalamak için. */
   logStream?: NodeJS.WritableStream
+  /** Parola sıfırlama iletisi; verilmezse ortamın varsayılanı (testte bellek kutusu). */
+  mailer?: Mailer
+  /** Sıfırlama iletisi yanıttan sonra gönderilir (varsayılan `true`); `false` iletiyi bekler. */
+  backgroundMail?: boolean
 }
 
 export type App = FastifyInstance
@@ -194,7 +199,12 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
 
-  const auth = createAuth(config, db)
+  const auth = createAuth(config, db, {
+    log: app.log,
+    ...(options.mailer ? { mailer: options.mailer } : {}),
+    ...(options.backgroundMail === undefined ? {} : { background: options.backgroundMail }),
+  })
+  app.addHook('onClose', () => auth.flushBackground())
   app.decorate('auth', auth)
   app.decorate('db', db)
   app.decorate('config', config)

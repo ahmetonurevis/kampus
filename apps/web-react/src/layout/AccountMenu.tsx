@@ -13,6 +13,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import type { Session } from '@/auth/auth-port.ts'
+import { securityHref, SECURITY_TITLE } from '@/lib/account-pages.ts'
 import { accountPages, getRole, pageHref } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
 import { clearViewMemory } from '@/lib/view-memory.ts'
@@ -91,7 +92,13 @@ export function AccountMenu({ session, onSignOut }: AccountMenuProps) {
             </Link>
           </DropdownMenuItem>
         ))}
-        {pages.length ? <DropdownMenuSeparator /> : null}
+        <DropdownMenuItem asChild className="min-h-10 rounded-lg text-sm">
+          <Link to={securityHref(session.role)}>
+            <Icon name="ShieldCheck" size={17} />
+            {SECURITY_TITLE}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={onSignOut} className="min-h-10 rounded-lg text-sm">
           <Icon name="LogOut" size={17} />
           Oturumu kapat

@@ -54,6 +54,9 @@ const COLLECTIONS = kayit(
 )
 const BRANCH_PATCH = kayit('school-management.test.ts', 'başka kurumun kampüsü 404 ve B değişmez')
 const CONVERSATION = kayit('communication.test.ts', 'kurumlar arası 404: başka kurumun yazışması')
+const GROUP = kayit('language-groups.test.ts', 'başka kurumun grubu 404, listede görünmez')
+const GROUP_COMMAND = (verb: string) =>
+  kayit('language-groups.test.ts', 'başka kurumun grubu açılmaz ve birleştirilmez', `'${verb}'`)
 const COURSE = kayit('courses.test.ts', 'başka kurumun kuru 404, listede görünmez ve değişmez')
 const CONSENT = kayit('consents.test.ts', 'başka kurum: kayıt ve metin 404, B değişmez')
 const DUTY = kayit('coordinator-duties.test.ts', 'başka kurumun yöneticisi 404')
@@ -374,6 +377,20 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'başka kurumun kuru 404, listede görünmez ve değişmez',
     "'record-e-ozel'",
   ),
+
+  // --- Kur grupları (yalnız dil okulu; okulda her uç 404, `module-inventory.test.ts`) ---------
+  'GET /api/v1/groups': GROUP,
+  'GET /api/v1/groups/:groupId': GROUP,
+  'GET /api/v1/groups/:groupId/waitlist': GROUP,
+  'POST /api/v1/groups': GROUP,
+  'PATCH /api/v1/groups/:groupId': GROUP,
+  'POST /api/v1/groups/:groupId/open': GROUP_COMMAND('open'),
+  'POST /api/v1/groups/:groupId/cancel': kayit(
+    'language-groups.test.ts',
+    'başka kurumun grubu 404, listede görünmez ve değişmez',
+    "'cancel'",
+  ),
+  'POST /api/v1/groups/:groupId/merge': GROUP_COMMAND('merge'),
 
   // --- Dosya ----------------------------------------------------------------------------------
   'GET /api/v1/files/:fileId': kayit('files.test.ts', 'başka kurum ve başkası 404'),

@@ -130,6 +130,12 @@ interface OperationBase<R> {
    * değişen kayıt çoğu zaman yan kayıttır (taksit, katılım) ve denetimi yanlış varlığa bağlar.
    */
   entity: AuditEntity | ((result: R) => AuditEntity)
+  /**
+   * Denetim satırının serbest metin gerekçesi (`audit_log.reason`, en çok 500 karakter): ders
+   * iptali ve yedek görevlendirme gibi gerekçeli işlemler (DOM-YTK-069). Gövde değeri olduğu için
+   * loglanmaz; yalnız denetim kaydına yazılır.
+   */
+  auditReason?: string
   makeId?: MakeId
   /**
    * İşlemden sonra aynı transaction'da çalışan ek yazma (ör. State değiştirmeyen işlemin kendi
@@ -507,6 +513,7 @@ async function applyOperation<R>(
       entityType: entity.type,
       entityId: entity.id,
       changes: auditChanges(fields, changes),
+      ...(request.auditReason === undefined ? {} : { reason: request.auditReason }),
       createdAt: ctx.now,
     })
   }

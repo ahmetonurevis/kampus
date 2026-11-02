@@ -62,7 +62,9 @@ export const auditEventSchema = z
     reason: z
       .string()
       .nullable()
-      .describe('Gerekçeli hassas okumanın gerekçesi (DOM-YTK-052); diğer kayıtlarda `null`'),
+      .describe(
+        'Gerekçeli hassas okumanın (DOM-YTK-052) ya da ders iptali ve yedek görevlendirmenin (DOM-YTK-069) gerekçesi; diğer kayıtlarda `null`',
+      ),
   })
   .meta({ id: 'AuditEvent' })
 

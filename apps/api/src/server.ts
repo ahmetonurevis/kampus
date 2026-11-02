@@ -1,8 +1,7 @@
 import { buildApp } from './app.ts'
 import { jobsEnabled, loadConfig } from './config.ts'
 import { connectPostgres } from './db/client.ts'
-import { purgeExpiredIdempotencyKeys } from './db/idempotency.ts'
-import { startJobs } from './jobs/queue.ts'
+import { bootJobs } from './jobs/boot.ts'
 import { createStorage } from './storage/create.ts'
 
 const config = loadConfig()
@@ -23,13 +22,14 @@ process.once('SIGINT', () => void shutdown('SIGINT'))
 process.once('SIGTERM', () => void shutdown('SIGTERM'))
 
 try {
-  if (jobsEnabled(config)) {
-    await startJobs(app, { connectionString: config.DATABASE_URL, storage })
-  } else {
-    // Kuyruk kapalıyken saklama sınırı (24 saat) açılışta uygulanır; açıkken günlük iş yapar.
-    const purged = await purgeExpiredIdempotencyKeys(db, new Date())
-    app.log.info({ event: 'idempotency.purged', purged })
-  }
+  await bootJobs({
+    app,
+    db,
+    log: app.log,
+    enabled: jobsEnabled(config),
+    connectionString: config.DATABASE_URL,
+    storage,
+  })
   await app.listen({ host: config.HOST, port: config.PORT })
 } catch (error) {
   app.log.fatal({ err: error }, 'server failed to start')

@@ -9,7 +9,13 @@ import type { Database } from '../src/db/client.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { dispatchQueueName } from '../src/jobs/dispatch.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
-import { JOB_SCHEMA, JOB_TIME_ZONE, startJobs, type JobQueue } from '../src/jobs/queue.ts'
+import {
+  JOB_SCHEMA,
+  JOB_TIME_ZONE,
+  startJobs,
+  type JobQueue,
+  type StartJobsOptions,
+} from '../src/jobs/queue.ts'
 import { createInstitution, FIXED_NOW, testConfig, uniqueId } from './support/app.ts'
 import { tempStorage } from './support/files-sample.ts'
 import { createPgDatabase, PG_SKIP, TEST_PG_URL } from './support/pg.ts'
@@ -40,7 +46,9 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
   })
 
   /** Kuyruklu uygulama: `startJobs` hazır olmadan çağrılır (kapanış kancası). */
-  async function appWithJobs(): Promise<{ app: App; queue: JobQueue }> {
+  async function appWithJobs(
+    extra: Partial<StartJobsOptions> = {},
+  ): Promise<{ app: App; queue: JobQueue }> {
     const app = await buildApp({
       config: testConfig(),
       db,
@@ -52,6 +60,7 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
       connectionString: TEST_PG_URL ?? '',
       storage: store.storage,
       jobs: [idempotencyPurgeJob],
+      ...extra,
     })
     await app.ready()
     return { app, queue }
@@ -130,5 +139,41 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
     apps.splice(apps.indexOf(app), 1)
     assert.equal(stopped, true)
     await assert.rejects(queue.boss.send(PURGE_DISPATCH, {}))
+  })
+
+  test('RETIRED_JOBS: listede olmayan zamanlama korunur, emekli işin zamanlaması silinir', async () => {
+    const { queue } = await appWithJobs()
+    const suffix = uniqueId('t').replaceAll(/[^a-z0-9]/g, '')
+    const kept = `test-kept-${suffix}.dispatch`
+    const retired = `test-retired-${suffix}.dispatch`
+    for (const name of [kept, retired]) {
+      await queue.boss.createQueue(name)
+      await queue.boss.schedule(name, '0 4 * * *', null, { tz: JOB_TIME_ZONE })
+    }
+    try {
+      // Dar iş listesi (yalnız idempotency.purge) ortak veritabanındaki başka zamanlamayı silmez.
+      await appWithJobs({ retiredJobs: [`test-retired-${suffix}`] })
+      const names = (await queue.boss.getSchedules()).map((item) => item.name)
+      assert.ok(names.includes(kept), 'listede olmayan zamanlama korunmalı')
+      assert.ok(!names.includes(retired), 'emekli işin zamanlaması silinmeli')
+      assert.ok(names.includes(PURGE_DISPATCH))
+    } finally {
+      for (const name of [kept, retired]) {
+        await queue.boss.unschedule(name)
+        await queue.boss.deleteQueue(name)
+      }
+    }
+  })
+
+  test('bozuk yük yeniden denenmeden düşer: iş failed olur, deneme sayısı artmaz', async () => {
+    const { queue } = await appWithJobs()
+    const id = await queue.boss.send(idempotencyPurgeJob.name, { institutionId: 1, fazla: true })
+    assert.ok(id)
+    const [job] = await until(
+      () => queue.boss.findJobs(idempotencyPurgeJob.name, { id }),
+      (found) => found[0]?.state === 'failed' || found[0]?.state === 'retry',
+    )
+    assert.equal(job?.state, 'failed')
+    assert.equal(job?.retryCount, 0)
   })
 })

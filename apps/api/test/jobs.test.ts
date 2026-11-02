@@ -1,7 +1,9 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 
+import type { FastifyBaseLogger } from 'fastify'
 import { eq } from 'drizzle-orm'
+import { DrizzleQueryError } from 'drizzle-orm/errors'
 
 import type { App } from '../src/app.ts'
 import { jobsEnabled, parseConfig } from '../src/config.ts'
@@ -11,7 +13,10 @@ import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { dispatchInstitutionJobs, dispatchQueueName, type JobSender } from '../src/jobs/dispatch.ts'
 import { filesPurgeJob } from '../src/jobs/files-purge.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
-import { INSTITUTION_JOBS } from '../src/jobs/registry.ts'
+import { bootJobs } from '../src/jobs/boot.ts'
+import { jobErrorInfo } from '../src/jobs/job-error.ts'
+import { permissionRemindersJob } from '../src/jobs/permission-reminders.ts'
+import { INSTITUTION_JOBS, RETIRED_JOBS } from '../src/jobs/registry.ts'
 import { DAY_SECONDS, type JobDeps } from '../src/jobs/types.ts'
 import {
   buildTestApp,
@@ -33,7 +38,11 @@ import { multipart, PDF, tempStorage, uploadParts } from './support/files-sample
 
 const HOUR = 3600_000
 
-/** Gönderilen işleri kaydeden sahte kuyruk; aynı ad + tekil anahtar ikinci kez `null` döner. */
+/**
+ * Gönderilen işleri kaydeden sahte kuyruk. Tekilliği (aynı ad + `singletonKey` ikinci kez `null`)
+ * bu sahte uygular; pg-boss'un gerçek `singletonSeconds` davranışı `pg-jobs.test.ts`'te sınanır.
+ * Burada sınanan, dağıtımın kurum başına doğru ad, yük ve tekil anahtarla gönderdiğidir.
+ */
 function recordingSender() {
   const sent: { name: string; data: unknown; singletonKey: string; singletonSeconds: number }[] = []
   const sender: JobSender = {
@@ -98,7 +107,7 @@ describe('arka plan işleri', () => {
     }
   })
 
-  test('dağıtım her kuruma tek iş koyar; yük yalnız kurum kimliği, ikinci dağıtım iş açmaz', async () => {
+  test('dağıtım her kuruma doğru yük ve tekil anahtarla bir iş gönderir; sahte gönderici tekilliği uyguladığı için ikinci dağıtım 0 sayar', async () => {
     const a = await createInstitution(app)
     const b = await createInstitution(app)
     const { sender, sent } = recordingSender()
@@ -214,6 +223,104 @@ describe('arka plan işleri', () => {
     assert.deepEqual(await filesPurgeJob.run(deps, { institutionId: a.id }, later), {
       purged: 0,
       rounds: 1,
+    })
+  })
+
+  test("DOM-ILT-039: izin formu hatırlatması İstanbul saatiyle 07:00'den önce (gece tetiklemesi) hiçbir şey yazmadan çıkar", async () => {
+    const a = await createInstitution(app)
+    // 03:30 UTC = 06:30 İstanbul; 04:00 UTC = 07:00 İstanbul.
+    const night = new Date('2026-09-14T03:30:00.000Z')
+    assert.deepEqual(await permissionRemindersJob.run(deps, { institutionId: a.id }, night), {
+      forms: 0,
+      reminded: 0,
+      created: 0,
+      deduplicated: 0,
+      skipped: 'before_morning',
+    })
+    // 21:30 UTC bir önceki gün = 00:30 İstanbul (gece yarısı sonrası).
+    const midnight = new Date('2026-09-13T21:30:00.000Z')
+    const early = await permissionRemindersJob.run(deps, { institutionId: a.id }, midnight)
+    assert.equal(early.skipped, 'before_morning')
+    const morning = new Date('2026-09-14T04:00:00.000Z')
+    const result = await permissionRemindersJob.run(deps, { institutionId: a.id }, morning)
+    assert.notEqual(result.skipped, 'before_morning')
+  })
+
+  test('hata özeti yalnız code ve message taşır; Drizzle sorgu parametreleri ve pg detail sızmaz', () => {
+    const pgError = Object.assign(new Error('duplicate key value violates unique constraint "x"'), {
+      code: '23505',
+      detail: 'Key (email)=(ayse@ornek.test) already exists.',
+    })
+    const wrapped = new DrizzleQueryError('insert into t values ($1)', ['ayse@ornek.test'], pgError)
+    const info = jobErrorInfo(wrapped)
+    assert.deepEqual(info, {
+      code: '23505',
+      message: 'duplicate key value violates unique constraint "x"',
+    })
+    assert.ok(!JSON.stringify(info).includes('ayse@ornek.test'))
+    assert.deepEqual(jobErrorInfo('düz metin'), { code: null, message: 'unknown error' })
+  })
+
+  test('RETIRED_JOBS şimdilik boştur; hiçbir iş hem kayıtta hem emekli listesinde değildir', () => {
+    assert.equal(RETIRED_JOBS.length, 0)
+    for (const job of INSTITUTION_JOBS) assert.ok(!RETIRED_JOBS.includes(job.name), job.name)
+  })
+
+  describe('açılışta kuyruk', () => {
+    const stub = (lines: Record<string, unknown>[]) =>
+      ({
+        error: (line: Record<string, unknown>) => lines.push(line),
+        info: (line: Record<string, unknown>) => lines.push(line),
+      }) as unknown as FastifyBaseLogger
+
+    test('kuyruk açılamazsa API düşmez: hata yalnız code ve message ile loglanır, Idempotency-Key temizliği eski yoldan çalışır', async () => {
+      const a = await createInstitution(app)
+      await keyRow(a.id, new Date(Date.now() - HOUR))
+      const lines: Record<string, unknown>[] = []
+      const failure = Object.assign(new Error('connect ECONNREFUSED 127.0.0.1:5433'), {
+        code: 'ECONNREFUSED',
+        detail: 'gizli-ayrinti',
+      })
+      const queue = await bootJobs({
+        app,
+        db,
+        log: stub(lines),
+        enabled: true,
+        connectionString: 'postgres://kullanici:gizli-sifre@localhost/x',
+        storage: store.storage,
+        start: () => Promise.reject(failure),
+      })
+      assert.equal(queue, null)
+      assert.deepEqual(lines[0], {
+        event: 'jobs.start_failed',
+        code: 'ECONNREFUSED',
+        message: 'connect ECONNREFUSED 127.0.0.1:5433',
+      })
+      assert.equal(lines[1]?.event, 'idempotency.purged')
+      assert.ok(Number(lines[1]?.purged) >= 1)
+      assert.deepEqual(await keysOf(a.id), [])
+      const text = JSON.stringify(lines)
+      assert.ok(!text.includes('gizli'))
+    })
+
+    test('kuyruk kapalıyken başlatıcı çağrılmaz, temizlik çalışır', async () => {
+      let called = false
+      const lines: Record<string, unknown>[] = []
+      const queue = await bootJobs({
+        app,
+        db,
+        log: stub(lines),
+        enabled: false,
+        connectionString: 'x',
+        storage: store.storage,
+        start: () => {
+          called = true
+          return Promise.reject(new Error('çağrılmamalı'))
+        },
+      })
+      assert.equal(queue, null)
+      assert.equal(called, false)
+      assert.equal(lines[0]?.event, 'idempotency.purged')
     })
   })
 })

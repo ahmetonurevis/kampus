@@ -213,7 +213,7 @@ describe('izin formu hatırlatma işi', () => {
     assert.equal(onDeadline.created, C1_STUDENTS.length)
     assert.deepEqual([...new Set((await reminders(a.id)).map((item) => item.formId))], [later])
     // Son gün geçtikten sonra (İstanbul 11 Ekim) hiçbir şey yazılmaz.
-    assert.deepEqual(await run(a.id, new Date('2026-10-10T22:00:00.000Z')), {
+    assert.deepEqual(await run(a.id, new Date('2026-10-11T06:00:00.000Z')), {
       forms: 0,
       reminded: 0,
       created: 0,

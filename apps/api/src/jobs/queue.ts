@@ -1,9 +1,10 @@
 import type { FastifyInstance } from 'fastify'
-import { PgBoss, type Job, type QueueOptions } from 'pg-boss'
+import { PgBoss, type Job, type JobResult, type QueueOptions } from 'pg-boss'
 
 import type { StorageDriver } from '../storage/storage.ts'
 import { dispatchInstitutionJobs, dispatchQueueName, type JobSender } from './dispatch.ts'
-import { INSTITUTION_JOBS } from './registry.ts'
+import { jobErrorInfo } from './job-error.ts'
+import { INSTITUTION_JOBS, RETIRED_JOBS } from './registry.ts'
 import { institutionJobDataSchema, type AnyInstitutionJob, type JobDeps } from './types.ts'
 
 /**
@@ -17,7 +18,10 @@ import { institutionJobDataSchema, type AnyInstitutionJob, type JobDeps } from '
  *   Kapalıyken kaçırılan oluşum açılışta bir kez gönderilir (`missed: 'once'`).
  * - Uygulama kapanınca (`onClose`) çalışan işler bitene kadar beklenir (en çok 10 sn), havuz
  *   kapanır.
- * - Log yalnız iş adı, kurum kimliği ve sayıları taşır; yük ve hata kişisel veri içermez.
+ * - Zamanlama silme yalnız açık `RETIRED_JOBS` listesindendir: listede olmayan zamanlamaya
+ *   dokunulmaz (kademeli dağıtımda eski sürüm yeni işin zamanlamasını silmesin).
+ * - Log yalnız iş adı, kurum kimliği, sayılar ve hata `code`/`message`'ı taşır; hata nesnesi
+ *   (pg `detail`, sorgu parametreleri) ne loga ne pg-boss çıktısına gider (`jobErrorInfo`).
  */
 
 export const JOB_SCHEMA = 'pgboss'
@@ -39,6 +43,8 @@ export interface StartJobsOptions {
   storage: StorageDriver
   /** Varsayılan `INSTITUTION_JOBS`; test daha dar liste verebilir. */
   jobs?: readonly AnyInstitutionJob[]
+  /** Zamanlaması silinecek emekli iş adları; varsayılan `RETIRED_JOBS`. */
+  retiredJobs?: readonly string[]
 }
 
 export interface JobQueue {
@@ -46,14 +52,28 @@ export interface JobQueue {
   jobs: readonly AnyInstitutionJob[]
 }
 
-/** Tek işi çalıştırır: yükü doğrular, `now`'ı uygulamanın saatinden alır, sonucu loglar. */
+/**
+ * Tek işi çalıştırır ve pg-boss'a iş sonucunu bildirir (`perJobResults`): hata fırlatılmaz, böylece
+ * pg-boss hata nesnesini saklamaz. Bozuk yük yeniden denemeye değmez (`deadletter`: kalan
+ * denemeler atlanır); işleyici hatası geri çekilmeli yeniden denenir (`failed`).
+ */
 async function runInstitutionJob(
   app: FastifyInstance,
   deps: JobDeps,
   definition: AnyInstitutionJob,
   job: Job<unknown>,
-) {
-  const data = institutionJobDataSchema.parse(job.data)
+): Promise<JobResult> {
+  const parsed = institutionJobDataSchema.safeParse(job.data)
+  if (!parsed.success) {
+    deps.log.error({
+      event: 'job.failed',
+      job: definition.name,
+      retryCount: job.retryCount,
+      reason: 'invalid_payload',
+    })
+    return { id: job.id, status: 'deadletter', output: { reason: 'invalid_payload' } }
+  }
+  const data = parsed.data
   try {
     const result = await definition.run(deps, data, app.clock())
     deps.log.info({
@@ -62,16 +82,18 @@ async function runInstitutionJob(
       institutionId: data.institutionId,
       ...result,
     })
-    return result
+    return { id: job.id, status: 'completed', output: result }
   } catch (error) {
+    const info = jobErrorInfo(error)
     deps.log.error({
       event: 'job.failed',
       job: definition.name,
       institutionId: data.institutionId,
       retryCount: job.retryCount,
-      err: error,
+      code: info.code,
+      message: info.message,
     })
-    throw error
+    return { id: job.id, status: 'failed', output: info }
   }
 }
 
@@ -94,39 +116,57 @@ export async function startJobs(
     // Bağlantı oturumu API havuzu gibi UTC'dedir (`connectPostgres`).
     options: '-c timezone=UTC',
   })
-  boss.on('error', (error) => log.error({ event: 'jobs.error', err: error }))
+  boss.on('error', (error) => log.error({ event: 'jobs.error', ...jobErrorInfo(error) }))
   boss.on('warning', (warning) => log.warn({ event: 'jobs.warning', message: warning.message }))
-  app.addHook('onClose', async () => {
+  let stopped = false
+  const stop = async () => {
+    if (stopped) return
+    stopped = true
     await boss.stop({ graceful: true, timeout: STOP_TIMEOUT_MS })
     log.info({ event: 'jobs.stopped' })
-  })
-  await boss.start()
+  }
+  app.addHook('onClose', stop)
 
   const sender: JobSender = {
     send: (name, data, sendOptions) => boss.send(name, data, sendOptions),
   }
-  const scheduled = new Set<string>()
-  for (const definition of jobs) {
-    const dispatchName = dispatchQueueName(definition)
-    scheduled.add(dispatchName)
-    await boss.createQueue(definition.name, QUEUE_OPTIONS)
-    await boss.createQueue(dispatchName, QUEUE_OPTIONS)
-    await boss.schedule(dispatchName, definition.cron, null, {
-      tz: JOB_TIME_ZONE,
-      missed: 'once',
-    })
-    await boss.work(dispatchName, async () => {
-      const result = await dispatchInstitutionJobs(app.db, sender, definition)
-      log.info({ event: 'job.dispatched', job: definition.name, ...result })
-      return result
-    })
-    await boss.work<unknown>(definition.name, async ([job]) =>
-      job ? runInstitutionJob(app, deps, definition, job) : null,
-    )
+  try {
+    await boss.start()
+    for (const definition of jobs) {
+      const dispatchName = dispatchQueueName(definition)
+      await boss.createQueue(definition.name, QUEUE_OPTIONS)
+      await boss.createQueue(dispatchName, QUEUE_OPTIONS)
+      await boss.schedule(dispatchName, definition.cron, null, {
+        tz: JOB_TIME_ZONE,
+        missed: 'once',
+      })
+      await boss.work(dispatchName, async () => {
+        try {
+          const result = await dispatchInstitutionJobs(app.db, sender, definition)
+          log.info({ event: 'job.dispatched', job: definition.name, ...result })
+          return result
+        } catch (error) {
+          const info = jobErrorInfo(error)
+          log.error({ event: 'job.failed', job: definition.name, stage: 'dispatch', ...info })
+          // pg-boss hata nesnesini saklar; yalnız süzülmüş mesaj gider (`cause` bilerek yok).
+          // eslint-disable-next-line preserve-caught-error
+          throw new Error(info.message)
+        }
+      })
+      await boss.work<unknown>(definition.name, { perJobResults: true }, async (batch) =>
+        Promise.all(batch.map((job) => runInstitutionJob(app, deps, definition, job))),
+      )
+    }
+    // Yalnız açıkça emekli edilen işlerin zamanlaması silinir; listede olmayan zamanlamaya
+    // dokunulmaz (başka sürümün işi olabilir).
+    for (const name of options.retiredJobs ?? RETIRED_JOBS)
+      for (const schedule of await boss.getSchedules(dispatchQueueName({ name })))
+        await boss.unschedule(schedule.name, schedule.key)
+  } catch (error) {
+    // Yarım kurulu kuyruk açık kalmaz; çağıran hatayı ele alır (`bootJobs`).
+    await stop().catch(() => undefined)
+    throw error
   }
-  // Listeden çıkarılmış işin zamanlaması kalırsa boş kuyruğa iş bırakmaya sürerdi.
-  for (const schedule of await boss.getSchedules())
-    if (!scheduled.has(schedule.name)) await boss.unschedule(schedule.name, schedule.key)
   log.info({ event: 'jobs.started', jobs: jobs.map((job) => job.name) })
   return { boss, jobs }
 }

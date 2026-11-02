@@ -284,11 +284,15 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
     // Kurum işi doğrudan kuyruğa konur: dağıtım (bütün kurumlar) önceki testte sınanır; sonuç
     // ortak veritabanındaki kurum sayısına bağlı kalmaz.
     await queue.boss.send(filesPurgeExpiredJob.name, { institutionId: institution.id })
+    // İş önce satırı `deleted` yapıp commit eder, nesneyi depodan ondan sonra siler; yalnız durumu
+    // beklemek nesne silinmeden önce bakıp yarışa düşer. İkisi birlikte beklenir.
     await until(
-      () => statusOf(expired.id),
-      (status) => status === 'deleted',
+      async () => ({
+        status: await statusOf(expired.id),
+        object: await store.storage.head(expired.storageKey),
+      }),
+      ({ status, object }) => status === 'deleted' && object === null,
     )
-    assert.equal(await store.storage.head(expired.storageKey), null)
     assert.equal(await statusOf(kept.id), 'ready')
     assert.notEqual(await store.storage.head(kept.storageKey), null)
   })

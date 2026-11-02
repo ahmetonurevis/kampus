@@ -1,4 +1,4 @@
-import { and, eq, sql } from 'drizzle-orm'
+import { and, eq, inArray, sql } from 'drizzle-orm'
 
 import { courseNameKey, courseProgramKey, type Course } from '@kampus/school-core/lib/courses.ts'
 
@@ -123,7 +123,8 @@ export async function saveCourse(
 
 /**
  * Örnek veri: kurlar yoksa yazılır (idempotent; var olan kur değişmez). Sonraki kur bağı yabancı
- * anahtar olduğundan önce bağsız yazılır, sonra yalnız yeni yazılan satırların bağı eklenir.
+ * anahtar olduğundan önce bağsız yazılır, sonra yalnız yeni yazılan satırların bağı eklenir; bağ
+ * listedeki ve kurumda bulunan kura gider (adı kurumda var olduğu için yazılmayan kura bağ atlanır).
  */
 export async function ensureCourses(
   db: Database,
@@ -147,8 +148,26 @@ export async function ensureCourses(
     .onConflictDoNothing()
     .returning({ id: courses.id })
   const fresh = new Set(inserted.map((row) => row.id))
+  // Hedefsiz `onConflictDoNothing` ad çakışmasını da atlar (`courses_name_key`): kurumda aynı
+  // adlı kur varsa örnek kur yazılmaz. Ona bağlanan kurun bağı yalnız hedef satır varsa eklenir.
+  const present = new Set(
+    (
+      await db
+        .select({ id: courses.id })
+        .from(courses)
+        .where(
+          and(
+            eq(courses.institutionId, institutionId),
+            inArray(
+              courses.id,
+              list.map((course) => course.id),
+            ),
+          ),
+        )
+    ).map((row) => row.id),
+  )
   for (const course of list)
-    if (fresh.has(course.id) && course.nextCourseId !== null)
+    if (fresh.has(course.id) && course.nextCourseId !== null && present.has(course.nextCourseId))
       await db
         .update(courses)
         .set({ nextCourseId: course.nextCourseId })

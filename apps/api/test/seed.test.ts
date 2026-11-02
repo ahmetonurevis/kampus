@@ -4,13 +4,13 @@ import { after, before, describe, test } from 'node:test'
 import { count, eq } from 'drizzle-orm'
 
 import { seedTermId } from '@kampus/school-core/platform/seed-academic.ts'
+import { createCourses, seedCourseId } from '@kampus/school-core/platform/seed-courses.ts'
 import { seedGuardianLinkId } from '@kampus/school-core/platform/seed-guardians.ts'
-import { seedCourseId } from '@kampus/school-core/platform/seed-courses.ts'
 
 import type { App } from '../src/app.ts'
 import { loadAcademicYears } from '../src/db/academic-years.ts'
 import type { Database } from '../src/db/client.ts'
-import { loadCourses } from '../src/db/courses.ts'
+import { ensureCourses, loadCourses } from '../src/db/courses.ts'
 import {
   DEFAULT_DEMO_PASSWORD,
   DEMO_MEMBERS,
@@ -213,6 +213,32 @@ describe('demo tohumu', () => {
     const a1 = dil.find((course) => course.id === seedCourseId(1))
     assert.equal(a1?.nextCourseId, seedCourseId(2))
     assert.equal(a1?.eOzel.approval, 'approved')
+  })
+
+  test('DOM-DIL-007 örnek kur adı kurumda varsa o kur yazılmaz ve ona bağlanan kurun bağı atlanır', async () => {
+    const institutionId = 'seed-course-name-clash'
+    await db.insert(institutions).values({
+      id: institutionId,
+      name: institutionId,
+      slug: institutionId,
+      createdAt: FIXED_NOW,
+      enabledModules: {},
+    })
+    const seed = createCourses(2026, 'user-seed')
+    const a2 = seed.find((course) => course.id === seedCourseId(2))!
+    const own = { ...a2, id: '00000000-0000-4000-8000-0000000000aa', nextCourseId: null }
+    assert.equal(await ensureCourses(db, institutionId, [own], FIXED_NOW), 1)
+    assert.equal(await ensureCourses(db, institutionId, seed, FIXED_NOW), seed.length - 1)
+    const stored = await loadCourses(db, institutionId)
+    assert.equal(
+      stored.find((course) => course.id === seedCourseId(2)),
+      undefined,
+    )
+    assert.equal(stored.find((course) => course.id === seedCourseId(1))?.nextCourseId, null)
+    assert.equal(
+      stored.find((course) => course.id === seedCourseId(3))?.nextCourseId,
+      seedCourseId(4),
+    )
   })
 
   test('kayıtlar core dizisinin sırasıyla yüklenir; ikinci tohum sırayı değiştirmez', async () => {

@@ -40,6 +40,17 @@ export const VERSION_LIMITS = { default: 3, min: 1, max: 5 } as const
 // muhafazakâr yorumla otomatik görevin hakkı (DOM-BEC-042: varsayılan 1, 1–3) uygulandı.
 export const SPEAKING_ATTEMPT_LIMITS = { default: 1, min: 1, max: 3 } as const
 
+/**
+ * Konuşma süresi sınırı (DOM-BEC-054): görev ayarı, varsayılan 3 dakika, en fazla 10 dakika (konuşma
+ * kaydı amacının sınırı). Bir saniyeden kısa kayıt boş sayılır.
+ */
+export const SPEAKING_SECONDS = {
+  default: 180,
+  min: 10,
+  max: FILE_PURPOSES.speaking_recording.maxDurationSeconds,
+} as const
+export const RECORDING_MIN_SECONDS = 1
+
 /** Yazma teslimi metnin üst sınırı (karakter). */
 export const SUBMISSION_TEXT_MAX = 50_000
 
@@ -91,11 +102,9 @@ export const submissionSettingsSchema = z.discriminatedUnion('submissionKind', [
     speakingSeconds: z
       .number()
       .int()
-      .min(10, 'Konuşma süresi en az 10 saniye olmalıdır.')
-      .max(
-        FILE_PURPOSES.speaking_recording.maxDurationSeconds,
-        'Konuşma süresi en fazla 10 dakika olabilir.',
-      ),
+      .min(SPEAKING_SECONDS.min, 'Konuşma süresi en az 10 saniye olmalıdır.')
+      .max(SPEAKING_SECONDS.max, 'Konuşma süresi en fazla 10 dakika olabilir.')
+      .default(SPEAKING_SECONDS.default),
   }),
 ])
 export type SubmissionSettingsInput = z.input<typeof submissionSettingsSchema>
@@ -266,6 +275,11 @@ export type SubmissionVersionPlanInput = {
   input: unknown
   /** Gövdedeki dosya kimliklerinin servisçe yüklenmiş satırları (kurum kapsamlı). */
   files: readonly SubmissionFile[]
+  /**
+   * Kursiyerin ses kaydı için işlem anında geçerli rızası (DOM-BEC-050, DOM-YTK-061; core
+   * `lib/consents.ts` `hasValidConsent`). Yalnız sesli teslimde okunur; verilmezse rıza yok sayılır.
+   */
+  recordingConsent?: boolean
   now: Date | string
 }
 
@@ -304,9 +318,10 @@ function fileFor(
 }
 
 /**
- * Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051). Doğrulama hatasında hiçbir satır
- * değişmez. Sırası: gövde şeması, tür, teslim penceresi (geç kabul dahil), sürüm hakkı, içerik.
- * Yazmada sözcük sınırı dışı metin uyarıyla kabul edilir; konuşmada kayıt süresi sınırı aşamaz.
+ * Yeni teslim sürümü (DOM-BEC-040, 044, 046, 050, 054; IST-051). Doğrulama hatasında hiçbir satır
+ * değişmez. Sırası: gövde şeması, tür, sesli teslimde rıza, teslim penceresi (geç kabul dahil),
+ * sürüm hakkı, içerik. Yazmada sözcük sınırı dışı metin uyarıyla kabul edilir; konuşmada kayıt
+ * ölçülmüş, boş olmayan ve süre sınırı içinde olmalıdır.
  */
 export function planSubmissionVersion(input: SubmissionVersionPlanInput): SubmissionVersionPlan {
   const { settings, deadline, submission, versions, files, now } = input
@@ -315,6 +330,15 @@ export function planSubmissionVersion(input: SubmissionVersionPlanInput): Submis
     throw new DomainError('submission_kind_mismatch', 'Bu görev başka türde teslim bekliyor.', {
       path: ['submissionKind'],
     })
+  }
+  // Rıza yoksa kayıt alınmaz; görev yüz yüze değerlendirilir ve kursiyer puan kaybetmez
+  // (DOM-BEC-050). Ret pencereden önce gelir: istemci kayıt düğmesini hiç göstermemelidir.
+  if (data.submissionKind === 'audio' && input.recordingConsent !== true) {
+    throw new DomainError(
+      'consent_required',
+      'Ses kaydı için gerekli onay bulunmuyor; görev yüz yüze değerlendirilecek.',
+      { kind: 'forbidden', path: ['recordingFileId'] },
+    )
   }
   assertSubmissionOpen(deadline, now)
   const allowance = versionAllowance(input)
@@ -361,13 +385,20 @@ export function planSubmissionVersion(input: SubmissionVersionPlanInput): Submis
       if (settings.submissionKind !== 'audio') break
       const path = ['recordingFileId']
       const file = fileFor(files, data.recordingFileId, 'speaking_recording', path)
+      // Süre sunucuda ölçülür (ADR 0003 karar 10); ölçülmeden teslim edilemez.
+      if (file.durationSeconds === undefined || file.durationSeconds === null) {
+        throw new DomainError(
+          'recording_not_measured',
+          'Kayıt henüz işleniyor; biraz sonra yeniden teslim edin.',
+          { path },
+        )
+      }
+      if (file.durationSeconds < RECORDING_MIN_SECONDS) {
+        throw new DomainError('recording_empty', 'Kayıt boş; yeniden kaydedin.', { path })
+      }
       // TODO(beceri-kayit-toleransi): Domain ölçüm toleransı vermiyor; en muhafazakâr yorumla
-      // sunucuda ölçülen süre sınırı aşamaz. Ölçülemeyen süre kabul edilmez.
-      if (
-        file.durationSeconds === undefined ||
-        file.durationSeconds === null ||
-        file.durationSeconds > settings.speakingSeconds
-      ) {
+      // sunucuda ölçülen süre sınırı aşamaz.
+      if (file.durationSeconds > settings.speakingSeconds) {
         throw new DomainError(
           'recording_too_long',
           `Kayıt en fazla ${settings.speakingSeconds} saniye olabilir.`,

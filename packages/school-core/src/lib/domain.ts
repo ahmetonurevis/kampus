@@ -152,6 +152,21 @@ export const attendanceInputSchema = z.object({
 })
 export type AttendanceInput = z.input<typeof attendanceInputSchema>
 
+/** Yönetici düzeltmesinde gerekçenin alt sınırı (DOM-AKD-035); `authorize` aynı sayıyı uygular. */
+export const ATTENDANCE_CORRECTION_REASON_MIN = 2
+
+/**
+ * Yönetici yoklama düzeltmesinin gerekçesi (DOM-AKD-035): kırpılmış en az 2, en çok 500
+ * karakter. API'de alt sınır yetki kuralıdır (`authorize('attendance.record')`, 422
+ * `correction_reason_required`); web ve mobil form bu şemayla istek atmadan aynı kuralı uygular.
+ */
+// kvkk: K — serbest metin; loglanmaz, denetim kaydına yazılmaz.
+export const attendanceCorrectionReasonSchema = z
+  .string()
+  .trim()
+  .min(ATTENDANCE_CORRECTION_REASON_MIN, 'Düzeltme için gerekçe yazın.')
+  .max(500, 'En fazla 500 karakter girebilirsiniz.')
+
 /**
  * Yoklama düzeltmesi (DOM-AKD-035): kayıt üzerine iz bırakmadan yazılmaz; eski ve yeni durum,
  * gerekçe, düzelten ve zaman geçmişte kalır. Öğrenci ve veli bu geçmişi görmez (`lib/scope.ts`).

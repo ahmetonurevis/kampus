@@ -5189,7 +5189,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
             /**
              * Format: binary
              * @description Tek dosya; alan adı `file`
@@ -5203,7 +5203,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
             /**
              * @description `pending` yüklendi, denetim bekliyor; `processing` taranıyor/dönüştürülüyor (bağlantı verilmez); `ready` kullanıma hazır; `rejected`/`deleted` görünmez
              * @enum {string}
@@ -8173,7 +8173,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
             /**
              * Format: binary
              * @description Tek dosya; alan adı `file`
@@ -8187,7 +8187,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
             /**
              * @description `pending` yüklendi, denetim bekliyor; `processing` taranıyor/dönüştürülüyor (bağlantı verilmez); `ready` kullanıma hazır; `rejected`/`deleted` görünmez
              * @enum {string}

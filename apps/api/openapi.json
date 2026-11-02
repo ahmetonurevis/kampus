@@ -2163,6 +2163,7 @@
               "submission",
               "material",
               "question_image",
+              "student_question_photo",
               "listening_audio",
               "speaking_recording",
               "document"
@@ -2195,6 +2196,7 @@
               "submission",
               "material",
               "question_image",
+              "student_question_photo",
               "listening_audio",
               "speaking_recording",
               "document"
@@ -14130,6 +14132,7 @@
               "submission",
               "material",
               "question_image",
+              "student_question_photo",
               "listening_audio",
               "speaking_recording",
               "document"
@@ -14163,6 +14166,7 @@
               "submission",
               "material",
               "question_image",
+              "student_question_photo",
               "listening_audio",
               "speaking_recording",
               "document"

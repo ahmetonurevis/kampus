@@ -239,6 +239,13 @@
       "when": 1793624849268,
       "tag": "0033_allow_file_transcode",
       "breakpoints": true
+    },
+    {
+      "idx": 34,
+      "version": "7",
+      "when": 1793634531920,
+      "tag": "0034_allow_student_question_photo",
+      "breakpoints": true
     }
   ]
 }

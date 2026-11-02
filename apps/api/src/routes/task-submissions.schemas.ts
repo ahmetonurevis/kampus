@@ -14,8 +14,8 @@ import { SUBMISSION_TEXT_MAX } from '@kampus/school-core/skills/submission.ts'
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
 
 /**
- * Yazma görevinin taslak ve teslim şemaları (ADR 0004 karar 6; DOM-BEC-023, 040, 044, 046;
- * IST-047, IST-051). Gövde core `submissionVersionInputSchema` ve `draftInputSchema` biçimidir;
+ * Beceri görevinin taslak ve teslim şemaları (ADR 0004 karar 6; DOM-BEC-023, 040, 044, 046,
+ * 050…054; IST-047, IST-051). Gövde core `submissionVersionInputSchema` ve `draftInputSchema` biçimidir;
  * katıdır: istemcinin gönderdiği puan, sürüm numarası veya teslim anı 400 alır. Yazma otomatik
  * puanlanmaz (DOM-BEC-023); puan öğretmenin rubrik puanıdır (F4b3b1), her okumada kriter
  * bantlarından hesaplanır ve kursiyere geri bildirim açılınca görünür (DOM-BEC-045).
@@ -217,6 +217,28 @@ const taskAppealSchema = z
     'Sürümün itirazı (DOM-BEC-025); itiraz yalnız sonuç duyurusundan sonra açılır, yoksa `null`',
   )
 
+const taskSubmissionFileSchema = z
+  .object({
+    id,
+    purpose: z
+      .enum(['submission', 'speaking_recording'])
+      .describe('El yazısı teslimi veya konuşma kaydı'),
+    contentType: z.string().describe('İçerikten tespit edilen tür'),
+    byteSize: z.number().int().min(0),
+    durationMs: z
+      .number()
+      .int()
+      .min(0)
+      .nullable()
+      .describe('Sunucuda ölçülen süre; ölçülmediyse `null`. İmhadan sonra da kalır (DOM-BEC-052)'),
+    status: z
+      .enum(['processing', 'ready', 'deleted'])
+      .describe(
+        '`ready` dosya `GET /api/v1/files/{fileId}/url` ile açılır (konuşma kaydında DOM-BEC-053 erişimi); `deleted` saklama süresi dolup imha edildi',
+      ),
+  })
+  .meta({ id: 'TaskSubmissionFile' })
+
 const taskSubmissionDetailSchema = z
   .object({
     ...summaryShape,
@@ -225,6 +247,11 @@ const taskSubmissionDetailSchema = z
         z.object({
           ...versionShape,
           body: z.string().nullable().describe('Gönderilen metin; değişmez'),
+          files: z
+            .array(taskSubmissionFileSchema)
+            .describe(
+              'Dosyalı teslimin görüntüleri veya konuşma kaydı, gönderim sırasıyla; metin teslimde boş',
+            ),
           score: taskScoreSchema.nullable(),
           grading: versionGradingSchema.nullable(),
           appealDeadline: instant

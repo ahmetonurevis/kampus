@@ -359,7 +359,7 @@ async function readableFile(
       ctx.log.error({ event: 'file.unknown_attachment', attachedType: row.attachedType })
       throw new NotFoundError()
     }
-    if (!(await kind.canRead(tx, ctx, row.attachedId))) throw new NotFoundError()
+    if (!(await kind.canRead(tx, ctx, row.attachedId, row))) throw new NotFoundError()
   }
   // İşlemin bağlantısıyla: PGlite tek bağlantılıdır, `ctx.db` burada beklerdi.
   await assertPurposeModule(tx, ctx, row.purpose)
@@ -451,13 +451,22 @@ export const ATTACH_MESSAGES = {
  * çağırandan alınmaz (`dataSubjectId` yok sayılır): yükleyenin `student` bağlantısından türetilir
  * ve o öğrencinin geçerli rızası bağlama anında yeniden denetlenir. Rıza yoksa (yükleme sürerken
  * geri çekilmiş olabilir) 403 `consent_required` ve hiçbir kayıt değişmez.
- * TODO(F3c2-retention): `retention_until` amaç ve kurum türüne göre bağlanma anında hesaplanır
- * (karar 13); süreler doğrulanınca.
+ *
+ * Saklama sonu (`retentionUntil`, karar 13) bağlayan işlem amaca ve kurum türüne göre hesaplayıp
+ * verir (konuşma kaydında core `recordingRetentionUntil`, DOM-BEC-052); daha erken bir işaret
+ * korunur. TODO(F3c2-retention): ödev ve el yazısı teslim dosyasının süresi (Açık soru 3)
+ * doğrulanınca o işlemler de verir; o zamana kadar boş kalır ve imha işi onlara dokunmaz.
  */
 export async function attachFile(
   tx: Database,
   ctx: ServiceContext,
-  input: { fileId: string; attachedType: string; attachedId: string; dataSubjectId: string | null },
+  input: {
+    fileId: string
+    attachedType: string
+    attachedId: string
+    dataSubjectId: string | null
+    retentionUntil?: Date | null
+  },
 ): Promise<StoredFile> {
   const kind = fileAttachmentKind(input.attachedType)
   if (!kind) throw new Error(`unknown file attachment type: ${input.attachedType}`)
@@ -489,7 +498,12 @@ export async function attachFile(
     tx,
     ctx.institutionId,
     row,
-    { type: input.attachedType, id: input.attachedId, dataSubjectId },
+    {
+      type: input.attachedType,
+      id: input.attachedId,
+      dataSubjectId,
+      retentionUntil: input.retentionUntil ?? null,
+    },
     ctx.now,
   )
   if (!updated) throw new ConflictError()

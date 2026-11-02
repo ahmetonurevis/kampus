@@ -22,6 +22,8 @@ export type NewFile = Pick<
   | 'uploadedByUserId'
 >
 
+const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+
 /** Kotayı tüketen durumlar: nesnesi silinmiş (`rejected`, `deleted`) dosya sayılmaz. */
 const QUOTA_EXCLUDED: FileStatus[] = ['rejected', 'deleted']
 
@@ -76,6 +78,23 @@ export async function listAttachedFiles(
       ),
     )
     .orderBy(asc(files.id))
+}
+
+/**
+ * Kimlikleri verilen dosyalar (durumdan bağımsız; silinmiş satır da döner: imhadan sonra süre
+ * okunur, DOM-BEC-052). Geçersiz (uuid olmayan) kimlik sorguya girmez, sonuçta yoktur.
+ */
+export async function loadFilesByIds(
+  db: Database,
+  institutionId: string,
+  fileIds: readonly string[],
+): Promise<StoredFile[]> {
+  const ids = [...new Set(fileIds.filter((id) => UUID.test(id)))]
+  if (ids.length === 0) return []
+  return db
+    .select()
+    .from(files)
+    .where(and(eq(files.institutionId, institutionId), inArray(files.id, ids)))
 }
 
 /** Kurumun depoda tuttuğu toplam bayt (karar 3: `files` tablosundan toplanır). */
@@ -134,13 +153,25 @@ async function updateFile(
   return row ?? null
 }
 
+/**
+ * Dosyayı kayda bağlar. Saklama sonu verilirse yazılır (ADR 0003 karar 13: bağlanma anında
+ * hesaplanır); daha erken bir saklama sonu (rıza geri çekme işareti) korunur.
+ */
 export function attachFileRow(
   tx: Database,
   institutionId: string,
   current: StoredFile,
-  attachment: { type: string; id: string; dataSubjectId: string | null },
+  attachment: {
+    type: string
+    id: string
+    dataSubjectId: string | null
+    retentionUntil?: Date | null
+  },
   now: Date,
 ) {
+  const retention = attachment.retentionUntil ?? null
+  const keepEarlier =
+    current.retentionUntil !== null && (retention === null || current.retentionUntil < retention)
   return updateFile(
     tx,
     institutionId,
@@ -150,6 +181,7 @@ export function attachFileRow(
       attachedId: attachment.id,
       attachedAt: now,
       dataSubjectId: attachment.dataSubjectId,
+      ...(keepEarlier || retention === null ? {} : { retentionUntil: retention }),
     },
     now,
   )

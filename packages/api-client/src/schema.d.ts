@@ -3079,7 +3079,7 @@ export interface paths {
         put?: never;
         /**
          * Görev ata
-         * @description İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Geçici sınır: dosyalı ve sesli teslim 422 `submission_kind_unavailable`. Dinleme görevinde hak core varsayılanıyla 2'dir; 1, 2 veya sınırsız (`null`) seçilebilir ve öğrencinin denemesinde sayılır (IST-045, DOM-BEC-005). Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Dosyalı (el yazısı) ve sesli (konuşma kaydı) teslim türü atanabilir (OG-048; DOM-BEC-046, 050). Dinleme görevinde hak core varsayılanıyla 2'dir; 1, 2 veya sınırsız (`null`) seçilebilir ve öğrencinin denemesinde sayılır (IST-045, DOM-BEC-005). Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["createTaskAssignment"];
         delete?: never;
@@ -3290,8 +3290,8 @@ export interface paths {
         get?: never;
         put?: never;
         /**
-         * Yazma görevini teslim et
-         * @description Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core `planSubmissionVersion`). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; önceki sürümler ve metinleri değişmez. Sürüm sınırı (`maxVersions`) dolunca 422 `version_limit_reached`; puanlanmış teslimde öğretmen yeniden teslim istemeden 409 `resubmission_not_requested` (geri bildirim açılmadan genel 409 `submission_locked`; DOM-BEC-045); teslim kapandıysa (geç kabul dahil) 422 `submission_closed`; son teslimden sonra geç kabul süresindeki sürüm `late`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 `submission_not_expected`; dosyalı ve sesli teslim 422 `submission_kind_unavailable`. Yazma otomatik puanlanmaz. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * Beceri görevini teslim et
+         * @description Yeni teslim sürümü (DOM-BEC-040, 044, 046; IST-051; core `planSubmissionVersion`). İlk gönderim kursiyerin tek teslim kaydını açar, sonrakiler değişmez sürüm ekler; önceki sürümler ve metinleri değişmez. Sürüm sınırı (`maxVersions`) dolunca 422 `version_limit_reached`; puanlanmış teslimde öğretmen yeniden teslim istemeden 409 `resubmission_not_requested` (geri bildirim açılmadan genel 409 `submission_locked`; DOM-BEC-045); teslim kapandıysa (geç kabul dahil) 422 `submission_closed`; son teslimden sonra geç kabul süresindeki sürüm `late`. Sözcük sınırı dışındaki metin uyarıyla kabul edilir. Otomatik puanlı görev 422 `submission_not_expected`; görevin türünden başka teslim 422 `submission_kind_mismatch`. Dosyalı (`fileIds`, el yazısı görüntü/PDF) ve sesli (`recordingFileId`, konuşma kaydı) teslimde dosya kursiyerin `POST /api/v1/files` ile yüklediği, hazır ve bağlanmamış dosyadır (başkasının veya olmayan dosya genel 404 `not_found`, hazır değilse 422 `file_not_ready`, başka kayda bağlıysa 409 `file_already_attached`); sesli teslim işlem anında geçerli rıza ister (403 `consent_required`; DOM-BEC-050), kayıt ölçülmemişse 422 `recording_not_measured`, boşsa `recording_empty`, sınırı aşıyorsa `recording_too_long` (DOM-BEC-054). Dosyalar sürüme bağlanır; konuşma kaydının saklama sonu yazılır (DOM-BEC-052). Teslim otomatik puanlanmaz. `Idempotency-Key` zorunlu; `If-Match` desteklenmez (400 `if_match_not_supported`). Başarı 201 ve teslim kaydının `Location`'ı. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["submitTaskSubmission"];
         delete?: never;
@@ -5822,6 +5822,7 @@ export interface components {
                 speakingAttempts: number;
                 /** @default 0 */
                 preparationSeconds: number;
+                /** @default 180 */
                 speakingSeconds: number;
             }) | null;
             /** Format: date-time */
@@ -5957,6 +5958,7 @@ export interface components {
                 speakingAttempts: number;
                 /** @default 0 */
                 preparationSeconds: number;
+                /** @default 180 */
                 speakingSeconds: number;
             }) | null;
             /** Format: date-time */
@@ -6121,6 +6123,7 @@ export interface components {
                 speakingAttempts: number;
                 /** @default 0 */
                 preparationSeconds: number;
+                /** @default 180 */
                 speakingSeconds: number;
             }) | null;
             /** Format: date-time */
@@ -6523,6 +6526,25 @@ export interface components {
             /** @description Karar gerekçesi */
             decisionReason: string | null;
         };
+        TaskSubmissionFileInput: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description El yazısı teslimi veya konuşma kaydı
+             * @enum {string}
+             */
+            purpose: "submission" | "speaking_recording";
+            /** @description İçerikten tespit edilen tür */
+            contentType: string;
+            byteSize: number;
+            /** @description Sunucuda ölçülen süre; ölçülmediyse `null`. İmhadan sonra da kalır (DOM-BEC-052) */
+            durationMs: number | null;
+            /**
+             * @description `ready` dosya `GET /api/v1/files/{fileId}/url` ile açılır (konuşma kaydında DOM-BEC-053 erişimi); `deleted` saklama süresi dolup imha edildi
+             * @enum {string}
+             */
+            status: "processing" | "ready" | "deleted";
+        };
         TaskSubmissionDetailInput: {
             /** Format: uuid */
             id: string;
@@ -6568,6 +6590,8 @@ export interface components {
                 wordCount: components["schemas"]["TaskWordCountInput"] | null;
                 /** @description Gönderilen metin; değişmez */
                 body: string | null;
+                /** @description Dosyalı teslimin görüntüleri veya konuşma kaydı, gönderim sırasıyla; metin teslimde boş */
+                files: components["schemas"]["TaskSubmissionFileInput"][];
                 score: components["schemas"]["TaskScoreInput"] | null;
                 grading: components["schemas"]["TaskVersionGradingInput"] | null;
                 /** @description İtirazın son anı (core `appealDeadline`: duyurudan sonra 5 iş günü, Europe/Istanbul gün sonu); yalnız değerlendirme türünde ve sonuç duyurulduysa, kursiyer ve veliye duyurudan önce `null` */
@@ -8782,6 +8806,7 @@ export interface components {
                 speakingAttempts: number;
                 /** @default 0 */
                 preparationSeconds: number;
+                /** @default 180 */
                 speakingSeconds: number;
             }) | null;
             /** Format: date-time */
@@ -8917,6 +8942,7 @@ export interface components {
                 speakingAttempts: number;
                 /** @default 0 */
                 preparationSeconds: number;
+                /** @default 180 */
                 speakingSeconds: number;
             }) | null;
             /** Format: date-time */
@@ -9081,6 +9107,7 @@ export interface components {
                 speakingAttempts: number;
                 /** @default 0 */
                 preparationSeconds: number;
+                /** @default 180 */
                 speakingSeconds: number;
             }) | null;
             /** Format: date-time */
@@ -9482,6 +9509,25 @@ export interface components {
             /** @description Karar gerekçesi */
             decisionReason: string | null;
         };
+        TaskSubmissionFile: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description El yazısı teslimi veya konuşma kaydı
+             * @enum {string}
+             */
+            purpose: "submission" | "speaking_recording";
+            /** @description İçerikten tespit edilen tür */
+            contentType: string;
+            byteSize: number;
+            /** @description Sunucuda ölçülen süre; ölçülmediyse `null`. İmhadan sonra da kalır (DOM-BEC-052) */
+            durationMs: number | null;
+            /**
+             * @description `ready` dosya `GET /api/v1/files/{fileId}/url` ile açılır (konuşma kaydında DOM-BEC-053 erişimi); `deleted` saklama süresi dolup imha edildi
+             * @enum {string}
+             */
+            status: "processing" | "ready" | "deleted";
+        };
         TaskSubmissionDetail: {
             /** Format: uuid */
             id: string;
@@ -9527,6 +9573,8 @@ export interface components {
                 wordCount: components["schemas"]["TaskWordCount"] | null;
                 /** @description Gönderilen metin; değişmez */
                 body: string | null;
+                /** @description Dosyalı teslimin görüntüleri veya konuşma kaydı, gönderim sırasıyla; metin teslimde boş */
+                files: components["schemas"]["TaskSubmissionFile"][];
                 score: components["schemas"]["TaskScore"] | null;
                 grading: components["schemas"]["TaskVersionGrading"] | null;
                 /** @description İtirazın son anı (core `appealDeadline`: duyurudan sonra 5 iş günü, Europe/Istanbul gün sonu); yalnız değerlendirme türünde ve sonuç duyurulduysa, kursiyer ve veliye duyurudan önce `null` */
@@ -29338,7 +29386,8 @@ export interface operations {
                             speakingAttempts?: number;
                             /** @default 0 */
                             preparationSeconds?: number;
-                            speakingSeconds: number;
+                            /** @default 180 */
+                            speakingSeconds?: number;
                         }) | null;
                         /** @default false */
                         highStakes?: boolean;

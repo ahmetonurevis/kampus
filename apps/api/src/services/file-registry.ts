@@ -2,6 +2,7 @@ import type { FilePurpose } from '@kampus/school-core/content/taxonomy.ts'
 
 import type { Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
+import type { StoredFile } from '../db/files.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 
 /**
@@ -62,8 +63,16 @@ export const FILE_PURPOSE_ACCESS = {
 export interface FileAttachmentKind {
   /** Bu kayda bağlanabilecek amaçlar. */
   purposes: readonly FilePurpose[]
-  /** Kişi bağlı kaydı okuyabilir mi; okuyamayan dosyayı da göremez (404). */
-  canRead: (tx: Database, ctx: ServiceContext, attachedId: string) => Promise<boolean>
+  /**
+   * Kişi bağlı kaydı (ve bu dosyayı) okuyabilir mi; okuyamayan dosyayı da göremez (404). Dosya
+   * satırı amaca özgü kural için verilir (konuşma kaydında DOM-BEC-053).
+   */
+  canRead: (
+    tx: Database,
+    ctx: ServiceContext,
+    attachedId: string,
+    file: StoredFile,
+  ) => Promise<boolean>
 }
 
 const ATTACHED_TYPE_PATTERN = /^[a-z][a-z0-9_]{1,62}$/

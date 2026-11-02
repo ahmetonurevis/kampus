@@ -16,6 +16,7 @@ import {
   type RubricVersionData,
   type ScoreResolution,
 } from '@kampus/school-core/skills/rubric.ts'
+import { canAccessRecording } from '@kampus/school-core/skills/recording.ts'
 import {
   isClosed,
   submissionWindow,
@@ -40,6 +41,7 @@ import {
   findAssignment,
   findRubricVersion,
   findSubmission,
+  findSubmissionOfVersion,
   insertSubmission,
   insertSubmissionVersion,
   listSubmissions,
@@ -52,11 +54,23 @@ import {
   type StoredAssignment,
   type StoredSubmissionWork,
 } from '../db/skills.ts'
+import { findRecord } from '../db/records.ts'
 import { AppError, MESSAGES, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { actorStudentConsent } from './consents.ts'
+import { defineFileAttachment } from './file-registry.ts'
 import { listMembershipLinks } from './memberships.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { coordinates, viewerOf, visible, type Viewer } from './task-assignments.ts'
+import {
+  attachVersionFiles,
+  bodyFileIds,
+  loadVersionFiles,
+  recordingPeriodEndFor,
+  SUBMISSION_VERSION_ATTACHMENT,
+  usableFiles,
+  versionFileView,
+} from './task-submission-files.ts'
 import {
   auditWork,
   canReadLearner,
@@ -69,8 +83,10 @@ import {
 } from './task-work.ts'
 
 /**
- * Yazma görevinin taslağı ve teslimi (F4b3a; ADR 0004 karar 6; docs/domain/beceri-gelisimi.md
- * DOM-BEC-023, 040, 044, 046; IST-047, IST-051; yetki-ve-kapsam.md DOM-YTK-028).
+ * Beceri görevinin taslağı ve teslimi (F4b3a; ADR 0004 karar 6; docs/domain/beceri-gelisimi.md
+ * DOM-BEC-023, 040, 044, 046, 050…054; IST-047, IST-051, IST-126; yetki-ve-kapsam.md
+ * DOM-YTK-028). Metin, el yazısı dosyası ve konuşma kaydı aynı sürüm akışını kullanır; dosya
+ * tarafı `services/task-submission-files.ts`'tedir (OG-048).
  *
  * Kurallar core `skills/submission.ts`'tedir; burada kapsam, sıra (kapsam 404 → rol 403, rotada ve
  * serviste → sürüm → core kuralı) ve tek transaction vardır. Kursiyer × atama başına tek teslim
@@ -518,13 +534,20 @@ export async function detailView(
   assignment: StoredAssignment,
   work: StoredSubmissionWork,
 ) {
-  const book = await loadGrading(db, ctx, [work.submission.id])
+  const [book, files] = await Promise.all([
+    loadGrading(db, ctx, [work.submission.id]),
+    loadVersionFiles(db, ctx.institutionId, work.versions),
+  ])
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
   return {
     ...summaryView(viewer, ctx, book, assignment, work),
     versions: work.versions.map((version) => ({
       ...versionView(assignment, work, version),
       body: version.body,
+      files: version.fileIds.flatMap((id) => {
+        const row = files.get(id)
+        return row === undefined ? [] : [versionFileView(row)]
+      }),
       score: scoreFeedback(
         scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, assignment, grading, version)),
       ),
@@ -835,8 +858,17 @@ export type SubmissionVersionBody =
  * gönderim kursiyerin tek teslim kaydını açar; sonrakiler değişmez sürüm ekler. Pencere ve geç
  * kabul core'dandır (sürümün süresi `deadlineForVersion`). Sınır dolunca 422
  * `version_limit_reached`, teslim kapandıysa 422 `submission_closed`, otomatik puanlı görevde
- * 422 `submission_not_expected`, dosyalı/sesli teslim 422 `submission_kind_unavailable`. Sözcük
+ * 422 `submission_not_expected`, tür uyuşmazlığında 422 `submission_kind_mismatch`. Sözcük
  * sınırı dışındaki metin uyarıyla kabul edilir (DOM-BEC-046). Denetime alan adlarıyla yazılır.
+ *
+ * Dosyalı ve sesli teslim (OG-048; DOM-BEC-046, 050, 054): dosya kursiyerin kendi yüklediği,
+ * silinmemiş satırdır (yoksa genel 404 `not_found`; core `submission_file_not_found`, varlık
+ * sızmaz); sesli teslimde işlem anında geçerli rıza yoksa 403 `consent_required` (core; bağlama
+ * da yeniden denetler). Kayıt ölçülmemişse 422
+ * `recording_not_measured`, boşsa `recording_empty`, sınırı aşıyorsa `recording_too_long`.
+ * Dosyalar sürümle aynı transaction'da sürüme bağlanır (hazır değilse 422 `file_not_ready`, başka
+ * kayda bağlıysa 409 `file_already_attached`); konuşma kaydının saklama sonu bağlanırken yazılır
+ * (DOM-BEC-052). Herhangi bir ret hiçbir satırı değiştirmez.
  */
 export async function submitTaskSubmission(
   ctx: ServiceContext,
@@ -851,6 +883,7 @@ export async function submitTaskSubmission(
     assignment: StoredAssignment
     learnerId: string
     work: StoredSubmissionWork | null
+    recording: { periodEndDate: string; holidays: readonly string[] } | null
     plan: ReturnType<typeof planSubmissionVersion>
   }
   return runCommand<Submit>(
@@ -867,12 +900,18 @@ export async function submitTaskSubmission(
             'submission_not_expected',
             'Bu görev teslim beklemiyor; deneme olarak çözülür.',
           )
-        // TODO(F3c2-files): Dosyalı ve sesli teslim `files` tablosu gelince açılır.
-        if (settings.submissionKind !== 'text' || body.submissionKind !== 'text')
-          throw new RuleViolationError(
-            'submission_kind_unavailable',
-            'Dosyalı ve sesli teslim henüz açık değil.',
-          )
+        const files = await usableFiles(tx, ctx, bodyFileIds(body))
+        const audio = settings.submissionKind === 'audio' && body.submissionKind === 'audio'
+        // Rıza ve dönem sonu yalnız sesli teslimde okunur (DOM-BEC-050, 052).
+        const recordingConsent = audio
+          ? (await actorStudentConsent(tx, ctx, 'speaking_recording')).valid
+          : false
+        const recording = audio
+          ? {
+              periodEndDate: await recordingPeriodEndFor(tx, ctx, learnerId),
+              holidays: APPEAL_HOLIDAYS,
+            }
+          : null
         const work = await loadSubmission(tx, ctx.institutionId, assignment.id, learnerId)
         const versions = work?.versions ?? []
         const grading =
@@ -906,11 +945,12 @@ export async function submitTaskSubmission(
                 versions,
                 gradedVersionNumbers,
                 input: body,
-                files: [],
+                files,
+                recordingConsent,
                 now: tools.now,
               })
             try {
-              return { assignment, learnerId, work, plan: plan(graded) }
+              return { assignment, learnerId, work, recording, plan: plan(graded) }
             } catch (error) {
               if (
                 hidden === null ||
@@ -928,7 +968,7 @@ export async function submitTaskSubmission(
           },
         }
       },
-      after: async (tx, { assignment, learnerId, work, plan }) => {
+      after: async (tx, { assignment, learnerId, work, recording, plan }) => {
         const submissionId = work?.submission.id ?? newSubmissionId
         if (plan.createSubmission)
           await insertSubmission(
@@ -939,15 +979,17 @@ export async function submitTaskSubmission(
           )
         // Yeniden teslim isteği yeni sürümle kendiliğinden kapanır: istek son sürümden eski kalır
         // (core `versionAllowance`); ayrıca satır güncellenmez.
-        await insertSubmissionVersion(
-          tx,
-          ctx.institutionId,
-          submissionId,
-          { id: randomUUID(), ...plan.version },
-          ctx.now,
-        )
+        const version = { id: randomUUID(), ...plan.version }
+        await insertSubmissionVersion(tx, ctx.institutionId, submissionId, version, ctx.now)
+        await attachVersionFiles(tx, ctx, {
+          assignment,
+          submission: work?.submission ?? null,
+          version,
+          learnerId,
+          recording,
+        })
         await auditWork(tx, ctx, 'task_submission.submit', { type: ENTITY, id: submissionId }, [
-          'body',
+          version.fileIds.length > 0 ? 'fileIds' : 'body',
           'versionNumber',
           'submittedAt',
         ])
@@ -960,3 +1002,53 @@ export async function submitTaskSubmission(
     idempotency,
   )
 }
+
+// --- Sürüm dosyasına erişim ------------------------------------------------------------------
+
+/**
+ * Teslim sürümüne bağlı dosya (ADR 0003 karar 6; DOM-BEC-053): teslimi okuyabilen görür. Kursiyer
+ * kendi, veli çocuğunun teslimini (sahiplik); yönetici ve atamayı gören öğretmen bütün teslimleri;
+ * atamayı görmeyen koordinatör yalnız uyuşmazlıklı teslimi okur (`getTaskSubmission` ile aynı).
+ * Konuşma kaydında ayrıca core `canAccessRecording`: 18 yaşını doldurmuş kursiyerin kaydı veliye
+ * açılmaz, ön büro hiçbir kaydı açamaz. PGlite tek bağlantılıdır: okumalar işlemin bağlantısıyla.
+ */
+async function canReadVersionFile(
+  tx: Database,
+  ctx: ServiceContext,
+  versionId: string,
+  file: { purpose: string },
+): Promise<boolean> {
+  if (ctx.actor.role === 'onburo') return false
+  const local = { ...ctx, db: tx }
+  const work = await findSubmissionOfVersion(tx, ctx.institutionId, versionId)
+  const assignment =
+    work && (await findAssignment(tx, ctx.institutionId, work.submission.assignmentId))
+  if (!work || !assignment) return false
+  const viewer = await viewerOf(local)
+  const learnerId = work.submission.learnerId
+  let readable = canReadLearner(viewer, assignment, learnerId)
+  if (!readable && viewer.kind !== 'learner') {
+    const grading = (await loadGrading(tx, local, [work.submission.id])).bySubmission.get(
+      work.submission.id,
+    )
+    readable = grading !== undefined && coordinatorReaches(viewer, assignment, work, grading)
+  }
+  if (!readable) return false
+  if (file.purpose !== 'speaking_recording') return true
+  const student = await findRecord(tx, ctx.institutionId, 'students', learnerId)
+  const birthDate = student?.data.birthDate
+  return canAccessRecording(
+    {
+      role: ctx.actor.role,
+      ownsLearner: viewer.kind === 'learner',
+      readsSubmission: viewer.kind !== 'learner',
+      learnerBirthDate: typeof birthDate === 'string' ? birthDate : null,
+    },
+    ctx.now,
+  )
+}
+
+defineFileAttachment(SUBMISSION_VERSION_ATTACHMENT, {
+  purposes: ['submission', 'speaking_recording'],
+  canRead: canReadVersionFile,
+})

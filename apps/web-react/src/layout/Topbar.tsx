@@ -3,6 +3,8 @@ import { useTheme } from '@/hooks/use-theme.ts'
 import type { Session } from '@/auth/auth-port.ts'
 import { getRole } from '@/lib/navigation.ts'
 import { AccountMenu } from './AccountMenu.tsx'
+import { NotificationBell } from './NotificationBell.tsx'
+import { notificationBellVisible } from './notification-model.ts'
 
 type TopbarProps = {
   session: Session
@@ -47,6 +49,9 @@ export function Topbar({ session, title, narrow, menuOpen, onOpenMenu, onSignOut
         >
           <Icon name={theme === 'light' ? 'Moon' : 'Sun'} size={19} />
         </button>
+        {notificationBellVisible(session.role, session.modules) ? (
+          <NotificationBell session={session} />
+        ) : null}
         <AccountMenu session={session} onSignOut={onSignOut} />
       </div>
     </header>

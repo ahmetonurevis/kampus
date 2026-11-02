@@ -25,6 +25,14 @@ const platformRoutes = [
   'registerFileRoutes',
 ]
 
+test('app.ts Onur bloğu işaretleri buildApp içinde tam birer kez geçer (IST-004)', () => {
+  // İşaret kayar ya da yinelenirse blok dilimi yanlış satırları alır; o zaman alttaki test boşa döner.
+  for (const marker of [ONUR_START, ONUR_END]) {
+    assert.equal(buildApp.split(marker).length - 1, 1, `işaret: ${marker.trim()}`)
+  }
+  assert.ok(buildApp.indexOf(ONUR_START) < buildApp.indexOf(ONUR_END), 'işaret sırası')
+})
+
 test('Rota kayıt fonksiyonu iki kaynakta (platform ve Onur bloğu) birden bulunmaz (IST-004)', () => {
   assert.ok(onurRoutes.length > 0, 'app.ts Onur bloğu bulunamadı')
   const shared = platformRoutes.filter((name) => onurRoutes.includes(name))

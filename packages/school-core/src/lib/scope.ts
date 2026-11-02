@@ -166,7 +166,9 @@ const RULES: Readonly<Record<string, Partial<Record<Role, Rule>>>> = READ_RULES
 /**
  * Alan ayıklama, maske ve aramadan çıkarılan alanlar: girdiler `platform/scope.ts`'tedir; kayıt
  * ve finans koleksiyonlarında bu tabloların girdisi yoktur. Onur'a gerekirse yukarıdaki bloğunda
- * kendi tablosunu açar ve buradaki birleşime ekler.
+ * kendi tablosunu açar ve buradaki birleşime ekler. Aynı koleksiyon iki kaynakta olamaz: sonra
+ * yayılan tablo öncekini sessizce ezer (ör. `parents` ayıklaması düşer, öğrenci velinin
+ * telefonunu görür). Davranış güvencesi `tests/parent-contact.test.ts` ve `tests/scope.test.ts`.
  */
 const HIDDEN_FIELDS: FieldRules = { ...PLATFORM_HIDDEN_FIELDS }
 const HIDDEN: Readonly<Record<string, ((context: Context) => readonly string[]) | undefined>> =

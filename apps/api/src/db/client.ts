@@ -12,6 +12,7 @@ import * as coursesSchema from './schema/courses.ts'
 import * as filesSchema from './schema/files.ts'
 import * as idempotencyKeysSchema from './schema/idempotency-keys.ts'
 import * as institutionSettingsSchema from './schema/institution-settings.ts'
+import * as languageGroupsSchema from './schema/language-groups.ts'
 import * as membershipLinksSchema from './schema/membership-links.ts'
 import * as privacySchema from './schema/privacy.ts'
 import * as recordsSchema from './schema/records.ts'
@@ -34,6 +35,7 @@ export const schema = {
   ...academicYearsSchema,
   ...studentGuardiansSchema,
   ...coursesSchema,
+  ...languageGroupsSchema,
 }
 export type Schema = typeof schema
 

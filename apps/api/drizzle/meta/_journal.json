@@ -204,6 +204,13 @@
       "when": 1793594274649,
       "tag": "0028_create_courses",
       "breakpoints": true
+    },
+    {
+      "idx": 29,
+      "version": "7",
+      "when": 1793596319819,
+      "tag": "0029_create_groups",
+      "breakpoints": true
     }
   ]
 }

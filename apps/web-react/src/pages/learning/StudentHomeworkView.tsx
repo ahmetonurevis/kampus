@@ -1,4 +1,4 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import type { HomeworkDetail as HomeworkRecord } from '@kampus/react-shared/homework.ts'
 import { useAllHomework, useHomework } from '@kampus/react-shared/use-homework.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
@@ -246,13 +246,19 @@ function SubmissionArea({
   submission: HomeworkRecord['submissions'][number] | undefined
   phase: ReturnType<typeof submissionWindow>
 }) {
+  // Form bir kez açıldıysa son teslim geçse de sökülmez: öğrencinin yazdığı not ve yüklediği
+  // dosyalar kaybolmaz. İstemci saati karar vermez; kapalı ödevde gönderimi sunucu reddeder
+  // (422 `homework_closed`, formun içinde).
+  const [formOpened, setFormOpened] = useState(false)
+  const editable = phase === 'open' || phase === 'late'
+  if (editable && !formOpened) setFormOpened(true)
   if (phase === 'graded')
     return (
       <p role="status" className="rounded-card border bg-muted p-4 text-sm">
         Teslimin değerlendirildi; değerlendirilmiş teslim değiştirilemez.
       </p>
     )
-  if (phase === 'closed')
+  if (phase === 'closed' && !formOpened)
     return (
       <p role="status" className="rounded-card border bg-muted p-4 text-sm">
         Teslim süresi doldu; bu ödev geç teslime kapalı.
@@ -265,6 +271,7 @@ function SubmissionArea({
         homeworkId={homework.id}
         submission={submission}
         late={phase === 'late'}
+        closed={phase === 'closed'}
       />
     </SummarySection>
   )

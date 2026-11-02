@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button'
 import { notify } from '@/lib/notify.ts'
 
 export const FILE_OPEN_FAILED = 'Dosya açılamadı. Biraz sonra yeniden deneyin.'
+export const FILE_POPUP_BLOCKED =
+  'Açılır pencere engellendi. Tarayıcıda bu site için açılır pencerelere izin verip yeniden deneyin.'
 
 /**
  * İmzalı bağlantıyı yeni sekmede açar. Sekme tıklamayla eşzamanlı açılır (açılır pencere
@@ -19,15 +21,19 @@ export function useOpenFile() {
   const [opening, setOpening] = useState('')
   async function open(fileId: string) {
     const tab = window.open('about:blank', '_blank')
+    if (!tab) {
+      // Bağlantı üretmek denetim kaydıdır; pencere açılamıyorsa üretilmez. Uygulamanın kendi
+      // sayfası dosya adresine götürülmez (form girdisi ve panel kaybolurdu).
+      notify.error(FILE_POPUP_BLOCKED)
+      return
+    }
     setOpening(fileId)
     try {
       const { url } = await fetchUrl(fileId)
-      if (tab) {
-        tab.opener = null
-        tab.location.href = url
-      } else window.location.assign(url)
+      tab.opener = null
+      tab.location.href = url
     } catch (error) {
-      tab?.close()
+      tab.close()
       notify.error(FILE_OPEN_FAILED, error)
     } finally {
       setOpening('')

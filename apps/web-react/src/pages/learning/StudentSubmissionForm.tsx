@@ -1,14 +1,16 @@
 // Öğrencinin ödev teslim formu (IST-095; DOM-AKD-072). Not ve en çok 5 dosyayla teslim; dosya
 // seçilir seçilmez `POST /files` (amaç `submission`) ile sırayla yüklenir ve teslimde aynı işlemle
 // teslime bağlanır (ADR 0003). Puanlanmamış teslim yenilenebilir; son teslim geçtiyse ve ödev geç
-// teslime açıksa teslim geç olarak işaretlenir. Kirli form kapatılırken onay ister.
+// teslime açıksa teslim geç olarak işaretlenir. Kirli form kapatılırken onay ister. Son teslim
+// formu açıkken geçerse form sökülmez ve girdi kaybolmaz; uyarı gösterilir, karar sunucudadır
+// (422 `homework_closed` formun içinde). Yükleme sürerken form kapanırsa istek durdurulur.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { fileLabel } from '@kampus/react-shared/files.ts'
 import { submitHomeworkBody, type HomeworkSubmission } from '@kampus/react-shared/homework.ts'
 import { useFileInfos } from '@kampus/react-shared/use-files.ts'
-import { useFileUpload } from '@kampus/react-shared/use-file-upload.ts'
+import { fileIdentity, useFileUpload } from '@kampus/react-shared/use-file-upload.ts'
 import { useSubmitHomework } from '@kampus/react-shared/use-homework.ts'
 import { FILE_PURPOSES } from '@kampus/school-core/content/taxonomy.ts'
 import { FormField } from '@/components/FormField.tsx'
@@ -19,6 +21,7 @@ import { useRouteDiscardGuard } from '@/hooks/use-route-discard-guard.tsx'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import {
+  addUploadedFile,
   fitFiles,
   homeworkErrorRoutes,
   SUBMISSION_FILE_LIMIT,
@@ -36,6 +39,8 @@ type Props = {
   submission: HomeworkSubmission | undefined
   /** Son teslim geçti, ödev geç teslime açık: teslim geç olarak işaretlenir. */
   late: boolean
+  /** Form açıkken ödev geç teslime kapandı: girdi korunur, gönderimi sunucu yanıtlar. */
+  closed?: boolean
 }
 
 const defaultsOf = (submission: HomeworkSubmission | undefined): SubmissionFormValues => ({
@@ -44,7 +49,7 @@ const defaultsOf = (submission: HomeworkSubmission | undefined): SubmissionFormV
   files: (submission?.fileIds ?? []).map((id) => ({ id, name: '' })),
 })
 
-export function StudentSubmissionForm({ homeworkId, submission, late }: Props) {
+export function StudentSubmissionForm({ homeworkId, submission, late, closed = false }: Props) {
   const submit = useSubmitHomework()
   const uploader = useFileUpload()
   const form = useForm<SubmissionFormValues>({
@@ -54,45 +59,61 @@ export function StudentSubmissionForm({ homeworkId, submission, late }: Props) {
   const guard = useRouteDiscardGuard(form.formState.isDirty)
   const [uploading, setUploading] = useState(false)
   const input = useRef<HTMLInputElement>(null)
+  const aborter = useRef<AbortController | null>(null)
   const files = useWatch({ control: form.control, name: 'files' })
   const busy = submit.isPending || uploading || form.formState.isSubmitting
   const errors = form.formState.errors
   const resubmit = submission !== undefined
 
+  // Panel kapanınca (form sökülünce) süren yükleme durur.
+  useEffect(() => () => aborter.current?.abort(), [])
+
   async function addFiles(picked: readonly File[]) {
     form.clearErrors('files')
-    const { accepted, dropped } = fitFiles(form.getValues('files'), picked)
+    const { accepted, dropped } = fitFiles(form.getValues('files'), picked, fileIdentity)
+    const controller = new AbortController()
+    aborter.current = controller
+    // Dosya alanına tek hata yazılır: tüm uyarılar birleştirilir (sonuncusu öncekini ezmez).
+    const problems: string[] = []
     setUploading(true)
     try {
       for (const file of accepted) {
-        const result = await uploader.upload('submission', file, {
-          setError: (_name: string, error: { message: string }) =>
-            form.setError('files', { type: 'server', message: error.message }),
-        })
+        if (controller.signal.aborted) return
+        const result = await uploader.upload(
+          'submission',
+          file,
+          { silent: () => controller.signal.aborted },
+          controller.signal,
+        )
+        if (controller.signal.aborted) return
         if ('ok' in result) {
-          form.setError('files', { type: 'manual', message: `${file.name}: ${result.message}` })
+          problems.push(`${file.name}: ${result.message}`)
           continue
         }
         if (result.status !== 'success') continue
         const uploaded = result.data.data
+        const current = form.getValues('files')
+        if (current.some((item) => item.id === uploaded.id)) {
+          problems.push(`${file.name}: bu dosya zaten ekli.`)
+          continue
+        }
         form.setValue(
           'files',
-          [
-            ...form.getValues('files'),
-            { id: uploaded.id, name: uploaded.originalName ?? file.name },
-          ],
+          addUploadedFile(current, { id: uploaded.id, name: uploaded.originalName ?? file.name }),
           { shouldDirty: true },
         )
       }
     } finally {
-      setUploading(false)
-      if (input.current) input.current.value = ''
+      if (!controller.signal.aborted) {
+        setUploading(false)
+        if (input.current) input.current.value = ''
+      }
     }
     if (dropped > 0)
-      form.setError('files', {
-        type: 'manual',
-        message: `En fazla ${SUBMISSION_FILE_LIMIT} dosya ekleyebilirsiniz; ${dropped} dosya eklenmedi.`,
-      })
+      problems.push(
+        `En fazla ${SUBMISSION_FILE_LIMIT} dosya ekleyebilirsiniz; ${dropped} dosya eklenmedi.`,
+      )
+    if (problems.length > 0) form.setError('files', { type: 'manual', message: problems.join(' ') })
   }
 
   function removeFile(id: string) {
@@ -129,6 +150,12 @@ export function StudentSubmissionForm({ homeworkId, submission, late }: Props) {
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-5"
       >
+        {closed ? (
+          <div role="alert" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
+            Teslim süresi doldu; bu ödev geç teslime kapalı. Yazdıkların ve dosyaların korundu;
+            göndermeyi yine de deneyebilirsin, kabul edilip edilmeyeceğine sistem karar verir.
+          </div>
+        ) : null}
         {late ? (
           <div role="alert" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
             Son teslim zamanı geçti. Teslimin geç teslim olarak işaretlenir.

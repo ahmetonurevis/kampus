@@ -27,6 +27,8 @@ export interface FileUploadInput {
   file: Blob
   /** Dosyanın kimliği (`fileIdentity`): `File` JSON'da `{}` olur, parmak izi bu alandan ayrışır. */
   fileKey: string
+  /** Yüklemeyi durdurur (panel kapandı, sayfa değişti); durdurulan istek hata olarak döner. */
+  signal?: AbortSignal
 }
 
 /**
@@ -74,6 +76,7 @@ export function uploadFileRequest(
   return client.POST('/api/v1/files', {
     // Oluşturma ucu `If-Match` kabul etmez.
     params: { header: { 'idempotency-key': headers['idempotency-key'] } },
+    ...(input.signal ? { signal: input.signal } : {}),
     // Tipli gövde JSON içindir; çok parçalı gövdeyi serileştirici kurar (openapi-fetch FormData'yı
     // olduğu gibi gönderir, sınır dizesini tarayıcı yazar).
     body: null,
@@ -103,10 +106,14 @@ export function useFileUpload(options: UploadOptions = {}) {
     purpose: FilePurpose,
     file: Blob,
     submitOptions: SubmitOptions<TName> = {},
+    signal?: AbortSignal,
   ) {
     const problem = checkFileBeforeUpload(purpose, file)
     if (problem !== null) return { ok: false as const, message: problem }
-    return command.submit({ purpose, file, fileKey: fileIdentity(file) }, submitOptions)
+    return command.submit(
+      { purpose, file, fileKey: fileIdentity(file), ...(signal ? { signal } : {}) },
+      submitOptions,
+    )
   }
 
   return { ...command, upload }

@@ -1,4 +1,4 @@
-import { learnerView, seededRandom } from '@kampus/school-core/content/resource.ts'
+import { learnerView, passageView, seededRandom } from '@kampus/school-core/content/resource.ts'
 import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { scoringItemsFor, type QuestionVersionRef } from '@kampus/school-core/skills/assignment.ts'
@@ -144,8 +144,16 @@ export interface ScoringContext {
   items: ScoringItem[]
   /** Soru sürümü kimliği → sürüm satırı; öğrenci görünümü `questionsFor` ile üretilir. */
   versions: ReadonlyMap<string, StoredResourceVersion>
-  /** Puanlama sürümü ve soruların lisansları (DOM-KYN-021; kursiyer özetindeki başlatma engeli). */
+  /**
+   * Puanlama sürümü, soruların ve okuma parçasının lisansları (DOM-KYN-021; `assertLicenseActive`,
+   * kursiyer özetindeki başlatma engeli).
+   */
   licenses: readonly StoredResourceVersion['license'][]
+  /**
+   * Okuma-anlama etkinliğinin parçası (IST-042; DOM-BEC-006): puanlama sürümündeki
+   * `passageVersionId`. Bağ yoksa ya da parça okunamıyorsa (kaldırıldı) `null`.
+   */
+  passage: StoredResourceVersion | null
 }
 
 /**
@@ -173,7 +181,7 @@ export async function versionScoringContext(
 ): Promise<ScoringContext> {
   const pairs = await loadVersionPairs(db, institutionId, [versionId])
   const scoring = pairs.get(versionId)?.version
-  const questions = await loadVersionPairs(db, institutionId, questionIdsOf(scoring))
+  const questions = await loadVersionPairs(db, institutionId, linkedIdsOf(scoring))
   return buildScoringContext(scoring, questions)
 }
 
@@ -196,7 +204,7 @@ export async function scoringContexts(
   const questions = await loadVersionPairs(
     db,
     institutionId,
-    [...pairs.values()].flatMap(({ version }) => questionIdsOf(version)),
+    [...pairs.values()].flatMap(({ version }) => linkedIdsOf(version)),
   )
   const contexts = new Map<string, ScoringContext | Error>()
   for (const assignment of assignments) {
@@ -212,12 +220,12 @@ export async function scoringContexts(
   return contexts
 }
 
-/** Quiz ve alıştırma setinin soru sürümleri; diğer türlerde soru okunmaz. */
-function questionIdsOf(scoring: StoredResourceVersion | undefined): string[] {
+/** Quiz ve alıştırma setinin soru sürümleri ve okuma parçası; diğer türlerde okunmaz. */
+function linkedIdsOf(scoring: StoredResourceVersion | undefined): string[] {
   const content = scoring?.content ?? null
-  return content?.type === 'quiz' || content?.type === 'exercise_set'
-    ? content.items.map((item) => item.questionVersionId)
-    : []
+  if (content?.type !== 'quiz' && content?.type !== 'exercise_set') return []
+  const ids = content.items.map((item) => item.questionVersionId)
+  return content.passageVersionId === null ? ids : [...ids, content.passageVersionId]
 }
 
 function buildScoringContext(
@@ -228,6 +236,7 @@ function buildScoringContext(
   if (!scoring || content === null) throw new NotFoundError()
   let entries: { questionVersionId: string; points: number }[]
   let versions: Map<string, StoredResourceVersion>
+  let passage: StoredResourceVersion | null = null
   switch (content.type) {
     case 'question':
       entries = [{ questionVersionId: scoring.id, points: 1 }]
@@ -236,6 +245,12 @@ function buildScoringContext(
     case 'quiz':
     case 'exercise_set':
       entries = content.items
+      if (content.passageVersionId !== null) {
+        const linked = questionPairs.get(content.passageVersionId)?.version
+        // Okunamayan parça metinsiz gelir; kaldırılmış ya da askıdaki parçada yazma kapısı
+        // (`assertWorkOpen`) zaten kapalıdır, bu yalnız okuma yüzü içindir.
+        passage = linked?.content?.type === 'reading_passage' ? linked : null
+      }
       versions = new Map()
       for (const item of content.items) {
         const version = questionPairs.get(item.questionVersionId)?.version
@@ -263,7 +278,12 @@ function buildScoringContext(
     return {
       items: scoringItemsFor({ parentTags: scoring.tags, items: entries, questions: refs }),
       versions,
-      licenses: [scoring.license, ...[...versions.values()].map((version) => version.license)],
+      licenses: [
+        scoring.license,
+        ...[...versions.values()].map((version) => version.license),
+        ...(passage === null ? [] : [passage.license]),
+      ],
+      passage,
     }
   } catch (error) {
     throw mapOperationError(error)
@@ -277,8 +297,8 @@ export const scoringLicenseExpired = (context: ScoringContext, now: Date) =>
 /**
  * Kursiyerin görevin içeriğinde çalışabilmesi (DOM-KYN-021, 025, 051; IST-036): okumayla aynı kural
  * (`services/learner-content.ts` `assertLearnerWork`). Sınanan sürümler kursiyerin denemede veya
- * teslimde gördükleridir: atamanın sabitlediği sürüm, puanlama sürümü ve onun soruları (bulunmayan
- * soru da kapalıdır). Yazma transaction'ında çalışır: kapsam işlemin bağlantısıyla okunur.
+ * teslimde gördükleridir: atamanın sabitlediği sürüm, puanlama sürümü ve onun soruları ve okuma parçası
+ * (bulunmayan soru ya da parça da kapalıdır). Yazma transaction'ında çalışır: kapsam işlemin bağlantısıyla okunur.
  */
 export async function assertWorkOpen(
   tx: Database,
@@ -289,7 +309,8 @@ export async function assertWorkOpen(
 ): Promise<void> {
   const ids = [...new Set([assignment.resourceVersionId, assignment.scoringVersionId])]
   const pinned = await loadVersionPairs(tx, ctx.institutionId, ids)
-  const questionIds = questionIdsOf(pinned.get(assignment.scoringVersionId)?.version)
+  // Sorular ve okuma parçası (IST-042): parça kaldırılmış ya da askıdaysa etkinlik de kapalıdır.
+  const questionIds = linkedIdsOf(pinned.get(assignment.scoringVersionId)?.version)
   const questions = await loadVersionPairs(tx, ctx.institutionId, questionIds)
   await assertLearnerWork(
     { ...ctx, db: tx },
@@ -317,9 +338,19 @@ export function questionsFor(context: ScoringContext, attemptId: string) {
     return {
       questionVersionId: item.questionVersionId,
       points: item.points,
+      subskill: item.subskill ?? null,
       question: view?.content.type === 'question' ? view.content.question : item.question,
     }
   })
+}
+
+/**
+ * Denemede okunan metin (IST-042; core `passageView`): seviye, hesaplanan kelime sayısı, sözlükçe
+ * ve kaynak gösterimi. Sorular gibi yalnız denemede döner (süre denemeyle başlar, DOM-BEC-043);
+ * parçada cevap yoktur. Bağ yoksa `null`.
+ */
+export function passageFor(context: ScoringContext) {
+  return context.passage === null ? null : passageView(asCoreVersion(context.passage))
 }
 
 /** Denetim kaydı: yalnız alan adları (cevap, metin ve öğrenci kimliği yazılmaz). */

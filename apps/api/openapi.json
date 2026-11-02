@@ -3010,6 +3010,23 @@
               }
             ]
           },
+          "subskill": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "main_idea",
+                  "detail",
+                  "inference",
+                  "vocabulary"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Anlama sorusunun alt becerisi (DOM-BEC-006); yalnız soruda dolar"
+          },
           "interactionChannel": {
             "anyOf": [
               {
@@ -3116,6 +3133,7 @@
           "primarySkill",
           "skills",
           "activityMode",
+          "subskill",
           "interactionChannel",
           "mediation",
           "durationMinutes",
@@ -6725,6 +6743,46 @@
           "earned"
         ]
       },
+      "TaskAttemptSubskillScoreInput": {
+        "type": "object",
+        "properties": {
+          "subskill": {
+            "type": "string",
+            "enum": [
+              "main_idea",
+              "detail",
+              "inference",
+              "vocabulary"
+            ]
+          },
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Bu alt beceriyle etiketli madde sayısı"
+          },
+          "earned": {
+            "type": "number",
+            "description": "Kazanılan puan (iki ondalık)"
+          },
+          "possible": {
+            "type": "number"
+          },
+          "percent": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "100 üzerinden puan"
+          }
+        },
+        "required": [
+          "subskill",
+          "items",
+          "earned",
+          "possible",
+          "percent"
+        ]
+      },
       "TaskAttemptResultInput": {
         "type": "object",
         "properties": {
@@ -6754,6 +6812,20 @@
               }
             ],
             "description": "Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045)"
+          },
+          "subskills": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TaskAttemptSubskillScoreInput"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır"
           },
           "answerKey": {
             "anyOf": [
@@ -6983,6 +7055,7 @@
           "possible",
           "percent",
           "items",
+          "subskills",
           "answerKey"
         ]
       },
@@ -7558,6 +7631,23 @@
                 "points": {
                   "type": "number"
                 },
+                "subskill": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "main_idea",
+                        "detail",
+                        "inference",
+                        "vocabulary"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Sorunun alt becerisi (DOM-BEC-006)"
+                },
                 "question": {
                   "oneOf": [
                     {
@@ -7847,10 +7937,106 @@
               "required": [
                 "questionVersionId",
                 "points",
+                "subskill",
                 "question"
               ]
             },
             "description": "Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık"
+          },
+          "passage": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "versionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Okuma parçası sürümü"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "string"
+                  },
+                  "wordCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Sistem hesaplar (DOM-KYN-002)"
+                  },
+                  "cefrLevel": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "glossary": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "term": {
+                          "type": "string"
+                        },
+                        "meaning": {
+                          "type": "string"
+                        },
+                        "example": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "term",
+                        "meaning",
+                        "example"
+                      ]
+                    },
+                    "description": "Sözlükçe, yazarın sırasıyla"
+                  },
+                  "attributions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ResourceAttributionInput"
+                    },
+                    "description": "Kaynak gösterimi (DOM-KYN-024)"
+                  }
+                },
+                "required": [
+                  "versionId",
+                  "title",
+                  "body",
+                  "wordCount",
+                  "cefrLevel",
+                  "glossary",
+                  "attributions"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner"
           },
           "listening": {
             "anyOf": [
@@ -7925,6 +8111,7 @@
           "result",
           "rowVersion",
           "questions",
+          "passage",
           "listening"
         ]
       },
@@ -16177,6 +16364,23 @@
               }
             ]
           },
+          "subskill": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "main_idea",
+                  "detail",
+                  "inference",
+                  "vocabulary"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Anlama sorusunun alt becerisi (DOM-BEC-006); yalnız soruda dolar"
+          },
           "interactionChannel": {
             "anyOf": [
               {
@@ -16285,6 +16489,7 @@
           "primarySkill",
           "skills",
           "activityMode",
+          "subskill",
           "interactionChannel",
           "mediation",
           "durationMinutes",
@@ -20012,6 +20217,47 @@
         ],
         "additionalProperties": false
       },
+      "TaskAttemptSubskillScore": {
+        "type": "object",
+        "properties": {
+          "subskill": {
+            "type": "string",
+            "enum": [
+              "main_idea",
+              "detail",
+              "inference",
+              "vocabulary"
+            ]
+          },
+          "items": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Bu alt beceriyle etiketli madde sayısı"
+          },
+          "earned": {
+            "type": "number",
+            "description": "Kazanılan puan (iki ondalık)"
+          },
+          "possible": {
+            "type": "number"
+          },
+          "percent": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "100 üzerinden puan"
+          }
+        },
+        "required": [
+          "subskill",
+          "items",
+          "earned",
+          "possible",
+          "percent"
+        ],
+        "additionalProperties": false
+      },
       "TaskAttemptResult": {
         "type": "object",
         "properties": {
@@ -20041,6 +20287,20 @@
               }
             ],
             "description": "Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045)"
+          },
+          "subskills": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TaskAttemptSubskillScore"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır"
           },
           "answerKey": {
             "anyOf": [
@@ -20261,6 +20521,7 @@
           "possible",
           "percent",
           "items",
+          "subskills",
           "answerKey"
         ],
         "additionalProperties": false
@@ -20854,6 +21115,23 @@
                 "points": {
                   "type": "number"
                 },
+                "subskill": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "main_idea",
+                        "detail",
+                        "inference",
+                        "vocabulary"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Sorunun alt becerisi (DOM-BEC-006)"
+                },
                 "question": {
                   "oneOf": [
                     {
@@ -21151,11 +21429,109 @@
               "required": [
                 "questionVersionId",
                 "points",
+                "subskill",
                 "question"
               ],
               "additionalProperties": false
             },
             "description": "Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık"
+          },
+          "passage": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "versionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Okuma parçası sürümü"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "body": {
+                    "type": "string"
+                  },
+                  "wordCount": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Sistem hesaplar (DOM-KYN-002)"
+                  },
+                  "cefrLevel": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "glossary": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "term": {
+                          "type": "string"
+                        },
+                        "meaning": {
+                          "type": "string"
+                        },
+                        "example": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "term",
+                        "meaning",
+                        "example"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "Sözlükçe, yazarın sırasıyla"
+                  },
+                  "attributions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ResourceAttribution"
+                    },
+                    "description": "Kaynak gösterimi (DOM-KYN-024)"
+                  }
+                },
+                "required": [
+                  "versionId",
+                  "title",
+                  "body",
+                  "wordCount",
+                  "cefrLevel",
+                  "glossary",
+                  "attributions"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner"
           },
           "listening": {
             "anyOf": [
@@ -21232,6 +21608,7 @@
           "result",
           "rowVersion",
           "questions",
+          "passage",
           "listening"
         ],
         "additionalProperties": false
@@ -55775,7 +56152,7 @@
         "tags": [
           "resources"
         ],
-        "description": "Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
+        "description": "Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`; bağlanan okuma parçası (`passageVersionId`, IST-042) için 422 `passage_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
         "requestBody": {
           "required": true,
           "content": {
@@ -55883,6 +56260,41 @@
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 50000
+                          },
+                          "glossary": {
+                            "maxItems": 100,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "term": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "meaning": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 500
+                                },
+                                "example": {
+                                  "default": null,
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 500
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "term",
+                                "meaning"
+                              ]
+                            }
                           }
                         },
                         "required": [
@@ -56463,6 +56875,19 @@
                           "shuffleItems": {
                             "default": false,
                             "type": "boolean"
+                          },
+                          "passageVersionId": {
+                            "default": null,
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -56519,6 +56944,19 @@
                           "shuffleItems": {
                             "default": false,
                             "type": "boolean"
+                          },
+                          "passageVersionId": {
+                            "default": null,
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -56902,6 +57340,23 @@
                               "production",
                               "interaction",
                               "mediation"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "subskill": {
+                        "default": null,
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "main_idea",
+                              "detail",
+                              "inference",
+                              "vocabulary"
                             ]
                           },
                           {
@@ -57735,6 +58190,41 @@
                             "type": "string",
                             "minLength": 1,
                             "maxLength": 50000
+                          },
+                          "glossary": {
+                            "maxItems": 100,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "term": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 100
+                                },
+                                "meaning": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 500
+                                },
+                                "example": {
+                                  "default": null,
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "maxLength": 500
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "term",
+                                "meaning"
+                              ]
+                            }
                           }
                         },
                         "required": [
@@ -58315,6 +58805,19 @@
                           "shuffleItems": {
                             "default": false,
                             "type": "boolean"
+                          },
+                          "passageVersionId": {
+                            "default": null,
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -58371,6 +58874,19 @@
                           "shuffleItems": {
                             "default": false,
                             "type": "boolean"
+                          },
+                          "passageVersionId": {
+                            "default": null,
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -58754,6 +59270,23 @@
                               "production",
                               "interaction",
                               "mediation"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "subskill": {
+                        "default": null,
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "main_idea",
+                              "detail",
+                              "inference",
+                              "vocabulary"
                             ]
                           },
                           {

@@ -80,6 +80,19 @@ export const MEDIATION_SKILLS = [
 ] as const satisfies readonly Skill[]
 export type MediationSkill = (typeof MEDIATION_SKILLS)[number]
 
+/**
+ * Anlama sorularının alt becerileri (DOM-BEC-006; IST-042). Okuma ve dinleme sorusu bir alt
+ * beceriyle etiketlenir; sonuç dökümü madde puanlarından hesaplanır, saklanmaz. Sıra dökümün
+ * gösterim sırasıdır.
+ */
+export const SUBSKILLS = {
+  main_idea: { label: 'Ana fikir' },
+  detail: { label: 'Ayrıntı' },
+  inference: { label: 'Çıkarım' },
+  vocabulary: { label: 'Kelime bilgisi' },
+} as const
+export type Subskill = keyof typeof SUBSKILLS
+
 /** CEFR-CV etkinlik kipleri (DOM-BEC-001). */
 export const ACTIVITY_MODES = {
   reception: { label: 'Alımlama' },

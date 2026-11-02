@@ -20,11 +20,16 @@ import {
   type CourseStatus,
 } from '@kampus/school-core/lib/courses.ts'
 import type { CefrLevel } from '@kampus/school-core/content/taxonomy.ts'
+import {
+  groupsBlockingCourseArchive,
+  type LanguageGroup,
+} from '@kampus/school-core/lib/language-groups.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 
 import type { Database } from '../db/client.ts'
 import { activeDutiesOf } from '../db/coordinator-duties.ts'
 import { insertCourse, loadCourses, saveCourse, type StoredCourse } from '../db/courses.ts'
+import { loadGroups } from '../db/language-groups.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { getInstitution } from './memberships.ts'
@@ -188,6 +193,7 @@ type CourseCommand = {
     all: StoredCourse[]
     institutionType: InstitutionType
     manager: CourseManager
+    groups: readonly LanguageGroup[]
   }) => CourseChange
 }
 
@@ -213,10 +219,12 @@ function runCourseCommand(
       collections: [],
       entity: entity(command.courseId),
       load: async (tx) => {
-        const [all, institutionType, manager] = await Promise.all([
+        // Gruplar kur arşivinin girdisidir (DOM-DIL-008: kapanmamış grubu olan kur arşivlenmez).
+        const [all, institutionType, manager, groups] = await Promise.all([
           loadCourses(tx, ctx.institutionId),
           institutionTypeOf(tx, ctx),
           managerOf(tx, ctx),
+          loadGroups(tx, ctx.institutionId),
         ])
         const course = all.find((item) => item.id === command.courseId)
         // Arşivli kur da yüklenir: core 409 `course_archived` döner (404 değil).
@@ -225,7 +233,7 @@ function runCourseCommand(
         if (course.rowVersion !== command.expectedVersion) throw new ConflictError()
         return {
           run: () => ({
-            ...command.plan({ all, institutionType, manager }),
+            ...command.plan({ all, institutionType, manager, groups }),
             rowVersion: course.rowVersion,
             all,
           }),
@@ -302,7 +310,7 @@ export function activateCourse(
   )
 }
 
-/** Kuru arşivler (DOM-DIL-005, -007); arşiv son durumdur. */
+/** Kuru arşivler (DOM-DIL-005, -007, -008); arşiv son durumdur, kapanmamış grubu olan kur 422. */
 export function archiveCourse(
   ctx: ServiceContext,
   target: CourseTarget,
@@ -313,13 +321,14 @@ export function archiveCourse(
     {
       action: 'course.archive',
       ...target,
-      plan: ({ all, institutionType, manager }) => ({
+      plan: ({ all, institutionType, manager, groups }) => ({
         course: planCourseArchive({
           institutionType,
           manager,
           courses: all,
           courseId: target.courseId,
           now: ctx.now.toISOString(),
+          openGroups: groupsBlockingCourseArchive(groups, target.courseId, ctx.now.toISOString()),
         }),
         fields: ['status', 'archivedAt'],
       }),

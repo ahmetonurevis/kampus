@@ -3820,6 +3820,134 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/groups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gruplar
+         * @description Kurumun dil okulu grupları: başlangıç tarihine, sonra ada göre, sayfalı. İptal edilenler varsayılan olarak dışlanır, `status=cancelled` ile okunur; `running` ve `completed` tarihten türetilir. Süzgeç `courseId`, `status`, `teacherMembershipId`; bilinmeyen parametre 400. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`. Yönetici ve ön büro bütün grupları; öğretmen kendi grubunu ve akademik koordinatörü olduğu seviyenin gruplarını; öğrenci ve veli yalnız kendisinin/çocuğunun kursiyer olduğu grubu görür. Öğrenci ve veli takvim alanlarını alır (öğretmen, kapasite, doluluk, iptal bilgisi, işlem anları ve sürüm dönmez). Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        get: operations["listGroups"];
+        put?: never;
+        /**
+         * Grup planla
+         * @description Etkin kurdan yeni grup `planned` durumunda açılır (core `planGroupCreation`; IST-077, DOM-DIL-008). Öğretmen ve derslik planlamada boş olabilir, açılışta zorunludur. Kur etkin olmalı (422 `group_course_inactive`); haftalık oturum sayısı kurun haftalık saatine eşit, oturumlar binmez (422 `group_schedule_mismatch`, `group_schedule_overlap`); oturumlar 07.00–23.00 içinde, çocuk ve genç grubunda 21.00’de biter (422 `group_outside_legal_hours`, `group_minor_late`; DOM-DIL-003); kapasite kurun en çok mevcudunu aşamaz ve doluluktan az olamaz (422 `group_capacity_exceeds_course`, `group_capacity_below_members`; DOM-DIL-040); öğretmen kurumun öğretmenidir (422 `group_teacher_invalid`), çevrim içi grubun dersliği yoktur (422 `group_room_online`); öğretmen ve derslik kurumun kapanmamış gruplarıyla aynı gün ve saatte çakışmaz (422 `group_teacher_conflict`, `group_room_conflict`); başlangıç geçmiş olamaz (422 `group_start_passed`); ad iptal edilmemiş gruplarda tekil (409 `group_name_exists`). Bitiş tarihi kurun toplam saatinden hesaplanır. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarının gruplarını yönetir (403 `course_coordinator_required`). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["createGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{groupId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Grup
+         * @description Tek grup; personele kursiyerler (`members`) de döner. Olmayan, başka kurumun ya da rolün göremediği grup 404. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`. Yönetici ve ön büro bütün grupları; öğretmen kendi grubunu ve akademik koordinatörü olduğu seviyenin gruplarını; öğrenci ve veli yalnız kendisinin/çocuğunun kursiyer olduğu grubu görür. Öğrenci ve veli takvim alanlarını alır (öğretmen, kapasite, doluluk, iptal bilgisi, işlem anları ve sürüm dönmez). Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        get: operations["getGroup"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Grubu değiştir
+         * @description Grubun alanlarını değiştirir; kurallar planlamadaki gibidir. Kursiyeri olan ya da başlamış grubun gün/saati, başlangıcı ve yaş bandı değişmez (422 `group_schedule_locked`; DOM-DIL-042: değişiklik kursiyer onayıyla birleştirme ya da yeni grupla). Çevrim içine geçen grubun dersliği düşer. Kur etkin olmalı (422 `group_course_inactive`); haftalık oturum sayısı kurun haftalık saatine eşit, oturumlar binmez (422 `group_schedule_mismatch`, `group_schedule_overlap`); oturumlar 07.00–23.00 içinde, çocuk ve genç grubunda 21.00’de biter (422 `group_outside_legal_hours`, `group_minor_late`; DOM-DIL-003); kapasite kurun en çok mevcudunu aşamaz ve doluluktan az olamaz (422 `group_capacity_exceeds_course`, `group_capacity_below_members`; DOM-DIL-040); öğretmen kurumun öğretmenidir (422 `group_teacher_invalid`), çevrim içi grubun dersliği yoktur (422 `group_room_online`); öğretmen ve derslik kurumun kapanmamış gruplarıyla aynı gün ve saatte çakışmaz (422 `group_teacher_conflict`, `group_room_conflict`); başlangıç geçmiş olamaz (422 `group_start_passed`); ad iptal edilmemiş gruplarda tekil (409 `group_name_exists`). Bitiş tarihi kurun toplam saatinden hesaplanır. `If-Match` grubun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun grubu 404. Tamamlanan ya da iptal edilen grup değişmez: 409 `group_closed`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarının gruplarını yönetir (403 `course_coordinator_required`). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        patch: operations["updateGroup"];
+        trace?: never;
+    };
+    "/api/v1/groups/{groupId}/waitlist": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Grubun bekleme sırası
+         * @description Grubun ve kurun grupsuz bekleyenleri istek sırasıyla, ardından gruba yapılmış teklifler; boş yer kadar sıradakine 48 saatlik teklif önerisi ve süresi dolmuş teklifler (DOM-DIL-043). Bekleme listesi kapasiteye sayılmaz; teklif süresi dolana kadar sayılır. Yazma (sıraya alma, teklif, kabul) kayıt akışındadır (ON-058). Roller: `yonetici`, `onburo`; diğer roller 403. Olmayan ya da başka kurumun grubu 404. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        get: operations["getGroupWaitlist"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{groupId}/open": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grubu aç
+         * @description Planlanan grubu açar (DOM-DIL-042); yalnız `planned` (409 `group_not_planned`). Aktif kursiyer kurun en az mevcuduna (açılış sayısı) ulaşmalı (422 `group_below_minimum`); öğretmen ve yüz yüzede derslik atanmış olmalı (422 `group_teacher_required`, `group_room_required`); başlangıç geçmemiş, kur etkin ve çakışma yok. Gövde yok ya da boş nesne. `If-Match` grubun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun grubu 404. Tamamlanan ya da iptal edilen grup değişmez: 409 `group_closed`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarının gruplarını yönetir (403 `course_coordinator_required`). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["openGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{groupId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grubu iptal et
+         * @description Kapanmamış grubu gerekçeyle iptal eder (DOM-DIL-042). Kursiyerlerin seçenekleri (başka gruba geçiş, bekleme, tam iade) kayıt ve finans akışındadır (ON-058). `If-Match` grubun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun grubu 404. Tamamlanan ya da iptal edilen grup değişmez: 409 `group_closed`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarının gruplarını yönetir (403 `course_coordinator_required`). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["cancelGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{groupId}/merge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Grupları birleştir
+         * @description `sourceGroupId` grubunu bu gruba birleştirir (DOM-DIL-042): kaynak iptal edilir (`mergedIntoGroupId`), kursiyerleri ve bekleyenleri bu gruba taşınır. Gruplar farklı (422 `group_merge_same`), kapanmamış (409 `group_closed`), aynı kurun ve yaş bandının (422 `group_merge_mismatch`) olmalı; taşınan aktif kursiyerle doluluk kapasiteyi aşamaz (422 `group_merge_capacity`); gün/saat ya da başlangıç farklıysa `learnersConsented: true` gerekir (422 `group_merge_consent_required`). Olmayan kaynak 404. `If-Match` bu (hedef) grubun sürümüdür. `If-Match` grubun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun grubu 404. Tamamlanan ya da iptal edilen grup değişmez: 409 `group_closed`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarının gruplarını yönetir (403 `course_coordinator_required`). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["mergeGroup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -6181,6 +6309,105 @@ export interface components {
              */
             updatedAt?: string;
         };
+        GroupSlotInput: {
+            /** @description ISO hafta günü: 1 Pazartesi … 7 Pazar */
+            weekday: number;
+            /** @description Başlangıç saati SS:DD (Europe/Istanbul) */
+            startTime: string;
+        };
+        GroupMemberInput: {
+            studentId: string;
+            /**
+             * @description Dondurulan kursiyer kapasiteye sayılmaz
+             * @enum {string}
+             */
+            status: "active" | "frozen";
+            /** Format: date-time */
+            joinedAt: string;
+        };
+        LanguageGroupInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            courseId: string;
+            courseName: string;
+            /**
+             * @description Kurun seviyesi
+             * @enum {string}
+             */
+            level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+            name: string;
+            /** @enum {string} */
+            ageBand: "child" | "teen" | "adult";
+            /** @enum {string} */
+            delivery: "in_person" | "online";
+            /** @description Derslik; çevrim içi grupta `null` */
+            room: string | null;
+            /** @description Haftalık kalıp, gün ve saate göre sıralı */
+            schedule: components["schemas"]["GroupSlotInput"][];
+            /** @description Oturum uzunluğu (kurdan) */
+            sessionMinutes: number;
+            /** Format: date */
+            startDate: string;
+            /**
+             * Format: date
+             * @description Son oturumun günü; kurun toplam saatinden hesaplanır
+             */
+            endDate: string;
+            /**
+             * @description `running` ve `completed` açık grubun tarihlerinden türetilir
+             * @enum {string}
+             */
+            status: "planned" | "open" | "running" | "completed" | "cancelled";
+            /** @description Yalnız personele döner */
+            teacherMembershipId?: string | null;
+            /** @description Yalnız personele döner */
+            capacity?: number;
+            /** @description Yalnız personele döner */
+            activeLearners?: number;
+            /** @description Yalnız personele döner */
+            frozenLearners?: number;
+            /** @description Süresi dolmamış bekleme listesi teklifi (kapasiteye sayılır). Yalnız personele döner */
+            openOffers?: number;
+            /** @description Yalnız personele döner */
+            freeSeats?: number;
+            /** @description Yalnız personele döner */
+            openedAt?: string | null;
+            /** @description Yalnız personele döner */
+            cancelledAt?: string | null;
+            /** @description Yalnız personele döner */
+            cancelReason?: string | null;
+            /** @description Yalnız personele döner */
+            mergedIntoGroupId?: string | null;
+            /** @description Kursiyerler; yalnız tek grup okumasında ve personele döner */
+            members?: components["schemas"]["GroupMemberInput"][];
+            /** @description Yazmada `If-Match`. Yalnız personele döner */
+            rowVersion?: number;
+            /**
+             * Format: date-time
+             * @description Yalnız personele döner
+             */
+            updatedAt?: string;
+        };
+        GroupWaitlistItemInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            courseId: string;
+            /** @description `null`: kurun herhangi bir grubu için bekliyor */
+            groupId: string | null;
+            studentId: string | null;
+            prospectId: string | null;
+            /** Format: date-time */
+            requestedAt: string;
+            /** @enum {string} */
+            status: "waiting" | "offered" | "accepted" | "expired" | "withdrawn";
+            /** @description Bekleyenin sıradaki yeri */
+            position: number | null;
+            offerGroupId: string | null;
+            offeredAt: string | null;
+            offerExpiresAt: string | null;
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -8456,6 +8683,105 @@ export interface components {
              * @description Yalnız personele döner
              */
             updatedAt?: string;
+        };
+        GroupSlot: {
+            /** @description ISO hafta günü: 1 Pazartesi … 7 Pazar */
+            weekday: number;
+            /** @description Başlangıç saati SS:DD (Europe/Istanbul) */
+            startTime: string;
+        };
+        GroupMember: {
+            studentId: string;
+            /**
+             * @description Dondurulan kursiyer kapasiteye sayılmaz
+             * @enum {string}
+             */
+            status: "active" | "frozen";
+            /** Format: date-time */
+            joinedAt: string;
+        };
+        LanguageGroup: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            courseId: string;
+            courseName: string;
+            /**
+             * @description Kurun seviyesi
+             * @enum {string}
+             */
+            level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+            name: string;
+            /** @enum {string} */
+            ageBand: "child" | "teen" | "adult";
+            /** @enum {string} */
+            delivery: "in_person" | "online";
+            /** @description Derslik; çevrim içi grupta `null` */
+            room: string | null;
+            /** @description Haftalık kalıp, gün ve saate göre sıralı */
+            schedule: components["schemas"]["GroupSlot"][];
+            /** @description Oturum uzunluğu (kurdan) */
+            sessionMinutes: number;
+            /** Format: date */
+            startDate: string;
+            /**
+             * Format: date
+             * @description Son oturumun günü; kurun toplam saatinden hesaplanır
+             */
+            endDate: string;
+            /**
+             * @description `running` ve `completed` açık grubun tarihlerinden türetilir
+             * @enum {string}
+             */
+            status: "planned" | "open" | "running" | "completed" | "cancelled";
+            /** @description Yalnız personele döner */
+            teacherMembershipId?: string | null;
+            /** @description Yalnız personele döner */
+            capacity?: number;
+            /** @description Yalnız personele döner */
+            activeLearners?: number;
+            /** @description Yalnız personele döner */
+            frozenLearners?: number;
+            /** @description Süresi dolmamış bekleme listesi teklifi (kapasiteye sayılır). Yalnız personele döner */
+            openOffers?: number;
+            /** @description Yalnız personele döner */
+            freeSeats?: number;
+            /** @description Yalnız personele döner */
+            openedAt?: string | null;
+            /** @description Yalnız personele döner */
+            cancelledAt?: string | null;
+            /** @description Yalnız personele döner */
+            cancelReason?: string | null;
+            /** @description Yalnız personele döner */
+            mergedIntoGroupId?: string | null;
+            /** @description Kursiyerler; yalnız tek grup okumasında ve personele döner */
+            members?: components["schemas"]["GroupMember"][];
+            /** @description Yazmada `If-Match`. Yalnız personele döner */
+            rowVersion?: number;
+            /**
+             * Format: date-time
+             * @description Yalnız personele döner
+             */
+            updatedAt?: string;
+        };
+        GroupWaitlistItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            courseId: string;
+            /** @description `null`: kurun herhangi bir grubu için bekliyor */
+            groupId: string | null;
+            studentId: string | null;
+            prospectId: string | null;
+            /** Format: date-time */
+            requestedAt: string;
+            /** @enum {string} */
+            status: "waiting" | "offered" | "accepted" | "expired" | "withdrawn";
+            /** @description Bekleyenin sıradaki yeri */
+            position: number | null;
+            offerGroupId: string | null;
+            offeredAt: string | null;
+            offerExpiresAt: string | null;
         };
     };
     responses: never;
@@ -32146,6 +32472,828 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["Course"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listGroups: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kur süzgeci */
+                courseId?: string;
+                /** @description Durum süzgeci; verilmezse iptal edilenler dışındakiler */
+                status?: "planned" | "open" | "running" | "completed" | "cancelled";
+                /** @description Öğretmen üyeliği süzgeci */
+                teacherMembershipId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["LanguageGroup"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createGroup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    courseId: string;
+                    name: string;
+                    /** @enum {string} */
+                    ageBand: "child" | "teen" | "adult";
+                    teacherMembershipId?: string | null;
+                    /** @enum {string} */
+                    delivery: "in_person" | "online";
+                    room?: string | null;
+                    schedule: {
+                        weekday: number;
+                        startTime: string;
+                    }[];
+                    startDate: string;
+                    capacity: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["LanguageGroup"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGroup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Grup kimliği */
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["LanguageGroup"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateGroup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Grup kimliği */
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** @enum {string} */
+                    ageBand?: "child" | "teen" | "adult";
+                    teacherMembershipId?: string | null;
+                    /** @enum {string} */
+                    delivery?: "in_person" | "online";
+                    room?: string | null;
+                    schedule?: {
+                        weekday: number;
+                        startTime: string;
+                    }[];
+                    startDate?: string;
+                    capacity?: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["LanguageGroup"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGroupWaitlist: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Grup kimliği */
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Bekleyenler sırayla, sonra açık teklifler */
+                            entries: components["schemas"]["GroupWaitlistItem"][];
+                            /** @description Core `suggestWaitlistOffers`; yazma kayıt akışındadır (ON-058) */
+                            suggestion: {
+                                /** @description Süresi dolmuş, sonuçlandırılacak teklifler */
+                                expire: string[];
+                                /** @description Boş yer kadar sıradakine 48 saatlik teklif önerisi (DOM-DIL-043) */
+                                offers: {
+                                    /** Format: uuid */
+                                    entryId: string;
+                                    /** Format: date-time */
+                                    offerExpiresAt: string;
+                                }[];
+                            };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    openGroup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Grup kimliği */
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["LanguageGroup"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelGroup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Grup kimliği */
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["LanguageGroup"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    mergeGroup: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Grup kimliği */
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** Format: uuid */
+                    sourceGroupId: string;
+                    learnersConsented?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["LanguageGroup"];
                     };
                 };
             };

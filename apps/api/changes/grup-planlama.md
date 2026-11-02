@@ -1,0 +1,12 @@
+---
+etki: minor
+---
+
+Dil okulu grup açma ve planlama (OG-029; IST-077, DOM-DIL-003, -008, -040…043).
+
+- Migration `0029_create_groups`: `language_groups` (anahtar `(institution_id, id)`; kura bileşik yabancı anahtar; ad iptal edilmemiş gruplarda tekil, derslik çevrim içi grupta boş, haftalık kalıp `jsonb`, kapasite 1–18, yaşam döngüsü ve birleştirme `check` kısıtıdır), `language_group_members` (grupta tekil kursiyer, birleştirmede eski satır arşivlenir) ve `language_group_waitlist` (öğrenci ya da aday, kur ya da grup sırası, 48 saatlik teklif alanları; bekleyen/teklifli tekil).
+- Yeni uçlar (`routes/language-groups.ts`, `PLATFORM_LATE_ROUTES` sonu): `GET /api/v1/groups` (sayfalı; `courseId`, `status`, `teacherMembershipId` süzgeci; verilmezse iptaller dışı), `GET /api/v1/groups/:groupId` (personele kursiyer listesiyle), `GET …/:groupId/waitlist` (yönetici ve ön büro; sıra + core teklif önerisi), `POST /api/v1/groups` (`Idempotency-Key` zorunlu, 201 + `Location`), `PATCH …/:groupId`, `POST …/:groupId/open`, `…/cancel`, `…/merge` (`If-Match` zorunlu). Yazma yönetici ve seviyenin akademik koordinatörü; ön büro okur; öğretmen kendi grubunu, öğrenci ve veli (`membership_links`) yalnız kendi grubunu takvim alanlarıyla görür. Okulda (`school`) her uç her rol için 404.
+- Kur arşivi (`DELETE /courses/:courseId`) kapanmamış grup varken 422 `course_has_open_groups`; kur değişikliği çakışma için grupları da yükler.
+- Hata kodları: 409 `group_name_exists`, `group_closed`, `group_not_planned`, `version_conflict`; 422 `group_teacher_conflict`, `group_room_conflict`, `group_schedule_overlap`, `group_outside_legal_hours`, `group_minor_late`, `group_capacity_exceeds_course`, `group_capacity_below_members`, `group_schedule_locked`, `group_below_minimum`, `group_merge_capacity`, `group_merge_mismatch` ve diğerleri (`docs/muhendislik/api-tasarimi.md` Gruplar).
+- Sözleşme notu (ON-058): yerleştirme ve bekleme sırası yazması kayıt akışındadır; core `planGroupPlacement` ve `suggestWaitlistOffers` kullanılır.
+- OpenAPI ve api-client şeması yeniden üretildi.

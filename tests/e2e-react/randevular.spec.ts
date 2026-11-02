@@ -753,6 +753,142 @@ test.describe('çocuk değişimi ve panel', () => {
   })
 })
 
+test.describe('öğretmen müsaitlik saatleri', () => {
+  /** `datetime-local` değeri: bugünden `days` gün sonra, İstanbul saatiyle `time` (SS:DD). */
+  const local = (days: number, time: string) =>
+    `${new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date(Date.now() + days * DAY))}T${time}`
+  const section = (page: Page) => page.getByRole('region', { name: 'Müsaitlik saatlerim' })
+  const slotTable = (page: Page) => page.getByRole('table', { name: 'Müsaitlik saatlerim' })
+
+  async function slotsOf(client: ApiClient, teacherId: string) {
+    const result = await client.get('/api/v1/collections/availability?pageSize=100')
+    expect(result.status).toBe(200)
+    return (
+      result.body as { data: { id: string; record: { teacherId: string; date: string } }[] }
+    ).data.filter((item) => item.record.teacherId === teacherId)
+  }
+
+  test('öğretmen yalnız kendi gelecek saatlerini görür; randevuya bağlı saat Dolu ve kaldırılamaz, boş saat kaldırılır (DOM-ILT-101)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await appointmentTenant(tenant)
+    const client = await api(school.user('ogretmen'))
+    await loginAs(school.user('ogretmen'))
+    await page.goto('/ogretmen/randevular')
+    await expect(section(page).getByText('3 saat · 2 müsait')).toBeVisible()
+    const rows = slotTable(page).getByRole('row')
+    // Nilüfer Tan'ın saati (slot-c2) listede yoktur; 3 saat + başlık satırı.
+    await expect(rows).toHaveCount(4)
+    const held = rows.filter({ hasText: '15:00' })
+    await expect(held).toContainText('Dolu')
+    await expect(held).toContainText('Randevuya bağlı; önce randevuyu iptal edin')
+    await expect(held.getByRole('button', { name: /kaldır/ })).toHaveCount(0)
+    await expect(rows.filter({ hasText: '13:00' })).toContainText('Müsait')
+
+    // Dolu saat sunucuda da kaldırılamaz.
+    const refused = await client.post('/api/v1/assessment/slot-remove/slot-held', {})
+    expect(refused.status).toBe(409)
+    expect(JSON.stringify(refused.body)).toContain('availability_has_appointments')
+
+    await page.getByRole('button', { name: /14:00 müsaitlik saatini kaldır$/ }).click()
+    const dialog = page.getByRole('dialog', { name: 'Uygunluk saatini kaldır' })
+    await dialog.getByRole('button', { name: 'Saati kaldır', exact: true }).click()
+    await expect(toast(page, 'Uygunluk saati kaldırıldı.')).toBeVisible()
+    await expect(rows).toHaveCount(3)
+    await expect(section(page).getByText('2 saat · 1 müsait')).toBeVisible()
+    expect((await slotsOf(client, 't1')).map((item) => item.id).sort()).toEqual([
+      'slot-a',
+      'slot-held',
+    ])
+  })
+
+  test('öğretmen sağ panelden saat ekler; öğretmen alanı yoktur, geçmiş ve çakışan saat Türkçe hata verir', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await appointmentTenant(tenant)
+    const client = await api(school.user('ogretmen'))
+    await loginAs(school.user('ogretmen'))
+    await page.goto('/ogretmen/randevular')
+    await expect(section(page).getByText('3 saat')).toBeVisible()
+
+    await page.getByRole('button', { name: 'Müsaitlik ekle' }).click()
+    const form = page.getByRole('dialog', { name: 'Müsaitlik ekle' })
+    await expect(form).toBeVisible()
+    await expect(form.getByLabel('Öğretmen', { exact: true })).toHaveCount(0)
+    const date = form.getByLabel('Başlangıç (tarih ve saat)')
+    const submit = form.getByRole('button', { name: 'Müsaitlik ekle', exact: true })
+
+    await date.fill(local(-2, '10:00'))
+    await submit.click()
+    await expect(form.getByText('Uygunluk saati gelecekte olmalıdır.')).toBeVisible()
+    // Hata sonrası odak tarih alanına döner.
+    await expect(date).toBeFocused()
+
+    // slot-a İstanbul'da üç gün sonra 13:00–13:30'dur.
+    await date.fill(local(3, '13:15'))
+    await submit.click()
+    await expect(form.getByText('Bu saat başka bir uygunluk aralığıyla çakışıyor.')).toBeVisible()
+    // Başka bir velinin bekleyen talebi 4 gün sonra 15:00'i tutar.
+    await date.fill(local(4, '15:10'))
+    await submit.click()
+    await expect(form.getByText('Öğretmenin bu saatte randevusu var.')).toBeVisible()
+    expect(await slotsOf(client, 't1')).toHaveLength(3)
+
+    await date.fill(local(10, '16:20'))
+    await form.getByLabel('Süre (dakika)').fill('45')
+    await submit.click()
+    await expect(toast(page, 'Uygunluk saati eklendi.')).toBeVisible()
+    await expect(form).toBeHidden()
+    const added = slotTable(page).getByRole('row').filter({ hasText: '16:20' })
+    await expect(added).toContainText('45')
+    await expect(added).toContainText('Müsait')
+    await expect(section(page).getByText('4 saat · 3 müsait')).toBeVisible()
+    expect(await slotsOf(client, 't1')).toHaveLength(4)
+  })
+
+  test('saat başka öğretmene eklenemez: sunucu 403 verir ve kayıt oluşmaz; öğrenci bölümü görmez (DOM-YTK-021)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await appointmentTenant(tenant)
+    const client = await api(school.user('ogretmen'))
+    const result = await client.post('/api/v1/assessment/slot', {
+      teacherId: 'e2e-t-c2',
+      date: at(12, 10),
+      duration: 30,
+    })
+    expect(result.status).toBe(403)
+    expect(JSON.stringify(result.body)).toContain('availability_own_only')
+    expect(await slotsOf(client, 'e2e-t-c2')).toHaveLength(0)
+
+    await loginAs(school.user('ogrenci'))
+    await page.goto('/ogrenci/randevu-talep')
+    await expect(page.getByRole('heading', { name: 'Etüt Randevusu', level: 1 })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Müsaitlik saatlerim' })).toHaveCount(0)
+  })
+
+  test('etüt modülü kapalı kurumda (dil okulu) müsaitlik bölümü görünmez; randevu listesi çalışır', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen'], type: 'language_school' })
+    await loginAs(school.user('ogretmen'))
+    await page.goto('/ogretmen/randevular')
+    await expect(page.getByRole('region', { name: TEACHER_TABLE })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Müsaitlik saatlerim' })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Müsaitlik ekle' })).toHaveCount(0)
+  })
+})
+
 test.describe('dar ekran', () => {
   test.use({ viewport: { width: 390, height: 844 } })
 
@@ -789,6 +925,13 @@ test.describe('dar ekran', () => {
     await loginAs(school.user('ogretmen'))
     await page.goto('/ogretmen/randevular')
     await expect(page.getByText('Deniz Yılmaz').first()).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    await expect(page.getByRole('region', { name: 'Müsaitlik saatlerim' })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+    await page.goto('/ogretmen/randevular?musaitlik-form=yeni')
+    await expect(
+      page.getByRole('dialog', { name: 'Müsaitlik ekle' }).getByLabel('Süre (dakika)'),
+    ).toBeVisible()
     await expectNoHorizontalOverflow(page)
     await page.goto(`/ogretmen/randevular?randevu=${id}`)
     await expect(

@@ -8,7 +8,7 @@ import { useApiQuery } from './use-api-query.ts'
 
 // Aday/CRM yazma komutları (`POST /prospects`, `PATCH /prospects/:id`,
 // `POST /prospects/:id/{notes,meetings,trial-lessons,enroll}`; core `prospect.create`
-// `prospect.stage` `prospect.stageRevert` `prospect.consent` `prospect.note` `prospect.meeting` `prospect.trial` `prospect.enroll`,
+// `prospect.stage` `prospect.stageRevert` `prospect.consent` `prospect.update` `prospect.note` `prospect.meeting` `prospect.trial` `prospect.enroll`,
 // docs/domain/kayit-ve-crm.md DOM-KAY-001…011, DOM-KAY-030…035, DOM-DIL-030). Okuma genel
 // koleksiyon kancalarındadır (`prospects`).
 // Hepsi `exclusive`: yollu `issues` (mükerrer aday `phone`, kardeş `siblingOfId`, görüşme çakışması
@@ -28,6 +28,7 @@ export type CreateProspectBody = JsonBody<'createProspect'>
 export type ChangeProspectStageBody = JsonBody<'changeProspectStage'>
 export type RevertProspectStageBody = JsonBody<'revertProspectStage'>
 export type SetProspectMarketingConsentBody = JsonBody<'setProspectMarketingConsent'>
+export type UpdateProspectDetailsBody = JsonBody<'updateProspectDetails'>
 export type AddProspectNoteBody = JsonBody<'addProspectNote'>
 export type ScheduleProspectMeetingBody = JsonBody<'scheduleProspectMeeting'>
 export type ScheduleTrialLessonBody = JsonBody<'scheduleTrialLesson'>
@@ -42,6 +43,7 @@ interface ProspectCommandInput<TBody> {
 export type ChangeProspectStageInput = ProspectCommandInput<ChangeProspectStageBody>
 export type RevertProspectStageInput = ProspectCommandInput<RevertProspectStageBody>
 export type SetProspectMarketingConsentInput = ProspectCommandInput<SetProspectMarketingConsentBody>
+export type UpdateProspectDetailsInput = ProspectCommandInput<UpdateProspectDetailsBody>
 export type AddProspectNoteInput = ProspectCommandInput<AddProspectNoteBody>
 export type ScheduleProspectMeetingInput = ProspectCommandInput<ScheduleProspectMeetingBody>
 export type ScheduleTrialLessonInput = ProspectCommandInput<ScheduleTrialLessonBody>
@@ -112,6 +114,17 @@ export function setProspectMarketingConsentRequest(
   headers: CommandHeaders,
 ) {
   return client.POST('/api/v1/prospects/{prospectId}/marketing-consent', {
+    params: { path: { prospectId }, header: versioned(headers) },
+    body,
+  })
+}
+
+export function updateProspectDetailsRequest(
+  client: KampusClient,
+  { prospectId, body }: UpdateProspectDetailsInput,
+  headers: CommandHeaders,
+) {
+  return client.PATCH('/api/v1/prospects/{prospectId}/details', {
     params: { path: { prospectId }, header: versioned(headers) },
     body,
   })
@@ -227,6 +240,18 @@ export function useSetProspectMarketingConsent(options: CommandOptions = {}) {
   return useApiCommand({
     request: setProspectMarketingConsentRequest,
     version: versionOf<SetProspectMarketingConsentBody>,
+    invalidates: PROSPECT_INVALIDATES,
+    messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}
+
+/** Aday bilgisini düzeltir: ad, telefon, e-posta, ilgi ve veli adı (DOM-KAY-003). */
+export function useUpdateProspectDetails(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: updateProspectDetailsRequest,
+    version: versionOf<UpdateProspectDetailsBody>,
     invalidates: PROSPECT_INVALIDATES,
     messages: PROSPECT_MESSAGES,
     exclusive: true,

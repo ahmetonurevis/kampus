@@ -13,6 +13,7 @@ import {
   revertProspectStageSchema,
   scheduleTrialLessonSchema,
   setMarketingConsentSchema,
+  updateProspectDetailsSchema,
 } from '@kampus/school-core/lib/prospects.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
@@ -30,6 +31,7 @@ import {
   revertProspectStageCommand,
   scheduleTrialLessonCommand,
   setMarketingConsentCommand,
+  updateProspectDetailsCommand,
   studentIdentityFor,
 } from '../services/prospects.ts'
 import { sendCommand } from './command-support.ts'
@@ -418,6 +420,33 @@ export function registerProspectRoutes(app: FastifyInstance) {
       sendCommand(
         reply,
         await setMarketingConsentCommand(
+          contextOf(request),
+          request.params.prospectId,
+          input(request),
+          options(request, 'optional'),
+        ),
+      ),
+  )
+
+  typed.patch(
+    '/api/v1/prospects/:prospectId/details',
+    {
+      preValidation: guard('prospect.update', 'required'),
+      schema: {
+        operationId: 'updateProspectDetails',
+        tags: ['prospects'],
+        summary: 'Aday bilgisini düzelt',
+        description: `Adayın adını, telefonunu, e-postasını, ilgisini ve 18 yaş altında veli adını düzeltir (core \`updateProspectDetails\`, DOM-KAY-003, KVKK md. 11 düzeltme hakkı). Yalnız gönderilen alanlar değişir; hiçbiri farklı değilse 409 \`prospect_unchanged\`. Açık adayda ad, telefon ve e-posta mükerrer denetiminden yeniden geçer (409 \`prospect_duplicate\`, \`prospect_contact_shared\`; kardeş seçilmiş adayda ortak iletişim kabul edilir). Onayı verilmiş e-posta silinemez (422 \`consent_contact_in_use\`), yetişkin adayda veli adı 422 \`guardian_not_applicable\`. Aşamayı ve ticari ileti onayını değiştirmez; kayda yalnız düzeltilen alan adları yazılır, denetim kaydına iletişim yazılmaz. Kesin kayda dönmüş adayın düzeltmesi öğrenci ve veli kaydına yansımaz. ${ifMatchNote} Roller: ${rolesOf('prospect.update')}.`,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        params: prospectParamsSchema,
+        body: updateProspectDetailsSchema,
+        response,
+      },
+    },
+    async (request, reply) =>
+      sendCommand(
+        reply,
+        await updateProspectDetailsCommand(
           contextOf(request),
           request.params.prospectId,
           input(request),

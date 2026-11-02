@@ -4,6 +4,9 @@ import {
   createBody,
   createDefaults,
   createFormSchema,
+  editBody,
+  editDefaults,
+  editFormSchema,
   fieldErrors,
   isDuplicateCode,
   isMinor,
@@ -216,4 +219,68 @@ test('DOM-KAY-030: aşama geri alma formu hedef aşama ve gerekçe ister; gövde
       ok: false,
       message: 'Geri alınacak aşamayı seçin.',
     })
+})
+
+test('DOM-KAY-003: düzeltme formu mevcut değerle dolar, yalnız farklı alanları gönderir', () => {
+  const prospect = {
+    name: 'Alara Güven',
+    phone: '05321112233',
+    email: 'alara@kampus.example',
+    interest: 'B1 genel İngilizce',
+    guardianName: 'Ayşe Güven',
+    minor: true,
+  }
+  const defaults = editDefaults(prospect)
+  assert.deepEqual(defaults, {
+    name: 'Alara Güven',
+    phone: '05321112233',
+    email: 'alara@kampus.example',
+    interest: 'B1 genel İngilizce',
+    guardianName: 'Ayşe Güven',
+  })
+  // Değişiklik yoksa istek atılmaz.
+  assert.deepEqual(editBody(editFormSchema.parse(defaults), prospect), {
+    ok: false,
+    field: 'root',
+    message: 'Değişiklik yapılmadı.',
+  })
+  // Telefon boşluklarla yazılsa da temizlenir; yalnız telefon ve e-posta farkı gider (e-posta silinir).
+  const changed = editFormSchema.parse({ ...defaults, phone: '0532 222 33 44', email: '' })
+  assert.deepEqual(editBody(changed, prospect), {
+    ok: true,
+    body: { phone: '05322223344', email: '' },
+  })
+})
+
+test('DOM-KAY-003: dolu veli adı silinemez; adı hiç yazılmamış eski kayıtta boş veli diğer düzeltmeyi engellemez', () => {
+  const legacy = { name: 'Eski Aday', phone: '05321112266', interest: 'A1', minor: undefined }
+  const values = editFormSchema.parse({ ...editDefaults(legacy), interest: 'A2' })
+  assert.deepEqual(editBody(values, legacy), { ok: true, body: { interest: 'A2' } })
+  const short = editFormSchema.parse({ ...editDefaults(legacy), guardianName: 'V' })
+  assert.deepEqual(editBody(short, legacy), {
+    ok: false,
+    field: 'guardianName',
+    message: 'Velinin adını yazın.',
+  })
+  const added = editFormSchema.parse({ ...editDefaults(legacy), guardianName: 'Veli Kişi' })
+  assert.deepEqual(editBody(added, legacy), { ok: true, body: { guardianName: 'Veli Kişi' } })
+})
+
+test('DOM-KAY-003: 18 yaş altında dolu veli adı boş bırakılamaz, yetişkin adayda sorulmaz', () => {
+  const minor = {
+    name: 'Ece Kaya',
+    phone: '05321112244',
+    interest: 'A2',
+    guardianName: 'Veli',
+    minor: true,
+  }
+  const emptied = editFormSchema.parse({ ...editDefaults(minor), guardianName: ' ' })
+  assert.deepEqual(editBody(emptied, minor), {
+    ok: false,
+    field: 'guardianName',
+    message: 'Velinin adını yazın.',
+  })
+  const adult = { name: 'Can Demir', phone: '05321112255', interest: 'C1', minor: false }
+  const renamed = editFormSchema.parse({ ...editDefaults(adult), name: 'Can D. Demir' })
+  assert.deepEqual(editBody(renamed, adult), { ok: true, body: { name: 'Can D. Demir' } })
 })

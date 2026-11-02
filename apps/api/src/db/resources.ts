@@ -6,6 +6,7 @@ import {
   eq,
   getTableColumns,
   inArray,
+  isNotNull,
   isNull,
   not,
   or,
@@ -798,6 +799,34 @@ export async function listFileVersionIds(
     )
     .orderBy(asc(resourceVersionFiles.versionId))
   return rows.map((row) => row.versionId)
+}
+
+/**
+ * Kursiyerden çekilmiş kaynaklar (DOM-KYN-025, 051), tek sorguda: bir sürümü telif bildirimiyle
+ * incelemede (yayın geçmişi olan `in_review`; ilk onay sürecindeki yeni taslak sayılmaz) ya da
+ * kaynak kaldırılmış. Bildirim kaynak düzeyindedir: atamanın sabitlendiği eski sürüm de gösterilmez.
+ */
+export async function withdrawnResourceIds(
+  db: Database,
+  institutionId: string,
+  resourceIds: readonly string[],
+): Promise<Set<string>> {
+  const ids = uuidsOnly(resourceIds)
+  if (ids.length === 0) return new Set()
+  const rows = await db
+    .selectDistinct({ resourceId: resourceVersions.resourceId })
+    .from(resourceVersions)
+    .where(
+      and(
+        eq(resourceVersions.institutionId, institutionId),
+        inArray(resourceVersions.resourceId, ids),
+        or(
+          eq(resourceVersions.status, 'removed'),
+          and(eq(resourceVersions.status, 'in_review'), isNotNull(resourceVersions.publishedAt)),
+        ),
+      ),
+    )
+  return new Set(rows.map((row) => row.resourceId))
 }
 
 /** Kaynak, sahibin etkinliği ve paylaşım hedefleriyle; yoksa veya başka kurumdaysa `null`. */

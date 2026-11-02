@@ -1140,19 +1140,33 @@ export async function loadAttemptsAmong(
  * (DOM-BEC-005). Dinleme kaydının bağlantısı istendiğinde hakkın hangi denemeden düşeceği bunlardan
  * bulunur; sınırsız atamanın süren denemesi de karara girer (`services/listening-plays.ts`).
  */
-export async function loadVersionAssignments(
+export function loadVersionAssignments(
   db: Database,
   institutionId: string,
   resourceVersionId: string,
 ): Promise<StoredAssignment[]> {
-  if (!UUID.test(resourceVersionId)) return []
+  return loadVersionsAssignments(db, institutionId, [resourceVersionId])
+}
+
+/**
+ * Birden çok sürüme sabitlenmiş, arşivlenmemiş atamalar tek sorguda (hedefleriyle). Kaynak
+ * sürümü dosyasının görevden açma yolu bütün bağlı sürümlerin ve quiz'lerin atamalarını birlikte
+ * okur (`services/resource-files.ts`).
+ */
+export async function loadVersionsAssignments(
+  db: Database,
+  institutionId: string,
+  resourceVersionIds: readonly string[],
+): Promise<StoredAssignment[]> {
+  const ids = [...new Set(resourceVersionIds.filter((id) => UUID.test(id)))]
+  if (ids.length === 0) return []
   const rows = await db
     .select()
     .from(taskAssignments)
     .where(
       and(
         eq(taskAssignments.institutionId, institutionId),
-        eq(taskAssignments.resourceVersionId, resourceVersionId),
+        inArray(taskAssignments.resourceVersionId, ids),
         isNull(taskAssignments.archivedAt),
       ),
     )

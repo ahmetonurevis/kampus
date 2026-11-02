@@ -4,8 +4,15 @@ import {
   type LearnerResourceView,
 } from '@kampus/school-core/content/resource.ts'
 import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
+import { reachesBookOwner } from '@kampus/school-core/content/visibility.ts'
 
-import { asCoreVersion, listResourceVersions, loadVersionPairs } from '../db/resources.ts'
+import {
+  asCoreVersion,
+  loadVersionPairs,
+  withdrawnResourceIds,
+  type StoredResource,
+  type StoredResourceVersion,
+} from '../db/resources.ts'
 import {
   loadAttemptsAmong,
   loadDraft,
@@ -45,12 +52,13 @@ import { scoringContexts, type ScoringContext } from './task-work.ts'
  * yazma şablonunun değerlendirme ölçütü ve rubrik bağı (puanlama notu) çıkarılır, otomatik puanlı
  * içeriğin soru metinleri yalnız denemede görünür (burada soru sayısı). Kaldırılmış veya
  * yayın geçmişi olmayan sürüm ve herhangi bir sürümü telif bildirimiyle incelemede olan kaynak
- * (DOM-KYN-025; süren iş olsa da) `unavailable`. Lisansı dolmuş içerik (DOM-KYN-021; deneme uçlarındaki
+ * (DOM-KYN-025; süren iş olsa da) `unavailable`; kitap sahibiyle sınırlı lisansta hedeflenen kişilerden
+biri kitap sahibi değilse de `unavailable` (DOM-KYN-021). Lisansı dolmuş içerik (DOM-KYN-021; deneme uçlarındaki
  * kural) yeni iş başlatmaz ama süren iş biter: süren denemesi, teslimi ya da taslağı olan kursiyere
  * içerik gösterilir, olmayana `license_expired` döner.
  */
 
-type LearnerViewer = Extract<Viewer, { kind: 'learner' }>
+export type LearnerViewer = Extract<Viewer, { kind: 'learner' }>
 
 interface WorkBook {
   attempts: readonly StoredAttempt[]
@@ -159,40 +167,76 @@ async function hasWork(ctx: ServiceContext, assignment: StoredAssignment, progre
   return (await loadDraft(ctx.db, ctx.institutionId, assignment.id, learnerId)) !== null
 }
 
+/** Kursiyerin atama üzerinden şu an yürüyen işi var mı (görevden dosya açma yolunun lisans kuralı). */
+export async function learnerHasWork(
+  ctx: ServiceContext,
+  viewer: LearnerViewer,
+  assignment: StoredAssignment,
+): Promise<boolean> {
+  const book = await loadWork(ctx, viewer, [assignment])
+  return hasWork(ctx, assignment, progressOf(ctx, viewer, book, assignment))
+}
+
 /** Yayın geçmişi olan sürüm (yayında veya yerini yeni sürüme bırakmış) kursiyere gösterilir. */
 const SHOWN_STATUSES = new Set(['published', 'archived'])
 
+type VersionPair = { resource: StoredResource; version: StoredResourceVersion }
+
+/** Görev içeriğinin kursiyere kapalı olma nedeni; açıksa `null`. */
+export type LearnerContentGate = 'unavailable' | 'license_expired' | null
+
 /**
- * Kaynak kursiyerden çekildi mi (DOM-KYN-025, 051): bir sürümü telif bildirimiyle incelemede
- * (yayın geçmişi olan `in_review`; ilk onay sürecindeki yeni taslak sayılmaz) ya da kaynak
- * kaldırılmış. Bildirim kaynak düzeyindedir: atamanın sabitlendiği eski sürüm de gösterilmez.
+ * Atamanın sabitlediği içerik kursiyere açık mı (DOM-KYN-021, 025, 051). Görev ayrıntısındaki
+ * içerik ve görevden dosya açma (`services/resource-files.ts`) bu tek kuralı kullanır. `pairs`
+ * sabitlenen sürüm ve gerekiyorsa (soru görseli) quiz'in ilgili soru sürümleridir; hepsi açık
+ * olmalıdır. Kurallar ucuzdan pahalıya sınanır, ilk kapanan durur:
+ *
+ * 1. Sürüm var, içeriği silinmemiş ve yayın geçmişi var (bellekte).
+ * 2. Kitap sahibiyle sınırlı lisansta atamanın hedeflediği kişilerden biri kitap sahibi (core
+ *    `reachesBookOwner`; bellekte).
+ * 3. Kaynak kursiyerden çekilmemiş: telif incelemesinde veya kaldırılmış değil (tek sorgu).
+ * 4. Lisans süresi dolmuşsa yalnız süren işi olana açık (`hasWork` yalnız burada çağrılır).
  */
-function withdrawnFromLearners(
-  versions: readonly { status: string; publishedAt: string | null }[],
-) {
-  return versions.some(
-    (version) =>
-      version.status === 'removed' ||
-      (version.status === 'in_review' && version.publishedAt !== null),
+export async function learnerContentGate(
+  ctx: ServiceContext,
+  viewer: LearnerViewer,
+  assignment: StoredAssignment,
+  pairs: readonly (VersionPair | undefined)[],
+  hasWork: () => Promise<boolean>,
+): Promise<LearnerContentGate> {
+  const learners = targetedLearners(viewer.classOf, assignment)
+  const present: VersionPair[] = []
+  for (const pair of pairs) {
+    if (!pair || pair.version.content === null || !SHOWN_STATUSES.has(pair.version.status))
+      return 'unavailable'
+    if (!learners.some((id) => reachesBookOwner(pair.resource, pair.version, id)))
+      return 'unavailable'
+    present.push(pair)
+  }
+  const withdrawn = await withdrawnResourceIds(
+    ctx.db,
+    ctx.institutionId,
+    present.map(({ resource }) => resource.id),
   )
+  if (withdrawn.size > 0) return 'unavailable'
+  if (present.some(({ version }) => licenseExpired(version.license, ctx.now)) && !(await hasWork()))
+    return 'license_expired'
+  return null
 }
 
 async function learnerContent(
   ctx: ServiceContext,
+  viewer: LearnerViewer,
   assignment: StoredAssignment,
   progress: Progress[],
 ) {
   const pairs = await loadVersionPairs(ctx.db, ctx.institutionId, [assignment.resourceVersionId])
   const pair = pairs.get(assignment.resourceVersionId)
-  const version = pair?.version
-  if (!pair || !version || version.content === null || !SHOWN_STATUSES.has(version.status))
-    return { content: null, contentUnavailable: 'unavailable' as const }
-  if (
-    withdrawnFromLearners(await listResourceVersions(ctx.db, ctx.institutionId, pair.resource.id))
+  const gate = await learnerContentGate(ctx, viewer, assignment, [pair], () =>
+    hasWork(ctx, assignment, progress),
   )
-    return { content: null, contentUnavailable: 'unavailable' as const }
-  if (licenseExpired(version.license, ctx.now) && !(await hasWork(ctx, assignment, progress)))
-    return { content: null, contentUnavailable: 'license_expired' as const }
+  if (gate !== null || !pair) return { content: null, contentUnavailable: gate ?? 'unavailable' }
+  const version = pair.version
   const view = learnerView(asCoreVersion(version), {
     random: seededRandom(`${version.id}:${ctx.actor.userId}`),
     showTranscript: assignment.showTranscript,
@@ -285,5 +329,5 @@ export async function getTaskAssignment(ctx: ServiceContext, assignmentId: strin
   const view = learnerAssignmentView(ctx, viewer, assignment, refs)
   const book = await loadWork(ctx, viewer, [assignment])
   const progress = progressOf(ctx, viewer, book, assignment)
-  return { ...view, progress, ...(await learnerContent(ctx, assignment, progress)) }
+  return { ...view, progress, ...(await learnerContent(ctx, viewer, assignment, progress)) }
 }

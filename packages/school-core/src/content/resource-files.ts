@@ -6,6 +6,7 @@ import {
   type ContentType,
   type FileCandidate,
   type FilePurpose,
+  type FileStatus,
   type ResourceFileRule,
 } from './taxonomy.ts'
 
@@ -15,13 +16,33 @@ import {
  * birini gösterir. Tür başına amaç ve sayı `RESOURCE_FILE_RULES` tablosundadır.
  *
  * Yeni dosya bağlamanın koşulları ödev teslimiyle aynıdır: aynı kurumda, işlemi yapanın yüklediği,
- * `ready`, amacı türe uygun ve başka kayda bağlı olmayan dosya. Önceki sürümden gelen (`kept`)
- * dosya zaten bir sürüme bağlıdır ve yeniden denetlenmez: yeni sürüm ve kopya aynı değişmez
+ * `ready`, amacı türe uygun ve başka kayda bağlı olmayan dosya. Aynı kaynağın sürümlerinden gelen
+ * (`kept`: temel sürümün ya da eski bir sürümün) dosya zaten bir sürüme bağlıdır; bağı ve sahibi
+ * yeniden denetlenmez, yalnız silinmiş veya reddedilmiş olmadığı: yeni sürüm ve kopya aynı değişmez
  * dosyaya yeni bir bağ açar. Fonksiyon saftır; satırları servis yükler, bağlamayı servis yazar.
+ *
+ * Bağlama işlemi dosyayı kilitleyip koşulları yeniden denetler: plandan sonra, eşzamanlı bir
+ * istekle başka kayda bağlanan dosya orada yakalanır ve 409 `file_already_attached` döner (API
+ * `attachFile`, öteki dosya bağlayan uçlarla aynı); planın ret kodu 422'dir, kod aynıdır.
  */
 
-/** Dosya satırının durumu (`files.status`, ADR 0003 karar 4). */
-export type ResourceFileStatus = 'pending' | 'processing' | 'ready' | 'rejected' | 'deleted'
+/** Dosya satırının durumu (`files.status`; core `FILE_STATUSES`). */
+export type ResourceFileStatus = FileStatus
+
+/**
+ * Sürüm dosyasının gösterilen durumları: bağlama `ready` ister; sonra dönüştürülebilir
+ * (`processing`) ya da imha edilebilir (`deleted`). Bağlanamayan durumdaki (`pending`, `rejected`)
+ * dosya sürüm yanıtına girmez. API yanıt şeması (`ResourceFile`) aynı listeyi kullanır.
+ */
+export const RESOURCE_FILE_SHOWN_STATUSES = [
+  'processing',
+  'ready',
+  'deleted',
+] as const satisfies readonly FileStatus[]
+export type ResourceFileShownStatus = (typeof RESOURCE_FILE_SHOWN_STATUSES)[number]
+
+export const isResourceFileShown = (status: FileStatus): status is ResourceFileShownStatus =>
+  (RESOURCE_FILE_SHOWN_STATUSES as readonly FileStatus[]).includes(status)
 
 /** Servisin yüklediği dosya satırı; kurum dışındaki kimlik listede yoktur. */
 export type ResourceFileRow = FileCandidate & {
@@ -41,7 +62,12 @@ export type VersionFilesInput = {
   fileIds: readonly string[]
   /** `fileIds`'teki kimliklerin satırları (bulunmayan kimlik yok sayılır). */
   files: readonly ResourceFileRow[]
-  /** Temel alınan sürümün dosyaları: zaten bağlıdır, yeniden denetlenmez. */
+  /**
+   * Aynı kaynağın sürümlerine bağlı dosyalar (temel sürümünkiler ve eski sürümden geri eklenenler):
+   * zaten bağlıdır, bağsızlık ve sahiplik yeniden denetlenmez; satırı `files`'ta olmalı ve silinmiş
+   * ya da reddedilmiş olmamalıdır (422 `file_unavailable`). Başka kaynağa bağlı dosya bu listede
+   * yoktur ve yeni dosya gibi `file_already_attached` alır.
+   */
   kept?: readonly string[] | undefined
 }
 
@@ -124,8 +150,12 @@ export function planVersionFiles(input: VersionFilesInput): VersionFilesPlan {
     const path = ['fileIds', String(index)]
     const row = rows.get(id)
     if (kept.has(id)) {
-      // Önceki sürümün dosyası: amacı tür kuralına uymalı (tür değişmez, yine de güvence).
-      if (row && !rule.purposes.includes(row.purpose)) fail('file_purpose_mismatch', path)
+      // Aynı kaynağın sürümüne bağlı dosya: bağ ve sahiplik yeniden denetlenmez; silinmiş,
+      // reddedilmiş ya da bulunmayan dosya yeni sürüme taşınmaz. Amacı tür kuralına uymalı (tür
+      // değişmez, yine de güvence).
+      if (!row || row.status === 'deleted' || row.status === 'rejected')
+        fail('file_unavailable', path)
+      if (!rule.purposes.includes(row.purpose)) fail('file_purpose_mismatch', path)
       return
     }
     if (

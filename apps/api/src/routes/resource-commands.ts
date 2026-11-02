@@ -47,7 +47,7 @@ const ACCESS =
   'Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.'
 
 const FILES =
-  'Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`.'
+  'Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır.'
 
 const created = { 201: resourceWriteResponseSchema, ...commandErrors }
 const updated = { 200: resourceWriteResponseSchema, ...commandErrors }
@@ -119,7 +119,7 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
         operationId: 'updateResourceDraft',
         tags: ['resources'],
         summary: 'Taslağı düzenle',
-        description: `Taslak veya reddedilmiş sürümün alanlarını değiştirir (DOM-KYN-030, 032); verilmeyen alan aynen kalır, \`tags\` bütün olarak değişir. Yalnız yazar (403). Yayımlanmış, incelemedeki veya arşivli sürüm 409 \`version_immutable\`; içerik türü değişmez (422 \`content_type_immutable\`). Kopyada miras lisans ve kaynak gösterimi değişmez (422 \`license_inherited\`, \`attribution_inherited\`; DOM-KYN-050). Reddedilen sürüm taslağa döner. \`fileIds\` verilirse liste bütün olarak değişir; taslakta zaten bulunan dosya yeniden denetlenmez, listeden çıkan ve yalnız bu taslağa bağlı dosyanın bağı kalkar. ${FILES} \`If-Match\` zorunlu: sürümün \`rowVersion\`'ı (yoksa 400 \`if_match_required\`, tutmazsa 409). ${ACCESS}`,
+        description: `Taslak veya reddedilmiş sürümün alanlarını değiştirir (DOM-KYN-030, 032); verilmeyen alan aynen kalır, \`tags\` bütün olarak değişir. Yalnız yazar (403). Yayımlanmış, incelemedeki veya arşivli sürüm 409 \`version_immutable\`; içerik türü değişmez (422 \`content_type_immutable\`). Kopyada miras lisans ve kaynak gösterimi değişmez (422 \`license_inherited\`, \`attribution_inherited\`; DOM-KYN-050). Reddedilen sürüm taslağa döner. \`fileIds\` verilirse liste bütün olarak değişir; taslakta ya da kaynağın başka sürümünde bulunan dosya yeniden bağlanmaz (silinmiş ya da reddedilmişse 422 \`file_unavailable\`), listeden çıkan ve yalnız bu taslağa bağlı dosyanın bağı kalkar. ${FILES} \`If-Match\` zorunlu: sürümün \`rowVersion\`'ı (yoksa 400 \`if_match_required\`, tutmazsa 409). ${ACCESS}`,
         params: resourceVersionParamsSchema,
         body: draftPatchBodySchema,
         headers: commandHeadersSchema('optional'),
@@ -147,7 +147,7 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
         operationId: 'createResourceVersion',
         tags: ['resources'],
         summary: 'Yeni sürüm aç',
-        description: `Yayındaki (yoksa son) sürümün içeriğinden yeni taslak sürüm açar (DOM-KYN-032); numara bir artar. Sahip, zümre başkanı veya yönetici (403). Açık sürüm varken 409 \`open_version_exists\`, kaldırılmış kaynakta 409 \`resource_removed\`. Arşivlenmiş kaynak yeniden açılır. Yeni sürüm temel sürümün dosyalarını miras alır (aynı dosyaya yeni bağ); \`fileIds\` verilirse liste onun yerine geçer, temel sürümün dosyaları yeniden denetlenmez. ${FILES} Başarı 201. ${ACCESS}`,
+        description: `Yayındaki (yoksa son) sürümün içeriğinden yeni taslak sürüm açar (DOM-KYN-032); numara bir artar. Sahip, zümre başkanı veya yönetici (403). Açık sürüm varken 409 \`open_version_exists\`, kaldırılmış kaynakta 409 \`resource_removed\`. Arşivlenmiş kaynak yeniden açılır. Yeni sürüm temel sürümün dosyalarını miras alır (aynı dosyaya yeni bağ); \`fileIds\` verilirse liste onun yerine geçer. Aynı kaynağın sürümlerine bağlı dosyalar (temel sürümünkiler ve eski sürümden geri eklenenler) yeniden bağlanmaz; silinmiş ya da reddedilmişse liste verilmese de 422 \`file_unavailable\`. ${FILES} Başarı 201. ${ACCESS}`,
         params: resourceParamsSchema,
         body: newVersionBodySchema,
         headers: commandHeadersSchema('optional', { ifMatch: false }),
@@ -206,7 +206,7 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
         operationId: 'removeResource',
         tags: ['resources'],
         summary: 'Kaynağı kaldır',
-        description: `Telif ihlali veya kişisel veri nedeniyle kaynağı kaldırır (DOM-KYN-025, 051): bütün sürümlerin içeriği ve cevap anahtarı silinir; başlık, menşe, gerekçe ve tarih kalır; kaynak arşivlenir. Yalnız yönetici (öğretmen 403); \`reason\` zorunlu (422 \`reason_required\`); ikinci kez 409 \`resource_removed\`. Yanıt bu sürümlerden türetilmiş kopyaları ve soruyu içeren quiz sürümlerini listeler. \`If-Match\` isteğe bağlı: kaynağın \`rowVersion\`'ı. ${ACCESS}`,
+        description: `Telif ihlali veya kişisel veri nedeniyle kaynağı kaldırır (DOM-KYN-025, 051): bütün sürümlerin içeriği ve cevap anahtarı silinir; başlık, menşe, gerekçe ve tarih kalır; kaynak arşivlenir. Yalnız yönetici (öğretmen 403); \`reason\` zorunlu (422 \`reason_required\`); ikinci kez 409 \`resource_removed\`. Sürümlere bağlı dosyalar kopyalar ve atanmış görevler dahil hiçbir yoldan açılmaz; bağlar silinmez. Yanıt bu sürümlerden türetilmiş kopyaları ve soruyu içeren quiz sürümlerini listeler. \`If-Match\` isteğe bağlı: kaynağın \`rowVersion\`'ı. ${ACCESS}`,
         params: resourceParamsSchema,
         body: reasonBodySchema,
         headers: commandHeadersSchema('optional'),

@@ -12,7 +12,12 @@ import {
   uuid,
 } from 'drizzle-orm/pg-core'
 
-import { FILE_PURPOSES, type FilePurpose } from '@kampus/school-core/content/taxonomy.ts'
+import {
+  FILE_PURPOSES,
+  FILE_STATUSES,
+  type FilePurpose,
+  type FileStatus,
+} from '@kampus/school-core/content/taxonomy.ts'
 
 import { institutions } from './auth.ts'
 import { keys, oneOf, requiredColumns } from './columns.ts'
@@ -34,8 +39,8 @@ import { keys, oneOf, requiredColumns } from './columns.ts'
  * - Tablo yeni ve boştur; kısıtlar `not valid` adımına gerek olmadan tek adımda eklenir.
  */
 
-export const FILE_STATUSES = ['pending', 'processing', 'ready', 'rejected', 'deleted'] as const
-export type FileStatus = (typeof FILE_STATUSES)[number]
+// Durum listesi core'dadır (ADR 0003 karar 4); API içi kullanım için yeniden dışa verilir.
+export { FILE_STATUSES, type FileStatus }
 
 export const files = pgTable(
   'files',

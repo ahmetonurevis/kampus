@@ -369,6 +369,14 @@ export const FILE_PURPOSES = {
 } as const satisfies Record<string, FilePurposeRule>
 export type FilePurpose = keyof typeof FILE_PURPOSES
 
+/**
+ * Dosya satırının durumu (`files.status`, ADR 0003 karar 4): yüklendi ve taranıyor, dönüştürülüyor,
+ * kullanıma hazır, taramada reddedildi, imha edildi. Veritabanı kısıtı ve API şeması bu listeden
+ * türetilir.
+ */
+export const FILE_STATUSES = ['pending', 'processing', 'ready', 'rejected', 'deleted'] as const
+export type FileStatus = (typeof FILE_STATUSES)[number]
+
 export type FileCandidate = {
   contentType: string
   byteSize: number

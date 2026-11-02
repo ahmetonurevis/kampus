@@ -9,6 +9,7 @@ import {
   isAssignable,
   libraryVersionVisible,
   planShareChange,
+  reachesBookOwner,
   shareTargetsSchema,
   type ContentLearner,
   type ContentViewer,
@@ -391,6 +392,21 @@ describe('Öğrencinin ve velinin gördüğü kaynak', () => {
       sharedStudentIds: ['test-s1'],
     })
     assert.equal(visible(asStudent(deniz), owners), true)
+  })
+
+  test('DOM-KYN-021: kitap sahibi sınırı yalnız seçilmiş öğrencileri geçirir', () => {
+    const owners = published(licensed(true), {
+      shareScope: 'students',
+      sharedStudentIds: ['test-s1'],
+    })
+    assert.equal(reachesBookOwner(owners.resource, owners.version, 'test-s1'), true)
+    assert.equal(reachesBookOwner(owners.resource, owners.version, 'test-s2'), false)
+    const toClass = published(licensed(true), { shareScope: 'classes', sharedStudentIds: [] })
+    assert.equal(reachesBookOwner(toClass.resource, toClass.version, 'test-s1'), false)
+    const open = published(licensed(false), { shareScope: 'classes' })
+    assert.equal(reachesBookOwner(open.resource, open.version, 'test-s2'), true)
+    const original = published(schoolText(), { shareScope: 'private' })
+    assert.equal(reachesBookOwner(original.resource, original.version, 'test-s2'), true)
   })
 
   test('veli çocuklarının gördüğünü görür, fazlasını görmez', () => {

@@ -9,12 +9,15 @@ import {
   type ResourceContent,
 } from '../packages/school-core/src/content/resource.ts'
 import {
+  isResourceFileShown,
   planVersionFiles,
+  RESOURCE_FILE_SHOWN_STATUSES,
   resourceFileCountIssue,
   type ResourceFileRow,
 } from '../packages/school-core/src/content/resource-files.ts'
 import {
   CONTENT_TYPES,
+  FILE_STATUSES,
   RESOURCE_FILE_LIST_MAX,
   RESOURCE_FILE_RULES,
   type ContentType,
@@ -191,6 +194,38 @@ describe('DOM-KYN-006 kaynak sürümünün dosyaları', () => {
     assert.deepEqual(plan(fileContent('f-1'), ['f-1', 'f-2'], [inherited, row('f-2')], ['f-1']), {
       fileIds: ['f-1', 'f-2'],
       attach: ['f-2'],
+    })
+  })
+
+  test('sürüm yanıtında yalnız bağlı dosyanın durumları gösterilir; liste dosya durumlarından türer', () => {
+    assert.deepEqual(
+      FILE_STATUSES.filter((status) => isResourceFileShown(status)),
+      [...RESOURCE_FILE_SHOWN_STATUSES],
+    )
+    assert.equal(isResourceFileShown('pending'), false)
+    assert.equal(isResourceFileShown('rejected'), false)
+  })
+
+  test('aynı kaynağın sürümlerinden gelen silinmiş veya reddedilmiş dosya taşınmaz: 422 file_unavailable', () => {
+    for (const status of ['deleted', 'rejected'] as const) {
+      const inherited = row('f-1', { attached: true, status })
+      rejects(
+        () => plan(fileContent('f-2'), ['f-2', 'f-1'], [row('f-2'), inherited], ['f-1']),
+        'file_unavailable',
+        ['fileIds', '1'],
+      )
+    }
+    // Satırı yüklenmemiş (başka kurumda kalmış) eski dosya da taşınmaz.
+    rejects(
+      () => plan(fileContent('f-2'), ['f-2', 'f-1'], [row('f-2')], ['f-1']),
+      'file_unavailable',
+      ['fileIds', '1'],
+    )
+    // İşlenen (dönüştürülen) dosya taşınır: bağ açılır, bağlantı hazır olunca verilir.
+    const processing = row('f-1', { attached: true, status: 'processing' })
+    assert.deepEqual(plan(fileContent('f-1'), ['f-1'], [processing], ['f-1']), {
+      fileIds: ['f-1'],
+      attach: [],
     })
   })
 

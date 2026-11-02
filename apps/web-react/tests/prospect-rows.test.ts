@@ -2,7 +2,9 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import {
+  CONTACT_LABELS,
   isOpenStage,
+  prospectContactOwner,
   meetingEvents,
   prospectRow,
   slotLabel,
@@ -138,4 +140,35 @@ test('DOM-KAY-034: deneme dersi ayrı olay olur ve grup adını taşır', () => 
   assert.equal(events[0]?.place, 'A2 Akşam')
   assert.equal(events[0]?.timeRange, '13:00 – 13:40')
   assert.equal(events[0]?.branch, 'Merkez Kampüs')
+})
+
+test('DOM-KAY-003: telefon ve e-posta 18 yaş altı adayda velinindir; kaydında yaş bayrağı olmayan eski aday 18 yaş altı sayılır', () => {
+  assert.equal(prospectContactOwner({ minor: true }), 'guardian')
+  assert.equal(prospectContactOwner({ minor: false }), 'self')
+  assert.equal(prospectContactOwner({}), 'guardian')
+  assert.deepEqual(CONTACT_LABELS.guardian, { phone: 'Veli telefonu', email: 'Veli e-postası' })
+  assert.deepEqual(CONTACT_LABELS.self, { phone: 'Telefon', email: 'E-posta' })
+})
+
+test('DOM-KAY-003: aday satırı telefonun sahibini taşır', () => {
+  const row = (minor: boolean | undefined) => {
+    const record = prospect({ trialAt: undefined })
+    if (minor === undefined) delete record.minor
+    else record.minor = minor
+    return prospectRow(
+      {
+        id: record.id,
+        version: 1,
+        createdAt: new Date(NOW).toISOString(),
+        updatedAt: new Date(NOW).toISOString(),
+        archivedAt: null,
+        record,
+      },
+      'language_school',
+      { branches: new Map() },
+    )
+  }
+  assert.equal(row(true).phoneOwner, 'guardian')
+  assert.equal(row(undefined).phoneOwner, 'guardian')
+  assert.equal(row(false).phoneOwner, 'self')
 })

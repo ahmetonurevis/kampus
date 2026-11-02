@@ -19,7 +19,14 @@ import { ProspectConsentPanel } from './ProspectConsentPanel.tsx'
 import { ProspectEditPanel } from './ProspectEditPanel.tsx'
 import { ProspectStageForm } from './ProspectStageForm.tsx'
 import { ProspectStageRevertForm } from './ProspectStageRevertForm.tsx'
-import { dateTimeLabel, isOpenStage, slotLabel, stageTone } from './prospect-rows.ts'
+import {
+  CONTACT_LABELS,
+  dateTimeLabel,
+  isOpenStage,
+  prospectContactOwner,
+  slotLabel,
+  stageTone,
+} from './prospect-rows.ts'
 
 type Prospect = CoreRecord<'prospects'>
 
@@ -114,6 +121,7 @@ function Detail({
   const type = session?.institution.type ?? 'school'
   // Kesin kayıt taksit ve sözleşme yazar: `crm` ve `finance` birlikte açık olmalıdır (liste ile aynı).
   const enrollModulesOpen = session?.modules.crm === true && session.modules.finance === true
+  const contact = CONTACT_LABELS[prospectContactOwner(prospect)]
   const plan = useDetailPanel('planlama')
   const edit = useDetailPanel('duzenle')
   const branches = useCoreAll('branches')
@@ -200,7 +208,7 @@ function Detail({
             <div className="flex items-start gap-2.5">
               <Icon name="Phone" size={17} aria-hidden="true" />
               <div>
-                <dt className="sr-only">Telefon</dt>
+                <dt className="text-xs text-muted-foreground">{contact.phone}</dt>
                 <dd>{prospect.phone}</dd>
               </div>
             </div>
@@ -208,7 +216,7 @@ function Detail({
               <div className="flex items-start gap-2.5">
                 <Icon name="Mail" size={17} aria-hidden="true" />
                 <div>
-                  <dt className="sr-only">E-posta</dt>
+                  <dt className="text-xs text-muted-foreground">{contact.email}</dt>
                   <dd className="[overflow-wrap:anywhere]">{prospect.email}</dd>
                 </div>
               </div>

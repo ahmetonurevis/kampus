@@ -215,7 +215,7 @@ Değişiklik isteği izin değil, iş isteğidir ve yalnız karşı tarafın ala
 | Sözleşme                                                                                                             | Ne için                                                                      | Dalga |
 | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ----- |
 | Finans özeti: `GET /finance/overview` (tahsil edilen, vadesi geçen, açık tutar; dönem kırılımı)                      | Yönetici panosu, erken uyarı (IST-121)                                       | D1    |
-| Öğrenci bakiyesi: `GET /students/:id/balance`, veli kapsamlı                                                         | Veli Genel Bakış ve Çocuklarım kartları, mobil veli ana ekranı               | D1    |
+| Öğrenci bakiyesi: `GET /finance/students/:id/balance`, veli kapsamlı                                                 | Veli Genel Bakış ve Çocuklarım kartları, mobil veli ana ekranı               | D1    |
 | Pano kartları: finans ve kayıt kart bileşenleri, yuvaya kayıtlı                                                      | Yönetici ve ön büro Genel Bakış                                              | D2    |
 | Kayıt durumu ve olayları: öğrencinin `enrollmentStatus` alanı (aktif, dondurulmuş, ayrıldı, mezun) ve geçiş olayları | Sınıf listeleri, yoklama, görev hedefleri, mesaj kapsamı, bildirim alıcıları | D2    |
 | Kimlik okuma: `GET /students/:id/identity` (maskeli, yetkili, denetimli)                                             | İlgili kişi başvurusu dökümü (IST-022), e-Okul şablonu                       | D3    |

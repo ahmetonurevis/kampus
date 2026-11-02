@@ -270,6 +270,17 @@ const CASES: readonly (CrossCase<Tenant> & { type?: 'language_school' })[] = [
     }),
   },
   {
+    // Bakiye öğrencinin kapsamından okunur (DOM-FIN-052); öğrenci yalnız B'de.
+    key: 'GET /api/v1/finance/students/:studentId/balance',
+    kind: 'kayıt',
+    actor: (a) => a.cookies.admin,
+    make: studentWithIdentity,
+    request: ({ studentId }) => ({
+      method: 'GET',
+      url: `/api/v1/finance/students/${studentId}/balance`,
+    }),
+  },
+  {
     // Aday bilgisi düzeltme ön büro ve yöneticidedir (DOM-KAY-003); aday yalnız B'de.
     key: 'PATCH /api/v1/prospects/:prospectId/details',
     kind: 'kayıt',

@@ -14,6 +14,7 @@ import {
   financeOverviewFor,
   financeSummaryFor,
   financeTotalsFor,
+  studentBalanceFor,
 } from '../services/finance-exports.ts'
 import { commandErrors } from './commands.schemas.ts'
 import { dataResponse } from './common.schemas.ts'
@@ -111,6 +112,42 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
       },
     },
     async (request) => ({ data: await financeOverviewFor(contextOf(request), request.query) }),
+  )
+
+  typed.get(
+    '/api/v1/finance/students/:studentId/balance',
+    {
+      preValidation: [
+        app.authenticate,
+        finance,
+        app.requireRole(['yonetici', 'onburo', 'veli', 'ogrenci']),
+      ],
+      schema: {
+        operationId: 'getStudentBalance',
+        tags: ['finance-exports'],
+        summary: 'Öğrencinin bakiyesi',
+        description:
+          'Öğrencinin toplam, ödenen, açık ve gecikmiş tutarı, gecikmiş taksit sayısı ve en yakın açık taksiti (DOM-FIN-052). Kısmi ödemede yalnız kalan kısım sayılır; `/finance/totals` ile aynı kural. Veli yalnız velayetli ve kısıtsız bağlı çocuğunu, öğrenci yalnız kendisini okur; kapsam dışı, olmayan ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.',
+        params: z.object({ studentId: z.string().min(1).max(200).describe('Öğrenci kimliği') }),
+        response: {
+          200: dataResponse(
+            z.object({
+              studentId: z.string(),
+              totalCents: z.number().int(),
+              paidCents: z.number().int(),
+              openCents: z.number().int(),
+              overdueCents: z.number().int(),
+              overdueCount: z.number().int(),
+              nextDue: z.object({ date: z.string(), amountCents: z.number().int() }).nullable(),
+            }),
+          ),
+          ...commandErrors,
+        },
+      },
+    },
+    async (request) => ({
+      data: await studentBalanceFor(contextOf(request), request.params.studentId),
+    }),
   )
 
   typed.get(

@@ -16,6 +16,7 @@ import {
   paymentsCsv,
   refundLines,
   refundsCsv,
+  studentBalance,
   studentDirectory,
   type ExportPayment,
 } from '../packages/school-core/src/lib/finance-export.ts'
@@ -376,4 +377,56 @@ test('özet sorgusunda dönem ya birlikte ya hiç verilir', () => {
   assert.equal(financeOverviewQuerySchema.safeParse({ from: '2026-01-01' }).success, false)
   assert.equal(financeOverviewQuerySchema.safeParse({ to: '2026-01-01' }).success, false)
   assert.equal(financeOverviewQuerySchema.safeParse({ extra: '1' }).success, false)
+})
+
+// --- Öğrenci bakiyesi (DOM-FIN-052) --------------------------------------------------------
+
+test('DOM-FIN-052: öğrenci bakiyesi kısmi ödemede yalnız kalanı sayar; en yakın açık taksiti verir', () => {
+  const balance = studentBalance(
+    's1',
+    [
+      overviewInvoice('i1', 's1', 100_000, '2026-09-15T09:00:00.000Z'),
+      overviewInvoice('i2', 's1', 100_000, '2026-11-15T09:00:00.000Z'),
+      overviewInvoice('i3', 's1', 100_000, '2026-10-20T09:00:00.000Z'),
+      {
+        ...overviewInvoice('i4', 's1', 50_000, '2026-08-15T09:00:00.000Z'),
+        paidAt: '2026-08-15T10:00:00.000Z',
+      },
+    ],
+    new Map([
+      ['i1', 30_000],
+      ['i3', 40_000],
+    ]),
+    '2026-10-20',
+  )
+  assert.deepEqual(balance, {
+    studentId: 's1',
+    totalCents: 350_000,
+    paidCents: 120_000,
+    openCents: 230_000,
+    overdueCents: 70_000,
+    overdueCount: 1,
+    // Bugün vadesi gelen gecikmiş sayılmaz, en yakın açık taksittir; kalan kısmı döner.
+    nextDue: { date: '2026-10-20', amountCents: 60_000 },
+  })
+})
+
+test('DOM-FIN-052: taksiti olmayan ya da borcu bitmiş öğrencide bakiye sıfırdır, sıradaki taksit yoktur', () => {
+  assert.deepEqual(studentBalance('s1', [], new Map(), '2026-10-20'), {
+    studentId: 's1',
+    totalCents: 0,
+    paidCents: 0,
+    openCents: 0,
+    overdueCents: 0,
+    overdueCount: 0,
+    nextDue: null,
+  })
+  const settled = studentBalance(
+    's1',
+    [overviewInvoice('i1', 's1', 10_000, '2026-11-15T09:00:00.000Z')],
+    new Map([['i1', 10_000]]),
+    '2026-10-20',
+  )
+  assert.equal(settled.openCents, 0)
+  assert.equal(settled.nextDue, null)
 })

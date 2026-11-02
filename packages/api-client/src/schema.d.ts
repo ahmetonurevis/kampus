@@ -2040,6 +2040,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/students/{studentId}/balance": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrencinin bakiyesi
+         * @description Öğrencinin toplam, ödenen, açık ve gecikmiş tutarı, gecikmiş taksit sayısı ve en yakın açık taksiti (DOM-FIN-052). Kısmi ödemede yalnız kalan kısım sayılır; `/finance/totals` ile aynı kural. Veli yalnız velayetli ve kısıtsız bağlı çocuğunu, öğrenci yalnız kendisini okur; kapsam dışı, olmayan ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.
+         */
+        get: operations["getStudentBalance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/summary": {
         parameters: {
             query?: never;
@@ -22165,6 +22185,114 @@ export interface operations {
                                 overdueCents: number;
                                 oldestDueDate: string;
                             }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStudentBalance: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            totalCents: number;
+                            paidCents: number;
+                            openCents: number;
+                            overdueCents: number;
+                            overdueCount: number;
+                            nextDue: {
+                                date: string;
+                                amountCents: number;
+                            } | null;
                         };
                     };
                 };

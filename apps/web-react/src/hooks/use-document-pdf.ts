@@ -5,17 +5,20 @@ import { institutionKey } from '@kampus/react-shared/query-keys.ts'
 import { useActiveInstitutionId } from '@kampus/react-shared/use-active-institution.ts'
 import { documentData } from '@kampus/school-core/lib/document-data.ts'
 import { useAuth } from '@/auth/use-auth.ts'
-import { documentErrorMessage, loadDocumentState } from '@/lib/pdf/document-state.ts'
 import {
-  paymentReceiptDocument,
-  receiptNumberLabel,
-  refundStatementDocument,
-} from '@/lib/pdf/finance-templates.ts'
+  documentErrorMessage,
+  loadDocumentState,
+  studentDisplayName,
+  studentPaidCents,
+} from '@/lib/pdf/document-state.ts'
 import { contractDocument } from '@/lib/pdf/templates/contract.ts'
+import { studentStatementDocument } from '@/lib/pdf/templates/finance-statement.ts'
 import { homeworkDocument } from '@/lib/pdf/templates/homework.ts'
 import { materialDocument } from '@/lib/pdf/templates/material.ts'
 import { paymentPlanDocument } from '@/lib/pdf/templates/payment-plan.ts'
+import { paymentReceiptDocument, receiptNumberLabel } from '@/lib/pdf/templates/payment-receipt.ts'
 import { receiptDocument } from '@/lib/pdf/templates/receipt.ts'
+import { refundStatementDocument } from '@/lib/pdf/templates/refund-statement.ts'
 import { documentFilename, type PdfDocumentType } from '@/lib/pdf/templates/shared.ts'
 import { submissionDocument } from '@/lib/pdf/templates/submission.ts'
 
@@ -81,11 +84,32 @@ export function useDocumentPdf(
           )
           return { blob, pages, filename: documentFilename(type, recordId) }
         }
-        const state = await loadDocumentState(
-          client,
-          { type, recordId, ...(studentId ? { studentId } : {}) },
-          signal,
-        )
+        if (type === 'student-statement') {
+          // Kayıt kimliği öğrenci kimliğidir. Bakiye ve satırlar API ekstresinden gelir; burada
+          // yeniden hesaplanmaz (DOM-FIN-054). Kapsam ekstre ucundadır.
+          const [{ data }, studentName] = await Promise.all([
+            runRequest(() =>
+              client.GET('/api/v1/finance/students/{studentId}/statement', {
+                params: { path: { studentId: recordId } },
+                signal,
+              }),
+            ),
+            studentDisplayName(client, recordId, signal),
+          ])
+          const { blob, pages } = await renderPdf((measurer) =>
+            studentStatementDocument(measurer, data, { ...options, studentName }),
+          )
+          return { blob, pages, filename: documentFilename(type, recordId) }
+        }
+        // Taahhütnamede kayıt kimliği öğrenci kimliğidir; bakiye belge kayıtlarıyla paralel okunur.
+        const [state, collectedCents] = await Promise.all([
+          loadDocumentState(
+            client,
+            { type, recordId, ...(studentId ? { studentId } : {}) },
+            signal,
+          ),
+          type === 'payment-plan' ? studentPaidCents(client, recordId, signal) : undefined,
+        ])
         const { blob, pages } = await renderPdf((measurer) => {
           switch (type) {
             case 'receipt':
@@ -98,7 +122,7 @@ export function useDocumentPdf(
               return paymentPlanDocument(
                 measurer,
                 documentData(state, 'payment-plan', recordId),
-                options,
+                collectedCents === undefined ? options : { ...options, collectedCents },
               )
             case 'homework':
               return homeworkDocument(

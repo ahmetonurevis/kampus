@@ -11,6 +11,8 @@ import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { files } from '../src/db/schema/files.ts'
+import { recordFileCheck } from '../src/services/files.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
   buildTestApp,
@@ -22,6 +24,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { multipart, PDF, png, tempStorage, uploadParts } from './support/files-sample.ts'
 
 /**
  * Öğretmenime Sor uçları (docs/domain/iletisim-ve-veli.md DOM-ILT-090…093). Her test kendi
@@ -70,16 +73,19 @@ describe('Öğretmenime Sor uçları', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
+  let store: Awaited<ReturnType<typeof tempStorage>>
   let serial = 0
   const key = () => ({ 'idempotency-key': `test-ask-${String(++serial).padStart(5, '0')}` })
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
-    app = await buildTestApp(db, { clock: () => FIXED_NOW })
+    store = await tempStorage()
+    app = await buildTestApp(db, { storage: store.storage, clock: () => FIXED_NOW })
   })
   after(async () => {
     await app.close()
     await close()
+    await store.remove()
   })
 
   async function institution(overrides: Partial<InstitutionOverrides> = {}, target = app) {
@@ -619,5 +625,178 @@ describe('Öğretmenime Sor uçları', () => {
     } finally {
       await logged.close()
     }
+  })
+
+  // --- Fotoğraf (DOM-ILT-094) ----------------------------------------------------------------
+
+  /** Dosya yükler; `ready` ise taramadan geçmiş gibi işaretler (tarama işi yok, TODO(F3c2-scan)). */
+  async function uploadPhoto(
+    institutionId: string,
+    cookie: string,
+    options: { purpose?: string; ready?: boolean; name?: string } = {},
+  ) {
+    const purpose = options.purpose ?? 'student_question_photo'
+    const parts =
+      purpose === 'submission'
+        ? uploadParts(purpose, PDF, 'odev.pdf')
+        : uploadParts(purpose, png(), options.name ?? 'Deniz Yılmaz defter.png', 'image/png')
+    const body = multipart(parts)
+    const response = await app.inject({
+      method: 'POST',
+      url: '/api/v1/files',
+      headers: { origin: TEST_ORIGIN, cookie, 'content-type': body.contentType, ...key() },
+      payload: body.payload,
+    })
+    assert.equal(response.statusCode, 201, response.body)
+    const id: string = response.json().data.id
+    if (options.ready !== false)
+      await recordFileCheck(db, store.storage, {
+        institutionId,
+        fileId: id,
+        outcome: 'ready',
+        now: FIXED_NOW,
+        log: app.log,
+      })
+    return id
+  }
+  const fileRows = (institutionId: string) =>
+    db
+      .select()
+      .from(files)
+      .where(eq(files.institutionId, institutionId))
+      .then((list) =>
+        JSON.stringify(
+          list
+            .map((row) => ({ id: row.id, attachedId: row.attachedId, version: row.version }))
+            .sort((x, y) => x.id.localeCompare(y.id)),
+        ),
+      )
+  const fileUrl = (cookie: string, fileId: string) => read(cookie, `/api/v1/files/${fileId}/url`)
+
+  test('DOM-ILT-094: öğrenci fotoğraflı soru sorar; fotoğraflar aynı işlemde bağlanır, kayda yalnız kimlik girer', async () => {
+    const a = await institution()
+    const cookie = await student(a.id)
+    const first = await uploadPhoto(a.id, cookie)
+    const second = await uploadPhoto(a.id, cookie)
+    const headers = key()
+    const response = await ask(cookie, { ...QUESTION, fileIds: [first, second] }, headers)
+    assert.equal(response.statusCode, 201, response.body)
+    const id: string = response.json().data.entity.id
+    const record = await findRecord(db, a.id, 'questions', id)
+    assert.deepEqual(record?.data.fileIds, [first, second])
+    // Dosya adı (kişisel veri) kayda girmez.
+    assert.equal(JSON.stringify(record?.data).includes('Deniz Yılmaz defter'), false)
+    const rows = await db.select().from(files).where(eq(files.institutionId, a.id))
+    for (const row of rows) {
+      assert.equal(row.attachedType, 'question')
+      assert.equal(row.attachedId, id)
+      assert.equal(row.dataSubjectId, 's1')
+    }
+    // Tekrar aynı yanıtı döndürür; ikinci soru açılmaz, dosya yeniden bağlanmaz.
+    const again = await ask(cookie, { ...QUESTION, fileIds: [first, second] }, headers)
+    assert.equal(again.statusCode, 201)
+    assert.equal(again.headers['idempotent-replayed'], 'true')
+    assert.equal((await stored(a.id)).filter((row) => row.data.fileIds !== undefined).length, 1)
+    // Okuma ucunda kimlikler döner; öğrenci kendi fotoğrafını açar.
+    const item = await read(cookie, `/api/v1/collections/questions/${id}`)
+    assert.deepEqual(item.json().data.record.fileIds, [first, second])
+    assert.equal((await fileUrl(cookie, first)).statusCode, 200)
+  })
+
+  test('DOM-ILT-094, DOM-ILT-093: soru fotoğrafını veli, sorunun öğretmeni ve yönetici okur; başka öğrenci, başka öğretmen, ön büro ve başka kurum 404', async () => {
+    const a = await institution()
+    const b = await institution()
+    const cookie = await student(a.id)
+    const photo = await uploadPhoto(a.id, cookie)
+    await asked(cookie, { ...QUESTION, fileIds: [photo] })
+    const before = (
+      await db
+        .select()
+        .from(auditLog)
+        .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'file.access')))
+    ).length
+    for (const reader of [await parent(a.id), await teacher(a.id, 't1'), a.adminCookie]) {
+      assertError(await read(reader, `/api/v1/files/${photo}`), 200)
+      const link = await fileUrl(reader, photo)
+      assertError(link, 200)
+      assert.match(link.json().data.url, /files\/download/)
+    }
+    // Her bağlantı üretimi denetim kaydıdır (çocuk verisi).
+    const accesses = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'file.access')))
+    assert.equal(accesses.length, before + 3)
+    for (const outsider of [
+      await student(a.id, 's25'),
+      await parent(a.id, 's2'),
+      await teacher(a.id, 't3'),
+      (await member(a.id, 'onburo')).cookie,
+      await student(b.id),
+      b.adminCookie,
+    ]) {
+      assertError(await read(outsider, `/api/v1/files/${photo}`), 404)
+      assertError(await fileUrl(outsider, photo), 404)
+    }
+  })
+
+  test('DOM-ILT-094: başkasının, başka kurumun dosyası, yanlış amaç, hazır olmayan dosya ve 4. fotoğraf 422; kayıt değişmez', async () => {
+    const a = await institution()
+    const b = await institution()
+    const cookie = await student(a.id)
+    const own = await Promise.all([1, 2, 3, 4].map(() => uploadPhoto(a.id, cookie)))
+    const nehirs = await uploadPhoto(a.id, await student(a.id, 's25'))
+    const foreign = await uploadPhoto(b.id, await student(b.id))
+    const homework = await uploadPhoto(a.id, cookie, { purpose: 'submission' })
+    const pending = await uploadPhoto(a.id, cookie, { ready: false })
+    const questionsBefore = await snapshot(a.id)
+    const filesBefore = await fileRows(a.id)
+    const foreignBefore = await fileRows(b.id)
+    const cases: [string[], string][] = [
+      [own, 'question_photo_limit'],
+      [[own[0] ?? '', nehirs], 'question_photo_unavailable'],
+      [[foreign], 'question_photo_unavailable'],
+      [[homework], 'question_photo_purpose'],
+      [[own[0] ?? '', pending], 'file_not_ready'],
+    ]
+    for (const [fileIds, code] of cases) {
+      const response = await ask(cookie, { ...QUESTION, fileIds })
+      assertError(response, 422, code)
+    }
+    assertError(await ask(cookie, { ...QUESTION, fileIds: [own[0], own[0]] }), 400)
+    // Gövdedeki kurum kimliği B'nin dosyasını açmaz; hiçbir kayıt değişmez.
+    assertError(
+      await ask(cookie, { ...QUESTION, fileIds: [foreign], institutionId: b.id }),
+      400,
+      'validation_failed',
+    )
+    assert.equal(await snapshot(a.id), questionsBefore)
+    assert.equal(await fileRows(a.id), filesBefore)
+    assert.equal(await fileRows(b.id), foreignBefore)
+  })
+
+  test('DOM-ILT-094: soru fotoğrafını öğretmen ve veli yükleyemez (403); modül kapalıyken yükleme 403; oturumsuz 401', async () => {
+    const a = await institution()
+    const body = multipart(uploadParts('student_question_photo', png(), 'a.png', 'image/png'))
+    const upload = (cookie: string | null) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/files',
+        headers: {
+          origin: TEST_ORIGIN,
+          'content-type': body.contentType,
+          ...(cookie === null ? {} : { cookie }),
+          ...key(),
+        },
+        payload: body.payload,
+      })
+    assertError(await upload(null), 401)
+    assertError(await upload(await teacher(a.id, 't1')), 403, 'forbidden')
+    assertError(await upload(await parent(a.id)), 403, 'forbidden')
+    const closed = await institution({ enabledModules: { learning: false } })
+    assertError(await upload(await student(closed.id)), 403, 'module_disabled')
+    assert.equal(await fileRows(a.id), '[]')
+    assert.equal(await fileRows(closed.id), '[]')
+    assertError(await ask(null, { ...QUESTION, fileIds: ['f1'] }), 401)
   })
 })

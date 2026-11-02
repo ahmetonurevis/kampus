@@ -43,7 +43,8 @@ const QUOTA_EXCLUDED: FileStatus[] = ['rejected', 'deleted']
 
 /**
  * Yeni dosya satırı. Dönüşümden geçecek ses (`media.transcode`, ADR 0003 karar 10) `processing`
- * başlar; öteki dosyalar denetimi (karar 7, 8) `pending` bekler.
+ * başlar; öteki dosyalar denetimi (karar 7, 8) `pending` bekler. Tarayıcı açıkken yüklenen ses
+ * `scanPending` ile başlar (OG-988): dönüşüm bitse de tarama temiz çıkana kadar `ready` olmaz.
  */
 export async function insertFile(
   tx: Database,
@@ -51,10 +52,12 @@ export async function insertFile(
   file: NewFile,
   now: Date,
   status: 'pending' | 'processing' = 'pending',
+  options: { scanPending?: boolean } = {},
 ): Promise<StoredFile> {
+  const scanPending = options.scanPending ?? false
   const [row] = await tx
     .insert(files)
-    .values({ ...file, institutionId, status, createdAt: now, updatedAt: now })
+    .values({ ...file, institutionId, status, scanPending, createdAt: now, updatedAt: now })
     .returning()
   if (!row) throw new Error('file insert returned no row')
   return row
@@ -155,6 +158,7 @@ async function updateFile(
       | 'deletedAt'
       | 'originalName'
       | 'readyAt'
+      | 'scanPending'
     >
   >,
   now: Date,
@@ -242,8 +246,10 @@ export function setFileStatus(
 /**
  * Ses dönüşümünün sonucu (ADR 0003 karar 10): `processing` satır dönüşmüş nesnenin anahtarı, türü,
  * boyutu, özeti ve ölçülen süresiyle `ready` olur; özgün nesnenin anahtarı aynı güncellemede
- * `superseded_storage_key`'e geçer (silinene kadar izlenir). İçerik kolonları yalnız bu geçişte
- * değişebilir (migration 0033 tetikleyicisi); iyimser kilit tutmazsa `null`.
+ * `superseded_storage_key`'e geçer (silinene kadar izlenir). Taraması süren seste (`scanPending`,
+ * OG-988) içerik yazılır ama dosya `processing` kalır; `ready`'yi tarama yazar
+ * (`completeAudioScan`). İçerik kolonları yalnız bu geçişte ve bir kez değişebilir (migration 0033,
+ * 0044 tetikleyicisi); iyimser kilit tutmazsa `null`.
  */
 export async function completeFileTranscode(
   tx: Database,
@@ -256,8 +262,7 @@ export async function completeFileTranscode(
     .update(files)
     .set({
       ...output,
-      status: 'ready',
-      readyAt: now,
+      ...(current.scanPending ? {} : { status: 'ready' as const, readyAt: now }),
       supersededStorageKey: current.storageKey,
       updatedAt: now,
       version: current.version + 1,
@@ -268,6 +273,7 @@ export async function completeFileTranscode(
         eq(files.id, current.id),
         eq(files.version, current.version),
         eq(files.status, 'processing'),
+        isNull(files.supersededStorageKey),
       ),
     )
     .returning()
@@ -275,10 +281,46 @@ export async function completeFileTranscode(
 }
 
 /**
- * Kurumun `before`'dan önce güncellenmiş, hâlâ `processing` dosyaları (verilen amaçlarda); en
- * eskiler önce, `limit` kadar. İşi kaybolmuş dönüşümleri yeniden başlatmak için (`media.transcode`).
+ * Sesin temiz tarama sonucu (ADR 0003 karar 8, OG-988): `scanPending` düşer. Dönüşüm bitmişse
+ * (`superseded_storage_key` dolu: özgün nesne taramayı bekliyor) dosya aynı güncellemede `ready`
+ * olur; bitmemişse `processing` kalır ve `ready`'yi dönüşüm yazar. Çağıran satırı kilitler
+ * (`findFile` `lock`); iyimser kilit ve durum koşulu tutmazsa `null`.
  */
-export async function listStaleProcessingFiles(
+export async function completeAudioScan(
+  tx: Database,
+  institutionId: string,
+  current: StoredFile,
+  now: Date,
+): Promise<StoredFile | null> {
+  const transcoded = current.supersededStorageKey !== null
+  const [row] = await tx
+    .update(files)
+    .set({
+      scanPending: false,
+      ...(transcoded ? { status: 'ready' as const, readyAt: now } : {}),
+      updatedAt: now,
+      version: current.version + 1,
+    })
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        eq(files.id, current.id),
+        eq(files.version, current.version),
+        eq(files.status, 'processing'),
+        eq(files.scanPending, true),
+      ),
+    )
+    .returning()
+  return row ?? null
+}
+
+/**
+ * Kurumun `before`'dan önce güncellenmiş, hâlâ `processing` ve henüz dönüşmemiş ses dosyaları
+ * (verilen amaçlarda); en eskiler önce, `limit` kadar. İşi kaybolmuş dönüşümleri yeniden başlatmak
+ * için (`media.transcode`). Dönüşmüş ama taraması süren ses (`superseded_storage_key` dolu,
+ * OG-988) dönüşüm beklemez, listeye girmez.
+ */
+export async function listStaleTranscodeFiles(
   db: Database,
   institutionId: string,
   purposes: readonly StoredFile['purpose'][],
@@ -294,6 +336,37 @@ export async function listStaleProcessingFiles(
         eq(files.institutionId, institutionId),
         eq(files.status, 'processing'),
         inArray(files.purpose, [...purposes]),
+        isNull(files.supersededStorageKey),
+        lt(files.updatedAt, before),
+      ),
+    )
+    .orderBy(asc(files.updatedAt), asc(files.id))
+    .limit(limit)
+}
+
+/**
+ * Kurumun `before`'dan önce güncellenmiş, taraması bitmemiş dosyaları (işi kaybolmuş ya da
+ * denemeleri bitmiş `file.scan`): ses dışı `processing` dosyalar ve taraması süren
+ * (`scanPending`) ses (OG-988). Yalnız dönüşüm bekleyen ses (tarama temiz ya da tarayıcı kapalıyken
+ * yüklenmiş) girmez. En eskiler önce, `limit` kadar.
+ */
+export async function listStaleScanFiles(
+  db: Database,
+  institutionId: string,
+  transcodedPurposes: readonly StoredFile['purpose'][],
+  before: Date,
+  limit: number,
+): Promise<StoredFile[]> {
+  return db
+    .select()
+    .from(files)
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        eq(files.status, 'processing'),
+        transcodedPurposes.length === 0
+          ? undefined
+          : or(notInArray(files.purpose, [...transcodedPurposes]), eq(files.scanPending, true)),
         lt(files.updatedAt, before),
       ),
     )
@@ -303,7 +376,9 @@ export async function listStaleProcessingFiles(
 
 /**
  * Silinmeyi bekleyen özgün nesnesi olan dosyalar (`superseded_storage_key` dolu; ses dönüşümü,
- * ADR 0003 karar 10): durumdan bağımsız, kimlik sırasıyla `limit` kadar.
+ * ADR 0003 karar 10), kimlik sırasıyla `limit` kadar. `processing` satır girmez: dönüşmüş ama
+ * taraması süren seste özgün nesneyi tarama okur (OG-988); silinmesi `ready`, ret ya da imhayı
+ * bekler.
  */
 export async function listSupersededObjects(
   db: Database,
@@ -317,7 +392,13 @@ export async function listSupersededObjects(
       supersededStorageKey: files.supersededStorageKey,
     })
     .from(files)
-    .where(and(eq(files.institutionId, institutionId), isNotNull(files.supersededStorageKey)))
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        isNotNull(files.supersededStorageKey),
+        ne(files.status, 'processing'),
+      ),
+    )
     .orderBy(asc(files.id))
     .limit(limit)
 }

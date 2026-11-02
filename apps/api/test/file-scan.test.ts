@@ -14,8 +14,8 @@ import type { Job } from 'pg-boss'
 import {
   InlineScanScheduler,
   runScanRequeue,
+  SCAN_PENDING_PURPOSES,
   SCAN_QUEUE_OPTIONS,
-  SCANNED_PURPOSES,
   scanJobDataSchema,
   STALE_SCAN_MS,
 } from '../src/jobs/file-scan.ts'
@@ -370,7 +370,7 @@ describe('dosya taraması (file.scan)', () => {
     assert.equal((await rowOf(t, id)).status, 'rejected')
   })
 
-  test('ADR 0003 karar 8, 10: ses amaçları değişmedi; dönüşüm kuyruğuna girer, tarama işi açılmaz ve tarama ses dosyasını atlar', async () => {
+  test('OG-988, ADR 0003 karar 8, 10: tarayıcı açıkken ses yüklemesi dönüşüm ve tarama işini aynı işlemde kuyruğa koyar, scanPending başlar (ayrıntı audio-scan.test.ts)', async () => {
     const t = await tenant()
     const response = await upload(t, {
       parts: uploadParts('listening_audio', MP3, 'dinleme.mp3', 'audio/mpeg'),
@@ -382,16 +382,14 @@ describe('dosya taraması (file.scan)', () => {
       transcodeScheduler.queued.filter((item) => item.fileId === id),
       [job(t, id)],
     )
-    assert.equal(scanScheduler.queued.filter((item) => item.fileId === id).length, 0)
-    const before = await rowOf(t, id)
-    assert.deepEqual(await scanStoredFile(deps(), job(t, id), now), {
-      outcome: 'skipped',
-      reason: 'not_scanned',
-    })
-    assert.deepEqual(await rowOf(t, id), before)
-    assert.ok(!SCANNED_PURPOSES.includes('listening_audio'))
-    assert.ok(!SCANNED_PURPOSES.includes('speaking_recording'))
-    assert.ok(SCANNED_PURPOSES.includes('submission'))
+    assert.deepEqual(
+      scanScheduler.queued.filter((item) => item.fileId === id),
+      [job(t, id)],
+    )
+    assert.equal((await rowOf(t, id)).scanPending, true)
+    // Ses dışı dosyanın tarama durumu `status`'tadır; kolon `false` kalır.
+    assert.equal((await rowOf(t, await uploaded(t))).scanPending, false)
+    assert.deepEqual([...SCAN_PENDING_PURPOSES].sort(), ['listening_audio', 'speaking_recording'])
   })
 
   test('FILE_SCANNER=off: bugünkü davranış; yükleme pending kalır, tarama işi açılmaz', async () => {

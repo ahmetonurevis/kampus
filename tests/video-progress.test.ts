@@ -6,6 +6,7 @@ import {
   recordVideoProgress,
   recordVideoProgressSchema,
   videoProgressPercent,
+  type VideoProgressRecord,
 } from '../packages/school-core/src/lib/video-progress.ts'
 import { isDomainError } from './support/domain-error.ts'
 
@@ -23,7 +24,11 @@ const parent = person('veli', 'child', 's1')
 const teacher = person('ogretmen', 'teacher', 't1')
 const admin: Participant = { role: 'yonetici', links: [], userId: 'u-admin' }
 
-const progressOf = (state: State, studentId = 's1', videoId = 'v1') =>
+const progressOf = (
+  state: State,
+  studentId = 's1',
+  videoId = 'v1',
+): VideoProgressRecord | undefined =>
   state.videoProgress.find((p) => p.studentId === studentId && p.videoId === videoId)
 
 function unchanged(state: State, action: () => unknown, check: (error: unknown) => boolean) {

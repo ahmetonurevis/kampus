@@ -333,6 +333,19 @@ describe('görev deneme uçları', () => {
     return { resourceId: resource.id, versionId: versions[0]!.id }
   }
 
+  /** Telif incelemesi sonunda yeniden yayın: sürüm doğrudan `published`'a döner. */
+  async function republish(t: Tenant, versionId: string) {
+    await db
+      .update(resourceVersions)
+      .set({ status: 'published' })
+      .where(
+        and(
+          eq(resourceVersions.institutionId, t.institution.id),
+          eq(resourceVersions.id, versionId),
+        ),
+      )
+  }
+
   /** Yönetici 9-A ve 9-B'ye alıştırma olarak atar: Deniz ve Can hedeflenir. */
   async function assignBoth(t: Tenant, versionId: string) {
     const data = await ok(
@@ -967,14 +980,14 @@ describe('görev deneme uçları', () => {
     )
     assert.deepEqual(replay, done)
     fails(
-      await submit(running.id, t.cookies.student, {}, saved.rowVersion),
+      await submit(running.id, t.cookies.student, {}, done.rowVersion),
       409,
       'attempt_already_submitted',
     )
     fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
     assert.deepEqual(await stored(t.institution.id), finished)
-    // Yönetici yeniden yayına alır: yeni deneme açılır.
-    await ok(await call('POST', `${version}/approve`, t.cookies.admin, {}))
+    // Yönetici yeniden yayına alır (onay koşulları bu testin konusu değil): yeni deneme açılır.
+    await republish(t, versionId)
     await ok(await start(assignmentId, t.cookies.student), 201)
   })
 

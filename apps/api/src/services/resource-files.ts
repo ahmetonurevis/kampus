@@ -23,10 +23,11 @@ import { ForbiddenError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { defineFileAttachment } from './file-registry.ts'
 import { attachFile, detachFile } from './files.ts'
+import { learnerContentGate } from './learner-content.ts'
 import { RESOURCE_VERSION_ATTACHMENT } from './listening-plays.ts'
 import { contentReader } from './resources.ts'
 import { viewerOf, visible, type Viewer } from './task-assignments.ts'
-import { learnerContentGate, learnerHasWork } from './task-progress.ts'
+import { learnerHasWork } from './task-progress.ts'
 
 /**
  * Kaynak sürümünün dosyaları (DOM-KYN-006; ADR 0003 karar 5, 6). Kural core

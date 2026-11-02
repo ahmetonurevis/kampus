@@ -765,15 +765,24 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     // Personel görünümünde içerik eki yoktur (içeriği kaynak uçlarından okur).
     assert.ok(!('content' in (await ok(await read(t.cookies.teacher)))))
 
-    // Lisans bitiş gününden sonra: süren iş yoksa içerik gösterilmez.
-    now = new Date('2026-10-07T09:00:00.000Z')
+    // Lisans bitiş gününden sonra: süren iş yoksa içerik gösterilmez ve ilk taslak açılmaz
+    // (yeni iş; IST-036).
+    const expiredAt = new Date('2026-10-07T09:00:00.000Z')
+    now = expiredAt
     try {
       for (const cookie of [t.cookies.student, t.cookies.parent]) {
         const expired = await ok(await read(cookie))
         assert.deepEqual([expired.content, expired.contentUnavailable], [null, 'license_expired'])
       }
+      fails(
+        await saveDraft(assignmentId, t.cookies.student, 'İlk taslak'),
+        409,
+        'resource_license_expired',
+      )
       // Öğrencinin taslağı varsa süren iş sayılır: yönerge görünür (veli taslağı göremez).
+      now = FIXED_NOW
       await ok(await saveDraft(assignmentId, t.cookies.student, 'İlk taslak'))
+      now = expiredAt
       assert.equal((await ok(await read(t.cookies.student))).contentUnavailable, null)
       assert.equal((await ok(await read(t.cookies.parent))).contentUnavailable, 'license_expired')
     } finally {
@@ -919,7 +928,16 @@ describe('yazma görevi taslak ve teslim uçları', () => {
       await saveDraft(assignmentId, t.cookies.student, 'İkinci satır', revision(draft.revision)),
     )
     await ok(await submit(assignmentId, t.cookies.student), 201)
-    await ok(await call('POST', `${version}/approve`, t.cookies.admin, {}))
+    // Yönetici yeniden yayına alır (onay koşulları bu testin konusu değil).
+    await db
+      .update(resourceVersions)
+      .set({ status: 'published' })
+      .where(
+        and(
+          eq(resourceVersions.institutionId, t.institution.id),
+          eq(resourceVersions.id, versionId),
+        ),
+      )
     await ok(await submit(assignmentId, t.cookies.otherStudent), 201)
   })
 

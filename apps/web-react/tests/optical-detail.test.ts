@@ -31,6 +31,14 @@ function evaluated(): State {
   return state
 }
 
+function evaluationOf(state: State, studentId: string, subjectId: string) {
+  const found = state.opticalEvaluations.find(
+    (item) => item.studentId === studentId && item.subjectId === subjectId,
+  )
+  assert.ok(found)
+  return found
+}
+
 test('DOM-AKD-062 · kazanım satırları core başarı yüzdesini ve yanlış/boş sayılarını soru sonuçlarıyla verir', () => {
   const state = evaluated()
   const evaluation = state.opticalEvaluations[0]
@@ -44,13 +52,18 @@ test('DOM-AKD-062 · kazanım satırları core başarı yüzdesini ve yanlış/b
     assert.ok(score)
     assert.equal(topic.correct, score.correct)
     assert.equal(topic.total, score.total)
-    assert.equal(topic.percent, score.percent === null ? '—' : `%${score.percent}`)
     assert.equal(topic.weak, evaluation.weakTopics.includes(topic.topic))
     const answered: OpticalQuestionResult[] = evaluation.questionResults.filter(
       (q) => q.topic === topic.topic && q.outcome !== 'cancelled',
     )
     assert.equal(topic.correct + topic.wrong + topic.blank, answered.length)
   }
+  // Seed örnek dosyası: Deniz'in matematiğinde 4 sorudan 0 doğru, 2 yanlış, 2 boş vardır.
+  const math = evaluationOf(state, 's1', 'math')
+  assert.deepEqual(
+    topicRows(math).map((t) => [t.topic, t.correct, t.wrong, t.blank, t.total, t.percent]),
+    [['Denklemler', 0, 2, 2, 4, '%0']],
+  )
   // Ders toplamı kazanım toplamıyla tutarlıdır (iptal sorular hariç).
   assert.equal(
     topics.reduce((sum, topic) => sum + topic.correct, 0),
@@ -116,4 +129,29 @@ test('DOM-AKD-062 · değerlendirme satırı ayrıntıyı taşır; anahtar reviz
   assert.match(stale[0]?.staleReason ?? '', /Cevap anahtarı değişti/)
   // Eski analizde de ayrıntı kayıtlı analizden gösterilir.
   assert.ok((stale[0]?.questions.length ?? 0) > 0)
+})
+
+test('DOM-AKD-062 · yüzde sabit biçimde yazılır; sorusu olmayan kazanım tire gösterir', () => {
+  const state = evaluated()
+  const evaluation = structuredClone(evaluationOf(state, 's1', 'math'))
+  const topic = 'Denklemler'
+  evaluation.topicScores = [
+    { topic, total: 4, correct: 1, percent: 25 },
+    { topic: 'Boş kazanım', total: 0, correct: 0, percent: null },
+  ]
+  const [quarter, none] = topicRows(evaluation)
+  assert.equal(quarter?.percent, '%25')
+  assert.equal(none?.percent, '—')
+})
+
+test('DOM-AKD-062 · profil bulunamazsa analiz eski sayılır ve neden profili anar', () => {
+  const state = evaluated()
+  state.opticalProfiles = []
+  const rows = evaluationRows(state, admin)
+  assert.ok(rows.length > 0)
+  for (const row of rows) {
+    assert.equal(row.current, false)
+    assert.match(row.staleReason, /Optik profili bulunamadı/)
+    assert.doesNotMatch(row.staleReason, /Cevap anahtarı değişti/)
+  }
 })

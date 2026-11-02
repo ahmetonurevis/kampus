@@ -7,6 +7,7 @@ import pg from 'pg'
 import * as academicYearsSchema from './schema/academic-years.ts'
 import * as auditLogSchema from './schema/audit-log.ts'
 import * as authSchema from './schema/auth.ts'
+import * as cefrSchema from './schema/cefr.ts'
 import * as coordinatorDutiesSchema from './schema/coordinator-duties.ts'
 import * as coursesSchema from './schema/courses.ts'
 import * as filesSchema from './schema/files.ts'
@@ -36,6 +37,7 @@ export const schema = {
   ...studentGuardiansSchema,
   ...coursesSchema,
   ...languageGroupsSchema,
+  ...cefrSchema,
 }
 export type Schema = typeof schema
 

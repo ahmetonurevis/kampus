@@ -13,6 +13,7 @@ import {
   feeTariffFormSchema,
   isOutsideAnnouncementPeriod,
   tariffFormToBody,
+  tariffItemExceedsAnnounced,
   tariffToForm,
   type FeeDiscount,
   type FeeItem,
@@ -269,6 +270,7 @@ function TariffEditor({
   })
   const items = useFieldArray({ control: form.control, name: 'items' })
   const discounts = useFieldArray({ control: form.control, name: 'discounts' })
+  const itemValues = useWatch({ control: form.control, name: 'items' })
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
 
@@ -335,6 +337,7 @@ function TariffEditor({
           <legend className="mb-2 font-semibold">Ücret kalemleri</legend>
           {items.fields.map((field, index) => {
             const itemErrors = errors.items?.[index]
+            const itemValue = itemValues[index]
             return (
               <div
                 key={field.id}
@@ -454,6 +457,15 @@ function TariffEditor({
                     Kalemi kaldır
                   </Button>
                 </div>
+                {itemValue && tariffItemExceedsAnnounced(itemValue) ? (
+                  <p
+                    role="status"
+                    className="col-span-full rounded-card border bg-surface-soft px-4 py-3 text-sm"
+                  >
+                    Tutar, MEBBİS onaylı tutarı aşıyor. Taslak kaydedilebilir, ancak tarife bu
+                    haliyle yayımlanamaz.
+                  </p>
+                ) : null}
               </div>
             )
           })}

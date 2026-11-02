@@ -71,7 +71,10 @@ import { resources, resourceVersions } from './resources.ts'
  *   tetikleyicisi (migration 0013) her `update`/`delete`/`truncate`'i 55000 ile reddeder.
  * - `progression_decisions` öğretmenin önerisiyle `pending` açılır, koordinatör bir kez onaylar ya
  *   da reddeder (`planProgressionReview`); sonuçlanmış satır aynı tetikleyiciyle (`when old.status
- *   <> 'pending'`) değişmez. Düzeltme `corrects_decision_id` ile yeni satırdır.
+ *   <> 'pending'`) değişmez. Açık satırda yalnız inceleme alanları, `updated_at`, `version` ve
+ *   `archived_at` değişir; kimlik, bağ, sonuç, gerekçe ve kopya değişikliği ile silme
+ *   `kampus_progression_pending_guard()` ile 55000'dir. Düzeltme `corrects_decision_id` ile yeni
+ *   satırdır.
  * - Tetikleyiciler Drizzle şemasında izlenmez, migration'a elle yazılır.
  * - Tablolar yeni ve boştur; kısıtlar `not valid` adımı olmadan tek adımda eklenir.
  */

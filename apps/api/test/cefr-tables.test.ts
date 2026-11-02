@@ -84,6 +84,16 @@ async function rejectsImmutable(work: Promise<unknown>, table: string) {
   })
 }
 
+/** Açık kur sonu kararında inceleme dışı alan değişikliğinin reddi: 55000. */
+async function rejectsPendingChange(work: Promise<unknown>) {
+  await assert.rejects(work, (error: unknown) => {
+    assert.equal(databaseErrorInfo(error)?.code, '55000')
+    const cause = (error as { cause?: { message?: string } }).cause
+    assert.match(cause?.message ?? String(error), /pending progression_decisions rows/)
+    return true
+  })
+}
+
 describe('0034: CEFR tabloları ve deposu', () => {
   let db: Database
   let close: () => Promise<void>
@@ -229,6 +239,7 @@ describe('0034: CEFR tabloları ve deposu', () => {
         'level_decisions_immutable_trigger',
         'level_decisions_truncate_trigger',
         'progression_decisions_decided_trigger',
+        'progression_decisions_pending_trigger',
         'progression_decisions_truncate_trigger',
       ],
     )
@@ -595,6 +606,48 @@ describe('0034: CEFR tabloları ve deposu', () => {
     assert.deepEqual(
       await listProgressionDecisions(db, t.institution.id, { learnerId: otherStudent }),
       [],
+    )
+  })
+
+  test('DOM-DIL-070: açık kararda yalnız inceleme alanları değişir; kimlik, bağ ve silme 55000', async () => {
+    const t = await tenant()
+    const e = await enrollment(t)
+    const sibling = await enrollment(t)
+    const pending = await insertProgressionDecision(db, t.institution.id, progression(t, e))
+    const where = sql`where institution_id = ${t.institution.id} and id = ${pending.id}`
+    const otherStudent = `s-${randomUUID().slice(0, 8)}`
+    for (const change of [
+      sql`id = ${randomUUID()}`,
+      sql`enrollment_id = ${sibling.enrollmentId}, group_id = ${sibling.groupId}`,
+      sql`course_id = ${sibling.courseId}`,
+      sql`learner_id = ${otherStudent}`,
+      sql`outcome = 'repeat'`,
+      sql`rationale = 'Değiştirildi.'`,
+      sql`decided_by_user_id = ${t.coordinator.id}`,
+      sql`decided_at = ${new Date(minutes(1))}`,
+      sql`basis = ${JSON.stringify({ ...BASIS, finalPassScore: 70 })}::jsonb`,
+      sql`evidence_snapshot = ${JSON.stringify({ ...SNAPSHOT, skills: [], evidence: [], computedAt: minutes(1) })}::jsonb`,
+      sql`corrects_decision_id = ${randomUUID()}`,
+      sql`created_at = ${new Date(minutes(1))}`,
+    ])
+      await rejectsPendingChange(
+        db.execute(sql`update progression_decisions set ${change} ${where}`),
+      )
+    await rejectsImmutable(
+      db.execute(sql`delete from progression_decisions ${where}`),
+      'progression_decisions',
+    )
+    // İnceleme alanları, sürüm ve zaman damgası değişebilir: koordinatör reddeder.
+    await db.execute(sql`update progression_decisions set status = 'rejected',
+        reviewed_by_user_id = ${t.coordinator.id}, reviewed_at = ${new Date(minutes(30))},
+        rejection_reason = 'Ara ölçme eksik.', updated_at = ${new Date(minutes(30))},
+        version = version + 1 ${where}`)
+    const [row] = await listProgressionDecisions(db, t.institution.id, {
+      enrollmentId: e.enrollmentId,
+    })
+    assert.deepEqual(
+      [row?.id, row?.status, row?.learnerId, row?.outcome, row?.rationale],
+      [pending.id, 'rejected', t.student, 'passed', 'Koşullar sağlandı.'],
     )
   })
 

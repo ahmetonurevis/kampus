@@ -6,9 +6,9 @@
 -- `memberships (institution_id, user_id)` tekil indeksine (migration 0001) bağlanır.
 -- Elle düzenlenenler: (1) dil grubu tablolarının iki tekil kısıtı (OG-029 tabloları; kur sonu
 -- kararının bileşik anahtar hedefi) drizzle-kit'in yazdığı dosya sonundan yabancı anahtarlardan
--- önceye taşındı; küçük tablolardır, kısıt tek adımda eklenir. (2) Dosya sonundaki tetikleyiciler;
--- Drizzle şeması ve snapshot tetikleyiciyi izlemez. drizzle-kit yeniden üretirse ikisi yeniden
--- yapılır.
+-- önceye taşındı; küçük tablolardır, kısıt tek adımda eklenir. (2) Dosya sonundaki tetikleyiciler
+-- ve açık kur sonu kararının koruma fonksiyonu; Drizzle şeması ve snapshot onları izlemez.
+-- drizzle-kit yeniden üretirse ikisi yeniden yapılır.
 --
 -- Elle taşındı (1): yabancı anahtar hedefleri.
 ALTER TABLE "language_group_members" ADD CONSTRAINT "language_group_members_id_group_student_key" UNIQUE("institution_id","id","group_id","student_id");--> statement-breakpoint
@@ -140,6 +140,39 @@ CREATE TRIGGER "level_decisions_immutable_trigger" BEFORE UPDATE OR DELETE ON "l
 CREATE TRIGGER "level_decisions_truncate_trigger" BEFORE TRUNCATE ON "level_decisions" FOR EACH STATEMENT EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
 -- Elle yazıldı: kur sonu kararı `pending` iken koordinatör bir kez onaylar ya da reddeder
 -- (core `planProgressionReview`); sonuçlanmış karar değişmez, düzeltme yeni satırdır. Koşul
--- `old.status` üzerindedir: açık karar güncellenebilir, sonuçlanmışın `update`/`delete`'i 55000.
+-- `old.status` üzerindedir: sonuçlanmışın `update`/`delete`'i 55000.
 CREATE TRIGGER "progression_decisions_decided_trigger" BEFORE UPDATE OR DELETE ON "progression_decisions" FOR EACH ROW WHEN (OLD."status" <> 'pending') EXECUTE FUNCTION "kampus_reject_immutable_change"();--> statement-breakpoint
+-- Elle yazıldı: açık kararda yalnız inceleme alanları (`status`, `reviewed_by_user_id`,
+-- `reviewed_at`, `rejection_reason`) ile `updated_at`, `version` ve `archived_at` değişir. Kimlik,
+-- kayıt/grup/kursiyer/kur bağı, sonuç, gerekçe, karar veren, an ve kopyalar değişirse 55000;
+-- öğretmen kararı değiştirmez, ret sonrası yeni karar önerir. Açık kararın `delete`'i de 55000
+-- (yalnız imha işi `kampus.allow_immutable_purge` ile siler; `kampus_reject_immutable_change` ile
+-- aynı kural).
+CREATE FUNCTION "kampus_progression_pending_guard"() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'DELETE' THEN
+    IF current_setting('kampus.allow_immutable_purge', true) = 'on' THEN
+      RETURN OLD;
+    END IF;
+    RAISE EXCEPTION 'kampus: % rows are immutable (%)', TG_TABLE_NAME, TG_OP
+      USING ERRCODE = '55000', TABLE = TG_TABLE_NAME;
+  END IF;
+  IF (NEW."institution_id", NEW."id", NEW."enrollment_id", NEW."group_id", NEW."course_id",
+      NEW."learner_id", NEW."outcome", NEW."rationale", NEW."corrects_decision_id",
+      NEW."decided_by_user_id", NEW."decided_at", NEW."basis", NEW."evidence_snapshot",
+      NEW."created_at")
+    IS DISTINCT FROM
+     (OLD."institution_id", OLD."id", OLD."enrollment_id", OLD."group_id", OLD."course_id",
+      OLD."learner_id", OLD."outcome", OLD."rationale", OLD."corrects_decision_id",
+      OLD."decided_by_user_id", OLD."decided_at", OLD."basis", OLD."evidence_snapshot",
+      OLD."created_at") THEN
+    RAISE EXCEPTION 'kampus: pending % rows accept only review changes', TG_TABLE_NAME
+      USING ERRCODE = '55000', TABLE = TG_TABLE_NAME;
+  END IF;
+  RETURN NEW;
+END;
+$$;
+--> statement-breakpoint
+CREATE TRIGGER "progression_decisions_pending_trigger" BEFORE UPDATE OR DELETE ON "progression_decisions" FOR EACH ROW WHEN (OLD."status" = 'pending') EXECUTE FUNCTION "kampus_progression_pending_guard"();--> statement-breakpoint
 CREATE TRIGGER "progression_decisions_truncate_trigger" BEFORE TRUNCATE ON "progression_decisions" FOR EACH STATEMENT EXECUTE FUNCTION "kampus_reject_immutable_change"();

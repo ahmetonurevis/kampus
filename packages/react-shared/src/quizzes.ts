@@ -156,8 +156,9 @@ export interface QuizTarget {
 }
 
 /** Personel (yönetici, öğretmen) ayrıntısı mı: cevap anahtarı yalnız onda vardır (DOM-AKD-078). */
-export const isStaffQuizDetail = (detail: QuizDetail): detail is QuizStaffDetail =>
-  'answerKey' in detail
+export function isStaffQuizDetail<T extends object>(detail: T): detail is T & QuizStaffDetail {
+  return 'answerKey' in detail
+}
 
 /** Boş süzgeç gönderilmez (sunucu boş değerde 400 verir); `status` varsayılanı `all`'dır. */
 export function quizListParams(query: QuizListQuery): QuizListQuery {

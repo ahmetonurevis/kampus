@@ -1,20 +1,21 @@
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { exampleOpticalFile } from '@kampus/school-core/lib/assessment-automation.ts'
 import type { Session } from '@/auth/auth-port.ts'
 import { useAuth } from '@/auth/use-auth.ts'
-import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
+import { DataTable, type DataColumn, type DataTableHandle } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
-import { saveBlob } from '@/lib/download.ts'
+import { exportCsv, saveBlob } from '@/lib/download.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
 import { useSourcesState } from '../workflows/use-workflow-state.ts'
 import { collectionSources, coreSession } from '../workflows/workflow-state.ts'
 import { AssessmentPanel } from './AssessmentPanel.tsx'
+import { answerKeyCsv, RESULT_CSV_COLUMNS, resultCsvRows } from './assessment-csv.ts'
 import { OpticalEvaluateSection } from './OpticalEvaluateSection.tsx'
 import { OpticalProfileForm } from './OpticalProfileForm.tsx'
 import {
@@ -68,6 +69,27 @@ function OpticalView({ page, session }: { page: NavPage; session: Session }) {
         error,
       )
     }
+  }
+
+  // Cevap anahtarı şablonu: profil formuna yüklenebilen biçimde (içe aktarmayla aynı başlık).
+  function downloadKey(profileId: string) {
+    const profile = data.state.opticalProfiles.find((item) => item.id === profileId)
+    if (!profile) return
+    saveBlob(
+      new Blob(['\ufeff', answerKeyCsv(profile)], { type: 'text/csv;charset=utf-8' }),
+      'optik-cevap-anahtari.csv',
+    )
+    notify.success('Cevap anahtarı indirildi.')
+  }
+
+  // Sonuç CSV'si tablodaki süzülmüş ve sıralanmış bütün satırları içerir (yalnız görünen sayfa değil).
+  const evaluationTable = useRef<DataTableHandle<EvaluationRow>>(null)
+  function downloadResults() {
+    exportCsv(
+      'optik-sonuclar',
+      RESULT_CSV_COLUMNS,
+      resultCsvRows(evaluationTable.current?.filteredRows() ?? evaluations),
+    )
   }
 
   const profileColumns = useMemo<DataColumn<ProfileRow>[]>(
@@ -155,6 +177,7 @@ function OpticalView({ page, session }: { page: NavPage; session: Session }) {
           subjects={data.state.subjects}
           loading={data.pending}
           onDownloadExample={downloadExample}
+          onDownloadKey={downloadKey}
         />
       ) : null}
 
@@ -198,8 +221,20 @@ function OpticalView({ page, session }: { page: NavPage; session: Session }) {
         title="Kayıtlı değerlendirmeler"
         description={`${evaluations.length} analiz · anahtar veya sonuç değişirse analiz eskir`}
         flush
+        actions={
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={downloadResults}
+            disabled={data.pending || evaluations.length === 0}
+          >
+            <Icon name="Download" size={17} aria-hidden="true" />
+            Sonuçları CSV indir
+          </Button>
+        }
       >
         <DataTable
+          ref={evaluationTable}
           listKey="optik-analizler"
           urlPrefix="analiz-"
           rows={evaluations}

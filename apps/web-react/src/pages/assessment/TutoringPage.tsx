@@ -1,7 +1,7 @@
-import { use, useMemo, useState } from 'react'
+import { use, useMemo, useRef, useState } from 'react'
 import type { Session } from '@/auth/auth-port.ts'
 import { useAuth } from '@/auth/use-auth.ts'
-import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
+import { DataTable, type DataColumn, type DataTableHandle } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -11,11 +11,13 @@ import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useMinuteClock } from '@/hooks/use-minute-clock.ts'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
+import { exportCsv } from '@/lib/download.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { useSourcesState } from '../workflows/use-workflow-state.ts'
 import { collectionSources, coreSession } from '../workflows/workflow-state.ts'
 import { AssessmentPanel } from './AssessmentPanel.tsx'
 import { AvailabilitySection } from './AvailabilitySection.tsx'
+import { TUTOR_CSV_COLUMNS, tutorCsvRows } from './assessment-csv.ts'
 import { TutorDetailPanel } from './TutorDetailPanel.tsx'
 import { TutoringPlanSection } from './TutoringPlanSection.tsx'
 import { TUTORING_LIST_SOURCES, tutorRows, type TutorRow } from './tutoring-model.ts'
@@ -52,6 +54,12 @@ function TutoringView({ page, session }: { page: NavPage; session: Session }) {
   const rows = tutorRows(data.state, actor, now)
   const selected = rows.find((row) => row.id === panel.selectedId)
   const openRecord = panel.open
+
+  // CSV tablodaki süzülmüş ve sıralanmış bütün etütleri içerir; satırlar rol kapsamına daraltılmıştır.
+  const table = useRef<DataTableHandle<TutorRow>>(null)
+  function download() {
+    exportCsv('etut-plani', TUTOR_CSV_COLUMNS, tutorCsvRows(table.current?.filteredRows() ?? rows))
+  }
 
   const columns = useMemo<DataColumn<TutorRow>[]>(
     () => [
@@ -101,9 +109,21 @@ function TutoringView({ page, session }: { page: NavPage; session: Session }) {
             : `${rows.length} etüt · yalnız ${session.role === 'veli' ? 'seçili çocuğunuzun' : 'sizin'} etütleri`
         }
         flush
+        actions={
+          <Button
+            type="button"
+            variant="secondary"
+            onClick={download}
+            disabled={data.pending || rows.length === 0}
+          >
+            <Icon name="Download" size={17} aria-hidden="true" />
+            Etüt listesini CSV indir
+          </Button>
+        }
       >
         {data.error ? <QueryError error={data.error} onRetry={data.retry} /> : null}
         <DataTable
+          ref={table}
           listKey="etutler"
           rows={rows}
           columns={columns}

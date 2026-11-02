@@ -1,28 +1,38 @@
+import { useMemo, type ComponentType } from 'react'
 import { useSearchParams } from 'react-router'
+import { useAuth } from '@/auth/use-auth.ts'
 import { LineTabs } from '@/components/LineTabs.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
-import { AuditSection } from './AuditSection.tsx'
-import { ModuleSettingsSection } from './ModuleSettingsSection.tsx'
-import { PaymentSettingsSection } from './PaymentSettingsSection.tsx'
-import { SETTINGS_TABS, settingsTab, type SettingsTab } from './settings-tabs.ts'
-import { UsersSection } from './UsersSection.tsx'
+import { SETTINGS_SECTIONS } from './settings-sections.tsx'
+import {
+  resolveSettingsTab,
+  settingsSectionsOf,
+  settingsTabs,
+  settingsTabSearch,
+  type SettingsEntry,
+  type SettingsTabEntry,
+  visibleSettingsEntries,
+} from './settings-tabs.ts'
 
 /**
- * Ayarlar (yalnız yönetici; Vue `Settings.vue`): "Kurum & Modüller", "Kullanıcı & Yetkiler" ve
- * "İşlem Geçmişi". Sekme adreste `?sekme=` ile tutulur (yoksa Kurum & Modüller); sekme
- * değişince öteki sekmenin liste ve panel parametreleri adresten silinir. Diğer roller bu
- * sayfaya bağlı değildir (kayıt `page-registry.tsx`; onlar için `PersonalSettingsPage`).
+ * Ayarlar (yönetici; Vue `Settings.vue`): sekmeler `settings-sections.tsx` kaydından çizilir
+ * (şimdilik "Kurum & Modüller", "Kullanıcı & Yetkiler" ve "İşlem Geçmişi"). Sekme adreste
+ * `?sekme=` ile tutulur (yoksa ilk sekme); sekme değişince öteki sekmenin liste ve panel
+ * parametreleri adresten silinir. Diğer roller bu sayfaya bağlı değildir (kayıt
+ * `page-registry.tsx`; onlar için `PersonalSettingsPage`).
  */
 export function SettingsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
+  const { session } = useAuth()
   const [params, setParams] = useSearchParams()
-  const tab = settingsTab(params.get('sekme'))
-
-  function select(next: SettingsTab) {
-    setParams(next === 'general' ? new URLSearchParams() : { sekme: SETTINGS_TABS[next].param })
-  }
+  const visible = useMemo(
+    () => (session ? visibleSettingsEntries(SETTINGS_SECTIONS, session.role, session.modules) : []),
+    [session],
+  )
+  const tabs = settingsTabs(visible)
+  const tab = resolveSettingsTab(tabs, params.get('sekme'))
 
   return (
     <>
@@ -30,18 +40,34 @@ export function SettingsPage({ page }: { page: NavPage }) {
       <div className="grid gap-6">
         <LineTabs
           label="Kurum ayarları"
-          value={tab}
-          options={Object.entries(SETTINGS_TABS).map(([value, item]) => ({
-            value: value as SettingsTab,
-            label: item.label,
-          }))}
-          onChange={select}
+          value={tab?.id ?? ''}
+          options={tabs.map((item) => ({ value: item.id, label: item.label }))}
+          onChange={(id) => {
+            const next = tabs.find((item) => item.id === id)
+            if (next) setParams(settingsTabSearch(tabs, next))
+          }}
         />
-        {tab === 'general' ? <ModuleSettingsSection /> : null}
-        {tab === 'general' ? <PaymentSettingsSection /> : null}
-        {tab === 'users' ? <UsersSection /> : null}
-        {tab === 'activity' ? <AuditSection /> : null}
+        {tab ? <TabBody tab={tab} visible={visible} /> : null}
       </div>
+    </>
+  )
+}
+
+function TabBody({
+  tab,
+  visible,
+}: {
+  tab: SettingsTabEntry<ComponentType>
+  visible: SettingsEntry<ComponentType>[]
+}) {
+  const Body = tab.component
+  return (
+    <>
+      <Body />
+      {settingsSectionsOf(visible, tab.id).map((section) => {
+        const Section = section.component
+        return <Section key={section.id} />
+      })}
     </>
   )
 }

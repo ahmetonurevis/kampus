@@ -240,6 +240,7 @@ export function ContentPoolPage({ page }: { page: NavPage }) {
         resourceId={panel.selectedId}
         onClose={panel.close}
         onEdit={form.open}
+        onOpen={openPanel}
         subjectNames={subjectNames}
       />
       <ContentDraftForm

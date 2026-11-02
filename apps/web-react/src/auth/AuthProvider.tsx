@@ -4,7 +4,7 @@ import { notify } from '@/lib/notify.ts'
 import { clearViewMemory } from '@/lib/view-memory.ts'
 import { AuthContext, type AuthContextValue } from './auth-context.ts'
 import type { AuthPort } from './auth-port.ts'
-import { sessionExpired, type SettledStatus } from './auth-state.ts'
+import { keepsIntentionalSignOut, sessionExpired, type SettledStatus } from './auth-state.ts'
 import { createBetterAuthPort } from './better-auth-port.ts'
 import { useAuth } from './use-auth.ts'
 
@@ -23,12 +23,12 @@ function SessionExpiryNotice({ intentionalRef }: { intentionalRef: RefObject<boo
   const { status } = useAuth()
   const previous = useRef<SettledStatus | null>(null)
   useEffect(() => {
+    intentionalRef.current = keepsIntentionalSignOut(intentionalRef.current, status)
     if (status === 'loading') return
     if (sessionExpired(previous.current, status, intentionalRef.current)) {
       clearViewMemory()
       notify.warning(SESSION_EXPIRED_MESSAGE, 'session-expired')
     }
-    if (status === 'signed-out') intentionalRef.current = false
     previous.current = status
   }, [status, intentionalRef])
   return null

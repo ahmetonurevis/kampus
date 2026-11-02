@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { learnerSubmissionsQuery } from '@kampus/react-shared/use-learner-task-progress.ts'
 import { useTaskAssignment } from '@kampus/react-shared/use-task-assignments.ts'
 import {
@@ -61,6 +62,9 @@ export function StudentWritingWorkspace({
   const detailQuery = useTaskSubmission(summary?.id ?? '')
   const draftQuery = useTaskDraft(assignmentId)
   const nowMs = useNow(true, 30_000)
+  // İlk teslimden sonra sürüm ayrıntısı yeniden yüklenirken sayfa yükleniyor ekranına dönmez:
+  // dönerse ses kaydı durumu (atılan kayıt sayısı, teslim iletisi) kaybolurdu.
+  const [shown, setShown] = useState(false)
 
   const assignment =
     assignmentQuery.data && isLearnerAssignment(assignmentQuery.data.data)
@@ -100,7 +104,9 @@ export function StudentWritingWorkspace({
     )
   const detail = detailQuery.data?.data
   const waitingDetail = summary !== undefined && !detail && !detailQuery.error
-  if (!assignment || !listQuery.data || waitingDetail || draftQuery.isPending)
+  const loaded = !!assignment && !!listQuery.data && !draftQuery.isPending
+  if (loaded && !waitingDetail && !shown) setShown(true)
+  if (!loaded || (waitingDetail && !shown))
     return (
       <>
         <PageHeading title={page.title} actions={back} />

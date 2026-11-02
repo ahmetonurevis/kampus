@@ -621,6 +621,23 @@ export function scoreResolution(input: {
   return { status: 'settled', score: first, source: 'first', settledAt }
 }
 
+/**
+ * Yeni puan sürümün öğretmen geri bildirimini açar mı (DOM-BEC-045): puan bu yazmadan önce
+ * kesinleşmemiş, sonra kesinleşmiştir. Kesinleşme anı yeni puanın anıdır, geri bildirim o anda
+ * kursiyere açılır (`teacherFeedbackReleased`); bildirim (`lib/notifications.ts`
+ * `feedback_released`) bu anda üretilir. `scores` yalnız bu sürümün önceki puanlarıdır.
+ */
+export function releasesFeedback(input: {
+  scores: readonly RubricScoreRow[]
+  added: RubricScoreRow
+  secondRatingRequested: boolean
+}): boolean {
+  const { secondRatingRequested } = input
+  const before = scoreResolution({ scores: input.scores, secondRatingRequested })
+  const after = scoreResolution({ scores: [...input.scores, input.added], secondRatingRequested })
+  return before.status !== 'settled' && after.status === 'settled'
+}
+
 /** Puanlayan kişi. `coordinator`: akademik koordinatör/zümre başkanı yetkisi (DOM-YTK-027). */
 export type RubricRater = {
   // kvkk: K

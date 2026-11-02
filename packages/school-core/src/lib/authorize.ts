@@ -88,6 +88,9 @@ export type WriteTargets = {
   // Kesin kayıt (`enrollProspect`, `lib/domain.ts`); işlem yetkiyi kendisi denetlemez, çağıran
   // önce `requireAuthorized` çalıştırır.
   'prospect.enroll': Record<string, never>
+  // Bildirim okundu işareti: görünürlük `lib/notifications.ts` `canSeeNotification`'dadır.
+  'notification.read': Record<string, never>
+  'notification.read_all': Record<string, never>
 }
 
 /** Soru yetkisinin dayandığı taraflar (DOM-ILT-090…092). */
@@ -190,6 +193,10 @@ export const WRITE_ACTION_ROLES = {
   'prospect.trial': ['yonetici', 'onburo'],
   // Kesin kayıt (aday → öğrenci, sözleşme ve taksit) yönetici ve ön büronundur (DOM-KAY-011).
   'prospect.enroll': ['yonetici', 'onburo'],
+  // Bildirimin okundu işareti alıcınındır; her rol kendi bildirim merkezini kullanır, görünürlük
+  // `lib/notifications.ts` `canSeeNotification`'dadır (DOM-ILT-020, DOM-ILT-073).
+  'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+  'notification.read_all': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
 } as const satisfies Record<WriteAction, readonly Actor['role'][]>
 
 const ROLE_TABLE: Readonly<Record<WriteAction, readonly string[]>> = WRITE_ACTION_ROLES
@@ -442,6 +449,8 @@ function decide(
     case 'prospect.meeting':
     case 'prospect.trial':
     case 'prospect.enroll':
+    case 'notification.read':
+    case 'notification.read_all':
       return ALLOWED
     default:
       return request satisfies never

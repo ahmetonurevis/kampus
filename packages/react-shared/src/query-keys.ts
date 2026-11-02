@@ -55,3 +55,22 @@ export function conversationMessagesKey(conversationId: string) {
 export function parentAccountsKey(studentId: string) {
   return [CONVERSATIONS_KEY_ROOT, 'parent-accounts', studentId] as const
 }
+
+/**
+ * Uygulama içi bildirim merkezi anahtar parçaları (F6a; `GET /notifications`). Liste (imleçli
+ * sayfalar tek sonsuz sorguda) süzgeçle, okunmamış sayısı ayrı alt koldadır; okundu işaretinden sonra `['notifications']`
+ * önekiyle ikisi birlikte tazelenir.
+ */
+export const NOTIFICATIONS_KEY_ROOT = 'notifications'
+
+export function notificationsPrefix(): readonly unknown[] {
+  return [NOTIFICATIONS_KEY_ROOT]
+}
+
+export function notificationListKey(filters: { unread: boolean }) {
+  return [NOTIFICATIONS_KEY_ROOT, 'list', { unread: filters.unread }] as const
+}
+
+export function unreadNotificationsKey() {
+  return [NOTIFICATIONS_KEY_ROOT, 'unread-count'] as const
+}

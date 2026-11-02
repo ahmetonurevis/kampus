@@ -44,6 +44,8 @@ const COLLECTION_FLAGS = {
   availability: true,
   quizAttempts: true,
   absences: true,
+  notifications: true,
+  notificationReads: true,
   contracts: true,
   audit: true,
   guidanceCases: true,

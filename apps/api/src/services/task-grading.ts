@@ -13,6 +13,7 @@ import {
   planAppeal,
   planAppealDecision,
   planRubricScore,
+  releasesFeedback,
   type AppealDraft,
   type AppealRow,
   type RaterRole,
@@ -21,6 +22,7 @@ import {
 } from '@kampus/school-core/skills/rubric.ts'
 import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 import { versionAllowance } from '@kampus/school-core/skills/submission.ts'
+import { notifyStudentEvent } from '@kampus/school-core/lib/notifications.ts'
 
 import type { Database } from '../db/client.ts'
 import { activeDutiesOf } from '../db/coordinator-duties.ts'
@@ -49,6 +51,7 @@ import {
 } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { listMembershipLinks } from './memberships.ts'
+import { studentNotice } from './notifications.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { coordinates, viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
@@ -312,7 +315,12 @@ async function writeScore(
     ctx,
     {
       action,
-      collections: [],
+      // Bildirim yalnız eklenir; var olan bildirimler yüklenmez (F6a). Puanın denetim satırı
+      // `after`'dadır; farktaki bildirim kaydı ayrı eylemle yazılır ki puan iki kez yazılmış
+      // görünmesin.
+      auditAction: 'notification.create',
+      collections: ['notifications'],
+      loadScope: { notifications: { ids: [] } },
       entity: { type: ENTITY, id: input.submissionId },
       load: async (tx) => {
         const { viewer: current, ...graded } = await load(tx)
@@ -323,11 +331,11 @@ async function writeScore(
         if (rubricVersion === null) throw new NotFoundError()
         // Bilinmeyen sürüm numarası core'un `submission_version_not_found` (404) yoluna düşer.
         const version = work.versions.find((v) => v.number === input.versionNumber)
+        const notice = await studentNotice(tx, ctx, work.submission.learnerId)
         return {
-          run: (_state, tools) => ({
-            ...graded,
-            viewer: current,
-            draft: planRubricScore({
+          run: (state, tools) => {
+            const secondRatingRequested = secondRatingFor(grading, version)
+            const draft = planRubricScore({
               rubricVersion,
               assignmentRubricVersionId: rubricVersionId,
               versions: work.versions,
@@ -340,11 +348,35 @@ async function writeScore(
                 coordinator: role === 'final' && coordinates(current, assignment),
               },
               raterRole: role,
-              secondRatingRequested: secondRatingFor(grading, version),
+              secondRatingRequested,
               input: input.score,
               now: tools.now,
-            }),
-          }),
+            })
+            // Puanı kesinleştiren yazma geri bildirimi o anda açar (DOM-BEC-045): ilk puan,
+            // uyuşan ikinci puan ya da uyuşmazlıkta koordinatör son puanı. Öğrenciye ve (18 yaş
+            // altında) veliye uygulama içi bildirim aynı transaction'da eklenir; yazma başarısızsa
+            // bildirim de geri alınır. Bildirim puan ve geri bildirim metni taşımaz (DOM-ILT-023).
+            const released = releasesFeedback({
+              scores: grading.scores.filter(
+                (s) => s.submissionVersionId === draft.submissionVersionId,
+              ),
+              added: { id: 'pending', ...draft },
+              secondRatingRequested,
+            })
+            if (notice.enabled && released)
+              notifyStudentEvent(
+                state,
+                {
+                  kind: 'feedback_released',
+                  studentId: work.submission.learnerId,
+                  subjectId: work.submission.id,
+                  minor: notice.minor,
+                },
+                tools.makeId,
+                tools.now,
+              )
+            return { ...graded, viewer: current, draft }
+          },
         }
       },
       after: async (tx, { work, assignment, draft, viewer: current }) => {

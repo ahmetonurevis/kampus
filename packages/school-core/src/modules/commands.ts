@@ -225,6 +225,11 @@ export const OPERATION_COMMANDS = {
     'invoices',
     'contracts',
   ]),
+  // Uygulama içi bildirimin okundu işareti (`lib/notifications.ts`, DOM-ILT-020, -073). Görünürlük
+  // üyelik bağlantılarındandır; kapsam kaynağı yalnız yetki (modül, rol) için okunur. API yalnız
+  // aktörün gördüğü bildirimleri ve kendi okundu işaretlerini yükler.
+  'notification.read': spec('communication', [...SCOPE, 'notifications', 'notificationReads']),
+  'notification.read_all': spec('communication', [...SCOPE, 'notifications', 'notificationReads']),
 } as const satisfies Record<string, CommandSpec>
 export type OperationCommand = keyof typeof OPERATION_COMMANDS
 

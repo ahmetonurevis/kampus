@@ -3975,6 +3975,93 @@
           "affectedContainerVersionIds"
         ]
       },
+      "NotificationInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "feedback_released",
+              "enrollment_completed"
+            ],
+            "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "homework",
+              "grade",
+              "attendance",
+              "payment",
+              "announcement",
+              "message",
+              "appointment",
+              "consent",
+              "bulletin",
+              "enrollment"
+            ],
+            "description": "Konu (DOM-ILT-020)"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "student",
+              "parent"
+            ],
+            "description": "Alıcı kitlesi: öğrenci veya veli"
+          },
+          "studentId": {
+            "type": "string",
+            "description": "Bildirimin ait olduğu öğrenci"
+          },
+          "subject": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Konu kaydının türü (`task_submission`, `students`)"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ],
+            "description": "Bildirimin bağlandığı kayıt"
+          },
+          "title": {
+            "type": "string",
+            "description": "Gösterilen başlık; ayrıntı (puan, tutar, metin) içermez"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Oluşturulma anı (ISO 8601 UTC)"
+          },
+          "readAt": {
+            "description": "Okuyanın ilk okuma anı; okunmamışsa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "topic",
+          "audience",
+          "studentId",
+          "subject",
+          "title",
+          "createdAt",
+          "readAt"
+        ]
+      },
       "BookableSlotInput": {
         "type": "object",
         "properties": {
@@ -12420,6 +12507,95 @@
           "versionIds",
           "affectedCopyIds",
           "affectedContainerVersionIds"
+        ],
+        "additionalProperties": false
+      },
+      "Notification": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "feedback_released",
+              "enrollment_completed"
+            ],
+            "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "homework",
+              "grade",
+              "attendance",
+              "payment",
+              "announcement",
+              "message",
+              "appointment",
+              "consent",
+              "bulletin",
+              "enrollment"
+            ],
+            "description": "Konu (DOM-ILT-020)"
+          },
+          "audience": {
+            "type": "string",
+            "enum": [
+              "student",
+              "parent"
+            ],
+            "description": "Alıcı kitlesi: öğrenci veya veli"
+          },
+          "studentId": {
+            "type": "string",
+            "description": "Bildirimin ait olduğu öğrenci"
+          },
+          "subject": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "description": "Konu kaydının türü (`task_submission`, `students`)"
+              },
+              "id": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "id"
+            ],
+            "additionalProperties": false,
+            "description": "Bildirimin bağlandığı kayıt"
+          },
+          "title": {
+            "type": "string",
+            "description": "Gösterilen başlık; ayrıntı (puan, tutar, metin) içermez"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "Oluşturulma anı (ISO 8601 UTC)"
+          },
+          "readAt": {
+            "description": "Okuyanın ilk okuma anı; okunmamışsa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "kind",
+          "topic",
+          "audience",
+          "studentId",
+          "subject",
+          "title",
+          "createdAt",
+          "readAt"
         ],
         "additionalProperties": false
       },
@@ -33755,6 +33931,523 @@
         ],
         "responses": {
           "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications": {
+      "get": {
+        "operationId": "listNotifications",
+        "summary": "Bildirimlerim",
+        "tags": [
+          "notifications"
+        ],
+        "description": "Oturum sahibinin uygulama içi bildirimleri, en yeni önce (DOM-ILT-020). Öğrenci kendi kaydının, veli bağlı çocuklarının bildirimini görür; başka velinin çocuğu ve başka kurum hiç görünmez, personelin listesi boştur. Bildirim serbest metin taşımaz: `title` türün sabit şablonundan, yalnız öğrencinin ilk adıyla üretilir; puan, geri bildirim metni, tutar veya sağlık bilgisi yoktur (DOM-ILT-023). `readAt` yalnız okuyanın kendi okumasıdır; diğer velinin okuması görünmez (DOM-ILT-073). İmleçli sayfalama: `cursor` önceki sayfanın `meta.nextCursor` değeridir, toplam dönmez (okunmamış sayısı ayrı uçtadır); görülemeyen bildirim imleci 400. `unread=true` yalnız okunmamışları verir. Modül `communication`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "cursor",
+            "required": false,
+            "description": "Önceki sayfanın `meta.nextCursor` değeri; yoksa en yeni bildirimler"
+          },
+          {
+            "schema": {
+              "default": 50,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "limit",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "default": "false",
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            },
+            "in": "query",
+            "name": "unread",
+            "required": false,
+            "description": "`true`: yalnız okunmamış bildirimler"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Notification"
+                      },
+                      "description": "En yeni önce"
+                    },
+                    "meta": {
+                      "type": "object",
+                      "properties": {
+                        "nextCursor": {
+                          "description": "Daha eski bildirimler için imleç; yoksa `null`",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "nextCursor"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/unread-count": {
+      "get": {
+        "operationId": "countUnreadNotifications",
+        "summary": "Okunmamış bildirim sayısı",
+        "tags": [
+          "notifications"
+        ],
+        "description": "Oturum sahibinin okunmamış bildirim sayısı; saklanmaz, her istekte hesaplanır. Modül `communication`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "unread": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Okunmamış bildirim sayısı"
+                        }
+                      },
+                      "required": [
+                        "unread"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/read-all": {
+      "post": {
+        "operationId": "readAllNotifications",
+        "summary": "Bütün bildirimleri okundu işaretle",
+        "tags": [
+          "notifications"
+        ],
+        "description": "Oturum sahibinin gördüğü bütün okunmamış bildirimlere ilk okuma anını yazar (core `markAllNotificationsRead`); okunmuşların anı değişmez, tekrar çağrı kayıt eklemez. Okuma kullanıcıya özeldir (DOM-ILT-073). `Idempotency-Key` isteğe bağlıdır, `If-Match` kabul edilmez. Modül `communication`. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "description": "Gövdesiz komut"
+              }
+            }
+          },
+          "description": "Gövdesiz komut"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/CommandResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notifications/{notificationId}/read": {
+      "post": {
+        "operationId": "readNotification",
+        "summary": "Bildirimi okundu işaretle",
+        "tags": [
+          "notifications"
+        ],
+        "description": "Bildirime oturum sahibinin ilk okuma anını yazar (core `markNotificationRead`); tekrar çağrı kaydı değiştirmez. Görülemeyen (başka öğrencinin, başka velinin çocuğunun, başka kurumun) veya olmayan bildirim 404 `not_found` (core `notification_not_found` genel koda çevrilir). `Idempotency-Key` isteğe bağlıdır, `If-Match` kabul edilmez. Modül `communication`. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "description": "Gövdesiz komut"
+              }
+            }
+          },
+          "description": "Gövdesiz komut"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "notificationId",
+            "required": true,
+            "description": "Bildirim kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
             "description": "Default Response",
             "content": {
               "application/json": {

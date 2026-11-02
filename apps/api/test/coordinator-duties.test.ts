@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import type { ResourceVersionInput } from '@kampus/school-core/content/resource.ts'
 
@@ -10,6 +10,7 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { records } from '../src/db/schema/records.ts'
 import { coordinatorDuties } from '../src/db/schema/coordinator-duties.ts'
 import { rubrics, rubricScores, rubricVersions } from '../src/db/schema/skills.ts'
 import {
@@ -28,7 +29,8 @@ import { sampleRubricData } from './support/skills-sample.ts'
  * Zümre başkanı / akademik koordinatör ek görevi ve uyuşmazlıkta son puan (F4b3b2b;
  * DOM-YTK-027, DOM-BEC-024, DOM-BEC-045). Kural core `lib/coordinator-duties.ts` ve
  * `skills/rubric.ts`'tedir; burada rol × kapsam, kapsam dışı koordinatör, puanlayıcı-koordinatör
- * reddi, kursiyere sızıntı olmaması, başka kurum ve modül kapalı denetlenir.
+ * reddi, kursiyere sızıntı olmaması, son puanın geri bildirim bildirimi (F6a), başka kurum ve
+ * modül kapalı denetlenir.
  */
 
 type Json = ReturnType<typeof JSON.parse>
@@ -618,6 +620,111 @@ describe('zümre başkanı ve akademik koordinatör', () => {
       ['disagreement', false, ['second']],
     )
     fails(await finalScore(id, t.cookies.colleague, 4), 409, 'rater_not_independent')
+  })
+
+  /** Kurumun bildirim kayıtları (F6a): alıcı kitlesi, öğrenci ve konu teslimi. */
+  async function noticeRows(institutionId: string) {
+    const rows = await db
+      .select({ data: records.data })
+      .from(records)
+      .where(and(eq(records.institutionId, institutionId), eq(records.collection, 'notifications')))
+    return rows
+      .map(({ data }) => {
+        const row = data as Json
+        return [row.kind, row.audience, row.studentId, row.subject.id] as const
+      })
+      .sort()
+  }
+  /** Aktörün `feedback_released` bildirimleri (liste ucundan). */
+  async function feedbackNotices(cookie: string) {
+    const list = (await ok(await call('GET', '/notifications', cookie))) as Json[]
+    return list
+      .filter((n) => n.kind === 'feedback_released')
+      .map((n) => [n.audience, n.studentId, n.subject.id] as const)
+  }
+
+  test('DOM-BEC-045, DOM-BEC-024, DOM-YTK-027, DOM-ILT-023: uyuşmazlıkta geri bildirimi açan koordinatör son puanı aynı işlemde öğrenciye ve veliye tek feedback_released bildirimi yazar; uyuşmazlığa kadar ve reddedilen son puanda bildirim yok; bildirimde puan ve metin yok', async () => {
+    const t = await tenant()
+    await ok(
+      await assign(t.cookies.admin, {
+        membershipId: t.users.head.membershipId,
+        scopeId: 'ingilizce',
+      }),
+      201,
+    )
+    const { id, rowVersion } = await disputed(t)
+    // İkinci puan bekleyen ilk puan ve uyuşmayan ikinci puan geri bildirimi açmaz.
+    assert.deepEqual(await noticeRows(t.institution.id), [])
+    fails(await finalScore(id, t.cookies.head, rowVersion + 1), 409, 'version_conflict')
+    fails(await finalScore(id, t.cookies.colleague, rowVersion), 403, 'coordinator_required')
+    assert.deepEqual(await noticeRows(t.institution.id), [])
+
+    await ok(await finalScore(id, t.cookies.head, rowVersion), 201)
+    assert.deepEqual(await noticeRows(t.institution.id), [
+      ['feedback_released', 'parent', 's-1', id],
+      ['feedback_released', 'student', 's-1', id],
+    ])
+    assert.deepEqual(await feedbackNotices(t.cookies.student), [['student', 's-1', id]])
+    assert.deepEqual(await feedbackNotices(t.cookies.parent), [['parent', 's-1', id]])
+    for (const cookie of [t.cookies.head, t.cookies.teacher])
+      assert.deepEqual(await feedbackNotices(cookie), [])
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const body = (await call('GET', '/notifications', cookie)).body
+      for (const text of ['GIZLI-', 'percent', 'band']) assert.ok(!body.includes(text), text)
+    }
+    // Kesinleşmiş sonuca ikinci son puan reddedilir; yeni bildirim üretilmez.
+    fails(await finalScore(id, t.cookies.head, rowVersion + 1), 409, 'final_score_not_needed')
+    assert.equal((await noticeRows(t.institution.id)).length, 2)
+    const [audit] = await db
+      .select({ changes: auditLog.changes })
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.institutionId, t.institution.id),
+          eq(auditLog.action, 'task_submission.final_score'),
+        ),
+      )
+    assert.deepEqual(audit?.changes, { fields: ['criteria', 'overallComment', 'scoredAt'] })
+  })
+
+  test('DOM-BEC-045, DOM-BEC-024: son puanın yazılması işlem içinde başarısız olursa ne puan ne bildirim kalır (atomik); aynı istek sonra geçer ve bir kez bildirir', async () => {
+    const t = await tenant()
+    await ok(
+      await assign(t.cookies.admin, {
+        membershipId: t.users.head.membershipId,
+        scopeId: 'ingilizce',
+      }),
+      201,
+    )
+    const { id, rowVersion } = await disputed(t)
+    // Son puan satırı yazılırken serileştirme hatası: bildirim aynı işlemde geri alınmalı.
+    await db.execute(sql`
+      CREATE FUNCTION og003_fail_final() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'son puan çakışması' USING ERRCODE = '40001';
+      END $$ LANGUAGE plpgsql`)
+    await db.execute(
+      sql.raw(`CREATE TRIGGER og003_fail_final BEFORE INSERT ON rubric_scores
+        FOR EACH ROW WHEN (NEW.rater_role = 'final') EXECUTE FUNCTION og003_fail_final()`),
+    )
+    try {
+      const failed = await finalScore(id, t.cookies.head, rowVersion)
+      assert.equal(failed.statusCode, 409, failed.body)
+    } finally {
+      await db.execute(sql`DROP TRIGGER og003_fail_final ON rubric_scores`)
+      await db.execute(sql`DROP FUNCTION og003_fail_final()`)
+    }
+    assert.deepEqual(await noticeRows(t.institution.id), [])
+    const finals = await db
+      .select({ id: rubricScores.id })
+      .from(rubricScores)
+      .where(
+        and(eq(rubricScores.institutionId, t.institution.id), eq(rubricScores.raterRole, 'final')),
+      )
+    assert.equal(finals.length, 0)
+    await ok(await finalScore(id, t.cookies.head, rowVersion), 201)
+    assert.deepEqual(await feedbackNotices(t.cookies.student), [['student', 's-1', id]])
+    assert.equal((await noticeRows(t.institution.id)).length, 2)
   })
 
   test('DOM-YTK-027: görev öğrenci bazında not yazma yetkisi vermez: atamayı görmeyen koordinatör ilk ve ikinci puan veremez (404); log ve denetimde metin yok; başka kurum 404; modül kapalı 403', async () => {

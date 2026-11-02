@@ -93,6 +93,8 @@ export const COLLECTION_MODULES = {
   appointments: 'communication',
   requests: 'communication',
   availability: 'communication',
+  notifications: 'communication',
+  notificationReads: 'communication',
   guidanceCases: 'guidance',
   mockExams: 'exams',
   mockResults: 'exams',

@@ -88,7 +88,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Veli konu bazında seçebilmeli; ama güvenlik ve devam bilgisi kaçırılamamalıdır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — e-posta/SMS/uygulama ve dört konu tercihi rol + öğrenci anahtarıyla saklanır (`apps/web/src/views/Settings.vue:16-26,193-254`); gerçek gönderim yok (`apps/web/src/views/Settings.vue:212`), zorunlu bildirim ayrımı yok.
+- **Kodda:** kısmen — uygulama içi kanal (F6a): core `packages/school-core/src/lib/notifications.ts` tür kaydı (`NOTIFICATION_KINDS`, konu ve zorunluluk işaretiyle; listede olmayan `enrollment` konusu kesin kayıt bildirimi için eklendi), API `GET /api/v1/notifications`, `GET /notifications/unread-count`, `POST /notifications/:id/read`, `POST /notifications/read-all` (`communication` modülü), react-shared `use-notifications.ts`. Uygulama içi kanal tercihle kapanmaz. Tercih ekranı, e-posta/SMS/anlık bildirim gönderimi yok (`TODO(F6-anlik-bildirim)`); Vue demosu tercihleri yalnız saklar (`apps/web/src/views/Settings.vue:16-26,193-254`).
 
 ### DOM-ILT-021 · Sessiz saatler
 
@@ -104,7 +104,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Mevcut müşteriye satış iletisi de ticari ileti onayına tabi olabilir.
 - **Kaynak:** 6563 sayılı Kanun md. 6 ve Ticari İletişim ve Ticari Elektronik İletiler Hakkında Yönetmelik — **doğrulanmalı** (mevcut müşteri istisnası ve uygulama içi bildirimin kapsamı).
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — core `lib/notifications.ts` her türü `service`/`commercial` sınıfıyla kaydeder; bugünkü iki tür (`feedback_released`, `enrollment_completed`) hizmet bildirimidir, ticari tür ileti onayı denetimi gelmeden eklenmez. `enrollment_completed` türü kayıtlıdır ama kesin kayıt henüz üretmiyor (`TODO(onur-istek)`: kesin kayıt bildirimi).
 
 ### DOM-ILT-023 · Bildirim gövdesinde kişisel ayrıntı yok
 
@@ -112,7 +112,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Kilit ekranı, paylaşılan cihaz ve SMS sağlayıcısı veri sorumlusunun denetimi dışındadır.
 - **Kaynak:** KVKK md. 12/1 (veri güvenliği için uygun güvenlik düzeyi); içerik sınırı işletme kuralıdır.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — uygulama içi bildirim kaydı katı şemadır (`notificationRecordSchema`: tür, kitle, öğrenci, konu kaydı, an); serbest metin, puan, tutar veya geri bildirim saklanmaz. Başlık okumada türün sabit şablonundan öğrencinin ilk adıyla üretilir (`notificationTitle`); log ve denetim kaydına yalnız alan adları yazılır (`apps/api/test/notifications.test.ts`, `task-grading.test.ts`). E-posta/SMS/anlık bildirim gövdesi henüz yok.
 
 ### DOM-ILT-024 · Mesajda okundu bilgisi
 
@@ -290,7 +290,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Ayrı yaşayan ebeveynler arasında adres ve iletişim bilgisi sızıntısı fiziksel risk doğurabilir.
 - **Kaynak:** İşletme kuralı; KVKK md. 4/2 (ölçülülük), md. 12/1.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — öğrenci başına tek veli olduğu için ayrım yok; randevuda görüşmeyi yalnız açan veli görür (`DOM-ILT-103`, React ekranı `?randevu=` ile başka velinin görüşmesini açamaz, 404). Yazışma ve randevu dışındaki yüzeylerde ayrım yok.
+- **Kodda:** kısmen — öğrenci başına tek veli olduğu için genel ayrım yok; bildirim merkezinde okundu bilgisi kullanıcıya özeldir (`notificationReads`, `<bildirim>:<kullanıcı>`), bir velinin okuması diğerine yansımaz, başkasının bildirimi 404 döner (F6a, `lib/notifications.ts`); velayet kapsamı yok. Randevuda görüşmeyi yalnız açan veli görür (`DOM-ILT-103`, React ekranı `?randevu=` ile başka velinin görüşmesini açamaz, 404). Yazışma ve randevu dışındaki yüzeylerde ayrım yok.
 
 ## Talep ve şikayet
 

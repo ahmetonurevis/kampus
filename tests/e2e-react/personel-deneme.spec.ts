@@ -4,6 +4,8 @@ import { expect, test } from './support/fixtures.ts'
 import {
   answerAll,
   breakdownOf,
+  expectOk,
+  idempotent,
   PASSAGE_TITLE,
   passageOf,
   QUESTIONS,
@@ -119,6 +121,81 @@ test.describe('personel deneme görünümü', () => {
     await page.setViewportSize({ width: 390, height: 844 })
     await expect(breakdown).toBeVisible()
     await expectNoHorizontalOverflow(page)
+  })
+
+  // Deneme listesinin sayfası adreste (`dn-sayfa`) tutulur (OG-994): deneme penceresinden geri
+  // dönünce, yenileyince aynı sayfa açılır; pencere panelin içinde açıldığı için panel yerinde
+  // kalır ve panel kapanınca sayfa parametresi adresten silinir.
+  test('OG-994, DOM-YTK-028: deneme listesinin sayfası adreste korunur; deneme penceresi panelin içinde açılır', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const { school, assignmentId, student } = await setUp(
+      tenant,
+      api,
+      'Alıştırma okuma',
+      { kind: 'practice' },
+      { roles: ['ogretmen'], records: TEACHES_ENGLISH },
+    )
+    // 11 tamamlanmış deneme: alıştırma sınırsızdır; liste 10'luk iki sayfa olur.
+    for (let index = 0; index < 11; index += 1) {
+      const started = await expectOk(
+        await student.post(`/api/v1/task-assignments/${assignmentId}/attempts`, {}, idempotent()),
+      )
+      await expectOk(
+        await student.post(
+          `/api/v1/task-attempts/${started.id}/submit`,
+          {},
+          { ...idempotent(), 'if-match': `"${started.rowVersion}"` },
+        ),
+        200,
+      )
+    }
+    await page.setViewportSize({ width: 1440, height: 1000 })
+    await loginAs(school.user('ogretmen'))
+    await page.goto(`/ogretmen/odevler?sekme=gorevler&gorev=${assignmentId}`)
+    const panel = page.getByRole('dialog', { name: 'Görev ayrıntısı' })
+    const attempts = panel.getByRole('list', { name: 'Denemeler' })
+    await expect(attempts.getByRole('listitem')).toHaveCount(10)
+    await panel.getByRole('button', { name: '2. sayfa' }).click()
+    await expect(page).toHaveURL(/[?&]dn-sayfa=2(&|$)/)
+    await expect(attempts.getByRole('listitem')).toHaveCount(1)
+
+    // Deneme penceresi panelin içinde açılır: panelin metni görünür kalır, üstteki pencere
+    // erişilebilirlik ağacındadır.
+    const open = attempts.getByRole('button', { name: /ayrıntısını aç$/ })
+    await open.click()
+    await expect(page).toHaveURL(/[?&]deneme=/)
+    const review = page.getByRole('dialog', { name: 'Deneme ayrıntısı' })
+    await expect(review).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: 'Alıştırma okuma', includeHidden: true }),
+    ).toBeVisible()
+
+    // Geri pencereyi kapatır ve ikinci sayfada bırakır; ileri açar.
+    await page.goBack()
+    await expect(review).toHaveCount(0)
+    await expect(page).toHaveURL(/[?&]dn-sayfa=2(&|$)/)
+    await expect(attempts.getByRole('listitem')).toHaveCount(1)
+    await page.goForward()
+    await expect(review).toBeVisible()
+    await review.getByRole('button', { name: 'Pencereyi kapat' }).click()
+    await expect(review).toHaveCount(0)
+    await expect(open).toBeFocused()
+
+    // Yenileme aynı sayfayı açar; sayfa boyutu değişince sayfa başa döner.
+    await page.reload()
+    await expect(attempts.getByRole('listitem')).toHaveCount(1)
+    await panel.getByLabel('Sayfa başına kayıt').selectOption('20')
+    await expect(page).not.toHaveURL(/dn-sayfa=/)
+    await expect(attempts.getByRole('listitem')).toHaveCount(11)
+
+    // Panel kapanınca sayfa parametresi adreste kalmaz (sonraki panele taşınmaz).
+    await panel.getByRole('button', { name: 'Kapat' }).click()
+    await expect(panel).toHaveCount(0)
+    await expect(page).not.toHaveURL(/dn-sayfa=|gorev=/)
   })
 
   // Kapsam dışı ve başka kurumun denemesi API'de 404'tür (task-attempts API testleri); ekran aynı

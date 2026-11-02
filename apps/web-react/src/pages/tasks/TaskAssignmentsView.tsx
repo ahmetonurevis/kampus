@@ -17,6 +17,7 @@ import { ATTEMPT_PARAM, AttemptReviewModal } from './AttemptReviewModal.tsx'
 import {
   assignmentRow,
   assignmentScopeNote,
+  ATTEMPT_LIST_PARAMS,
   dateTimeLabel,
   isStaffAssignment,
   KIND_OPTIONS,
@@ -32,7 +33,8 @@ const MOBILE_COLUMNS = ['contentType', 'dueAt', 'owner']
  * Görevler (öğretmen ve yönetici): atadıklarım ve sınıflarımı hedefleyen atamalar, sunucu sayfalı
  * (kapsam sunucuda; DOM-YTK-028: sınıfın öğretmeni görür, yalnız atayan değiştirir). Satırdan
  * ayrıntı sağ panelde (`?gorev=`), yeni atama geniş pencerede (`?gorev-form=yeni`), teslim
- * puanlama penceresi `?puanla=`, otomatik puanlı görevin deneme ayrıntısı `?deneme=` ile açılır.
+ * puanlama penceresi `?puanla=`, otomatik puanlı görevin deneme ayrıntısı `?deneme=` ile açılır;
+ * ikisi de panel açıksa panelin içinde iç içe pencere olur (OG-994).
  */
 export function TaskAssignmentsView() {
   const { session } = useAuth()
@@ -53,12 +55,17 @@ export function TaskAssignmentsView() {
     [assignments.data, names, userId],
   )
 
-  const panel = useDetailPanel('gorev')
+  const panel = useDetailPanel('gorev', ATTEMPT_LIST_PARAMS)
   const form = useDetailPanel('gorev-form')
   const grading = useDetailPanel('puanla')
   const review = useDetailPanel(ATTEMPT_PARAM)
-  // Panel açıkken deneme penceresi panelin içinde (iç içe pencere), değilse tek başına çizilir.
+  // Panel açıkken deneme ve puanlama pencereleri panelin içinde (iç içe pencere), değilse tek
+  // başına çizilir (OG-994): ayrı kök pencere Radix'te panelle birbirini erişilebilirlik
+  // ağacından gizlerdi; iç içe yığında üstteki pencere erişilebilir, panel arkada açık kalır.
   const reviewModal = <AttemptReviewModal attemptId={review.selectedId} onClose={review.close} />
+  const gradingModal = (
+    <SubmissionGradingModal submissionId={grading.selectedId} onClose={grading.close} />
+  )
   const openPanel = panel.open
   const navigate = useNavigate()
   /** Yeni görev kaydedilince form kapanır, yeni kaydın ayrıntısı açılır (tek geçmiş adımı). */
@@ -183,15 +190,20 @@ export function TaskAssignmentsView() {
         onGrade={grading.open}
         onReview={review.open}
       >
-        {panel.selectedId ? reviewModal : null}
+        {panel.selectedId ? (
+          <>
+            {reviewModal}
+            {gradingModal}
+          </>
+        ) : null}
       </TaskAssignmentPanel>
       <TaskAssignmentForm
         open={form.selectedId === NEW_ASSIGNMENT}
         onClose={form.close}
         onCreated={showCreated}
       />
-      <SubmissionGradingModal submissionId={grading.selectedId} onClose={grading.close} />
       {panel.selectedId ? null : reviewModal}
+      {panel.selectedId ? null : gradingModal}
     </section>
   )
 }

@@ -1,10 +1,14 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
+import { listReducer, initialListState } from '../src/lib/list-state.ts'
+import { applyListParams, listStateToParams } from '../src/lib/list-url.ts'
 import { rubricScoreInputSchema } from '@kampus/school-core/skills/rubric.ts'
 import {
   assignmentBody,
   assignmentFormSchema,
   assignmentScopeNote,
+  ATTEMPT_LIST_PARAMS,
+  ATTEMPT_LIST_PREFIX,
   canChangeAssignment,
   defaultAssignment,
   defaultResubmissionLocal,
@@ -250,5 +254,33 @@ describe('görev listesi kapsam notu (OG-993, DOM-YTK-028)', () => {
     const item = { assignedByUserId: 'u-baska' }
     assert.equal(canChangeAssignment(item, 'u-yonetici', 'yonetici'), true)
     assert.equal(canChangeAssignment(item, 'u-ogretmen', 'ogretmen'), false)
+  })
+})
+
+describe('görev panelindeki deneme listesinin adresi (OG-994)', () => {
+  const base = initialListState(10)
+
+  test('sayfa dn-sayfa ile adrese yazılır ve temizlenecek parametre listesiyle eşleşir', () => {
+    const second = listReducer(base, { type: 'page', page: 2 })
+    const params = listStateToParams(second, ATTEMPT_LIST_PREFIX, new URLSearchParams('gorev=a1'))
+    assert.equal(params.get('dn-sayfa'), '2')
+    assert.equal(params.get('gorev'), 'a1')
+    assert.deepEqual(ATTEMPT_LIST_PARAMS, ['dn-sayfa'])
+    // Birinci sayfa varsayılandır; adreste görünmez.
+    const first = listStateToParams(base, ATTEMPT_LIST_PREFIX, params)
+    assert.equal(first.has('dn-sayfa'), false)
+  })
+
+  test('geri/ileri adresteki sayfayı listeye uygular; sayfa boyutu değişince sayfa başa döner', () => {
+    const restored = applyListParams(base, new URLSearchParams('dn-sayfa=3'), ATTEMPT_LIST_PREFIX)
+    assert.equal(restored.page, 3)
+    const resized = listReducer(restored, { type: 'pageSize', pageSize: 20 })
+    assert.equal(resized.page, 1)
+    assert.equal(resized.pageSize, 20)
+  })
+
+  test('veri azalınca geçersiz sayfada kalınmaz', () => {
+    const state = listReducer(base, { type: 'page', page: 5 })
+    assert.equal(listReducer(state, { type: 'clamp', pageCount: 2 }).page, 2)
   })
 })

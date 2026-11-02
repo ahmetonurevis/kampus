@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react'
+import type { ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, type Resolver } from 'react-hook-form'
 import {
@@ -18,10 +18,13 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Pagination } from '@/components/Pagination.tsx'
+import { pageCount } from '@/lib/list-query.ts'
+import { useListState } from '@/hooks/use-list-state.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading, SummaryMetrics, SummarySection } from '../management/SummaryParts.tsx'
 import { RootError } from '../management/FormParts.tsx'
 import {
+  ATTEMPT_LIST_PREFIX,
   canChangeAssignment,
   dateTimeLabel,
   deadlineFormSchema,
@@ -44,7 +47,7 @@ type Props = {
   /** Otomatik puanlı görevde denemenin ayrıntısını açar (`?deneme=`). */
   onReview: (attemptId: string) => void
   /**
-   * Panelin üstünde açılan pencereler (deneme ayrıntısı). React ağacında panelin içinde durmaları
+   * Panelin üstünde açılan pencereler (deneme ayrıntısı, teslim puanlama). React ağacında panelin içinde durmaları
    * gerekir: Radix yığını, ağaç dışındaki pencereye geçen odağı "dışarı" sayıp paneli kapatırdı
    * (adresle ikisi birlikte açıldığında).
    */
@@ -267,7 +270,9 @@ const ATTEMPT_PAGE_SIZES = [10, 20, 50] as const
 /**
  * Atamanın denemeleri (OG-983; DOM-BEC-042, 045; DOM-YTK-028): `GET /task-attempts` sunucu
  * sayfalı ve rol kapsamlıdır; satır başına istek yok. Puan, tamamlanan denemede sunucunun
- * cevaplardan hesapladığı yüzdedir; süren denemede puan yoktur.
+ * cevaplardan hesapladığı yüzdedir; süren denemede puan yoktur. Sayfa adreste tutulur (OG-994):
+ * deneme penceresinden geri dönünce ya da bağlantı paylaşılınca aynı sayfa açılır; sayfa boyutu
+ * değişince sayfa başa döner, veri azalınca geçersiz sayfada kalınmaz.
  */
 function AttemptList({
   assignmentId,
@@ -276,10 +281,16 @@ function AttemptList({
   assignmentId: string
   onReview: (attemptId: string) => void
 }) {
-  const [paging, setPaging] = useState({ page: 1, pageSize: ATTEMPT_PAGE_SIZES[0] as number })
+  const list = useListState(`deneme-${assignmentId}`, {
+    pageSize: ATTEMPT_PAGE_SIZES[0],
+    urlPrefix: ATTEMPT_LIST_PREFIX,
+  })
+  const paging = { page: list.state.page, pageSize: list.state.pageSize }
   const attempts = useTaskAttempts({ assignmentId, ...paging })
   const { names } = useTaskLookups()
   const total = attempts.data?.meta.total ?? 0
+  const pages = pageCount(total, paging.pageSize)
+  if (total > 0 && paging.page > pages) list.dispatch({ type: 'clamp', pageCount: pages })
   return (
     <SummarySection title="Denemeler">
       {attempts.error ? (
@@ -341,8 +352,8 @@ function AttemptList({
               page={paging.page}
               pageSize={paging.pageSize}
               sizes={ATTEMPT_PAGE_SIZES}
-              onPageChange={(page) => setPaging((current) => ({ ...current, page }))}
-              onPageSizeChange={(pageSize) => setPaging({ page: 1, pageSize })}
+              onPageChange={(page) => list.dispatch({ type: 'page', page })}
+              onPageSizeChange={(pageSize) => list.dispatch({ type: 'pageSize', pageSize })}
               className="mt-3 px-0"
             />
           ) : null}

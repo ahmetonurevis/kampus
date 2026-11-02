@@ -66,6 +66,13 @@ export const COUNT_POLICY_OPTIONS = (
 const contentTypeLabel = (type: string) =>
   type in CONTENT_TYPES ? CONTENT_TYPES[type as keyof typeof CONTENT_TYPES].label : type
 
+// --- Deneme listesi adresi -----------------------------------------------------------------
+
+/** Panelin deneme listesinin adres öneki; sayfa `dn-sayfa` ile adreste tutulur (OG-994). */
+export const ATTEMPT_LIST_PREFIX = 'dn-'
+/** Görev paneli kapanınca silinen deneme listesi parametreleri (bir sonraki panele taşınmaz). */
+export const ATTEMPT_LIST_PARAMS: readonly string[] = [`${ATTEMPT_LIST_PREFIX}sayfa`]
+
 // --- Atama satırı --------------------------------------------------------------------------
 
 export interface TargetNames {

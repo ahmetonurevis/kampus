@@ -20,6 +20,7 @@ import {
   GradeForm,
   HomeworkFormContent,
   NEW_HOMEWORK,
+  NoPermission,
 } from './HomeworkForms.tsx'
 import { Facts, SummaryTitle } from './LearningParts.tsx'
 import { deliverySummary, type DeliveryEntry } from './learning-rows.ts'
@@ -75,6 +76,7 @@ export function HomeworkDeliveryPanel({ detail, form, grading, actor }: Props) {
       ) : mode === 'grade' ? (
         <GradeContent
           key={grading.selectedId}
+          actor={actor}
           homeworkId={detail.selectedId}
           submissionId={grading.selectedId}
           onClose={grading.close}
@@ -288,10 +290,12 @@ function StudentLine({
 }
 
 function GradeContent({
+  actor,
   homeworkId,
   submissionId,
   onClose,
 }: {
+  actor: HomeworkActor
   homeworkId: string
   submissionId: string
   onClose: () => void
@@ -313,6 +317,8 @@ function GradeContent({
   if (item.error && !opened)
     return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!homework || (students.isPending && !students.error)) return <SummaryLoading />
+  // Adresten gelinen puanlama da yetkiye bağlıdır: yalnız ödevin öğretmeni (DOM-AKD-073).
+  if (!homeworkActions(actor, homework).grade) return <NoPermission />
   if (!opened)
     return (
       <p role="status" className="text-sm text-muted-foreground">
@@ -348,6 +354,7 @@ function GradeContent({
         homeworkId={homeworkId}
         submission={opened}
         fetchFresh={fetchFresh}
+        onStale={setOpened}
         onClose={onClose}
       />
     </>

@@ -43,22 +43,34 @@ import {
   changedHomeworkFields,
   gradeFormDefaults,
   gradeFormSchema,
+  homeworkActions,
   homeworkClassOptions,
   homeworkErrorRoutes,
   homeworkFormDefaults,
   homeworkFormSchema,
   homeworkSubjectOptions,
   pickSubject,
+  planHomeworkUpdate,
   type GradeFormValues,
   type HomeworkActor,
   type HomeworkFormOutput,
   type HomeworkFormValues,
+  type HomeworkOverlap,
 } from './homework-forms.ts'
 
 /** `?odev-form=` değeri: yeni ödev. */
 export const NEW_HOMEWORK = 'yeni'
 
 const NONE: readonly never[] = []
+
+/** Adresten açılan formda işlem yetkisi yoksa form çizilmez. */
+export function NoPermission() {
+  return (
+    <p role="status" className="text-sm text-muted-foreground">
+      Bu işlem için yetkiniz yok.
+    </p>
+  )
+}
 
 /** Gönderimde kayıt başkası tarafından değişmişti: girdi korunur, yeniden kaydetmek yeterli. */
 function ChangedNotice({ show, subject }: { show: boolean; subject: string }) {
@@ -67,6 +79,37 @@ function ChangedNotice({ show, subject }: { show: boolean; subject: string }) {
     <div role="alert" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
       {subject} bu arada başka biri tarafından değişti. Güncel hâli yüklendi; girdiniz korundu.
       Kontrol edip yeniden kaydedin.
+    </div>
+  )
+}
+
+type Stale =
+  | { kind: 'changed' }
+  /** `version`: çakışmanın gösterildiği kayıt sürümü; aynı sürümde yeniden kaydetmek onaydır. */
+  | { kind: 'overlap'; overlaps: readonly HomeworkOverlap[]; version: number }
+
+/**
+ * Ödev başkası tarafından değişmiş çıktı: kayıt gönderilmedi (ya da 409 döndü), girdi korunur. Aynı
+ * alanı başkası da değiştirdiyse iki değer yan yana gösterilir; "Kaydet"e yeniden basmak
+ * kullanıcının değerini yazar.
+ */
+function StaleNotice({ stale }: { stale: Stale | null }) {
+  if (!stale) return null
+  if (stale.kind === 'changed') return <ChangedNotice show subject="Ödev" />
+  return (
+    <div role="alert" className="grid gap-2 rounded-card border bg-warning-soft p-4 text-sm">
+      <p className="font-medium">
+        Ödev bu arada değişti ve değiştirdiğiniz alanlardan biri başkası tarafından da değiştirildi.
+        Yeniden kaydederseniz sizin değeriniz yazılır.
+      </p>
+      <ul className="grid gap-1">
+        {stale.overlaps.map((item) => (
+          <li key={item.field}>
+            <strong className="font-semibold">{item.label}:</strong> kayıtlı değer {item.theirs},
+            sizin girdiğiniz {item.mine}.
+          </li>
+        ))}
+      </ul>
     </div>
   )
 }
@@ -92,7 +135,12 @@ type FormTargetProps = {
 
 /** Sağ panel içeriği: yeni ödev formu ya da ödevi okuyup düzenleme formu. */
 export function HomeworkFormContent({ target, actor, onClose }: FormTargetProps) {
-  if (target === NEW_HOMEWORK) return <HomeworkForm actor={actor} onClose={onClose} />
+  if (target === NEW_HOMEWORK)
+    return homeworkActions(actor).create ? (
+      <HomeworkForm actor={actor} onClose={onClose} />
+    ) : (
+      <NoPermission />
+    )
   return <HomeworkEdit homeworkId={target} actor={actor} onClose={onClose} />
 }
 
@@ -113,6 +161,8 @@ function HomeworkEdit({
   if (item.error && !opened)
     return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!opened) return <SummaryLoading />
+  // Adresten gelinen form de yetkiye bağlıdır: ödevin öğretmeni ya da yönetici (DOM-AKD-071).
+  if (!homeworkActions(actor, opened).manage) return <NoPermission />
   return <HomeworkForm homework={opened} fetchFresh={fetchFresh} actor={actor} onClose={onClose} />
 }
 
@@ -136,7 +186,7 @@ function HomeworkForm({
     resolver: zodResolver(homeworkFormSchema),
     defaultValues: homeworkFormDefaults(homework),
   })
-  const [changed, setChanged] = useState(false)
+  const [stale, setStale] = useState<Stale | null>(null)
   const guard = useRouteDiscardGuard(form.formState.isDirty)
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
@@ -160,7 +210,8 @@ function HomeworkForm({
 
   const onSubmit = form.handleSubmit(async (values) => {
     const routes = { setError: form.setError, ...homeworkErrorRoutes('homework') }
-    setChanged(false)
+    const shown = stale
+    setStale(null)
     if (!homework || !fetchFresh) {
       const outcome = await create.submit(values, routes)
       if (outcome.status === 'success') {
@@ -171,8 +222,8 @@ function HomeworkForm({
       return
     }
     const result = await submitWithFreshRecord(fetchFresh, async (fresh) => {
-      const body = changedHomeworkFields(fresh, values)
-      if (Object.keys(body).length === 0) {
+      const plan = planHomeworkUpdate(homework, fresh, values)
+      if (Object.keys(plan.body).length === 0) {
         const touched = Object.keys(changedHomeworkFields(homework, values)).length > 0
         form.setError('root.server', {
           type: 'manual',
@@ -180,14 +231,22 @@ function HomeworkForm({
         })
         return { status: 'busy' as const }
       }
-      return update.submit({ homeworkId: fresh.id, version: fresh.version, body }, routes)
+      const confirmed = shown?.kind === 'overlap' && shown.version === fresh.version
+      if (plan.overlaps.length > 0 && !confirmed) {
+        setStale({ kind: 'overlap', overlaps: plan.overlaps, version: fresh.version })
+        return { status: 'busy' as const }
+      }
+      return update.submit(
+        { homeworkId: fresh.id, version: fresh.version, body: plan.body },
+        routes,
+      )
     })
     if (result.status === 'missing') {
       notify.error(RECORD_UNAVAILABLE_MESSAGE)
       return
     }
     if (result.conflicted) {
-      setChanged(true)
+      setStale({ kind: 'changed' })
       return
     }
     if (result.outcome.status === 'success') {
@@ -223,7 +282,7 @@ function HomeworkForm({
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-5"
       >
-        <ChangedNotice show={changed} subject="Ödev" />
+        <StaleNotice stale={stale} />
         <p className="text-sm text-muted-foreground">
           {editing
             ? 'Sınıf ve ders değişmez; yanlış sınıfa verilen ödevi arşivleyip yeniden verin.'
@@ -374,12 +433,16 @@ export function GradeForm({
   homeworkId,
   submission,
   fetchFresh,
+  onStale,
   onClose,
 }: {
   homeworkId: string
+  /** Formun açıldığı andaki (ya da son uyarıda gösterilen) teslim. */
   submission: HomeworkSubmission
   /** Gönderim anında teslimi yeniden okur; teslim artık yoksa `undefined`. */
   fetchFresh: () => Promise<HomeworkSubmission | undefined>
+  /** Teslim formun açıldığından beri değişti: yeni içerik üstte gösterilir, puan gönderilmez. */
+  onStale: (fresh: HomeworkSubmission) => void
   onClose: () => void
 }) {
   const grade = useGradeSubmission()
@@ -387,26 +450,33 @@ export function GradeForm({
     resolver: zodResolver(gradeFormSchema),
     defaultValues: gradeFormDefaults(submission),
   })
-  const [changed, setChanged] = useState(false)
+  const [stale, setStale] = useState<'changed' | 'updated' | null>(null)
   const guard = useRouteDiscardGuard(form.formState.isDirty)
   const busy = grade.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
   const regrade = submission.score !== null
 
   const onSubmit = form.handleSubmit(async (values) => {
-    setChanged(false)
-    const result = await submitWithFreshRecord(fetchFresh, (fresh) =>
-      grade.submit(
+    setStale(null)
+    const result = await submitWithFreshRecord(fetchFresh, async (fresh) => {
+      // Teslim formun açıldığından beri güncellendi (öğrenci yeniden teslim etti): eski içeriğe
+      // verilmiş puan yeni içeriğe yazılmasın; yeni içerik gösterilir, kullanıcı yeniden kaydeder.
+      if (fresh.version !== submission.version) {
+        onStale(fresh)
+        setStale('updated')
+        return { status: 'busy' as const }
+      }
+      return grade.submit(
         { homeworkId, submissionId: fresh.id, version: fresh.version, body: values },
         { setError: form.setError, ...homeworkErrorRoutes('grade') },
-      ),
-    )
+      )
+    })
     if (result.status === 'missing') {
       notify.error(RECORD_UNAVAILABLE_MESSAGE)
       return
     }
     if (result.conflicted) {
-      setChanged(true)
+      setStale('changed')
       return
     }
     if (result.outcome.status === 'success') {
@@ -424,7 +494,15 @@ export function GradeForm({
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-5"
       >
-        <ChangedNotice show={changed} subject="Teslim" />
+        {stale === 'updated' ? (
+          <div role="alert" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
+            Teslim güncellendi: öğrencinin açıklaması ve dosyaları değişmiş olabilir. Yeni içerik
+            yukarıda gösteriliyor; puanınız ve geri bildiriminiz korundu, göndermeden önce kontrol
+            edip yeniden kaydedin.
+          </div>
+        ) : (
+          <ChangedNotice show={stale === 'changed'} subject="Teslim" />
+        )}
         <p className="text-sm text-muted-foreground">
           Puan resmî not değildir. Kaydedince öğrenciye ve velisine bildirim gider; bildirim puanı
           ve geri bildirimi göstermez.

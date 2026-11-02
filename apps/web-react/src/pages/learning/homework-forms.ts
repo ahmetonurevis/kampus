@@ -18,6 +18,7 @@ import {
   type HomeworkSubmission,
   type UpdateHomeworkBody,
 } from '@kampus/react-shared/homework.ts'
+import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { istanbulToIso, isoToIstanbul } from '../../lib/istanbul-time.ts'
 
 export { HOMEWORK_FEEDBACK_MAX_LENGTH, SUBMISSION_FILE_LIMIT, SUBMISSION_NOTE_MAX_LENGTH }
@@ -87,7 +88,11 @@ export function homeworkFormDefaults(
   }
 }
 
-/** Düzenlemede yalnız değişen alanlar gider (`PATCH` kısmidir; sınıf ve ders değişmez). */
+/**
+ * Düzenlemede kullanıcının formda değiştirdiği alanlar (`PATCH` kısmidir; sınıf ve ders
+ * değişmez). `homework` karşılaştırılan kayıttır: formun açıldığı andaki kayıt kullanıcının
+ * dokunduğu alanları, gönderim anındaki taze kayıt ise gerçekten yazılacak alanları verir.
+ */
 export function changedHomeworkFields(
   homework: Pick<Homework, 'title' | 'description' | 'dueDate' | 'allowLate'>,
   values: HomeworkFormOutput,
@@ -98,6 +103,81 @@ export function changedHomeworkFields(
   if (Date.parse(values.dueDate) !== Date.parse(homework.dueDate)) changed.dueDate = values.dueDate
   if (values.allowLate !== homework.allowLate) changed.allowLate = values.allowLate
   return changed
+}
+
+type EditableHomework = Pick<Homework, 'title' | 'description' | 'dueDate' | 'allowLate'>
+export type HomeworkField = 'title' | 'description' | 'dueDate' | 'allowLate'
+
+export const HOMEWORK_FIELD_LABELS = {
+  title: 'Başlık',
+  description: 'Açıklama',
+  dueDate: 'Son teslim',
+  allowLate: 'Geç teslim',
+} as const satisfies Record<HomeworkField, string>
+
+/** Kullanıcının değiştirdiği bir alanı başkası da farklı bir değere çevirmiş. */
+export type HomeworkOverlap = {
+  field: HomeworkField
+  label: string
+  /** Başkasının kaydettiği değer. */
+  theirs: string
+  /** Kullanıcının formda girdiği değer. */
+  mine: string
+}
+
+const TEXT_PREVIEW = 80
+
+/** Alanın ekranda gösterilen değeri (uzun metin kısaltılır, tarih Türkiye saatiyle). */
+export function homeworkFieldText(field: HomeworkField, value: EditableHomework): string {
+  switch (field) {
+    case 'title':
+      return value.title
+    case 'description': {
+      const text = value.description.replace(/\s+/g, ' ').trim()
+      return text.length > TEXT_PREVIEW ? `${text.slice(0, TEXT_PREVIEW)}…` : text
+    }
+    case 'dueDate':
+      return dateLabel(value.dueDate, { year: 'numeric', hour: '2-digit', minute: '2-digit' })
+    case 'allowLate':
+      return value.allowLate ? 'Kabul edilir' : 'Kabul edilmez'
+  }
+}
+
+/**
+ * Gönderim anındaki taze kayda göre düzenleme planı (OG-047; ders formundaki `planLessonUpdate`
+ * kalıbı). Kullanıcının değiştirdiği alanlar formun açıldığı andaki ödevle (`opened`)
+ * karşılaştırılır; yalnız onlar gider, böylece dokunmadığı ve başkasının değiştirdiği alanlar eski
+ * değere geri yazılmaz (sessiz ezme yok). `overlaps`: kullanıcının değiştirdiği bir alanı başkası
+ * da farklı bir değere çevirmişse; kayıt gönderilmeden önce iki değer gösterilir.
+ */
+export function planHomeworkUpdate(
+  opened: EditableHomework,
+  fresh: EditableHomework,
+  values: HomeworkFormOutput,
+): { body: UpdateHomeworkBody; overlaps: HomeworkOverlap[] } {
+  const mine = changedHomeworkFields(opened, values)
+  const differsFromFresh = changedHomeworkFields(fresh, values)
+  const theirs = changedHomeworkFields(opened, {
+    ...values,
+    title: fresh.title,
+    description: fresh.description,
+    dueDate: fresh.dueDate,
+    allowLate: fresh.allowLate,
+  })
+  const body: UpdateHomeworkBody = {}
+  const overlaps: HomeworkOverlap[] = []
+  for (const field of Object.keys(HOMEWORK_FIELD_LABELS) as HomeworkField[]) {
+    if (!(field in mine) || !(field in differsFromFresh)) continue
+    Object.assign(body, { [field]: values[field] })
+    if (field in theirs)
+      overlaps.push({
+        field,
+        label: HOMEWORK_FIELD_LABELS[field],
+        theirs: homeworkFieldText(field, fresh),
+        mine: homeworkFieldText(field, values),
+      })
+  }
+  return { body, overlaps }
 }
 
 type AssignmentLike = { classId: string; subjectId: string; teacherId: string }
@@ -191,13 +271,36 @@ export function submissionWindow(
   return homework.allowLate ? 'late' : 'closed'
 }
 
-/** Yeni seçilen dosyalardan sığanlar ve sığmayan sayısı (en çok 5; aynı dosya bir kez). */
+/**
+ * Yeni seçilen dosyalardan sığanlar ve sığmayan sayısı (en çok 5). Aynı dosya iki kez seçilirse
+ * (`identity` aynı) bir kez alınır ve sığmayan sayılmaz.
+ */
 export function fitFiles<T>(
   current: readonly SubmissionFile[],
   picked: readonly T[],
+  identity: (item: T) => string = String,
 ): { accepted: T[]; dropped: number } {
+  const seen = new Set<string>()
+  const unique = picked.filter((item) => {
+    const key = identity(item)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
   const room = Math.max(0, SUBMISSION_FILE_LIMIT - current.length)
-  return { accepted: picked.slice(0, room), dropped: Math.max(0, picked.length - room) }
+  return { accepted: unique.slice(0, room), dropped: Math.max(0, unique.length - room) }
+}
+
+/**
+ * Yüklenen dosyayı listeye ekler; `id` zaten listedeyse (aynı dosya yeniden seçildi, sunucu aynı
+ * kaydı döndürdü) liste değişmez, böylece teslimde aynı dosya iki kez bağlanmaz.
+ */
+export function addUploadedFile(
+  current: readonly SubmissionFile[],
+  file: SubmissionFile,
+): SubmissionFile[] {
+  if (current.some((item) => item.id === file.id)) return [...current]
+  return [...current, file].slice(0, SUBMISSION_FILE_LIMIT)
 }
 
 // --- Değerlendirme -----------------------------------------------------------

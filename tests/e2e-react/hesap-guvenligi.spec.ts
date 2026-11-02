@@ -35,6 +35,25 @@ test.describe('hesap güvenliği', () => {
     await expect(page.getByRole('link', { name: 'Yeni bağlantı iste' })).toBeVisible()
   })
 
+  test('IST-003: sıfırlama belirteci adres parçasında gelir, adresten silinir ve geçersizse reddedilir', async ({
+    page,
+  }) => {
+    const apiRequests: string[] = []
+    page.on('request', (request) => apiRequests.push(request.url()))
+    await page.goto('/parola-sifirla#token=uydurma-belirtec-123')
+    await expect(
+      page.getByRole('heading', { level: 1, name: 'Yeni parola belirleyin' }),
+    ).toBeVisible()
+    await expect(page).toHaveURL(/\/parola-sifirla$/)
+
+    await page.getByLabel('Yeni parola', { exact: true }).fill(NEW_PASSWORD)
+    await page.getByLabel('Yeni parola (tekrar)').fill(NEW_PASSWORD)
+    await page.getByRole('button', { name: 'Parolayı değiştir' }).click()
+    await expect(page.getByRole('alert')).toContainText('süresi dolmuş veya geçersiz')
+    // Parça sunucuya hiç gitmez: hiçbir istek adresinde belirteç yoktur.
+    expect(apiRequests.filter((url) => url.includes('uydurma-belirtec-123'))).toEqual([])
+  })
+
   test('IST-003: Güvenlik sayfasında oturum sonlandırılır ve parola diğer cihazlardan çıkışla değişir', async ({
     loginAs,
     tenant,

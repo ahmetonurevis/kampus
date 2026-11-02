@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Link, useNavigate, useSearchParams } from 'react-router'
+import { Link, useLocation, useNavigate } from 'react-router'
 import { isApiError } from '@kampus/api-client/errors.ts'
 import {
   ACCOUNT_SECURITY_MESSAGES,
@@ -23,14 +23,15 @@ const fieldClass = 'h-[46px] rounded-field px-3.5 text-base md:text-base'
 /** E-postadaki bağlantının açtığı sayfa (IST-003): yeni parola + tekrar; başarıda girişe döner. */
 export function ResetPasswordPage() {
   useDocumentTitle('Parola sıfırla')
-  const [searchParams] = useSearchParams()
-  // Belirteç adresten bir kez okunur, sonra adres çubuğundan silinir: geçmişte, ekran paylaşımında
-  // ve yönlendiren başlığında görünmesin. Sayfa yenilenirse bağlantı e-postadan yeniden açılır.
-  const [token] = useState(() => searchParams.get('token'))
+  const { hash } = useLocation()
+  // Bağlantı `/parola-sifirla#token=…` biçimindedir: adres parçası sunucuya, Referer'e ve erişim
+  // loguna gitmez. Belirteç bir kez okunur, sonra adres çubuğundan silinir: geçmişte ve ekran
+  // paylaşımında görünmesin. Sayfa yenilenirse bağlantı e-postadan yeniden açılır.
+  const [token] = useState(() => new URLSearchParams(hash.replace(/^#/, '')).get('token'))
   const [tokenInvalid, setTokenInvalid] = useState(false)
   const reset = useResetPassword(authClient)
   const navigate = useNavigate()
-  const tokenInAddress = searchParams.has('token')
+  const tokenInAddress = hash !== ''
   useEffect(() => {
     if (tokenInAddress) void navigate('/parola-sifirla', { replace: true })
   }, [tokenInAddress, navigate])

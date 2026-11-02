@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
-import { useGradingQueue } from '@kampus/react-shared/use-task-grading.ts'
+import { useGradingQueue, type GradingQueueItem } from '@kampus/react-shared/use-task-grading.ts'
 import { useTaskAssignments } from '@kampus/react-shared/use-task-assignments.ts'
-import type { TaskSubmission } from '@kampus/react-shared/use-task-submissions.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -58,12 +57,16 @@ export function GradingQueueView() {
 
   const rows = useMemo<QueueRow[] | undefined>(
     () =>
-      queue.data?.data.map((item: TaskSubmission) => {
-        const status = submissionStatus(item.status)
+      queue.data?.data.map((item: GradingQueueItem) => {
+        // İki puanı ayrışan teslim koordinatörün son puanını bekler (DOM-BEC-024); öğretmen burada
+        // yeniden puanlayamaz, durum bunu söyler.
+        const status = item.grading.awaitingResolution
+          ? { label: 'Son puan bekliyor', tone: 'amber' as const }
+          : submissionStatus(item.status)
         return {
           id: item.id,
           learner: names.studentName(item.learnerId),
-          assignment: titles.get(item.assignmentId)?.title ?? 'Görev',
+          assignment: titles.get(item.assignmentId)?.title ?? item.assignmentTitle ?? 'Görev',
           status: status.label,
           statusTone: status.tone,
           versions: item.versionCount,

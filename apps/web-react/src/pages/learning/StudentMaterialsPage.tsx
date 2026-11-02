@@ -1,6 +1,8 @@
 import { useMemo } from 'react'
+import { useSearchParams } from 'react-router'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { LineTabs, type LineTabOption } from '@/components/LineTabs.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { PdfButton } from '@/components/PdfButton.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -12,16 +14,49 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { TableGate } from './LearningParts.tsx'
 import { materialRow, type MaterialRow } from './learning-rows.ts'
 import { MaterialPanel } from './MaterialPanel.tsx'
+import { SharedMaterialsView } from './SharedMaterialsView.tsx'
 
 const NONE: readonly never[] = []
 const MOBILE_COLUMNS = ['subject', 'level']
 
+type Tab = 'ders' | 'paylasilan'
+const TABS: readonly LineTabOption<Tab>[] = [
+  { value: 'ders', label: 'Ders materyalleri' },
+  { value: 'paylasilan', label: 'Paylaşılan dosyalar' },
+]
+const isTab = (value: string | null): value is Tab => TABS.some((tab) => tab.value === value)
+
 /**
  * Materyaller (öğrenci, Vue `Learning.vue` `/materyaller`): öğrencinin düzeyindeki materyaller;
  * kapsamı sunucu uygular. Ders filtresi, başlık araması, satırdan içerik özeti. Yalnız okuma.
+ * "Paylaşılan dosyalar" sekmesi (`?sekme=paylasilan`) öğretmenin içerik havuzundan paylaştığı
+ * materyal dosyalarını gösterir (OG-250; DOM-KYN-006).
  */
 export function StudentMaterialsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
+  const [params, setParams] = useSearchParams()
+  const requested = params.get('sekme')
+  const tab: Tab = isTab(requested) ? requested : 'ders'
+  return (
+    <>
+      <PageHeading title={page.title} description={page.description} />
+      <div className="mb-6">
+        <LineTabs
+          label="Materyal türü"
+          value={tab}
+          options={TABS}
+          onChange={(next) =>
+            setParams(next === 'ders' ? {} : { sekme: next }, { preventScrollReset: true })
+          }
+        />
+      </div>
+      {tab === 'ders' ? <CourseMaterials /> : <SharedMaterialsView />}
+    </>
+  )
+}
+
+/** Ders materyalleri (seed koleksiyonu `materials`). */
+function CourseMaterials() {
   const materials = useCoreAll('materials')
   const rows = useMemo(() => materials.data?.map(materialRow), [materials.data])
   const panel = useDetailPanel('materyal')
@@ -76,7 +111,6 @@ export function StudentMaterialsPage({ page }: { page: NavPage }) {
 
   return (
     <>
-      <PageHeading title={page.title} description={page.description} />
       <section
         aria-labelledby="materyal-listesi"
         className="panel overflow-hidden rounded-card border bg-surface"

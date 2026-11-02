@@ -1,6 +1,7 @@
 import { useState, type FormEvent } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm, type Resolver } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
+import type { z } from 'zod'
 import { COPYRIGHT_DECLARATION } from '@kampus/school-core/content/taxonomy.ts'
 import {
   isStaffDetail,
@@ -29,6 +30,7 @@ import {
   RootError,
   useEditConflict,
 } from '../management/FormParts.tsx'
+import { isNewTarget, NEW_MATERIAL } from './content-form-targets.ts'
 import {
   ContentFields,
   fieldError,
@@ -46,9 +48,6 @@ import {
   type DraftFormValues,
 } from './content-pool-model.ts'
 
-/** `?icerik-form=yeni`: yeni içerik; başka değer düzenlenen içeriğin kimliğidir. */
-export const NEW_CONTENT = 'yeni'
-
 type FormModalProps = {
   /** `''` kapalı, `yeni` oluşturma, aksi hâlde düzenlenen içeriğin kimliği. */
   target: string
@@ -60,13 +59,14 @@ type FormModalProps = {
 }
 
 /**
- * Taslak formu (geniş pencere): okuma parçası ya da tek çoktan seçmeli soru. Doğrulama core
- * `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası (400 ya da 422 iş kuralı) alan
- * yoluyla gelirse yalnız alanın altında, yoksa toast olarak görünür (`exclusive`). Diğer içerik türleri sonraki dilimdedir.
- * TODO(F3c2): ses, video, çalışma kâğıdı, dosya ve lisanslı yayın türleri.
+ * Taslak formu (geniş pencere): okuma parçası, tek çoktan seçmeli soru ya da materyal dosyası
+ * (DOM-KYN-006). Doğrulama core `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası
+ * (400 ya da 422 iş kuralı) alan yoluyla gelirse yalnız alanın altında, yoksa toast olarak görünür
+ * (`exclusive`). Dosya yüklemesi sürerken kaydet kilitlidir. Diğer içerik türleri sonraki dilimdedir.
+ * TODO(F3c2): ses, video, çalışma kâğıdı ve lisanslı yayın türleri.
  */
 export function ContentDraftForm({ target, onClose, onCreated, onSaved }: FormModalProps) {
-  const creating = target === NEW_CONTENT
+  const creating = isNewTarget(target)
   return (
     <Modal
       open={target !== ''}
@@ -74,7 +74,14 @@ export function ContentDraftForm({ target, onClose, onCreated, onSaved }: FormMo
       title={creating ? 'Yeni içerik' : 'Taslağı düzenle'}
       size="wide"
     >
-      {creating ? <DraftEditor onClose={onClose} onCreated={onCreated} /> : null}
+      {creating ? (
+        <DraftEditor
+          key={target}
+          initialType={target === NEW_MATERIAL ? 'file' : 'reading_passage'}
+          onClose={onClose}
+          onCreated={onCreated}
+        />
+      ) : null}
       {target !== '' && !creating ? (
         <EditLoader resourceId={target} onClose={onClose} onSaved={onSaved} />
       ) : null}
@@ -128,34 +135,44 @@ type EditorProps = {
   /** Düzenlemede mevcut kaynak; yoksa yeni içerik. */
   detail?: StaffResourceDetail
   initial?: DraftFormValues
+  /** Yeni içerikte başlangıçta seçili tür. */
+  initialType?: AuthorableType
   reload?: () => Promise<{ version: number; values: DraftFormValues } | null>
   onClose: () => void
   onCreated?: (resourceId: string) => void
   onSaved?: () => void
 }
 
-function DraftEditor({ detail, initial, reload, onClose, onCreated, onSaved }: EditorProps) {
+function DraftEditor({
+  detail,
+  initial,
+  initialType = 'reading_passage',
+  reload,
+  onClose,
+  onCreated,
+  onSaved,
+}: EditorProps) {
   const { session } = useAuth()
   const languageSchool = session?.institution.type === 'language_school'
   const create = useCreateResource()
   const update = useUpdateDraft()
-  const [type, setType] = useState<AuthorableType>(initial?.content.type ?? 'reading_passage')
+  const [type, setType] = useState<AuthorableType>(initial?.content.type ?? initialType)
+  const [uploading, setUploading] = useState(false)
   const [declared, setDeclared] = useState(false)
   const [declarationMissing, setDeclarationMissing] = useState(false)
-  // Çözümleyici birleşim girdisini (core) doğrular; form değerleri düz tipte tutulur (yollar tipli kalsın).
+  // Çözümleyici birleşim girdisini (core) doğrular; form değerleri düz tipte tutulur (yollar tipli
+  // kalsın). Ön işlem (`files` → `fileIds`) girdiyi `unknown` yaptığından tip form değerine bağlanır.
   const form: DraftForm = useForm<DraftFormValues, unknown, DraftFormOutput>({
-    resolver: zodResolver(draftFormSchema) as unknown as Resolver<
-      DraftFormValues,
-      unknown,
-      DraftFormOutput
-    >,
-    defaultValues: initial ?? defaultDraft('reading_passage'),
+    // TODO(ts): `z.preprocess` girdiyi `unknown` yapar; şema tipi form değerine bağlanır.
+    resolver: zodResolver(draftFormSchema as z.ZodType<DraftFormOutput, DraftFormValues>),
+    defaultValues: initial ?? defaultDraft(initialType),
   })
   const conflict = useEditConflict<DraftFormValues>({
     initialVersion: detail?.head.rowVersion ?? 0,
     reload: async () => (reload ? reload() : null),
     apply: (values) => form.reset(values),
   })
+  // Yükleme sürerken alanlar açık kalır (iptal, başka alan); yalnız kaydet ve tür seçimi kilitli.
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
 
   function changeType(next: AuthorableType) {
@@ -192,6 +209,7 @@ function DraftEditor({ detail, initial, reload, onClose, onCreated, onSaved }: E
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
+    if (uploading) return
     // Beyan, form hatalarıyla birlikte görünsün diye doğrulamadan önce işaretlenir.
     setDeclarationMissing(!declared)
     void submit(event)
@@ -224,7 +242,7 @@ function DraftEditor({ detail, initial, reload, onClose, onCreated, onSaved }: E
                   if (chosen) changeType(chosen.value)
                 }}
                 className="w-full"
-                disabled={busy}
+                disabled={busy || uploading}
               >
                 {AUTHORABLE_OPTIONS.map((option) => (
                   <NativeSelectOption key={option.value} value={option.value}>
@@ -244,7 +262,7 @@ function DraftEditor({ detail, initial, reload, onClose, onCreated, onSaved }: E
         </div>
       </div>
 
-      <ContentFields form={form} type={type} busy={busy} />
+      <ContentFields form={form} type={type} busy={busy} onUploadingChange={setUploading} />
       <TagFields form={form} type={type} languageSchool={languageSchool} busy={busy} />
       <LicenseFields form={form} busy={busy} />
 
@@ -276,7 +294,11 @@ function DraftEditor({ detail, initial, reload, onClose, onCreated, onSaved }: E
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
           Vazgeç
         </Button>
-        <Button type="submit" disabled={busy || conflict.conflicted} aria-busy={busy || undefined}>
+        <Button
+          type="submit"
+          disabled={busy || uploading || conflict.conflicted}
+          aria-busy={busy || uploading || undefined}
+        >
           <Icon name="Check" size={17} aria-hidden="true" />
           {detail ? 'Değişiklikleri kaydet' : 'Taslağı kaydet'}
         </Button>

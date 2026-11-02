@@ -4,10 +4,14 @@ import type {
   StaffResourceListItem,
   StaffResourceVersion,
 } from '@kampus/react-shared/resource-model.ts'
+import { resourceFilesLimitMessage } from '@kampus/school-core/content/resource-files.ts'
 import {
+  coreInputFromForm,
   defaultDraft,
   draftFormSchema,
   draftFromHead,
+  MATERIAL_FILE_REQUIRED,
+  MATERIAL_FILE_RULE,
   nextOptionId,
   patchFromDraft,
   previewFromHead,
@@ -58,6 +62,7 @@ function head(overrides: Partial<StaffResourceVersion> = {}): StaffResourceVersi
     reviewedAt: null,
     rejectionReason: null,
     removalReason: null,
+    files: [],
     rowVersion: 3,
     ...overrides,
   } as StaffResourceVersion
@@ -240,5 +245,94 @@ describe('Önizleme, seçenek kimlikleri ve ret gerekçesi', () => {
   test('DOM-KYN-025: ret gerekçesi en az beş karakter ister', () => {
     assert.equal(rejectSchema.safeParse({ reason: 'kısa' }).success, false)
     assert.equal(rejectSchema.safeParse({ reason: 'Kaynak eksik.' }).success, true)
+  })
+})
+
+type HeadFile = StaffResourceVersion['files'][number]
+const headFile = (id: string, overrides: Partial<HeadFile> = {}): HeadFile => ({
+  id,
+  name: `${id}.pdf`,
+  contentType: 'application/pdf',
+  byteSize: 2048,
+  purpose: 'material',
+  durationMs: null,
+  status: 'ready',
+  ...overrides,
+})
+
+/** Geçerli materyal dosyası formu: verilen dosyalarla. */
+function validMaterial(ids: readonly string[]): DraftFormValues {
+  return {
+    ...defaultDraft('file'),
+    title: 'Kesirler çalışma kâğıdı',
+    license: { kind: 'institution_original' },
+    files: ids.map((id) => ({ id, name: `${id}.pdf` })),
+  }
+}
+
+describe('Materyal dosyası formu (DOM-KYN-006)', () => {
+  test('DOM-KYN-006: dosya listesi sıralı fileIds olur, ana dosya listenin ilkidir', () => {
+    const { title, answerKey, tags, license, attributions } = validMaterial([])
+    assert.deepEqual(coreInputFromForm(validMaterial(['f2', 'f1'])), {
+      title,
+      answerKey,
+      tags,
+      license,
+      attributions,
+      fileIds: ['f2', 'f1'],
+      content: { type: 'file', fileId: 'f2' },
+    })
+    const parsed = draftFormSchema.parse(validMaterial(['f2', 'f1']))
+    assert.deepEqual(parsed.fileIds, ['f2', 'f1'])
+    assert.deepEqual(parsed.content, { type: 'file', fileId: 'f2' })
+  })
+
+  test('DOM-KYN-006: dosyasız materyal dosya alanında uyarı verir', () => {
+    const result = draftFormSchema.safeParse(validMaterial([]))
+    assert.equal(result.success, false)
+    const issue = result.error?.issues.find((i) => i.path.join('.') === 'files')
+    assert.equal(issue?.message, MATERIAL_FILE_REQUIRED)
+  })
+
+  test('DOM-KYN-006: sınırı aşan liste core iletisiyle dosya alanında reddedilir', () => {
+    const ids = Array.from({ length: MATERIAL_FILE_RULE.maxFiles + 1 }, (_, i) => `f${i}`)
+    const result = draftFormSchema.safeParse(validMaterial(ids))
+    assert.equal(result.success, false)
+    const issue = result.error?.issues.find((i) => i.path.join('.') === 'files')
+    assert.equal(issue?.message, resourceFilesLimitMessage(MATERIAL_FILE_RULE.maxFiles))
+    assert.equal(
+      draftFormSchema.safeParse(validMaterial(ids.slice(0, MATERIAL_FILE_RULE.maxFiles))).success,
+      true,
+    )
+  })
+
+  test('DOM-KYN-006: gövde materyalde fileIds taşır, okuma parçasında liste gönderilmez', () => {
+    const material = patchFromDraft(draftFormSchema.parse(validMaterial(['f1', 'f2'])))
+    assert.deepEqual(material.fileIds, ['f1', 'f2'])
+    assert.equal('fileIds' in patchFromDraft(draftFormSchema.parse(validReading())), false)
+  })
+
+  test('DOM-KYN-006: taslak ve yeni sürüm sürümün dosyalarıyla başlar; silinmiş dosya taşınmaz', () => {
+    const values = draftFromHead(
+      head({
+        content: { type: 'file', fileId: 'f1' },
+        files: [
+          headFile('f1'),
+          headFile('f2', { name: null }),
+          headFile('f3', { status: 'deleted' }),
+        ],
+      }),
+    )
+    assert.equal(values?.content.type, 'file')
+    assert.deepEqual(values?.files, [
+      { id: 'f1', name: 'f1.pdf' },
+      { id: 'f2', name: 'Dosya 2' },
+    ])
+    // Okuma parçasının (dosyasız) form listesi boştur.
+    assert.deepEqual(draftFromHead(head())?.files, [])
+  })
+
+  test('materyal dosyası önizlemesi metin yerine dosya listesine bırakılır', () => {
+    assert.equal(previewFromHead(head({ content: { type: 'file', fileId: 'f1' } })).kind, 'file')
   })
 })

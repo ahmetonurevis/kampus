@@ -1697,14 +1697,6 @@ export async function listAwaitingScore(
         where not exists (select 1 from jsonb_array_elements(sc.criteria) c2
           where c2->>'criterionId' = fc->>'criterionId'
             and abs((c2->>'band')::numeric - (fc->>'band')::numeric) <= ${DISAGREEMENT_BAND_GAP})))`
-  const awaiting =
-    query.awaiting === 'first'
-      ? sql`(${needsFirst} and not ${scoredBySelf})`
-      : query.awaiting === 'second'
-        ? sql`(${needsSecond} and not ${scoredBySelf})`
-        : query.awaiting === 'resolution'
-          ? disputed
-          : sql`(((${needsFirst} or ${needsSecond}) and not ${scoredBySelf}) or ${disputed})`
   // Koordinatörün alanı (core `coordinatesArea`): atanan içerik sürümünün dersi veya seviyesi.
   const areaMatches = [
     ...(query.coordination?.subjectIds.length
@@ -1729,6 +1721,23 @@ export async function listAwaitingScore(
               ),
             ),
         )
+  // Son puanı bekleyen: öğretmen yalnız koordinatörü olduğu alandaki ve iki puanlayıcıdan biri
+  // olmadığı uyuşmazlığı görür (servis `canResolveFinal` ile aynı kural, DOM-BEC-024); koordinatör
+  // görevi yoksa hiçbir satır. Yönetici kapsamsızdır (`coordination` yok) ve hepsini görür.
+  const resolvable =
+    query.coordination === undefined
+      ? disputed
+      : coordinated === undefined
+        ? sql`false`
+        : sql`(${disputed} and ${coordinated} and not ${scoredBySelf})`
+  const awaiting =
+    query.awaiting === 'first'
+      ? sql`(${needsFirst} and not ${scoredBySelf})`
+      : query.awaiting === 'second'
+        ? sql`(${needsSecond} and not ${scoredBySelf})`
+        : query.awaiting === 'resolution'
+          ? resolvable
+          : sql`(((${needsFirst} or ${needsSecond}) and not ${scoredBySelf}) or ${disputed})`
   const scope =
     scopeFilter === undefined
       ? undefined

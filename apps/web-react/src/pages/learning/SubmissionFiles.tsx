@@ -12,11 +12,14 @@ export const FILE_OPEN_FAILED = 'Dosya açılamadı. Biraz sonra yeniden deneyin
 export const FILE_POPUP_BLOCKED =
   'Açılır pencere engellendi. Tarayıcıda bu site için açılır pencerelere izin verip yeniden deneyin.'
 
+const notifyOpenFailed = (error: unknown) => notify.error(FILE_OPEN_FAILED, error)
+
 /**
  * İmzalı bağlantıyı yeni sekmede açar. Sekme tıklamayla eşzamanlı açılır (açılır pencere
  * engelleyicisi beklemeden sonraki `window.open`'ı engeller), bağlantı gelince adrese gider.
+ * Bağlantı alınamazsa sekme kapanır ve `onError` çağrılır (varsayılan: genel hata toast'ı).
  */
-export function useOpenFile() {
+export function useOpenFile(onError: (error: unknown, fileId: string) => void = notifyOpenFailed) {
   const fetchUrl = useFileUrlFetcher()
   const [opening, setOpening] = useState('')
   async function open(fileId: string) {
@@ -34,7 +37,7 @@ export function useOpenFile() {
       tab.location.href = url
     } catch (error) {
       tab.close()
-      notify.error(FILE_OPEN_FAILED, error)
+      onError(error, fileId)
     } finally {
       setOpening('')
     }

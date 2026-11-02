@@ -12,6 +12,7 @@ import {
   defaultMaxFiles,
   fitFiles,
   fieldError,
+  isUploadBusy,
   pickProblems,
   runUploadQueue,
   type FileUploadItem,
@@ -331,5 +332,24 @@ describe('iptal', () => {
     const result = await runUploadQueue(input)
     assert.equal(calls.length, 0)
     assert.equal(result.aborted, true)
+  })
+})
+
+describe('Alan meşgul sayılır (OG-250, DOM-KYN-006)', () => {
+  test('yükleme sürerken meşguldür', () => {
+    assert.equal(isUploadBusy(true, 0), true)
+  })
+
+  test('ağ hatasıyla yarım kalan yükleme (yeniden denenecek dosya) bitmiş sayılmaz: kaydet açılmaz', async () => {
+    const { upload } = fakeUpload({ 'a.pdf': [{ kind: 'failed', retryable: true }] })
+    const { input } = queueInput([pdf('a.pdf')], upload)
+    const result = await runUploadQueue(input)
+    assert.equal(result.retry.length, 1)
+    // Alan `uploading=false`, `retry=result.retry` ile kalır.
+    assert.equal(isUploadBusy(false, result.retry.length), true)
+  })
+
+  test('yeniden deneme bitince ya da vazgeçilince meşgul değildir', () => {
+    assert.equal(isUploadBusy(false, 0), false)
   })
 })

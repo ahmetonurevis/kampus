@@ -1,3 +1,4 @@
+import { dayKey } from '../lib/format.ts'
 import { subjectById, subjectsForGrade } from '../data/curriculum.ts'
 import { required, type SeedDate, type SeedMonth } from './seed-support.ts'
 import type { createStructure } from './seed-structure.ts'
@@ -81,10 +82,10 @@ export function createTimetable(input: {
 }) {
   const { now, date, classes, assignments, teachers } = input
   const schedule = []
-  const monday = new Date(now)
-  const weekday = monday.getUTCDay()
-  monday.setUTCDate(monday.getUTCDate() - ((weekday + 6) % 7))
-  monday.setUTCHours(6, 0, 0, 0)
+  // Hafta İstanbul gününe göre seçilir (ekranlar da öyle): pazartesi 00.00–03.00 İstanbul
+  // saatinde UTC hâlâ pazardır ve UTC'ye göre hesap bir önceki haftaya düşerdi (OG-971).
+  const monday = new Date(`${dayKey(now)}T06:00:00.000Z`)
+  monday.setUTCDate(monday.getUTCDate() - ((monday.getUTCDay() + 6) % 7))
   const usedSlots = new Set()
   for (let d = 0; d < 12; d++) {
     const day = new Date(monday)

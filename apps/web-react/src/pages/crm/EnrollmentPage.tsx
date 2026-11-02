@@ -1,3 +1,5 @@
+import { useScholarshipPrograms } from '@kampus/react-shared/use-finance-scholarships.ts'
+import { scholarshipAmount } from '@kampus/school-core/lib/finance-scholarships.ts'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
@@ -44,6 +46,7 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { enrollmentServerError, guardianModeFor, prospectChangeValues } from './enrollment-form.ts'
+import { awardablePrograms, programValueLabel } from '../finance/scholarship-forms.ts'
 
 const STEPS = ['Aday ve sınıf', 'Kimlik ve veli', 'Ücret ve taksit', 'Kontrol'] as const
 const TARIFF_PAGE_SIZE = 100
@@ -203,6 +206,16 @@ function EnrollmentForm({
   // Veli seçimleri doğum tarihine göre: "kendisi" yalnız kursta 18 yaş ve üstünde (DOM-KAY-012).
   const guardianModes = allowedGuardianModes(institutionType, values.birthDate)
   const otherCampus = Boolean(room && branchId && room.record.branchId !== branchId)
+  const { session } = useAuth()
+  // Bursu yalnız yönetici atar (DOM-FIN-052); ön büroya seçenek gösterilmez.
+  const scholarshipPrograms = useScholarshipPrograms(
+    {
+      academicYear: session?.institution.academicYear ?? Number(dayKey().slice(0, 4)),
+      pageSize: 100,
+    },
+    { enabled: session?.role === 'yonetici' },
+  )
+  const awardable = awardablePrograms(scholarshipPrograms.data?.data ?? [])
   const preview = previewEnrollment(tariff, values, {
     institutionType,
     level:
@@ -210,9 +223,16 @@ function EnrollmentForm({
         ? (room?.record.level ?? '')
         : String(room?.record.grade ?? ''),
   })
+  // Burs indirim değildir, netten düşer; kesin hesabı sunucu yapar (DOM-FIN-025).
+  const selectedProgram = awardable.find((item) => item.id === values.scholarshipProgramId)
+  const scholarshipCents =
+    preview.ok && selectedProgram
+      ? scholarshipAmount(selectedProgram, preview.price.grossCents, preview.price.netCents)
+      : 0
+  const netCents = preview.ok ? preview.price.netCents - scholarshipCents : 0
   const plan =
-    preview.ok && Number(values.installmentCount) >= 1
-      ? installmentAmounts(preview.price.netCents, Number(values.installmentCount))
+    preview.ok && netCents > 0 && Number(values.installmentCount) >= 1
+      ? installmentAmounts(netCents, Number(values.installmentCount))
       : []
 
   async function next() {
@@ -605,6 +625,29 @@ function EnrollmentForm({
                   ))}
                 </fieldset>
               ) : null}
+              {awardable.length > 0 ? (
+                <FormField
+                  id="kayit-burs"
+                  label="Burs programı (isteğe bağlı)"
+                  description="Burs indirim tavanına girmez; bildirilmiş ve kontenjanı dolmamış programlar listelenir."
+                  error={errors.scholarshipProgramId}
+                >
+                  {(control) => (
+                    <NativeSelect
+                      {...control}
+                      {...form.register('scholarshipProgramId')}
+                      className="w-full"
+                    >
+                      <NativeSelectOption value="">Burs yok</NativeSelectOption>
+                      {awardable.map((item) => (
+                        <NativeSelectOption key={item.id} value={item.id}>
+                          {item.name} · {programValueLabel(item)}
+                        </NativeSelectOption>
+                      ))}
+                    </NativeSelect>
+                  )}
+                </FormField>
+              ) : null}
               {extraItems.length > 0 ? (
                 <fieldset className="grid gap-2 text-sm">
                   <legend className="mb-1 font-medium">Talep edilen ek hizmetler</legend>
@@ -696,7 +739,13 @@ function EnrollmentForm({
                 value={`-${money(line.amountCents)}`}
               />
             ))}
-            <Line label="Net öğrenim ücreti" value={money(preview.price.netCents)} strong />
+            {scholarshipCents > 0 ? (
+              <Line
+                label={`Burs · ${selectedProgram?.name ?? ''}`}
+                value={`-${money(scholarshipCents)}`}
+              />
+            ) : null}
+            <Line label="Net öğrenim ücreti" value={money(netCents)} strong />
             {preview.price.extras.map((line) => (
               <Line
                 key={line.kind}

@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { Locator, Page } from '@playwright/test'
 import pg from 'pg'
 
-import type { ApiClient } from './support/api.ts'
+import { apiRequest, type ApiClient } from './support/api.ts'
 import { e2e } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
 
@@ -318,5 +318,244 @@ test.describe('Ödevler: öğrenci ve veli', () => {
     await expect(child).toContainText('Soruları defterime çözdüm.')
     await expect(child.getByRole('form')).toHaveCount(0)
     await expect(child.getByRole('button', { name: /Teslim et|Teslimi güncelle/ })).toHaveCount(0)
+  })
+})
+
+// --- OG-047 inceleme bulguları -----------------------------------------------
+
+/** Başka bir kullanıcının (ya da sekmenin) ödevi güncellemesi: taze sürümle, arayüzden geçmeden. */
+async function patchHomework(client: ApiClient, id: string, body: Record<string, unknown>) {
+  const current = await client.get(`/api/v1/homework/${id}`)
+  const version = (current.body as { data: HomeworkView }).data.version
+  const result = await apiRequest(client.context, 'PATCH', `/api/v1/homework/${id}`, body, {
+    'idempotency-key': randomUUID(),
+    'if-match': `"${version}"`,
+  })
+  expect(result.status, JSON.stringify(result.body)).toBe(200)
+}
+
+async function homeworkOf(client: ApiClient, id: string): Promise<HomeworkView> {
+  const result = await client.get(`/api/v1/homework/${id}`)
+  expect(result.status).toBe(200)
+  return (result.body as { data: HomeworkView }).data
+}
+
+test.describe('Ödevler: eşzamanlı düzenleme ve yetki', () => {
+  test('ayrı alanda başkasının değişikliği ezilmez, aynı alanda iki değer gösterilir, 409 girdiyi korur (DOM-AKD-071)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen'] })
+    const teacher = await api(school.user('ogretmen'))
+    const homework = await assignHomework(teacher, 'Eşzamanlı düzenleme')
+    await loginAs(school.user('ogretmen'))
+    const editUrl = `${TEACHER_HOMEWORK}?odev-form=${homework.id}`
+    const form = panelOf(page, 'Ödevi düzenle')
+
+    // 1) Ayrı alan: B başlığı değiştirdi, A yalnız açıklamayı düzenledi; başlık B'de kalır.
+    await page.goto(editUrl)
+    await expect(form.getByLabel('Başlık')).toHaveValue(homework.title)
+    await patchHomework(teacher, homework.id, { title: 'B başlığı' })
+    await form.getByLabel('Açıklama').fill('A açıklaması')
+    await form.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Ödev güncellendi.')).toBeVisible()
+    await expect(form).toHaveCount(0)
+    expect(await homeworkOf(teacher, homework.id)).toMatchObject({
+      title: 'B başlığı',
+      description: 'A açıklaması',
+    })
+
+    // 2) Aynı alan: iki değer gösterilir, hiçbir şey gönderilmez; yeniden Kaydet onaydır.
+    await page.goto(editUrl)
+    await expect(form.getByLabel('Açıklama')).toHaveValue('A açıklaması')
+    await form.getByLabel('Açıklama').fill('A ikinci açıklama')
+    await patchHomework(teacher, homework.id, { description: 'B ikinci açıklama' })
+    await form.getByRole('button', { name: 'Kaydet' }).click()
+    const overlap = form.getByRole('alert').filter({ hasText: 'başkası tarafından da' })
+    await expect(overlap).toContainText(
+      'Açıklama: kayıtlı değer B ikinci açıklama, sizin girdiğiniz A ikinci açıklama',
+    )
+    await expect(form.getByLabel('Açıklama')).toHaveValue('A ikinci açıklama')
+    expect((await homeworkOf(teacher, homework.id)).description).toBe('B ikinci açıklama')
+    await form.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(form).toHaveCount(0)
+    expect(await homeworkOf(teacher, homework.id)).toMatchObject({
+      title: 'B başlığı',
+      description: 'A ikinci açıklama',
+    })
+
+    // 3) Okuma ile yazma arasında değişiklik (gerçek 409): uyarı çıkar, girdi korunur, yeniden
+    // kaydetmek başkasının geç teslim değişikliğini ezmeden yazar.
+    await page.goto(editUrl)
+    await expect(form.getByLabel('Başlık')).toHaveValue('B başlığı')
+    await form.getByLabel('Başlık').fill('A başlığı')
+    let raced = false
+    await page.route(`**/api/v1/homework/${homework.id}`, async (route) => {
+      if (route.request().method() === 'PATCH' && !raced) {
+        raced = true
+        await patchHomework(teacher, homework.id, { allowLate: false })
+      }
+      await route.continue()
+    })
+    await form.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(
+      form.getByRole('alert').filter({ hasText: 'başka biri tarafından değişti' }),
+    ).toBeVisible()
+    await expect(form.getByLabel('Başlık')).toHaveValue('A başlığı')
+    expect((await homeworkOf(teacher, homework.id)).title).toBe('B başlığı')
+    await form.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(form).toHaveCount(0)
+    expect(await homeworkOf(teacher, homework.id)).toMatchObject({
+      title: 'A başlığı',
+      allowLate: false,
+    })
+  })
+
+  test('öğretmen başka öğretmenin ödevinde adresle form ya da puanlama açamaz (DOM-AKD-070, 071, 073)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen', 'ogrenci'] })
+    const admin = await api(school.user('yonetici'))
+    const student = await api(school.user('ogrenci'))
+    // 7-A Türkçe dersi Ahmet Yıldırım'a (t2) atanmıştır; yönetici ödevi onun adına verir.
+    const created = await admin.post(
+      '/api/v1/homework',
+      {
+        classId: 'c1',
+        subjectId: 'turkish',
+        title: 'Paragraf soruları',
+        description: 'Deneme kitabı 10. sayfa.',
+        dueDate: istanbulToUtc(istanbulDay(3, '17:00')),
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(created.status, JSON.stringify(created.body)).toBe(201)
+    const homework = (created.body as { data: HomeworkView }).data
+    expect(homework.teacherId).toBe('t2')
+    const submitted = await student.post(
+      `/api/v1/homework/${homework.id}/submissions`,
+      { note: 'Çözdüm.' },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(submitted.status, JSON.stringify(submitted.body)).toBe(201)
+    const submissionId = (submitted.body as { data: { id: string } }).data.id
+
+    await loginAs(school.user('ogretmen'))
+    await page.goto(`${TEACHER_HOMEWORK}?odev-form=${homework.id}`)
+    const edit = panelOf(page, 'Ödevi düzenle')
+    await expect(edit).toContainText('Bu işlem için yetkiniz yok.')
+    await expect(edit.getByRole('form')).toHaveCount(0)
+    await expect(edit.getByLabel('Başlık')).toHaveCount(0)
+
+    await page.goto(`${TEACHER_HOMEWORK}?odev=${homework.id}&teslim=${submissionId}`)
+    const grade = panelOf(page, 'Teslimi değerlendir')
+    await expect(grade).toContainText('Bu işlem için yetkiniz yok.')
+    await expect(grade.getByRole('form')).toHaveCount(0)
+    await expect(grade.getByLabel('Puan (0–100)')).toHaveCount(0)
+    expect((await homeworkOf(admin, homework.id)).title).toBe('Paragraf soruları')
+  })
+
+  test('kirli ödev formu kapatılırken onay ister; devam etmek girdiyi korur (DOM-AKD-070)', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen'] })
+    await loginAs(school.user('ogretmen'))
+    await page.goto(TEACHER_HOMEWORK)
+    await page.getByRole('button', { name: 'Ödev ver', exact: true }).click()
+    const form = panelOf(page, 'Ödev ver')
+    await form.getByLabel('Başlık').fill('Yarım kalan ödev')
+    await form.getByRole('button', { name: 'Vazgeç' }).click()
+    const confirm = page.getByRole('alertdialog', { name: 'Kaydedilmemiş değişiklikler var' })
+    await expect(confirm).toBeVisible()
+    await confirm.getByRole('button', { name: 'Düzenlemeye devam et' }).click()
+    await expect(confirm).toHaveCount(0)
+    await expect(form.getByLabel('Başlık')).toHaveValue('Yarım kalan ödev')
+    await form.getByRole('button', { name: 'Vazgeç' }).click()
+    await page
+      .getByRole('alertdialog', { name: 'Kaydedilmemiş değişiklikler var' })
+      .getByRole('button', { name: 'Değişiklikleri at' })
+      .click()
+    await expect(panelOf(page, 'Ödev ver')).toHaveCount(0)
+  })
+})
+
+test.describe('Ödevler: öğrenci teslim formu', () => {
+  test('en çok 5 dosya eklenir, aynı dosya yinelenmez, fazlası tek uyarıyla bildirilir (DOM-AKD-072)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen', 'ogrenci'] })
+    const teacher = await api(school.user('ogretmen'))
+    const homework = await assignHomework(teacher, 'Dosya sınırı')
+    await loginAs(school.user('ogrenci'))
+    await page.goto(`${STUDENT_HOMEWORK}?odev=${homework.id}`)
+    const form = panelOf(page, 'Ödev ayrıntısı').getByRole('form', { name: 'Ödevi teslim et' })
+    const attached = form.getByRole('list', { name: 'Eklenen dosyalar' })
+    const picker = form.getByLabel('Dosya ekle')
+    const file = (name: string) => ({
+      name,
+      mimeType: PDF.mimeType,
+      buffer: Buffer.from(`${PDF.buffer.toString('latin1')}% ${name}\n`, 'latin1'),
+    })
+
+    // Aynı dosya iki kez seçilirse bir kez eklenir.
+    await picker.setInputFiles([file('a.pdf'), file('a.pdf')])
+    await expect(attached.getByRole('listitem')).toHaveCount(1)
+    await expect(form.getByText('Dosya yükleniyor…')).toHaveCount(0)
+
+    // Dört yer kalmışken beş dosya seçilir: dördü eklenir, fazlası tek uyarıyla bildirilir.
+    await picker.setInputFiles([
+      file('b.pdf'),
+      file('c.pdf'),
+      file('d.pdf'),
+      file('e.pdf'),
+      file('f.pdf'),
+    ])
+    await expect(attached.getByRole('listitem')).toHaveCount(5)
+    await expect(form).toContainText('En fazla 5 dosya ekleyebilirsiniz; 1 dosya eklenmedi.')
+    await expect(picker).toBeDisabled()
+
+    // Kaldırınca yeniden yer açılır.
+    await attached.getByRole('button', { name: 'a.pdf dosyasını kaldır' }).click()
+    await expect(attached.getByRole('listitem')).toHaveCount(4)
+    await expect(picker).toBeEnabled()
+  })
+
+  test('yazarken son teslim geçse de form sökülmez; kararı sunucu verir (DOM-AKD-072)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen', 'ogrenci'] })
+    const teacher = await api(school.user('ogretmen'))
+    const homework = await assignHomework(teacher, 'Süre dolarken yazılan ödev')
+    await patchHomework(teacher, homework.id, { allowLate: false })
+    await page.clock.install()
+    await loginAs(school.user('ogrenci'))
+    await page.goto(`${STUDENT_HOMEWORK}?odev=${homework.id}`)
+    const panel = panelOf(page, 'Ödev ayrıntısı')
+    const form = panel.getByRole('form', { name: 'Ödevi teslim et' })
+    await form.getByLabel('Açıklama').fill('Yarım yazdığım cevap.')
+
+    // İstemci saati son teslimi geçti (sunucu saati geçmedi): form yerinde kalır, uyarı görünür.
+    await page.clock.fastForward(96 * 3_600_000)
+    await expect(form.getByRole('alert').filter({ hasText: 'Teslim süresi doldu' })).toBeVisible()
+    await expect(form.getByLabel('Açıklama')).toHaveValue('Yarım yazdığım cevap.')
+
+    // Karar sunucudadır: süre gerçekte dolmadığı için teslim kabul edilir.
+    await form.getByRole('button', { name: 'Teslim et' }).click()
+    await expect(page.getByText('Ödev teslim edildi.')).toBeVisible()
+    const [saved] = await submissionsOf(teacher, homework.id)
+    expect(saved).toMatchObject({ note: 'Yarım yazdığım cevap.' })
   })
 })

@@ -5,10 +5,7 @@ import { after, before, describe, test } from 'node:test'
 import { sql } from 'drizzle-orm'
 
 import type { PlacementSessionDraft } from '@kampus/school-core/cefr/placement.ts'
-import type {
-  ProgressionBasis,
-  ProgressionDecisionDraft,
-} from '@kampus/school-core/cefr/progression.ts'
+import type { ProgressionBasis } from '@kampus/school-core/cefr/progression.ts'
 import type { EvidenceSnapshot } from '@kampus/school-core/cefr/suggestion.ts'
 
 import type { App } from '../src/app.ts'
@@ -21,6 +18,7 @@ import {
   listPlacementSessions,
   listProgressionDecisions,
   loadCurrentLevels,
+  type GroupProgressionDraft,
   type LevelDecisionDraft,
 } from '../src/db/cefr.ts'
 import type { Database } from '../src/db/client.ts'
@@ -149,16 +147,22 @@ describe('0034: CEFR tabloları ve deposu', () => {
     ...overrides,
   })
 
-  /** Kurun dil grubu ve öğrencinin grup kaydı (`language_group_members`). */
-  async function enrollment(t: Tenant) {
+  /** Kurumun etkin bir kuru. */
+  async function course(t: Tenant) {
     const courseId = randomUUID()
-    const groupId = randomUUID()
-    const memberId = randomUUID()
     await db.execute(sql`insert into courses (institution_id, id, name, name_key, language, level,
         total_hours, weekly_hours, session_minutes, min_learners, max_learners, certified, status,
         activated_at, e_ozel_approval)
       values (${t.institution.id}, ${courseId}, ${courseId}, ${courseId}, 'en', 'B1', 12, 4, 45, 2,
         12, false, 'active', ${FIXED_NOW}, 'not_submitted')`)
+    return courseId
+  }
+
+  /** Kurun dil grubu ve öğrencinin grup kaydı (`language_group_members`). */
+  async function enrollment(t: Tenant) {
+    const courseId = await course(t)
+    const groupId = randomUUID()
+    const memberId = randomUUID()
     await db.execute(sql`insert into language_groups (institution_id, id, course_id, name, name_key,
         age_band, teacher_membership_id, delivery, room, room_key, schedule, start_date, end_date,
         capacity, state)
@@ -168,15 +172,17 @@ describe('0034: CEFR tabloları ve deposu', () => {
     await db.execute(sql`insert into language_group_members (institution_id, id, group_id,
         student_id, status, joined_at)
       values (${t.institution.id}, ${memberId}, ${groupId}, ${t.student}, 'active', ${FIXED_NOW})`)
-    return { courseId, enrollmentId: memberId }
+    return { courseId, groupId, enrollmentId: memberId }
   }
+  type Enrollment = Awaited<ReturnType<typeof enrollment>>
 
   const progression = (
     t: Tenant,
-    e: { courseId: string; enrollmentId: string },
-    overrides: Partial<ProgressionDecisionDraft> = {},
-  ): ProgressionDecisionDraft => ({
+    e: Enrollment,
+    overrides: Partial<GroupProgressionDraft> = {},
+  ): GroupProgressionDraft => ({
     enrollmentId: e.enrollmentId,
+    groupId: e.groupId,
     learnerId: t.student,
     courseId: e.courseId,
     outcome: 'passed',
@@ -538,7 +544,7 @@ describe('0034: CEFR tabloları ve deposu', () => {
         other.institution.id,
         progression(other, otherEnrollment, { learnerId: t.student }),
       ),
-      'progression_decisions_learner_fkey',
+      'progression_decisions_enrollment_fkey',
     )
     await violates(
       insertProgressionDecision(
@@ -546,14 +552,56 @@ describe('0034: CEFR tabloları ve deposu', () => {
         other.institution.id,
         progression(other, { ...otherEnrollment, courseId: e.courseId }),
       ),
-      'progression_decisions_course_fkey',
+      'progression_decisions_group_fkey',
+    )
+  })
+
+  test('IST-062, DOM-DIL-070: kur sonu kararı kaydın kursiyerine, grubuna ve kuruna kilitlidir', async () => {
+    const t = await tenant()
+    const e = await enrollment(t)
+    const write = (overrides: Partial<GroupProgressionDraft>) =>
+      insertProgressionDecision(db, t.institution.id, progression(t, e, overrides))
+    // Aynı kurumun başka öğrencisi: A'nın kaydına B'nin kararı yazılamaz.
+    const otherStudent = `s-${randomUUID().slice(0, 8)}`
+    await db.execute(sql`insert into records (institution_id, collection, id, data, position)
+      values (${t.institution.id}, 'students', ${otherStudent},
+        ${JSON.stringify({ id: otherStudent })}::jsonb, 1)`)
+    await violates(write({ learnerId: otherStudent }), 'progression_decisions_enrollment_fkey')
+    // Aynı kurumun başka kuru ve başka grubu: kayıt yalnız kendi grubuna ve o grubun kuruna bağlıdır.
+    const otherCourse = await course(t)
+    await violates(write({ courseId: otherCourse }), 'progression_decisions_group_fkey')
+    const sibling = await enrollment(t)
+    await violates(write({ groupId: sibling.groupId }), 'progression_decisions_enrollment_fkey')
+    await violates(
+      write({ groupId: sibling.groupId, courseId: sibling.courseId }),
+      'progression_decisions_enrollment_fkey',
+    )
+    // Düzeltme yalnız aynı kaydın kararına yapılır.
+    const siblingDecision = await insertProgressionDecision(
+      db,
+      t.institution.id,
+      progression(t, sibling, {
+        status: 'approved',
+        reviewedByUserId: t.coordinator.id,
+        reviewedAt: minutes(5),
+      }),
+    )
+    await violates(
+      write({ correctsDecisionId: siblingDecision.id }),
+      'progression_decisions_corrects_fkey',
+    )
+    const decided = await write({})
+    assert.equal(decided.learnerId, t.student)
+    assert.deepEqual(
+      await listProgressionDecisions(db, t.institution.id, { learnerId: otherStudent }),
+      [],
     )
   })
 
   test('DOM-DIL-070: kur sonu kararının sonuç, inceleme ve kopya kısıtları', async () => {
     const t = await tenant()
     const e = await enrollment(t)
-    const write = (overrides: Partial<ProgressionDecisionDraft>) =>
+    const write = (overrides: Partial<GroupProgressionDraft>) =>
       insertProgressionDecision(db, t.institution.id, progression(t, e, overrides))
     await violates(write({ outcome: 'failed' as 'repeat' }), 'progression_decisions_outcome_check')
     await violates(write({ status: 'approved' }), 'progression_decisions_review_check')

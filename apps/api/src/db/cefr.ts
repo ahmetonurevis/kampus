@@ -245,11 +245,21 @@ export async function loadCurrentLevels(
 
 // --- Kur sonu kararı ----------------------------------------------------------------------
 
-/** Core `planProgressionDecision` çıktısını yazar. Kayıtta ikinci açık karar 23505 ile reddedilir. */
+/**
+ * Yazılacak kur sonu kararı: core `planProgressionDecision` çıktısı ve kaydın grubu. Grup, kararı
+ * kayda, kursiyere ve kura bağlayan bileşik yabancı anahtarın parçasıdır (`language_group_members`
+ * satırının `group_id`'si).
+ */
+export type GroupProgressionDraft = ProgressionDecisionDraft & { groupId: string }
+
+/**
+ * Kur sonu kararını yazar. Kayıtta ikinci açık karar 23505 ile; kaydın kursiyeri, grubu ya da
+ * grubun kuru olmayan değer ve başka kaydın kararına düzeltme 23503 ile reddedilir.
+ */
 export async function insertProgressionDecision(
   db: Database,
   institutionId: string,
-  draft: ProgressionDecisionDraft,
+  draft: GroupProgressionDraft,
   id: string = randomUUID(),
 ): Promise<ProgressionDecisionRecord> {
   const [row] = await db
@@ -258,6 +268,7 @@ export async function insertProgressionDecision(
       institutionId,
       id,
       enrollmentId: draft.enrollmentId,
+      groupId: draft.groupId,
       courseId: draft.courseId,
       learnerId: draft.learnerId,
       outcome: draft.outcome,

@@ -1,5 +1,5 @@
 {
-  "id": "edc27943-670f-4fd7-ad20-ef61ec9b9d8e",
+  "id": "0caf9040-ad1e-4e76-915d-d828db3554d8",
   "prevId": "0762b2dc-245d-4212-b13d-39d584e2a6f1",
   "version": "7",
   "dialect": "postgresql",
@@ -1790,6 +1790,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "group_id": {
+          "name": "group_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
         "course_id": {
           "name": "course_id",
           "type": "uuid",
@@ -1801,16 +1807,6 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
-        },
-        "learner_collection": {
-          "name": "learner_collection",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true,
-          "generated": {
-            "as": "'students'",
-            "type": "stored"
-          }
         },
         "outcome": {
           "name": "outcome",
@@ -1956,6 +1952,33 @@
           "method": "btree",
           "with": {}
         },
+        "progression_decisions_group_idx": {
+          "name": "progression_decisions_group_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "group_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "course_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
         "progression_decisions_course_idx": {
           "name": "progression_decisions_course_idx",
           "columns": [
@@ -2009,6 +2032,12 @@
           "columns": [
             {
               "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "enrollment_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"
@@ -2088,43 +2117,32 @@
           "tableTo": "language_group_members",
           "columnsFrom": [
             "institution_id",
-            "enrollment_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "progression_decisions_course_fkey": {
-          "name": "progression_decisions_course_fkey",
-          "tableFrom": "progression_decisions",
-          "tableTo": "courses",
-          "columnsFrom": [
-            "institution_id",
-            "course_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "restrict",
-          "onUpdate": "no action"
-        },
-        "progression_decisions_learner_fkey": {
-          "name": "progression_decisions_learner_fkey",
-          "tableFrom": "progression_decisions",
-          "tableTo": "records",
-          "columnsFrom": [
-            "institution_id",
-            "learner_collection",
+            "enrollment_id",
+            "group_id",
             "learner_id"
           ],
           "columnsTo": [
             "institution_id",
-            "collection",
-            "id"
+            "id",
+            "group_id",
+            "student_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "progression_decisions_group_fkey": {
+          "name": "progression_decisions_group_fkey",
+          "tableFrom": "progression_decisions",
+          "tableTo": "language_groups",
+          "columnsFrom": [
+            "institution_id",
+            "group_id",
+            "course_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id",
+            "course_id"
           ],
           "onDelete": "restrict",
           "onUpdate": "no action"
@@ -2135,10 +2153,12 @@
           "tableTo": "progression_decisions",
           "columnsFrom": [
             "institution_id",
+            "enrollment_id",
             "corrects_decision_id"
           ],
           "columnsTo": [
             "institution_id",
+            "enrollment_id",
             "id"
           ],
           "onDelete": "restrict",
@@ -2184,7 +2204,17 @@
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "progression_decisions_enrollment_id_key": {
+          "name": "progression_decisions_enrollment_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "enrollment_id",
+            "id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "progression_decisions_outcome_check": {
@@ -4033,7 +4063,18 @@
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "language_group_members_id_group_student_key": {
+          "name": "language_group_members_id_group_student_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "id",
+            "group_id",
+            "student_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "language_group_members_status_check": {
@@ -4657,7 +4698,17 @@
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "language_groups_id_course_key": {
+          "name": "language_groups_id_course_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "id",
+            "course_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "language_groups_name_check": {

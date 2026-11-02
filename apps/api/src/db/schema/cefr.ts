@@ -46,8 +46,7 @@ import {
 
 import { institutions, memberships } from './auth.ts'
 import { keys, oneOf, requiredColumns } from './columns.ts'
-import { courses } from './courses.ts'
-import { languageGroupMembers } from './language-groups.ts'
+import { languageGroupMembers, languageGroups } from './language-groups.ts'
 import { records } from './records.ts'
 import { resources, resourceVersions } from './resources.ts'
 
@@ -60,9 +59,10 @@ import { resources, resourceVersions } from './resources.ts'
  *
  * - Öneri, geçerlilik, devam oranı ve geçiş koşulları saklanmaz (karar 5); karar satırı yalnız
  *   karar anının kopyasını (`evidence_snapshot`, `basis`) taşır.
- * - Kursiyer aynı kurumun `records` kaydıdır: üretilen `learner_collection` kolonu (`student` →
- *   `students`, `prospect` → `prospects`) ile `records (institution_id, collection, id)` birincil
- *   anahtarına bileşik yabancı anahtar (`on delete restrict`; kayıt silinmez, arşivlenir).
+ * - Tespit ve seviye kararında kursiyer aynı kurumun `records` kaydıdır: üretilen
+ *   `learner_collection` kolonu (`student` → `students`, `prospect` → `prospects`) ile `records
+ *   (institution_id, collection, id)` birincil anahtarına bileşik yabancı anahtar (`on delete
+ *   restrict`; kayıt silinmez, arşivlenir). Kur sonu kararında kursiyer dil grubu kaydından gelir.
  * - Karar veren ve onaylayan aynı kurumun üyesidir: `(institution_id, …_user_id)` →
  *   `memberships (institution_id, user_id)` tekil indeksi (migration 0001). Karar geçmişi
  *   korunduğundan `on delete restrict`'tir; üyelik bugün uygulamada silinmez.
@@ -275,10 +275,20 @@ export const levelDecisions = pgTable(
 
 /**
  * Kur sonu kararı (DOM-DIL-070, IST-062; core `ProgressionDecisionRecord`). Kayıt kursiyerin dil
- * grubu kaydıdır: `(institution_id, enrollment_id)` → `language_group_members`. Kur ve kursiyer
- * ayrıca bağlıdır (kurun bütün kararları, kursiyerin geçmişi). `basis` devam ve ölçme kopyası,
- * `evidence_snapshot` seviye önerisinin kopyasıdır. Kayıt başına tek açık (`pending`) karar olur
- * (`progression_pending`).
+ * grubu kaydıdır (`language_group_members` satırı, OG-029). Kayıt, grup, kursiyer ve kur birbirine
+ * bileşik yabancı anahtarla kilitlidir; uyuşmaz kursiyer ya da kur yazılamaz:
+ *
+ * - `(institution_id, enrollment_id, group_id, learner_id)` → `language_group_members
+ *   (institution_id, id, group_id, student_id)`: karar kaydın kendi kursiyerine ve grubuna aittir.
+ *   Kursiyerin `records` bağı kayıt satırından gelir (`language_group_members_student_fkey`).
+ * - `(institution_id, group_id, course_id)` → `language_groups (institution_id, id, course_id)`:
+ *   kur grubun kurudur. Kurun `courses` bağı grup satırından gelir.
+ * - Düzeltme `(institution_id, enrollment_id, corrects_decision_id)` ile aynı kaydın kararına
+ *   işaret eder.
+ *
+ * `group_id` ve `course_id` sorgu kolaylığı değil, bu kilidin parçasıdır. `basis` devam ve ölçme
+ * kopyası, `evidence_snapshot` seviye önerisinin kopyasıdır. Kayıt başına tek açık (`pending`)
+ * karar olur (`progression_pending`).
  */
 export const progressionDecisions = pgTable(
   'progression_decisions',
@@ -288,13 +298,10 @@ export const progressionDecisions = pgTable(
       .references(() => institutions.id),
     id: uuid('id').notNull(),
     enrollmentId: uuid('enrollment_id').notNull(),
+    groupId: uuid('group_id').notNull(),
     courseId: uuid('course_id').notNull(),
     // kvkk: K (school-core öğrenci kaydı kimliği)
     learnerId: text('learner_id').notNull(),
-    /** Yabancı anahtarın koleksiyon parçası; hep `students`. */
-    learnerCollection: text('learner_collection')
-      .notNull()
-      .generatedAlwaysAs(sql`'students'`),
     // kvkk: Ç (kursiyerin kur sonucu)
     outcome: text('outcome').$type<ProgressionOutcome>().notNull(),
     status: text('status').$type<ProgressionDecisionStatus>().notNull(),
@@ -317,25 +324,31 @@ export const progressionDecisions = pgTable(
   },
   (table) => [
     primaryKey({ name: 'progression_decisions_pkey', columns: [table.institutionId, table.id] }),
+    // Düzeltme yabancı anahtarının hedefi: aynı kaydın kararı.
+    unique('progression_decisions_enrollment_id_key').on(
+      table.institutionId,
+      table.enrollmentId,
+      table.id,
+    ),
     foreignKey({
       name: 'progression_decisions_enrollment_fkey',
-      columns: [table.institutionId, table.enrollmentId],
-      foreignColumns: [languageGroupMembers.institutionId, languageGroupMembers.id],
+      columns: [table.institutionId, table.enrollmentId, table.groupId, table.learnerId],
+      foreignColumns: [
+        languageGroupMembers.institutionId,
+        languageGroupMembers.id,
+        languageGroupMembers.groupId,
+        languageGroupMembers.studentId,
+      ],
     }).onDelete('restrict'),
     foreignKey({
-      name: 'progression_decisions_course_fkey',
-      columns: [table.institutionId, table.courseId],
-      foreignColumns: [courses.institutionId, courses.id],
-    }).onDelete('restrict'),
-    foreignKey({
-      name: 'progression_decisions_learner_fkey',
-      columns: [table.institutionId, table.learnerCollection, table.learnerId],
-      foreignColumns: [records.institutionId, records.collection, records.id],
+      name: 'progression_decisions_group_fkey',
+      columns: [table.institutionId, table.groupId, table.courseId],
+      foreignColumns: [languageGroups.institutionId, languageGroups.id, languageGroups.courseId],
     }).onDelete('restrict'),
     foreignKey({
       name: 'progression_decisions_corrects_fkey',
-      columns: [table.institutionId, table.correctsDecisionId],
-      foreignColumns: [table.institutionId, table.id],
+      columns: [table.institutionId, table.enrollmentId, table.correctsDecisionId],
+      foreignColumns: [table.institutionId, table.enrollmentId, table.id],
     }).onDelete('restrict'),
     foreignKey({
       name: 'progression_decisions_decided_by_fkey',
@@ -386,13 +399,20 @@ export const progressionDecisions = pgTable(
       table.enrollmentId,
       table.decidedAt,
     ),
+    // Grup ve kur yabancı anahtarının indeksi; kurun bütün kararları ayrıca kur indeksinden.
+    index('progression_decisions_group_idx').on(table.institutionId, table.groupId, table.courseId),
     index('progression_decisions_course_idx').on(table.institutionId, table.courseId),
+    // Kursiyerin geçmişi.
     index('progression_decisions_learner_idx').on(
       table.institutionId,
       table.learnerId,
       table.decidedAt,
     ),
-    index('progression_decisions_corrects_idx').on(table.institutionId, table.correctsDecisionId),
+    index('progression_decisions_corrects_idx').on(
+      table.institutionId,
+      table.enrollmentId,
+      table.correctsDecisionId,
+    ),
     index('progression_decisions_decided_by_idx').on(table.institutionId, table.decidedByUserId),
     index('progression_decisions_reviewed_by_idx').on(table.institutionId, table.reviewedByUserId),
   ],

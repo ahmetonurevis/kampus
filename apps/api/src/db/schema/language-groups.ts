@@ -10,6 +10,7 @@ import {
   primaryKey,
   text,
   timestamp,
+  unique,
   uniqueIndex,
   uuid,
 } from 'drizzle-orm/pg-core'
@@ -87,6 +88,9 @@ export const languageGroups = pgTable(
   },
   (table) => [
     primaryKey({ name: 'language_groups_pkey', columns: [table.institutionId, table.id] }),
+    // Kur sonu kararının (`progression_decisions`, migration 0034) kurunu grubun kuruna kilitleyen
+    // bileşik yabancı anahtar hedefi. Kur değişmez (core `planGroupUpdate`).
+    unique('language_groups_id_course_key').on(table.institutionId, table.id, table.courseId),
     foreignKey({
       name: 'language_groups_course_fkey',
       columns: [table.institutionId, table.courseId],
@@ -176,6 +180,15 @@ export const languageGroupMembers = pgTable(
   },
   (table) => [
     primaryKey({ name: 'language_group_members_pkey', columns: [table.institutionId, table.id] }),
+    // Kur sonu kararını (`progression_decisions`, migration 0034) bu kaydın grubuna ve kursiyerine
+    // kilitleyen bileşik yabancı anahtar hedefi. Satırın grubu ve kursiyeri değişmez; birleştirme
+    // yeni satır yazar (`moveGroupMembers`).
+    unique('language_group_members_id_group_student_key').on(
+      table.institutionId,
+      table.id,
+      table.groupId,
+      table.studentId,
+    ),
     foreignKey({
       name: 'language_group_members_group_fkey',
       columns: [table.institutionId, table.groupId],

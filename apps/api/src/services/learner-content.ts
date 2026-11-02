@@ -141,7 +141,8 @@ async function gateOf(
  * `hasWork` kursiyerin bu atamada süren denemesidir: telif askısında süren denemesi olan görür
  * (Sabah kararı 47), olmayan görmez. Personel kaynak ayrıntısıyla tutarlıdır: kaldırılan sürümün
  * içeriği silinmiştir ve personele de gösterilmez (DOM-KYN-051), askıdaki ve lisansı dolmuş içerik
- * personele açıktır. Kapanan yalnız metindir; cevaplar ve puan görünür kalır.
+ * personele açıktır. Kapanan metin ve cevap anahtarıdır (açıklamasıyla); cevaplar, madde sonucu ve
+ * puan görünür kalır.
  */
 export async function attemptContentGate(
   ctx: ServiceContext,

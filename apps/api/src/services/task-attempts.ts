@@ -256,9 +256,23 @@ export function learnerAttemptProgress(
  * Denemenin ayrıntısı: soruları, okuma parçası ve dinleme hakkı. Soru ve parça metni içerik
  * kapısından geçer (`attemptContentGate`; DOM-KYN-025, 051): kaldırılmış içerikte süren ya da
  * tamamlanmış hiçbir denemede, telif askısında süren denemesi olmayan kursiyerde, lisansı dolmuş
- * içerikte süren denemesi olmayan kursiyerde metin dönmez (`questions: []`, `passage: null`) ve
- * `contentUnavailable` nedeni söyler. Cevaplar, puan ve madde sonuçları görünür kalır.
+ * içerikte süren denemesi olmayan kursiyerde metin ve cevap anahtarı (açıklamasıyla) dönmez
+ * (`questions: []`, `passage: null`, `result.answerKey: null`) ve `contentUnavailable` nedeni
+ * söyler. Cevaplar, puan ve madde sonuçları görünür kalır.
  */
+/** Kursiyerin bu atamada süren denemesi var mı (içerik kapısının süren işi; Sabah kararı 47). */
+function hasRunning(assignment: StoredAssignment, attempts: readonly StoredAttempt[], now: string) {
+  const timing = timingOf(assignment)
+  return attempts.some((own) => attemptState(own, timing, now).status === 'in_progress')
+}
+
+/** Anahtar ve açıklaması içeriğin parçasıdır: kapalı içerikte dönmez; madde sonucu ve puan kalır. */
+function withoutKey<V extends ReturnType<typeof attemptView>>(view: V, open: boolean): V {
+  return open || view.result === null
+    ? view
+    : { ...view, result: { ...view.result, answerKey: null } }
+}
+
 async function detailView(
   db: Database,
   ctx: ServiceContext,
@@ -275,10 +289,7 @@ async function detailView(
     attempt.learnerId,
   )
   const now = ctx.now.toISOString()
-  const timing = timingOf(assignment)
-  const running = learnerAttempts.some(
-    (own) => attemptState(own, timing, now).status === 'in_progress',
-  )
+  const running = hasRunning(assignment, learnerAttempts, now)
   const contentUnavailable = await attemptContentGate(
     { ...ctx, db },
     viewer,
@@ -288,7 +299,7 @@ async function detailView(
   )
   const open = contentUnavailable === null
   return {
-    ...attemptView(viewer, assignment, context, attempt, learnerAttempts, now),
+    ...withoutKey(attemptView(viewer, assignment, context, attempt, learnerAttempts, now), open),
     questions: open ? questionsFor(context, attempt.id) : [],
     passage: open ? passageFor(context) : null,
     contentUnavailable,
@@ -323,7 +334,10 @@ export interface TaskAttemptListInput {
   pageSize: number
 }
 
-/** Atamanın denemeleri, okuma kapsamında (DOM-YTK-028); kapalı atama 404. */
+/**
+ * Atamanın denemeleri, okuma kapsamında (DOM-YTK-028); kapalı atama 404. Kapalı içerikte cevap
+ * anahtarı ayrıntıdaki gibi dönmez (DOM-KYN-025, 051).
+ */
 export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptListInput) {
   const viewer = await viewerOf(ctx)
   const assignment = await findAssignment(ctx.db, ctx.institutionId, input.assignmentId)
@@ -338,7 +352,8 @@ export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptLi
     pageSize: input.pageSize,
   })
   if (rows.length === 0) return { items: [], total }
-  const context = await scoringContext(ctx.db, ctx.institutionId, assignment)
+  const pairs = await loadWorkPairs(ctx.db, ctx.institutionId, [assignment])
+  const context = pairsScoringContext(assignment, pairs)
   const all = await loadLearnersAttempts(
     ctx.db,
     ctx.institutionId,
@@ -346,16 +361,28 @@ export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptLi
     rows.map((row) => row.learnerId),
   )
   const now = ctx.now.toISOString()
+  const ownOf = (learnerId: string) => all.filter((other) => other.learnerId === learnerId)
+  // Anahtar ayrıntıdaki kapıyla gizlenir (`attemptContentGate`): personelde atama başına bir,
+  // öğrenci ve velide kursiyer başına bir sınama (kendisi ya da çocukları).
+  const gates = new Map<string, boolean>()
+  for (const learnerId of new Set(rows.map((row) => row.learnerId))) {
+    const key = viewer.kind === 'learner' ? learnerId : ''
+    if (gates.has(key)) continue
+    const gate = await attemptContentGate(
+      ctx,
+      viewer,
+      learnerId,
+      workPairsOf(assignment, pairs),
+      () => Promise.resolve(hasRunning(assignment, ownOf(learnerId), now)),
+    )
+    gates.set(key, gate === null)
+  }
   return {
     total,
     items: rows.map((row) =>
-      attemptView(
-        viewer,
-        assignment,
-        context,
-        row,
-        all.filter((other) => other.learnerId === row.learnerId),
-        now,
+      withoutKey(
+        attemptView(viewer, assignment, context, row, ownOf(row.learnerId), now),
+        gates.get(viewer.kind === 'learner' ? row.learnerId : '') ?? false,
       ),
     ),
   }

@@ -673,6 +673,9 @@ describe('okuma-anlama etkinliği', () => {
       assert.deepEqual(result.gate, [0, null, 'unavailable'])
       assert.equal(result.leaked, false)
       assert.deepEqual([result.read.result.earned, result.read.answers], [2, answers])
+      // Anahtar (açıklamasıyla) içeriğin parçasıdır: kapalı içerikte dönmez; madde sonucu kalır.
+      assert.deepEqual([result.read.result.answerKey, result.read.result.items.length], [null, 3])
+      assert.equal(JSON.stringify(result.read).includes(SECRET_EXPLANATION), false)
     }
     // Personel kaynak ayrıntısıyla tutarlı: kaldırılan içerik ona da gösterilmez; cevaplar ve
     // madde sonuçları görünür.
@@ -683,6 +686,15 @@ describe('okuma-anlama etkinliği', () => {
       [staff.read.answers, staff.read.result.earned, staff.read.result.items.length],
       [answers, 2, 3],
     )
+    assert.equal(staff.read.result.answerKey, null)
+    assert.equal(JSON.stringify(staff.read).includes(SECRET_EXPLANATION), false)
+    // Deneme listesi de anahtarı göstermez (aynı kapı).
+    for (const cookie of [t.cookies.student, t.cookies.teacher]) {
+      const listed = await call('GET', `/task-attempts?assignmentId=${assignmentId}`, cookie)
+      const done = (await ok(listed)).find((row: Json) => row.id === first.id)
+      assert.deepEqual([done.result.answerKey, done.result.earned], [null, 2])
+      assert.equal(listed.body.includes(SECRET_EXPLANATION), false)
+    }
     // Görev ayrıntısı özetle aynı küme üstünden sınanır: bağlı parça kapalıysa içerik de kapalı.
     assert.deepEqual(await taskGate(assignmentId, t.cookies.student), [
       'unavailable',
@@ -728,5 +740,33 @@ describe('okuma-anlama etkinliği', () => {
       t.passage.versionId,
       null,
     ])
+  })
+
+  test('DOM-KYN-025, OG-985: parça askıdayken süren denemesi olan öğrenci tamamlanmış denemesinin anahtarını ve açıklamasını görür (Sabah kararı 47); personel de görür', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } })
+    const first = await ok(await start(assignmentId, t.cookies.student), 201)
+    await ok(
+      await submit(first.id, t.cookies.student, { answers: { [t.items.main]: choice('a') } }),
+    )
+    await ok(await start(assignmentId, t.cookies.student), 201)
+    await ok(
+      await call(
+        'POST',
+        `/resources/${t.passage.resourceId}/versions/${t.passage.versionId}/report`,
+        t.cookies.teacher,
+        { reason: 'Telif ihlali şüphesi' },
+      ),
+    )
+    for (const cookie of [t.cookies.student, t.cookies.teacher]) {
+      const { read, gate } = await textOf(first.id, cookie)
+      assert.deepEqual(gate, [3, t.passage.versionId, null])
+      assert.equal(read.result.answerKey.length, 3)
+      assert.equal(read.result.answerKey[0].answerKey.explanation, SECRET_EXPLANATION)
+    }
+    const listed = await ok(
+      await call('GET', `/task-attempts?assignmentId=${assignmentId}`, t.cookies.student),
+    )
+    assert.equal(listed.find((row: Json) => row.id === first.id).result.answerKey.length, 3)
   })
 })

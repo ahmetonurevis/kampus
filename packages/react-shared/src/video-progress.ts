@@ -29,11 +29,20 @@ export interface RecordVideoProgressInput extends VideoProgressSample {
   videoId: string
 }
 
-/** Öğrencinin kendi ilerlemesini yazar; gövdesiz kimlik oturumdan gelir, `If-Match` yoktur. */
-export function recordVideoProgressRequest(client: KampusClient, input: RecordVideoProgressInput) {
+/**
+ * Öğrencinin kendi ilerlemesini yazar; gövdesiz kimlik oturumdan gelir, `If-Match` yoktur.
+ * `keepalive`: sekme/pencere kapanırken (`pagehide`, sekme gizlenmesi) istek sayfadan sonra da
+ * sürsün diye `fetch` seçeneği olarak geçer; çerez ve `Origin` kuralları normal istekle aynıdır.
+ */
+export function recordVideoProgressRequest(
+  client: KampusClient,
+  input: RecordVideoProgressInput,
+  options: { keepalive?: boolean } = {},
+) {
   return client.POST('/api/v1/videos/{videoId}/progress', {
     params: { path: { videoId: input.videoId } },
     body: { positionSeconds: input.positionSeconds, durationSeconds: input.durationSeconds },
+    ...(options.keepalive ? { keepalive: true } : {}),
   })
 }
 
@@ -48,13 +57,16 @@ export interface VideoProgressReporter {
   tick(sample: VideoProgressSample): void
   /**
    * Duraklatma, bitiş, kapanış ve sekme gizlenmesi: son örneği (ya da verileni) hemen gönderir.
-   * Son gönderilenle aynı konumda ve hiç oynatılmamışsa gönderilmez.
+   * Son gönderilenle aynı konumda ve hiç oynatılmamışsa gönderilmez. `closing`: sayfa kapanıyor
+   * ya da gizleniyor; `sendOnClose` verilmişse (keepalive'lı istek) onunla gönderilir.
    */
-  flush(sample?: VideoProgressSample): void
+  flush(sample?: VideoProgressSample, options?: { closing?: boolean }): void
 }
 
 export interface VideoProgressReporterOptions {
   send: (sample: VideoProgressSample) => void
+  /** Sayfa kapanırken gönderici (`keepalive`); yoksa `send` kullanılır. */
+  sendOnClose?: (sample: VideoProgressSample) => void
   intervalMs?: number
   /** Saat (ms); test için. */
   now?: () => number
@@ -77,10 +89,11 @@ export function createVideoProgressReporter(
   let lastSentPosition: number | null =
     options.initialPositionSeconds === undefined ? null : Math.round(options.initialPositionSeconds)
 
-  function send(sample: VideoProgressSample) {
+  function send(sample: VideoProgressSample, closing = false) {
     lastSentAt = now()
     lastSentPosition = Math.round(sample.positionSeconds)
-    options.send(sample)
+    if (closing && options.sendOnClose) options.sendOnClose(sample)
+    else options.send(sample)
   }
 
   return {
@@ -92,12 +105,12 @@ export function createVideoProgressReporter(
       if (now() - lastSentAt >= interval && Math.round(sample.positionSeconds) !== lastSentPosition)
         send(sample)
     },
-    flush(sample) {
+    flush(sample, flushOptions) {
       const next = sample ?? latest
       if (next === null || !usable(next)) return
       latest = next
       if (Math.round(next.positionSeconds) === lastSentPosition) return
-      send(next)
+      send(next, flushOptions?.closing === true)
     },
   }
 }

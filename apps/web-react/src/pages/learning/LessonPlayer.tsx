@@ -1,5 +1,8 @@
 import { useEffect, useRef } from 'react'
-import { useRecordVideoProgress } from '@kampus/react-shared/use-video-progress.ts'
+import {
+  useRecordVideoProgress,
+  useRecordVideoProgressOnClose,
+} from '@kampus/react-shared/use-video-progress.ts'
 import {
   createVideoProgressReporter,
   resumePosition,
@@ -20,11 +23,14 @@ type Props = {
 /**
  * Ders videosu oynatıcısı. Açılışta kayıtlı son konuma gider (bitişe yakın ya da konumsuz kayıtta
  * baştan başlar). Oynatırken ilerleme API'ye seyrek yazılır: en çok 15 sn'de bir, ayrıca duraklatma,
- * bitiş, sekme gizlenmesi ve pencere kapanışında. Yazma hatası kullanıcıya gösterilmez ve tekrar
+ * bitiş, oynatıcı kapanışı (modal), sekme gizlenmesi ve pencere/sekme kapanışında (`pagehide`).
+ * Sekme gizlenmesi ve `pagehide` `keepalive`'lı istekle gider: sayfa kapanırken normal fetch
+ * iptal olabilir. Yazma hatası kullanıcıya gösterilmez ve tekrar
  * denenmez; ilerleme bir sonraki aralıkta yeniden yazılır. Altyazı varsa Türkçe parça varsayılandır.
  */
 export function LessonPlayer({ videoId, title, src, poster, captions, resume }: Props) {
   const { mutate } = useRecordVideoProgress()
+  const sendOnClose = useRecordVideoProgressOnClose()
   const player = useRef<HTMLVideoElement>(null)
   const reporter = useRef<VideoProgressReporter | null>(null)
   // Açılıştaki kayıt: oynatırken yenilenen liste verisi konumu yeniden belirlemez.
@@ -33,22 +39,29 @@ export function LessonPlayer({ videoId, title, src, poster, captions, resume }: 
   useEffect(() => {
     const instance = createVideoProgressReporter({
       send: (sample) => mutate({ videoId, ...sample }),
+      sendOnClose: (sample) => sendOnClose({ videoId, ...sample }),
       ...(opening.current.positionSeconds === undefined
         ? {}
         : { initialPositionSeconds: opening.current.positionSeconds }),
     })
     reporter.current = instance
+    // Sekme gizlenmesi (mobilde çoğu zaman son olay) ve sekme/pencere kapanışı: keepalive'lı istek.
+    // İkisi art arda gelirse aynı konum ikinci kez gönderilmez.
     const onHidden = () => {
-      if (document.visibilityState === 'hidden') flushFrom(player.current, instance)
+      if (document.visibilityState === 'hidden') flushFrom(player.current, instance, true)
     }
+    const onPageHide = () => flushFrom(player.current, instance, true)
     document.addEventListener('visibilitychange', onHidden)
+    window.addEventListener('pagehide', onPageHide)
     return () => {
       document.removeEventListener('visibilitychange', onHidden)
-      // Pencere kapanırken oynatıcı DOM'dan çoktan kalkmıştır: son örnekle yazılır.
+      window.removeEventListener('pagehide', onPageHide)
+      // Oynatıcı (modal) kapanırken ya da video değişirken çalışır; sekme/pencere kapanışı
+      // `pagehide`'dadır. Oynatıcı DOM'dan çoktan kalkmıştır: son örnekle yazılır.
       instance.flush()
       reporter.current = null
     }
-  }, [mutate, videoId])
+  }, [mutate, sendOnClose, videoId])
 
   return (
     <video
@@ -85,7 +98,15 @@ export function LessonPlayer({ videoId, title, src, poster, captions, resume }: 
 }
 
 /** Oynatıcının şimdiki konumuyla yazar; oynatıcı yoksa reporter'ın son örneği. */
-function flushFrom(element: HTMLVideoElement | null, instance: VideoProgressReporter) {
-  if (element === null) instance.flush()
-  else instance.flush({ positionSeconds: element.currentTime, durationSeconds: element.duration })
+function flushFrom(
+  element: HTMLVideoElement | null,
+  instance: VideoProgressReporter,
+  closing = false,
+) {
+  if (element === null) instance.flush(undefined, { closing })
+  else
+    instance.flush(
+      { positionSeconds: element.currentTime, durationSeconds: element.duration },
+      { closing },
+    )
 }

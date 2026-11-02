@@ -16,7 +16,13 @@ import {
 // IST-041, DOM-KYN-005: video izleme ilerlemesi istekleri, yazma sıklığı ve devam konumu.
 
 function fakeClient() {
-  const sent: { method: string; path: string; headers: Headers; body: unknown }[] = []
+  const sent: {
+    method: string
+    path: string
+    headers: Headers
+    body: unknown
+    keepalive: boolean
+  }[] = []
   const client = createKampusClient({
     baseUrl: 'https://api.kampus.test',
     credentials: 'include',
@@ -28,6 +34,7 @@ function fakeClient() {
         method: request.method,
         path: new URL(request.url).pathname,
         headers: request.headers,
+        keepalive: request.keepalive,
         body: text ? JSON.parse(text) : undefined,
       })
       return new Response(
@@ -80,6 +87,15 @@ describe('video izleme ilerlemesi', () => {
     assert.equal(body.data.progress, 25)
   })
 
+  test('DOM-KYN-005: kapanışta keepalive istenir, çerez kimliği ve gövde aynı kalır', async () => {
+    const { client, sent } = fakeClient()
+    await recordVideoProgressRequest(client, { videoId: 'v1', ...at(30) }, { keepalive: true })
+    await recordVideoProgressRequest(client, { videoId: 'v1', ...at(31) })
+    assert.equal(sent[0]?.keepalive, true)
+    assert.equal(sent[1]?.keepalive, false)
+    assert.deepEqual(sent[0]?.body, { positionSeconds: 30, durationSeconds: 120 })
+  })
+
   test('yazma sonrası videoProgress okumaları tazelenir', () => {
     assert.deepEqual(VIDEO_PROGRESS_INVALIDATES, [['collections', 'videoProgress']])
   })
@@ -112,6 +128,32 @@ describe('video izleme ilerlemesi', () => {
     assert.equal(sent.length, 1)
     instance.flush(at(120))
     assert.deepEqual(sent.at(-1), at(120))
+  })
+
+  test('DOM-KYN-005: kapanış (pagehide, sekme gizlenmesi) sendOnClose ile gider, aynı konum yinelenmez', () => {
+    const sent: VideoProgressSample[] = []
+    const closing: VideoProgressSample[] = []
+    const instance = createVideoProgressReporter({
+      send: (sample) => sent.push(sample),
+      sendOnClose: (sample) => closing.push(sample),
+      now: () => 0,
+    })
+    instance.tick(at(7))
+    instance.flush(at(9), { closing: true })
+    // Sekme gizlenmesi ardından pagehide: ikincisi aynı konumu yinelemez.
+    instance.flush(at(9), { closing: true })
+    assert.deepEqual(closing, [at(9)])
+    assert.deepEqual(sent, [])
+    // Kapanış dışı flush normal göndericiyi kullanır.
+    instance.flush(at(20))
+    assert.deepEqual(sent, [at(20)])
+  })
+
+  test('sendOnClose verilmemişse kapanış da send ile gider', () => {
+    const { instance, sent } = reporter()
+    instance.tick(at(4))
+    instance.flush(undefined, { closing: true })
+    assert.deepEqual(sent, [at(4)])
   })
 
   test('hiç oynatılmamış ya da geçersiz örnek gönderilmez', () => {

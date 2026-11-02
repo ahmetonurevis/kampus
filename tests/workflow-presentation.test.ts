@@ -624,7 +624,20 @@ test('Program satırları geçici görev ve iptal durumunu gösterir; iptal ders
     'lesson-cancel',
   ])
   assert.deepEqual(commands(workflowDetails(state, session('ogretmen'), moved!)), [])
+  // DOM-YTK-068: gerekçe yalnız yöneticiye; öğretmen yedek atandığını görür, gerekçeyi görmez.
+  const teacherLines = section(
+    workflowDetails(state, session('ogretmen'), moved!),
+    'Ders bilgileri',
+  )
+  assert.ok(teacherLines.some((line) => line.startsWith('Yedek atandı · asıl öğretmen ')))
+  assert.equal(teacherLines.join('\n').includes('İzinli.'), false)
   run(state, 'lesson-cancel', { reason: 'Okul gezisi.' }, lesson!.id)
+  const teacherCancelled = section(
+    workflowDetails(state, session('ogretmen'), moved!),
+    'Ders bilgileri',
+  )
+  assert.ok(teacherCancelled.includes('Ders iptal edildi'))
+  assert.equal(teacherCancelled.join('\n').includes('Okul gezisi.'), false)
   const cancelled = find(workflowRows(state, session('yonetici'), 'program-yonetimi'), lesson!.id)
   assert.equal(cancelled!.status, 'İptal')
   assert.ok(

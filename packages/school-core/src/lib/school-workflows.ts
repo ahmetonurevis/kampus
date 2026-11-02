@@ -1175,6 +1175,14 @@ function workflowHandlers(
         throw new DomainError('lesson_cancelled', 'İptal edilmiş ders düzenlenemez.')
       if (existing)
         requireUpcomingLesson(existing.date, now, 'Başlamış veya geçmiş ders düzenlenemez.')
+      // Yedek atanmış derste öğretmen düzenlemeyle değişmez; değişiklik görevlendirme geçmişine
+      // ve denetime gerekçeyle yazılsın diye yedek atama işlemi kullanılır (DOM-YTK-069).
+      if (existing?.originalTeacherId && data.teacherId !== existing.teacherId)
+        throw new DomainError(
+          'lesson_has_substitution',
+          'Bu derse yedek atanmış; öğretmeni değiştirmek için yedek atama işlemini kullanın.',
+          { path: ['teacherId'] },
+        )
       requireUpcomingLesson(data.date, now, 'Ders geçmiş bir saate planlanamaz.')
       validateLesson(state, data, recordId)
       const title = () => state.subjects.find((s) => s.id === data.subjectId)?.name

@@ -7,8 +7,8 @@ import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts
 /**
  * Ders programı uçlarının şemaları (IST-094; docs/domain/yetki-ve-kapsam.md DOM-YTK-068,
  * DOM-YTK-069). Gövdeler core iş akışı şemalarıdır (`workflowSchemas`), API'de katıdır
- * (bilinmeyen alan 400). Yanıt beyaz listedir: öğrenci ve veliye iptal ve görevlendirme
- * gerekçesi dönmez (core `PLATFORM_HIDDEN_FIELDS`).
+ * (bilinmeyen alan 400). Yanıt beyaz listedir: iptal ve görevlendirme gerekçesi yalnız
+ * yöneticiye döner (core `PLATFORM_HIDDEN_FIELDS`).
  */
 
 const identifier = z.string().min(1).max(200)
@@ -96,11 +96,15 @@ export const lessonSchema = z
       .enum(LESSON_STATUSES)
       .describe('Türetilir: `cancelled` iptal, `substituted` yedek atanmış, `planned` diğerleri'),
     cancelledAt: instant.nullable(),
-    cancelReason: z.string().nullable().optional().describe('Yalnız personele döner'),
+    cancelReason: z
+      .string()
+      .nullable()
+      .optional()
+      .describe('İptal gerekçesi; yalnız yöneticiye döner'),
     substitutions: z
       .array(lessonSubstitutionSchema)
       .optional()
-      .describe('Görevlendirme geçmişi; yalnız personele döner'),
+      .describe('Görevlendirme geçmişi (gerekçe dahil); yalnız yöneticiye döner'),
     updatedAt: instant.describe('Kaydın son değiştiği an'),
   })
   .meta({ id: 'Lesson' })

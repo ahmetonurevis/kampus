@@ -415,6 +415,16 @@ describe('ders programı uçları', () => {
     })
   })
 
+  test('DOM-YTK-069: eşzamanlı iki çakışan oluşturma kurum kilidiyle sıralanır: biri 201, öteki 409', async () => {
+    const a = await institution()
+    const responses = await Promise.all([create(a.adminCookie), create(a.adminCookie)])
+    assert.deepEqual(responses.map((response) => response.statusCode).sort(), [201, 409])
+    const rejected = responses.find((response) => response.statusCode === 409)!
+    assert.match(rejected.json().code as string, /_conflict$/)
+    const atFree = (await schedule(a.id)).filter((row) => row.data.date === FREE)
+    assert.equal(atFree.length, 1)
+  })
+
   test('DOM-YTK-069: öğretmenin randevusu, etkinliği ve etüdü dersle çakışır (409)', async () => {
     const a = await institution(
       {},
@@ -566,16 +576,96 @@ describe('ders programı uçları', () => {
     assert.equal(audit?.actorUserId, a.admin.id)
     assert.equal(audit?.reason, REASON)
     assert.equal(audit?.action, 'workflow.substitute')
-    // Asıl ve yedek öğretmen dersi görür; öğrenci gerekçeyi görmez.
-    assert.equal(
-      (await read(await teacher(a.id, 'teacher-backup'), `/api/v1/lessons/${L1.id}`)).statusCode,
-      200,
-    )
-    assert.equal((await read(await teacher(a.id), `/api/v1/lessons/${L1.id}`)).statusCode, 200)
-    const shown = (await read(await student(a.id), `/api/v1/lessons/${L1.id}`)).json().data
-    assert.equal(shown.status, 'substituted')
-    assert.equal('substitutions' in shown, false)
-    assert.equal('cancelReason' in shown, false)
+    // Asıl ve yedek öğretmen dersi görür; gerekçe yalnız yöneticide (DOM-YTK-068).
+    for (const cookie of [
+      await teacher(a.id, 'teacher-backup'),
+      await teacher(a.id),
+      await student(a.id),
+    ]) {
+      const response = await read(cookie, `/api/v1/lessons/${L1.id}`)
+      assert.equal(response.statusCode, 200, response.body)
+      const shown = response.json().data
+      assert.equal(shown.status, 'substituted')
+      assert.equal(shown.originalTeacherId, 't1')
+      assert.equal('substitutions' in shown, false)
+      assert.equal('cancelReason' in shown, false)
+      assert.equal(response.body.includes(REASON), false)
+    }
+  })
+
+  test('DOM-YTK-069: yedek atanmış derste öğretmen düzenlemeyle değişmez (422 lesson_has_substitution)', async () => {
+    const a = await institution()
+    const assigned = await substitute(a.adminCookie, L1.id, {
+      teacherId: 'teacher-backup',
+      reason: REASON,
+    })
+    assert.equal(assigned.statusCode, 200, assigned.body)
+    await unchanged(a.id, async () => {
+      const response = await patch(a.adminCookie, L1.id, { teacherId: 't1' }, ifMatch(2))
+      assertError(response, 422, 'lesson_has_substitution')
+      assert.equal(
+        response.json().message,
+        'Bu derse yedek atanmış; öğretmeni değiştirmek için yedek atama işlemini kullanın.',
+      )
+    })
+    const edited = await patch(a.adminCookie, L1.id, { room: '102' }, ifMatch(2))
+    assert.equal(edited.statusCode, 200, edited.body)
+    assert.equal(edited.json().data.teacherId, 'teacher-backup')
+    assert.equal(edited.json().data.originalTeacherId, 't1')
+  })
+
+  test('DOM-YTK-068: iptal ve görevlendirme gerekçesi yalnız yöneticiye döner; öğretmen, ön büro, öğrenci ve veli görmez', async () => {
+    const a = await institution()
+    const SICK = 'Selin Hanım hasta, rapor aldı.'
+    const assigned = await substitute(a.adminCookie, L1.id, {
+      teacherId: 'teacher-backup',
+      reason: SICK,
+    })
+    assert.equal(assigned.statusCode, 200, assigned.body)
+    const cancelled = await cancel(a.adminCookie, L1.id, { reason: REASON }, ifMatch(2))
+    assert.equal(cancelled.statusCode, 200, cancelled.body)
+
+    const admin = (await read(a.adminCookie, `/api/v1/lessons/${L1.id}`)).json().data
+    assert.equal(admin.cancelReason, REASON)
+    assert.equal(admin.substitutions[0].reason, SICK)
+    const adminRecord = (await read(a.adminCookie, `/api/v1/collections/schedule/${L1.id}`)).json()
+      .data.record
+    assert.equal(adminRecord.cancelReason, REASON)
+
+    const viewers: [string, string][] = [
+      ['yedek öğretmen', await teacher(a.id, 'teacher-backup')],
+      ['asıl öğretmen', await teacher(a.id)],
+      ['ön büro', (await member(a.id, 'onburo')).cookie],
+      ['öğrenci', await student(a.id)],
+      ['veli', await parent(a.id)],
+    ]
+    for (const [label, cookie] of viewers) {
+      const responses = [
+        await read(cookie, '/api/v1/lessons?cancelled=all&pageSize=100'),
+        await read(cookie, `/api/v1/lessons/${L1.id}`),
+        await read(cookie, '/api/v1/collections/schedule?pageSize=100'),
+        await read(cookie, `/api/v1/collections/schedule/${L1.id}`),
+      ]
+      for (const response of responses) {
+        assert.equal(response.statusCode, 200, `${label}: ${response.body}`)
+        assert.equal(response.body.includes(SICK), false, label)
+        assert.equal(response.body.includes(REASON), false, label)
+        assert.equal(response.body.includes('cancelReason'), false, label)
+        assert.equal(response.body.includes('substitutions'), false, label)
+      }
+      const [list, single, collection, record] = responses.map((response) => response.json())
+      const listed = (list.data as { id: string; status: string }[]).find(
+        (item) => item.id === L1.id,
+      )
+      assert.equal(listed?.status, 'cancelled', label)
+      assert.equal(single.data.originalTeacherId, 't1', label)
+      assert.ok(
+        (collection.data as { id: string }[]).some((item) => item.id === L1.id),
+        label,
+      )
+      assert.equal(record.data.record.cancelledAt, FIXED_NOW.toISOString(), label)
+      assert.equal(record.data.record.teacherId, 'teacher-backup', label)
+    }
   })
 
   // --- İptal -----------------------------------------------------------------------------------

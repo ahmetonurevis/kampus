@@ -607,15 +607,24 @@ export function workflowDetails(
     if (record.status === 'Planlandı') add('renewal-activate', 'Dönem geçişini uygula')
   }
   if (kind === 'lesson') {
+    // İptal ve görevlendirme gerekçesi yalnız yöneticiye görünür; diğer roller iptali ve yedek
+    // atandığını görür (DOM-YTK-068, `PLATFORM_HIDDEN_FIELDS`).
+    const shown = scope.scope.redact('schedule', record)
     section('Ders bilgileri', [
       `${name(state, 'classes', record.classId)} · ${record.title}`,
       `${labelDate(record.date)} ${timeLabel(record.date)} · ${record.duration} dk`,
       `${name(state, 'teachers', record.teacherId)} · Derslik ${record.room}`,
-      ...(record.substitutions || []).map(
-        (s) =>
-          `${name(state, 'teachers', s.fromTeacherId)} → ${name(state, 'teachers', s.toTeacherId)} · ${s.reason}`,
-      ),
-      record.cancelReason && `İptal gerekçesi: ${record.cancelReason}`,
+      ...(shown.substitutions
+        ? shown.substitutions.map(
+            (s) =>
+              `${name(state, 'teachers', s.fromTeacherId)} → ${name(state, 'teachers', s.toTeacherId)} · ${s.reason}`,
+          )
+        : record.originalTeacherId
+          ? [`Yedek atandı · asıl öğretmen ${name(state, 'teachers', record.originalTeacherId)}`]
+          : []),
+      shown.cancelReason
+        ? `İptal gerekçesi: ${shown.cancelReason}`
+        : record.cancelledAt && 'Ders iptal edildi',
     ])
     if (!record.cancelledAt) {
       add('lesson', 'Dersi düzenle')

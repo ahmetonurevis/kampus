@@ -65,7 +65,7 @@ export type PlatformStatePatches<S extends Record<SeedCollections, unknown>> = {
   schedule: (Patch<Item<S, 'schedule'>, { title?: string; subject?: string }> &
     Timestamps & {
       cancelledAt?: string
-      // kvkk: Ç — iptal gerekçesi (DOM-YTK-069); öğrenci ve veliye dönmez
+      // kvkk: Ç — iptal gerekçesi (DOM-YTK-069); yalnız yöneticiye döner
       // (`PLATFORM_HIDDEN_FIELDS`, DOM-YTK-068).
       cancelReason?: string
       originalTeacherId?: string

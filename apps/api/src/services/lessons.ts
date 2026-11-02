@@ -21,9 +21,10 @@ import { assertReadable, readScope, scopePrefilter } from './read-scope.ts'
  *
  * Okuma core kapsamıyladır (`scopeFor`): yönetici ve ön büro kurumun bütün programını, öğretmen
  * kendi (asıl ya da yedek olduğu) derslerini, öğrenci ve veli kendi/çocuğunun sınıfını okur;
- * görmediği ders olmayan dersle aynı 404'tür. Öğrenci ve veliye iptal ve görevlendirme gerekçesi
- * dönmez (core `PLATFORM_HIDDEN_FIELDS`). Gerekçe loglanmaz; denetim kaydının `reason`
- * kolonuna yazılır.
+ * görmediği ders olmayan dersle aynı 404'tür. İptal ve görevlendirme gerekçesi (`cancelReason`,
+ * `substitutions`) yalnız yöneticiye döner; öğretmen, ön büro, öğrenci ve veli yalnız durumu ve
+ * yedek öğretmeni görür (core `PLATFORM_HIDDEN_FIELDS`, `scope.hiddenFields`). Gerekçe
+ * loglanmaz; denetim kaydının `reason` kolonuna yazılır.
  */
 
 export type LessonStatus = 'planned' | 'substituted' | 'cancelled'
@@ -40,7 +41,6 @@ export interface LessonListInput {
 }
 
 const COLLECTION = 'schedule'
-const PERSONAL_ROLES = new Set(['ogrenci', 'veli'])
 
 const text = (value: unknown): string | null => (typeof value === 'string' ? value : null)
 /** Derslik karşılaştırması core çakışma kuralıyla aynıdır (`trim` + Türkçe küçük harf). */
@@ -52,11 +52,12 @@ function statusOf(record: RecordData): LessonStatus {
 }
 
 /**
- * Yanıt görünümü: kayıt rolün ayıklanmış hâlidir. Personel gerekçe alanlarını her zaman alır
- * (boşsa `null`/boş liste); öğrenci ve veliye bu alanlar hiç eklenmez.
+ * Yanıt görünümü: kayıt rolün ayıklanmış hâlidir. Gerekçe alanlarını gören rol (core kapsamının
+ * `hiddenFields` listesi; yalnız yönetici) onları her zaman alır (boşsa `null`/boş liste); diğer
+ * rollere bu alanlar hiç eklenmez.
  */
 function lessonView(
-  ctx: ServiceContext,
+  hidden: readonly string[],
   record: RecordData,
   meta: { id: string; version: number; updatedAt: string },
 ) {
@@ -76,11 +77,12 @@ function lessonView(
     cancelledAt: text(record.cancelledAt),
     updatedAt: meta.updatedAt,
   }
-  if (PERSONAL_ROLES.has(ctx.actor.role)) return base
   return {
     ...base,
-    cancelReason: text(record.cancelReason),
-    substitutions: Array.isArray(record.substitutions) ? record.substitutions : [],
+    ...(hidden.includes('cancelReason') ? {} : { cancelReason: text(record.cancelReason) }),
+    ...(hidden.includes('substitutions')
+      ? {}
+      : { substitutions: Array.isArray(record.substitutions) ? record.substitutions : [] }),
   }
 }
 
@@ -125,7 +127,7 @@ export async function listLessons(ctx: ServiceContext, input: LessonListInput) {
   const start = (input.page - 1) * input.pageSize
   return {
     items: visible.slice(start, start + input.pageSize).map((row) =>
-      lessonView(ctx, scope.redact(COLLECTION, row.data), {
+      lessonView(scope.hiddenFields(COLLECTION), scope.redact(COLLECTION, row.data), {
         id: row.id,
         version: row.version,
         updatedAt: row.updatedAt.toISOString(),
@@ -140,7 +142,7 @@ export async function getLesson(ctx: ServiceContext, lessonId: string) {
   const scope = await readableScope(ctx)
   const row = await findRecord(ctx.db, ctx.institutionId, COLLECTION, lessonId)
   if (!row || !scope.canRead(COLLECTION, row.data)) throw new NotFoundError()
-  return lessonView(ctx, scope.redact(COLLECTION, row.data), {
+  return lessonView(scope.hiddenFields(COLLECTION), scope.redact(COLLECTION, row.data), {
     id: row.id,
     version: row.version,
     updatedAt: row.updatedAt.toISOString(),
@@ -169,15 +171,16 @@ interface LessonOperation {
  * Ders iş akışını tek transaction'da çalıştırır (`runCommand`: kurum kilidi, fark, sürüm
  * koşullu yazma, denetim kaydı, `Idempotency-Key`). Sıra: olmayan ders 404 → core yetki ve
  * kapsam (403/404) → sürüm 409 `version_conflict` → core kuralı (422, 409). Yanıt dersin yeni
- * hâlidir (yazan yalnız yönetici; ayıklama gerekmez).
+ * hâlidir; okuma uçlarıyla aynı alan ayıklamasıyla döner (yazan yalnız yönetici).
  */
-function runLesson(
+async function runLesson(
   ctx: ServiceContext,
   operation: LessonOperation,
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   const spec = WORKFLOW_COMMANDS[operation.command]
   const { target } = operation
+  const hidden = (await readScope(ctx)).hiddenFields(COLLECTION)
   return runCommand<RecordData & { id: string }>(
     ctx,
     {
@@ -223,7 +226,7 @@ function runLesson(
       return {
         statusCode: operation.statusCode,
         body: {
-          data: lessonView(ctx, outcome.result, {
+          data: lessonView(hidden, outcome.result, {
             id: outcome.result.id,
             version,
             updatedAt: ctx.now.toISOString(),

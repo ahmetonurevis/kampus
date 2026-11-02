@@ -275,32 +275,54 @@ test('DOM-YTK-069: yedek öğretmen aynı kampüs ve branşta etkin olmalı; ipt
   )
 })
 
-test('DOM-YTK-068: öğrenci ve veli iptal ve görevlendirme gerekçesini görmez; personel görür', () => {
+test('DOM-YTK-068: iptal ve görevlendirme gerekçesi yalnız yöneticiye döner; öğretmen, ön büro, öğrenci ve veli durumu görür', () => {
   const state = createSeed(new Date(now))
   const lesson = future(state)
+  const original = lesson.teacherId
   const backup = withBackup(state)
   run(state, 'substitute', { teacherId: backup.id, reason: 'Sağlık izni.' }, lesson.id)
   run(state, 'lesson-cancel', { reason: 'Okul gezisi.' }, lesson.id)
   const record = state.schedule.find((l) => l.id === lesson.id)!
-  const personal: Actor[] = [
+  const others: Actor[] = [
+    { role: 'ogretmen', links: [{ kind: 'teacher', recordId: backup.id }] },
+    { role: 'ogretmen', links: [{ kind: 'teacher', recordId: original }] },
+    { role: 'onburo', links: [] },
     { role: 'ogrenci', links: [{ kind: 'student', recordId: 's1' }] },
     { role: 'veli', links: [{ kind: 'child', recordId: 's1' }] },
   ]
-  for (const actor of personal) {
+  for (const actor of others) {
     const scope = scopeFor(state, actor)
-    assert.ok(scope.canRead('schedule', record))
+    assert.ok(scope.canRead('schedule', record), actor.role)
     const shown = scope.redact('schedule', record)
     assert.equal(shown.cancelledAt, now)
-    assert.equal(shown.originalTeacherId, record.originalTeacherId)
-    assert.equal('cancelReason' in shown, false)
-    assert.equal('substitutions' in shown, false)
+    assert.equal(shown.originalTeacherId, original)
+    assert.equal(shown.teacherId, backup.id)
+    assert.equal('cancelReason' in shown, false, actor.role)
+    assert.equal('substitutions' in shown, false, actor.role)
   }
   const staff = scopeFor(state, { role: 'yonetici', links: [] }).redact('schedule', record)
   assert.equal(staff.cancelReason, 'Okul gezisi.')
-  const substitute = scopeFor(state, {
-    role: 'ogretmen',
-    links: [{ kind: 'teacher', recordId: backup.id }],
-  })
-  assert.ok(substitute.canRead('schedule', record))
-  assert.ok(Array.isArray(substitute.redact('schedule', record).substitutions))
+  assert.equal(staff.substitutions?.[0]?.reason, 'Sağlık izni.')
+})
+
+test('DOM-YTK-069: yedek atanmış derste öğretmen düzenlemeyle değişmez (lesson_has_substitution)', () => {
+  const state = createSeed(new Date(now))
+  const lesson = future(state)
+  const backup = withBackup(state)
+  withBackup(state, { id: 'teacher-third', name: 'Üçüncü Öğretmen' })
+  run(state, 'substitute', { teacherId: backup.id, reason: 'İzinli.' }, lesson.id)
+  unchanged(
+    state,
+    () => run(state, 'lesson', { ...slot(lesson), teacherId: 'teacher-third' }, lesson.id),
+    isDomainError('lesson_has_substitution'),
+  )
+  unchanged(
+    state,
+    () => run(state, 'lesson', { ...slot(lesson), teacherId: lesson.originalTeacherId }, lesson.id),
+    isDomainError('lesson_has_substitution'),
+  )
+  // Öğretmen dışındaki alanlar düzenlenir; yedek öğretmen yerinde kalır.
+  run(state, 'lesson', { ...slot(lesson), duration: 45 }, lesson.id)
+  assert.equal(lesson.duration, 45)
+  assert.equal(lesson.teacherId, backup.id)
 })

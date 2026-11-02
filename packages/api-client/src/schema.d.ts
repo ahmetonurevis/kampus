@@ -3829,7 +3829,7 @@ export interface paths {
         };
         /**
          * Ders programı
-         * @description Dersler başlangıca göre, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `dateFrom`/`dateTo` (Europe/Istanbul günü, dahil; ters aralık 400), `classId`, `teacherId` (dersi veren), `room`, `cancelled`. İptal edilen ders varsayılan olarak dönmez (günlük program); `cancelled=true` ya da `all` iptal geçmişini verir. Bilinmeyen parametre 400. Yönetici ve ön büro kurumun bütün programını, öğretmen kendi (asıl ya da yedek olduğu) derslerini, öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur (DOM-YTK-068). Öğrenci ve veliye `cancelReason` ve `substitutions` dönmez. Modül `planning` ve `academic`; kapalıysa 403 `module_disabled`.
+         * @description Dersler başlangıca göre, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `dateFrom`/`dateTo` (Europe/Istanbul günü, dahil; ters aralık 400), `classId`, `teacherId` (dersi veren), `room`, `cancelled`. İptal edilen ders varsayılan olarak dönmez (günlük program); `cancelled=true` ya da `all` iptal geçmişini verir. Bilinmeyen parametre 400. Yönetici ve ön büro kurumun bütün programını, öğretmen kendi (asıl ya da yedek olduğu) derslerini, öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur (DOM-YTK-068). İptal ve görevlendirme gerekçesi (`cancelReason`, `substitutions`) yalnız yöneticiye döner; öğretmen, ön büro, öğrenci ve veli `status` ve `originalTeacherId` alanlarını görür. Modül `planning` ve `academic`; kapalıysa 403 `module_disabled`.
          */
         get: operations["listLessons"];
         put?: never;
@@ -3853,7 +3853,7 @@ export interface paths {
         };
         /**
          * Ders
-         * @description Tek ders (iptal edilmiş olsa da). Olmayan, başka kurumun ya da aktörün göremediği ders 404. Yönetici ve ön büro kurumun bütün programını, öğretmen kendi (asıl ya da yedek olduğu) derslerini, öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur (DOM-YTK-068). Öğrenci ve veliye `cancelReason` ve `substitutions` dönmez. Modül `planning` ve `academic`; kapalıysa 403 `module_disabled`.
+         * @description Tek ders (iptal edilmiş olsa da). Olmayan, başka kurumun ya da aktörün göremediği ders 404. Yönetici ve ön büro kurumun bütün programını, öğretmen kendi (asıl ya da yedek olduğu) derslerini, öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur (DOM-YTK-068). İptal ve görevlendirme gerekçesi (`cancelReason`, `substitutions`) yalnız yöneticiye döner; öğretmen, ön büro, öğrenci ve veli `status` ve `originalTeacherId` alanlarını görür. Modül `planning` ve `academic`; kapalıysa 403 `module_disabled`.
          */
         get: operations["getLesson"];
         put?: never;
@@ -3863,7 +3863,7 @@ export interface paths {
         head?: never;
         /**
          * Dersi düzenle
-         * @description Dersin alanlarını kısmi değiştirir; gönderilmeyen alanlar dersin mevcut değeridir ve ders bütün olarak yeniden doğrulanır (core `runWorkflow('lesson')`). İptal edilmiş ders 422 `lesson_cancelled`. Başlamış veya geçmiş ders değişmez: 422 `lesson_in_past` (DOM-YTK-069). Öğretmen etkin olmalı (pasif 422 `record_inactive`), sınıfın kampüsünde ve dersin branşında (422 `lesson_teacher_mismatch`). Çakışma 409: öğretmenin başka dersi `teacher_lesson_conflict`, sınıfın başka dersi `class_lesson_conflict`, aynı kampüste derslik `room_conflict` (boşluk ve büyük/küçük harf duyarsız), öğretmenin randevusu `teacher_appointment_conflict`, öğretmenin okul etkinliği `teacher_event_conflict`, öğretmenin etüdü ya da dersliğin etüdü `tutor_schedule_conflict`. İptal edilen ders saati boşaltır. `If-Match` dersin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun dersi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`.
+         * @description Dersin alanlarını kısmi değiştirir; gönderilmeyen alanlar dersin mevcut değeridir ve ders bütün olarak yeniden doğrulanır (core `runWorkflow('lesson')`). İptal edilmiş ders 422 `lesson_cancelled`. Yedek atanmış derste öğretmen değişmez: 422 `lesson_has_substitution` (yedek atama işlemi kullanılır). Başlamış veya geçmiş ders değişmez: 422 `lesson_in_past` (DOM-YTK-069). Öğretmen etkin olmalı (pasif 422 `record_inactive`), sınıfın kampüsünde ve dersin branşında (422 `lesson_teacher_mismatch`). Çakışma 409: öğretmenin başka dersi `teacher_lesson_conflict`, sınıfın başka dersi `class_lesson_conflict`, aynı kampüste derslik `room_conflict` (boşluk ve büyük/küçük harf duyarsız), öğretmenin randevusu `teacher_appointment_conflict`, öğretmenin okul etkinliği `teacher_event_conflict`, öğretmenin etüdü ya da dersliğin etüdü `tutor_schedule_conflict`. İptal edilen ders saati boşaltır. `If-Match` dersin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun dersi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`.
          */
         patch: operations["updateLesson"];
         trace?: never;
@@ -6300,9 +6300,9 @@ export interface components {
              */
             status: "planned" | "substituted" | "cancelled";
             cancelledAt: string | null;
-            /** @description Yalnız personele döner */
+            /** @description İptal gerekçesi; yalnız yöneticiye döner */
             cancelReason?: string | null;
-            /** @description Görevlendirme geçmişi; yalnız personele döner */
+            /** @description Görevlendirme geçmişi (gerekçe dahil); yalnız yöneticiye döner */
             substitutions?: components["schemas"]["LessonSubstitutionInput"][];
             /** @description Kaydın son değiştiği an */
             updatedAt: string;
@@ -8614,9 +8614,9 @@ export interface components {
              */
             status: "planned" | "substituted" | "cancelled";
             cancelledAt: string | null;
-            /** @description Yalnız personele döner */
+            /** @description İptal gerekçesi; yalnız yöneticiye döner */
             cancelReason?: string | null;
-            /** @description Görevlendirme geçmişi; yalnız personele döner */
+            /** @description Görevlendirme geçmişi (gerekçe dahil); yalnız yöneticiye döner */
             substitutions?: components["schemas"]["LessonSubstitution"][];
             /** @description Kaydın son değiştiği an */
             updatedAt: string;

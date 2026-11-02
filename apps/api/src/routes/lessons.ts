@@ -49,7 +49,7 @@ const rolesOf = (command: WorkflowCommand) =>
     .join(', ')
 
 const READ_ACCESS =
-  'Yönetici ve ön büro kurumun bütün programını, öğretmen kendi (asıl ya da yedek olduğu) derslerini, öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur (DOM-YTK-068). Öğrenci ve veliye `cancelReason` ve `substitutions` dönmez. Modül `planning` ve `academic`; kapalıysa 403 `module_disabled`.'
+  'Yönetici ve ön büro kurumun bütün programını, öğretmen kendi (asıl ya da yedek olduğu) derslerini, öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur (DOM-YTK-068). İptal ve görevlendirme gerekçesi (`cancelReason`, `substitutions`) yalnız yöneticiye döner; öğretmen, ön büro, öğrenci ve veli `status` ve `originalTeacherId` alanlarını görür. Modül `planning` ve `academic`; kapalıysa 403 `module_disabled`.'
 const VERSIONED =
   "`If-Match` dersin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun dersi 404. `Idempotency-Key` isteğe bağlı."
 const PAST = 'Başlamış veya geçmiş ders değişmez: 422 `lesson_in_past` (DOM-YTK-069).'
@@ -163,7 +163,7 @@ export function registerLessonRoutes(app: FastifyInstance) {
         operationId: 'updateLesson',
         tags: ['lessons'],
         summary: 'Dersi düzenle',
-        description: `Dersin alanlarını kısmi değiştirir; gönderilmeyen alanlar dersin mevcut değeridir ve ders bütün olarak yeniden doğrulanır (core \`runWorkflow('lesson')\`). İptal edilmiş ders 422 \`lesson_cancelled\`. ${PAST} ${TEACHER_RULE} ${CONFLICTS} ${VERSIONED} Roller: ${rolesOf('lesson')}.`,
+        description: `Dersin alanlarını kısmi değiştirir; gönderilmeyen alanlar dersin mevcut değeridir ve ders bütün olarak yeniden doğrulanır (core \`runWorkflow('lesson')\`). İptal edilmiş ders 422 \`lesson_cancelled\`. Yedek atanmış derste öğretmen değişmez: 422 \`lesson_has_substitution\` (yedek atama işlemi kullanılır). ${PAST} ${TEACHER_RULE} ${CONFLICTS} ${VERSIONED} Roller: ${rolesOf('lesson')}.`,
         params: lessonParamsSchema,
         body: updateLessonBodySchema,
         headers: versionedHeaders,

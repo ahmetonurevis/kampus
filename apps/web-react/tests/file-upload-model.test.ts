@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
 import { ApiError } from '@kampus/api-client/errors.ts'
-import type { UploadedFile } from '@kampus/react-shared/use-file-upload.ts'
+import type { FileUploadInput, UploadedFile } from '@kampus/react-shared/use-file-upload.ts'
 import { checkFileBeforeUpload, fileIdentity } from '@kampus/react-shared/use-file-upload.ts'
 import { createCommandSession, runCommand } from '@kampus/react-shared/commands.ts'
 
@@ -227,19 +227,28 @@ describe('belirsiz hata ve yeniden deneme: aynı anahtar (DOM-KYN-004)', () => {
       )(0),
     )
     const keys: string[] = []
-    const send = (file: File, fail: ApiError | null) =>
-      runCommand(
+    const send = (file: File, fail: ApiError | null) => {
+      // Gerçek kanca her çağrıda yeni `AbortSignal` ile aynı dosyayı gönderir; anahtar yalnız
+      // `fileKey`e bağlı kalmalıdır (signal ve gövde anahtarı değiştirmez).
+      const input: FileUploadInput = {
+        purpose: 'submission',
+        file,
+        fileKey: fileIdentity(file),
+        signal: new AbortController().signal,
+      }
+      return runCommand(
         session,
         {
-          execute: async (_input: { fileKey: string }, headers) => {
+          execute: async (_input: FileUploadInput, headers) => {
             keys.push(headers['idempotency-key'])
             if (fail) throw fail
             return { data: stored('ok') }
           },
           refresh: async () => {},
         },
-        { fileKey: fileIdentity(file) },
+        input,
       )
+    }
     const a = pdf('a.pdf')
     assert.equal((await send(a, networkError)).status, 'failed')
     assert.equal((await send(a, null)).status, 'success')

@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 
-import type { Page } from '@playwright/test'
+import type { Download, Page } from '@playwright/test'
 
 import { createSeed } from '../../packages/school-core/src/data/seed.ts'
 import {
@@ -36,6 +37,25 @@ const KEY_8 = [
   'A;5;science;Hücre;A',
   'A;6;science;Madde;B',
 ].join('\n')
+
+/** İndirilen CSV: dosya adı, UTF-8 BOM'u ve satırlar (BOM'suz, CRLF'e göre bölünmüş). */
+async function readCsv(download: Download): Promise<{ name: string; lines: string[] }> {
+  const text = await readFile(await download.path(), 'utf8')
+  expect(text.charCodeAt(0), 'UTF-8 BOM').toBe(0xfeff)
+  return {
+    name: download.suggestedFilename(),
+    lines: text
+      .slice(1)
+      .split('\r\n')
+      .filter((line) => line !== ''),
+  }
+}
+
+async function downloadBy(page: Page, button: string): Promise<{ name: string; lines: string[] }> {
+  const pending = page.waitForEvent('download')
+  await page.getByRole('button', { name: button, exact: true }).click()
+  return readCsv(await pending)
+}
 
 test.describe('optik değerlendirme', () => {
   test('yönetici dosya yükler, önizler, kaydeder; sonuç kayıtlı listede görünür', async ({
@@ -81,6 +101,46 @@ test.describe('optik değerlendirme', () => {
     await expect(
       page.getByRole('heading', { name: 'Değerlendirme önizlemesi', exact: true }),
     ).toHaveCount(0)
+  })
+
+  test('sonuç ve cevap anahtarı CSV indirilir; anahtar başlığı içe aktarma biçimindedir', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s1'],
+      collections: OPTICAL_DATA,
+    })
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/optik-degerlendirme')
+    await page.getByLabel('Optik dosya içeriği', { exact: true }).fill(`${HEADER}\n${GOOD_ROW}\n`)
+    await page.getByRole('button', { name: 'Sonuçları önizle', exact: true }).click()
+    await page.getByRole('button', { name: 'Onayla ve sonuçları kaydet', exact: true }).click()
+    const saved = page.getByRole('region', { name: 'Kayıtlı değerlendirmeler' })
+    await expect(saved.getByRole('row').filter({ hasText: 'Deniz Yılmaz' }).first()).toBeVisible()
+
+    // Tüm sonuçlar: başlık Vue ile aynı, her satır bir ders sonucu.
+    const all = await downloadBy(page, 'Sonuçları CSV indir')
+    expect(all.name).toBe('optik-sonuclar.csv')
+    expect(all.lines[0]).toBe(
+      '"Öğrenci";"Deneme";"Ders";"Kitapçık";"Doğru";"Yanlış";"Boş";"Çoklu işaret";"İptal soru";"Net";"Durum";"Açıklama"',
+    )
+    expect(all.lines).toHaveLength(4)
+    expect(all.lines.slice(1).every((line) => line.startsWith('"Deniz Yılmaz";'))).toBe(true)
+
+    // Süzülmüş sonuç: aramaya uyan satırlar, görünen sayfa değil.
+    await saved.getByLabel('Tabloda ara').fill('Matematik')
+    const filtered = await downloadBy(page, 'Sonuçları CSV indir')
+    expect(filtered.lines).toHaveLength(2)
+    expect(filtered.lines[1]).toContain('"Matematik"')
+
+    // Cevap anahtarı şablonu: ham alan adları, içe aktarma başlığıyla aynı.
+    const key = await downloadBy(page, 'Cevap anahtarını indir')
+    expect(key.name).toBe('optik-cevap-anahtari.csv')
+    expect(key.lines[0]).toBe('"booklet";"question";"subjectId";"topic";"answer"')
+    expect(key.lines.length).toBeGreaterThan(1)
+    expect(key.lines[1]).toMatch(/^"A";1;"[a-z-]+";".+";"[A-E-]"$/)
   })
 
   test('hatalı satır alan mesajıyla satır numarasını gösterir ve hiçbir şey kaydetmez', async ({
@@ -445,6 +505,52 @@ test.describe('otomatik etüt', () => {
     await expect(dialog).toContainText('Deniz Yılmaz')
     for (const name of ['Yoklama al / güncelle', 'Etüdü iptal et'])
       await expect(dialog.getByRole('button', { name })).toHaveCount(0)
+  })
+
+  test('etüt listesi ve plan önizlemesi CSV indirilir; öğrenci yalnız kendi etütlerini indirir', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici', 'ogrenci'],
+      students: ['s1'],
+      collections: TUTORING_DATA,
+      records: evaluatedRecords(new Date()),
+    })
+    const page = await loginAs(school.user('yonetici'))
+    await openPlanForm(page)
+    await page.getByRole('button', { name: 'Etüt planını önizle', exact: true }).click()
+    await expect(
+      page.getByRole('heading', { name: 'Etüt planı önizlemesi', exact: true }),
+    ).toBeVisible()
+    const preview = await downloadBy(page, 'Önizlemeyi CSV indir')
+    expect(preview.name).toBe('etut-onizleme.csv')
+    expect(preview.lines[0]).toBe(
+      '"Etüt / Kazanım";"Öğretmen";"Kampüs";"Tarih";"Derslik";"Öğrenciler";"Durum";"Açıklama"',
+    )
+    expect(preview.lines.length).toBeGreaterThan(1)
+    expect(preview.lines[1]).toContain('"Planlanabilir')
+    expect(preview.lines[1]).toContain('Deniz Yılmaz')
+
+    await page.getByRole('button', { name: 'Onayla ve etütleri oluştur', exact: true }).click()
+    await expect(page.getByText(/\d+ etüt oluşturuldu\./).first()).toBeVisible()
+    await expect(page.getByRole('button', { name: /Matematik · /i }).first()).toBeVisible()
+
+    const list = await downloadBy(page, 'Etüt listesini CSV indir')
+    expect(list.name).toBe('etut-plani.csv')
+    expect(list.lines[0]).toBe(
+      '"Etüt / Kazanım";"Öğretmen";"Kampüs";"Tarih";"Derslik";"Öğrenciler";"Durum"',
+    )
+    expect(list.lines.length).toBeGreaterThan(1)
+    expect(list.lines[1]).toContain('"Planlandı"')
+
+    // Veri kapsamı ekranla aynıdır: öğrenci kendi etütlerini indirir.
+    const student = await loginAs(school.user('ogrenci'))
+    await student.goto('/ogrenci/otomatik-etut')
+    await expect(student.getByRole('button', { name: /Matematik · /i }).first()).toBeVisible()
+    const own = await downloadBy(student, 'Etüt listesini CSV indir')
+    expect(own.lines.length).toBe(list.lines.length)
+    expect(own.lines.slice(1).every((line) => line.includes('Deniz Yılmaz'))).toBe(true)
   })
 
   test('onay sırasında plan değişirse fark gösterilir ve çift etüt oluşmaz', async ({

@@ -4,6 +4,7 @@ import { navigation } from '../packages/school-core/src/modules/full-navigation.
 import { navigation as baseNavigation } from '../packages/school-core/src/modules/navigation.ts'
 import { navigation as demoNavigation } from '../apps/web/src/modules/navigation.js'
 import {
+  API_ACADEMIC_PAGES,
   API_COMMUNICATION_PAGES,
   API_LEARNING_PAGES,
 } from '../packages/school-core/src/platform/navigation.ts'
@@ -99,10 +100,31 @@ test('Vue demosu apiOnly sayfaları almaz ve temel menü + okul iş akışların
 test('Platform sayfaları temel menüde bulunmaz ve her biri birleşik menüde tek kez yer alır', () => {
   for (const role of roleKeys) {
     const base = new Set(baseNavigation[role].map((p) => p.path))
-    for (const page of [...API_COMMUNICATION_PAGES[role], ...API_LEARNING_PAGES[role]]) {
+    for (const page of [
+      ...API_COMMUNICATION_PAGES[role],
+      ...API_LEARNING_PAGES[role],
+      ...API_ACADEMIC_PAGES[role],
+    ]) {
       const copies = navigation[role].filter((p) => p.path === page.path)
       assert.ok(!base.has(page.path), `${role}/${page.path} temel menüde de var`)
       assert.equal(copies.length, 1, `${role}/${page.path}`)
     }
   }
+})
+
+test('Yoklama Düzeltme yalnız yöneticide, academic modülünde ve YÖNETİM kategorisinin sonundadır (DOM-AKD-035)', () => {
+  for (const role of roleKeys) {
+    const page = navigation[role].find((p) => p.path === 'yoklama-duzeltme')
+    if (role !== 'yonetici') {
+      assert.equal(page, undefined, `${role} yoklama düzeltmeyi görmemeli`)
+      continue
+    }
+    assert.ok(page)
+    assert.equal(page.module, 'academic')
+    assert.equal(page.group, 'YÖNETİM')
+    assert.equal(page.apiOnly, true)
+  }
+  const admin = navigation.yonetici.map((p) => p.path)
+  assert.equal(admin[admin.indexOf('personel') + 1], 'yoklama-duzeltme')
+  assert.ok(!demoNavigation.yonetici.some((p) => p.path === 'yoklama-duzeltme'))
 })

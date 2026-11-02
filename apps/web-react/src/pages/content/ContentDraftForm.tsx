@@ -3,6 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
 import type { z } from 'zod'
 import { COPYRIGHT_DECLARATION } from '@kampus/school-core/content/taxonomy.ts'
+import { fileAttachField } from '@kampus/react-shared/files.ts'
 import {
   isStaffDetail,
   type AuthorableType,
@@ -62,9 +63,14 @@ type FormModalProps = {
  * Taslak formu (geniş pencere): okuma parçası, tek çoktan seçmeli soru ya da materyal dosyası
  * (DOM-KYN-006). Doğrulama core `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası
  * (400 ya da 422 iş kuralı) alan yoluyla gelirse yalnız alanın altında, yoksa toast olarak görünür
- * (`exclusive`). Dosya yüklemesi sürerken kaydet kilitlidir. Diğer içerik türleri sonraki dilimdedir.
+ * (`exclusive`). Dosya yüklemesi ve güvenlik taraması sürerken kaydet kilitlidir; yolsuz bağlama
+ * hatası (422 `file_not_ready`, `file_rejected`) da dosya alanında görünür (`FILE_FIELD`, OG-987).
+ * Diğer içerik türleri sonraki dilimdedir.
  * TODO(F3c2): ses, video, çalışma kâğıdı ve lisanslı yayın türleri.
  */
+/** Dosya bağlama hatalarının alanı: dosya listesinin altında (`filesError`) okunur. */
+const FILE_FIELD = fileAttachField('fileIds')
+
 export function ContentDraftForm({ target, onClose, onCreated, onSaved }: FormModalProps) {
   const creating = isNewTarget(target)
   return (
@@ -158,6 +164,8 @@ function DraftEditor({
   const update = useUpdateDraft()
   const [type, setType] = useState<AuthorableType>(initial?.content.type ?? initialType)
   const [uploading, setUploading] = useState(false)
+  // Taranan dosya yalnız kaydeti kilitler; tür seçimi dahil alanlar açık kalır (OG-987).
+  const [scanBlocked, setScanBlocked] = useState(false)
   const [declared, setDeclared] = useState(false)
   const [declarationMissing, setDeclarationMissing] = useState(false)
   // Çözümleyici birleşim girdisini (core) doğrular; form değerleri düz tipte tutulur (yollar tipli
@@ -190,7 +198,7 @@ function DraftEditor({
           version: conflict.version,
           patch: patchFromDraft(values),
         },
-        { setError: form.setError, silent: isVersionConflict },
+        { setError: form.setError, silent: isVersionConflict, fieldFor: FILE_FIELD },
       )
       if (outcome.status === 'success') {
         notify.success('Taslak güncellendi.')
@@ -200,7 +208,10 @@ function DraftEditor({
       }
       return
     }
-    const outcome = await create.submit(patchFromDraft(values), { setError: form.setError })
+    const outcome = await create.submit(patchFromDraft(values), {
+      setError: form.setError,
+      fieldFor: FILE_FIELD,
+    })
     if (outcome.status === 'success') {
       notify.success('Taslak kaydedildi.')
       onCreated?.(outcome.data.data.resource.id)
@@ -209,7 +220,7 @@ function DraftEditor({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (uploading) return
+    if (uploading || scanBlocked) return
     // Beyan, form hatalarıyla birlikte görünsün diye doğrulamadan önce işaretlenir.
     setDeclarationMissing(!declared)
     void submit(event)
@@ -262,7 +273,13 @@ function DraftEditor({
         </div>
       </div>
 
-      <ContentFields form={form} type={type} busy={busy} onUploadingChange={setUploading} />
+      <ContentFields
+        form={form}
+        type={type}
+        busy={busy}
+        onUploadingChange={setUploading}
+        onScanBlockedChange={setScanBlocked}
+      />
       <TagFields form={form} type={type} languageSchool={languageSchool} busy={busy} />
       <LicenseFields form={form} busy={busy} />
 
@@ -296,7 +313,7 @@ function DraftEditor({
         </Button>
         <Button
           type="submit"
-          disabled={busy || uploading || conflict.conflicted}
+          disabled={busy || uploading || scanBlocked || conflict.conflicted}
           aria-busy={busy || uploading || undefined}
         >
           <Icon name="Check" size={17} aria-hidden="true" />

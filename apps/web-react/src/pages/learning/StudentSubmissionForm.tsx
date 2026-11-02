@@ -52,6 +52,8 @@ export function StudentSubmissionForm({ homeworkId, submission, late, closed = f
   })
   const guard = useRouteDiscardGuard(form.formState.isDirty)
   const [uploading, setUploading] = useState(false)
+  // Taranan dosya yalnız teslim düğmesini kilitler; açıklama alanı açık kalır (OG-987).
+  const [scanBlocked, setScanBlocked] = useState(false)
   const files = useWatch({ control: form.control, name: 'files' })
   const busy = submit.isPending || uploading || form.formState.isSubmitting
   const errors = form.formState.errors
@@ -99,7 +101,10 @@ export function StudentSubmissionForm({ homeworkId, submission, late, closed = f
       <form
         noValidate
         aria-label="Ödevi teslim et"
-        onSubmit={(event) => void onSubmit(event)}
+        onSubmit={(event) => {
+          if (scanBlocked) return event.preventDefault()
+          void onSubmit(event)
+        }}
         className="grid gap-5"
       >
         {closed ? (
@@ -151,10 +156,15 @@ export function StudentSubmissionForm({ homeworkId, submission, late, closed = f
             setUploading(busy)
             if (busy) form.clearErrors('files')
           }}
+          onBlockedChange={setScanBlocked}
         />
         <RootError message={errors.root?.server?.message} />
         <div className="flex justify-end">
-          <Button type="submit" disabled={busy} aria-busy={submit.isPending || undefined}>
+          <Button
+            type="submit"
+            disabled={busy || scanBlocked}
+            aria-busy={submit.isPending || undefined}
+          >
             <Icon name="Send" size={16} aria-hidden="true" />
             {resubmit ? 'Teslimi güncelle' : 'Teslim et'}
           </Button>

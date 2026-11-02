@@ -1,16 +1,18 @@
-import { useQueries, useQuery } from '@tanstack/react-query'
-import { useEffect, useState } from 'react'
+import { focusManager, useQueries, useQueryClient, type Query } from '@tanstack/react-query'
+import { useCallback, useEffect, useState } from 'react'
 
 import type { ApiError } from '@kampus/api-client/errors.ts'
 
 import { runRequest } from './api-result.ts'
 import {
-  FILE_WAIT_LIMIT_MS,
   fetchFileUrl,
   fileItemKey,
   filePollInterval,
+  createWaitDeadlines,
   fileProcessing,
   getFileRequest,
+  queryReads,
+  type FileProcessing,
   type StoredFile,
 } from './files.ts'
 import { useKampusClient } from './kampus-context.ts'
@@ -42,37 +44,110 @@ export function useFileUrlFetcher() {
 }
 
 /**
- * Yeni yüklenen dosyanın işlenmesini izler (`GET /files/:id`; ADR 0003 karar 10): dosya `ready`
- * olana ya da reddedilene (404) kadar `FILE_POLL_INTERVAL_MS` aralıkla yeniden okunur. Yoklama
- * sekme gizliyken durur, görününce sürer. Bekleme `FILE_WAIT_LIMIT_MS` sürerse yoklama durur ve
- * durum `timed_out` olur; çağıran `fileId`'yi saklayıp kullanıcıya sakin bir ileti gösterir,
- * `fileId` boşaltılıp aynı değerle yeniden verilince bekleme yeniden başlar (yeniden yükleme
- * gerekmez). `fileId` boşken istek atılmaz.
+ * Bekleme üst süresi (`FILE_WAIT_LIMIT_MS`) yalnız sekme görünürken işler (`focusManager`: webde
+ * `visibilitychange`, mobilde uygulama durumu). Listeye giren kimliğin saati başlar, listeden
+ * çıkanın saati silinir; `restart` saati ve geri çekilme sayacını sıfırlar. Mantık
+ * `createWaitDeadlines`'tadır (saf, `node --test` ile sınanır); kanca yalnız bağlar.
+ */
+function useWaitDeadlines(fileIds: readonly string[]) {
+  const [expired, setExpired] = useState<readonly string[]>([])
+  const [deadlines] = useState(() =>
+    createWaitDeadlines({
+      now: () => Date.now(),
+      visible: () => focusManager.isFocused(),
+      subscribe: (listener) => focusManager.subscribe(listener),
+      setTimer: (run, ms) => setTimeout(run, ms),
+      clearTimer: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>),
+      onExpired: setExpired,
+    }),
+  )
+  const idsKey = fileIds.join('\n')
+  useEffect(() => {
+    deadlines.sync(idsKey === '' ? [] : idsKey.split('\n'))
+  }, [deadlines, idsKey])
+  // Kalkınca zamanlayıcı ve abonelik bırakılır (Strict Mode'da yeniden bağlanınca `sync` yeniden abone olur).
+  useEffect(() => () => deadlines.dispose(), [deadlines])
+  return { expired, attempt: deadlines.attempt, restart: deadlines.restart }
+}
+
+export interface FileProcessingView {
+  fileId: string
+  file: StoredFile | undefined
+  state: FileProcessing
+  /** Son okuma hatası (`ApiError` ya da ağ hatası). */
+  error: Error | null
+}
+
+/**
+ * Yeni yüklenen dosyaların işlenmesini izler (`GET /files/:id`; ADR 0003 karar 8, 10; OG-987):
+ * dosya `ready` olana, reddedilene (422 `file_rejected`), bulunamayana (404) ya da tarayıcısız
+ * ortamda `pending` görünene kadar geri çekilen aralıkla (`filePollInterval`) yeniden okunur.
+ * Yoklama sekme gizliyken durur, görününce sürer; üst süre de yalnız görünür sürede işler. Bekleme
+ * `FILE_WAIT_LIMIT_MS` sürerse yoklama durur ve durum `timed_out` olur; `retry(fileId)` yeniden
+ * yükleme gerektirmeden beklemeyi ve geri çekilmeyi (ilk aralık 1,5 sn) baştan başlatır. Sıra
+ * `fileIds` sırasıdır; boş kimlik atlanır.
+ */
+export function useFilesProcessing(fileIds: readonly string[]) {
+  const client = useKampusClient()
+  const queryClient = useQueryClient()
+  const institutionId = useActiveInstitutionId()
+  const ids = [...new Set(fileIds.filter((id) => id !== ''))]
+  const deadlines = useWaitDeadlines(ids)
+  const queries = useQueries({
+    queries: ids.map((fileId) => {
+      const timedOut = deadlines.expired.includes(fileId)
+      return {
+        queryKey: institutionKey(institutionId, ...fileItemKey(fileId)),
+        queryFn: async ({ signal }: { signal: AbortSignal }) =>
+          (await runRequest(() => getFileRequest(client, fileId, signal))).data,
+        enabled: institutionId !== null,
+        staleTime: 0,
+        refetchInterval: (query: Query<StoredFile, ApiError, StoredFile, readonly unknown[]>) =>
+          filePollInterval(
+            query.state.data,
+            query.state.error,
+            timedOut,
+            // Yeniden denemeden ya da yeniden izlemeden bu yana yapılan okuma sayısı.
+            deadlines.attempt(fileId, queryReads(query.state)),
+          ),
+        refetchIntervalInBackground: false,
+      }
+    }),
+  })
+  const files: FileProcessingView[] = ids.map((fileId, index) => {
+    const query = queries[index]
+    return {
+      fileId,
+      file: query?.data,
+      state: fileProcessing(query?.data, query?.error, deadlines.expired.includes(fileId)),
+      error: query?.error ?? null,
+    }
+  })
+  const { restart } = deadlines
+  const retry = useCallback(
+    (fileId: string) => {
+      restart(fileId)
+      void queryClient.refetchQueries({
+        queryKey: institutionKey(institutionId, ...fileItemKey(fileId)),
+        exact: true,
+      })
+    },
+    [restart, queryClient, institutionId],
+  )
+  return { files, retry }
+}
+
+/**
+ * Tek dosyanın işlenmesi (`useFilesProcessing`; konuşma kaydı, IST-051). `fileId` boşken istek
+ * atılmaz ve durum `processing`; `fileId` boşaltılıp aynı değerle yeniden verilince bekleme
+ * yeniden başlar (yeniden yükleme gerekmez).
  */
 export function useFileProcessing(fileId: string) {
-  const client = useKampusClient()
-  const institutionId = useActiveInstitutionId()
-  const [expiredFor, setExpiredFor] = useState<string | null>(null)
-  const timedOut = fileId !== '' && expiredFor === fileId
-  useEffect(() => {
-    setExpiredFor(null)
-    if (fileId === '') return undefined
-    const timer = setTimeout(() => setExpiredFor(fileId), FILE_WAIT_LIMIT_MS)
-    return () => clearTimeout(timer)
-  }, [fileId])
-  const query = useQuery<StoredFile, ApiError>({
-    queryKey: institutionKey(institutionId, ...fileItemKey(fileId)),
-    queryFn: async ({ signal }) =>
-      (await runRequest(() => getFileRequest(client, fileId, signal))).data,
-    enabled: institutionId !== null && fileId !== '',
-    staleTime: 0,
-    refetchInterval: (current) =>
-      filePollInterval(current.state.data, current.state.error, timedOut),
-    refetchIntervalInBackground: false,
-  })
+  const { files } = useFilesProcessing(fileId === '' ? [] : [fileId])
+  const view = files[0]
   return {
-    file: query.data,
-    state: fileId === '' ? ('waiting' as const) : fileProcessing(query.data, query.error, timedOut),
-    error: query.error,
+    file: view?.file,
+    state: view?.state ?? ('processing' as const),
+    error: view?.error ?? null,
   }
 }

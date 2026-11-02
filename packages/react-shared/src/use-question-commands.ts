@@ -3,6 +3,7 @@ import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
+import { FILE_REJECTED_MESSAGE, FILE_SCAN_WAIT_MESSAGE } from './files.ts'
 import { useApiCommand } from './use-api-command.ts'
 
 // Öğretmenime Sor yazma komutları (`POST /questions`, `POST /questions/:id/answers`,
@@ -41,6 +42,9 @@ export const QUESTION_CHANGED_MESSAGE =
 
 export const QUESTION_MESSAGES = {
   version_conflict: QUESTION_CHANGED_MESSAGE,
+  // Fotoğraf bağlama (DOM-ILT-094; ADR 0003 karar 8): taranan ve reddedilen fotoğraf.
+  file_not_ready: FILE_SCAN_WAIT_MESSAGE,
+  file_rejected: FILE_REJECTED_MESSAGE,
 } as const satisfies CommandMessages
 
 const WITHDRAW_BODY: WithdrawQuestionBody = { withdrawn: true }

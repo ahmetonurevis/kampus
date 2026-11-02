@@ -21,6 +21,7 @@ import type { InstitutionType } from '@kampus/school-core/modules/collection-mod
 import type { Role } from '@kampus/school-core/modules/navigation.ts'
 
 import type { CommandMessages } from './commands.ts'
+import { FILE_REJECTED_MESSAGE } from './files.ts'
 
 /**
  * İçerik havuzu ekranının saf mantığı (docs/domain/kaynak-platformu.md): liste sorgusu, personel
@@ -125,8 +126,10 @@ export const RESOURCE_MESSAGES = {
   // Türkçe iletisi gösterilir.
   ...RESOURCE_FILE_MESSAGES,
   // Dosya taranırken (`processing`) ya da tarayıcı kapalı ortamda (`pending`, `FILE_SCANNER=off`)
-  // eklenmek istenirse; ödev ve soru ekindeki gibi sakin ileti. Tarama `ready` yapınca eklenir.
+  // eklenmek istenirse sakin ileti; form taranan dosyada kaydı zaten kilitler (OG-987). Taramada
+  // reddedilen dosya (Sabah kararı 42) kaldırılıp başkası yüklenir.
   file_not_ready: RESOURCE_FILE_NOT_READY_MESSAGE,
+  file_rejected: FILE_REJECTED_MESSAGE,
 } as const satisfies CommandMessages
 
 export const RESOURCE_FILE_GONE_MESSAGE =

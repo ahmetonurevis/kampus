@@ -1,9 +1,10 @@
 import { useMemo } from 'react'
-import { useSearchParams } from 'react-router'
+import { useLocation, useSearchParams } from 'react-router'
 import { isUnreadableCollectionError } from '@kampus/react-shared/collections.ts'
 import { average } from '@kampus/school-core/lib/format.ts'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { keptHistoryState } from '@/lib/history-state.ts'
 import { combineStates, DashboardGrid, ListCard } from '../dashboard/DashboardParts.tsx'
 import { StatGrid } from './AcademicParts.tsx'
 import type { AcademicLookups } from './academic-rows.ts'
@@ -39,6 +40,7 @@ type AnalysisProps = {
  */
 export function GradeAnalysis({ scope, classId, lookups }: AnalysisProps) {
   const [params, setParams] = useSearchParams()
+  const { state: historyState } = useLocation()
   const grades = useCoreAll('grades', { filters: scope })
   const records = useMemo(() => grades.data?.map((row) => row.record) ?? NONE, [grades.data])
   const bySubject = useMemo(
@@ -84,7 +86,8 @@ export function GradeAnalysis({ scope, classId, lookups }: AnalysisProps) {
         else next.set('ders', value)
         return next
       },
-      { preventScrollReset: true },
+      // `state.from` (geri dönüş adresi) seçimle silinmez; panel işaretçisi taşınmaz.
+      { preventScrollReset: true, state: keptHistoryState(historyState) },
     )
 
   const state = combineStates(grades)

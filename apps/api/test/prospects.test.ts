@@ -2263,4 +2263,114 @@ describe('aday uçları', () => {
       )
     })
   })
+
+  // --- Kesin kayıtta burs (DOM-FIN-025) --------------------------------------------------------
+
+  const PROGRAM = {
+    academicYear: FIXED_NOW.getUTCFullYear(),
+    name: 'Başarı Bursu',
+    conditions: 'Sınav puanı 90 ve üstü.',
+    terminationConditions: 'Disiplin cezası alan öğrencinin bursu kesilir.',
+    durationNote: 'Bir eğitim yılı',
+    percentBasisPoints: 6000,
+    capacity: 1,
+  }
+  async function scholarshipProgram(cookie: string, notify = true) {
+    const made = await send('POST', '/api/v1/finance/scholarship-programs', cookie, PROGRAM)
+    assert.equal(made.statusCode, 201, made.body)
+    const { id, version } = made.json().data as { id: string; version: number }
+    if (notify) {
+      const noticed = await send(
+        'POST',
+        `/api/v1/finance/scholarship-programs/${id}/notify`,
+        cookie,
+        { notifiedDate: '2026-09-01' },
+        ifMatch(version),
+      )
+      assert.equal(noticed.statusCode, 200, noticed.body)
+    }
+    return id
+  }
+
+  test('DOM-FIN-021, DOM-FIN-025: yönetici kesin kayıtta burs atar; net düşer, atama aynı işlemde yazılır, denetimde tutar yok', async () => {
+    const a = await pricedInstitution()
+    const programId = await scholarshipProgram(a.adminCookie)
+    const done = await enroll(
+      a.adminCookie,
+      'pr1',
+      { ...ENROLLMENT, scholarshipProgramId: programId },
+      await versionOf(a.id, 'pr1'),
+    )
+    assert.equal(done.statusCode, 201, done.body)
+    const studentId = done.json().data.entity.id as string
+    const amount = Math.floor((TUITION.amountCents * 6000) / 10_000)
+    const { contracts, invoices } = await enrollmentRows(a.id)
+    const contract = contracts.find((row) => row.data.studentId === studentId)
+    assert.deepEqual(contract?.data.scholarship, { programId, amountCents: amount })
+    assert.equal(contract?.data.netCents, TUITION.amountCents - amount)
+    assert.equal(
+      invoices
+        .filter((row) => row.data.studentId === studentId)
+        .reduce((sum, row) => sum + Number(row.data.amount), 0),
+      TUITION.amountCents - amount,
+    )
+    const awards = await a_get(
+      a.adminCookie,
+      `/api/v1/finance/scholarship-awards?programId=${programId}`,
+    )
+    assert.equal(awards.statusCode, 200, awards.body)
+    assert.equal(awards.json().meta.total, 1)
+    assert.equal(awards.json().data[0].studentId, studentId)
+    assert.equal(awards.json().data[0].amountCents, amount)
+    const list = await a_get(a.adminCookie, '/api/v1/finance/scholarship-programs')
+    assert.equal(list.json().data[0].awardedCount, 1)
+    // Kontenjan bir kişilik: ikinci aday 409, kayıt yazılmaz.
+    await noEnrollment(a.id, 'pr4', async () => {
+      assertError(
+        await enroll(
+          a.adminCookie,
+          'pr4',
+          {
+            ...ENROLLMENT,
+            identity: { ...ENROLLMENT.identity, number: '11111111110' },
+            scholarshipProgramId: programId,
+          },
+          await versionOf(a.id, 'pr4'),
+        ),
+        409,
+        'scholarship_capacity_full',
+      )
+    })
+  })
+
+  test('DOM-FIN-025, DOM-FIN-052: ön büro burs atayamaz; bildirilmemiş ve olmayan program reddedilir; kayıt yazılmaz', async () => {
+    const a = await pricedInstitution()
+    const version = await versionOf(a.id, 'pr1')
+    const notified = await scholarshipProgram(a.adminCookie)
+    const body = (scholarshipProgramId: string) => ({ ...ENROLLMENT, scholarshipProgramId })
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(await frontDesk(a.id), 'pr1', body(notified), version),
+        422,
+        'scholarship_approval_required',
+      )
+      assertError(
+        await enroll(a.adminCookie, 'pr1', body('00000000-0000-4000-8000-00000000000a'), version),
+        404,
+        'not_found',
+      )
+      assertError(await enroll(a.adminCookie, 'pr1', body('gecersiz'), version), 400)
+    })
+    const unnotified = await send('POST', '/api/v1/finance/scholarship-programs', a.adminCookie, {
+      ...PROGRAM,
+      name: 'Bildirilmemiş Burs',
+    })
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(a.adminCookie, 'pr1', body(unnotified.json().data.id), version),
+        422,
+        'scholarship_program_not_notified',
+      )
+    })
+  })
 })

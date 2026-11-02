@@ -6,6 +6,11 @@ import { ADULT_AGE, ageOn, isCalendarDay } from './age.ts'
 import { daySchema, requiredText, type ContractTerms, type MakeId } from './domain.ts'
 import { installmentAmounts } from './payments.ts'
 import { DomainError } from './errors.ts'
+import {
+  requireAwardableProgram,
+  scholarshipAmount,
+  type ScholarshipProgram,
+} from './finance-scholarships.ts'
 import { dayKey } from './format.ts'
 import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 import { renewalQuote, workflowSchemas } from './school-workflows.ts'
@@ -108,6 +113,8 @@ export const enrollProspectSchema = z.strictObject({
     .optional(),
   /** Başka kampüsün sınıfı bilinçli seçildi; verilmezse sınıf adayın kampüsünde olmalıdır. */
   allowOtherCampus: z.boolean().optional(),
+  /** Atanacak burs programı (DOM-FIN-025); yalnız yönetici. */
+  scholarshipProgramId: z.uuid('Burs programı geçersiz.').optional(),
 })
 export type EnrollProspectInput = z.input<typeof enrollProspectSchema>
 
@@ -317,6 +324,9 @@ export interface EnrollmentContext {
   approvedByUserId: string
   canApproveCapException: boolean
   today: string
+  /** Gövdedeki burs programı ve atanmış burslu sayısı; servis yükler (DOM-FIN-025). */
+  scholarshipProgram?: ScholarshipProgram | null
+  scholarshipAwardedCount?: number
 }
 
 /**
@@ -426,12 +436,30 @@ export function enrollProspectWithTariff(
     extras: data.extras,
     canApproveCapException: context.canApproveCapException,
   })
+  // Burs indirim değildir, tavana girmez; indirimlerden sonra kalan neti aşamaz (DOM-FIN-021, -025).
+  const program =
+    data.scholarshipProgramId === undefined
+      ? null
+      : requireAwardableProgram(context.scholarshipProgram ?? null, {
+          academicYear: context.academicYear,
+          awardedCount: context.scholarshipAwardedCount ?? 0,
+          canApprove: context.canApproveCapException,
+        })
+  const scholarshipCents =
+    program === null ? 0 : scholarshipAmount(program, price.grossCents, price.netCents)
+  if (program !== null && scholarshipCents === 0)
+    throw new DomainError(
+      'scholarship_nothing_to_cover',
+      'İndirimlerden sonra burs uygulanacak tutar kalmıyor.',
+      { path: ['scholarshipProgramId'] },
+    )
+  const netCents = price.netCents - scholarshipCents
   const result = applyEnrollment(
     state,
     {
       prospectId,
       classId: data.classId,
-      totalCents: price.netCents,
+      totalCents: netCents,
       count: data.installmentCount,
       startDate: data.firstDueDate,
       contractTitle:
@@ -457,11 +485,14 @@ export function enrollProspectWithTariff(
         tariffId: context.tariff.id,
         tariffVersion: context.tariff.versionNumber,
         grossCents: price.grossCents,
-        netCents: price.netCents,
+        netCents,
         discounts: price.discounts,
         extras: price.extras,
         approvedByUserId: context.approvedByUserId,
         payer: data.guardian === null ? 'student' : 'guardian',
+        ...(program === null
+          ? {}
+          : { scholarship: { programId: program.id, amountCents: scholarshipCents } }),
       },
       guardianContact: !adult,
       ...(data.studentContact === undefined ? {} : { studentContact: data.studentContact }),
@@ -476,6 +507,9 @@ export function enrollProspectWithTariff(
     academicYear: context.academicYear,
     /** Arşivlenecek eski kimlik satırının öğrencisi. */
     supersededStudentId: context.identityHolderId,
+    /** Yazılacak burs ataması; servis aynı işlemde yazar (DOM-FIN-025). */
+    scholarshipAward:
+      program === null ? null : { programId: program.id, amountCents: scholarshipCents },
     /**
      * Yazılacak veli–öğrenci bağı (DOM-ILT-070, DOM-ILT-074): veli varsa sözleşmenin ödeyicisidir
      * (`payer: 'guardian'`), velayet sahibi sayılır; yetişkin kursiyerin kendisi veli değildir,
@@ -578,6 +612,8 @@ export function enrollmentFormSchema(
        * yalnız bu işaretliyken gider (yoksa 422 `class_campus_mismatch`).
        */
       confirmOtherCampus: z.boolean(),
+      /** Atanacak burs programı (yalnız yönetici, DOM-FIN-025); boşsa burs yoktur. */
+      scholarshipProgramId: z.string().optional(),
     })
     .superRefine((value, context) => {
       const issue = (path: string, message: string) =>
@@ -657,6 +693,7 @@ export function enrollmentFormToBody(
     discounts: values.discounts,
     extras: values.extras,
     ...(values.confirmOtherCampus ? { allowOtherCampus: true } : {}),
+    ...(values.scholarshipProgramId ? { scholarshipProgramId: values.scholarshipProgramId } : {}),
     identity: {
       kind: values.identityKind,
       number: values.identityNumber,
@@ -864,7 +901,11 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
     isActive: true,
     progress: 0,
   }
-  const amounts = installmentAmounts(data.totalCents, data.count)
+  // Tam bursta öğrenim taksiti açılmaz; yalnız burslu kayıtta sıfır tutara izin verilir.
+  const amounts =
+    data.totalCents === 0 && data.terms?.scholarship !== undefined
+      ? []
+      : installmentAmounts(data.totalCents, data.count)
   const start = new Date(`${data.startDate}T09:00:00.000Z`)
   if (Number.isNaN(+start) || dayKey(start) !== data.startDate)
     throw new DomainError('invalid_payment_date', 'Geçerli bir ödeme tarihi girin.')

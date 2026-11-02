@@ -1,5 +1,5 @@
 {
-  "id": "d01dd89b-c070-49e9-9c71-6bec3b847485",
+  "id": "825368dd-c3dd-4ab0-a23d-c84a1764aa6f",
   "prevId": "3cfe4742-8784-4fa5-b4a1-db252cf43a65",
   "version": "7",
   "dialect": "postgresql",
@@ -102,10 +102,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"academic_terms\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "academic_terms_year_idx": {
           "name": "academic_terms_year_idx",
@@ -130,39 +130,39 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "academic_terms_institution_id_institutions_id_fk": {
           "name": "academic_terms_institution_id_institutions_id_fk",
           "tableFrom": "academic_terms",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "academic_terms_year_fkey": {
           "name": "academic_terms_year_fkey",
           "tableFrom": "academic_terms",
+          "tableTo": "academic_years",
           "columnsFrom": [
             "institution_id",
             "start_year"
           ],
-          "tableTo": "academic_years",
           "columnsTo": [
             "institution_id",
             "start_year"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -274,25 +274,25 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"academic_years\".\"status\" = 'active' and \"academic_years\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "academic_years_institution_id_institutions_id_fk": {
           "name": "academic_years_institution_id_institutions_id_fk",
           "tableFrom": "academic_years",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -429,15 +429,15 @@
             },
             {
               "expression": "\"created_at\" desc",
-              "isExpression": true,
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "audit_log_actor_idx": {
           "name": "audit_log_actor_idx",
@@ -456,30 +456,30 @@
             },
             {
               "expression": "\"created_at\" desc",
-              "isExpression": true,
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "audit_log_institution_id_institutions_id_fk": {
           "name": "audit_log_institution_id_institutions_id_fk",
           "tableFrom": "audit_log",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -589,24 +589,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "accounts_user_id_users_id_fk": {
           "name": "accounts_user_id_users_id_fk",
           "tableFrom": "accounts",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -675,10 +675,10 @@
       "uniqueConstraints": {
         "institutions_slug_unique": {
           "name": "institutions_slug_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "slug"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -752,9 +752,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "invitations_email_idx": {
           "name": "invitations_email_idx",
@@ -767,37 +767,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "invitations_institution_id_institutions_id_fk": {
           "name": "invitations_institution_id_institutions_id_fk",
           "tableFrom": "invitations",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "invitations_inviter_id_users_id_fk": {
           "name": "invitations_inviter_id_users_id_fk",
           "tableFrom": "invitations",
+          "tableTo": "users",
           "columnsFrom": [
             "inviter_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -854,9 +854,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "memberships_userId_idx": {
           "name": "memberships_userId_idx",
@@ -869,37 +869,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "memberships_institution_id_institutions_id_fk": {
           "name": "memberships_institution_id_institutions_id_fk",
           "tableFrom": "memberships",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "memberships_user_id_users_id_fk": {
           "name": "memberships_user_id_users_id_fk",
           "tableFrom": "memberships",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -980,34 +980,34 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "sessions_user_id_users_id_fk": {
           "name": "sessions_user_id_users_id_fk",
           "tableFrom": "sessions",
+          "tableTo": "users",
           "columnsFrom": [
             "user_id"
           ],
-          "tableTo": "users",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
       "uniqueConstraints": {
         "sessions_token_unique": {
           "name": "sessions_token_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "token"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1070,10 +1070,10 @@
       "uniqueConstraints": {
         "users_email_unique": {
           "name": "users_email_unique",
+          "nullsNotDistinct": false,
           "columns": [
             "email"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -1135,9 +1135,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {},
@@ -1245,10 +1245,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"coordinator_duties\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "coordinator_duties_membership_idx": {
           "name": "coordinator_duties_membership_idx",
@@ -1267,37 +1267,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "coordinator_duties_institution_id_institutions_id_fk": {
           "name": "coordinator_duties_institution_id_institutions_id_fk",
           "tableFrom": "coordinator_duties",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "coordinator_duties_membership_id_memberships_id_fk": {
           "name": "coordinator_duties_membership_id_memberships_id_fk",
           "tableFrom": "coordinator_duties",
+          "tableTo": "memberships",
           "columnsFrom": [
             "membership_id"
           ],
-          "tableTo": "memberships",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -1506,10 +1506,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"courses\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "courses_e_ozel_program_key": {
           "name": "courses_e_ozel_program_key",
@@ -1528,10 +1528,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"courses\".\"archived_at\" is null and \"courses\".\"e_ozel_program_key\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "courses_next_course_idx": {
           "name": "courses_next_course_idx",
@@ -1550,39 +1550,39 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "courses_institution_id_institutions_id_fk": {
           "name": "courses_institution_id_institutions_id_fk",
           "tableFrom": "courses",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "courses_next_course_fkey": {
           "name": "courses_next_course_fkey",
           "tableFrom": "courses",
+          "tableTo": "courses",
           "columnsFrom": [
             "institution_id",
             "next_course_id"
           ],
-          "tableTo": "courses",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -1779,9 +1779,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "fee_tariffs_draft_key": {
           "name": "fee_tariffs_draft_key",
@@ -1800,10 +1800,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"fee_tariffs\".\"status\" = 'draft'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "fee_tariffs_published_key": {
           "name": "fee_tariffs_published_key",
@@ -1822,10 +1822,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"fee_tariffs\".\"status\" = 'published'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "fee_tariffs_year_idx": {
           "name": "fee_tariffs_year_idx",
@@ -1844,24 +1844,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "fee_tariffs_institution_id_institutions_id_fk": {
           "name": "fee_tariffs_institution_id_institutions_id_fk",
           "tableFrom": "fee_tariffs",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -2040,9 +2040,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "files_attached_idx": {
           "name": "files_attached_idx",
@@ -2067,10 +2067,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"files\".\"attached_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "files_unattached_idx": {
           "name": "files_unattached_idx",
@@ -2089,10 +2089,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"files\".\"attached_id\" is null and \"files\".\"status\" <> 'deleted'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "files_data_subject_idx": {
           "name": "files_data_subject_idx",
@@ -2111,10 +2111,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"files\".\"data_subject_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "files_uploaded_by_idx": {
           "name": "files_uploaded_by_idx",
@@ -2133,24 +2133,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "files_institution_id_institutions_id_fk": {
           "name": "files_institution_id_institutions_id_fk",
           "tableFrom": "files",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -2196,6 +2196,360 @@
         "files_version_check": {
           "name": "files_version_check",
           "value": "\"files\".\"version\" >= 1"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.scholarship_awards": {
+      "name": "scholarship_awards",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "program_id": {
+          "name": "program_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "student_id": {
+          "name": "student_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "academic_year": {
+          "name": "academic_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "awarded_by_user_id": {
+          "name": "awarded_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mebbis_recorded_date": {
+          "name": "mebbis_recorded_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "scholarship_awards_student_year_key": {
+          "name": "scholarship_awards_student_year_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "student_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "academic_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"scholarship_awards\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "scholarship_awards_program_idx": {
+          "name": "scholarship_awards_program_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "program_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "scholarship_awards_institution_id_institutions_id_fk": {
+          "name": "scholarship_awards_institution_id_institutions_id_fk",
+          "tableFrom": "scholarship_awards",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "scholarship_awards_program_fkey": {
+          "name": "scholarship_awards_program_fkey",
+          "tableFrom": "scholarship_awards",
+          "tableTo": "scholarship_programs",
+          "columnsFrom": [
+            "institution_id",
+            "program_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "scholarship_awards_pkey": {
+          "name": "scholarship_awards_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "scholarship_awards_amount_check": {
+          "name": "scholarship_awards_amount_check",
+          "value": "\"scholarship_awards\".\"amount_cents\" > 0"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.scholarship_programs": {
+      "name": "scholarship_programs",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "academic_year": {
+          "name": "academic_year",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "conditions": {
+          "name": "conditions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "termination_conditions": {
+          "name": "termination_conditions",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "duration_note": {
+          "name": "duration_note",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "percent_basis_points": {
+          "name": "percent_basis_points",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "amount_cents": {
+          "name": "amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "capacity": {
+          "name": "capacity",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "notified_date": {
+          "name": "notified_date",
+          "type": "date",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "scholarship_programs_year_name_key": {
+          "name": "scholarship_programs_year_name_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "academic_year",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "name",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"scholarship_programs\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "scholarship_programs_institution_id_institutions_id_fk": {
+          "name": "scholarship_programs_institution_id_institutions_id_fk",
+          "tableFrom": "scholarship_programs",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "scholarship_programs_pkey": {
+          "name": "scholarship_programs_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "scholarship_programs_value_check": {
+          "name": "scholarship_programs_value_check",
+          "value": "(\"scholarship_programs\".\"percent_basis_points\" is null) <> (\"scholarship_programs\".\"amount_cents\" is null)"
+        },
+        "scholarship_programs_percent_check": {
+          "name": "scholarship_programs_percent_check",
+          "value": "\"scholarship_programs\".\"percent_basis_points\" is null or \"scholarship_programs\".\"percent_basis_points\" between 1 and 10000"
+        },
+        "scholarship_programs_amount_check": {
+          "name": "scholarship_programs_amount_check",
+          "value": "\"scholarship_programs\".\"amount_cents\" is null or \"scholarship_programs\".\"amount_cents\" > 0"
+        },
+        "scholarship_programs_capacity_check": {
+          "name": "scholarship_programs_capacity_check",
+          "value": "\"scholarship_programs\".\"capacity\" > 0"
         }
       },
       "isRLSEnabled": false
@@ -2266,24 +2620,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "idempotency_keys_institution_id_institutions_id_fk": {
           "name": "idempotency_keys_institution_id_institutions_id_fk",
           "tableFrom": "idempotency_keys",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -2365,15 +2719,15 @@
         "institution_settings_institution_id_institutions_id_fk": {
           "name": "institution_settings_institution_id_institutions_id_fk",
           "tableFrom": "institution_settings",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -2425,8 +2779,8 @@
           "primaryKey": false,
           "notNull": true,
           "generated": {
-            "type": "stored",
-            "as": "'students'"
+            "as": "'students'",
+            "type": "stored"
           }
         },
         "status": {
@@ -2493,10 +2847,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"language_group_members\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "language_group_members_student_idx": {
           "name": "language_group_members_student_idx",
@@ -2515,56 +2869,56 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "language_group_members_institution_id_institutions_id_fk": {
           "name": "language_group_members_institution_id_institutions_id_fk",
           "tableFrom": "language_group_members",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "language_group_members_group_fkey": {
           "name": "language_group_members_group_fkey",
           "tableFrom": "language_group_members",
+          "tableTo": "language_groups",
           "columnsFrom": [
             "institution_id",
             "group_id"
           ],
-          "tableTo": "language_groups",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "language_group_members_student_fkey": {
           "name": "language_group_members_student_fkey",
           "tableFrom": "language_group_members",
+          "tableTo": "records",
           "columnsFrom": [
             "institution_id",
             "student_collection",
             "student_id"
           ],
-          "tableTo": "records",
           "columnsTo": [
             "institution_id",
             "collection",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -2708,10 +3062,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"language_group_waitlist\".\"archived_at\" is null and \"language_group_waitlist\".\"student_id\" is not null and \"language_group_waitlist\".\"status\" in ('waiting', 'offered')",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "language_group_waitlist_prospect_key": {
           "name": "language_group_waitlist_prospect_key",
@@ -2736,10 +3090,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"language_group_waitlist\".\"archived_at\" is null and \"language_group_waitlist\".\"prospect_id\" is not null and \"language_group_waitlist\".\"status\" in ('waiting', 'offered')",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "language_group_waitlist_course_idx": {
           "name": "language_group_waitlist_course_idx",
@@ -2764,9 +3118,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "language_group_waitlist_group_idx": {
           "name": "language_group_waitlist_group_idx",
@@ -2785,9 +3139,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "language_group_waitlist_offer_group_idx": {
           "name": "language_group_waitlist_offer_group_idx",
@@ -2806,69 +3160,69 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "language_group_waitlist_institution_id_institutions_id_fk": {
           "name": "language_group_waitlist_institution_id_institutions_id_fk",
           "tableFrom": "language_group_waitlist",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "language_group_waitlist_course_fkey": {
           "name": "language_group_waitlist_course_fkey",
           "tableFrom": "language_group_waitlist",
+          "tableTo": "courses",
           "columnsFrom": [
             "institution_id",
             "course_id"
           ],
-          "tableTo": "courses",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "language_group_waitlist_group_fkey": {
           "name": "language_group_waitlist_group_fkey",
           "tableFrom": "language_group_waitlist",
+          "tableTo": "language_groups",
           "columnsFrom": [
             "institution_id",
             "group_id"
           ],
-          "tableTo": "language_groups",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "language_group_waitlist_offer_group_fkey": {
           "name": "language_group_waitlist_offer_group_fkey",
           "tableFrom": "language_group_waitlist",
+          "tableTo": "language_groups",
           "columnsFrom": [
             "institution_id",
             "offer_group_id"
           ],
-          "tableTo": "language_groups",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -3062,10 +3416,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"language_groups\".\"archived_at\" is null and \"language_groups\".\"state\" <> 'cancelled'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "language_groups_course_idx": {
           "name": "language_groups_course_idx",
@@ -3084,9 +3438,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "language_groups_teacher_idx": {
           "name": "language_groups_teacher_idx",
@@ -3105,9 +3459,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "language_groups_merged_into_idx": {
           "name": "language_groups_merged_into_idx",
@@ -3126,69 +3480,69 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "language_groups_institution_id_institutions_id_fk": {
           "name": "language_groups_institution_id_institutions_id_fk",
           "tableFrom": "language_groups",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "language_groups_course_fkey": {
           "name": "language_groups_course_fkey",
           "tableFrom": "language_groups",
+          "tableTo": "courses",
           "columnsFrom": [
             "institution_id",
             "course_id"
           ],
-          "tableTo": "courses",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "language_groups_teacher_fkey": {
           "name": "language_groups_teacher_fkey",
           "tableFrom": "language_groups",
+          "tableTo": "memberships",
           "columnsFrom": [
             "institution_id",
             "teacher_membership_id"
           ],
-          "tableTo": "memberships",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "set null"
+          "onDelete": "set null",
+          "onUpdate": "no action"
         },
         "language_groups_merged_into_fkey": {
           "name": "language_groups_merged_into_fkey",
           "tableFrom": "language_groups",
+          "tableTo": "language_groups",
           "columnsFrom": [
             "institution_id",
             "merged_into_group_id"
           ],
-          "tableTo": "language_groups",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -3307,28 +3661,28 @@
         "membership_links_institution_id_institutions_id_fk": {
           "name": "membership_links_institution_id_institutions_id_fk",
           "tableFrom": "membership_links",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         },
         "membership_links_membership_id_memberships_id_fk": {
           "name": "membership_links_membership_id_memberships_id_fk",
           "tableFrom": "membership_links",
+          "tableTo": "memberships",
           "columnsFrom": [
             "membership_id"
           ],
-          "tableTo": "memberships",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -3432,25 +3786,25 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"bank_accounts\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "bank_accounts_institution_id_institutions_id_fk": {
           "name": "bank_accounts_institution_id_institutions_id_fk",
           "tableFrom": "bank_accounts",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -3541,26 +3895,26 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "payment_allocations_payment_fkey": {
           "name": "payment_allocations_payment_fkey",
           "tableFrom": "payment_allocations",
+          "tableTo": "payments",
           "columnsFrom": [
             "institution_id",
             "payment_id"
           ],
-          "tableTo": "payments",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -3633,15 +3987,15 @@
         "payment_settings_institution_id_institutions_id_fk": {
           "name": "payment_settings_institution_id_institutions_id_fk",
           "tableFrom": "payment_settings",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {},
@@ -3803,9 +4157,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "payments_reference_key": {
           "name": "payments_reference_key",
@@ -3824,10 +4178,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"payments\".\"reference\" is not null and \"payments\".\"reversed_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "payments_receipt_key": {
           "name": "payments_receipt_key",
@@ -3852,9 +4206,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "payments_student_paid_at_idx": {
           "name": "payments_student_paid_at_idx",
@@ -3879,9 +4233,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "payments_paid_at_idx": {
           "name": "payments_paid_at_idx",
@@ -3900,39 +4254,39 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "payments_institution_id_institutions_id_fk": {
           "name": "payments_institution_id_institutions_id_fk",
           "tableFrom": "payments",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "payments_bank_account_fkey": {
           "name": "payments_bank_account_fkey",
           "tableFrom": "payments",
+          "tableTo": "bank_accounts",
           "columnsFrom": [
             "institution_id",
             "bank_account_id"
           ],
-          "tableTo": "bank_accounts",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -4134,10 +4488,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"consents\".\"withdrawn_at\" is null and \"consents\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "consents_subject_idx": {
           "name": "consents_subject_idx",
@@ -4168,9 +4522,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "consents_granted_by_idx": {
           "name": "consents_granted_by_idx",
@@ -4189,9 +4543,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "consents_text_idx": {
           "name": "consents_text_idx",
@@ -4210,39 +4564,39 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "consents_institution_id_institutions_id_fk": {
           "name": "consents_institution_id_institutions_id_fk",
           "tableFrom": "consents",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "consents_text_fkey": {
           "name": "consents_text_fkey",
           "tableFrom": "consents",
+          "tableTo": "privacy_notices",
           "columnsFrom": [
             "institution_id",
             "text_id"
           ],
-          "tableTo": "privacy_notices",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -4392,9 +4746,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "notice_acknowledgements_notice_idx": {
           "name": "notice_acknowledgements_notice_idx",
@@ -4413,39 +4767,39 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "notice_acknowledgements_institution_id_institutions_id_fk": {
           "name": "notice_acknowledgements_institution_id_institutions_id_fk",
           "tableFrom": "notice_acknowledgements",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "notice_acknowledgements_notice_fkey": {
           "name": "notice_acknowledgements_notice_fkey",
           "tableFrom": "notice_acknowledgements",
+          "tableTo": "privacy_notices",
           "columnsFrom": [
             "institution_id",
             "notice_id"
           ],
-          "tableTo": "privacy_notices",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -4594,10 +4948,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"privacy_notices\".\"kind\" = 'notice'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "privacy_notices_purpose_version_key": {
           "name": "privacy_notices_purpose_version_key",
@@ -4622,25 +4976,25 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"privacy_notices\".\"kind\" = 'consent_text'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "privacy_notices_institution_id_institutions_id_fk": {
           "name": "privacy_notices_institution_id_institutions_id_fk",
           "tableFrom": "privacy_notices",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -4776,9 +5130,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "records_conversation_messages_idx": {
           "name": "records_conversation_messages_idx",
@@ -4791,8 +5145,8 @@
             },
             {
               "expression": "(\"data\" ->> 'conversationId')",
-              "isExpression": true,
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             },
             {
@@ -4809,10 +5163,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"records\".\"collection\" = 'conversationMessages' and \"records\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "records_notifications_idx": {
           "name": "records_notifications_idx",
@@ -4825,8 +5179,8 @@
             },
             {
               "expression": "(\"data\" ->> 'studentId')",
-              "isExpression": true,
               "asc": true,
+              "isExpression": true,
               "nulls": "last"
             },
             {
@@ -4843,25 +5197,25 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"records\".\"collection\" = 'notifications' and \"records\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "records_institution_id_institutions_id_fk": {
           "name": "records_institution_id_institutions_id_fk",
           "tableFrom": "records",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -4964,40 +5318,40 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"resource_shares\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "resource_shares_institution_id_institutions_id_fk": {
           "name": "resource_shares_institution_id_institutions_id_fk",
           "tableFrom": "resource_shares",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "resource_shares_resource_fkey": {
           "name": "resource_shares_resource_fkey",
           "tableFrom": "resource_shares",
+          "tableTo": "resources",
           "columnsFrom": [
             "institution_id",
             "resource_id"
           ],
-          "tableTo": "resources",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -5101,54 +5455,54 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "resource_version_items_institution_id_institutions_id_fk": {
           "name": "resource_version_items_institution_id_institutions_id_fk",
           "tableFrom": "resource_version_items",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "resource_version_items_version_fkey": {
           "name": "resource_version_items_version_fkey",
           "tableFrom": "resource_version_items",
+          "tableTo": "resource_versions",
           "columnsFrom": [
             "institution_id",
             "version_id"
           ],
-          "tableTo": "resource_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "resource_version_items_item_version_fkey": {
           "name": "resource_version_items_item_version_fkey",
           "tableFrom": "resource_version_items",
+          "tableTo": "resource_versions",
           "columnsFrom": [
             "institution_id",
             "item_version_id"
           ],
-          "tableTo": "resource_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -5238,30 +5592,30 @@
         "resource_version_outcomes_institution_id_institutions_id_fk": {
           "name": "resource_version_outcomes_institution_id_institutions_id_fk",
           "tableFrom": "resource_version_outcomes",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "resource_version_outcomes_version_fkey": {
           "name": "resource_version_outcomes_version_fkey",
           "tableFrom": "resource_version_outcomes",
+          "tableTo": "resource_versions",
           "columnsFrom": [
             "institution_id",
             "version_id"
           ],
-          "tableTo": "resource_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -5355,8 +5709,8 @@
           "primaryKey": false,
           "notNull": false,
           "generated": {
-            "type": "stored",
-            "as": "(license ->> 'kind')"
+            "as": "(license ->> 'kind')",
+            "type": "stored"
           }
         },
         "attributions": {
@@ -5528,9 +5882,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "resource_versions_editable_key": {
           "name": "resource_versions_editable_key",
@@ -5549,10 +5903,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"resource_versions\".\"status\" in ('draft', 'rejected')",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "resource_versions_search_idx": {
           "name": "resource_versions_search_idx",
@@ -5571,39 +5925,39 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "gin",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "resource_versions_institution_id_institutions_id_fk": {
           "name": "resource_versions_institution_id_institutions_id_fk",
           "tableFrom": "resource_versions",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "resource_versions_resource_fkey": {
           "name": "resource_versions_resource_fkey",
           "tableFrom": "resource_versions",
+          "tableTo": "resources",
           "columnsFrom": [
             "institution_id",
             "resource_id"
           ],
-          "tableTo": "resources",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -5760,9 +6114,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "resources_current_version_idx": {
           "name": "resources_current_version_idx",
@@ -5781,10 +6135,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"resources\".\"current_version_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "resources_derived_from_version_idx": {
           "name": "resources_derived_from_version_idx",
@@ -5803,55 +6157,55 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"resources\".\"derived_from_version_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "resources_institution_id_institutions_id_fk": {
           "name": "resources_institution_id_institutions_id_fk",
           "tableFrom": "resources",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "resources_current_version_fkey": {
           "name": "resources_current_version_fkey",
           "tableFrom": "resources",
+          "tableTo": "resource_versions",
           "columnsFrom": [
             "institution_id",
             "current_version_id"
           ],
-          "tableTo": "resource_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "resources_derived_from_version_fkey": {
           "name": "resources_derived_from_version_fkey",
           "tableFrom": "resources",
+          "tableTo": "resource_versions",
           "columnsFrom": [
             "institution_id",
             "derived_from_version_id"
           ],
-          "tableTo": "resource_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -5975,9 +6329,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "attempt_media_plays_file_idx": {
           "name": "attempt_media_plays_file_idx",
@@ -5996,54 +6350,54 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "attempt_media_plays_institution_id_institutions_id_fk": {
           "name": "attempt_media_plays_institution_id_institutions_id_fk",
           "tableFrom": "attempt_media_plays",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "attempt_media_plays_attempt_fkey": {
           "name": "attempt_media_plays_attempt_fkey",
           "tableFrom": "attempt_media_plays",
+          "tableTo": "task_attempts",
           "columnsFrom": [
             "institution_id",
             "attempt_id"
           ],
-          "tableTo": "task_attempts",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "attempt_media_plays_file_fkey": {
           "name": "attempt_media_plays_file_fkey",
           "tableFrom": "attempt_media_plays",
+          "tableTo": "files",
           "columnsFrom": [
             "institution_id",
             "file_id"
           ],
-          "tableTo": "files",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -6142,32 +6496,32 @@
         "resubmission_requests_institution_id_institutions_id_fk": {
           "name": "resubmission_requests_institution_id_institutions_id_fk",
           "tableFrom": "resubmission_requests",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "resubmission_requests_version_fkey": {
           "name": "resubmission_requests_version_fkey",
           "tableFrom": "resubmission_requests",
+          "tableTo": "submission_versions",
           "columnsFrom": [
             "institution_id",
             "submission_id",
             "version_number"
           ],
-          "tableTo": "submission_versions",
           "columnsTo": [
             "institution_id",
             "submission_id",
             "version_number"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -6298,9 +6652,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "rubric_scores_version_role_key": {
           "name": "rubric_scores_version_role_key",
@@ -6325,10 +6679,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"rubric_scores\".\"rater_role\" in ('first', 'second')",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "rubric_scores_rubric_version_idx": {
           "name": "rubric_scores_rubric_version_idx",
@@ -6347,54 +6701,54 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "rubric_scores_institution_id_institutions_id_fk": {
           "name": "rubric_scores_institution_id_institutions_id_fk",
           "tableFrom": "rubric_scores",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "rubric_scores_submission_version_fkey": {
           "name": "rubric_scores_submission_version_fkey",
           "tableFrom": "rubric_scores",
+          "tableTo": "submission_versions",
           "columnsFrom": [
             "institution_id",
             "submission_version_id"
           ],
-          "tableTo": "submission_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "rubric_scores_rubric_version_fkey": {
           "name": "rubric_scores_rubric_version_fkey",
           "tableFrom": "rubric_scores",
+          "tableTo": "rubric_versions",
           "columnsFrom": [
             "institution_id",
             "rubric_version_id"
           ],
-          "tableTo": "rubric_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -6544,9 +6898,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "rubric_versions_draft_key": {
           "name": "rubric_versions_draft_key",
@@ -6565,10 +6919,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"rubric_versions\".\"status\" = 'draft' and \"rubric_versions\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "rubric_versions_published_key": {
           "name": "rubric_versions_published_key",
@@ -6587,40 +6941,40 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"rubric_versions\".\"status\" = 'published'",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "rubric_versions_institution_id_institutions_id_fk": {
           "name": "rubric_versions_institution_id_institutions_id_fk",
           "tableFrom": "rubric_versions",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "rubric_versions_rubric_fkey": {
           "name": "rubric_versions_rubric_fkey",
           "tableFrom": "rubric_versions",
+          "tableTo": "rubrics",
           "columnsFrom": [
             "institution_id",
             "rubric_id"
           ],
-          "tableTo": "rubrics",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -6734,24 +7088,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "rubrics_institution_id_institutions_id_fk": {
           "name": "rubrics_institution_id_institutions_id_fk",
           "tableFrom": "rubrics",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -6884,39 +7238,39 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "score_appeals_institution_id_institutions_id_fk": {
           "name": "score_appeals_institution_id_institutions_id_fk",
           "tableFrom": "score_appeals",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "score_appeals_submission_version_fkey": {
           "name": "score_appeals_submission_version_fkey",
           "tableFrom": "score_appeals",
+          "tableTo": "submission_versions",
           "columnsFrom": [
             "institution_id",
             "submission_version_id"
           ],
-          "tableTo": "submission_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -7072,9 +7426,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "score_transfers_source_attempt_idx": {
           "name": "score_transfers_source_attempt_idx",
@@ -7105,10 +7459,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"score_transfers\".\"source_attempt_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "score_transfers_source_rubric_score_idx": {
           "name": "score_transfers_source_rubric_score_idx",
@@ -7127,74 +7481,74 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"score_transfers\".\"source_rubric_score_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "score_transfers_institution_id_institutions_id_fk": {
           "name": "score_transfers_institution_id_institutions_id_fk",
           "tableFrom": "score_transfers",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "score_transfers_assignment_fkey": {
           "name": "score_transfers_assignment_fkey",
           "tableFrom": "score_transfers",
+          "tableTo": "task_assignments",
           "columnsFrom": [
             "institution_id",
             "assignment_id"
           ],
-          "tableTo": "task_assignments",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "score_transfers_source_attempt_fkey": {
           "name": "score_transfers_source_attempt_fkey",
           "tableFrom": "score_transfers",
+          "tableTo": "task_attempts",
           "columnsFrom": [
             "institution_id",
             "source_attempt_id",
             "assignment_id",
             "learner_id"
           ],
-          "tableTo": "task_attempts",
           "columnsTo": [
             "institution_id",
             "id",
             "assignment_id",
             "learner_id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "score_transfers_source_rubric_score_fkey": {
           "name": "score_transfers_source_rubric_score_fkey",
           "tableFrom": "score_transfers",
+          "tableTo": "rubric_scores",
           "columnsFrom": [
             "institution_id",
             "source_rubric_score_id"
           ],
-          "tableTo": "rubric_scores",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -7295,30 +7649,30 @@
         "second_rating_requests_institution_id_institutions_id_fk": {
           "name": "second_rating_requests_institution_id_institutions_id_fk",
           "tableFrom": "second_rating_requests",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "second_rating_requests_submission_fkey": {
           "name": "second_rating_requests_submission_fkey",
           "tableFrom": "second_rating_requests",
+          "tableTo": "task_submissions",
           "columnsFrom": [
             "institution_id",
             "submission_id"
           ],
-          "tableTo": "task_submissions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -7412,30 +7766,30 @@
         "submission_drafts_institution_id_institutions_id_fk": {
           "name": "submission_drafts_institution_id_institutions_id_fk",
           "tableFrom": "submission_drafts",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "submission_drafts_assignment_fkey": {
           "name": "submission_drafts_assignment_fkey",
           "tableFrom": "submission_drafts",
+          "tableTo": "task_assignments",
           "columnsFrom": [
             "institution_id",
             "assignment_id"
           ],
-          "tableTo": "task_assignments",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -7538,30 +7892,30 @@
         "submission_versions_institution_id_institutions_id_fk": {
           "name": "submission_versions_institution_id_institutions_id_fk",
           "tableFrom": "submission_versions",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "submission_versions_submission_fkey": {
           "name": "submission_versions_submission_fkey",
           "tableFrom": "submission_versions",
+          "tableTo": "task_submissions",
           "columnsFrom": [
             "institution_id",
             "submission_id"
           ],
-          "tableTo": "task_submissions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -7576,12 +7930,12 @@
       "uniqueConstraints": {
         "submission_versions_submission_number_key": {
           "name": "submission_versions_submission_number_key",
+          "nullsNotDistinct": false,
           "columns": [
             "institution_id",
             "submission_id",
             "version_number"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -7685,40 +8039,40 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"task_assignment_targets\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "task_assignment_targets_institution_id_institutions_id_fk": {
           "name": "task_assignment_targets_institution_id_institutions_id_fk",
           "tableFrom": "task_assignment_targets",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "task_assignment_targets_assignment_fkey": {
           "name": "task_assignment_targets_assignment_fkey",
           "tableFrom": "task_assignment_targets",
+          "tableTo": "task_assignments",
           "columnsFrom": [
             "institution_id",
             "assignment_id"
           ],
-          "tableTo": "task_assignments",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -7850,8 +8204,8 @@
           "primaryKey": false,
           "notNull": false,
           "generated": {
-            "type": "stored",
-            "as": "(submission_settings ->> 'submissionKind')"
+            "as": "(submission_settings ->> 'submissionKind')",
+            "type": "stored"
           }
         },
         "high_stakes": {
@@ -7926,9 +8280,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "task_assignments_resource_version_idx": {
           "name": "task_assignments_resource_version_idx",
@@ -7947,9 +8301,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "task_assignments_scoring_version_idx": {
           "name": "task_assignments_scoring_version_idx",
@@ -7968,9 +8322,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "task_assignments_rubric_version_idx": {
           "name": "task_assignments_rubric_version_idx",
@@ -7989,10 +8343,10 @@
             }
           ],
           "isUnique": false,
-          "with": {},
-          "method": "btree",
           "where": "\"task_assignments\".\"rubric_version_id\" is not null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "task_assignments_assigned_by_idx": {
           "name": "task_assignments_assigned_by_idx",
@@ -8011,84 +8365,84 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "task_assignments_institution_id_institutions_id_fk": {
           "name": "task_assignments_institution_id_institutions_id_fk",
           "tableFrom": "task_assignments",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "task_assignments_resource_fkey": {
           "name": "task_assignments_resource_fkey",
           "tableFrom": "task_assignments",
+          "tableTo": "resources",
           "columnsFrom": [
             "institution_id",
             "resource_id"
           ],
-          "tableTo": "resources",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "task_assignments_resource_version_fkey": {
           "name": "task_assignments_resource_version_fkey",
           "tableFrom": "task_assignments",
+          "tableTo": "resource_versions",
           "columnsFrom": [
             "institution_id",
             "resource_version_id"
           ],
-          "tableTo": "resource_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "task_assignments_scoring_version_fkey": {
           "name": "task_assignments_scoring_version_fkey",
           "tableFrom": "task_assignments",
+          "tableTo": "resource_versions",
           "columnsFrom": [
             "institution_id",
             "scoring_version_id"
           ],
-          "tableTo": "resource_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         },
         "task_assignments_rubric_version_fkey": {
           "name": "task_assignments_rubric_version_fkey",
           "tableFrom": "task_assignments",
+          "tableTo": "rubric_versions",
           "columnsFrom": [
             "institution_id",
             "rubric_version_id"
           ],
-          "tableTo": "rubric_versions",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "restrict"
+          "onDelete": "restrict",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -8257,39 +8611,39 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "task_attempts_institution_id_institutions_id_fk": {
           "name": "task_attempts_institution_id_institutions_id_fk",
           "tableFrom": "task_attempts",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "task_attempts_assignment_fkey": {
           "name": "task_attempts_assignment_fkey",
           "tableFrom": "task_attempts",
+          "tableTo": "task_assignments",
           "columnsFrom": [
             "institution_id",
             "assignment_id"
           ],
-          "tableTo": "task_assignments",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -8304,13 +8658,13 @@
       "uniqueConstraints": {
         "task_attempts_id_assignment_learner_key": {
           "name": "task_attempts_id_assignment_learner_key",
+          "nullsNotDistinct": false,
           "columns": [
             "institution_id",
             "id",
             "assignment_id",
             "learner_id"
-          ],
-          "nullsNotDistinct": false
+          ]
         }
       },
       "policies": {},
@@ -8410,39 +8764,39 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "task_submissions_institution_id_institutions_id_fk": {
           "name": "task_submissions_institution_id_institutions_id_fk",
           "tableFrom": "task_submissions",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "task_submissions_assignment_fkey": {
           "name": "task_submissions_assignment_fkey",
           "tableFrom": "task_submissions",
+          "tableTo": "task_assignments",
           "columnsFrom": [
             "institution_id",
             "assignment_id"
           ],
-          "tableTo": "task_assignments",
           "columnsTo": [
             "institution_id",
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -8572,10 +8926,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"student_guardians\".\"is_payer\" and \"student_guardians\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "student_guardians_student_parent_key": {
           "name": "student_guardians_student_parent_key",
@@ -8600,10 +8954,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"student_guardians\".\"parent_id\" is not null and \"student_guardians\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "student_guardians_student_membership_key": {
           "name": "student_guardians_student_membership_key",
@@ -8628,10 +8982,10 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"student_guardians\".\"membership_id\" is not null and \"student_guardians\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         },
         "student_guardians_student_idx": {
           "name": "student_guardians_student_idx",
@@ -8650,9 +9004,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "student_guardians_membership_idx": {
           "name": "student_guardians_membership_idx",
@@ -8671,37 +9025,37 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "student_guardians_institution_id_institutions_id_fk": {
           "name": "student_guardians_institution_id_institutions_id_fk",
           "tableFrom": "student_guardians",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         },
         "student_guardians_membership_id_memberships_id_fk": {
           "name": "student_guardians_membership_id_memberships_id_fk",
           "tableFrom": "student_guardians",
+          "tableTo": "memberships",
           "columnsFrom": [
             "membership_id"
           ],
-          "tableTo": "memberships",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "cascade"
+          "onDelete": "cascade",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -8821,25 +9175,25 @@
             }
           ],
           "isUnique": true,
-          "with": {},
-          "method": "btree",
           "where": "\"student_identities\".\"archived_at\" is null",
-          "concurrently": false
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
         }
       },
       "foreignKeys": {
         "student_identities_institution_id_institutions_id_fk": {
           "name": "student_identities_institution_id_institutions_id_fk",
           "tableFrom": "student_identities",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -9014,9 +9368,9 @@
             }
           ],
           "isUnique": true,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "student_withdrawals_due_idx": {
           "name": "student_withdrawals_due_idx",
@@ -9035,9 +9389,9 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         },
         "student_withdrawals_student_idx": {
           "name": "student_withdrawals_student_idx",
@@ -9056,24 +9410,24 @@
             }
           ],
           "isUnique": false,
-          "with": {},
+          "concurrently": false,
           "method": "btree",
-          "concurrently": false
+          "with": {}
         }
       },
       "foreignKeys": {
         "student_withdrawals_institution_id_institutions_id_fk": {
           "name": "student_withdrawals_institution_id_institutions_id_fk",
           "tableFrom": "student_withdrawals",
+          "tableTo": "institutions",
           "columnsFrom": [
             "institution_id"
           ],
-          "tableTo": "institutions",
           "columnsTo": [
             "id"
           ],
-          "onUpdate": "no action",
-          "onDelete": "no action"
+          "onDelete": "no action",
+          "onUpdate": "no action"
         }
       },
       "compositePrimaryKeys": {
@@ -9106,10 +9460,10 @@
   },
   "enums": {},
   "schemas": {},
-  "views": {},
   "sequences": {},
   "roles": {},
   "policies": {},
+  "views": {},
   "_meta": {
     "columns": {},
     "schemas": {},

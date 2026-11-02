@@ -66,6 +66,7 @@ export const ONUR_OPERATION_COMMANDS = {
   'invoice.pay': spec('finance', [...SCOPE, 'invoices']),
   'payment.reverse': spec('finance', [...SCOPE, 'invoices']),
   'tariff.manage': spec('finance', [...SCOPE]),
+  'scholarship.manage': spec('finance', [...SCOPE]),
   'student.withdraw': spec('finance', [
     ...SCOPE,
     'parents',

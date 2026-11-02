@@ -145,3 +145,20 @@ export function slaSummary(rows: readonly SlaRow[]): SlaSummary {
     slaRate: questions ? Math.round(((questions - breaches) / questions) * 100) : null,
   }
 }
+
+/**
+ * Genel Bakış "SLA ihlali" sayacı: rapordaki "Süre aşımı" toplamıyla (`slaSummary().breaches`)
+ * aynı sayı. Soru kayıtları çekilmez; öğretmen başına ihlal sunucu SQL toplamından gelir
+ * (`GET /teacher-metrics`, API `db/management-metrics.ts`: `isBreach` ile aynı kural, geri çekilen
+ * ve geçerli `createdAt`'i olmayan soru sayılmaz) ve rapordaki gibi yalnız aktif öğretmenlerin
+ * ihlali toplanır. Aktif olmayan ya da kadroda bulunmayan öğretmenin ölçüsü sayıya girmez.
+ */
+export function slaBreachTotal(
+  teachers: readonly CoreRow<'teachers'>[],
+  metrics: readonly { teacherId: string; breaches: number }[],
+): number {
+  const active = new Set(
+    teachers.filter(({ record }) => record.isActive).map(({ record }) => record.id),
+  )
+  return metrics.reduce((sum, row) => sum + (active.has(row.teacherId) ? row.breaches : 0), 0)
+}

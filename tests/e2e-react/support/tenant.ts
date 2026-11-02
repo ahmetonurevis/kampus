@@ -62,11 +62,16 @@ const ROLE_LINKS: Record<RoleKey, readonly MembershipLinkInput[]> = {
   ],
 }
 
-/** Rolün kayıt bağlantıları; velinin çocukları `childIds` ile değiştirilebilir. */
+/**
+ * Rolün kayıt bağlantıları; velinin çocukları `childIds`, öğretmenin kaydı `teacherId` ile
+ * değiştirilebilir.
+ */
 const linksOf = (role: RoleKey, options: TenantOptions): readonly MembershipLinkInput[] =>
   role === 'veli' && options.childIds
     ? options.childIds.map((recordId) => ({ kind: 'child' as const, recordId }))
-    : ROLE_LINKS[role]
+    : role === 'ogretmen' && options.teacherId
+      ? [{ kind: 'teacher', recordId: options.teacherId }]
+      : ROLE_LINKS[role]
 
 export interface TenantOptions {
   /** Kurum türü; verilmezse `school`. Dil okulu için `language_school`. */
@@ -75,6 +80,11 @@ export interface TenantOptions {
   roles: readonly RoleKey[]
   /** Veli hesabının çocukları (varsayılan s1 ve s2); çocukların kayıtları kuruma konur. */
   childIds?: readonly string[]
+  /**
+   * Öğretmen hesabının bağlı olduğu öğretmen kaydı (varsayılan t1, Selin Kaya; rehberlik görevli).
+   * Sıradan branş öğretmeni için ör. `t2`.
+   */
+  teacherId?: string
   /** Kuruma konacak öğrenci kimlikleri (ve kendi attendance/grades/invoices/contracts kayıtları). */
   students?: readonly string[]
   /** Bu sınıfların bütün öğrencileri de konur. */

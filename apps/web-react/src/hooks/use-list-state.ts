@@ -9,6 +9,7 @@ import {
   urlBelongsToScope,
   type UrlFilters,
 } from '@/lib/list-url.ts'
+import { keptHistoryState } from '@/lib/history-state.ts'
 import { createParamsWriter } from '@/lib/params-writer.ts'
 import { readView, writeView } from '@/lib/view-memory.ts'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
@@ -87,6 +88,13 @@ export function useListState(
     if (sync !== 'restore') dispatch({ type: 'external' })
   }
 
+  // Adres yazımı geçerli girdinin `state`'ini (ör. `from` geri dönüş adresi) korur; effect
+  // bağımlılığı olmasın diye ref'te tutulur.
+  const historyState = useRef(location.state)
+  useEffect(() => {
+    historyState.current = location.state
+  }, [location.state])
+
   const element = useRef<HTMLElement | null>(null)
   const position = useRef<ScrollPosition>(state.scroll)
 
@@ -101,7 +109,14 @@ export function useListState(
       (current) => listStateToParams(state, urlPrefix, current, urlFilters, searchInUrl),
       (search) =>
         void Promise.resolve(
-          navigate({ search }, { replace: true, preventScrollReset: true }),
+          navigate(
+            { search },
+            {
+              replace: true,
+              preventScrollReset: true,
+              state: keptHistoryState(historyState.current),
+            },
+          ),
         ).catch((error: unknown) => console.error('[liste] adres güncellenemedi', error)),
     )
   }, [state, urlPrefix, urlFilters, searchInUrl, navigate, urlScopeKey, scope])

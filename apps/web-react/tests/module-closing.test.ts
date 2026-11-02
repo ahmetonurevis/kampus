@@ -18,6 +18,8 @@ import {
   PROSPECT_DETAIL_PATH,
   resolveProspectDetail,
   resolveShell,
+  resolveStudentProfile,
+  STUDENT_PROFILE_PATH,
 } from '../src/lib/route-guard.ts'
 
 /**
@@ -87,11 +89,16 @@ test('IST-009: bütün modüller kapalıyken yalnız modülsüz sayfalar kalır,
   }
 })
 
-test('IST-009: taşınmış her sayfa menüde modülüyle kayıtlıdır; menü dışı aday detayı crm ister', () => {
+test('IST-009: taşınmış her sayfa menüde modülüyle kayıtlıdır; menü dışı aday detayı crm, öğrenci profili academic ister', () => {
   for (const key of MIGRATED) {
     const [role, path] = key.split('/') as [(typeof ROLE_KEYS)[number], string]
     if (path === PROSPECT_DETAIL_PATH) {
       const closed = resolveProspectDetail({ role, modules: { ...allOpen, crm: false } }, role)
+      assert.equal(closed.kind, 'module-closed', key)
+      continue
+    }
+    if (role === 'ogretmen' && path === STUDENT_PROFILE_PATH) {
+      const closed = resolveStudentProfile({ role, modules: { ...allOpen, academic: false } }, role)
       assert.equal(closed.kind, 'module-closed', key)
       continue
     }

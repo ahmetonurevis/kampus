@@ -104,7 +104,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat indirim oranını sınırlar; sınırsız indirim haksız rekabet ve ilanın anlamsızlaşması demektir.
 - **Kaynak:** ÖÖKY md. 54/1-a. Burs ve ücretsiz okutmanın %50 tavanına dahil olmadığı yorumu ÖÖKY md. 62/4'e (burslu oranı ücretsiz oranının dışında tutulur) ve bursun ayrı bölümde düzenlenmesine dayanır; **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API, kesin kayıt) — `DISCOUNT_CAP_BASIS_POINTS`, 422 `discount_cap_exceeded`; personel çocuğu istisnası yönetici onayıyla. Personel kaydına bağlama ve yenileme henüz yok.
+- **Kodda:** var (API, kesin kayıt) — `DISCOUNT_CAP_BASIS_POINTS`, 422 `discount_cap_exceeded`; personel çocuğu istisnası yönetici onayıyla. Personel kaydına bağlama ve yenileme henüz yok. Burs (`DOM-FIN-025`) tavan hesabına girmez.
 
 ### DOM-FIN-022 · Kardeş indirimi
 
@@ -142,7 +142,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Burs mevzuatta indirimden ayrı, bildirime ve sınav kurallarına bağlı bir kurumdur.
 - **Kaynak:** 5580 md. 13/5; ÖÖKY md. 58/4, 62, 63/3.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — yenilemede yalnız burs yüzdesi var (`packages/school-core/src/lib/school-workflows.js:127`); program, bildirim, sınav ve kesilme yok.
+- **Kodda:** kısmen — program ve atama core `lib/finance-scholarships.ts`, tablolar `scholarship_programs` ve `scholarship_awards` (migration `0032`, öğrenci başına yılda tek atama kısmi benzersiz indeksle). API `GET/POST /api/v1/finance/scholarship-programs`, `POST …/:programId/notify` (bildirim günü bir kez, gelecek gün 422), `GET /api/v1/finance/scholarship-awards`, `POST …/:awardId/mebbis-record`; yazma yalnız yönetici (`scholarship.manage`), okuma yönetici ve ön büro. Atama kesin kayıtta yapılır (`scholarshipProgramId`, `enrollProspectWithTariff`): yalnız yönetici (422 `scholarship_approval_required`), bildirilmemiş program 422 `scholarship_program_not_notified`, dolu kontenjan 409 `scholarship_capacity_full` (kurum kilidi altında sayılır). Oran ilan ücretinden hesaplanır, indirimlerden sonra kalan neti aşamaz; sözleşmeye `scholarship` kalemi yazılır, tam bursta öğrenim taksiti açılmaz. Yok: burs sınavı ve valilik izni (ON-136), kesilme ve geri isteme (ON-283), kayıtlı öğrenciye sonradan atama, ayrılışta burslu istisnası (ON-023), yenilemedeki serbest burs yüzdesinin programa bağlanması (ON-030). Ekran: Finans sayfasında "Burslar" sekmesi (`?gorunum=burs`; ön büro yalnız görür) ve kesin kayıt formunun ücret adımında yalnız yöneticiye açılan burs seçimi, önizlemede burs kalemi.
 
 ### DOM-FIN-026 · Ücretsiz okutma kontenjanı
 

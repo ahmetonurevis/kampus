@@ -1,5 +1,6 @@
 import { useCallback } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
+import { keptHistoryState, PANEL_MARKER } from '@/lib/history-state.ts'
 
 type PanelState = { detailPanel?: string } | null
 
@@ -28,11 +29,14 @@ export function useDetailPanel(parameter: string) {
       void Promise.resolve(
         navigate(
           { search: `?${next.toString()}`, hash: location.hash },
-          { state: { detailPanel: parameter }, preventScrollReset: true },
+          {
+            state: { ...keptHistoryState(location.state), [PANEL_MARKER]: parameter },
+            preventScrollReset: true,
+          },
         ),
       ).catch((error: unknown) => console.error('[panel] açılamadı', error))
     },
-    [navigate, parameter, location.hash],
+    [navigate, parameter, location.hash, location.state],
   )
 
   const close = useCallback(() => {
@@ -48,7 +52,11 @@ export function useDetailPanel(parameter: string) {
     void Promise.resolve(
       navigate(
         { search: search ? `?${search}` : '', hash: location.hash },
-        { replace: true, preventScrollReset: true },
+        {
+          replace: true,
+          preventScrollReset: true,
+          state: keptHistoryState(location.state),
+        },
       ),
     ).catch((error: unknown) => console.error('[panel] kapatılamadı', error))
   }, [navigate, parameter, location.state, location.hash])

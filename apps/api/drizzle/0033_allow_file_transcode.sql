@@ -1,9 +1,12 @@
 -- Ses dönüştürmenin içerik geçişi (OG-262; ADR 0003 karar 4, 10). Numara 0033 görev satırında
 -- ayrıldı. Elle yazıldı: Drizzle tetikleyici işlevini izlemez (migration 0015).
 --
--- `media.transcode` işi `processing` dosyayı dönüştürülmüş nesneye çevirip `ready` yapar; o geçişte
--- depo anahtarı, tür, boyut ve özet yeni nesneninkidir. İçerik kolonları yalnız bu tek geçişte
--- (`processing` → `ready`, aynı güncellemede) değişebilir; kurum, kimlik, amaç, yükleyen ve
+-- `media.transcode` işi `processing` ses dosyasını dönüştürülmüş nesneye çevirip `ready` yapar; o
+-- geçişte depo anahtarı, tür, boyut ve özet yeni nesneninkidir. İçerik kolonları yalnız ses
+-- amaçlarında (`speaking_recording`, `listening_audio`) ve yalnız bu tek geçişte (`processing` →
+-- `ready`, aynı güncellemede) değişebilir. Hiçbir güncelleme dosyayı `processing`'e geri götüremez
+-- (dosya `processing` yalnız eklenirken başlar): `ready` dosyayı önce `processing` yapıp sonra
+-- içeriğini değiştirmek (iki adımlı delme) böylece kapanır. Kurum, kimlik, amaç, yükleyen ve
 -- oluşturma zamanı hiçbir zaman değişmez. Başka her güncelleme eskisi gibi 55000 ile reddedilir;
 -- `delete` yalnız `kampus.allow_immutable_purge` ayarıyla geçer.
 CREATE OR REPLACE FUNCTION "kampus_reject_file_content_change"() RETURNS trigger
@@ -19,8 +22,13 @@ BEGIN
     AND NEW.purpose IS NOT DISTINCT FROM OLD.purpose
     AND NEW.uploaded_by_user_id IS NOT DISTINCT FROM OLD.uploaded_by_user_id
     AND NEW.created_at IS NOT DISTINCT FROM OLD.created_at
+    AND NOT (NEW.status = 'processing' AND OLD.status IS DISTINCT FROM 'processing')
     AND (
-      (OLD.status = 'processing' AND NEW.status = 'ready')
+      (
+        OLD.purpose IN ('speaking_recording', 'listening_audio')
+        AND OLD.status = 'processing'
+        AND NEW.status = 'ready'
+      )
       OR (
         NEW.storage_key IS NOT DISTINCT FROM OLD.storage_key
         AND NEW.content_type IS NOT DISTINCT FROM OLD.content_type

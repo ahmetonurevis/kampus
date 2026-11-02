@@ -1,10 +1,12 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
 import { and, eq, sql } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
+import { insertFile } from '../src/db/files.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { files } from '../src/db/schema/files.ts'
 import { bootJobs } from '../src/jobs/boot.ts'
@@ -431,20 +433,56 @@ describe('ses dönüştürme (media.transcode)', () => {
     assert.deepEqual(rows, [{ a: "x'; drop table files; --", b: 4, c: '$' }])
   })
 
-  test('migration 0033: içerik kolonları yalnız processing → ready geçişinde değişir', async () => {
+  test("migration 0033: içerik kolonları yalnız ses amacında processing → ready geçişinde değişir; processing'e dönüş ve iki adımlı delme reddedilir", async () => {
     const t = await tenant()
     const id = await uploaded(t)
     const immutable = (error: unknown) =>
       JSON.stringify(error).includes('55000') || /immutable/.test(String(error))
+    const otherSha = 'f'.repeat(64)
     // processing kalırken içerik değişmez.
     await assert.rejects(
       db.execute(sql`update files set byte_size = 1 where id = ${id}`),
       immutable,
     )
     await transcodeAudioFile(deps(), job(t, id), now)
+    const ready = await rowOf(t, id)
     // ready dosyanın içeriği değişmez; amaç hiçbir geçişte değişmez.
     await assert.rejects(
       db.execute(sql`update files set byte_size = 1 where id = ${id}`),
+      immutable,
+    )
+    // İki adımlı delme: ready → processing reddedilir, ardından içerik değişemez.
+    await assert.rejects(
+      db.execute(sql`update files set status = 'processing' where id = ${id}`),
+      immutable,
+    )
+    await assert.rejects(
+      db
+        .execute(sql`update files set status = 'pending' where id = ${id}`)
+        .then(() => db.execute(sql`update files set status = 'processing' where id = ${id}`)),
+      immutable,
+    )
+    await db.execute(sql`update files set status = 'ready' where id = ${id}`)
+    await assert.rejects(
+      db.execute(
+        sql`update files set status = 'processing', sha256 = ${otherSha} where id = ${id}`,
+      ),
+      immutable,
+    )
+    const after = await rowOf(t, id)
+    assert.equal(after.storageKey, ready.storageKey)
+    assert.equal(after.sha256, ready.sha256)
+    // Reddedilen dosya da processing'e dönmez.
+    const rejected = await uploaded(t)
+    transcoder.result = { durationMs: 5_000, silent: true }
+    try {
+      await transcodeAudioFile(deps(), job(t, rejected), now)
+    } finally {
+      transcoder.result = { durationMs: 30_000, silent: false }
+    }
+    assert.equal((await rowOf(t, rejected)).status, 'rejected')
+    await assert.rejects(
+      db.execute(sql`update files set status = 'processing' where id = ${rejected}`),
       immutable,
     )
     const next = await uploaded(t)
@@ -452,5 +490,33 @@ describe('ses dönüştürme (media.transcode)', () => {
       db.execute(sql`update files set status = 'ready', purpose = 'material' where id = ${next}`),
       immutable,
     )
+    // Ses dışı amaçta processing → ready geçişi içeriği değiştiremez (yalnız durum değişir).
+    const documentId = randomUUID()
+    await db.transaction((tx) =>
+      insertFile(
+        tx,
+        t.institution.id,
+        {
+          id: documentId,
+          purpose: 'document',
+          storageKey: `${t.institution.id}/document/2026/10/${documentId}`,
+          contentType: 'application/pdf',
+          byteSize: 10,
+          sha256: 'a'.repeat(64),
+          originalName: null,
+          uploadedByUserId: t.institution.admin.id,
+        },
+        now,
+        'processing',
+      ),
+    )
+    await assert.rejects(
+      db.execute(
+        sql`update files set status = 'ready', sha256 = ${otherSha} where id = ${documentId}`,
+      ),
+      immutable,
+    )
+    await db.execute(sql`update files set status = 'ready' where id = ${documentId}`)
+    assert.equal((await rowOf(t, documentId)).sha256, 'a'.repeat(64))
   })
 })

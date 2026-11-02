@@ -18,6 +18,7 @@ import {
   recordTrialResult,
   revertProspectStage,
   setProspectMarketingConsent,
+  updateProspectDetails,
   scheduleTrialLesson,
   type ProspectOptions,
 } from '@kampus/school-core/lib/prospects.ts'
@@ -72,6 +73,7 @@ type ProspectAction =
   | 'prospect.stage'
   | 'prospect.stageRevert'
   | 'prospect.consent'
+  | 'prospect.update'
   | 'prospect.note'
   | 'prospect.meeting'
   | 'prospect.trial'
@@ -439,6 +441,27 @@ export function setMarketingConsentCommand(
       subjectId: prospectId,
       run: (state, by, { now }, prospectOptions) => {
         setProspectMarketingConsent(state, by, prospectId, input, now, prospectOptions)
+        return { id: prospectId, statusCode: 200 }
+      },
+    },
+    options,
+  )
+}
+
+/** Aday bilgisini düzeltir: ad, telefon, e-posta, ilgi, veli adı (DOM-KAY-003). 200. */
+export function updateProspectDetailsCommand(
+  ctx: ServiceContext,
+  prospectId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  return execute(
+    ctx,
+    {
+      action: 'prospect.update',
+      subjectId: prospectId,
+      run: (state, by, { now }, prospectOptions) => {
+        updateProspectDetails(state, by, prospectId, input, now, prospectOptions)
         return { id: prospectId, statusCode: 200 }
       },
     },

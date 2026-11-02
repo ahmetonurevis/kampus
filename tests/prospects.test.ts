@@ -24,6 +24,7 @@ import {
   revertableProspectStages,
   revertProspectStage,
   setProspectMarketingConsent,
+  updateProspectDetails,
   hasMarketingConsent,
   scheduleProspectMeeting,
   scheduleTrialLesson,
@@ -1955,4 +1956,140 @@ test('DOM-KAY-004: yönetici ve ön büro işler; öğretmen, öğrenci ve veli 
   assert.equal(enrolled.marketingConsentHistory?.length, 2)
   // Onay yoksa tanıtım iletisi gitmez; alanı olmayan eski kayıtta da kapalıdır.
   assert.equal(hasMarketingConsent({}, 'sms'), false)
+})
+
+// --- Aday bilgisi düzeltme (DOM-KAY-003) -----------------------------------------------------
+
+test('DOM-KAY-003: yalnız gönderilen alanlar düzeltilir; kayıt yalnız alan adlarını taşır, aşama değişmez', () => {
+  const state = withoutMeetings()
+  const created = createProspect(state, front, input(), id, now)
+  const stage = created.stage
+  const later = '2026-10-07T10:00:00.000Z'
+  const edited = updateProspectDetails(
+    state,
+    front,
+    created.id,
+    { name: '  Düzeltilmiş Ad  ', phone: '05559990077', interest: 'B2 · Konuşma' },
+    later,
+  )
+  assert.equal(edited.name, 'Düzeltilmiş Ad')
+  assert.equal(edited.phone, '05559990077')
+  assert.equal(edited.interest, 'B2 · Konuşma')
+  assert.equal(edited.guardianName, 'Test Veli')
+  assert.equal(edited.stage, stage)
+  assert.equal(edited.updatedAt, later)
+  // Eski değer saklanmaz; yalnız dokunulan alan adları, kim ve ne zaman.
+  assert.deepEqual(edited.profileEdits, [
+    { fields: ['name', 'phone', 'interest'], at: later, by: { role: 'onburo', userId: 'u-front' } },
+  ])
+  assert.ok(!JSON.stringify(edited.profileEdits).includes('05559990001'))
+  // İkinci düzeltme yeni kayıt ekler; e-posta eklenir ve silinir.
+  updateProspectDetails(state, admin, created.id, { email: 'Yeni@Kampus.Example' }, later)
+  assert.equal(created.email, 'yeni@kampus.example')
+  updateProspectDetails(state, admin, created.id, { email: '' }, later)
+  assert.equal(created.email, '')
+  assert.deepEqual(
+    created.profileEdits?.map((edit) => edit.fields),
+    [['name', 'phone', 'interest'], ['email'], ['email']],
+  )
+})
+
+test('DOM-KAY-003: değişiklik yoksa 409; mükerrer ve kardeş denetimi yeniden çalışır; kayıt değişmez', () => {
+  const state = withoutMeetings()
+  const first = createProspect(
+    state,
+    front,
+    input({ name: 'Birinci Aday', phone: '05559990101' }),
+    id,
+    now,
+  )
+  const second = createProspect(
+    state,
+    front,
+    input({ name: 'İkinci Aday', phone: '05559990102' }),
+    id,
+    now,
+  )
+  const attempt = (prospectId: string, body: Record<string, unknown>) => () =>
+    updateProspectDetails(state, front, prospectId, body, now)
+  unchangedOnFailure(
+    state,
+    attempt(first.id, { name: 'Birinci Aday' }),
+    fails('prospect_unchanged', 'conflict'),
+  )
+  // Aynı ad ve telefon: mükerrer; farklı ad aynı telefon: kardeş seçimi ister.
+  unchangedOnFailure(
+    state,
+    attempt(second.id, { name: 'Birinci Aday', phone: '05559990101' }),
+    fails('prospect_duplicate', 'conflict', ['phone']),
+  )
+  unchangedOnFailure(
+    state,
+    attempt(second.id, { phone: '05559990101' }),
+    fails('prospect_contact_shared', 'conflict', ['siblingOfId']),
+  )
+  // Kardeşliği seçilmiş aday ortak iletişimi kabul eder.
+  second.siblingOfId = first.id
+  updateProspectDetails(state, front, second.id, { phone: '05559990101' }, now)
+  assert.equal(second.phone, '05559990101')
+  // Doğrulama hataları ve boş gövde.
+  for (const body of [
+    {},
+    { name: 'A' },
+    { phone: '123' },
+    { email: 'eposta' },
+    { interest: 'x' },
+    { stage: 'Yeni aday' },
+    { guardianName: 'B' },
+  ])
+    assert.throws(() => updateProspectDetails(state, front, first.id, body, now), zodError)
+  unchangedOnFailure(
+    state,
+    attempt('pr-yok', { name: 'Yeni Ad' }),
+    fails('prospect_not_found', 'not_found'),
+  )
+})
+
+test('DOM-KAY-003: onaylı e-posta silinemez, yetişkinde veli adı tutulmaz, kapalı adayda da düzeltilir; öğretmen ve veli 403', () => {
+  const state = withoutMeetings()
+  const created = createProspect(
+    state,
+    front,
+    input({ email: 'aday@kampus.example', marketingConsent: { email: true } }),
+    id,
+    now,
+  )
+  unchangedOnFailure(
+    state,
+    () => updateProspectDetails(state, front, created.id, { email: '' }, now),
+    fails('consent_contact_in_use', 'rule', ['email']),
+  )
+  // Onay geri alınınca silinebilir.
+  setProspectMarketingConsent(state, front, created.id, consentInput('email', false), now)
+  updateProspectDetails(state, front, created.id, { email: '' }, now)
+  const adult = createProspect(
+    state,
+    front,
+    input({ minor: false, name: 'Yetişkin Aday', phone: '05559990111' }),
+    id,
+    now,
+    language,
+  )
+  unchangedOnFailure(
+    state,
+    () =>
+      updateProspectDetails(state, front, adult.id, { guardianName: 'Veli Kişi' }, now, language),
+    fails('guardian_not_applicable', 'rule', ['guardianName']),
+  )
+  // Vazgeçen ve kayıtlı adayın bilgisi de düzeltilir (düzeltme hakkı aşamaya bağlı değil).
+  updateProspectDetails(state, front, 'pr5', { interest: 'Güncel ilgi' }, now)
+  assert.equal(prospectOf(state, 'pr5').interest, 'Güncel ilgi')
+  updateProspectDetails(state, admin, 'pr15', { name: 'Düzeltilmiş Kayıtlı' }, now)
+  assert.equal(prospectOf(state, 'pr15').stage, 'Kayıt oldu')
+  for (const role of ['ogretmen', 'ogrenci', 'veli'] as const)
+    unchangedOnFailure(
+      state,
+      () => updateProspectDetails(state, people[role], created.id, { interest: 'Başka' }, now),
+      fails('permission_denied', 'forbidden'),
+    )
 })

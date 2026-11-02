@@ -270,6 +270,19 @@ const CASES: readonly (CrossCase<Tenant> & { type?: 'language_school' })[] = [
     }),
   },
   {
+    // Aday bilgisi düzeltme ön büro ve yöneticidedir (DOM-KAY-003); aday yalnız B'de.
+    key: 'PATCH /api/v1/prospects/:prospectId/details',
+    kind: 'kayıt',
+    actor: (a) => a.cookies.frontDesk,
+    make: prospectCopy,
+    request: ({ prospectId }) => ({
+      method: 'PATCH',
+      url: `/api/v1/prospects/${prospectId}/details`,
+      body: { interest: 'Düzeltilmiş ilgi' },
+      ifMatch: 1,
+    }),
+  },
+  {
     // Ticari ileti onayı ön büro ve yöneticidedir (DOM-KAY-004); aday yalnız B'de.
     key: 'POST /api/v1/prospects/:prospectId/marketing-consent',
     kind: 'kayıt',

@@ -1,7 +1,8 @@
 import type { LearnerTaskProgress } from '@kampus/react-shared/use-learner-task-progress.ts'
-import type {
-  TaskAssignmentLearner,
-  TaskAssignmentLearnerDetail,
+import {
+  TASK_CONTENT_UNAVAILABLE_MESSAGE,
+  type TaskAssignmentLearner,
+  type TaskAssignmentLearnerDetail,
 } from '@kampus/react-shared/use-task-assignments.ts'
 import type {
   TaskAttempt,
@@ -78,6 +79,40 @@ export type TaskProgress = {
   blockedReason: string | null
 }
 
+/**
+ * Sunucu özetinin içerik kapısı engeli (DOM-KYN-021, 025, 051): yazma ucu bu görevde 422
+ * `content_unavailable` ya da 409 `resource_license_expired` döneceğinden çalışma alanı da işlem
+ * önermez. Kapalı içerik her yerel nedenden önce gelir; lisans engeli yalnız başka neden yokken.
+ */
+function contentBlock(
+  assignment: Pick<TaskAssignmentLearner, 'progress' | 'scoringMode'>,
+): { reason: string; overrides: boolean } | null {
+  const entry = assignment.progress[0]
+  if (entry?.blockedBy === 'content_unavailable')
+    return { reason: TASK_CONTENT_UNAVAILABLE_MESSAGE, overrides: true }
+  if (entry?.blockedBy === 'license_expired')
+    return {
+      reason:
+        summaryBlockedReason(assignment.scoringMode === 'auto' ? 'auto' : 'teacher', entry) ?? '',
+      overrides: false,
+    }
+  return null
+}
+
+/** Yerel durum kararına içerik engelini işler (`contentBlock`). */
+function withContentBlock(
+  assignment: Pick<TaskAssignmentLearner, 'progress' | 'scoringMode'>,
+  canAct: boolean,
+  blockedReason: string | null,
+): Pick<TaskProgress, 'canAct' | 'blockedReason'> {
+  const block = contentBlock(assignment)
+  if (!block) return { canAct, blockedReason }
+  return {
+    canAct: false,
+    blockedReason: block.overrides || blockedReason === null ? block.reason : blockedReason,
+  }
+}
+
 const byNumber = (a: TaskAttempt, b: TaskAttempt) => a.attemptNumber - b.attemptNumber
 
 /** Sayılan deneme (DOM-BEC-042); yoksa tamamlanan son deneme (alıştırma sonucu). */
@@ -107,14 +142,18 @@ export function autoProgress(
   const score = scoreLabel(shown?.result?.percent)
 
   const limitReached = limit !== null && attempts.length >= limit
-  const blockedReason = running
+  const localReason = running
     ? null
     : closed
       ? 'Teslim süresi doldu; yeni deneme başlatılamaz.'
       : limitReached
         ? 'Deneme hakkınız doldu.'
         : null
-  const canAct = running !== undefined || blockedReason === null
+  // Süren deneme çözme ekranında sürer (yazma ucu son sözü söyler); yeni deneme içerik kapısına
+  // takılırsa önerilmez.
+  const { canAct, blockedReason } = running
+    ? { canAct: true, blockedReason: null }
+    : withContentBlock(assignment, localReason === null, localReason)
 
   if (running)
     return { status: 'Sürüyor', tone: 'amber', rights, score: '—', canAct, blockedReason }
@@ -203,14 +242,16 @@ export function writingProgress(
   // Ayrıntı okunduysa düğme kararı sunucunun `allowance`'ındandır; okunmadıysa pencereye bakılır
   // (son söz yine sunucunundur: kapalı pencerede teslim 422 `submission_closed` alır).
   const allowance = submission?.allowance ?? null
-  const canAct = allowance ? allowance.canSubmit : !closed
-  const blockedReason = canAct
+  const localCanAct = allowance ? allowance.canSubmit : !closed
+  const localReason = localCanAct
     ? null
     : allowance
       ? blockedByMessage(allowance.blockedBy ?? 'locked', speaking)
       : submission && submission.versionCount > 0
         ? blockedByMessage('locked', speaking)
         : 'Teslim süresi doldu.'
+  // Atama özetinin içerik kapısı (taslak ve teslim ucu aynı kuralla 422/409 döner).
+  const { canAct, blockedReason } = withContentBlock(assignment, localCanAct, localReason)
 
   if (!submission || submission.versionCount === 0)
     return closed
@@ -252,6 +293,8 @@ export function summaryBlockedReason(
     case 'in_progress':
       // Süren deneme yeni deneme açmaz ama sürdürülebilir; engel sayılmaz.
       return null
+    case 'content_unavailable':
+      return TASK_CONTENT_UNAVAILABLE_MESSAGE
     case 'license_expired':
       return mode === 'auto'
         ? 'İçeriğin kullanım lisansının süresi doldu; yeni deneme başlatılamaz.'

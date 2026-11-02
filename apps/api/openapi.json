@@ -5614,6 +5614,7 @@
                 "type": "string",
                 "enum": [
                   "in_progress",
+                  "content_unavailable",
                   "license_expired",
                   "locked",
                   "limit",
@@ -5625,7 +5626,7 @@
                 "type": "null"
               }
             ],
-            "description": "`canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor"
+            "description": "`canAct` değilse neden: süren deneme, içerik kursiyere kapalı (yazma uçlarının 422 `content_unavailable` vereceği durum: kaldırılmış içerik, süren işi olmayana telif askısı, kitap sahibi olmayan; DOM-KYN-021, 025, 051; diğer engellerden önce gelir), içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor"
           },
           "score": {
             "anyOf": [
@@ -6663,7 +6664,7 @@
                 "type": "null"
               }
             ],
-            "description": "`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil"
+            "description": "`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya içerik kapalı: sürüm kaldırıldı/yayında değil, kitap sahibi değil ya da telif bildirimiyle incelemede ve süren iş (süren deneme, taslak, teslim) yok (DOM-KYN-025, Sabah kararı 47)"
           }
         },
         "required": [
@@ -19030,6 +19031,7 @@
                 "type": "string",
                 "enum": [
                   "in_progress",
+                  "content_unavailable",
                   "license_expired",
                   "locked",
                   "limit",
@@ -19041,7 +19043,7 @@
                 "type": "null"
               }
             ],
-            "description": "`canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor"
+            "description": "`canAct` değilse neden: süren deneme, içerik kursiyere kapalı (yazma uçlarının 422 `content_unavailable` vereceği durum: kaldırılmış içerik, süren işi olmayana telif askısı, kitap sahibi olmayan; DOM-KYN-021, 025, 051; diğer engellerden önce gelir), içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor"
           },
           "score": {
             "anyOf": [
@@ -20135,7 +20137,7 @@
                 "type": "null"
               }
             ],
-            "description": "`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil"
+            "description": "`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya içerik kapalı: sürüm kaldırıldı/yayında değil, kitap sahibi değil ya da telif bildirimiyle incelemede ve süren iş (süren deneme, taslak, teslim) yok (DOM-KYN-025, Sabah kararı 47)"
           }
         },
         "required": [

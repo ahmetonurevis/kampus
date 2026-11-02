@@ -197,7 +197,8 @@ async function readsLinkedVersion(
  * sınıfa hedeflenen; yönetici kurumdaki atamayı görür (`visible`). Soru görseli, soruyu içeren quiz
  * veya alıştırma setinin atamasıyla da açılır. Kursiyerde görev içeriğinin kuralı aynen uygulanır
  * (`learnerContentGate`: yayın geçmişi, kitap sahibi sınırı, telif incelemesi ve kaldırma, lisans
- * süresi dolmuşsa yalnız süren iş); quiz yolunda sorunun sürümü de bu kuraldan geçer.
+ * süresi dolmuşsa yalnız süren iş); quiz yolunda sorunun sürümü de bu kuraldan geçer. Telif
+ * askısındaki içeriğin dosyası süren işi olana da açılmaz (`'file'` yüzü; sabah kararları 36, 39, 47).
  */
 async function assignedLinkedVersion(
   ctx: ServiceContext,
@@ -250,6 +251,7 @@ async function assignedLinkedVersion(
         ...(pinned.get(assignment.resourceVersionId) ?? []),
       ],
       () => learnerHasWork(ctx, viewer, assignment),
+      'file',
     )
     if (gate === null) return true
   }

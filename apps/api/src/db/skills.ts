@@ -1807,6 +1807,32 @@ export async function listAwaitingScore(
 const DRAFT_CONFLICT = 'Taslak başka bir pencerede değişti; sayfayı yenileyip devam edin.'
 
 /** Kursiyerin arşivlenmemiş taslağı; satır sürümü core `revision`'dır. */
+/**
+ * Verilen kursiyerlerin verilen atamalarda arşivlenmemiş taslağı olan çiftleri (`atama:kursiyer`),
+ * tek sorguda; metin okunmaz (kursiyerin görev listesindeki içerik kapısı, süren iş;
+ * `services/task-progress.ts`).
+ */
+export async function draftKeysAmong(
+  db: Database,
+  institutionId: string,
+  assignmentIds: readonly string[],
+  learnerIds: readonly string[],
+): Promise<Set<string>> {
+  if (assignmentIds.length === 0 || learnerIds.length === 0) return new Set()
+  const rows = await db
+    .select({ assignmentId: submissionDrafts.assignmentId, learnerId: submissionDrafts.learnerId })
+    .from(submissionDrafts)
+    .where(
+      and(
+        eq(submissionDrafts.institutionId, institutionId),
+        inArray(submissionDrafts.assignmentId, [...new Set(assignmentIds)]),
+        inArray(submissionDrafts.learnerId, [...new Set(learnerIds)]),
+        isNull(submissionDrafts.archivedAt),
+      ),
+    )
+  return new Set(rows.map((row) => `${row.assignmentId}:${row.learnerId}`))
+}
+
 export async function loadDraft(
   db: Database,
   institutionId: string,

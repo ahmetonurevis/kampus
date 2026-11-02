@@ -278,6 +278,74 @@ describe('IST-051 liste satırı kursiyer özetinden (DOM-BEC-045)', () => {
   })
 })
 
+describe('OG-985 içerik kapısı engeli (DOM-KYN-025, DOM-KYN-021)', () => {
+  const closed = entry({ canAct: false, blockedBy: 'content_unavailable' })
+
+  test('DOM-KYN-025: özet content_unavailable ise listede ve panelde birincil işlem yok, sakin not var', () => {
+    for (const assignment of [auto({ progress: [closed] }), writing({ progress: [closed] })]) {
+      const progress = summaryProgress(assignment, NOW)
+      assert.equal(progress?.canAct, false)
+      assert.equal(progress?.blockedReason, 'Bu içerik şu an kullanıma kapalı.')
+    }
+    // Kaldırılmış içerikte süren deneme de sürdürülemez: "Denemeye devam et" önerilmez.
+    const running = summaryProgress(
+      auto({ progress: [entry({ ...closed, status: 'in_progress' })] }),
+      NOW,
+    )
+    assert.equal(running?.canAct, false)
+  })
+
+  test('DOM-KYN-025: çalışma alanı da yeni deneme ve teslim önermez; yerel nedenin yerine geçer', () => {
+    const quiz = autoProgress(auto({ progress: [closed] }), [], NOW)
+    assert.deepEqual(
+      [quiz.canAct, quiz.blockedReason],
+      [false, 'Bu içerik şu an kullanıma kapalı.'],
+    )
+    const lapsed = autoProgress(
+      auto({ deadline: { dueAt: PAST, lateAcceptanceDays: 0 }, progress: [closed] }),
+      [],
+      NOW,
+    )
+    assert.equal(lapsed.blockedReason, 'Bu içerik şu an kullanıma kapalı.')
+    const draft = writingProgress(writing({ progress: [closed] }), null, NOW)
+    assert.deepEqual(
+      [draft.canAct, draft.blockedReason],
+      [false, 'Bu içerik şu an kullanıma kapalı.'],
+    )
+    const allowed = writingProgress(
+      writing({ progress: [closed] }),
+      {
+        ...submission(),
+        allowance: { canSubmit: true, blockedBy: null, limit: 3, remaining: 2 },
+      } as never,
+      NOW,
+    )
+    assert.equal(allowed.canAct, false)
+    // Süren deneme çözme ekranında sürer; son söz yazma ucunundur.
+    const running = autoProgress(
+      auto({ progress: [closed] }),
+      [attempt({ status: 'in_progress', completedAt: null, result: null })],
+      NOW,
+    )
+    assert.equal(running.canAct, true)
+  })
+
+  test('DOM-KYN-021: lisans engeli çalışma alanında yalnız başka neden yokken gösterilir', () => {
+    const expired = entry({ canAct: false, blockedBy: 'license_expired' })
+    const open = autoProgress(auto({ progress: [expired] }), [], NOW)
+    assert.equal(open.canAct, false)
+    assert.match(open.blockedReason ?? '', /lisans/)
+    const late = autoProgress(
+      auto({ deadline: { dueAt: PAST, lateAcceptanceDays: 0 }, progress: [expired] }),
+      [],
+      NOW,
+    )
+    assert.equal(late.blockedReason, 'Teslim süresi doldu; yeni deneme başlatılamaz.')
+    // Özet engel söylemiyorsa yerel karar değişmez.
+    assert.equal(autoProgress(auto({ progress: [entry()] }), [], NOW).canAct, true)
+  })
+})
+
 describe('öğrenci quiz durumu (DOM-BEC-042, 044)', () => {
   test('DOM-BEC-042: hiç deneme yokken başlatılabilir; hak 0 / 2 görünür', () => {
     const progress = autoProgress(auto(), [], NOW)

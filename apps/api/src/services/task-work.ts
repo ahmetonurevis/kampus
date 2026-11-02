@@ -10,7 +10,7 @@ import type { StoredAssignment } from '../db/skills.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ForbiddenError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
-import { assertLearnerWork } from './learner-content.ts'
+import { assertLearnerWork, type VersionPair } from './learner-content.ts'
 import { mapOperationError } from './operation-runner.ts'
 import { targetedLearners, visible, type Viewer } from './task-assignments.ts'
 
@@ -185,33 +185,65 @@ export async function versionScoringContext(
   return buildScoringContext(scoring, questions)
 }
 
+/** Atamaların kursiyerin gördüğü sürüm çiftleri, sürüm kimliğiyle (`loadWorkPairs`). */
+export type WorkPairs = ReadonlyMap<string, VersionPair>
+
 /**
- * Birden çok atamanın puanlama bağlamı, iki toplu okumayla (kursiyerin görev listesindeki durum
- * özeti; `services/task-progress.ts`). Bağlamı kurulamayan atama (okunamayan sürüm, otomatik
- * puanlanmayan içerik, anahtarsız soru) haritada `Error` olarak durur; listenin geri kalanı
- * etkilenmez.
+ * Atamaların kursiyerin denemede veya teslimde gördüğü bütün sürümleri, iki toplu okumayla:
+ * sabitlenen sürüm, puanlama sürümü ve onun soruları ve okuma parçası. İçerik kapısı
+ * (`assertWorkOpen`, görev özeti) ve puanlama bağlamı (`scoringContexts`) aynı okumayı kullanır.
  */
-export async function scoringContexts(
+export async function loadWorkPairs(
   db: Database,
   institutionId: string,
   assignments: readonly StoredAssignment[],
-): Promise<Map<string, ScoringContext | Error>> {
-  const pairs = await loadVersionPairs(
-    db,
-    institutionId,
-    assignments.map((assignment) => assignment.scoringVersionId),
-  )
+): Promise<WorkPairs> {
+  const ids = [
+    ...new Set(assignments.flatMap((item) => [item.resourceVersionId, item.scoringVersionId])),
+  ]
+  const pinned = await loadVersionPairs(db, institutionId, ids)
+  const linked = [
+    ...new Set(
+      assignments.flatMap((item) => linkedIdsOf(pinned.get(item.scoringVersionId)?.version)),
+    ),
+  ]
   const questions = await loadVersionPairs(
     db,
     institutionId,
-    [...pairs.values()].flatMap(({ version }) => linkedIdsOf(version)),
+    linked.filter((id) => !pinned.has(id)),
   )
+  return new Map([...pinned, ...questions])
+}
+
+/**
+ * İçerik kapısından geçmesi gereken sürümler (bulunmayan soru ya da parça `undefined`, kapalıdır):
+ * sabitlenen sürüm, puanlama sürümü, soruları ve okuma parçası.
+ */
+export function workPairsOf(
+  assignment: StoredAssignment,
+  pairs: WorkPairs,
+): (VersionPair | undefined)[] {
+  const ids = [...new Set([assignment.resourceVersionId, assignment.scoringVersionId])]
+  const linked = linkedIdsOf(pairs.get(assignment.scoringVersionId)?.version)
+  return [...ids, ...linked].map((id) => pairs.get(id))
+}
+
+/**
+ * Birden çok atamanın puanlama bağlamı, toplu okunmuş sürümlerden (`loadWorkPairs`; kursiyerin
+ * görev listesindeki durum özeti, `services/task-progress.ts`). Bağlamı kurulamayan atama
+ * (okunamayan sürüm, otomatik puanlanmayan içerik, anahtarsız soru) haritada `Error` olarak durur;
+ * listenin geri kalanı etkilenmez.
+ */
+export function scoringContexts(
+  assignments: readonly StoredAssignment[],
+  pairs: WorkPairs,
+): Map<string, ScoringContext | Error> {
   const contexts = new Map<string, ScoringContext | Error>()
   for (const assignment of assignments) {
     try {
       contexts.set(
         assignment.id,
-        buildScoringContext(pairs.get(assignment.scoringVersionId)?.version, questions),
+        buildScoringContext(pairs.get(assignment.scoringVersionId)?.version, pairs),
       )
     } catch (error) {
       contexts.set(assignment.id, error instanceof Error ? error : new Error('scoring context'))
@@ -307,17 +339,9 @@ export async function assertWorkOpen(
   learnerId: string,
   hasWork: () => Promise<boolean>,
 ): Promise<void> {
-  const ids = [...new Set([assignment.resourceVersionId, assignment.scoringVersionId])]
-  const pinned = await loadVersionPairs(tx, ctx.institutionId, ids)
   // Sorular ve okuma parçası (IST-042): parça kaldırılmış ya da askıdaysa etkinlik de kapalıdır.
-  const questionIds = linkedIdsOf(pinned.get(assignment.scoringVersionId)?.version)
-  const questions = await loadVersionPairs(tx, ctx.institutionId, questionIds)
-  await assertLearnerWork(
-    { ...ctx, db: tx },
-    learnerId,
-    [...ids.map((id) => pinned.get(id)), ...questionIds.map((id) => questions.get(id))],
-    hasWork,
-  )
+  const pairs = await loadWorkPairs(tx, ctx.institutionId, [assignment])
+  await assertLearnerWork({ ...ctx, db: tx }, learnerId, workPairsOf(assignment, pairs), hasWork)
 }
 
 /**

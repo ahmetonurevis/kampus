@@ -28,7 +28,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Mevzuat çalışma saatlerini ve tatile uymayı zorunlu kılar.
 - **Kaynak:** ÖÖKY md. 10/6, 10/7.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** kısmen — `packages/school-core/src/lib/language-groups.ts` grubun haftalık kalıbını 07.00–23.00 içinde tutar (422 `group_outside_legal_hours`); çocuk ve genç bandında oturum 21.00'de biter (grup açılışında ve 18 yaş altı kursiyer yerleştirmesinde 422 `group_minor_late`; zorunlu eğitim çağı 18 yaş altıyla yaklaşık, `TODO(zorunlu-egitim-cagi)`). Kurum tatil takvimi yok, oturumlar tatil atlamadan sayılır (`TODO(tatil-takvimi)`).
 
 ### DOM-DIL-004 · Çalışma takvimi bildirime hazır tutulur
 
@@ -68,7 +68,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Aynı program dönem dönem ve farklı saatlerde yeniden açılır; program alanlarının tek yerde tutulması e-Özel eşlemesini ve kur geçme hesabını tutarlı kılar. Satış satırındaki kopya, kur sonradan arşivlense de satılan saati korur.
 - **Kaynak:** ÖÖKY md. 10/4 (takvim), e-Özel kurum kılavuzu; kurum içi karar.
 - **Kurum türü:** `language_school`
-- **Kodda:** kısmen — kurda tarih ve fiyat alanı yok (`lib/courses.ts`). Grup (OG-029) ve paket satışı (ON-058) henüz yok; arşivde açık grup denetimi grupla gelecek.
+- **Kodda:** var — kurda tarih ve fiyat alanı yok (`lib/courses.ts`); grup `packages/school-core/src/lib/language-groups.ts` (`planGroupCreation`: yalnız etkin kurdan, kapasite kurun en çok mevcudunu aşamaz, bitiş kurun toplam saatinden `groupEndDate`), tablo `language_groups` (migration `0029_create_groups`), uçlar `apps/api/src/routes/language-groups.ts` (okulda 404). Kur arşivi kapanmamış grup varken 422 `course_has_open_groups` (`planCourseArchive`, `groupsBlockingCourseArchive`). Paket satışı ON-058'dedir.
 
 ## Seviye tespiti
 
@@ -131,7 +131,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Mevzuat kurslarda mevcut tavanı koyar; dil öğretiminde konuşma pratiği küçük grup gerektirir.
 - **Kaynak:** ÖÖKY md. 48/2: okul dışındaki kurumlarda tavan 30, özel öğretim kursları ile sosyal etkinlik ve gelişim merkezlerinde 18. Kişisel gelişim kursu ruhsatlı dil okulu için yasal tavan 30 görünür; platform her iki türde muhafazakâr olarak 18'i tavan alır. Tavanı 30'a çıkarmak, ruhsat türü **doğrulandıktan** sonra mevzuat profili değişikliğiyle yapılır, kurum ayarıyla yapılmaz.
 - **Kurum türü:** `language_school` (`school` sınıf mevcudu için `DOM-KAY-010`)
-- **Kodda:** yok — dil grubu yok; sınıf kapasitesi 40'a kadar girilebiliyor (`packages/school-core/src/lib/school-management.js:23`).
+- **Kodda:** kısmen — `packages/school-core/src/lib/language-groups.ts` kapasite 1–18 (şema ve tablo `check`), kurun en çok mevcudunu aşamaz (`group_capacity_exceeds_course`) ve aktif kursiyer + süresi dolmamış teklif sayısının altına inemez (`group_capacity_below_members`); doluluk `groupOccupancy` (dondurulan sayılmaz), yerleştirmede 422 `group_full`. Derslik kapasitesi modeli ve deneme katılımcısının ders bazlı sayımı yok; okul sınıf kapasitesi ayrı kuraldır (`DOM-KAY-010`).
 
 ### DOM-DIL-041 · Grup seviye ve yaşa göre oluşur
 
@@ -139,7 +139,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Mevzuat grupların yaş ve bilgi düzeyine göre oluşturulmasını ister; reşit olmayanla yetişkinin aynı grupta olması ayrı bir koruma değerlendirmesi gerektirir.
 - **Kaynak:** ÖÖKY md. 48/2; yaş bantları işletme kuralı.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** kısmen — grup yaş bandı (`GROUP_AGE_BANDS`, genç 12+) taşır; `planGroupPlacement` seviye farkında öğretmen gerekçesi (`group_level_mismatch`), bant dışı yaşta yönetici gerekçesi (`group_age_band_mismatch`) ister. Yerleştirme yazması kayıt akışındadır (ON-058); çocuk bandının programa göre alt sınırı yok.
 
 ### DOM-DIL-042 · Grup açılış sayısı ve birleştirme
 
@@ -147,7 +147,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Kurum kaynaklı iptalde kursiyer kesintiye uğramamalı; tarih/saat sözleşmenin esasıdır.
 - **Kaynak:** İşletme kuralı; tam iade, ÖÖKY md. 56/3-b'deki %10 kesintinin kursiyer kaynaklı ayrılış için olduğu yorumuna dayanır — **doğrulanmalı**.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** kısmen — `packages/school-core/src/lib/language-groups.ts` `planGroupOpen` açılışı asgari sayıya (kurun `minLearners`) bağlar (422 `group_below_minimum`), başlangıç geçmişse açmaz; `planGroupCancellation` gerekçeyle iptal eder; `planGroupMerge` aynı kur ve yaş bandını birleştirir, kapasiteyi denetler, gün/saat farklıysa kursiyer onayı beyanı ister (`group_merge_consent_required`), kaynak iptal edilir. Uçlar `POST /api/v1/groups/:groupId/open|cancel|merge`. Kursiyere seçenek sunma ve iade kayıt/finans akışındadır (ON-058).
 
 ### DOM-DIL-043 · Bekleme listesi
 
@@ -155,7 +155,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Adil sıra ve ilan dışı ön ödeme yasağı.
 - **Kaynak:** İşletme kuralı; ÖÖKY md. 54/1-c.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** kısmen — tablo `language_group_waitlist` (öğrenci ya da aday, grup ya da kur sırası, teklif alanları); `packages/school-core/src/lib/language-groups.ts` `waitlistQueue` (istek anı sırası), `suggestWaitlistOffers` (süresi dolanlar ve boş yer kadar 48 saatlik teklif önerisi, saf); süresi dolmamış teklif kapasiteye sayılır. Okuma `GET /api/v1/groups/:groupId/waitlist` (yönetici, ön büro); sıraya alma ve teklif yazması kayıt akışındadır (ON-058).
 
 ### DOM-DIL-044 · Kurumlar arası nakil yoktur
 
@@ -171,7 +171,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Kurs kayıtları MEBBİS üzerinden yapılır ve bu bilgiler kayıtta istenir.
 - **Kaynak:** ÖÖKY md. 51/7, 51/11.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** kısmen — aynı kurda tek grup `planGroupPlacement` (409 `group_member_same_course`) ve farklı kur gruplarında saat çakışması (422 `learner_schedule_conflict`); tablo `language_group_members` grupta tekil kursiyer tutar. Kimlik alanları ve MEBBİS durumu kayıt akışındadır.
 
 ## Paket, saat satışı ve esnek dönem
 
@@ -339,9 +339,9 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 | Kural       | Fark                                                                                                                                                                                                                         |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DOM-DIL-001 | Kur (`lib/courses.ts`, tablo `courses`) ve `language_school` türü var; grup, devam ve kur geçme henüz kura bağlı değil, ders/sınıf düzeyi modeli sürüyor.                                                                    |
-| DOM-DIL-008 | Grup (OG-029) ve paket satışı (ON-058) yok; kur arşivinde açık grup denetimi ve ruhsat türüne göre haftalık saat/süre sınırı (`DOM-DIL-053`) uygulanmıyor.                                                                   |
-| DOM-DIL-040 | Dil grubu kavramı yok; sınıf kapasitesi 40'a kadar girilebiliyor (`packages/school-core/src/lib/school-management.js:23`), dil grubu tavanı 18.                                                                              |
+| DOM-DIL-001 | Kur (`lib/courses.ts`, tablo `courses`) ve `language_school` türü var; grup kura bağlı (`language_groups`), devam ve kur geçme henüz kura bağlı değil, ders/sınıf düzeyi modeli sürüyor.                                     |
+| DOM-DIL-008 | Paket satışı (ON-058) yok; ruhsat türüne göre haftalık saat/süre sınırı (`DOM-DIL-053`) uygulanmıyor.                                                                                                                        |
+| DOM-DIL-040 | Dil grubu tavanı 18 uygulanıyor; derslik kapasitesi ve ders bazlı deneme katılımcısı sayımı yok. Okul sınıf kapasitesi 40'a kadar girilebiliyor (`packages/school-core/src/lib/school-management.ts`).                       |
 | DOM-DIL-050 | Kayıt tutarı serbest TL toplamıdır, ders saati ve saat ücreti yok (`packages/school-core/src/lib/domain.ts:27-31`).                                                                                                          |
 | DOM-DIL-053 | Dönem `academicYear` tamsayı yıldır; kur bazlı esnek dönem yok.                                                                                                                                                              |
 | DOM-DIL-061 | Yoklama gün bazlıdır ve `excused` durumu vardır; ders saati bazlı yoklama yok (`packages/school-core/src/lib/domain.ts:111-113`). Devam hesabı (`cefr/progression.ts`) ders saati satırı bekler, gün bazlı yoklamayı okumaz. |

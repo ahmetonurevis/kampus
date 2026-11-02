@@ -1,13 +1,14 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, or } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { memberships, sessions, verifications } from '../src/db/schema/auth.ts'
-import { createLogMailer, maskResetUrl, MemoryMailer } from '../src/services/mailer.ts'
+import { createLogMailer, maskResetUrl, MemoryMailer, type Mailer } from '../src/services/mailer.ts'
 import { createResetLimiter } from '../src/services/password-reset.ts'
 import {
   buildTestApp,
@@ -67,18 +68,37 @@ describe('parola sıfırlama (IST-003)', () => {
     })
   }
 
-  /** Bellek kutusundaki son iletinin belirteci (web bağlantısının `token` parametresi). */
+  /** Bellek kutusundaki son iletinin belirteci (web bağlantısının adres parçasındaki `token`). */
   function tokenFor(email: string): string {
     const mail = mailer.lastTo(email)
     assert.ok(mail, 'ileti yok')
     const url = new URL(mail.url)
-    const token = url.searchParams.get('token')
+    assert.equal(url.search, '', 'belirteç sorguda olmamalı (sunucu loguna ve Referer’e girer)')
+    const token = new URLSearchParams(url.hash.slice(1)).get('token')
     assert.ok(token)
     return token
   }
 
+  /** Kullanıcının kendi işi (`actor`) ya da hakkında yazılan (`entity`) denetim satırları. */
   async function auditsOf(userId: string) {
-    return db.select().from(auditLog).where(eq(auditLog.actorUserId, userId))
+    return db
+      .select()
+      .from(auditLog)
+      .where(or(eq(auditLog.actorUserId, userId), eq(auditLog.entityId, userId)))
+      .orderBy(auditLog.createdAt)
+  }
+
+  async function tokenRows(userId: string) {
+    return db.select().from(verifications).where(eq(verifications.value, userId))
+  }
+
+  /** Soğuma penceresini geçmek için kullanıcının belirteçlerini geçmişe taşır. */
+  async function ageTokens(userId: string, minutes: number) {
+    for (const row of await tokenRows(userId))
+      await db
+        .update(verifications)
+        .set({ createdAt: new Date(row.createdAt.getTime() - minutes * 60_000) })
+        .where(eq(verifications.id, row.id))
   }
 
   test('IST-003: hesap var ve yok aynı durum ve gövdeyi döndürür; ileti yalnız hesaba gider', async () => {
@@ -98,17 +118,36 @@ describe('parola sıfırlama (IST-003)', () => {
     assert.ok(mail)
     assert.equal(mail.institutionName, 'Sıfırlama Koleji')
     // Bağlantı API'ye değil web sayfasına gider.
-    assert.match(mail.url, /^http:\/\/localhost:5174\/parola-sifirla\?token=[\w-]+$/)
+    assert.match(mail.url, /^http:\/\/localhost:5174\/parola-sifirla#token=[\w-]+$/)
     const audits = await auditsOf(user.id)
     assert.deepEqual(
       audits.map((row) => [row.action, row.institutionId, row.changes]),
       [['auth.password_reset_requested', institution.id, null]],
     )
-    const anonymous = await db
+    // Talep oturumsuzdur: işi yapan kanıtlanmamıştır, kayıt hesap sahibine aktör olarak yazılmaz;
+    // hedef varlık olarak görünür.
+    assert.equal(audits[0]?.actorUserId, null)
+    assert.deepEqual([audits[0]?.entityType, audits[0]?.entityId], ['user', user.id])
+  })
+
+  test('IST-003: bilinmeyen e-posta denetime aktörsüz, varlıksız ve e-postasız yazılır', async () => {
+    const stranger = `bilinmeyen-${randomUUID().slice(0, 8)}@kampus.example`
+    const response = await requestReset(app, stranger)
+    assert.equal(response.statusCode, 200)
+    const rows = await db
       .select()
       .from(auditLog)
       .where(eq(auditLog.action, 'auth.password_reset_requested'))
-    assert.ok(anonymous.some((row) => row.changes?.reason === 'unknown_user' && !row.actorUserId))
+    const mine = rows.filter((row) => row.changes?.reason === 'unknown_user')
+    assert.ok(mine.length > 0)
+    const last = mine.at(-1)
+    assert.equal(last?.actorUserId, null)
+    assert.equal(last?.entityId, null)
+    assert.equal(
+      JSON.stringify(rows).includes(stranger),
+      false,
+      'ham e-posta denetim kaydına girmemeli',
+    )
   })
 
   test('IST-003: belirteçle parola değişir, eski parola geçmez, bütün oturumlar kapanır', async () => {
@@ -236,29 +275,95 @@ describe('parola sıfırlama (IST-003)', () => {
     assert.ok(Number(last?.headers['retry-after']) > 0)
   })
 
-  test('IST-003: aynı hesaba farklı IP’lerden saatte en çok 3 ileti; yanıt değişmez', async () => {
+  test('IST-003: açık belirteç varken 5 dakika içinde yeni ileti ve belirteç satırı yazılmaz', async () => {
     const institution = await createInstitution(app)
     const user = await createMember(app, institution.id, 'veli')
     const before = mailer.outbox.length
-    const responses: Awaited<ReturnType<typeof requestReset>>[] = []
-    for (let attempt = 0; attempt < 5; attempt += 1)
-      responses.push(await requestReset(app, user.email.toUpperCase()))
+    const first = await requestReset(app, user.email)
+    // Farklı IP'lerden art arda istek: IP sınırı değil, hesap soğuması devrede.
+    const repeats = [
+      await requestReset(app, user.email.toUpperCase()),
+      await requestReset(app, user.email),
+    ]
 
+    for (const response of repeats) {
+      assert.equal(response.statusCode, 200)
+      assert.equal(response.body, first.body)
+    }
+    assert.equal(mailer.outbox.length, before + 1)
+    assert.equal((await tokenRows(user.id)).length, 1, 'doğrulama satırı birikmemeli')
     assert.deepEqual(
-      responses.map((response) => response.statusCode),
-      [200, 200, 200, 200, 200],
+      (await auditsOf(user.id)).map((row) => row.changes?.reason ?? null),
+      [null, 'cooldown', 'cooldown'],
     )
-    assert.ok(responses.every((response) => response.body === responses[0]?.body))
-    assert.equal(mailer.outbox.length, before + 3)
-    const audits = await auditsOf(user.id)
-    assert.deepEqual(
-      audits.map((row) => row.changes?.reason ?? null),
-      [null, null, null, 'rate_limited', 'rate_limited'],
-    )
-    // Başka hesap bu sınırdan etkilenmez.
+
+    // Pencere geçince yeni ileti gider.
+    await ageTokens(user.id, 6)
+    assert.equal((await requestReset(app, user.email)).statusCode, 200)
+    assert.equal(mailer.outbox.length, before + 2)
+    // Başka hesap bu soğumadan etkilenmez.
     const other = await createMember(app, institution.id, 'ogretmen')
     assert.equal((await requestReset(app, other.email)).statusCode, 200)
     assert.ok(mailer.lastTo(other.email))
+  })
+
+  test('IST-003: aynı hesaba saatte en çok 3 ileti; fazlası gönderilmez, satır yazılmaz', async () => {
+    const institution = await createInstitution(app)
+    const user = await createMember(app, institution.id, 'veli')
+    const before = mailer.outbox.length
+    const bodies: string[] = []
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      const response = await requestReset(app, user.email)
+      assert.equal(response.statusCode, 200)
+      bodies.push(response.body)
+      await ageTokens(user.id, 6)
+    }
+
+    assert.equal(new Set(bodies).size, 1, 'yanıt hiç değişmemeli')
+    assert.equal(mailer.outbox.length, before + 3)
+    assert.equal((await tokenRows(user.id)).length, 3)
+    assert.deepEqual(
+      (await auditsOf(user.id)).map((row) => row.changes?.reason ?? null),
+      [null, null, null, 'rate_limited', 'rate_limited'],
+    )
+  })
+
+  test('IST-003: iki açık belirteçten biriyle sıfırlayınca diğeri geçersiz olur', async () => {
+    const institution = await createInstitution(app)
+    const user = await createMember(app, institution.id, 'veli')
+    await requestReset(app, user.email)
+    const tokenA = tokenFor(user.email)
+    // Soğumayı atla: ikinci belirteç (saldırganın ya da eski e-postanın bağlantısı) açık kalır.
+    await ageTokens(user.id, 6)
+    await requestReset(app, user.email)
+    const tokenB = tokenFor(user.email)
+    assert.notEqual(tokenA, tokenB)
+    assert.equal((await tokenRows(user.id)).length, 2)
+
+    assert.equal((await resetPassword(tokenA)).statusCode, 200)
+    assert.deepEqual(await tokenRows(user.id), [], 'bekleyen belirteç silinmeli')
+    const second = await resetPassword(tokenB, 'Baska-Bir-Guclu-Parola-7742')
+    assert.equal(second.statusCode, 400)
+    // Parola A'nınki kalır.
+    assert.equal((await signIn(app, user.email, NEW_PASSWORD, nextIp())).statusCode, 200)
+  })
+
+  test('IST-003: parola değişimi (change-password) bekleyen sıfırlama belirtecini geçersiz kılar', async () => {
+    const institution = await createInstitution(app)
+    const user = await createMember(app, institution.id, 'veli')
+    await requestReset(app, user.email)
+    const token = tokenFor(user.email)
+    const cookie = await signInAs(app, user)
+    const changed = await app.inject({
+      method: 'POST',
+      url: '/api/v1/auth/change-password',
+      headers: { origin: TEST_ORIGIN, 'content-type': 'application/json', cookie },
+      remoteAddress: nextIp(),
+      payload: { currentPassword: user.password, newPassword: NEW_PASSWORD },
+    })
+    assert.equal(changed.statusCode, 200)
+    assert.deepEqual(await tokenRows(user.id), [])
+    assert.equal((await resetPassword(token, 'Baska-Bir-Guclu-Parola-7742')).statusCode, 400)
   })
 
   test('IST-003: e-posta sınırı kayan penceredir ve hesaplar birbirinden bağımsızdır', () => {
@@ -272,6 +377,81 @@ describe('parola sıfırlama (IST-003)', () => {
     assert.equal(limiter.take('a@x.example', 1012), true)
     assert.equal(limiter.take('a@x.example', 1013), false)
   })
+
+  test('IST-003: ileti arka planda gider; yanıt göndericiyi beklemez, kapanışta tamamlanır', async () => {
+    let release: () => void = () => undefined
+    const gate = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    const sent: string[] = []
+    const slow: Mailer = {
+      configured: true,
+      async sendPasswordReset(mail) {
+        await gate
+        sent.push(mail.to)
+      },
+    }
+    const backgroundApp = await buildTestApp(db, { mailer: slow, backgroundMail: true })
+    const institution = await createInstitution(backgroundApp)
+    const user = await createMember(backgroundApp, institution.id, 'veli')
+    const response = await requestReset(backgroundApp, user.email)
+    assert.equal(response.statusCode, 200)
+    assert.deepEqual(sent, [], 'yanıt gönderici bitmeden dönmeli')
+    release()
+    await backgroundApp.close()
+    assert.deepEqual(sent, [user.email])
+  })
+
+  for (const [name, overrides, remote, forwarded] of [
+    ['vekilsiz', {}, '203.0.113.60', (attempt: number) => `198.51.100.${attempt}`],
+    [
+      'tek vekil arkasında',
+      { TRUST_PROXY: '1' },
+      '10.0.0.2',
+      (attempt: number) => `198.51.100.${attempt}, 203.0.113.61`,
+    ],
+  ] as const) {
+    test(`IST-003: ${name} sahte X-Forwarded-For sıfırlama hız sınırını aşamaz`, async () => {
+      const proxied = await buildTestApp(db, { config: testConfig(overrides) })
+      try {
+        const statuses: number[] = []
+        for (let attempt = 1; attempt <= 4; attempt += 1)
+          statuses.push(
+            (
+              await proxied.inject({
+                method: 'POST',
+                url: '/api/v1/auth/request-password-reset',
+                remoteAddress: remote,
+                headers: {
+                  origin: TEST_ORIGIN,
+                  'content-type': 'application/json',
+                  'x-forwarded-for': forwarded(attempt),
+                },
+                payload: { email: `kimse-${attempt}@kampus.example` },
+              })
+            ).statusCode,
+          )
+        assert.deepEqual(statuses, [200, 200, 200, 429])
+        if (overrides.TRUST_PROXY) {
+          // Vekilin gerçekten ayrı istemci olarak gördüğü başka adres bu sınırdan etkilenmez.
+          const other = await proxied.inject({
+            method: 'POST',
+            url: '/api/v1/auth/request-password-reset',
+            remoteAddress: remote,
+            headers: {
+              origin: TEST_ORIGIN,
+              'content-type': 'application/json',
+              'x-forwarded-for': '198.51.100.9, 203.0.113.62',
+            },
+            payload: { email: 'baska-kimse@kampus.example' },
+          })
+          assert.equal(other.statusCode, 200)
+        }
+      } finally {
+        await proxied.close()
+      }
+    })
+  }
 
   test('IST-003: testte ve üretimde belirteç loga yazılmaz; üretimde sağlayıcı yoksa gönderilmez', async () => {
     const testLogs: string[] = []
@@ -293,28 +473,32 @@ describe('parola sıfırlama (IST-003)', () => {
       const institution = await createInstitution(testApp)
       const user = institution.admin
       assert.equal((await requestReset(testApp, user.email)).statusCode, 200)
-      const token = new URL(memory.lastTo(user.email)?.url ?? '').searchParams.get('token')
+      const token = new URLSearchParams(
+        new URL(memory.lastTo(user.email)?.url ?? '').hash.slice(1),
+      ).get('token')
       assert.ok(token)
       const testText = testLogs.join('')
       assert.ok(testText.includes('mail.password_reset'), 'test logunda gönderim kaydı yok')
-      assert.ok(testText.includes('/parola-sifirla?token=[gizli]'))
+      assert.ok(testText.includes('/parola-sifirla#token=[gizli]'))
       for (const secret of [token, user.email])
         assert.equal(testText.includes(secret), false, 'test logunda gizli değer')
 
+      // Aynı hesap 5 dakikalık soğumada olurdu; üretim isteği başka hesaptan gelir.
+      const prodUser = await createMember(testApp, institution.id, 'veli')
       const prodResponse = await prodApp.inject({
         method: 'POST',
         url: '/api/v1/auth/request-password-reset',
         headers: { origin: 'https://kampus.example', 'content-type': 'application/json' },
         remoteAddress: nextIp(),
-        payload: { email: user.email },
+        payload: { email: prodUser.email },
       })
       assert.equal(prodResponse.statusCode, 200)
       const prodText = prodLogs.join('')
       assert.ok(prodText.includes('mail_provider_not_configured'), 'üretimde uyarı yok')
       assert.equal(prodText.includes('parola-sifirla'), false)
-      assert.equal(prodText.includes(user.email), false)
+      assert.equal(prodText.includes(prodUser.email), false)
       assert.ok(
-        (await auditsOf(user.id)).some(
+        (await auditsOf(prodUser.id)).some(
           (row) =>
             row.action === 'auth.password_reset_requested' &&
             row.changes?.reason === 'mail_not_configured',
@@ -330,7 +514,7 @@ describe('parola sıfırlama (IST-003)', () => {
     const lines: { object: object; message: string }[] = []
     const record = (object: object, message: string) => lines.push({ object, message })
     const mailerForDev = createLogMailer({ info: record, warn: record, error: record })
-    const url = 'http://localhost:5174/parola-sifirla?token=abc123'
+    const url = 'http://localhost:5174/parola-sifirla#token=abc123'
     await mailerForDev.sendPasswordReset({
       to: 'kisi@kampus.example',
       url,
@@ -338,8 +522,8 @@ describe('parola sıfırlama (IST-003)', () => {
     })
     assert.equal(lines.length, 1)
     const text = JSON.stringify(lines)
-    assert.ok(text.includes('token=abc123'))
+    assert.ok(text.includes('#token=abc123'))
     assert.equal(text.includes('kisi@kampus.example'), false)
-    assert.equal(maskResetUrl(url), 'http://localhost:5174/parola-sifirla?token=[gizli]')
+    assert.equal(maskResetUrl(url), 'http://localhost:5174/parola-sifirla#token=[gizli]')
   })
 })

@@ -7,9 +7,22 @@ import { institutions, memberships, users } from '../db/schema/auth.ts'
 import { isWeakPassword } from '../lib/password-policy.ts'
 import { recordAudit } from './audit.ts'
 
+/** Parola sıfırlama kancaları (`services/password-reset.ts`); döngüsel içe aktarma olmasın diye dışarıdan verilir. */
+export interface PasswordResetHooks {
+  throttle(user: { id: string; email: string }): Promise<'cooldown' | 'rate_limited' | null>
+  revokeTokens(userId: string): Promise<void>
+}
+
 interface HookContext {
   db: Database
   secret: string
+  passwordReset?: PasswordResetHooks
+}
+
+/** Better Auth'un `request-password-reset` yanıtıyla aynı: hesabın varlığı yanıttan anlaşılmaz. */
+const RESET_REQUEST_RESPONSE = {
+  status: true,
+  message: 'If this email exists in our system, check your email for the reset link',
 }
 
 /** Better Auth'a iletilen isteklerde Fastify'nin yazdığı başlıklar (bkz. plugins/better-auth.ts). */
@@ -83,6 +96,28 @@ export function authBeforeHook(ctx: HookContext) {
           message: WEAK_PASSWORD_MESSAGE,
         })
       return
+    }
+    if (context.path === '/request-password-reset' && ctx.passwordReset) {
+      const email = stringField(context.body, 'email')?.trim().toLowerCase()
+      if (!email) return
+      const [user] = await ctx.db
+        .select({ id: users.id, email: users.email })
+        .from(users)
+        .where(eq(users.email, email))
+        .limit(1)
+      if (!user) return
+      const throttled = await ctx.passwordReset.throttle(user)
+      if (!throttled) return
+      // Kısa devre: işleyici (belirteç satırı, ileti) çalışmaz; denetimde nedeni kalır.
+      await recordAudit(ctx, {
+        action: 'auth.password_reset_requested',
+        entityType: 'user',
+        entityId: user.id,
+        requestId: context.headers?.get(FORWARDED_REQUEST_ID_HEADER),
+        ip: context.headers?.get(FORWARDED_IP_HEADER),
+        changes: { reason: throttled },
+      })
+      return context.json(RESET_REQUEST_RESPONSE)
     }
     if (context.path === '/sign-out') {
       const session = await getSessionFromCtx(context).catch(() => null)
@@ -160,6 +195,7 @@ export function authAfterHook(ctx: HookContext) {
         if (failed) return
         const session = await hookSession(context)
         if (!session) return
+        await ctx.passwordReset?.revokeTokens(session.user.id)
         await recordAudit(ctx, {
           action: 'auth.password_changed',
           actorUserId: session.user.id,
@@ -170,8 +206,8 @@ export function authAfterHook(ctx: HookContext) {
         return
       }
       case '/request-password-reset': {
-        // Hesap varsa kayıt gönderimde yazılır (`deliverPasswordReset`); burada yalnız bilinmeyen
-        // e-posta (hesap tarama denemesi). Yanıt iki durumda da aynıdır.
+        // Hesap varsa kayıt gönderimde ya da kısa devrede yazılır; burada yalnız bilinmeyen
+        // e-posta (hesap tarama denemesi). Yanıt her durumda aynıdır. E-posta ham yazılmaz.
         if (failed) return
         const email = stringField(context.body, 'email')?.trim().toLowerCase()
         const [user] = email

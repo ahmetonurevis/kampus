@@ -20,6 +20,8 @@ import {
   createResetLimiter,
   deliverPasswordReset,
   recordPasswordResetCompleted,
+  resetThrottleReason,
+  revokeResetTokens,
 } from './services/password-reset.ts'
 
 // Better Auth yapılandırmasının tek yeri (ADR 0002, docs/muhendislik/guvenlik-kvkk.md §1–4).
@@ -66,7 +68,7 @@ export const roles = {
  * rolü `/me`'den gelir (`get-active-member-role` `?userId=` ile başkasının rolünü verir); sosyal
  * giriş olmadığından Expo yetkilendirme vekili (`/expo-authorization-proxy`) açık yönlendirmedir.
  * `GET /reset-password/:token` kapalıdır: sıfırlama bağlantısı API'ye değil doğrudan web'in
- * `/parola-sifirla?token=…` sayfasına gider (`services/password-reset.ts`), belirteç orada
+ * `/parola-sifirla#token=…` sayfasına gider (`services/password-reset.ts`), belirteç orada
  * `POST /reset-password` ile tüketilir. Yönlendirme ucu `callbackURL` alır; açmak gereksiz bir
  * yönlendirme yüzeyi ve belirtecin API erişim loglarına düşmesi demektir.
  */
@@ -107,6 +109,11 @@ export interface AuthOptions {
   mailer?: Mailer
   /** Yapılandırılmış log (Fastify logger'ı); verilmezse sessiz. */
   log?: MailLog
+  /**
+   * Sıfırlama iletisi yanıtı beklemeden arka planda gönderilir (varsayılan `true`): hesap var/yok
+   * yanıt süresinden ayırt edilemesin. `false` iletiyi bekler (testte sonuç hemen okunur).
+   */
+  background?: boolean
 }
 
 export function createAuth(config: Config, db: Database, options: AuthOptions = {}) {
@@ -117,9 +124,24 @@ export function createAuth(config: Config, db: Database, options: AuthOptions = 
     mailer: options.mailer ?? createMailer(config, log),
     webUrl: webUrl(config),
     log,
-    limiter: createResetLimiter(),
   }
-  return betterAuth({
+  const limiter = createResetLimiter()
+  const passwordReset = {
+    throttle: (user: { id: string; email: string }) => resetThrottleReason({ db, limiter }, user),
+    revokeTokens: (userId: string) => revokeResetTokens(db, userId),
+  }
+  // Arka plandaki gönderimler kapanışta beklenir (`flushBackground`).
+  const pending = new Set<Promise<unknown>>()
+  const background =
+    options.background === false
+      ? undefined
+      : {
+          handler: (task: Promise<unknown>) => {
+            pending.add(task)
+            void task.finally(() => pending.delete(task))
+          },
+        }
+  const auth = betterAuth({
     appName: 'Kampüs',
     baseURL: publicUrl(config),
     basePath: AUTH_BASE_PATH,
@@ -175,6 +197,7 @@ export function createAuth(config: Config, db: Database, options: AuthOptions = 
       cookiePrefix: 'kampus',
       useSecureCookies: useSecureCookies(config),
       ipAddress: { ipAddressHeaders: [FORWARDED_IP_HEADER] },
+      ...(background ? { backgroundTasks: background } : {}),
     },
     databaseHooks: {
       session: {
@@ -202,8 +225,8 @@ export function createAuth(config: Config, db: Database, options: AuthOptions = 
       },
     },
     hooks: {
-      before: authBeforeHook({ db, secret: config.BETTER_AUTH_SECRET }),
-      after: authAfterHook({ db, secret: config.BETTER_AUTH_SECRET }),
+      before: authBeforeHook({ db, secret: config.BETTER_AUTH_SECRET, passwordReset }),
+      after: authAfterHook({ db, secret: config.BETTER_AUTH_SECRET, passwordReset }),
     },
     plugins: [
       organization({
@@ -229,6 +252,12 @@ export function createAuth(config: Config, db: Database, options: AuthOptions = 
       }),
       expo(),
     ],
+  })
+  return Object.assign(auth, {
+    /** Bekleyen arka plan gönderimlerini bitirir (sunucu kapanışı, testler). */
+    flushBackground: async (): Promise<void> => {
+      while (pending.size > 0) await Promise.allSettled([...pending])
+    },
   })
 }
 

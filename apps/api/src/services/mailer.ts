@@ -18,7 +18,7 @@ export const SILENT_MAIL_LOG: MailLog = {
 
 export interface PasswordResetMail {
   to: string
-  /** Web'in `/parola-sifirla?token=…` sayfası; belirteç içerir. */
+  /** Web'in `/parola-sifirla#token=…` sayfası; belirteç adres parçasındadır (sunucuya gitmez). */
   url: string
   /** Kullanıcının varsayılan kurumu (en eski üyelik); şablonda gönderen adı olarak geçer. */
   institutionName: string
@@ -34,8 +34,9 @@ export interface Mailer {
 export function maskResetUrl(url: string): string {
   try {
     const parsed = new URL(url)
-    if (parsed.searchParams.has('token')) parsed.searchParams.set('token', '[gizli]')
-    return parsed.toString().replace('%5Bgizli%5D', '[gizli]')
+    parsed.search = ''
+    parsed.hash = parsed.hash ? 'token=[gizli]' : ''
+    return parsed.toString()
   } catch {
     return '[gizli]'
   }
@@ -85,14 +86,27 @@ export function createUnconfiguredMailer(log: MailLog): Mailer {
   }
 }
 
-/** Ortamın varsayılan gönderici. TODO(OG-095): sağlayıcı ortam değişkenleri ve gerçek gönderim. */
-export function createMailer(config: Config, log: MailLog): Mailer {
+/** Seçili gönderici: `MAIL_DRIVER`, verilmezse ortamın varsayılanı (üretimde `none`). */
+export function mailDriver(config: Config): 'log' | 'memory' | 'none' {
+  if (config.MAIL_DRIVER) return config.MAIL_DRIVER
   switch (config.NODE_ENV) {
     case 'development':
-      return createLogMailer(log)
+      return 'log'
     case 'test':
-      return new MemoryMailer()
+      return 'memory'
     case 'production':
+      return 'none'
+  }
+}
+
+/** TODO(OG-095): sağlayıcı sürücüsü (`smtp` vb.) ve gerçek gönderim. */
+export function createMailer(config: Config, log: MailLog): Mailer {
+  switch (mailDriver(config)) {
+    case 'log':
+      return createLogMailer(log)
+    case 'memory':
+      return new MemoryMailer()
+    case 'none':
       return createUnconfiguredMailer(log)
   }
 }

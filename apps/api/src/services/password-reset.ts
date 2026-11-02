@@ -1,7 +1,7 @@
-import { asc, eq } from 'drizzle-orm'
+import { and, asc, eq, gt } from 'drizzle-orm'
 
 import type { Database } from '../db/client.ts'
-import { institutions, memberships } from '../db/schema/auth.ts'
+import { institutions, memberships, verifications } from '../db/schema/auth.ts'
 import { recordAudit } from './audit.ts'
 import { FORWARDED_IP_HEADER, FORWARDED_REQUEST_ID_HEADER } from './auth-hooks.ts'
 import { maskResetUrl, type MailLog, type Mailer } from './mailer.ts'
@@ -16,18 +16,11 @@ export interface PasswordResetContext {
   /** Web kök adresi; `null` ise (üretimde `WEB_URL` yok) bağlantı kurulamaz, ileti gönderilmez. */
   webUrl: string | null
   log: MailLog
-  /** E-posta başına gönderim sınırı; verilmezse sınırsız (yalnız IP başına sınır işler). */
-  limiter?: ResetLimiter
 }
 
 /** Sıfırlama isteğinin sonucu; yalnız denetim kaydı ve log içindir, yanıta yansımaz. */
 export type PasswordResetOutcome =
-  | 'sent'
-  | 'no_membership'
-  | 'mail_not_configured'
-  | 'web_url_missing'
-  | 'send_failed'
-  | 'rate_limited'
+  'sent' | 'no_membership' | 'mail_not_configured' | 'web_url_missing' | 'send_failed'
 
 /** Aynı hesaba saatte en çok 3 sıfırlama iletisi: IP değiştirerek posta kutusu doldurulamaz. */
 export const RESET_PER_EMAIL_MAX = 3
@@ -67,7 +60,48 @@ export function createResetLimiter(
 export const RESET_PAGE_PATH = '/parola-sifirla'
 
 export function resetPageUrl(webUrl: string, token: string): string {
-  return `${webUrl}${RESET_PAGE_PATH}?token=${encodeURIComponent(token)}`
+  // Belirteç adres parçasındadır: tarayıcı parçayı sunucuya, Referer'e ve erişim loguna yazmaz.
+  return `${webUrl}${RESET_PAGE_PATH}#token=${encodeURIComponent(token)}`
+}
+
+/** Aynı hesaba iki sıfırlama iletisi arasındaki en kısa süre: açık belirteç varken yenisi yazılmaz. */
+export const RESET_COOLDOWN_MS = 5 * 60 * 1000
+
+export type ResetThrottle = 'cooldown' | 'rate_limited'
+
+/**
+ * Better Auth sıfırlama uç işleyicisi çalışmadan (kanca `before`) sorulur ki reddedilen istek için
+ * ne `verifications` satırı ne ileti oluşsun. Hesap zaten bulunmuş olduğundan yanıt aynı kalır.
+ * Önce soğuma (son 5 dakikada açık belirteç var mı), sonra saatlik e-posta sınırı.
+ */
+export async function resetThrottleReason(
+  ctx: { db: Database; limiter: ResetLimiter },
+  user: { id: string; email: string },
+  now: Date = new Date(),
+): Promise<ResetThrottle | null> {
+  const [recent] = await ctx.db
+    .select({ id: verifications.id })
+    .from(verifications)
+    .where(
+      and(
+        eq(verifications.value, user.id),
+        gt(verifications.createdAt, new Date(now.getTime() - RESET_COOLDOWN_MS)),
+        gt(verifications.expiresAt, now),
+      ),
+    )
+    .limit(1)
+  if (recent) return 'cooldown'
+  return ctx.limiter.take(user.email, now.getTime()) ? null : 'rate_limited'
+}
+
+/**
+ * Kullanıcının bekleyen bütün sıfırlama belirteçlerini siler. Belirteç özetle saklandığından
+ * tanımlayıcıdan aranamaz; bu yapılandırmada `verifications.value` yalnız sıfırlama belirtecinde
+ * kullanıcı kimliğidir (e-posta doğrulama ve sihirli bağlantı kapalı). Parola değişince (sıfırlama
+ * ya da `change-password`) çağrılır: eşzamanlı açık belirteç parolayı yeniden değiştiremesin.
+ */
+export async function revokeResetTokens(db: Database, userId: string): Promise<void> {
+  await db.delete(verifications).where(eq(verifications.value, userId))
 }
 
 /** Kullanıcının en eski üyeliğinin kurumu (oturum açılışındaki varsayılan kurumla aynı kural). */
@@ -101,12 +135,6 @@ export async function deliverPasswordReset(
       { event: 'mail.password_reset_not_sent', code: 'web_url_missing' },
       'WEB_URL verilmediği için parola sıfırlama bağlantısı kurulamadı',
     )
-  } else if (ctx.limiter && !ctx.limiter.take(input.user.email)) {
-    outcome = 'rate_limited'
-    ctx.log.warn(
-      { event: 'mail.password_reset_not_sent', code: 'rate_limited' },
-      'Aynı hesaba saatlik sıfırlama sınırı doldu; ileti gönderilmedi',
-    )
   } else {
     // Sağlayıcı yoksa gönderici yalnız uyarı loglar (`createUnconfiguredMailer`).
     outcome = ctx.mailer.configured ? 'sent' : 'mail_not_configured'
@@ -134,7 +162,9 @@ export async function deliverPasswordReset(
 
   await recordAudit(ctx, {
     action: 'auth.password_reset_requested',
-    actorUserId: input.user.id,
+    // Talep oturumsuzdur: kimliği kanıtlanmamış kişinin işi hesap sahibine yazılmaz; hedef varlıktır.
+    entityType: 'user',
+    entityId: input.user.id,
     institutionId: institution?.id ?? null,
     requestId: request?.headers.get(FORWARDED_REQUEST_ID_HEADER),
     ip: request?.headers.get(FORWARDED_IP_HEADER),
@@ -150,6 +180,7 @@ export async function recordPasswordResetCompleted(
   userId: string,
   request: Request | undefined,
 ): Promise<void> {
+  await revokeResetTokens(ctx.db, userId)
   const institution = await defaultInstitution(ctx.db, userId)
   await recordAudit(ctx, {
     action: 'auth.password_reset_completed',

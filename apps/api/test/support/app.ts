@@ -69,6 +69,8 @@ export interface TestAppOptions {
   extend?: (app: App) => void
   /** Parola sıfırlama iletisi (ör. `MemoryMailer`; kutusu testten okunur). */
   mailer?: Mailer
+  /** Sıfırlama iletisi arka planda mı gönderilsin; testte varsayılan `false` (ileti beklenir). */
+  backgroundMail?: boolean
 }
 
 export async function buildTestApp(db: Database, options: TestAppOptions = {}): Promise<App> {
@@ -89,6 +91,7 @@ export async function buildTestApp(db: Database, options: TestAppOptions = {}): 
     ...(options.storage ? { storage: options.storage } : {}),
     ...(logStream ? { logStream } : {}),
     ...(options.mailer ? { mailer: options.mailer } : {}),
+    backgroundMail: options.backgroundMail ?? false,
   })
   options.extend?.(app)
   await app.ready()

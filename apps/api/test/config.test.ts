@@ -10,6 +10,7 @@ import {
   storageDir,
   useSecureCookies,
 } from '../src/config.ts'
+import { mailDriver } from '../src/services/mailer.ts'
 
 const base = {
   NODE_ENV: 'development',
@@ -83,6 +84,21 @@ describe('ortam yapılandırması', () => {
     assert.equal(isDevelopmentLike(loadConfig(base)), true)
     assert.equal(isDevelopmentLike(loadConfig({ ...base, NODE_ENV: 'test' })), true)
     assert.equal(isDevelopmentLike(parseConfig(production)), false)
+  })
+
+  test('MAIL_DRIVER ortama göre varsayılanlanır; üretimde log ve memory reddedilir', () => {
+    assert.equal(mailDriver(loadConfig(base)), 'log')
+    assert.equal(mailDriver(loadConfig({ ...base, NODE_ENV: 'test' })), 'memory')
+    assert.equal(mailDriver(parseConfig(production)), 'none')
+    assert.equal(mailDriver(loadConfig({ ...base, MAIL_DRIVER: 'none' })), 'none')
+    assert.equal(mailDriver(parseConfig({ ...production, MAIL_DRIVER: 'none' })), 'none')
+    for (const driver of ['log', 'memory'])
+      assert.throws(
+        () => parseConfig({ ...production, MAIL_DRIVER: driver }),
+        /MAIL_DRIVER/,
+        driver,
+      )
+    assert.throws(() => parseConfig({ ...base, MAIL_DRIVER: 'smtp' }), /MAIL_DRIVER/)
   })
 
   test('TRUST_PROXY hop sayısı veya vekil IP/CIDR listesi kabul eder, true reddedilir', () => {

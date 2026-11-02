@@ -178,6 +178,8 @@ export interface BuildAppOptions {
   logStream?: NodeJS.WritableStream
   /** Parola sıfırlama iletisi; verilmezse ortamın varsayılanı (testte bellek kutusu). */
   mailer?: Mailer
+  /** Sıfırlama iletisi yanıttan sonra gönderilir (varsayılan `true`); `false` iletiyi bekler. */
+  backgroundMail?: boolean
 }
 
 export type App = FastifyInstance
@@ -200,7 +202,9 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   const auth = createAuth(config, db, {
     log: app.log,
     ...(options.mailer ? { mailer: options.mailer } : {}),
+    ...(options.backgroundMail === undefined ? {} : { background: options.backgroundMail }),
   })
+  app.addHook('onClose', () => auth.flushBackground())
   app.decorate('auth', auth)
   app.decorate('db', db)
   app.decorate('config', config)

@@ -7,7 +7,8 @@ import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
-// Okuma sayfaları (W18): yönetici SLA Raporu ve öğrenci Ders Videoları. İkisi de yalnız okur;
+// Okuma sayfaları (W18): yönetici SLA Raporu ve öğrenci Ders Videoları. İkisi de yalnız okur
+// (video izleme ilerlemesinin yazılması `video-ilerleme.spec.ts`'tedir);
 // paylaşılan seed oturumları salt okunurdur. Beklenen değerler kapsamı uygulayan API'den gelir
 // (seed saati e2e kurulumunda sabittir, ihlal eşiği test anında hesaplanır). Sayıları belirli
 // olması gereken testler (ihlal, boş durum) kendi kurumunu kurar.

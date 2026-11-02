@@ -4,6 +4,8 @@ import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useTheme } from '@/hooks/use-theme.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { useAuth } from '@/auth/use-auth.ts'
+import { ConsentsSection } from './ConsentsSection.tsx'
 
 /**
  * Öğrenci ve veli Ayarlar sayfası: görünüm (tema) tercihi cihazda saklanır. Bildirim
@@ -13,6 +15,7 @@ import type { NavPage } from '@/lib/navigation.ts'
 export function PersonalSettingsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const { theme, setTheme } = useTheme()
+  const { session } = useAuth()
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
@@ -56,6 +59,7 @@ export function PersonalSettingsPage({ page }: { page: NavPage }) {
             saklanmıyor.
           </p>
         </section>
+        {session ? <ConsentsSection session={session} /> : null}
       </div>
     </>
   )

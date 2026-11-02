@@ -284,6 +284,8 @@ function buildSeed(now: Date) {
     absences: [],
     notifications: [],
     notificationReads: [],
+    permissionForms: [],
+    permissionDecisions: [],
     // Onur: kayıt ve finans
     contracts: students.map((s) => ({
       id: `contract-${s.id}`,

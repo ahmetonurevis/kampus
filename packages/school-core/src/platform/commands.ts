@@ -147,6 +147,34 @@ export const PLATFORM_OPERATION_COMMANDS = {
   'homework.archive': spec('learning', [...SCOPE, 'homework', 'submissions']),
   'homework.submit': spec('learning', [...SCOPE, 'homework', 'submissions']),
   'homework.grade': spec('learning', [...SCOPE, 'homework', 'submissions']),
+  // Dijital veli onayı ve izin formu (`lib/permission-forms.ts`; IST-067, DOM-ILT-036…039). API
+  // form açarken formları ve kararları hiç, diğer işlemlerde yalnız hedef formu ve kararlarını
+  // yükler.
+  'permissionForm.create': spec('communication', [
+    ...SCOPE,
+    'permissionForms',
+    'permissionDecisions',
+  ]),
+  'permissionForm.update': spec('communication', [
+    ...SCOPE,
+    'permissionForms',
+    'permissionDecisions',
+  ]),
+  'permissionForm.close': spec('communication', [
+    ...SCOPE,
+    'permissionForms',
+    'permissionDecisions',
+  ]),
+  'permissionForm.archive': spec('communication', [
+    ...SCOPE,
+    'permissionForms',
+    'permissionDecisions',
+  ]),
+  'permissionForm.decide': spec('communication', [
+    ...SCOPE,
+    'permissionForms',
+    'permissionDecisions',
+  ]),
   // Uygulama içi bildirimin okundu işareti (`lib/notifications.ts`, DOM-ILT-020, -073). Görünürlük
   // üyelik bağlantılarındandır; kapsam kaynağı yalnız yetki (modül, rol) için okunur. API yalnız
   // aktörün gördüğü bildirimleri ve kendi okundu işaretlerini yükler.

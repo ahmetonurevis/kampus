@@ -16,6 +16,9 @@ import { NotFoundError } from '../errors.ts'
  *   `GET /conversations/:id/messages` ile, taraf denetiminden sonra sayfalanarak okunur.
  * - `notifications`, `notificationReads`: uygulama içi bildirim ve kullanıcının okundu işareti;
  *   yalnız `GET /notifications` ile, okuyanın kendi okundu bilgisiyle gelir (DOM-ILT-073).
+ * - `permissionForms`, `permissionDecisions`: izin formu ve veli kararları; yalnız
+ *   `GET /permission-forms` uçlarıyla gelir. Form bütün hedef öğrencileri, karar veren veliyi
+ *   taşır; uç bunları okuyana göre daraltır (DOM-ILT-037, DOM-ILT-073).
  */
 const CLOSED_COLLECTIONS: ReadonlySet<CollectionName> = new Set<CollectionName>([
   'audit',
@@ -23,6 +26,8 @@ const CLOSED_COLLECTIONS: ReadonlySet<CollectionName> = new Set<CollectionName>(
   'conversationMessages',
   'notifications',
   'notificationReads',
+  'permissionForms',
+  'permissionDecisions',
 ])
 
 /** Okuma uçlarında görünen koleksiyonlar (OpenAPI açıklaması ve testler için). */

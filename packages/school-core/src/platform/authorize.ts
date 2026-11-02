@@ -1,5 +1,6 @@
 import type { QuestionParties } from '../lib/authorize.ts'
 import type { HomeworkParties } from '../lib/homework.ts'
+import type { PermissionFormParties } from '../lib/permission-forms.ts'
 import type { AnnouncementPublisher, AnnouncementTarget } from '../lib/communication.ts'
 import type { ConversationParties } from '../lib/communication-access.ts'
 import type { ArchiveKind } from '../lib/school-management.ts'
@@ -74,6 +75,19 @@ export type PlatformWriteTargets = {
   'homework.archive': { homework: HomeworkParties | undefined }
   'homework.submit': { studentId: string | undefined; homework: { classId: string } | undefined }
   'homework.grade': { homework: HomeworkParties | undefined }
+  // İzin formu (`lib/permission-forms.ts`; DOM-ILT-036…038): hedef sınıf ve öğrenciler gövdeden,
+  // form kayıttan gelir; kayıt yoksa `undefined` (varlık işlemin işidir, 404).
+  'permissionForm.create': { classIds: readonly string[]; studentIds: readonly string[] }
+  'permissionForm.update': {
+    form: PermissionFormParties | undefined
+    targets?: { classIds: readonly string[]; studentIds: readonly string[] }
+  }
+  'permissionForm.close': { form: PermissionFormParties | undefined }
+  'permissionForm.archive': { form: PermissionFormParties | undefined }
+  'permissionForm.decide': {
+    studentId: string
+    form: { studentIds: readonly string[] } | undefined
+  }
   // Bildirim okundu işareti: görünürlük `lib/notifications.ts` `canSeeNotification`'dadır.
   'notification.read': Record<string, never>
   'notification.read_all': Record<string, never>
@@ -176,6 +190,14 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   'homework.archive': ['yonetici', 'ogretmen'],
   'homework.submit': ['ogrenci'],
   'homework.grade': ['ogretmen'],
+  // İzin formunu yönetici ve sınıf rehber öğretmeni açar, düzenler, kapatır; kararı 18 yaş altında
+  // velayetli veli, 18 yaşını doldurmuş öğrencide kendisi verir. Ön büro izin formu görmez
+  // (IST-067; DOM-ILT-036, -037).
+  'permissionForm.create': ['yonetici', 'ogretmen'],
+  'permissionForm.update': ['yonetici', 'ogretmen'],
+  'permissionForm.close': ['yonetici', 'ogretmen'],
+  'permissionForm.archive': ['yonetici', 'ogretmen'],
+  'permissionForm.decide': ['veli', 'ogrenci'],
   // Bildirimin okundu işareti alıcınındır; her rol kendi bildirim merkezini kullanır, görünürlük
   // `lib/notifications.ts` `canSeeNotification`'dadır (DOM-ILT-020, DOM-ILT-073).
   'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],

@@ -3,6 +3,7 @@ import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm'
 import type { GuardianDraft, GuardianLink } from '@kampus/school-core/lib/guardianship.ts'
 
 import type { Database } from './client.ts'
+import { memberships } from './schema/auth.ts'
 import { studentGuardians } from './schema/student-guardians.ts'
 
 /**
@@ -75,6 +76,32 @@ export async function loadMembershipGuardians(
     .where(and(active(institutionId), eq(studentGuardians.membershipId, membershipId)))
     .orderBy(asc(studentGuardians.studentId), asc(studentGuardians.id))
   return rows.map(toLink)
+}
+
+/**
+ * Öğrencilerin etkin bağları ve hesaplı bağın kullanıcı kimliği (aynı kurumun üyeliği); hesabı
+ * olmayan bağda `userId` `null`. İzin formu durumu bugün velayetli velilerin kararını sayar
+ * (DOM-ILT-037, DOM-ILT-071); velayet kararı çağıranda core `isCustodial` ile verilir.
+ */
+export async function loadGuardianAccounts(
+  db: Database,
+  institutionId: string,
+  studentIds: readonly string[],
+): Promise<(StoredGuardianLink & { userId: string | null })[]> {
+  if (studentIds.length === 0) return []
+  const rows = await db
+    .select({ link: studentGuardians, userId: memberships.userId })
+    .from(studentGuardians)
+    .leftJoin(
+      memberships,
+      and(
+        eq(memberships.id, studentGuardians.membershipId),
+        eq(memberships.institutionId, institutionId),
+      ),
+    )
+    .where(and(active(institutionId), inArray(studentGuardians.studentId, [...studentIds])))
+    .orderBy(asc(studentGuardians.studentId), asc(studentGuardians.id))
+  return rows.map((row) => ({ ...toLink(row.link), userId: row.userId }))
 }
 
 /**

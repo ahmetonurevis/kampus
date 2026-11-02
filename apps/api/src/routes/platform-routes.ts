@@ -36,6 +36,7 @@ import { registerLanguageGroupRoutes } from './language-groups.ts'
 import { registerManagementMetricRoutes } from './management-metrics.ts'
 import { registerHomeworkRoutes } from './homework.ts'
 import { registerQuizRoutes } from './quizzes.ts'
+import { registerPermissionFormRoutes } from './permission-forms.ts'
 
 /**
  * Platform rota kayıtları: Onur'un kayıt ve finans uçları dışındaki her uç. Kayıt `app.ts`
@@ -86,6 +87,7 @@ export const PLATFORM_LATE_ROUTES = [
   registerManagementMetricRoutes,
   registerHomeworkRoutes,
   registerQuizRoutes,
+  registerPermissionFormRoutes,
 ] as const satisfies readonly RouteRegistrar[]
 
 /** Onur bloğundan önceki platform uçlarını kaydeder. */

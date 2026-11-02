@@ -216,16 +216,63 @@ describe('velayet ve iletişim kısıtı okuma kapsamı', () => {
       w.mother.cookie,
       { text: 'Yanıt' },
     )
-    assert.ok([403, 404].includes(reply.statusCode), reply.body)
-    // Öğretmen kısıtlı veliyi listede görmez ve onunla yeni yazışma açamaz.
+    // Kısıtlı veli yazışmanın tarafı değildir: varlığı da sızmaz.
+    assert.equal(reply.statusCode, 404, reply.body)
+    assert.equal(reply.json().code, 'not_found')
+    // Öğretmen kısıtlı veliyi listede görmez ve onunla yeni yazışma açamaz: veli seçimi
+    // erişimli hesaplardan yapılır (core `parentUserFor`).
     assert.deepEqual(await accounts(), [w.father.id])
     const denied = await start(w.mother.id)
-    assert.ok([403, 404, 422].includes(denied.statusCode), denied.body)
+    assert.equal(denied.statusCode, 422, denied.body)
+    assert.equal(denied.json().code, 'parent_account_not_found')
     assert.equal((await start(w.father.id)).statusCode, 201)
 
     await lift(w)
     assert.equal(await total(), 1)
     assert.deepEqual(await accounts(), [w.mother.id, w.father.id].sort())
+  })
+
+  test('IST-019 DOM-ILT-074 öğretmen kısıtlı ya da velayeti kalkan veliyle açık yazışmaya yazamaz; kısıt kalkınca yazar', async () => {
+    const w = await world()
+    const opened = await call('POST', '/api/v1/conversations', w.teacher.cookie, {
+      studentId: 's1',
+      audience: 'parent',
+      parentUserId: w.mother.id,
+      text: 'Merhaba',
+    })
+    assert.equal(opened.statusCode, 201, opened.body)
+    const conversationId = opened.json().data.entity.id as string
+    const send = (text: string) =>
+      call('POST', `/api/v1/conversations/${conversationId}/messages`, w.teacher.cookie, { text })
+    const messages = async () =>
+      ((await data(w.teacher.cookie, `/api/v1/conversations/${conversationId}/messages`)) as Json[])
+        .length
+    assert.equal((await send('Bir')).statusCode, 201)
+    assert.equal(await messages(), 2)
+
+    for (const bond of [
+      { custody: 'none', contactRestricted: true },
+      { custody: 'none', contactRestricted: false },
+    ]) {
+      await setMotherBond(w, bond)
+      const denied = await send('Kısıt döneminde')
+      assert.equal(denied.statusCode, 403, denied.body)
+      assert.equal(denied.json().code, 'conversation_parent_restricted')
+      // Yazışma öğretmene salt okur kalır; mesaj eklenmez.
+      assert.equal(await messages(), 2)
+    }
+    // Aynı öğrencinin velayetli babasıyla yazışma etkilenmez.
+    const father = await call('POST', '/api/v1/conversations', w.teacher.cookie, {
+      studentId: 's1',
+      audience: 'parent',
+      parentUserId: w.father.id,
+      text: 'Merhaba',
+    })
+    assert.equal(father.statusCode, 201, father.body)
+
+    await lift(w)
+    assert.equal((await send('Kısıt kalktı')).statusCode, 201)
+    assert.equal(await messages(), 3)
   })
 
   test('IST-019 DOM-ILT-074 kısıtlı veliye bildirim ulaşmaz; okunmamış sayısı da sıfırdır', async () => {

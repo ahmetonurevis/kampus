@@ -477,7 +477,11 @@ export function senderSide(role: Role): MessageSender | null {
 }
 
 export type StartConversationOptions = CommunicationOptions & {
-  /** Öğrencinin veli hesapları (API: öğrenciye `child` bağlantılı üyelikler). */
+  /**
+   * Öğrencinin erişimli veli hesapları (API: öğrenciye `child` bağlantılı ve velayetli, kısıtsız
+   * bağı olan üyelikler; DOM-ILT-070, -074). Yazışma açarken veli seçimi, mesaj gönderirken
+   * öğretmenin kısıtlı veliye yazamaması (`sendDecision`) bunu okur.
+   */
   parentUserIds?: readonly string[]
 }
 export type StartConversationResult = {
@@ -641,7 +645,8 @@ function requireConversation(conversation: Conversation | undefined): Conversati
 
 /**
  * Mesaj gönderir (DOM-ILT-012): yalnız taraf gönderir; mesaj eklenir, değiştirilmez. Var olan
- * mesajları okumaz; API mesaj koleksiyonundan hiçbir kayıt yüklemez.
+ * mesajları okumaz; API mesaj koleksiyonundan hiçbir kayıt yüklemez. `parentUserIds` verilirse
+ * öğretmen erişimi kalkan veliye yazamaz (403 `conversation_parent_restricted`, DOM-ILT-074).
  */
 export function sendMessage(
   state: State,
@@ -650,11 +655,17 @@ export function sendMessage(
   input: unknown,
   makeId: MakeId,
   now: string,
-  options: CommunicationOptions = {},
+  options: StartConversationOptions = {},
 ): Message {
   const data = sendMessageSchema.parse(input)
   const found = state.conversations.find((c) => c.id === conversationId)
-  requireAuthorized(by, 'message.send', { conversation: found, userId: by.userId }, state, options)
+  requireAuthorized(
+    by,
+    'message.send',
+    { conversation: found, userId: by.userId, parentUserIds: options.parentUserIds },
+    state,
+    options,
+  )
   const conversation = requireConversation(found)
   const side = senderSide(by.role)
   if (!side)

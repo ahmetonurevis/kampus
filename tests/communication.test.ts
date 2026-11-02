@@ -1025,6 +1025,60 @@ test('DOM-ILT-012: mesaj yalnız taraf tarafından eklenir; doğrulama hatası k
   )
 })
 
+test('DOM-ILT-074 OG-032: öğretmen erişimi kalkan veliye yeni mesaj gönderemez; erişimli veliye ve öğrenciye gönderir', () => {
+  const state = seed()
+  const opened = startConversation(
+    state,
+    people.ogretmen,
+    { studentId: 's1', audience: 'parent', text: 'Merhaba' },
+    id,
+    now,
+    { parentUserIds: ['p1'] },
+  )
+  const conversationId = opened.conversation.id
+  const send = (parentUserIds?: string[]) =>
+    sendMessage(state, people.ogretmen, conversationId, { text: 'Yeni' }, id, later, {
+      ...(parentUserIds ? { parentUserIds } : {}),
+    })
+  // Velayet ya da kısıt bilgisi verilmeyen çağıran (demo) için denetim yapılmaz.
+  assert.equal(send().sender, 'teacher')
+  assert.equal(send(['p1']).sender, 'teacher')
+  unchangedOnFailure(
+    state,
+    'conversations',
+    () => send([]),
+    isDomainError('conversation_parent_restricted', 'forbidden'),
+  )
+  unchangedOnFailure(
+    state,
+    'conversations',
+    () => send(['baska-veli']),
+    isDomainError('conversation_parent_restricted', 'forbidden'),
+  )
+  // Veli kimliği olmayan eski veli yazışması erişimli sayılmaz.
+  delete opened.conversation.parentUserId
+  unchangedOnFailure(
+    state,
+    'conversations',
+    () => send(['p1']),
+    isDomainError('conversation_parent_restricted', 'forbidden'),
+  )
+  // Öğrenci yazışması veli listesinden etkilenmez.
+  const pupil = startConversation(
+    state,
+    people.ogretmen,
+    { studentId: 's1', audience: 'student' },
+    id,
+    now,
+  )
+  assert.equal(
+    sendMessage(state, people.ogretmen, pupil.conversation.id, { text: 'Ödev' }, id, later, {
+      parentUserIds: [],
+    }).sender,
+    'teacher',
+  )
+})
+
 test('DOM-ILT-024: karşı tarafın mesajları ilk görmede okundu işaretlenir; tekrar etkisizdir', () => {
   const state = seed()
   const messages = () => messagesOf(state, 'conv2')

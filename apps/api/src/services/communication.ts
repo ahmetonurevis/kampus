@@ -336,8 +336,11 @@ interface CommunicationRun {
   action: CommunicationAction
   /** İşlemin konusu; `If-Match` bu kaydın sürümüyle karşılaştırılır. */
   subject: Entity | null
-  /** Öğretmenin veli yazışması açarken öğrencinin veli hesapları (core `parentUserIds`). */
-  parentsOf?: string | undefined
+  /**
+   * Öğretmenin veli yazışmasında öğrencinin erişimli veli hesapları (core `parentUserIds`):
+   * açarken gövdedeki öğrenci, mesaj gönderirken yazışmanın öğrencisi (işlemde okunur).
+   */
+  parentsOf?: string | ((tx: Database) => Promise<string | undefined>) | undefined
   /**
    * Kısmi yükleme (işlem çalıştırıcı `loadScope`): yazışma komutları kurumun bütün yazışma ve
    * mesajlarını kurum kilidi altında yüklemez.
@@ -373,11 +376,13 @@ function executeCommunication(
         : {}),
       entity: (outcome: Outcome) => ({ type: outcome.entity.collection, id: outcome.entity.id }),
       load: async (tx) => {
+        const studentOf = async () =>
+          typeof command.parentsOf === 'function' ? command.parentsOf(tx) : command.parentsOf
         const [{ actor, institutionType, scalars }, parents] = await Promise.all([
           environment(tx, ctx, spec),
-          command.parentsOf === undefined
-            ? Promise.resolve([])
-            : parentAccounts(tx, ctx.institutionId, command.parentsOf),
+          studentOf().then((studentId) =>
+            studentId === undefined ? [] : parentAccounts(tx, ctx.institutionId, studentId),
+          ),
         ])
         const by = participantOf(ctx, actor)
         return {
@@ -532,26 +537,49 @@ export function startConversationCommand(
   )
 }
 
-/** Mesaj gönderir (DOM-ILT-012): yalnız taraf; mesaj eklenir, değiştirilmez. 201. */
+/**
+ * Mesaj gönderir (DOM-ILT-012): yalnız taraf; mesaj eklenir, değiştirilmez. 201. Öğretmenin veli
+ * yazışmasında alıcı veli öğrenci için artık erişimli değilse (velayet kalktı, iletişim kısıtı;
+ * DOM-ILT-070, -074) gönderim 403 `conversation_parent_restricted`: erişimli veli hesapları
+ * yazışmanın öğrencisinden `parentAccounts` ile (velayetli ve kısıtsız bağ) çözülür (OG-032).
+ */
 export function sendMessageCommand(
   ctx: ServiceContext,
   conversationId: string,
   input: unknown,
   options: CommandOptions,
 ): Promise<CommandResponse> {
+  const teacher = ctx.actor.role === 'ogretmen'
   return executeCommunication(
     ctx,
     {
       action: 'message.send',
       subject: null,
       loadScope: { conversations: { ids: [conversationId] }, conversationMessages: NO_MESSAGES },
-      run: (state, by, { now, makeId }, { institutionType }) => {
-        sendMessage(state, by, conversationId, input, makeId, now, { institutionType })
+      ...(teacher
+        ? { parentsOf: (tx: Database) => conversationParentStudent(tx, ctx, conversationId) }
+        : {}),
+      run: (state, by, { now, makeId }, { institutionType, parentUserIds }) => {
+        sendMessage(state, by, conversationId, input, makeId, now, {
+          institutionType,
+          ...(teacher ? { parentUserIds } : {}),
+        })
         return { entity: conversationEntity(conversationId), statusCode: 201 }
       },
     },
     options,
   )
+}
+
+/** Veli yazışmasının öğrencisi; yazışma yoksa ya da veli yazışması değilse `undefined`. */
+async function conversationParentStudent(
+  tx: Database,
+  ctx: ServiceContext,
+  conversationId: string,
+): Promise<string | undefined> {
+  const row = await findRecord(tx, ctx.institutionId, 'conversations', conversationId)
+  const { audience, studentId } = row?.data ?? {}
+  return audience === 'parent' && typeof studentId === 'string' ? studentId : undefined
 }
 
 /** Karşı tarafın mesajlarını okundu işaretler (DOM-ILT-024). */

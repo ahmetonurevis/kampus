@@ -108,6 +108,9 @@ export function resourceListQuery(input: {
 export const RESOURCE_CHANGED_MESSAGE =
   'İçerik siz bakarken başkası tarafından değiştirildi. Güncel hali yüklendi; değişikliğinizi gözden geçirip yeniden deneyin.'
 
+export const RESOURCE_FILE_NOT_READY_MESSAGE =
+  'Dosya güvenlik denetiminden geçince eklenebilir; birkaç dakika sonra yeniden deneyin.'
+
 /** Koda özgü metinler; olmayan kodda sunucunun Türkçe mesajı gösterilir. */
 export const RESOURCE_MESSAGES = {
   version_conflict: RESOURCE_CHANGED_MESSAGE,
@@ -120,6 +123,9 @@ export const RESOURCE_MESSAGES = {
   // boyut ve tür (`file_too_large`, `file_type_not_allowed`) sınırı taşıdığından sunucunun
   // Türkçe iletisi gösterilir.
   ...RESOURCE_FILE_MESSAGES,
+  // Dosya taranırken (`pending`) eklenmek istenirse; ödev ve soru ekindeki gibi sakin ileti.
+  // TODO(F3c2-scan): dosya tarama işi (OG-092) gelene kadar dosya `ready` olmaz.
+  file_not_ready: RESOURCE_FILE_NOT_READY_MESSAGE,
 } as const satisfies CommandMessages
 
 export const RESOURCE_FILE_GONE_MESSAGE =

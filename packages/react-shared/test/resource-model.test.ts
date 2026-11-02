@@ -10,6 +10,7 @@ import {
   canOpenNewVersion,
   isVersionConflict,
   RESOURCE_FILE_GONE_MESSAGE,
+  RESOURCE_FILE_NOT_READY_MESSAGE,
   RESOURCE_MESSAGES,
   resourceFileName,
   resourceFileOpenFailure,
@@ -353,6 +354,9 @@ describe('Kaynak dosyası iletileri (DOM-KYN-006, 051)', () => {
     ])
       assert.ok(messages[code], code)
     assert.equal(messages.resource_files_unsupported, undefined)
+    // Dosya taranırken (`pending`) eklenmek istenirse sakin ve yönlendiren ileti.
+    assert.equal(messages.file_not_ready, RESOURCE_FILE_NOT_READY_MESSAGE)
+    assert.match(RESOURCE_FILE_NOT_READY_MESSAGE, /güvenlik denetiminden geçince eklenebilir/)
     // Sınırı taşıyan iletiler sunucudan gelir.
     assert.equal(messages.resource_files_limit, undefined)
   })

@@ -5,6 +5,7 @@ import {
 } from '@kampus/school-core/content/resource.ts'
 import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
 
+import type { Database } from '../db/client.ts'
 import { asCoreVersion, listResourceVersions, loadVersionPairs } from '../db/resources.ts'
 import {
   loadAttemptsAmong,
@@ -177,6 +178,21 @@ function withdrawnFromLearners(
   )
 }
 
+/**
+ * Atamanın sabitlediği sürüm kursiyere gösterilebilir mi: yayın geçmişi var, içeriği silinmemiş ve
+ * kaynağı kursiyerden çekilmemiş (DOM-KYN-025, 051). Ayrıntıdaki içerik ve sürüme atanmış görevden
+ * dosya okuma (`services/resource-files.ts`) aynı kuralı kullanır.
+ */
+export async function shownToLearners(
+  db: Database,
+  institutionId: string,
+  pair: { resource: { id: string }; version: { status: string; content: unknown } } | undefined,
+): Promise<boolean> {
+  if (!pair || pair.version.content === null || !SHOWN_STATUSES.has(pair.version.status))
+    return false
+  return !withdrawnFromLearners(await listResourceVersions(db, institutionId, pair.resource.id))
+}
+
 async function learnerContent(
   ctx: ServiceContext,
   assignment: StoredAssignment,
@@ -185,11 +201,7 @@ async function learnerContent(
   const pairs = await loadVersionPairs(ctx.db, ctx.institutionId, [assignment.resourceVersionId])
   const pair = pairs.get(assignment.resourceVersionId)
   const version = pair?.version
-  if (!pair || !version || version.content === null || !SHOWN_STATUSES.has(version.status))
-    return { content: null, contentUnavailable: 'unavailable' as const }
-  if (
-    withdrawnFromLearners(await listResourceVersions(ctx.db, ctx.institutionId, pair.resource.id))
-  )
+  if (!pair || !version || !(await shownToLearners(ctx.db, ctx.institutionId, pair)))
     return { content: null, contentUnavailable: 'unavailable' as const }
   if (licenseExpired(version.license, ctx.now) && !(await hasWork(ctx, assignment, progress)))
     return { content: null, contentUnavailable: 'license_expired' as const }

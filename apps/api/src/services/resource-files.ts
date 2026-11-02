@@ -8,13 +8,21 @@ import { canReadVersion } from '@kampus/school-core/content/visibility.ts'
 
 import type { Database } from '../db/client.ts'
 import { loadFilesByIds } from '../db/files.ts'
-import { asCoreVersion, listFileVersionIds, loadVersionPairs } from '../db/resources.ts'
+import {
+  asCoreVersion,
+  listContainerVersions,
+  listFileVersionIds,
+  loadVersionPairs,
+} from '../db/resources.ts'
+import { loadVersionAssignments } from '../db/skills.ts'
 import { ForbiddenError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { defineFileAttachment } from './file-registry.ts'
 import { attachFile, detachFile } from './files.ts'
 import { RESOURCE_VERSION_ATTACHMENT } from './listening-plays.ts'
 import { contentReader } from './resources.ts'
+import { viewerOf, visible, type Viewer } from './task-assignments.ts'
+import { shownToLearners } from './task-progress.ts'
 
 /**
  * Kaynak sürümünün dosyaları (DOM-KYN-006; ADR 0003 karar 5, 6). Kural core
@@ -104,35 +112,96 @@ export async function detachDroppedFiles(
   }
 }
 
+type VersionPair =
+  Awaited<ReturnType<typeof loadVersionPairs>> extends Map<string, infer P> ? P : never
+
+/** Kişi dosyaya bağ açan sürümlerden birini içerik havuzu kuralıyla okuyabiliyor mu. */
+async function readsLinkedVersion(
+  ctx: ServiceContext,
+  linked: readonly VersionPair[],
+): Promise<boolean> {
+  let reader
+  try {
+    reader = await contentReader(ctx)
+  } catch (error) {
+    if (error instanceof ForbiddenError) return false
+    throw error
+  }
+  return linked.some(({ resource, version }) =>
+    canReadVersion(reader.viewer, {
+      institutionType: reader.institutionType,
+      resource,
+      version: asCoreVersion(version),
+      now: ctx.now,
+    }),
+  )
+}
+
 /**
- * Kaynak sürümüne bağlı dosya, dosyaya bağ açan sürümlerden birini okuyabilene açılır (ADR 0003
- * karar 6, DOM-KYN-006): personel okuyabildiği sürümün, öğrenci ve veli yalnız kendisine
- * paylaşılmış yayındaki sürümün dosyasını okur (core `canReadVersion`). Kaldırılan sürüm dosya
- * açmaz. Kopya aynı dosyaya bağ açtığından kopyanın okuyucusu da dosyayı okur. Ön büro içerik
- * havuzuna erişmez (`contentReader` 403 → okuyamaz, 404). PGlite tek bağlantılıdır: kapsam
- * işlemin bağlantısıyla (`tx`) okunur.
+ * Kişinin, dosyaya bağ açan sürümü sabitleyen görülebilir bir ataması var mı (DOM-YTK-028): öğrenci
+ * kendisine, veli çocuklarına (kardeşler dahil) hedeflenen; öğretmen atadığı ya da kapsamındaki
+ * sınıfa hedeflenen; yönetici kurumdaki atamayı görür (`visible`). Soru görseli, soruyu içeren quiz
+ * veya alıştırma setinin atamasıyla da açılır. Kursiyerde atamanın sürümü kursiyere gösterilebilir
+ * olmalı (`shownToLearners`: yayın geçmişi var, telif incelemesinde veya kaldırılmış değil); quiz
+ * yolunda sorunun kaynağı da.
+ */
+async function assignedLinkedVersion(
+  ctx: ServiceContext,
+  linked: readonly VersionPair[],
+): Promise<boolean> {
+  let viewer: Viewer
+  try {
+    viewer = await viewerOf(ctx)
+  } catch (error) {
+    if (error instanceof ForbiddenError) return false
+    throw error
+  }
+  const linkedIds = new Set(linked.map(({ version }) => version.id))
+  const containers = await listContainerVersions(ctx.db, ctx.institutionId, [...linkedIds])
+  // Sabitlenen sürüm → kursiyere gösterilmesi de gereken soru sürümleri.
+  const pinned = new Map<string, VersionPair[]>(linked.map((pair) => [pair.version.id, []]))
+  for (const { id, content } of containers)
+    if (content.type === 'quiz' || content.type === 'exercise_set')
+      pinned.set(
+        id,
+        linked.filter(({ version }) =>
+          content.items.some((item) => item.questionVersionId === version.id),
+        ),
+      )
+  for (const [versionId, items] of pinned) {
+    const assignments = await loadVersionAssignments(ctx.db, ctx.institutionId, versionId)
+    if (!assignments.some((assignment) => visible(viewer, assignment))) continue
+    if (viewer.kind !== 'learner') return true
+    const pairs = await loadVersionPairs(ctx.db, ctx.institutionId, [versionId])
+    let shown = await shownToLearners(ctx.db, ctx.institutionId, pairs.get(versionId))
+    for (const item of items) shown &&= await shownToLearners(ctx.db, ctx.institutionId, item)
+    if (shown) return true
+  }
+  return false
+}
+
+/**
+ * Kaynak sürümüne bağlı dosyanın okuma kuralı (ADR 0003 karar 6, DOM-KYN-006). Dosyayı şunlar açar:
+ * dosyaya bağ açan sürümlerden birini okuyabilen kişi (personel okuyabildiği sürümün, öğrenci ve
+ * veli yalnız kendisine paylaşılmış yayının; core `canReadVersion`) ve o sürümlerden birini
+ * sabitleyen bir görevi gören kişi (`assignedLinkedVersion`). Kopya aynı dosyaya bağ açtığından
+ * kopyanın okuyucusu da dosyayı okur. Ön büro içerik havuzuna ve görevlere erişmez (404).
+ *
+ * Kaldırılan sürüm (DOM-KYN-051) atanmış olsa da dosya açmaz. Sonradan yayımlanan sürümün yeni dosyası
+ * eski sürüme atanmış göreve açılmaz: atama yalnız kendi sabitlediği sürümün bağını taşır. PGlite
+ * tek bağlantılıdır: kapsam işlemin bağlantısıyla (`tx`) okunur.
  */
 defineFileAttachment(RESOURCE_VERSION_ATTACHMENT, {
   purposes: ['material', 'listening_audio', 'question_image'],
   canRead: async (tx, ctx, _attachedId, file) => {
-    let reader
-    try {
-      reader = await contentReader({ ...ctx, db: tx })
-    } catch (error) {
-      if (error instanceof ForbiddenError) return false
-      throw error
-    }
+    const scoped = { ...ctx, db: tx }
     const versionIds = await listFileVersionIds(tx, ctx.institutionId, file.id)
-    const pairs = await loadVersionPairs(tx, ctx.institutionId, versionIds)
-    return [...pairs.values()].some(
-      ({ resource, version }) =>
-        version.status !== 'removed' &&
-        canReadVersion(reader.viewer, {
-          institutionType: reader.institutionType,
-          resource,
-          version: asCoreVersion(version),
-          now: ctx.now,
-        }),
+    const linked = [...(await loadVersionPairs(tx, ctx.institutionId, versionIds)).values()].filter(
+      ({ version }) => version.status !== 'removed',
+    )
+    if (linked.length === 0) return false
+    return (
+      (await readsLinkedVersion(scoped, linked)) || (await assignedLinkedVersion(scoped, linked))
     )
   },
 })

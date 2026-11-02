@@ -42,6 +42,34 @@ const text = (fileIds: string[], fileId: string | null = fileIds[0] ?? null) => 
   fileIds,
 })
 
+/** Görselli çoktan seçmeli soru (atanabilen, otomatik puanlı tür); görsel `question_image`. */
+const question = (imageFileId: string) => ({
+  title: 'Kesir görseli sorusu',
+  content: {
+    type: 'question',
+    question: {
+      questionType: 'multiple_choice',
+      stem: 'Görseldeki boyalı kısım kaçtır?',
+      options: [
+        { id: 'a', text: '1/2' },
+        { id: 'b', text: '1/3' },
+        { id: 'c', text: '1/4' },
+        { id: 'd', text: '2/3' },
+      ],
+      imageFileId,
+    },
+  },
+  answerKey: {
+    questionType: 'multiple_choice',
+    correctOptionId: 'c',
+    explanation: 'Dört parçadan biri.',
+  },
+  license: { kind: 'institution_original' },
+  tags: { subjectId: 'matematik', gradeLevels: [9], outcomes },
+  fileIds: [imageFileId],
+})
+const DUE = '2026-10-20T20:59:00.000Z'
+
 describe('kaynak sürümü dosyaları', () => {
   let db: Database
   let close: () => Promise<void>
@@ -104,6 +132,14 @@ describe('kaynak sürümü dosyaları', () => {
       student: await signInAs(app, await member('ogrenci', 'student', 's-1')),
       otherStudent: await signInAs(app, await member('ogrenci', 'student', 's-2')),
       parent: await signInAs(app, await member('veli', 'child', 's-1')),
+      // Deniz ve Ece'nin velisi (kardeşler; DOM-YTK-028).
+      siblingsParent: await signInAs(
+        app,
+        await createMember(app, institution.id, 'veli', [
+          { kind: 'child', recordId: 's-1' },
+          { kind: 'child', recordId: 's-2' },
+        ] as never),
+      ),
       frontDesk: await signInAs(app, await createMember(app, institution.id, 'onburo')),
     }
     return { institution, teacher, cookies }
@@ -552,5 +588,98 @@ describe('kaynak sürümü dosyaları', () => {
       await call('GET', `${base}/versions/${data.version.id}`, t.cookies.admin),
     )
     assert.deepEqual(staff.version.files, [], 'kaldırılan sürümün dosya listesi gösterilmez')
+  })
+
+  /** Görevi yönetici atar (kurumdaki her sınıfa, DOM-BEC-041); atama kimliği. */
+  async function assign(t: Tenant, resourceVersionId: string, classId: string) {
+    const data = await ok(
+      await post(
+        '/task-assignments',
+        t.cookies.admin,
+        {
+          resourceVersionId,
+          settings: { deadline: { dueAt: DUE } },
+          targets: [{ kind: 'class', id: classId }],
+        },
+        { 'idempotency-key': randomUUID() },
+      ),
+      201,
+    )
+    return data.id as string
+  }
+  const publish = async (cookie: string, data: Json) =>
+    ok(await post(`/resources/${data.resource.id}/versions/${data.version.id}/publish`, cookie))
+
+  test('DOM-KYN-006, DOM-YTK-028: atanmış görevin sürümündeki dosya paylaşılmasa da açılır (kardeş veli, quiz sorusu); atanmamış kişi ve sonradan yayımlanan sürümün dosyası 404', async () => {
+    const t = await tenant()
+    const image = await upload(t, t.cookies.teacher, { purpose: 'question_image' })
+    const data = await create(t, question(image))
+    await publish(t.cookies.teacher, data)
+    // Paylaşılmayan kaynak kursiyere açılmaz.
+    for (const cookie of [
+      t.cookies.student,
+      t.cookies.otherStudent,
+      t.cookies.parent,
+      t.cookies.siblingsParent,
+    ])
+      fails(await fileUrl(cookie, image), 404, 'not_found')
+
+    // Ece'nin sınıfına (10-B) atanır: Ece ve kardeşlerin velisi açar; Deniz ve yalnız Deniz'in
+    // velisi, sınıfı olmayan öğretmen ve ön büro açamaz.
+    await assign(t, data.version.id, '10-B')
+    await ok(await fileUrl(t.cookies.otherStudent, image))
+    await ok(await fileUrl(t.cookies.siblingsParent, image))
+    for (const cookie of [
+      t.cookies.student,
+      t.cookies.parent,
+      t.cookies.otherTeacher,
+      t.cookies.frontDesk,
+    ])
+      fails(await fileUrl(cookie, image), 404, 'not_found')
+
+    // Soru görseli quiz üzerinden de atanır: Deniz'in sınıfına (9-A) atanan quiz.
+    const quiz = await ok(
+      await post('/resources', t.cookies.admin, {
+        title: 'Kesir quizi',
+        content: { type: 'quiz', items: [{ questionVersionId: data.version.id, points: 1 }] },
+        license: { kind: 'institution_original' },
+        tags: { subjectId: 'matematik', gradeLevels: [9], outcomes },
+      }),
+      201,
+    )
+    await publish(t.cookies.admin, quiz)
+    fails(await fileUrl(t.cookies.student, image), 404, 'not_found')
+    await assign(t, quiz.version.id, '9-A')
+    await ok(await fileUrl(t.cookies.student, image))
+    await ok(await fileUrl(t.cookies.parent, image))
+
+    // Sonradan yayımlanan sürümün yeni görseli atanmamıştır; atanan sürümün görseli açık kalır.
+    const replaced = await upload(t, t.cookies.teacher, { purpose: 'question_image' })
+    const next = await ok(
+      await post(`/resources/${data.resource.id}/versions`, t.cookies.teacher),
+      201,
+    )
+    const url = `/resources/${data.resource.id}/versions/${next.version.id}`
+    await ok(
+      await patch(
+        url,
+        t.cookies.teacher,
+        { content: question(replaced).content, fileIds: [replaced] },
+        1,
+      ),
+    )
+    await ok(await post(`${url}/publish`, t.cookies.teacher))
+    await ok(await fileUrl(t.cookies.otherStudent, image))
+    for (const cookie of [t.cookies.otherStudent, t.cookies.siblingsParent, t.cookies.student])
+      fails(await fileUrl(cookie, replaced), 404, 'not_found')
+
+    // Kaldırılan kaynağın sürümü atanmış olsa da dosya açmaz (DOM-KYN-051).
+    await ok(
+      await post(`/resources/${data.resource.id}/remove`, t.cookies.admin, {
+        reason: 'Kişisel veri içeriyor.',
+      }),
+    )
+    for (const cookie of [t.cookies.otherStudent, t.cookies.siblingsParent, t.cookies.student])
+      fails(await fileUrl(cookie, image), 404, 'not_found')
   })
 })

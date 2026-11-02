@@ -3473,7 +3473,7 @@ export interface paths {
         };
         /**
          * Rıza kayıtları
-         * @description Veri sahibinin rıza ve itiraz satırları, amaç ve veriliş sırasıyla, sayfalı (DOM-ILT-034). `studentId` verilirse öğrenci amaçları, verilmezse oturum sahibinin hesap amaçları (tanıtım iletisi). `status=open` geri çekilmemiş satırlar (varsayılan), `all` geçmiş dahil; bugün geçerli olup olmadığı `GET /consents/status`'tadır. Kapsam: yönetici ve ön büro kurumun öğrencileri, veli bağlı çocukları, öğrenci kendi kaydı; kapsam dışı ya da başka kurumun öğrencisi 404 `not_found`. Öğretmen satırları okuyamaz (403), yalnız var/yok sonucunu görür (DOM-YTK-061). Bilinmeyen parametre 400. Roller: `yonetici`, `onburo`, `ogrenci`, `veli`.
+         * @description Veri sahibinin rıza ve itiraz satırları, amaç ve veriliş sırasıyla, sayfalı (DOM-ILT-034). `studentId` verilirse öğrenci amaçları, verilmezse oturum sahibinin hesap amaçları (tanıtım iletisi). `status=open` geri çekilmemiş satırlar (varsayılan), `all` geçmiş dahil; bugün geçerli olup olmadığı `GET /consents/status`'tadır. Kapsam: yönetici ve ön büro kurumun öğrencileri, veli bağlı çocukları, öğrenci kendi kaydı; kapsam dışı ya da başka kurumun öğrencisi 404 `not_found`. Öğretmen satırları okuyamaz (403), yalnız var/yok sonucunu görür (DOM-YTK-061). Rızayı veren kullanıcının kimliği (`grantedByUserId`) yalnız yönetici ve ön büroya döner; veli ve öğrenci yalnız ilişkiyi (`grantorRelation`) görür. Bilinmeyen parametre 400. Roller: `yonetici`, `onburo`, `ogrenci`, `veli`.
          */
         get: operations["listConsents"];
         put?: never;
@@ -4669,7 +4669,8 @@ export interface components {
              * @enum {string}
              */
             decision: "granted" | "objected";
-            grantedByUserId: string;
+            /** @description Rızayı veren kullanıcı; yalnız yönetici ve ön büroya döner */
+            grantedByUserId?: string;
             /**
              * @description `self` kendisi, `guardian` veli
              * @enum {string}
@@ -6769,7 +6770,8 @@ export interface components {
              * @enum {string}
              */
             decision: "granted" | "objected";
-            grantedByUserId: string;
+            /** @description Rızayı veren kullanıcı; yalnız yönetici ve ön büroya döner */
+            grantedByUserId?: string;
             /**
              * @description `self` kendisi, `guardian` veli
              * @enum {string}

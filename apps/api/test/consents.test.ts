@@ -361,7 +361,7 @@ describe('aydınlatma ve açık rıza uçları', () => {
     assert.equal(data.subjectKind, 'student')
     assert.equal(data.subjectId, 's1')
     assert.equal(data.grantorRelation, 'guardian')
-    assert.equal(data.grantedByUserId, w.parent.id)
+    assert.equal('grantedByUserId' in data, false)
     assert.equal(data.textVersion, 1)
     assert.equal(data.expiresAt, YEAR_END)
     assert.equal(data.givenAt, FIXED_NOW.toISOString())
@@ -412,6 +412,32 @@ describe('aydınlatma ve açık rıza uçları', () => {
     assert.equal((await status(w.minor.cookie, 'studentId=s1')).photo_video_sharing, true)
   })
 
+  test('DOM-YTK-057 rızayı veren kullanıcının kimliği yalnız yönetici ve ön büroya döner; veli ve öğrenci yalnız ilişkiyi görür', async () => {
+    const w = await world()
+    const given = await give(w.parent.cookie, {
+      purpose: 'photo_video_sharing',
+      studentId: 's1',
+      textId: w.texts.sharing.id,
+    })
+    assert.equal(given.statusCode, 201, given.body)
+    for (const cookie of [w.admin, w.frontDesk.cookie]) {
+      const [item] = (await read(cookie, '/api/v1/consents?studentId=s1')).json().data as Json[]
+      assert.equal(item.grantedByUserId, w.parent.id)
+      assert.equal(item.grantorRelation, 'guardian')
+    }
+    for (const cookie of [w.parent.cookie, w.minor.cookie]) {
+      const response = await read(cookie, '/api/v1/consents?studentId=s1')
+      assert.equal(response.statusCode, 200, response.body)
+      const [item] = response.json().data as Json[]
+      assert.equal('grantedByUserId' in item, false)
+      assert.equal(item.grantorRelation, 'guardian')
+      assert.equal(JSON.stringify(response.json()).includes(w.parent.id), false)
+    }
+    const withdrawn = await withdraw(w.parent.cookie, given.json().data.id)
+    assert.equal(withdrawn.statusCode, 200, withdrawn.body)
+    assert.equal('grantedByUserId' in withdrawn.json().data, false)
+  })
+
   test('DOM-YTK-057 17/18 yaş: 18 yaşını dolduran öğrenci rızayı kendisi verir, veli veremez; 17 yaşındaki öğrenci veremez', async () => {
     const w = await world()
     const body = (studentId: string) => ({
@@ -436,7 +462,6 @@ describe('aydınlatma ve açık rıza uçları', () => {
     const adultSelf = await give(w.adult.cookie, body('s25'))
     assert.equal(adultSelf.statusCode, 201, adultSelf.body)
     assert.equal(adultSelf.json().data.grantorRelation, 'self')
-    assert.equal(adultSelf.json().data.grantedByUserId, w.adult.id)
     // Başka öğrencinin kaydı bulunamadı sayılır.
     const otherStudent = await give(w.adult.cookie, body('s1'))
     assert.equal(otherStudent.statusCode, 404)

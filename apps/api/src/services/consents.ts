@@ -23,6 +23,7 @@ import {
 import type { ActorLink } from '@kampus/school-core/lib/scope.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
+import type { Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
 import { scheduleSubjectFilesPurge } from '../db/files.ts'
 import {
@@ -101,14 +102,21 @@ async function consentActorOf(tx: Database, ctx: ServiceContext): Promise<Consen
   return { role: ctx.actor.role, links, userId: ctx.actor.userId }
 }
 
-export function consentView(row: StoredConsent) {
+/**
+ * Rızayı veren kullanıcının kimliğini görebilen roller (kişisel veri, K): kurum adına kaydı
+ * yürüten yönetici ve ön büro. Veli ve öğrenci yalnız ilişkiyi (`grantorRelation`) görür; aynı
+ * öğrencinin öbür velisinin ya da velinin hesap kimliği onlara açılmaz.
+ */
+const GRANTOR_VISIBLE_ROLES: readonly Role[] = ['yonetici', 'onburo']
+
+export function consentView(row: StoredConsent, viewer: Role) {
   return {
     id: row.id,
     subjectKind: row.subjectKind,
     subjectId: row.subjectId,
     purpose: row.purpose,
     decision: row.decision,
-    grantedByUserId: row.grantedByUserId,
+    ...(GRANTOR_VISIBLE_ROLES.includes(viewer) ? { grantedByUserId: row.grantedByUserId } : {}),
     grantorRelation: row.grantorRelation,
     textId: row.textId,
     textVersion: row.textVersion,
@@ -217,7 +225,7 @@ export function giveConsent(
         ])
         const saved = await findConsent(tx, ctx.institutionId, id)
         if (saved === null) throw new Error('consent disappeared after insert')
-        out.body = { data: consentView(saved) }
+        out.body = { data: consentView(saved, ctx.actor.role) }
       },
     },
     () => {
@@ -318,7 +326,7 @@ export function withdrawConsent(
         }
         const saved = await findConsent(tx, ctx.institutionId, consent.id)
         if (saved === null) throw new Error('consent disappeared after withdrawal')
-        out.body = { data: consentView(saved) }
+        out.body = { data: consentView(saved, ctx.actor.role) }
       },
     },
     () => {
@@ -389,7 +397,7 @@ export async function listConsents(ctx: ServiceContext, input: ConsentListInput)
   })
   const start = (input.page - 1) * input.pageSize
   return {
-    items: rows.slice(start, start + input.pageSize).map(consentView),
+    items: rows.slice(start, start + input.pageSize).map((row) => consentView(row, ctx.actor.role)),
     total: rows.length,
   }
 }

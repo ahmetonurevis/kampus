@@ -107,7 +107,10 @@ export const consentSchema = z
     purpose: purposeSchema,
     decision: z.enum(CONSENT_DECISIONS).describe('`granted` rıza, `objected` öğrenci itirazı'),
     // kvkk: K
-    grantedByUserId: z.string(),
+    grantedByUserId: z
+      .string()
+      .optional()
+      .describe('Rızayı veren kullanıcı; yalnız yönetici ve ön büroya döner'),
     grantorRelation: z.enum(GRANTOR_RELATIONS).describe('`self` kendisi, `guardian` veli'),
     textId: z.uuid(),
     textVersion: z.number().int().min(1),

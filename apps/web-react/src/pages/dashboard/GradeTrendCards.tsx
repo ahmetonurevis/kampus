@@ -4,6 +4,7 @@ import { useCoreAll, useCoreCounts } from '@/hooks/use-core-collection.ts'
 import { ListCard, type CardState } from './DashboardParts.tsx'
 import { defineCard, type DashboardCardContext } from './dashboard-cards-model.ts'
 import {
+  gradeTrendPending,
   gradeTrendSummary,
   hasGradeTrend,
   monthlyGradePoints,
@@ -40,7 +41,7 @@ function GradeTrendCard({ title, description, subject, filters, state, action }:
   )
   const points = useMemo(() => monthlyGradePoints(counts.data?.groups ?? []), [counts.data])
   const combined: CardState = {
-    isPending: state.isPending || counts.isPending,
+    isPending: gradeTrendPending(state, counts),
     error: state.error ?? counts.error,
     retry: () => {
       state.retry()

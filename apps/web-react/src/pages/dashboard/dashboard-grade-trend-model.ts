@@ -31,6 +31,19 @@ export function monthlyGradePoints(
     .map((item) => ({ label: monthLabel(item.month), value: item.average }))
 }
 
+/**
+ * Eğilim bölümü yükleniyor mu. Sayım sorgusu `keepPreviousData` kullanır: öğrenci (çocuk) süzgeci
+ * değişince yeni sayım gelene kadar önceki öğrencinin sayımı `isPlaceholderData` ile döner. Başka
+ * öğrencinin notları yeni öğrencinin başlığı altında gösterilmez (gizlilik); bu durumda bölüm
+ * yükleniyor sayılır.
+ */
+export function gradeTrendPending(
+  state: { isPending: boolean },
+  counts: { isPending: boolean; isPlaceholderData: boolean },
+): boolean {
+  return state.isPending || counts.isPending || counts.isPlaceholderData
+}
+
 /** Eğilim çizilebilir mi: en az `MIN_TREND_MONTHS` ay. */
 export const hasGradeTrend = (points: readonly TrendPoint[]) => points.length >= MIN_TREND_MONTHS
 

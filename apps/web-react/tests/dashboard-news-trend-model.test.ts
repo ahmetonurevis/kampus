@@ -4,6 +4,7 @@ import { createSeed } from '@kampus/school-core/data/seed.ts'
 import type { AnnouncementRecord } from '@kampus/react-shared/announcement-model.ts'
 import type { CollectionRow } from '@kampus/react-shared/collections.ts'
 import {
+  gradeTrendPending,
   gradeTrendSummary,
   hasGradeTrend,
   monthlyGradePoints,
@@ -212,4 +213,16 @@ test('soru sayacı: süresi aşılan soru ayrı sayılır, kuyruk boşsa sıfır
     0,
   )
   assert.deepEqual(openQuestions([], NOW.toISOString()), { total: 0, overdue: 0, items: [] })
+})
+
+test('eğilim: önceki çocuğun sayımı (placeholder) yeni çocuğun başlığı altında gösterilmez', () => {
+  const ready = { isPending: false }
+  // Çocuk değişti, yeni sayım gelmedi: sorgu önceki sayımı yer tutucu olarak veriyor.
+  assert.equal(gradeTrendPending(ready, { isPending: false, isPlaceholderData: true }), true)
+  assert.equal(gradeTrendPending(ready, { isPending: true, isPlaceholderData: false }), true)
+  assert.equal(
+    gradeTrendPending({ isPending: true }, { isPending: false, isPlaceholderData: false }),
+    true,
+  )
+  assert.equal(gradeTrendPending(ready, { isPending: false, isPlaceholderData: false }), false)
 })

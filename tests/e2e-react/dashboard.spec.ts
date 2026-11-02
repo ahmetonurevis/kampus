@@ -901,6 +901,51 @@ test.describe('Genel Bakış: haberler, yanıt bekleyen sorular ve not eğilimi'
     )
   })
 
+  test('veli: çocuk değişirken önceki çocuğun not özeti yeni çocuğun başlığı altında görünmez', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const parent = await api('veli')
+    const children = await students(parent)
+    const deniz = children.find((row) => row.record.name === 'Deniz Yılmaz')
+    const ece = children.find((row) => row.record.name === 'Ece Yılmaz')
+    expect(deniz && ece, 'veli iki çocuk').toBeTruthy()
+    if (!deniz || !ece) return
+    await loginAs('veli')
+    await openDashboard(page, 'veli', `?cocuk=${deniz.id}`)
+    const trend = region(page, 'Not ortalaması eğilimi')
+    const summary = trend.getByText(/ayında .*En yüksek ay/)
+    await expect(summary).toBeVisible()
+    const denizSummary = await summary.innerText()
+
+    // Ece'nin sayımı geciktirilir; bu sürede Deniz'in grafiği ve özeti ekranda kalmamalıdır.
+    // (Sayım sorgusu `keepPreviousData` kullanır; kartlar çocuk değişince çoğunlukla yeniden
+    // kurulur, koruma `isPlaceholderData` ile ayrıca verilir ve birim testlidir.)
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    let heldRequests = 0
+    await page.route(/\/collections\/grades\/counts/, async (route) => {
+      if (route.request().url().includes(`studentId=${ece.id}`)) {
+        heldRequests += 1
+        await held
+      }
+      await route.continue()
+    })
+    await page.getByLabel('Çocuk seç').selectOption({ label: 'Ece Yılmaz' })
+    await expect(page).toHaveURL(new RegExp(`[?&]cocuk=${ece.id}`))
+    await expect.poll(() => heldRequests).toBeGreaterThan(0)
+    await expect(trend.getByRole('status')).toContainText('Yükleniyor')
+    await expect(trend.locator('.trend-bars')).toHaveCount(0)
+    await expect(trend.getByText(denizSummary, { exact: true })).toHaveCount(0)
+
+    release()
+    await expect(trend.getByText(/ayında .*En yüksek ay/)).not.toHaveText(denizSummary)
+    await expect(trend.locator('.trend-bars')).toHaveAttribute('aria-hidden', 'true')
+  })
+
   test('öğretmen: sınıf branş ortalaması eğilimi kendi branşının notlarından hesaplanır', async ({
     page,
     loginAs,

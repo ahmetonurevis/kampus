@@ -102,6 +102,8 @@ function execute(
       },
       // Dosya bağlama işlemle aynı transaction'dadır: bağlanamayan fotoğraf (başkasının, hazır
       // olmayan, başka kayda bağlı) soruyu da geri alır (422/409, hiçbir kayıt değişmez).
+      // TODO(F3c2-retention): öğrenci soru fotoğrafının saklama süresi kullanıcı kararı bekliyor
+      // (KVKK md. 4); karar gelene dek `retentionUntil` verilmez, dosya süresiz kalır.
       after: async (tx, outcome) => {
         if (!outcome.attach) return
         for (const fileId of outcome.attach.fileIds)

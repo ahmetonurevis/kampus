@@ -27,6 +27,7 @@ export type RefundWithdrawal = {
     totalUnits: number
     usageCents: number
     entitledCents: number
+    scholarshipExempt?: boolean
     paidCents: number
     creditCents: number
     extras: readonly { kind: string; paidCents: number; usedCents: number }[]
@@ -76,6 +77,9 @@ export function refundStatementDocument(
       money(breakdown.usageCents),
     ],
     ['Hak edilen', money(breakdown.entitledCents)],
+    ...(breakdown.scholarshipExempt
+      ? ([['Burslu istisnası', 'Ödenenden fazlası istenmez']] as const)
+      : []),
     ['Ödenen öğrenim ücreti', money(breakdown.paidCents)],
     ['Ek hizmet bakiyesi', money(extraBalance)],
     ['Dağıtılmamış tahsilat', money(breakdown.creditCents)],

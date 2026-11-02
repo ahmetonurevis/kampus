@@ -552,7 +552,10 @@ describe('okuma-anlama etkinliği', () => {
     assert.deepEqual(await versionRows(t.institution.id), before)
   })
 
-  test('DOM-KYN-051, IST-042: parça kaldırılınca bağlı etkinlik etkilenen içerik olur; denemede parça null, puan sürer', async () => {
+  const save = (id: string, cookie: string, answers: unknown, rowVersion = 1) =>
+    call('PATCH', `/task-attempts/${id}`, cookie, { answers }, { 'if-match': `"${rowVersion}"` })
+
+  test('DOM-KYN-051, DOM-KYN-025, IST-042: parça kaldırılınca bağlı etkinlik etkilenen içerik olur; yeni deneme, süren denemenin cevap kaydı ve teslimi 422 content_unavailable; kayıt değişmez', async () => {
     const t = await tenant()
     const assignmentId = await assign(t, { attempts: { kind: 'practice' } })
     const attempt = await ok(await start(assignmentId, t.cookies.student), 201)
@@ -565,8 +568,62 @@ describe('okuma-anlama etkinliği', () => {
     )
     assert.equal(removed.statusCode, 200, removed.body)
     assert.deepEqual(removed.json().data.affectedContainerVersionIds, [t.quizId])
-    const read = await ok(await detail(attempt.id, t.cookies.student))
-    assert.equal(read.passage, null)
-    assert.equal(read.questions.length, 3)
+    const before = await attemptRows(t.institution.id)
+    fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
+    fails(
+      await save(
+        attempt.id,
+        t.cookies.student,
+        { [t.items.main]: choice('a') },
+        attempt.rowVersion,
+      ),
+      422,
+      'content_unavailable',
+    )
+    fails(
+      await submit(
+        attempt.id,
+        t.cookies.student,
+        { answers: { [t.items.main]: choice('a') } },
+        attempt.rowVersion,
+      ),
+      422,
+      'content_unavailable',
+    )
+    assert.deepEqual(await attemptRows(t.institution.id), before)
+  })
+
+  test('DOM-KYN-025, IST-042: parça telif bildirimiyle askıya alınınca yeni deneme 422 content_unavailable; süren deneme kaydedilir ve teslim edilir', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } })
+    const attempt = await ok(await start(assignmentId, t.cookies.student), 201)
+    await ok(
+      await call(
+        'POST',
+        `/resources/${t.passage.resourceId}/versions/${t.passage.versionId}/report`,
+        t.cookies.teacher,
+        { reason: 'Telif ihlali şüphesi' },
+      ),
+    )
+    const before = await attemptRows(t.institution.id)
+    fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
+    assert.deepEqual(await attemptRows(t.institution.id), before)
+    const saved = await ok(
+      await save(
+        attempt.id,
+        t.cookies.student,
+        { [t.items.main]: choice('a') },
+        attempt.rowVersion,
+      ),
+    )
+    const done = await ok(
+      await submit(
+        attempt.id,
+        t.cookies.student,
+        { answers: { [t.items.main]: choice('a') } },
+        saved.rowVersion,
+      ),
+    )
+    assert.equal(done.result.earned, 1)
   })
 })

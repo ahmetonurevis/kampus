@@ -228,12 +228,6 @@ function linkedIdsOf(scoring: StoredResourceVersion | undefined): string[] {
   return content.passageVersionId === null ? ids : [...ids, content.passageVersionId]
 }
 
-function questionIdsOf(scoring: StoredResourceVersion | undefined): string[] {
-  const content = scoring?.content ?? null
-  if (content?.type !== 'quiz' && content?.type !== 'exercise_set') return []
-  return content.items.map((item) => item.questionVersionId)
-}
-
 function buildScoringContext(
   scoring: StoredResourceVersion | undefined,
   questionPairs: ReadonlyMap<string, { version: StoredResourceVersion }>,
@@ -253,9 +247,8 @@ function buildScoringContext(
       entries = content.items
       if (content.passageVersionId !== null) {
         const linked = questionPairs.get(content.passageVersionId)?.version
-        // Kaldırılan parça okunamaz: metin `null` gelir, deneme sürer.
-        // TODO(okuma-parca-kaldirma): kaldırılan/telif askısındaki parçalı etkinliğin yeni deneme
-        // kapısı OG-070 deneme/teslim süzgeciyle (DOM-KYN-025) birlikte karara bağlanacak.
+        // Okunamayan parça metinsiz gelir; kaldırılmış ya da askıdaki parçada yazma kapısı
+        // (`assertWorkOpen`) zaten kapalıdır, bu yalnız okuma yüzü içindir.
         passage = linked?.content?.type === 'reading_passage' ? linked : null
       }
       versions = new Map()
@@ -304,8 +297,8 @@ export const scoringLicenseExpired = (context: ScoringContext, now: Date) =>
 /**
  * Kursiyerin görevin içeriğinde çalışabilmesi (DOM-KYN-021, 025, 051; IST-036): okumayla aynı kural
  * (`services/learner-content.ts` `assertLearnerWork`). Sınanan sürümler kursiyerin denemede veya
- * teslimde gördükleridir: atamanın sabitlediği sürüm, puanlama sürümü ve onun soruları (bulunmayan
- * soru da kapalıdır). Yazma transaction'ında çalışır: kapsam işlemin bağlantısıyla okunur.
+ * teslimde gördükleridir: atamanın sabitlediği sürüm, puanlama sürümü ve onun soruları ve okuma parçası
+ * (bulunmayan soru ya da parça da kapalıdır). Yazma transaction'ında çalışır: kapsam işlemin bağlantısıyla okunur.
  */
 export async function assertWorkOpen(
   tx: Database,
@@ -316,7 +309,8 @@ export async function assertWorkOpen(
 ): Promise<void> {
   const ids = [...new Set([assignment.resourceVersionId, assignment.scoringVersionId])]
   const pinned = await loadVersionPairs(tx, ctx.institutionId, ids)
-  const questionIds = questionIdsOf(pinned.get(assignment.scoringVersionId)?.version)
+  // Sorular ve okuma parçası (IST-042): parça kaldırılmış ya da askıdaysa etkinlik de kapalıdır.
+  const questionIds = linkedIdsOf(pinned.get(assignment.scoringVersionId)?.version)
   const questions = await loadVersionPairs(tx, ctx.institutionId, questionIds)
   await assertLearnerWork(
     { ...ctx, db: tx },

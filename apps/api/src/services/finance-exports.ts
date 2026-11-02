@@ -1,3 +1,5 @@
+import { z } from 'zod'
+
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   assertFinancePeriod,
@@ -11,6 +13,7 @@ import {
   paymentsCsv,
   refundLines,
   refundsCsv,
+  studentBalance,
   studentDirectory,
   type FinanceExportKind,
   type FinanceOverview,
@@ -18,13 +21,17 @@ import {
   type FinancePeriod,
   type FinanceSummary,
   type FinanceTotals,
+  type StudentBalance,
 } from '@kampus/school-core/lib/finance-export.ts'
 
-import { allocatedTotals, paymentsTouchingPeriod } from '../db/payments.ts'
+import { allocatedForInvoices, allocatedTotals, paymentsTouchingPeriod } from '../db/payments.ts'
+import { loadRecords } from '../db/records.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { refundsPaidInPeriod } from '../db/withdrawals.ts'
+import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { runReadOnly } from './operation-runner.ts'
+import { assertReadable, readScope } from './read-scope.ts'
 
 /**
  * Muhasebe dışa aktarımı (IST-111). Toplam ve dosya aynı görüntüden, aynı satırlardan üretilir.
@@ -120,6 +127,40 @@ export function financeOverviewFor(
       }
     },
   })
+}
+
+const balanceInvoice = z.object({
+  id: z.string(),
+  amount: z.number().int(),
+  paidAt: z.string().nullable().optional(),
+  dueDate: z.string(),
+})
+
+/**
+ * Öğrencinin bakiyesi (`GET /finance/students/:id/balance`). Kapsam core'dan gelir: yönetici ve ön
+ * büro kurumun öğrencisini, veli velayetli ve kısıtsız bağlı çocuğunu, öğrenci kendisini okur
+ * (DOM-FIN-052, DOM-ILT-070). Kapsam dışı, olmayan ya da başka kurumun öğrencisi aynı 404'tür.
+ */
+export async function studentBalanceFor(
+  ctx: ServiceContext,
+  studentId: string,
+): Promise<StudentBalance> {
+  const scope = await readScope(ctx)
+  assertReadable(ctx, scope, 'invoices')
+  if (!scope.studentIds.has(studentId)) throw new NotFoundError()
+  const rows = await loadRecords(ctx.db, ctx.institutionId, ['invoices'], {
+    match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
+  })
+  const invoices = rows.map((row) => {
+    const invoice = balanceInvoice.parse({ ...row.data, id: row.id })
+    return { ...invoice, paidAt: invoice.paidAt ?? null }
+  })
+  const allocated = await allocatedForInvoices(
+    ctx.db,
+    ctx.institutionId,
+    invoices.map((invoice) => invoice.id),
+  )
+  return studentBalance(studentId, invoices, allocated, dayKey(ctx.now))
 }
 
 export async function financeSummaryFor(

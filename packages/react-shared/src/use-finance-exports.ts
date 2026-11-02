@@ -43,6 +43,22 @@ export function useFinanceOverview(
   })
 }
 
+/**
+ * Öğrencinin bakiyesi: toplam, ödenen, açık, gecikmiş tutar ve en yakın açık taksit. Veli yalnız
+ * bağlı çocuğunu, öğrenci kendisini okur. Ödeme sonrası tazelenir.
+ */
+export function useStudentBalance(studentId: string, options: { enabled?: boolean } = {}) {
+  return useApiQuery({
+    key: ['payments', 'student-balance', studentId],
+    enabled: options.enabled ?? true,
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/students/{studentId}/balance', {
+        params: { path: { studentId } },
+        signal,
+      }),
+  })
+}
+
 /** Dosyayı metin olarak alır; yazma değildir, sorgu tazelenmez. Hata mesajı toast olur. */
 export function useFinanceExport() {
   return useApiCommand({

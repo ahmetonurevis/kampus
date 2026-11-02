@@ -456,3 +456,52 @@ export function financeOverview(input: {
     ),
   }
 }
+
+export interface StudentBalance {
+  // kvkk: K — öğrenci kaydı
+  studentId: string
+  totalCents: number
+  paidCents: number
+  /** Bugün kalan borç; kısmi ödemede yalnız kalan kısım (`financeTotals` ile aynı kural). */
+  openCents: number
+  overdueCents: number
+  /** Vadesi geçmiş ve kalanı olan taksit sayısı. */
+  overdueCount: number
+  /** Bugün ya da sonrasına düşen en yakın açık taksit; yoksa `null`. */
+  nextDue: { date: string; amountCents: number } | null
+}
+
+/**
+ * Tek öğrencinin bakiyesi (veli kartları, mobil veli ana ekranı). Tutarlar `financeTotals`
+ * kuralıyla hesaplanır: kurum toplamı öğrenci bakiyelerinin toplamıyla aynı kalır. Kapsam
+ * burada denetlenmez; servis öğrencinin okuyanın kapsamında olduğunu doğrular.
+ */
+export function studentBalance(
+  studentId: string,
+  invoices: readonly Pick<State['invoices'][number], 'id' | 'amount' | 'paidAt' | 'dueDate'>[],
+  allocated: ReadonlyMap<string, number>,
+  today: string,
+): StudentBalance {
+  const totals = financeTotals(invoices, allocated, today)
+  let overdueCount = 0
+  let nextDue: StudentBalance['nextDue'] = null
+  for (const invoice of invoices) {
+    const paid = invoice.paidAt
+      ? invoice.amount
+      : Math.min(allocated.get(invoice.id) ?? 0, invoice.amount)
+    const open = invoice.amount - paid
+    if (open <= 0) continue
+    const day = dayKey(invoice.dueDate)
+    if (day < today) overdueCount += 1
+    else if (nextDue === null || day < nextDue.date) nextDue = { date: day, amountCents: open }
+  }
+  return {
+    studentId,
+    totalCents: totals.totalCents,
+    paidCents: totals.paidCents,
+    openCents: totals.remainingCents,
+    overdueCents: totals.overdueCents,
+    overdueCount,
+    nextDue,
+  }
+}

@@ -10,6 +10,7 @@ import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { studentGuardians } from '../src/db/schema/student-guardians.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -402,5 +403,100 @@ describe('muhasebe dışa aktarımı', () => {
       (await summary(a.cookie, query)).json().data.payments.totalCents,
       after_.collectedCents,
     )
+  })
+
+  // --- Öğrenci bakiyesi (DOM-FIN-052) ----------------------------------------------------------
+
+  const balance = (cookie: string | null, studentId: string, target: App = app) =>
+    get(cookie, `/api/v1/finance/students/${studentId}/balance`, target)
+  const linked = async (id: string, role: Role, kind: 'child' | 'student', recordId: string) =>
+    signInAs(app, await createMember(app, id, role, [{ kind, recordId }]))
+  /** Kurumda başka bir öğrenci ve taksiti: velinin ve öğrencinin kapsamı dışında. */
+  async function otherStudent(id: string) {
+    const other = SEED.students.find((item) => item.classId === 'c1' && item.id !== STUDENT?.id)
+    assert.ok(other)
+    await insertMissingRecords(
+      db,
+      id,
+      [{ collection: 'students', id: other.id, data: { ...other } }],
+      FIXED_NOW,
+    )
+    return other.id
+  }
+
+  test('DOM-FIN-052: bakiye kısmi ödemeyi sayar; yönetici, ön büro, bağlı veli ve öğrencinin kendisi okur', async () => {
+    const a = await institution()
+    const studentId = String(STUDENT?.id)
+    assert.equal((await pay(a.cookie, 1_000_000, 'TR-BAKIYE-1')).statusCode, 201)
+    const expected = {
+      studentId,
+      totalCents: NET,
+      paidCents: 1_000_000,
+      openCents: NET - 1_000_000,
+      overdueCents: 0,
+      overdueCount: 0,
+      nextDue: { date: '2026-10-15', amountCents: NET / 2 - 1_000_000 },
+    }
+    for (const cookie of [
+      a.cookie,
+      await member(a.id, 'onburo'),
+      await linked(a.id, 'veli', 'child', studentId),
+      await linked(a.id, 'ogrenci', 'student', studentId),
+    ]) {
+      const read = await balance(cookie, studentId)
+      assert.equal(read.statusCode, 200, read.body)
+      assert.deepEqual(read.json().data, expected)
+    }
+    // 1 Aralık: iki taksit de gecikti; kurum toplamıyla aynı kural.
+    const later = await buildTestApp(db, { clock: () => new Date('2026-12-01T09:00:00.000Z') })
+    try {
+      const late = (await balance(a.cookie, studentId, later)).json().data
+      assert.equal(late.overdueCents, NET - 1_000_000)
+      assert.equal(late.overdueCount, 2)
+      assert.equal(late.nextDue, null)
+      const totals = (await get(a.cookie, '/api/v1/finance/totals', later)).json().data
+      assert.equal(late.openCents, totals.remainingCents)
+      assert.equal(late.overdueCents, totals.overdueCents)
+    } finally {
+      await later.close()
+    }
+  })
+
+  test('DOM-FIN-052: oturumsuz 401, öğretmen 403, modül kapalı 403; başka çocuk ve olmayan öğrenci 404', async () => {
+    const a = await institution()
+    const studentId = String(STUDENT?.id)
+    const other = await otherStudent(a.id)
+    assertError(await balance(null, studentId), 401)
+    assertError(await balance(await member(a.id, 'ogretmen'), studentId), 403, 'forbidden')
+    const parent = await linked(a.id, 'veli', 'child', studentId)
+    assertError(await balance(parent, other), 404, 'not_found')
+    const pupil = await linked(a.id, 'ogrenci', 'student', studentId)
+    assertError(await balance(pupil, other), 404, 'not_found')
+    assertError(await balance(a.cookie, 'ogrenci-yok'), 404, 'not_found')
+    // Taksiti olmayan öğrenci yöneticiye sıfır bakiye döner.
+    const empty = await balance(a.cookie, other)
+    assert.equal(empty.statusCode, 200, empty.body)
+    assert.equal(empty.json().data.totalCents, 0)
+    const closed = await institution({ enabledModules: { finance: false } })
+    assertError(await balance(closed.cookie, studentId), 403, 'module_disabled')
+  })
+
+  test('DOM-ILT-070, DOM-ILT-074: iletişim kısıtlı ya da velayeti olmayan veli çocuğun bakiyesini göremez', async () => {
+    const a = await institution()
+    const studentId = String(STUDENT?.id)
+    const parent = await linked(a.id, 'veli', 'child', studentId)
+    assert.equal((await balance(parent, studentId)).statusCode, 200)
+    for (const bond of [
+      { custody: 'none', contactRestricted: true },
+      { custody: 'none', contactRestricted: false },
+    ] as const) {
+      await db
+        .update(studentGuardians)
+        .set(bond)
+        .where(
+          and(eq(studentGuardians.institutionId, a.id), eq(studentGuardians.studentId, studentId)),
+        )
+      assertError(await balance(parent, studentId), 404, 'not_found')
+    }
   })
 })

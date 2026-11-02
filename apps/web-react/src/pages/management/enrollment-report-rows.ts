@@ -1,8 +1,7 @@
 // Kayıt Raporları saf hesapları (Vue `Management.vue` `kayit-raporlari`): aday hunisi ve kanal
-// bazlı dönüşüm. Girdi sunucunun aşama sayımı ve kapsamlı aday kayıtlarıdır; oran ve toplam
-// saklanmaz, kayıtlardan hesaplanır.
+// bazlı dönüşüm. Girdi sunucunun aşama ve kanal sayımlarıdır (satır çekilmez); oran ve toplam
+// saklanmaz, sayımlardan hesaplanır.
 import type { CollectionCounts } from '@kampus/react-shared/collections.ts'
-import type { CoreRow } from '@/hooks/use-core-collection.ts'
 
 /** Aday aşamaları, huni sırasıyla (CRM akışı; `Kayıt oldu` kesin kayıttır). */
 export const PROSPECT_STAGES = [
@@ -53,25 +52,32 @@ export type SourceRow = {
 }
 
 /**
- * Kanal bazlı dönüşüm: kanal başına aday sayısı, kesin kayıt ve oran. Aday sayısı çoktan aza,
- * eşitlikte kanal adıyla sıralanır.
+ * Kanal bazlı dönüşüm: kanal başına aday sayısı, kesin kayıt ve oran. Girdiler sunucunun kanala
+ * göre sayımlarıdır: tüm adaylar ve yalnız `Kayıt oldu` aşamasındakiler. Kanalı boş ya da yok olan
+ * adaylar tek "Belirtilmemiş" satırında toplanır. Aday sayısı çoktan aza, eşitlikte kanal adıyla
+ * sıralanır.
  */
-export function sourceRows(prospects: readonly CoreRow<'prospects'>[]): SourceRow[] {
-  const bySource = new Map<string, { count: number; enrolled: number }>()
-  for (const { record } of prospects) {
-    const source = record.source?.trim() || UNKNOWN_SOURCE
-    const entry = bySource.get(source) ?? { count: 0, enrolled: 0 }
-    entry.count += 1
-    if (record.stage === ENROLLED_STAGE) entry.enrolled += 1
-    bySource.set(source, entry)
+export function sourceRows(
+  all: CollectionCounts | undefined,
+  enrolled: CollectionCounts | undefined,
+): SourceRow[] {
+  const nameOf = (value: unknown) =>
+    (typeof value === 'string' ? value.trim() : '') || UNKNOWN_SOURCE
+  const tally = (counts: CollectionCounts | undefined) => {
+    const bySource = new Map<string, number>()
+    for (const group of counts?.groups ?? [])
+      bySource.set(nameOf(group.value), (bySource.get(nameOf(group.value)) ?? 0) + group.count)
+    return bySource
   }
-  return [...bySource]
-    .map(([source, entry]) => ({
+  const total = tally(all)
+  const converted = tally(enrolled)
+  return [...total]
+    .map(([source, count]) => ({
       id: source,
       source,
-      count: entry.count,
-      enrolled: entry.enrolled,
-      ratio: percent(entry.enrolled, entry.count),
+      count,
+      enrolled: converted.get(source) ?? 0,
+      ratio: percent(converted.get(source) ?? 0, count),
     }))
     .sort((a, b) => b.count - a.count || a.source.localeCompare(b.source, 'tr'))
 }

@@ -453,6 +453,74 @@ test.describe('aday detayı', () => {
   })
 })
 
+test.describe('aşama geri alma', () => {
+  test('yönetici yanlışlıkla ileri alınan aşamayı gerekçeyle geri alır; görüşmesiz adayda Görüşme planlandı sunulmaz (DOM-KAY-030)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      records: [
+        prospect({
+          id: 'e2e-pr-g1',
+          name: 'Geri Alınan Aday',
+          phone: '05550300051',
+          stage: 'Teklif verildi',
+        }),
+      ],
+    })
+    await loginAs(school.user('yonetici'))
+    await page.goto(detailUrl('yonetici', 'e2e-pr-g1'))
+    await expect(page.getByRole('heading', { name: 'Geri Alınan Aday', level: 1 })).toBeVisible()
+    const form = page.getByRole('form', { name: 'Aşamayı geri al' })
+    const stage = form.getByLabel('Geri alınacak aşama')
+    await expect(stage.locator('option')).toHaveText([
+      'Aşamayı seçin',
+      'Yeni aday',
+      'İletişime geçildi',
+    ])
+    // Gerekçesiz gönderim alan hatası verir; aşama değişmez.
+    await stage.selectOption('İletişime geçildi')
+    await form.getByRole('button', { name: 'Aşamayı geri al' }).click()
+    await expect(form.getByText('Gerekçe en az 2 karakter olmalıdır.')).toBeVisible()
+    await form.getByLabel('Gerekçe').fill('Teklif yanlışlıkla işaretlendi.')
+    await form.getByRole('button', { name: 'Aşamayı geri al' }).click()
+    await expect(toast(page, 'Aday aşaması geri alındı.')).toBeVisible()
+    const client = await api(school.user('yonetici'))
+    await expect
+      .poll(
+        async () =>
+          (await prospectsOf(client)).find((item) => item.id === 'e2e-pr-g1')?.record.stage,
+      )
+      .toBe('İletişime geçildi')
+  })
+
+  test('ön büro aşamayı geri alamaz: aday detayında geri alma formu yoktur', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-pr-g2',
+          name: 'Ön Büro Adayı',
+          phone: '05550300052',
+          stage: 'Teklif verildi',
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-g2'))
+    await expect(page.getByRole('heading', { name: 'Ön Büro Adayı', level: 1 })).toBeVisible()
+    await expect(page.getByRole('form', { name: 'Aşamayı değiştir' })).toBeVisible()
+    await expect(page.getByRole('form', { name: 'Aşamayı geri al' })).toHaveCount(0)
+  })
+})
+
 test.describe('Tanışma Görüşmeleri', () => {
   test('açık adayların görüşmeleri yaklaşan önce listelenir; kapalı aday ve görüşmesiz aday yoktur (DOM-KAY-033)', async ({
     page,

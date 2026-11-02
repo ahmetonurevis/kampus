@@ -5,7 +5,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
-import { useCoreAll, useCoreCounts } from '@/hooks/use-core-collection.ts'
+import { useCoreCounts } from '@/hooks/use-core-collection.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { exportCsv } from '@/lib/download.ts'
 import type { NavPage } from '@/lib/navigation.ts'
@@ -30,22 +30,28 @@ const CSV_COLUMNS = COLUMNS.map(({ key, label }) => ({ key, label }))
 
 /**
  * Kayıt Raporları (yönetici, Vue `Management.vue` `kayit-raporlari`): adaydan öğrenciye huni ve
- * kanal bazlı dönüşüm. Aşama sayıları sunucu sayımından, kanal tablosu kapsamlı aday
- * kayıtlarından hesaplanır; oranlar saklanmaz. Yalnız okuma.
- * TODO(api-prospect-source-group): `source` alanı sayımda gruplanamadığından aday listesi
- * bütünüyle çekilir (5000 kayıt sınırı); alan gruplanabilir olunca kanal sayımı sunucuya iner.
+ * kanal bazlı dönüşüm. Aşama ve kanal sayıları sunucu sayımından (`groupBy=stage|source`, satır
+ * çekilmez) hesaplanır; oranlar saklanmaz. Yalnız okuma.
  */
 export function EnrollmentReportsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const stages = useCoreCounts('prospects', { groupBy: 'stage' })
-  const prospects = useCoreAll('prospects')
+  const sources = useCoreCounts('prospects', { groupBy: 'source' })
+  const enrolledSources = useCoreCounts('prospects', {
+    groupBy: 'source',
+    filters: { stage: [ENROLLED_STAGE] },
+  })
   const table = useRef<DataTableHandle<SourceRow>>(null)
 
   const steps = useMemo(() => funnelSteps(stages.data), [stages.data])
   const rows = useMemo(
-    () => (prospects.data ? sourceRows(prospects.data) : undefined),
-    [prospects.data],
+    () =>
+      sources.data && enrolledSources.data
+        ? sourceRows(sources.data, enrolledSources.data)
+        : undefined,
+    [sources.data, enrolledSources.data],
   )
+  const sourceError = sources.error ?? enrolledSources.error
   const total = stages.data?.total ?? 0
   const enrolled = steps.find((step) => step.stage === ENROLLED_STAGE)?.count ?? 0
 
@@ -106,9 +112,15 @@ export function EnrollmentReportsPage({ page }: { page: NavPage }) {
             Güncel kayıtlar · {rows?.length ?? 0} sonuç
           </p>
         </header>
-        {prospects.error ? (
+        {sourceError ? (
           <div role="alert" className="p-[45px] text-center">
-            <QueryError error={prospects.error} onRetry={() => void prospects.refetch()} />
+            <QueryError
+              error={sourceError}
+              onRetry={() => {
+                void sources.refetch()
+                void enrolledSources.refetch()
+              }}
+            />
           </div>
         ) : rows === undefined ? (
           <p role="status" className="p-[45px] text-center text-base text-muted-foreground">

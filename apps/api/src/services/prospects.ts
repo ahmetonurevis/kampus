@@ -16,6 +16,7 @@ import {
   createProspect,
   scheduleProspectMeeting,
   recordTrialResult,
+  revertProspectStage,
   scheduleTrialLesson,
   type ProspectOptions,
 } from '@kampus/school-core/lib/prospects.ts'
@@ -68,6 +69,7 @@ import {
 type ProspectAction =
   | 'prospect.create'
   | 'prospect.stage'
+  | 'prospect.stageRevert'
   | 'prospect.note'
   | 'prospect.meeting'
   | 'prospect.trial'
@@ -393,6 +395,27 @@ export function recordTrialResultCommand(
       subjectId: prospectId,
       run: (state, by, { now }, prospectOptions) => {
         recordTrialResult(state, by, prospectId, input, now, prospectOptions)
+        return { id: prospectId, statusCode: 200 }
+      },
+    },
+    options,
+  )
+}
+
+/** Yönetici yanlışlıkla ileri alınan aşamayı gerekçeyle geri alır (DOM-KAY-030). 200. */
+export function revertProspectStageCommand(
+  ctx: ServiceContext,
+  prospectId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  return execute(
+    ctx,
+    {
+      action: 'prospect.stageRevert',
+      subjectId: prospectId,
+      run: (state, by, { now }, prospectOptions) => {
+        revertProspectStage(state, by, prospectId, input, now, prospectOptions)
         return { id: prospectId, statusCode: 200 }
       },
     },

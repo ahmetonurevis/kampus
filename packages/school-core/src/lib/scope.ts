@@ -193,6 +193,7 @@ const PROSPECT_TEACHER_VISIBLE = {
   lostReason: false,
   lostAt: false,
   meeting: false,
+  stageReverts: false,
   createdBy: false,
 } as const satisfies Record<keyof State['prospects'][number], boolean>
 const PROSPECT_TEACHER_HIDDEN = Object.entries(PROSPECT_TEACHER_VISIBLE)

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import { createSeed } from '@kampus/school-core/data/seed.ts'
 import {
   PROSPECT_STAGES,
   UNKNOWN_SOURCE,
@@ -8,22 +7,10 @@ import {
   sourceRows,
 } from '../src/pages/management/enrollment-report-rows.ts'
 
-const NOW = new Date('2026-10-15T09:00:00.000Z')
-const seed = createSeed(NOW)
-const wrap = <T extends { id: string }>(records: readonly T[]) =>
-  records.map((record) => ({
-    id: record.id,
-    version: 1,
-    createdAt: NOW.toISOString(),
-    updatedAt: NOW.toISOString(),
-    archivedAt: null,
-    record,
-  }))
-const prospect = (source: string, stage: string, id: string) => ({
-  ...seed.prospects[0]!,
-  id,
-  source,
-  stage,
+/** Sunucunun `groupBy=source` yanıtı: gruplar ve toplam. */
+const counts = (groups: [string | null, number][]) => ({
+  groups: groups.map(([value, count]) => ({ value, count })),
+  total: groups.reduce((sum, [, count]) => sum + count, 0),
 })
 
 test('funnelSteps: bilinen aşamalar sırasıyla gelir, sayısı 0 olan aşama da görünür, oran toplamdandır', () => {
@@ -62,12 +49,14 @@ test('funnelSteps: bilinmeyen aşama sona eklenir; sayım yokken bütün adımla
 
 test('sourceRows: kanal başına aday, kesin kayıt ve dönüşüm oranı hesaplanır, çoktan aza sıralanır', () => {
   const rows = sourceRows(
-    wrap([
-      prospect('Web sitesi', 'Kayıt oldu', 'a'),
-      prospect('Web sitesi', 'Yeni aday', 'b'),
-      prospect('Web sitesi', 'Vazgeçti', 'c'),
-      prospect('Telefon', 'Kayıt oldu', 'd'),
-      prospect('Veli referansı', 'Teklif verildi', 'e'),
+    counts([
+      ['Web sitesi', 3],
+      ['Telefon', 1],
+      ['Veli referansı', 1],
+    ]),
+    counts([
+      ['Web sitesi', 1],
+      ['Telefon', 1],
     ]),
   )
   assert.deepEqual(
@@ -80,8 +69,36 @@ test('sourceRows: kanal başına aday, kesin kayıt ve dönüşüm oranı hesapl
   )
 })
 
-test('sourceRows: kanalı boş aday "Belirtilmemiş" satırına girer; aday yoksa liste boştur', () => {
-  const rows = sourceRows(wrap([prospect('  ', 'Yeni aday', 'x')]))
-  assert.equal(rows[0]?.source, UNKNOWN_SOURCE)
-  assert.deepEqual(sourceRows([]), [])
+test('sourceRows: eşit sayıda aday kanal adıyla sıralanır; kayıtsız kanalın kesin kaydı 0 olur', () => {
+  const rows = sourceRows(
+    counts([
+      ['Telefon', 2],
+      ['Instagram', 2],
+    ]),
+    counts([]),
+  )
+  assert.deepEqual(
+    rows.map((row) => [row.source, row.enrolled, row.ratio]),
+    [
+      ['Instagram', 0, 0],
+      ['Telefon', 0, 0],
+    ],
+  )
+})
+
+test('sourceRows: kanalı boş ya da yok aday "Belirtilmemiş" satırında toplanır; aday yoksa liste boştur', () => {
+  const rows = sourceRows(
+    counts([
+      [null, 1],
+      ['  ', 1],
+      ['', 2],
+    ]),
+    counts([[null, 1]]),
+  )
+  assert.deepEqual(
+    rows.map((row) => [row.source, row.count, row.enrolled, row.ratio]),
+    [[UNKNOWN_SOURCE, 4, 1, 25]],
+  )
+  assert.deepEqual(sourceRows(undefined, undefined), [])
+  assert.deepEqual(sourceRows(counts([]), counts([])), [])
 })

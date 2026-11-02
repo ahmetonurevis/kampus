@@ -7,6 +7,7 @@ import type {
   AddProspectNoteBody,
   ChangeProspectStageBody,
   CreateProspectBody,
+  RevertProspectStageBody,
   ScheduleProspectMeetingBody,
   ScheduleTrialLessonBody,
 } from '@kampus/react-shared/use-prospect-commands.ts'
@@ -15,8 +16,10 @@ import {
   addProspectNoteSchema,
   createProspectSchema,
   MEETING_DURATION,
+  OPEN_PROSPECT_STAGES,
   PROSPECT_LOST_REASONS,
   PROSPECT_STAGES,
+  revertProspectStageSchema,
   PROSPECT_SOURCES,
   scheduleMeetingSchema,
 } from '@kampus/school-core/lib/prospects.ts'
@@ -174,6 +177,25 @@ export function stageBody(
     ok: true,
     body: { stage, ...(options.reopening && sibling ? { siblingOfId: sibling } : {}) },
   }
+}
+
+// --- Aşama geri alma ---------------------------------------------------------------------
+
+/** Yöneticinin aşama geri alma formu (DOM-KAY-030): hedef açık aşama ve zorunlu gerekçe. */
+export const revertFormSchema = z.object({
+  stage: z.string().min(1, 'Geri alınacak aşamayı seçin.'),
+  reason: revertProspectStageSchema.shape.reason,
+})
+export type RevertFormValues = z.input<typeof revertFormSchema>
+export const revertDefaults = (): RevertFormValues => ({ stage: '', reason: '' })
+
+export function revertBody(
+  values: z.output<typeof revertFormSchema>,
+): { ok: true; body: RevertProspectStageBody } | { ok: false; message: string } {
+  const stage = OPEN_PROSPECT_STAGES.find((item) => item === values.stage)
+  return stage
+    ? { ok: true, body: { stage, reason: values.reason } }
+    : { ok: false, message: 'Geri alınacak aşamayı seçin.' }
 }
 
 // --- Not ---------------------------------------------------------------------------------

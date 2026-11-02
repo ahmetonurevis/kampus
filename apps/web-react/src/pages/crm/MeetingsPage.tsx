@@ -29,7 +29,7 @@ const COLUMNS_MOBILE = ['timeRange', 'kindLabel', 'branch']
  * detayına bağlanır (`/onburo/aday/:id`). Aday sayısı pipeline ile sınırlıdır, bu yüzden açık
  * adaylar bir kez çekilir; sunucuda "görüşmesi olan aday" süzgeci yoktur.
  * TODO(api-prospect-meeting-filter): görüşme ve deneme dersi tarihi sunucuda süzülünce liste
- * sayfalı okunur (`trialLesson` tarihi `dateField` listesinde yok).
+ * sayfalı okunur (`trialLesson` tarihi `dateField` listesinde yok; iş isteği #13).
  */
 export function MeetingsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)

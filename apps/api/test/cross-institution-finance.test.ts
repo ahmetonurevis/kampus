@@ -142,6 +142,19 @@ async function prospectCopy(t: Tenant) {
   return { prospectId: id }
 }
 
+/** `prospectCopy` gibi, ama `Teklif verildi` aşamasında: geri alınabilir bir aday. */
+async function prospectAtOffer(t: Tenant) {
+  assert.ok(PROSPECT)
+  const id = `test-capraz-teklif-${randomUUID().slice(0, 8)}`
+  await insertMissingRecords(
+    db,
+    t.id,
+    [{ collection: 'prospects', id, data: { ...PROSPECT, id, stage: 'Teklif verildi' } }],
+    FIXED_NOW,
+  )
+  return { prospectId: id }
+}
+
 /** `prospectCopy` gibi, ama dersi yapılmış (geçmiş) bir deneme dersiyle: sonuç yazılabilir. */
 async function prospectWithHeldTrial(t: Tenant) {
   assert.ok(PROSPECT)
@@ -253,6 +266,19 @@ const CASES: readonly (CrossCase<Tenant> & { type?: 'language_school' })[] = [
       method: 'POST',
       url: `/api/v1/prospects/${prospectId}/trial-lessons`,
       body: { lessonId: LESSON?.id, guardianConsent: true },
+      ifMatch: 1,
+    }),
+  },
+  {
+    // Aşama geri alma yalnız yöneticidedir (DOM-KAY-030); açık aşamadaki aday B'de.
+    key: 'POST /api/v1/prospects/:prospectId/stage-revert',
+    kind: 'kayıt',
+    actor: (a) => a.cookies.admin,
+    make: prospectAtOffer,
+    request: ({ prospectId }) => ({
+      method: 'POST',
+      url: `/api/v1/prospects/${prospectId}/stage-revert`,
+      body: { stage: 'Yeni aday', reason: 'Gerekçe.' },
       ifMatch: 1,
     }),
   },

@@ -77,6 +77,7 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'homework.grade': ['ogretmen'],
     'prospect.create': ['yonetici', 'onburo'],
     'prospect.stage': ['yonetici', 'onburo'],
+    'prospect.stageRevert': ['yonetici'],
     'prospect.note': ['yonetici', 'onburo'],
     'prospect.meeting': ['yonetici', 'onburo'],
     'prospect.trial': ['yonetici', 'onburo'],

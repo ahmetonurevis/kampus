@@ -111,6 +111,8 @@ export const MARKETING_CHANNELS = ['sms', 'email', 'call'] as const
 export type MarketingChannel = (typeof MARKETING_CHANNELS)[number]
 
 export const PROSPECT_NOTE_MAX_LENGTH = 2000
+/** Aşama geri alma gerekçesinin en fazla uzunluğu (DOM-KAY-030). */
+export const PROSPECT_REVERT_REASON_MAX = 300
 /** Aday kartındaki not sayısı sınırı; kaydın sınırsız büyümesini önler. */
 export const PROSPECT_NOTE_LIMIT = 200
 /** Görüşme süresi sınırları (dakika). */
@@ -161,6 +163,15 @@ export type ProspectTrialResult = {
   recordedAt: string
   by: RequestActor
 }
+/** Aşama geri alma kaydı; gerekçe kişisel veri içerebilir (kvkk: K), loglanmaz. */
+export type ProspectStageRevert = {
+  from: ProspectStage
+  to: ProspectStage
+  // kvkk: K — yöneticinin kısa gerekçesi.
+  reason: string
+  at: string
+  by: RequestActor
+}
 export type ProspectTrialLesson = {
   lessonId: string
   classId: string
@@ -192,6 +203,8 @@ export type ProspectFields = {
   /** Planlanan tanışma görüşmesi; `trialAt` eski okuyucular için görüşme anını taşır. */
   meeting?: ProspectMeeting
   trialLesson?: ProspectTrialLesson
+  /** Yöneticinin yanlışlıkla ileri alınan aşamayı geri aldığı kayıtlar, eskiden yeniye (DOM-KAY-030). */
+  stageReverts?: ProspectStageRevert[]
   createdBy?: RequestActor
   updatedAt?: string
 }
@@ -286,6 +299,19 @@ export const changeProspectStageSchema = z
     path: ['siblingOfId'],
   })
 export type ChangeProspectStageInput = z.input<typeof changeProspectStageSchema>
+
+export const revertProspectStageSchema = z.strictObject({
+  stage: z.enum(OPEN_PROSPECT_STAGES, 'Geri alınacak aşamayı seçin.'),
+  reason: z
+    .string('Geri alma gerekçesini yazın.')
+    .trim()
+    .min(2, 'Gerekçe en az 2 karakter olmalıdır.')
+    .max(
+      PROSPECT_REVERT_REASON_MAX,
+      `En fazla ${PROSPECT_REVERT_REASON_MAX} karakter girebilirsiniz.`,
+    ),
+})
+export type RevertProspectStageInput = z.input<typeof revertProspectStageSchema>
 
 export const addProspectNoteSchema = z.strictObject({
   text: z
@@ -530,8 +556,7 @@ export function createProspect(
  * `İletişime geçildi` ile yeniden açılır; `Kayıt oldu` kilitlidir.
  */
 export function nextProspectStages(stage: string | undefined): ProspectStage[] {
-  // TODO(crm-stage-back): yanlışlıkla ileri alınan aşamayı düzeltmek geri dönüş yasağının
-  // istisnasıdır; gerekirse yönetici onaylı, gerekçeli ayrı işlem olarak gelir.
+  // Geri alma bu listede yoktur: yönetici gerekçeyle ayrı işlemle yapar (`revertProspectStage`).
   if (stage === 'Vazgeçti') return ['İletişime geçildi']
   const index = (OPEN_PROSPECT_STAGES as readonly (string | undefined)[]).indexOf(stage)
   if (index < 0) return []
@@ -625,6 +650,88 @@ export function changeProspectStage(
     delete prospect.lostAt
     if (data.siblingOfId !== undefined) prospect.siblingOfId = data.siblingOfId
   }
+  prospect.stage = data.stage
+  prospect.updatedAt = now
+  return prospect
+}
+
+/** Adayın planlı bir görüşmesi ya da deneme dersi var mı (gerçekleşmiş olan dahil). */
+const hasPlannedMeeting = (prospect: ProspectRecord) =>
+  prospect.trialAt != null || prospect.trialLesson !== undefined
+
+/**
+ * Yöneticinin geri alabileceği aşamalar (DOM-KAY-030): yalnız açık aşamalarda, geçerli aşamadan
+ * önceki açık aşamalar. `Görüşme planlandı` planlamayla girildiği için ancak adayın görüşmesi ya
+ * da deneme dersi varsa seçilir. Vazgeçen ve kayıtlı adayda boştur.
+ */
+export function revertableProspectStages(prospect: {
+  stage?: string | undefined
+  trialAt?: string | null | undefined
+  trialLesson?: unknown
+}): ProspectStage[] {
+  const index = (OPEN_PROSPECT_STAGES as readonly (string | undefined)[]).indexOf(prospect.stage)
+  if (index <= 0) return []
+  const planned = prospect.trialAt != null || prospect.trialLesson !== undefined
+  return OPEN_PROSPECT_STAGES.slice(0, index).filter(
+    (stage) => stage !== 'Görüşme planlandı' || planned,
+  )
+}
+
+/**
+ * Yanlışlıkla ileri alınan açık aşamayı geri alır (DOM-KAY-030). Yalnız yönetici yapar ve
+ * gerekçe zorunludur; gerekçe aday kartında saklanır, denetim kaydına yalnız alan adı yazılır.
+ * Yalnız açık aşamalar arasında bir önceki aşamaya geri gidilir: vazgeçen adayın yeniden açılışı
+ * (`changeProspectStage`) ve kesin kayıt ayrı işlemlerdir. Görüşme öncesi bir aşamaya dönülürken
+ * ileri tarihli görüşme ve deneme dersi kalkar (ayrılmış saat boşalır); gerçekleşmiş olanlar
+ * geçmiş olarak kalır.
+ */
+export function revertProspectStage(
+  state: State,
+  by: Participant,
+  prospectId: string,
+  input: unknown,
+  now: string,
+  options: ProspectOptions = {},
+): ProspectRecord {
+  const data = revertProspectStageSchema.parse(input)
+  requireAuthorized(by, 'prospect.stageRevert', {}, state, options)
+  const prospect = requireProspect(state, prospectId)
+  if (prospect.stage === 'Kayıt oldu' || prospect.studentId)
+    throw new DomainError(
+      'prospect_enrolled',
+      'Kesin kaydı tamamlanan adayın aşaması değiştirilemez.',
+      { kind: 'conflict' },
+    )
+  requireOpen(prospect)
+  if (!isStage(prospect.stage))
+    throw new DomainError('prospect_stage_unknown', 'Adayın kayıtlı aşaması tanınmıyor.', {
+      kind: 'conflict',
+    })
+  const current = prospect.stage
+  if (!revertableProspectStages(prospect).includes(data.stage))
+    throw new DomainError(
+      data.stage === 'Görüşme planlandı' && hasPlannedMeeting(prospect) === false
+        ? 'prospect_meeting_required'
+        : 'prospect_stage_not_backward',
+      data.stage === 'Görüşme planlandı' && hasPlannedMeeting(prospect) === false
+        ? 'Bu aşama tanışma görüşmesi planlanınca seçilir; adayın görüşmesi yok.'
+        : 'Yalnız adayın şu anki aşamasından önceki bir açık aşamaya geri alınabilir.',
+      { path: ['stage'] },
+    )
+  // Görüşme öncesi aşamaya dönen adayın ileri tarihli görüşmesi ve denemesi kalkar.
+  if (data.stage !== 'Görüşme planlandı') {
+    const future = (date: string | null | undefined) =>
+      date != null && Date.parse(date) > Date.parse(now)
+    if (future(prospect.trialAt)) {
+      prospect.trialAt = null
+      delete prospect.meeting
+    }
+    if (future(prospect.trialLesson?.date)) delete prospect.trialLesson
+  }
+  prospect.stageReverts = [
+    ...(prospect.stageReverts ?? []),
+    { from: current, to: data.stage, reason: data.reason, at: now, by: actorOf(by) },
+  ]
   prospect.stage = data.stage
   prospect.updatedAt = now
   return prospect

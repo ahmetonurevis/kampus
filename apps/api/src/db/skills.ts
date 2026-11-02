@@ -1806,7 +1806,6 @@ export async function listAwaitingScore(
 /** Core `planDraftSave`'in çakışma mesajı (`draft_conflict`). */
 const DRAFT_CONFLICT = 'Taslak başka bir pencerede değişti; sayfayı yenileyip devam edin.'
 
-/** Kursiyerin arşivlenmemiş taslağı; satır sürümü core `revision`'dır. */
 /**
  * Verilen kursiyerlerin verilen atamalarda arşivlenmemiş taslağı olan çiftleri (`atama:kursiyer`),
  * tek sorguda; metin okunmaz (kursiyerin görev listesindeki içerik kapısı, süren iş;
@@ -1833,6 +1832,7 @@ export async function draftKeysAmong(
   return new Set(rows.map((row) => `${row.assignmentId}:${row.learnerId}`))
 }
 
+/** Kursiyerin arşivlenmemiş taslağı; satır sürümü core `revision`'dır. */
 export async function loadDraft(
   db: Database,
   institutionId: string,

@@ -417,12 +417,19 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
     assert.deepEqual(await first(async () => 'yeniden'), { acquired: true, value: 'yeniden' })
   })
 
-  test('OG-262: media.transcode kuyruğu exclusive; dosyanın bekleyen işi varken ne ikinci gönderim ne açılış kurtarması yeni iş açar, işi olmayan bayat dosyaya tek iş açılır', async () => {
+  test('OG-262: media.transcode kuyruğu exclusive; dosyanın bekleyen ya da çalışan işi varken ne ikinci gönderim ne açılış kurtarması yeni iş açar, işi olmayan bayat dosyaya tek iş açılır', async () => {
     const { app, queue } = await appWithJobs()
     assert.equal((await queue.boss.getQueue(MEDIA_TRANSCODE_JOB))?.policy, 'exclusive')
     const institution = await createInstitution(app)
     const insert = async () => {
       const id = randomUUID()
+      const storageKey = storageKeyFor({
+        institutionId: institution.id,
+        purpose: 'listening_audio',
+        fileId: id,
+        now: FIXED_NOW,
+      })
+      await store.storage.put(storageKey, Readable.from(MP3))
       await db.transaction((tx) =>
         insertFile(
           tx,
@@ -430,12 +437,7 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
           {
             id,
             purpose: 'listening_audio',
-            storageKey: storageKeyFor({
-              institutionId: institution.id,
-              purpose: 'listening_audio',
-              fileId: id,
-              now: FIXED_NOW,
-            }),
+            storageKey,
             contentType: 'audio/mpeg',
             byteSize: MP3.length,
             sha256: 'a'.repeat(64),
@@ -448,22 +450,37 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
       )
       return { institutionId: institution.id, fileId: id }
     }
-    const waiting = await insert()
-    const orphan = await insert()
-    // İşçi bekleyen işi bir saat çekmez: iş `created` durumunda kalır.
-    const options = { singletonKey: waiting.fileId, startAfter: 3600 }
-    assert.notEqual(await queue.boss.send(MEDIA_TRANSCODE_JOB, waiting, options), null)
-    assert.equal(await queue.boss.send(MEDIA_TRANSCODE_JOB, waiting, options), null)
-    // Kurtarma iki dosyayı da bayat bulur; bekleyen işi olana yeni iş açmaz.
-    const later = new Date(FIXED_NOW.getTime() + STALE_TRANSCODE_MS + 60_000)
-    await requeueStaleTranscodes(db, queue.boss, later)
-    const find = (data: object) => queue.boss.findJobs(MEDIA_TRANSCODE_JOB, { data })
-    assert.equal((await find(waiting)).length, 1)
-    assert.equal((await find(orphan)).length, 1)
-    // İkinci kurtarma da iş açmaz: öksüz dosyanın işi bekliyor ya da çalışıyorsa `exclusive`
-    // engeller; bittiyse dosya artık `processing` değildir (nesnesi olmadığından reddedilir).
-    await requeueStaleTranscodes(db, queue.boss, later)
-    assert.equal((await find(waiting)).length, 1)
-    assert.equal((await find(orphan)).length, 1)
+    // Dönüşüm kapıda bekler: kurtarmanın açtığı iş, işçi onu ne zaman çekerse çeksin, test
+    // boyunca bitmez (`created` ya da `active`). Kapı yokken iş iki kurtarma arasında bitebilir;
+    // ikinci kurtarma dosyayı bütün kurumları taramadan önce `processing` okuyup iş bittikten sonra
+    // gönderirse ikinci bir iş açılır (zararsız: iş `not_processing` ile atlanır). Sonuç işçinin
+    // hızına ve ortak veritabanındaki kurum sayısına bağlı kalmasın diye kapı kullanılır.
+    let open = () => {}
+    const gate = new Promise<void>((resolve) => (open = resolve))
+    transcoder.during = () => gate
+    try {
+      const waiting = await insert()
+      const orphan = await insert()
+      // İşçi bekleyen işi bir saat çekmez: iş `created` durumunda kalır.
+      const options = { singletonKey: waiting.fileId, startAfter: 3600 }
+      assert.notEqual(await queue.boss.send(MEDIA_TRANSCODE_JOB, waiting, options), null)
+      assert.equal(await queue.boss.send(MEDIA_TRANSCODE_JOB, waiting, options), null)
+      // Kurtarma iki dosyayı da bayat bulur; bekleyen işi olana yeni iş açmaz.
+      const later = new Date(FIXED_NOW.getTime() + STALE_TRANSCODE_MS + 60_000)
+      await requeueStaleTranscodes(db, queue.boss, later)
+      const find = (data: object) => queue.boss.findJobs(MEDIA_TRANSCODE_JOB, { data })
+      assert.equal((await find(waiting)).length, 1)
+      assert.equal((await find(orphan)).length, 1)
+      // İkinci kurtarma da iş açmaz: öksüz dosyanın işi bekliyor ya da çalışıyor, `exclusive`
+      // engeller.
+      await requeueStaleTranscodes(db, queue.boss, later)
+      assert.equal((await find(waiting)).length, 1)
+      const jobs = await find(orphan)
+      assert.equal(jobs.length, 1)
+      assert.ok(['created', 'active'].includes(jobs[0]?.state ?? ''), jobs[0]?.state)
+    } finally {
+      transcoder.during = null
+      open()
+    }
   })
 })

@@ -1,7 +1,6 @@
 import { z } from 'zod'
 
-import { PAYMENT_METHODS } from '@kampus/school-core/lib/domain.ts'
-
+import { PAYMENT_METHODS } from '@kampus/school-core/lib/payments.ts'
 import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.ts'
 
 /** Tahsilat uçlarının yol, sorgu ve yanıt şemaları; gövde şemaları core'dadır (`lib/payments.ts`). */

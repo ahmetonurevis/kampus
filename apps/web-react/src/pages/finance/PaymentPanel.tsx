@@ -4,7 +4,7 @@ import {
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHODS,
   type PaymentMethod,
-} from '@kampus/school-core/lib/domain.ts'
+} from '@kampus/school-core/lib/payments.ts'
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import {
   amountInputValue,

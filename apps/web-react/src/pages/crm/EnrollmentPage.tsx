@@ -2,7 +2,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link, useSearchParams } from 'react-router'
-import { installmentAmounts } from '@kampus/school-core/lib/domain.ts'
+import { installmentAmounts } from '@kampus/school-core/lib/payments.ts'
 import {
   allowedGuardianModes,
   enrollmentFormSchema,

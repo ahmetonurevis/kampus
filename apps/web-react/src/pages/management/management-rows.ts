@@ -98,10 +98,44 @@ export type ClassRow = {
   count: number
   capacity: number
   lessons: number
+  /** Not ortalaması (0–100); notsuzsa `null`, ölçü gelmediyse (bekliyor/hata) `undefined`. */
+  average: number | null | undefined
   status: string
 }
 
-export function classRow(item: CoreRow<'classes'>, lookups: ManagementLookups): ClassRow {
+/**
+ * Sunucu ölçüsü (`/class-metrics`, `/teacher-metrics`): kimlik → değer. Eşlemede olmayan kayıt
+ * ölçüsüzdür (`null`: aktif öğrencisi olmayan sınıf); eşleme hiç yoksa değer bilinmiyor.
+ */
+export type MetricValues = ReadonlyMap<string, number | null>
+
+/** Ölçü satırlarından eşleme; yanıt yoksa (bekliyor, hata, modül kapalı) `undefined`. */
+export function metricValues<T>(
+  rows: readonly T[] | undefined,
+  id: (row: T) => string,
+  value: (row: T) => number | null,
+): MetricValues | undefined {
+  return rows ? new Map(rows.map((row) => [id(row), value(row)])) : undefined
+}
+
+const metricOf = (values: MetricValues | undefined, id: string) =>
+  values ? (values.get(id) ?? null) : undefined
+
+/** "78/100", "Henüz not yok" ya da ölçü yokken "—" (Vue "Ortalama" hücresi). */
+export function averageText(value: number | null | undefined): string {
+  if (value === undefined) return '—'
+  return value === null ? 'Henüz not yok' : `${value}/100`
+}
+
+/** "73/100" ya da ölçü yokken "—" (Vue "Performans" rozeti). */
+export const performanceText = (value: number | null | undefined) =>
+  typeof value === 'number' ? `${value}/100` : '—'
+
+export function classRow(
+  item: CoreRow<'classes'>,
+  lookups: ManagementLookups,
+  averages?: MetricValues,
+): ClassRow {
   const record = item.record
   return {
     id: item.id,
@@ -114,13 +148,14 @@ export function classRow(item: CoreRow<'classes'>, lookups: ManagementLookups): 
     count: lookups.studentCounts.get(record.id) ?? 0,
     capacity: record.capacity,
     lessons: lookups.assignmentsByClass.get(record.id)?.length ?? 0,
+    average: metricOf(averages, record.id),
     status: recordStatus(record),
   }
 }
 
-/** CSV hücreleri: ekrandaki metinle aynı ("12 / 24"). */
+/** CSV hücreleri: ekrandaki metinle aynı ("12 / 24", "78/100"). */
 export function classCsvRow(row: ClassRow) {
-  return { ...row, count: `${row.count} / ${row.capacity}` }
+  return { ...row, count: `${row.count} / ${row.capacity}`, average: averageText(row.average) }
 }
 
 export type TeacherRow = {
@@ -133,6 +168,8 @@ export type TeacherRow = {
   classes: string
   attendanceRate: number
   homeworkRate: number
+  /** Performans (0–100); oranı eksikse `null`, ölçü gelmediyse ya da modül kapalıysa `undefined`. */
+  performance: number | null | undefined
   status: string
 }
 
@@ -146,7 +183,11 @@ export function teacherClasses(teacherId: string, lookups: ManagementLookups): S
   })
 }
 
-export function teacherRow(item: CoreRow<'teachers'>, lookups: ManagementLookups): TeacherRow {
+export function teacherRow(
+  item: CoreRow<'teachers'>,
+  lookups: ManagementLookups,
+  performances?: MetricValues,
+): TeacherRow {
   const record = item.record
   const classes = teacherClasses(record.id, lookups)
   return {
@@ -159,12 +200,18 @@ export function teacherRow(item: CoreRow<'teachers'>, lookups: ManagementLookups
     classes: classes.map((schoolClass) => schoolClass.name).join(', ') || NO_LESSONS,
     attendanceRate: record.attendanceRate,
     homeworkRate: record.homeworkRate,
+    performance: metricOf(performances, record.id),
     status: recordStatus(record),
   }
 }
 
 export function teacherCsvRow(row: TeacherRow) {
-  return { ...row, attendanceRate: `%${row.attendanceRate}`, homeworkRate: `%${row.homeworkRate}` }
+  return {
+    ...row,
+    attendanceRate: `%${row.attendanceRate}`,
+    homeworkRate: `%${row.homeworkRate}`,
+    performance: performanceText(row.performance),
+  }
 }
 
 export type CampusSummary = {

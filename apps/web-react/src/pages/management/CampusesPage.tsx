@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useClassMetrics } from '@kampus/react-shared/use-management-metrics.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -34,12 +35,14 @@ import { canManageStructure } from './management-forms.ts'
 import { RecordActions, type RecordActionHandlers } from './RecordActions.tsx'
 import {
   archiveViewFilter,
+  averageText,
   campusesInView,
   campusSummaries,
   classCsvRow,
   classRow,
   isActiveFilter,
   isArchiveView,
+  metricValues,
   type CampusSummary,
   type ClassRow,
 } from './management-rows.ts'
@@ -75,8 +78,8 @@ const ALL = 'all'
  * kampüs kartları aynı sekmeyle başvuru koleksiyonundan süzülür.
  * Arama sunucuda sınıfın alanlarında ve kampüs adında (`q`), kampüs sütunu kampüs adına göre
  * (`branchName`) sıralanır. Öğrenci sayıları `counts?groupBy=classId` yanıtındandır.
- * TODO(api-aggregate): Vue'daki "Ortalama" sütunu notlardan hesaplanır (`grades` sayımı
- * `groupBy=classId&sum=score`); sütun ayrı görevde eklenir.
+ * "Ortalama" sütunu sunucu toplamıdır (`GET /class-metrics`, SQL; IST-010): not kayıtları
+ * çekilmez. Sütun sunucuda sıralanamaz (ölçü kaydın alanı değil).
  */
 export function CampusesPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -95,9 +98,19 @@ export function CampusesPage({ page }: { page: NavPage }) {
     'classes',
     withActive(collectionQueryFromList(list.state, CLASS_LIST, search)),
   )
+  const metrics = useClassMetrics()
+  const averages = useMemo(
+    () =>
+      metricValues(
+        metrics.data?.data,
+        (row) => row.classId,
+        (row) => row.averageScore,
+      ),
+    [metrics.data],
+  )
   const rows = useMemo(
-    () => classes.data?.rows.map((item) => classRow(item, lookups)),
-    [classes.data, lookups],
+    () => classes.data?.rows.map((item) => classRow(item, lookups, averages)),
+    [classes.data, lookups, averages],
   )
   const classPanel = useDetailPanel('sinif')
   const openClass = classPanel.open
@@ -168,6 +181,7 @@ export function CampusesPage({ page }: { page: NavPage }) {
         ),
       },
       { key: 'lessons', label: 'Branş' },
+      { key: 'average', label: 'Ortalama', cell: (row) => averageText(row.average) },
       {
         key: ACTIONS_KEY,
         label: 'İşlemler',
@@ -204,7 +218,8 @@ export function CampusesPage({ page }: { page: NavPage }) {
     void csv.download(
       page.title,
       columns.filter((column) => column.key !== ACTIONS_KEY),
-      async () => (await fetchAll(query)).map((item) => classCsvRow(classRow(item, lookups))),
+      async () =>
+        (await fetchAll(query)).map((item) => classCsvRow(classRow(item, lookups, averages))),
     )
   }
 

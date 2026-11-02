@@ -4,6 +4,7 @@ import type { operations } from '@kampus/api-client/schema.d.ts'
 import { collectionKeyPrefix } from './collections.ts'
 import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
+import { MANAGEMENT_METRICS_KEY } from './use-management-metrics.ts'
 
 // Kampüs, sınıf ve eğitim kadrosu yazma komutları (`POST|PATCH|DELETE /branches|classes|teachers`,
 // `POST …/restore`; yalnız `yonetici`, core `branch.save` `class.save` `teacher.save`
@@ -58,7 +59,11 @@ const RELATED_COLLECTIONS = [
   'appointments',
 ] as const
 
-const invalidates = RELATED_COLLECTIONS.map((name) => collectionKeyPrefix(name))
+/** Aktarım sınıf ortalamasını ve öğretmen ölçülerini de değiştirir (`use-management-metrics.ts`). */
+const invalidates = [
+  ...RELATED_COLLECTIONS.map((name) => collectionKeyPrefix(name)),
+  [MANAGEMENT_METRICS_KEY],
+]
 
 /** Oluşturmada `If-Match` hiç gönderilmez; düzenlemede okunan sürüm. */
 const versionOf = <TBody>(input: SaveRecordInput<TBody>): number | null =>

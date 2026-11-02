@@ -24,10 +24,16 @@ import {
   QUIZ_MESSAGES,
   QUIZ_TIME_EXPIRED_MESSAGE,
   quizClockLabel,
+  quizClockOffset,
   quizErrorField,
+  quizErrorMessage,
+  quizGraceLeftMs,
   quizListKey,
   quizListParams,
   quizSecondsLeft,
+  quizSubmitRetryDelay,
+  isQuizSubmitRetryable,
+  QUIZ_SUBMIT_RETRY_DELAYS_MS,
   quizStale,
   startQuizRequest,
   submitQuizBody,
@@ -238,7 +244,13 @@ describe('quiz istekleri (IST-095)', () => {
     const { client, sent } = fakeClient(() => json(200, { data: quiz() }))
     await runRequest(() => getQuizRequest(client, QZ))
     assert.equal(sent[0]?.path, `/api/v1/quizzes/${QZ}`)
-    const personal = { ...quiz(), statistics: null, questions: null, attempts: [] }
+    const personal = {
+      ...quiz(),
+      statistics: null,
+      questions: null,
+      attempts: [],
+      serverNow: '2026-11-02T06:00:00.000Z',
+    }
     const staff = {
       ...quiz(),
       statistics: { started: 0, scored: 0, inProgress: 0, average: null },
@@ -311,6 +323,67 @@ describe('quiz süresi gösterimi (DOM-AKD-077)', () => {
     assert.equal(quizSecondsLeft(end, Date.parse('2026-11-02T06:25:00.000Z')), 0)
     assert.equal(quizSecondsLeft(null, 0), null)
     assert.equal(quizSecondsLeft('geçersiz', 0), null)
+  })
+
+  test('DOM-AKD-077: sayaç sunucu saatiyle işler; cihaz saati ileri ya da geri olsa da kalan süre aynı', () => {
+    const server = Date.parse('2026-11-02T06:10:00.000Z')
+    // Cihaz 5 dk geri: fark +5 dk; cihaz 7 dk ileri: fark -7 dk.
+    for (const skew of [-300_000, 0, 420_000]) {
+      const device = server + skew
+      const offset = quizClockOffset('2026-11-02T06:10:00.000Z', device)
+      assert.equal(offset + 0, 0 - skew)
+      assert.equal(quizSecondsLeft(end, device, offset), 600)
+      assert.equal(quizSecondsLeft(end, device + 600_000, offset), 0)
+    }
+    assert.equal(quizClockOffset(undefined, 1000), 0)
+    assert.equal(quizClockOffset(null, 1000), 0)
+    assert.equal(quizClockOffset('geçersiz', 1000), 0)
+  })
+
+  test('DOM-AKD-077: ağ payı bitimine kalan süre sunucu saatiyle ve süresizde sonsuz', () => {
+    const at = Date.parse(end)
+    assert.equal(quizGraceLeftMs(end, at), 60_000)
+    assert.equal(quizGraceLeftMs(end, at + 45_000), 15_000)
+    assert.equal(quizGraceLeftMs(end, at - 100_000, 100_000), 60_000)
+    assert.equal(quizGraceLeftMs(end, at + 90_000), -30_000)
+    assert.equal(quizGraceLeftMs(null, 0), Number.POSITIVE_INFINITY)
+  })
+
+  test('DOM-AKD-077: kesin olmayan hata (ağ, 5xx, 429) yeniden denenir; kesin hata denenmez', () => {
+    const err = (status: number, code: string) => new ApiError({ status, code, message: 'x' })
+    assert.equal(isQuizSubmitRetryable(err(0, 'network_error')), true)
+    assert.equal(isQuizSubmitRetryable(err(503, 'unavailable')), true)
+    assert.equal(isQuizSubmitRetryable(err(500, 'internal_error')), true)
+    assert.equal(isQuizSubmitRetryable(err(429, 'rate_limited')), true)
+    assert.equal(isQuizSubmitRetryable(err(409, 'idempotency_in_progress')), true)
+    assert.equal(isQuizSubmitRetryable(err(422, 'quiz_time_expired')), false)
+    assert.equal(isQuizSubmitRetryable(err(409, 'quiz_already_submitted')), false)
+    assert.equal(isQuizSubmitRetryable(err(403, 'forbidden')), false)
+  })
+
+  test('DOM-AKD-077: yeniden deneme geri çekilmeli, üç hakla ve ağ payı içinde', () => {
+    assert.deepEqual([...QUIZ_SUBMIT_RETRY_DELAYS_MS], [2000, 5000, 10000])
+    assert.equal(quizSubmitRetryDelay(0, 60_000), 2000)
+    assert.equal(quizSubmitRetryDelay(1, 60_000), 5000)
+    assert.equal(quizSubmitRetryDelay(2, 60_000), 10_000)
+    assert.equal(quizSubmitRetryDelay(3, 60_000), null)
+    // Bekleme ağ payını aşacaksa hiç denenmez.
+    assert.equal(quizSubmitRetryDelay(2, 10_000), null)
+    assert.equal(quizSubmitRetryDelay(0, 1500), null)
+    assert.equal(quizSubmitRetryDelay(0, Number.POSITIVE_INFINITY), 2000)
+  })
+
+  test('hata metni koda özgü Türkçe mesajdır, yoksa sunucunun mesajı', () => {
+    assert.equal(
+      quizErrorMessage(new ApiError({ status: 422, code: 'quiz_time_expired', message: 'x' })),
+      QUIZ_TIME_EXPIRED_MESSAGE,
+    )
+    assert.equal(
+      quizErrorMessage(
+        new ApiError({ status: 503, code: 'unavailable', message: 'Sunucu meşgul.' }),
+      ),
+      'Sunucu meşgul.',
+    )
   })
 
   test('sayaç dakika:saniye, bir saatten uzunsa saat de gösterir', () => {

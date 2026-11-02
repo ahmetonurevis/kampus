@@ -1,10 +1,16 @@
 import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { ApiError } from '@kampus/api-client/errors.ts'
 import type { components, operations } from '@kampus/api-client/schema.d.ts'
+import { QUIZ_SUBMIT_GRACE_SECONDS } from '@kampus/school-core/lib/quiz.ts'
 
 import { runRequest } from './api-result.ts'
 import { collectionKeyPrefix } from './collections.ts'
-import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
+import {
+  keepsIdempotencyKey,
+  requireIfMatch,
+  type CommandHeaders,
+  type CommandMessages,
+} from './commands.ts'
 import { fetchAllPages, type ListPage } from './institution-lists.ts'
 
 /**
@@ -313,12 +319,69 @@ export function submitQuizBody(
 /**
  * Denemenin kalan süresi (saniye, en az 0). Yalnız gösterimdir: sunucu bitiş anından sonra ağ
  * payını da tanır, karar sunucudadır (DOM-AKD-077). Bitiş anı yoksa `null` (süresiz).
+ * `offsetMs` sunucu saati eksi cihaz saatidir (`quizClockOffset`): cihaz saati ileri ya da geri
+ * olsa da sayaç sunucu saatiyle işler.
  */
-export function quizSecondsLeft(expiresAt: string | null, now: number): number | null {
+export function quizSecondsLeft(
+  expiresAt: string | null,
+  now: number,
+  offsetMs = 0,
+): number | null {
   if (expiresAt === null) return null
   const end = Date.parse(expiresAt)
   if (!Number.isFinite(end)) return null
-  return Math.max(0, Math.ceil((end - now) / 1000))
+  return Math.max(0, Math.ceil((end - (now + offsetMs)) / 1000))
+}
+
+/**
+ * Sunucu saati ile cihaz saati arasındaki fark (ms; sunucu eksi cihaz). `serverNow` yanıtın
+ * taşıdığı sunucu anı, `receivedAt` yanıtın cihazda alındığı andır (`dataUpdatedAt`). Sunucu anı
+ * yoksa ya da geçersizse 0 (cihaz saatine düşer).
+ */
+export function quizClockOffset(serverNow: string | null | undefined, receivedAt: number): number {
+  if (serverNow === null || serverNow === undefined) return 0
+  const server = Date.parse(serverNow)
+  return Number.isFinite(server) ? server - receivedAt : 0
+}
+
+/**
+ * Süre bittikten sonraki gönderimde geri çekilmeli yeniden deneme beklemeleri (ms). Sunucu ağ
+ * payı (`QUIZ_SUBMIT_GRACE_SECONDS`) içinde kabul eder; deneme yalnız pay bitmeden yapılır.
+ */
+export const QUIZ_SUBMIT_RETRY_DELAYS_MS = [2_000, 5_000, 10_000] as const
+
+/**
+ * Gönderim hatası kesin değil mi: ağ kopması, 5xx, 429 ve süren aynı anahtar. Bunlarda cevaplar
+ * kaybolmaz, aynı `Idempotency-Key` ile yeniden gönderilir. Kesin hata (422 `quiz_time_expired`,
+ * 409, 403…) yeniden denenmez.
+ */
+export function isQuizSubmitRetryable(error: ApiError): boolean {
+  return error.status === 429 || keepsIdempotencyKey(error)
+}
+
+/**
+ * Sıradaki yeniden denemenin bekleme süresi (ms); deneme hakkı bittiyse ya da bekleme sonunda
+ * ağ payı da geçmiş olacaksa `null`. `graceLeftMs` sunucu saatiyle payın bitimine kalan süredir.
+ */
+export function quizSubmitRetryDelay(tryNo: number, graceLeftMs: number): number | null {
+  const delay = QUIZ_SUBMIT_RETRY_DELAYS_MS[tryNo]
+  if (delay === undefined || delay >= graceLeftMs) return null
+  return delay
+}
+
+/** Gönderimin ağ payı dahil son anına kalan süre (ms; sunucu saatiyle); bitiş anı yoksa sonsuz. */
+export function quizGraceLeftMs(expiresAt: string | null, now: number, offsetMs = 0): number {
+  if (expiresAt === null) return Number.POSITIVE_INFINITY
+  const end = Date.parse(expiresAt)
+  if (!Number.isFinite(end)) return Number.POSITIVE_INFINITY
+  return end + QUIZ_SUBMIT_GRACE_SECONDS * 1000 - (now + offsetMs)
+}
+
+/** Hata metni: koda özgü Türkçe mesaj, yoksa sunucunun mesajı. */
+export function quizErrorMessage(error: ApiError): string {
+  return Object.hasOwn(QUIZ_MESSAGES, error.code)
+    ? QUIZ_MESSAGES[error.code as keyof typeof QUIZ_MESSAGES]
+    : error.message
 }
 
 /** Kalan süre `dd:ss` (bir saatten uzunsa `s:dd:ss`). */

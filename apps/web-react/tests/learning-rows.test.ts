@@ -1,10 +1,8 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
-import { gradeQuiz } from '@kampus/school-core/lib/domain.ts'
 import {
   activeRoster,
-  attemptResult,
   deliverySummary,
   homeworkRow,
   materialRow,
@@ -150,44 +148,6 @@ test('teacherHomeworkRow sayıları /homework satırından, sınıf adını sın
   assert.equal(teacherHomeworkRow(item, { className: undefined, total: 0 }).className, '—')
 })
 
-function quizFixture() {
-  const seed = createSeed(NOW)
-  const quiz = seed.quizzes.find((item) =>
-    seed.quizAttempts.some((attempt) => attempt.quizId === item.id),
-  )
-  assert.ok(quiz)
-  const attempts = seed.quizAttempts.filter((attempt) => attempt.quizId === quiz.id)
-  assert.ok(attempts.length > 1)
-  return { seed, quiz, attempts }
-}
-
-test('attemptResult soru bankası varken puanı cevaplardan core gradeQuiz ile hesaplar', () => {
-  const { seed, quiz, attempts } = quizFixture()
-  const attempt = attempts[0]
-  assert.ok(attempt)
-  const expected = gradeQuiz(quiz, seed.bank, attempt.answers, true)
-  assert.deepEqual(attemptResult(attempt, quiz, seed.bank), {
-    correct: expected.correct,
-    total: expected.total,
-    score: expected.score,
-  })
-
-  // Saklı puan bozulsa bile cevaplar esastır.
-  const tampered = { ...attempt, score: 1, correct: 0 }
-  assert.equal(attemptResult(tampered, quiz, seed.bank).score, expected.score)
-})
-
-test('attemptResult cevap anahtarı yoksa veya eksikse saklı sonuca düşer', () => {
-  const { seed, quiz, attempts } = quizFixture()
-  const attempt = attempts[0]
-  assert.ok(attempt)
-  const stored = { correct: attempt.correct, total: attempt.total, score: attempt.score }
-  assert.deepEqual(attemptResult(attempt, quiz, null), stored)
-  assert.deepEqual(attemptResult(attempt, quiz, []), stored)
-  const partial = seed.bank.filter((question) => question.id !== quiz.questionIds[0])
-  assert.deepEqual(attemptResult(attempt, quiz, partial), stored)
-})
-
 test('teacherQuizRow çözen ve ortalamayı sunucu özetinden alır, puan hesaplamaz (DOM-AKD-079)', () => {
   const item = {
     id: 'quiz-test-1',
@@ -223,23 +183,82 @@ test('teacherQuizRow çözen ve ortalamayı sunucu özetinden alır, puan hesapl
   assert.equal(empty.className, '—')
 })
 
-test('studentQuizRow çözülme durumunu ve yalnız o öğrencinin sonucunu verir', () => {
-  const { quiz, attempts } = quizFixture()
-  const item = wrap([quiz])[0]
-  const attempt = attempts[0]
-  assert.ok(item && attempt)
+const quizAttempt = (
+  studentId: string,
+  status: 'in_progress' | 'expired' | 'completed',
+  result: { score: number; correctCount: number; total: number } | null,
+) => ({
+  id: `attempt-test-${studentId}`,
+  quizId: 'quiz-test-2',
+  studentId,
+  status,
+  startedAt: '2026-10-14T09:00:00.000Z',
+  expiresAt: '2026-10-14T09:20:00.000Z',
+  submittedAt: status === 'completed' ? '2026-10-14T09:10:00.000Z' : null,
+  result,
+})
 
-  const solved = studentQuizRow(item, attempts, attempt.studentId)
+const studentQuizItem = (
+  attempts: ReturnType<typeof quizAttempt>[],
+  status: 'open' | 'closed' = 'open',
+) => ({
+  id: 'quiz-test-2',
+  version: 1,
+  classId: 'c1',
+  subjectId: 'math',
+  subject: 'Matematik',
+  teacherId: 't1',
+  title: 'Kesirler',
+  duration: 20,
+  dueDate: status === 'closed' ? PAST : null,
+  questionIds: ['q1', 'q2', 'q3'],
+  questionCount: 3,
+  status,
+  createdAt: null,
+  updatedAt: PAST,
+  statistics: null,
+  attempts,
+})
+
+test('studentQuizRow durumu ve puanı yalnız seçili öğrencinin sunucu sonucundan alır (DOM-AKD-078)', () => {
+  // Velinin iki çocuğu aynı sınıfta: yanıt iki denemeyi de taşır, satır seçili çocuğunkidir.
+  const item = studentQuizItem([
+    quizAttempt('s1', 'completed', { score: 67, correctCount: 2, total: 3 }),
+    quizAttempt('s2', 'in_progress', null),
+  ])
+  const solved = studentQuizRow(item, 's1')
+  assert.equal(solved.phase, 'completed')
   assert.equal(solved.completion, 'Çözüldü')
-  assert.equal(solved.score, attempt.score)
-  assert.equal(solved.correct, attempt.correct)
-  assert.equal(solved.date, attempt.date)
+  assert.equal(solved.score, 67)
+  assert.equal(solved.correct, 2)
+  assert.equal(solved.total, 3)
+  assert.equal(solved.questions, 3)
+  assert.equal(solved.startable, false)
 
-  const unsolved = studentQuizRow(item, attempts, 'baska-ogrenci')
+  const running = studentQuizRow(item, 's2')
+  assert.equal(running.completion, 'Devam ediyor')
+  assert.equal(running.score, null)
+  assert.equal(running.startable, false)
+
+  const unsolved = studentQuizRow(item, 'baska-ogrenci')
   assert.equal(unsolved.completion, 'Henüz çözülmedi')
   assert.equal(unsolved.score, null)
   assert.equal(unsolved.correct, null)
-  assert.equal(unsolved.date, null)
+  assert.equal(unsolved.startable, true)
+})
+
+test('studentQuizRow süresi dolan denemeyi 0 puanla, kapanmış quizi başlatılamaz verir (DOM-AKD-077)', () => {
+  const expired = studentQuizRow(
+    studentQuizItem([quizAttempt('s1', 'expired', { score: 0, correctCount: 0, total: 3 })]),
+    's1',
+  )
+  assert.equal(expired.completion, 'Süresi doldu')
+  assert.equal(expired.score, 0)
+
+  const closed = studentQuizRow(studentQuizItem([], 'closed'), 's1')
+  assert.equal(closed.completion, 'Henüz çözülmedi')
+  assert.equal(closed.startable, false)
+  assert.equal(closed.dueDate, PAST)
 })
 
 test('materialRow tablo alanlarını eşler; uniqueValues tekrarı atar', () => {

@@ -89,7 +89,7 @@ export function ParentTrackingPage({ page }: { page: NavPage }) {
         tab === 'odevler' ? (
           <StudentHomeworkView student={student} title="Ödev durumu" mode="parent" />
         ) : (
-          <StudentQuizzesView student={student} title="Quiz sonuçları" />
+          <StudentQuizzesView student={student} title="Quiz sonuçları" mode="parent" />
         )
       ) : error ? (
         <QueryError error={error} onRetry={retry} />

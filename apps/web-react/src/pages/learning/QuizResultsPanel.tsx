@@ -16,6 +16,7 @@ import { NoPermission } from './HomeworkForms.tsx'
 import { Facts, SummaryTitle } from './LearningParts.tsx'
 import {
   attemptSummary,
+  optionText,
   QUIZ_LOCKED_REASON,
   quizActions,
   quizDueText,
@@ -27,8 +28,6 @@ import { ArchiveQuizDialog, NEW_QUIZ, QuizFormContent } from './QuizForms.tsx'
 import { useClassRoster } from './use-class-roster.ts'
 
 type Props = { detail: PanelControl; form: PanelControl; actor: QuizActor }
-
-const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F']
 
 export function QuizResultsPanel({ detail, form, actor }: Props) {
   const mode = form.selectedId ? 'form' : detail.selectedId ? 'detail' : null
@@ -212,7 +211,6 @@ function QuestionKey({ quiz }: { quiz: QuizStaffDetail }) {
       <ol aria-label="Quiz soruları" className="grid gap-3">
         {quiz.questions.map((question, index) => {
           const key = keyOf.get(question.id)
-          const letter = key ? OPTION_LETTERS[key.answer] : undefined
           return (
             <li key={question.id} className="grid gap-1 rounded-xl border px-3.5 py-2.5 text-sm">
               <span className="font-medium [overflow-wrap:anywhere]">
@@ -220,7 +218,7 @@ function QuestionKey({ quiz }: { quiz: QuizStaffDetail }) {
               </span>
               <span className="text-muted-foreground">
                 {question.topic}
-                {key && letter ? ` · Doğru: ${letter}) ${question.options[key.answer] ?? ''}` : ''}
+                {key ? ` · Doğru: ${optionText(question.options, key.answer)}` : ''}
               </span>
             </li>
           )

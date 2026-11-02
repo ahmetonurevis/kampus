@@ -406,6 +406,7 @@ export async function getQuiz(ctx: ServiceContext, quizId: string) {
       statistics: null,
       questions: visibleQuestions ? questionsOf(quiz, bank) : null,
       attempts: views,
+      serverNow: now,
     },
   }
 }
@@ -454,7 +455,11 @@ function respond(ctx: ServiceContext, outcome: OperationResult<Outcome>, fallbac
         data:
           result.questions === undefined
             ? result.view
-            : { attempt: result.view, questions: result.questions },
+            : {
+                attempt: result.view,
+                questions: result.questions,
+                serverNow: ctx.now.toISOString(),
+              },
       },
     }
   const written = outcome.changes.find(

@@ -7239,6 +7239,8 @@ export interface components {
             questions: components["schemas"]["QuizQuestionInput"][] | null;
             /** @description Öğrencide kendi, velide çocuğunun denemesi */
             attempts: components["schemas"]["QuizAttemptInput"][];
+            /** @description Sunucu saati (ISO 8601 UTC); istemci cihaz saatiyle farkı hesaplayıp geri sayımı buna göre kurar */
+            serverNow: string;
         };
         QuizStaffDetailInput: {
             id: string;
@@ -7297,6 +7299,8 @@ export interface components {
             attempt: components["schemas"]["QuizAttemptInput"];
             /** @description Cevap anahtarsız sorular */
             questions: components["schemas"]["QuizQuestionInput"][];
+            /** @description Sunucu saati (ISO 8601 UTC); istemci cihaz saatiyle farkı hesaplayıp geri sayımı buna göre kurar */
+            serverNow: string;
         };
         PermissionFormInput: {
             id: string;
@@ -10194,6 +10198,8 @@ export interface components {
             questions: components["schemas"]["QuizQuestion"][] | null;
             /** @description Öğrencide kendi, velide çocuğunun denemesi */
             attempts: components["schemas"]["QuizAttempt"][];
+            /** @description Sunucu saati (ISO 8601 UTC); istemci cihaz saatiyle farkı hesaplayıp geri sayımı buna göre kurar */
+            serverNow: string;
         };
         QuizStaffDetail: {
             id: string;
@@ -10252,6 +10258,8 @@ export interface components {
             attempt: components["schemas"]["QuizAttempt"];
             /** @description Cevap anahtarsız sorular */
             questions: components["schemas"]["QuizQuestion"][];
+            /** @description Sunucu saati (ISO 8601 UTC); istemci cihaz saatiyle farkı hesaplayıp geri sayımı buna göre kurar */
+            serverNow: string;
         };
         PermissionForm: {
             id: string;

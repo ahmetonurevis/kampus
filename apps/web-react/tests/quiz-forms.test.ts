@@ -2,13 +2,18 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import {
+  answeredCount,
   attemptSummary,
+  canStartQuiz,
   changedQuizFields,
   createQuizBody,
   eligibleQuestions,
   keepEligible,
+  optionText,
   planQuizUpdate,
+  QUIZ_PHASE_TEXT,
   QUIZ_QUESTION_LIMIT,
+  quizReviewRows,
   quizActions,
   quizFormDefaults,
   quizFormSchema,
@@ -217,5 +222,42 @@ describe('quiz yetkisi, kilit ve sonuç metni (DOM-AKD-076, DOM-AKD-079)', () =>
       attemptSummary({ status: 'expired', result: { score: 0, correctCount: 0, total: 3 } }),
       'Süresi doldu · 0/3 doğru · %0',
     )
+  })
+})
+
+describe('öğrenci quiz çözme ve inceleme (DOM-AKD-077, DOM-AKD-078)', () => {
+  test('quiz yalnız açıkken ve deneme yokken başlatılır', () => {
+    assert.equal(canStartQuiz({ status: 'open' }, undefined), true)
+    assert.equal(canStartQuiz({ status: 'closed' }, undefined), false)
+    assert.equal(canStartQuiz({ status: 'open' }, { status: 'in_progress' }), false)
+    assert.equal(canStartQuiz({ status: 'open' }, { status: 'expired' }), false)
+  })
+
+  test('cevaplanan soru sayısı yalnız quizin sorularını sayar', () => {
+    assert.equal(answeredCount(['q1', 'q2', 'q3'], { q1: 0, q3: 2, yabanci: 1 }), 2)
+    assert.equal(answeredCount(['q1'], {}), 0)
+  })
+
+  test('inceleme satırı öğrencinin şıkkını verir; doğru şık ve çözüm üretmez', () => {
+    const questions = [
+      { id: 'q1', text: '2 + 2', topic: 'Toplama', options: ['3', '4', '5'] },
+      { id: 'q2', text: '3 × 3', topic: 'Çarpma', options: ['6', '9'] },
+      { id: 'q3', text: '5 − 1', topic: 'Çıkarma', options: ['4', '3'] },
+    ]
+    const rows = quizReviewRows(questions, { q1: 1, q2: 7 })
+    assert.deepEqual(rows, [
+      { id: 'q1', text: '2 + 2', topic: 'Toplama', chosen: 'B) 4' },
+      // Quizde olmayan şık ve boş soru "boş" görünür.
+      { id: 'q2', text: '3 × 3', topic: 'Çarpma', chosen: null },
+      { id: 'q3', text: '5 − 1', topic: 'Çıkarma', chosen: null },
+    ])
+    for (const row of rows)
+      assert.deepEqual(Object.keys(row).sort(), ['chosen', 'id', 'text', 'topic'])
+  })
+
+  test('durum metinleri ve şık harfi', () => {
+    assert.equal(QUIZ_PHASE_TEXT.none, 'Henüz çözülmedi')
+    assert.equal(QUIZ_PHASE_TEXT.expired, 'Süresi doldu')
+    assert.equal(optionText(['x', 'y', 'z'], 2), 'C) z')
   })
 })

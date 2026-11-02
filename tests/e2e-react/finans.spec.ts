@@ -273,8 +273,13 @@ test.describe('Finans: tahsilat', () => {
     await expect(method).toBeVisible()
     await expect(method.getByRole('option', { name: 'Nakit' })).toHaveCount(0)
 
+    // Ödeme ayarı "Kurum & Modüller"in altında değil, kendi sekmesindedir; seçim adreste kalır.
     await page.goto('/yonetici/ayarlar')
     const toggle = page.getByRole('switch', { name: 'Nakit tahsilat' })
+    await expect(page.getByRole('button', { name: 'Kurum & Modüller' })).toBeVisible()
+    await expect(toggle).toHaveCount(0)
+    await page.getByRole('button', { name: 'Ödeme & Banka' }).click()
+    await expect(page).toHaveURL(/[?&]sekme=odeme(&|$)/)
     await expect(toggle).not.toBeChecked()
     await toggle.click()
     const confirm = page.getByRole('dialog', { name: 'Nakit tahsilatı aç' })
@@ -299,7 +304,7 @@ test.describe('Finans: tahsilat', () => {
     const school = await tenant({ roles: [], students: ['s16'] })
     await loginAs(school.user('yonetici'))
 
-    await page.goto('/yonetici/ayarlar')
+    await page.goto('/yonetici/ayarlar?sekme=odeme')
     const accountForm = page.getByRole('form', { name: 'Banka hesabı ekle' })
     await accountForm.getByLabel('Banka adı').fill('Örnek Bankası')
     await accountForm.getByLabel('IBAN').fill('TR33 0006 1005 1978 6457 8413 27')

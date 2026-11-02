@@ -24,6 +24,8 @@ Vue–React sayfa eşitliği denetimi (Oğuzhan'ın alanı, OG-072 ön koşulu):
 
 Pano kartları (IST-116; yuva kuralı [platform.md "Pano kartı ekleme"](sayfalar/platform.md)): finans kartları `pages/finance/FinanceDashboardCards.tsx` (saf hesap `finance-dashboard-model.ts`, test `apps/web-react/tests/finance-dashboard-model.test.ts`), ön büro aday kartları `pages/crm/EnrollmentDashboardCards.tsx`; ikisi de `dashboard-cards.tsx` Onur bloğundan kayıtlıdır. Sayaç ve listeler tek özet isteğinden gelir, "Şube filtresi"yle daralır. Yönetici "Gecikmiş tutar" sayacı `GET /finance/overview` okur: kısmi ödemede yalnız kalan kısım sayılır, Finans ekranının aynı adlı toplamıyla eşittir, mini grafik vadesi son altı aya düşen gecikmiş tutardır, kampüs seçiliyken çizilmez (uç kurum genelidir).
 
+Ödeme ve banka ayarı (`/yonetici/ayarlar?sekme=odeme`, "Ödeme & Banka" sekmesi; DOM-FIN-032): nakit tahsilat anahtarı ve bildirilmiş banka hesapları `pages/settings/PaymentSettingsSection.tsx` içindedir, yuvaya `settings-sections.tsx` Onur bloğundan `kind: 'tab'` ile kayıtlıdır. Yalnız yönetici görür; finans modülü kapalıysa sekme gizlenir ve adres ilk sekmeye düşer.
+
 <!-- Onur: kayıt ve finans sonu -->
 
 Aşağıdaki tablolar Vue demosunun sayfa yollarıdır; yalnız React'te bulunan İçerik Havuzu (`/yonetici/icerik-havuzu`, `/ogretmen/icerik-havuzu`), Yoklama Düzeltme (`/yonetici/yoklama-duzeltme`) ve Zümre & Koordinatörler (`/yonetici/koordinator-gorevleri`) bunlarda yer almaz.

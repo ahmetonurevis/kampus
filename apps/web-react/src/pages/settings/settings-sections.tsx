@@ -13,15 +13,15 @@ import type { SettingsEntry } from './settings-tabs.ts'
 import { PaymentSettingsSection } from './PaymentSettingsSection.tsx'
 
 const ONUR_SETTINGS_SECTIONS: readonly SettingsEntry<ComponentType>[] = [
-  // Nakit tahsilat ve banka hesapları "Kurum & Modüller" sekmesinin altındadır (ON-033'te kendi
-  // sekmesine taşınabilir: `kind: 'tab'`, `label` ve `param` verilir).
+  // Nakit tahsilat ve banka hesapları kendi sekmesindedir; finans kapalıysa sekme de kapanır.
   {
-    kind: 'section',
-    id: 'payment',
-    tab: 'general',
+    kind: 'tab',
+    id: 'payments',
+    label: 'Ödeme & Banka',
+    param: 'odeme',
     roles: ['yonetici'],
     module: 'finance',
-    order: 100,
+    order: 28,
     component: PaymentSettingsSection,
   },
 ]

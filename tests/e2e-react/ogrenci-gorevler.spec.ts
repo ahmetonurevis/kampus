@@ -262,6 +262,9 @@ test.describe('öğrenci görevleri: quiz denemesi', () => {
     await page.getByRole('button', { name: 'Denemeyi başlat' }).click()
     await page.getByLabel('In London.').check()
     await expect(page.getByText('Cevaplarınız kaydedildi.')).toBeVisible()
+    // OG-986, DOM-BEC-043: süresiz denemede geri sayım yok, son teslim tarihi yazılır.
+    await expect(main(page).getByText(/^Son teslim: /)).toBeVisible()
+    await expect(main(page).getByText(/Kalan süre/)).toHaveCount(0)
     await page.getByRole('button', { name: 'Sonraki' }).click()
     await page.getByLabel('In Paris.').check()
     await expect(page.getByText('Cevaplarınız kaydedildi.')).toBeVisible()

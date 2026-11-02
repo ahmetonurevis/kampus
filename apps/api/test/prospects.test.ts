@@ -168,6 +168,8 @@ describe('aday uçları', () => {
     send('POST', `/api/v1/prospects/${id}/trial-lessons`, cookie, body, ifMatch(version))
   const stageRevert = (cookie: string | null, id: string, body: unknown, version: number | null) =>
     send('POST', `/api/v1/prospects/${id}/stage-revert`, cookie, body, ifMatch(version))
+  const consent = (cookie: string | null, id: string, body: unknown, version: number | null) =>
+    send('POST', `/api/v1/prospects/${id}/marketing-consent`, cookie, body, ifMatch(version))
   const trialResult = (
     cookie: string | null,
     id: string,
@@ -2036,6 +2038,86 @@ describe('aday uçları', () => {
     await unchanged(a.id, 'pr4', async () => {
       assertError(
         await stageRevert(a.adminCookie, 'pr4', { stage: 'Yeni aday', reason: 'Gerekçe.' }, 1),
+        403,
+        'module_disabled',
+      )
+    })
+  })
+
+  // --- Ticari ileti onayı (DOM-KAY-004) ---------------------------------------------------------
+
+  test('DOM-KAY-004: ön büro onayı verir, yönetici geri alır; geçmiş kalıcıdır, denetimde iletişim yok', async () => {
+    const a = await institution()
+    const front = await frontDesk(a.id)
+    const first = await versionOf(a.id, 'pr1')
+    const given = await consent(front, 'pr1', { channel: 'sms', granted: true }, first)
+    assert.equal(given.statusCode, 200, given.body)
+    const record = await findRecord(db, a.id, 'prospects', 'pr1')
+    assert.equal(record?.version, first + 1)
+    const sms = (record?.data.marketingConsent as { sms: { granted: boolean } }).sms
+    assert.equal(sms.granted, true)
+    // Geri alma anında etkilidir; aşama değişmez, geçmiş iki olay taşır.
+    const withdrawn = await consent(
+      a.adminCookie,
+      'pr1',
+      { channel: 'sms', granted: false },
+      first + 1,
+    )
+    assert.equal(withdrawn.statusCode, 200, withdrawn.body)
+    const after = await findRecord(db, a.id, 'prospects', 'pr1')
+    assert.equal((after?.data.marketingConsent as { sms: { granted: boolean } }).sms.granted, false)
+    assert.equal(after?.data.stage, record?.data.stage)
+    const history = after?.data.marketingConsentHistory as { channel: string; granted: boolean }[]
+    assert.deepEqual(
+      history.map((event) => [event.channel, event.granted]),
+      [
+        ['sms', true],
+        ['sms', false],
+      ],
+    )
+    const audit = await db.select().from(auditLog).where(eq(auditLog.institutionId, a.id))
+    assert.ok(JSON.stringify(audit).includes('prospect.consent'))
+    assert.ok(!JSON.stringify(audit).includes(String(PR1?.phone)))
+  })
+
+  test('DOM-KAY-004: oturumsuz 401; öğretmen, öğrenci ve veli 403; başlık, gövde ve mükerrer karar aday değiştirmez', async () => {
+    const a = await institution()
+    const front = await frontDesk(a.id)
+    const version = await versionOf(a.id, 'pr1')
+    const good = { channel: 'sms', granted: true }
+    assertError(await consent(null, 'pr1', good, version), 401)
+    await unchanged(a.id, 'pr1', async () => {
+      for (const role of ['ogretmen', 'ogrenci', 'veli'] as const)
+        assertError(
+          await consent((await member(a.id, role)).cookie, 'pr1', good, version),
+          403,
+          'forbidden',
+        )
+      assertError(await consent(front, 'pr1', good, null), 400, 'if_match_required')
+      for (const body of [
+        {},
+        { channel: 'sms' },
+        { channel: 'posta', granted: true },
+        { channel: 'sms', granted: 'evet' },
+        { ...good, extra: 1 },
+      ])
+        assertError(await consent(front, 'pr1', body, version), 400)
+      // Onay yokken geri alma mükerrerdir.
+      assertError(
+        await consent(front, 'pr1', { channel: 'call', granted: false }, version),
+        409,
+        'marketing_consent_unchanged',
+      )
+      assertError(await consent(front, 'pr1', good, version + 5), 409, 'version_conflict')
+      assertError(await consent(front, 'pr-yok', good, 1), 404, 'not_found')
+    })
+  })
+
+  test('DOM-YTK-040: crm modülü kapalıyken onay ucu 403 module_disabled', async () => {
+    const a = await institution({ enabledModules: { crm: false } })
+    await unchanged(a.id, 'pr1', async () => {
+      assertError(
+        await consent(a.adminCookie, 'pr1', { channel: 'sms', granted: true }, 1),
         403,
         'module_disabled',
       )

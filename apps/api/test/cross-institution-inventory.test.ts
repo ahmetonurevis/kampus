@@ -641,6 +641,7 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     finance('kayıt', 'POST /api/v1/prospects/:prospectId/trial-lessons'),
     finance('kayıt', 'POST /api/v1/prospects/:prospectId/trial-result'),
     finance('kayıt', 'POST /api/v1/prospects/:prospectId/stage-revert'),
+    finance('kayıt', 'POST /api/v1/prospects/:prospectId/marketing-consent'),
   ]),
 }
 

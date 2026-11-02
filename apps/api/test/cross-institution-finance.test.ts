@@ -270,6 +270,19 @@ const CASES: readonly (CrossCase<Tenant> & { type?: 'language_school' })[] = [
     }),
   },
   {
+    // Ticari ileti onayı ön büro ve yöneticidedir (DOM-KAY-004); aday yalnız B'de.
+    key: 'POST /api/v1/prospects/:prospectId/marketing-consent',
+    kind: 'kayıt',
+    actor: (a) => a.cookies.frontDesk,
+    make: prospectCopy,
+    request: ({ prospectId }) => ({
+      method: 'POST',
+      url: `/api/v1/prospects/${prospectId}/marketing-consent`,
+      body: { channel: 'sms', granted: true },
+      ifMatch: 1,
+    }),
+  },
+  {
     // Aşama geri alma yalnız yöneticidedir (DOM-KAY-030); açık aşamadaki aday B'de.
     key: 'POST /api/v1/prospects/:prospectId/stage-revert',
     kind: 'kayıt',

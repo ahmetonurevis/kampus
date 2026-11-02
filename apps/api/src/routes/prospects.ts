@@ -12,6 +12,7 @@ import {
   recordTrialResultSchema,
   revertProspectStageSchema,
   scheduleTrialLessonSchema,
+  setMarketingConsentSchema,
 } from '@kampus/school-core/lib/prospects.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
@@ -28,6 +29,7 @@ import {
   recordTrialResultCommand,
   revertProspectStageCommand,
   scheduleTrialLessonCommand,
+  setMarketingConsentCommand,
   studentIdentityFor,
 } from '../services/prospects.ts'
 import { sendCommand } from './command-support.ts'
@@ -389,6 +391,33 @@ export function registerProspectRoutes(app: FastifyInstance) {
       sendCommand(
         reply,
         await revertProspectStageCommand(
+          contextOf(request),
+          request.params.prospectId,
+          input(request),
+          options(request, 'optional'),
+        ),
+      ),
+  )
+
+  typed.post(
+    '/api/v1/prospects/:prospectId/marketing-consent',
+    {
+      preValidation: guard('prospect.consent', 'required'),
+      schema: {
+        operationId: 'setProspectMarketingConsent',
+        tags: ['prospects'],
+        summary: 'Aday ticari ileti onayını ver ya da geri al',
+        description: `Adayın kanal bazlı (\`sms\`, \`email\`, \`call\`) ticari elektronik ileti onayını verir ya da geri alır (core \`setProspectMarketingConsent\`, DOM-KAY-004). Geri alma anında etkilidir ve aday aşamasından bağımsızdır; her değişiklik kalıcı olay olarak geçmişe yazılır, denetim kaydına yalnız alan adı yazılır. Aynı karara ikinci istek 409 \`marketing_consent_unchanged\`; e-posta onayı için adayın e-postası yoksa 422 \`consent_contact_missing\`. Randevu teyidi gibi hizmet iletileri onaya bağlı değildir. ${ifMatchNote} Roller: ${rolesOf('prospect.consent')}.`,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        params: prospectParamsSchema,
+        body: setMarketingConsentSchema,
+        response,
+      },
+    },
+    async (request, reply) =>
+      sendCommand(
+        reply,
+        await setMarketingConsentCommand(
           contextOf(request),
           request.params.prospectId,
           input(request),

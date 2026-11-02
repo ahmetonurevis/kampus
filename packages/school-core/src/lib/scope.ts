@@ -199,6 +199,7 @@ const PROSPECT_TEACHER_VISIBLE = {
   siblingOfId: false,
   privacyNotice: false,
   marketingConsent: false,
+  marketingConsentHistory: false,
   lostReason: false,
   lostAt: false,
   meeting: false,

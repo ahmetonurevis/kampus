@@ -1,13 +1,15 @@
 import { randomUUID } from 'node:crypto'
 
 import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
+import { z } from 'zod'
 
-import type {
-  LearnerKind,
-  PlacementDecisionDraft,
-  PlacementSectionEntry,
-  PlacementSessionDraft,
-  PlacementSessionRow,
+import {
+  placementSectionEntrySchema,
+  type LearnerKind,
+  type PlacementDecisionDraft,
+  type PlacementSectionEntry,
+  type PlacementSessionDraft,
+  type PlacementSessionRow,
 } from '@kampus/school-core/cefr/placement.ts'
 import type {
   ProgressionDecisionDraft,
@@ -62,9 +64,15 @@ type SessionRow = typeof placementSessions.$inferSelect
 type LevelRow = typeof levelDecisions.$inferSelect
 type ProgressionRow = typeof progressionDecisions.$inferSelect
 
+/**
+ * Bölüm girişleri jsonb'de durur; yazmada ve okumada core şemasıyla doğrulanır. Bozuk satır
+ * sessizce puanlanmaz, beklenmeyen hata olur.
+ */
+const sectionEntriesSchema = z.array(placementSectionEntrySchema)
+
 function toSession(row: SessionRow): StoredPlacementSession {
   return {
-    sectionEntries: row.sectionEntries,
+    sectionEntries: sectionEntriesSchema.parse(row.sectionEntries),
     rowVersion: row.version,
     updatedAt: row.updatedAt.toISOString(),
     id: row.id,
@@ -199,7 +207,9 @@ export async function savePlacementSession(
   const [row] = await db
     .update(placementSessions)
     .set({
-      ...(patch.sectionEntries === undefined ? {} : { sectionEntries: [...patch.sectionEntries] }),
+      ...(patch.sectionEntries === undefined
+        ? {}
+        : { sectionEntries: sectionEntriesSchema.parse(patch.sectionEntries) }),
       ...(patch.completedAt === undefined ? {} : { completedAt: new Date(patch.completedAt) }),
       updatedAt: now,
       version: sql`${placementSessions.version} + 1`,

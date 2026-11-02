@@ -282,7 +282,7 @@ describe('0034: CEFR tabloları ve deposu', () => {
     )
   })
 
-  test('0035 IST-058, DOM-DIL-010: bölüm girişleri sürüm koşuluyla yazılır; dizi ve beş bölüm sınırı', async () => {
+  test('0035 IST-058, DOM-DIL-010: bölüm girişleri sürüm koşuluyla yazılır; dizi, beş bölüm sınırı ve core şeması', async () => {
     const t = await tenant()
     const other = await tenant()
     const open = await insertPlacementSession(
@@ -344,6 +344,23 @@ describe('0034: CEFR tabloları ve deposu', () => {
         where institution_id = ${t.institution.id} and id = ${open.id}`),
       'placement_sessions_section_entries_check',
     )
+    // Girişler core şemasıyla doğrulanır: yazmada yanlış biçim reddedilir, satır değişmez.
+    await assert.rejects(
+      savePlacementSession(
+        db,
+        t.institution.id,
+        open.id,
+        2,
+        { sectionEntries: [{ ...entry, section: 'writing' } as never] },
+        later,
+      ),
+      { name: 'ZodError' },
+    )
+    assert.equal((await findPlacementSession(db, t.institution.id, open.id))?.rowVersion, 2)
+    // Okumada bozuk satır sessizce puanlanmaz.
+    await db.execute(sql`update placement_sessions set section_entries = '[{"mode":"auto"}]'::jsonb
+      where institution_id = ${t.institution.id} and id = ${open.id}`)
+    await assert.rejects(findPlacementSession(db, t.institution.id, open.id), { name: 'ZodError' })
   })
 
   test('IST-058: kısıtlar geçersiz değeri ve başka kurumun kaydını reddeder', async () => {

@@ -107,6 +107,7 @@ test.describe('personel deneme görünümü', () => {
     // Adres paylaşılabilir: yenilenince pencere panelin üstünde açılır (erişilebilirlik ağacında
     // üstteki pencere görünür); kapatınca panel yerinde kalır.
     await open.click()
+    await expect(page).toHaveURL(/[?&]deneme=/)
     await page.reload()
     await expect(review.getByRole('list', { name: 'Soru soru sonuç' })).toBeVisible()
     await review.getByRole('button', { name: 'Pencereyi kapat' }).click()
@@ -120,7 +121,9 @@ test.describe('personel deneme görünümü', () => {
     await expectNoHorizontalOverflow(page)
   })
 
-  test('OG-983, DOM-YTK-028: olmayan ya da kapsam dışı deneme "Deneme bulunamadı" der', async ({
+  // Kapsam dışı ve başka kurumun denemesi API'de 404'tür (task-attempts API testleri); ekran aynı
+  // 404'ü bu iletiyle karşılar.
+  test('OG-983, DOM-YTK-028: bulunamayan deneme "Deneme bulunamadı" der', async ({
     page,
     loginAs,
     tenant,

@@ -183,6 +183,9 @@ export interface PermissionFormTarget {
   version: number
 }
 
+/** Başlık aramasının en kısa uzunluğu (sunucu `q` kuralı). */
+export const PERMISSION_FORM_SEARCH_MIN = 2
+
 /** Boş süzgeç gönderilmez (sunucu boş değerde 400 verir); `status` varsayılanı `all`'dır. */
 export function permissionFormListParams(query: PermissionFormListQuery): PermissionFormListQuery {
   const params: PermissionFormListQuery = {}
@@ -190,6 +193,9 @@ export function permissionFormListParams(query: PermissionFormListQuery): Permis
   if (query.pageSize !== undefined) params.pageSize = query.pageSize
   if (query.status && query.status !== 'all') params.status = query.status
   if (query.topic) params.topic = query.topic
+  // Sunucu başlık aramasını en az 2 karakterle kabul eder; kısa ya da boş metin aramasız listedir.
+  const q = query.q?.trim()
+  if (q && q.length >= PERMISSION_FORM_SEARCH_MIN) params.q = q
   return params
 }
 

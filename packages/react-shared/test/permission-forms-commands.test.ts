@@ -195,6 +195,12 @@ describe('izin formu istekleri (IST-067)', () => {
     )
   })
 
+  test('IST-067: başlık araması kırpılır; 2 karakterden kısa arama gönderilmez', () => {
+    assert.deepEqual(permissionFormListParams({ q: '  müze ' }), { q: 'müze' })
+    assert.deepEqual(permissionFormListParams({ q: 'm' }), {})
+    assert.deepEqual(permissionFormListParams({ q: '   ' }), {})
+  })
+
   test('liste sayfası süzgeçle okunur ve meta taşır', async () => {
     const { client, sent } = fakeClient(() =>
       json(200, {

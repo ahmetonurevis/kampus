@@ -199,9 +199,17 @@ test.describe('İzin formları: rehber öğretmen ve yönetici', () => {
     const teacher = await api(school.user('ogretmen'))
     const admin = await api(school.user('yonetici'))
     const created = await openForm(teacher, 'Kulüp tanıtım izni', { topic: 'club' })
+    const other = await openForm(teacher, 'Sinema gezisi izni')
     await loginAs(school.user('yonetici'), { fresh: true })
 
     await page.goto(ADMIN_PAGE)
+    // Başlık araması sunucudadır (harf ve aksan duyarsız); temizlenince bütün liste döner.
+    await expect(bodyRows(page)).toHaveCount(2)
+    await page.getByPlaceholder('Listede ara...').fill('KULUP')
+    await expect(bodyRows(page)).toHaveCount(1)
+    await expect(bodyRows(page)).toContainText(created.title)
+    await page.getByPlaceholder('Listede ara...').fill('')
+    await expect(bodyRows(page)).toHaveCount(2)
     const row = bodyRows(page).filter({ hasText: created.title })
     await expect(row).toContainText('Kulüp')
     await row.getByRole('button', { name: `${created.title} ayrıntısını aç` }).click()
@@ -215,7 +223,7 @@ test.describe('İzin formları: rehber öğretmen ve yönetici', () => {
     await expect(page.getByText(`${created.title} arşivlendi.`)).toBeVisible()
     await expect(panelOf(page, 'İzin formu ayrıntısı')).toHaveCount(0)
     await expect(bodyRows(page).filter({ hasText: created.title })).toHaveCount(0)
-    expect(await formsOf(admin)).toHaveLength(0)
+    expect((await formsOf(admin)).map((form) => form.id)).toEqual([other.id])
   })
 
   test('kararı olan form arşivlenemez, hedeften sınıf çıkarılamaz (DOM-ILT-034, DOM-ILT-038)', async ({

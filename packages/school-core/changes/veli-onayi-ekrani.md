@@ -9,4 +9,5 @@ Web izin formu (dijital veli onayı) ekranları izin formu uçlarına bağlandı
 - Menüye dört rolde `izin-formlari` girdisi eklendi (`apiOnly`; Vue demosunda ve mobilde yok). react-shared'e izin formu kancaları (`use-permission-forms.ts`, tüm sayfaları okuyan `useAllPermissionForms` dahil) ve Türkçe hata metinleri eklendi.
 - Düzenleme kayıtlı hedefi (`classIds`, `targetStudentIds`) kullanır; başkası hedefi değiştirdiyse ve kullanıcı da hedefe dokunduysa iki değer gösterilir, başkasının eklediği öğrenci uyarısız düşmez. Arşiv ve hedef daraltma kilidi sunucunun `hasDecisions` alanındandır (velayeti kalkan velinin kararı da kilitler).
 - Karar kartı kimin karar verdiğini sunucunun `canDecide` alanından alır: 18 yaşından küçük öğrenci düğme görmez, durumu ve velisinin kararını izler. Aile sayfası tek liste sorgusudur; kart başına ayrıntı isteği atılmaz.
+- İzin formu listesinde sunucu başlık araması (`q`, en az 2 karakter, gecikmeli gönderim) vardır; arama değişince sayfa sıfırlanır.
 - Bilinen sınırlar: son gün hatırlatması (`TODO(onay-hatirlatma-isi)`) ve mobil ekran yok.

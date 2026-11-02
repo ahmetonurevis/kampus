@@ -13,6 +13,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
@@ -46,7 +47,7 @@ const isTopic = (value: string): value is PermissionFormTopic =>
 
 /**
  * İzin Formları (yönetici ve rehber öğretmen; IST-067, DOM-ILT-030, -036…039): kapsamdaki formlar
- * `/permission-forms` ucundan sunucu sayfalı; durum ve konu süzgeci. Form aç/düzenle ve öğrenci
+ * `/permission-forms` ucundan sunucu sayfalı; başlık araması, durum ve konu süzgeci. Form aç/düzenle ve öğrenci
  * bazlı durum aynı sağ panelde açılır. Sayılar okuyanın gördüğü öğrencilerdendir.
  */
 export function PermissionFormsPage({
@@ -73,9 +74,12 @@ export function PermissionFormsPage({
   const topicValue = filterValue(list.state.filters.topic)
   const status = isStatus(statusValue) ? statusValue : undefined
   const topic = isTopic(topicValue) ? topicValue : undefined
+  // Sunucu başlık araması: her tuşta istek atılmaz; sayfa arama değişince `useListState`'te sıfırlanır.
+  const search = useDebouncedValue(list.state.query)
   const forms = usePermissionFormList({
     page: list.state.page,
     pageSize: list.state.pageSize,
+    q: search,
     ...(status ? { status } : {}),
     ...(topic ? { topic } : {}),
   })
@@ -155,7 +159,6 @@ export function PermissionFormsPage({
           sortable={NO_SORT}
           columns={columns}
           mobileColumns={MOBILE_COLUMNS}
-          search={false}
           caption="İzin formu listesi"
           empty="Henüz izin formu yok."
           emptyFiltered="Bu süzgeçlere uyan izin formu yok."

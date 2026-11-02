@@ -28,6 +28,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
 import { ConflictNotice, isVersionConflict } from '../management/FormParts.tsx'
+import { ResourceFileList } from './ResourceFileList.tsx'
 import {
   draftFromHead,
   isEnglishContent,
@@ -74,7 +75,7 @@ type PanelProps = {
 }
 
 /**
- * İçerik ayrıntısı (sağ panel): künye, etiketler, lisans, önizleme, sürüm geçmişi, yayım
+ * İçerik ayrıntısı (sağ panel): künye, etiketler, lisans, önizleme, dosyalar, sürüm geçmişi, yayım
  * sorunları ve durum geçişleri. Hangi eylemin görüneceğine core kuralı karar verir
  * (`availableActions`); sunucu aynı kuralı yeniden uygular. Başkası içeriği değiştirmişse (409)
  * uyarı bandı ve "Güncel kaydı yükle" çıkar.
@@ -222,6 +223,7 @@ function PanelBody({
       ) : null}
 
       <Preview preview={previewFromHead(head)} english={english} />
+      <ResourceFileList files={head.files} />
 
       <dl className="grid gap-3 text-sm sm:grid-cols-2">
         <Fact label="Etiketler" value={tagSummary(head.tags, subjectNames)} />
@@ -413,6 +415,7 @@ function Preview({ preview, english }: { preview: ContentPreview; english: boole
   const lang = english ? 'en' : undefined
   if (preview.kind === 'removed')
     return <p className="text-sm text-muted-foreground">Bu sürümün içeriği kaldırıldı.</p>
+  if (preview.kind === 'file') return null
   if (preview.kind === 'other')
     return <p className="text-sm text-muted-foreground">Bu türün önizlemesi yok.</p>
   if (preview.kind === 'reading')

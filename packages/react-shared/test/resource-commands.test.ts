@@ -5,7 +5,7 @@ import { createKampusClient } from '@kampus/api-client/client.ts'
 
 import { runRequest } from '../src/api-result.ts'
 import { commandHeaders, IF_MATCH_MISSING_CODE } from '../src/commands.ts'
-import { updateDraftRequest } from '../src/use-resources.ts'
+import { openVersionRequest, updateDraftRequest } from '../src/use-resources.ts'
 
 function fakeClient() {
   const sent: Request[] = []
@@ -43,5 +43,27 @@ describe('içerik taslağı düzenleme', () => {
     assert.equal(sent.length, 1)
     assert.equal(sent[0]?.method, 'PATCH')
     assert.equal(sent[0]?.headers.get('if-match'), '"2"')
+  })
+})
+
+describe('yeni sürüm gövdesi (DOM-KYN-006, 032)', () => {
+  test('DOM-KYN-006: liste verilmezse gövde boştur, temel sürümün dosyaları taşınır', async () => {
+    const { client, sent } = fakeClient()
+    await runRequest(() => openVersionRequest(client, { resourceId: 'r1' }, commandHeaders('k-1')))
+    assert.equal(sent[0]?.method, 'POST')
+    assert.deepEqual(await sent[0]?.json(), {})
+  })
+
+  test('DOM-KYN-006: verilen dosya listesi sırasıyla gider', async () => {
+    const { client, sent } = fakeClient()
+    await runRequest(() =>
+      openVersionRequest(
+        client,
+        { resourceId: 'r1', fileIds: ['f2', 'f1'] },
+        commandHeaders('k-2'),
+      ),
+    )
+    assert.deepEqual(await sent[0]?.json(), { fileIds: ['f2', 'f1'] })
+    assert.equal(sent[0]?.headers.get('idempotency-key'), 'k-2')
   })
 })

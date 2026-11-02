@@ -1,4 +1,5 @@
 import { useMemo } from 'react'
+import { Link } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -14,6 +15,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { collectionQueryFromList, sortableColumns } from '@/lib/collection-list.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { NEW_MATERIAL } from '../content/content-form-targets.ts'
 import { ClassSubjectFilters, filterValue, useClassSubjectFilters } from './LearningFilters.tsx'
 import {
   MATERIAL_LIST,
@@ -27,12 +29,15 @@ const URL_FILTERS = { subjectId: 'ders', level: 'duzey' }
 const SORTABLE = sortableColumns(MATERIAL_LIST)
 const MOBILE_COLUMNS = ['subject', 'level']
 const NONE: readonly never[] = []
+/** Yeni materyal dosyası içerik havuzunda kaynak olarak açılır (DOM-KYN-006). */
+const UPLOAD_PATH = `/ogretmen/icerik-havuzu?icerik-form=${NEW_MATERIAL}`
 
 /**
  * Materyal Kütüphanesi (öğretmen, Vue `Learning.vue` `/materyal-yukle`): öğretmenin paylaştığı
  * materyaller sunucu sayfalı; ders ve düzey filtresi (sunucuda, sayfalamadan önce; IST-035),
- * başlık araması, satırdan içerik özeti. Yalnız okuma.
- * TODO(api-material-write): materyal yükleme dosya depolama ADR'si (0003) onaylanınca gelir.
+ * başlık araması, satırdan içerik özeti. Tablo yalnız okur. "Materyal yükle" yeni materyal dosyasını
+ * içerik havuzunda kaynak olarak açar (OG-250; DOM-KYN-006): dosya kaynakla birlikte sürümlenir,
+ * aynı onay, yayım ve paylaşım kuralından geçer.
  * TODO(api-video): video kütüphanesi ayrı görevdir.
  */
 export function TeacherMaterialsPage({ page }: { page: NavPage }) {
@@ -110,7 +115,18 @@ export function TeacherMaterialsPage({ page }: { page: NavPage }) {
   const error = teachers.error ?? materials.error
   return (
     <>
-      <PageHeading title={page.title} description={page.description} />
+      <PageHeading
+        title={page.title}
+        description={page.description}
+        actions={
+          <Button asChild>
+            <Link to={UPLOAD_PATH}>
+              <Icon name="Upload" size={17} aria-hidden="true" />
+              Materyal yükle
+            </Link>
+          </Button>
+        }
+      />
       <section
         aria-labelledby="materyal-tablosu"
         className="panel overflow-hidden rounded-card border bg-surface"

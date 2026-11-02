@@ -1,3 +1,4 @@
+import { ApiError } from '@kampus/api-client/errors.ts'
 import type { components, operations } from '@kampus/api-client/schema.d.ts'
 import {
   canManage,
@@ -14,6 +15,7 @@ import {
   type ResourceStatus,
   type ResourceVersion,
 } from '@kampus/school-core/content/resource.ts'
+import { RESOURCE_FILE_MESSAGES } from '@kampus/school-core/content/resource-files.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import type { Role } from '@kampus/school-core/modules/navigation.ts'
@@ -36,9 +38,16 @@ export type StaffResourceVersion = Schemas['ResourceVersion']
 export type StaffResource = Schemas['StaffResource']
 export type ResourceWriteResult = Schemas['ResourceWriteResult']
 export type PublicationIssueView = StaffResourceDetail['publicationIssues'][number]
+/** Sürümün dosya meta verisi (`files`, `fileIds` sırasıyla; DOM-KYN-006). */
+export type ResourceFile = Schemas['ResourceFile']
+export type LearnerResourceListItem = Schemas['LearnerResourceListItem']
+export type LearnerResourceDetail = Schemas['LearnerResourceDetail']
 
-/** Bu dilimde (F3c1) oluşturulup düzenlenebilen içerik türleri. */
-export const AUTHORABLE_TYPES = ['reading_passage', 'question'] as const
+/**
+ * Web formunda oluşturulup düzenlenebilen içerik türleri: okuma parçası, çoktan seçmeli soru
+ * (F3c1) ve materyal dosyası (`file`, OG-250; DOM-KYN-006).
+ */
+export const AUTHORABLE_TYPES = ['reading_passage', 'question', 'file'] as const
 export type AuthorableType = (typeof AUTHORABLE_TYPES)[number]
 
 export function isAuthorableType(type: string): type is AuthorableType {
@@ -100,16 +109,76 @@ export function resourceListQuery(input: {
 export const RESOURCE_CHANGED_MESSAGE =
   'İçerik siz bakarken başkası tarafından değiştirildi. Güncel hali yüklendi; değişikliğinizi gözden geçirip yeniden deneyin.'
 
+export const RESOURCE_FILE_NOT_READY_MESSAGE =
+  'Dosya güvenlik denetiminden geçince eklenebilir; birkaç dakika sonra yeniden deneyin.'
+
 /** Koda özgü metinler; olmayan kodda sunucunun Türkçe mesajı gösterilir. */
 export const RESOURCE_MESSAGES = {
   version_conflict: RESOURCE_CHANGED_MESSAGE,
   version_immutable: 'Yayımlanmış veya incelemedeki sürüm değiştirilemez; yeni sürüm açın.',
   open_version_exists: 'Bu içeriğin üzerinde çalışılan bir sürümü zaten var.',
-  resource_files_unsupported: 'Dosya içeren içerik henüz gönderilemez.',
   review_required: 'Bu içerik onaydan geçmeden yayımlanamaz; onaya gönderin.',
   resource_not_found: 'İçerik bulunamadı.',
   not_found: 'İçerik bulunamadı.',
+  // Sürüm dosyası kuralı (DOM-KYN-006): core iletileri. Sayı sınırı (`resource_files_limit`),
+  // boyut ve tür (`file_too_large`, `file_type_not_allowed`) sınırı taşıdığından sunucunun
+  // Türkçe iletisi gösterilir.
+  ...RESOURCE_FILE_MESSAGES,
+  // Dosya taranırken (`pending`) eklenmek istenirse; ödev ve soru ekindeki gibi sakin ileti.
+  // TODO(F3c2-scan): dosya tarama işi (OG-092) gelene kadar dosya `ready` olmaz.
+  file_not_ready: RESOURCE_FILE_NOT_READY_MESSAGE,
 } as const satisfies CommandMessages
+
+export const RESOURCE_FILE_GONE_MESSAGE =
+  'Bu dosyaya artık erişilemiyor. İçerik kaldırılmış ya da kullanım süresi dolmuş olabilir.'
+export const RESOURCE_FILE_PROCESSING_MESSAGE =
+  'Dosya henüz hazırlanıyor. Biraz sonra yeniden deneyin.'
+export const RESOURCE_FILE_OPEN_FAILED_MESSAGE = 'Dosya açılamadı. Biraz sonra yeniden deneyin.'
+
+export type ResourceFileOpenFailure = {
+  /** `gone`: dosya bu kişiye artık açılmıyor (404); satır sakin bir notla kapanır. */
+  kind: 'gone' | 'processing' | 'failed'
+  message: string
+}
+
+/**
+ * Sürüm dosyası açılamadığında kullanıcıya gösterilecek ileti (DOM-KYN-006, 051). 404 kaldırılan
+ * kaynağın (kopyası dahil) ya da lisansı dolmuş, artık görünmeyen sürümün dosyasıdır; nedeni
+ * ayırt edilmez ve teknik ayrıntı gösterilmez.
+ */
+export function resourceFileOpenFailure(error: unknown): ResourceFileOpenFailure {
+  const status = error instanceof ApiError ? error.status : undefined
+  const code = error instanceof ApiError ? error.code : undefined
+  if (status === 404) return { kind: 'gone', message: RESOURCE_FILE_GONE_MESSAGE }
+  if (status === 409 && code === 'file_processing')
+    return { kind: 'processing', message: RESOURCE_FILE_PROCESSING_MESSAGE }
+  return { kind: 'failed', message: RESOURCE_FILE_OPEN_FAILED_MESSAGE }
+}
+
+/** Dosyanın gösterim adı: temizlenmiş özgün ad, yoksa sıra numarası. */
+export const resourceFileName = (file: Pick<ResourceFile, 'name'>, index: number) =>
+  file.name?.trim() || `Dosya ${index + 1}`
+
+/** Okunur boyut: "320 KB", "2,4 MB" (Türkçe ondalık). */
+export function resourceFileSize(bytes: number): string {
+  if (bytes < 1024) return `${bytes} B`
+  const kb = bytes / 1024
+  if (kb < 1024) return `${Math.max(1, Math.round(kb))} KB`
+  return `${(kb / 1024).toLocaleString('tr-TR', { maximumFractionDigits: 1 })} MB`
+}
+
+/** Learner görünümü satırı mı (öğrenci ve veli). */
+export function isLearnerItem(
+  item: StaffResourceListItem | LearnerResourceListItem,
+): item is LearnerResourceListItem {
+  return item.view === 'learner'
+}
+
+export function isLearnerDetail(
+  detail: StaffResourceDetail | LearnerResourceDetail,
+): detail is LearnerResourceDetail {
+  return detail.view === 'learner'
+}
 
 /** 409 sürüm çakışması: ekran güncel kaydı yeniden okuyup yenileme seçeneği sunar. */
 export function isVersionConflict(error: unknown): boolean {

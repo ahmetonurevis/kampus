@@ -20,6 +20,7 @@ import {
   defaultMaxFiles,
   fieldError,
   fitFiles,
+  isUploadBusy,
   pickProblems,
   runUploadQueue,
   type FileUploadItem,
@@ -80,6 +81,7 @@ export function FileUploadField({
   // Yükleme sürerken liste çağıranda güncellenir; döngü her turda en güncel hâli okur.
   const itemsRef = useRef(items)
   const busyChange = useRef(onBusyChange)
+  const busyNow = useRef(false)
   // Ref'ler çizimden sonra güncellenir; yükleme döngüsü ve bildirim en güncel değeri okur.
   useEffect(() => {
     itemsRef.current = items
@@ -90,17 +92,18 @@ export function FileUploadField({
     unmounted.current = false
     return () => {
       unmounted.current = true
-      if (aborter.current) {
-        aborter.current.abort()
-        // Yükleme sürerken kalkarsa çağıranın gönderim kilidi açık kalmamalı.
-        busyChange.current?.(false)
-      }
+      aborter.current?.abort()
+      // Yükleme sürerken ya da yeniden deneme beklerken kalkarsa çağıranın gönderim kilidi açık kalmamalı.
+      if (busyNow.current) busyChange.current?.(false)
     }
   }, [])
 
+  // Yeniden denenecek dosya varken de meşgul sayılır; yoksa ağ hatasında kaydet açılır.
+  const busy = isUploadBusy(uploading, retry.length)
   useEffect(() => {
-    busyChange.current?.(uploading)
-  }, [uploading])
+    busyNow.current = busy
+    busyChange.current?.(busy)
+  }, [busy])
 
   // Odak düğmeyle birlikte DOM'dan kalkınca `body`'ye düşer; yükleme bitip denetim açılınca geri alınır.
   // Kullanıcı bu arada odağı başka yere taşıdıysa ona dokunulmaz.

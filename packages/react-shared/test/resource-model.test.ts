@@ -9,6 +9,12 @@ import {
   canEditDraft,
   canOpenNewVersion,
   isVersionConflict,
+  RESOURCE_FILE_GONE_MESSAGE,
+  RESOURCE_FILE_NOT_READY_MESSAGE,
+  RESOURCE_MESSAGES,
+  resourceFileName,
+  resourceFileOpenFailure,
+  resourceFileSize,
   resourceListQuery,
   type StaffResourceDetail,
 } from '../src/resource-model.ts'
@@ -333,4 +339,55 @@ test('409 version_conflict yenileme seçeneğini tetikler; diğer 409 tetiklemez
     false,
   )
   assert.equal(isVersionConflict(new Error('x')), false)
+})
+
+describe('Kaynak dosyası iletileri (DOM-KYN-006, 051)', () => {
+  test('DOM-KYN-006: dosya bağlama kodları Türkçe iletiyle eşlenir; eski "desteklenmiyor" iletisi yok', () => {
+    const messages: Readonly<Record<string, string | undefined>> = RESOURCE_MESSAGES
+    for (const code of [
+      'resource_file_unlinked',
+      'file_unavailable',
+      'file_already_attached',
+      'file_not_ready',
+      'file_purpose_mismatch',
+      'resource_files_not_allowed',
+    ])
+      assert.ok(messages[code], code)
+    assert.equal(messages.resource_files_unsupported, undefined)
+    // Dosya taranırken (`pending`) eklenmek istenirse sakin ve yönlendiren ileti.
+    assert.equal(messages.file_not_ready, RESOURCE_FILE_NOT_READY_MESSAGE)
+    assert.match(RESOURCE_FILE_NOT_READY_MESSAGE, /güvenlik denetiminden geçince eklenebilir/)
+    // Sınırı taşıyan iletiler sunucudan gelir.
+    assert.equal(messages.resource_files_limit, undefined)
+  })
+
+  test('DOM-KYN-051: erişilemeyen dosya (404) sakin ve teknik ayrıntısız ileti alır', () => {
+    const gone = resourceFileOpenFailure(
+      new ApiError({ status: 404, code: 'not_found', message: 'Not found: files/abc' }),
+    )
+    assert.deepEqual(gone, { kind: 'gone', message: RESOURCE_FILE_GONE_MESSAGE })
+    assert.doesNotMatch(gone.message, /404|not_found|abc/)
+  })
+
+  test('işlenen dosya ve diğer hatalar ayrı iletilir', () => {
+    assert.equal(
+      resourceFileOpenFailure(new ApiError({ status: 409, code: 'file_processing', message: 'x' }))
+        .kind,
+      'processing',
+    )
+    assert.equal(resourceFileOpenFailure(new Error('ağ')).kind, 'failed')
+    assert.equal(
+      resourceFileOpenFailure(new ApiError({ status: 409, code: 'version_conflict', message: 'x' }))
+        .kind,
+      'failed',
+    )
+  })
+
+  test('dosya adı ve boyutu okunur gösterilir', () => {
+    assert.equal(resourceFileName({ name: '  ders.pdf ' }, 0), 'ders.pdf')
+    assert.equal(resourceFileName({ name: null }, 1), 'Dosya 2')
+    assert.equal(resourceFileSize(512), '512 B')
+    assert.equal(resourceFileSize(2048), '2 KB')
+    assert.equal(resourceFileSize(2.5 * 1024 * 1024), '2,5 MB')
+  })
 })

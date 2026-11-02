@@ -26,6 +26,9 @@ export type ResourceCreateBody =
   operations['createResource']['requestBody']['content']['application/json']
 export type ResourceDraftPatch =
   operations['updateResourceDraft']['requestBody']['content']['application/json']
+export type NewVersionBody = NonNullable<
+  operations['createResourceVersion']['requestBody']
+>['content']['application/json']
 
 /** Sunucu sayfalı liste; sorgu değişirken önceki sayfa ekranda kalır. */
 export function useResourceList(query: ResourceListQuery) {
@@ -111,17 +114,34 @@ export function useUpdateDraft(options: CommandOptions = {}) {
   })
 }
 
+export interface OpenVersionInput {
+  resourceId: string
+  /**
+   * Yeni sürümün dosya listesi (DOM-KYN-006). Verilmezse temel sürümün dosyaları yeni bağla
+   * taşınır; verilirse liste onun yerine geçer.
+   */
+  fileIds?: NewVersionBody['fileIds']
+}
+
+/** `POST /resources/:id/versions` gövdesi: dosya listesi yalnız verildiyse gider. */
+export function openVersionRequest(
+  client: KampusClient,
+  { resourceId, fileIds }: OpenVersionInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/resources/{resourceId}/versions', {
+    params: {
+      path: { resourceId },
+      header: { 'idempotency-key': headers['idempotency-key'] },
+    },
+    body: fileIds === undefined ? {} : { fileIds },
+  })
+}
+
 /** Yayındaki sürümden yeni taslak (`POST /resources/:id/versions`). */
 export function useOpenNewVersion(options: CommandOptions = {}) {
   return useApiCommand({
-    request: (client, { resourceId }: { resourceId: string }, headers) =>
-      client.POST('/api/v1/resources/{resourceId}/versions', {
-        params: {
-          path: { resourceId },
-          header: { 'idempotency-key': headers['idempotency-key'] },
-        },
-        body: {},
-      }),
+    request: openVersionRequest,
     invalidates: INVALIDATES,
     messages: RESOURCE_MESSAGES,
     ...withSuccess(options),

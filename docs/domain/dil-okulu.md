@@ -78,7 +78,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Yalnız çoktan seçmeli bölüm üretici becerileri ölçmez; makinenin önerisi karar yerine geçmez.
 - **Kaynak:** İşletme kuralı. ÖÖKY md. 46/9 özel öğretim kurslarında seviye belirleme sınavlarının ücretsiz ve kurum binasında yapılmasını, dönem başı/ortası/sonunda tekrarlanmasını ister; bu hükmün kişisel gelişim kursu olan dil okuluna uygulanıp uygulanmadığı **doğrulanmalı**. Platform muhafazakâr olarak ücretsizliği her türde uygular.
 - **Kurum türü:** `language_school`
-- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `planPlacementSession`, `placementSectionResults`, `placementSummary` (tespit bağlamı, `PLACEMENT_AUTO_SECTIONS`), `planPlacementDecision` (gerekçe her zaman zorunlu, karar oturum başına bir; karar kopyası tespit önerisini taşır). Tespit eşiği `packages/school-core/src/cefr/suggestion.ts` `suggestCefrLevels({ context: { kind: 'placement' } })` ve `PLACEMENT_DEMONSTRATION_RULES`; genel bağlam değişmedi, `LevelTally.demonstratedBy` dayanağı gösterir (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `planPlacementSession`, `placementSectionResults`, `placementSummary` (tespit bağlamı, `PLACEMENT_AUTO_SECTIONS`), `planPlacementDecision` (gerekçe her zaman zorunlu, karar oturum başına bir; karar kopyası tespit önerisini taşır). Tespit eşiği `packages/school-core/src/cefr/suggestion.ts` `suggestCefrLevels({ context: { kind: 'placement' } })` ve `PLACEMENT_DEMONSTRATION_RULES`; genel bağlam değişmedi, `LevelTally.demonstratedBy` dayanağı gösterir API (OG-054): `apps/api/src/routes/cefr.ts` ve `services/cefr.ts`, `POST /api/v1/placement-sessions`, `/:sessionId/score` (bölüm girişleri `placement_sessions.section_entries`, migration 0037; rubrik becerisi bölümden farklıysa 422 `placement_rubric_skill_mismatch`), `/complete` ve `/decide` (gerekçeli karar `level_decisions`'a); yalnız dil okulunda, yönetici ve grup kapsamındaki öğretmen. Kancalar `packages/react-shared/src/use-cefr.ts`; tespit yürütme ekranı yok (`TODO(cefr-tespit-ekrani)`), bölüm hedef seviyesi soruların ortak seviyesi (`TODO(cefr-tespit-bolum-seviyesi)`), görev kanıtı öneriye yüklenmez (`TODO(cefr-gorev-kaniti)`) (ADR 0004).
 - **Not:** Tespit önerisi eşiği patron kararıdır ve kullanıcı tarafından onaylandı (30 Ekim 2026).
 
 ### DOM-DIL-011 · Uzaktan yapılan tespit ön tahmindir
@@ -87,7 +87,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Gözetimsiz sonuç güvenilir değildir; özel öğretim kursları için yer şartı vardır.
 - **Kaynak:** ÖÖKY md. 46/9; dil okuluna uygulanışı **doğrulanmalı**.
 - **Kurum türü:** `language_school`
-- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `PLACEMENT_MODES` (`remote` ön tespit), `planPlacementDecision` uzaktan oturumu reddeder, `placementRequired`; ön tespit `packages/school-core/src/cefr/suggestion.ts` seçiminde kanıt değildir. Ruhsat türüne göre yer şartı yok (`TODO(cefr-ruhsat-turu)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `PLACEMENT_MODES` (`remote` ön tespit), `planPlacementDecision` uzaktan oturumu reddeder, `placementRequired`; ön tespit `packages/school-core/src/cefr/suggestion.ts` seçiminde kanıt değildir. Ruhsat türüne göre yer şartı yok (`TODO(cefr-ruhsat-turu)`) API (OG-054): `mode: 'remote'` oturumunda `POST /placement-sessions/:sessionId/decide` 422 `placement_preliminary` verir; profilde tespit "Uzaktan (ön tespit)" etiketiyle görünür (ADR 0004).
 
 ### DOM-DIL-012 · Tespit sonucunun geçerlilik süresi
 
@@ -95,7 +95,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Dil seviyesi zamanla değişir; aynı formu tekrar çözmek sonucu şişirir.
 - **Kaynak:** İşletme kuralı (90 gün ve iki sınav sınırı).
 - **Kurum türü:** `language_school`
-- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `placementValidity` (bitiş anı + 90 × 24 saat, son an hariç; `TODO(cefr-gecerlilik-siniri)`), `planPlacementSession` (dönemde iki oturum, ikincisi farklı formla; `TODO(cefr-donem)`, `TODO(cefr-farkli-form)`); dondurma sonrası yeniden tespit yok (`TODO(cefr-dondurma)`) (ADR 0004; tablolar, uçlar ve ekran F5b ve sonrası).
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/placement.ts` `placementValidity` (bitiş anı + 90 × 24 saat, son an hariç; `TODO(cefr-gecerlilik-siniri)`), `planPlacementSession` (dönemde iki oturum, ikincisi farklı formla; `TODO(cefr-donem)`, `TODO(cefr-farkli-form)`); dondurma sonrası yeniden tespit yok (`TODO(cefr-dondurma)`) API (OG-054): `POST /placement-sessions` iki tespitten sonra 409 `placement_limit_reached` (dönem sınırı yok, `TODO(cefr-donem)`), aynı formla ikinci tespitte 422 `placement_form_repeated`; karar 90 gün dolunca 422 `placement_expired`. Geçerlilik her okumada hesaplanır (`validity`); web Akademik Gelişim ve grup özeti tespitleri "Geçerli"/"Süresi doldu" diye gösterir (ADR 0004).
 
 ### DOM-DIL-013 · Kur içi ilerleme değerlendirmesi
 

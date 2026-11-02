@@ -1,6 +1,9 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form'
-import { useScoreTaskSubmission } from '@kampus/react-shared/use-task-grading.ts'
+import {
+  useFinalScoreTaskSubmission,
+  useScoreTaskSubmission,
+} from '@kampus/react-shared/use-task-grading.ts'
 import type { RubricVersion } from '@kampus/react-shared/use-rubrics.ts'
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 import { bandMeaning } from '@kampus/school-core/skills/rubric.ts'
@@ -28,6 +31,13 @@ type Props = {
   onScored?: () => void
   /** Teslim eskidi: uyarıyı pencere gösterir (hata tek yerde). */
   onStaleChange: (stale: boolean) => void
+  /**
+   * `first` öğretmenin puanı (`scores`), `final` uyuşmazlıkta koordinatörün son puanı
+   * (`final-scores`; DOM-BEC-024, DOM-YTK-027). Gövde ikisinde aynıdır.
+   */
+  kind?: 'first' | 'final'
+  /** Pencereye taşınan eskime hataları; verilmezse ilk puanınkiler. */
+  staleOn?: (error: { code: string }) => boolean
 }
 
 const SCORE_FIELD = /^(criteria\.\d+\.(band|comment)|overallComment)$/
@@ -44,8 +54,12 @@ export function RubricScoreForm({
   versionNumber,
   onScored,
   onStaleChange,
+  kind = 'first',
+  staleOn = showsStaleNotice,
 }: Props) {
-  const score = useScoreTaskSubmission()
+  const firstScore = useScoreTaskSubmission()
+  const finalScore = useFinalScoreTaskSubmission()
+  const score = kind === 'final' ? finalScore : firstScore
   const form = useForm<ScoreFormValues>({
     resolver: zodResolver(scoreFormSchema) as unknown as Resolver<ScoreFormValues>,
     defaultValues: {
@@ -68,15 +82,17 @@ export function RubricScoreForm({
     const outcome = await score.submit(
       { submissionId: submission.id, version, score: scoreBody(values, versionNumber) },
       {
-        silent: showsStaleNotice,
+        silent: staleOn,
         setError: (name, error) =>
           form.setError((SCORE_FIELD.test(name) ? name : 'root.server') as 'overallComment', error),
       },
     )
     if (outcome.status === 'success') {
-      notify.success('Puan kaydedildi.')
+      notify.success(
+        kind === 'final' ? 'Son puan kaydedildi; sonuç kesinleşti.' : 'Puan kaydedildi.',
+      )
       onScored?.()
-    } else if (outcome.status === 'failed' && showsStaleNotice(outcome.error)) {
+    } else if (outcome.status === 'failed' && staleOn(outcome.error)) {
       onStaleChange(true)
     }
   })
@@ -84,7 +100,7 @@ export function RubricScoreForm({
   return (
     <form
       noValidate
-      aria-label="Rubrik puanı"
+      aria-label={kind === 'final' ? 'Son puan' : 'Rubrik puanı'}
       onSubmit={(event) => {
         event.preventDefault()
         void submit(event)
@@ -196,7 +212,7 @@ export function RubricScoreForm({
       <div className="flex justify-end border-t pt-4">
         <Button type="submit" disabled={busy || version === null} aria-busy={busy || undefined}>
           <Icon name="Check" size={17} aria-hidden="true" />
-          Puanı kaydet
+          {kind === 'final' ? 'Son puanı kaydet' : 'Puanı kaydet'}
         </Button>
       </div>
     </form>

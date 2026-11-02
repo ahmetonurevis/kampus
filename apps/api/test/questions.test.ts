@@ -9,9 +9,10 @@ import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
-import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
+import { findRecord, insertMissingRecords, loadRecords, writeRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { files } from '../src/db/schema/files.ts'
+import { membershipLinks } from '../src/db/schema/membership-links.ts'
 import { recordFileCheck } from '../src/services/files.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
@@ -798,5 +799,86 @@ describe('Öğretmenime Sor uçları', () => {
     assert.equal(await fileRows(a.id), '[]')
     assert.equal(await fileRows(closed.id), '[]')
     assertError(await ask(null, { ...QUESTION, fileIds: ['f1'] }), 401)
+  })
+
+  test('DOM-ILT-094: başka soruya bağlı dosya 409 file_already_attached; ikinci soru açılmaz, bağlantı değişmez', async () => {
+    const a = await institution()
+    const cookie = await student(a.id)
+    const photo = await uploadPhoto(a.id, cookie)
+    const first = await asked(cookie, { ...QUESTION, fileIds: [photo] })
+    const questionsBefore = await snapshot(a.id)
+    const filesBefore = await fileRows(a.id)
+    const response = await ask(cookie, {
+      ...QUESTION,
+      title: 'Başka soru',
+      fileIds: [photo],
+    })
+    assertError(response, 409, 'file_already_attached')
+    assert.equal(await snapshot(a.id), questionsBefore)
+    assert.equal(await fileRows(a.id), filesBefore)
+    const [row] = await db.select().from(files).where(eq(files.id, photo))
+    assert.equal(row?.attachedId, first.id)
+  })
+
+  test('DOM-ILT-094: aynı fileIds farklı Idempotency-Key ile ikinci soruya bağlanmaz (409); aynı anahtar yanıtı tekrarlar', async () => {
+    const a = await institution()
+    const cookie = await student(a.id)
+    const photos = [await uploadPhoto(a.id, cookie), await uploadPhoto(a.id, cookie)]
+    const body = { ...QUESTION, fileIds: photos }
+    const headers = key()
+    assert.equal((await ask(cookie, body, headers)).statusCode, 201)
+    const questionsBefore = await snapshot(a.id)
+    const filesBefore = await fileRows(a.id)
+    assertError(await ask(cookie, body, key()), 409, 'file_already_attached')
+    assert.equal((await ask(cookie, body, headers)).headers['idempotent-replayed'], 'true')
+    assert.equal(await snapshot(a.id), questionsBefore)
+    assert.equal(await fileRows(a.id), filesBefore)
+  })
+
+  test('DOM-ILT-094, DOM-ILT-093: soru başka öğretmene geçince eski öğretmen, veli bağı arşivlenince veli fotoğrafı okuyamaz (404)', async () => {
+    const a = await institution()
+    const cookie = await student(a.id)
+    const photo = await uploadPhoto(a.id, cookie)
+    const { id, version: v } = await asked(cookie, { ...QUESTION, fileIds: [photo] })
+    const t1 = await teacher(a.id, 't1')
+    const t2 = await teacher(a.id, 't2')
+    const mother = await member(a.id, 'veli', [{ kind: 'child', recordId: 's1' }])
+    assertError(await fileUrl(t1, photo), 200)
+    assertError(await fileUrl(mother.cookie, photo), 200)
+    assertError(await fileUrl(t2, photo), 404)
+
+    // Erişim soru kaydından türer: öğretmen değişince fotoğraf da yeni öğretmene geçer.
+    const record = await findRecord(db, a.id, 'questions', id)
+    assert.ok(record)
+    await writeRecords(
+      db,
+      a.id,
+      [
+        {
+          kind: 'update',
+          collection: 'questions',
+          id,
+          data: { ...record.data, teacherId: 't2' },
+          expectedVersion: v,
+        },
+      ],
+      FIXED_NOW,
+    )
+    assertError(await fileUrl(t1, photo), 404)
+    assertError(await read(t1, `/api/v1/files/${photo}`), 404)
+    assertError(await fileUrl(t2, photo), 200)
+
+    await db
+      .update(membershipLinks)
+      .set({ archivedAt: FIXED_NOW })
+      .where(
+        and(
+          eq(membershipLinks.institutionId, a.id),
+          eq(membershipLinks.membershipId, mother.membershipId),
+        ),
+      )
+    assertError(await fileUrl(mother.cookie, photo), 404)
+    assertError(await read(mother.cookie, `/api/v1/files/${photo}`), 404)
+    assertError(await fileUrl(cookie, photo), 200)
   })
 })

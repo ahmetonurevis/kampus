@@ -30,7 +30,8 @@ export const PLATFORM_WORKFLOW_COMMANDS = {
   'exam-import': workflow('exams', ['mockExams', 'mockResults']),
   lesson: workflow('planning', ['branches', 'subjects', ...CONFLICTS]),
   substitute: workflow('planning', ['branches', 'subjects', ...CONFLICTS]),
-  'lesson-cancel': workflow('planning', ['schedule']),
+  // Yoklaması alınmış ders günü iptal edilmez (DOM-YTK-069).
+  'lesson-cancel': workflow('planning', ['schedule', 'attendance']),
   'study-task': workflow('study', ['studyTasks']),
   'study-complete': workflow('study', ['studyTasks']),
   'study-review': workflow('study', ['studyTasks']),

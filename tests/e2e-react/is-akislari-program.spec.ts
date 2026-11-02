@@ -86,6 +86,8 @@ test.describe('program yönetimi', () => {
       .getByRole('button', { name: 'Dersi iptal et' })
       .click()
     const cancel = page.getByRole('dialog', { name: 'Dersi iptal et' })
+    // İptal gerekçesi zorunludur (DOM-YTK-069).
+    await cancel.getByLabel('İptal gerekçesi').fill('Okul gezisi nedeniyle ders yapılmayacak.')
     await cancel.getByRole('button', { name: 'Kontrol et' }).click()
     await cancel.getByRole('button', { name: 'Onayla ve kaydet' }).click()
     await expect(cancel).toBeHidden()

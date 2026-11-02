@@ -248,7 +248,7 @@ test('İş akışı komutları yalnız tablodaki koleksiyonlarla çalışır', (
       room: lesson.room,
     }),
   )
-  workflow(state, 'lesson-cancel', {}, created.id)
+  workflow(state, 'lesson-cancel', { reason: 'Okul gezisi.' }, created.id)
   workflow(
     state,
     'study-task',

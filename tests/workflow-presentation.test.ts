@@ -606,7 +606,9 @@ test('Kayıt yenileme formu bir üst sınıfı önerir; mezuniyette ücret alanl
 
 test('Program satırları geçici görev ve iptal durumunu gösterir; iptal dersinde işlem yoktur', () => {
   const state = seed()
-  const lesson = state.schedule.find((l) => l.classId === 'c1' && l.subjectId === 'math')
+  const lesson = state.schedule.find(
+    (l) => l.classId === 'c1' && l.subjectId === 'math' && Date.parse(l.date) > Date.parse(now),
+  )
   const replacement = { ...state.teachers[0]!, id: 'teacher-backup', name: 'Yedek Öğretmen' }
   state.teachers.push(replacement)
   run(state, 'substitute', { teacherId: replacement.id, reason: 'İzinli.' }, lesson!.id)
@@ -622,9 +624,14 @@ test('Program satırları geçici görev ve iptal durumunu gösterir; iptal ders
     'lesson-cancel',
   ])
   assert.deepEqual(commands(workflowDetails(state, session('ogretmen'), moved!)), [])
-  run(state, 'lesson-cancel', {}, lesson!.id)
+  run(state, 'lesson-cancel', { reason: 'Okul gezisi.' }, lesson!.id)
   const cancelled = find(workflowRows(state, session('yonetici'), 'program-yonetimi'), lesson!.id)
   assert.equal(cancelled!.status, 'İptal')
+  assert.ok(
+    section(workflowDetails(state, session('yonetici'), cancelled!), 'Ders bilgileri').includes(
+      'İptal gerekçesi: Okul gezisi.',
+    ),
+  )
   assert.deepEqual(workflowDetails(state, session('yonetici'), cancelled!).actions, [])
   const admin = workflowRows(state, session('yonetici'), 'program-yonetimi')
   assert.deepEqual(
@@ -671,7 +678,12 @@ test('Ders formları kayıt değerlerini ve sınıfın kampüsündeki branş ö�
     substitute.fields({})[0]!.options!.map((o) => o.value),
     ['teacher-backup'],
   )
-  assert.match(workflowForm(state, session('yonetici'), 'lesson-cancel').hint, /iptal kaydı/)
+  const cancel = workflowForm(state, session('yonetici'), 'lesson-cancel')
+  assert.match(cancel.hint, /iptal kaydı/)
+  assert.deepEqual(
+    cancel.fields({}).map((f) => f.key),
+    ['reason'],
+  )
 })
 
 test('Çalışma planı onay, teslim ve değerlendirme aşamalarında doğru işlemi ve formu sunar', () => {

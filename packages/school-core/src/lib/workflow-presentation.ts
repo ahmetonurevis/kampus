@@ -614,6 +614,7 @@ export function workflowDetails(
         (s) =>
           `${name(state, 'teachers', s.fromTeacherId)} → ${name(state, 'teachers', s.toTeacherId)} · ${s.reason}`,
       ),
+      record.cancelReason && `İptal gerekçesi: ${record.cancelReason}`,
     ])
     if (!record.cancelledAt) {
       add('lesson', 'Dersi düzenle')
@@ -1173,6 +1174,8 @@ export function workflowForm(
     assignForm({
       title: 'Dersi iptal et',
       hint: 'Ders günlük programlardan kaldırılır. Yönetim ekranında iptal kaydı korunur.',
+      initial: { reason: '' },
+      fields: () => [field('reason', 'İptal gerekçesi', 'textarea')],
     })
   if (command === 'study-task')
     assignForm({

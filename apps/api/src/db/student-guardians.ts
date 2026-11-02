@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNull, or, sql } from 'drizzle-orm'
 
 import type { GuardianDraft, GuardianLink } from '@kampus/school-core/lib/guardianship.ts'
 
@@ -77,6 +77,31 @@ export async function loadMembershipGuardians(
   return rows.map(toLink)
 }
 
+/**
+ * Veli kaydının ya da hesabının kurumdaki etkin bağları (bütün öğrencilerde); bağ kurarken kayıt
+ * ile hesabın aynı kişiye ait olduğu bunlardan denetlenir (core `planGuardianLink`).
+ */
+export async function loadIdentityGuardians(
+  db: Database,
+  institutionId: string,
+  identity: { parentId: string; membershipId: string },
+): Promise<StoredGuardianLink[]> {
+  const rows = await db
+    .select()
+    .from(studentGuardians)
+    .where(
+      and(
+        active(institutionId),
+        or(
+          eq(studentGuardians.parentId, identity.parentId),
+          eq(studentGuardians.membershipId, identity.membershipId),
+        ),
+      ),
+    )
+    .orderBy(asc(studentGuardians.createdAt), asc(studentGuardians.id))
+  return rows.map(toLink)
+}
+
 export async function insertGuardianLink(
   tx: Database,
   institutionId: string,
@@ -136,7 +161,10 @@ export async function archiveGuardianLink(
 
 /**
  * Tohum ve hesap açılışı için: verilen bağları ekler; aynı kimlik ya da aynı öğrenci–veli bağı
- * varsa dokunmaz (idempotent, sonradan değişen bağ ezilmez).
+ * varsa dokunmaz (idempotent, sonradan değişen bağ ezilmez). Arşivli bağ da sayılır: kaldırılmış
+ * bağ hesap bağlantısı yeniden eklenince velayetli yeni bağ olarak dirilmez (DOM-ILT-071). Kısmi
+ * tekil indeksler arşivli satırı görmediğinden denetim burada yapılır; çağıran kurum kilidi
+ * altında tek transaction'da çağırır (`ensureMembershipLinks`).
  */
 export async function ensureGuardianLinks(
   db: Database,
@@ -144,8 +172,32 @@ export async function ensureGuardianLinks(
   links: readonly (GuardianDraft & { id: string })[],
 ): Promise<void> {
   if (links.length === 0) return
+  const studentIds = [...new Set(links.map((link) => link.studentId))]
+  const known = await db
+    .select({
+      studentId: studentGuardians.studentId,
+      parentId: studentGuardians.parentId,
+      membershipId: studentGuardians.membershipId,
+    })
+    .from(studentGuardians)
+    .where(
+      and(
+        eq(studentGuardians.institutionId, institutionId),
+        inArray(studentGuardians.studentId, studentIds),
+      ),
+    )
+  const fresh = links.filter(
+    (link) =>
+      !known.some(
+        (row) =>
+          row.studentId === link.studentId &&
+          ((link.parentId !== null && row.parentId === link.parentId) ||
+            (link.membershipId !== null && row.membershipId === link.membershipId)),
+      ),
+  )
+  if (fresh.length === 0) return
   await db
     .insert(studentGuardians)
-    .values(links.map((link) => ({ institutionId, id: link.id, ...columnsOf(link) })))
+    .values(fresh.map((link) => ({ institutionId, id: link.id, ...columnsOf(link) })))
     .onConflictDoNothing()
 }

@@ -19,6 +19,7 @@ import { findRecord } from '../db/records.ts'
 import {
   archiveGuardianLink,
   insertGuardianLink,
+  loadIdentityGuardians,
   loadStudentGuardians,
   updateGuardianLink,
   type StoredGuardianLink,
@@ -128,7 +129,8 @@ async function savedLink(tx: Database, ctx: ServiceContext, studentId: string, i
 /**
  * Bağ kurar (DOM-ILT-070…075). Öğrenci, veli kaydı (`parentId`) ya da hesap (`membershipId`)
  * kurumda yoksa 404; kural reddi core'dan (422 `guardian_account_not_parent`,
- * `guardian_restricted_*`, `guardian_legal_custody`, `guardian_custody_required`; 409
+ * `guardian_restricted_*`, `guardian_legal_custody`, `guardian_custody_required`,
+ * `guardian_identity_mismatch`; 409
  * `guardian_link_exists`, `guardian_payer_exists`). Başarı 201.
  */
 export function linkStudentGuardian(
@@ -152,11 +154,17 @@ export function linkStudentGuardian(
           (await findRecord(tx, ctx.institutionId, 'parents', input.parentId)) === null
         )
           throw new NotFoundError()
-        const [account, links] = await Promise.all([
-          accountOf(tx, ctx, input.membershipId),
+        const { parentId, membershipId } = input
+        const [account, links, identityLinks] = await Promise.all([
+          accountOf(tx, ctx, membershipId),
           loadStudentGuardians(tx, ctx.institutionId, studentId),
+          parentId !== undefined && membershipId !== undefined
+            ? loadIdentityGuardians(tx, ctx.institutionId, { parentId, membershipId })
+            : Promise.resolve([]),
         ])
-        return { run: () => planGuardianLink({ studentId, links, account, input }) }
+        return {
+          run: () => planGuardianLink({ studentId, links, identityLinks, account, input }),
+        }
       },
       after: async (tx, draft) => {
         await insertGuardianLink(tx, ctx.institutionId, { id, ...draft }, ctx.now)

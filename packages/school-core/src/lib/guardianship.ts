@@ -213,7 +213,33 @@ function requireStudentInvariants(others: readonly GuardianDraft[], changed: Gua
 export type GuardianAccount = { role: Role }
 
 /**
- * Bağ kurar (`linkGuardian`; DOM-ILT-070…075). `links` öğrencinin etkin bağlarıdır. Hesap
+ * Veli kaydı ile hesap birlikte verildiğinde aynı kişiye ait olmalıdır (DOM-ILT-070). Kayıt ile
+ * hesap arasında ayrı eşleme yoktur; eşleme kurumun etkin bağlarından okunur: kayıt başka bir
+ * bağda başka bir hesapla ya da hesap başka bir kayıtla eşlenmişse 422
+ * `guardian_identity_mismatch`. İkisi de daha önce eşlenmemişse ilk bağ eşlemeyi kurar.
+ */
+function requireSameGuardian(
+  parentId: string,
+  membershipId: string,
+  identityLinks: readonly GuardianLink[],
+) {
+  const conflicting = identityLinks.some(
+    (link) =>
+      (link.parentId === parentId &&
+        link.membershipId !== null &&
+        link.membershipId !== membershipId) ||
+      (link.membershipId === membershipId && link.parentId !== null && link.parentId !== parentId),
+  )
+  if (conflicting)
+    throw rule('guardian_identity_mismatch', 'Veli kaydı ile veli hesabı aynı kişiye ait değil.', [
+      'membershipId',
+    ])
+}
+
+/**
+ * Bağ kurar (`linkGuardian`; DOM-ILT-070…075). `links` öğrencinin etkin bağlarıdır;
+ * `identityLinks` aynı veli kaydının ya da hesabının kurumdaki (her öğrencideki) etkin
+ * bağlarıdır ve ikisi birlikte verildiğinde eşlemeyi denetler (`requireSameGuardian`). Hesap
  * verilmişse veli rolünde olmalıdır (`guardian_account_not_parent`); aynı veli kaydı ya da hesabı
  * öğrenciye ikinci kez bağlanmaz (409 `guardian_link_exists`). Doğrulama hatasında hiçbir şey
  * değişmez; dönen taslak servisçe yazılır.
@@ -221,12 +247,18 @@ export type GuardianAccount = { role: Role }
 export function planGuardianLink(input: {
   studentId: string
   links: readonly GuardianLink[]
+  identityLinks?: readonly GuardianLink[]
   account: GuardianAccount | null
   input: unknown
 }): GuardianDraft {
   const data = linkGuardianSchema.parse(input.input)
   if (data.membershipId !== undefined && input.account?.role !== 'veli')
     throw rule('guardian_account_not_parent', 'Seçilen hesap veli hesabı değil.', ['membershipId'])
+  if (data.parentId !== undefined && data.membershipId !== undefined)
+    requireSameGuardian(data.parentId, data.membershipId, [
+      ...input.links,
+      ...(input.identityLinks ?? []),
+    ])
   const own = input.links.filter((link) => link.studentId === input.studentId)
   if (
     own.some(

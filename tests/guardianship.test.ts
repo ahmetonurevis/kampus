@@ -112,6 +112,43 @@ describe('veli–öğrenci bağı (IST-019)', () => {
     )
   })
 
+  test('DOM-ILT-070 veli kaydı ile hesap birlikte verilirse aynı kişinin eşlemesi olmalı (422)', () => {
+    const plan = (input: Record<string, unknown>, identityLinks: readonly GuardianLink[]) =>
+      planGuardianLink({
+        studentId: 's9',
+        links: [],
+        identityLinks,
+        account: { role: 'veli' },
+        input: { relationship: 'mother', custody: 'full', ...input },
+      })
+    // Ayşe'nin kaydı (p1) başka öğrencide hesabı m-ayse ile eşli: başka hesapla 422.
+    assert.throws(
+      () => plan({ parentId: 'p1', membershipId: 'm-kemal' }, [mother, father]),
+      isDomainError('guardian_identity_mismatch'),
+    )
+    // Hesap m-ayse başka kayıtla 422; öğrencinin kendi bağlarındaki eşleme de sayılır.
+    assert.throws(
+      () => plan({ parentId: 'p7', membershipId: 'm-ayse' }, [sibling]),
+      isDomainError('guardian_identity_mismatch'),
+    )
+    assert.throws(
+      () =>
+        planGuardianLink({
+          studentId: 's1',
+          links: LINKS,
+          account: { role: 'veli' },
+          input: { parentId: 'p7', membershipId: 'm-ayse', relationship: 'other', custody: 'full' },
+        }),
+      isDomainError('guardian_identity_mismatch'),
+    )
+    // Aynı eşleme ve henüz eşlenmemiş kayıt ile hesap kabul edilir; tek kimlik denetlenmez.
+    assert.equal(plan({ parentId: 'p1', membershipId: 'm-ayse' }, [mother]).parentId, 'p1')
+    assert.equal(plan({ parentId: 'p7', membershipId: 'm-yeni' }, LINKS).membershipId, 'm-yeni')
+    // Hesabı kısıtlı babanın bağında kayıt yok (parentId null): yeni kayıtla eşlenebilir.
+    assert.equal(plan({ parentId: 'p8', membershipId: 'm-kemal' }, [father]).parentId, 'p8')
+    assert.equal(plan({ parentId: 'p1' }, [father]).membershipId, null)
+  })
+
   test('DOM-ILT-074 öğrencinin en çok bir ödeyicisi var; kısıtlı veli ödeyici, velayetli, teslim alan olamaz', () => {
     assert.throws(
       () => link({ parentId: 'p7', relationship: 'father', custody: 'joint', isPayer: true }),

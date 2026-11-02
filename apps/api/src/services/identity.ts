@@ -7,6 +7,7 @@ import { defaultAcademicYearDates } from '@kampus/school-core/lib/academic-years
 import type { Auth, InstitutionType, Role } from '../auth.ts'
 import { ensureAcademicYears } from '../db/academic-years.ts'
 import type { Database } from '../db/client.ts'
+import { lockInstitution } from '../db/records.ts'
 import { institutions, memberships } from '../db/schema/auth.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
 import { membershipLinks, type MembershipLinkKind } from '../db/schema/membership-links.ts'
@@ -156,7 +157,9 @@ export interface MembershipLinkInput {
  * Üyeliğin school-core kayıt bağlantılarını ekler; var olan bağlantı korunur. Veli bağlantısı
  * (`child`) için öğrenci–veli bağı da yoksa açılır: kurumun kurduğu bağ doğrulanmıştır, velayetli
  * ve kısıtsızdır (migration 0027 geri doldurmasıyla aynı; DOM-ILT-070). Önceden kurulmuş bağ
- * (velayetsiz, kısıtlı, ödeyici) değişmez.
+ * (velayetsiz, kısıtlı, ödeyici) değişmez; kaldırılmış (arşivli) bağ yeniden açılmaz
+ * (DOM-ILT-071). Bağlantı ve bağ kurum kilidi altında tek transaction'da yazılır; eşzamanlı bağ
+ * işlemiyle (`runCommand`) sıraya girer.
  */
 export async function ensureMembershipLinks(
   db: Database,
@@ -165,25 +168,28 @@ export async function ensureMembershipLinks(
   links: readonly MembershipLinkInput[],
 ): Promise<void> {
   if (links.length === 0) return
-  await db
-    .insert(membershipLinks)
-    .values(links.map((link) => ({ institutionId, membershipId, ...link })))
-    .onConflictDoNothing()
-  await ensureGuardianLinks(
-    db,
-    institutionId,
-    links
-      .filter((link) => link.kind === 'child')
-      .map((link) => ({
-        id: randomUUID(),
-        studentId: link.recordId,
-        parentId: null,
-        membershipId,
-        relationship: 'other' as const,
-        custody: 'full' as const,
-        contactRestricted: false,
-        isPayer: false,
-        canPickUp: false,
-      })),
-  )
+  await db.transaction(async (tx) => {
+    await lockInstitution(tx, institutionId)
+    await tx
+      .insert(membershipLinks)
+      .values(links.map((link) => ({ institutionId, membershipId, ...link })))
+      .onConflictDoNothing()
+    await ensureGuardianLinks(
+      tx,
+      institutionId,
+      links
+        .filter((link) => link.kind === 'child')
+        .map((link) => ({
+          id: randomUUID(),
+          studentId: link.recordId,
+          parentId: null,
+          membershipId,
+          relationship: 'other' as const,
+          custody: 'full' as const,
+          contactRestricted: false,
+          isPayer: false,
+          canPickUp: false,
+        })),
+    )
+  })
 }

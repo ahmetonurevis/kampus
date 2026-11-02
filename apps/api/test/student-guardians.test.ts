@@ -9,6 +9,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { studentGuardians } from '../src/db/schema/student-guardians.ts'
+import { ensureMembershipLinks } from '../src/services/identity.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -519,6 +520,81 @@ describe('veli–öğrenci bağı uçları', () => {
       )
     assert.equal(audit.length, 2)
     assert.deepEqual(audit[0]!.changes, { fields: ['archivedAt'] })
+  })
+
+  test('DOM-ILT-071 kaldırılan bağ hesap bağlantısı yeniden eklenince dirilmez; yeni öğrenciye bağ açılır', async () => {
+    const t = await tenant()
+    const own = await motherLink(t)
+    await ok(await unlink(t.cookies.admin, own.id, own.rowVersion))
+    await ensureMembershipLinks(db, t.institution.id, t.users.mother.membershipId, [
+      { kind: 'child', recordId: 's-1' },
+      { kind: 'child', recordId: 's-2' },
+    ])
+    const after = await rows(t.institution.id)
+    const ofStudent = (studentId: string) => after.filter((row) => row.studentId === studentId)
+    // Deniz'in tek bağı arşivli kalır; velayetli yeni bağ açılmaz.
+    assert.equal(ofStudent('s-1').length, 1)
+    assert.notEqual(ofStudent('s-1')[0]!.archivedAt, null)
+    assert.deepEqual(await ok(await list(t.cookies.admin)), [])
+    // Bağı hiç olmayan Ece'ye varsayılan velayetli bağ açılır; ikinci çağrı yinelemez.
+    await ensureMembershipLinks(db, t.institution.id, t.users.mother.membershipId, [
+      { kind: 'child', recordId: 's-2' },
+    ])
+    const ece = (await rows(t.institution.id)).filter((row) => row.studentId === 's-2')
+    assert.equal(ece.length, 1)
+    assert.equal(ece[0]!.custody, 'full')
+    assert.equal(ece[0]!.archivedAt, null)
+  })
+
+  test('DOM-ILT-070 veli kaydı ile hesap aynı kişiye ait değilse 422 guardian_identity_mismatch; kayıt değişmez', async () => {
+    const t = await tenant()
+    // Ece'ye babanın kaydı (p-1) ve hesabı birlikte bağlanır: eşleme kurulur.
+    await ok(
+      await link(
+        t.cookies.admin,
+        {
+          parentId: 'p-1',
+          membershipId: t.users.father.membershipId,
+          relationship: 'father',
+          custody: 'full',
+        },
+        's-2',
+      ),
+      201,
+    )
+    const before = await rows(t.institution.id)
+    // Kayıt p-1 başka hesapla, hesap başka kayıtla (p-2) Deniz'e bağlanamaz.
+    fails(
+      await link(t.cookies.admin, {
+        parentId: 'p-1',
+        membershipId: t.users.restricted.membershipId,
+        relationship: 'father',
+        custody: 'joint',
+      }),
+      422,
+      'guardian_identity_mismatch',
+    )
+    fails(
+      await link(t.cookies.admin, {
+        parentId: 'p-2',
+        membershipId: t.users.father.membershipId,
+        relationship: 'father',
+        custody: 'joint',
+      }),
+      422,
+      'guardian_identity_mismatch',
+    )
+    assert.deepEqual(await rows(t.institution.id), before)
+    // Aynı eşleme Deniz'e de bağlanır.
+    await ok(
+      await link(t.cookies.admin, {
+        parentId: 'p-1',
+        membershipId: t.users.father.membershipId,
+        relationship: 'father',
+        custody: 'joint',
+      }),
+      201,
+    )
   })
 
   test('başka kurum: öğrenci ve bağ 404, B değişmez; listede B yok', async () => {

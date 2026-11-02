@@ -11,7 +11,6 @@ export const PLATFORM_WORKFLOW_PATHS: readonly string[] = [
   'hedef-plani',
   'rehberlik',
   'deneme-sinavlari',
-  'program-yonetimi',
   'calisma-plani',
   'okul-servisi',
 ]
@@ -71,6 +70,9 @@ export const PLATFORM_MIGRATED: readonly string[] = [
   'ogretmen/sinif-analizi',
   'yonetici/risk-listesi',
   'yonetici/sla-raporu',
+  // Program Yönetimi `/lessons` uçlarıyla kendi ekranıdır (IST-094); iş akışı sayfası değil.
+  'yonetici/program-yonetimi',
+  'ogretmen/program-yonetimi',
 ]
 // Duyurular beş rolün hepsinde aynı ekrandır; rol kapsamı sunucudadır.
 export const ANNOUNCEMENT_PATH = 'duyurular'

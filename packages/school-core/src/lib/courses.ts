@@ -543,9 +543,10 @@ export function planCourseActivation(input: {
 }
 
 /**
- * Kuru arşivler (DOM-DIL-005, -007): taslak ya da etkin kur arşive alınır, arşiv geri alınmaz.
- * Arşivlenmemiş başka bir kurun sonraki kuruysa arşivlenmez (422 `course_has_dependents`); önce o
- * bağ kaldırılır.
+ * Kuru arşivler (DOM-DIL-005, -007, -008): taslak ya da etkin kur arşive alınır, arşiv geri
+ * alınmaz. Arşivlenmemiş başka bir kurun sonraki kuruysa arşivlenmez (422 `course_has_dependents`);
+ * önce o bağ kaldırılır. Planlanan, açık ya da devam eden grubu varsa arşivlenmez (422
+ * `course_has_open_groups`); `openGroups` `lib/language-groups.ts` `groupsBlockingCourseArchive`'dır.
  */
 export function planCourseArchive(input: {
   institutionType: InstitutionType
@@ -553,6 +554,7 @@ export function planCourseArchive(input: {
   courses: readonly Course[]
   courseId: string
   now: string
+  openGroups?: readonly { courseId: string; name: string }[]
 }): Course {
   assertLanguageSchoolCourses(input.institutionType)
   const course = requireCourse(input.courses, input.courseId)
@@ -565,6 +567,13 @@ export function planCourseArchive(input: {
     throw new DomainError(
       'course_has_dependents',
       `Bu kur "${dependent.name}" kurunun sonraki kuru; önce o bağı kaldırın.`,
+      { path: ['courseId'] },
+    )
+  const group = (input.openGroups ?? []).find((item) => item.courseId === course.id)
+  if (group)
+    throw new DomainError(
+      'course_has_open_groups',
+      `Bu kurun kapanmamış grubu var ("${group.name}"); önce grubu tamamlayın ya da iptal edin.`,
       { path: ['courseId'] },
     )
   return { ...course, status: 'archived', archivedAt: input.now }

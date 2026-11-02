@@ -203,6 +203,13 @@ export function authorize<A extends WriteAction>(
       'DOM-DIL-005',
       'not_found',
     )
+  if (action.startsWith('group.') && institutionType !== 'language_school')
+    return deny(
+      'module_unavailable_for_type',
+      'İlgili kayıt bulunamadı.',
+      'DOM-DIL-008',
+      'not_found',
+    )
   if (!ROLE_TABLE[action].includes(actor.role)) return roleDenied('DOM-YTK-001')
   // Hedef tipi eyleme bağlıdır; birleşimi daraltmak için eylem adıyla ayrıştırılır.
   const request = { action, target } as WriteRequest
@@ -406,6 +413,12 @@ function decide(
     case 'course.read':
     case 'course.manage':
     case 'course.eozel':
+      return ALLOWED
+    // Grup satır kapsamı `lib/language-groups.ts` `canReadGroup`'ta, koordinatörün seviye kapsamı
+    // `assertCourseManager`'da, öğrenci/veli daraltması `groupView`'dadır (IST-077).
+    case 'group.read':
+    case 'group.manage':
+    case 'group.waitlist':
       return ALLOWED
     case 'consent.read':
     case 'consent.status': {

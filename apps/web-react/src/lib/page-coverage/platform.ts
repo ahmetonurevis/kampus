@@ -47,6 +47,7 @@ export const PLATFORM_MIGRATED: readonly string[] = [
   'ogrenci/ders-programi',
   'veli/akademik-takip',
   'veli/cocuk-secici',
+  'yonetici/odevler',
   'ogretmen/odevler',
   'ogretmen/materyal-yukle',
   'ogretmen/quiz-olustur',

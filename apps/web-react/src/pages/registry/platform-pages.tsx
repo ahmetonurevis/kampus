@@ -83,6 +83,9 @@ const PersonalSettingsPage = lazy(async () => ({
 const SettingsPage = lazy(async () => ({
   default: (await import('../settings/SettingsPage.tsx')).SettingsPage,
 }))
+const AdminTasksPage = lazy(async () => ({
+  default: (await import('../tasks/AdminTasksPage.tsx')).AdminTasksPage,
+}))
 const TeacherTasksPage = lazy(async () => ({
   default: (await import('../tasks/TeacherTasksPage.tsx')).TeacherTasksPage,
 }))
@@ -212,6 +215,8 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
       return <ClassAnalysisPage page={page} />
     case 'veli/ogretmen-degerlendirmeleri':
       return <TeacherReviewsPage page={page} />
+    case 'yonetici/odevler':
+      return <AdminTasksPage page={page} />
     case 'ogretmen/odevler':
       return <TeacherTasksPage page={page} />
     case 'ogretmen/materyal-yukle':

@@ -66,6 +66,13 @@ export const COUNT_POLICY_OPTIONS = (
 const contentTypeLabel = (type: string) =>
   type in CONTENT_TYPES ? CONTENT_TYPES[type as keyof typeof CONTENT_TYPES].label : type
 
+// --- Deneme listesi adresi -----------------------------------------------------------------
+
+/** Panelin deneme listesinin adres öneki; sayfa `dn-sayfa` ile adreste tutulur (OG-994). */
+export const ATTEMPT_LIST_PREFIX = 'dn-'
+/** Görev paneli kapanınca silinen deneme listesi parametreleri (bir sonraki panele taşınmaz). */
+export const ATTEMPT_LIST_PARAMS: readonly string[] = [`${ATTEMPT_LIST_PREFIX}sayfa`]
+
 // --- Atama satırı --------------------------------------------------------------------------
 
 export interface TargetNames {
@@ -120,6 +127,17 @@ export function assignmentRow(
     targets: targetsLabel(item.targets, names),
     owner: item.assignedByUserId === userId ? 'Siz' : 'Başka kullanıcı',
   }
+}
+
+/**
+ * Görev listesinin kapsam notu. Yönetici kurumun bütün atamalarını görür (OG-993), öğretmen
+ * atadıklarını ve sınıflarını hedefleyenleri (DOM-YTK-028); kapsamı sunucu uygular, metin yalnız
+ * bilgidir.
+ */
+export function assignmentScopeNote(role: string): string {
+  return role === 'yonetici'
+    ? 'Kurumdaki bütün sınıfların görevleri'
+    : 'Atadıklarınız ve sınıflarınızı hedefleyenler'
 }
 
 /** Atamayı yalnız atayan değiştirir (DOM-YTK-028); yönetici de değiştirebilir. */

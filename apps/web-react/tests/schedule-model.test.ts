@@ -14,6 +14,9 @@ import {
   lessonErrorRoutes,
   lessonFormDefaults,
   lessonFormSchema,
+  lessonUnavailableText,
+  openedLesson,
+  planLessonUpdate,
   reversedRange,
   scheduleByDay,
   scheduleCsvRow,
@@ -269,5 +272,71 @@ describe('hata eşleme', () => {
       lessonErrorRoutes('substitute').fieldFor(error(422, 'teacher_unchanged')),
       'teacherId',
     )
+  })
+})
+
+describe('taze kayıtla düzenleme planı (IST-077, OG-040)', () => {
+  const values = (overrides: Partial<ReturnType<typeof lessonFormDefaults>> = {}) =>
+    lessonFormSchema.parse({ ...lessonFormDefaults(lesson()), ...overrides })
+
+  test('yalnız kullanıcının değiştirdiği alan gider; başkasının değişikliği geri yazılmaz', () => {
+    const { lookups } = fixture()
+    const opened = lesson()
+    // Başkası dersi 40 -> 50 dk yaptı; kullanıcı derslik girdi.
+    const fresh = lesson({ version: 4, duration: 50 })
+    const plan = planLessonUpdate(opened, fresh, values({ room: '102' }), lookups)
+    assert.deepEqual(plan.body, { room: '102' })
+    assert.deepEqual(plan.overlaps, [])
+  })
+
+  test('aynı alanı başkası da değiştirdiyse çakışma değerleriyle listelenir', () => {
+    const { lookups } = fixture()
+    const opened = lesson()
+    const fresh = lesson({ version: 4, room: '205' })
+    const plan = planLessonUpdate(opened, fresh, values({ room: '102', duration: 45 }), lookups)
+    assert.deepEqual(plan.body, { duration: 45, room: '102' })
+    assert.deepEqual(plan.overlaps, [
+      { field: 'room', label: 'Derslik', theirs: '205', mine: '102' },
+    ])
+  })
+
+  test('başkası aynı değeri girdiyse çakışma yoktur ve alan gönderilmez', () => {
+    const { lookups } = fixture()
+    const fresh = lesson({ version: 4, room: '102' })
+    const plan = planLessonUpdate(lesson(), fresh, values({ room: '102' }), lookups)
+    assert.deepEqual(plan.body, {})
+    assert.deepEqual(plan.overlaps, [])
+  })
+
+  test('çakışan sınıf ve öğretmen kimlik yerine adla gösterilir', () => {
+    const { seed, lookups } = fixture()
+    const other = seed.teachers.find((t) => t.id !== 't1' && t.subjectId === 'math')!
+    const fresh = lesson({ version: 4, teacherId: other.id })
+    const plan = planLessonUpdate(lesson(), fresh, values({ teacherId: 't2' }), lookups)
+    assert.equal(plan.overlaps[0]?.field, 'teacherId')
+    assert.equal(plan.overlaps[0]?.theirs, other.name)
+  })
+})
+
+describe('açık formun uygunluğu açıldığı anda sabitlenir (OG-040)', () => {
+  const before = '2026-10-27T05:00:00.000Z'
+  const after = '2026-10-27T06:30:00.000Z'
+
+  test('uygun ders açılışta alınır, sonradan başlasa ya da iptal edilse de korunur', () => {
+    const opened = openedLesson(null, lesson(), before)
+    assert.equal(opened?.id, 'ders-test-1')
+    // Ders başladı: açık form aynı dersle kalır (girdi kaybolmaz).
+    assert.equal(openedLesson(opened, lesson(), after), opened)
+    // Ders iptal edildi: yine aynı kayıt.
+    const cancelled = lesson({ status: 'cancelled', version: 4 })
+    assert.equal(openedLesson(opened, cancelled, before), opened)
+    assert.equal(lessonUnavailableText(cancelled), 'Bu ders iptal edildi; değiştirilemez.')
+    assert.equal(lessonUnavailableText(lesson()), 'Başlamış ya da geçmiş ders değiştirilemez.')
+  })
+
+  test('açılışta uygun değilse (başlamış ya da iptal) form açılmaz', () => {
+    assert.equal(openedLesson(null, lesson(), after), null)
+    assert.equal(openedLesson(null, lesson({ status: 'cancelled' }), before), null)
+    assert.equal(openedLesson(null, undefined, before), null)
   })
 })

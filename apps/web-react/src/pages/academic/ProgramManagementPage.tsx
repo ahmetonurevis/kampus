@@ -93,6 +93,9 @@ export function ProgramManagementPage({ page }: { page: NavPage }) {
   const canManage = session?.role === 'yonetici'
   const data = useAcademicLookups({ students: false })
   const { lookups } = data
+  // Form seçenekleri (sınıf, ders, öğretmen) başvuru kayıtlarından gelir; kayıtlar yüklenmeden
+  // açılan seçim alanı varsayılan değeri uygulayamaz (seçenek yokken değer boş kalır).
+  const formsReady = canManage && !data.pending && !data.error
   const list = useListState('ders-programi', { pageSize: 25, urlFilters: URL_FILTERS })
   const filters = list.state.filters
   const view: ScheduleViewMode = scheduleViewMode(filters.view)
@@ -110,13 +113,16 @@ export function ProgramManagementPage({ page }: { page: NavPage }) {
   const setFilter = (key: FilterKey, value: string) =>
     list.dispatch({ type: 'filter', key, value: value === ALL ? '' : value })
 
-  const query = {
+  // Sorgu debounce'lu derslikle; CSV ise girilen değerle (süzgeç değişip hemen indirilen dosya
+  // ekrandaki süzgeçle aynı olur).
+  const queryFor = (roomValue: string) => ({
     ...scheduleRange(view, anchor, from, to),
     ...(classId ? { classId } : {}),
     ...(teacherId ? { teacherId } : {}),
-    ...(room.trim() ? { room } : {}),
+    ...(roomValue.trim() ? { room: roomValue } : {}),
     cancelled: cancelledFilter(showCancelled),
-  }
+  })
+  const query = queryFor(room)
   const ranged = useLessonsInRange(query, { enabled: view !== 'liste' })
   const paged = useLessonList(
     { ...query, page: list.state.page, pageSize: list.state.pageSize },
@@ -203,7 +209,7 @@ export function ProgramManagementPage({ page }: { page: NavPage }) {
 
   function download() {
     void csv.download(page.title, CSV_COLUMNS, async () =>
-      (await fetchAll(query)).map((lesson) =>
+      (await fetchAll(queryFor(roomInput))).map((lesson) =>
         scheduleCsvRow(scheduleLesson(lesson, lookups, 'admin')),
       ),
     )
@@ -421,7 +427,7 @@ export function ProgramManagementPage({ page }: { page: NavPage }) {
         canManage={canManage}
         onCommand={onCommand}
       />
-      {canManage && lessonForm.selectedId ? (
+      {formsReady && lessonForm.selectedId ? (
         <LessonFormDialog
           key={lessonForm.selectedId}
           target={lessonForm.selectedId}
@@ -429,7 +435,7 @@ export function ProgramManagementPage({ page }: { page: NavPage }) {
           onClose={lessonForm.close}
         />
       ) : null}
-      {canManage && substituteForm.selectedId ? (
+      {formsReady && substituteForm.selectedId ? (
         <SubstituteDialog
           key={substituteForm.selectedId}
           lessonId={substituteForm.selectedId}
@@ -437,7 +443,7 @@ export function ProgramManagementPage({ page }: { page: NavPage }) {
           onClose={substituteForm.close}
         />
       ) : null}
-      {canManage && cancelForm.selectedId ? (
+      {formsReady && cancelForm.selectedId ? (
         <CancelDialog
           key={cancelForm.selectedId}
           lessonId={cancelForm.selectedId}

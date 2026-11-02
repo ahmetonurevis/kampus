@@ -1,9 +1,12 @@
 // Ders programı formları (yönetici; IST-094, DOM-YTK-069): ders planla/düzenle, yedek öğretmen
 // ata ve dersi iptal et. Her form kendi penceresindedir; kirli form kapatılırken ya da sayfadan
-// ayrılırken onay ister. Sürüm çakışmasında form korunur ve güncel dersi yükleme önerilir; ders
-// çakışmasında sunucunun mesajı ilgili alanın altında görünür.
+// ayrılırken onay ister. `If-Match` sürümü gönderim anında dersin yeniden okunan kaydındandır
+// (formun açıldığı andaki kopya bayat olabilir); sürüm çakışmasında girdi korunur, başkasının da
+// değiştirdiği alanlar kullanıcıya gösterilir. Açık form açıldığı andaki uygunlukla açık kalır
+// (ders başlasa ya da iptal edilse de girdi kaybolmaz); sunucu reddederse 422 mesajı formda
+// görünür. Ders çakışmasında sunucunun mesajı ilgili alanın altında görünür.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRef, type ReactNode } from 'react'
+import { useRef, useState, type ReactNode } from 'react'
 import { useForm, useWatch, type UseFormReturn } from 'react-hook-form'
 import { useBlocker } from 'react-router'
 import {
@@ -31,13 +34,8 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { useMinuteClock } from '@/hooks/use-minute-clock.ts'
 import { notify } from '@/lib/notify.ts'
-import {
-  ConflictNotice,
-  FormActions,
-  isVersionConflict,
-  RootError,
-  useEditConflict,
-} from '../management/FormParts.tsx'
+import { RECORD_UNAVAILABLE_MESSAGE, submitWithFreshRecord } from '../language/fresh-submit.ts'
+import { FormActions, RootError } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import type { AcademicLookups } from './academic-rows.ts'
 import {
@@ -49,6 +47,9 @@ import {
   lessonActions,
   lessonFormDefaults,
   lessonFormSchema,
+  lessonUnavailableText,
+  openedLesson,
+  planLessonUpdate,
   REASON_MAX_LENGTH,
   substituteCandidates,
   substituteFormSchema,
@@ -58,6 +59,7 @@ import {
   type Lesson,
   type LessonFormOutput,
   type LessonFormValues,
+  type LessonOverlap,
   type Option,
   type SubstituteFormValues,
 } from './schedule-model.ts'
@@ -149,15 +151,81 @@ function FormDialog({
   )
 }
 
-/** Ders artık değiştirilemiyorsa (iptal edildi, başladı) form yerine açıklama. */
+/** Ders artık değiştirilemiyorsa (iptal edildi, başladı) form açılmadan önce açıklama. */
 function Unavailable({ lesson, now }: { lesson: Lesson; now: string }) {
   if (lessonActions(lesson, true, now).edit) return null
   return (
     <p role="status" className="text-sm text-muted-foreground">
-      {lesson.status === 'cancelled'
-        ? 'Bu ders iptal edildi; değiştirilemez.'
-        : 'Başlamış ya da geçmiş ders değiştirilemez.'}
+      {lessonUnavailableText(lesson)}
     </p>
+  )
+}
+
+/**
+ * Formun açıldığı andaki ders: uygunluk yalnız açılışta bakılır. Sonradan ders başlar ya da iptal
+ * edilirse (dakikalık saat, yenileme) açık form kapanmaz ve girdi kaybolmaz; `live` güncel kayıttır
+ * ve form içinde uyarı göstermek içindir. `fetchFresh` gönderim anında dersi yeniden okur.
+ */
+function useOpenedLesson(lessonId: string) {
+  const item = useLesson(lessonId)
+  const now = useMinuteClock()
+  const live = item.data?.data
+  const [opened, setOpened] = useState<Lesson | null>(null)
+  const next = openedLesson(opened, live, now)
+  if (next !== opened) setOpened(next)
+  async function fetchFresh(): Promise<Lesson | undefined> {
+    const result = await item.refetch()
+    return result.error ? undefined : result.data?.data
+  }
+  return { item, now, live, opened, fetchFresh }
+}
+
+/** Form açıkken ders değiştirilemez hâle geldiyse uyarı; girdi korunur, karar sunucudadır. */
+function LiveNotice({ live, now }: { live: Lesson | undefined; now: string }) {
+  if (!live || lessonActions(live, true, now).edit) return null
+  return (
+    <div role="alert" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
+      {lessonUnavailableText(live)} Girdiniz korundu; kaydetmeyi denerseniz sunucu işlemi reddeder.
+    </div>
+  )
+}
+
+type Stale =
+  | { kind: 'changed' }
+  /** `version`: çakışmanın gösterildiği kayıt sürümü; aynı sürümde yeniden kaydetmek onaydır. */
+  | { kind: 'overlap'; overlaps: readonly LessonOverlap[]; version: number }
+
+/**
+ * Gönderimde ders başkası tarafından değişmiş çıktı: kayıt gönderilmedi (ya da 409 döndü), girdi
+ * korunur. Aynı alanı başkası da değiştirdiyse değerler yan yana gösterilir; "Kaydet"e yeniden
+ * basmak kullanıcının değerini yazar (sessiz ezme yok).
+ */
+function StaleNotice({ stale }: { stale: Stale | null }) {
+  if (!stale) return null
+  return (
+    <div role="alert" className="grid gap-2 rounded-card border bg-warning-soft p-4 text-sm">
+      {stale.kind === 'changed' ? (
+        <p className="font-medium">
+          Ders bu arada başka biri tarafından değişti. Girdiniz korundu; güncel kayıtla birleştirmek
+          için yeniden kaydedin.
+        </p>
+      ) : (
+        <>
+          <p className="font-medium">
+            Ders bu arada değişti ve değiştirdiğiniz alanlardan biri başkası tarafından da
+            değiştirildi. Yeniden kaydederseniz sizin değeriniz yazılır.
+          </p>
+          <ul className="grid gap-1">
+            {stale.overlaps.map((item) => (
+              <li key={item.field}>
+                <strong className="font-semibold">{item.label}:</strong> kayıtlı değer {item.theirs}
+                , sizin girdiğiniz {item.mine}.
+              </li>
+            ))}
+          </ul>
+        </>
+      )}
+    </div>
   )
 }
 
@@ -184,31 +252,18 @@ function LessonEdit({
   lookups: AcademicLookups
   onClose: () => void
 }) {
-  const item = useLesson(lessonId)
-  const now = useMinuteClock()
-  const lesson = item.data?.data
-  if (!lesson || item.error || !lessonActions(lesson, true, now).edit)
-    return (
-      <Modal open onOpenChange={(open) => (open ? undefined : onClose())} title="Dersi düzenle">
-        {item.error ? (
-          <QueryError error={item.error} onRetry={() => void item.refetch()} />
-        ) : lesson ? (
-          <Unavailable lesson={lesson} now={now} />
-        ) : (
-          <SummaryLoading />
-        )}
-      </Modal>
-    )
   return (
-    <LessonForm
-      lesson={lesson}
-      lookups={lookups}
-      onClose={onClose}
-      reload={async () => {
-        const fresh = (await item.refetch()).data?.data
-        return fresh ? { version: fresh.version, values: lessonFormDefaults(fresh) } : null
-      }}
-    />
+    <WithLesson lessonId={lessonId} title="Dersi düzenle" onClose={onClose}>
+      {({ lesson, fetchFresh, notice }) => (
+        <LessonForm
+          lesson={lesson}
+          lookups={lookups}
+          onClose={onClose}
+          fetchFresh={fetchFresh}
+          notice={notice}
+        />
+      )}
+    </WithLesson>
   )
 }
 
@@ -261,12 +316,15 @@ function LessonForm({
   lesson,
   lookups,
   onClose,
-  reload,
+  fetchFresh,
+  notice,
 }: {
+  /** Düzenlemede formun açıldığı andaki ders; yeni derste yok. */
   lesson?: Lesson
   lookups: AcademicLookups
   onClose: () => void
-  reload?: () => Promise<{ version: number; values: LessonFormValues } | null>
+  fetchFresh?: () => Promise<Lesson | undefined>
+  notice?: ReactNode
 }) {
   const create = useCreateLesson()
   const update = useUpdateLesson()
@@ -274,11 +332,7 @@ function LessonForm({
     resolver: zodResolver(lessonFormSchema),
     defaultValues: lessonFormDefaults(lesson),
   })
-  const conflict = useEditConflict<LessonFormValues>({
-    initialVersion: lesson?.version ?? 0,
-    reload: async () => (reload ? reload() : null),
-    apply: (values) => form.reset(values),
-  })
+  const [stale, setStale] = useState<Stale | null>(null)
   const guard = useDiscardGuard(form.formState.isDirty)
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
@@ -314,23 +368,46 @@ function LessonForm({
 
   const onSubmit = form.handleSubmit(async (values) => {
     const routes = { setError: form.setError, ...lessonErrorRoutes('lesson') }
-    const outcome = lesson
-      ? await (async () => {
-          const body = changedLessonFields(lesson, values)
-          if (Object.keys(body).length === 0) {
-            form.setError('root.server', { type: 'manual', message: 'Değişiklik yapmadınız.' })
-            return null
-          }
-          return update.submit({ lessonId: lesson.id, version: conflict.version, body }, routes)
-        })()
-      : await create.submit(values, routes)
-    if (!outcome) return
-    if (outcome.status === 'success') {
-      notify.success(lesson ? 'Ders güncellendi.' : 'Ders planlandı.')
+    const shown = stale
+    setStale(null)
+    if (!lesson || !fetchFresh) {
+      const outcome = await create.submit(values, routes)
+      if (outcome.status === 'success') {
+        notify.success('Ders planlandı.')
+        guard.leave()
+        onClose()
+      }
+      return
+    }
+    const result = await submitWithFreshRecord(fetchFresh, async (fresh) => {
+      const plan = planLessonUpdate(lesson, fresh, values, lookups)
+      if (Object.keys(plan.body).length === 0) {
+        const touched = Object.keys(changedLessonFields(lesson, values)).length > 0
+        form.setError('root.server', {
+          type: 'manual',
+          message: touched ? 'Ders zaten bu değerlerde kayıtlı.' : 'Değişiklik yapmadınız.',
+        })
+        return { status: 'busy' as const }
+      }
+      const confirmed = shown?.kind === 'overlap' && shown.version === fresh.version
+      if (plan.overlaps.length > 0 && !confirmed) {
+        setStale({ kind: 'overlap', overlaps: plan.overlaps, version: fresh.version })
+        return { status: 'busy' as const }
+      }
+      return update.submit({ lessonId: fresh.id, version: fresh.version, body: plan.body }, routes)
+    })
+    if (result.status === 'missing') {
+      notify.error(RECORD_UNAVAILABLE_MESSAGE)
+      return
+    }
+    if (result.conflicted) {
+      setStale({ kind: 'changed' })
+      return
+    }
+    if (result.outcome.status === 'success') {
+      notify.success('Ders güncellendi.')
       guard.leave()
       onClose()
-    } else if (outcome.status === 'failed' && isVersionConflict(outcome.error)) {
-      conflict.markConflict()
     }
   })
 
@@ -343,12 +420,8 @@ function LessonForm({
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-5"
       >
-        {conflict.conflicted ? (
-          <ConflictNotice
-            onReload={() => void conflict.reloadRecord()}
-            reloading={conflict.reloading}
-          />
-        ) : null}
+        {notice}
+        <StaleNotice stale={stale} />
         <p className="text-sm text-muted-foreground">
           Bu formdaki tüm alanlar zorunludur. Saatler Türkiye saatiyle girilir.
         </p>
@@ -432,7 +505,6 @@ function LessonForm({
         <RootError message={errors.root?.server?.message} />
         <FormActions
           busy={busy}
-          disabled={conflict.conflicted}
           onCancel={onClose}
           submitLabel={lesson ? 'Kaydet' : 'Dersi planla'}
         />
@@ -449,7 +521,16 @@ type ReasonDialogProps = {
   onClose: () => void
 }
 
-/** Ortak çatı: dersi okur; değiştirilemiyorsa açıklama, değilse formu çizer. */
+type LessonScope = {
+  /** Formun açıldığı andaki ders. */
+  lesson: Lesson
+  /** Gönderim anında dersi yeniden okur (`If-Match` sürümü buradan); okunamazsa `undefined`. */
+  fetchFresh: () => Promise<Lesson | undefined>
+  /** Ders açılıştan sonra değiştirilemez hâle geldiyse form içi uyarı. */
+  notice: ReactNode
+}
+
+/** Ortak çatı: dersi okur; açılışta değiştirilemiyorsa açıklama, değilse formu çizer. */
 function WithLesson({
   lessonId,
   title,
@@ -459,24 +540,26 @@ function WithLesson({
   lessonId: string
   title: string
   onClose: () => void
-  children: (lesson: Lesson, reload: () => Promise<Lesson | null>) => ReactNode
+  children: (scope: LessonScope) => ReactNode
 }) {
-  const item = useLesson(lessonId)
-  const now = useMinuteClock()
-  const lesson = item.data?.data
-  if (!lesson || item.error || !lessonActions(lesson, true, now).edit)
+  const { item, now, live, opened, fetchFresh } = useOpenedLesson(lessonId)
+  if (!opened)
     return (
       <Modal open onOpenChange={(open) => (open ? undefined : onClose())} title={title}>
         {item.error ? (
           <QueryError error={item.error} onRetry={() => void item.refetch()} />
-        ) : lesson ? (
-          <Unavailable lesson={lesson} now={now} />
+        ) : live ? (
+          <Unavailable lesson={live} now={now} />
         ) : (
           <SummaryLoading />
         )}
       </Modal>
     )
-  return children(lesson, async () => (await item.refetch()).data?.data ?? null)
+  return children({
+    lesson: opened,
+    fetchFresh,
+    notice: <LiveNotice live={live} now={now} />,
+  })
 }
 
 function lessonSummary(lesson: Lesson, lookups: AcademicLookups) {
@@ -488,54 +571,49 @@ function lessonSummary(lesson: Lesson, lookups: AcademicLookups) {
 export function SubstituteDialog({ lessonId, lookups, onClose }: ReasonDialogProps) {
   return (
     <WithLesson lessonId={lessonId} title="Yedek öğretmen ata" onClose={onClose}>
-      {(lesson, reload) => (
-        <SubstituteForm lesson={lesson} reload={reload} lookups={lookups} onClose={onClose} />
-      )}
+      {(scope) => <SubstituteForm {...scope} lookups={lookups} onClose={onClose} />}
     </WithLesson>
   )
 }
 
 function SubstituteForm({
   lesson,
-  reload,
+  fetchFresh,
+  notice,
   lookups,
   onClose,
-}: {
-  lesson: Lesson
-  reload: () => Promise<Lesson | null>
-  lookups: AcademicLookups
-  onClose: () => void
-}) {
+}: LessonScope & { lookups: AcademicLookups; onClose: () => void }) {
   const substitute = useSubstituteLesson()
   const form = useForm<SubstituteFormValues>({
     resolver: zodResolver(substituteFormSchema),
     defaultValues: { teacherId: '', reason: '' },
   })
-  // Gerekçe korunur; yalnız `If-Match` sürümü güncel derse geçer.
-  const conflict = useEditConflict<null>({
-    initialVersion: lesson.version,
-    reload: async () => {
-      const fresh = await reload()
-      return fresh ? { version: fresh.version, values: null } : null
-    },
-    apply: () => undefined,
-  })
+  const [stale, setStale] = useState<Stale | null>(null)
   const guard = useDiscardGuard(form.formState.isDirty)
   const busy = substitute.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
   const candidates = substituteCandidates(lesson, lookups)
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const outcome = await substitute.submit(
-      { lessonId: lesson.id, version: conflict.version, body: values },
-      { setError: form.setError, ...lessonErrorRoutes('substitute') },
+    setStale(null)
+    const result = await submitWithFreshRecord(fetchFresh, (fresh) =>
+      substitute.submit(
+        { lessonId: fresh.id, version: fresh.version, body: values },
+        { setError: form.setError, ...lessonErrorRoutes('substitute') },
+      ),
     )
-    if (outcome.status === 'success') {
+    if (result.status === 'missing') {
+      notify.error(RECORD_UNAVAILABLE_MESSAGE)
+      return
+    }
+    if (result.conflicted) {
+      setStale({ kind: 'changed' })
+      return
+    }
+    if (result.outcome.status === 'success') {
       notify.success('Yedek öğretmen atandı.')
       guard.leave()
       onClose()
-    } else if (outcome.status === 'failed' && isVersionConflict(outcome.error)) {
-      conflict.markConflict()
     }
   })
 
@@ -553,12 +631,8 @@ function SubstituteForm({
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-5"
       >
-        {conflict.conflicted ? (
-          <ConflictNotice
-            onReload={() => void conflict.reloadRecord()}
-            reloading={conflict.reloading}
-          />
-        ) : null}
+        {notice}
+        <StaleNotice stale={stale} />
         <p className="text-sm font-medium [overflow-wrap:anywhere]">
           {lessonSummary(lesson, lookups)}
         </p>
@@ -605,12 +679,7 @@ function SubstituteForm({
           )}
         </FormField>
         <RootError message={errors.root?.server?.message} />
-        <FormActions
-          busy={busy}
-          disabled={conflict.conflicted}
-          onCancel={onClose}
-          submitLabel="Yedeği ata"
-        />
+        <FormActions busy={busy} onCancel={onClose} submitLabel="Yedeği ata" />
       </form>
     </FormDialog>
   )
@@ -619,52 +688,48 @@ function SubstituteForm({
 export function CancelDialog({ lessonId, lookups, onClose }: ReasonDialogProps) {
   return (
     <WithLesson lessonId={lessonId} title="Dersi iptal et" onClose={onClose}>
-      {(lesson, reload) => (
-        <CancelForm lesson={lesson} reload={reload} lookups={lookups} onClose={onClose} />
-      )}
+      {(scope) => <CancelForm {...scope} lookups={lookups} onClose={onClose} />}
     </WithLesson>
   )
 }
 
 function CancelForm({
   lesson,
-  reload,
+  fetchFresh,
+  notice,
   lookups,
   onClose,
-}: {
-  lesson: Lesson
-  reload: () => Promise<Lesson | null>
-  lookups: AcademicLookups
-  onClose: () => void
-}) {
+}: LessonScope & { lookups: AcademicLookups; onClose: () => void }) {
   const cancel = useCancelLesson()
   const form = useForm<CancelFormValues>({
     resolver: zodResolver(cancelFormSchema),
     defaultValues: { reason: '' },
   })
-  const conflict = useEditConflict<null>({
-    initialVersion: lesson.version,
-    reload: async () => {
-      const fresh = await reload()
-      return fresh ? { version: fresh.version, values: null } : null
-    },
-    apply: () => undefined,
-  })
+  const [stale, setStale] = useState<Stale | null>(null)
   const guard = useDiscardGuard(form.formState.isDirty)
   const busy = cancel.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const outcome = await cancel.submit(
-      { lessonId: lesson.id, version: conflict.version, body: values },
-      { setError: form.setError, ...lessonErrorRoutes('cancel') },
+    setStale(null)
+    const result = await submitWithFreshRecord(fetchFresh, (fresh) =>
+      cancel.submit(
+        { lessonId: fresh.id, version: fresh.version, body: values },
+        { setError: form.setError, ...lessonErrorRoutes('cancel') },
+      ),
     )
-    if (outcome.status === 'success') {
+    if (result.status === 'missing') {
+      notify.error(RECORD_UNAVAILABLE_MESSAGE)
+      return
+    }
+    if (result.conflicted) {
+      setStale({ kind: 'changed' })
+      return
+    }
+    if (result.outcome.status === 'success') {
       notify.success('Ders iptal edildi.')
       guard.leave()
       onClose()
-    } else if (outcome.status === 'failed' && isVersionConflict(outcome.error)) {
-      conflict.markConflict()
     }
   })
 
@@ -682,12 +747,8 @@ function CancelForm({
         onSubmit={(event) => void onSubmit(event)}
         className="grid gap-5"
       >
-        {conflict.conflicted ? (
-          <ConflictNotice
-            onReload={() => void conflict.reloadRecord()}
-            reloading={conflict.reloading}
-          />
-        ) : null}
+        {notice}
+        <StaleNotice stale={stale} />
         <p className="text-sm font-medium [overflow-wrap:anywhere]">
           {lessonSummary(lesson, lookups)}
         </p>
@@ -708,12 +769,7 @@ function CancelForm({
           )}
         </FormField>
         <RootError message={errors.root?.server?.message} />
-        <FormActions
-          busy={busy}
-          disabled={conflict.conflicted}
-          onCancel={onClose}
-          submitLabel="Dersi iptal et"
-        />
+        <FormActions busy={busy} onCancel={onClose} submitLabel="Dersi iptal et" />
       </form>
     </FormDialog>
   )

@@ -26,8 +26,11 @@ export const SCHEDULE_VIEWS = [
 ] as const
 export type ScheduleViewMode = (typeof SCHEDULE_VIEWS)[number]['value']
 
+const isScheduleView = (value: unknown): value is ScheduleViewMode =>
+  SCHEDULE_VIEWS.some((view) => view.value === value)
+
 export function scheduleViewMode(value: unknown): ScheduleViewMode {
-  return SCHEDULE_VIEWS.some((view) => view.value === value) ? (value as ScheduleViewMode) : 'hafta'
+  return isScheduleView(value) ? value : 'hafta'
 }
 
 /** Haftalık ve günlük görünümde aralık seçili günden türer; listede tarih süzgecidir. */
@@ -151,7 +154,7 @@ export function scheduleByDay(
   days: readonly string[],
   showCancelled = false,
 ): Map<string, ScheduleLesson[]> {
-  const map = new Map(days.map((key) => [key, [] as ScheduleLesson[]]))
+  const map = new Map<string, ScheduleLesson[]>(days.map((key) => [key, []]))
   for (const lesson of lessons) {
     if (lesson.cancelled && !showCancelled) continue
     map.get(lesson.day)?.push(lesson)
@@ -198,6 +201,26 @@ export function lessonActions(
 ): LessonActions {
   if (!canManage || lesson.status === 'cancelled' || isPastLesson(lesson, now)) return NO_ACTIONS
   return { edit: true, substitute: true, cancel: true }
+}
+
+/** Değiştirilemeyen dersin nedeni (form açılmadan önce ve açıkken uyarı). */
+export const lessonUnavailableText = (lesson: Pick<Lesson, 'status'>) =>
+  lesson.status === 'cancelled'
+    ? 'Bu ders iptal edildi; değiştirilemez.'
+    : 'Başlamış ya da geçmiş ders değiştirilemez.'
+
+/**
+ * Formun açıldığı andaki ders: ilk uygun kayıt (`live`, değiştirilebilir) form boyunca sabit kalır.
+ * Sonradan ders başlar ya da iptal edilirse form kapanmaz ve girdi kaybolmaz; uyarı `live` ile
+ * gösterilir, karar gönderimde sunucudadır (422).
+ */
+export function openedLesson(
+  current: Lesson | null,
+  live: Lesson | undefined,
+  now: string,
+): Lesson | null {
+  if (current) return current
+  return live && lessonActions(live, true, now).edit ? live : null
 }
 
 // --- Formlar -----------------------------------------------------------------
@@ -270,6 +293,92 @@ export function changedLessonFields(
   if (values.duration !== lesson.duration) changed.duration = values.duration
   if (values.room !== lesson.room) changed.room = values.room
   return changed
+}
+
+export type LessonField = keyof LessonFormOutput
+
+export const LESSON_FIELD_LABELS = {
+  classId: 'Sınıf',
+  subjectId: 'Ders',
+  teacherId: 'Öğretmen',
+  date: 'Başlangıç',
+  duration: 'Süre',
+  room: 'Derslik',
+} as const satisfies Record<LessonField, string>
+
+const lessonValues = (lesson: Lesson): LessonFormOutput => ({
+  classId: lesson.classId,
+  subjectId: lesson.subjectId,
+  teacherId: lesson.teacherId,
+  date: lesson.date,
+  duration: lesson.duration,
+  room: lesson.room,
+})
+
+export type LessonOverlap = {
+  field: LessonField
+  label: string
+  /** Başkasının kaydettiği değer. */
+  theirs: string
+  /** Kullanıcının formda girdiği değer. */
+  mine: string
+}
+
+/** Alanın ekranda gösterilen değeri (kimlikler adlara çevrilir). */
+export function lessonFieldText(
+  field: LessonField,
+  values: LessonFormOutput,
+  lookups: Pick<AcademicLookups, 'classes' | 'teachers' | 'subjects'>,
+): string {
+  switch (field) {
+    case 'classId':
+      return nameOf(lookups.classes, values.classId) || 'Bilinmeyen sınıf'
+    case 'subjectId':
+      return nameOf(lookups.subjects, values.subjectId) || 'Bilinmeyen ders'
+    case 'teacherId':
+      return nameOf(lookups.teachers, values.teacherId) || 'Bilinmeyen öğretmen'
+    case 'date':
+      return `${dateLabel(values.date, { day: 'numeric', month: 'long', year: 'numeric' })} ${timeLabel(values.date)}`
+    case 'duration':
+      return `${values.duration} dk`
+    case 'room':
+      return values.room
+  }
+}
+
+/**
+ * Gönderim anındaki taze kayda göre düzenleme planı (IST-077). Kullanıcının değiştirdiği alanlar
+ * formun açıldığı andaki dersle (`opened`) karşılaştırılır; yalnız onlar gider, böylece kullanıcının
+ * dokunmadığı ve başkasının değiştirdiği alanlar eski değere geri yazılmaz. `overlaps`: kullanıcının
+ * değiştirdiği bir alanı başkası da farklı bir değere çevirmişse; kayıt gönderilmeden önce
+ * kullanıcıya gösterilir (sessiz ezme yok).
+ */
+export function planLessonUpdate(
+  opened: Lesson,
+  fresh: Lesson,
+  values: LessonFormOutput,
+  lookups: Pick<AcademicLookups, 'classes' | 'teachers' | 'subjects'>,
+): { body: Partial<LessonFormOutput>; overlaps: LessonOverlap[] } {
+  const mine = changedLessonFields(opened, values)
+  const differsFromFresh = changedLessonFields(fresh, values)
+  const theirs = changedLessonFields(opened, lessonValues(fresh))
+  const fields = Object.keys(mine).filter(
+    (field): field is LessonField => field in LESSON_FIELD_LABELS,
+  )
+  const body: Partial<LessonFormOutput> = {}
+  const overlaps: LessonOverlap[] = []
+  for (const field of fields) {
+    if (!(field in differsFromFresh)) continue
+    Object.assign(body, { [field]: values[field] })
+    if (field in theirs)
+      overlaps.push({
+        field,
+        label: LESSON_FIELD_LABELS[field],
+        theirs: lessonFieldText(field, lessonValues(fresh), lookups),
+        mine: lessonFieldText(field, values, lookups),
+      })
+  }
+  return { body, overlaps }
 }
 
 export type Option = { value: string; label: string }

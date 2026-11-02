@@ -100,7 +100,8 @@ export interface SetMatch {
 /**
  * Gün aralığı süzgeci (`dateFrom`/`dateTo`, Europe/Istanbul günü, iki uç dahil). Değer ya
  * `YYYY-MM-DD` günüdür (günle karşılaştırılır) ya da `toISOString` biçiminde an (aralığın UTC
- * sınırlarıyla karşılaştırılır); başka biçim eşleşmez. Karşılaştırma bayt sırasıyladır
+ * sınırlarıyla karşılaştırılır); başka biçim eşleşmez. İç içe alan `a.b` (nokta ayracı) `a`
+ * nesnesinin `b` alanıdır (ör. `trialLesson.date`). Karşılaştırma bayt sırasıyladır
  * (`collate "C"`); bellekteki `matchesDayRange` ile aynı sonucu verir.
  */
 export interface DayRangeMatch {
@@ -261,14 +262,27 @@ function setMatch({ field, set, rule }: SetMatch): SQL {
   return set ? filled : sql`(not ${filled})`
 }
 
+/**
+ * Alanın jsonb yolu: iç içe alan `a.b` (nokta ayracı) `data #> array['a','b']`. Yol parçaları
+ * bağlı parametredir ve çağıran izin listesinden (`DATE_FIELDS`) ya da sabitten gelir; kullanıcı
+ * girdisi SQL metnine girmez.
+ */
+function jsonPath(field: string): SQL {
+  return sql`array[${sql.join(
+    field.split('.').map((key) => sql`${key}::text`),
+    sql`, `,
+  )}]`
+}
+
 function dayRangeMatch(match: DayRangeMatch): SQL {
-  const text = sql`(${records.data} ->> ${match.field}::text)`
+  const path = jsonPath(match.field)
+  const text = sql`(${records.data} #>> ${path})`
   const ordered = sql`(${text} collate "C")`
   const bound = (value: string | null, op: SQL) =>
     value === null ? sql`true` : sql`${ordered} ${op} (${value}::text collate "C")`
   const day = sql`(${text} ~ ${DAY_PATTERN} and ${bound(match.fromDay, sql`>=`)} and ${bound(match.toDay, sql`<=`)})`
   const instant = sql`(${text} ~ ${INSTANT_PATTERN} and ${bound(match.fromInstant, sql`>=`)} and ${bound(match.toInstant, sql`<`)})`
-  return sql`(jsonb_typeof(${records.data} -> ${match.field}::text) = 'string' and (${day} or ${instant}))`
+  return sql`(jsonb_typeof(${records.data} #> ${path}) = 'string' and (${day} or ${instant}))`
 }
 
 /** JS'de yanlış sayılan JSON değerleri; `paidAt` bunlardan biri değilse taksit ödenmiştir. */

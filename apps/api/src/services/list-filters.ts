@@ -93,8 +93,28 @@ const atLeast = (value: string, bound: string | null) => bound === null || value
 const atMost = (value: string, bound: string | null) => bound === null || value <= bound
 const below = (value: string, bound: string | null) => bound === null || value < bound
 
+/**
+ * Alan değeri; iç içe alan `a.b` (nokta ayracı) kayıtta `a` nesnesinin `b` alanıdır. Yol yalnız
+ * nesne (dizi ve metin değil) içinde yürür, düz alan adı noktalı bir anahtar gibi okunmaz: SQL
+ * `data #>> '{a,b}'` ile aynı sonuç (`dayRangeMatch`).
+ */
+export function valueAtPath(record: RecordData, field: string): unknown {
+  let value: unknown = record
+  for (const key of field.split('.')) {
+    if (typeof value !== 'object' || value === null || Array.isArray(value)) return undefined
+    if (!Object.hasOwn(value, key)) return undefined
+    value = (value as Record<string, unknown>)[key]
+  }
+  return value
+}
+
+/** Alanın kayıttaki en üst düzey adı (`trialLesson.date` → `trialLesson`); rol gizlemesi buna bakar. */
+export function rootField(field: string): string {
+  return field.split('.')[0] ?? field
+}
+
 export function matchesDayRange(record: RecordData, match: DayRangeMatch): boolean {
-  const value = record[match.field]
+  const value = valueAtPath(record, match.field)
   if (typeof value !== 'string') return false
   if (DAY.test(value)) return atLeast(value, match.fromDay) && atMost(value, match.toDay)
   if (INSTANT.test(value)) return atLeast(value, match.fromInstant) && below(value, match.toInstant)

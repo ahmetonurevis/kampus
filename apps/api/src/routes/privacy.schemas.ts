@@ -53,15 +53,30 @@ export const privacyNoticeListResponseSchema = pageResponse(privacyNoticeSchema)
 export const privacyNoticeBodySchema = publishPrivacyNoticeSchema
 export const privacyNoticeResponseSchema = dataResponse(privacyNoticeSchema)
 
+export const currentNoticeQuerySchema = z.strictObject({
+  audience: z
+    .enum(NOTICE_AUDIENCE_KEYS)
+    .optional()
+    .describe(
+      'Okunacak kitle; yoksa oturum rolünün kitlesi. `aday` yalnız yönetici ve ön büro (aday formu)',
+    ),
+})
+
 export const currentNoticeResponseSchema = dataResponse(
   z
     .object({
-      audience: z.enum(NOTICE_AUDIENCE_KEYS).describe('Oturum rolünün kitlesi'),
+      audience: z
+        .enum(NOTICE_AUDIENCE_KEYS)
+        .describe('Okunan kitle: istenen `audience` ya da oturum rolünün kitlesi'),
       notice: privacyNoticeSchema.nullable().describe('Kitlenin son sürümü; yayımlanmamışsa boş'),
       needsAcknowledgement: z
         .boolean()
-        .describe('Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli'),
-      acknowledgedAt: instant.nullable().describe('Son sürümün gösterim anı'),
+        .describe(
+          'Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli. Aday kitlesinde hep yanlış',
+        ),
+      acknowledgedAt: instant
+        .nullable()
+        .describe('Son sürümün gösterim anı; aday kitlesinde hep boş'),
     })
     .meta({ id: 'CurrentPrivacyNotice' }),
 )

@@ -12,9 +12,12 @@ import { DomainError } from './errors.ts'
 /**
  * Aydınlatma ve rıza metinleri (docs/muhendislik/guvenlik-kvkk.md §9; IST-016; DOM-YTK-056).
  *
- * - Aydınlatma metni (`notice`) hedef kitleye (veli, öğrenci, personel) göre sürümlüdür. Her yeni
- *   sürüm kullanıcıya yeniden gösterilir; gösterim (`notice_acknowledgements`) kullanıcı, metin
+ * - Aydınlatma metni (`notice`) hedef kitleye (veli, öğrenci, personel, aday) göre sürümlüdür. Her
+ *   yeni sürüm kullanıcıya yeniden gösterilir; gösterim (`notice_acknowledgements`) kullanıcı, metin
  *   sürümü ve zamanla saklanır. "Okudum" işareti rıza değildir.
+ * - Aday kitlesi (DOM-KAY-003) hesaba bağlı değildir: aday oturum açmaz, metni ön büro ekranında
+ *   aday formunda görür ve gösterilen sürümü aday kaydı saklar. Bu yüzden hiçbir rolün kitlesi
+ *   değildir, gösterim kaydı açılmaz; metni yalnız aday formunu açan roller okur.
  * - Rıza metni (`consent_text`) amaca göre sürümlüdür ve aydınlatma metninden ayrıdır
  *   (DOM-ILT-033). Amacı genişleten sürüm `requiresReconsent` ile yayımlanır; ondan eski sürüme
  *   verilmiş rıza geçersizdir (`minimumConsentTextVersion`, DOM-YTK-060).
@@ -27,10 +30,12 @@ import { DomainError } from './errors.ts'
 
 z.config(z.locales.tr())
 
+/** `account`: kitle bir hesap rolüne bağlıdır; gösterim kaydı yalnız bu kitlelerde tutulur. */
 export const NOTICE_AUDIENCES = {
-  veli: { label: 'Veli' },
-  ogrenci: { label: 'Öğrenci' },
-  personel: { label: 'Personel' },
+  veli: { label: 'Veli', account: true },
+  ogrenci: { label: 'Öğrenci', account: true },
+  personel: { label: 'Personel', account: true },
+  aday: { label: 'Aday', account: false },
 } as const
 export type NoticeAudience = keyof typeof NOTICE_AUDIENCES
 export const NOTICE_AUDIENCE_KEYS = Object.keys(NOTICE_AUDIENCES) as [
@@ -54,6 +59,29 @@ export function noticeAudienceForRole(role: Role): NoticeAudience {
     default:
       return role satisfies never
   }
+}
+
+/**
+ * Aday aydınlatmasını okuyabilen roller: aday formunu açanlar (`prospect.create`, DOM-KAY-003).
+ * Eşitlik `tests/consents.test.ts`'te denetlenir.
+ */
+export const PROSPECT_NOTICE_READERS = ['yonetici', 'onburo'] as const satisfies readonly Role[]
+
+/**
+ * Güncel metni okunacak kitle (DOM-YTK-056, DOM-KAY-003). Kitle verilmezse ya da rolün kendi
+ * kitlesiyse rolün kitlesi; aday kitlesini yalnız `PROSPECT_NOTICE_READERS` okur. Başka hesap
+ * kitlesi ve yetkisiz aday okuması 403 `notice_audience_forbidden` (yönetici bütün metinleri
+ * listeden görür).
+ */
+export function noticeAudienceForRead(role: Role, requested?: NoticeAudience): NoticeAudience {
+  const own = noticeAudienceForRole(role)
+  if (requested === undefined || requested === own) return own
+  if (requested === 'aday' && (PROSPECT_NOTICE_READERS as readonly Role[]).includes(role))
+    return requested
+  throw new DomainError('notice_audience_forbidden', 'Bu aydınlatma metnini görme yetkiniz yok.', {
+    kind: 'forbidden',
+    path: ['audience'],
+  })
 }
 
 const title = z.string().trim().min(1, 'Başlık girin.').max(200)

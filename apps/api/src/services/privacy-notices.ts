@@ -6,7 +6,9 @@ import {
   latestNotice,
   minimumConsentTextVersion,
   needsNoticeAcknowledgement,
-  noticeAudienceForRole,
+  NOTICE_AUDIENCES,
+  noticeAudienceForRead,
+  type NoticeAudience,
   planNoticeAcknowledgement,
   planNoticePublication,
   type NoticeAcknowledgement,
@@ -24,7 +26,12 @@ import {
 } from '../db/privacy.ts'
 import { AppError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
-import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
+import {
+  mapOperationError,
+  runCommand,
+  type CommandResponse,
+  type IdempotencyRequest,
+} from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
 /**
@@ -117,14 +124,35 @@ export function publishNotice(
  * Oturum sahibinin kitlesine (rolünden) ait son aydınlatma metni ve bu sürümü görüp görmediği
  * (IST-016, DOM-YTK-056). İlk girişte ve yeni sürüm yayımlanınca `needsAcknowledgement` doğrudur;
  * eski sürümün gösterimi yeni sürümü karşılamaz. Yayımlanmış metin yoksa `notice` boştur.
+ *
+ * `audience: 'aday'` aday formunun metnidir (DOM-KAY-003): yalnız yönetici ve ön büro okur (core
+ * `noticeAudienceForRead`, aksi 403). Aday hesap değildir; gösterim kaydı okunmaz ve açılmaz,
+ * gösterilen sürümü aday kaydı saklar.
  */
-export async function currentNotice(ctx: ServiceContext) {
+export async function currentNotice(ctx: ServiceContext, requested?: NoticeAudience) {
+  let audience: NoticeAudience
+  try {
+    audience = noticeAudienceForRead(ctx.actor.role, requested)
+  } catch (error) {
+    throw mapOperationError(error)
+  }
+  if (!NOTICE_AUDIENCES[audience].account) {
+    const notice = latestNotice(await listPrivacyNotices(ctx.db, ctx.institutionId), {
+      kind: 'notice',
+      audience,
+    })
+    return {
+      audience,
+      notice: notice === null ? null : noticeView(notice),
+      needsAcknowledgement: false,
+      acknowledgedAt: null,
+    }
+  }
   const [notices, acknowledgements] = await Promise.all([
     listPrivacyNotices(ctx.db, ctx.institutionId),
     listNoticeAcknowledgements(ctx.db, ctx.institutionId, ctx.actor.userId),
   ])
   const user = { userId: ctx.actor.userId, role: ctx.actor.role }
-  const audience = noticeAudienceForRole(ctx.actor.role)
   const notice = latestNotice(notices, { kind: 'notice', audience })
   const seen =
     notice === null ? undefined : acknowledgements.find((item) => item.noticeId === notice.id)

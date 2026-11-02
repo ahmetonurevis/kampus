@@ -191,6 +191,7 @@ describe('aydınlatma ve açık rıza uçları', () => {
         { kind: 'notice', audience: 'veli', title: 'a', body: 'b' },
       ],
       ['GET', '/api/v1/privacy-notices/current'],
+      ['GET', '/api/v1/privacy-notices/current?audience=aday'],
       ['POST', `/api/v1/privacy-notices/${w.parentNotice.id}/acknowledge`, { channel: 'web' }],
       ['GET', '/api/v1/consent-texts/photo_video_sharing'],
       ['GET', '/api/v1/consents?studentId=s1'],
@@ -342,6 +343,85 @@ describe('aydınlatma ve açık rıza uçları', () => {
     assert.equal(staff.json().data.audience, 'personel')
     assert.equal(staff.json().data.notice, null)
     assert.equal(staff.json().data.needsAcknowledgement, false)
+  })
+
+  test('DOM-KAY-003 DOM-YTK-056 aday aydınlatması (#14): yönetici yayımlar, ön büro okur; gösterim kaydı açılmaz', async () => {
+    const w = await world()
+    const current = (cookie: string, query = '?audience=aday') =>
+      read(cookie, `/api/v1/privacy-notices/current${query}`)
+    const empty = await current(w.frontDesk.cookie)
+    assert.equal(empty.statusCode, 200, empty.body)
+    assert.deepEqual(empty.json().data, {
+      audience: 'aday',
+      notice: null,
+      needsAcknowledgement: false,
+      acknowledgedAt: null,
+    })
+
+    const first = await publish(w.admin, {
+      kind: 'notice',
+      audience: 'aday',
+      title: 'Aday aydınlatma metni',
+      body: 'Aday verileriniz kayıt süreci için işlenir.',
+    })
+    assert.deepEqual([first.audience, first.version], ['aday', 1])
+    const second = await publish(w.admin, {
+      kind: 'notice',
+      audience: 'aday',
+      title: 'Aday aydınlatma metni',
+      body: 'Güncellenmiş aday metni.',
+    })
+    assert.equal(second.version, 2)
+    for (const cookie of [w.frontDesk.cookie, w.admin]) {
+      const response = await current(cookie)
+      assert.equal(response.statusCode, 200, response.body)
+      const data = response.json().data as Json
+      assert.equal(data.audience, 'aday')
+      assert.deepEqual(
+        [data.notice.id, data.notice.version, data.notice.title, data.notice.body],
+        [second.id, 2, 'Aday aydınlatma metni', 'Güncellenmiş aday metni.'],
+      )
+      assert.equal(data.needsAcknowledgement, false)
+      assert.equal(data.acknowledgedAt, null)
+    }
+    // Kitle verilmezse ya da kendi kitlesiyse eski davranış: rolün kitlesi.
+    const own = await current(w.frontDesk.cookie, '')
+    assert.equal(own.json().data.audience, 'personel')
+    assert.equal((await current(w.frontDesk.cookie, '?audience=personel')).statusCode, 200)
+    const parentOwn = await current(w.parent.cookie, '?audience=veli')
+    assert.equal(parentOwn.json().data.notice.id, w.parentNotice.id)
+
+    // Aday hesap değildir: aday metni hiçbir rolde gösterim kaydı açmaz.
+    for (const cookie of [w.frontDesk.cookie, w.admin, w.parent.cookie, w.minor.cookie]) {
+      const ack = await send('POST', `/api/v1/privacy-notices/${second.id}/acknowledge`, cookie, {
+        channel: 'web',
+      })
+      assert.equal(ack.statusCode, 404, ack.body)
+      assert.equal(ack.json().code, 'not_found')
+    }
+    const seen = await db
+      .select()
+      .from(noticeAcknowledgements)
+      .where(eq(noticeAcknowledgements.institutionId, w.id))
+    assert.equal(seen.length, 0)
+  })
+
+  test('DOM-KAY-003 aday aydınlatması: öğretmen, veli ve öğrenci okuyamaz (403); geçersiz kitle 400', async () => {
+    const w = await world()
+    await publish(w.admin, { kind: 'notice', audience: 'aday', title: 'Aday', body: 'Metin' })
+    for (const cookie of [w.teacher.cookie, w.parent.cookie, w.minor.cookie]) {
+      const response = await read(cookie, '/api/v1/privacy-notices/current?audience=aday')
+      assert.equal(response.statusCode, 403, response.body)
+      assert.equal(response.json().code, 'notice_audience_forbidden')
+      assert.equal(response.body.includes('Metin'), false)
+    }
+    // Başka hesap kitlesinin güncel metni bu uçtan okunmaz.
+    const other = await read(w.admin, '/api/v1/privacy-notices/current?audience=veli')
+    assert.equal(other.statusCode, 403)
+    for (const query of ['audience=misafir', 'audience=', 'audience=aday&institutionId=x']) {
+      const response = await read(w.frontDesk.cookie, `/api/v1/privacy-notices/current?${query}`)
+      assert.equal(response.statusCode, 400, query)
+    }
   })
 
   test('DOM-YTK-057 DOM-YTK-058 veli 17 yaşındaki çocuğu için rıza verir: 201, kalıcı, eğitim yılı sonunda biter, denetimde yalnız alan adları; tekrar ve mükerrer', async () => {
@@ -963,5 +1043,25 @@ describe('aydınlatma ve açık rıza uçları', () => {
     const ids = new Set((notices.json().data as Json[]).map((item) => item.id))
     assert.equal(ids.has(b.parentNotice.id), false)
     assert.equal(ids.has(a.parentNotice.id), true)
+  })
+
+  test('DOM-KAY-003 başka kurum: B’nin aday metni A’nın ön bürosuna dönmez; A’nın sürümü B’den sayılmaz', async () => {
+    const a = await world()
+    const b = await world()
+    const prospect = { kind: 'notice', audience: 'aday', title: 'Aday', body: 'B aday metni' }
+    await publish(b.admin, prospect)
+    const foreign = await publish(b.admin, prospect)
+    const url = '/api/v1/privacy-notices/current?audience=aday'
+    const none = await read(a.frontDesk.cookie, url)
+    assert.equal(none.statusCode, 200)
+    assert.equal(none.json().data.notice, null)
+    assert.equal(none.body.includes('B aday metni'), false)
+    const own = await publish(a.admin, { ...prospect, body: 'A aday metni' })
+    assert.equal(own.version, 1)
+    const response = await read(a.frontDesk.cookie, url)
+    assert.equal(response.json().data.notice.id, own.id)
+    const bView = await read(b.frontDesk.cookie, url)
+    assert.equal(bView.json().data.notice.id, foreign.id)
+    assert.equal(bView.json().data.notice.version, 2)
   })
 })

@@ -4227,7 +4227,8 @@
                 "enum": [
                   "veli",
                   "ogrenci",
-                  "personel"
+                  "personel",
+                  "aday"
                 ]
               },
               {
@@ -4297,9 +4298,10 @@
             "enum": [
               "veli",
               "ogrenci",
-              "personel"
+              "personel",
+              "aday"
             ],
-            "description": "Oturum rolünün kitlesi"
+            "description": "Okunan kitle: istenen `audience` ya da oturum rolünün kitlesi"
           },
           "notice": {
             "anyOf": [
@@ -4314,7 +4316,7 @@
           },
           "needsAcknowledgement": {
             "type": "boolean",
-            "description": "Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli"
+            "description": "Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli. Aday kitlesinde hep yanlış"
           },
           "acknowledgedAt": {
             "anyOf": [
@@ -4327,7 +4329,7 @@
                 "type": "null"
               }
             ],
-            "description": "Son sürümün gösterim anı"
+            "description": "Son sürümün gösterim anı; aday kitlesinde hep boş"
           }
         },
         "required": [
@@ -17405,7 +17407,8 @@
                 "enum": [
                   "veli",
                   "ogrenci",
-                  "personel"
+                  "personel",
+                  "aday"
                 ]
               },
               {
@@ -17476,9 +17479,10 @@
             "enum": [
               "veli",
               "ogrenci",
-              "personel"
+              "personel",
+              "aday"
             ],
-            "description": "Oturum rolünün kitlesi"
+            "description": "Okunan kitle: istenen `audience` ya da oturum rolünün kitlesi"
           },
           "notice": {
             "anyOf": [
@@ -17493,7 +17497,7 @@
           },
           "needsAcknowledgement": {
             "type": "boolean",
-            "description": "Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli"
+            "description": "Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli. Aday kitlesinde hep yanlış"
           },
           "acknowledgedAt": {
             "anyOf": [
@@ -17506,7 +17510,7 @@
                 "type": "null"
               }
             ],
-            "description": "Son sürümün gösterim anı"
+            "description": "Son sürümün gösterim anı; aday kitlesinde hep boş"
           }
         },
         "required": [
@@ -67459,7 +67463,8 @@
                         "enum": [
                           "veli",
                           "ogrenci",
-                          "personel"
+                          "personel",
+                          "aday"
                         ]
                       },
                       "title": {
@@ -67651,7 +67656,24 @@
         "tags": [
           "privacy"
         ],
-        "description": "Oturum rolünün kitlesine ait son aydınlatma metni ve kullanıcının bu sürümü görüp görmediği (IST-016, DOM-YTK-056). İlk girişte ve yeni sürüm yayımlanınca `needsAcknowledgement` doğrudur; istemci metni gösterip `POST /privacy-notices/{noticeId}/acknowledge` çağırır. Yayımlanmış metin yoksa `notice` boştur. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.",
+        "description": "Oturum rolünün kitlesine ait son aydınlatma metni ve kullanıcının bu sürümü görüp görmediği (IST-016, DOM-YTK-056). İlk girişte ve yeni sürüm yayımlanınca `needsAcknowledgement` doğrudur; istemci metni gösterip `POST /privacy-notices/{noticeId}/acknowledge` çağırır. Yayımlanmış metin yoksa `notice` boştur. `audience=aday` aday formunun metnini döndürür (DOM-KAY-003): yalnız yönetici ve ön büro okur, aday oturum açmadığından gösterim kaydı yoktur (`needsAcknowledgement` hep yanlış, `acknowledgedAt` boş); aday kaydı gösterilen sürümü (`notice.id`, `notice.version`) kendisi saklar. Başka rolün aday okuması ve başka hesap kitlesi 403 `notice_audience_forbidden`; bilinmeyen kitle ya da parametre 400. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "veli",
+                "ogrenci",
+                "personel",
+                "aday"
+              ]
+            },
+            "in": "query",
+            "name": "audience",
+            "required": false,
+            "description": "Okunacak kitle; yoksa oturum rolünün kitlesi. `aday` yalnız yönetici ve ön büro (aday formu)"
+          }
+        ],
         "responses": {
           "200": {
             "description": "Default Response",

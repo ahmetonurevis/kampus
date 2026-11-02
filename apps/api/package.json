@@ -9,8 +9,8 @@
   "scripts": {
     "dev": "node --env-file-if-exists=.env --watch src/server.ts",
     "start": "node --env-file-if-exists=.env src/server.ts",
-    "test": "node --test 'test/**/*.test.ts'",
-    "test:pg": "node --test 'test/pg-*.test.ts'",
+    "test": "node --test --test-concurrency=4 'test/**/*.test.ts'",
+    "test:pg": "node --test --test-concurrency=4 'test/pg-*.test.ts'",
     "typecheck": "tsc --noEmit -p tsconfig.json",
     "auth:schema": "auth generate --config better-auth.config.ts --output src/db/schema/auth.ts --yes && prettier --write src/db/schema/auth.ts",
     "db:generate": "drizzle-kit generate",
@@ -35,6 +35,7 @@
     "fastify-type-provider-zod": "7.0.0",
     "file-type": "22.2.0",
     "pg": "8.23.1",
+    "pg-boss": "12.38.0",
     "zod": "4.6.6"
   },
   "devDependencies": {

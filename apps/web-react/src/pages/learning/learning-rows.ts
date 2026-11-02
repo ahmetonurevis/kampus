@@ -3,8 +3,9 @@
 // alanındandır), tablo satırı ve özet çıkar. Ödev durumu ve quiz puanı core'dan gelir (`homeworkStatus`, `gradeQuiz`); burada
 // yeniden yazılmaz ve saklanmaz.
 import { gradeQuiz } from '@kampus/school-core/lib/domain.ts'
-import { average, homeworkStatus } from '@kampus/school-core/lib/format.ts'
+import { homeworkStatus } from '@kampus/school-core/lib/format.ts'
 import type { Homework, HomeworkListItem } from '@kampus/react-shared/homework.ts'
+import type { QuizListItem } from '@kampus/react-shared/quizzes.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
 import type { CollectionListConfig } from '../../lib/collection-list.ts'
 
@@ -14,13 +15,6 @@ type Attempt = CoreRecord<'quizAttempts'>
 type Material = CoreRecord<'materials'>
 type BankQuestion = CoreRecord<'bank'>
 type Student = CoreRecord<'students'>
-
-/** Sunucunun sıralayabildiği ve süzebildiği alanlar (api-tasarimi.md §3 beyaz liste). */
-export const QUIZ_LIST = {
-  sortFields: { title: 'title' },
-  filterFields: { classId: 'classId', subjectId: 'subjectId' },
-  defaultSort: ['title', 'id'],
-} satisfies CollectionListConfig
 
 /**
  * TODO(api-filter-level): materyalin düzey (`level`) alanı sunucuda süzülemez; öğretmen listesi
@@ -228,36 +222,51 @@ export function attemptResult(
   return { correct: attempt.correct, total: attempt.total, score: attempt.score }
 }
 
+/** Öğretmen ve yönetici quiz listesi satırı (`/quizzes`): çözen ve ortalama sunucu özetinden. */
 export type TeacherQuizRow = {
   id: string
+  version: number
   title: string
   subject: string
+  classId: string
   className: string
+  teacherId: string
   questions: number
   duration: number
-  /** Çözen öğrenci sayısı. */
+  /** Son tarih; `null` süresiz açık. */
+  dueDate: string | null
+  status: QuizListItem['status']
+  /** Sonuçlanmış deneme sayısı (DOM-AKD-079). */
   solved: number
-  /** Sınıf ortalaması (yüzde); çözen yoksa `null`. */
+  /** Süresi işleyen deneme sayısı. */
+  inProgress: number
+  /** Deneme başlatılmış mı: sorular değişmez, quiz arşivlenmez (DOM-AKD-076). */
+  started: boolean
+  /** Sunucunun cevaplardan hesapladığı ortalama (yüzde); çözen yoksa `null`. */
   average: number | null
 }
 
 export function teacherQuizRow(
-  item: CoreRow<'quizzes'>,
-  attempts: readonly CoreRecord<'quizAttempts'>[],
-  bank: readonly BankQuestion[],
+  item: QuizListItem,
+  context: { className: string | undefined },
 ): TeacherQuizRow {
-  const quiz = item.record
-  const own = attempts.filter((attempt) => attempt.quizId === quiz.id)
-  const scores = own.map((attempt) => attemptResult(attempt, quiz, bank).score)
+  const statistics = item.statistics
   return {
-    id: quiz.id,
-    title: quiz.title,
-    subject: quiz.subject,
-    className: item.joined?.className ?? '—',
-    questions: quiz.questionIds.length,
-    duration: quiz.duration,
-    solved: own.length,
-    average: scores.length ? average(scores) : null,
+    id: item.id,
+    version: item.version,
+    title: item.title,
+    subject: item.subject,
+    classId: item.classId,
+    className: context.className ?? '—',
+    teacherId: item.teacherId,
+    questions: item.questionCount,
+    duration: item.duration,
+    dueDate: item.dueDate,
+    status: item.status,
+    solved: statistics?.scored ?? 0,
+    inProgress: statistics?.inProgress ?? 0,
+    started: (statistics?.started ?? 0) > 0,
+    average: statistics?.average ?? null,
   }
 }
 

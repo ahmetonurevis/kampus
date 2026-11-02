@@ -1,9 +1,10 @@
 import { and, asc, desc, eq, inArray, sql } from 'drizzle-orm'
+import type { FastifyBaseLogger } from 'fastify'
 
 import type { State } from '@kampus/school-core/data/seed.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
 import { isCustodial } from '@kampus/school-core/lib/guardianship.ts'
-import type { LearnerAgeFacts } from '@kampus/school-core/lib/notifications.ts'
+import { notificationEnabled, type LearnerAgeFacts } from '@kampus/school-core/lib/notifications.ts'
 import {
   archivePermissionForm,
   closePermissionForm,
@@ -14,6 +15,7 @@ import {
   permissionCounts,
   permissionDeadlineEndsAt,
   permissionDecider,
+  permissionReminders,
   permissionStatus,
   PERMISSION_FORM_TOPIC_KEYS,
   updatePermissionForm,
@@ -28,7 +30,13 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import type { CollectionName, RecordData } from '../db/collections.ts'
-import { findRecord, loadRecords, type RecordFilter, type StoredRecord } from '../db/records.ts'
+import {
+  findRecord,
+  loadRecords,
+  lockInstitution,
+  type RecordFilter,
+  type StoredRecord,
+} from '../db/records.ts'
 import { studentIdentities } from '../db/schema/student-identities.ts'
 import { loadGuardianAccounts } from '../db/student-guardians.ts'
 import { NotFoundError } from '../errors.ts'
@@ -801,4 +809,106 @@ export function decidePermissionCommand(
     },
     idempotency,
   )
+}
+
+// --- Zamanlanmış hatırlatma ------------------------------------------------------------------
+
+export interface PermissionReminderResult {
+  /** Bugün hatırlatma günü olan açık form sayısı (kararlara bakmadan). */
+  forms: number
+  /** Kararı beklenen öğrencisi olan, hatırlatılan form sayısı. */
+  reminded: number
+  created: number
+  deduplicated: number
+  skipped: 'module_disabled' | 'institution_missing' | null
+}
+
+/**
+ * İzin formu hatırlatması (DOM-ILT-039; `permission-forms.remind` işi, her sabah 08:00
+ * Europe/Istanbul, kurum başına). Takvim ve kimin bekleneceği core `permissionReminders`'tadır:
+ * açık formda son güne iki gün kala ve son gün, kararı beklenen (`pending`) öğrenci için kararı
+ * veren tarafa (`permissionDecider`: 18 yaş altında veliler, yetişkinde kendisi) bir
+ * `permission_form_reminder` bildirimi yazılır. Karar verenler ve durum okumalarla aynı
+ * kaynaktandır (`decidersOf`: kimlik satırı, aday seçimi, bugün velayetli ve kısıtsız veliler).
+ *
+ * Önce kararlara bakmadan bugün hatırlatma günü olan formlar bulunur (core takvimiyle); yalnız
+ * onların kararları ve öğrencileri yüklenir. Bildirim `dedupeKey` (form + son gün + kalan gün)
+ * ile yazılır: iş aynı gün yeniden çalışsa da ikinci bildirim çıkmaz. İletişim modülü kapalıysa
+ * hiçbir şey okunmaz ve yazılmaz (DOM-YTK-040). Tek transaction ve kurum kilidi altında çalışır;
+ * aktörsüzdür (denetim satırında aktör yok). Yalnız sayılar döner; öğrenci kimliği loglanmaz.
+ */
+export async function sendPermissionReminders(input: {
+  db: Database
+  institutionId: string
+  now: Date
+  log: FastifyBaseLogger
+}): Promise<PermissionReminderResult> {
+  const { institutionId, now, log } = input
+  const result: PermissionReminderResult = {
+    forms: 0,
+    reminded: 0,
+    created: 0,
+    deduplicated: 0,
+    skipped: null,
+  }
+  return input.db.transaction(async (tx) => {
+    await lockInstitution(tx, institutionId)
+    const institution = await getInstitutionModules(tx, institutionId)
+    if (institution === null) return { ...result, skipped: 'institution_missing' }
+    if (!notificationEnabled('permission_form_reminder', institution.modules))
+      return { ...result, skipped: 'module_disabled' }
+
+    const at = now.toISOString()
+    const forms = (await loadRecords(tx, institutionId, [FORMS])).map((row) => ({
+      id: row.id,
+      deadline: deadlineOf(row.data),
+      status: storedStatus(row.data),
+      studentIds: texts(row.data.studentIds),
+    }))
+    const due = permissionReminders({ forms, decisions: [], deciders: () => NOBODY, now: at })
+    result.forms = due.length
+    if (due.length === 0) return result
+
+    const dueIds = due.map((item) => item.formId)
+    const decisions = (
+      await loadRecords(tx, institutionId, [DECISIONS], {
+        match: [{ kind: 'equals', field: 'formId', values: dueIds }],
+      })
+    ).map((row) => ({
+      formId: text(row.data.formId) ?? '',
+      studentId: text(row.data.studentId) ?? '',
+      ...factsOf(row.data),
+    }))
+    const deciders = await decidersOf(
+      tx,
+      institutionId,
+      institution.type,
+      [...new Set(due.flatMap((item) => item.studentIds))],
+      now,
+    )
+    const reminders = permissionReminders({
+      forms: forms.filter((form) => dueIds.includes(form.id)),
+      decisions,
+      deciders: (studentId) => deciders.get(studentId) ?? NOBODY,
+      now: at,
+    })
+    const ctx = { institutionId, now, log, actor: null }
+    for (const reminder of reminders) {
+      const sent = await notify(tx, ctx, {
+        type: 'permission_form_reminder',
+        recipients: {
+          studentIds: reminder.studentIds,
+          minor: new Map(
+            reminder.studentIds.map((id) => [id, deciders.get(id)?.decider !== 'self']),
+          ),
+        },
+        data: { formId: reminder.formId },
+        dedupeKey: reminder.dedupeKey,
+      })
+      result.reminded += 1
+      result.created += sent.created.length
+      result.deduplicated += sent.deduplicated
+    }
+    return result
+  })
 }

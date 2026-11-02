@@ -294,9 +294,10 @@ export function giveConsent(
  * işlemde imhaya işaretlenir (ADR 0003 karar 9, 13: `retention_until = now`): kayda bağlanmış
  * dosyalar (`data_subject_id`) ve öğrencinin hesabının yüklediği henüz bağlanmamış dosyalar.
  *
- * TODO(F3c2-imha): saklama sonu gelen dosyayı silen `pg-boss` imha işi henüz yok (`src/jobs` ve
- * zamanlayıcı kurulmadı; `purgeUnattachedFiles` yalnız bağlanmamış dosyayı siler). İş kurulunca
- * `retention_until <= now` dosyalar oradan silinir; bu işaret kuyruğun girdisidir. Bağlanmamış
+ * TODO(F3c2-imha): saklama sonu gelen dosyayı silen imha işi henüz yok. Kuyruk ve kurum başına
+ * zamanlanmış iş altyapısı `src/jobs`'tadır (OG-094; `purgeUnattachedFiles` yalnız bağlanmamış
+ * dosyayı siler); imha işi oraya eklenince `retention_until <= now` dosyalar silinir ve bu işaret
+ * onun girdisidir. Bağlanmamış
  * kayıt ayrıca 24 saatlik bağlanmamış dosya temizliğiyle (karar 5) silinir; geri çekmeden sonra
  * bağlanamaz (`attachFile` rızayı yeniden denetler).
  */

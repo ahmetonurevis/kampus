@@ -661,6 +661,52 @@ describe('quiz uçları', () => {
     })
   })
 
+  test('IST-095: başlık araması harf ve aksan duyarsızdır, kapsam dışı quiz sızmaz, süzgeçlerle birleşir', async () => {
+    const a = await institution()
+    const t1 = await teacher(a.id, 't1')
+    const t5 = await teacher(a.id, 't5')
+    const s1 = await student(a.id, 's1')
+    const search = async (cookie: string, query: string) => {
+      const list = await read(cookie, `/api/v1/quizzes?pageSize=100&${query}`)
+      assert.equal(list.statusCode, 200, list.body)
+      return list
+    }
+    // Eşleşen: büyük/küçük harf ve aksan duyarsız, başlığın herhangi bir parçası.
+    const turkish = await search(t1, 'q=T%C3%9CRK%C3%87E')
+    assert.deepEqual(ids(turkish).sort(), ['quiz2', 'quiz7'])
+    assert.equal(turkish.json().meta.total, 2)
+    assert.deepEqual(ids(await search(t1, 'q=turkce')).sort(), ['quiz2', 'quiz7'])
+    assert.deepEqual(ids(await search(t1, 'q=fen%20bil')).sort(), ['quiz3', 'quiz8'])
+    // Eşleşmeyen: boş liste, toplam 0.
+    const none = await search(t1, 'q=yok-boyle-bir-quiz')
+    assert.deepEqual(ids(none), [])
+    assert.equal(none.json().meta.total, 0)
+    // Sınıf süzgeciyle birleşir; arama başka sınıfın quizini getirmez.
+    assert.deepEqual(ids(await search(t1, 'q=5-A&classId=c1')), [])
+    assert.deepEqual(ids(await search(t1, 'q=T%C3%BCrk%C3%A7e&classId=c2')), ['quiz7'])
+    // Başka sınıfın quizi okuma kapsamının dışında kalır: öğrenci kendi sınıfını bulur, c2'yi bulamaz.
+    assert.deepEqual(ids(await search(s1, 'q=T%C3%BCrk%C3%A7e')), ['quiz2'])
+    assert.deepEqual(ids(await search(s1, 'q=5-A')), [])
+    // Hiçbir sınıfa girmeyen öğretmen başlık eşleşse de hiçbir quiz görmez.
+    assert.deepEqual(ids(await search(t5, 'q=kazan%C4%B1m')), [])
+    // Yönetici kurumun hepsinde arar.
+    assert.deepEqual(
+      ids(await search(a.adminCookie, 'q=5-A')).sort(),
+      QUIZZES.filter((item) => item.classId === 'c2')
+        .map((item) => item.id)
+        .sort(),
+    )
+  })
+
+  test('IST-095: arama parametresi doğrulanır (çok kısa, çok uzun, boş)', async () => {
+    const a = await institution()
+    const t1 = await teacher(a.id, 't1')
+    for (const q of ['a', '%20%20', 'x'.repeat(101)]) {
+      assertError(await read(t1, `/api/v1/quizzes?q=${q}`), 400, 'validation_failed')
+    }
+    assert.equal((await read(t1, `/api/v1/quizzes?q=${'x'.repeat(100)}`)).statusCode, 200)
+  })
+
   test('DOM-AKD-078, DOM-AKD-079: sonuç ve ortalama cevaplardan hesaplanır, kayıttaki puan okunmaz', async () => {
     const a = await institution()
     const t1 = await teacher(a.id, 't1')

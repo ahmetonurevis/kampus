@@ -122,6 +122,13 @@ export const configSchema = z
      * üretimde zorunlu değildir.
      */
     STORAGE_DIR: optional(z.string().min(1)),
+    /**
+     * Arka plan iş kuyruğu (`pg-boss`, `src/jobs`): `true` sunucu süreci kuyruğu açar, zamanlanmış
+     * işleri kurar ve işleri çalıştırır; `false` açmaz. Verilmezse geliştirme ve üretimde açık,
+     * testte kapalı (API testleri ve React e2e kuyruğa bağlanmaz). Kuyruk `DATABASE_URL`
+     * veritabanında kendi `pgboss` şemasını kullanır.
+     */
+    JOBS_ENABLED: optional(z.enum(['true', 'false'])),
   })
   .superRefine((config, ctx) => {
     if (config.NODE_ENV !== 'production') return
@@ -207,6 +214,12 @@ export const DEFAULT_STORAGE_DIR = 'var/storage'
 /** Disk deposunun kök klasörü: verilen değer veya varsayılan (disk üretimde kullanılmaz). */
 export function storageDir(config: Config): string {
   return config.STORAGE_DIR ?? DEFAULT_STORAGE_DIR
+}
+
+/** İş kuyruğu açık mı: `JOBS_ENABLED` ya da ortamın varsayılanı (testte kapalı). */
+export function jobsEnabled(config: Config): boolean {
+  if (config.JOBS_ENABLED !== undefined) return config.JOBS_ENABLED === 'true'
+  return config.NODE_ENV !== 'test'
 }
 
 /** Geliştirme kolaylıkları (Expo Go kökenleri, API belgesi) yalnız açıkça bu ortamlarda açılır. */

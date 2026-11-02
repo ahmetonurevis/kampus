@@ -77,6 +77,7 @@ import {
   auditWork,
   canReadLearner,
   learnerFilter,
+  loadWorkPairs,
   ownedLearners,
   ownLearner,
   readableLearners,
@@ -797,8 +798,10 @@ async function writableAssignment(tx: Database, ctx: ServiceContext, viewer: Vie
  * teslimdir (görev içeriğinin okuma kuralıyla aynı). Süren işi olan kursiyer lisansı dolmuş ya da
  * telif bildirimiyle incelemedeki içerikte taslağını kaydeder ve teslim eder; olmayan yeni iş
  * açamaz. Kaldırılmış ya da kursiyerin kitap sahibi olmadığı içerikte 422 `content_unavailable`.
+ * Sürüm denetiminden (409 `draft_conflict`) sonra, core kuralından önce çalışır; deneme uçları da
+ * aynı sıradadır (`api-tasarimi.md` §6).
  */
-function assertWritingOpen(
+async function assertWritingOpen(
   tx: Database,
   ctx: ServiceContext,
   assignment: StoredAssignment,
@@ -806,7 +809,8 @@ function assertWritingOpen(
   /** Okunmuş taslak (`null`: yok); `undefined` ise gerekirse okunur. */
   draft: DraftRow | null | undefined,
 ) {
-  return assertWorkOpen(tx, ctx, assignment, learnerId, async () => {
+  const pairs = await loadWorkPairs(tx, ctx.institutionId, [assignment])
+  return assertWorkOpen(tx, ctx, assignment, pairs, learnerId, async () => {
     const current =
       draft === undefined ? await loadDraft(tx, ctx.institutionId, assignment.id, learnerId) : draft
     if (current !== null) return true

@@ -960,6 +960,44 @@ describe('görev deneme uçları', () => {
     assert.deepEqual(await stored(t.institution.id), before)
   })
 
+  test('DOM-KYN-051, OG-996: hata sırası kapsam 404 → rol 403 → sürüm 409 → içerik kuralı 422: kaldırılmış içerikte eski sürümle cevap kaydı ve teslim 409 version_conflict, güncel sürümle 422 content_unavailable; kayıt değişmez', async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t, question('Ordered question?', 'a'))
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, versionId)
+    const running = await ok(await start(assignmentId, t.cookies.student), 201)
+    const saved = await ok(
+      await save(running.id, t.cookies.student, { [versionId]: choice('b') }, running.rowVersion),
+    )
+    await ok(
+      await call('POST', `/resources/${resourceId}/remove`, t.cookies.admin, {
+        reason: 'Telif ihlali kabul edildi',
+      }),
+    )
+    const before = await stored(t.institution.id)
+    const stale = running.rowVersion as number
+    // Taslak ve teslim uçlarıyla aynı sıra (api-tasarimi §6): sürüm içerik kuralından önce gelir.
+    fails(
+      await save(running.id, t.cookies.student, { [versionId]: choice('a') }, stale),
+      409,
+      'version_conflict',
+    )
+    fails(await submit(running.id, t.cookies.student, {}, stale), 409, 'version_conflict')
+    fails(
+      await save(running.id, t.cookies.student, { [versionId]: choice('a') }, saved.rowVersion),
+      422,
+      'content_unavailable',
+    )
+    fails(
+      await submit(running.id, t.cookies.student, {}, saved.rowVersion),
+      422,
+      'content_unavailable',
+    )
+    // Kapsam ve rol sürümden önce: veli 403, başka kurum 404 (eski sürümle de).
+    fails(await submit(running.id, t.cookies.parent, {}, stale), 403, 'forbidden')
+    fails(await submit(running.id, await foreignStudent(), {}, stale), 404, 'not_found')
+    assert.deepEqual(await stored(t.institution.id), before)
+  })
+
   test("DOM-KYN-051, OG-985: quiz'in bağlı sorusu kaldırılınca görev ayrıntısı da içeriği göstermez (özetle aynı sürüm kümesi); özet content_unavailable; başka kurum 404", async () => {
     const t = await tenant()
     const { resourceId, versionId } = await seedOwned(t, question('Linked question?', 'a'))

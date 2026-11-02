@@ -48,7 +48,6 @@ import {
   passageFor,
   questionsFor,
   readableLearners,
-  scoringContext,
   scoringLicenseExpired,
   targetedLearner,
   timingOf,
@@ -61,8 +60,9 @@ import {
  * Otomatik puanlı görev denemeleri: başlatma, cevap kaydı, teslim ve okuma (F4b3a; ADR 0004
  * karar 5, 6; docs/domain/beceri-gelisimi.md DOM-BEC-010, 042…045; yetki-ve-kapsam.md DOM-YTK-028).
  * Kurallar core `skills/scoring.ts`'tedir; burada kapsam, sıra (kapsam 404 → rol 403, rotada ve
- * serviste → sürüm 409 → core kuralı) ve tek transaction vardır. Puan saklanmaz: her okumada cevaplardan ve
- * puanlama sürümünün anahtarından hesaplanır (DOM-BEC-010). Yazmalar `runCommand` ile kurum
+ * serviste → sürüm 409 → içerik kuralı → core kuralı) ve tek transaction vardır. Puan
+ * saklanmaz: her okumada cevaplardan ve puanlama sürümünün anahtarından hesaplanır (DOM-BEC-010).
+ * Yazmalar `runCommand` ile kurum
  * kilidi altında çalışır; eşzamanlı iki başlatma hakkı aşamaz, eşzamanlı iki tesliminden biri 409
  * alır. Denetime yalnız başlatma ve teslim yazılır, yalnız alan adlarıyla; cevap kaydı sık ve
  * otomatik olduğu için denetlenmez (cevap içeriği hiçbir kayıtta ve logda yoktur).
@@ -453,10 +453,11 @@ export async function startTaskAttempt(
         // Kapsam (404): olmayan, başka kurumun, arşivli veya öğrenciyi hedeflemeyen atama.
         if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
         const learnerId = targetedLearner(viewer, assignment)
-        await assertWorkOpen(tx, ctx, assignment, learnerId, () => Promise.resolve(false))
+        const pairs = await loadWorkPairs(tx, ctx.institutionId, [assignment])
+        await assertWorkOpen(tx, ctx, assignment, pairs, learnerId, () => Promise.resolve(false))
         // Otomatik puanlanmayan görev (yazma) 422 `not_auto_scored`. Bağlam yalnız sıra için
         // kurulur: puanlanamayan atamada deneme açılmaz.
-        await scoringContext(tx, ctx.institutionId, assignment)
+        pairsScoringContext(assignment, pairs)
         const attempts = await loadAttempts(tx, ctx.institutionId, assignment.id, learnerId)
         return {
           run: (_state, tools) => ({
@@ -500,25 +501,30 @@ export async function startTaskAttempt(
 type Owned = { attempt: StoredAttempt; assignment: StoredAssignment; context: ScoringContext }
 
 /**
- * Yazılacak deneme: öğrencinin kendi denemesi ve arşivsiz atama; değilse 404 (kapsam), veli 403.
- * Teslim ve cevap kaydı hedefe bakmaz: sınıf değiştiren öğrenci süren denemesini bitirir. İçerik
- * kuralında deneme süren iştir (`assertWorkOpen`): lisansı bu arada dolan ve telif bildirimiyle
- * incelemeye alınan içerikte süren deneme bitirilir; kaldırılan ya da kursiyerin kitap sahibi
- * olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 025, 051).
+ * Yazılacak deneme: öğrencinin kendi denemesi ve arşivsiz atama; değilse 404 (kapsam), veli 403,
+ * eski sürüm 409 `version_conflict`. Teslim ve cevap kaydı hedefe bakmaz: sınıf değiştiren öğrenci
+ * süren denemesini bitirir. Sürüm içerik kuralından önce sınanır (taslakla aynı sıra; api-tasarimi
+ * §6): eski sürümle gelen istek içerik kaldırılmış olsa da 409 alır, istemci tazeleyince kapalı
+ * içeriği görür. İçerik kuralında deneme süren iştir (`assertWorkOpen`): lisansı bu arada dolan ve
+ * telif bildirimiyle incelemeye alınan içerikte süren deneme bitirilir; kaldırılan ya da kursiyerin
+ * kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 025, 051). İçerik kapısı
+ * ve puanlama bağlamı aynı sürüm okumasını kullanır.
  */
 async function ownedAttempt(
   tx: Database,
   ctx: ServiceContext,
   viewer: Viewer,
-  attemptId: string,
+  input: { attemptId: string; expectedVersion: number },
 ): Promise<Owned> {
-  const attempt = await findAttempt(tx, ctx.institutionId, attemptId)
+  const attempt = await findAttempt(tx, ctx.institutionId, input.attemptId)
   if (!attempt) throw new NotFoundError()
   const assignment = await findAssignment(tx, ctx.institutionId, attempt.assignmentId)
   if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
   ownRecord(viewer, attempt.learnerId)
-  await assertWorkOpen(tx, ctx, assignment, attempt.learnerId, () => Promise.resolve(true))
-  return { attempt, assignment, context: await scoringContext(tx, ctx.institutionId, assignment) }
+  if (attempt.rowVersion !== input.expectedVersion) throw new ConflictError()
+  const pairs = await loadWorkPairs(tx, ctx.institutionId, [assignment])
+  await assertWorkOpen(tx, ctx, assignment, pairs, attempt.learnerId, () => Promise.resolve(true))
+  return { attempt, assignment, context: pairsScoringContext(assignment, pairs) }
 }
 
 export interface AttemptWriteInput {
@@ -543,10 +549,9 @@ export async function saveTaskAttemptAnswers(
       collections: [],
       entity: { type: ENTITY, id: input.attemptId },
       load: async (tx) => {
-        const owned = await ownedAttempt(tx, ctx, viewer, input.attemptId)
+        const owned = await ownedAttempt(tx, ctx, viewer, input)
         return {
           run: (_state, tools) => {
-            if (owned.attempt.rowVersion !== input.expectedVersion) throw new ConflictError()
             const answers = planAnswerSave({
               attempt: owned.attempt,
               timing: timingOf(owned.assignment),
@@ -588,10 +593,9 @@ export async function submitTaskAttempt(
       collections: [],
       entity: { type: ENTITY, id: input.attemptId },
       load: async (tx) => {
-        const owned = await ownedAttempt(tx, ctx, viewer, input.attemptId)
+        const owned = await ownedAttempt(tx, ctx, viewer, input)
         return {
           run: (_state, tools) => {
-            if (owned.attempt.rowVersion !== input.expectedVersion) throw new ConflictError()
             const plan = planAttemptSubmit({
               attempt: owned.attempt,
               timing: timingOf(owned.assignment),

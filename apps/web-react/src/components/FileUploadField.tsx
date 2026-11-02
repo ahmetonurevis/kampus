@@ -282,13 +282,14 @@ export function FileUploadField({
                     <span
                       className={
                         view.tone === 'danger'
-                          ? 'flex items-center gap-1.5 text-destructive'
-                          : 'flex items-center gap-1.5 text-muted-foreground'
+                          ? 'flex items-start gap-1.5 text-destructive'
+                          : 'flex items-start gap-1.5 text-muted-foreground'
                       }
                     >
                       <Icon
                         name={view.tone === 'danger' ? 'ShieldAlert' : 'Timer'}
                         size={14}
+                        className="mt-0.5 shrink-0"
                         aria-hidden="true"
                       />
                       {view.text}

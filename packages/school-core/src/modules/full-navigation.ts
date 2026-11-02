@@ -1,5 +1,9 @@
 import { navigation as baseNavigation, type Role } from './navigation.ts'
-import { API_COMMUNICATION_PAGES, API_LEARNING_PAGES } from '../platform/navigation.ts'
+import {
+  API_ACADEMIC_PAGES,
+  API_COMMUNICATION_PAGES,
+  API_LEARNING_PAGES,
+} from '../platform/navigation.ts'
 import { schoolModules } from './school-workflows.ts'
 
 export { roles } from './navigation.ts'
@@ -7,8 +11,9 @@ export { roles } from './navigation.ts'
 const SCHOOL_LIFE_MODULES = ['transport', 'meals', 'clubs', 'calendar']
 
 // Temel sayfalara okul iş akışı modüllerini ve API'li yüzeylerin iletişim sayfalarını ekler; web ve
-// mobil aynı menüyü paylaşır. Eklenen iletişim ve içerik havuzu sayfaları `platform/navigation.ts`'tedir;
-// kayıt ve finans menüsü temel menü (`navigation.ts`) ve okul iş akışı kaydından (`school-workflows.ts`) gelir.
+// mobil aynı menüyü paylaşır. Eklenen iletişim, içerik havuzu ve akademik yönetim sayfaları
+// `platform/navigation.ts`'tedir; kayıt ve finans menüsü temel menü (`navigation.ts`) ve okul iş
+// akışı kaydından (`school-workflows.ts`) gelir.
 // `apiOnly`: sayfa yalnız API'li yüzeylerde (yeni web, mobil) vardır; Vue demosunun karşılığı
 // olmadığı için demo rotası ve menüsü `apiOnly` sayfaları düşürür (`apps/web/src/modules/navigation.js`).
 export type NavigationPage = (typeof baseNavigation)[Role][number] & { apiOnly?: true }
@@ -28,8 +33,24 @@ function withLearning(role: Role, pages: NavigationPage[]): NavigationPage[] {
   return [...pages.slice(0, at), ...extra, ...pages.slice(at)]
 }
 
+/**
+ * Akademik yönetim sayfaları kendi kategorisinin sonuna; kategori yoksa RAPORLAR'dan (o da yoksa
+ * SİSTEM'den) önce, hiçbiri yoksa sona eklenir.
+ */
+function withAcademic(role: Role, pages: NavigationPage[]): NavigationPage[] {
+  let result = pages
+  for (const added of API_ACADEMIC_PAGES[role]) {
+    if (result.some((p) => p.path === added.path)) continue
+    const lastOfGroup = result.findLastIndex((page) => page.group === added.group)
+    const before = result.findIndex((page) => page.group === 'RAPORLAR' || page.group === 'SİSTEM')
+    const at = lastOfGroup >= 0 ? lastOfGroup + 1 : before >= 0 ? before : result.length
+    result = [...result.slice(0, at), added, ...result.slice(at)]
+  }
+  return result
+}
+
 function withCommunication(role: Role): NavigationPage[] {
-  const base: NavigationPage[] = withLearning(role, [...baseNavigation[role]])
+  const base: NavigationPage[] = withLearning(role, withAcademic(role, [...baseNavigation[role]]))
   const extra = API_COMMUNICATION_PAGES[role].filter(
     (added) => !base.some((page) => page.path === added.path),
   )

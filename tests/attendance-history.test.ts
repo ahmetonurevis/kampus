@@ -1,9 +1,11 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
-import { requireAuthorized } from '../packages/school-core/src/lib/authorize.ts'
+import { authorize, requireAuthorized } from '../packages/school-core/src/lib/authorize.ts'
 import {
+  ATTENDANCE_CORRECTION_REASON_MIN,
   ATTENDANCE_STATUSES,
+  attendanceCorrectionReasonSchema,
   attendanceInputSchema,
   recordAttendance,
   type AttendanceOptions,
@@ -185,4 +187,27 @@ test('Yoklama girdi şeması durumları, günü ve gerekçe sınırını uygular
     // Biçim ve takvim denetimi aynı değer için ikinci hata eklemez.
     assert.equal(result.error?.issues.length, 1, JSON.stringify(invalid))
   }
+})
+
+test('DOM-AKD-035 yönetici düzeltme gerekçesi şeması yetki kuralıyla aynı sınırı uygular', () => {
+  const state = seed()
+  const allowed = (reason: string) =>
+    authorize(admin, 'attendance.record', { classId: 'c1', date: yesterday, reason }, state, {
+      now,
+    }).allowed
+  assert.equal(ATTENDANCE_CORRECTION_REASON_MIN, 2)
+  for (const reason of ['', ' ', ' a ', 'ab', '  Rapor  ', 'x'.repeat(500)]) {
+    const parsed = attendanceCorrectionReasonSchema.safeParse(reason)
+    assert.equal(parsed.success, allowed(reason), JSON.stringify(reason))
+  }
+  assert.equal(attendanceCorrectionReasonSchema.parse('  Rapor  '), 'Rapor', 'gerekçe kırpılır')
+  const tooShort = attendanceCorrectionReasonSchema.safeParse(' a ')
+  assert.equal(tooShort.error?.issues[0]?.message, 'Düzeltme için gerekçe yazın.')
+  // Üst sınır gövde şemasındadır (API 400); form aynı mesajı istek atmadan verir.
+  assert.equal(attendanceCorrectionReasonSchema.safeParse('x'.repeat(501)).success, false)
+  assert.equal(
+    attendanceInputSchema.safeParse({ date: '2026-10-05', marks: {}, reason: 'x'.repeat(501) })
+      .success,
+    false,
+  )
 })

@@ -8,11 +8,15 @@ import {
   commandFeedback,
   commandHeaders,
   createCommandSession,
+  IF_MATCH_MISSING_CODE,
   runCommand,
 } from '../src/commands.ts'
 import { ApiError } from '@kampus/api-client/errors.ts'
 import {
   ATTENDANCE_CHANGED_MESSAGE,
+  ATTENDANCE_CORRECTION_CHANGED_MESSAGE,
+  ATTENDANCE_CORRECTION_MESSAGES,
+  correctAttendanceRequest,
   ATTENDANCE_MESSAGES,
   GRADE_CHANGED_MESSAGE,
   GRADE_MESSAGES,
@@ -160,6 +164,75 @@ describe('yoklama komutu', () => {
     )
     assert.equal(outcome.status, 'failed')
     assert.deepEqual(fields, { 'root.server': ATTENDANCE_MESSAGES.correction_reason_required })
+  })
+})
+
+describe('yoklama düzeltmesi (yönetici, DOM-AKD-035)', () => {
+  const input = {
+    classId: 'c-1',
+    date: '2026-10-20',
+    marks: { s1: 'absent', s2: 'present' },
+    reason: 'Veli rapor getirdi',
+    classVersion: 7,
+  } as const
+
+  test('DOM-AKD-035 gerekçe gövdede, If-Match sınıfın okunan sürümüyle gider', async () => {
+    const { client, sent } = fakeClient(() => json(200, result('classes', 'c-1')))
+    await runRequest(() => correctAttendanceRequest(client, input, commandHeaders('key-12345', 7)))
+    assert.equal(sent[0]?.method, 'POST')
+    assert.equal(sent[0]?.path, '/api/v1/classes/c-1/attendance')
+    assert.deepEqual(sent[0]?.body, {
+      date: '2026-10-20',
+      marks: { s1: 'absent', s2: 'present' },
+      reason: 'Veli rapor getirdi',
+    })
+    assert.equal(sent[0]?.headers.get('if-match'), '"7"')
+    assert.equal(sent[0]?.headers.get('idempotency-key'), 'key-12345')
+  })
+
+  test('okunan sürüm yoksa istek atılmaz', async () => {
+    const { client, sent } = fakeClient(() => json(200, result('classes', 'c-1')))
+    await assert.rejects(
+      runRequest(() => correctAttendanceRequest(client, input, commandHeaders('key-12345'))),
+      (error: unknown) => error instanceof ApiError && error.code === IF_MATCH_MISSING_CODE,
+    )
+    assert.equal(sent.length, 0)
+  })
+
+  test('409 sürüm çakışması düzeltme mesajını gösterir ve sorguları tazeler', async () => {
+    const { client } = fakeClient(() => failure(409, 'version_conflict'))
+    const toasts: string[] = []
+    let refreshed = 0
+    const outcome = await runCommand(
+      createCommandSession(),
+      {
+        execute: (variables: typeof input, headers) =>
+          runRequest(() => correctAttendanceRequest(client, variables, headers)),
+        version: (variables) => variables.classVersion,
+        refresh: async () => {
+          refreshed += 1
+        },
+        messages: ATTENDANCE_CORRECTION_MESSAGES,
+      },
+      input,
+      { notifyError: (message) => toasts.push(message) },
+    )
+    assert.equal(outcome.status, 'failed')
+    assert.deepEqual(toasts, [ATTENDANCE_CORRECTION_CHANGED_MESSAGE])
+    assert.equal(refreshed, 1)
+    assert.match(ATTENDANCE_CORRECTION_CHANGED_MESSAGE, /başkası tarafından değişti/)
+  })
+
+  test('düzeltme mesajları yoklama mesajlarını korur; yalnız çakışma metni farklıdır', () => {
+    assert.equal(
+      ATTENDANCE_CORRECTION_MESSAGES.correction_reason_required,
+      ATTENDANCE_MESSAGES.correction_reason_required,
+    )
+    assert.equal(
+      ATTENDANCE_CORRECTION_MESSAGES.attendance_future_date,
+      ATTENDANCE_MESSAGES.attendance_future_date,
+    )
+    assert.notEqual(ATTENDANCE_CORRECTION_MESSAGES.version_conflict, ATTENDANCE_CHANGED_MESSAGE)
   })
 })
 

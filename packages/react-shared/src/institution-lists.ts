@@ -98,6 +98,17 @@ export function memberListKey(userId: string | null, query: MemberQuery): unknow
   return ['institution-members', userId, 'list', sortedParams(memberListParams(query))]
 }
 
+/**
+ * Süzgece uyan bütün kullanıcıların anahtarı (`useInstitutionMembersAll`); sayfa ve boyut
+ * anahtara girmez, çünkü hepsi çekilir. Sayfalı liste önbelleğiyle çakışmaması için `all` ekli.
+ */
+export function memberAllKey(
+  userId: string | null,
+  query: Omit<MemberQuery, 'page' | 'pageSize'>,
+): unknown[] {
+  return [...memberListKey(userId, query), 'all']
+}
+
 export function auditListKey(userId: string | null, query: AuditQuery): unknown[] {
   return ['audit-events', userId, 'list', sortedParams(auditListParams(query))]
 }

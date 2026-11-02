@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
-import { and, asc, eq } from 'drizzle-orm'
+import { and, asc, eq, notLike } from 'drizzle-orm'
 
 import type { WorkflowCommand } from '@kampus/school-core/lib/school-workflows.ts'
 import { MODULE_KEYS, moduleAvailableFor } from '@kampus/school-core/modules/collection-modules.ts'
@@ -10,7 +10,9 @@ import { WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
+import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { WORKFLOW_ROUTES } from '../src/routes/workflows.schemas.ts'
+import { environment } from '../src/services/commands.ts'
 import { createMember, FIXED_NOW, signInAs, TEST_ORIGIN } from './support/app.ts'
 import {
   app,
@@ -237,6 +239,73 @@ describe('yazma uçları (platform)', () => {
         'idempotency_key_required',
       )
       assert.equal(await count(a.id, 'mockResults'), SEED.mockResults.length)
+    })
+  })
+
+  describe('IST-014: denetim kaydında işlemi yapan kullanıcı', () => {
+    test('köprü ve özel uç denetim satırına yapan kişinin kimliğini ve rolünü yazar; aktörsüz satır kalmaz', async () => {
+      const a = await institution()
+      const studentUser = await createMember(app, a.id, 'ogrenci', [
+        { kind: 'student', recordId: 's1' },
+      ])
+      const parentUser = await createMember(app, a.id, 'veli', [{ kind: 'child', recordId: 's2' }])
+      const goal = await post('/api/v1/workflows/goal', await signInAs(app, studentUser), {
+        studentId: 's1',
+        subjectId: 'science',
+        title: 'Fen netini artır',
+        targetNet: 15,
+        deadline: '2026-12-15',
+      })
+      assert.equal(goal.statusCode, 200, goal.body)
+      const comment = await post(
+        '/api/v1/workflows/goal-comment/goal-s2-total?childId=s2',
+        await signInAs(app, parentUser),
+        { text: 'Hafta sonu birlikte çalışacağız.' },
+      )
+      assert.equal(comment.statusCode, 200, comment.body)
+      const attendance = await post('/api/v1/classes/c1/attendance', a.adminCookie, {
+        date: DAY,
+        marks: marksFor('c1'),
+        reason: REASON,
+      })
+      assert.equal(attendance.statusCode, 200, attendance.body)
+      // Oturum olayları (`auth.*`) rol taşımaz ve denetim listesinde zaten yer almaz.
+      const rows = await db
+        .select()
+        .from(auditLog)
+        .where(and(eq(auditLog.institutionId, a.id), notLike(auditLog.action, 'auth.%')))
+      const actors = new Map(
+        rows.map((row) => [row.action, { user: row.actorUserId, role: row.actorRole }]),
+      )
+      assert.deepEqual(actors.get('workflow.goal'), { user: studentUser.id, role: 'ogrenci' })
+      assert.deepEqual(actors.get('workflow.goal-comment'), {
+        user: parentUser.id,
+        role: 'veli',
+      })
+      assert.ok(
+        [...actors.entries()].some(
+          ([action, who]) => action.includes('attendance') && who.user === a.admin.id,
+        ),
+        JSON.stringify([...actors.keys()]),
+      )
+      assert.ok(rows.length >= 3)
+      for (const row of rows) {
+        assert.ok(row.actorUserId, `${row.action}: yapan kullanıcı boş`)
+        assert.ok(row.actorRole, `${row.action}: yapan rol boş`)
+      }
+    })
+
+    test('core oturumu üyeliğin kullanıcı kimliğini taşır (core denetim girdisi aynı kişiyi yazar)', async () => {
+      const a = await institution()
+      const user = await createMember(app, a.id, 'veli', [{ kind: 'child', recordId: 's2' }])
+      const ctx = {
+        db,
+        institutionId: a.id,
+        actor: { userId: user.id, role: 'veli', membershipId: user.membershipId },
+      } as unknown as ServiceContext
+      const { session } = await environment(db, ctx, WORKFLOW_COMMANDS['goal-comment'])
+      assert.equal(session.userId, user.id)
+      assert.equal(session.role, 'veli')
     })
   })
 

@@ -1,5 +1,4 @@
 import type { State } from '../data/seed.ts'
-import type { AnnouncementPublisher, AnnouncementTarget } from './communication.ts'
 import {
   accessDecision,
   publishDecision,
@@ -8,14 +7,17 @@ import {
   sendDecision,
   startDecision,
   type CommunicationDenial,
-  type ConversationParties,
 } from './communication-access.ts'
 import { moduleAvailableFor, type InstitutionType } from '../modules/collection-modules.ts'
-import { OPERATION_COMMANDS, type OperationCommand } from '../modules/commands.ts'
+import {
+  type ONUR_OPERATION_COMMANDS,
+  OPERATION_COMMANDS,
+  type OperationCommand,
+} from '../modules/commands.ts'
+import { PLATFORM_WRITE_ACTION_ROLES, type PlatformWriteTargets } from '../platform/authorize.ts'
 import type { Session } from './domain.ts'
 import { DomainError, type DomainErrorKind } from './errors.ts'
 import { dayKey } from './format.ts'
-import type { ArchiveKind } from './school-management.ts'
 import { scopeFor, sessionActor, type Actor, type ScopeSource } from './scope.ts'
 
 /**
@@ -32,53 +34,20 @@ import { scopeFor, sessionActor, type Actor, type ScopeSource } from './scope.ts
 export type WriteAction = OperationCommand
 export const WRITE_ACTIONS = Object.keys(OPERATION_COMMANDS) as readonly WriteAction[]
 
-/** Eylem başına yetkinin dayandığı hedef bilgisi; kimlikler istemciden gelse de kapsamla denetlenir. */
-export type WriteTargets = {
+/**
+ * Eylem başına yetkinin dayandığı hedef bilgisi; kimlikler istemciden gelse de kapsamla denetlenir.
+ * İki kaynağın birleşimi: Oğuzhan'ın eylemleri `platform/authorize.ts` (`PlatformWriteTargets`),
+ * kayıt ve finans eylemleri aşağıdaki `// Onur: kayıt ve finans` bloğu.
+ */
+export type WriteTargets = PlatformWriteTargets & OnurWriteTargets
+
+// Onur: kayıt ve finans
+type OnurWriteTargets = {
   'invoice.pay': { studentId: string }
   'payment.reverse': Record<string, never>
   'tariff.manage': Record<string, never>
   'student.withdraw': Record<string, never>
   'invoice.payOnline': { studentId: string }
-  /** `reason`: yönetici düzeltmesinin gerekçesi (DOM-AKD-035). */
-  'attendance.record': { classId: string; date: string; reason?: string }
-  'grade.record': { studentId: string; subjectId: string }
-  /**
-   * `reason`: not düzeltmesinin gerekçesi (DOM-AKD-051). `classId`: notun verildiği sınıf; yetki
-   * öğrencinin güncel sınıfına değil buna göre verilir. Sınıfı saklanmamış eski notta öğrencinin
-   * güncel sınıfı kullanılır.
-   */
-  'grade.update': { studentId: string; subjectId: string; classId?: string; reason?: string }
-  'record.archive': { kind: ArchiveKind }
-  'record.restore': { kind: ArchiveKind }
-  // Oluşturma ve düzenleme aynı eylemdir; kural ve çakışmalar işlemdedir (`lib/school-management.ts`).
-  'branch.save': Record<string, never>
-  'teacher.save': Record<string, never>
-  'class.save': Record<string, never>
-  // İletişim (DOM-ILT-001…024, DOM-YTK-052); kararlar `lib/communication-access.ts`.
-  'announcement.publish': { target: AnnouncementTarget; category: string }
-  /** Kayıt yoksa `undefined`; varlık işlemin işidir (404). */
-  'announcement.revise': { announcement: { publishedBy?: AnnouncementPublisher } | undefined }
-  'announcement.withdraw': { announcement: { publishedBy?: AnnouncementPublisher } | undefined }
-  'announcement.read': Record<string, never>
-  'conversation.start': ConversationParties
-  'message.send': { conversation: ConversationParties | undefined; userId: string }
-  'message.read': { conversation: ConversationParties | undefined; userId: string }
-  'conversation.access': { reason: string; conversation?: ConversationParties | undefined }
-  // Talep ve izin/mazeret (`lib/requests.ts`): hedef öğrenci istemciden gelir, kapsamla denetlenir.
-  'request.open': { studentId: string }
-  'request.update': Record<string, never>
-  'absence.notify': { studentId: string }
-  // Randevu (`lib/appointments.ts`): talep hedef öğrenciyle; durum değişikliğinin kaydı ve
-  // aktörün o kayıttaki rolü (öğretmen, talep eden) işlemde denetlenir.
-  'appointment.book': { studentId: string }
-  'appointment.update': Record<string, never>
-  /** Saat listesi (DOM-ILT-105): yazma değil okuma; hedef öğrenci istemciden gelir. */
-  'appointment.slots': { studentId: string }
-  // Öğretmenime Sor (`lib/questions.ts`): öğrenci oturumdan, ders ve öğretmen gövdeden gelir; kayıt
-  // yoksa `undefined` (varlık işlemin işidir, 404).
-  'question.ask': { studentId: string | undefined; subjectId: string; teacherId?: string }
-  'question.answer': { question: QuestionParties | undefined }
-  'question.withdraw': { question: QuestionParties | undefined }
   // Aday/CRM (`lib/prospects.ts`): kurum kapsamlıdır, hedef kaydı yetkiyi değiştirmez.
   'prospect.create': Record<string, never>
   'prospect.stage': Record<string, never>
@@ -88,10 +57,8 @@ export type WriteTargets = {
   // Kesin kayıt (`enrollProspect`, `lib/domain.ts`); işlem yetkiyi kendisi denetlemez, çağıran
   // önce `requireAuthorized` çalıştırır.
   'prospect.enroll': Record<string, never>
-  // Bildirim okundu işareti: görünürlük `lib/notifications.ts` `canSeeNotification`'dadır.
-  'notification.read': Record<string, never>
-  'notification.read_all': Record<string, never>
 }
+// Onur: kayıt ve finans sonu
 
 /** Soru yetkisinin dayandığı taraflar (DOM-ILT-090…092). */
 export type QuestionParties = {
@@ -121,8 +88,9 @@ export type WriteDenial = {
 }
 export type WriteDecision = { allowed: true } | WriteDenial
 
-/** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları aşağıda). */
-export const WRITE_ACTION_ROLES = {
+// Onur: kayıt ve finans
+/** Kayıt ve finans eylemlerinin rol matrisi; anahtarlar `ONUR_OPERATION_COMMANDS` ile aynıdır. */
+export const ONUR_WRITE_ACTION_ROLES = {
   // Tahsilat kaydı (taksiti "ödendi" işaretler) yalnız yönetici ve ön büroda; veli ve öğrenci
   // tahsilat kaydedemez, öğretmenin finans erişimi yoktur (DOM-FIN-052, yetki matrisi).
   'invoice.pay': ['yonetici', 'onburo'],
@@ -134,56 +102,6 @@ export const WRITE_ACTION_ROLES = {
   'student.withdraw': ['yonetici'],
   // Çevrim içi ödeme: veli yalnız bağlı çocuğunun taksiti için başlatır (DOM-FIN-052, DOM-YTK-025).
   'invoice.payOnline': ['veli'],
-  // Yoklama: öğretmen ders verdiği sınıfta aynı gün; yönetici gerekçeyle düzeltir (DOM-YTK-022,
-  // DOM-AKD-035, DOM-AKD-054).
-  'attendance.record': ['yonetici', 'ogretmen'],
-  // Not girişi yalnız atandığı sınıf + dersin öğretmenindedir; yönetici yalnız gerekçeli düzeltme
-  // yapar (yetki matrisi "Not, değerlendirme", DOM-AKD-054).
-  'grade.record': ['ogretmen'],
-  'grade.update': ['yonetici', 'ogretmen'],
-  // Kampüs, sınıf, kadro yalnız yöneticidedir (yetki matrisi, DOM-YTK-020).
-  'record.archive': ['yonetici'],
-  'record.restore': ['yonetici'],
-  // Kampüs, sınıf ve kadro kaydı da yalnız yöneticinindir: ön büro sınıf ve kontenjanı yalnız
-  // okur, öğretmen kendi sınıflarını okur (yetki matrisi "Kampüs, sınıf, kadro", DOM-YTK-001).
-  'branch.save': ['yonetici'],
-  'teacher.save': ['yonetici'],
-  'class.save': ['yonetici'],
-  // Duyuruyu yönetici, idari konuda ön büro, kendi sınıflarına öğretmen yayınlar; öğrenci ve
-  // veli yayınlamaz (DOM-ILT-002). Düzeltme ve geri çekme yayınlayan veya yöneticidedir (DOM-ILT-004).
-  'announcement.publish': ['yonetici', 'onburo', 'ogretmen'],
-  'announcement.revise': ['yonetici', 'onburo', 'ogretmen'],
-  'announcement.withdraw': ['yonetici', 'onburo', 'ogretmen'],
-  // Okundu işareti alıcınındır; görünürlük kapsamdadır (DOM-ILT-003).
-  'announcement.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
-  // Birebir yazışma öğretmen, öğrenci ve veli arasındadır (DOM-ILT-010, -011, -012, -024).
-  'conversation.start': ['ogretmen', 'ogrenci', 'veli'],
-  'message.send': ['ogretmen', 'ogrenci', 'veli'],
-  'message.read': ['ogretmen', 'ogrenci', 'veli'],
-  // Yöneticinin yazışmayı okuması gerekçeli ve denetim kayıtlı ayrı işlemdir (DOM-YTK-052).
-  'conversation.access': ['yonetici'],
-  // Talebi veli bağlı çocuğu için açar; durum, ilgili birim ve yanıt ön büro ve yöneticidedir.
-  // Yetişkin kursiyerin kendi adına talebi henüz yoktur (DOM-YTK-030).
-  // TODO(adult-learner): dil okulunda kursiyer (`ogrenci`) kendi talebini ve bildirimini açar.
-  'request.open': ['veli'],
-  'request.update': ['yonetici', 'onburo'],
-  // İzin ve mazereti veli bildirir (DOM-ILT-053); ön büro yoklama ve mazeret görmez (DOM-YTK-021).
-  'absence.notify': ['veli'],
-  // Randevuyu veli bağlı çocuğu, öğrenci kendisi için talep eder; onay ve red ilgili
-  // öğretmenindir, geri çekme talep edenindir (DOM-ILT-100, -102). Yönetici ve ön büro yazmaz.
-  // TODO(randevu-yonetici-iptal): yöneticinin onaylı randevuyu iptal etmesi kural olarak yok.
-  'appointment.book': ['ogrenci', 'veli'],
-  'appointment.update': ['ogretmen', 'ogrenci', 'veli'],
-  // Alınabilir saat listesi yalnız talep açan rollerindir (DOM-ILT-105): `available` bir öğrencinin
-  // gözünden hesaplanır ve yalnız talep ekranında anlamlıdır. Öğretmen ve yönetici uygunluk
-  // saatlerini ham koleksiyondan (`availability`) zaten okur; ön büro randevu görmez (DOM-ILT-103).
-  'appointment.slots': ['ogrenci', 'veli'],
-  // Öğretmenime Sor: soruyu öğrenci kendi sınıfının ders öğretmenine gönderir ve yanıtsızken geri
-  // çeker; yanıtı yalnız sorunun atandığı öğretmen yazar. Veli çocuğunun sorusunu salt okur;
-  // yönetici ve ön büro soru yazmaz (DOM-ILT-090…093).
-  'question.ask': ['ogrenci'],
-  'question.answer': ['ogretmen'],
-  'question.withdraw': ['ogrenci'],
   // Aday ve tanışma görüşmesi kurum genelinde yönetici ve ön büronundur; öğretmen, öğrenci ve
   // veli aday kaydına erişmez (yetki matrisi "Aday, tanışma görüşmesi", DOM-YTK-021).
   'prospect.create': ['yonetici', 'onburo'],
@@ -193,10 +111,18 @@ export const WRITE_ACTION_ROLES = {
   'prospect.trial': ['yonetici', 'onburo'],
   // Kesin kayıt (aday → öğrenci, sözleşme ve taksit) yönetici ve ön büronundur (DOM-KAY-011).
   'prospect.enroll': ['yonetici', 'onburo'],
-  // Bildirimin okundu işareti alıcınındır; her rol kendi bildirim merkezini kullanır, görünürlük
-  // `lib/notifications.ts` `canSeeNotification`'dadır (DOM-ILT-020, DOM-ILT-073).
-  'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
-  'notification.read_all': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+} as const satisfies Record<keyof typeof ONUR_OPERATION_COMMANDS, readonly Actor['role'][]>
+// Onur: kayıt ve finans sonu
+
+/**
+ * Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları aşağıda). İki
+ * kaynağın birleşimi: Oğuzhan'ın eylemleri `platform/authorize.ts` (`PLATFORM_WRITE_ACTION_ROLES`),
+ * kayıt ve finans eylemleri yukarıdaki Onur bloğu; bir eylem yalnız bir kaynakta bulunur
+ * (`tests/authorize.test.ts`).
+ */
+export const WRITE_ACTION_ROLES = {
+  ...PLATFORM_WRITE_ACTION_ROLES,
+  ...ONUR_WRITE_ACTION_ROLES,
 } as const satisfies Record<WriteAction, readonly Actor['role'][]>
 
 const ROLE_TABLE: Readonly<Record<WriteAction, readonly string[]>> = WRITE_ACTION_ROLES

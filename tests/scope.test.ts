@@ -8,6 +8,7 @@ import {
 } from '../packages/school-core/src/modules/collection-modules.ts'
 import {
   DEMO_TEACHER_ID,
+  ONUR_READ_RULES,
   SCOPE_SOURCE_COLLECTIONS,
   linkedRecordId,
   redactRecord,
@@ -19,6 +20,7 @@ import {
   type Actor,
   type ActorLink,
 } from '../packages/school-core/src/lib/scope.ts'
+import { PLATFORM_READ_RULES } from '../packages/school-core/src/platform/scope.ts'
 import { runWorkflow, workflowScope } from '../packages/school-core/src/lib/school-workflows.ts'
 import { automationScope } from '../packages/school-core/src/lib/assessment-automation.ts'
 import { resultOf } from './support/result.ts'
@@ -569,4 +571,15 @@ test('DOM-KAY-003, DOM-YTK-020, DOM-YTK-055: yakınlık öğretmen ve öğrenciy
     assert.equal(row?.email, 'veli@kampus.example', actor.role)
     assert.equal(row?.phone, '05551234567', actor.role)
   }
+})
+
+test('Okuma kuralı iki kaynakta (platform ve Onur bloğu) birden bulunmaz; birleşim her koleksiyonu kapsar (IST-004)', () => {
+  const shared = Object.keys(PLATFORM_READ_RULES).filter((name) =>
+    Object.hasOwn(ONUR_READ_RULES, name),
+  )
+  assert.deepEqual(shared, [], `koleksiyon iki kaynakta: ${shared.join(', ')}`)
+  assert.deepEqual(
+    [...Object.keys(PLATFORM_READ_RULES), ...Object.keys(ONUR_READ_RULES)].sort(),
+    [...COLLECTION_NAMES].sort(),
+  )
 })

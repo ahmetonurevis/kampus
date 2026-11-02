@@ -4,6 +4,7 @@ import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import type { Role } from '../packages/school-core/src/modules/navigation.ts'
 import type { Actor } from '../packages/school-core/src/lib/scope.ts'
 import {
+  ONUR_WRITE_ACTION_ROLES,
   WRITE_ACTIONS,
   WRITE_ACTION_ROLES,
   PROVIDER_CONFIRMATION_ACTIONS,
@@ -13,6 +14,9 @@ import {
   sessionAuthorize,
   type WriteDecision,
 } from '../packages/school-core/src/lib/authorize.ts'
+import { PLATFORM_WRITE_ACTION_ROLES } from '../packages/school-core/src/platform/authorize.ts'
+import { ONUR_OPERATION_COMMANDS } from '../packages/school-core/src/modules/commands.ts'
+import { PLATFORM_OPERATION_COMMANDS } from '../packages/school-core/src/platform/commands.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 const now = '2026-10-06T10:00:00.000Z'
@@ -77,6 +81,26 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
   })
   // Sıra anlamsızdır: komut tablosu iki kaynaktan birleşir (platform ve Onur bloğu).
   assert.deepEqual(Object.keys(WRITE_ACTION_ROLES).sort(), [...WRITE_ACTIONS].sort())
+})
+
+test('Eylem iki kaynakta (platform ve Onur bloğu) birden bulunmaz; kaynaklar komut tablosuyla eşleşir (IST-004)', () => {
+  const shared = Object.keys(PLATFORM_WRITE_ACTION_ROLES).filter((action) =>
+    Object.hasOwn(ONUR_WRITE_ACTION_ROLES, action),
+  )
+  assert.deepEqual(shared, [], `eylem iki kaynakta: ${shared.join(', ')}`)
+  assert.equal(
+    Object.keys(WRITE_ACTION_ROLES).length,
+    Object.keys(PLATFORM_WRITE_ACTION_ROLES).length + Object.keys(ONUR_WRITE_ACTION_ROLES).length,
+  )
+  // Rol tablosunun her kaynağı komut tablosunun aynı kaynağıyla birebir örtüşür.
+  assert.deepEqual(
+    Object.keys(PLATFORM_WRITE_ACTION_ROLES).sort(),
+    Object.keys(PLATFORM_OPERATION_COMMANDS).sort(),
+  )
+  assert.deepEqual(
+    Object.keys(ONUR_WRITE_ACTION_ROLES).sort(),
+    Object.keys(ONUR_OPERATION_COMMANDS).sort(),
+  )
 })
 
 test('Tahsilat kaydı yalnız yönetici ve ön büroda; veli tahsilat kaydedemez', () => {

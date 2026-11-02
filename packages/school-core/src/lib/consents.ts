@@ -136,6 +136,16 @@ export function adulthoodStartsAt(birthDate: string): string {
 }
 
 /**
+ * Eğitim-öğretim yılının bitişi (DOM-ILT-033, DOM-YTK-058): kurum ayarındaki başlangıç yılı
+ * (`academicYear`, 2026 → 2026–2027) 31 Ağustos sonunda, yani ertesi yılın 1 Eylül'ünün
+ * Europe/Istanbul gün başında biter. Eğitim yılı rızası (`planConsent` `academicYearEndsAt`) en geç
+ * bu anda düşer.
+ */
+export function academicYearEndsAt(academicYear: number): string {
+  return new Date(`${academicYear + 1}-09-01T00:00:00+03:00`).toISOString()
+}
+
+/**
  * Rızayı kim verir (DOM-YTK-057). Öğrenci amaçlarında 18 yaş altında yalnız doğrulanmış bağı ve
  * velayeti bulunan veli (`guardian`), 18 ve üstünde yalnız öğrencinin kendisi (`self`); hesap
  * amaçlarında yalnız hesap sahibi veli ya da 18 yaşını doldurmuş öğrenci. Yaş `now`'ın Europe/Istanbul

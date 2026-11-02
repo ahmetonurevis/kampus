@@ -69,8 +69,8 @@ export type PlatformWriteTargets = {
   'consent.withdraw': Record<string, never>
   /** Rıza satırları; `studentId` yoksa aktörün kendi hesap rızaları (tanıtım iletisi). */
   'consent.read': { studentId: string | undefined }
-  /** Öğrencinin amaç başına geçerli rıza sonucu (var/yok). */
-  'consent.status': { studentId: string }
+  /** Amaç başına geçerli rıza sonucu (var/yok); `studentId` yoksa aktörün hesap amaçları. */
+  'consent.status': { studentId: string | undefined }
 }
 
 /** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları `lib/authorize.ts`). */

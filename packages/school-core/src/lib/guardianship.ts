@@ -143,7 +143,7 @@ export const payerOf = (links: readonly GuardianLink[], studentId: string): Guar
 /**
  * Hesabın veli olarak erişebildiği öğrenciler (DOM-ILT-070): velayetli ve kısıtsız bağlar.
  * Velayeti olmayan ebeveyn varsayılan olarak erişimsizdir; velayet sahibinin onayıyla kapsamlı
- * erişim henüz yok. Okuma kapsamı (OG-032, `TODO(velayet-kapsam)`) bu fonksiyonu okur.
+ * erişim henüz yok (`TODO(velayet-onayi)`). Okuma kapsamı bunu `guardedActorLinks` ile okur.
  */
 export function accessibleStudentIds(
   links: readonly GuardianLink[],
@@ -153,6 +153,25 @@ export function accessibleStudentIds(
   for (const link of links)
     if (link.membershipId === membershipId && isCustodial(link)) ids.add(link.studentId)
   return [...ids].sort()
+}
+
+/**
+ * Aktörün okuma kapsamı bağlantıları (IST-019; DOM-ILT-070, DOM-ILT-074). Veli hesabının çocuk
+ * bağlantısı (`child`) yalnız aynı öğrencide velayetli ve kısıtsız bir bağı (`accessibleStudentIds`)
+ * varsa kapsam verir: iletişim kısıtlı ya da velayeti olmayan veli öğrencinin hiçbir verisini
+ * (not, yoklama, mesaj, bildirim, pano) görmez, öğrenci çocuk listesinde de yoktur. Bağı
+ * kaldırılmış ya da hiç kurulmamış bağlantı da kapsam vermez (kapalı başarısız). Öğrenci ve
+ * öğretmen bağlantıları değişmez. Kapsam tek yerde, aktör kurulurken daralır; `scopeFor` ve
+ * bağlantıyı okuyan her karar daraltılmış listeyi görür. `guardians` hesabın etkin bağlarıdır.
+ */
+export function guardedActorLinks<L extends { kind: string; recordId: string }>(
+  links: readonly L[],
+  guardians: readonly GuardianLink[],
+  membershipId: string,
+): L[] {
+  if (!links.some((link) => link.kind === 'child')) return [...links]
+  const accessible = new Set(accessibleStudentIds(guardians, membershipId))
+  return links.filter((link) => link.kind !== 'child' || accessible.has(link.recordId))
 }
 
 /**

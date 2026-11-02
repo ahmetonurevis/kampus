@@ -358,13 +358,24 @@ function active<
     throw new DomainError('record_inactive', 'Pasif veya arşivlenmiş kayıt kullanılamaz.')
   return record
 }
+const studentScopeDenied = () =>
+  new DomainError('student_scope_denied', 'Bu öğrenci için işlem yetkiniz bulunmuyor.', {
+    kind: 'forbidden',
+  })
+/**
+ * Kapsamdaki etkin öğrenci. Kurum kapsamı olmayan rol (öğretmen, veli, öğrenci) için kapsam
+ * kayıt durumundan önce denetlenir: kapsam dışı öğrenci var olsun olmasın, pasif olsun olmasın
+ * 403 `student_scope_denied` alır; böylece kısıtlı ya da velayeti olmayan veli (`DOM-ILT-070`,
+ * `DOM-ILT-074`) çocuğun kaydının varlığını ve pasifliğini 404/422 farkından öğrenemez (OG-032).
+ * Yönetici ve ön büro kurumun bütün kayıtlarını zaten görür; onlarda olmayan kayıt 404 kalır.
+ */
 function scopedStudent(state: State, session: Session, id: string | undefined) {
+  const scope = workflowScope(state, session)
+  if (!scope.institution && (id === undefined || !scope.studentIds.has(id)))
+    throw studentScopeDenied()
   const student = active(state.students, id)
   // Bulunan öğrencinin kimliği aranan kimlikle aynıdır.
-  if (!workflowScope(state, session).studentIds.has(student.id))
-    throw new DomainError('student_scope_denied', 'Bu öğrenci için işlem yetkiniz bulunmuyor.', {
-      kind: 'forbidden',
-    })
+  if (!scope.studentIds.has(student.id)) throw studentScopeDenied()
   return student
 }
 function gradeOf(state: State, student: { classId: string }) {

@@ -380,12 +380,19 @@ export function parentAccountsDecision(
 /**
  * Mesaj gönderme: yalnız taraf (taraf olmayana yazışma yoktur, 404). Öğretmenin ders ilişkisi
  * bittiyse yazışma okunur ama yeni mesaj gönderilmez (atama bitince yetki biter).
+ *
+ * Veli yazışmasında alıcı veli öğrenci için artık erişimli değilse (velayeti kalktı, iletişim
+ * kısıtı kondu ya da bağ kaldırıldı; DOM-ILT-070, DOM-ILT-074) öğretmen yeni mesaj gönderemez:
+ * kısıt kalkınca veliye açılacak mesaj birikmez (OG-032). `parentUserIds` öğrencinin velayetli ve
+ * kısıtsız veli hesaplarıdır; çağıran (API) verir, verilmezse bu denetim yapılmaz. Veli kimliği
+ * olmayan eski veli yazışması erişimli sayılmaz (kapalı başarısız).
  */
 export function sendDecision(
   scope: PartyScope,
   source: Source,
   userId: string,
   conversation: ConversationParties | undefined,
+  parentUserIds?: readonly string[],
 ): CommunicationDenial | null {
   if (!conversation) return null
   if (!isConversationParty(scope, userId, conversation))
@@ -394,6 +401,17 @@ export function sendDecision(
       message: 'Yazışma bulunamadı.',
       rule: 'DOM-YTK-052',
       kind: 'not_found',
+    }
+  if (
+    scope.actor.role === 'ogretmen' &&
+    conversation.audience === 'parent' &&
+    parentUserIds !== undefined &&
+    (conversation.parentUserId === undefined || !parentUserIds.includes(conversation.parentUserId))
+  )
+    return {
+      code: 'conversation_parent_restricted',
+      message: 'Bu veliyle yazışma kapalı; yeni mesaj gönderemezsiniz.',
+      rule: 'DOM-ILT-074',
     }
   return related(source, conversation.studentId, conversation.teacherId)
     ? null

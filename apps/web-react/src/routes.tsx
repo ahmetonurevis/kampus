@@ -24,6 +24,18 @@ export const router = createBrowserRouter([
         lazy: async () => ({ Component: (await import('@/pages/auth/LoginPage.tsx')).LoginPage }),
       },
       {
+        path: 'parolami-unuttum',
+        lazy: async () => ({
+          Component: (await import('@/pages/auth/ForgotPasswordPage.tsx')).ForgotPasswordPage,
+        }),
+      },
+      {
+        path: 'parola-sifirla',
+        lazy: async () => ({
+          Component: (await import('@/pages/auth/ResetPasswordPage.tsx')).ResetPasswordPage,
+        }),
+      },
+      {
         path: ':role/aday/:prospectId',
         lazy: async () => ({ Component: (await import('@/pages/shell/RoleShell.tsx')).RoleShell }),
       },

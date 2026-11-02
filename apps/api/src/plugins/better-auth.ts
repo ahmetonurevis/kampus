@@ -2,6 +2,7 @@ import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
 import { AUTH_BASE_PATH, isOpenAuthPath, type Auth } from '../auth.ts'
 import { MESSAGES } from '../errors.ts'
+import { narrowSessionList } from '../lib/session-device.ts'
 import {
   FORWARDED_IP_HEADER,
   FORWARDED_REQUEST_ID_HEADER,
@@ -94,6 +95,22 @@ export function translateAuthError(status: number, text: string): Record<string,
   return { ...body, ...(code ? {} : { code: status === 429 ? 'RATE_LIMITED' : 'ERROR' }), message }
 }
 
+const LIST_SESSIONS_PATH = `${AUTH_BASE_PATH}/list-sessions`
+
+/**
+ * `/list-sessions` yanıtı daraltılır (KVKK, `lib/session-device.ts`): ham IP ve kullanıcı ajanı
+ * yerine cihaz özeti, isteği yapan oturum `current` ile işaretli. Better Auth istemcisinin
+ * `listSessions` tipi bu yüzden kullanılmaz; web/mobil `SessionListItem` biçimini okur.
+ */
+async function narrowSessions(auth: Auth, request: Request, response: Response) {
+  const body: unknown = await response.json()
+  const current = await auth.api.getSession({ headers: request.headers }).catch(() => null)
+  const narrowed = narrowSessionList(body, current?.session.token ?? null)
+  const headers = new Headers(response.headers)
+  headers.set('content-type', 'application/json')
+  return new Response(JSON.stringify(narrowed), { status: response.status, headers })
+}
+
 async function relayResponse(reply: FastifyReply, response: Response) {
   reply.status(response.status)
   response.headers.forEach((value, key) => {
@@ -133,8 +150,11 @@ function registerAuthRoute(app: FastifyInstance, auth: Auth, base: string) {
     async handler(request, reply) {
       const fetchRequest = toFetchRequest(request, base)
       // İzin listesi, Better Auth'un yönlendireceği normalleştirilmiş yol üzerinde denetlenir.
-      if (!isOpenAuthPath(new URL(fetchRequest.url).pathname)) return reply.callNotFound()
+      const pathname = new URL(fetchRequest.url).pathname
+      if (!isOpenAuthPath(pathname)) return reply.callNotFound()
       const response = await auth.handler(fetchRequest)
+      if (pathname === LIST_SESSIONS_PATH && response.status === 200)
+        return relayResponse(reply, await narrowSessions(auth, fetchRequest, response))
       return relayResponse(reply, response)
     },
   })

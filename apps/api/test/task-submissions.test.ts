@@ -500,6 +500,51 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     assert.deepEqual(await ok(await list(assignmentId, t.cookies.teacher, '&learnerId=s-3')), [])
   })
 
+  test('IST-019 DOM-ILT-074 OG-032: iletişimi kısıtlanan veli çocuğun görevini ve teslimini okuyamaz (404); kısıt kalkınca yeniden okur', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    const submission = await ok(await submit(assignmentId, t.cookies.student), 201)
+    // İkinci veli; öbür veli velayetli kalır (öğrencide velayet sahibi bulunur, DOM-ILT-075).
+    const second = await createMember(app, t.institution.id, 'veli', [
+      { kind: 'child', recordId: 's-1' },
+    ])
+    const parent = await signInAs(app, second)
+    const bond = async (body: Record<string, unknown>) => {
+      const bonds = await ok(await call('GET', '/students/s-1/guardians', t.cookies.admin))
+      const own = bonds.find((row: Json) => row.membershipId === second.membershipId)
+      assert.ok(own)
+      await ok(
+        await call('PATCH', `/students/s-1/guardians/${own.id}`, t.cookies.admin, body, {
+          'if-match': `"${own.rowVersion}"`,
+        }),
+      )
+    }
+    const visible = async () => {
+      const assignments = await ok(await call('GET', '/task-assignments', parent))
+      assert.deepEqual(
+        assignments.map((row: Json) => row.id),
+        [assignmentId],
+      )
+      await ok(await call('GET', `/task-assignments/${assignmentId}`, parent))
+      const rows = await ok(await list(assignmentId, parent))
+      assert.deepEqual(
+        rows.map((row: Json) => row.id),
+        [submission.id],
+      )
+      await ok(await detail(submission.id, parent))
+    }
+    await visible()
+
+    await bond({ custody: 'none', contactRestricted: true })
+    assert.deepEqual(await ok(await call('GET', '/task-assignments', parent)), [])
+    fails(await call('GET', `/task-assignments/${assignmentId}`, parent), 404, 'not_found')
+    fails(await list(assignmentId, parent), 404, 'not_found')
+    fails(await detail(submission.id, parent), 404, 'not_found')
+
+    await bond({ custody: 'full', contactRestricted: false })
+    await visible()
+  })
+
   test('DOM-BEC-044: son teslimden sonra geç kabulde sürüm late; geç kabul bitince teslim ve taslak 422 submission_closed', async () => {
     const t = await tenant()
     const assignmentId = await assign(t, { deadline: { dueAt: DUE, lateAcceptanceDays: 1 } })

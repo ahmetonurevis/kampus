@@ -2,6 +2,8 @@
 
 Giriş: `/giris`. Kök adres giriş ekranına veya seçili rolün dashboard’una yönlenir. Geliştirmede giriş ekranında Kolay giriş penceresi; üretimde yok.
 
+Hesap güvenliği (React web, IST-003): giriş ekranındaki **Parolamı unuttum** bağlantısı `/parolami-unuttum` sayfasını açar; e-posta girilir, hesap olsun olmasın aynı bilgi mesajı gösterilir. E-postadaki bağlantı `/parola-sifirla#token=…` sayfasını açar: belirteç adres parçasından okunup adresten silinir, yeni parola + tekrar istenir (belirteç yoksa ya da geçersizse "Yeni bağlantı iste" bağlantısı); başarıda bütün oturumlar kapanır ve giriş ekranına dönülür. Her rolün avatar menüsündeki **Güvenlik** (`/:rol/guvenlik`, örn. `/ogretmen/guvenlik`) açık oturumları cihaz özetiyle (IP yok) listeler, tek tek sonlandırır ve "diğer cihazlardan çıkış yap" seçeneğiyle parolayı değiştirir; liste taze oturum ister, gerekirse parola penceresi açılır. Geliştirmede (`MAIL_DRIVER=log`) sıfırlama bağlantısı API logundadır; üretimde e-posta sağlayıcısı (OG-095) gelene kadar ileti gönderilmez.
+
 React web (`apps/web-react`, `pnpm dev:react`) sayfaları API'den okur; taşınmayan sayfalar yer tutucudur. Taşınan sayfalar finans, akademik yazma ve okul iş akışları dışında yalnız okuma yapar: sunucu sayfalı tablo, arama/filtre/sıralama/sayfa ve sağ panel URL'dedir, CSV tüm filtrelenmiş sonucu içerir. Kapsam sunucuda uygulanır; kapsam dışı ayrıntı adresi "Kayıt bulunamadı" görünümüne düşer (API 404).
 
 Sayfa rehberi iki yerdedir: Oğuzhan'ın alanındaki React sayfaları (dashboard, akademik, okul iş akışları, içerik havuzu, iletişim, Ayarlar) [sayfalar/platform.md](sayfalar/platform.md) belgesinde; kayıt ve finans sayfaları aşağıdaki Onur bölümünde, Vue demosunun rol tabloları en altta.

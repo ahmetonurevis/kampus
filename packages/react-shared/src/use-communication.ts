@@ -61,6 +61,8 @@ export const MESSAGE_MESSAGES = {
   rate_limited: MESSAGE_RATE_LIMITED_MESSAGE,
   conversation_relationship_ended:
     'Bu öğrenciyle ders ilişkiniz sona erdiği için yeni mesaj gönderemezsiniz; yazışmayı okuyabilirsiniz.',
+  conversation_parent_restricted:
+    'Bu veliyle yazışma kapalı; yeni mesaj gönderemezsiniz, yazışmayı okuyabilirsiniz.',
   conversation_party_forbidden: 'Bu kişiyle yazışma başlatma yetkiniz yok.',
   parent_choice_required: 'Yazışılacak veliyi seçin.',
   parent_account_not_found: 'Öğrencinin platformda veli hesabı bulunmuyor.',

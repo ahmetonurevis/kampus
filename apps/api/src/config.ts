@@ -93,6 +93,19 @@ export const configSchema = z
     BETTER_AUTH_URL: optional(z.url()),
     /** İzinli web kökenleri (tam eşleşme). CORS ve Better Auth `trustedOrigins` aynı listeyi kullanır. */
     CORS_ORIGINS: csv.pipe(z.array(z.url())),
+    /**
+     * Web uygulamasının dışarıdan görünen kök adresi; parola sıfırlama bağlantısı
+     * (`/parola-sifirla#token=…`) buna kurulur, istek başlığından türetilmez (Host sahteleme).
+     * Geliştirme/testte verilmezse `http://localhost:5174`; üretimde verilmezse iletisi gönderilmez.
+     */
+    WEB_URL: optional(z.url({ protocol: /^https?$/ })),
+    /**
+     * E-posta gönderici (IST-003): `log` bağlantıyı belirteciyle loga yazar (yalnız yerel
+     * geliştirme), `memory` bellek kutusuna koyar (test), `none` hiçbir şey göndermez ve uyarı
+     * loglar. Verilmezse geliştirmede `log`, testte `memory`, üretimde `none`; üretimde `log` ve
+     * `memory` reddedilir, böylece sıfırlama belirteci üretim loguna girmez. Gerçek sağlayıcı: OG-095.
+     */
+    MAIL_DRIVER: optional(z.enum(['log', 'memory', 'none'])),
     /** Mobil uygulama şeması gibi tarayıcı dışı güvenilen kökenler. */
     TRUSTED_ORIGINS: csv.default(['kampus://']),
     /** Yalnız `db:seed`: demo kullanıcılarının parolası. Üretimde verilmezse tohum çalışmaz. */
@@ -112,6 +125,8 @@ export const configSchema = z
   })
   .superRefine((config, ctx) => {
     if (config.NODE_ENV !== 'production') return
+    if (config.MAIL_DRIVER === 'log' || config.MAIL_DRIVER === 'memory')
+      ctx.addIssue({ code: 'custom', path: ['MAIL_DRIVER'], message: 'not_for_production' })
     if (!config.BETTER_AUTH_URL)
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_URL'], message: 'required' })
     if (isPlaceholderSecret(config.BETTER_AUTH_SECRET))
@@ -175,6 +190,15 @@ export function loadTestPgUrl(
 
 export function publicUrl(config: Config): string {
   return config.BETTER_AUTH_URL ?? `http://localhost:${config.PORT}`
+}
+
+/** `WEB_URL` verilmediğinde geliştirme ve testte web-react geliştirme sunucusu. */
+export const DEFAULT_DEV_WEB_URL = 'http://localhost:5174'
+
+/** Web kök adresi (sonda `/` yok); üretimde `WEB_URL` yoksa `null` (bağlantı kurulmaz). */
+export function webUrl(config: Config): string | null {
+  const value = config.WEB_URL ?? (isDevelopmentLike(config) ? DEFAULT_DEV_WEB_URL : null)
+  return value ? value.replace(/\/+$/, '') : null
 }
 
 /** Yerel geliştirme ve testte `STORAGE_DIR` verilmezse kullanılan klasör (git'e girmez). */

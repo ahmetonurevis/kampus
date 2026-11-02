@@ -1643,7 +1643,7 @@ export interface paths {
         put?: never;
         /**
          * Mesaj gönder
-         * @description Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core `sendMessage`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 `conversation_relationship_ended`). En fazla 2000 karakter. `Idempotency-Key` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı ve kurum başına dakikada 30 mesaj (`POST /conversations` gövdesindeki `text` ile aynı kota), aşılırsa 429 ve `Retry-After`. Başarı 201. Roller: `ogretmen`, `ogrenci`, `veli`.
+         * @description Yazışmaya mesaj ekler; mesaj sonradan değiştirilemez ve silinemez (core `sendMessage`, DOM-ILT-012). Taraf olmayana 404; öğretmenin öğrenciyle ders ilişkisi bittiyse yazışmayı okur ama gönderemez (403 `conversation_relationship_ended`). Veli yazışmasında alıcı veli öğrenci için artık erişimli değilse (velayeti kalktı, iletişim kısıtı ya da bağ kaldırıldı; DOM-ILT-070, -074) öğretmen gönderemez: 403 `conversation_parent_restricted`. En fazla 2000 karakter. `Idempotency-Key` zorunludur: aynı anahtarla tekrar tek mesaj üretir. Kullanıcı ve kurum başına dakikada 30 mesaj (`POST /conversations` gövdesindeki `text` ile aynı kota), aşılırsa 429 ve `Retry-After`. Başarı 201. Roller: `ogretmen`, `ogrenci`, `veli`.
          */
         post: operations["sendConversationMessage"];
         delete?: never;
@@ -1801,7 +1801,7 @@ export interface paths {
         };
         /**
          * Bildirimlerim
-         * @description Oturum sahibinin uygulama içi bildirimleri, en yeni önce (DOM-ILT-020). Öğrenci kendi kaydının, veli bağlı çocuklarının bildirimini görür; başka velinin çocuğu ve başka kurum hiç görünmez, personelin listesi boştur. Bildirim serbest metin taşımaz: `title` türün sabit şablonundan, yalnız öğrencinin ilk adıyla üretilir; puan, geri bildirim metni, tutar veya sağlık bilgisi yoktur (DOM-ILT-023). `readAt` yalnız okuyanın kendi okumasıdır; diğer velinin okuması görünmez (DOM-ILT-073). İmleçli sayfalama: `cursor` önceki sayfanın `meta.nextCursor` değeridir, toplam dönmez (okunmamış sayısı ayrı uçtadır); görülemeyen bildirim imleci 400. `unread=true` yalnız okunmamışları verir. Modül `communication`.
+         * @description Oturum sahibinin uygulama içi bildirimleri, en yeni önce (DOM-ILT-020). Öğrenci kendi kaydının, veli bağlı çocuklarının bildirimini görür; başka velinin çocuğu ve başka kurum hiç görünmez, personelin listesi boştur. Bildirim serbest metin taşımaz: `title` türün sabit şablonundan, yalnız öğrencinin ilk adıyla üretilir; puan, geri bildirim metni, tutar veya sağlık bilgisi yoktur (DOM-ILT-023). `readAt` yalnız okuyanın kendi okumasıdır; diğer velinin okuması görünmez (DOM-ILT-073). İmleçli sayfalama: `cursor` önceki sayfanın `meta.nextCursor` değeridir, toplam dönmez (okunmamış sayısı ayrı uçtadır); görülemeyen bildirim imleci 400. `unread=true` yalnız okunmamışları verir. Modül `communication`; türün kendi modülü kapalıysa (ör. `learning` kapalıyken öğretmen geri bildirimi) bildirim listede ve imleçte görünmez, silinmez, modül açılınca döner (DOM-YTK-040).
          */
         get: operations["listNotifications"];
         put?: never;
@@ -1821,7 +1821,7 @@ export interface paths {
         };
         /**
          * Okunmamış bildirim sayısı
-         * @description Oturum sahibinin okunmamış bildirim sayısı; saklanmaz, her istekte hesaplanır. Modül `communication`.
+         * @description Oturum sahibinin okunmamış bildirim sayısı; saklanmaz, her istekte hesaplanır. Kapalı modülün bildirim türleri sayılmaz (DOM-YTK-040). Modül `communication`.
          */
         get: operations["countUnreadNotifications"];
         put?: never;
@@ -3473,7 +3473,7 @@ export interface paths {
         };
         /**
          * Rıza kayıtları
-         * @description Veri sahibinin rıza ve itiraz satırları, amaç ve veriliş sırasıyla, sayfalı (DOM-ILT-034). `studentId` verilirse öğrenci amaçları, verilmezse oturum sahibinin hesap amaçları (tanıtım iletisi). `status=open` geri çekilmemiş satırlar (varsayılan), `all` geçmiş dahil; bugün geçerli olup olmadığı `GET /consents/status`'tadır. Kapsam: yönetici ve ön büro kurumun öğrencileri, veli bağlı çocukları, öğrenci kendi kaydı; kapsam dışı ya da başka kurumun öğrencisi 404 `not_found`. Öğretmen satırları okuyamaz (403), yalnız var/yok sonucunu görür (DOM-YTK-061). Rızayı veren kullanıcının kimliği (`grantedByUserId`) yalnız yönetici ve ön büroya döner; veli ve öğrenci yalnız ilişkiyi (`grantorRelation`) görür. Bilinmeyen parametre 400. Roller: `yonetici`, `onburo`, `ogrenci`, `veli`.
+         * @description Veri sahibinin rıza ve itiraz satırları, amaç ve veriliş sırasıyla, sayfalı (DOM-ILT-034). `studentId` verilirse öğrenci amaçları, verilmezse oturum sahibinin hesap amaçları (tanıtım iletisi). `status=open` geri çekilmemiş satırlar (varsayılan), `all` geçmiş dahil; bugün geçerli olup olmadığı `GET /consents/status`'tadır. Kapsam: yönetici ve ön büro kurumun öğrencileri, veli bağlı çocukları, öğrenci kendi kaydı; kapsam dışı ya da başka kurumun öğrencisi 404 `not_found`. Velinin kendi verdiği, geri çekilmemiş öğrenci rızaları kapsamdan bağımsız döner (KVKK m.11; velayeti kalkan, iletişimi kısıtlanan ya da bağı kaldırılan veli kendi rızasını geri çekebilsin): `studentId` olmadan hesap rızalarının ardından kapsam dışı öğrencilerin bu satırları (`subjectKind: student`), kapsam dışı öğrenci için `studentId` ile yalnız bunlar (`status=all` de yalnız açık satırları verir); öğrenci adı ve başka velinin satırı dönmez, velinin açık satırı yoksa 404. Öğretmen satırları okuyamaz (403), yalnız var/yok sonucunu görür (DOM-YTK-061). Rızayı veren kullanıcının kimliği (`grantedByUserId`) yalnız yönetici ve ön büroya döner; veli ve öğrenci yalnız ilişkiyi (`grantorRelation`) görür. Bilinmeyen parametre 400. Roller: `yonetici`, `onburo`, `ogrenci`, `veli`.
          */
         get: operations["listConsents"];
         put?: never;

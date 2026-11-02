@@ -69,7 +69,7 @@ export function registerNotificationRoutes(app: FastifyInstance) {
         tags: ['notifications'],
         summary: 'Bildirimlerim',
         description:
-          'Oturum sahibinin uygulama içi bildirimleri, en yeni önce (DOM-ILT-020). Öğrenci kendi kaydının, veli bağlı çocuklarının bildirimini görür; başka velinin çocuğu ve başka kurum hiç görünmez, personelin listesi boştur. Bildirim serbest metin taşımaz: `title` türün sabit şablonundan, yalnız öğrencinin ilk adıyla üretilir; puan, geri bildirim metni, tutar veya sağlık bilgisi yoktur (DOM-ILT-023). `readAt` yalnız okuyanın kendi okumasıdır; diğer velinin okuması görünmez (DOM-ILT-073). İmleçli sayfalama: `cursor` önceki sayfanın `meta.nextCursor` değeridir, toplam dönmez (okunmamış sayısı ayrı uçtadır); görülemeyen bildirim imleci 400. `unread=true` yalnız okunmamışları verir. Modül `communication`.',
+          'Oturum sahibinin uygulama içi bildirimleri, en yeni önce (DOM-ILT-020). Öğrenci kendi kaydının, veli bağlı çocuklarının bildirimini görür; başka velinin çocuğu ve başka kurum hiç görünmez, personelin listesi boştur. Bildirim serbest metin taşımaz: `title` türün sabit şablonundan, yalnız öğrencinin ilk adıyla üretilir; puan, geri bildirim metni, tutar veya sağlık bilgisi yoktur (DOM-ILT-023). `readAt` yalnız okuyanın kendi okumasıdır; diğer velinin okuması görünmez (DOM-ILT-073). İmleçli sayfalama: `cursor` önceki sayfanın `meta.nextCursor` değeridir, toplam dönmez (okunmamış sayısı ayrı uçtadır); görülemeyen bildirim imleci 400. `unread=true` yalnız okunmamışları verir. Modül `communication`; türün kendi modülü kapalıysa (ör. `learning` kapalıyken öğretmen geri bildirimi) bildirim listede ve imleçte görünmez, silinmez, modül açılınca döner (DOM-YTK-040).',
         querystring: notificationListQuerySchema,
         response: { 200: notificationPageResponseSchema, ...authenticatedErrors },
       },
@@ -89,7 +89,7 @@ export function registerNotificationRoutes(app: FastifyInstance) {
         tags: ['notifications'],
         summary: 'Okunmamış bildirim sayısı',
         description:
-          'Oturum sahibinin okunmamış bildirim sayısı; saklanmaz, her istekte hesaplanır. Modül `communication`.',
+          'Oturum sahibinin okunmamış bildirim sayısı; saklanmaz, her istekte hesaplanır. Kapalı modülün bildirim türleri sayılmaz (DOM-YTK-040). Modül `communication`.',
         response: { 200: unreadNotificationsResponseSchema, ...authenticatedErrors },
       },
     },

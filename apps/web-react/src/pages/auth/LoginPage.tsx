@@ -1,7 +1,7 @@
 import { lazy, Suspense, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import { Navigate, useSearchParams } from 'react-router'
+import { Link, Navigate, useSearchParams } from 'react-router'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { Button } from '@/components/ui/button'
@@ -129,6 +129,12 @@ export function LoginPage() {
                 />
               )}
             </FormField>
+            <Link
+              to="/parolami-unuttum"
+              className="-mt-2 inline-flex min-h-9 items-center self-end rounded-field px-1 text-sm font-medium text-primary underline-offset-4 hover:underline"
+            >
+              Parolamı unuttum
+            </Link>
             <Button
               type="submit"
               disabled={isSubmitting || easyLoginPending}

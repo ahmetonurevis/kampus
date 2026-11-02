@@ -215,3 +215,134 @@ export function useResourceTransition(options: CommandOptions = {}) {
     ...withSuccess(options),
   })
 }
+
+// --- Kaynak düzeyindeki komutlar: paylaşım, kopya, telif bildirimi, kaldırma (OG-217) ---------
+
+export type ShareTargetsBody =
+  operations['shareResource']['requestBody']['content']['application/json']
+
+export interface ShareResourceInput {
+  resourceId: string
+  /** Kaynağın okunan `rowVersion` değeri; tutmazsa 409 `version_conflict`. */
+  version: number
+  targets: ShareTargetsBody
+}
+
+/** `POST /resources/:id/share` (DOM-KYN-040): hedef listesi kapsamla birlikte bütün olarak değişir. */
+export function shareResourceRequest(
+  client: KampusClient,
+  { resourceId, targets }: ShareResourceInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/resources/{resourceId}/share', {
+    params: { path: { resourceId }, header: headers },
+    body: targets,
+  })
+}
+
+/** Paylaşım kapsamını ve hedeflerini değiştirir (DOM-KYN-021, 031, 040). */
+export function useShareResource(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: shareResourceRequest,
+    invalidates: INVALIDATES,
+    version: (input) => input.version,
+    messages: RESOURCE_MESSAGES,
+    ...withSuccess(options),
+  })
+}
+
+export interface CopyResourceInput {
+  resourceId: string
+}
+
+/** `POST /resources/:id/copy` (DOM-KYN-050): gövde boş, `If-Match` gönderilmez. */
+export function copyResourceRequest(
+  client: KampusClient,
+  { resourceId }: CopyResourceInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/resources/{resourceId}/copy', {
+    params: {
+      path: { resourceId },
+      header: { 'idempotency-key': headers['idempotency-key'] },
+    },
+    body: {},
+  })
+}
+
+/** Yayındaki sürümden yeni kaynak (kopya `Taslak` ve `Yalnız ben` başlar; DOM-KYN-050). */
+export function useCopyResource(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: copyResourceRequest,
+    invalidates: INVALIDATES,
+    messages: RESOURCE_MESSAGES,
+    ...withSuccess(options),
+  })
+}
+
+export interface RemoveResourceInput {
+  resourceId: string
+  /** Kaynağın okunan `rowVersion` değeri. */
+  version: number
+  /** Gerekçe (5–1000 karakter; boşsa 422 `reason_required`). */
+  reason: string
+}
+
+/** `POST /resources/:id/remove` (DOM-KYN-025, 051): yalnız yönetici, gerekçeli. */
+export function removeResourceRequest(
+  client: KampusClient,
+  { resourceId, reason }: RemoveResourceInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/resources/{resourceId}/remove', {
+    params: { path: { resourceId }, header: headers },
+    body: { reason },
+  })
+}
+
+/** Kaynağı kaldırır: bütün sürümlerin içeriği silinir, başlık ve gerekçe kalır (DOM-KYN-051). */
+export function useRemoveResource(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: removeResourceRequest,
+    invalidates: INVALIDATES,
+    version: (input) => input.version,
+    messages: RESOURCE_MESSAGES,
+    exclusive: true,
+    ...withSuccess(options),
+  })
+}
+
+export interface ReportVersionInput {
+  resourceId: string
+  versionId: string
+  /**
+   * Sürümün okunan `rowVersion` değeri; bildirilen sürüm ayrıntıdaki baş sürüm değilse bilinmez
+   * ve `If-Match` gönderilmez (uçta isteğe bağlıdır).
+   */
+  version?: number | undefined
+  reason: string
+}
+
+/** `POST …/versions/:versionId/report` (DOM-KYN-025): yayındaki sürüm incelemeye alınır. */
+export function reportVersionRequest(
+  client: KampusClient,
+  { resourceId, versionId, reason }: ReportVersionInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/resources/{resourceId}/versions/{versionId}/report', {
+    params: { path: { resourceId, versionId }, header: headers },
+    body: { reason },
+  })
+}
+
+/** Telif bildirimi: içerik öğrenci ve veliden düşer; yönetici yeniden yayımlar ya da kaldırır. */
+export function useReportResourceVersion(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: reportVersionRequest,
+    invalidates: INVALIDATES,
+    version: (input) => input.version,
+    messages: RESOURCE_MESSAGES,
+    exclusive: true,
+    ...withSuccess(options),
+  })
+}

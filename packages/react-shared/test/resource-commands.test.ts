@@ -5,7 +5,14 @@ import { createKampusClient } from '@kampus/api-client/client.ts'
 
 import { runRequest } from '../src/api-result.ts'
 import { commandHeaders, IF_MATCH_MISSING_CODE } from '../src/commands.ts'
-import { openVersionRequest, updateDraftRequest } from '../src/use-resources.ts'
+import {
+  copyResourceRequest,
+  openVersionRequest,
+  removeResourceRequest,
+  reportVersionRequest,
+  shareResourceRequest,
+  updateDraftRequest,
+} from '../src/use-resources.ts'
 
 function fakeClient() {
   const sent: Request[] = []
@@ -65,5 +72,62 @@ describe('yeni sürüm gövdesi (DOM-KYN-006, 032)', () => {
     )
     assert.deepEqual(await sent[0]?.json(), { fileIds: ['f2', 'f1'] })
     assert.equal(sent[0]?.headers.get('idempotency-key'), 'k-2')
+  })
+})
+
+describe('kaynak düzeyindeki komutlar (OG-217)', () => {
+  test('DOM-KYN-040: paylaşım hedefleri gövdede, kaynak sürümü If-Match başlığında gider', async () => {
+    const { client, sent } = fakeClient()
+    await runRequest(() =>
+      shareResourceRequest(
+        client,
+        { resourceId: 'r1', version: 3, targets: { scope: 'classes', classIds: ['c1'] } },
+        commandHeaders('k-3', 3),
+      ),
+    )
+    assert.equal(sent[0]?.method, 'POST')
+    assert.match(sent[0]?.url ?? '', /\/api\/v1\/resources\/r1\/share$/)
+    assert.equal(sent[0]?.headers.get('if-match'), '"3"')
+    assert.equal(sent[0]?.headers.get('idempotency-key'), 'k-3')
+    assert.deepEqual(await sent[0]?.json(), { scope: 'classes', classIds: ['c1'] })
+  })
+
+  test('DOM-KYN-050: kopya gövdesi boştur ve If-Match göndermez', async () => {
+    const { client, sent } = fakeClient()
+    await runRequest(() =>
+      copyResourceRequest(client, { resourceId: 'r1' }, commandHeaders('k-4', 2)),
+    )
+    assert.match(sent[0]?.url ?? '', /\/api\/v1\/resources\/r1\/copy$/)
+    assert.equal(sent[0]?.headers.get('if-match'), null)
+    assert.equal(sent[0]?.headers.get('idempotency-key'), 'k-4')
+    assert.deepEqual(await sent[0]?.json(), {})
+  })
+
+  test('DOM-KYN-051: kaldırma gerekçeyi gövdede taşır', async () => {
+    const { client, sent } = fakeClient()
+    await runRequest(() =>
+      removeResourceRequest(
+        client,
+        { resourceId: 'r1', version: 5, reason: 'Telif ihlali doğrulandı.' },
+        commandHeaders('k-5', 5),
+      ),
+    )
+    assert.match(sent[0]?.url ?? '', /\/api\/v1\/resources\/r1\/remove$/)
+    assert.equal(sent[0]?.headers.get('if-match'), '"5"')
+    assert.deepEqual(await sent[0]?.json(), { reason: 'Telif ihlali doğrulandı.' })
+  })
+
+  test('DOM-KYN-025: telif bildirimi sürüm yoluna gider; sürüm bilinmiyorsa If-Match yok', async () => {
+    const { client, sent } = fakeClient()
+    await runRequest(() =>
+      reportVersionRequest(
+        client,
+        { resourceId: 'r1', versionId: 'v1', reason: 'Yayınevi sayfası izinsiz.' },
+        commandHeaders('k-6'),
+      ),
+    )
+    assert.match(sent[0]?.url ?? '', /\/api\/v1\/resources\/r1\/versions\/v1\/report$/)
+    assert.equal(sent[0]?.headers.get('if-match'), null)
+    assert.deepEqual(await sent[0]?.json(), { reason: 'Yayınevi sayfası izinsiz.' })
   })
 })

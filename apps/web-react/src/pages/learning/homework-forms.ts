@@ -19,6 +19,7 @@ import {
   type UpdateHomeworkBody,
 } from '@kampus/react-shared/homework.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
+import type { FileUploadItem } from '../../components/file-upload-model.ts'
 import { istanbulToIso, isoToIstanbul } from '../../lib/istanbul-time.ts'
 
 export { HOMEWORK_FEEDBACK_MAX_LENGTH, SUBMISSION_FILE_LIMIT, SUBMISSION_NOTE_MAX_LENGTH }
@@ -238,7 +239,7 @@ export function pickSubject(current: string, options: readonly Option[]): string
  * dosyanın yerel kimliğidir (ad, boyut, değişiklik zamanı); aynı dosyanın yeniden seçilmesini
  * yüklemeden önce yakalar (her yükleme farklı `id` üretir).
  */
-export type SubmissionFile = { id: string; name: string; key?: string }
+export type SubmissionFile = FileUploadItem
 
 export const submissionFormSchema = z
   .object({
@@ -250,7 +251,13 @@ export const submissionFormSchema = z
         `En fazla ${SUBMISSION_NOTE_MAX_LENGTH} karakter yazabilirsiniz.`,
       ),
     files: z
-      .array(z.object({ id: z.string().min(1), name: z.string(), key: z.string().optional() }))
+      .array(
+        z.object({
+          id: z.string().min(1),
+          name: z.string(),
+          key: z.string().optional(),
+        }) satisfies z.ZodType<FileUploadItem>,
+      )
       .max(SUBMISSION_FILE_LIMIT, `En fazla ${SUBMISSION_FILE_LIMIT} dosya ekleyebilirsiniz.`),
   })
   .refine((value) => value.note.length > 0 || value.files.length > 0, {
@@ -273,30 +280,6 @@ export function submissionWindow(
   if (submission && submission.score !== null) return 'graded'
   if (Date.parse(now) <= Date.parse(homework.dueDate)) return 'open'
   return homework.allowLate ? 'late' : 'closed'
-}
-
-/**
- * Yeni seçilen dosyalardan sığanlar (en çok 5), zaten ekli ya da aynı seçimde yinelenen dosyalar
- * (`identity` aynı) bir kez alınır ve `duplicates` olarak sayılır; sığmayanlar `dropped`'tır.
- */
-export function fitFiles<T>(
-  current: readonly SubmissionFile[],
-  picked: readonly T[],
-  identity: (item: T) => string = String,
-): { accepted: T[]; dropped: number; duplicates: number } {
-  const seen = new Set(current.flatMap((file) => (file.key === undefined ? [] : [file.key])))
-  const unique = picked.filter((item) => {
-    const key = identity(item)
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
-  const room = Math.max(0, SUBMISSION_FILE_LIMIT - current.length)
-  return {
-    accepted: unique.slice(0, room),
-    dropped: Math.max(0, unique.length - room),
-    duplicates: picked.length - unique.length,
-  }
 }
 
 /**

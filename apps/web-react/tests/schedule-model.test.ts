@@ -2,14 +2,13 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import { ApiError } from '@kampus/api-client/errors.ts'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
+import { isoToIstanbul, istanbulToIso } from '../src/lib/istanbul-time.ts'
 import { academicLookups, type AcademicSources } from '../src/pages/academic/academic-rows.ts'
 import {
   cancelFormSchema,
   cancelledFilter,
   changedLessonFields,
   classOptions,
-  isoToIstanbul,
-  istanbulToIso,
   lessonActions,
   lessonErrorRoutes,
   lessonFormDefaults,

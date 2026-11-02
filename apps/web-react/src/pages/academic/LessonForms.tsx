@@ -6,9 +6,8 @@
 // (ders başlasa ya da iptal edilse de girdi kaybolmaz); sunucu reddederse 422 mesajı formda
 // görünür. Ders çakışmasında sunucunun mesajı ilgili alanın altında görünür.
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useRef, useState, type ReactNode } from 'react'
+import { useState, type ReactNode } from 'react'
 import { useForm, useWatch, type UseFormReturn } from 'react-hook-form'
-import { useBlocker } from 'react-router'
 import {
   useCancelLesson,
   useCreateLesson,
@@ -19,20 +18,11 @@ import {
 import { FormField } from '@/components/FormField.tsx'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { useMinuteClock } from '@/hooks/use-minute-clock.ts'
+import { useRouteDiscardGuard } from '@/hooks/use-route-discard-guard.tsx'
 import { notify } from '@/lib/notify.ts'
 import { RECORD_UNAVAILABLE_MESSAGE, submitWithFreshRecord } from '../language/fresh-submit.ts'
 import { FormActions, RootError } from '../management/FormParts.tsx'
@@ -66,57 +56,6 @@ import {
 
 /** `?ders-form=` değeri: yeni ders. */
 export const NEW_LESSON = 'yeni'
-
-/**
- * Kirli form koruması: pencere kapatma ve sayfa içi gezinme (geri, bağlantı) aynı yoldan geçer;
- * form kirliyse gezinme durur ve onay sorulur. Başarılı gönderimden sonra `leave()` korumayı
- * kaldırır (form sıfırlanmadan kapanır).
- */
-function useDiscardGuard(dirty: boolean) {
-  const leaving = useRef(false)
-  const blocker = useBlocker(
-    ({ currentLocation, nextLocation }) =>
-      !leaving.current &&
-      dirty &&
-      (currentLocation.pathname !== nextLocation.pathname ||
-        currentLocation.search !== nextLocation.search),
-  )
-  const dialog = (
-    <AlertDialog
-      open={blocker.state === 'blocked'}
-      onOpenChange={(open) => {
-        if (!open && blocker.state === 'blocked') blocker.reset()
-      }}
-    >
-      <AlertDialogContent>
-        <AlertDialogHeader>
-          <AlertDialogTitle>Kaydedilmemiş değişiklikler var</AlertDialogTitle>
-          <AlertDialogDescription>
-            Formdaki değişiklikler kaydedilmedi. Kapatırsanız silinir.
-          </AlertDialogDescription>
-        </AlertDialogHeader>
-        <AlertDialogFooter>
-          <AlertDialogCancel>Düzenlemeye devam et</AlertDialogCancel>
-          <AlertDialogAction
-            onClick={(event) => {
-              // Radix kendi kapanışını yapmasın; gezinme sürer ve pencere kapanır.
-              event.preventDefault()
-              if (blocker.state === 'blocked') blocker.proceed()
-            }}
-          >
-            Değişiklikleri at
-          </AlertDialogAction>
-        </AlertDialogFooter>
-      </AlertDialogContent>
-    </AlertDialog>
-  )
-  return {
-    dialog,
-    leave: () => {
-      leaving.current = true
-    },
-  }
-}
 
 function FormDialog({
   title,
@@ -333,7 +272,7 @@ function LessonForm({
     defaultValues: lessonFormDefaults(lesson),
   })
   const [stale, setStale] = useState<Stale | null>(null)
-  const guard = useDiscardGuard(form.formState.isDirty)
+  const guard = useRouteDiscardGuard(form.formState.isDirty)
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
   const [classId = '', subjectId = ''] = useWatch({
@@ -589,7 +528,7 @@ function SubstituteForm({
     defaultValues: { teacherId: '', reason: '' },
   })
   const [stale, setStale] = useState<Stale | null>(null)
-  const guard = useDiscardGuard(form.formState.isDirty)
+  const guard = useRouteDiscardGuard(form.formState.isDirty)
   const busy = substitute.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
   const candidates = substituteCandidates(lesson, lookups)
@@ -706,7 +645,7 @@ function CancelForm({
     defaultValues: { reason: '' },
   })
   const [stale, setStale] = useState<Stale | null>(null)
-  const guard = useDiscardGuard(form.formState.isDirty)
+  const guard = useRouteDiscardGuard(form.formState.isDirty)
   const busy = cancel.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
 

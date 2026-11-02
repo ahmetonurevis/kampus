@@ -32,7 +32,7 @@ export function StudentHomeworkView({ student, title }: Props) {
     if (!homework.data || !submissions.data) return undefined
     const entries = submissions.data.map((row) => row.record)
     const now = new Date()
-    return homework.data.map((item) => homeworkRow(item, entries, student.id, now))
+    return homework.data.map((item) => homeworkRow(item.record, entries, student.id, now))
   }, [homework.data, submissions.data, student.id])
 
   const panel = useDetailPanel('odev')
@@ -163,7 +163,7 @@ function HomeworkDetail({ homeworkId, studentId, classNameOf }: Omit<PanelProps,
     )
   if (!item.data || !submissions.data) return <SummaryLoading />
   const row = homeworkRow(
-    item.data,
+    item.data.record,
     submissions.data.map((entry) => entry.record),
     studentId,
     now,

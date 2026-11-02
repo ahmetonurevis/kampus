@@ -4,10 +4,10 @@
 // yeniden yazılmaz ve saklanmaz.
 import { gradeQuiz } from '@kampus/school-core/lib/domain.ts'
 import { average, homeworkStatus } from '@kampus/school-core/lib/format.ts'
+import type { Homework, HomeworkListItem } from '@kampus/react-shared/homework.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
 import type { CollectionListConfig } from '../../lib/collection-list.ts'
 
-type Homework = CoreRecord<'homework'>
 type Submission = CoreRecord<'submissions'>
 type Quiz = CoreRecord<'quizzes'>
 type Attempt = CoreRecord<'quizAttempts'>
@@ -16,13 +16,6 @@ type BankQuestion = CoreRecord<'bank'>
 type Student = CoreRecord<'students'>
 
 /** Sunucunun sıralayabildiği ve süzebildiği alanlar (api-tasarimi.md §3 beyaz liste). */
-export const HOMEWORK_LIST = {
-  sortFields: { title: 'title', dueDate: 'dueDate' },
-  filterFields: { classId: 'classId', subjectId: 'subjectId' },
-  // Son teslimi yakın olan üstte; eşitlikte kimlik (sayfalar arası kararlı sıra).
-  defaultSort: ['-dueDate', 'id'],
-} satisfies CollectionListConfig
-
 export const QUIZ_LIST = {
   sortFields: { title: 'title' },
   filterFields: { classId: 'classId', subjectId: 'subjectId' },
@@ -54,6 +47,8 @@ export type SubmissionRef = Pick<Submission, 'homeworkId' | 'studentId'> & {
   /** Teslim kaydı kimliği; verilirse özet satırı değerlendirme formuna bağlanır. */
   id?: string
   score?: number | null
+  /** Geç teslim işareti (`/homework` teslimi); eski kayıtlarda yok. */
+  late?: boolean
 }
 
 /** Öğrencinin kendi (veya velinin seçili çocuğunun) ödev satırı: durum core'dan. */
@@ -69,12 +64,11 @@ export type HomeworkRow = {
 }
 
 export function homeworkRow(
-  item: CoreRow<'homework'>,
+  homework: Pick<Homework, 'id' | 'title' | 'subject' | 'dueDate' | 'description'>,
   submissions: readonly SubmissionRef[],
   studentId: string,
   now: Date,
 ): HomeworkRow {
-  const homework = item.record
   const submission = submissions.find(
     (entry) => entry.homeworkId === homework.id && entry.studentId === studentId,
   )
@@ -89,32 +83,42 @@ export function homeworkRow(
   }
 }
 
-/** Öğretmen listesi satırı: sınıfın teslim sayıları (sunucu sayımından). */
+/** Öğretmen ve yönetici listesi satırı (`/homework`): teslim sayıları sunucudan. */
 export type TeacherHomeworkRow = {
   id: string
+  version: number
   title: string
   subject: string
   classId: string
   className: string
+  teacherId: string
   dueDate: string
+  /** `open` son teslim gelmedi, `closed` geçti (sunucu türetir). */
+  status: HomeworkListItem['status']
+  /** Okuyanın görebildiği teslim sayısı (başka dersin öğretmeninde 0; DOM-AKD-074). */
   delivered: number
+  graded: number
+  /** Sınıfın aktif öğrenci sayısı. */
   total: number
 }
 
 export function teacherHomeworkRow(
-  item: CoreRow<'homework'>,
-  counts: { delivered: number; total: number },
+  item: HomeworkListItem,
+  context: { className: string | undefined; total: number },
 ): TeacherHomeworkRow {
-  const homework = item.record
   return {
-    id: homework.id,
-    title: homework.title,
-    subject: homework.subject,
-    classId: homework.classId,
-    className: item.joined?.className ?? '—',
-    dueDate: homework.dueDate,
-    delivered: counts.delivered,
-    total: counts.total,
+    id: item.id,
+    version: item.version,
+    title: item.title,
+    subject: item.subject,
+    classId: item.classId,
+    className: context.className ?? '—',
+    teacherId: item.teacherId,
+    dueDate: item.dueDate,
+    status: item.status,
+    delivered: item.submissionCounts.submitted,
+    graded: item.submissionCounts.graded,
+    total: context.total,
   }
 }
 
@@ -124,6 +128,8 @@ export type DeliveryEntry = {
   status: HomeworkStatus
   /** Öğrencinin teslimi yoksa `null`. */
   submissionId: string | null
+  /** Teslim son teslimden sonra mı yapıldı (sunucunun teslim anındaki kararı). */
+  late: boolean
 }
 
 export type DeliverySummary = {
@@ -151,12 +157,16 @@ export function deliverySummary(
   now: Date,
 ): DeliverySummary {
   const own = submissions.filter((entry) => entry.homeworkId === homework.id)
-  const students = roster.map((student): DeliveryEntry => ({
-    studentId: student.id,
-    name: student.name,
-    status: homeworkStatus(homework, own, student.id, now),
-    submissionId: own.find((entry) => entry.studentId === student.id)?.id ?? null,
-  }))
+  const students = roster.map((student): DeliveryEntry => {
+    const entry = own.find((item) => item.studentId === student.id)
+    return {
+      studentId: student.id,
+      name: student.name,
+      status: homeworkStatus(homework, own, student.id, now),
+      submissionId: entry?.id ?? null,
+      late: entry?.late ?? false,
+    }
+  })
   const count = (status: HomeworkStatus) =>
     students.filter((entry) => entry.status === status).length
   const evaluated = count('Değerlendirildi')

@@ -3680,6 +3680,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/students/{studentId}/guardians": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrencinin velileri
+         * @description Öğrencinin etkin veli bağları, kuruluş sırasıyla (DOM-ILT-070…075). Yönetici ve ön büro bütün bağları, velayet, iletişim kısıtı, ödeyici ve teslim alma bilgisiyle görür. Veli yalnız kendi bağını görür: öteki velinin varlığı, kimliği ve kısıtı ile kendi bağının kısıt alanı dönmez (DOM-ILT-073); bağı olmayan ya da iletişim kısıtlı veli 404 alır. Roller: `yonetici`, `onburo`, `veli`; diğer roller 403. Olmayan ya da başka kurumun öğrencisi 404.
+         */
+        get: operations["listStudentGuardians"];
+        put?: never;
+        /**
+         * Öğrenciye veli bağla
+         * @description Öğrenciye veli kaydını (`parentId`) ve/veya veli hesabını (`membershipId`) bağlar (core `planGuardianLink`, DOM-ILT-070…075). Kurumda olmayan veli kaydı ya da hesap 404; veli rolünde olmayan hesap 422 `guardian_account_not_parent`; aynı veli ikinci kez 409 `guardian_link_exists`. Veli kaydı ile hesap birlikte verilirse aynı kişiye ait olmalıdır: kayıt ya da hesap kurumda başka bir bağda başkasıyla eşlenmişse 422 `guardian_identity_mismatch`. İletişim kısıtlı veli velayetli, ödeyici ve teslim alan olamaz (422 `guardian_restricted_custody`, `guardian_restricted_payer`, `guardian_restricted_pickup`); vasi velayetlidir (422 `guardian_legal_custody`); öğrencinin ikinci ödeyicisi 409 `guardian_payer_exists`; ilk bağ velayetsiz kurulamaz (422 `guardian_custody_required`). `Idempotency-Key` zorunlu; başarı 201 ve `Location` (öğrencinin bağ listesi). Yalnız `yonetici`, `onburo`; diğer roller 403. Olmayan, arşivli ya da başka kurumun öğrencisi 404. Denetime yalnız alan adları yazılır (velayet ve kısıt değeri yazılmaz).
+         */
+        post: operations["linkStudentGuardian"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/students/{studentId}/guardians/{linkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Veli bağını kaldır
+         * @description Bağı kaldırır (arşiv; core `planGuardianUnlink`, DOM-ILT-071, DOM-ILT-075). Başka bağ dururken son velayetli bağ kaldırılamaz (422 `guardian_custody_required`); son bağ kaldırılabilir. Kaldırılan bağ rıza ve velayet vermez; verilmiş rızalar kayıtta kalır. Yanıt kaldırılan bağdır (`archivedAt` dolu). `If-Match` bağın `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan, kaldırılmış ya da başka öğrencinin bağı 404. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`, `onburo`; diğer roller 403. Olmayan, arşivli ya da başka kurumun öğrencisi 404. Denetime yalnız alan adları yazılır (velayet ve kısıt değeri yazılmaz).
+         */
+        delete: operations["unlinkStudentGuardian"];
+        options?: never;
+        head?: never;
+        /**
+         * Veli bağını değiştir
+         * @description Bağın yakınlığını, velayetini, iletişim kısıtını, ödeyici ve teslim alma yetkisini değiştirir (core `planGuardianUpdate`, DOM-ILT-071…075); veli kimliği değişmez. Kurallar bağ kurmadaki gibidir; son velayetli bağın velayeti kaldırılamaz (422 `guardian_custody_required`). Ödeyiciyi değiştirmek için önce eski ödeyicinin `isPayer` alanı kapatılır. `If-Match` bağın `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan, kaldırılmış ya da başka öğrencinin bağı 404. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`, `onburo`; diğer roller 403. Olmayan, arşivli ya da başka kurumun öğrencisi 404. Denetime yalnız alan adları yazılır (velayet ve kısıt değeri yazılmaz).
+         */
+        patch: operations["updateStudentGuardian"];
+        trace?: never;
+    };
     "/api/v1/courses": {
         parameters: {
             query?: never;
@@ -6009,6 +6057,76 @@ export interface components {
             /** @description Günün dönemi; tatilde ve yıl dışında `null` */
             term: components["schemas"]["AcademicTermInput"] | null;
         };
+        StudentGuardianListItemInput: {
+            /** Format: uuid */
+            id: string;
+            studentId: string;
+            /** @description Veli kaydı (`parents`); hesabı olmayan veli için */
+            parentId: string | null;
+            /** @description Veli hesabının üyeliği */
+            membershipId: string | null;
+            /**
+             * @description `mother`, `father`, `legal_guardian` (vasi), `other`
+             * @enum {string}
+             */
+            relationship: "mother" | "father" | "legal_guardian" | "other";
+            /**
+             * @description Velayet: `full` sahibi, `joint` ortak, `none` velayeti yok (DOM-ILT-070)
+             * @enum {string}
+             */
+            custody: "full" | "joint" | "none";
+            /** @description Öğrencinin tek ödeyicisi (DOM-ILT-074) */
+            isPayer: boolean;
+            /** @description Öğrenciyi teslim alma yetkisi */
+            canPickUp: boolean;
+            /** @description İletişim kısıtı (DOM-ILT-074); yalnız yönetici ve ön büroya döner */
+            contactRestricted?: boolean;
+            /**
+             * Format: date-time
+             * @description Yalnız yönetici ve ön büroya döner
+             */
+            createdAt?: string;
+            /**
+             * Format: date-time
+             * @description Yalnız yönetici ve ön büroya döner
+             */
+            updatedAt?: string;
+            /** @description Düzenleme ve kaldırmada `If-Match` değeri; yalnız yönetici ve ön büroya döner */
+            rowVersion?: number;
+        };
+        StudentGuardianInput: {
+            /** Format: uuid */
+            id: string;
+            studentId: string;
+            /** @description Veli kaydı (`parents`); hesabı olmayan veli için */
+            parentId: string | null;
+            /** @description Veli hesabının üyeliği */
+            membershipId: string | null;
+            /**
+             * @description `mother`, `father`, `legal_guardian` (vasi), `other`
+             * @enum {string}
+             */
+            relationship: "mother" | "father" | "legal_guardian" | "other";
+            /**
+             * @description Velayet: `full` sahibi, `joint` ortak, `none` velayeti yok (DOM-ILT-070)
+             * @enum {string}
+             */
+            custody: "full" | "joint" | "none";
+            /** @description Öğrencinin tek ödeyicisi (DOM-ILT-074) */
+            isPayer: boolean;
+            /** @description Öğrenciyi teslim alma yetkisi */
+            canPickUp: boolean;
+            /** @description İletişim kısıtı (DOM-ILT-074) */
+            contactRestricted: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Kaldırıldıysa an; etkin bağda `null` */
+            archivedAt: string | null;
+            /** @description Düzenleme ve kaldırmada `If-Match` değeri */
+            rowVersion: number;
+        };
         CourseEOzelInput: {
             /** @description e-Özel kurs programı kodu */
             programCode: string | null;
@@ -8214,6 +8332,76 @@ export interface components {
             year: components["schemas"]["AcademicYear"] | null;
             /** @description Günün dönemi; tatilde ve yıl dışında `null` */
             term: components["schemas"]["AcademicTerm"] | null;
+        };
+        StudentGuardianListItem: {
+            /** Format: uuid */
+            id: string;
+            studentId: string;
+            /** @description Veli kaydı (`parents`); hesabı olmayan veli için */
+            parentId: string | null;
+            /** @description Veli hesabının üyeliği */
+            membershipId: string | null;
+            /**
+             * @description `mother`, `father`, `legal_guardian` (vasi), `other`
+             * @enum {string}
+             */
+            relationship: "mother" | "father" | "legal_guardian" | "other";
+            /**
+             * @description Velayet: `full` sahibi, `joint` ortak, `none` velayeti yok (DOM-ILT-070)
+             * @enum {string}
+             */
+            custody: "full" | "joint" | "none";
+            /** @description Öğrencinin tek ödeyicisi (DOM-ILT-074) */
+            isPayer: boolean;
+            /** @description Öğrenciyi teslim alma yetkisi */
+            canPickUp: boolean;
+            /** @description İletişim kısıtı (DOM-ILT-074); yalnız yönetici ve ön büroya döner */
+            contactRestricted?: boolean;
+            /**
+             * Format: date-time
+             * @description Yalnız yönetici ve ön büroya döner
+             */
+            createdAt?: string;
+            /**
+             * Format: date-time
+             * @description Yalnız yönetici ve ön büroya döner
+             */
+            updatedAt?: string;
+            /** @description Düzenleme ve kaldırmada `If-Match` değeri; yalnız yönetici ve ön büroya döner */
+            rowVersion?: number;
+        };
+        StudentGuardian: {
+            /** Format: uuid */
+            id: string;
+            studentId: string;
+            /** @description Veli kaydı (`parents`); hesabı olmayan veli için */
+            parentId: string | null;
+            /** @description Veli hesabının üyeliği */
+            membershipId: string | null;
+            /**
+             * @description `mother`, `father`, `legal_guardian` (vasi), `other`
+             * @enum {string}
+             */
+            relationship: "mother" | "father" | "legal_guardian" | "other";
+            /**
+             * @description Velayet: `full` sahibi, `joint` ortak, `none` velayeti yok (DOM-ILT-070)
+             * @enum {string}
+             */
+            custody: "full" | "joint" | "none";
+            /** @description Öğrencinin tek ödeyicisi (DOM-ILT-074) */
+            isPayer: boolean;
+            /** @description Öğrenciyi teslim alma yetkisi */
+            canPickUp: boolean;
+            /** @description İletişim kısıtı (DOM-ILT-074) */
+            contactRestricted: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            /** @description Kaldırıldıysa an; etkin bağda `null` */
+            archivedAt: string | null;
+            /** @description Düzenleme ve kaldırmada `If-Match` değeri */
+            rowVersion: number;
         };
         CourseEOzel: {
             /** @description e-Özel kurs programı kodu */
@@ -30818,6 +31006,422 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["AcademicYear"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStudentGuardians: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StudentGuardianListItem"][];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    linkStudentGuardian: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    parentId?: string;
+                    membershipId?: string;
+                    /** @enum {string} */
+                    relationship: "mother" | "father" | "legal_guardian" | "other";
+                    /** @enum {string} */
+                    custody: "full" | "joint" | "none";
+                    /** @default false */
+                    contactRestricted?: boolean;
+                    /** @default false */
+                    isPayer?: boolean;
+                    /** @default false */
+                    canPickUp?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StudentGuardian"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    unlinkStudentGuardian: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+                /** @description Veli bağı kimliği */
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StudentGuardian"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStudentGuardian: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+                /** @description Veli bağı kimliği */
+                linkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    relationship?: "mother" | "father" | "legal_guardian" | "other";
+                    /** @enum {string} */
+                    custody?: "full" | "joint" | "none";
+                    contactRestricted?: boolean;
+                    isPayer?: boolean;
+                    canPickUp?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StudentGuardian"];
                     };
                 };
             };

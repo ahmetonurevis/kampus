@@ -8959,6 +8959,194 @@
           "term"
         ]
       },
+      "StudentGuardianListItemInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "parentId": {
+            "description": "Veli kaydı (`parents`); hesabı olmayan veli için",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "membershipId": {
+            "description": "Veli hesabının üyeliği",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "relationship": {
+            "type": "string",
+            "enum": [
+              "mother",
+              "father",
+              "legal_guardian",
+              "other"
+            ],
+            "description": "`mother`, `father`, `legal_guardian` (vasi), `other`"
+          },
+          "custody": {
+            "type": "string",
+            "enum": [
+              "full",
+              "joint",
+              "none"
+            ],
+            "description": "Velayet: `full` sahibi, `joint` ortak, `none` velayeti yok (DOM-ILT-070)"
+          },
+          "isPayer": {
+            "type": "boolean",
+            "description": "Öğrencinin tek ödeyicisi (DOM-ILT-074)"
+          },
+          "canPickUp": {
+            "type": "boolean",
+            "description": "Öğrenciyi teslim alma yetkisi"
+          },
+          "contactRestricted": {
+            "description": "İletişim kısıtı (DOM-ILT-074); yalnız yönetici ve ön büroya döner",
+            "type": "boolean"
+          },
+          "createdAt": {
+            "description": "Yalnız yönetici ve ön büroya döner",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "description": "Yalnız yönetici ve ön büroya döner",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "rowVersion": {
+            "description": "Düzenleme ve kaldırmada `If-Match` değeri; yalnız yönetici ve ön büroya döner",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "parentId",
+          "membershipId",
+          "relationship",
+          "custody",
+          "isPayer",
+          "canPickUp"
+        ]
+      },
+      "StudentGuardianInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "parentId": {
+            "description": "Veli kaydı (`parents`); hesabı olmayan veli için",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "membershipId": {
+            "description": "Veli hesabının üyeliği",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "relationship": {
+            "type": "string",
+            "enum": [
+              "mother",
+              "father",
+              "legal_guardian",
+              "other"
+            ],
+            "description": "`mother`, `father`, `legal_guardian` (vasi), `other`"
+          },
+          "custody": {
+            "type": "string",
+            "enum": [
+              "full",
+              "joint",
+              "none"
+            ],
+            "description": "Velayet: `full` sahibi, `joint` ortak, `none` velayeti yok (DOM-ILT-070)"
+          },
+          "isPayer": {
+            "type": "boolean",
+            "description": "Öğrencinin tek ödeyicisi (DOM-ILT-074)"
+          },
+          "canPickUp": {
+            "type": "boolean",
+            "description": "Öğrenciyi teslim alma yetkisi"
+          },
+          "contactRestricted": {
+            "type": "boolean",
+            "description": "İletişim kısıtı (DOM-ILT-074)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kaldırıldıysa an; etkin bağda `null`"
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Düzenleme ve kaldırmada `If-Match` değeri"
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "parentId",
+          "membershipId",
+          "relationship",
+          "custody",
+          "isPayer",
+          "canPickUp",
+          "contactRestricted",
+          "createdAt",
+          "updatedAt",
+          "archivedAt",
+          "rowVersion"
+        ]
+      },
       "CourseEOzelInput": {
         "type": "object",
         "properties": {
@@ -18391,6 +18579,196 @@
           "date",
           "year",
           "term"
+        ],
+        "additionalProperties": false
+      },
+      "StudentGuardianListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "parentId": {
+            "description": "Veli kaydı (`parents`); hesabı olmayan veli için",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "membershipId": {
+            "description": "Veli hesabının üyeliği",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "relationship": {
+            "type": "string",
+            "enum": [
+              "mother",
+              "father",
+              "legal_guardian",
+              "other"
+            ],
+            "description": "`mother`, `father`, `legal_guardian` (vasi), `other`"
+          },
+          "custody": {
+            "type": "string",
+            "enum": [
+              "full",
+              "joint",
+              "none"
+            ],
+            "description": "Velayet: `full` sahibi, `joint` ortak, `none` velayeti yok (DOM-ILT-070)"
+          },
+          "isPayer": {
+            "type": "boolean",
+            "description": "Öğrencinin tek ödeyicisi (DOM-ILT-074)"
+          },
+          "canPickUp": {
+            "type": "boolean",
+            "description": "Öğrenciyi teslim alma yetkisi"
+          },
+          "contactRestricted": {
+            "description": "İletişim kısıtı (DOM-ILT-074); yalnız yönetici ve ön büroya döner",
+            "type": "boolean"
+          },
+          "createdAt": {
+            "description": "Yalnız yönetici ve ön büroya döner",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "description": "Yalnız yönetici ve ön büroya döner",
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "rowVersion": {
+            "description": "Düzenleme ve kaldırmada `If-Match` değeri; yalnız yönetici ve ön büroya döner",
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "parentId",
+          "membershipId",
+          "relationship",
+          "custody",
+          "isPayer",
+          "canPickUp"
+        ],
+        "additionalProperties": false
+      },
+      "StudentGuardian": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "parentId": {
+            "description": "Veli kaydı (`parents`); hesabı olmayan veli için",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "membershipId": {
+            "description": "Veli hesabının üyeliği",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "relationship": {
+            "type": "string",
+            "enum": [
+              "mother",
+              "father",
+              "legal_guardian",
+              "other"
+            ],
+            "description": "`mother`, `father`, `legal_guardian` (vasi), `other`"
+          },
+          "custody": {
+            "type": "string",
+            "enum": [
+              "full",
+              "joint",
+              "none"
+            ],
+            "description": "Velayet: `full` sahibi, `joint` ortak, `none` velayeti yok (DOM-ILT-070)"
+          },
+          "isPayer": {
+            "type": "boolean",
+            "description": "Öğrencinin tek ödeyicisi (DOM-ILT-074)"
+          },
+          "canPickUp": {
+            "type": "boolean",
+            "description": "Öğrenciyi teslim alma yetkisi"
+          },
+          "contactRestricted": {
+            "type": "boolean",
+            "description": "İletişim kısıtı (DOM-ILT-074)"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "archivedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kaldırıldıysa an; etkin bağda `null`"
+          },
+          "rowVersion": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Düzenleme ve kaldırmada `If-Match` değeri"
+          }
+        },
+        "required": [
+          "id",
+          "studentId",
+          "parentId",
+          "membershipId",
+          "relationship",
+          "custody",
+          "isPayer",
+          "canPickUp",
+          "contactRestricted",
+          "createdAt",
+          "updatedAt",
+          "archivedAt",
+          "rowVersion"
         ],
         "additionalProperties": false
       },
@@ -59765,6 +60143,648 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/AcademicYear"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{studentId}/guardians": {
+      "get": {
+        "operationId": "listStudentGuardians",
+        "summary": "Öğrencinin velileri",
+        "tags": [
+          "institution"
+        ],
+        "description": "Öğrencinin etkin veli bağları, kuruluş sırasıyla (DOM-ILT-070…075). Yönetici ve ön büro bütün bağları, velayet, iletişim kısıtı, ödeyici ve teslim alma bilgisiyle görür. Veli yalnız kendi bağını görür: öteki velinin varlığı, kimliği ve kısıtı ile kendi bağının kısıt alanı dönmez (DOM-ILT-073); bağı olmayan ya da iletişim kısıtlı veli 404 alır. Roller: `yonetici`, `onburo`, `veli`; diğer roller 403. Olmayan ya da başka kurumun öğrencisi 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/StudentGuardianListItem"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "linkStudentGuardian",
+        "summary": "Öğrenciye veli bağla",
+        "tags": [
+          "institution"
+        ],
+        "description": "Öğrenciye veli kaydını (`parentId`) ve/veya veli hesabını (`membershipId`) bağlar (core `planGuardianLink`, DOM-ILT-070…075). Kurumda olmayan veli kaydı ya da hesap 404; veli rolünde olmayan hesap 422 `guardian_account_not_parent`; aynı veli ikinci kez 409 `guardian_link_exists`. Veli kaydı ile hesap birlikte verilirse aynı kişiye ait olmalıdır: kayıt ya da hesap kurumda başka bir bağda başkasıyla eşlenmişse 422 `guardian_identity_mismatch`. İletişim kısıtlı veli velayetli, ödeyici ve teslim alan olamaz (422 `guardian_restricted_custody`, `guardian_restricted_payer`, `guardian_restricted_pickup`); vasi velayetlidir (422 `guardian_legal_custody`); öğrencinin ikinci ödeyicisi 409 `guardian_payer_exists`; ilk bağ velayetsiz kurulamaz (422 `guardian_custody_required`). `Idempotency-Key` zorunlu; başarı 201 ve `Location` (öğrencinin bağ listesi). Yalnız `yonetici`, `onburo`; diğer roller 403. Olmayan, arşivli ya da başka kurumun öğrencisi 404. Denetime yalnız alan adları yazılır (velayet ve kısıt değeri yazılmaz).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "parentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "membershipId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "relationship": {
+                    "type": "string",
+                    "enum": [
+                      "mother",
+                      "father",
+                      "legal_guardian",
+                      "other"
+                    ]
+                  },
+                  "custody": {
+                    "type": "string",
+                    "enum": [
+                      "full",
+                      "joint",
+                      "none"
+                    ]
+                  },
+                  "contactRestricted": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "isPayer": {
+                    "default": false,
+                    "type": "boolean"
+                  },
+                  "canPickUp": {
+                    "default": false,
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "relationship",
+                  "custody"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StudentGuardian"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{studentId}/guardians/{linkId}": {
+      "patch": {
+        "operationId": "updateStudentGuardian",
+        "summary": "Veli bağını değiştir",
+        "tags": [
+          "institution"
+        ],
+        "description": "Bağın yakınlığını, velayetini, iletişim kısıtını, ödeyici ve teslim alma yetkisini değiştirir (core `planGuardianUpdate`, DOM-ILT-071…075); veli kimliği değişmez. Kurallar bağ kurmadaki gibidir; son velayetli bağın velayeti kaldırılamaz (422 `guardian_custody_required`). Ödeyiciyi değiştirmek için önce eski ödeyicinin `isPayer` alanı kapatılır. `If-Match` bağın `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan, kaldırılmış ya da başka öğrencinin bağı 404. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`, `onburo`; diğer roller 403. Olmayan, arşivli ya da başka kurumun öğrencisi 404. Denetime yalnız alan adları yazılır (velayet ve kısıt değeri yazılmaz).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "relationship": {
+                    "type": "string",
+                    "enum": [
+                      "mother",
+                      "father",
+                      "legal_guardian",
+                      "other"
+                    ]
+                  },
+                  "custody": {
+                    "type": "string",
+                    "enum": [
+                      "full",
+                      "joint",
+                      "none"
+                    ]
+                  },
+                  "contactRestricted": {
+                    "type": "boolean"
+                  },
+                  "isPayer": {
+                    "type": "boolean"
+                  },
+                  "canPickUp": {
+                    "type": "boolean"
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "linkId",
+            "required": true,
+            "description": "Veli bağı kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StudentGuardian"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "unlinkStudentGuardian",
+        "summary": "Veli bağını kaldır",
+        "tags": [
+          "institution"
+        ],
+        "description": "Bağı kaldırır (arşiv; core `planGuardianUnlink`, DOM-ILT-071, DOM-ILT-075). Başka bağ dururken son velayetli bağ kaldırılamaz (422 `guardian_custody_required`); son bağ kaldırılabilir. Kaldırılan bağ rıza ve velayet vermez; verilmiş rızalar kayıtta kalır. Yanıt kaldırılan bağdır (`archivedAt` dolu). `If-Match` bağın `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan, kaldırılmış ya da başka öğrencinin bağı 404. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`, `onburo`; diğer roller 403. Olmayan, arşivli ya da başka kurumun öğrencisi 404. Denetime yalnız alan adları yazılır (velayet ve kısıt değeri yazılmaz).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "linkId",
+            "required": true,
+            "description": "Veli bağı kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/StudentGuardian"
                     }
                   },
                   "required": [

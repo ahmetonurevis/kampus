@@ -4,6 +4,7 @@ import { after, before, describe, test } from 'node:test'
 import { count, eq } from 'drizzle-orm'
 
 import { seedTermId } from '@kampus/school-core/platform/seed-academic.ts'
+import { seedGuardianLinkId } from '@kampus/school-core/platform/seed-guardians.ts'
 import { seedCourseId } from '@kampus/school-core/platform/seed-courses.ts'
 
 import type { App } from '../src/app.ts'
@@ -22,6 +23,8 @@ import { findRecord, loadRecords, writeRecords } from '../src/db/records.ts'
 import { institutions, memberships, users } from '../src/db/schema/auth.ts'
 import { membershipLinks } from '../src/db/schema/membership-links.ts'
 import { records } from '../src/db/schema/records.ts'
+import { studentGuardians } from '../src/db/schema/student-guardians.ts'
+import { loadStudentGuardians } from '../src/db/student-guardians.ts'
 import { buildTestApp, createTestDatabase, FIXED_NOW, signInAs } from './support/app.ts'
 
 const LATER = new Date('2026-10-07T09:00:00.000Z')
@@ -41,14 +44,22 @@ describe('demo tohumu', () => {
   })
 
   async function counts() {
-    const [[u], [i], [m], [l], [r]] = await Promise.all([
+    const [[u], [i], [m], [l], [r], [g]] = await Promise.all([
       db.select({ n: count() }).from(users),
       db.select({ n: count() }).from(institutions),
       db.select({ n: count() }).from(memberships),
       db.select({ n: count() }).from(membershipLinks),
       db.select({ n: count() }).from(records),
+      db.select({ n: count() }).from(studentGuardians),
     ])
-    return { users: u?.n, institutions: i?.n, memberships: m?.n, links: l?.n, records: r?.n }
+    return {
+      users: u?.n,
+      institutions: i?.n,
+      memberships: m?.n,
+      links: l?.n,
+      records: r?.n,
+      guardians: g?.n,
+    }
   }
 
   test('iki kez çalışınca aynı kayıtları bırakır ve demo kullanıcıları giriş yapar', async () => {
@@ -60,11 +71,12 @@ describe('demo tohumu', () => {
       'kampus-dil': perInstitution,
     })
     assert.deepEqual(first, {
-      users: 9,
+      users: 10,
       institutions: 2,
-      memberships: 10,
+      memberships: 11,
       links: 8,
       records: perInstitution * 2,
+      guardians: 5,
     })
 
     // Sonradan değişen kayıt ikinci tohumda ezilmez; başka gün çalışmak da kayıt eklemez.
@@ -149,6 +161,46 @@ describe('demo tohumu', () => {
       dil.map((item) => [item.startYear, item.status, item.terms.length]),
       [[year, 'active', 0]],
     )
+  })
+
+  test('IST-019 örnek veli bağları: Ayşe Deniz ve Ece’nin velayetli ödeyicisi, ikinci veli velayetsiz ve kısıtlı (DOM-ILT-070, 074)', async () => {
+    const seeded = await seedDemo(app.auth, db, DEFAULT_DEMO_PASSWORD, { now: FIXED_NOW })
+    const akademi = seeded.institutionIds.akademi!
+    const deniz = await loadStudentGuardians(db, akademi, 's1')
+    assert.deepEqual(
+      deniz.map((link) => [
+        link.id,
+        link.parentId,
+        link.relationship,
+        link.custody,
+        link.contactRestricted,
+        link.isPayer,
+        link.canPickUp,
+      ]),
+      [
+        [seedGuardianLinkId(1), 'p1', 'mother', 'full', false, true, true],
+        [seedGuardianLinkId(3), null, 'father', 'none', true, false, false],
+      ],
+    )
+    const ece = await loadStudentGuardians(db, akademi, 's2')
+    assert.deepEqual(
+      ece.map((link) => [link.id, link.custody, link.isPayer]),
+      [[seedGuardianLinkId(2), 'full', true]],
+    )
+    const dil = await loadStudentGuardians(db, seeded.institutionIds['kampus-dil']!, 's1')
+    assert.deepEqual(
+      dil.map((link) => [link.relationship, link.custody, link.isPayer]),
+      [['father', 'full', true]],
+    )
+    // Kısıtlı velinin çocuk bağlantısı yoktur: öğrencinin verisini görmez.
+    const kemal = await signInAs(app, {
+      email: 'kemal.yilmaz@kampus.example',
+      password: DEFAULT_DEMO_PASSWORD,
+    })
+    const me = (
+      await app.inject({ method: 'GET', url: '/api/v1/me', headers: { cookie: kemal } })
+    ).json()
+    assert.deepEqual(me.data.activeMembership.links, [])
   })
 
   test('IST-076 dil okuluna örnek kur programı tohumlanır, okula tohumlanmaz; ikinci tohum değiştirmez (DOM-DIL-005, -007)', async () => {

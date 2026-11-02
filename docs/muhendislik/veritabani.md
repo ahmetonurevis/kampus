@@ -161,6 +161,15 @@ Migration `0026_create_academic_years`; şema `apps/api/src/db/schema/academic-y
 - Yılın `version`'ı yıl ve dönemlerinin ortak iyimser kilididir (`If-Match`): dönem yazan her işlem yılın sürümünü de artırır, böylece istemci tek sürümle bütün takvimi kilitler.
 - Etkinleştirme `institution_settings.academic_year`'ı aynı transaction'da etkin yıla eşitler; yenileme, rıza süresi ve tarife bu sayıyı okumaya devam eder. Migration sonuna elle eklenen geri doldurma, ayar satırı olan her kurum için `academic_year`'ı varsayılan aralıkla (1 Eylül – 31 Ağustos), dönemsiz, etkin ve sürüm 1 yazar; snapshot onu izlemez, `drizzle-kit generate` fark üretmez. Yeni kurumda aynı yılı `ensureInstitutionSettings` ayar satırıyla aynı transaction'da yazar (başka yıl varsa yazmaz); demo tohumu örnek yılı (`ensureAcademicYears`) ayardan önce yazar.
 
+### Veli–öğrenci bağı (IST-019)
+
+Migration `0027_create_student_guardians`; şema `apps/api/src/db/schema/student-guardians.ts`, depo `apps/api/src/db/student-guardians.ts`, kurallar core `lib/guardianship.ts` (DOM-ILT-070…075). Ölçüt 2 (tek ödeyici ve aynı velinin bir kez bağlanması veritabanı kısıtıdır) ve 5 (velayet ve iletişim kısıtı ayrı erişim kuralı taşır) gereği `records`'ta değildir.
+
+- `student_guardians`: birincil anahtar `(institution_id, id)`; öğrenci (`student_id`) ve veli kaydı (`parent_id`) `records`'tadır (yabancı anahtar yok), veli hesabı (`membership_id`) `memberships`'e bağlıdır (`on delete cascade`). `student_guardians_identity_check` ikisinden en az birini ister. Yakınlık ve velayet (`full`/`joint`/`none`) `check` ile core sözlüklerine bağlıdır. `student_guardians_restriction_check` iletişim kısıtlı bağı velayetsiz, ödeyici olmayan ve teslim almayan tutar (core ile aynı).
+- Kısmi tekil indeksler (arşivli hariç): `student_guardians_payer_key` öğrenci başına tek ödeyici (eşzamanlı ikinci ödeyici 23505 → 409), `student_guardians_student_parent_key` ve `student_guardians_student_membership_key` aynı veli kaydı ya da hesabını öğrenciye bir kez bağlar.
+- Velayet ve kısıt Ç sınıfıdır: belge ve karar ayrıntısı tutulmaz, denetime yalnız alan adları yazılır. Kaldırma arşivdir; arşivli bağ velayet, rıza ve kapsam vermez.
+- Migration sonuna elle eklenen geri doldurma doğrulanmış eski hesap bağlantılarını (`membership_links` `child`) velayetli (`full`), kısıtsız bağ olarak yazar; yeni `child` bağlantısı aynı bağı `ensureMembershipLinks` ile alır. `membership_links` okuma kapsamının kaynağı olarak kalır; bağdan kapsam OG-032'dedir (`TODO(velayet-kapsam)`).
+
 ### Kur programı tablosu (IST-076)
 
 Migration `0028_create_courses`; şema `apps/api/src/db/schema/courses.ts`, depo `apps/api/src/db/courses.ts`, kurallar core `lib/courses.ts` (DOM-DIL-005…008). Ölçüt 2 (ad ve e-Özel program kodu tekilliği, yaşam döngüsü veritabanı kısıtıdır) ve ilerideki grup ve paket satışının yabancı anahtarla bağlanması gereği `records`'ta değildir.

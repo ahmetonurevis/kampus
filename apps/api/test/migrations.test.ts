@@ -17,6 +17,7 @@ import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { academicYears } from '../src/db/schema/academic-years.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
+import { studentGuardians } from '../src/db/schema/student-guardians.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -161,9 +162,18 @@ describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
     const app = await buildTestApp(db)
     try {
       const { id } = await createInstitution(app, { academicYear: null })
-      const only = await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's1' }])
-      await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's2' }])
-      await createMember(app, id, 'veli', [{ kind: 'child', recordId: 's2' }])
+      // Bağlantı SQL ile: `ensureMembershipLinks` 0027'nin veli bağı tablosuna da yazar, o tablo
+      // bu sürümde yok.
+      const parent = async (studentId: string) => {
+        const member = await createMember(app, id, 'veli')
+        await db.execute(
+          sql`insert into membership_links (institution_id, membership_id, kind, record_id) values (${id}, ${member.membershipId}, 'child', ${studentId})`,
+        )
+        return member
+      }
+      const only = await parent('s1')
+      await parent('s2')
+      await parent('s2')
       const conversation = (key: string, studentId: string, extra: Record<string, unknown>) => ({
         id: key,
         data: { id: key, studentId, teacherId: 't1', audience: 'parent', messages: [], ...extra },
@@ -854,6 +864,118 @@ describe('0026: eğitim yılı tabloları', () => {
           values (${a.id}, gen_random_uuid(), 2026, 'Ters', 'ters', '2027-02-10', '2027-02-01')`,
       'academic_terms_dates_check',
     )
+  })
+})
+
+describe('0027: veli bağı geri doldurması', () => {
+  const client = newPGlite()
+  const pglite = drizzle({ client, schema })
+  const db: Database = pglite
+  let folder: string
+
+  before(async () => {
+    folder = await migrationsUpTo('0026_create_academic_years')
+    await migrate(pglite, { migrationsFolder: folder })
+  })
+  after(async () => {
+    await client.close()
+    await rm(folder, { recursive: true, force: true })
+  })
+
+  test('DOM-ILT-070 doğrulanmış etkin çocuk bağlantısı velayetli ve kısıtsız bağ olur; arşivli ve çocuk dışı bağlantı dolmaz', async () => {
+    const app = await buildTestApp(db)
+    try {
+      const { id } = await createInstitution(app, { academicYear: null })
+      const link = async (role: 'veli' | 'ogrenci', kind: string, archived = false) => {
+        const member = await createMember(app, id, role)
+        await db.execute(
+          sql`insert into membership_links (institution_id, membership_id, kind, record_id, archived_at)
+              values (${id}, ${member.membershipId}, ${kind}, 's1', ${archived ? FIXED_NOW : null})`,
+        )
+        return member.membershipId
+      }
+      const parent = await link('veli', 'child')
+      await link('veli', 'child', true)
+      await link('ogrenci', 'student')
+
+      await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+
+      const rows = await db
+        .select()
+        .from(studentGuardians)
+        .where(eq(studentGuardians.institutionId, id))
+      assert.equal(rows.length, 1)
+      const [row] = rows
+      assert.equal(row?.studentId, 's1')
+      assert.equal(row?.membershipId, parent)
+      assert.equal(row?.parentId, null)
+      assert.equal(row?.relationship, 'other')
+      assert.equal(row?.custody, 'full')
+      assert.equal(row?.isContactRestricted, false)
+      assert.equal(row?.isPayer, false)
+      assert.equal(row?.isPickupAuthorized, false)
+      assert.equal(row?.version, 1)
+      assert.equal(row?.archivedAt, null)
+    } finally {
+      await app.close()
+    }
+  })
+})
+
+describe('0027: veli bağı tablosu', () => {
+  let db: Database
+  let close: () => Promise<void>
+  let app: Awaited<ReturnType<typeof buildTestApp>>
+
+  before(async () => {
+    ;({ db, close } = await createTestDatabase())
+    app = await buildTestApp(db)
+  })
+  after(async () => {
+    await app.close()
+    await close()
+  })
+
+  const violates = async (query: ReturnType<typeof sql>, constraint: string) => {
+    await assert.rejects(db.execute(query), (error: unknown) => {
+      const cause = (error as { cause?: { constraint?: string } }).cause
+      assert.equal(cause?.constraint ?? (error as { constraint?: string }).constraint, constraint)
+      return true
+    })
+  }
+
+  test('DOM-ILT-074: tek ödeyici, kısıtlı velinin velayet/ödeme/teslim yasağı ve veli kimliği veritabanında da korunur', async () => {
+    const a = await createInstitution(app, { academicYear: null })
+    const b = await createInstitution(app, { academicYear: null })
+    const bond = (
+      institutionId: string,
+      parentId: string | null,
+      extra: { custody?: string; payer?: boolean; restricted?: boolean; pickup?: boolean } = {},
+    ) =>
+      sql`insert into student_guardians (institution_id, id, student_id, parent_id, relationship,
+            custody, is_payer, is_contact_restricted, is_pickup_authorized)
+          values (${institutionId}, gen_random_uuid(), 's1', ${parentId}, 'other',
+            ${extra.custody ?? 'full'}, ${extra.payer ?? false}, ${extra.restricted ?? false},
+            ${extra.pickup ?? false})`
+    await db.execute(bond(a.id, 'p1', { payer: true }))
+    // Başka kurumun ödeyicisi kısıtlamaz; aynı öğrencide ikinci ödeyici reddedilir.
+    await db.execute(bond(b.id, 'p1', { payer: true }))
+    await violates(bond(a.id, 'p2', { payer: true }), 'student_guardians_payer_key')
+    await violates(bond(a.id, 'p1'), 'student_guardians_student_parent_key')
+    await violates(bond(a.id, null), 'student_guardians_identity_check')
+    await violates(bond(a.id, 'p3', { restricted: true }), 'student_guardians_restriction_check')
+    await violates(
+      bond(a.id, 'p3', { restricted: true, custody: 'none', pickup: true }),
+      'student_guardians_restriction_check',
+    )
+    await violates(bond(a.id, 'p3', { custody: 'shared' }), 'student_guardians_custody_check')
+    await db.execute(bond(a.id, 'p3', { restricted: true, custody: 'none' }))
+    // Arşivli ödeyici yeni ödeyiciye engel değildir.
+    await db.execute(
+      sql`update student_guardians set archived_at = now()
+          where institution_id = ${a.id} and is_payer`,
+    )
+    await db.execute(bond(a.id, 'p4', { payer: true }))
   })
 })
 

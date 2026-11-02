@@ -22,6 +22,7 @@ import {
   type GiveConsentInput,
   type GuardianBond,
 } from '@kampus/school-core/lib/consents.ts'
+import { guardianBondsFor } from '@kampus/school-core/lib/guardianship.ts'
 import type { ActorLink } from '@kampus/school-core/lib/scope.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
@@ -37,6 +38,7 @@ import {
   type StoredConsent,
 } from '../db/privacy.ts'
 import { findRecord } from '../db/records.ts'
+import { loadMembershipGuardians } from '../db/student-guardians.ts'
 import { ConflictError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment } from './commands.ts'
@@ -63,18 +65,12 @@ import { auditWork } from './task-work.ts'
 const ENTITY = 'consent'
 
 /**
- * Velinin çocuklarıyla bağı (DOM-YTK-025, DOM-YTK-057). Üyelik bağlantısı (`child`) kurum
- * tarafından kurulur ve doğrulanmış sayılır. Velayet kararının tek noktası budur.
- *
- * TODO(OG-031-velayet): üyelik bağlantısı bugün velayet bilgisi taşımıyor; doğrulanmış her veli
- * bağı velayetli sayılıyor. OG-031 (`linkGuardian`) velayeti bağa yazınca velayetsiz ebeveyn
- * burada `custody: false` alır ve rıza vermesi 403 `consent_custody_required` olur.
+ * Rıza işleminin aktörü ve velinin çocuklarıyla bağları (DOM-YTK-025, DOM-YTK-057, DOM-ILT-070).
+ * Bağlar veli–öğrenci bağı tablosundan (`student_guardians`) okunur: kurumun kurduğu bağ
+ * doğrulanmış sayılır, velayetsiz ya da iletişim kısıtlı bağ `custody: false` alır ve rıza
+ * veremez (403 `consent_custody_required`). Velayet kararının tek noktası budur.
  */
-export function guardianBondsOf(links: readonly ActorLink[]): GuardianBond[] {
-  return links
-    .filter((link) => link.kind === 'child')
-    .map((link) => ({ studentId: link.recordId, verified: true, custody: true }))
-}
+type ConsentGiver = ConsentActor & { guardianBonds: GuardianBond[] }
 
 /** Öğrencinin kendi kaydı (`student` bağlantısı); yoksa `undefined`. */
 const ownStudentId = (links: readonly ActorLink[]) =>
@@ -99,9 +95,20 @@ export async function consentStudentOf(
   }
 }
 
-async function consentActorOf(tx: Database, ctx: ServiceContext): Promise<ConsentActor> {
-  const links = await listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId)
-  return { role: ctx.actor.role, links, userId: ctx.actor.userId }
+async function consentActorOf(tx: Database, ctx: ServiceContext): Promise<ConsentGiver> {
+  const { membershipId } = ctx.actor
+  const [links, guardians] = await Promise.all([
+    listMembershipLinks(tx, ctx.institutionId, membershipId),
+    ctx.actor.role === 'veli'
+      ? loadMembershipGuardians(tx, ctx.institutionId, membershipId)
+      : Promise.resolve([]),
+  ])
+  return {
+    role: ctx.actor.role,
+    links,
+    userId: ctx.actor.userId,
+    guardianBonds: guardianBondsFor(guardians, membershipId),
+  }
 }
 
 /**
@@ -139,7 +146,7 @@ export function consentView(row: StoredConsent, viewer: Role, canWithdraw: boole
 /** Satır açık ve aktör geri çekme yetkisinde (core `mayWithdrawConsent`, DOM-YTK-059). */
 function withdrawable(
   row: StoredConsent,
-  actor: ConsentActor,
+  actor: ConsentGiver,
   student: ConsentStudent | null,
   now: string,
 ) {
@@ -149,7 +156,7 @@ function withdrawable(
       actor,
       consent: row,
       student,
-      guardianBonds: guardianBondsOf(actor.links),
+      guardianBonds: actor.guardianBonds,
       now,
     })
   )
@@ -177,7 +184,7 @@ export function giveConsent(
   const id = randomUUID()
   const out: { body?: unknown } = {}
   let open: StoredConsent[] = []
-  let giver: { actor: ConsentActor; student: ConsentStudent | null } | null = null
+  let giver: { actor: ConsentGiver; student: ConsentStudent | null } | null = null
   return runCommand<Planned>(
     ctx,
     {
@@ -210,7 +217,7 @@ export function giveConsent(
             planConsent({
               actor,
               student,
-              guardianBonds: guardianBondsOf(actor.links),
+              guardianBonds: actor.guardianBonds,
               texts,
               consents: open,
               input,
@@ -311,7 +318,7 @@ export function withdrawConsent(
               actor,
               consent,
               student,
-              guardianBonds: guardianBondsOf(actor.links),
+              guardianBonds: actor.guardianBonds,
               input: { consentId },
               now,
             }),

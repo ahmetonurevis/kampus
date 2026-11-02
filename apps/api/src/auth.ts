@@ -1,5 +1,5 @@
 import { expo } from '@better-auth/expo'
-import { betterAuth } from 'better-auth'
+import { betterAuth, getCurrentAdapter } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { createAccessControl } from 'better-auth/plugins/access'
 import { organization } from 'better-auth/plugins/organization'
@@ -12,6 +12,7 @@ import {
   authAfterHook,
   authBeforeHook,
   defaultInstitutionId,
+  defaultInstitutionIdFromAdapter,
   FORWARDED_IP_HEADER,
 } from './services/auth-hooks.ts'
 import { createMailer, SILENT_MAIL_LOG, type MailLog, type Mailer } from './services/mailer.ts'
@@ -174,12 +175,24 @@ export function createAuth(config: Config, db: Database, options: AuthOptions = 
       session: {
         create: {
           // Çok üyelikte varsayılan etkin kurum en eski üyeliktir; değişim `/organization/set-active`.
-          before: async (session) => ({
-            data: {
-              ...session,
-              activeOrganizationId: await defaultInstitutionId(db, session.userId),
-            },
-          }),
+          // Parola değişiminde ("diğer cihazlardan çık") oturum Better Auth işlemi içinde açılır;
+          // üyelik o işlemin bağdaştırıcısından okunur (dışarıdan sorgu tek bağlantıda kilitlenir).
+          before: async (session, context) => {
+            // Aynı kullanıcının oturumu yenileniyorsa (parola değişimi) etkin kurum korunur.
+            const previous = context?.context.session
+            const kept: unknown = previous
+              ? Reflect.get(previous.session, 'activeOrganizationId')
+              : null
+            if (previous?.user.id === session.userId && typeof kept === 'string')
+              return { data: { ...session, activeOrganizationId: kept } }
+            const base = context?.context.adapter
+            const current = base ? await getCurrentAdapter(base) : undefined
+            const activeOrganizationId =
+              current && current !== base
+                ? await defaultInstitutionIdFromAdapter(current, session.userId)
+                : await defaultInstitutionId(db, session.userId)
+            return { data: { ...session, activeOrganizationId } }
+          },
         },
       },
     },

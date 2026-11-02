@@ -1,4 +1,5 @@
 import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from 'better-auth/api'
+import type { DBTransactionAdapter } from 'better-auth'
 import { asc, eq } from 'drizzle-orm'
 
 import type { Database } from '../db/client.ts'
@@ -24,6 +25,26 @@ export async function defaultInstitutionId(db: Database, userId: string): Promis
     .orderBy(asc(memberships.createdAt), asc(memberships.id))
     .limit(1)
   return first?.institutionId ?? null
+}
+
+/**
+ * `defaultInstitutionId`'nin Better Auth işlem bağdaştırıcısıyla yazılmışı (yalnız işlem içinde
+ * açılan oturum için). Sıra: en eski üyelik, eşitlikte kimlik.
+ */
+export async function defaultInstitutionIdFromAdapter(
+  adapter: DBTransactionAdapter,
+  userId: string,
+): Promise<string | null> {
+  const rows = await adapter.findMany<{ id: string; organizationId: string; createdAt: Date }>({
+    model: 'member',
+    where: [{ field: 'userId', value: userId }],
+  })
+  rows.sort(
+    (a, b) =>
+      new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
+      (a.id < b.id ? -1 : a.id > b.id ? 1 : 0),
+  )
+  return rows[0]?.organizationId ?? null
 }
 
 async function institutionNames(db: Database, userId: string): Promise<string[]> {

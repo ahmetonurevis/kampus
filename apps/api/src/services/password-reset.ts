@@ -20,11 +20,7 @@ export interface PasswordResetContext {
 
 /** Sıfırlama isteğinin sonucu; yalnız denetim kaydı ve log içindir, yanıta yansımaz. */
 export type PasswordResetOutcome =
-  | 'sent'
-  | 'no_membership'
-  | 'mail_not_configured'
-  | 'web_url_missing'
-  | 'send_failed'
+  'sent' | 'no_membership' | 'mail_not_configured' | 'web_url_missing' | 'send_failed'
 
 export const RESET_PAGE_PATH = '/parola-sifirla'
 

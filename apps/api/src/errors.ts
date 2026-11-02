@@ -44,7 +44,6 @@ export const MESSAGES = {
   idempotency_in_progress: 'Aynı istek hâlâ işleniyor. Lütfen biraz sonra yeniden deneyin.',
   idempotency_key_reused: 'Bu istek anahtarı farklı bir işlem için kullanılmış.',
   record_too_large: 'Kayıt izin verilen boyutu aşıyor.',
-  duplicate_record: 'Aynı bilgilerle bir kayıt zaten var. Bilgileri kontrol edin.',
   payload_too_large: 'Gönderilen veri çok büyük.',
   unsupported_media_type: 'İstek biçimi desteklenmiyor.',
   rate_limited: 'Çok fazla istek gönderildi. Lütfen biraz sonra yeniden deneyin.',
@@ -129,15 +128,15 @@ export class RuleViolationError extends AppError {
 }
 
 /**
- * 422 `duplicate_record`: sınıf tablosunda olmayan tekillik ihlali (OG-279). Hata işleyicisi
- * kısıt adını `warn` loglar (değer ve kişisel veri yok); yeni kısıt böylece fark edilir ve
- * `UNIQUE_CONSTRAINTS`'e sınıfıyla yazılır.
+ * 409 `conflict`: sınıf tablosunda olmayan tekillik ihlali (OG-279). Eski davranış korunur
+ * (yeniden denenebilir); hata işleyicisi kısıt adını `warn` loglar (değer ve kişisel veri yok),
+ * yeni kısıt böylece fark edilir ve `UNIQUE_CONSTRAINTS`'e sınıfıyla yazılır.
  */
-export class UnclassifiedUniqueViolationError extends RuleViolationError {
+export class UnclassifiedUniqueViolationError extends TransientConflictError {
   readonly constraint: string | undefined
 
   constructor(constraint: string | undefined, options: { cause?: unknown } = {}) {
-    super('duplicate_record', MESSAGES.duplicate_record, options)
+    super(options)
     this.name = 'UnclassifiedUniqueViolationError'
     this.constraint = constraint
   }
@@ -173,7 +172,7 @@ export function databaseErrorInfo(error: unknown): { code: string; constraint?: 
  *   metninden büyük olabildiği için uygulamanın metin denetimi geçse de kısıt reddedebilir.
  * - 40P01, 40001 → 409 `conflict` (yeniden denenebilir).
  * - 23505 kısıt adına göre (`UNIQUE_CONSTRAINTS`): `retry` → 409 `conflict`; `rule` → 409 ve
- *   kısıtın kodu (core'un aynı durumdaki kodu); tabloda olmayan → 422 `duplicate_record`.
+ *   kısıtın kodu; tabloda olmayan → 409 `conflict` ve hata işleyicisinde `warn`.
  */
 export function mapDatabaseError(error: unknown): Error {
   if (error instanceof AppError) return error

@@ -6,17 +6,25 @@
  *   sıra numarası, idempotency anahtarı, oturum ve kimlik (Better Auth) tabloları. 409 `conflict`
  *   döner; hiçbir kayıt değişmemiştir, aynı istek yeniden denenebilir.
  * - `rule`: iş anlamı taşıyan tekillik. Yazmalar kurum kilidi altında core denetiminden geçer;
- *   ihlal yeniden denemeyle düzelmez. 409 ve core'un aynı durumdaki kodu ve Türkçe iletisi
- *   (DomainError kind `conflict` ile aynı yanıt).
+ *   ihlal yeniden denemeyle düzelmez. 409 ve Türkçe ileti; kod core'un aynı durumdaki kodudur
+ *   (DomainError kind `conflict` ile aynı yanıt) ya da core'da karşılığı yoksa API'ye özgüdür
+ *   (`academic_year_active_exists`, `consent_decision_exists`, `waitlist_entry_exists`).
  *
- * Tabloda olmayan kısıt 422 `duplicate_record` olur ve kısıt adıyla `warn` loglanır. Envanter
- * testi (`test/unique-constraints.test.ts`) migration'lardan sonra veritabanındaki bütün tekil
- * indeksleri bu tabloyla karşılaştırır: yeni kısıt eklenince sınıfı buraya yazılır.
+ * Tabloda olmayan kısıt eski davranışla 409 `conflict` (yeniden denenebilir) olur ve hata
+ * işleyicisi kısıt adıyla `warn` loglar. Envanter testi (`test/unique-constraints.test.ts`)
+ * migration'lardan sonra veritabanındaki tekil indeksleri bu tabloyla karşılaştırır ve şema
+ * dosyası Oğuzhan'ın alanındaki tabloların kısıtlarını zorunlu tutar.
  *
  * Onur'un tabloları (kayıt ve finans: tahsilat, makbuz, tarife, burs, öğrenci kimliği, ayrılış,
- * banka hesabı) bugünkü davranışla `retry` kalır (`ONUR_RETRY`); sınıflarını Onur belirler.
+ * banka hesabı) bugünkü davranışla `retry`'dır (`ONUR_RETRY`); listede bulunmaları zorunlu
+ * değildir, sınıflarını Onur belirler.
+ *
  * Depoda kısıt adına göre çevrilen ihlaller (`constraintAs`, `insertNewVersion`) buraya gelmeden
- * `AppError` olur; buradaki karşılıkları aynı kod ve iletiyle yedektir.
+ * `AppError` olur. Buradaki `rule` karşılıkları depodakiyle aynı kod ve iletidedir; depoda kendi
+ * koduyla dönen üç sıra numarası kısıtı (`rubric_versions_rubric_number_key` →
+ * `rubric_version_exists`, `attempt_media_plays_attempt_file_number_key` →
+ * `listening_play_conflict`, `submission_versions_submission_number_key` → `version_conflict`)
+ * burada `retry`'dır: depo dışından gelen ihlal 409 `conflict` olur.
  */
 
 export type UniqueConstraintClass =

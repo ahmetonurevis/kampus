@@ -5,6 +5,7 @@ import { moduleAvailableFor } from '@kampus/school-core/modules/collection-modul
 import { AppError, MESSAGES, NotFoundError } from '../errors.ts'
 import { getInstitutionModules, isModuleKey } from '../services/modules.ts'
 import { contextOf } from './authenticate.ts'
+import { markEarlyGuard, registerEarlyGuardCheck } from './early-guards.ts'
 
 /** Kapalı modül yanıtı (api-tasarimi.md §5: modül kapalı → 403 `module_disabled`; DOM-YTK-040). */
 export class ModuleDisabledError extends AppError {
@@ -25,7 +26,8 @@ declare module 'fastify' {
   interface FastifyInstance {
     /**
      * Kimlik + etkin kurumda modül var ve açık mı. Kurum türünde olmayan modül 404 (bulunmaz
-     * gibi, DOM-YTK-012), kapalı modül 403 `module_disabled` (DOM-YTK-040).
+     * gibi, DOM-YTK-012), kapalı modül 403 `module_disabled` (DOM-YTK-040). Yalnız `preValidation`'da
+     * kullanılır (sorgu/gövde doğrulamasından önce); `preHandler`'da kullanım açılışta hata verir.
      */
     requireModule: (module: ModuleSource) => preHandlerAsyncHookHandler
   }
@@ -39,10 +41,12 @@ function assertModuleKey(key: string): void {
 }
 
 export function registerModuleGuard(app: FastifyInstance) {
+  // Modül ve rol denetimi `preValidation`'da olmalıdır; yanlış yerleşim açılışta hata verir.
+  registerEarlyGuardCheck(app)
   app.decorate('requireModule', (module: ModuleSource): preHandlerAsyncHookHandler => {
     // Sabit anahtar yazım hatası uygulama açılırken yakalanır.
     if (typeof module === 'string') assertModuleKey(module)
-    return async function (request, reply) {
+    return markEarlyGuard(async function (request, reply) {
       await app.authenticate.call(app, request, reply)
       const key = typeof module === 'string' ? module : module(request)
       if (key === null) return
@@ -57,6 +61,6 @@ export function registerModuleGuard(app: FastifyInstance) {
         request.log.info({ event: 'module.disabled_denied', module: key })
         throw new ModuleDisabledError()
       }
-    }
+    })
   })
 }

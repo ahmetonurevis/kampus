@@ -94,7 +94,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Mükerrer öğrenci = mükerrer borç.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API) — aday bazında `lib/domain.ts`, kişi bazında `student_identities_number_key` ve 409 `student_identity_duplicate`. Kural yıl der; yenilemede öğrenci kaydı aynı kaldığı için tekillik arşivlenmemiş kimliğe uygulanır, pasif kaydın kimliği yeniden kullanılır. Dil okulunda farklı programlara aynı anda kayıt (DOM-DIL) bu nedenle henüz yapılamaz.
+- **Kodda:** var (API) — aday bazında `lib/domain.ts`, kişi bazında `student_identities_number_key` ve 409 `student_identity_duplicate`. Kural yıl der; yenilemede öğrenci kaydı aynı kaldığı için tekillik arşivlenmemiş kimliğe uygulanır, pasif kaydın kimliği yeniden kullanılır. Dil okulunda farklı programlara aynı anda kayıt (DOM-DIL) bu nedenle henüz yapılamaz. Kesin kayıt aynı işlemde `enrollment_completed` bildirimini yazar: 18 altında veliye, yetişkinde kursiyere; iletişim modülü kapalıysa yazılmaz (`notify`).
 
 ### DOM-KAY-012 · Kimlik ve yasal temsilci zorunlu alanları
 

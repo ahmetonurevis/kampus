@@ -11,7 +11,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
-import { RootError } from '../management/FormParts.tsx'
+import { RootError, useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { fieldErrors, noteBody, noteFormSchema, type NoteFormValues } from './prospect-forms.ts'
 
 type Output = z.output<typeof noteFormSchema>
@@ -36,6 +36,7 @@ export function ProspectNoteForm({
     defaultValues: { text: '' },
   })
   const busy = add.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const errors = form.formState.errors
 
   if (!open)
@@ -48,7 +49,7 @@ export function ProspectNoteForm({
   const onSubmit = form.handleSubmit(async (values) => {
     const outcome = await add.submit(
       { prospectId, version, body: noteBody(values) },
-      { setError: fieldErrors(['text'], form.setError) },
+      { setError: fieldErrors(['text'], form.setError, focusAfterSubmit) },
     )
     if (outcome.status === 'success') {
       notify.success('Not eklendi.')

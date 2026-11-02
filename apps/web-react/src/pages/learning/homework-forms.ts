@@ -276,30 +276,6 @@ export function submissionWindow(
 }
 
 /**
- * Yeni seçilen dosyalardan sığanlar (en çok 5), zaten ekli ya da aynı seçimde yinelenen dosyalar
- * (`identity` aynı) bir kez alınır ve `duplicates` olarak sayılır; sığmayanlar `dropped`'tır.
- */
-export function fitFiles<T>(
-  current: readonly SubmissionFile[],
-  picked: readonly T[],
-  identity: (item: T) => string = String,
-): { accepted: T[]; dropped: number; duplicates: number } {
-  const seen = new Set(current.flatMap((file) => (file.key === undefined ? [] : [file.key])))
-  const unique = picked.filter((item) => {
-    const key = identity(item)
-    if (seen.has(key)) return false
-    seen.add(key)
-    return true
-  })
-  const room = Math.max(0, SUBMISSION_FILE_LIMIT - current.length)
-  return {
-    accepted: unique.slice(0, room),
-    dropped: Math.max(0, unique.length - room),
-    duplicates: picked.length - unique.length,
-  }
-}
-
-/**
  * Yüklenen dosyayı listeye ekler; `id` zaten listedeyse (aynı dosya yeniden seçildi, sunucu aynı
  * kaydı döndürdü) liste değişmez, böylece teslimde aynı dosya iki kez bağlanmaz.
  */

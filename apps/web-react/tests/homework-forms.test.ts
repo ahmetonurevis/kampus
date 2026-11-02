@@ -3,7 +3,6 @@ import { describe, test } from 'node:test'
 import {
   addUploadedFile,
   changedHomeworkFields,
-  fitFiles,
   homeworkActions,
   planHomeworkUpdate,
   SUBMISSION_FILE_LIMIT,
@@ -102,40 +101,8 @@ describe('ödev düzenleme planı: sessiz ezme yok (OG-047, DOM-AKD-071)', () =>
 describe('teslim dosyaları (OG-047, DOM-AKD-072)', () => {
   const file = (id: string) => ({ id, name: `${id}.pdf` })
 
-  test('en çok 5 dosya sığar, fazlası sayılır', () => {
-    const current = [file('a'), file('b'), file('c')]
-    const result = fitFiles(current, ['d', 'e', 'f', 'g'])
-    assert.deepEqual(result.accepted, ['d', 'e'])
-    assert.equal(result.dropped, 2)
+  test('teslim en çok 5 dosya alır', () => {
     assert.equal(SUBMISSION_FILE_LIMIT, 5)
-  })
-
-  test('aynı dosya iki kez seçilirse bir kez alınır ve sığmayan sayılmaz', () => {
-    const result = fitFiles([], ['x', 'y', 'x', 'y', 'x'])
-    assert.deepEqual(result.accepted, ['x', 'y'])
-    assert.equal(result.dropped, 0)
-    assert.equal(result.duplicates, 3)
-  })
-
-  test('zaten eklenmiş dosya yeniden seçilirse yüklenmeden atlanır (anahtarına göre)', () => {
-    const current = [
-      { id: 'a', name: 'a.pdf', key: 'a.pdf|1' },
-      { id: 'b', name: 'b.pdf' },
-    ]
-    const result = fitFiles(current, ['a.pdf|1', 'c.pdf|1'])
-    assert.deepEqual(result.accepted, ['c.pdf|1'])
-    assert.equal(result.duplicates, 1)
-    assert.equal(result.dropped, 0)
-  })
-
-  test('kimlik işlevi: aynı ad, boyut ve tarihli dosya yinelenir sayılır', () => {
-    const items = [
-      { name: 'a.pdf', size: 1 },
-      { name: 'a.pdf', size: 1 },
-      { name: 'a.pdf', size: 2 },
-    ]
-    const result = fitFiles([], items, (item) => `${item.name}|${item.size}`)
-    assert.equal(result.accepted.length, 2)
   })
 
   test('yüklenen dosya id ile tekilleştirilir; yeni id eklenir', () => {

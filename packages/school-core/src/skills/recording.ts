@@ -124,25 +124,81 @@ function addMonths(day: string, months: number): string {
 }
 
 /**
- * Ses kaydının saklama sonu (DOM-BEC-052; ADR 0003 karar 13), bağlanma anında hesaplanır. Saklama
- * dönem sonundan (`recordingPeriodEnd`) ve sürümün puanlama ile itiraz süresinin kapanışından
- * (son teslim + 7 gün puanlama, sonra 5 iş günü itiraz; DOM-BEC-025) hangisi geçse ondan başlar;
- * 6 ay sonra o günün Europe/Istanbul sonunda biter. İmha işi bu andan sonraki ilk turda siler.
+ * Ses kaydının saklama sonu (DOM-BEC-052; ADR 0003 karar 13). Saklama dönem sonundan
+ * (`recordingPeriodEnd`) ve sürümün puanlama ile itiraz süresinin kapanışından hangisi geçse ondan
+ * başlar; 6 ay sonra o günün Europe/Istanbul sonunda biter. İmha işi bu andan sonraki ilk turda
+ * siler.
+ *
+ * Kapanış bağlanma anında beklenen takvimle hesaplanır: son teslim + 7 gün puanlama, sonra 5 iş
+ * günü itiraz (DOM-BEC-025). Sonraki olaylar bilinen anlarla yeniden hesaplatır (servis yalnız
+ * ileri alır, `extendedRecordingRetention`):
+ * - `announcedAt`: sonuç duyurusu (puanın kesinleşmesi); itiraz süresi beklenen puanlama sonundan
+ *   değil bu andan işler (geç puanlama saklamayı öteler).
+ * - `appealFiledAt`: itiraz açıldı; karar süresi domain'de yok, açılıştan 5 iş günü varsayılır.
+ * - `appealDecidedAt`: itiraz kararı; kapanış karardan önce olmaz.
  */
-// TODO(beceri-ses-itiraz-gec): Domain itirazın karar süresini vermiyor; geç verilen itiraz
-// kararı saklama sonunu ötelemez. Pay 6 aydır; kararı bekleyen kayıt bu sürede silinmez.
+// TODO(beceri-ses-itiraz-gec): Domain itirazın karar süresini vermiyor; açılıştan 5 iş günü
+// varsayıldı. Karar gecikirse imha işi açık itirazlı kaydı silmez (`recordingPurgeHeld`) ve karar
+// anı saklamayı yeniden öteler.
 export function recordingRetentionUntil(input: {
   periodEndDate: string
   deadline: Pick<Deadline, 'dueAt'>
   submittedAt: string
+  announcedAt?: string | null
+  appealFiledAt?: string | null
+  appealDecidedAt?: string | null
   holidays?: readonly string[]
 }): string {
-  const appealClosesAt = appealDeadline(
-    gradingDueAt(input.deadline, { submittedAt: input.submittedAt }),
-    input.holidays,
+  const announcedAt =
+    input.announcedAt ?? gradingDueAt(input.deadline, { submittedAt: input.submittedAt })
+  const closings = [
+    endOfIstanbulDay(input.periodEndDate),
+    appealDeadline(announcedAt, input.holidays),
+    input.appealFiledAt ? appealDeadline(input.appealFiledAt, input.holidays) : null,
+    input.appealDecidedAt ?? null,
+  ]
+  const start = closings.reduce<string>(
+    (latest, at) => (at !== null && Date.parse(at) > Date.parse(latest) ? at : latest),
+    closings[0] as string,
   )
-  const periodEndsAt = endOfIstanbulDay(input.periodEndDate)
-  const start =
-    Date.parse(periodEndsAt) > Date.parse(appealClosesAt) ? periodEndsAt : appealClosesAt
   return endOfIstanbulDay(addMonths(dayKey(start), RECORDING_RETENTION_MONTHS))
+}
+
+/**
+ * Yeniden hesaplanan saklama sonu yazılır mı (DOM-BEC-052): yalnız ileri alınır, asla geri
+ * çekilmez. Saklama sonu yoksa (`null`: kayıt değil) ya da gelmişse (`<= now`: rıza geri çekilince
+ * imhaya işaretlenen ya da süresi dolmuş kayıt) dokunulmaz; erken silme isteği korunur
+ * (DOM-YTK-059). Yazılacak değeri, değişiklik yoksa `null` döndürür.
+ */
+export function extendedRecordingRetention(input: {
+  current: Date | string | null
+  computed: string
+  now: Date | string
+}): string | null {
+  if (input.current === null) return null
+  const current = new Date(input.current).getTime()
+  if (current <= new Date(input.now).getTime()) return null
+  return Date.parse(input.computed) > current ? new Date(input.computed).toISOString() : null
+}
+
+/**
+ * İmha işi saklama sonu gelmiş kaydı atlar mı (DOM-BEC-052: saklama puanlama ve itiraz kapandıktan
+ * sonra işler). Atlanır: sürüme açık itiraz varsa ya da sürüm teslimin son sürümüyse ve puanı
+ * kesinleşmemişse (puanlanmamış, ikinci puan ya da koordinatör bekliyor). Eski sürüm puanlanmaz
+ * (yeni sürüm yerini aldı), beklemez. Veri sahibi rızasını geri çektiyse beklenmez: erken silme
+ * itiraz hakkını kaldırır (DOM-BEC-052, DOM-YTK-059).
+ */
+// TODO(beceri-ses-puansiz): Hiç puanlanmayan (ör. arşivlenen atama) son sürümün kaydı puanlanana
+// kadar bekler; domain puanlanmamış teslimin saklama sınırını vermiyor.
+export function recordingPurgeHeld(input: {
+  versionId: string
+  latestVersionId: string | null
+  settled: boolean
+  appeals: readonly { submissionVersionId: string; outcome: string | null }[]
+  consentWithdrawn: boolean
+}): boolean {
+  if (input.consentWithdrawn) return false
+  if (input.appeals.some((a) => a.submissionVersionId === input.versionId && a.outcome === null))
+    return true
+  return input.versionId === input.latestVersionId && !input.settled
 }

@@ -278,6 +278,7 @@ describe('arka plan işleri', () => {
 
     assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
       purged: 2,
+      held: 0,
       rounds: 1,
     })
     for (const id of [attached, withdrawn]) {
@@ -305,12 +306,14 @@ describe('arka plan işleri', () => {
 
     assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
       purged: 0,
+      held: 0,
       rounds: 1,
     })
     assert.equal((await purgeAudits(a.id)).length, 2)
     // Saklama sonu gelince ertesi çalıştırma siler.
     assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, future), {
       purged: 1,
+      held: 0,
       rounds: 1,
     })
     assert.equal((await fileOf(a.id, fresh))?.status, 'deleted')
@@ -326,6 +329,7 @@ describe('arka plan işleri', () => {
     try {
       assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
         purged: 1,
+        held: 0,
         rounds: 1,
       })
     } finally {
@@ -341,6 +345,7 @@ describe('arka plan işleri', () => {
     assert.equal(written.includes('Deniz'), false)
     assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
       purged: 0,
+      held: 0,
       rounds: 1,
     })
     assert.deepEqual(await purgeAudits(a.id), [id])
@@ -357,6 +362,7 @@ describe('arka plan işleri', () => {
     const later = new Date(FIXED_NOW.getTime() + 25 * HOUR)
     assert.deepEqual(await filesPurgeExpiredJob.run(aborted, { institutionId: a.id }, FIXED_NOW), {
       purged: 0,
+      held: 0,
       rounds: 0,
     })
     assert.deepEqual(await filesPurgeJob.run(aborted, { institutionId: a.id }, later), {
@@ -367,6 +373,7 @@ describe('arka plan işleri', () => {
     assert.equal((await fileOf(a.id, stale))?.status, 'pending')
     assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
       purged: 1,
+      held: 0,
       rounds: 1,
     })
   })

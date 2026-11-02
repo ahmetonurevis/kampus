@@ -3,7 +3,9 @@ import assert from 'node:assert/strict'
 import {
   RECORDING_RETENTION_MONTHS,
   canAccessRecording,
+  extendedRecordingRetention,
   recordingPeriodEnd,
+  recordingPurgeHeld,
   recordingRetentionUntil,
   type DayRange,
   type RecordingReader,
@@ -126,6 +128,97 @@ describe('ses kaydının saklama süresi (DOM-BEC-052)', () => {
     assert.equal(
       recordingRetentionUntil({ ...base, holidays: ['2026-11-16'] }),
       '2027-05-20T20:59:59.999Z',
+    )
+  })
+
+  test('DOM-BEC-052, DOM-BEC-025 geç sonuç duyurusu, itiraz açılışı ve kararı saklamayı öteler', () => {
+    const base = {
+      periodEndDate: '2026-11-01',
+      deadline: { dueAt: '2026-11-05T20:59:00.000Z' },
+      submittedAt: now,
+    }
+    // Geç puanlama: itiraz süresi duyurudan (1 Aralık Salı) 5 iş günü, 8 Aralık gün sonu.
+    assert.equal(
+      recordingRetentionUntil({ ...base, announcedAt: '2026-12-01T10:00:00.000Z' }),
+      '2027-06-08T20:59:59.999Z',
+    )
+    // İtiraz 19 Kasım'da açıldı: karar süresi açılıştan 5 iş günü (26 Kasım) varsayılır.
+    const appealed = { ...base, announcedAt: '2026-11-13T10:00:00.000Z' }
+    assert.equal(recordingRetentionUntil(appealed), '2027-05-20T20:59:59.999Z')
+    assert.equal(
+      recordingRetentionUntil({ ...appealed, appealFiledAt: '2026-11-19T10:00:00.000Z' }),
+      '2027-05-26T20:59:59.999Z',
+    )
+    // Karar geç verildi (10 Ocak): kapanış karar anıdır.
+    assert.equal(
+      recordingRetentionUntil({
+        ...appealed,
+        appealFiledAt: '2026-11-19T10:00:00.000Z',
+        appealDecidedAt: '2027-01-10T10:00:00.000Z',
+      }),
+      '2027-07-10T20:59:59.999Z',
+    )
+    // Dönem sonu daha geçse olaylar saklamayı değiştirmez.
+    assert.equal(
+      recordingRetentionUntil({
+        ...base,
+        periodEndDate: '2027-06-25',
+        announcedAt: '2026-12-01T10:00:00.000Z',
+      }),
+      '2027-12-25T20:59:59.999Z',
+    )
+  })
+
+  test('DOM-BEC-052, DOM-YTK-059 saklama sonu yalnız ileri alınır; gelmiş ya da rızayla işaretli saklama sonu değişmez', () => {
+    const current = '2027-05-19T20:59:59.999Z'
+    assert.equal(
+      extendedRecordingRetention({ current, computed: '2027-06-08T20:59:59.999Z', now }),
+      '2027-06-08T20:59:59.999Z',
+    )
+    assert.equal(
+      extendedRecordingRetention({
+        current: new Date(current),
+        computed: '2027-05-01T20:59:59.999Z',
+        now,
+      }),
+      null,
+    )
+    assert.equal(extendedRecordingRetention({ current, computed: current, now }), null)
+    // Rıza geri çekilince saklama sonu `now`'a çekilir: erken silme korunur.
+    assert.equal(
+      extendedRecordingRetention({ current: now, computed: '2027-06-08T20:59:59.999Z', now }),
+      null,
+    )
+    assert.equal(
+      extendedRecordingRetention({ current: null, computed: '2027-06-08T20:59:59.999Z', now }),
+      null,
+    )
+  })
+
+  test('DOM-BEC-052 imha işi açık itirazlı ya da puanı kesinleşmemiş son sürümün kaydını bekletir; rıza geri çekildiyse beklemez', () => {
+    const held = (input: Partial<Parameters<typeof recordingPurgeHeld>[0]> = {}) =>
+      recordingPurgeHeld({
+        versionId: 'v2',
+        latestVersionId: 'v2',
+        settled: true,
+        appeals: [],
+        consentWithdrawn: false,
+        ...input,
+      })
+    assert.equal(held(), false)
+    assert.equal(held({ settled: false }), true)
+    // Yerini yeni sürüme bırakan eski sürüm puanlanmaz, beklemez.
+    assert.equal(held({ versionId: 'v1', settled: false }), false)
+    assert.equal(held({ appeals: [{ submissionVersionId: 'v2', outcome: null }] }), true)
+    assert.equal(held({ appeals: [{ submissionVersionId: 'v2', outcome: 'rejected' }] }), false)
+    assert.equal(held({ appeals: [{ submissionVersionId: 'v1', outcome: null }] }), false)
+    assert.equal(
+      held({
+        settled: false,
+        appeals: [{ submissionVersionId: 'v2', outcome: null }],
+        consentWithdrawn: true,
+      }),
+      false,
     )
   })
 

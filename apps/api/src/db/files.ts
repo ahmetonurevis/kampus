@@ -309,10 +309,14 @@ export async function listStaleUnattachedFiles(
     .limit(limit)
 }
 
+/** Saklama sonu taramasının sayfa imleci: son bakılan satırın saklama sonu ve kimliği. */
+export type ExpiredFileCursor = { retentionUntil: Date; id: string }
+
 /**
  * Kurumun saklama sonu gelmiş (`retention_until <= now`), silinmemiş dosyaları (karar 13; imha
  * işi `files.purge-expired`): bağlı ya da bağsız, rıza geri çekmesiyle işaretlenmiş olanlar dahil.
- * En eski saklama sonu önce, `limit` kadar. Saklama sonu yalnız konuşma kaydında yazılır
+ * En eski saklama sonu önce, `limit` kadar; `after` verilirse o satırdan sonrası (imha işinin
+ * beklettiği satırlar sonraki sayfaları tıkamaz). Saklama sonu yalnız konuşma kaydında yazılır
  * (`TODO(F3c2-retention)`); tarama kurumun satırlarıyla sınırlıdır.
  */
 export async function listExpiredFiles(
@@ -320,6 +324,7 @@ export async function listExpiredFiles(
   institutionId: string,
   now: Date,
   limit: number,
+  after: ExpiredFileCursor | null = null,
 ): Promise<StoredFile[]> {
   return db
     .select()
@@ -330,8 +335,28 @@ export async function listExpiredFiles(
         isNotNull(files.retentionUntil),
         lte(files.retentionUntil, now),
         ne(files.status, 'deleted'),
+        after === null
+          ? undefined
+          : or(
+              gt(files.retentionUntil, after.retentionUntil),
+              and(eq(files.retentionUntil, after.retentionUntil), gt(files.id, after.id)),
+            ),
       ),
     )
     .orderBy(asc(files.retentionUntil), asc(files.id))
     .limit(limit)
+}
+
+/**
+ * Saklama sonunu yeniden hesaplanan değere taşır (DOM-BEC-052). Kararı (yalnız ileri) çağıran
+ * core `extendedRecordingRetention` ile verir; satır sürümü tutmazsa (eşzamanlı imha) `null`.
+ */
+export function extendFileRetention(
+  tx: Database,
+  institutionId: string,
+  current: StoredFile,
+  retentionUntil: Date,
+  now: Date,
+) {
+  return updateFile(tx, institutionId, current, { retentionUntil }, now)
 }

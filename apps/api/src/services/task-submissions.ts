@@ -16,7 +16,7 @@ import {
   type RubricVersionData,
   type ScoreResolution,
 } from '@kampus/school-core/skills/rubric.ts'
-import { canAccessRecording } from '@kampus/school-core/skills/recording.ts'
+import { canAccessRecording, recordingPurgeHeld } from '@kampus/school-core/skills/recording.ts'
 import {
   isClosed,
   submissionWindow,
@@ -54,6 +54,7 @@ import {
   type StoredAssignment,
   type StoredSubmissionWork,
 } from '../db/skills.ts'
+import { listConsentsOfSubject } from '../db/privacy.ts'
 import { findRecord } from '../db/records.ts'
 import { AppError, MESSAGES, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -1048,7 +1049,46 @@ async function canReadVersionFile(
   )
 }
 
+/**
+ * Saklama sonu gelen sürüm dosyasının imhası bekletilir mi (DOM-BEC-052; core
+ * `recordingPurgeHeld`): yalnız konuşma kaydı; sürüme açık itiraz varsa ya da son sürümün puanı
+ * kesinleşmemişse. Veri sahibinin geri çekilmemiş konuşma kaydı rızası yoksa (geri çekme ya da
+ * yenilemesiz kapanış) beklenmez: erken silme itiraz hakkını kaldırır (DOM-YTK-059). Bilinmeyen ya
+ * da arşivli sürüm beklemez. İmha işinin transaction'ında, dosya satırı kilitliyken okunur.
+ */
+async function versionFilePurgeHeld(
+  tx: Database,
+  institutionId: string,
+  versionId: string,
+  file: { purpose: string; dataSubjectId: string | null },
+): Promise<boolean> {
+  if (file.purpose !== 'speaking_recording') return false
+  const work = await findSubmissionOfVersion(tx, institutionId, versionId)
+  const version = work?.versions.find((row) => row.id === versionId)
+  if (!work || !version) return false
+  const grading = (await loadGrading(tx, { institutionId }, [work.submission.id])).bySubmission.get(
+    work.submission.id,
+  )
+  if (grading === undefined) return false
+  const subjectId = file.dataSubjectId ?? work.submission.learnerId
+  const consents = await listConsentsOfSubject(tx, institutionId, {
+    kind: 'student',
+    id: subjectId,
+    openOnly: true,
+  })
+  return recordingPurgeHeld({
+    versionId,
+    latestVersionId: work.versions.at(-1)?.id ?? null,
+    settled: resolutionOf(grading, version).status === 'settled',
+    appeals: grading.appeals,
+    consentWithdrawn: !consents.some(
+      (row) => row.purpose === 'speaking_recording' && row.decision === 'granted',
+    ),
+  })
+}
+
 defineFileAttachment(SUBMISSION_VERSION_ATTACHMENT, {
   purposes: ['submission', 'speaking_recording'],
   canRead: canReadVersionFile,
+  purgeHeld: versionFilePurgeHeld,
 })

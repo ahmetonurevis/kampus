@@ -73,6 +73,16 @@ export interface FileAttachmentKind {
     attachedId: string,
     file: StoredFile,
   ) => Promise<boolean>
+  /**
+   * Saklama sonu gelmiş dosyanın imhası bekletilir mi (DOM-BEC-052: konuşma kaydı puanlama ve
+   * itiraz kapanana kadar). İmha işi dosya satırını kilitledikten sonra sorar; yoksa beklenmez.
+   */
+  purgeHeld?: (
+    tx: Database,
+    institutionId: string,
+    attachedId: string,
+    file: StoredFile,
+  ) => Promise<boolean>
 }
 
 const ATTACHED_TYPE_PATTERN = /^[a-z][a-z0-9_]{1,62}$/

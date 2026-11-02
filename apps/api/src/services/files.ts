@@ -19,6 +19,7 @@ import {
   findFile,
   insertFile,
   listExpiredFiles,
+  type ExpiredFileCursor,
   listStaleUnattachedFiles,
   markFileDeleted,
   setFileStatus,
@@ -666,12 +667,14 @@ export async function purgeUnattachedFiles(input: {
  * Kurumun saklama sonu gelmiş dosyalarının imhası (ADR 0003 karar 9, 13; DOM-BEC-052,
  * DOM-YTK-059): `retention_until <= now` ve silinmemiş her dosyanın nesnesi silinir, satırı
  * `deleted` kalır ve özgün ad silinir; her dosya `file.purge` olarak denetime yazılır. Bağlı dosya
- * bağını korur (teslim sürümü kaydı ve süresi kalır, dosya `deleted` görünür). Sıra ve hata
- * davranışı `purgeUnattachedFiles` ile aynıdır: satır kilitlenip saklama sonu yeniden denetlenir,
- * `deleted` yazılır, transaction bitince nesne silinir; nesne silinemezse satır `deleted` kalır ve
- * hata yalnız kimliklerle loglanır (nesne `TODO(F3c2-orphans)` taramasına kalır). En çok `limit`
- * dosyaya bakar; imha edilen dosya sayısını döndürür. Günlük `files.purge-expired` işi
- * (`src/jobs/files-purge-expired.ts`) kurum başına çağırır.
+ * bağını korur (teslim sürümü kaydı ve süresi kalır, dosya `deleted` görünür). Bağlı kaydın türü
+ * imhayı bekletebilir (`FileAttachmentKind.purgeHeld`: puanı kesinleşmemiş ya da itirazı açık
+ * teslim sürümünün konuşma kaydı); bekletilen dosya sayılır, dokunulmaz. Sıra ve hata davranışı
+ * `purgeUnattachedFiles` ile aynıdır: satır kilitlenip saklama sonu yeniden denetlenir, `deleted`
+ * yazılır, transaction bitince nesne silinir; nesne silinemezse satır `deleted` kalır ve hata
+ * yalnız kimliklerle loglanır (nesne `TODO(F3c2-orphans)` taramasına kalır). En çok `limit`
+ * dosyaya `after` imlecinden sonra bakar; sayfa doluysa `next` sonraki sayfanın imlecidir.
+ * Günlük `files.purge-expired` işi (`src/jobs/files-purge-expired.ts`) kurum başına çağırır.
  */
 export async function purgeExpiredFiles(input: {
   db: Database
@@ -680,21 +683,27 @@ export async function purgeExpiredFiles(input: {
   now: Date
   log: FastifyBaseLogger
   limit?: number
-}): Promise<number> {
+  after?: ExpiredFileCursor | null
+}): Promise<{ purged: number; held: number; next: ExpiredFileCursor | null }> {
   const { db, storage, now, log } = input
-  const expired = await listExpiredFiles(
-    db,
-    input.institutionId,
-    now,
-    input.limit ?? PURGE_BATCH_SIZE,
-  )
+  const limit = input.limit ?? PURGE_BATCH_SIZE
+  const expired = await listExpiredFiles(db, input.institutionId, now, limit, input.after ?? null)
   let purged = 0
+  let held = 0
   for (const candidate of expired) {
-    const done = await db.transaction(async (tx) => {
+    const outcome = await db.transaction(async (tx) => {
       const current = await findFile(tx, candidate.institutionId, candidate.id, { lock: true })
       // Bu arada silinen dosyaya dokunulmaz; saklama sonu yalnız öne çekilebilir.
-      if (!current || current.status === 'deleted' || !isPurgeDue(current, now)) return false
-      if (!(await markFileDeleted(tx, current.institutionId, current, now))) return false
+      if (!current || current.status === 'deleted' || !isPurgeDue(current, now)) return 'skipped'
+      const kind =
+        current.attachedType === null ? undefined : fileAttachmentKind(current.attachedType)
+      if (
+        kind?.purgeHeld !== undefined &&
+        current.attachedId !== null &&
+        (await kind.purgeHeld(tx, current.institutionId, current.attachedId, current))
+      )
+        return 'held'
+      if (!(await markFileDeleted(tx, current.institutionId, current, now))) return 'skipped'
       await tx.insert(auditLog).values({
         institutionId: current.institutionId,
         action: 'file.purge',
@@ -703,9 +712,10 @@ export async function purgeExpiredFiles(input: {
         changes: { fields: ['status', 'deletedAt', 'originalName'] },
         createdAt: now,
       })
-      return true
+      return 'purged'
     })
-    if (!done) continue
+    if (outcome === 'held') held += 1
+    if (outcome !== 'purged') continue
     purged += 1
     try {
       await storage.delete(candidate.storageKey)
@@ -718,6 +728,16 @@ export async function purgeExpiredFiles(input: {
       })
     }
   }
-  log.info({ event: 'file.retention_purged', institutionId: input.institutionId, count: purged })
-  return purged
+  log.info({
+    event: 'file.retention_purged',
+    institutionId: input.institutionId,
+    count: purged,
+    held,
+  })
+  const last = expired.at(-1)
+  const next =
+    expired.length < limit || last === undefined || last.retentionUntil === null
+      ? null
+      : { retentionUntil: last.retentionUntil, id: last.id }
+  return { purged, held, next }
 }

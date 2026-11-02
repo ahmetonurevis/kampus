@@ -9,11 +9,13 @@ import type { ResourceVersionInput } from '@kampus/school-core/content/resource.
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
+import { academicYears } from '../src/db/schema/academic-years.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { institutions } from '../src/db/schema/auth.ts'
 import { files } from '../src/db/schema/files.ts'
 import { records } from '../src/db/schema/records.ts'
 import { rubrics, rubricVersions, submissionVersions } from '../src/db/schema/skills.ts'
+import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { recordFileCheck } from '../src/services/files.ts'
 import {
   buildTestApp,
@@ -60,11 +62,13 @@ describe('beceri görevinde dosyalı ve sesli teslim', () => {
   let app: App
   let store: Awaited<ReturnType<typeof tempStorage>>
   const logs: string[] = []
+  // Puanlama ve itiraz testleri saati ilerletir; her test sonunda `FIXED_NOW`'a döner.
+  let now = FIXED_NOW
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
     store = await tempStorage()
-    app = await buildTestApp(db, { storage: store.storage, clock: () => FIXED_NOW, logs })
+    app = await buildTestApp(db, { storage: store.storage, clock: () => now, logs })
   })
   after(async () => {
     await app.close()
@@ -578,5 +582,147 @@ describe('beceri görevinde dosyalı ve sesli teslim', () => {
       .where(eq(institutions.id, t.institution.id))
     fails(await urlOf(t.cookies.student, audioId), 403, 'module_disabled')
     fails(await urlOf(t.cookies.otherStudent, audioId), 404, 'not_found')
+  })
+
+  // --- Puanlama, itiraz ve saklama sonu ---------------------------------------------------
+
+  const SCORE = {
+    versionNumber: 1,
+    criteria: [
+      { criterionId: 'task', band: 4, comment: null },
+      { criterionId: 'grammar', band: 2, comment: 'Zaman uyumuna dikkat.' },
+    ],
+    overallComment: 'Akıcı bir anlatım.',
+  }
+  const rowVersionOf = async (cookie: string, submissionId: string) =>
+    (await ok(await call('GET', `/task-submissions/${submissionId}`, cookie))).rowVersion as number
+  /** `If-Match` teslimin güncel `rowVersion`'ı (okuyan personelle). */
+  const write = async (
+    path: string,
+    cookie: string,
+    submissionId: string,
+    payload: unknown,
+    reader = cookie,
+  ) =>
+    call('POST', `/task-submissions/${submissionId}/${path}`, cookie, payload, {
+      'if-match': `"${await rowVersionOf(reader, submissionId)}"`,
+      ...key(),
+    })
+  const at = (iso: string) => {
+    now = new Date(iso)
+  }
+  const purge = (t: Tenant, on: string) =>
+    filesPurgeExpiredJob.run(
+      { db, storage: store.storage, log: app.log },
+      { institutionId: t.institution.id },
+      new Date(on),
+    )
+
+  /** Rızalı sesli teslim; teslim kimliği ve kayıt dosyası. */
+  async function spoken(t: Tenant, assignmentId: string) {
+    const recordingId = await recording(t, 42_000)
+    const created = await ok(
+      await submit(assignmentId, t.cookies.student, {
+        submissionKind: 'audio',
+        recordingFileId: recordingId,
+      }),
+      201,
+    )
+    return { submissionId: created.id as string, recordingId }
+  }
+
+  test('DOM-BEC-052, DOM-BEC-025: geç puanlama, itiraz açılışı ve kararı konuşma kaydının saklama sonunu ileri alır; açık itirazlı kayıt imha edilmez, karardan sonraki saklama sonunda edilir', async () => {
+    const t = await tenant()
+    // Ders yılı 10 Ekim'de biter: saklama puanlama ve itiraz kapanışından başlar.
+    await db
+      .update(academicYears)
+      .set({ startDate: '2026-01-01', endDate: '2026-10-10' })
+      .where(
+        and(eq(academicYears.institutionId, t.institution.id), eq(academicYears.startYear, 2026)),
+      )
+    const colleague = await signInAs(
+      app,
+      await createMember(app, t.institution.id, 'ogretmen', [
+        { kind: 'teacher', recordId: 't-eng' } as never,
+      ]),
+    )
+    const assignmentId = await assign(t, 'audio')
+    await consent(t)
+    const { submissionId, recordingId } = await spoken(t, assignmentId)
+    const retention = async () => (await fileRow(t, recordingId)).retentionUntil?.toISOString()
+    try {
+      // Bağlamada beklenen takvim: son teslim 20 Ekim + 7 gün puanlama (27 Ekim), 5 iş günü itiraz
+      // (3 Kasım) + 6 ay.
+      assert.equal(await retention(), '2027-05-03T20:59:59.999Z')
+
+      // Geç puanlama: sonuç 1 Aralık Salı duyurulur, itiraz 8 Aralık'ta kapanır.
+      at('2026-12-01T10:00:00.000Z')
+      await ok(await write('scores', t.cookies.teacher, submissionId, SCORE), 201)
+      assert.equal(await retention(), '2027-06-08T20:59:59.999Z')
+
+      // İtiraz 3 Aralık'ta açılır: karar süresi açılıştan 5 iş günü (10 Aralık) varsayılır.
+      at('2026-12-03T10:00:00.000Z')
+      const filed = await ok(
+        await call(
+          'POST',
+          `/task-submissions/${submissionId}/appeals`,
+          t.cookies.student,
+          { versionNumber: 1, reason: 'Kriterler yeniden okunmalı.' },
+          key(),
+        ),
+        201,
+      )
+      assert.equal(await retention(), '2027-06-10T20:59:59.999Z')
+
+      // Karar gecikse de açık itirazlı kayıt imha edilmez.
+      assert.deepEqual(await purge(t, '2027-07-01T00:00:00.000Z'), {
+        purged: 0,
+        held: 1,
+        rounds: 1,
+      })
+      assert.equal((await fileRow(t, recordingId)).status, 'ready')
+
+      // Karar 10 Ocak'ta: saklama karardan 6 ay sonra biter.
+      at('2027-01-10T10:00:00.000Z')
+      await ok(
+        await write(
+          `appeals/${filed.versions[0].appeal.id}/decision`,
+          colleague,
+          submissionId,
+          { outcome: 'rejected', reason: 'Puan kriterlerle uyumlu.' },
+          t.cookies.teacher,
+        ),
+      )
+      assert.equal(await retention(), '2027-07-10T20:59:59.999Z')
+      assert.deepEqual(await purge(t, '2027-07-10T20:00:00.000Z'), {
+        purged: 0,
+        held: 0,
+        rounds: 1,
+      })
+      assert.deepEqual(await purge(t, '2027-07-11T00:00:00.000Z'), {
+        purged: 1,
+        held: 0,
+        rounds: 1,
+      })
+      assert.equal((await fileRow(t, recordingId)).status, 'deleted')
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
+  test('DOM-BEC-052, DOM-YTK-059: puanlanmamış teslimin saklama sonu gelmiş kaydı imha edilmez; veri sahibi rızasını geri çekince edilir (erken silme itiraz hakkını kaldırır)', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, 'audio')
+    const { consentId } = await consent(t)
+    const { recordingId } = await spoken(t, assignmentId)
+    const after = '2028-03-01T00:00:00.000Z'
+    assert.ok(Date.parse(after) > ((await fileRow(t, recordingId)).retentionUntil?.getTime() ?? 0))
+
+    assert.deepEqual(await purge(t, after), { purged: 0, held: 1, rounds: 1 })
+    assert.equal((await fileRow(t, recordingId)).status, 'ready')
+
+    await ok(await call('POST', `/consents/${consentId}/withdraw`, t.cookies.parent, {}, key()))
+    assert.deepEqual(await purge(t, after), { purged: 1, held: 0, rounds: 1 })
+    assert.equal((await fileRow(t, recordingId)).status, 'deleted')
   })
 })

@@ -1,5 +1,6 @@
 import { deadlineForVersion } from '@kampus/school-core/skills/assignment.ts'
 import {
+  extendedRecordingRetention,
   recordingPeriodEnd,
   recordingRetentionUntil,
   type DayRange,
@@ -8,7 +9,7 @@ import type { SubmissionFile, VersionRow } from '@kampus/school-core/skills/subm
 
 import { loadAcademicYears } from '../db/academic-years.ts'
 import type { Database } from '../db/client.ts'
-import { loadFilesByIds, type StoredFile } from '../db/files.ts'
+import { extendFileRetention, loadFilesByIds, type StoredFile } from '../db/files.ts'
 import { loadGroups, loadMembershipsOfStudents } from '../db/language-groups.ts'
 import type { StoredAssignment, StoredSubmission } from '../db/skills.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -82,12 +83,14 @@ export async function usableFiles(
 
 /**
  * Saklamanın başladığı dönem sonu (DOM-BEC-052; core `recordingPeriodEnd`): `school`'da kurumun
- * ders yılları, `language_school`'da kursiyerin iptal edilmemiş kur grupları.
+ * ders yılları, `language_school`'da kursiyerin iptal edilmemiş kur grupları; `on` gününü içeren
+ * dönem (bağlamada şimdi, yeniden hesaplamada sürümün gönderildiği an).
  */
 export async function recordingPeriodEndFor(
   tx: Database,
   ctx: ServiceContext,
   learnerId: string,
+  on: Date | string = ctx.now,
 ): Promise<string> {
   const institution = await getInstitutionModules(tx, ctx.institutionId)
   const institutionType = institution?.type ?? 'school'
@@ -106,7 +109,7 @@ export async function recordingPeriodEndFor(
         .filter((group) => groupIds.has(group.id) && group.cancelledAt === null)
         .map((group) => ({ startDate: group.startDate, endDate: group.endDate }))
   }
-  return recordingPeriodEnd({ institutionType, on: ctx.now, academicYears, groups })
+  return recordingPeriodEnd({ institutionType, on, academicYears, groups })
 }
 
 /**
@@ -150,6 +153,62 @@ export async function attachVersionFiles(
       dataSubjectId: input.learnerId,
       retentionUntil,
     })
+}
+
+/**
+ * Sürümün konuşma kaydının saklama sonunu bilinen olay anlarıyla yeniden hesaplar ve yalnız ileri
+ * alır (DOM-BEC-052, DOM-BEC-025; core `recordingRetentionUntil`, `extendedRecordingRetention`):
+ * sonuç duyurusu (puanın kesinleşmesi), itiraz açılışı ve itiraz kararı. Olayı yazan işlemin
+ * transaction'ında çağrılır; işlem geri alınırsa saklama sonu da değişmez. Gelmiş saklama sonu (rıza
+ * geri çekme işareti) ve silinmiş dosya değişmez. Dönem sonu sürümün gönderildiği günün dönemidir.
+ */
+export async function extendVersionRecordingRetention(
+  tx: Database,
+  ctx: ServiceContext,
+  input: {
+    assignment: StoredAssignment
+    submission: StoredSubmission
+    version: VersionRow
+    announcedAt?: string | null
+    appealFiledAt?: string | null
+    appealDecidedAt?: string | null
+    holidays: readonly string[]
+  },
+): Promise<void> {
+  const { version } = input
+  if (version.fileIds.length === 0) return
+  const recordings = (await loadFilesByIds(tx, ctx.institutionId, version.fileIds)).filter(
+    (row) =>
+      row.purpose === 'speaking_recording' &&
+      row.status !== 'deleted' &&
+      row.attachedType === SUBMISSION_VERSION_ATTACHMENT &&
+      row.attachedId === version.id,
+  )
+  if (recordings.length === 0) return
+  const computed = recordingRetentionUntil({
+    periodEndDate: await recordingPeriodEndFor(
+      tx,
+      ctx,
+      input.submission.learnerId,
+      version.submittedAt,
+    ),
+    deadline: deadlineForVersion(input.assignment.deadline, input.submission, version.number),
+    submittedAt: version.submittedAt,
+    announcedAt: input.announcedAt ?? null,
+    appealFiledAt: input.appealFiledAt ?? null,
+    appealDecidedAt: input.appealDecidedAt ?? null,
+    holidays: input.holidays,
+  })
+  for (const row of recordings) {
+    const next = extendedRecordingRetention({
+      current: row.retentionUntil,
+      computed,
+      now: ctx.now,
+    })
+    // Satır sürümü tutmazsa (eşzamanlı imha) değişiklik yapılmaz; imha zaten saklamayı bitirdi.
+    if (next !== null)
+      await extendFileRetention(tx, ctx.institutionId, row, new Date(next), ctx.now)
+  }
 }
 
 export type VersionFileStatus = 'processing' | 'ready' | 'deleted'

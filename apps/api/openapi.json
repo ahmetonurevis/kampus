@@ -3986,6 +3986,8 @@
             "enum": [
               "feedback_released",
               "appeal_decided",
+              "absence_recorded",
+              "absence_corrected",
               "enrollment_completed"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
@@ -13841,6 +13843,8 @@
             "enum": [
               "feedback_released",
               "appeal_decided",
+              "absence_recorded",
+              "absence_corrected",
               "enrollment_completed"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"

@@ -4994,7 +4994,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "enrollment_completed";
+            kind: "feedback_released" | "appeal_decided" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -7370,7 +7370,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "enrollment_completed";
+            kind: "feedback_released" | "appeal_decided" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}

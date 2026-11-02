@@ -8,6 +8,8 @@ React web (`apps/web-react`, `pnpm dev:react`) sayfaları API'den okur; taşınm
 
 Sayfa rehberi iki yerdedir: Oğuzhan'ın alanındaki React sayfaları (dashboard, akademik, okul iş akışları, dil okulu kur ve grupları, içerik havuzu, iletişim, Ayarlar) [sayfalar/platform.md](sayfalar/platform.md) belgesinde; kayıt ve finans sayfaları aşağıdaki Onur bölümünde, Vue demosunun rol tabloları en altta.
 
+Vue–React sayfa eşitliği denetimi (Oğuzhan'ın alanı, OG-072 ön koşulu): [sayfalar/vue-esitlik.md](sayfalar/vue-esitlik.md).
+
 <!-- Onur: kayıt ve finans -->
 
 ## React web: kayıt ve finans

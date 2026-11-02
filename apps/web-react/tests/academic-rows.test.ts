@@ -16,9 +16,6 @@ import {
   gradeRow,
   attendanceDayFilters,
   isDayKey,
-  isVisibleLesson,
-  lessonRow,
-  lessonsByDay,
   overallAverage,
   scoreText,
   scoreTone,
@@ -260,52 +257,4 @@ test('gün ekleme ay ve yıl sınırını aşar; hafta 7 gündür', () => {
     '2026-10-31',
     '2026-11-01',
   ])
-})
-
-test('iptal edilen ders günlük programda görünmez, kalan dersler saat sırasıyla gelir', () => {
-  const { seed, lookups } = sources()
-  const base = seed.schedule[0]!
-  const lesson = (id: string, date: string, extra: Record<string, unknown> = {}) => ({
-    ...base,
-    id,
-    classId: 'c1',
-    date,
-    ...extra,
-  })
-  const items = wrap([
-    lesson('gec', '2026-10-27T09:00:00.000Z'),
-    lesson('iptal', '2026-10-27T07:00:00.000Z', { cancelledAt: '2026-10-26T10:00:00.000Z' }),
-    lesson('erken', '2026-10-27T06:00:00.000Z'),
-    lesson('hafta-disi', '2026-11-04T06:00:00.000Z'),
-  ])
-  assert.equal(isVisibleLesson(items[2]!.record), true)
-  assert.equal(isVisibleLesson(items[1]!.record), false)
-  const days = lessonsByDay(items, lookups, 'teacher', '2026-10-26')
-  assert.equal(days.size, 7)
-  assert.deepEqual(
-    days.get('2026-10-27')!.map((row) => row.id),
-    ['erken', 'gec'],
-  )
-  const all = [...days.values()].flat().map((row) => row.id)
-  assert.equal(all.includes('iptal'), false)
-  assert.equal(all.includes('hafta-disi'), false)
-})
-
-test('ders satırı İstanbul saatiyle gün/saat verir; alt başlık kitleye göre sınıf ya da öğretmendir', () => {
-  const { seed, lookups } = sources()
-  const record = {
-    ...seed.schedule[0]!,
-    classId: 'c1',
-    teacherId: 't1',
-    date: '2026-10-27T06:00:00.000Z',
-    room: '101',
-  }
-  const item = wrap([record])[0]!
-  const teacher = lessonRow(item, lookups, 'teacher')
-  const student = lessonRow(item, lookups, 'student')
-  assert.equal(teacher.day, '2026-10-27')
-  assert.equal(teacher.time, '09:00')
-  assert.equal(teacher.subtitle, '7-A · Derslik 101')
-  const teacherName = seed.teachers.find((t) => t.id === 't1')!.name
-  assert.equal(student.subtitle, `${teacherName} · Derslik 101`)
 })

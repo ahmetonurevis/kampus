@@ -35,6 +35,9 @@ const AttendanceCorrectionPage = lazy(async () => ({
 const SchedulePage = lazy(async () => ({
   default: (await import('../academic/SchedulePage.tsx')).SchedulePage,
 }))
+const ProgramManagementPage = lazy(async () => ({
+  default: (await import('../academic/ProgramManagementPage.tsx')).ProgramManagementPage,
+}))
 const StudentGradesPage = lazy(async () => ({
   default: (await import('../academic/StudentGradesPage.tsx')).StudentGradesPage,
 }))
@@ -152,6 +155,9 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
       return <TeacherAttendancePage page={page} />
     case 'ogretmen/ders-programi':
       return <SchedulePage page={page} audience="teacher" />
+    case 'yonetici/program-yonetimi':
+    case 'ogretmen/program-yonetimi':
+      return <ProgramManagementPage page={page} />
     case 'ogrenci/notlarim':
       return <StudentGradesPage page={page} />
     case 'ogrenci/devamsizlik':

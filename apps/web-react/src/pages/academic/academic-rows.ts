@@ -1,7 +1,7 @@
 // Akademik okuma ekranlarının satır ve özet hesapları (Vue `Academic.vue`). Saf işlevlerdir:
 // API satırları ve başvuru koleksiyonlarının eşlemeleri girer, tablo/CSV satırı ve özet çıkar.
 // Ortalama ve gün anahtarı school-core `format` işlevleriyle hesaplanır; hiçbiri saklanmaz.
-import { average, dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
+import { average, dateLabel } from '@kampus/school-core/lib/format.ts'
 import type { SubjectAverage } from '@kampus/school-core/lib/grades.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
 
@@ -12,7 +12,6 @@ type Teacher = CoreRecord<'teachers'>
 type Branch = CoreRecord<'branches'>
 type Grade = CoreRecord<'grades'>
 type Attendance = CoreRecord<'attendance'>
-type Lesson = CoreRecord<'schedule'>
 
 export type AcademicSources = {
   subjects: readonly CoreRow<'subjects'>[]
@@ -225,9 +224,6 @@ export function teacherClassRow(
 
 // --- Ders programı ----------------------------------------------------------
 
-/** İptal edilen ders günlük programlarda görünmez (iş kuralı). */
-export const isVisibleLesson = (lesson: Pick<Lesson, 'cancelledAt'>) => !lesson.cancelledAt
-
 const DAY_MS = 86_400_000
 const toUtc = (key: string) => new Date(`${key}T00:00:00.000Z`)
 const toKey = (date: Date) => date.toISOString().slice(0, 10)
@@ -244,54 +240,3 @@ export function weekStart(key: string): string {
 
 export const weekDays = (start: string): string[] =>
   Array.from({ length: 7 }, (_, index) => addDays(start, index))
-
-export type LessonRow = {
-  id: string
-  title: string
-  day: string
-  time: string
-  duration: number
-  room: string
-  /** "7-A · Derslik 101" ya da öğrenci/veli için öğretmen adı. */
-  subtitle: string
-  date: string
-}
-
-export function lessonRow(
-  item: CoreRow<'schedule'>,
-  lookups: AcademicLookups,
-  audience: 'teacher' | 'student',
-): LessonRow {
-  const record = item.record
-  const who =
-    audience === 'teacher'
-      ? (lookups.classes.get(record.classId)?.name ?? '')
-      : (lookups.teachers.get(record.teacherId)?.name ?? '')
-  return {
-    id: item.id,
-    title: record.title ?? lookups.subjects.get(record.subjectId)?.name ?? '',
-    day: dayKey(record.date),
-    time: timeLabel(record.date),
-    duration: record.duration,
-    room: record.room,
-    subtitle: [who, `Derslik ${record.room}`].filter(Boolean).join(' · '),
-    date: record.date,
-  }
-}
-
-/** Haftanın günleri → o günün (iptalsiz) dersleri, saat sırasıyla. */
-export function lessonsByDay(
-  items: readonly CoreRow<'schedule'>[],
-  lookups: AcademicLookups,
-  audience: 'teacher' | 'student',
-  start: string,
-): Map<string, LessonRow[]> {
-  const days = new Map(weekDays(start).map((key) => [key, [] as LessonRow[]]))
-  for (const item of items) {
-    if (!isVisibleLesson(item.record)) continue
-    const row = lessonRow(item, lookups, audience)
-    days.get(row.day)?.push(row)
-  }
-  for (const list of days.values()) list.sort((left, right) => left.date.localeCompare(right.date))
-  return days
-}

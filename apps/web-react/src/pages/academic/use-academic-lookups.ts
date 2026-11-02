@@ -9,13 +9,14 @@ const NONE: readonly never[] = []
  * rol kapsamıyla gelir (öğretmen kendi sınıfları ve öğrencileri, öğrenci kendisi, veli
  * çocukları), yani küçük kümelerdir; bütün sayfaları bir kez çekilir ve önbellekten paylaşılır.
  */
-export function useAcademicLookups() {
+export function useAcademicLookups({ students: withStudents = true }: { students?: boolean } = {}) {
   const subjects = useCoreAll('subjects')
   const classes = useCoreAll('classes')
-  const students = useCoreAll('students')
+  // Ders programı yönetimi öğrenci adı göstermez; kurumun bütün öğrencileri çekilmez.
+  const students = useCoreAll('students', {}, { enabled: withStudents })
   const teachers = useCoreAll('teachers')
   const branches = useCoreAll('branches')
-  const queries = [subjects, classes, students, teachers, branches]
+  const queries = [subjects, classes, ...(withStudents ? [students] : []), teachers, branches]
 
   const sources = useMemo<AcademicSources>(
     () => ({

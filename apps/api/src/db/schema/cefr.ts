@@ -209,7 +209,7 @@ export const levelDecisions = pgTable(
     skill: text('skill').$type<PrimarySkill>(),
     // kvkk: Ç (kursiyerin ölçme sonucuna dayanan seviyesi; reşit olmayan kursiyer olabilir)
     level: text('level').$type<CefrLevel>().notNull(),
-    // kvkk: K
+    // kvkk: Ç (kursiyerin ölçme yorumu; reşit olmayan kursiyer olabilir; loglanmaz)
     rationale: text('rationale').notNull(),
     // kvkk: K
     decidedByUserId: text('decided_by_user_id').notNull(),
@@ -308,7 +308,7 @@ export const progressionDecisions = pgTable(
     // kvkk: Ç (kursiyerin kur sonucu)
     outcome: text('outcome').$type<ProgressionOutcome>().notNull(),
     status: text('status').$type<ProgressionDecisionStatus>().notNull(),
-    // kvkk: K
+    // kvkk: Ç (kursiyerin kur sonu değerlendirmesi; reşit olmayan kursiyer olabilir; loglanmaz)
     rationale: text('rationale').notNull(),
     correctsDecisionId: uuid('corrects_decision_id'),
     // kvkk: K
@@ -317,7 +317,7 @@ export const progressionDecisions = pgTable(
     // kvkk: K
     reviewedByUserId: text('reviewed_by_user_id'),
     reviewedAt: timestamp('reviewed_at', { withTimezone: true }),
-    // kvkk: K
+    // kvkk: Ç (koordinatörün kursiyerin değerlendirmesine ret gerekçesi; loglanmaz)
     rejectionReason: text('rejection_reason'),
     // kvkk: Ç (devam ve beceri puanı kopyası; loglanmaz)
     basis: jsonb('basis').$type<ProgressionBasis>().notNull(),

@@ -201,7 +201,7 @@ describe('üretim güvenlik varsayılanları', () => {
     }
   })
 
-  test('DOM-ILT-100, DOM-ILT-102, DOM-ILT-092, DOM-KAY-003, DOM-KAY-012, DOM-KAY-032: log gizleme üst düzey, iç içe ve geçmiş dizisindeki serbest metni yazmaz', async () => {
+  test('DOM-ILT-100, DOM-ILT-102, DOM-ILT-092, DOM-KAY-003, DOM-KAY-012, DOM-KAY-032, DOM-DIL-070: log gizleme üst düzey, iç içe ve geçmiş dizisindeki serbest metni yazmaz', async () => {
     const logs: string[] = []
     const texts = {
       note: 'Gizli görüşme konusu.',
@@ -225,6 +225,10 @@ describe('üretim güvenlik varsayılanları', () => {
       birthDate: '2012-03-04',
       recordNationalId: '10000000078',
       recordBirthDate: '2011-05-06',
+      rationale: 'Gizli seviye kararı gerekçesi.',
+      decisionRationale: 'Kayıttaki gizli kur kararı gerekçesi.',
+      rejectionReason: 'Gizli kur kararı ret gerekçesi.',
+      decisionRejectionReason: 'Kayıttaki gizli ret gerekçesi.',
     }
     // Uygulamanın gerçek logger yapılandırması (`REDACTED_PATHS`); hem uygulama hem istek logu.
     const app = await buildTestApp(db, {
@@ -274,8 +278,23 @@ describe('üretim güvenlik varsayılanları', () => {
         },
         'aday kaydı',
       )
+      app.log.info(
+        { rationale: texts.rationale, rejectionReason: texts.rejectionReason },
+        'kur kararı',
+      )
+      app.log.info(
+        {
+          decision: {
+            rationale: texts.decisionRationale,
+            rejectionReason: texts.decisionRejectionReason,
+          },
+        },
+        'kur kararı kaydı',
+      )
       const lines = logs.join('').split('\n').filter(Boolean)
       for (const message of [
+        'kur kararı',
+        'kur kararı kaydı',
         'redaksiyon üst düzey',
         'redaksiyon gövde',
         'geçmiş',

@@ -274,6 +274,33 @@ test.describe('öğrenci görevleri: quiz denemesi', () => {
     await expect(page.getByRole('button', { name: 'Yeni deneme başlat' })).toBeVisible()
   })
 
+  test('DOM-KYN-025, OG-985: telif askısındaki görevde liste, panel ve çalışma alanı işlem önermez, sakin not gösterir', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await schoolOf(tenant, api)
+    const quiz = await seedQuiz(school.tenant.institutionId, school.ownerId, 'Askıdaki quiz')
+    const assignmentId = await assignTask(school.admin, { resourceVersionId: quiz })
+    const staff = await school.admin.get(`/api/v1/task-assignments/${assignmentId}`)
+    const { resourceId } = (staff.body as { data: { resourceId: string } }).data
+    const reported = await school.admin.post(
+      `/api/v1/resources/${resourceId}/versions/${quiz}/report`,
+      { reason: 'Telif ihlali şüphesi' },
+    )
+    expect(reported.status, JSON.stringify(reported.body)).toBe(200)
+    await loginAs(school.tenant.user('ogrenci'))
+    await page.goto('/ogrenci/soru-coz')
+    await page.getByRole('button', { name: 'Askıdaki quiz ayrıntısını aç' }).click()
+    const panel = page.getByRole('dialog', { name: 'Görev ayrıntısı' })
+    await expect(panel.getByText('Bu içerik şu an kullanıma kapalı.')).toBeVisible()
+    await expect(panel.getByRole('button', { name: 'Göreve başla' })).toHaveCount(0)
+    await page.goto(`/ogrenci/soru-coz?coz=${assignmentId}`)
+    await expect(main(page).getByText('Bu içerik şu an kullanıma kapalı.')).toBeVisible()
+    await expect(page.getByRole('button', { name: /deneme başlat/i })).toHaveCount(0)
+  })
+
   test('DOM-BEC-042: son tarihi geçmiş görevde deneme başlatılamaz ve neden yazılır', async ({
     page,
     loginAs,

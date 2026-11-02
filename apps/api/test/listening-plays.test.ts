@@ -10,10 +10,10 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { files } from '../src/db/schema/files.ts'
+import { resourceVersionFiles } from '../src/db/schema/resources.ts'
 import { attemptMediaPlays, taskAssignments } from '../src/db/schema/skills.ts'
 import { insertMediaPlay } from '../src/db/skills.ts'
 import { AppError } from '../src/errors.ts'
-import { defineFileAttachment } from '../src/services/file-registry.ts'
 import {
   listeningWindowMs,
   planListeningPlay,
@@ -39,17 +39,12 @@ import { seedResource } from './support/resources-sample.ts'
  * Bu testler gerçek akışı iddia etmez: sayılacak şekil bugün core ve API'yle kurulamaz. Core içerik
  * modeli dinleme kaydını atanabilen türlere bağlamaz ve API 1 veya 2 hakkı 422
  * `listening_plays_unavailable` ile reddeder (gerçek akış `task-assignments.test.ts`'tedir). Burada
- * şekil elle kurulur: dosya satırı soru sürümüne doğrudan bağlanır, kayıt türünün okuma kuralı
- * sahtedir (herkese açık; kapsamı deneme ve kurum sağlar) ve atamanın hakkı veritabanında verilir.
+ * şekil elle kurulur: dosya satırı ve sürüm bağı soru sürümüne doğrudan yazılır (okuma kuralı
+ * kaynağınkidir; sürüm 9-A'ya paylaşılır, DOM-KYN-006) ve atamanın hakkı veritabanında verilir.
  * TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türe bağlayınca testler gerçek akışa geçer.
  */
 
 type Json = ReturnType<typeof JSON.parse>
-
-defineFileAttachment(RESOURCE_VERSION_ATTACHMENT, {
-  purposes: ['listening_audio'],
-  canRead: async () => true,
-})
 
 const DUE = '2026-10-20T20:59:00.000Z'
 /** Süresi ölçülmemiş kaydın penceresi: 15 dk kayıt üst sınırı + 60 sn. */
@@ -145,6 +140,9 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     }
     const { versions } = await seedResource(db, institution.id, {
       ownerUserId: teacher.id,
+      // Dosyanın okuma kuralı kaynağınkidir (DOM-KYN-006): 9-A'ya paylaşılan sürümü öğrenci okur.
+      shareScope: 'classes',
+      sharedClassIds: ['9-A'],
       versions: [{ status: 'published', input: listeningQuestion() }],
     })
     const versionId = versions[0]!.id
@@ -162,6 +160,14 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
       attachedType: RESOURCE_VERSION_ATTACHMENT,
       attachedId: versionId,
       attachedAt: FIXED_NOW,
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })
+    await db.insert(resourceVersionFiles).values({
+      institutionId: institution.id,
+      versionId,
+      fileId,
+      position: 0,
       createdAt: FIXED_NOW,
       updatedAt: FIXED_NOW,
     })

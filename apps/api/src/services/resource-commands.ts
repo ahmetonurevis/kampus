@@ -2,7 +2,6 @@ import { randomUUID } from 'node:crypto'
 
 import { planCopy } from '@kampus/school-core/content/copy.ts'
 import {
-  contentFileRefs,
   planDraftUpdate,
   planNewResource,
   planNewVersion,
@@ -49,7 +48,13 @@ import { ConflictError, ForbiddenError, NotFoundError, RuleViolationError } from
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { readScope, readSource } from './read-scope.ts'
-import { contentReader, fullVersion, staffResource } from './resources.ts'
+import {
+  attachVersionFiles,
+  detachDroppedFiles,
+  loadVersionFileRows,
+  planFiles,
+} from './resource-files.ts'
+import { contentReader, fullVersion, loadVersionFiles, staffResource } from './resources.ts'
 
 /**
  * İçerik havuzu yazma uçlarının servisi (ADR 0004 karar 3; docs/domain/kaynak-platformu.md). Her
@@ -136,9 +141,12 @@ async function readBack(tx: Database, ctx: ServiceContext, outcome: WriteOutcome
     outcome.versionId === null
       ? []
       : await listResourceVersions(tx, ctx.institutionId, outcome.resourceId, [outcome.versionId])
+  const files = await loadVersionFiles(tx, ctx.institutionId, version ? [version] : [])
   return {
     resource: staffResource(resource),
-    ...(outcome.versionId === null ? {} : { version: version ? fullVersion(version) : null }),
+    ...(outcome.versionId === null
+      ? {}
+      : { version: version ? fullVersion(version, files) : null }),
     ...outcome.extra,
   }
 }
@@ -191,27 +199,6 @@ function readableVersion(
 /** `If-Match` ile gelen satır sürümü tutmazsa 409 `version_conflict`. */
 function assertExpected(version: number, expected: number | null) {
   if (expected !== null && version !== expected) throw new ConflictError()
-}
-
-/**
- * Dosyalı içerik henüz kaydedilemez: dosya tablosu yok (ADR 0003, sonraki dilim). İçerikteki
- * dosya kimliği doğrulanamayacağı için 422 döner.
- */
-function assertNoFiles(content: ResourceContent, fileIds: readonly string[] = []) {
-  if (contentFileRefs(content).length > 0 || fileIds.length > 0)
-    throw new RuleViolationError(
-      'resource_files_unsupported',
-      'Dosya ekleri henüz kaydedilemiyor; içeriği dosyasız kaydedin.',
-      {
-        issues: [
-          {
-            path: ['content'],
-            code: 'resource_files_unsupported',
-            message: 'Dosya ekleri henüz kaydedilemiyor.',
-          },
-        ],
-      },
-    )
 }
 
 /**
@@ -288,16 +275,31 @@ export async function createResource(
       resourceId: ids.resourceId,
       status: 201,
       load: async (tx) => {
-        assertNoFiles(input.content, input.fileIds)
         await assertItemsReadable(tx, ctx, staff, input.content)
-        return () => planNewResource({ actor: staff.actor, input, ids, now: ctx.now })
+        const files = await loadVersionFileRows(
+          tx,
+          ctx.institutionId,
+          [input.content],
+          input.fileIds,
+        )
+        return () => {
+          const plan = planNewResource({ actor: staff.actor, input, ids, now: ctx.now })
+          const { fileIds, attach } = planFiles(ctx, {
+            content: plan.version.content,
+            fileIds: plan.version.fileIds,
+            files,
+            kept: [],
+          })
+          return { ...plan, version: { ...plan.version, fileIds }, attach }
+        }
       },
       write: async (tx, plan) => {
         await insertNewResource(tx, ctx.institutionId, plan.resource, plan.version, ctx.now)
+        await attachVersionFiles(tx, ctx, ids.versionId, plan.attach)
         return {
           resourceId: ids.resourceId,
           versionId: ids.versionId,
-          fields: ['title', 'content'],
+          fields: ['title', 'content', ...(plan.version.fileIds.length > 0 ? ['fileIds'] : [])],
         }
       },
     },
@@ -307,7 +309,10 @@ export async function createResource(
 
 /** Taslak alanları; verilmeyen alan sürümdeki değeriyle kalır (`tags` bütün olarak değişir). */
 export type DraftPatch = Partial<
-  Pick<ResourceVersionData, 'title' | 'content' | 'answerKey' | 'tags' | 'license' | 'attributions'>
+  Pick<
+    ResourceVersionData,
+    'title' | 'content' | 'answerKey' | 'tags' | 'license' | 'attributions' | 'fileIds'
+  >
 >
 
 /**
@@ -336,21 +341,37 @@ export async function updateDraftVersion(
           ...versionData(asCoreVersion(version)),
           ...input.patch,
         }
-        if (input.patch.content) {
-          assertNoFiles(input.patch.content)
-          await assertItemsReadable(tx, ctx, staff, input.patch.content)
-        }
+        if (input.patch.content) await assertItemsReadable(tx, ctx, staff, input.patch.content)
+        // İçerik ya da dosya listesi değişince dosyalar yeniden denetlenir; taslakta zaten bağlı
+        // olanlar (`kept`) yeniden bağlanmaz.
+        const filesChanged = input.patch.content !== undefined || input.patch.fileIds !== undefined
+        const files = filesChanged
+          ? await loadVersionFileRows(tx, ctx.institutionId, [merged.content], merged.fileIds)
+          : []
         const lineage = await lineageOf(tx, ctx, target.resource)
-        return () => ({
-          version,
-          ...planDraftUpdate({
+        return () => {
+          const draft = planDraftUpdate({
             actor: staff.actor,
             resource: target.resource,
             version: asCoreVersion(version),
             input: merged,
             lineage,
-          }),
-        })
+          })
+          const plan = filesChanged
+            ? planFiles(ctx, {
+                content: draft.data.content,
+                fileIds: draft.data.fileIds,
+                files,
+                kept: version.fileIds,
+              })
+            : { fileIds: draft.data.fileIds, attach: [] }
+          return {
+            version,
+            ...draft,
+            data: { ...draft.data, fileIds: plan.fileIds },
+            attach: plan.attach,
+          }
+        }
       },
       write: async (tx, plan) => {
         const next: ResourceVersion = {
@@ -359,6 +380,13 @@ export async function updateDraftVersion(
           status: plan.status,
         }
         await updateDraft(tx, ctx.institutionId, next, plan.version.rowVersion, ctx.now)
+        await attachVersionFiles(tx, ctx, input.versionId, plan.attach)
+        await detachDroppedFiles(
+          tx,
+          ctx,
+          input.versionId,
+          plan.version.fileIds.filter((fileId) => !plan.data.fileIds.includes(fileId)),
+        )
         return {
           resourceId: input.resourceId,
           versionId: input.versionId,
@@ -376,9 +404,10 @@ export async function updateDraftVersion(
 /** Yayındaki (yoksa son) sürümden yeni taslak açar (DOM-KYN-032); açık sürüm varken 409. */
 export async function openNewVersion(
   ctx: ServiceContext,
-  resourceId: string,
+  input: { resourceId: string; fileIds?: readonly string[] | undefined },
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
+  const { resourceId } = input
   const staff = await staffOf(ctx)
   const versionId = randomUUID()
   return command(
@@ -389,20 +418,45 @@ export async function openNewVersion(
       status: 201,
       load: async (tx) => {
         const target = await loadTarget(tx, ctx, staff, resourceId)
-        return () => ({
-          reopens: target.resource.archivedAt !== null,
-          version: planNewVersion({
+        const requested = input.fileIds
+        // Temel sürüm core'da seçilir; satırlar her sürümün içerik dosyalarıyla birlikte okunur.
+        const files =
+          requested === undefined
+            ? []
+            : await loadVersionFileRows(
+                tx,
+                ctx.institutionId,
+                target.versions.map((version) => version.content),
+                requested,
+              )
+        return () => {
+          const base = planNewVersion({
             actor: staff.actor,
             institutionType: staff.institutionType,
             resource: target.resource,
             versions: target.versions.map(asCoreVersion),
             versionId,
             now: ctx.now,
-          }),
-        })
+          })
+          // Dosya listesi verilmezse temel sürümün listesi aynen kalır (bağlar zaten açık).
+          if (requested === undefined)
+            return { reopens: target.resource.archivedAt !== null, version: base, attach: [] }
+          const plan = planFiles(ctx, {
+            content: base.content,
+            fileIds: requested,
+            files,
+            kept: base.fileIds,
+          })
+          return {
+            reopens: target.resource.archivedAt !== null,
+            version: { ...base, fileIds: plan.fileIds },
+            attach: plan.attach,
+          }
+        }
       },
-      write: async (tx, { reopens, version }) => {
+      write: async (tx, { reopens, version, attach }) => {
         await insertNewVersion(tx, ctx.institutionId, version, ctx.now)
+        await attachVersionFiles(tx, ctx, versionId, attach)
         // Bütün sürümleri arşivli kaynak yeni sürümle yeniden açılır (R8: `resources.archived_at`).
         // Arşivli değilse kaynak satırına dokunulmaz: satır sürümü artmaz, eldeki `If-Match` geçerli kalır.
         if (reopens)
@@ -417,7 +471,11 @@ export async function openNewVersion(
         return {
           resourceId,
           versionId,
-          fields: reopens ? ['versionNumber', 'archivedAt'] : ['versionNumber'],
+          fields: [
+            'versionNumber',
+            ...(input.fileIds === undefined ? [] : ['fileIds']),
+            ...(reopens ? ['archivedAt'] : []),
+          ],
         }
       },
     },
@@ -566,6 +624,9 @@ export async function removeResource(
         })
       },
       write: async (tx, { target, plan }) => {
+        // TODO(kaynak-dosya-imhasi): `plan.fileIds` hesaplanır ama dosyalar imha edilmez; kaldırılan
+        // sürümler dosya açmaz (okuma kuralı). Kopyalar aynı dosyayı paylaştığından imha, kopyaların
+        // kaldırılıp kaldırılmadığına bakmalı (DOM-KYN-006, DOM-KYN-051).
         await removeResourceRows(
           tx,
           ctx.institutionId,

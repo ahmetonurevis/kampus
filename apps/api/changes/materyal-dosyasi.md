@@ -1,0 +1,5 @@
+---
+etki: minor
+---
+
+Kaynak sürümüne dosya eki API'si (OG-250; DOM-KYN-006). `POST /api/v1/resources` ve `PATCH /api/v1/resources/:resourceId/versions/:versionId` sıralı `fileIds` listesi alır; `POST /api/v1/resources/:resourceId/versions` gövdesi isteğe bağlı `fileIds` ile temel sürümün listesinin yerine geçer. Yeni dosya sürümle aynı transaction'da bağlanır (`attached_type = 'resource_version'`); başkasının, başka kurumun, yanlış amaçlı, hazır olmayan ya da başka kayda bağlı dosya ve tür sınırı aşımı 422 döner, hiçbir kayıt değişmez. Geçici `resource_files_unsupported` kalktı. Yeni sürüm ve kopya aynı dosyaya `resource_version_files` bağı açar (migration 0036); taslaktan çıkarılan ve başka bağı kalmayan dosyanın bağı kalkar. Personel ve öğrenci sürüm yanıtları `files` meta verisini (`ResourceFile`: kimlik, ad, tür, boyut, amaç, süre, durum) taşır. `GET /api/v1/files/:fileId/url` kaynak sürümü dosyasını, ona bağ açan sürümlerden birini okuyabilene açar: öğrenci ve veli yalnız kendisine paylaşılan yayının dosyasını; kaldırılan sürüm dosya açmaz, ötekiler 404.

@@ -69,7 +69,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Materyal kurumun kaynağıdır ve yayınevi platformuna bağımlılığı azaltmanın yolu, dosyanın da kaynakla birlikte sürümlenip aynı kapsam kuralıyla dağıtılmasıdır. Kopyada aynı dosyayı paylaşmak basit ve güvenlidir: dosya içeriği değiştirilemez, kopya yeni bayt ve kota tüketmez, erişim kopyanın kendi okuma kuralından geçer; telif nedeniyle kaldırmada etkilenen kopyalar zaten listelenir (`DOM-KYN-051`).
 - **Kaynak:** İşletme kuralı; ADR 0003 karar 3, 5, 6.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/content/taxonomy.ts` (`RESOURCE_FILE_RULES`), `packages/school-core/src/content/resource-files.ts` (`planVersionFiles`, `resourceFileCountIssue`), sürüm girdisi `resourceVersionInputSchema.fileIds`; bağ tablosu `resource_version_files` (`apps/api/src/db/schema/resources.ts`). Uçlar ve ekran sonra.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/content/taxonomy.ts` (`RESOURCE_FILE_RULES`), `packages/school-core/src/content/resource-files.ts` (`planVersionFiles`, `resourceFileCountIssue`), sürüm girdisi `resourceVersionInputSchema.fileIds`; bağ tablosu `resource_version_files` (`apps/api/src/db/schema/resources.ts`); API bağlama ve okuma kuralı `apps/api/src/services/resource-files.ts` (`POST /resources`, taslak `PATCH`, `POST /resources/:resourceId/versions` `fileIds`; `GET /files/:fileId/url`), yanıtta `files` meta verisi. Ekran sonra (OG-250 adım 2); kaldırmada dosya imhası yok (`TODO(kaynak-dosya-imhasi)`).
 
 ## Etiketler
 

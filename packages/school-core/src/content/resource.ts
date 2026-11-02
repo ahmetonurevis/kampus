@@ -67,6 +67,14 @@ const itemId = z
   .regex(/^[A-Za-z0-9_-]{1,40}$/, 'Kimlik yalnız harf, rakam, - ve _ içerebilir.')
 const item = z.object({ id: itemId, text: text(500, 'Metni yazın.') })
 const fileRef = identifier
+/**
+ * Sürümün sıralı dosya listesi (DOM-KYN-006); yinelenen kimlik tek sayılır. Varsayılansız: taslak
+ * düzenleme ve yeni sürüm gövdesinde verilmeyen liste "değişmedi" demektir.
+ */
+export const resourceFileIdsSchema = z
+  .array(fileRef)
+  .max(RESOURCE_FILE_LIST_MAX)
+  .transform(distinct)
 
 // --- Durum ve aktör -----------------------------------------------------------------------
 
@@ -526,7 +534,7 @@ export const resourceVersionInputSchema = z
      * `imageFileId`) bu listede bulunmalıdır; tür başına amaç ve sayı `RESOURCE_FILE_RULES`
      * (`resource-files.ts` `planVersionFiles`, 422). Yinelenen kimlik tek sayılır.
      */
-    fileIds: z.array(fileRef).max(RESOURCE_FILE_LIST_MAX).default([]).transform(distinct),
+    fileIds: resourceFileIdsSchema.default([]),
   })
   .superRefine((version, ctx) => {
     if (version.answerKey === null) return

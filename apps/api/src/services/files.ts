@@ -36,6 +36,7 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { ModuleDisabledError } from '../plugins/modules.ts'
 import { meterUpload, StreamLimitError } from '../storage/meter.ts'
 import { storageKeyFor, type StorageDriver } from '../storage/storage.ts'
+import { actorStudentHasConsent } from './consents.ts'
 import { contentTypeMismatch, detectContentType, dispositionFor } from './file-detection.ts'
 import { FILE_PURPOSE_ACCESS, fileAttachmentKind } from './file-registry.ts'
 import { requestFingerprint } from './idempotency.ts'
@@ -138,12 +139,15 @@ export async function assertCanUpload(ctx: ServiceContext, purpose: FilePurpose)
     ctx.log.info({ event: 'file.upload_role_denied', purpose, role: ctx.actor.role })
     throw new ForbiddenError()
   }
-  // TODO(F3c2-consents): `consents` tablosu gelince 18 yaş altında geçerli veli rızası, yetişkinde
-  // kendi rızası aranır (karar 9, DOM-BEC-050). O zamana kadar rıza kaydı olmadığından konuşma
-  // kaydı kimseden alınmaz; görev yüz yüze değerlendirmeye düşer.
+  // Rıza gereken amaçta (konuşma kaydı) yükleyen öğrencinin kendi kaydı için geçerli rıza aranır:
+  // 18 yaş altında velayet sahibi velinin, 18 ve üstünde öğrencinin kendi rızası; süresi dolmuş,
+  // geri çekilmiş ya da etkin itirazlı rıza sayılmaz (karar 9, DOM-BEC-050, DOM-YTK-061). Rıza
+  // yoksa görev yüz yüze değerlendirmeye düşer.
   const rule: FilePurposeRule = FILE_PURPOSES[purpose]
-  if (rule.requiresConsent === true)
+  if (rule.requiresConsent === true && !(await actorStudentHasConsent(ctx, 'speaking_recording'))) {
+    ctx.log.info({ event: 'file.upload_consent_missing', purpose })
     throw new AppError(403, 'consent_required', FILE_MESSAGES.consent_required)
+  }
 }
 
 export interface UploadInput {

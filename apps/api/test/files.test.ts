@@ -10,10 +10,12 @@ import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { institutions } from '../src/db/schema/auth.ts'
 import { markFileDeleted } from '../src/db/files.ts'
+import { insertMissingRecords } from '../src/db/records.ts'
 import { files } from '../src/db/schema/files.ts'
 import { institutionSettings } from '../src/db/schema/institution-settings.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { defineFileAttachment } from '../src/services/file-registry.ts'
+import type { MembershipLinkInput } from '../src/services/identity.ts'
 import { attachFile, purgeUnattachedFiles, recordFileCheck } from '../src/services/files.ts'
 import {
   buildTestApp,
@@ -215,6 +217,98 @@ describe('dosya uçları', () => {
     assert.equal(response.statusCode, 403)
     assert.equal(response.json().code, 'consent_required')
     assert.equal((await store.files()).length, before)
+  })
+
+  test('DOM-BEC-050 DOM-YTK-059 DOM-YTK-061 konuşma kaydı geçerli veli rızasıyla yüklenir; rıza geri çekilince dosya imhaya işaretlenir ve yükleme yeniden 403', async () => {
+    const t = await tenant()
+    // 17 yaşındaki öğrenci: rızayı velayet sahibi veli verir.
+    await insertMissingRecords(
+      db,
+      t.institution.id,
+      [
+        {
+          collection: 'students',
+          id: 's1',
+          data: { id: 's1', name: 'Öğrenci', birthDate: '2009-10-07' },
+        },
+      ],
+      now,
+    )
+    const linked = async (role: Role, links: MembershipLinkInput[]) => {
+      const user = await createMember(app, t.institution.id, role, links)
+      return { ...user, cookie: await signInAs(app, user) }
+    }
+    const student = await linked('ogrenci', [{ kind: 'student', recordId: 's1' }])
+    const parent = await linked('veli', [{ kind: 'child', recordId: 's1' }])
+    const json = (cookie: string, url: string, body: unknown) =>
+      app.inject({
+        method: 'POST',
+        url,
+        headers: {
+          origin: TEST_ORIGIN,
+          cookie,
+          'content-type': 'application/json',
+          'idempotency-key': nextKey(),
+        },
+        payload: JSON.stringify(body),
+      })
+    const recording = () =>
+      upload(student.cookie, uploadParts('speaking_recording', MP3, 'kayit.mp3', 'audio/mpeg'))
+
+    const text = await json(t.admin.cookie, '/api/v1/privacy-notices', {
+      kind: 'consent_text',
+      purpose: 'speaking_recording',
+      title: 'Konuşma kaydı rızası',
+      body: 'Ses kaydı yalnız değerlendirme için işlenir.',
+    })
+    assert.equal(text.statusCode, 201, text.body)
+    // Metin var ama rıza yok: yine 403.
+    assert.equal((await recording()).statusCode, 403)
+
+    const consent = await json(parent.cookie, '/api/v1/consents', {
+      purpose: 'speaking_recording',
+      studentId: 's1',
+      textId: text.json().data.id,
+      channel: 'web',
+    })
+    assert.equal(consent.statusCode, 201, consent.body)
+    const uploaded = await recording()
+    assert.equal(uploaded.statusCode, 201, uploaded.body)
+    const fileId = uploaded.json().data.id as string
+    // Bağlama `data_subject_id`'yi yazar; bağlama akışı bu testin konusu değil.
+    await db
+      .update(files)
+      .set({ dataSubjectId: 's1' })
+      .where(and(eq(files.institutionId, t.institution.id), eq(files.id, fileId)))
+
+    const withdrawn = await json(
+      parent.cookie,
+      `/api/v1/consents/${consent.json().data.id}/withdraw`,
+      {},
+    )
+    assert.equal(withdrawn.statusCode, 200, withdrawn.body)
+    const [row] = await db
+      .select()
+      .from(files)
+      .where(and(eq(files.institutionId, t.institution.id), eq(files.id, fileId)))
+    assert.equal(row?.retentionUntil?.toISOString(), now.toISOString())
+    const purge = await db
+      .select()
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.institutionId, t.institution.id),
+          eq(auditLog.action, 'file.purge_scheduled'),
+        ),
+      )
+    assert.deepEqual(
+      purge.map((item) => [item.entityId, item.changes?.fields]),
+      [[fileId, ['retentionUntil']]],
+    )
+
+    const after = await recording()
+    assert.equal(after.statusCode, 403)
+    assert.equal(after.json().code, 'consent_required')
   })
 
   test('modül kapalı: learning amaçları 403 module_disabled, kurum belgesi açık', async () => {

@@ -1,7 +1,12 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { moduleKeys } from '../src/lib/navigation.ts'
-import { resolveProspectDetail, resolveShell, showsClosedNotice } from '../src/lib/route-guard.ts'
+import {
+  resolveProspectDetail,
+  resolveShell,
+  resolveStudentProfile,
+  showsClosedNotice,
+} from '../src/lib/route-guard.ts'
 
 const modules = Object.fromEntries(moduleKeys().map((key) => [key, true]))
 const veli = { role: 'veli' as const, modules }
@@ -70,6 +75,28 @@ test('DOM-KAY-007: aday detayında oturum yoksa giriş, rol geçersizse kabuk d�
   const decision = resolveProspectDetail(closed, 'onburo')
   assert.equal(decision.kind, 'module-closed')
   assert.equal(decision.kind === 'module-closed' && decision.to, '/onburo/dashboard')
+})
+
+test('DOM-YTK-022: öğrenci profili yalnız öğretmene, akademik modül açıkken açılır', () => {
+  const ogretmen = { role: 'ogretmen' as const, modules }
+  const decision = resolveStudentProfile(ogretmen, 'ogretmen')
+  assert.equal(decision.kind, 'page')
+  assert.equal(decision.kind === 'page' && decision.page.path, 'ogrenci')
+  assert.equal(decision.kind === 'page' && decision.page.title, 'Öğrenci profili')
+  assert.equal(decision.kind === 'page' && decision.page.module, 'academic')
+  assert.deepEqual(resolveStudentProfile(veli, 'veli'), { kind: 'redirect', to: '/veli/dashboard' })
+  assert.deepEqual(resolveStudentProfile(ogretmen, 'yonetici'), {
+    kind: 'redirect',
+    to: '/ogretmen/dashboard',
+  })
+  assert.deepEqual(resolveStudentProfile(null, 'ogretmen'), { kind: 'login' })
+  assert.deepEqual(resolveStudentProfile(null, 'olmayan'), { kind: 'not-found-outside' })
+  const closed = resolveStudentProfile(
+    { ...ogretmen, modules: { ...modules, academic: false } },
+    'ogretmen',
+  )
+  assert.equal(closed.kind, 'module-closed')
+  assert.equal(closed.kind === 'module-closed' && closed.to, '/ogretmen/dashboard')
 })
 
 test('dil okulu kur ve grup sayfaları okulda yoktur, dil okulunda açılır (IST-076, IST-077)', () => {

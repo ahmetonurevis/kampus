@@ -29,6 +29,9 @@ const ContentPoolPage = lazy(async () => ({
 const TeacherClassesPage = lazy(async () => ({
   default: (await import('../academic/TeacherClassesPage.tsx')).TeacherClassesPage,
 }))
+const TeacherStudentProfilePage = lazy(async () => ({
+  default: (await import('../academic/TeacherStudentProfilePage.tsx')).TeacherStudentProfilePage,
+}))
 const TeacherAttendancePage = lazy(async () => ({
   default: (await import('../academic/TeacherAttendancePage.tsx')).TeacherAttendancePage,
 }))
@@ -177,6 +180,8 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
       return <PersonalSettingsPage page={page} />
     case 'ogretmen/siniflarim':
       return <TeacherClassesPage page={page} />
+    case 'ogretmen/ogrenci':
+      return <TeacherStudentProfilePage page={page} />
     case 'ogretmen/yoklama':
       return <TeacherAttendancePage page={page} />
     case 'ogretmen/ders-programi':

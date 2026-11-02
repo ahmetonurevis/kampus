@@ -53,6 +53,35 @@ export function showsClosedNotice(page: Pick<NavPage, 'path'>): boolean {
   return workflowPage(page.path) !== undefined
 }
 
+/** Öğretmenin öğrenci profili (`/ogretmen/ogrenci/:id`) menüde olmayan sayfadır; modülü `academic`. */
+export const STUDENT_PROFILE_PATH = 'ogrenci'
+export const STUDENT_PROFILE_TITLE = 'Öğrenci profili'
+
+/**
+ * Öğrenci profili kararı: yalnız öğretmen, Sınıflarım (`academic`) açıkken. Başka rol kendi
+ * dashboard'una, kapalı modül uyarıyla dashboard'a döner. Öğrencinin öğretmenin kapsamında olup
+ * olmadığı sunucudadır: kapsam dışı öğrencinin kaydı 404 döner (DOM-YTK-022).
+ */
+export function resolveStudentProfile(
+  session: SessionScope | null,
+  role: string | undefined,
+): ShellDecision {
+  if (!isRoleKey(role)) return { kind: 'not-found-outside' }
+  if (!session) return { kind: 'login' }
+  const home = pageHref(session.role, { path: 'dashboard' })
+  if (role !== session.role || session.role !== 'ogretmen') return { kind: 'redirect', to: home }
+  const listing = findPage('ogretmen', 'siniflarim')
+  if (!listing) return { kind: 'not-found' }
+  const page: NavPage = {
+    ...listing,
+    path: STUDENT_PROFILE_PATH,
+    title: STUDENT_PROFILE_TITLE,
+    description: 'Öğrencinizin akademik gelişimini yakından inceleyin.',
+  }
+  if (!isPageEnabled(page, session.modules)) return { kind: 'module-closed', to: home, page }
+  return { kind: 'page', page }
+}
+
 /** Aday detayı (`/<rol>/aday/:id`) menüde olmayan kayıt sayfasıdır; modülü `crm`'dir. */
 const PROSPECT_DETAIL_ROLES: readonly RoleKey[] = ['yonetici', 'onburo']
 export const PROSPECT_DETAIL_PATH = 'aday'

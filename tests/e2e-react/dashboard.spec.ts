@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import type { Locator, Page } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
@@ -7,8 +9,9 @@ import { expectContentInsideCards, expectNoHorizontalOverflow } from './support/
 
 // Genel Bakış (dashboard): beş rolün ekranı, sayaçların sunucu sayımıyla eşleşmesi, velide çocuk
 // değişince özetin değişmesi, öğrencide ödeme bilgisinin ve isteğinin bulunmaması, 390 px'te
-// taşma olmaması ve öğrenci grafiğinin gerçek yoklama kayıtlarına bağlılığı. Hiçbir test kayıt
-// yazmaz. Beklenen değerler API sayım ucundan okunur (ekranın kullandığı sorguyla aynı kapsam,
+// taşma olmaması ve öğrenci grafiğinin gerçek yoklama kayıtlarına bağlılığı. Ders programı, son
+// quiz ve SLA ihlali kartları (OG-978) API'den bağımsız hesaplanan değerlerle eşleşir; yalnız
+// modül kapama testi kendi kurumuna (`tenant`) yazar, diğerleri kayıt yazmaz. Beklenen değerler API sayım ucundan okunur (ekranın kullandığı sorguyla aynı kapsam,
 // ama testte ayrıca hesaplanır). Sayaç yeni yanıt gelene kadar eski değeri gösterebileceği için
 // değerler `expect.poll` ile beklenir; sabit bekleme kullanılmaz.
 
@@ -379,6 +382,315 @@ test.describe('Genel Bakış: öğrenci', () => {
       await expect(trend.getByText('Son 8 haftada devamsızlık kaydı yok.')).toBeVisible()
       await expect(trend.locator('.trend-bars')).toHaveCount(0)
     }
+  })
+})
+
+// --- Ders programı, son quiz ve SLA ihlali kartları (OG-978) ------------------------------------
+
+type LessonRow = {
+  id: string
+  date: string
+  title: string | null
+  subjectId: string
+  teacherId: string
+  originalTeacherId: string | null
+  room: string
+  duration: number
+  status: string
+}
+type QuizRow = {
+  id: string
+  title: string
+  subject: string
+  attempts: {
+    studentId: string
+    status: string
+    submittedAt: string | null
+    result: { score: number; correctCount: number; total: number } | null
+  }[]
+}
+
+const istanbulTime = (iso: string) =>
+  new Intl.DateTimeFormat('tr-TR', {
+    timeZone: 'Europe/Istanbul',
+    hour: '2-digit',
+    minute: '2-digit',
+  }).format(new Date(iso))
+
+async function todaysLessons(client: ApiClient, classId?: string): Promise<LessonRow[]> {
+  const today = istanbulDay()
+  const filter = classId ? `&classId=${classId}` : ''
+  const result = await client.get(
+    `/api/v1/lessons?dateFrom=${today}&dateTo=${today}&pageSize=100${filter}`,
+  )
+  expect(result.status, 'bugünkü dersler').toBe(200)
+  return (result.body as { data: LessonRow[] }).data
+}
+
+/** Seçili öğrencinin en son tamamlanan quiz denemesi (API'den, ekranın hesabından ayrı). */
+async function latestAttempt(client: ApiClient, studentId: string, classId: string) {
+  const result = await client.get(`/api/v1/quizzes?classId=${classId}&pageSize=100`)
+  expect(result.status, 'quiz listesi').toBe(200)
+  const rows = (result.body as { data: QuizRow[] }).data
+  const done = rows.flatMap((quiz) =>
+    quiz.attempts
+      .filter(
+        (attempt) =>
+          attempt.studentId === studentId && attempt.status === 'completed' && attempt.result,
+      )
+      .map((attempt) => ({ quiz, attempt })),
+  )
+  done.sort(
+    (a, b) => Date.parse(b.attempt.submittedAt ?? '') - Date.parse(a.attempt.submittedAt ?? ''),
+  )
+  return done[0]
+}
+
+async function setModule(admin: ApiClient, moduleKey: string, enabled: boolean) {
+  const settings = await admin.get('/api/v1/modules')
+  expect(settings.status).toBe(200)
+  const { version } = (settings.body as { data: { version: number } }).data
+  const response = await admin.context.patch(`/api/v1/modules/${moduleKey}`, {
+    data: { enabled },
+    headers: { 'if-match': `"${version}"`, 'idempotency-key': randomUUID() },
+  })
+  expect(response.status()).toBe(200)
+}
+
+const region = (page: Page, name: string) => page.getByRole('region', { name, exact: true })
+
+async function expectScheduleCard(page: Page, lessons: readonly LessonRow[]) {
+  const schedule = region(page, 'Bugünkü ders programı')
+  await expect(schedule).toBeVisible()
+  if (lessons.length === 0) {
+    await expect(schedule.getByText('Bugün dersin yok.')).toBeVisible()
+    return
+  }
+  const sorted = lessons.toSorted((a, b) => a.date.localeCompare(b.date))
+  const items = schedule.getByRole('list', { name: 'Bugünkü ders programı' }).getByRole('listitem')
+  await expect(items).toHaveCount(sorted.length)
+  for (const [index, lesson] of sorted.entries())
+    await expect(items.nth(index).locator('time')).toHaveText(istanbulTime(lesson.date))
+}
+
+async function expectQuizCard(page: Page, latest: Awaited<ReturnType<typeof latestAttempt>>) {
+  const quiz = region(page, 'Son quiz sonucu')
+  await expect(quiz).toBeVisible()
+  if (!latest) {
+    await expect(quiz.getByText('Henüz tamamlanmış quiz yok.')).toBeVisible()
+    return
+  }
+  const result = latest.attempt.result
+  await expect(quiz.getByRole('link', { name: latest.quiz.title, exact: true })).toBeVisible()
+  await expect(quiz).toContainText(`%${result?.score}`)
+  await expect(quiz).toContainText(`${result?.correctCount}/${result?.total} doğru`)
+}
+
+test.describe('Genel Bakış: ders programı ve son quiz kartları', () => {
+  test('öğrenci: bugünkü ders programı API ile, iptal ders görünmeden eşleşir', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const student = await api('ogrenci')
+    const lessons = await todaysLessons(student)
+    await loginAs('ogrenci')
+    await openDashboard(page, 'ogrenci')
+    await expectCardsLoaded(page)
+    await expectScheduleCard(page, lessons)
+    await expect(region(page, 'Bugünkü ders programı').getByRole('link')).toHaveAttribute(
+      'href',
+      '/ogrenci/ders-programi',
+    )
+  })
+
+  test('öğrenci: bugünkü ders satırı saat, ders, öğretmen ve derslik gösterir; iptal ders girmez', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const student = await api('ogrenci')
+    const today = istanbulDay()
+    const teachers = await student.get('/api/v1/collections/teachers')
+    const teacher = (teachers.body as { data: { id: string; record: { name: string } }[] }).data[0]
+    expect(teacher, 'öğrenci sınıfının öğretmenini görür').toBeTruthy()
+    const base = {
+      version: 1,
+      classId: 'c1',
+      subjectId: 'math',
+      title: null,
+      teacherId: teacher?.id ?? '',
+      originalTeacherId: null,
+      duration: 40,
+      cancelledAt: null,
+      updatedAt: `${today}T05:00:00Z`,
+    }
+    // Sunucu yanıtı: bugün 10:30 (07:30Z) ve 09:00 (06:00Z) dersleri, bir iptal ders ve yarının dersi.
+    await page.route(/\/api\/v1\/lessons\?/, async (route) => {
+      const response = await route.fetch()
+      const body = (await response.json()) as { data: unknown[]; meta: Record<string, unknown> }
+      const data = [
+        { ...base, id: 'l-gec', date: `${today}T07:30:00Z`, room: '21', status: 'planned' },
+        { ...base, id: 'l-erken', date: `${today}T06:00:00Z`, room: '14', status: 'planned' },
+        { ...base, id: 'l-iptal', date: `${today}T08:30:00Z`, room: '9', status: 'cancelled' },
+        {
+          ...base,
+          id: 'l-yarin',
+          date: `${shiftDay(today, 1)}T06:00:00Z`,
+          room: '5',
+          status: 'planned',
+        },
+      ]
+      await route.fulfill({
+        status: response.status(),
+        json: { ...body, data, meta: { ...body.meta, total: data.length } },
+      })
+    })
+    await loginAs('ogrenci')
+    await openDashboard(page, 'ogrenci')
+    const items = region(page, 'Bugünkü ders programı').getByRole('listitem')
+    await expect(items).toHaveCount(2)
+    await expect(items.nth(0)).toContainText('09:00')
+    await expect(items.nth(0)).toContainText('Matematik')
+    await expect(items.nth(0)).toContainText(`${teacher?.record.name} · Derslik 14 · 40 dk`)
+    await expect(items.nth(1)).toContainText('10:30')
+    await expect(items.nth(1)).toContainText('Derslik 21')
+    await expect(region(page, 'Bugünkü ders programı')).not.toContainText('Derslik 9')
+    await expect(region(page, 'Bugünkü ders programı')).toContainText('2 ders')
+  })
+
+  test('öğrenci: son quiz sonucu API ile eşleşir ve sonuç paneline bağlanır', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const student = await api('ogrenci')
+    const own = (await students(student))[0]
+    expect(own, 'öğrenci kendi kaydını görür').toBeTruthy()
+    const latest = await latestAttempt(student, own?.id ?? '', own?.record.classId ?? '')
+    await loginAs('ogrenci')
+    await openDashboard(page, 'ogrenci')
+    await expectCardsLoaded(page)
+    await expectQuizCard(page, latest)
+    if (!latest) return
+    await region(page, 'Son quiz sonucu').getByRole('link', { name: latest.quiz.title }).click()
+    await expect(page).toHaveURL(new RegExp(`/ogrenci/soru-coz\\?quiz=${latest.quiz.id}$`))
+    await expect(page.getByRole('dialog', { name: 'Quiz sonucu' })).toContainText(latest.quiz.title)
+  })
+
+  test('veli: iki çocuğun programı ve son quizi seçili çocuğa göre değişir', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const parent = await api('veli')
+    const children = await students(parent)
+    const expected = await Promise.all(
+      ['Deniz Yılmaz', 'Ece Yılmaz'].map(async (name) => {
+        const child = children.find((row) => row.record.name === name)
+        expect(child, `${name} velinin çocuğu`).toBeTruthy()
+        const classId = child?.record.classId ?? ''
+        return {
+          name,
+          id: child?.id ?? '',
+          lessons: await todaysLessons(parent, classId),
+          latest: await latestAttempt(parent, child?.id ?? '', classId),
+        }
+      }),
+    )
+    await loginAs('veli')
+    for (const child of expected) {
+      await openDashboard(page, 'veli', `?cocuk=${child.id}`)
+      await expect(page.getByRole('region', { name: `${child.name} özeti` })).toBeVisible()
+      await expectScheduleCard(page, child.lessons)
+      await expectQuizCard(page, child.latest)
+    }
+    // Çocuk seçici dashboard'dan değişince kartlar yeni çocuğa göre yenilenir.
+    const [first, second] = expected
+    await openDashboard(page, 'veli', `?cocuk=${first?.id}`)
+    await page.getByLabel('Çocuk seç').selectOption({ label: second?.name ?? '' })
+    await expect(page.getByRole('region', { name: `${second?.name} özeti` })).toBeVisible()
+    await expectScheduleCard(page, second?.lessons ?? [])
+    await expectQuizCard(page, second?.latest)
+    // Bağlantılar seçili çocukla Akademik Takip sekmelerini açar.
+    await expect(region(page, 'Bugünkü ders programı').getByRole('link')).toHaveAttribute(
+      'href',
+      new RegExp(`/veli/akademik-takip\\?cocuk=${second?.id}&sekme=program$`),
+    )
+    await expect(region(page, 'Son quiz sonucu').getByRole('link').first()).toHaveAttribute(
+      'href',
+      new RegExp(`/veli/akademik-takip\\?cocuk=${second?.id}&sekme=quizler`),
+    )
+  })
+
+  test('öğretmen ve ön büro Genel Bakışında bu kartlar yoktur', async ({ page, loginAs }) => {
+    for (const role of ['ogretmen', 'onburo'] as const) {
+      await loginAs(role)
+      await openDashboard(page, role)
+      await expectCardsLoaded(page)
+      await expect(region(page, 'Son quiz sonucu')).toHaveCount(0)
+      await expect(region(page, 'Bugünkü ders programı')).toHaveCount(0)
+      await expect(card(page, 'SLA ihlali')).toHaveCount(0)
+    }
+  })
+
+  test('modül kapalıyken kart çizilmez: ders programı academic, quiz ve SLA learning modülüne bağlıdır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogrenci'] })
+    const admin = await api(school.user('yonetici'))
+    await loginAs(school.user('ogrenci'))
+    await openDashboard(page, 'ogrenci')
+    await expectCardsLoaded(page)
+    // Kurumda ders ve quiz kaydı yok: iki kart da sakin boş durumunu gösterir.
+    await expect(region(page, 'Bugünkü ders programı').getByText('Bugün dersin yok.')).toBeVisible()
+    await expect(
+      region(page, 'Son quiz sonucu').getByText('Henüz tamamlanmış quiz yok.'),
+    ).toBeVisible()
+
+    await setModule(admin, 'learning', false)
+    await openDashboard(page, 'ogrenci')
+    await expect(region(page, 'Bugünkü ders programı')).toBeVisible()
+    await expect(region(page, 'Son quiz sonucu')).toHaveCount(0)
+
+    await setModule(admin, 'learning', true)
+    await setModule(admin, 'academic', false)
+    await openDashboard(page, 'ogrenci')
+    await expect(region(page, 'Son quiz sonucu')).toBeVisible()
+    await expect(region(page, 'Bugünkü ders programı')).toHaveCount(0)
+    await setModule(admin, 'academic', true)
+
+    await loginAs(school.user('yonetici'))
+    await openDashboard(page, 'yonetici')
+    await expect(card(page, 'SLA ihlali')).toBeVisible()
+    await setModule(admin, 'learning', false)
+    await openDashboard(page, 'yonetici')
+    await expectCardsLoaded(page)
+    await expect(card(page, 'SLA ihlali')).toHaveCount(0)
+    await setModule(admin, 'learning', true)
+  })
+
+  test('yönetici: SLA ihlali sayacı SLA Raporu "Süre aşımı" toplamıyla aynıdır ve rapora bağlanır', async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs('yonetici')
+    await openDashboard(page, 'yonetici')
+    await expectCardsLoaded(page)
+    const sla = card(page, 'SLA ihlali')
+    await expect(sla).toBeVisible()
+    const value = await cardValue(page, 'SLA ihlali').innerText()
+    expect(value).toMatch(/^\d+$/)
+
+    await sla.getByRole('link', { name: 'SLA ihlali' }).click()
+    await expect(page).toHaveURL(/\/yonetici\/sla-raporu$/)
+    const breaches = page
+      .locator('dl[aria-label="SLA özeti"] .stat-item')
+      .filter({ hasText: 'Süre aşımı' })
+    await expect(breaches.locator('.stat-value')).toHaveText(value)
   })
 })
 

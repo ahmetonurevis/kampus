@@ -435,17 +435,24 @@ const WORKFLOWS: Readonly<Record<string, Proof>> = Object.fromEntries(
   ]),
 )
 
-/** `cross-institution-platform.test.ts` satırları: test adı uç anahtarını taşır. */
-const platform = (kind: 'kayıt' | 'gövde', key: string): [string, Proof] => [
-  key,
-  proof(kind)(
-    'cross-institution-platform.test.ts',
-    kind === 'kayıt'
-      ? 'başka kurumun kaydı olmayan kayıtla aynı 404'
-      : 'gövdedeki başka kurum kimliği ve institutionId etkisiz',
-    `'${key}'`,
-  ),
-]
+/**
+ * Tablo kalıbıyla yazılmış `cross-institution-*.test.ts` satırları (`support/cross-institution.ts`
+ * koşucusu ya da aynı kalıp): test adı uç anahtarını taşır, dosyada anahtar tırnaklı geçer.
+ */
+const tableCase =
+  (file: string) =>
+  (kind: 'kayıt' | 'gövde', key: string): [string, Proof] => [
+    key,
+    proof(kind)(
+      file,
+      kind === 'kayıt'
+        ? 'başka kurumun kaydı olmayan kayıtla aynı 404'
+        : 'gövdedeki başka kurum kimliği ve institutionId etkisiz',
+      `'${key}'`,
+    ),
+  ]
+const platform = tableCase('cross-institution-platform.test.ts')
+const learning = tableCase('cross-institution-learning.test.ts')
 const PLATFORM: Readonly<Record<string, Proof>> = Object.fromEntries([
   platform('kayıt', 'DELETE /api/v1/branches/:branchId'),
   platform('kayıt', 'POST /api/v1/branches/:branchId/restore'),
@@ -472,6 +479,30 @@ const PLATFORM: Readonly<Record<string, Proof>> = Object.fromEntries([
   platform('kayıt', 'PATCH /api/v1/questions/:questionId'),
 ])
 
+/** `cross-institution-learning.test.ts`: içerik geçişleri, deneme, teslim, puan ve itiraz. */
+const LEARNING: Readonly<Record<string, Proof>> = Object.fromEntries([
+  learning('gövde', 'POST /api/v1/resources'),
+  learning('kayıt', 'POST /api/v1/resources/:resourceId/versions/:versionId/publish'),
+  learning('kayıt', 'POST /api/v1/resources/:resourceId/versions/:versionId/withdraw'),
+  learning('kayıt', 'POST /api/v1/resources/:resourceId/versions/:versionId/approve'),
+  learning('kayıt', 'POST /api/v1/resources/:resourceId/versions/:versionId/reject'),
+  learning('kayıt', 'POST /api/v1/resources/:resourceId/versions/:versionId/reopen'),
+  learning('kayıt', 'POST /api/v1/resources/:resourceId/versions/:versionId/archive'),
+  learning('kayıt', 'POST /api/v1/task-assignments/:assignmentId/attempts'),
+  learning('kayıt', 'PATCH /api/v1/task-attempts/:attemptId'),
+  learning('kayıt', 'POST /api/v1/task-attempts/:attemptId/submit'),
+  learning('kayıt', 'GET /api/v1/task-submissions'),
+  learning('kayıt', 'GET /api/v1/task-submissions/:submissionId'),
+  learning('kayıt', 'GET /api/v1/task-assignments/:assignmentId/draft'),
+  learning('kayıt', 'PATCH /api/v1/task-assignments/:assignmentId/draft'),
+  learning('kayıt', 'POST /api/v1/task-assignments/:assignmentId/submissions'),
+  learning('kayıt', 'POST /api/v1/task-submissions/:submissionId/second-scores'),
+  learning('kayıt', 'POST /api/v1/task-submissions/:submissionId/final-scores'),
+  learning('kayıt', 'POST /api/v1/task-submissions/:submissionId/second-rating-requests'),
+  learning('kayıt', 'POST /api/v1/task-submissions/:submissionId/appeals'),
+  learning('kayıt', 'POST /api/v1/task-submissions/:submissionId/appeals/:appealId/decision'),
+])
+
 /**
  * Çapraz kurum testi henüz yazılmamış uçlar. Her biri aşağıda `test.todo` olarak görünür; test
  * yazılınca satır buradan tabloya taşınır. Yeni uç bu listeye eklenmez, tabloya testiyle girer.
@@ -490,26 +521,6 @@ const TODO: readonly string[] = [
   'GET /api/v1/prospects/:prospectId/guardian-matches',
   'GET /api/v1/students/:studentId/identity',
   'POST /api/v1/prospects/:prospectId/trial-lessons',
-  'POST /api/v1/resources',
-  'POST /api/v1/resources/:resourceId/versions/:versionId/publish',
-  'POST /api/v1/resources/:resourceId/versions/:versionId/withdraw',
-  'POST /api/v1/resources/:resourceId/versions/:versionId/approve',
-  'POST /api/v1/resources/:resourceId/versions/:versionId/reject',
-  'POST /api/v1/resources/:resourceId/versions/:versionId/reopen',
-  'POST /api/v1/resources/:resourceId/versions/:versionId/archive',
-  'POST /api/v1/task-assignments/:assignmentId/attempts',
-  'PATCH /api/v1/task-attempts/:attemptId',
-  'POST /api/v1/task-attempts/:attemptId/submit',
-  'GET /api/v1/task-submissions',
-  'GET /api/v1/task-submissions/:submissionId',
-  'GET /api/v1/task-assignments/:assignmentId/draft',
-  'PATCH /api/v1/task-assignments/:assignmentId/draft',
-  'POST /api/v1/task-assignments/:assignmentId/submissions',
-  'POST /api/v1/task-submissions/:submissionId/second-scores',
-  'POST /api/v1/task-submissions/:submissionId/final-scores',
-  'POST /api/v1/task-submissions/:submissionId/second-rating-requests',
-  'POST /api/v1/task-submissions/:submissionId/appeals',
-  'POST /api/v1/task-submissions/:submissionId/appeals/:appealId/decision',
   'POST /api/v1/privacy-notices',
   'GET /api/v1/privacy-notices/current',
   'GET /api/v1/consent-texts/:purpose',
@@ -521,7 +532,12 @@ const TODO: readonly string[] = [
   'POST /api/v1/files',
 ]
 
-const EXPECTED: Readonly<Record<string, Proof>> = { ...ROUTES, ...WORKFLOWS, ...PLATFORM }
+const EXPECTED: Readonly<Record<string, Proof>> = {
+  ...ROUTES,
+  ...WORKFLOWS,
+  ...PLATFORM,
+  ...LEARNING,
+}
 
 /** Çapraz kurum senaryosunu anan test adı. */
 const CROSS_TITLE =

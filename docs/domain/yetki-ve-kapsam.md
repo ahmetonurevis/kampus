@@ -124,7 +124,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** Tek derslik görev, öğrencinin akademik dosyasına kalıcı erişim gerekçesi değildir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — geçici görev planlanır (`substitute`, `packages/school-core/src/lib/school-workflows.js:264`); yoklama yetkisine bağlanmaz.
+- **Kodda:** kısmen — geçici görev planlanır (core `substitute`, API `POST /api/v1/lessons/:lessonId/substitute`, DOM-YTK-069); yedek öğretmen o dersi okuma kapsamında görür (DOM-YTK-068), kalıcı ders ataması değişmez; yoklama yetkisine bağlanmaz.
 
 ### DOM-YTK-024 · Öğrenci: yalnız kendisi
 
@@ -380,6 +380,22 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/academic-years.ts`)
 - **Kaynak:** KVKK md. 4/2-ç (ölçülülük); IST-011.
 - **Kurum türü:** ikisi
 - **Kodda:** var — core `academicYearView`, `currentAcademicPeriod`, `locateDay`, `periodRange`, `isWithinPeriod`; yetki `academicYear.read` (beş rol), `academicYear.manage` (yönetici). API `GET /api/v1/academic-years`, `GET /api/v1/academic-years/current`, `GET /api/v1/academic-years/:startYear`. Rapor uçlarının dönem süzgeci yok (`TODO(rapor-donem)`).
+
+### DOM-YTK-068 · Ders programını kapsamı içinde okunur; iptal ve yedek gerekçesi öğrenci ve veliye dönmez
+
+- **Kural:** Yönetici ve ön büro kurumun bütün ders programını okur. Öğretmen yalnız kendi derslerini (asıl ya da yedek olarak görevli olduğu) görür; öğrenci kendi sınıfının, veli çocuğunun sınıfının programını okur. Kapsam dışındaki ders, başka kurumun dersi ve olmayan kimlik aynı 404 ile yanıtlanır. Öğrenci ve veli dersin iptal edildiğini ve yedek öğretmeni görür, iptal gerekçesini ve görevlendirme gerekçesini (`cancelReason`, `substitutions`) görmez. Günlük program iptal edilen dersi göstermez; yönetim görünümü iptal geçmişini korur.
+- **Gerekçe:** İptal ve görevlendirme gerekçesi öğretmenin izin, hastalık gibi kişisel durumunu söyleyebilir; öğrenci ve veli için dersin yapılmayacağını bilmek yeterlidir (veri en aza indirme).
+- **Kaynak:** KVKK md. 4/2-ç (ölçülülük); IST-094.
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `platform/scope.ts` (`schedule` alan ayıklama: `cancelReason`, `substitutions`); API `GET /api/v1/lessons`, `GET /api/v1/lessons/:lessonId` (modül `planning` ve `academic`; kapalıysa 403 `module_disabled`); gerekçe alanları günlüklerde gizlenir (`REDACTED_PATHS`).
+
+### DOM-YTK-069 · Ders yazması yöneticiye aittir; çakışma, geçmiş ve yoklama kilitleri
+
+- **Kural:** Ders planlama, düzenleme, yedek öğretmen atama ve iptal yalnız yöneticidir; öğretmen, öğrenci, veli ve ön büro 403 alır. Ders aynı öğretmen, sınıf ya da (aynı kampüste) derslikle çakışamaz; öğretmenin görüşme randevusu, sorumlu olduğu okul etkinliği ve etüdü de onu meşgul eder (409). Öğretmen etkin, sınıfın kampüsünde ve dersin branşında olmalıdır. Başlamış ya da geçmiş ders planlanmaz, düzenlenmez, yedek atanmaz ve iptal edilmez (422 `lesson_in_past`); iptal edilmiş ders düzenlenemez. İptal gerekçe ister (en çok 500 karakter) ve silmez; sınıfın o Europe/Istanbul gününde yoklaması alınmışsa ders iptal edilemez (422 `lesson_attendance_taken`). Yedek öğretmen tek ders içindir, asıl öğretmenden farklı olmalıdır (`teacher_unchanged`), gerekçe ister ve kalıcı atamayı değiştirmez. İptal edilen ders saati boşaltır. Gerekçeler denetim kaydına (`audit_log.reason`) yazılır.
+- **Gerekçe:** Çift rezerve edilmiş ya da gerekçesiz değişen ders programı öğrenci, veli ve öğretmenin planını bozar; alınmış yoklama ve geçmiş ders kayıtları sonradan yeniden yazılmamalıdır.
+- **Kaynak:** İşletme kuralı. IST-094.
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `lesson`, `substitute`, `lesson-cancel` komutları ve `validateLesson`; API `POST /api/v1/lessons` (`Idempotency-Key` zorunlu, 201 + `Location`), `PATCH /api/v1/lessons/:lessonId`, `POST …/:lessonId/substitute`, `POST …/:lessonId/cancel` (var olan derse yazma `If-Match` ister; 409 `version_conflict`). Hata kodları: 409 `teacher_lesson_conflict`, `class_lesson_conflict`, `room_conflict`, `teacher_appointment_conflict`, `teacher_event_conflict`, `tutor_schedule_conflict`, `lesson_already_cancelled`; 422 `lesson_in_past`, `lesson_cancelled`, `lesson_teacher_mismatch`, `record_inactive`, `lesson_attendance_taken`, `teacher_unchanged`. Yoklama gün bazlıdır (DOM-AKD-030 boşluğu: ders bazlı yoklama yok).
 
 ## Mevcut kodla farklar
 

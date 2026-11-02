@@ -923,7 +923,7 @@ describe('puanlama maddeleri ve yeniden puanlama (DOM-BEC-010, 011, DOM-KYN-033)
     tags: { cefrLevel?: 'A2' | null; primarySkill?: null } = {},
   ) => ({
     id,
-    tags: { cefrLevel: tags.cefrLevel ?? null, primarySkill: null, skills: [] },
+    tags: { cefrLevel: tags.cefrLevel ?? null, primarySkill: null, skills: [], subskill: null },
     content: { type: 'question' as const, question: questionBodySchema.parse(shortAnswer) },
     answerKey: answerKeySchema.parse({
       questionType: 'short_answer',

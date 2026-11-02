@@ -40,6 +40,10 @@ export type TaskAttemptListQuery = NonNullable<
 >
 export type TaskAttempt = components['schemas']['TaskAttempt']
 export type TaskAttemptDetail = components['schemas']['TaskAttemptDetail']
+/** Okuma-anlama etkinliğinin metni (IST-042): seviye, kelime sayısı, sözlükçe; bağ yoksa `null`. */
+export type TaskAttemptPassage = NonNullable<TaskAttemptDetail['passage']>
+/** Alt beceri dökümünün satırı (DOM-BEC-006); madde sonuçlarıyla aynı anda açılır. */
+export type TaskAttemptSubskillScore = components['schemas']['TaskAttemptSubskillScore']
 export type TaskAttemptAnswers = JsonBody<'saveTaskAttemptAnswers'>['answers']
 
 /** Deneme bu arada başka pencerede değişti (`If-Match` tutmadı): güncel hâli yüklenir. */

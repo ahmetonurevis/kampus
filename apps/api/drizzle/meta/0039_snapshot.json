@@ -1,5 +1,5 @@
 {
-  "id": "da6ef472-faf2-4d26-bdba-50c2d1bd3290",
+  "id": "7a4549f6-f99f-4974-9821-f9d192349a0a",
   "prevId": "0ac34e51-bf25-4910-acc0-672569e0b15b",
   "version": "7",
   "dialect": "postgresql",
@@ -5480,7 +5480,7 @@
         },
         "payments_method_check": {
           "name": "payments_method_check",
-          "value": "\"payments\".\"method\" in ('bank_transfer', 'cash', 'card', 'promissory_note')"
+          "value": "\"payments\".\"method\" in ('bank_transfer', 'cash', 'card')"
         },
         "payments_reversal_check": {
           "name": "payments_reversal_check",
@@ -7067,6 +7067,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "subskill": {
+          "name": "subskill",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "interaction_channel": {
           "name": "interaction_channel",
           "type": "text",
@@ -7296,6 +7302,10 @@
         "resource_versions_activity_mode_check": {
           "name": "resource_versions_activity_mode_check",
           "value": "\"resource_versions\".\"activity_mode\" is null or \"resource_versions\".\"activity_mode\" in ('reception', 'production', 'interaction', 'mediation')"
+        },
+        "resource_versions_subskill_check": {
+          "name": "resource_versions_subskill_check",
+          "value": "\"resource_versions\".\"subskill\" is null or \"resource_versions\".\"subskill\" in ('main_idea', 'detail', 'inference', 'vocabulary')"
         },
         "resource_versions_interaction_channel_check": {
           "name": "resource_versions_interaction_channel_check",

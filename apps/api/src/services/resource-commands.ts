@@ -27,6 +27,7 @@ import {
   asCoreVersion,
   findResource,
   listContainerVersions,
+  listPassageContainerVersions,
   listCopies,
   listResourceVersions,
   loadItemVersionRefs,
@@ -226,6 +227,26 @@ async function assertItemsReadable(
     ctx.institutionId,
     content.items.map((item) => item.questionVersionId),
   )
+  const passageId = content.passageVersionId
+  const passage =
+    passageId === null
+      ? null
+      : (await loadVersionPairs(tx, ctx.institutionId, [passageId])).get(passageId)
+  // Okuma-anlama etkinliğinin parçası (IST-042): kurumda bulunmalı ve kişi okuyabilmeli; türü ve
+  // durumu yayımda (`publicationIssues`) denetlenir.
+  if (
+    passageId !== null &&
+    !(passage && readable(staff, passage.resource, passage.version, ctx.now))
+  )
+    throw new RuleViolationError('passage_missing', 'Seçilen okuma parçası bulunamadı.', {
+      issues: [
+        {
+          path: ['content', 'passageVersionId'],
+          code: 'passage_missing',
+          message: 'Seçilen okuma parçası bulunamadı.',
+        },
+      ],
+    })
   const issues = content.items.flatMap((item, index) => {
     const pair = pairs.get(item.questionVersionId)
     return pair && readable(staff, pair.resource, pair.version, ctx.now)
@@ -242,13 +263,21 @@ async function assertItemsReadable(
     throw new RuleViolationError('quiz_item_missing', 'Seçilen soru bulunamadı.', { issues })
 }
 
+/** Yayım denetiminin soru sürümleri ve okuma parçası (DOM-KYN-013; IST-042). */
 async function itemRefs(tx: Database, ctx: ServiceContext, version: StoredResourceVersion) {
   const content = version.content
-  const ids =
-    content && (content.type === 'quiz' || content.type === 'exercise_set')
-      ? content.items.map((item) => item.questionVersionId)
-      : []
-  return loadItemVersionRefs(tx, ctx.institutionId, ids)
+  const list = content && (content.type === 'quiz' || content.type === 'exercise_set')
+  const ids = list ? content.items.map((item) => item.questionVersionId) : []
+  const passageId = list ? content.passageVersionId : null
+  const refs = await loadItemVersionRefs(
+    tx,
+    ctx.institutionId,
+    passageId === null ? ids : [...ids, passageId],
+  )
+  return {
+    itemVersions: refs,
+    passageVersion: passageId === null ? undefined : refs.get(passageId),
+  }
 }
 
 /** Kopyada miras alınan menşe: türetildiği sürümün lisansı ve kaynak gösterimleri (DOM-KYN-050). */
@@ -519,7 +548,7 @@ export async function transitionVersion(
         const target = await loadTarget(tx, ctx, staff, input.resourceId)
         const version = readableVersion(ctx, staff, target, input.versionId)
         assertExpected(version.rowVersion, input.expectedVersion)
-        const itemVersions = await itemRefs(tx, ctx, version)
+        const { itemVersions, passageVersion } = await itemRefs(tx, ctx, version)
         return () => ({
           target,
           version,
@@ -532,6 +561,7 @@ export async function transitionVersion(
             now: ctx.now,
             reason: input.reason,
             itemVersions,
+            passageVersion,
           }),
         })
       },
@@ -613,10 +643,14 @@ export async function removeResource(
         const target = await loadTarget(tx, ctx, staff, input.resourceId)
         assertExpected(target.resource.rowVersion, input.expectedVersion)
         const versionIds = target.versions.map((version) => version.id)
-        const [copies, containers] = await Promise.all([
+        const [copies, itemContainers, passageContainers] = await Promise.all([
           listCopies(tx, ctx.institutionId, versionIds),
           listContainerVersions(tx, ctx.institutionId, versionIds),
+          target.resource.contentType === 'reading_passage'
+            ? listPassageContainerVersions(tx, ctx.institutionId, versionIds)
+            : [],
         ])
+        const containers = [...itemContainers, ...passageContainers]
         return () => ({
           target,
           plan: planResourceRemoval({

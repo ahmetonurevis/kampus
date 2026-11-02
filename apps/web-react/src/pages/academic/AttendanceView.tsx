@@ -63,8 +63,8 @@ type AttendanceViewProps = {
 /**
  * Yoklama geçmişi (Vue `Academic.vue` `devamsizlik`): sunucu sayfalı tablo; durum, tarih (ve
  * öğretmende sınıf) filtresi, tarih/durum sıralaması, satırdan sağ panelde ayrıntı. Öğrencide
- * katılım sayıları kayıtlardan hesaplanır. Yalnız okuma.
- * TODO(D-attendance-write): yoklama alma core işlemi gelince "Yoklama al" eklenir.
+ * katılım sayıları kayıtlardan hesaplanır. Yalnız okuma; öğretmenin "Yoklama al" bölümü ayrı
+ * bileşendir (`AttendanceTaking.tsx`) ve `TeacherAttendancePage` bu görünümün üstünde çizer.
  * Tarih aralığı (`?baslangic=` ve `?bitis=`, `YYYY-MM-DD`; IST-093, DOM-AKD-036) sunucuya
  * `dateFrom`/`dateTo` olarak gider (Europe/Istanbul günü, iki uç dahil) ve sayfalamadan önce
  * süzülür; tek uç açık aralıktır. Bitiş başlangıçtan önce ya da aralık 1 yıldan uzunsa istek

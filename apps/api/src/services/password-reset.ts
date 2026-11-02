@@ -16,11 +16,53 @@ export interface PasswordResetContext {
   /** Web kök adresi; `null` ise (üretimde `WEB_URL` yok) bağlantı kurulamaz, ileti gönderilmez. */
   webUrl: string | null
   log: MailLog
+  /** E-posta başına gönderim sınırı; verilmezse sınırsız (yalnız IP başına sınır işler). */
+  limiter?: ResetLimiter
 }
 
 /** Sıfırlama isteğinin sonucu; yalnız denetim kaydı ve log içindir, yanıta yansımaz. */
 export type PasswordResetOutcome =
-  'sent' | 'no_membership' | 'mail_not_configured' | 'web_url_missing' | 'send_failed'
+  | 'sent'
+  | 'no_membership'
+  | 'mail_not_configured'
+  | 'web_url_missing'
+  | 'send_failed'
+  | 'rate_limited'
+
+/** Aynı hesaba saatte en çok 3 sıfırlama iletisi: IP değiştirerek posta kutusu doldurulamaz. */
+export const RESET_PER_EMAIL_MAX = 3
+export const RESET_PER_EMAIL_WINDOW_MS = 60 * 60 * 1000
+
+export interface ResetLimiter {
+  /** Gönderime izin verilirse sayar ve `true`, sınır dolduysa sayaç değişmeden `false` döner. */
+  take(email: string, now?: number): boolean
+}
+
+/**
+ * Bellek içi kayan pencere (v1 tek sunucu örneği; Better Auth `rateLimit` ile aynı varsayım,
+ * guvenlik-kvkk.md §4). Better Auth'un sınırı yalnız IP başınadır; e-posta anahtarı burada.
+ * Yalnız var olan hesaba ileti gitmeden önce çalıştığı için yanıttan hesap sızmaz.
+ */
+export function createResetLimiter(
+  max = RESET_PER_EMAIL_MAX,
+  windowMs = RESET_PER_EMAIL_WINDOW_MS,
+): ResetLimiter {
+  const hits = new Map<string, number[]>()
+  return {
+    take(email, now = Date.now()) {
+      for (const [key, times] of hits) {
+        const live = times.filter((time) => now - time < windowMs)
+        if (live.length === 0) hits.delete(key)
+        else hits.set(key, live)
+      }
+      const key = email.trim().toLowerCase()
+      const times = hits.get(key) ?? []
+      if (times.length >= max) return false
+      hits.set(key, [...times, now])
+      return true
+    },
+  }
+}
 
 export const RESET_PAGE_PATH = '/parola-sifirla'
 
@@ -58,6 +100,12 @@ export async function deliverPasswordReset(
     ctx.log.warn(
       { event: 'mail.password_reset_not_sent', code: 'web_url_missing' },
       'WEB_URL verilmediği için parola sıfırlama bağlantısı kurulamadı',
+    )
+  } else if (ctx.limiter && !ctx.limiter.take(input.user.email)) {
+    outcome = 'rate_limited'
+    ctx.log.warn(
+      { event: 'mail.password_reset_not_sent', code: 'rate_limited' },
+      'Aynı hesaba saatlik sıfırlama sınırı doldu; ileti gönderilmedi',
     )
   } else {
     // Sağlayıcı yoksa gönderici yalnız uyarı loglar (`createUnconfiguredMailer`).

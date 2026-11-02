@@ -8,6 +8,7 @@ import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { memberships, sessions, verifications } from '../src/db/schema/auth.ts'
 import { createLogMailer, maskResetUrl, MemoryMailer } from '../src/services/mailer.ts'
+import { createResetLimiter } from '../src/services/password-reset.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -233,6 +234,43 @@ describe('parola sıfırlama (IST-003)', () => {
     }
     assert.deepEqual(statuses, [200, 200, 200, 429])
     assert.ok(Number(last?.headers['retry-after']) > 0)
+  })
+
+  test('IST-003: aynı hesaba farklı IP’lerden saatte en çok 3 ileti; yanıt değişmez', async () => {
+    const institution = await createInstitution(app)
+    const user = await createMember(app, institution.id, 'veli')
+    const before = mailer.outbox.length
+    const responses: Awaited<ReturnType<typeof requestReset>>[] = []
+    for (let attempt = 0; attempt < 5; attempt += 1)
+      responses.push(await requestReset(app, user.email.toUpperCase()))
+
+    assert.deepEqual(
+      responses.map((response) => response.statusCode),
+      [200, 200, 200, 200, 200],
+    )
+    assert.ok(responses.every((response) => response.body === responses[0]?.body))
+    assert.equal(mailer.outbox.length, before + 3)
+    const audits = await auditsOf(user.id)
+    assert.deepEqual(
+      audits.map((row) => row.changes?.reason ?? null),
+      [null, null, null, 'rate_limited', 'rate_limited'],
+    )
+    // Başka hesap bu sınırdan etkilenmez.
+    const other = await createMember(app, institution.id, 'ogretmen')
+    assert.equal((await requestReset(app, other.email)).statusCode, 200)
+    assert.ok(mailer.lastTo(other.email))
+  })
+
+  test('IST-003: e-posta sınırı kayan penceredir ve hesaplar birbirinden bağımsızdır', () => {
+    const limiter = createResetLimiter(2, 1000)
+    assert.equal(limiter.take('a@x.example', 0), true)
+    assert.equal(limiter.take('A@x.example ', 10), true)
+    assert.equal(limiter.take('a@x.example', 20), false)
+    assert.equal(limiter.take('b@x.example', 20), true)
+    // İlk iki istek pencereden düşünce yeniden izin verilir.
+    assert.equal(limiter.take('a@x.example', 1011), true)
+    assert.equal(limiter.take('a@x.example', 1012), true)
+    assert.equal(limiter.take('a@x.example', 1013), false)
   })
 
   test('IST-003: testte ve üretimde belirteç loga yazılmaz; üretimde sağlayıcı yoksa gönderilmez', async () => {

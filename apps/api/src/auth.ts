@@ -16,7 +16,11 @@ import {
   FORWARDED_IP_HEADER,
 } from './services/auth-hooks.ts'
 import { createMailer, SILENT_MAIL_LOG, type MailLog, type Mailer } from './services/mailer.ts'
-import { deliverPasswordReset, recordPasswordResetCompleted } from './services/password-reset.ts'
+import {
+  createResetLimiter,
+  deliverPasswordReset,
+  recordPasswordResetCompleted,
+} from './services/password-reset.ts'
 
 // Better Auth yapılandırmasının tek yeri (ADR 0002, docs/muhendislik/guvenlik-kvkk.md §1–4).
 
@@ -113,6 +117,7 @@ export function createAuth(config: Config, db: Database, options: AuthOptions = 
     mailer: options.mailer ?? createMailer(config, log),
     webUrl: webUrl(config),
     log,
+    limiter: createResetLimiter(),
   }
   return betterAuth({
     appName: 'Kampüs',

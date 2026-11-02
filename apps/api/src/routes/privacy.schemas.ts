@@ -122,6 +122,11 @@ export const consentSchema = z
       .enum(WITHDRAWAL_REASONS)
       .nullable()
       .describe('`withdrawn` geri çekme, `renewed` yenilenerek kapanma'),
+    canWithdraw: z
+      .boolean()
+      .describe(
+        'Oturumdaki kullanıcı bu satırı şu anda geri çekebilir: satır açık ve kullanıcı ya veren ya da veri sahibi için şu anda rıza verebilecek kişi; itirazı ve hesap rızasını yalnız veren (DOM-YTK-059)',
+      ),
     rowVersion: z.number().int().min(1),
   })
   .meta({ id: 'Consent' })
@@ -156,6 +161,13 @@ export const consentStatusResponseSchema = dataResponse(
       .object({
         purpose: purposeSchema,
         valid: z.boolean().describe('Şu anda geçerli rıza var ve etkin itiraz yok (DOM-YTK-061)'),
+        grantor: z
+          .enum(GRANTOR_RELATIONS)
+          .nullable()
+          .optional()
+          .describe(
+            'Bu amaçta rızayı kim verir (DOM-YTK-057): öğrenci amacında 18 yaşını doldurmuş öğrencinin kendisi `self`, değilse ya da doğum tarihi bilinmiyorsa veli `guardian`; hesap amacında hesap sahibi `self`, 18 yaş altı öğrenci hesabında `null` (alınmaz). Doğum tarihi dönmez, yalnız sonuç. Öğretmene dönmez; öğretmen yalnız var/yok görür (DOM-YTK-061)',
+          ),
       })
       .meta({ id: 'ConsentStatus' }),
   ),

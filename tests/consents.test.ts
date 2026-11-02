@@ -10,8 +10,10 @@ import {
   academicYearEndsAt,
   adulthoodStartsAt,
   canGiveConsent,
+  consentGrantor,
   hasValidConsent,
   isAdultStudent,
+  mayWithdrawConsent,
   planConsent,
   planConsentWithdrawal,
   requireConsentAuthority,
@@ -350,6 +352,41 @@ describe('rızayı kim verir (DOM-YTK-057)', () => {
       isDomainError('consent_forbidden', 'forbidden'),
     )
   })
+})
+
+test('DOM-YTK-057 rızayı kim verir sonucu yetki kuralıyla aynıdır; doğum tarihi yoksa veli', () => {
+  const grantor = (
+    purpose: 'speaking_recording' | 'promotional_messages',
+    student: ConsentStudent | null,
+    now = NOW,
+  ) => consentGrantor({ purpose, student, now })
+  assert.equal(grantor('speaking_recording', MINOR), 'guardian')
+  assert.equal(grantor('speaking_recording', ADULT), 'self')
+  assert.equal(grantor('speaking_recording', { id: 's1', birthDate: null }), 'guardian')
+  assert.equal(grantor('speaking_recording', TURNING, BEFORE_MIDNIGHT), 'guardian')
+  assert.equal(grantor('speaking_recording', TURNING, ISTANBUL_MIDNIGHT), 'self')
+  // Hesap amacı: hesap sahibi verir; 18 yaş altı öğrenci hesabında alınmaz.
+  assert.equal(grantor('promotional_messages', null), 'self')
+  assert.equal(grantor('promotional_messages', ADULT), 'self')
+  assert.equal(grantor('promotional_messages', MINOR), null)
+  // Sonuç `canGiveConsent` ile çelişmez: verebilen ilişki her zaman sonuçtakidir.
+  for (const [student, now] of [
+    [MINOR, NOW],
+    [ADULT, NOW],
+    [TURNING, BEFORE_MIDNIGHT],
+    [TURNING, ISTANBUL_MIDNIGHT],
+  ] as const) {
+    const input = { purpose: 'speaking_recording' as const, student, now }
+    const bonds = [custody(student.id)]
+    assert.equal(
+      canGiveConsent({ ...input, actor: parent(student.id), guardianBonds: bonds }),
+      consentGrantor(input) === 'guardian',
+    )
+    assert.equal(
+      canGiveConsent({ ...input, actor: studentActor(student.id), guardianBonds: bonds }),
+      consentGrantor(input) === 'self',
+    )
+  }
 })
 
 describe('rıza verme (IST-017, DOM-YTK-058)', () => {
@@ -714,6 +751,37 @@ describe('geçerli rıza ve geri çekme (DOM-YTK-059, DOM-YTK-061)', () => {
       isDomainError('consent_not_found', 'not_found'),
     )
   })
+})
+
+test('DOM-YTK-059 DOM-YTK-062 geri çekme yetkisi: 18 yaş altı öğrenci velinin satırını çekemez, kendi itirazını çeker', () => {
+  const at = '2026-10-07T10:00:00.000Z'
+  const guardianRow = record(5)
+  const objectionRow = record(6, {
+    decision: 'objected',
+    grantedByUserId: 'u-s1',
+    grantorRelation: 'self',
+  })
+  const may = (actor: ConsentActor, consent: ConsentRecord, student = MINOR) =>
+    mayWithdrawConsent({ actor, consent, student, guardianBonds: [custody('s1')], now: at })
+  assert.equal(may(studentActor('s1'), guardianRow), false)
+  assert.equal(may(studentActor('s1'), objectionRow), true)
+  assert.equal(may(parent('s1'), guardianRow), true)
+  assert.equal(may(parent('s1'), objectionRow), false)
+  assert.equal(may({ ...parent('s1'), userId: 'u-anne' }, guardianRow), true)
+  assert.equal(may({ role: 'yonetici', userId: 'u-y', links: [] }, guardianRow), false)
+  // Planlama aynı kuralı kullanır.
+  assert.throws(
+    () =>
+      planConsentWithdrawal({
+        actor: studentActor('s1'),
+        consent: guardianRow,
+        student: MINOR,
+        guardianBonds: [],
+        input: { consentId: guardianRow.id },
+        now: at,
+      }),
+    isDomainError('consent_not_found', 'not_found'),
+  )
 })
 
 describe('öğrenci itirazı (DOM-YTK-062)', () => {

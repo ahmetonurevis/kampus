@@ -394,3 +394,43 @@ export function assertFileAllowed(purpose: FilePurpose, file: FileCandidate): vo
     )
   }
 }
+
+// --- Kaynak sürümünün dosyaları -----------------------------------------------------------
+
+export type ResourceFileRule = {
+  /** Sürüme bağlanabilen dosya amaçları; boşsa tür dosya almaz. */
+  readonly purposes: readonly FilePurpose[]
+  /** Sürüm başına en fazla dosya (içerik alanındaki ana dosya dahil). */
+  readonly maxFiles: number
+}
+
+const NO_FILES: ResourceFileRule = { purposes: [], maxFiles: 0 }
+
+/**
+ * İçerik türüne göre sürüm dosyaları (DOM-KYN-006; ADR 0003 karar 3, 5). `hosted` dosya
+ * zorunluluğu değildir; zorunlu dosya içerik şemasının alanıdır (`audio`, `video`, `file`
+ * `fileId`; metin ve çalışma kâğıdında gövde ya da dosya). Bu tablo yalnız hangi amaçla ve kaç
+ * dosya bağlanabileceğini söyler. Dış bağlantı ve kitap referansı platformda barındırılmaz
+ * (DOM-KYN-027); okuma parçası gövde metnidir; quiz ve alıştırma setinin dosyası sorudadır.
+ */
+export const RESOURCE_FILE_RULES = {
+  text: { purposes: ['material'], maxFiles: 10 },
+  reading_passage: NO_FILES,
+  audio: { purposes: ['listening_audio', 'material'], maxFiles: 1 },
+  // ADR 0003 karar 3: video Faz 1'de tek dosya.
+  video: { purposes: ['material'], maxFiles: 1 },
+  worksheet: { purposes: ['material'], maxFiles: 10 },
+  file: { purposes: ['material'], maxFiles: 10 },
+  link: NO_FILES,
+  book_reference: NO_FILES,
+  question: { purposes: ['question_image'], maxFiles: 1 },
+  quiz: NO_FILES,
+  exercise_set: NO_FILES,
+  homework_template: { purposes: ['material'], maxFiles: 10 },
+} as const satisfies Record<ContentType, ResourceFileRule>
+
+/**
+ * İstekteki dosya listesinin üst sınırı (gövde biçimi, 400). Tür sınırı iş kuralıdır ve ayrı
+ * denetlenir (422 `resource_files_limit`); bu sınır yalnız aşırı büyük listeyi keser.
+ */
+export const RESOURCE_FILE_LIST_MAX = 50

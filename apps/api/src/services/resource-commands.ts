@@ -197,8 +197,8 @@ function assertExpected(version: number, expected: number | null) {
  * Dosyalı içerik henüz kaydedilemez: dosya tablosu yok (ADR 0003, sonraki dilim). İçerikteki
  * dosya kimliği doğrulanamayacağı için 422 döner.
  */
-function assertNoFiles(content: ResourceContent) {
-  if (contentFileRefs(content).length > 0)
+function assertNoFiles(content: ResourceContent, fileIds: readonly string[] = []) {
+  if (contentFileRefs(content).length > 0 || fileIds.length > 0)
     throw new RuleViolationError(
       'resource_files_unsupported',
       'Dosya ekleri henüz kaydedilemiyor; içeriği dosyasız kaydedin.',
@@ -288,7 +288,7 @@ export async function createResource(
       resourceId: ids.resourceId,
       status: 201,
       load: async (tx) => {
-        assertNoFiles(input.content)
+        assertNoFiles(input.content, input.fileIds)
         await assertItemsReadable(tx, ctx, staff, input.content)
         return () => planNewResource({ actor: staff.actor, input, ids, now: ctx.now })
       },

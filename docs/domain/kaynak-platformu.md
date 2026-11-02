@@ -52,6 +52,25 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Kurum türü:** ikisi
 - **Kodda:** var — core `packages/school-core/src/lib/video-progress.ts` (`recordVideoProgress`, `video.progress` eylemi `lib/authorize.ts`); API `POST /api/v1/videos/:videoId/progress` (`apps/api/src/services/video-progress.ts`); web `apps/web-react/src/pages/learning/VideoPanel.tsx`. İlerleme kaydı `videoProgress` koleksiyonundadır (`<studentId>:<videoId>` anahtarı); yazma sıklığı istemci tarafında sınırlanır (15 sn; duraklatma, kapatma, bitiş).
 
+### DOM-KYN-006 · Kaynak sürümünün dosyaları
+
+- **Kural:** Öğretmen veya yönetici kendi yüklediği materyal dosyasını (PDF, belge, sunum, tablo, görsel, ses, video) kaynak sürümüne bağlar. Sürümün dosyaları sıralı bir listedir; içerikteki ana dosya (ses, video ve dosya türünde zorunlu, metin ve çalışma kâğıdında gövdenin yerine geçebilen, soruda görsel) bu listeden biridir. İçerik türüne göre amaç ve sayı sabittir:
+
+  | İçerik türü                                                        | Dosya amacı                    | Sürüm başına |
+  | ------------------------------------------------------------------ | ------------------------------ | ------------ |
+  | metin, çalışma kâğıdı, dosya, ödev şablonu                         | `material`                     | en çok 10    |
+  | ses                                                                | `listening_audio` / `material` | 1            |
+  | video                                                              | `material`                     | 1            |
+  | soru                                                               | `question_image`               | 1            |
+  | okuma parçası, dış bağlantı, kitap referansı, quiz, alıştırma seti | —                              | dosya yok    |
+
+  Yeni bağlanan dosya aynı kurumda, işlemi yapanın yüklediği, kullanıma hazır (`ready`), amacı türe uygun ve başka kayda bağlı olmamalıdır; aksi hâlde işlem reddedilir ve hiçbir kayıt değişmez. Bağlama sürümün yazıldığı işlemde yapılır. Kullanılmış (yayımlanmış, incelemedeki, arşivlenmiş) sürümün dosya bağı değişmez; yeni sürüm önceki sürümün dosyalarını yeni bağla taşır ve istenirse listeyi değiştirir. Kopya da aynı dosyaları yeni bağla gösterir: dosya kopyalanmaz. Dosyaya, onu bağlayan sürümlerden birini okuyabilen kişi erişir; öğrenci ve veli yalnız kendilerine görünen yayın sürümünün dosyasını açar, kaldırılan sürümün dosyası kimseye açılmaz.
+
+- **Gerekçe:** Materyal kurumun kaynağıdır ve yayınevi platformuna bağımlılığı azaltmanın yolu, dosyanın da kaynakla birlikte sürümlenip aynı kapsam kuralıyla dağıtılmasıdır. Kopyada aynı dosyayı paylaşmak basit ve güvenlidir: dosya içeriği değiştirilemez, kopya yeni bayt ve kota tüketmez, erişim kopyanın kendi okuma kuralından geçer; telif nedeniyle kaldırmada etkilenen kopyalar zaten listelenir (`DOM-KYN-051`).
+- **Kaynak:** İşletme kuralı; ADR 0003 karar 3, 5, 6.
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/content/taxonomy.ts` (`RESOURCE_FILE_RULES`), `packages/school-core/src/content/resource-files.ts` (`planVersionFiles`, `resourceFileCountIssue`), sürüm girdisi `resourceVersionInputSchema.fileIds`; bağ tablosu `resource_version_files` (`apps/api/src/db/schema/resources.ts`). Uçlar ve ekran sonra.
+
 ## Etiketler
 
 ### DOM-KYN-010 · Kurum türüne göre zorunlu etiketler

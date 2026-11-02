@@ -561,6 +561,24 @@ export async function detailView(
 }
 
 /**
+ * Son puanı bu kişi verebilir mi (DOM-BEC-024): uyuşmazlık var, kapsamındaki koordinatör ve iki
+ * puanlayıcıdan biri değil (`planRubricScore` aynı kuralı yazmada uygular). Ayrıntı yanıtı ve
+ * uyuşmazlık kuyruğu aynı kuralı kullanır.
+ */
+export function canResolveFinal(
+  viewer: Viewer,
+  userId: string,
+  assignment: StoredAssignment,
+  resolution: ScoreResolution,
+): boolean {
+  return (
+    resolution.status === 'disagreement' &&
+    coordinates(viewer, assignment) &&
+    ![resolution.first, resolution.second].some((row) => row.raterUserId === userId)
+  )
+}
+
+/**
  * Personelin gördüğü puanlama durumu (DOM-BEC-024, 025): sonuç, ikinci puanlama isteği,
  * uyuşmazlık kriterleri ve puanlama süresi. Kursiyer ve veliye `null` (DOM-BEC-045). Uyuşmazlık
  * kriterleri iki puan da verildikten sonra döner; puanlar değişmez olduğu için kör puanlamayı
@@ -588,10 +606,7 @@ function gradingView(
     }),
     // Son puanı bu kişi verebilir mi (DOM-BEC-024): uyuşmazlık var, kapsamındaki koordinatör ve
     // iki puanlayıcıdan biri değil (`planRubricScore` aynı kuralı yazmada uygular).
-    canResolve:
-      resolution.status === 'disagreement' &&
-      coordinates(viewer, assignment) &&
-      ![resolution.first, resolution.second].some((row) => row.raterUserId === ctx.actor.userId),
+    canResolve: canResolveFinal(viewer, ctx.actor.userId, assignment, resolution),
     status: resolution.status,
     missing: resolution.status === 'pending' ? resolution.missing : null,
     secondRatingRequested: secondRatingFor(grading, version),

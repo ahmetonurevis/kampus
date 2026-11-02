@@ -709,6 +709,12 @@ describe('zümre başkanı ve akademik koordinatör', () => {
       math: await dispute(mathHomework, t.cookies.colleague, extraCookie),
     }
   }
+  const pagedResolution = (cookie: string, page: number) =>
+    call(
+      'GET',
+      `/task-submissions/grading-queue?awaiting=resolution&pageSize=1&page=${page}`,
+      cookie,
+    )
   const resolutionIds = async (cookie: string, extra = '') =>
     (await ok(await queue(cookie, `&awaiting=resolution${extra}`))).map((row: Json) => row.id)
 
@@ -738,12 +744,12 @@ describe('zümre başkanı ve akademik koordinatör', () => {
     const { own, english, math } = await disputeSet(t)
     assert.deepEqual(await resolutionIds(t.cookies.teacher), [english])
     assert.deepEqual((await resolutionIds(t.cookies.head)).sort(), [english, own].sort())
-    const paged = await queue(t.cookies.head, '&awaiting=resolution&pageSize=1')
+    const paged = await pagedResolution(t.cookies.head, 1)
     assert.equal(paged.json().data.length, 1)
     assert.equal(paged.json().meta.total, 2)
-    const second = await queue(t.cookies.head, '&awaiting=resolution&pageSize=1&page=2')
+    const second = await pagedResolution(t.cookies.head, 2)
     assert.deepEqual([second.json().data.length, second.json().meta.total], [1, 2])
-    const teacherPage = await queue(t.cookies.teacher, '&awaiting=resolution&pageSize=1')
+    const teacherPage = await pagedResolution(t.cookies.teacher, 1)
     assert.deepEqual([teacherPage.json().data.length, teacherPage.json().meta.total], [1, 1])
     assert.deepEqual((await resolutionIds(t.cookies.admin)).sort(), [english, math, own].sort())
   })

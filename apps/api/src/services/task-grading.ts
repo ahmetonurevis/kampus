@@ -56,6 +56,7 @@ import { runCommand, type CommandResponse, type IdempotencyRequest } from './ope
 import { coordinates, viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
   APPEAL_HOLIDAYS,
+  canResolveFinal,
   coordinatorReaches,
   detailView,
   gradingDeadlineOf,
@@ -995,11 +996,15 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
   const shown = rows.filter((row) => {
     const assignment = assignments.get(row.submission.assignmentId)
     const grading = book.bySubmission.get(row.submission.id)
-    return (
-      assignment !== undefined &&
-      grading !== undefined &&
-      (visible(viewer, assignment) || coordinatorReaches(viewer, assignment, row, grading))
-    )
+    if (assignment === undefined || grading === undefined) return false
+    const latest = row.versions.at(-1)
+    // Son puan kuyruğu yalnız bu kişinin son puanı verebileceği satırlardır (SQL aynı kuralı süzer).
+    if (input.awaiting === 'resolution' && viewer.kind === 'teacher')
+      return (
+        latest !== undefined &&
+        canResolveFinal(viewer, ctx.actor.userId, assignment, resolutionOf(grading, latest))
+      )
+    return visible(viewer, assignment) || coordinatorReaches(viewer, assignment, row, grading)
   })
   const dropped = rows.length - shown.length
   if (dropped > 0) ctx.log.warn({ event: 'grading_queue.visibility_mismatch', dropped })

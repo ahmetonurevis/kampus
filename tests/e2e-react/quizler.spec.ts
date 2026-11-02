@@ -415,8 +415,9 @@ test.describe('Quizler: öğrenci ve veli', () => {
     // Kirli ekrandan çıkarken onay sorulur; vazgeçince ekran ve seçim yerinde kalır.
     await choose(page, 0, 'q-math-7-0', keys[0] ?? 0)
     await page.getByRole('button', { name: 'Quizlere dön' }).click()
-    const discard = page.getByRole('alertdialog', { name: 'Kaydedilmemiş değişiklikler var' })
-    await discard.getByRole('button', { name: 'Düzenlemeye devam et' }).click()
+    const discard = page.getByRole('alertdialog', { name: 'Quizden çıkılsın mı?' })
+    await expect(discard).toContainText('Süre işlemeye devam eder')
+    await discard.getByRole('button', { name: 'Çözmeye devam et' }).click()
     await expect(page).toHaveURL(new RegExp(`[?&]quiz-coz=${quiz.id}`))
 
     // Yenileme yeni deneme başlatmaz: aynı deneme ve bitiş anı GET'ten gelir; cevaplar bellektedir.
@@ -514,6 +515,248 @@ test.describe('Quizler: öğrenci ve veli', () => {
     expect(await attemptsOf(student, quizId)).toMatchObject([
       { status: 'completed', result: { score: 33, correctCount: 1, total: 3 } },
     ])
+  })
+
+  test('süre bitiminde gönderim 503 alırsa cevaplar kaybolmaz, aynı anahtarla kendiliğinden yeniden denenir (DOM-AKD-077)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const quizId = 'quiz-e2e-retry'
+    const school = await tenant({
+      roles: ['ogrenci'],
+      collections: ['bank'],
+      records: [
+        quizRecord(quizId, 'Yeniden denenen quiz'),
+        runningAttempt('attempt-e2e-retry', quizId, 5),
+      ],
+    })
+    const student = await api(school.user('ogrenci'))
+    await loginAs(school.user('ogrenci'))
+    const keys: (string | undefined)[] = []
+    let calls = 0
+    await page.route(`**/api/v1/quizzes/${quizId}/attempt/submit`, (route) => {
+      keys.push(route.request().headers()['idempotency-key'])
+      calls += 1
+      // İlk gönderim sunucuya ulaşmadan 503 alır; ikincisi gerçek uca gider.
+      return calls === 1
+        ? route.fulfill({
+            status: 503,
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 'unavailable', message: 'Sunucu şu an yanıt vermiyor.' }),
+          })
+        : route.continue()
+    })
+
+    await page.goto(`${STUDENT_QUIZZES}?quiz-coz=${quizId}`)
+    const key = bankQuestion('q-math-7-0').answer
+    await choose(page, 0, 'q-math-7-0', key)
+    await expect(page.getByText('cevapların yeniden gönderiliyor')).toBeVisible({ timeout: 15_000 })
+    // Cevaplar ekranda durur (alan kilitli ama işaretli).
+    await expect(
+      questionGroup(page, 0, 'q-math-7-0').getByRole('radio', { checked: true }),
+    ).toHaveCount(1)
+    await expect(page.getByText('Süre doldu; cevapların gönderildi.')).toBeVisible({
+      timeout: 15_000,
+    })
+    expect(calls).toBe(2)
+    expect(keys[1]).toBe(keys[0])
+    expect(keys[0]).toBeTruthy()
+    expect(await attemptsOf(student, quizId)).toMatchObject([
+      { status: 'completed', result: { correctCount: 1, total: 3 } },
+    ])
+  })
+
+  test('süre bitiminde yeniden denemeler de başarısızsa "Yeniden gönder" onaysız çalışır, cevaplar korunur (DOM-AKD-077)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const quizId = 'quiz-e2e-resend'
+    const school = await tenant({
+      roles: ['ogrenci'],
+      collections: ['bank'],
+      records: [
+        quizRecord(quizId, 'Yeniden gönderilen quiz'),
+        runningAttempt('attempt-e2e-resend', quizId, 3),
+      ],
+    })
+    const student = await api(school.user('ogrenci'))
+    await loginAs(school.user('ogrenci'))
+    const keys: (string | undefined)[] = []
+    await page.route(`**/api/v1/quizzes/${quizId}/attempt/submit`, (route) => {
+      keys.push(route.request().headers()['idempotency-key'])
+      // İlk dört istek (ilk deneme + üç yeniden deneme) ağ hatası alır.
+      return keys.length <= 4 ? route.abort('failed') : route.continue()
+    })
+
+    await page.goto(`${STUDENT_QUIZZES}?quiz-coz=${quizId}`)
+    const key = bankQuestion('q-math-7-0').answer
+    await choose(page, 0, 'q-math-7-0', key)
+    const resend = page.getByRole('button', { name: 'Yeniden gönder' })
+    await expect(page.getByRole('alert')).toContainText('Yeniden gönder', { timeout: 30_000 })
+    await expect(resend).toBeEnabled()
+    expect(keys).toHaveLength(4)
+    expect(new Set(keys).size).toBe(1)
+    await expect(
+      questionGroup(page, 0, 'q-math-7-0').getByRole('radio', { checked: true }),
+    ).toHaveCount(1)
+    // Süre dolduktan sonra onay penceresi açılmaz; cevaplar doğrudan gönderilir.
+    await resend.click()
+    await expect(page.getByRole('alertdialog')).toHaveCount(0)
+    await expect(page.getByText('Cevapların gönderildi.')).toBeVisible()
+    expect(keys).toHaveLength(5)
+    expect(keys[4]).toBe(keys[0])
+    expect(await attemptsOf(student, quizId)).toMatchObject([
+      { status: 'completed', result: { correctCount: 1, total: 3 } },
+    ])
+  })
+
+  test('elle gönderim 503 alırsa onay penceresinde yeniden denenir; aynı anahtar, tek sonuç (DOM-AKD-077)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const quizId = 'quiz-e2e-manual'
+    const school = await tenant({
+      roles: ['ogrenci'],
+      collections: ['bank'],
+      records: [
+        quizRecord(quizId, 'Elle gönderilen quiz'),
+        runningAttempt('attempt-e2e-manual', quizId, 600),
+      ],
+    })
+    const student = await api(school.user('ogrenci'))
+    await loginAs(school.user('ogrenci'))
+    const keys: (string | undefined)[] = []
+    await page.route(`**/api/v1/quizzes/${quizId}/attempt/submit`, (route) => {
+      keys.push(route.request().headers()['idempotency-key'])
+      return keys.length === 1
+        ? route.fulfill({
+            status: 503,
+            contentType: 'application/json',
+            body: JSON.stringify({ code: 'unavailable', message: 'Sunucu şu an yanıt vermiyor.' }),
+          })
+        : route.continue()
+    })
+
+    await page.goto(`${STUDENT_QUIZZES}?quiz-coz=${quizId}`)
+    const key = bankQuestion('q-math-7-0').answer
+    await choose(page, 0, 'q-math-7-0', key)
+    await page.getByRole('button', { name: 'Cevapları gönder' }).click()
+    const confirm = page.getByRole('alertdialog', { name: 'Cevaplar gönderilsin mi?' })
+    await confirm.getByRole('button', { name: 'Gönder' }).click()
+    await expect(page.getByText('Sunucu şu an yanıt vermiyor.')).toBeVisible()
+    await expect(confirm).toBeVisible()
+    await confirm.getByRole('button', { name: 'Gönder' }).click()
+    await expect(page.getByText('Cevapların gönderildi.')).toBeVisible()
+    expect(keys).toHaveLength(2)
+    expect(keys[1]).toBe(keys[0])
+    expect(await attemptsOf(student, quizId)).toMatchObject([
+      { status: 'completed', result: { correctCount: 1, total: 3 } },
+    ])
+  })
+
+  test('elle gönderim sürerken süre dolarsa tek istek gider (DOM-AKD-077)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const quizId = 'quiz-e2e-both'
+    const school = await tenant({
+      roles: ['ogrenci'],
+      collections: ['bank'],
+      records: [
+        quizRecord(quizId, 'Çift tetiklenen quiz'),
+        runningAttempt('attempt-e2e-both', quizId, 8),
+      ],
+    })
+    const student = await api(school.user('ogrenci'))
+    await loginAs(school.user('ogrenci'))
+    let submits = 0
+    // Yanıt süre bittikten sonra (ağ payı içinde) döner: sayaç gönderim sürerken tetiklenir.
+    await page.route(`**/api/v1/quizzes/${quizId}/attempt/submit`, async (route) => {
+      submits += 1
+      await new Promise((resolve) => setTimeout(resolve, 9000))
+      await route.continue()
+    })
+
+    await page.goto(`${STUDENT_QUIZZES}?quiz-coz=${quizId}`)
+    const key = bankQuestion('q-math-7-0').answer
+    await choose(page, 0, 'q-math-7-0', key)
+    await page.getByRole('button', { name: 'Cevapları gönder' }).click()
+    await page
+      .getByRole('alertdialog', { name: 'Cevaplar gönderilsin mi?' })
+      .getByRole('button', { name: 'Gönder' })
+      .click()
+    await expect(page.getByText('Cevapların gönderildi.')).toBeVisible({ timeout: 20_000 })
+    expect(submits).toBe(1)
+    expect(await attemptsOf(student, quizId)).toMatchObject([
+      { status: 'completed', result: { correctCount: 1, total: 3 } },
+    ])
+  })
+
+  test('sayaç cihaz saatiyle değil sunucu saatiyle işler (DOM-AKD-077)', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const quizId = 'quiz-e2e-skew'
+    const school = await tenant({
+      roles: ['ogrenci'],
+      collections: ['bank'],
+      records: [
+        quizRecord(quizId, 'Saat farkı quizi'),
+        runningAttempt('attempt-e2e-skew', quizId, 600),
+      ],
+    })
+    await loginAs(school.user('ogrenci'))
+    // Cihaz saati 10 dakika geri: düzeltme olmasa sayaç 20 dakikaya yakın görünürdü.
+    await page.addInitScript(() => {
+      const real = Date.now.bind(Date)
+      Date.now = () => real() - 600_000
+    })
+    await page.goto(`${STUDENT_QUIZZES}?quiz-coz=${quizId}`)
+    const timer = page.getByRole('timer', { name: 'Kalan süre' })
+    await expect(timer).toContainText(/Kalan süre (09:[0-5]\d|10:00)/)
+  })
+
+  test('sayfa yenileme ve sekme kapatma cevap varken tarayıcı uyarısı açar, cevap yokken açmaz (DOM-AKD-077)', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const quizId = 'quiz-e2e-unload'
+    const school = await tenant({
+      roles: ['ogrenci'],
+      collections: ['bank'],
+      records: [
+        quizRecord(quizId, 'Kapatma uyarılı quiz'),
+        runningAttempt('attempt-e2e-unload', quizId, 600),
+      ],
+    })
+    await loginAs(school.user('ogrenci'))
+    await page.goto(`${STUDENT_QUIZZES}?quiz-coz=${quizId}`)
+    await expect(page.getByRole('timer', { name: 'Kalan süre' })).toBeVisible()
+    // Cevap yok: uyarı yok; sayfa kapanış denemesi sessizce ilerler.
+    const beforeAnswer = await page.evaluate(() => {
+      const event = new Event('beforeunload', { cancelable: true })
+      window.dispatchEvent(event)
+      return event.defaultPrevented
+    })
+    expect(beforeAnswer).toBe(false)
+
+    await choose(page, 0, 'q-math-7-0', 1)
+    const afterAnswer = await page.evaluate(() => {
+      const event = new Event('beforeunload', { cancelable: true })
+      window.dispatchEvent(event)
+      return event.defaultPrevented
+    })
+    expect(afterAnswer).toBe(true)
   })
 
   test('süresi geçmiş gönderim ve başka yerden gönderilmiş deneme ekranı bozmaz (DOM-AKD-077)', async ({

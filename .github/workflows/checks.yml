@@ -19,7 +19,15 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # Dış eylemler etikete değil commit SHA'sına sabittir; kaydırılan etiket zararlı sürüm
+      # çalıştıramaz (guvenlik-kvkk §15). Sabitlenmemiş `uses:` satırı işi kırar.
+      - name: Eylem sürümleri SHA'ya sabit
+        run: |
+          if grep -rhoE 'uses: +[^. ][^@ ]*@[^ ]+' .github | grep -vE '@[0-9a-f]{40}$'; then
+            echo "Sabitlenmemiş eylem var; etiket yerine commit SHA'sı yazın." >&2
+            exit 1
+          fi
       - uses: ./.github/actions/kurulum
       - run: pnpm format:check
       - run: pnpm lint
@@ -33,7 +41,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/kurulum
       - run: pnpm test
       # Kapsam eşikli (test-stratejisi.md §2).
@@ -51,7 +59,7 @@ jobs:
       matrix:
         shard: [1, 2, 3]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/kurulum
       # Ses dönüşümü testi (media-ffmpeg.test.ts) ffmpeg/ffprobe ister; ikili yoksa test atlanır.
       - run: sudo apt-get update && sudo apt-get install -y --no-install-recommends ffmpeg
@@ -82,7 +90,7 @@ jobs:
     env:
       TEST_PG_URL: postgres://kampus:kampus-yerel@127.0.0.1:5433/kampus_test
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/kurulum
       - run: pnpm --filter @kampus/api test:pg
 
@@ -91,7 +99,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/kurulum
       - run: pnpm build
 
@@ -105,7 +113,7 @@ jobs:
       matrix:
         shard: [1, 2]
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/kurulum
         with:
           playwright: 'true'
@@ -113,7 +121,7 @@ jobs:
       - run: pnpm --filter @kampus/web build
       - run: pnpm test:e2e --shard=${{ matrix.shard }}/2
       - if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-vue-${{ matrix.shard }}
           path: |
@@ -149,7 +157,7 @@ jobs:
           --health-timeout 3s
           --health-retries 30
     steps:
-      - uses: actions/checkout@v7
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: ./.github/actions/kurulum
         with:
           playwright: 'true'
@@ -159,7 +167,7 @@ jobs:
       # Veritabanı (kampus_e2e), migrate, seed, API ve web derlemesi global kurulumda yapılır.
       - run: pnpm test:e2e:react --shard=${{ matrix.shard }}/3
       - if: failure()
-        uses: actions/upload-artifact@v7
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: e2e-react-${{ matrix.shard }}
           path: |

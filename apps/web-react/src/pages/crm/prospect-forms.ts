@@ -8,6 +8,7 @@ import type {
   ChangeProspectStageBody,
   CreateProspectBody,
   RevertProspectStageBody,
+  UpdateProspectDetailsBody,
   ScheduleProspectMeetingBody,
   ScheduleTrialLessonBody,
 } from '@kampus/react-shared/use-prospect-commands.ts'
@@ -177,6 +178,65 @@ export function stageBody(
     ok: true,
     body: { stage, ...(options.reopening && sibling ? { siblingOfId: sibling } : {}) },
   }
+}
+
+// --- Aday bilgisi düzeltme ---------------------------------------------------------------
+
+/** Aday bilgisi düzeltme formu (DOM-KAY-003): çekirdek alan şemaları; veli adı yalnız 18 yaş altında sorulur. */
+export const editFormSchema = z.object({
+  name: createProspectSchema.shape.name,
+  phone: phoneField,
+  email: createProspectSchema.shape.email,
+  interest: createProspectSchema.shape.interest,
+  guardianName: z.string().optional(),
+})
+export type EditFormValues = z.input<typeof editFormSchema>
+
+type EditableProspect = {
+  name: string
+  phone: string
+  email?: string | undefined
+  interest: string
+  guardianName?: string | undefined
+  minor?: boolean | undefined
+}
+
+export const editDefaults = (prospect: EditableProspect): EditFormValues => ({
+  name: prospect.name,
+  phone: prospect.phone,
+  email: prospect.email ?? '',
+  interest: prospect.interest,
+  guardianName: prospect.guardianName ?? '',
+})
+
+/**
+ * Düzeltme gövdesi: yalnız farklı alanlar gönderilir. Değişiklik yoksa `{ ok: false }` döner ve
+ * istek atılmaz; dolu veli adı silinemez ve 1 karakterlik girilemez, yetişkin adayda sorulmaz.
+ */
+export function editBody(
+  values: z.output<typeof editFormSchema>,
+  prospect: EditableProspect,
+):
+  | { ok: true; body: UpdateProspectDetailsBody }
+  | { ok: false; field: 'root'; message: string }
+  | { ok: false; field: 'guardianName'; message: string } {
+  const body: UpdateProspectDetailsBody = {}
+  if (values.name !== prospect.name) body.name = values.name
+  if (values.phone !== prospect.phone) body.phone = values.phone
+  if ((values.email ?? '') !== (prospect.email ?? '')) body.email = values.email ?? ''
+  if (values.interest !== prospect.interest) body.interest = values.interest
+  if (prospect.minor !== false) {
+    // Veli adı yalnız dolu bir ad silinirken ya da çok kısa girilirken engellenir; adı hiç
+    // yazılmamış eski kayıtta boş bırakmak diğer alanların düzeltilmesini engellemez.
+    const guardian = text(values.guardianName)
+    const had = text(prospect.guardianName) !== ''
+    if (guardian.length > 0 ? guardian.length < 2 : had)
+      return { ok: false, field: 'guardianName', message: 'Velinin adını yazın.' }
+    if (guardian !== '' && guardian !== text(prospect.guardianName)) body.guardianName = guardian
+  }
+  return Object.keys(body).length > 0
+    ? { ok: true, body }
+    : { ok: false, field: 'root', message: 'Değişiklik yapılmadı.' }
 }
 
 // --- Aşama geri alma ---------------------------------------------------------------------

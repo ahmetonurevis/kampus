@@ -6,7 +6,7 @@ import { btree_gin } from '@electric-sql/pglite/contrib/btree_gin'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
 
-import { buildApp, type App, type Clock } from '../../src/app.ts'
+import { buildApp, type App, type BuildAppOptions, type Clock } from '../../src/app.ts'
 import type { InstitutionType, Role } from '../../src/auth.ts'
 import { parseConfig, type Config } from '../../src/config.ts'
 import { MIGRATIONS_FOLDER, schema, type Database } from '../../src/db/client.ts'
@@ -20,6 +20,7 @@ import {
   ensureUser,
   type MembershipLinkInput,
 } from '../../src/services/identity.ts'
+import { FakeTranscoder, RecordingScheduler } from './media-sample.ts'
 
 export const TEST_ORIGIN = 'http://localhost:5173'
 export const TEST_PASSWORD = 'Sinama-Parolasi-42!'
@@ -71,6 +72,11 @@ export interface TestAppOptions {
   mailer?: Mailer
   /** Sıfırlama iletisi arka planda mı gönderilsin; testte varsayılan `false` (ileti beklenir). */
   backgroundMail?: boolean
+  /**
+   * Ses dönüşümü; varsayılan sahte dönüştürücü ve işi yalnız kaydeden sahte kuyruk (yüklenen ses
+   * `processing` kalır, kuyruk açıkmış gibi). Kuyruksuz yol için `inlineTranscodeScheduler`.
+   */
+  media?: BuildAppOptions['media']
 }
 
 export async function buildTestApp(db: Database, options: TestAppOptions = {}): Promise<App> {
@@ -92,6 +98,10 @@ export async function buildTestApp(db: Database, options: TestAppOptions = {}): 
     ...(logStream ? { logStream } : {}),
     ...(options.mailer ? { mailer: options.mailer } : {}),
     backgroundMail: options.backgroundMail ?? false,
+    media: options.media ?? {
+      transcoder: new FakeTranscoder(),
+      scheduler: new RecordingScheduler(),
+    },
   })
   options.extend?.(app)
   await app.ready()

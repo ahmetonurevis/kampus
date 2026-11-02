@@ -208,13 +208,14 @@ describe('arka plan işleri', () => {
       { institutionId: a.id },
       new Date(FIXED_NOW.getTime() + 23 * HOUR),
     )
-    assert.deepEqual(early, { purged: 0, rounds: 1 })
+    assert.deepEqual(early, { purged: 0, rounds: 1, released: 0 })
     assert.equal((await fileOf(a.id, stale))?.status, 'pending')
 
     const later = new Date(FIXED_NOW.getTime() + 25 * HOUR)
     assert.deepEqual(await filesPurgeJob.run(deps, { institutionId: a.id }, later), {
       purged: 1,
       rounds: 1,
+      released: 0,
     })
     const purged = await fileOf(a.id, stale)
     assert.equal(purged?.status, 'deleted')
@@ -226,6 +227,7 @@ describe('arka plan işleri', () => {
     assert.deepEqual(await filesPurgeJob.run(deps, { institutionId: a.id }, later), {
       purged: 0,
       rounds: 1,
+      released: 0,
     })
   })
 
@@ -368,6 +370,7 @@ describe('arka plan işleri', () => {
     assert.deepEqual(await filesPurgeJob.run(aborted, { institutionId: a.id }, later), {
       purged: 0,
       rounds: 0,
+      released: 0,
     })
     assert.equal((await fileOf(a.id, expired))?.status, 'ready')
     assert.equal((await fileOf(a.id, stale))?.status, 'pending')

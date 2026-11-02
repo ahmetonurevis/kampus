@@ -3,7 +3,17 @@ import { PgBoss, type Job, type JobResult, type QueueOptions } from 'pg-boss'
 
 import type { StorageDriver } from '../storage/storage.ts'
 import { dispatchInstitutionJobs, dispatchQueueName, type JobSender } from './dispatch.ts'
+import { transcodeAudioFile, type TranscodeDeps } from '../services/media-transcode.ts'
 import { jobErrorInfo } from './job-error.ts'
+import {
+  MEDIA_QUEUE_OPTIONS,
+  MEDIA_TRANSCODE_JOB,
+  MEDIA_WORK_OPTIONS,
+  queuedTranscodeScheduler,
+  requeueStaleTranscodes,
+  transcodeJobDataSchema,
+  transcodeSummary,
+} from './media-transcode.ts'
 import { INSTITUTION_JOBS, RETIRED_JOBS } from './registry.ts'
 import { institutionJobDataSchema, type AnyInstitutionJob, type JobDeps } from './types.ts'
 
@@ -119,6 +129,48 @@ async function runInstitutionJob(
 }
 
 /**
+ * Tek `media.transcode` işini çalıştırır (ADR 0003 karar 10). Bozuk yük `deadletter`; geçici hata
+ * `failed` (geri çekilmeli yeniden deneme); son denemede geçici hata dosyayı reddeder
+ * (`finalAttempt`). İçerik hatası işi düşürmez: dosya reddedilir, iş `completed` olur.
+ */
+async function runTranscodeJob(
+  app: FastifyInstance,
+  deps: Omit<TranscodeDeps, 'signal'>,
+  job: Job<unknown>,
+): Promise<JobResult> {
+  const parsed = transcodeJobDataSchema.safeParse(job.data)
+  if (!parsed.success) {
+    deps.log.error({
+      event: 'job.failed',
+      job: MEDIA_TRANSCODE_JOB,
+      retryCount: job.retryCount,
+      reason: 'invalid_payload',
+    })
+    return { id: job.id, status: 'deadletter', output: { reason: 'invalid_payload' } }
+  }
+  const data = parsed.data
+  try {
+    const result = await transcodeAudioFile({ ...deps, signal: job.signal }, data, app.clock(), {
+      finalAttempt: job.retryCount >= MEDIA_QUEUE_OPTIONS.retryLimit,
+    })
+    const summary = transcodeSummary(result)
+    deps.log.info({ event: 'job.completed', job: MEDIA_TRANSCODE_JOB, ...data, ...summary })
+    return { id: job.id, status: 'completed', output: summary }
+  } catch (error) {
+    const info = jobErrorInfo(error)
+    deps.log.error({
+      event: 'job.failed',
+      job: MEDIA_TRANSCODE_JOB,
+      ...data,
+      retryCount: job.retryCount,
+      code: info.code,
+      message: info.message,
+    })
+    return { id: job.id, status: 'failed', output: info }
+  }
+}
+
+/**
  * Kuyruğu açar, kuyrukları ve zamanlamaları kurar, işleyicileri bağlar; uygulama kapanınca
  * kuyruğu durdurur. `app.ready()`'den önce çağrılır (kapanış kancası eklenir).
  */
@@ -181,6 +233,29 @@ export async function startJobs(
           Promise.all(batch.map((job) => runInstitutionJob(app, deps, definition, job))),
       )
     }
+    // Olaya bağlı ses dönüşümü: yükleme işi kendi transaction'ında ekler; açılışta işi kaybolmuş
+    // dönüşümler yeniden kuyruğa girer.
+    await boss.createQueue(MEDIA_TRANSCODE_JOB, MEDIA_QUEUE_OPTIONS)
+    // `createQueue` var olan kuyruğun politikasını değiştirmez (`updateQueue` de reddeder): eski
+    // politikayla kurulmuş kuyrukta tekillik yoktur, işleyici yine idempotenttir.
+    const mediaQueue = await boss.getQueue(MEDIA_TRANSCODE_JOB)
+    if (mediaQueue?.policy !== MEDIA_QUEUE_OPTIONS.policy)
+      log.warn({
+        event: 'media.queue_policy_mismatch',
+        policy: mediaQueue?.policy ?? null,
+        expected: MEDIA_QUEUE_OPTIONS.policy,
+      })
+    const mediaDeps = {
+      db: app.db,
+      storage: options.storage,
+      transcoder: app.media.transcoder,
+      log,
+    }
+    await boss.work<unknown>(
+      MEDIA_TRANSCODE_JOB,
+      { perJobResults: true, ...MEDIA_WORK_OPTIONS },
+      async (batch) => Promise.all(batch.map((job) => runTranscodeJob(app, mediaDeps, job))),
+    )
     // Yalnız açıkça emekli edilen işlerin zamanlaması silinir; listede olmayan zamanlamaya
     // dokunulmaz (başka sürümün işi olabilir).
     for (const name of options.retiredJobs ?? RETIRED_JOBS)
@@ -191,6 +266,18 @@ export async function startJobs(
     await stop().catch(() => undefined)
     throw error
   }
-  log.info({ event: 'jobs.started', jobs: jobs.map((job) => job.name) })
+  // Kuyruk tümüyle kurulduktan sonra yükleme dönüşümü kuyruğa koyar (kurulum düşerse süreç içi
+  // dönüşüm kalır).
+  app.media.scheduler = queuedTranscodeScheduler(boss)
+  try {
+    const requeued = await requeueStaleTranscodes(app.db, boss, app.clock())
+    log.info({ event: 'media.transcode_requeued', count: requeued })
+  } catch (error) {
+    log.error({ event: 'media.transcode_requeue_failed', ...jobErrorInfo(error) })
+  }
+  log.info({
+    event: 'jobs.started',
+    jobs: [...jobs.map((job) => job.name), MEDIA_TRANSCODE_JOB],
+  })
   return { boss, jobs }
 }

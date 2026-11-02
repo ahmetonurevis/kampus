@@ -65,6 +65,13 @@ export const files = pgTable(
     attachedAt: timestamp('attached_at', { withTimezone: true }),
     retentionUntil: timestamp('retention_until', { withTimezone: true }),
     deletedAt: timestamp('deleted_at', { withTimezone: true }),
+    /**
+     * Ses dönüşümünde (ADR 0003 karar 10) yerini dönüşmüş nesneye bırakan özgün nesnenin anahtarı.
+     * `processing` → `ready` geçişiyle aynı güncellemede yazılır, nesne depodan silinince boşalır:
+     * silinemeyen özgün nesne izlenir ve temizlik (`files.purge-unattached`, imha) onu da siler.
+     * Anahtar kişisel veri taşımaz.
+     */
+    supersededStorageKey: text('superseded_storage_key'),
     ...requiredColumns(),
   },
   (table) => [
@@ -83,6 +90,10 @@ export const files = pgTable(
       sql`(${table.status} = 'deleted') = (${table.deletedAt} is not null)`,
     ),
     check('files_version_check', sql`${table.version} >= 1`),
+    check(
+      'files_superseded_storage_key_check',
+      sql`${table.supersededStorageKey} is null or ${table.supersededStorageKey} <> ${table.storageKey}`,
+    ),
     uniqueIndex('files_storage_key_key').on(table.institutionId, table.storageKey),
     // Bağlı kaydın dosyaları (teslim, kaynak sürümü) ve kayıttan dosyaya erişim (karar 6).
     index('files_attached_idx')
@@ -97,5 +108,9 @@ export const files = pgTable(
       .on(table.institutionId, table.dataSubjectId)
       .where(sql`${table.dataSubjectId} is not null`),
     index('files_uploaded_by_idx').on(table.institutionId, table.uploadedByUserId),
+    // Silinmeyi bekleyen özgün ses nesneleri (OG-262).
+    index('files_superseded_idx')
+      .on(table.institutionId, table.id)
+      .where(sql`${table.supersededStorageKey} is not null`),
   ],
 )

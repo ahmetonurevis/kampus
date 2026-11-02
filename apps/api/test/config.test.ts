@@ -33,6 +33,19 @@ describe('ortam yapılandırması', () => {
     assert.equal(config.TRUST_PROXY, false)
   })
 
+  test('OG-262: ffmpeg ve ffprobe yolu ortamdan gelir; boş ya da verilmemişse PATH adı', () => {
+    const fallback = parseConfig({ ...base, FFMPEG_PATH: '' })
+    assert.equal(fallback.FFMPEG_PATH, 'ffmpeg')
+    assert.equal(fallback.FFPROBE_PATH, 'ffprobe')
+    const given = parseConfig({
+      ...base,
+      FFMPEG_PATH: '/opt/homebrew/bin/ffmpeg',
+      FFPROBE_PATH: '/opt/homebrew/bin/ffprobe',
+    })
+    assert.equal(given.FFMPEG_PATH, '/opt/homebrew/bin/ffmpeg')
+    assert.equal(given.FFPROBE_PATH, '/opt/homebrew/bin/ffprobe')
+  })
+
   test('NODE_ENV verilmezse süreç başlamaz', () => {
     const withoutEnv: Record<string, string> = { ...base }
     delete withoutEnv.NODE_ENV

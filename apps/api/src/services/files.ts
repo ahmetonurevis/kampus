@@ -15,12 +15,14 @@ import { moduleAvailableFor } from '@kampus/school-core/modules/collection-modul
 import type { Database } from '../db/client.ts'
 import {
   attachFileRow,
+  clearSupersededStorageKey,
   detachFileRow,
   findFile,
   insertFile,
   listExpiredFiles,
   type ExpiredFileCursor,
   listStaleUnattachedFiles,
+  listSupersededObjects,
   markFileDeleted,
   setFileStatus,
   storageQuotaSetting,
@@ -39,11 +41,13 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { ModuleDisabledError } from '../plugins/modules.ts'
 import { meterUpload, StreamLimitError } from '../storage/meter.ts'
 import { storageKeyFor, type StorageDriver } from '../storage/storage.ts'
+import { needsTranscode } from './audio-transcoder.ts'
 import { actorStudentConsent, actorStudentHasConsent } from './consents.ts'
 import { contentTypeMismatch, detectContentType, dispositionFor } from './file-detection.ts'
 import { FILE_PURPOSE_ACCESS, fileAttachmentKind } from './file-registry.ts'
 import { requestFingerprint } from './idempotency.ts'
 import { grantListeningPlay, listeningWindowMs } from './listening-plays.ts'
+import type { MediaTranscodeScheduler } from './media-transcode.ts'
 import { getInstitutionModules } from './modules.ts'
 import { runCommand, type CommandResponse } from './operation-runner.ts'
 
@@ -216,13 +220,20 @@ async function storeStream(
  * → türe özel boyut 413 → transaction: kota 422 `storage_quota_exceeded`, satır, denetim. Hata
  * olursa depodaki nesne silinir; aynı anahtarla tekrarlanan istek ilk yanıtı döndürür ve ikinci
  * nesne silinir.
+ *
+ * Ses (`speaking_recording`, `listening_audio`) `processing` başlar ve `media.transcode` işi satırla
+ * aynı transaction'da kuyruğa girer (ADR 0003 karar 10); kuyruk kapalıysa dönüşüm yanıtı
+ * beklemeden süreç içinde, arka planda bir kez denenir (`scheduler.afterCommit`). Tekrarlanan istek
+ * iş açmaz.
  */
 export async function uploadFile(
   ctx: ServiceContext,
   storage: StorageDriver,
   input: UploadInput,
+  scheduler: MediaTranscodeScheduler,
 ): Promise<CommandResponse> {
   const { purpose } = input
+  const transcode = needsTranscode(purpose)
   await assertCanUpload(ctx, purpose)
   const fileId = randomUUID()
   const storageKey = storageKeyFor({
@@ -290,7 +301,9 @@ export async function uploadFile(
               uploadedByUserId: ctx.actor.userId,
             },
             ctx.now,
+            transcode ? 'processing' : 'pending',
           )
+          if (transcode) await scheduler.enqueue(tx, { institutionId: ctx.institutionId, fileId })
           await audit(tx, ctx, 'file.upload', fileId, [
             'purpose',
             'contentType',
@@ -308,6 +321,8 @@ export async function uploadFile(
       { key: input.idempotencyKey, fingerprint },
     )
     keep = !response.replayed
+    // Kuyruksuz yolda dönüşüm arka planda başlar; yanıt beklemez (hatası zamanlayıcıda loglanır).
+    if (transcode && keep) void scheduler.afterCommit({ institutionId: ctx.institutionId, fileId })
     ctx.log.info({
       event: 'file.uploaded',
       purpose,
@@ -604,6 +619,77 @@ export async function recordFileCheck(
   return row
 }
 
+interface ObjectCleanupDeps {
+  db: Database
+  storage: StorageDriver
+  log: FastifyBaseLogger
+}
+
+/**
+ * Ses dönüşümünde yerini dönüşmüş nesneye bırakan özgün nesneyi siler ve izini kaldırır (ADR 0003
+ * karar 10, 13; DOM-BEC-052). Silme başarısızsa iz (`superseded_storage_key`) kalır ve hata yalnız
+ * kimliklerle loglanır: nesne sonraki temizlikte (`purgeSupersededObjects`, imha) yeniden silinir.
+ * Silme idempotenttir; anahtar yeniden yazılmadığından (yükleme anahtarı tek kullanımlıktır)
+ * eşzamanlı iki silme zararsızdır. Nesne silindiyse `true`.
+ */
+export async function releaseSupersededObject(
+  deps: ObjectCleanupDeps,
+  row: Pick<StoredFile, 'institutionId' | 'id' | 'supersededStorageKey'>,
+): Promise<boolean> {
+  const key = row.supersededStorageKey
+  if (key === null) return true
+  try {
+    await deps.storage.delete(key)
+  } catch (error) {
+    deps.log.error({
+      event: 'file.superseded_object_failed',
+      institutionId: row.institutionId,
+      fileId: row.id,
+      err: error,
+    })
+    return false
+  }
+  await clearSupersededStorageKey(deps.db, row.institutionId, row.id, key)
+  return true
+}
+
+/**
+ * Kurumun silinmeyi bekleyen özgün nesnelerinin temizliği (`releaseSupersededObject`); en çok
+ * `limit` dosyaya bakar, silinen nesne sayısını döndürür. Saatlik `files.purge-unattached` işi ve
+ * kuyruksuz açılış çağırır.
+ */
+export async function purgeSupersededObjects(
+  input: ObjectCleanupDeps & { institutionId: string; limit?: number },
+): Promise<number> {
+  const rows = await listSupersededObjects(
+    input.db,
+    input.institutionId,
+    input.limit ?? PURGE_BATCH_SIZE,
+  )
+  let released = 0
+  for (const row of rows) if (await releaseSupersededObject(input, row)) released += 1
+  return released
+}
+
+/**
+ * `deleted` yazılmış dosyanın nesnelerini siler: satırın güncel anahtarı (kilit altında okunan;
+ * aday listesindeki eski anahtar değil, bu arada dönüşüm bitmiş olabilir) ve varsa silinmeyi
+ * bekleyen özgün nesne. Nesne silinemezse satır `deleted` kalır, hata yalnız kimliklerle loglanır.
+ */
+async function deletePurgedObjects(deps: ObjectCleanupDeps, row: StoredFile) {
+  try {
+    await deps.storage.delete(row.storageKey)
+  } catch (error) {
+    deps.log.error({
+      event: 'file.purge_object_failed',
+      institutionId: row.institutionId,
+      fileId: row.id,
+      err: error,
+    })
+  }
+  await releaseSupersededObject(deps, row)
+}
+
 /**
  * Kurumun 24 saatte bağlanmayan (veya reddedilen) dosyalarının temizliği (karar 5, 13): nesne
  * silinir, satır `deleted` kalır ve özgün ad silinir; her dosya `file.purge` olarak denetime
@@ -631,11 +717,12 @@ export async function purgeUnattachedFiles(input: {
   )
   let purged = 0
   for (const candidate of stale) {
-    const done = await db.transaction(async (tx) => {
+    const deleted = await db.transaction(async (tx) => {
       const current = await findFile(tx, candidate.institutionId, candidate.id, { lock: true })
       // Bu arada bağlanan veya silinen dosyaya dokunulmaz.
-      if (!current || current.attachedId !== null || current.status === 'deleted') return false
-      if (!(await markFileDeleted(tx, current.institutionId, current, now))) return false
+      if (!current || current.attachedId !== null || current.status === 'deleted') return null
+      const row = await markFileDeleted(tx, current.institutionId, current, now)
+      if (!row) return null
       await tx.insert(auditLog).values({
         institutionId: current.institutionId,
         action: 'file.purge',
@@ -644,20 +731,11 @@ export async function purgeUnattachedFiles(input: {
         changes: { fields: ['status', 'deletedAt', 'originalName'] },
         createdAt: now,
       })
-      return true
+      return row
     })
-    if (!done) continue
+    if (!deleted) continue
     purged += 1
-    try {
-      await storage.delete(candidate.storageKey)
-    } catch (error) {
-      log.error({
-        event: 'file.purge_object_failed',
-        institutionId: input.institutionId,
-        fileId: candidate.id,
-        err: error,
-      })
-    }
+    await deletePurgedObjects({ db, storage, log }, deleted)
   }
   log.info({ event: 'file.purged', institutionId: input.institutionId, count: purged })
   return purged
@@ -703,7 +781,8 @@ export async function purgeExpiredFiles(input: {
         (await kind.purgeHeld(tx, current.institutionId, current.attachedId, current))
       )
         return 'held'
-      if (!(await markFileDeleted(tx, current.institutionId, current, now))) return 'skipped'
+      const row = await markFileDeleted(tx, current.institutionId, current, now)
+      if (!row) return 'skipped'
       await tx.insert(auditLog).values({
         institutionId: current.institutionId,
         action: 'file.purge',
@@ -712,21 +791,12 @@ export async function purgeExpiredFiles(input: {
         changes: { fields: ['status', 'deletedAt', 'originalName'] },
         createdAt: now,
       })
-      return 'purged'
+      return row
     })
     if (outcome === 'held') held += 1
-    if (outcome !== 'purged') continue
+    if (typeof outcome === 'string') continue
     purged += 1
-    try {
-      await storage.delete(candidate.storageKey)
-    } catch (error) {
-      log.error({
-        event: 'file.purge_object_failed',
-        institutionId: input.institutionId,
-        fileId: candidate.id,
-        err: error,
-      })
-    }
+    await deletePurgedObjects({ db, storage, log }, outcome)
   }
   log.info({
     event: 'file.retention_purged',

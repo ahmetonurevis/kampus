@@ -25,7 +25,7 @@ Eski klasör yeni kurallardan önce kuruldu. Migration'lar 0016–0022 olarak ye
 
 ## 2. Kurulum
 
-Node.js 24 (`.nvmrc`) ve pnpm 11.21 kullanılır. Komutlar README "Çalıştırma" ve "API" bölümlerindedir.
+Node.js 24 (`.nvmrc`) ve pnpm 11.21 kullanılır. Komutlar README "Çalıştırma" ve "API" bölümlerindedir. API'nin ses dönüştürme işi (`media.transcode`) sistemde `ffmpeg` ve `ffprobe` ister: macOS `brew install ffmpeg`, Debian/Ubuntu `apt install ffmpeg` (yol `FFMPEG_PATH`, `FFPROBE_PATH`; yoksa ses yüklemesi reddedilir, gerçek ffmpeg testi atlanır).
 
 ```sh
 pnpm install --frozen-lockfile

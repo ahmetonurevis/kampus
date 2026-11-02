@@ -232,6 +232,13 @@
       "when": 1793622390727,
       "tag": "0032_create_scholarship_programs",
       "breakpoints": true
+    },
+    {
+      "idx": 33,
+      "version": "7",
+      "when": 1793624849268,
+      "tag": "0033_allow_file_transcode",
+      "breakpoints": true
     }
   ]
 }

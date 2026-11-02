@@ -41,15 +41,20 @@ const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 /** Kotayı tüketen durumlar: nesnesi silinmiş (`rejected`, `deleted`) dosya sayılmaz. */
 const QUOTA_EXCLUDED: FileStatus[] = ['rejected', 'deleted']
 
+/**
+ * Yeni dosya satırı. Dönüşümden geçecek ses (`media.transcode`, ADR 0003 karar 10) `processing`
+ * başlar; öteki dosyalar denetimi (karar 7, 8) `pending` bekler.
+ */
 export async function insertFile(
   tx: Database,
   institutionId: string,
   file: NewFile,
   now: Date,
+  status: 'pending' | 'processing' = 'pending',
 ): Promise<StoredFile> {
   const [row] = await tx
     .insert(files)
-    .values({ ...file, institutionId, status: 'pending', createdAt: now, updatedAt: now })
+    .values({ ...file, institutionId, status, createdAt: now, updatedAt: now })
     .returning()
   if (!row) throw new Error('file insert returned no row')
   return row
@@ -224,6 +229,110 @@ export function setFileStatus(
   now: Date,
 ) {
   return updateFile(tx, institutionId, current, { status }, now)
+}
+
+/**
+ * Ses dönüşümünün sonucu (ADR 0003 karar 10): `processing` satır dönüşmüş nesnenin anahtarı, türü,
+ * boyutu, özeti ve ölçülen süresiyle `ready` olur; özgün nesnenin anahtarı aynı güncellemede
+ * `superseded_storage_key`'e geçer (silinene kadar izlenir). İçerik kolonları yalnız bu geçişte
+ * değişebilir (migration 0033 tetikleyicisi); iyimser kilit tutmazsa `null`.
+ */
+export async function completeFileTranscode(
+  tx: Database,
+  institutionId: string,
+  current: StoredFile,
+  output: Pick<StoredFile, 'storageKey' | 'contentType' | 'byteSize' | 'sha256' | 'durationMs'>,
+  now: Date,
+): Promise<StoredFile | null> {
+  const [row] = await tx
+    .update(files)
+    .set({
+      ...output,
+      status: 'ready',
+      supersededStorageKey: current.storageKey,
+      updatedAt: now,
+      version: current.version + 1,
+    })
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        eq(files.id, current.id),
+        eq(files.version, current.version),
+        eq(files.status, 'processing'),
+      ),
+    )
+    .returning()
+  return row ?? null
+}
+
+/**
+ * Kurumun `before`'dan önce güncellenmiş, hâlâ `processing` dosyaları (verilen amaçlarda); en
+ * eskiler önce, `limit` kadar. İşi kaybolmuş dönüşümleri yeniden başlatmak için (`media.transcode`).
+ */
+export async function listStaleProcessingFiles(
+  db: Database,
+  institutionId: string,
+  purposes: readonly StoredFile['purpose'][],
+  before: Date,
+  limit: number,
+): Promise<StoredFile[]> {
+  if (purposes.length === 0) return []
+  return db
+    .select()
+    .from(files)
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        eq(files.status, 'processing'),
+        inArray(files.purpose, [...purposes]),
+        lt(files.updatedAt, before),
+      ),
+    )
+    .orderBy(asc(files.updatedAt), asc(files.id))
+    .limit(limit)
+}
+
+/**
+ * Silinmeyi bekleyen özgün nesnesi olan dosyalar (`superseded_storage_key` dolu; ses dönüşümü,
+ * ADR 0003 karar 10): durumdan bağımsız, kimlik sırasıyla `limit` kadar.
+ */
+export async function listSupersededObjects(
+  db: Database,
+  institutionId: string,
+  limit: number,
+): Promise<Pick<StoredFile, 'institutionId' | 'id' | 'supersededStorageKey'>[]> {
+  return db
+    .select({
+      institutionId: files.institutionId,
+      id: files.id,
+      supersededStorageKey: files.supersededStorageKey,
+    })
+    .from(files)
+    .where(and(eq(files.institutionId, institutionId), isNotNull(files.supersededStorageKey)))
+    .orderBy(asc(files.id))
+    .limit(limit)
+}
+
+/**
+ * Özgün nesne depodan silindikten sonra izini kaldırır. Yalnız anahtar hâlâ aynıysa yazar
+ * (eşzamanlı iki temizlik zararsızdır); iç kayıttır, sürüm ve güncelleme zamanı değişmez.
+ */
+export async function clearSupersededStorageKey(
+  db: Database,
+  institutionId: string,
+  fileId: string,
+  key: string,
+): Promise<void> {
+  await db
+    .update(files)
+    .set({ supersededStorageKey: null })
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        eq(files.id, fileId),
+        eq(files.supersededStorageKey, key),
+      ),
+    )
 }
 
 /** İmha: nesne silindikten sonra satır `deleted` kalır, özgün ad (K) silinir (karar 13). */

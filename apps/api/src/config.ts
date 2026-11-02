@@ -129,6 +129,13 @@ export const configSchema = z
      * veritabanında kendi `pgboss` şemasını kullanır.
      */
     JOBS_ENABLED: optional(z.enum(['true', 'false'])),
+    /**
+     * Ses dönüştürme ikilileri (`media.transcode`, ADR 0003 karar 10): yol ya da `PATH`'teki ad.
+     * Verilmezse `ffmpeg` ve `ffprobe`. İkili yoksa dönüşüm geçici hatayla yeniden denenir, son
+     * denemede dosya reddedilir.
+     */
+    FFMPEG_PATH: optional(z.string().min(1)).transform((value) => value ?? 'ffmpeg'),
+    FFPROBE_PATH: optional(z.string().min(1)).transform((value) => value ?? 'ffprobe'),
   })
   .superRefine((config, ctx) => {
     if (config.NODE_ENV !== 'production') return

@@ -10,6 +10,7 @@ import {
   type Quiz,
   type QuizAttempt,
   type QuizFormKind,
+  type QuizQuestion,
   type UpdateQuizBody,
 } from '@kampus/react-shared/quizzes.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
@@ -294,6 +295,66 @@ export function attemptSummary(attempt: Pick<QuizAttempt, 'status' | 'result'> |
 /** Son tarih metni (Türkiye saati); son tarihsiz quiz süresiz açıktır. */
 export const quizDueText = (dueDate: string | null) =>
   dueDate ? dueLabel(dueDate) : 'Süresiz açık'
+
+/** Öğrenci ve velinin listesindeki durum metni (deneme durumu sunucudandır). */
+export const QUIZ_PHASE_TEXT = {
+  none: 'Henüz çözülmedi',
+  in_progress: 'Devam ediyor',
+  completed: 'Çözüldü',
+  expired: 'Süresi doldu',
+} as const satisfies Record<AttemptPhase, string>
+
+/**
+ * Öğrenci quizi başlatabilir mi (DOM-AKD-077): quiz açık ve denemesi yok. Karar sunucudadır
+ * (son tarih istemci saatiyle değil sunucunun `status` alanıyla); burası düğmeyi göstermek içindir.
+ */
+export const canStartQuiz = (
+  quiz: Pick<Quiz, 'status'>,
+  attempt: Pick<QuizAttempt, 'status'> | undefined,
+) => quiz.status === 'open' && attempt === undefined
+
+/** Şıkların harfleri (A, B, C…); seçenek sırası sunucudakiyle aynıdır. */
+export const OPTION_LETTERS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'] as const
+
+/** Şıkkın görünen metni: `B) 46`. */
+export function optionText(options: readonly string[], index: number): string {
+  const letter = OPTION_LETTERS[index] ?? String(index + 1)
+  return `${letter}) ${options[index] ?? ''}`
+}
+
+/** Cevaplanan soru sayısı (yalnız quizin soruları sayılır). */
+export function answeredCount(
+  questionIds: readonly string[],
+  answers: Readonly<Record<string, number | undefined>>,
+): number {
+  return questionIds.filter((id) => typeof answers[id] === 'number').length
+}
+
+/** İnceleme satırı: soru ve öğrencinin seçtiği şık; doğru şık hiç yoktur (DOM-AKD-078). */
+export type QuizReviewRow = { id: string; text: string; topic: string; chosen: string | null }
+
+/**
+ * İnceleme açıldığında (son tarih geçince ya da quiz kapanınca; sunucu `answers` alanını o zaman
+ * gönderir) soruların listesi ve öğrencinin cevabı. Anahtar öğrenci ve veli yanıtında yoktur;
+ * burada da üretilmez.
+ */
+export function quizReviewRows(
+  questions: readonly Pick<QuizQuestion, 'id' | 'text' | 'topic' | 'options'>[],
+  answers: Readonly<Record<string, number>>,
+): QuizReviewRow[] {
+  return questions.map((question) => {
+    const answer = answers[question.id]
+    return {
+      id: question.id,
+      text: question.text,
+      topic: question.topic,
+      chosen:
+        typeof answer === 'number' && answer < question.options.length
+          ? optionText(question.options, answer)
+          : null,
+    }
+  })
+}
 
 // --- Hata yönlendirme --------------------------------------------------------
 

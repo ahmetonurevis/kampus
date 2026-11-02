@@ -1,19 +1,17 @@
 // Öğrenme okuma ekranlarının (ödev, teslim durumu, materyal, quiz) satır ve özet hesapları
 // (Vue `Learning.vue`). Saf işlevlerdir: API satırları girer (sınıf adı satırın `joined`
-// alanındandır), tablo satırı ve özet çıkar. Ödev durumu ve quiz puanı core'dan gelir (`homeworkStatus`, `gradeQuiz`); burada
-// yeniden yazılmaz ve saklanmaz.
-import { gradeQuiz } from '@kampus/school-core/lib/domain.ts'
+// alanındandır), tablo satırı ve özet çıkar. Ödev durumu core'dan (`homeworkStatus`), quiz puanı
+// sunucunun cevaplardan hesapladığı sonuçtan (`attempts[].result`, DOM-AKD-078) gelir; burada
+// yeniden hesaplanmaz ve saklanmaz.
 import { homeworkStatus } from '@kampus/school-core/lib/format.ts'
 import type { Homework, HomeworkListItem } from '@kampus/react-shared/homework.ts'
-import type { QuizListItem } from '@kampus/react-shared/quizzes.ts'
+import { attemptOf, type QuizListItem } from '@kampus/react-shared/quizzes.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
 import type { CollectionListConfig } from '../../lib/collection-list.ts'
+import { attemptPhase, canStartQuiz, QUIZ_PHASE_TEXT, type AttemptPhase } from './quiz-forms.ts'
 
 type Submission = CoreRecord<'submissions'>
-type Quiz = CoreRecord<'quizzes'>
-type Attempt = CoreRecord<'quizAttempts'>
 type Material = CoreRecord<'materials'>
-type BankQuestion = CoreRecord<'bank'>
 type Student = CoreRecord<'students'>
 
 /**
@@ -195,33 +193,6 @@ export function materialRow(item: CoreRow<'materials'>): MaterialRow {
   }
 }
 
-/** Quiz sonucu: doğru sayısı, soru sayısı ve yüzde puan. */
-export type QuizResult = { correct: number; total: number; score: number }
-
-function hasAnswerKey(quiz: Pick<Quiz, 'questionIds'>, bank: readonly BankQuestion[]): boolean {
-  const known = new Set(bank.map((question) => question.id))
-  return quiz.questionIds.length > 0 && quiz.questionIds.every((id) => known.has(id))
-}
-
-/**
- * Denemenin sonucu. Soru bankası okunabiliyorsa (öğretmen, yönetici) puan cevaplardan core
- * `gradeQuiz` ile yeniden hesaplanır; cevap anahtarı öğrenci ve veliye açılmadığından onlarda
- * core'un gönderim anında hesaplayıp yazdığı sonuç gösterilir.
- * TODO(api-quiz-grading): öğrenci/veli için puanın cevaplardan sunucuda hesaplanıp döndürülmesi.
- */
-export function attemptResult(
-  attempt: Pick<Attempt, 'answers' | 'correct' | 'total' | 'score'>,
-  quiz: Pick<Quiz, 'questionIds'>,
-  bank: readonly BankQuestion[] | null,
-): QuizResult {
-  // Anahtar eksikse (soru bankası başka derse ait) gradeQuiz fırlatır; saklı sonuca düşülür.
-  if (bank && hasAnswerKey(quiz, bank)) {
-    const { correct, total, score } = gradeQuiz(quiz, bank, attempt.answers, true)
-    return { correct, total, score }
-  }
-  return { correct: attempt.correct, total: attempt.total, score: attempt.score }
-}
-
 /** Öğretmen ve yönetici quiz listesi satırı (`/quizzes`): çözen ve ortalama sunucu özetinden. */
 export type TeacherQuizRow = {
   id: string
@@ -270,40 +241,48 @@ export function teacherQuizRow(
   }
 }
 
-/** Öğrenci/veli quiz satırı: çözülme durumu ve sonuç. */
+/** Öğrenci/veli quiz satırı (`/quizzes`): seçili öğrencinin deneme durumu ve sunucu sonucu. */
 export type StudentQuizRow = {
   id: string
   title: string
   subject: string
   questions: number
   duration: number
-  completion: 'Çözüldü' | 'Henüz çözülmedi'
-  /** Çözüldüyse yüzde puan; aksi halde `null`. */
+  /** Son tarih; `null` süresiz açık. */
+  dueDate: string | null
+  status: QuizListItem['status']
+  phase: AttemptPhase
+  completion: (typeof QUIZ_PHASE_TEXT)[AttemptPhase]
+  /** Sonuçlandıysa sunucunun cevaplardan hesapladığı yüzde puan; aksi halde `null`. */
   score: number | null
   correct: number | null
-  date: string | null
+  total: number | null
+  /** Öğrenci başlatabilir: quiz açık ve denemesi yok (DOM-AKD-077). */
+  startable: boolean
 }
 
-export function studentQuizRow(
-  item: CoreRow<'quizzes'>,
-  attempts: readonly CoreRecord<'quizAttempts'>[],
-  studentId: string,
-): StudentQuizRow {
-  const quiz = item.record
-  const attempt = attempts.find(
-    (entry) => entry.quizId === quiz.id && entry.studentId === studentId,
-  )
-  const result = attempt ? attemptResult(attempt, quiz, null) : null
+/**
+ * Satır yalnız seçili öğrencinin denemesinden kurulur: velinin iki çocuğu aynı sınıfta olabilir,
+ * yanıt ikisinin denemesini de taşır (DOM-AKD-079).
+ */
+export function studentQuizRow(item: QuizListItem, studentId: string): StudentQuizRow {
+  const attempt = attemptOf(item, studentId)
+  const phase = attemptPhase(attempt)
+  const result = attempt?.result ?? null
   return {
-    id: quiz.id,
-    title: quiz.title,
-    subject: quiz.subject,
-    questions: quiz.questionIds.length,
-    duration: quiz.duration,
-    completion: attempt ? 'Çözüldü' : 'Henüz çözülmedi',
+    id: item.id,
+    title: item.title,
+    subject: item.subject,
+    questions: item.questionCount,
+    duration: item.duration,
+    dueDate: item.dueDate,
+    status: item.status,
+    phase,
+    completion: QUIZ_PHASE_TEXT[phase],
     score: result?.score ?? null,
-    correct: result?.correct ?? null,
-    date: attempt?.date ?? null,
+    correct: result?.correctCount ?? null,
+    total: result?.total ?? null,
+    startable: canStartQuiz(item, attempt),
   }
 }
 

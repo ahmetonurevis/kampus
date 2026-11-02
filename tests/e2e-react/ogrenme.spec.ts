@@ -350,7 +350,7 @@ test.describe('Öğrenme: öğrenci', () => {
     await expect(panelOf(page, 'Materyal özeti')).toContainText(NOT_FOUND)
   })
 
-  test("Quizlerim puanı core'un cevaplardan hesapladığı sonuçtan gösterir", async ({
+  test('Quizlerim puanı sunucunun cevaplardan hesapladığı sonuçtan gösterir (DOM-AKD-078)', async ({
     page,
     api,
   }) => {
@@ -363,6 +363,16 @@ test.describe('Öğrenme: öğrenci', () => {
     const quiz = quizzes.find((row) => row.id === attempt?.record.quizId)
     expect(attempt && quiz).toBeTruthy()
     if (!attempt || !quiz) return
+    // Ekran saklanan kopyayı değil quiz ucunun her okumada hesapladığı sonucu gösterir.
+    const detail = await student.get(`/api/v1/quizzes/${quiz.id}`)
+    expect(detail.status).toBe(200)
+    const result = (
+      detail.body as {
+        data: { attempts: { result: { score: number; correctCount: number; total: number } }[] }
+      }
+    ).data.attempts[0]?.result
+    expect(result).toBeTruthy()
+    if (!result) return
 
     await page.goto(STUDENT_QUIZZES)
     await expect(page.getByRole('heading', { level: 1, name: 'Quiz & Testler' })).toBeVisible()
@@ -370,14 +380,17 @@ test.describe('Öğrenme: öğrenci', () => {
     await page.getByLabel('Tabloda ara').fill(quiz.record.title)
     const row = rowOf(page, 'Quizlerim', quiz.record.title)
     await expect(row).toContainText('Çözüldü')
-    await expect(row).toContainText(`%${attempt.record.score}`)
+    await expect(row).toContainText(`%${result.score}`)
 
     await row.getByRole('button', { name: `${quiz.record.title} sonucunu aç` }).click()
     const panel = panelOf(page, 'Quiz sonucu')
-    await expect(metric(panel, 'Puan')).toHaveText(`%${attempt.record.score}`)
+    await expect(metric(panel, 'Puan')).toHaveText(`%${result.score}`)
     await expect(metric(panel, 'Doğru / soru')).toHaveText(
-      `${attempt.record.correct} / ${attempt.record.total}`,
+      `${result.correctCount} / ${result.total}`,
     )
+    // Son tarihsiz quizde inceleme açılmaz: cevaplar ve konu yüzdeleri yoktur.
+    await expect(panel).toContainText('son tarihi geçince')
+    await expect(panel.getByRole('list', { name: 'Quiz cevapları' })).toHaveCount(0)
   })
 
   test('Materyaller yalnız öğrencinin düzeyindekileri listeler', async ({ page, api }) => {

@@ -10,6 +10,7 @@ import { StudentTaskSection } from '../tasks/StudentTaskSection.tsx'
 import { QUIZ_PARAM, StudentQuizWorkspace } from '../tasks/StudentQuizWorkspace.tsx'
 import { StudentWritingWorkspace, WRITING_PARAM } from '../tasks/StudentWritingWorkspace.tsx'
 import { StudentHomeworkView } from './StudentHomeworkView.tsx'
+import { QUIZ_SOLVE_PARAM, StudentQuizSolve } from './StudentQuizSolve.tsx'
 import { StudentQuizzesView } from './StudentQuizzesView.tsx'
 import { useLearningStudent } from './use-learning-student.ts'
 
@@ -73,17 +74,18 @@ export function StudentHomeworkPage({ page }: { page: NavPage }) {
 }
 
 /**
- * Quiz & Testler (öğrenci). Üstte API'li quiz görevleri (`?coz=` çalışma alanı), altta eski quiz
- * sonuçları (Vue `Learning.vue` `/soru-coz`). TODO(demo-kalicilik): eski kayıtlar taşınınca
- * alt bölüm kalkar.
+ * Quiz & Testler (öğrenci). Üstte API'li quiz görevleri (`?coz=` çalışma alanı), altta sınıfın
+ * quizleri (`/quizzes`; `?quiz=` sonuç paneli, `?quiz-coz=` çözme ekranı; IST-095).
  */
 export function StudentQuizzesPage({ page }: { page: NavPage }) {
   const [params] = useSearchParams()
-  const quiz = params.get(QUIZ_PARAM) ?? ''
-  if (quiz) return <StudentQuizWorkspace page={page} assignmentId={quiz} />
+  const task = params.get(QUIZ_PARAM) ?? ''
+  const solving = params.get(QUIZ_SOLVE_PARAM) ?? ''
+  if (task) return <StudentQuizWorkspace page={page} assignmentId={task} />
+  if (solving) return <StudentQuizSolve key={solving} page={page} quizId={solving} />
   return (
     <LearningStudentGate page={page} before={<StudentTaskSection mode="auto" />}>
-      {(student) => <StudentQuizzesView student={student} title="Quizlerim" />}
+      {(student) => <StudentQuizzesView student={student} title="Quizlerim" mode="student" />}
     </LearningStudentGate>
   )
 }

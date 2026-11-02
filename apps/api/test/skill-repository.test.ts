@@ -800,7 +800,7 @@ describe('beceri görevi deposu', () => {
     assert.equal((await listSubmissions(db, institutionId, query)).total, 0)
   })
 
-  test('DOM-BEC-040: teslim tek; sürüm numarası tekil; yeniden teslim isteği son istekten okunur; dosyalı sürüm 422; arşivli teslim okunmaz', async () => {
+  test('DOM-BEC-040: teslim tek; sürüm numarası tekil; yeniden teslim isteği son istekten okunur; dosyalı sürüm dosya kimliklerini sırasıyla taşır (OG-048, DOM-BEC-050); arşivli teslim okunmaz', async () => {
     const { institutionId, owner, otherId, chain: c } = await setup()
     await rejectsWith(
       () =>
@@ -825,20 +825,8 @@ describe('beceri görevi deposu', () => {
       409,
       'version_conflict',
     )
-    // TODO(F3c2-files) kapanana kadar dosyalı ve sesli sürüm yazılmadan 422 ile reddedilir.
-    await rejectsWith(
-      () =>
-        insertSubmissionVersion(
-          db,
-          institutionId,
-          c.submissionId,
-          { ...version(2), fileIds: ['file-1'] },
-          LATER,
-        ),
-      422,
-      'submission_kind_unavailable',
-    )
-    const second = version(2)
+    // Dosyalı ve sesli sürüm dosya kimliklerini gönderim sırasıyla saklar (OG-048).
+    const second = { ...version(2), body: null, fileIds: [randomUUID(), randomUUID()] }
     await insertSubmissionVersion(db, institutionId, c.submissionId, second, LATER)
 
     const request = (versionNumber: number, dueAt: Date) => ({

@@ -9,6 +9,11 @@ export interface JobDeps {
   db: Database
   storage: StorageDriver
   log: FastifyBaseLogger
+  /**
+   * İşin iptal sinyali (pg-boss `job.signal`: süre aşımı ya da kapanış). Uzun işler turlar
+   * arasında bakar ve durur; doğrudan çağrıda (test) yoktur.
+   */
+  signal?: AbortSignal
 }
 
 /**

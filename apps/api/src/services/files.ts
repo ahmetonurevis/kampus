@@ -18,6 +18,8 @@ import {
   detachFileRow,
   findFile,
   insertFile,
+  listExpiredFiles,
+  type ExpiredFileCursor,
   listStaleUnattachedFiles,
   markFileDeleted,
   setFileStatus,
@@ -359,7 +361,7 @@ async function readableFile(
       ctx.log.error({ event: 'file.unknown_attachment', attachedType: row.attachedType })
       throw new NotFoundError()
     }
-    if (!(await kind.canRead(tx, ctx, row.attachedId))) throw new NotFoundError()
+    if (!(await kind.canRead(tx, ctx, row.attachedId, row))) throw new NotFoundError()
   }
   // İşlemin bağlantısıyla: PGlite tek bağlantılıdır, `ctx.db` burada beklerdi.
   await assertPurposeModule(tx, ctx, row.purpose)
@@ -442,22 +444,41 @@ export const ATTACH_MESSAGES = {
 } as const
 
 /**
+ * Saklama sonu gelmiş (imhaya işaretli) dosya: `retention_until <= now`. Rıza geri çekilince
+ * yüklenmiş kayda bu işaret düşer (DOM-YTK-059); dosya yeni rızadan sonra da bağlanamaz, imha işi
+ * (`files.purge-expired`) siler.
+ */
+export function isPurgeDue(row: Pick<StoredFile, 'retentionUntil'>, now: Date): boolean {
+  return row.retentionUntil !== null && row.retentionUntil.getTime() <= now.getTime()
+}
+
+/**
  * Dosyayı kayda bağlar (karar 5): bağlayan işlem (teslim, kaynak sürümü, soru; F4b4) kendi
  * transaction'ında çağırır. Dosya aynı kurumda, aynı yükleyicinin, `ready` ve bağsız olmalı;
- * amacı kayıt türünün kabul ettikleri arasında olmalı. Başkasının veya olmayan dosyası ayırt
- * edilmez (422 `file_unavailable`).
+ * amacı kayıt türünün kabul ettikleri arasında olmalı. Başkasının, olmayan ya da saklama sonu
+ * gelmiş (imhaya işaretli, `isPurgeDue`) dosya ayırt edilmez (422 `file_unavailable`; kullanıcı
+ * yeniden yükler).
  *
  * Rıza gereken amaçta (konuşma kaydı; karar 9, DOM-BEC-050, DOM-YTK-059, DOM-YTK-061) veri sahibi
  * çağırandan alınmaz (`dataSubjectId` yok sayılır): yükleyenin `student` bağlantısından türetilir
  * ve o öğrencinin geçerli rızası bağlama anında yeniden denetlenir. Rıza yoksa (yükleme sürerken
  * geri çekilmiş olabilir) 403 `consent_required` ve hiçbir kayıt değişmez.
- * TODO(F3c2-retention): `retention_until` amaç ve kurum türüne göre bağlanma anında hesaplanır
- * (karar 13); süreler doğrulanınca.
+ *
+ * Saklama sonu (`retentionUntil`, karar 13) bağlayan işlem amaca ve kurum türüne göre hesaplayıp
+ * verir (konuşma kaydında core `recordingRetentionUntil`, DOM-BEC-052); daha erken bir işaret
+ * korunur. TODO(F3c2-retention): ödev ve el yazısı teslim dosyasının süresi (Açık soru 3)
+ * doğrulanınca o işlemler de verir; o zamana kadar boş kalır ve imha işi onlara dokunmaz.
  */
 export async function attachFile(
   tx: Database,
   ctx: ServiceContext,
-  input: { fileId: string; attachedType: string; attachedId: string; dataSubjectId: string | null },
+  input: {
+    fileId: string
+    attachedType: string
+    attachedId: string
+    dataSubjectId: string | null
+    retentionUntil?: Date | null
+  },
 ): Promise<StoredFile> {
   const kind = fileAttachmentKind(input.attachedType)
   if (!kind) throw new Error(`unknown file attachment type: ${input.attachedType}`)
@@ -485,11 +506,19 @@ export async function attachFile(
     }
     dataSubjectId = consent.studentId
   }
+  // Rıza denetiminden sonra: geri çekilmiş rıza 403 kalır, yeni rızayla eski işaretli kayıt 422.
+  if (isPurgeDue(row, ctx.now))
+    throw new RuleViolationError('file_unavailable', ATTACH_MESSAGES.file_unavailable)
   const updated = await attachFileRow(
     tx,
     ctx.institutionId,
     row,
-    { type: input.attachedType, id: input.attachedId, dataSubjectId },
+    {
+      type: input.attachedType,
+      id: input.attachedId,
+      dataSubjectId,
+      retentionUntil: input.retentionUntil ?? null,
+    },
     ctx.now,
   )
   if (!updated) throw new ConflictError()
@@ -632,4 +661,83 @@ export async function purgeUnattachedFiles(input: {
   }
   log.info({ event: 'file.purged', institutionId: input.institutionId, count: purged })
   return purged
+}
+
+/**
+ * Kurumun saklama sonu gelmiş dosyalarının imhası (ADR 0003 karar 9, 13; DOM-BEC-052,
+ * DOM-YTK-059): `retention_until <= now` ve silinmemiş her dosyanın nesnesi silinir, satırı
+ * `deleted` kalır ve özgün ad silinir; her dosya `file.purge` olarak denetime yazılır. Bağlı dosya
+ * bağını korur (teslim sürümü kaydı ve süresi kalır, dosya `deleted` görünür). Bağlı kaydın türü
+ * imhayı bekletebilir (`FileAttachmentKind.purgeHeld`: puanı kesinleşmemiş ya da itirazı açık
+ * teslim sürümünün konuşma kaydı); bekletilen dosya sayılır, dokunulmaz. Sıra ve hata davranışı
+ * `purgeUnattachedFiles` ile aynıdır: satır kilitlenip saklama sonu yeniden denetlenir, `deleted`
+ * yazılır, transaction bitince nesne silinir; nesne silinemezse satır `deleted` kalır ve hata
+ * yalnız kimliklerle loglanır (nesne `TODO(F3c2-orphans)` taramasına kalır). En çok `limit`
+ * dosyaya `after` imlecinden sonra bakar; sayfa doluysa `next` sonraki sayfanın imlecidir.
+ * Günlük `files.purge-expired` işi (`src/jobs/files-purge-expired.ts`) kurum başına çağırır.
+ */
+export async function purgeExpiredFiles(input: {
+  db: Database
+  storage: StorageDriver
+  institutionId: string
+  now: Date
+  log: FastifyBaseLogger
+  limit?: number
+  after?: ExpiredFileCursor | null
+}): Promise<{ purged: number; held: number; next: ExpiredFileCursor | null }> {
+  const { db, storage, now, log } = input
+  const limit = input.limit ?? PURGE_BATCH_SIZE
+  const expired = await listExpiredFiles(db, input.institutionId, now, limit, input.after ?? null)
+  let purged = 0
+  let held = 0
+  for (const candidate of expired) {
+    const outcome = await db.transaction(async (tx) => {
+      const current = await findFile(tx, candidate.institutionId, candidate.id, { lock: true })
+      // Bu arada silinen dosyaya dokunulmaz; saklama sonu yalnız öne çekilebilir.
+      if (!current || current.status === 'deleted' || !isPurgeDue(current, now)) return 'skipped'
+      const kind =
+        current.attachedType === null ? undefined : fileAttachmentKind(current.attachedType)
+      if (
+        kind?.purgeHeld !== undefined &&
+        current.attachedId !== null &&
+        (await kind.purgeHeld(tx, current.institutionId, current.attachedId, current))
+      )
+        return 'held'
+      if (!(await markFileDeleted(tx, current.institutionId, current, now))) return 'skipped'
+      await tx.insert(auditLog).values({
+        institutionId: current.institutionId,
+        action: 'file.purge',
+        entityType: ENTITY,
+        entityId: current.id,
+        changes: { fields: ['status', 'deletedAt', 'originalName'] },
+        createdAt: now,
+      })
+      return 'purged'
+    })
+    if (outcome === 'held') held += 1
+    if (outcome !== 'purged') continue
+    purged += 1
+    try {
+      await storage.delete(candidate.storageKey)
+    } catch (error) {
+      log.error({
+        event: 'file.purge_object_failed',
+        institutionId: input.institutionId,
+        fileId: candidate.id,
+        err: error,
+      })
+    }
+  }
+  log.info({
+    event: 'file.retention_purged',
+    institutionId: input.institutionId,
+    count: purged,
+    held,
+  })
+  const last = expired.at(-1)
+  const next =
+    expired.length < limit || last === undefined || last.retentionUntil === null
+      ? null
+      : { retentionUntil: last.retentionUntil, id: last.id }
+  return { purged, held, next }
 }

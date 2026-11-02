@@ -5,6 +5,7 @@ import type { Actor } from '../packages/school-core/src/lib/scope.ts'
 import { deadlineSchema, type DeadlineInput } from '../packages/school-core/src/skills/scoring.ts'
 import {
   SPEAKING_ATTEMPT_LIMITS,
+  SPEAKING_SECONDS,
   VERSION_LIMITS,
   assertGradableVersion,
   canReadDraft,
@@ -50,7 +51,7 @@ const version = (number: number, input: Partial<VersionRow> = {}): VersionRow =>
 const versions = (count: number) => Array.from({ length: count }, (_, i) => version(i + 1))
 
 const essay = 'My summer holiday was great. We went to Ankara and visited Anıtkabir.'
-const plan = (input: Partial<SubmissionVersionPlanInput> = {}) =>
+const planText = (input: Partial<SubmissionVersionPlanInput> = {}) =>
   planSubmissionVersion({
     settings: settings(),
     deadline: deadline(),
@@ -62,6 +63,7 @@ const plan = (input: Partial<SubmissionVersionPlanInput> = {}) =>
     now,
     ...input,
   })
+const plan = planText
 
 const recording = (input: Partial<SubmissionFile> = {}): SubmissionFile => ({
   id: 'test-f-rec',
@@ -119,14 +121,18 @@ describe('teslim ayarı (DOM-BEC-040, IST-051)', () => {
     assert.deepEqual(parsed.error?.issues[0]?.path, ['maxWords'])
   })
 
-  test('IST-051 konuşma deneme hakkı varsayılan 1, 1–3; süre sınırı 10 sn–10 dk', () => {
+  test('IST-051, DOM-BEC-054 konuşma deneme hakkı varsayılan 1, 1–3; süre sınırı varsayılan 3 dk, 10 sn–10 dk', () => {
     assert.equal(speaking.submissionKind === 'audio' && speaking.speakingAttempts, 1)
     assert.equal(SPEAKING_ATTEMPT_LIMITS.max, 3)
+    const defaults = settings({ submissionKind: 'audio' })
+    assert.equal(defaults.submissionKind === 'audio' && defaults.speakingSeconds, 180)
+    assert.equal(SPEAKING_SECONDS.default, 180)
+    assert.equal(SPEAKING_SECONDS.max, 600)
     const bad = [
       { speakingAttempts: 4, speakingSeconds: 60 },
       { speakingSeconds: 5 },
       { speakingSeconds: 601 },
-      {},
+      { speakingSeconds: 90.5 },
     ]
     for (const input of bad) {
       assert.equal(
@@ -385,6 +391,8 @@ describe('el yazısı teslimi (DOM-BEC-046)', () => {
 
 describe('konuşma deneme hakkı (IST-051)', () => {
   const input = { submissionKind: 'audio', recordingFileId: 'test-f-rec' }
+  const plan = (extra: Partial<SubmissionVersionPlanInput> = {}) =>
+    planText({ recordingConsent: true, ...extra })
 
   test('IST-051 gönderilen kayıt yeni sürüm açar', () => {
     const result = plan({ settings: speaking, input, files: [recording()] })
@@ -422,11 +430,19 @@ describe('konuşma deneme hakkı (IST-051)', () => {
     assert.equal(allowance.remaining, 1)
   })
 
-  test('IST-051 kayıt süre sınırını aşamaz; tam sınır kabul edilir, ölçülemeyen süre reddedilir', () => {
-    assert.doesNotThrow(() =>
-      plan({ settings: speaking, input, files: [recording({ durationSeconds: 90 })] }),
-    )
-    for (const durationSeconds of [90.01, null, undefined]) {
+  test('IST-051, DOM-BEC-054 kayıt süre sınırını aşamaz; tam sınır kabul edilir, boş ve ölçülmemiş kayıt reddedilir', () => {
+    for (const durationSeconds of [1, 90])
+      assert.doesNotThrow(() =>
+        plan({ settings: speaking, input, files: [recording({ durationSeconds })] }),
+      )
+    const cases: [number | null | undefined, string][] = [
+      [90.01, 'recording_too_long'],
+      [0, 'recording_empty'],
+      [0.4, 'recording_empty'],
+      [null, 'recording_not_measured'],
+      [undefined, 'recording_not_measured'],
+    ]
+    for (const [durationSeconds, code] of cases) {
       assert.throws(
         () =>
           plan({
@@ -434,10 +450,48 @@ describe('konuşma deneme hakkı (IST-051)', () => {
             input,
             files: [recording({ durationSeconds: durationSeconds as number | null })],
           }),
-        isDomainError('recording_too_long'),
+        (error: unknown) =>
+          isDomainError(code)(error) &&
+          (error as { path: string[] }).path.join('.') === 'recordingFileId',
         String(durationSeconds),
       )
     }
+  })
+
+  test('DOM-BEC-050 rıza yoksa sesli teslim 403 consent_required; kapalı pencereden ve hak sınırından önce gelir', () => {
+    for (const recordingConsent of [false, undefined]) {
+      assert.throws(
+        () =>
+          planText({
+            settings: speaking,
+            input,
+            files: [recording()],
+            ...(recordingConsent === undefined ? {} : { recordingConsent }),
+          }),
+        isDomainError('consent_required', 'forbidden'),
+      )
+    }
+    assert.throws(
+      () =>
+        planText({
+          settings: speaking,
+          input,
+          files: [recording()],
+          submission: submission(),
+          versions: versions(1),
+          now: plusMs(due, 86_400_000),
+        }),
+      isDomainError('consent_required', 'forbidden'),
+    )
+    // Rıza yalnız sesli teslimde aranır: yazma ve dosyalı teslim rızasız geçer.
+    assert.doesNotThrow(() => planText())
+    assert.doesNotThrow(() =>
+      planText({
+        settings: settings({ submissionKind: 'file' }),
+        input: { submissionKind: 'file', fileIds: ['test-f-scan'] },
+        files: [scan()],
+      }),
+    )
   })
 
   test('IST-051 konuşma kaydı yalnız kayıt amaçlı ses dosyası olabilir', () => {

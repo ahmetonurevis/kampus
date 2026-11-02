@@ -15,10 +15,11 @@ export const filesPurgeJob: InstitutionJob<{ purged: number; rounds: number }> =
   name: 'files.purge-unattached',
   cron: '17 * * * *',
   slotSeconds: HOUR_SECONDS,
-  run: async ({ db, storage, log }, { institutionId }, now) => {
+  run: async ({ db, storage, log, signal }, { institutionId }, now) => {
     let purged = 0
     let rounds = 0
-    while (rounds < MAX_ROUNDS) {
+    // İptal edilen iş (süre aşımı, kapanış) yeni tura başlamaz; kalan dosyalar sonraki çalıştırmada.
+    while (rounds < MAX_ROUNDS && signal?.aborted !== true) {
       rounds += 1
       const count = await purgeUnattachedFiles({ db, storage, institutionId, now, log })
       purged += count

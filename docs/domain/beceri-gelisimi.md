@@ -210,7 +210,7 @@
 - **Gerekçe:** Metin teslimi sözcük sayısını, sürüm karşılaştırmasını ve erişilebilir okumayı mümkün kılar.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/submission.ts` `planSubmissionVersion` (metin teslimi, el yazısında yalnız görüntü/PDF), `wordCountCheck` (sınır dışı uyarıyla kabul) ve `packages/school-core/src/content/resource.ts` `wordCount`. API: yazma teslimi metindir (`submissionKind: 'text'`, 50.000 karakter); sürümde ve taslakta `wordCountCheck` uyarısı döner, metin reddedilmez; dosyalı ve sesli teslim `files` gelene kadar 422 `submission_kind_unavailable`. Eski demoda ödev yalnız dosya adı olarak saklanır (`apps/web/src/views/Learning.vue:232-240`).
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/submission.ts` `planSubmissionVersion` (metin teslimi, el yazısında yalnız görüntü/PDF), `wordCountCheck` (sınır dışı uyarıyla kabul) ve `packages/school-core/src/content/resource.ts` `wordCount`. API: yazma teslimi metindir (`submissionKind: 'text'`, 50.000 karakter); sürümde ve taslakta `wordCountCheck` uyarısı döner, metin reddedilmez. El yazısı teslimi (OG-048): atama `submissionKind: 'file'` kabul eder; sürüm `fileIds` (görüntü/PDF, kursiyerin `POST /api/v1/files` amaç `submission` ile yüklediği hazır dosyalar) taşır, dosyalar sürümle aynı işlemde sürüme bağlanır (`task_submission_version`; `services/task-submission-files.ts`, migration `0031_add_submission_version_files`); başkasının ya da olmayan dosyası 404, hazır olmayanı 422 `file_not_ready`, başka kayda bağlısı 409 `file_already_attached`; teslim ayrıntısı sürüm dosyalarını (`versions[].files`; tür, boyut, süre, durum, özgün ad yok) döner (`apps/api/test/task-submission-files.test.ts`). Dosya taraması (OG-092) gelene kadar gerçek yükleme `pending` kalır ve teslim 422 `file_not_ready` alır. El yazısı dosyasının saklama süresi açık sorudur (ADR 0003 Açık soru 3, `TODO(F3c2-retention)`). Eski demoda ödev yalnız dosya adı olarak saklanır (`apps/web/src/views/Learning.vue:232-240`).
 
 ## Ses kaydı ve kişisel veri
 
@@ -220,7 +220,7 @@
 - **Gerekçe:** Çocuğun sesi tanınabilir kişisel veridir; onay hizmete erişimin şartı yapılamaz.
 - **Kaynak:** KVKK md. 3 (kişisel veri), md. 5 (işleme şartları), md. 10 (aydınlatma). Ses kaydının "sözleşmenin ifası" şartıyla mı açık rızayla mı işleneceği **doğrulanmalı**; platform muhafazakâr olarak 18 yaş altında veli onayı arar.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — ses kaydı yok.
+- **Kodda:** kısmen — rıza: `speaking_recording` yüklemesi ve bağlaması işlem anında geçerli rıza ister (`apps/api/src/services/files.ts`, 403 `consent_required`); sesli teslim (OG-048) core `planSubmissionVersion` `recordingConsent` ile ayrıca denetler (`packages/school-core/src/skills/submission.ts`). Geri çekme öğrencinin bağlı ve bağlanmamış kayıtlarını aynı işlemde imhaya işaretler (`retention_until = now`; DOM-YTK-059), işaretli kayıt yeni rızayla da bağlanamaz (422 `file_unavailable`), günlük `files.purge-expired` işi siler (`apps/api/src/jobs/files-purge-expired.ts`). Yüz yüze değerlendirme yolu ve aydınlatma gösterim kaydı web akışındadır (OG-050); kayıt ekranı yok.
 
 ### DOM-BEC-051 · Biyometrik işleme yok
 
@@ -228,7 +228,7 @@
 - **Gerekçe:** Kişiyi tanımlamaya yönelik ses işleme biyometrik veri işlemesidir ve özel nitelikli veri rejimine girer.
 - **Kaynak:** KVKK md. 6 (biyometrik veri özel niteliklidir).
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — kayıt kurum dışına gönderilmez, sunucu yalnız boyut, tür ve süre okur; konuşmacı tanıma veya ses analizi kodu yoktur.
 
 ### DOM-BEC-052 · Ses kaydı saklama süresi
 
@@ -236,7 +236,7 @@
 - **Gerekçe:** Veri amaç için gerekli süre kadar tutulur; ses kaydı puanın kanıtıdır ama sonsuza kadar gerekmez.
 - **Kaynak:** KVKK md. 4/2-ç, md. 7; periyodik imha süresi (en fazla 6 ay) Silme, Yok Etme veya Anonim Hâle Getirme Yönetmeliği — **doğrulanmalı**. 6 aylık saklama işletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — core `packages/school-core/src/skills/recording.ts` `recordingPeriodEnd` (`school`'da ders yılı sonu, `language_school`'da iptal edilmemiş kur grubunun sonu) ve `recordingRetentionUntil` (dönem sonu ile puanlama + itiraz kapanışının geç olanından 6 ay sonra, İstanbul gün sonu; bilinen sonuç duyurusu, itiraz açılışı ve kararı beklenen takvimin yerine geçer; karar süresi açılıştan 5 iş günü varsayılır, `TODO(beceri-ses-itiraz-gec)`), `extendedRecordingRetention` (saklama sonu yalnız ileri alınır; gelmiş ya da rızayla işaretli saklama sonu değişmez) ve `recordingPurgeHeld` (açık itirazlı ya da puanı kesinleşmemiş son sürümün kaydı imhada bekler; rıza geri çekildiyse beklemez; hiç puanlanmayan kayıt `TODO(beceri-ses-puansiz)`). API sesli teslimde saklama sonunu kayıt sürüme bağlanırken `files.retention_until`'e yazar (rıza geri çekmenin erken işareti korunur), sonucu kesinleştiren puanda, itiraz açılışında ve kararında aynı işlemde yeniden hesaplayıp ileri alır (`services/task-submission-files.ts` `extendVersionRecordingRetention`; `services/task-grading.ts`); günlük `files.purge-expired` işi (04:15, kurum başına) saklama sonu gelen kaydın nesnesini siler (bekletilen kayıt `held` sayılır, `FileAttachmentKind.purgeHeld`), satır `deleted` kalır, süre (`durationMs`) ve rubrik puanı kalır, denetime `file.purge` düşer (`apps/api/src/jobs/files-purge-expired.ts`, services/files.ts `purgeExpiredFiles`; `apps/api/test/jobs.test.ts`, `pg-jobs.test.ts`, `task-submission-files.test.ts`). Erken silme isteği ve indirme ekranı yok.
 
 ### DOM-BEC-053 · Ses kaydına erişim
 
@@ -244,7 +244,7 @@
 - **Gerekçe:** Erişim amaçla sınırlı olmalı ve izlenebilmeli.
 - **Kaynak:** KVKK md. 12 (veri güvenliği); ADR 0001 karar 7–8.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — core `skills/recording.ts` `canAccessRecording`: kaydın sahibi, 18 yaş altında velisi, teslimi okuyan öğretmen (görevin öğretmeni, ikinci puanlayıcı, itiraz değerlendiricisi, uyuşmazlıktaki koordinatör) ve yönetici (`TODO(beceri-ses-yonetici)`); ön büro, başka öğrenci ve veli açamaz (404). API `GET /api/v1/files/:fileId/url` 2 dakikalık imzalı bağlantı verir, her açılış `file.access` denetim satırıdır; 18 yaşını dolduran kursiyerin kaydı veliye kapanır (`apps/api/src/services/task-submissions.ts` `canReadVersionFile`; `apps/api/test/task-submission-files.test.ts`). Akran değerlendirmesi yoktur.
 
 ### DOM-BEC-054 · Ses dosyası sınırları
 
@@ -252,7 +252,7 @@
 - **Gerekçe:** Sınırsız dosya depolama ve puanlama yükü getirir; yarım yüklenen kayıt sessizce kaybolmamalı.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — biçim ve boyut core `content/taxonomy.ts` `FILE_PURPOSES.speaking_recording` (m4a, webm, mp3; 20 MB; en fazla 10 dk) ve yüklemede içerikten tür tespiti; süre sınırı görev ayarı `speakingSeconds` (varsayılan 180, `SPEAKING_SECONDS`). Sesli teslimde ölçülmemiş kayıt 422 `recording_not_measured`, bir saniyeden kısa kayıt `recording_empty`, sınırı aşan `recording_too_long` (core `planSubmissionVersion`, Türkçe ileti). Süre ölçümü henüz yok (ses dönüştürme işi OG-262): o gelene kadar gerçek yüklemede sesli teslim `recording_not_measured` alır. Cihazda tutma web/mobil kayıt ekranındadır (OG-050).
 
 ### DOM-BEC-055 · Öğrenci ürünü tanıtımda kullanılmaz
 

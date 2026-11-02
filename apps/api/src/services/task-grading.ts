@@ -65,6 +65,7 @@ import {
   secondRatingFor,
   type Grading,
 } from './task-submissions.ts'
+import { extendVersionRecordingRetention } from './task-submission-files.ts'
 import { auditWork, canReadLearner } from './task-work.ts'
 
 /**
@@ -365,7 +366,7 @@ async function writeScore(
       },
       after: async (tx, { work, assignment, draft, released, viewer: current }) => {
         // İletişim ya da öğrenme modülü kapalıysa `notify` yazmadan döner (DOM-YTK-040).
-        if (released)
+        if (released) {
           await notify(tx, ctx, {
             type: 'feedback_released',
             recipients: { studentIds: [work.submission.learnerId] },
@@ -373,6 +374,18 @@ async function writeScore(
             // Bir sürümün sonucu bir kez kesinleşir; aynı sürüm için ikinci bildirim yazılmaz.
             dedupeKey: draft.submissionVersionId,
           })
+          // Sonuç duyurusu itiraz süresini başlatır: geç puanlamada konuşma kaydının saklama
+          // sonu ileri alınır (DOM-BEC-052, DOM-BEC-025).
+          const version = work.versions.find((v) => v.id === draft.submissionVersionId)
+          if (version !== undefined)
+            await extendVersionRecordingRetention(tx, ctx, {
+              assignment,
+              submission: work.submission,
+              version,
+              announcedAt: draft.scoredAt,
+              holidays: APPEAL_HOLIDAYS,
+            })
+        }
         await insertRubricScore(tx, ctx.institutionId, { id: randomUUID(), ...draft }, ctx.now)
         await touchSubmission(tx, ctx.institutionId, work.submission, ctx.now)
         await auditWork(tx, ctx, action, { type: ENTITY, id: work.submission.id }, [
@@ -721,7 +734,13 @@ export async function fileAppeal(
 ): Promise<CommandResponse> {
   const viewer = await viewerOf(ctx)
   const out: { body?: unknown } = {}
-  type Filed = { work: StoredSubmissionWork; assignment: StoredAssignment; draft: AppealDraft }
+  type Filed = {
+    work: StoredSubmissionWork
+    assignment: StoredAssignment
+    draft: AppealDraft
+    version: StoredSubmissionWork['versions'][number]
+    announcedAt: string | null
+  }
   return runCommand<Filed>(
     ctx,
     {
@@ -753,16 +772,19 @@ export async function fileAppeal(
           gradingOf(tx, ctx, work.submission.id),
           listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId),
         ])
+        const resolution = resolutionOf(grading, version)
         return {
           run: (_state, tools) => ({
             work,
             assignment,
+            version,
+            announcedAt: resolution.status === 'settled' ? resolution.settledAt : null,
             draft: planAppeal({
               actor: { role: ctx.actor.role, links, userId: ctx.actor.userId },
               learnerId: work.submission.learnerId,
               kind: assignment.kind,
               submissionVersionId: version.id,
-              resolution: resolutionOf(grading, version),
+              resolution,
               appeals: grading.appeals,
               holidays: APPEAL_HOLIDAYS,
               input: { reason: input.reason },
@@ -771,8 +793,18 @@ export async function fileAppeal(
           }),
         }
       },
-      after: async (tx, { work, assignment, draft }) => {
+      after: async (tx, { work, assignment, draft, version, announcedAt }) => {
         await insertAppeal(tx, ctx.institutionId, { id: randomUUID(), ...draft }, ctx.now)
+        // Açık itiraz kaydın imhasını bekletir; saklama sonu da itirazın karar süresine göre
+        // ileri alınır (DOM-BEC-052).
+        await extendVersionRecordingRetention(tx, ctx, {
+          assignment,
+          submission: work.submission,
+          version,
+          announcedAt,
+          appealFiledAt: draft.filedAt,
+          holidays: APPEAL_HOLIDAYS,
+        })
         await touchSubmission(tx, ctx.institutionId, work.submission, ctx.now)
         await auditWork(
           tx,
@@ -851,8 +883,22 @@ export async function decideTaskAppeal(
           }),
         }
       },
-      after: async (tx, { work, assignment, appeal, plan }) => {
+      after: async (tx, { work, assignment, grading, appeal, plan }) => {
         await decideAppeal(tx, ctx.institutionId, appeal, plan.appeal, ctx.now)
+        // Karar itirazı kapatır: konuşma kaydının saklaması karardan sonra işler (DOM-BEC-052).
+        const version = work.versions.find((v) => v.id === appeal.submissionVersionId)
+        if (version !== undefined) {
+          const resolution = resolutionOf(grading, version)
+          await extendVersionRecordingRetention(tx, ctx, {
+            assignment,
+            submission: work.submission,
+            version,
+            announcedAt: resolution.status === 'settled' ? resolution.settledAt : null,
+            appealFiledAt: appeal.filedAt,
+            appealDecidedAt: plan.appeal.decidedAt,
+            holidays: APPEAL_HOLIDAYS,
+          })
+        }
         // Karar kabulde de retle de öğrenciye ve (18 yaş altında) veliye bildirilir (DOM-BEC-025:
         // "sonuç gerekçesiyle bildirilir"); aynı transaction'da, karar yazılamazsa bildirim de
         // yoktur. İletişim ya da öğrenme modülü kapalıysa `notify` yazmadan döner. Sonuç ve

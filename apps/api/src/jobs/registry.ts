@@ -1,3 +1,4 @@
+import { filesPurgeExpiredJob } from './files-purge-expired.ts'
 import { filesPurgeJob } from './files-purge.ts'
 import { idempotencyPurgeJob } from './idempotency-purge.ts'
 import { permissionRemindersJob } from './permission-reminders.ts'
@@ -9,6 +10,7 @@ import type { AnyInstitutionJob } from './types.ts'
 export const INSTITUTION_JOBS: readonly AnyInstitutionJob[] = [
   idempotencyPurgeJob,
   filesPurgeJob,
+  filesPurgeExpiredJob,
   permissionRemindersJob,
 ]
 

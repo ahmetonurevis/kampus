@@ -547,21 +547,32 @@ describe('görev atama uçları', () => {
     assert.deepEqual(await snapshot(t.institution.id), before)
   })
 
-  test('ADR 0004 karar 6 (F4b2b, OG-049): dosyalı ve sesli teslim 422 submission_kind_unavailable; DOM-BEC-005: dinleme görevi gönderilmeyen hakla sınırsız atanır, dolu hak 422 listening_plays_unavailable', async () => {
+  test('OG-048, DOM-BEC-054: dosyalı ve sesli teslimli görev atanır; konuşma süresi verilmezse 180 sn', async () => {
+    const t = await tenant()
+    const file = await ok(
+      await create(
+        t.cookies.teacher,
+        settingsWith(t, { submission: { submissionKind: 'file', maxVersions: 2 } }),
+      ),
+      201,
+    )
+    assert.deepEqual(file.submission, { submissionKind: 'file', maxVersions: 2 })
+    // Aynı içerik aynı kursiyerlere açık iki atamada verilemez: sesli görev başka kurumda.
+    const other = await tenant()
+    const audio = await ok(
+      await create(
+        other.cookies.teacher,
+        settingsWith(other, { submission: { submissionKind: 'audio', maxVersions: 1 } }),
+      ),
+      201,
+    )
+    assert.equal(audio.submission.submissionKind, 'audio')
+    assert.equal(audio.submission.speakingSeconds, 180)
+  })
+
+  test('ADR 0004 karar 6 (OG-049), DOM-BEC-005: dinleme görevi gönderilmeyen hakla sınırsız atanır, dolu hak 422 listening_plays_unavailable', async () => {
     const t = await tenant()
     const before = await snapshot(t.institution.id)
-    for (const submission of [
-      { submissionKind: 'file', maxVersions: 2 },
-      { submissionKind: 'audio', maxVersions: 1, speakingSeconds: 60 },
-    ]) {
-      const rejected = await create(t.cookies.teacher, settingsWith(t, { submission }))
-      fails(rejected, 422, 'submission_kind_unavailable')
-      assert.deepEqual(rejected.json().issues?.[0]?.path, [
-        'settings',
-        'submission',
-        'submissionKind',
-      ])
-    }
     const { versions } = await seedResource(db, t.institution.id, {
       ownerUserId: t.teacher.id,
       versions: [{ status: 'published', input: listeningQuestion() }],

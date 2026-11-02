@@ -1,11 +1,13 @@
 import type { ReactNode } from 'react'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
+import { hasScholarshipContract } from '@kampus/school-core/lib/payments.ts'
+import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
-import { useCoreItem } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import { SummaryLoading, SummaryMetrics } from '../management/SummaryParts.tsx'
 import { invoiceRow, type InvoiceRow } from './finance-rows.ts'
 
@@ -74,14 +76,34 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
         ) : (
           actions?.(row)
         )}
-        <PdfButton
-          type="payment-plan"
-          recordId={row.studentId}
-          label="Taksit taahhütnamesi"
-          variant="outline"
-          size="default"
-        />
+        <PaymentPlanButton studentId={row.studentId} />
       </div>
     </>
+  )
+}
+
+/**
+ * Burs bilinmeden taahhütname sunulmaz (DOM-FIN-025). Öğrenci sözleşme okuyamadığı için belge
+ * yalnız veli ve kurum görevlisine açılır; sözleşme okunamazsa düğme de çıkmaz.
+ */
+function PaymentPlanButton({ studentId }: { studentId: string }) {
+  const { session } = useAuth()
+  const canReadContracts = session !== null && session.role !== 'ogrenci'
+  const contracts = useCoreAll(
+    'contracts',
+    { filters: { studentId } },
+    { enabled: canReadContracts },
+  )
+  if (!contracts.data) return null
+  const records = contracts.data.map(({ record }) => record)
+  if (hasScholarshipContract(records, studentId)) return null
+  return (
+    <PdfButton
+      type="payment-plan"
+      recordId={studentId}
+      label="Taksit taahhütnamesi"
+      variant="outline"
+      size="default"
+    />
   )
 }

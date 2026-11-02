@@ -10,6 +10,7 @@ import {
   assertMebbisChangeAllowed,
   bankAccountLabel,
   bankAccountSchema,
+  hasScholarshipContract,
   planPayment,
   reversePayment,
   type PaymentContext,
@@ -271,6 +272,16 @@ test('DOM-FIN-031: tahsilat formu nakit dışında referans ister', () => {
     paymentFormSchema.safeParse({ ...base, amount: '0', method: 'Nakit' }).success,
     false,
   )
+})
+
+test('DOM-FIN-025: burs kararı öğrencinin kendi sözleşmesine bakar', () => {
+  const contracts = [
+    { studentId: 's1', scholarship: { programId: 'p1', amountCents: 100 } },
+    { studentId: 's2' },
+  ]
+  assert.equal(hasScholarshipContract(contracts, 's1'), true)
+  assert.equal(hasScholarshipContract(contracts, 's2'), false)
+  assert.equal(hasScholarshipContract(contracts, 's3'), false)
 })
 
 test('IST-106: senet numara ister, banka hesabına bağlanmaz, burslu öğrenciden alınmaz', () => {

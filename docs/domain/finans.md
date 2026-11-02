@@ -254,7 +254,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Veliye verilen belge ile sistemdeki borç ayrışmamalıdır.
 - **Kaynak:** İşletme kuralı; ÖÖKY md. 53/1.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `packages/school-core/src/lib/document-data.js:20-45` sözleşme ve plan belgesini aynı kayıttan üretir; sürüm yok.
+- **Kodda:** kısmen — `packages/school-core/src/lib/document-data.ts` sözleşme ve plan belgesini aynı kayıttan üretir; sürüm yok. Taahhütname taahhüt cümlesi ve imza taşır (`templates/payment-plan.ts`); burslu öğrenciye sunulmaz (`hasScholarshipContract`, DOM-FIN-025), öğrenci rolüne açık değildir. Kısmi ödeme tutarı şablona `collectedCents` ile verilir; web bağlantısı #19'da beklemektedir.
 
 ### DOM-FIN-052 · Finans yetki ve kapsamı
 

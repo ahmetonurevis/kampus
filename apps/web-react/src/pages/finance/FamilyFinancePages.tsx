@@ -1,6 +1,7 @@
 import { use, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
+import { hasScholarshipContract } from '@kampus/school-core/lib/payments.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { EmptyState } from '@/components/EmptyState.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -213,18 +214,23 @@ function Contracts({ childId }: { childId: string }) {
           </div>
         </li>
       ))}
-      <li className="panel document-card grid content-start gap-2 rounded-card border bg-surface p-6">
-        <h2 className="text-lg font-semibold">Taksit taahhütnamesi</h2>
-        <p className="text-sm text-muted-foreground">Öğrencinin güncel ödeme planı belgesi.</p>
-        <div>
-          <PdfButton
-            type="payment-plan"
-            recordId={childId}
-            label="Ödeme belgesini görüntüle"
-            size="default"
-          />
-        </div>
-      </li>
+      {hasScholarshipContract(
+        contracts.data.map(({ record }) => record),
+        childId,
+      ) ? null : (
+        <li className="panel document-card grid content-start gap-2 rounded-card border bg-surface p-6">
+          <h2 className="text-lg font-semibold">Taksit taahhütnamesi</h2>
+          <p className="text-sm text-muted-foreground">Öğrencinin güncel ödeme planı belgesi.</p>
+          <div>
+            <PdfButton
+              type="payment-plan"
+              recordId={childId}
+              label="Ödeme belgesini görüntüle"
+              size="default"
+            />
+          </div>
+        </li>
+      )}
     </ul>
   )
 }

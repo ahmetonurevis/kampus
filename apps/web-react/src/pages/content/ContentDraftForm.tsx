@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm, type Resolver } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import type { z } from 'zod'
 import { COPYRIGHT_DECLARATION } from '@kampus/school-core/content/taxonomy.ts'
 import {
@@ -163,9 +163,8 @@ function DraftEditor({
   // Çözümleyici birleşim girdisini (core) doğrular; form değerleri düz tipte tutulur (yollar tipli
   // kalsın). Ön işlem (`files` → `fileIds`) girdiyi `unknown` yaptığından tip form değerine bağlanır.
   const form: DraftForm = useForm<DraftFormValues, unknown, DraftFormOutput>({
-    resolver: zodResolver(
-      draftFormSchema as z.ZodType<DraftFormOutput, DraftFormValues>,
-    ) as unknown as Resolver<DraftFormValues, unknown, DraftFormOutput>,
+    // TODO(ts): `z.preprocess` girdiyi `unknown` yapar; şema tipi form değerine bağlanır.
+    resolver: zodResolver(draftFormSchema as z.ZodType<DraftFormOutput, DraftFormValues>),
     defaultValues: initial ?? defaultDraft(initialType),
   })
   const conflict = useEditConflict<DraftFormValues>({

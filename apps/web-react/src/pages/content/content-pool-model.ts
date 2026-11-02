@@ -163,7 +163,9 @@ export function coreInputFromForm(values: unknown): unknown {
   if (typeof values !== 'object' || values === null || !('files' in values)) return values
   const { files, ...rest } = values as { files: unknown; content?: unknown }
   if (!Array.isArray(files)) return values
-  const fileIds = files.map((file: Pick<FileUploadItem, 'id'>) => file.id)
+  // `Array.isArray` `any[]` daraltır; öğe tipi atamayla belirlenir.
+  const items: readonly Pick<FileUploadItem, 'id'>[] = files
+  const fileIds = items.map((file) => file.id)
   const content = rest.content as { type?: unknown } | undefined
   return {
     ...rest,

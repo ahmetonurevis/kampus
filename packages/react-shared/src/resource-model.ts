@@ -1,3 +1,4 @@
+import { ApiError } from '@kampus/api-client/errors.ts'
 import type { components, operations } from '@kampus/api-client/schema.d.ts'
 import {
   canManage,
@@ -146,8 +147,8 @@ export type ResourceFileOpenFailure = {
  * ayırt edilmez ve teknik ayrıntı gösterilmez.
  */
 export function resourceFileOpenFailure(error: unknown): ResourceFileOpenFailure {
-  const status = (error as { status?: unknown } | null)?.status
-  const code = (error as { code?: unknown } | null)?.code
+  const status = error instanceof ApiError ? error.status : undefined
+  const code = error instanceof ApiError ? error.code : undefined
   if (status === 404) return { kind: 'gone', message: RESOURCE_FILE_GONE_MESSAGE }
   if (status === 409 && code === 'file_processing')
     return { kind: 'processing', message: RESOURCE_FILE_PROCESSING_MESSAGE }

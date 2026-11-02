@@ -87,3 +87,25 @@ export const API_LEARNING_PAGES: Record<Role, readonly NavigationPage[]> = {
   ogrenci: [],
   veli: [],
 }
+
+// Akademik yönetim (IST-093, DOM-AKD-035): geçmiş günün yoklamasını yalnız yönetici gerekçeyle
+// düzeltir; öğretmen bugünü kendi "Yoklama" sayfasında alır. Modül `academic` kapalıysa menüden ve
+// rotadan kalkar. Vue demosu ve mobil bu sayfayı taşımaz (`apiOnly`).
+export const API_ACADEMIC_PAGES: Record<Role, readonly NavigationPage[]> = {
+  yonetici: [
+    {
+      path: 'yoklama-duzeltme',
+      title: 'Yoklama Düzeltme',
+      icon: 'ClipboardCheck',
+      module: 'academic',
+      view: 'AttendanceCorrection',
+      description: 'Geçmiş günlerin yoklamasını gerekçe yazarak düzeltin.',
+      group: 'YÖNETİM',
+      apiOnly: true,
+    },
+  ],
+  onburo: [],
+  ogretmen: [],
+  ogrenci: [],
+  veli: [],
+}

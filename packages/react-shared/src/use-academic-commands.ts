@@ -2,7 +2,7 @@ import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
 import { collectionKeyPrefix } from './collections.ts'
-import type { CommandHeaders, CommandMessages } from './commands.ts'
+import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 
 type AttendanceBody = NonNullable<
@@ -26,6 +26,22 @@ export interface RecordAttendanceInput {
   classVersion?: number | null
 }
 
+/**
+ * Yönetici yoklama düzeltmesi (DOM-AKD-035): gerekçe ve sınıfın okunan sürümü zorunludur. Gün
+ * geçmiş ya da bugün olabilir; o gün hiç yoklama yoksa aynı istek ilk kaydı yazar.
+ */
+export interface CorrectAttendanceInput {
+  classId: string
+  /** Düzeltilen gün (`YYYY-MM-DD`). */
+  date: string
+  /** Sınıfın bütün aktif öğrencileri; değişmeyen öğrenciye geçmiş satırı düşülmez. */
+  marks: Readonly<Record<string, AttendanceMark>>
+  /** Kırpılmış en az 2 karakter (core `attendanceCorrectionReasonSchema`). */
+  reason: string
+  /** Sınıf kaydının okunan sürümü; `If-Match` zorunludur (başkası değiştirdiyse 409). */
+  classVersion: number
+}
+
 export type RecordGradeInput = GradeBody
 
 export interface UpdateGradeInput {
@@ -40,6 +56,9 @@ export interface UpdateGradeInput {
 /** Başka kullanıcı sınıf kaydını değiştirdi (`If-Match` tutmadı): ekran tazelenir. */
 export const ATTENDANCE_CHANGED_MESSAGE =
   'Sınıf kaydı değişti. Liste güncellendi; yoklamayı kontrol edip yeniden kaydedin.'
+/** Düzeltme sayfasında çakışma: veri tazelenir, kullanıcının işaretleri ve gerekçesi formda kalır. */
+export const ATTENDANCE_CORRECTION_CHANGED_MESSAGE =
+  'Kayıt başkası tarafından değişti. Güncel yoklama yeniden yüklendi; düzeltmeyi kontrol edip yeniden kaydedin.'
 export const GRADE_CHANGED_MESSAGE =
   'Kayıt değişti. Not güncellendi; güncel puanı kontrol edip yeniden deneyin.'
 export const GRADE_NOT_FOUND_MESSAGE = 'Not kaydı bulunamadı.'
@@ -52,6 +71,11 @@ export const ATTENDANCE_MESSAGES = {
   attendance_future_date: 'Gelecek tarih için yoklama alınamaz.',
   attendance_incomplete: 'Tüm öğrencilerin yoklama durumunu seçin.',
   correction_reason_required: 'Yoklama düzeltmesi için gerekçe yazın.',
+} as const satisfies CommandMessages
+
+export const ATTENDANCE_CORRECTION_MESSAGES = {
+  ...ATTENDANCE_MESSAGES,
+  version_conflict: ATTENDANCE_CORRECTION_CHANGED_MESSAGE,
 } as const satisfies CommandMessages
 
 export const GRADE_MESSAGES = {
@@ -75,6 +99,23 @@ export function recordAttendanceRequest(
   return client.POST('/api/v1/classes/{classId}/attendance', {
     params: { path: { classId }, header: headers },
     body: { date, marks: { ...marks }, ...(reason ? { reason } : {}) },
+  })
+}
+
+/**
+ * Düzeltme isteği: aynı uç (`POST /classes/:classId/attendance`), gerekçe her zaman gövdede.
+ * Okunan sürüm yoksa istek hiç atılmaz (`requireIfMatch`); sürümsüz yazma başkasının
+ * düzeltmesini sessizce ezebilirdi.
+ */
+export function correctAttendanceRequest(
+  client: KampusClient,
+  { classId, date, marks, reason }: CorrectAttendanceInput,
+  headers: CommandHeaders,
+) {
+  const ifMatch = requireIfMatch(headers)
+  return client.POST('/api/v1/classes/{classId}/attendance', {
+    params: { path: { classId }, header: { ...headers, 'if-match': ifMatch } },
+    body: { date, marks: { ...marks }, reason },
   })
 }
 
@@ -117,6 +158,21 @@ export function useRecordAttendance(options: CommandOptions = {}) {
     version: (input: RecordAttendanceInput) => input.classVersion,
     invalidates: [collectionKeyPrefix('attendance'), collectionKeyPrefix('classes')],
     messages: ATTENDANCE_MESSAGES,
+    ...(options.onSuccess ? { onSuccess: options.onSuccess } : {}),
+  })
+}
+
+/**
+ * Yönetici yoklama düzeltmesi (DOM-AKD-035, IST-093): gerekçe zorunlu, `If-Match` sınıfın okunan
+ * sürümü. Başarıda ve 409'da yoklama ile sınıf sorguları tazelenir; 409 mesajı
+ * `ATTENDANCE_CORRECTION_CHANGED_MESSAGE`'dır.
+ */
+export function useCorrectAttendance(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: correctAttendanceRequest,
+    version: (input: CorrectAttendanceInput) => input.classVersion,
+    invalidates: [collectionKeyPrefix('attendance'), collectionKeyPrefix('classes')],
+    messages: ATTENDANCE_CORRECTION_MESSAGES,
     ...(options.onSuccess ? { onSuccess: options.onSuccess } : {}),
   })
 }

@@ -4076,6 +4076,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/homework": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ödevler
+         * @description Ödevler son teslim anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `status` (`open`, `closed`, `all`), `dateFrom`/`dateTo` (son teslim anının Europe/Istanbul günü, dahil; ters aralık 400). Her satır okuyanın gördüğü teslimlerin sayılarını taşır (`submissionCounts`). Bilinmeyen parametre 400. Yönetici kurumun bütün ödevlerini, öğretmen derse girdiği sınıfların ve kendi verdiği ödevleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının ödevlerini okur; ön büro okumaz (403). Teslimleri öğrenci yalnız kendisininkini, veli çocuğununkini, öğretmen sınıflarındaki öğrencilerinkini görür (DOM-AKD-074). Görmediği ve başka kurumun ödevi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listHomework"];
+        put?: never;
+        /**
+         * Ödev ver
+         * @description Yeni ödev (core `assignHomework`, DOM-AKD-070). Öğretmen yalnız derse girdiği sınıf ve branşa (403 `homework_scope_denied`); sınıfa birden çok dersle giriyorsa `subjectId` zorunlu (422 `homework_subject_required`). Yönetici `subjectId` verir; ödevin öğretmeni sınıfın o dersine atanmış öğretmendir (yoksa 422 `homework_teacher_unavailable`). `dueDate` saat dilimli ISO 8601 an, UTC saklanır; geçmişte olamaz (422 `homework_due_in_past`). `allowLate` varsayılan `true`. Olmayan sınıf 404, pasif sınıf 422 `record_inactive`. `Idempotency-Key` zorunlu; `If-Match` 400. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`.
+         */
+        post: operations["createHomework"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/homework/{homeworkId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ödev
+         * @description Tek ödev ve okuyanın görebildiği teslimleri (`submissions`, teslim anına göre). Yönetici kurumun bütün ödevlerini, öğretmen derse girdiği sınıfların ve kendi verdiği ödevleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının ödevlerini okur; ön büro okumaz (403). Teslimleri öğrenci yalnız kendisininkini, veli çocuğununkini, öğretmen sınıflarındaki öğrencilerinkini görür (DOM-AKD-074). Görmediği ve başka kurumun ödevi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getHomework"];
+        put?: never;
+        post?: never;
+        /**
+         * Ödevi arşivle
+         * @description Ödevi arşivler (core `archiveHomework`, DOM-AKD-071); kayıt silinmez. Teslim alınmış ödev arşivlenmez: 409 `homework_has_submissions` (teslim, puan ve geri bildirim korunur). `If-Match` ödevin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Ödevi gören başka öğretmen 403 `homework_not_owner`, görmeyen ve başka kurumun ödevi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
+         */
+        delete: operations["archiveHomework"];
+        options?: never;
+        head?: never;
+        /**
+         * Ödevi düzenle
+         * @description Başlık, açıklama, son teslim anı ve geç teslim (core `updateHomework`, DOM-AKD-071); sınıf ve ders değişmez (gövdede 400). Yeni son teslim anı geçmişte olamaz (422 `homework_due_in_past`). `If-Match` ödevin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Ödevi gören başka öğretmen 403 `homework_not_owner`, görmeyen ve başka kurumun ödevi 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
+         */
+        patch: operations["updateHomework"];
+        trace?: never;
+    };
+    "/api/v1/homework/{homeworkId}/submissions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ödevi teslim et
+         * @description Öğrenci kendi sınıfının ödevini metin (`note`) ve/veya dosyayla (`fileIds`, en çok 5) teslim eder (core `submitHomework`, DOM-AKD-072). Öğrenci oturumdan gelir; başka sınıfın ödevi ve olmayan ödev 404, bağlantısız öğrenci 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Son teslim anı geçmişse ödev geç teslime açıksa `late: true` ile kabul edilir, değilse 422 `homework_closed`. İlk teslim 201 + `Location`, puanlanmamış teslimin yenilenmesi 200; puanlanmış teslim 409 `submission_graded`. Dosyalar `POST /files` (amaç `submission`) ile yüklenir ve aynı işlemde teslime bağlanır (ADR 0003): başkasının, başka kurumun ya da olmayan dosyası 422 `file_unavailable`, denetimi bitmemiş 422 `file_not_ready`, başka kayda bağlı 409 `file_already_attached`; hata olursa hiçbir kayıt değişmez. `Idempotency-Key` zorunlu; `If-Match` 400. Roller: `ogrenci`.
+         */
+        post: operations["submitHomework"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/homework/{homeworkId}/submissions/{submissionId}/grade": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Teslimi değerlendir
+         * @description Ödevin öğretmeni teslime 0–100 tam sayı puan (`score`) ve geri bildirim (`feedback`, 2–2000 karakter) yazar (core `gradeSubmission`, DOM-AKD-073); yeniden değerlendirme ikisini günceller. Puan resmî not değildir (DOM-AKD-060). Aynı işlemde öğrenciye ve 18 yaş altında veliye `homework_graded` bildirimi yazılır (öğrenme ya da iletişim modülü kapalıysa yazılmaz). Ödevi gören başka öğretmen 403 `homework_not_owner`; görmeyen, başka kurumun ya da başka ödevin teslimi 404. `If-Match` teslimin `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. `Idempotency-Key` isteğe bağlı. Roller: `ogretmen`.
+         */
+        post: operations["gradeHomeworkSubmission"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -5122,7 +5214,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -6596,6 +6688,113 @@ export interface components {
             /** @description Yoklama, ödev takibi ve soru süresi uyumunun ortalaması; oran yoksa `null` */
             performance: number | null;
         };
+        HomeworkInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Ödevin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            description: string;
+            /** @description Son teslim anı, ISO 8601 UTC */
+            dueDate: string;
+            /** @description Son teslim anından sonra teslim geç işaretiyle kabul edilir mi */
+            allowLate: boolean;
+            /**
+             * @description Türetilir: son teslim anı geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+        };
+        /** @description Okuyanın görebildiği teslimlerin sayıları (öğrenci ve velide yalnız kendi teslimi) */
+        HomeworkSubmissionCountsInput: {
+            submitted: number;
+            graded: number;
+            late: number;
+        };
+        HomeworkSubmissionInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            homeworkId: string;
+            studentId: string;
+            note: string;
+            /** @description Teslime bağlı dosyalar (`GET /files/:fileId`) */
+            fileIds: string[];
+            /** @description İlk dosyanın özgün adı; eski kayıtlarda tek dosya adı */
+            fileName: string;
+            /** @description ISO 8601 UTC */
+            submittedAt: string;
+            /** @description Son teslim anından sonra mı teslim edildi */
+            late: boolean;
+            /** @description 0–100 puan; resmî not değildir */
+            score: number | null;
+            feedback: string;
+            gradedAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+        };
+        HomeworkListItemInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Ödevin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            description: string;
+            /** @description Son teslim anı, ISO 8601 UTC */
+            dueDate: string;
+            /** @description Son teslim anından sonra teslim geç işaretiyle kabul edilir mi */
+            allowLate: boolean;
+            /**
+             * @description Türetilir: son teslim anı geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            submissionCounts: components["schemas"]["HomeworkSubmissionCountsInput"];
+        };
+        HomeworkDetailInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Ödevin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            description: string;
+            /** @description Son teslim anı, ISO 8601 UTC */
+            dueDate: string;
+            /** @description Son teslim anından sonra teslim geç işaretiyle kabul edilir mi */
+            allowLate: boolean;
+            /**
+             * @description Türetilir: son teslim anı geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            submissionCounts: components["schemas"]["HomeworkSubmissionCountsInput"];
+            /** @description Okuyanın görebildiği teslimler, teslim anına göre */
+            submissions: components["schemas"]["HomeworkSubmissionInput"][];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -7558,7 +7757,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -9030,6 +9229,113 @@ export interface components {
             slaRate: number;
             /** @description Yoklama, ödev takibi ve soru süresi uyumunun ortalaması; oran yoksa `null` */
             performance: number | null;
+        };
+        Homework: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Ödevin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            description: string;
+            /** @description Son teslim anı, ISO 8601 UTC */
+            dueDate: string;
+            /** @description Son teslim anından sonra teslim geç işaretiyle kabul edilir mi */
+            allowLate: boolean;
+            /**
+             * @description Türetilir: son teslim anı geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+        };
+        /** @description Okuyanın görebildiği teslimlerin sayıları (öğrenci ve velide yalnız kendi teslimi) */
+        HomeworkSubmissionCounts: {
+            submitted: number;
+            graded: number;
+            late: number;
+        };
+        HomeworkSubmission: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            homeworkId: string;
+            studentId: string;
+            note: string;
+            /** @description Teslime bağlı dosyalar (`GET /files/:fileId`) */
+            fileIds: string[];
+            /** @description İlk dosyanın özgün adı; eski kayıtlarda tek dosya adı */
+            fileName: string;
+            /** @description ISO 8601 UTC */
+            submittedAt: string;
+            /** @description Son teslim anından sonra mı teslim edildi */
+            late: boolean;
+            /** @description 0–100 puan; resmî not değildir */
+            score: number | null;
+            feedback: string;
+            gradedAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+        };
+        HomeworkListItem: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Ödevin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            description: string;
+            /** @description Son teslim anı, ISO 8601 UTC */
+            dueDate: string;
+            /** @description Son teslim anından sonra teslim geç işaretiyle kabul edilir mi */
+            allowLate: boolean;
+            /**
+             * @description Türetilir: son teslim anı geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            submissionCounts: components["schemas"]["HomeworkSubmissionCounts"];
+        };
+        HomeworkDetail: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            classId: string;
+            subjectId: string;
+            /** @description Dersin adı (kayıt anındaki) */
+            subject: string;
+            /** @description Ödevin öğretmeni (sınıfın o dersine atanmış öğretmen) */
+            teacherId: string;
+            title: string;
+            description: string;
+            /** @description Son teslim anı, ISO 8601 UTC */
+            dueDate: string;
+            /** @description Son teslim anından sonra teslim geç işaretiyle kabul edilir mi */
+            allowLate: boolean;
+            /**
+             * @description Türetilir: son teslim anı geçtiyse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            createdAt: string | null;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            submissionCounts: components["schemas"]["HomeworkSubmissionCounts"];
+            /** @description Okuyanın görebildiği teslimler, teslim anına göre */
+            submissions: components["schemas"]["HomeworkSubmission"][];
         };
     };
     responses: never;
@@ -34357,6 +34663,729 @@ export interface operations {
             };
             /** @description Default Response */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listHomework: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Sınıf */
+                classId?: string;
+                /** @description Ders */
+                subjectId?: string;
+                /** @description `open` son teslim anı gelmemiş, `closed` geçmiş ödevler; varsayılan `all` */
+                status?: "all" | "open" | "closed";
+                /** @description Son teslim anının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Son teslim anının Europe/Istanbul günü için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HomeworkListItem"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createHomework: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    classId: string;
+                    subjectId?: string;
+                    title: string;
+                    description: string;
+                    /** Format: date-time */
+                    dueDate: string;
+                    allowLate?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Homework"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getHomework: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Ödev kimliği */
+                homeworkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HomeworkDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveHomework: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Ödev kimliği */
+                homeworkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Homework"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateHomework: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Ödev kimliği */
+                homeworkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    description?: string;
+                    /** Format: date-time */
+                    dueDate?: string;
+                    allowLate?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Homework"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitHomework: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Ödev kimliği */
+                homeworkId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    note?: string;
+                    fileIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HomeworkSubmission"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HomeworkSubmission"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    gradeHomeworkSubmission: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Ödev kimliği */
+                homeworkId: string;
+                /** @description Teslim kimliği */
+                submissionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    score: number;
+                    feedback: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HomeworkSubmission"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

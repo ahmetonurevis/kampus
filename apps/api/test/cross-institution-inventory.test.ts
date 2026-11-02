@@ -67,6 +67,10 @@ const LESSON_WRITE = kayit(
   'lessons.test.ts',
   'başka kurumun dersi düzenleme, yedek ve iptalde olmayan dersle aynı 404',
 )
+const HOMEWORK = kayit(
+  'homework.test.ts',
+  'başka kurumun ödevi ve teslimi olmayan kimlikle aynı 404, B değişmez',
+)
 const RESOURCE_READ = kayit('resources.test.ts', 'başka kurumun kaynağı 404 ve listede yok')
 const RESOURCE_WRITE = kayit(
   'resource-commands.test.ts',
@@ -412,6 +416,15 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'PATCH /api/v1/lessons/:lessonId': LESSON_WRITE,
   'POST /api/v1/lessons/:lessonId/substitute': LESSON_WRITE,
   'POST /api/v1/lessons/:lessonId/cancel': LESSON_WRITE,
+
+  // --- Ödev -----------------------------------------------------------------------------------
+  'GET /api/v1/homework': HOMEWORK,
+  'GET /api/v1/homework/:homeworkId': HOMEWORK,
+  'POST /api/v1/homework': govde('homework.test.ts', 'gövdedeki institutionId 400'),
+  'PATCH /api/v1/homework/:homeworkId': HOMEWORK,
+  'DELETE /api/v1/homework/:homeworkId': HOMEWORK,
+  'POST /api/v1/homework/:homeworkId/submissions': HOMEWORK,
+  'POST /api/v1/homework/:homeworkId/submissions/:submissionId/grade': HOMEWORK,
 
   // --- Dosya ----------------------------------------------------------------------------------
   'GET /api/v1/files/:fileId': kayit('files.test.ts', 'başka kurum ve başkası 404'),

@@ -118,6 +118,10 @@ export const REDACTED_PATHS = [
   // koleksiyonlarla ortak addır; aday kaydı loglanırsa `notes` dizisi bütünüyle gizlenir.
   'notes',
   '*.notes',
+  // kvkk: Ç — öğretmenin ödev teslimine geri bildirimi (DOM-AKD-073); teslim metni `note`
+  // yukarıda.
+  'feedback',
+  '*.feedback',
   '*.cookie',
   '*.authorization',
 ]

@@ -2,6 +2,7 @@ import { readFile } from 'node:fs/promises'
 
 import type { Download, Page } from '@playwright/test'
 
+import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
@@ -19,6 +20,20 @@ const tableOf = (page: Page, name: string) => page.getByRole('table', { name })
 /** Başlık satırı hariç gövde satırları. */
 const bodyRows = (page: Page, name: string) => tableOf(page, name).locator('tbody tr')
 const resultCount = (page: Page) => page.locator('.result-count')
+
+/** Mobil kayıt kartları; üstteki özet kartları (`.stat-card`) sayılmaz. */
+const recordCards = (page: Page) => page.locator('article:not(.stat-card)')
+const statValue = (page: Page, name: string) =>
+  page.getByRole('article', { name, exact: true }).locator('.stat-value')
+
+/** Aktif kayıt sayısı: ekranın kullandığı sunucu sayımıyla aynı sorgu, testte ayrıca okunur. */
+async function activeTotal(client: ApiClient, collection: string): Promise<number> {
+  const result = await client.get(
+    `/api/v1/collections/${collection}/counts?groupBy=isActive&isActive=true`,
+  )
+  expect(result.status, `${collection} sayımı`).toBe(200)
+  return (result.body as { meta: { total: number } }).meta.total
+}
 
 async function readCsv(download: Download): Promise<string[][]> {
   const path = await download.path()
@@ -54,6 +69,26 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await expect(page.getByText('24 kayıt · 5–12. sınıf düzeyleri')).toBeVisible()
     await expect(bodyRows(page, CLASS_TABLE)).toHaveCount(8)
     await expect(resultCount(page)).toContainText('1–8 / 24 kayıt')
+  })
+
+  test('özet kartları aktif kampüs, sınıf ve öğrenci sayısını sunucu sayımıyla gösterir', async ({
+    page,
+    api,
+  }) => {
+    const admin = await api('yonetici')
+    const students = await activeTotal(admin, 'students')
+    await page.goto(CLASSES_URL)
+    await expect(page.getByRole('region', { name: 'Kampüs ve sınıf özeti' })).toBeVisible()
+    await expect(statValue(page, 'Aktif kampüs')).toHaveText('3')
+    await expect(statValue(page, 'Aktif sınıf')).toHaveText('24')
+    await expect(statValue(page, 'Aktif öğrenci')).toHaveText(students.toLocaleString('tr-TR'))
+    expect(students).toBeGreaterThan(0)
+
+    // Kartlar sayfanın süzgeçlerinden bağımsız genel toplamdır (Vue ile aynı).
+    await page.getByLabel('Tabloda ara').fill('7-A')
+    await expect(resultCount(page)).not.toContainText('/ 24 kayıt')
+    await expect(statValue(page, 'Aktif sınıf')).toHaveText('24')
+    await expectNoHorizontalOverflow(page)
   })
 
   test('arama sunucuda süzer ve URL parametresine yazılır', async ({ page }) => {
@@ -286,8 +321,8 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
   test('390 px genişlikte yatay taşma yok, kart ve ayrıntılar açılır', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(CLASSES_URL)
-    await expect(page.getByRole('article').first()).toBeVisible()
-    await expect(page.getByRole('article')).toHaveCount(8)
+    await expect(recordCards(page).first()).toBeVisible()
+    await expect(recordCards(page)).toHaveCount(8)
     await expectNoHorizontalOverflow(page)
 
     await page.getByText('Diğer bilgiler').first().click()
@@ -296,7 +331,7 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await page.getByRole('button', { name: 'Filtreler' }).click()
     await expect(page.getByLabel('Kampüs filtresi')).toBeVisible()
     await page.getByLabel('Kampüs filtresi').selectOption({ label: KADIKOY })
-    await expect(page.getByRole('article')).toHaveCount(8)
+    await expect(recordCards(page)).toHaveCount(8)
     await expectNoHorizontalOverflow(page)
   })
 })
@@ -321,6 +356,20 @@ test.describe('yönetici: Eğitim Kadrosu', () => {
     await header.getByRole('button').click()
     await expect(header).toHaveAttribute('aria-sort', 'descending')
     await expect(page).toHaveURL(/[?&]yon=azalan/)
+  })
+
+  test('özet kartları aktif kadro, ders branşı ve öğrenci sayısını sunucu sayımıyla gösterir', async ({
+    page,
+    api,
+  }) => {
+    const admin = await api('yonetici')
+    const students = await activeTotal(admin, 'students')
+    await page.goto(STAFF_URL)
+    await expect(page.getByRole('region', { name: 'Eğitim kadrosu özeti' })).toBeVisible()
+    await expect(statValue(page, 'Aktif eğitim kadrosu')).toHaveText('48')
+    await expect(statValue(page, 'Ders branşı')).toHaveText('16')
+    await expect(statValue(page, 'Aktif öğrenci')).toHaveText(students.toLocaleString('tr-TR'))
+    await expectNoHorizontalOverflow(page)
   })
 
   test('Arşiv sekmesi öğretmenlerde isActive=false ister ve Aktif kayıtlara dönülür', async ({
@@ -432,7 +481,7 @@ test.describe('yönetici: Eğitim Kadrosu', () => {
   test('390 px genişlikte yatay taşma yok ve filtreler panelde', async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 })
     await page.goto(STAFF_URL)
-    await expect(page.getByRole('article')).toHaveCount(8)
+    await expect(recordCards(page)).toHaveCount(8)
     await expectNoHorizontalOverflow(page)
 
     await page.getByText('Diğer bilgiler').first().click()
@@ -440,7 +489,7 @@ test.describe('yönetici: Eğitim Kadrosu', () => {
 
     await page.getByRole('button', { name: 'Filtreler' }).click()
     await page.getByLabel('Branş filtresi').selectOption({ label: 'Matematik' })
-    await expect(page.getByRole('article')).toHaveCount(3)
+    await expect(recordCards(page)).toHaveCount(3)
     await expectNoHorizontalOverflow(page)
   })
 })

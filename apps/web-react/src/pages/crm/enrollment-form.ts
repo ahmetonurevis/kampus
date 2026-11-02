@@ -66,6 +66,7 @@ const SERVER_FIELDS: Readonly<Record<string, { field: FormField; step: number }>
   'identity.number': { field: 'identityNumber', step: 1 },
   'studentContact.phone': { field: 'studentPhone', step: 1 },
   'studentContact.email': { field: 'studentEmail', step: 1 },
+  scholarshipProgramId: { field: 'scholarshipProgramId', step: 2 },
 }
 
 /** Veli kuralı reddinde sunucu iletisi yerine formun yönlendiren iletisi (DOM-KAY-012). */

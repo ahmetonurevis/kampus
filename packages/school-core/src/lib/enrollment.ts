@@ -612,6 +612,8 @@ export function enrollmentFormSchema(
        * yalnız bu işaretliyken gider (yoksa 422 `class_campus_mismatch`).
        */
       confirmOtherCampus: z.boolean(),
+      /** Atanacak burs programı (yalnız yönetici, DOM-FIN-025); boşsa burs yoktur. */
+      scholarshipProgramId: z.string().optional(),
     })
     .superRefine((value, context) => {
       const issue = (path: string, message: string) =>
@@ -691,6 +693,7 @@ export function enrollmentFormToBody(
     discounts: values.discounts,
     extras: values.extras,
     ...(values.confirmOtherCampus ? { allowOtherCampus: true } : {}),
+    ...(values.scholarshipProgramId ? { scholarshipProgramId: values.scholarshipProgramId } : {}),
     identity: {
       kind: values.identityKind,
       number: values.identityNumber,

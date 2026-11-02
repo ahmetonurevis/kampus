@@ -244,6 +244,113 @@ test.describe('Kayıt İşlemleri', () => {
     await expect(page.getByRole('button', { name: 'Kesin kayda dönüştür' })).toBeDisabled()
   })
 
+  test('DOM-FIN-025: yönetici kesin kayıtta burs seçer; önizlemede net düşer, atama listeye yazılır; ön büroya seçenek çıkmaz', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const name = 'Burslu Aday'
+    const school = await tenant({
+      roles: ['yonetici', 'onburo'],
+      records: [prospect('e2e-kyt-burs', name), prospect('e2e-kyt-burs2', 'Ön Büro Adayı')],
+    })
+    const admin = await api(school.user('yonetici'))
+    const post = async (url: string, data: unknown, version?: number) => {
+      const response = await admin.context.post(url, {
+        data,
+        headers: version === undefined ? {} : { 'if-match': `"${String(version)}"` },
+      })
+      expect(response.status(), url).toBeLessThan(300)
+      return ((await response.json()) as { data: { id: string; version: number } }).data
+    }
+    const academicYear = new Date().getFullYear()
+    const draft = await post('/api/v1/fee-tariffs', {
+      academicYear,
+      items: [
+        {
+          kind: 'tuition',
+          level: null,
+          amountCents: 10_000_000,
+          unit: 'year',
+          vatBasisPoints: 1000,
+          vatEffectiveDate: `${String(academicYear)}-01-01`,
+          announcedAmountCents: 10_000_000,
+        },
+      ],
+    })
+    await post(
+      `/api/v1/fee-tariffs/${draft.id}/publish`,
+      { announcedDate: `${String(academicYear)}-01-02`, mebbisRecordedDate: null },
+      draft.version,
+    )
+    const program = await post('/api/v1/finance/scholarship-programs', {
+      academicYear,
+      name: 'Başarı Bursu',
+      conditions: 'Sınav puanı 90 ve üstü.',
+      terminationConditions: 'Disiplin cezası alan öğrencinin bursu kesilir.',
+      durationNote: 'Bir eğitim yılı',
+      percentBasisPoints: 6000,
+      capacity: 2,
+    })
+    await post(
+      `/api/v1/finance/scholarship-programs/${program.id}/notify`,
+      { notifiedDate: `${String(academicYear)}-01-03` },
+      program.version,
+    )
+
+    // Ön büro: burs seçeneği yok (DOM-FIN-052).
+    await loginAs(school.user('onburo'))
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-burs2`)
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    const toFeeStep = async (identity: string) => {
+      await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+      await proceed.click()
+      await page.getByLabel('Kimlik numarası').fill(identity)
+      await page.getByLabel('Doğum tarihi').fill('2013-03-01')
+      await page.getByLabel('Veli adı soyadı').fill('Test Kayıt Velisi')
+      await page.getByLabel('Veli telefonu').fill('05559990088')
+      await proceed.click()
+    }
+    await toFeeStep('10000000146')
+    await expect(page.getByLabel('Taksit sayısı')).toBeVisible()
+    await expect(page.getByLabel('Burs programı (isteğe bağlı)')).toHaveCount(0)
+
+    // Yönetici: %60 burs indirim tavanına girmez, net 40.000 ₺ olur.
+    await page.context().clearCookies()
+    await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/kayit-islemleri?aday=e2e-kyt-burs')
+    await toFeeStep('10000000146')
+    await page.getByLabel('Taksit sayısı').selectOption('2')
+    await page.getByLabel('Burs programı (isteğe bağlı)').selectOption(program.id)
+    await expect(page.getByText(/Burs · Başarı Bursu/)).toBeVisible()
+    await expect(page.getByText(/-60\.000,00/)).toBeVisible()
+    await proceed.click()
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+    await expect(toast(page, 'Kesin kayıt, sözleşme ve taksit planı oluşturuldu.')).toBeVisible()
+
+    const saved = await prospectOf(admin, 'e2e-kyt-burs')
+    const invoices = await list<{ amount: number }>(
+      admin,
+      `invoices?pageSize=100&studentId=${String(saved.record.studentId)}`,
+    )
+    expect(invoices.reduce((sum, row) => sum + row.record.amount, 0)).toBe(4_000_000)
+
+    // Atama finans ekranındaki listede; MEBBİS günü bir kez işlenir.
+    await page.goto('/yonetici/finans?gorunum=burs')
+    const awards = page.getByRole('table', { name: 'Burs atamaları' })
+    await expect(awards).toContainText(name)
+    await expect(awards).toContainText('İşlenmedi')
+    await expect(page.getByRole('table', { name: 'Burs programları' })).toContainText('1 / 2')
+    await page.getByRole('button', { name: `${name} bursunun MEBBİS gününü işle` }).click()
+    await page
+      .getByRole('dialog', { name: "MEBBİS'e işlendi" })
+      .getByRole('button', { name: 'Kaydet' })
+      .click()
+    await expect(toast(page, "MEBBİS'e işlendiği kaydedildi.")).toBeVisible()
+    await expect(awards).not.toContainText('İşlenmedi')
+  })
+
   test('class_campus_mismatch: başka kampüsün sınıfı "tüm kampüsler" ve açık onay kutusuyla seçilir; onaysız sonraki adıma geçilmez', async ({
     page,
     loginAs,

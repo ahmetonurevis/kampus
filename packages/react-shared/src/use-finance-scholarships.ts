@@ -24,15 +24,21 @@ const versioned = (headers: CommandHeaders) => ({
   'if-match': requireIfMatch(headers),
 })
 
-export function useScholarshipPrograms(query: { academicYear?: number; pageSize?: number } = {}) {
+export function useScholarshipPrograms(
+  query: { academicYear?: number; page?: number; pageSize?: number } = {},
+  options: { enabled?: boolean } = {},
+) {
   return useApiQuery({
     key: ['scholarships', 'programs', query],
+    enabled: options.enabled ?? true,
     request: (client, signal) =>
       client.GET('/api/v1/finance/scholarship-programs', { params: { query }, signal }),
   })
 }
 
-export function useScholarshipAwards(query: { programId?: string; pageSize?: number } = {}) {
+export function useScholarshipAwards(
+  query: { programId?: string; page?: number; pageSize?: number } = {},
+) {
   return useApiQuery({
     key: ['scholarships', 'awards', query],
     request: (client, signal) =>

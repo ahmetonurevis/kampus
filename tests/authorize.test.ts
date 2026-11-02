@@ -91,6 +91,7 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'prospect.trial': ['yonetici', 'onburo'],
     'prospect.trialResult': ['ogretmen'],
     'prospect.enroll': ['yonetici', 'onburo'],
+    'video.progress': ['ogrenci'],
     'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
     'notification.read_all': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
     'notice.publish': ['yonetici'],

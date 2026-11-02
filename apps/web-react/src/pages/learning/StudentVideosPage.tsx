@@ -14,6 +14,7 @@ import { VideoPanel } from './VideoPanel.tsx'
 import {
   progressByVideo,
   progressText,
+  resumeByVideo,
   videoRow,
   watchAction,
   type VideoProgress,
@@ -28,8 +29,8 @@ const SEARCH_KEYS = ['title', 'subject', 'topic', 'teacher'] as const
  * Ders Videoları (öğrenci, Vue `Learning.vue` `videolar`): öğrencinin düzeyindeki ders videoları,
  * ders filtresi, başlık/konu araması ve oynatıcı penceresi (`?video=<kimlik>`). Kapsamı sunucu
  * uygular: öğrenci yalnız kendi düzeyinin videolarını ve kendi izleme ilerlemesini okur. İlerleme
- * yüzdesi kayıttan okunur, saklanmaz. Yalnız okuma.
- * TODO(api-video-progress): izleme ilerlemesini yazan uç yok; oynatırken ilerleme kaydedilmez.
+ * yüzdesi kayıttan okunur. Oynatıcı kaldığı yerden başlar ve ilerlemeyi API'ye yazar
+ * (`LessonPlayer`, DOM-KYN-005); yazma `videoProgress` okumasını tazeler, liste yeni yüzdeyi gösterir.
  */
 export function StudentVideosPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -52,6 +53,10 @@ export function StudentVideosPage({ page }: { page: NavPage }) {
   }, [pending, error, videos.data, progress.data, teachers.data])
 
   const selected = rows?.find((row) => row.id === panel.selectedId)
+  const resume = useMemo(
+    () => resumeByVideo((progress.data ?? NONE).map((item) => item.record)),
+    [progress.data],
+  )
 
   return (
     <>
@@ -80,9 +85,10 @@ export function StudentVideosPage({ page }: { page: NavPage }) {
           }
         </CollectionList>
       )}
+      {/* İlerleme okunana kadar açılmaz: oynatıcı kayıtlı konumdan başlayabilsin. */}
       <VideoPanel
-        videoId={panel.selectedId}
-        progress={selected?.progress ?? 0}
+        videoId={rows === undefined && !error ? '' : panel.selectedId}
+        resume={resume.get(panel.selectedId) ?? { progress: 0 }}
         teacher={selected?.teacher ?? '—'}
         onClose={panel.close}
       />

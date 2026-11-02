@@ -107,6 +107,16 @@ interface OperationBase<R> {
    */
   auditAction?: string
   /**
+   * Denetim satırı yalnız kaydın ilk yazımında bırakılır; aynı kaydın sonraki güncellemelerinde
+   * bırakılmaz. Bu, "bütün yazmalar ve audit_log tek transaction'da" kuralının belgelenmiş dar
+   * istisnasıdır (docs/domain/kaynak-platformu.md DOM-KYN-005): her 15 sn'de bir yazılan ve tek
+   * başına denetim değeri taşımayan teknik ilerleme kaydı denetim tablosunu şişirmesin. Yalnız
+   * `FIRST_WRITE_AUDIT_ACTIONS` içindeki eylemler kullanabilir (başkası 500 programlama hatasıdır);
+   * kullanıcı kararı veya veri değişikliği taşıyan işlemde kullanılmaz. Verilmezse her yazma
+   * denetlenir.
+   */
+  auditPolicy?: 'firstWriteOnly'
+  /**
    * İşlemin okuduğu ve yazabileceği koleksiyonlar; yüklenmeyen koleksiyona erişim 500'dür.
    * Core `audit` her zaman boş verilir ve yazılmaz; listede olması gerekmez.
    */
@@ -168,6 +178,9 @@ function programmingError(what: string, cause?: unknown): AppError {
     cause: new Error(what, { cause }),
   })
 }
+
+/** `auditPolicy: 'firstWriteOnly'` kullanabilen eylemler; yeni giriş belgelenmiş karar ister. */
+const FIRST_WRITE_AUDIT_ACTIONS: ReadonlySet<string> = new Set(['video.progress'])
 
 const defaultMakeId: MakeId = (prefix) => `${prefix}-${randomUUID()}`
 
@@ -449,6 +462,12 @@ async function applyOperation<R>(
   collections: readonly CollectionName[],
   tools: OperationTools,
 ): Promise<OperationResult<R>> {
+  if (request.auditPolicy !== undefined && !FIRST_WRITE_AUDIT_ACTIONS.has(request.action))
+    throw programmingError(`auditPolicy not allowed for action: ${request.action}`)
+  // TODO(perf-video-progress): her video ilerleme isteği (öğrenci başına 15 sn'de bir) kurumun tek
+  // danışma kilidini alır; 300 eşzamanlı izleyici ≈ 20 işlem/sn ile yoklama, ödeme gibi bütün
+  // yazmalarla aynı kuyruğa girer (ölçülmedi). Çözüm adayı: tek kayıt upsert'i için kurum yerine
+  // kayıt (öğrenci/video) düzeyinde kilit ya da kilitsiz yol; ölçüm sonrası karar.
   // Yüklemeden önce: aynı kurumun eşzamanlı işlemi bu görüntüyü bayatlatamaz.
   await lockInstitution(tx, ctx.institutionId)
   const { rows, partial } = await loadOperationRecords(tx, ctx, collections, request.loadScope)
@@ -502,7 +521,10 @@ async function applyOperation<R>(
   const { writes, fields } = difference(collections, before, target, partial)
   const changes = await writeRecords(tx, ctx.institutionId, writes, ctx.now)
   const first = changes[0]
-  if (first) {
+  // `firstWriteOnly`: kayıt bu işlemde açılmadıysa (yalnız güncelleme) denetim satırı yazılmaz.
+  const audited =
+    request.auditPolicy !== 'firstWriteOnly' || changes.some((c) => c.kind === 'insert')
+  if (first && audited) {
     // Yeni kaydın kimliği işlem çalışınca belli olur (ör. oluşturulan hedef).
     const entity = typeof request.entity === 'function' ? request.entity(result) : request.entity
     await tx.insert(auditLog).values({

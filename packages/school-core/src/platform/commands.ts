@@ -147,6 +147,9 @@ export const PLATFORM_OPERATION_COMMANDS = {
   'homework.archive': spec('learning', [...SCOPE, 'homework', 'submissions']),
   'homework.submit': spec('learning', [...SCOPE, 'homework', 'submissions']),
   'homework.grade': spec('learning', [...SCOPE, 'homework', 'submissions']),
+  // Video izleme ilerlemesi (`lib/video-progress.ts`; DOM-KYN-005). API yalnız öğrencinin kendi
+  // satırını, öğrenci kaydını ve sınıfını yükler.
+  'video.progress': spec('learning', [...SCOPE, 'videos', 'videoProgress']),
   // Dijital veli onayı ve izin formu (`lib/permission-forms.ts`; IST-067, DOM-ILT-036…039). API
   // form açarken formları ve kararları hiç, diğer işlemlerde yalnız hedef formu ve kararlarını
   // yükler.

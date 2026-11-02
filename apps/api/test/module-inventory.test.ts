@@ -208,6 +208,7 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'DELETE /api/v1/homework/:homeworkId': ['learning'],
   'POST /api/v1/homework/:homeworkId/submissions': ['learning'],
   'POST /api/v1/homework/:homeworkId/submissions/:submissionId/grade': ['learning'],
+  'POST /api/v1/videos/:videoId/progress': ['learning'],
   // Quiz hazırlama, çözme ve sunucu puanlaması (IST-095; DOM-AKD-075…079).
   'GET /api/v1/quizzes': ['learning'],
   'GET /api/v1/quizzes/:quizId': ['learning'],

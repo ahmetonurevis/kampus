@@ -431,6 +431,12 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'POST /api/v1/homework/:homeworkId/submissions': HOMEWORK,
   'POST /api/v1/homework/:homeworkId/submissions/:submissionId/grade': HOMEWORK,
 
+  // --- Video izleme ilerlemesi ----------------------------------------------------------------
+  'POST /api/v1/videos/:videoId/progress': kayit(
+    'video-progress.test.ts',
+    'DOM-KYN-005: düzeyi dışındaki, olmayan ve başka kurumun videosu 404, kayıt değişmez',
+  ),
+
   // --- Quiz -----------------------------------------------------------------------------------
   'GET /api/v1/quizzes': QUIZ,
   'GET /api/v1/quizzes/:quizId': QUIZ,

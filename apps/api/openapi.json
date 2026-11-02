@@ -75523,6 +75523,197 @@
         }
       }
     },
+    "/api/v1/videos/{videoId}/progress": {
+      "post": {
+        "operationId": "recordVideoProgress",
+        "summary": "Video izleme ilerlemesini yaz",
+        "tags": [
+          "videos"
+        ],
+        "description": "Öğrenci kendi video izleme ilerlemesini yazar (core `recordVideoProgress`, DOM-KYN-005). Öğrenci oturumdan gelir; gövdede oynatıcının son konumu (`positionSeconds`) ve video süresi (`durationSeconds`, saniye) bulunur. Yüzde sunucuda hesaplanır, 0–100'e sıkıştırılır ve geri gitmez (izlenen en yüksek değer); son konum her istekte güncellenir ve konum süreyi aşamaz. İlk istek kaydı açar, sonrakiler günceller; aynı istek tekrarlanınca kayıt değişmez. Öğrencinin düzeyi dışındaki video, olmayan video ve başka kurumun videosu 404 `not_found`, bağlantısız öğrenci 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Okuma `GET /collections/videoProgress`'tedir (öğrenci yalnız kendi kaydını, veli çocuğununkini, öğretmen sınıflarındakini görür). Sık çağrılır (istemci 15 sn'de bir): denetim satırı yalnız ilk kayıtta yazılır, sonraki güncellemelerde yazılmaz. Kullanıcı başına dakikada 12 istek; aşılırsa 429 `rate_limited`. `Idempotency-Key` isteğe bağlıdır, `If-Match` kabul edilmez. Modül `learning`. Roller: `ogrenci`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "positionSeconds": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 86400
+                  },
+                  "durationSeconds": {
+                    "type": "number",
+                    "minimum": 1,
+                    "maximum": 86400
+                  }
+                },
+                "required": [
+                  "positionSeconds",
+                  "durationSeconds"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "videoId",
+            "required": true,
+            "description": "Video kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "videoId": {
+                          "type": "string"
+                        },
+                        "progress": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 100,
+                          "description": "İzlenen en yüksek yüzde (geri gitmez)"
+                        },
+                        "positionSeconds": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Son konum (saniye)"
+                        },
+                        "durationSeconds": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Son bildirilen video süresi (saniye)"
+                        }
+                      },
+                      "required": [
+                        "videoId",
+                        "progress",
+                        "positionSeconds",
+                        "durationSeconds"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/files": {
       "post": {
         "operationId": "uploadFile",

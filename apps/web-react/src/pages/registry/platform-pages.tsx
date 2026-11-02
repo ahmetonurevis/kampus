@@ -56,6 +56,9 @@ const StudentGradesPage = lazy(async () => ({
 const StudentAttendancePage = lazy(async () => ({
   default: (await import('../academic/StudentAttendancePage.tsx')).StudentAttendancePage,
 }))
+const ParentMaterialsPage = lazy(async () => ({
+  default: (await import('../learning/ParentMaterialsPage.tsx')).ParentMaterialsPage,
+}))
 const ParentTrackingPage = lazy(async () => ({
   default: (await import('../academic/ParentTrackingPage.tsx')).ParentTrackingPage,
 }))
@@ -221,6 +224,8 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
       return <StudentVideosPage page={page} />
     case 'ogrenci/materyaller':
       return <StudentMaterialsPage page={page} />
+    case 'veli/materyaller':
+      return <ParentMaterialsPage page={page} />
     case 'ogrenci/soru-sor':
       return <QuestionsPage page={page} audience="student" />
     case 'ogretmen/sorular':

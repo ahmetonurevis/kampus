@@ -6,16 +6,13 @@ import { useActiveInstitutionId } from '@kampus/react-shared/use-active-institut
 import { documentData } from '@kampus/school-core/lib/document-data.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { documentErrorMessage, loadDocumentState } from '@/lib/pdf/document-state.ts'
-import {
-  paymentReceiptDocument,
-  receiptNumberLabel,
-  refundStatementDocument,
-} from '@/lib/pdf/finance-templates.ts'
 import { contractDocument } from '@/lib/pdf/templates/contract.ts'
 import { homeworkDocument } from '@/lib/pdf/templates/homework.ts'
 import { materialDocument } from '@/lib/pdf/templates/material.ts'
 import { paymentPlanDocument } from '@/lib/pdf/templates/payment-plan.ts'
+import { paymentReceiptDocument, receiptNumberLabel } from '@/lib/pdf/templates/payment-receipt.ts'
 import { receiptDocument } from '@/lib/pdf/templates/receipt.ts'
+import { refundStatementDocument } from '@/lib/pdf/templates/refund-statement.ts'
 import { documentFilename, type PdfDocumentType } from '@/lib/pdf/templates/shared.ts'
 import { submissionDocument } from '@/lib/pdf/templates/submission.ts'
 

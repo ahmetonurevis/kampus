@@ -1,4 +1,4 @@
-import { useRef } from 'react'
+import { useEffect, useRef } from 'react'
 import { useBlocker } from 'react-router'
 import {
   AlertDialog,
@@ -11,13 +11,31 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
 
+/** Onay penceresinin metinleri; verilmeyen alan form metnidir. */
+export interface DiscardGuardTexts {
+  title?: string
+  description?: string
+  cancel?: string
+  confirm?: string
+}
+
 /**
  * Kirli form koruması: pencere kapatma ve sayfa içi gezinme (geri, bağlantı) aynı yoldan geçer;
- * form kirliyse gezinme durur ve onay sorulur. Başarılı gönderimden sonra `leave()` korumayı
- * kaldırır (form sıfırlanmadan kapanır).
+ * form kirliyse gezinme durur ve onay sorulur. Sekme kapatma ve sayfa yenileme tarayıcının kendi
+ * uyarısını (`beforeunload`) açar. Başarılı gönderimden sonra `leave()` korumayı kaldırır (form
+ * sıfırlanmadan kapanır). `texts` formdan farklı bir ekranın (ör. quiz çözme) metnini verir.
  */
-export function useRouteDiscardGuard(dirty: boolean) {
+export function useRouteDiscardGuard(dirty: boolean, texts: DiscardGuardTexts = {}) {
   const leaving = useRef(false)
+  useEffect(() => {
+    if (!dirty) return
+    const warn = (event: BeforeUnloadEvent) => {
+      if (leaving.current) return
+      event.preventDefault()
+    }
+    window.addEventListener('beforeunload', warn)
+    return () => window.removeEventListener('beforeunload', warn)
+  }, [dirty])
   const blocker = useBlocker(
     ({ currentLocation, nextLocation }) =>
       !leaving.current &&
@@ -34,13 +52,13 @@ export function useRouteDiscardGuard(dirty: boolean) {
     >
       <AlertDialogContent>
         <AlertDialogHeader>
-          <AlertDialogTitle>Kaydedilmemiş değişiklikler var</AlertDialogTitle>
+          <AlertDialogTitle>{texts.title ?? 'Kaydedilmemiş değişiklikler var'}</AlertDialogTitle>
           <AlertDialogDescription>
-            Formdaki değişiklikler kaydedilmedi. Kapatırsanız silinir.
+            {texts.description ?? 'Formdaki değişiklikler kaydedilmedi. Kapatırsanız silinir.'}
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>
-          <AlertDialogCancel>Düzenlemeye devam et</AlertDialogCancel>
+          <AlertDialogCancel>{texts.cancel ?? 'Düzenlemeye devam et'}</AlertDialogCancel>
           <AlertDialogAction
             onClick={(event) => {
               // Radix kendi kapanışını yapmasın; gezinme sürer ve pencere kapanır.
@@ -48,7 +66,7 @@ export function useRouteDiscardGuard(dirty: boolean) {
               if (blocker.state === 'blocked') blocker.proceed()
             }}
           >
-            Değişiklikleri at
+            {texts.confirm ?? 'Değişiklikleri at'}
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

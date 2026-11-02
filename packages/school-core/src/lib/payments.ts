@@ -72,6 +72,15 @@ export function payInvoice(
 const CASH: PaymentMethod = 'Nakit'
 const PROMISSORY_NOTE: PaymentMethod = 'Senet'
 
+/** Bursluya burs belgeleri dışında senet ve taahhüt düzenlenmez (DOM-FIN-025). */
+export const hasScholarshipContract = (
+  contracts: readonly { studentId: string; scholarship?: unknown }[],
+  studentId: string,
+): boolean =>
+  contracts.some(
+    (contract) => contract.studentId === studentId && contract.scholarship !== undefined,
+  )
+
 /** Banka kanalından geçmeyen yöntem hesaba bağlanmaz (DOM-FIN-032). */
 export const usesBankAccount = (method: PaymentMethod): boolean =>
   method !== CASH && method !== PROMISSORY_NOTE
@@ -274,12 +283,7 @@ export function planPayment(state: State, input: unknown, context: PaymentContex
       path: ['reference'],
     })
   const bankAccountId = usesBankAccount(data.method) ? resolveBankAccount(data, context) : null
-  if (
-    data.method === PROMISSORY_NOTE &&
-    state.contracts.some(
-      (contract) => contract.studentId === data.studentId && contract.scholarship !== undefined,
-    )
-  )
+  if (data.method === PROMISSORY_NOTE && hasScholarshipContract(state.contracts, data.studentId))
     throw new DomainError('scholarship_promissory_note', 'Burslu öğrenciden senet alınamaz.', {
       path: ['method'],
     })

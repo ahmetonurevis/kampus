@@ -5,12 +5,17 @@ import { COLORS, date, DocumentLayout, type PdfDocument, type TextMeasurer } fro
 import { INSTALLMENT_COLUMNS, studentFields } from './finance-shared.ts'
 import type { TemplateOptions } from './shared.ts'
 
-/** Taksit taahhütnamesi: öğrencinin güncel ödeme planı, tahsilat özeti ve imza alanı. */
+/**
+ * Taksit taahhütnamesi: öğrencinin güncel ödeme planı, tahsilat özeti ve imza alanı.
+ * `collectedCents` sunucu bakiyesidir; kısmi ödemeleri de sayar. Verilmezse yalnız tam kapanan
+ * taksitler sayılır (`data.paid`).
+ */
 export function paymentPlanDocument(
   measurer: TextMeasurer,
   data: DocumentDataMap['payment-plan'],
-  options: TemplateOptions,
+  options: TemplateOptions & { collectedCents?: number },
 ): PdfDocument {
+  const collected = options.collectedCents ?? data.paid
   const doc = new DocumentLayout(measurer, {
     label: 'TAKSİT TAAHHÜTNAMESİ',
     badge: 'TAAHHÜT',
@@ -23,8 +28,8 @@ export function paymentPlanDocument(
   doc.fields(studentFields(data))
   doc.metrics([
     ['TOPLAM BEDEL', money(data.total)],
-    ['TAHSİL EDİLEN', money(data.paid)],
-    ['KALAN BAKİYE', money(data.total - data.paid)],
+    ['TAHSİL EDİLEN', money(collected)],
+    ['KALAN BAKİYE', money(data.total - collected)],
   ])
   doc.section('Taksit takvimi')
   doc.table(
@@ -42,8 +47,10 @@ export function paymentPlanDocument(
     8,
     COLORS.muted,
   )
+  doc.paragraph('Yukarıdaki taksitleri vade tarihlerinde ödemeyi taahhüt ederim.')
   doc.signatures(
-    `Veli · ${data.parent?.name || 'Ad soyad'}`,
+    // Yetişkin kursiyerde veli yoktur; taahhüdü ödeyen olarak kendisi verir.
+    data.parent ? `Veli · ${data.parent.name}` : `Ödeyen · ${data.student.name}`,
     'Okul muhasebesi · Kontrol / Tarih',
     true,
   )

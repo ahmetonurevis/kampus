@@ -132,6 +132,21 @@ export function attachFileRow(
   )
 }
 
+/**
+ * Bağı kaldırır (kayıttan düşen dosya; ör. yeniden teslimde çıkarılan dosya). Veri sahibi kalır
+ * (imha ve başvuru için, karar 13); dosya bağsız olur ve karar 5'in bağlanmamış dosya
+ * temizliğine girer.
+ */
+export function detachFileRow(tx: Database, institutionId: string, current: StoredFile, now: Date) {
+  return updateFile(
+    tx,
+    institutionId,
+    current,
+    { attachedType: null, attachedId: null, attachedAt: null },
+    now,
+  )
+}
+
 export function setFileStatus(
   tx: Database,
   institutionId: string,

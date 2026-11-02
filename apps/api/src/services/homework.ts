@@ -21,7 +21,7 @@ import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment } from './commands.ts'
 import { defineFileAttachment } from './file-registry.ts'
-import { attachFile } from './files.ts'
+import { attachFile, detachFile } from './files.ts'
 import { dayRange } from './list-filters.ts'
 import { notify } from './notify.ts'
 import {
@@ -43,8 +43,10 @@ import { assertReadable, readScope, scopePrefilter } from './read-scope.ts'
  *
  * Okuma core kapsamıyladır (`scopeFor`): yönetici kurumun bütün ödevlerini, öğretmen derse girdiği
  * sınıfların ve kendi verdiği ödevleri, öğrenci ve veli kendi/çocuğunun sınıfının ödevlerini okur.
- * Teslimleri öğrenci yalnız kendisininkini, veli bağlı çocuğununkini, öğretmen sınıflarındaki
- * öğrencilerinkini görür (DOM-AKD-074). Görmediği ödev ya da teslim olmayanla aynı 404'tür.
+ * Teslimleri öğrenci yalnız kendisininkini, veli bağlı çocuğununkini, öğretmen yalnız kendi verdiği
+ * ödevin ve rehberi olduğu sınıfın öğrencilerinin teslimlerini görür (core `submissionReader`,
+ * DOM-AKD-074); aynı sınıfa başka dersle giren öğretmen satırda teslim sayısı görmez. Görmediği
+ * ödev ya da teslim olmayanla aynı 404'tür.
  *
  * Yazmalar kurumun bütün ödev ve teslimlerini kurum kilidi altında yüklemez (`loadScope`): ödev
  * verirken hiçbirini, düzenlemede hedef ödevi, arşivde ve teslimde hedef ödevin teslimlerini
@@ -77,6 +79,9 @@ const metaOf = (row: StoredRecord): RowMeta => ({
 
 export type HomeworkStatus = 'open' | 'closed'
 
+const statusAt = (dueDate: string, now: Date): HomeworkStatus =>
+  isHomeworkClosed({ dueDate }, now.toISOString()) ? 'closed' : 'open'
+
 /** Ödevin yanıt görünümü (beyaz liste). */
 function homeworkView(record: RecordData, meta: RowMeta, now: Date) {
   const dueDate = text(record.dueDate) ?? ''
@@ -92,9 +97,7 @@ function homeworkView(record: RecordData, meta: RowMeta, now: Date) {
     dueDate,
     // Alanı olmayan eski kayıt geç teslimi kabul eder (core `acceptsLate`).
     allowLate: record.allowLate !== false,
-    status: (isHomeworkClosed({ dueDate }, now.toISOString())
-      ? 'closed'
-      : 'open') as HomeworkStatus,
+    status: statusAt(dueDate, now),
     createdAt: text(record.createdAt),
     updatedAt: meta.updatedAt,
   }
@@ -187,6 +190,10 @@ export async function listHomework(ctx: ServiceContext, input: HomeworkListInput
   if (input.subjectId) match.push({ kind: 'equals', field: 'subjectId', values: [input.subjectId] })
   const range = dayRange('dueDate', input.dateFrom, input.dateTo)
   if (range) match.push(range)
+  // Kapsam ön süzgeci: öğretmen, öğrenci ve velide yalnız kapsamdaki sınıfların ve öğretmenin
+  // kendi ödevleri yüklenir; karar yine core `canRead`'dedir.
+  const prefilter = scopePrefilter(scope, HOMEWORK)
+  if (prefilter) match.push(prefilter)
   const rows = await loadRecords(ctx.db, ctx.institutionId, [HOMEWORK], { match })
   const now = ctx.now.toISOString()
   const visible = rows
@@ -251,6 +258,8 @@ interface Outcome {
   dueDate: string
   statusCode: 200 | 201
   attach?: readonly string[]
+  /** Yeniden teslimde kayıttan düşen, bağı kaldırılacak dosyalar. */
+  detach?: readonly string[]
 }
 
 interface HomeworkRun {
@@ -271,8 +280,8 @@ interface HomeworkRun {
 
 /** Core kaydını saklanan biçimle aynı yapar (jsonb: `undefined` alan düşer). */
 function stored<T extends { id: string }>(record: T): RecordData & { id: string } {
-  const copy: unknown = JSON.parse(JSON.stringify(record))
-  return { ...(copy as RecordData), id: record.id }
+  const copy: RecordData = JSON.parse(JSON.stringify(record))
+  return { ...copy, id: record.id }
 }
 
 function respond(ctx: ServiceContext, outcome: OperationResult<Outcome>, fallback: number) {
@@ -458,6 +467,7 @@ async function ownFileNames(
  * teslimin yenilenmesi 200. Yeni eklenen dosyalar aynı transaction'da teslime bağlanır (ADR 0003
  * karar 5): başkasının, başka kurumun ya da olmayan dosyası 422 `file_unavailable`, hazır olmayan
  * 422 `file_not_ready`, başka kayda bağlı 409 `file_already_attached`; hiçbir kayıt değişmez.
+ * Yeniden teslimde listeden düşen dosyanın bağı kalkar (`detachFile`).
  */
 export function submitHomeworkCommand(
   ctx: ServiceContext,
@@ -489,16 +499,26 @@ export function submitHomeworkCommand(
           dueDate: homework?.dueDate ?? '',
           statusCode: outcome.created ? 201 : 200,
           attach: outcome.attach,
+          detach: outcome.detach,
         }
       },
       after: async (tx, outcome) => {
-        for (const fileId of outcome.attach ?? [])
+        const attachment = { attachedType: SUBMISSION_ATTACHMENT, attachedId: outcome.record.id }
+        // Kayıttan düşen dosya artık teslimle okunmaz (DOM-AKD-072); yeniden eklenebilir.
+        for (const fileId of outcome.detach ?? [])
+          await detachFile(tx, ctx, { fileId, ...attachment })
+        for (const fileId of outcome.attach ?? []) {
+          // Bu teslime zaten bağlı dosya (bağı düzeltmeden önce düşürülmüş eski kayıt) yeniden
+          // bağlanmaz; başka kayda bağlı dosya `attachFile`'da 409 alır.
+          const row = await findFile(tx, ctx.institutionId, fileId)
+          if (row?.attachedType === SUBMISSION_ATTACHMENT && row.attachedId === outcome.record.id)
+            continue
           await attachFile(tx, ctx, {
             fileId,
-            attachedType: SUBMISSION_ATTACHMENT,
-            attachedId: outcome.record.id,
+            ...attachment,
             dataSubjectId: text(outcome.record.studentId),
           })
+        }
       },
     },
     idempotency,
@@ -571,8 +591,9 @@ export function gradeSubmissionCommand(
 }
 
 /**
- * Teslime bağlı dosya, teslimi okuyabilene açılır (ADR 0003 karar 6): öğrenci kendisi, veli
- * çocuğu, öğretmen sınıflarındaki öğrenci (DOM-AKD-074). PGlite tek bağlantılıdır: kapsam
+ * Teslime bağlı dosya, teslimi okuyabilene açılır (ADR 0003 karar 6): yönetici, öğrenci kendisi,
+ * veli çocuğu, öğretmen yalnız kendi ödevi ya da rehberi olduğu sınıfın öğrencisi (DOM-AKD-074;
+ * kural core `submissions` kapsamındadır). PGlite tek bağlantılıdır: kapsam
  * işlemin bağlantısıyla (`tx`) okunur.
  */
 defineFileAttachment(SUBMISSION_ATTACHMENT, {

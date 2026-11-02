@@ -13,6 +13,7 @@ import {
   submitHomeworkSchema,
   updateHomework,
 } from '../packages/school-core/src/lib/homework.ts'
+import { scopeFor, type ScopeSource } from '../packages/school-core/src/lib/scope.ts'
 import { NOTIFICATION_TYPES } from '../packages/school-core/src/modules/notification-types.ts'
 import { isDomainError } from './support/domain-error.ts'
 
@@ -231,10 +232,24 @@ test('DOM-AKD-072: öğrenci kendi sınıfının ödevini metin ve dosyayla tesl
   assert.equal(again.created, false)
   assert.equal(again.submission.id, first.submission.id)
   assert.deepEqual(again.attach, ['f2'])
+  assert.deepEqual(again.detach, [])
   assert.equal(again.submission.note, '')
   // Son tarih (9 Ekim) geçtikten sonra yeniden teslim geç işaretlenir.
   assert.equal(again.submission.late, true)
   assert.equal(state.submissions.filter((s) => s.homeworkId === hw.id).length, 1)
+})
+
+test('DOM-AKD-072: yeniden teslimde düşen dosya detach, geri eklenen dosya yeniden attach listesindedir', () => {
+  const state = seed()
+  const hw = assignHomework(state, teacher('t1'), HOMEWORK, id, now)
+  submitHomework(state, student(), hw.id, { fileIds: ['f1', 'f2'] }, id, now)
+  const dropped = submitHomework(state, student(), hw.id, { note: 'Yalnız metin.' }, id, now)
+  assert.deepEqual(dropped.attach, [])
+  assert.deepEqual(dropped.detach, ['f1', 'f2'])
+  assert.deepEqual(dropped.submission.fileIds, [])
+  const readded = submitHomework(state, student(), hw.id, { fileIds: ['f2'] }, id, now)
+  assert.deepEqual(readded.attach, ['f2'])
+  assert.deepEqual(readded.detach, [])
 })
 
 test('DOM-AKD-072: geç teslim ödev açıksa kabul edilir ve işaretlenir, kapalıysa 422', () => {
@@ -356,4 +371,44 @@ test('DOM-AKD-073, DOM-ILT-023: değerlendirme bildirimi yalnız ödev kimliği 
   assert.deepEqual(spec.audiences, { minor: ['student', 'parent'], adult: ['student'] })
   assert.equal(spec.data.safeParse({ homeworkId: 'hw1', score: 80 }).success, false)
   assert.equal(spec.subjectId(spec.data.parse({ homeworkId: 'hw1' })), 'hw1')
+})
+
+// --- Görünürlük ---------------------------------------------------------------------------------
+
+test('DOM-AKD-074: teslimi ödevin öğretmeni ve sınıfın rehber öğretmeni okur; aynı sınıfa başka dersle giren öğretmen okumaz', () => {
+  const state = seed()
+  const visible = (source: State, by: Participant) =>
+    scopeFor(source, by)
+      .read('submissions', source.submissions)
+      .map((row) => row.id)
+  // sub-s1-hw2: Deniz'in (c1) Türkçe ödevi (t2). Selin Kaya (t1) c1'in rehber öğretmenidir; İngilizce
+  // öğretmeni (t11) c1'e girer ama ödevin öğretmeni ve rehber değildir.
+  assert.ok(visible(state, teacher('t2')).includes('sub-s1-hw2'))
+  assert.ok(visible(state, teacher('t1')).includes('sub-s1-hw2'))
+  assert.ok(!visible(state, teacher('t11')).includes('sub-s1-hw2'))
+  assert.ok(visible(state, teacher('t11')).includes('sub-s1-hw5'), 'kendi ödevinin teslimi')
+  assert.ok(visible(state, admin).includes('sub-s1-hw2'))
+  assert.deepEqual(
+    visible(state, student()).filter((id) => !id.startsWith('sub-s1-') && id !== 'sub-deniz'),
+    [],
+  )
+  // Sınıftan ayrılan (atama sona eren) öğretmen kendi ödevinin teslimini görmeye devam eder.
+  const left = {
+    ...state,
+    assignments: state.assignments.filter((a) => a.id !== 'assign-c1-turkish'),
+  }
+  assert.ok(visible(left, teacher('t2')).includes('sub-s1-hw2'))
+  // Kaynakta ödev yoksa (API yüklemediyse) öğretmen yalnız rehberi olduğu sınıfı görür.
+  const { students, teachers, classes, assignments, clubs, mockExams, modules } = state
+  const withoutHomework: ScopeSource = {
+    students,
+    teachers,
+    classes,
+    assignments,
+    clubs,
+    mockExams,
+    modules,
+  }
+  const rows = scopeFor(withoutHomework, teacher('t2')).read('submissions', state.submissions)
+  assert.ok(!rows.some((row) => row.id === 'sub-s1-hw2'))
 })

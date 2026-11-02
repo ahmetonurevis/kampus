@@ -354,6 +354,11 @@ export type SubmitOutcome = {
   created: boolean
   /** Bu teslimle yeni bağlanacak dosyalar (önceki teslimde olmayanlar). */
   attach: string[]
+  /**
+   * Yeniden teslimde kayıttan düşen dosyalar (önceki teslimde olup yenisinde olmayanlar). API
+   * bunların teslimle bağını aynı işlemde kaldırır; dosya teslimle okunamaz olur (DOM-AKD-072).
+   */
+  detach: string[]
 }
 
 /**
@@ -361,8 +366,9 @@ export type SubmitOutcome = {
  * sınıfın ödevi ve olmayan ödev 404). Pasif öğrenci 422 `student_inactive`. Son tarih geçmişse
  * ödev geç teslime açıksa `late: true` ile kabul edilir, değilse 422 `homework_closed`.
  * Puanlanmış teslim değişmez (409 `submission_graded`); puanlanmamışsa yeniden teslim aynı kaydı
- * günceller. `fileNames` dosya kimliğinden özgün ada eşlemedir (eski görünümlerin `fileName`
- * alanı için; API dosya satırından verir).
+ * günceller; teslimin dosya listesi gövdedekiyle değişir, düşen dosyalar `detach`, yeni eklenenler
+ * `attach` listesindedir. `fileNames` dosya kimliğinden özgün ada eşlemedir (eski görünümlerin
+ * `fileName` alanı için; API dosya satırından verir).
  */
 export function submitHomework(
   state: State,
@@ -413,12 +419,14 @@ export function submitHomework(
     updatedAt: now,
   }
   if (existing) {
-    const previous = new Set(existing.fileIds ?? [])
+    const previous = existing.fileIds ?? []
+    const kept = new Set(fileIds)
     Object.assign(existing, fields)
     return {
       submission: existing,
       created: false,
-      attach: fileIds.filter((id) => !previous.has(id)),
+      attach: fileIds.filter((id) => !previous.includes(id)),
+      detach: previous.filter((id) => !kept.has(id)),
     }
   }
   const submission: SubmissionRecord & SubmissionFields = {
@@ -430,7 +438,7 @@ export function submitHomework(
     ...fields,
   }
   state.submissions.push(submission)
-  return { submission, created: true, attach: fileIds }
+  return { submission, created: true, attach: fileIds, detach: [] }
 }
 
 /**

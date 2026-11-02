@@ -15,6 +15,7 @@ import { moduleAvailableFor } from '@kampus/school-core/modules/collection-modul
 import type { Database } from '../db/client.ts'
 import {
   attachFileRow,
+  detachFileRow,
   findFile,
   insertFile,
   listStaleUnattachedFiles,
@@ -463,6 +464,24 @@ export async function attachFile(
   )
   if (!updated) throw new ConflictError()
   return updated
+}
+
+/**
+ * Dosyanın kayıtla bağını kaldırır (karar 5'in tersi): bağlayan işlem kayıttan düşen dosya için
+ * kendi transaction'ında çağırır (ör. yeniden teslimde çıkarılan dosya, DOM-AKD-072). Yalnız bu
+ * kayda bağlı dosyanın bağı kalkar; olmayan, silinmiş ya da başka kayda bağlı dosyaya dokunulmaz
+ * (eski kayıtta dosya kimliği `files` satırı olmadan da bulunabilir). Bağı kalkan dosya artık
+ * kaydın okuma kuralıyla açılmaz, yalnız yükleyen görür; yeni bir imha işi yoktur, karar 5'in
+ * bağlanmamış dosya temizliği (`purgeUnattachedFiles`, yüklemeden 24 saat sonra) siler.
+ */
+export async function detachFile(
+  tx: Database,
+  ctx: ServiceContext,
+  input: { fileId: string; attachedType: string; attachedId: string },
+): Promise<void> {
+  const row = await findFile(tx, ctx.institutionId, input.fileId, { lock: true })
+  if (!row || row.attachedType !== input.attachedType || row.attachedId !== input.attachedId) return
+  if (!(await detachFileRow(tx, ctx.institutionId, row, ctx.now))) throw new ConflictError()
 }
 
 /**

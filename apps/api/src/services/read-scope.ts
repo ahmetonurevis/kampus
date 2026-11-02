@@ -70,6 +70,10 @@ const mockExamSource = z.object({ id: z.string(), grade: z.number() }) satisfies
   ScopeSource['mockExams'][number]
 >
 
+const homeworkSource = z.object({ id: z.string(), teacherId: z.string() }) satisfies z.ZodType<
+  NonNullable<ScopeSource['homework']>[number]
+>
+
 type SourceCollection = (typeof SCOPE_SOURCE_COLLECTIONS)[number]
 
 function parseRows<T>(
@@ -106,6 +110,15 @@ async function buildScope(ctx: ServiceContext): Promise<ScopeState> {
   )
   for (const row of rows) byCollection.get(row.collection)?.push(row.data)
   const data = (name: SourceCollection) => byCollection.get(name) ?? []
+  // Teslim kapsamı (DOM-AKD-074): öğretmen kendi verdiği ödevin teslimlerini okur. Kurumun bütün
+  // ödevi her istekte yüklenmez; yalnız öğretmenin bağlı olduğu öğretmen kaydının ödevleri.
+  const teacherIds = links.filter((link) => link.kind === 'teacher').map((link) => link.recordId)
+  const homework =
+    ctx.actor.role === 'ogretmen' && teacherIds.length > 0
+      ? await loadRecords(ctx.db, ctx.institutionId, ['homework'], {
+          match: [{ kind: 'equals', field: 'teacherId', values: teacherIds }],
+        })
+      : []
   const source: ScopeSource = {
     students: parseRows(ctx, 'students', data('students'), studentSource),
     teachers: parseRows(ctx, 'teachers', data('teachers'), teacherSource),
@@ -113,6 +126,12 @@ async function buildScope(ctx: ServiceContext): Promise<ScopeState> {
     assignments: parseRows(ctx, 'assignments', data('assignments'), assignmentSource),
     clubs: parseRows(ctx, 'clubs', data('clubs'), clubSource),
     mockExams: parseRows(ctx, 'mockExams', data('mockExams'), mockExamSource),
+    homework: parseRows(
+      ctx,
+      'homework',
+      homework.map((row) => row.data),
+      homeworkSource,
+    ),
     modules: institution?.modules ?? {},
   }
   const actor: Actor = { role: ctx.actor.role, links, userId: ctx.actor.userId }
@@ -205,12 +224,12 @@ export function assertReadable(ctx: ServiceContext, scope: Scope, collection: Co
   }
 }
 
-type ScopeKey = 'studentId' | 'classId'
+type ScopeKey = 'studentId' | 'classId' | 'homeworkId' | 'teacherId'
 
 /**
  * SQL ön süzgeci (performans): büyük kişisel koleksiyonlarda rolün core kuralı satırın öğrencisinin
- * veya sınıfının kapsamda olmasını gerektirir (`ownStudent`, `ownClass`, `subjectOrHomeroom`,
- * `gradeReader`). Veritabanı yalnız bu kimliklerin satırlarını döndürür; her satır yine core
+ * veya sınıfının (teslimde öğretmenin ödevinin) kapsamda olmasını gerektirir (`ownStudent`,
+ * `ownClass`, `subjectOrHomeroom`, `gradeReader`, `submissionReader`). Veritabanı yalnız bu kimliklerin satırlarını döndürür; her satır yine core
  * `canRead` ile süzülür. Süzgeç gerekli koşuldur: yalnız adayları daraltır, kararı core verir;
  * core'un görünür saydığı hiçbir satırı dışlamamalıdır. Birden çok anahtar "biri yeter" demektir:
  * öğretmen notu, verildiği sınıf (`classId`) kapsamdaysa (öğrenci sonradan sınıf değiştirmiş olsa
@@ -225,9 +244,32 @@ const PREFILTER: Partial<Record<CollectionName, Partial<Record<Role, readonly Sc
   attendance: { ogretmen: ['classId'], ogrenci: ['studentId'], veli: ['studentId'] },
   invoices: { ogrenci: ['studentId'], veli: ['studentId'] },
   contracts: { veli: ['studentId'] },
-  submissions: { ogretmen: ['studentId'], ogrenci: ['studentId'], veli: ['studentId'] },
+  // Öğretmen sınıflarının ve kendi verdiği ödevi görür (`ownClass || ownTeacher`).
+  homework: { ogretmen: ['classId', 'teacherId'], ogrenci: ['classId'], veli: ['classId'] },
+  // Öğretmen teslimi kendi ödevinden (`homeworkId`, öğrenci sınıf değiştirmiş olsa da) ya da
+  // rehberi olduğu sınıfın öğrencisinden (`studentId`) görür (`submissionReader`, DOM-AKD-074).
+  submissions: {
+    ogretmen: ['studentId', 'homeworkId'],
+    ogrenci: ['studentId'],
+    veli: ['studentId'],
+  },
   quizAttempts: { ogretmen: ['studentId'], ogrenci: ['studentId'], veli: ['studentId'] },
   schedule: { ogrenci: ['classId'], veli: ['classId'] },
+}
+
+function keyValues(scope: Scope, key: ScopeKey): string[] {
+  switch (key) {
+    case 'studentId':
+      return [...scope.studentIds]
+    case 'classId':
+      return [...scope.classIds]
+    case 'homeworkId':
+      return [...scope.homeworkIds]
+    case 'teacherId':
+      return scope.teacher ? [scope.teacher.id] : []
+    default:
+      return key satisfies never
+  }
 }
 
 /** Koleksiyonun bu aktör için SQL ön süzgeci; tabloda yoksa `null` (bütün koleksiyon yüklenir). */
@@ -236,7 +278,7 @@ export function scopePrefilter(scope: Scope, collection: CollectionName): Record
   if (!keys) return null
   const matches = keys.map((field) => ({
     field,
-    values: [...(field === 'studentId' ? scope.studentIds : scope.classIds)],
+    values: keyValues(scope, field),
   }))
   const [only] = matches
   return matches.length === 1 && only ? only : { kind: 'any', matches }

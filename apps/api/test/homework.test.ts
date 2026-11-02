@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 
@@ -12,6 +12,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { files } from '../src/db/schema/files.ts'
+import { records } from '../src/db/schema/records.ts'
 import { recordFileCheck } from '../src/services/files.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
@@ -248,7 +249,12 @@ describe('ödev uçları', () => {
   const ids = (response: Awaited<ReturnType<typeof read>>) =>
     (response.json().data as { id: string }[]).map((item) => item.id)
 
-  async function uploadSubmissionFile(institutionId: string, cookie: string, name = 'odev.pdf') {
+  async function uploadSubmissionFile(
+    institutionId: string,
+    cookie: string,
+    name = 'odev.pdf',
+    ready = true,
+  ) {
     const body = multipart(uploadParts('submission', PDF, name))
     const response = await app.inject({
       method: 'POST',
@@ -263,6 +269,7 @@ describe('ödev uçları', () => {
     })
     assert.equal(response.statusCode, 201, response.body)
     const id: string = response.json().data.id
+    if (!ready) return id
     await recordFileCheck(db, store.storage, {
       institutionId,
       fileId: id,
@@ -652,6 +659,178 @@ describe('ödev uçları', () => {
     const detail = await read(s2, '/api/v1/homework/hw11')
     assert.equal(detail.json().data.submissions[0].score, 85)
     assertError(await submit(s2, 'hw11', { note: 'Yeniden' }), 409, 'submission_graded')
+  })
+
+  test('DOM-AKD-072: hazır olmayan dosya 422 file_not_ready, başka teslime bağlı dosya 409 file_already_attached; kayıt değişmez', async () => {
+    const a = await institution()
+    const s1 = await student(a.id, 's1')
+    const pending = await uploadSubmissionFile(a.id, s1, 'taslak.pdf', false)
+    await unchanged(a.id, async () => {
+      assertError(await submit(s1, 'hw2', { fileIds: [pending] }), 422, 'file_not_ready')
+    })
+    const [pendingRow] = await db.select().from(files).where(eq(files.id, pending))
+    assert.equal(pendingRow?.attachedId, null)
+
+    const own = await uploadSubmissionFile(a.id, s1)
+    assert.equal((await submit(s1, 'hw2', { fileIds: [own] })).statusCode, 200)
+    // Aynı dosya başka ödevin teslimine bağlanamaz (hw4: c1 Sosyal, açık, Deniz teslim etmemiş).
+    await unchanged(a.id, async () => {
+      assertError(await submit(s1, 'hw4', { fileIds: [own] }), 409, 'file_already_attached')
+    })
+    const [row] = await db.select().from(files).where(eq(files.id, own))
+    assert.equal(row?.attachedId, 'sub-s1-hw2')
+  })
+
+  test('DOM-AKD-072: yeniden teslimde düşen dosyanın bağı kalkar, teslimle okunmaz; geri eklenince yeniden bağlanır', async () => {
+    const a = await institution()
+    const s1 = await student(a.id, 's1')
+    const t2 = await teacher(a.id, 't2')
+    const file = await uploadSubmissionFile(a.id, s1, 'ilk.pdf')
+    const attached = await submit(s1, 'hw2', { note: 'Dosyam ekte.', fileIds: [file] })
+    assert.equal(attached.statusCode, 200, attached.body)
+    assert.equal((await read(t2, `/api/v1/files/${file}`)).statusCode, 200)
+
+    const dropped = await submit(s1, 'hw2', { note: 'Dosyayı çıkardım.' })
+    assert.equal(dropped.statusCode, 200, dropped.body)
+    assert.deepEqual(dropped.json().data.fileIds, [])
+    const [detached] = await db.select().from(files).where(eq(files.id, file))
+    assert.equal(detached?.attachedType, null)
+    assert.equal(detached?.attachedId, null)
+    assert.equal(detached?.attachedAt, null)
+    // Bağı kalkan dosya teslimle açılmaz; yalnız yükleyen görür.
+    assertError(await read(t2, `/api/v1/files/${file}`), 404, 'not_found')
+    assert.equal((await read(s1, `/api/v1/files/${file}`)).statusCode, 200)
+
+    const readded = await submit(s1, 'hw2', { note: 'Dosyayı geri ekledim.', fileIds: [file] })
+    assert.equal(readded.statusCode, 200, readded.body)
+    assert.deepEqual(readded.json().data.fileIds, [file])
+    const [again] = await db.select().from(files).where(eq(files.id, file))
+    assert.equal(again?.attachedId, 'sub-s1-hw2')
+    assert.equal((await read(t2, `/api/v1/files/${file}`)).statusCode, 200)
+  })
+
+  test('DOM-AKD-074: aynı sınıfa başka dersle giren öğretmen teslimi, sayısını ve dosyasını görmez', async () => {
+    const a = await institution()
+    const s1 = await student(a.id, 's1')
+    const file = await uploadSubmissionFile(a.id, s1)
+    assert.equal((await submit(s1, 'hw2', { fileIds: [file] })).statusCode, 200)
+    // t11 c1'e İngilizceyle girer; hw2 (Türkçe, t2) onun ödevi değil, c1'in rehberi de değil.
+    const t11 = await teacher(a.id, 't11')
+    const detail = await read(t11, '/api/v1/homework/hw2')
+    assert.equal(detail.statusCode, 200, detail.body)
+    assert.deepEqual(detail.json().data.submissions, [])
+    assert.deepEqual(detail.json().data.submissionCounts, { submitted: 0, graded: 0, late: 0 })
+    const list = await read(t11, '/api/v1/homework?classId=c1&pageSize=100')
+    const row = (list.json().data as Json[]).find((item) => item.id === 'hw2')
+    assert.deepEqual(row?.submissionCounts, { submitted: 0, graded: 0, late: 0 })
+    assertError(await read(t11, `/api/v1/files/${file}`), 404, 'not_found')
+    const collection = await read(t11, '/api/v1/collections/submissions?pageSize=100')
+    assert.equal(collection.statusCode, 200, collection.body)
+    const visible = ids(collection)
+    assert.ok(!visible.includes('sub-s1-hw2'))
+    assert.ok(visible.includes('sub-s1-hw5'), 'kendi ödevinin teslimi görünür')
+
+    // Rehber öğretmen (t1, c1) sınıfındaki öğrencinin bütün teslimlerini görür.
+    const t1 = await teacher(a.id, 't1')
+    const homeroom = await read(t1, '/api/v1/homework/hw2')
+    assert.ok((homeroom.json().data.submissions as Json[]).some((sub) => sub.id === 'sub-s1-hw2'))
+    assert.equal((await read(t1, `/api/v1/files/${file}`)).statusCode, 200)
+  })
+
+  test('DOM-AKD-074: sınıftan ayrılan öğretmen kendi ödevinin teslimlerini görmeye devam eder', async () => {
+    const a = await institution()
+    // t2'nin c1 Türkçe ataması sona erer; hw2 hâlâ onun ödevidir.
+    await db
+      .update(records)
+      .set({ archivedAt: FIXED_NOW })
+      .where(
+        and(
+          eq(records.institutionId, a.id),
+          eq(records.collection, 'assignments'),
+          eq(records.id, 'assign-c1-turkish'),
+        ),
+      )
+    const t2 = await teacher(a.id, 't2')
+    const detail = await read(t2, '/api/v1/homework/hw2')
+    assert.equal(detail.statusCode, 200, detail.body)
+    const subs = (detail.json().data.submissions as Json[]).map((sub) => sub.id as string)
+    const expected = SAMPLE.submissions
+      ?.filter((sub) => sub.homeworkId === 'hw2')
+      .map((sub) => sub.id)
+    assert.deepEqual([...subs].sort(), [...(expected ?? [])].sort())
+    assert.ok(subs.includes('sub-s1-hw2'))
+    assert.equal(detail.json().data.submissionCounts.submitted, subs.length)
+    const list = await read(t2, '/api/v1/homework?pageSize=100')
+    const row = (list.json().data as Json[]).find((item) => item.id === 'hw2')
+    assert.equal(row?.submissionCounts.submitted, subs.length)
+    // Sınıfın başka ödevinin teslimi artık görünmez.
+    assertError(await read(t2, '/api/v1/homework/hw3'), 404, 'not_found')
+  })
+
+  test('DOM-AKD-074: öğrenci ve veli liste satırında yalnız kendi teslim sayılarını görür', async () => {
+    const a = await institution()
+    const expected = {
+      hw1: { submitted: 0, graded: 0, late: 0 },
+      hw2: { submitted: 1, graded: 0, late: 0 },
+      hw3: { submitted: 1, graded: 1, late: 0 },
+    }
+    for (const cookie of [await student(a.id, 's1'), await parent(a.id, 's1')]) {
+      const list = await read(cookie, '/api/v1/homework?pageSize=100')
+      assert.equal(list.statusCode, 200, list.body)
+      const counts = Object.fromEntries(
+        (list.json().data as Json[]).map((item) => [item.id, item.submissionCounts]),
+      )
+      for (const [id, value] of Object.entries(expected)) assert.deepEqual(counts[id], value, id)
+    }
+  })
+
+  test('DOM-AKD-073, DOM-YTK-030: yetişkin kursiyerin puanlamasında veliye homework_graded gitmez', async () => {
+    const a = await institution(
+      { type: 'language_school' },
+      {
+        prospects: [{ id: 'p-yetiskin', studentId: 's2', minor: false }],
+      },
+    )
+    const t1 = await teacher(a.id, 't1')
+    const version = await versionOf(a.id, 'submissions', 'sub-s2-hw11')
+    const graded = await grade(t1, 'hw11', 'sub-s2-hw11', GRADE, ifMatch(version))
+    assert.equal(graded.statusCode, 200, graded.body)
+    const sent = (await loadRecords(db, a.id, ['notifications']))
+      .map((row) => row.data)
+      .filter((n) => n.kind === 'homework_graded')
+    assert.deepEqual(
+      sent.map((n) => [n.audience, n.studentId]),
+      [['student', 's2']],
+    )
+  })
+
+  test('DOM-AKD-073: bildirim yazılamazsa puanlama geri alınır, teslim ve bildirimler değişmez', async () => {
+    const a = await institution()
+    const t1 = await teacher(a.id, 't1')
+    const version = await versionOf(a.id, 'submissions', 'sub-s2-hw11')
+    const notices = async () => (await loadRecords(db, a.id, ['notifications'])).length
+    const before = await notices()
+    await db.execute(sql`
+      CREATE FUNCTION og045_fail_notice() RETURNS trigger AS $$
+      BEGIN
+        RAISE EXCEPTION 'bildirim yazılamadı';
+      END $$ LANGUAGE plpgsql`)
+    await db.execute(
+      sql.raw(`CREATE TRIGGER og045_fail_notice BEFORE INSERT ON records
+        FOR EACH ROW WHEN (NEW.collection = 'notifications') EXECUTE FUNCTION og045_fail_notice()`),
+    )
+    try {
+      await unchanged(a.id, async () => {
+        const failed = await grade(t1, 'hw11', 'sub-s2-hw11', GRADE, ifMatch(version))
+        assert.equal(failed.statusCode, 500, failed.body)
+      })
+    } finally {
+      await db.execute(sql`DROP TRIGGER og045_fail_notice ON records`)
+      await db.execute(sql`DROP FUNCTION og045_fail_notice()`)
+    }
+    assert.equal(await notices(), before)
+    const graded = await grade(t1, 'hw11', 'sub-s2-hw11', GRADE, ifMatch(version))
+    assert.equal(graded.statusCode, 200, graded.body)
   })
 
   test('DOM-AKD-071: teslim alınmış ödev arşivlenmez (409), teslim korunur', async () => {

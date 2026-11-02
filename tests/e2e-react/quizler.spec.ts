@@ -450,7 +450,7 @@ test.describe('Quizler: öğrenci ve veli', () => {
       answers: { 'q-math-7-0': keys[0], 'q-math-7-1': keys[1] },
     })
     expect(request.headers()['idempotency-key']).toBeTruthy()
-    await expect(page.getByText('Cevapların gönderildi.')).toBeVisible()
+    await expect(page.getByText('Cevapların gönderildi.', { exact: true })).toBeVisible()
     await expect(page).toHaveURL(new RegExp(`[?&]quiz=${quiz.id}`))
     expect(submits).toBe(1)
 
@@ -508,7 +508,9 @@ test.describe('Quizler: öğrenci ve veli', () => {
     await choose(page, 0, 'q-math-7-0', key)
     const sent = await page.waitForRequest(isSubmit(quizId), { timeout: 25_000 })
     expect(sent.postDataJSON()).toEqual({ answers: { 'q-math-7-0': key } })
-    await expect(page.getByText('Süre doldu; cevapların gönderildi.')).toBeVisible()
+    await expect(
+      page.getByText('Süre doldu; cevapların gönderildi.', { exact: true }),
+    ).toBeVisible()
     const result = panelOf(page, 'Quiz sonucu')
     await expect(metric(result, 'Doğru / soru')).toHaveText('1 / 3')
     expect(submits).toBe(1)
@@ -557,9 +559,11 @@ test.describe('Quizler: öğrenci ve veli', () => {
     await expect(
       questionGroup(page, 0, 'q-math-7-0').getByRole('radio', { checked: true }),
     ).toHaveCount(1)
-    await expect(page.getByText('Süre doldu; cevapların gönderildi.')).toBeVisible({
-      timeout: 15_000,
-    })
+    await expect(page.getByText('Süre doldu; cevapların gönderildi.', { exact: true })).toBeVisible(
+      {
+        timeout: 15_000,
+      },
+    )
     expect(calls).toBe(2)
     expect(keys[1]).toBe(keys[0])
     expect(keys[0]).toBeTruthy()
@@ -606,7 +610,7 @@ test.describe('Quizler: öğrenci ve veli', () => {
     // Süre dolduktan sonra onay penceresi açılmaz; cevaplar doğrudan gönderilir.
     await resend.click()
     await expect(page.getByRole('alertdialog')).toHaveCount(0)
-    await expect(page.getByText('Cevapların gönderildi.')).toBeVisible()
+    await expect(page.getByText('Cevapların gönderildi.', { exact: true })).toBeVisible()
     expect(keys).toHaveLength(5)
     expect(keys[4]).toBe(keys[0])
     expect(await attemptsOf(student, quizId)).toMatchObject([
@@ -652,7 +656,7 @@ test.describe('Quizler: öğrenci ve veli', () => {
     await expect(page.getByText('Sunucu şu an yanıt vermiyor.')).toBeVisible()
     await expect(confirm).toBeVisible()
     await confirm.getByRole('button', { name: 'Gönder' }).click()
-    await expect(page.getByText('Cevapların gönderildi.')).toBeVisible()
+    await expect(page.getByText('Cevapların gönderildi.', { exact: true })).toBeVisible()
     expect(keys).toHaveLength(2)
     expect(keys[1]).toBe(keys[0])
     expect(await attemptsOf(student, quizId)).toMatchObject([
@@ -693,7 +697,9 @@ test.describe('Quizler: öğrenci ve veli', () => {
       .getByRole('alertdialog', { name: 'Cevaplar gönderilsin mi?' })
       .getByRole('button', { name: 'Gönder' })
       .click()
-    await expect(page.getByText('Cevapların gönderildi.')).toBeVisible({ timeout: 20_000 })
+    await expect(page.getByText('Cevapların gönderildi.', { exact: true })).toBeVisible({
+      timeout: 20_000,
+    })
     expect(submits).toBe(1)
     expect(await attemptsOf(student, quizId)).toMatchObject([
       { status: 'completed', result: { correctCount: 1, total: 3 } },

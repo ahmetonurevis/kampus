@@ -4,7 +4,8 @@ import { after, before, describe, test } from 'node:test'
 import { asc, eq } from 'drizzle-orm'
 
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
-import { enrollProspect, payInvoice } from '@kampus/school-core/lib/domain.ts'
+import { payInvoice } from '@kampus/school-core/lib/domain.ts'
+import { enrollProspect } from '@kampus/school-core/lib/enrollment.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { runWorkflow } from '@kampus/school-core/lib/school-workflows.ts'
 

@@ -3,7 +3,6 @@ import assert from 'node:assert/strict'
 import { createSeed } from '../apps/web/src/data/seed.js'
 import {
   installmentAmounts,
-  enrollProspect,
   gradeQuiz,
   payInvoice,
   recordAttendance,
@@ -11,6 +10,7 @@ import {
   PAYMENT_METHOD_LABELS,
   paymentInputSchema,
 } from '../apps/web/src/lib/domain.js'
+import { enrollProspect } from '../apps/web/src/lib/enrollment.js'
 import { dayKey } from '../apps/web/src/lib/format.js'
 import { isDomainError } from './support/domain-error.ts'
 

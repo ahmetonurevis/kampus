@@ -510,11 +510,20 @@ test('İki video gerçekten oynatılır', async ({ page }) => {
     const video = page.locator('video')
     await expect.poll(() => video.evaluate((v) => v.readyState)).toBeGreaterThanOrEqual(1)
     expect(await video.evaluate((v) => v.duration)).toBeGreaterThan(50)
+    // Sessiz oynatma: CI'da ses aygıtı yok, ses saati oynatmayı yavaşlatabiliyor. Kanıt oynatmanın
+    // başlaması ve saatin hatasız ilerlemesidir; hız ölçülmez (2 çekirdekli CI'da 8 sn'de 0,2 sn).
     await video.evaluate(async (v) => {
+      v.muted = true
       v.currentTime = 0
       await v.play()
     })
-    await expect.poll(() => video.evaluate((v) => v.currentTime)).toBeGreaterThan(0.3)
+    await expect.poll(() => video.evaluate((v) => v.currentTime)).toBeGreaterThan(0)
+    expect(
+      await video.evaluate((v) => ({ paused: v.paused, error: v.error?.code ?? null })),
+    ).toEqual({
+      paused: false,
+      error: null,
+    })
     await expect(page.locator('track')).toHaveAttribute('srclang', 'tr')
     await page.getByRole('button', { name: 'Pencereyi kapat' }).click()
   }

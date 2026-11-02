@@ -9,7 +9,6 @@ import {
   homeworkRow,
   materialRow,
   MATERIAL_LIST,
-  QUIZ_LIST,
   studentQuizRow,
   teacherHomeworkRow,
   teacherQuizRow,
@@ -189,24 +188,39 @@ test('attemptResult cevap anahtarı yoksa veya eksikse saklı sonuca düşer', (
   assert.deepEqual(attemptResult(attempt, quiz, partial), stored)
 })
 
-test('teacherQuizRow sınıf ortalamasını denemelerin cevaplarından hesaplar', () => {
-  const { seed, quiz, attempts } = quizFixture()
-  const item = wrap([quiz], { className: '7-A' })[0]
-  assert.ok(item)
-  const scores = attempts.map((attempt) => gradeQuiz(quiz, seed.bank, attempt.answers, true).score)
-  const expected = Math.round(scores.reduce((sum, score) => sum + score, 0) / scores.length)
-
-  const row = teacherQuizRow(item, attempts, seed.bank)
-  assert.equal(row.average, expected)
-  assert.equal(row.solved, attempts.length)
-  assert.equal(row.questions, quiz.questionIds.length)
+test('teacherQuizRow çözen ve ortalamayı sunucu özetinden alır, puan hesaplamaz (DOM-AKD-079)', () => {
+  const item = {
+    id: 'quiz-test-1',
+    version: 2,
+    classId: 'c1',
+    subjectId: 'math',
+    subject: 'Matematik',
+    teacherId: 't1',
+    title: 'Kesirler',
+    duration: 20,
+    dueDate: null,
+    questionIds: ['q1', 'q2'],
+    questionCount: 2,
+    status: 'open' as const,
+    createdAt: null,
+    updatedAt: '2026-10-01T09:00:00.000Z',
+    statistics: { started: 3, scored: 2, inProgress: 1, average: 75 },
+    attempts: [],
+  }
+  const row = teacherQuizRow(item, { className: '7-A' })
+  assert.equal(row.average, 75)
+  assert.equal(row.solved, 2)
+  assert.equal(row.inProgress, 1)
+  assert.equal(row.started, true)
+  assert.equal(row.questions, 2)
   assert.equal(row.className, '7-A')
 
-  // Başka quizin denemesi ortalamaya girmez; çözen yoksa ortalama yoktur.
-  const foreign = attempts.map((attempt) => ({ ...attempt, quizId: 'baska' }))
-  const empty = teacherQuizRow(item, foreign, seed.bank)
+  // Özet yoksa (öğrenci ve veli satırı) sayılar sıfır, ortalama yoktur.
+  const empty = teacherQuizRow({ ...item, statistics: null }, { className: undefined })
   assert.equal(empty.average, null)
   assert.equal(empty.solved, 0)
+  assert.equal(empty.started, false)
+  assert.equal(empty.className, '—')
 })
 
 test('studentQuizRow çözülme durumunu ve yalnız o öğrencinin sonucunu verir', () => {
@@ -248,11 +262,11 @@ test('materialRow tablo alanlarını eşler; uniqueValues tekrarı atar', () => 
 test('liste yapılandırmaları API beyaz listesindeki alanları kullanır', () => {
   // api-tasarimi.md §3: sıralama ve eşitlik filtresi alanları sunucuda beyaz listedir.
   const sortable = new Set(['id', 'title', 'dueDate'])
-  for (const config of [QUIZ_LIST, MATERIAL_LIST]) {
+  for (const config of [MATERIAL_LIST]) {
     for (const field of Object.values(config.sortFields)) assert.ok(sortable.has(field), field)
     for (const field of config.defaultSort) assert.ok(sortable.has(field.replace(/^-/, '')), field)
   }
   const filterable = new Set(['classId', 'subjectId'])
-  for (const config of [QUIZ_LIST, MATERIAL_LIST])
+  for (const config of [MATERIAL_LIST])
     for (const field of Object.values(config.filterFields)) assert.ok(filterable.has(field), field)
 })

@@ -35,7 +35,8 @@ export const recordVideoProgressSchema = z.strictObject({
   /** Oynatıcının bildirdiği video süresi (saniye). */
   durationSeconds: z
     .number('Süreyi sayı olarak girin.')
-    .positive('Süre sıfırdan büyük olmalı.')
+    // Tam saniyeye yuvarlanır (`Math.round`); 1'in altı 0'a düşer, kayıt ve yanıt şeması en az 1 ister.
+    .min(1, 'Süre en az 1 saniye olmalı.')
     .max(VIDEO_PROGRESS_MAX_SECONDS, 'Süre 24 saati aşamaz.'),
 })
 export type RecordVideoProgressInput = z.input<typeof recordVideoProgressSchema>

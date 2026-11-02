@@ -167,6 +167,9 @@ test('DOM-KYN-005: geçersiz gövde reddedilir (eksi konum, sıfır süre, fazla
   const bad = [
     { positionSeconds: -1, durationSeconds: 10 },
     { positionSeconds: 1, durationSeconds: 0 },
+    // 0 < süre < 1 yuvarlanınca 0 olurdu; yanıt şeması en az 1 saniye ister.
+    { positionSeconds: 0, durationSeconds: 0.4 },
+    { positionSeconds: 0, durationSeconds: 0.99 },
     { positionSeconds: 1 },
     { positionSeconds: '1', durationSeconds: 10 },
     { positionSeconds: Number.NaN, durationSeconds: 10 },

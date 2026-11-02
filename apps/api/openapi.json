@@ -75545,7 +75545,7 @@
                   },
                   "durationSeconds": {
                     "type": "number",
-                    "exclusiveMinimum": 0,
+                    "minimum": 1,
                     "maximum": 86400
                   }
                 },

@@ -285,6 +285,8 @@ describe('video izleme ilerlemesi ucu', () => {
         { durationSeconds: 120 },
         { positionSeconds: -1, durationSeconds: 120 },
         { positionSeconds: 5, durationSeconds: 0 },
+        // Yuvarlanınca 0 olacak süre (yanıt şeması en az 1 ister): 500 değil 400.
+        { positionSeconds: 0, durationSeconds: 0.4 },
         { positionSeconds: '5', durationSeconds: 120 },
         { positionSeconds: 5, durationSeconds: 100_000 },
         { positionSeconds: 5, durationSeconds: 120, progress: 100 },
@@ -292,6 +294,24 @@ describe('video izleme ilerlemesi ucu', () => {
       for (const body of bad) assertError(await post(s1, 'v2', body), 400, 'validation_failed')
       assertError(await post(s1, 'v2', BODY, { 'if-match': '"1"' }), 400, 'if_match_not_supported')
     })
+  })
+
+  test('DOM-KYN-005: kesirli süre ve konum tam saniyeye yuvarlanır, yanıt ve kayıt tutarlıdır', async () => {
+    const a = await institution()
+    const s1 = await student(a.id)
+    const response = await post(s1, 'v2', { positionSeconds: 6.3, durationSeconds: 12.6 })
+    assert.equal(response.statusCode, 200, response.body)
+    assert.deepEqual(response.json().data, {
+      videoId: 'v2',
+      progress: 46,
+      positionSeconds: 6,
+      durationSeconds: 13,
+    })
+    assert.equal((await stored(a.id, 's1', 'v2')).data.durationSeconds, 13)
+    // En küçük kabul edilen süre 1 sn: 0,5'in üstü 1'e, konum süreyi aşamaz.
+    const edge = await post(s1, 'v1', { positionSeconds: 0, durationSeconds: 1 })
+    assert.equal(edge.statusCode, 200, edge.body)
+    assert.equal(edge.json().data.durationSeconds, 1)
   })
 
   test('DOM-KYN-005: sık yazılan ilerleme denetim satırı üretmez', async () => {

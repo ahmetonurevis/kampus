@@ -405,6 +405,46 @@ describe('tahsilat uçları', () => {
     assert.equal(JSON.stringify(rows[0]).includes('10000'), false)
   })
 
+  test('IST-106: senet saklanır ve hesaba bağlanmaz; burslu öğrenciden reddedilir', async () => {
+    const a = await institution()
+    const note = { studentId: STUDENT?.id, amountCents: 100, method: 'Senet' }
+    assertError(await record(a.adminCookie, note), 422, 'payment_reference_required')
+    const accepted = await record(a.adminCookie, { ...note, reference: 'SNT-0001' })
+    assert.equal(accepted.statusCode, 201, accepted.body)
+    assert.equal(accepted.json().data.method, 'Senet')
+    const [stored] = await db
+      .select({ method: payments.method, bankAccountId: payments.bankAccountId })
+      .from(payments)
+      .where(eq(payments.institutionId, a.id))
+    assert.equal(stored?.method, 'promissory_note')
+    assert.equal(stored?.bankAccountId, null)
+
+    await insertMissingRecords(
+      db,
+      a.id,
+      [
+        {
+          collection: 'contracts',
+          id: 'test-contract-burslu',
+          data: {
+            id: 'test-contract-burslu',
+            studentId: STUDENT?.id,
+            date: '2026-09-01',
+            amount: 60_000,
+            title: 'Özel okul eğitim sözleşmesi',
+            scholarship: { programId: 'test-program', amountCents: 10_000 },
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    assertError(
+      await record(a.adminCookie, { ...note, reference: 'SNT-0002' }),
+      422,
+      'scholarship_promissory_note',
+    )
+  })
+
   // --- Nakit ayarı ------------------------------------------------------------------------------
 
   test('DOM-FIN-032: nakit varsayılan kapalı; yönetici açınca kabul edilir, kapatınca reddedilir', async () => {

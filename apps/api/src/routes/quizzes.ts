@@ -96,18 +96,19 @@ export function registerQuizRoutes(app: FastifyInstance) {
         operationId: 'listQuizzes',
         tags: ['quizzes'],
         summary: 'Quizler',
-        description: `Quizler oluşturma anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: \`classId\`, \`subjectId\`, \`status\` (\`open\`, \`closed\`, \`all\`). Yönetici ve öğretmen satırı deneme özetini (\`statistics\`: başlatan, sonuçlanan, süren, cevaplardan hesaplanan ortalama), öğrenci ve veli satırı yalnız kendi/çocuğunun denemesini (\`attempts\`) taşır. Bilinmeyen parametre 400. ${READ_ACCESS}`,
+        description: `Quizler oluşturma anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: \`classId\`, \`subjectId\`, \`q\` (başlıkta harf ve aksan duyarsız arama), \`status\` (\`open\`, \`closed\`, \`all\`). Yönetici ve öğretmen satırı deneme özetini (\`statistics\`: başlatan, sonuçlanan, süren, cevaplardan hesaplanan ortalama), öğrenci ve veli satırı yalnız kendi/çocuğunun denemesini (\`attempts\`) taşır. Bilinmeyen parametre 400. ${READ_ACCESS}`,
         querystring: quizListQuerySchema,
         response: { 200: quizListResponseSchema, ...readErrors },
       },
     },
     async (request) => {
-      const { page, pageSize, classId, subjectId, status } = request.query
+      const { page, pageSize, classId, subjectId, q, status } = request.query
       const result = await listQuizzes(contextOf(request), {
         page,
         pageSize,
         classId,
         subjectId,
+        q,
         status,
       })
       return { data: result.items, meta: { page, pageSize, total: result.total } }

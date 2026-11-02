@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
@@ -36,7 +37,7 @@ const isStatus = (value: string): value is Exclude<QuizStatusFilter, 'all'> =>
 
 /**
  * Quiz Oluştur (öğretmen; IST-095, DOM-AKD-075…079): kapsamdaki quizler `/quizzes` ucundan sunucu
- * sayfalı; sınıf, ders ve durum süzgeci. Çözen sayısı ve sınıf ortalaması sunucunun deneme
+ * sayfalı; başlık araması, sınıf, ders ve durum süzgeci. Çözen sayısı ve sınıf ortalaması sunucunun deneme
  * özetidir (`statistics`; cevaplardan hesaplanır, saklanmaz). Quiz hazırla ve düzenle, sonuçlar
  * ve arşiv aynı sağ panelde açılır.
  */
@@ -59,9 +60,12 @@ export function TeacherQuizzesPage({ page }: { page: NavPage }) {
   const subjectId = filterValue(list.state.filters.subjectId)
   const statusValue = filterValue(list.state.filters.status)
   const status = isStatus(statusValue) ? statusValue : undefined
+  // Sunucu başlık araması: her tuşta istek atılmaz; sayfa arama değişince `useListState`'te sıfırlanır.
+  const search = useDebouncedValue(list.state.query)
   const quizzes = useQuizList({
     page: list.state.page,
     pageSize: list.state.pageSize,
+    q: search,
     ...(classId ? { classId } : {}),
     ...(subjectId ? { subjectId } : {}),
     ...(status ? { status } : {}),
@@ -170,7 +174,6 @@ export function TeacherQuizzesPage({ page }: { page: NavPage }) {
           sortable={NO_SORT}
           columns={columns}
           mobileColumns={MOBILE_COLUMNS}
-          search={false}
           caption="Quiz listesi"
           empty="Henüz quiz yok."
           emptyFiltered="Bu süzgeçlere uyan quiz yok."

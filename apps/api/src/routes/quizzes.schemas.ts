@@ -32,6 +32,13 @@ export const quizListQuerySchema = pageQuerySchema
   .extend({
     classId: identifier.optional().describe('Sınıf'),
     subjectId: identifier.optional().describe('Ders'),
+    q: z
+      .string()
+      .trim()
+      .min(2)
+      .max(100)
+      .optional()
+      .describe('Başlık araması; Türkçe büyük/küçük harf ve aksan duyarsız, parça eşleşir'),
     status: z
       .enum(QUIZ_STATUS_FILTERS)
       .default('all')

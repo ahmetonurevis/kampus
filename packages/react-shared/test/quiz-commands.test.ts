@@ -259,6 +259,11 @@ describe('quiz istekleri (IST-095)', () => {
       page: 2,
       pageSize: 25,
     })
+    // Başlık araması kırpılır; boş ya da tek karakter sunucuda 400 olacağı için gönderilmez (IST-095).
+    assert.deepEqual(quizListParams({ q: '  Türkçe ' }), { q: 'Türkçe' })
+    assert.deepEqual(quizListParams({ q: ' ' }), {})
+    assert.deepEqual(quizListParams({ q: 'a' }), {})
+    assert.notDeepEqual(quizListKey({ q: 'fen' }), quizListKey({}))
     assert.deepEqual(
       quizListKey({ subjectId: 'math', classId: 'c1' }),
       quizListKey({ classId: 'c1', subjectId: 'math' }),

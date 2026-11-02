@@ -33,6 +33,7 @@ import {
 } from '../db/records.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { searchKey } from './collection-reads.ts'
 import { environment } from './commands.ts'
 import {
   runCommand,
@@ -260,12 +261,15 @@ export interface QuizListInput {
   pageSize: number
   classId?: string | undefined
   subjectId?: string | undefined
+  /** Başlık araması; harf ve aksan duyarsız (`searchKey`). */
+  q?: string | undefined
   status: QuizStatus | 'all'
 }
 
 /**
  * Quiz listesi: oluşturma anına göre yeniden eskiye, sonra kimliğe göre, sayfalı. Sınıf ve ders
- * süzgeci SQL'de, durum (`open`/`closed`, son tarih) bellekte ana göre. Yönetici ve öğretmen
+ * süzgeci SQL'de, başlık araması (`q`) ve durum (`open`/`closed`, son tarih) okunabilir satırlar
+ * üzerinde bellekte ana göre. Yönetici ve öğretmen
  * satırı deneme özetini (`statistics`, DOM-AKD-079), öğrenci ve veli satırı yalnız kendi/çocuğunun
  * denemesini (`attempts`) taşır; sınıf ortalaması açılmaz.
  */
@@ -276,8 +280,10 @@ export async function listQuizzes(ctx: ServiceContext, input: QuizListInput) {
   if (input.subjectId) match.push({ kind: 'equals', field: 'subjectId', values: [input.subjectId] })
   const rows = await loadRecords(ctx.db, ctx.institutionId, [QUIZZES], { match })
   const now = ctx.now.toISOString()
+  const needle = input.q === undefined ? null : searchKey(input.q.trim())
   const visible = rows
     .filter((row) => scope.canRead(QUIZZES, row.data))
+    .filter((row) => needle === null || searchKey(text(row.data.title) ?? '').includes(needle))
     .filter((row) => {
       return input.status === 'all' || statusAt(text(row.data.dueDate), ctx.now) === input.status
     })

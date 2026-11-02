@@ -4237,7 +4237,7 @@ export interface paths {
         };
         /**
          * Quizler
-         * @description Quizler oluşturma anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `status` (`open`, `closed`, `all`). Yönetici ve öğretmen satırı deneme özetini (`statistics`: başlatan, sonuçlanan, süren, cevaplardan hesaplanan ortalama), öğrenci ve veli satırı yalnız kendi/çocuğunun denemesini (`attempts`) taşır. Bilinmeyen parametre 400. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez; kendi cevaplarını ve konu yüzdelerini son tarih geçene ya da quiz kapanana kadar görmez, yalnız puan ve doğru sayısını görür (DOM-AKD-078). Denemeleri ve ortalamayı yönetici, quizin öğretmeni (sınıftan ayrılmış olsa da) ve öğrencinin sınıf rehber öğretmeni görür; aynı sınıfa başka dersle giren öğretmen görmez. Öğrenci yalnız kendi, veli çocuğunun denemesini görür (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Quizler oluşturma anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `q` (başlıkta harf ve aksan duyarsız arama), `status` (`open`, `closed`, `all`). Yönetici ve öğretmen satırı deneme özetini (`statistics`: başlatan, sonuçlanan, süren, cevaplardan hesaplanan ortalama), öğrenci ve veli satırı yalnız kendi/çocuğunun denemesini (`attempts`) taşır. Bilinmeyen parametre 400. Yönetici kurumun bütün quizlerini, öğretmen derse girdiği sınıfların ve kendi hazırladığı quizleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının quizlerini okur; ön büro okumaz (403). Cevap anahtarı ve çözüm açıklaması yalnız yönetici ve öğretmen yanıtındadır; öğrenci ve veli soru bazında doğru/yanlış da görmez; kendi cevaplarını ve konu yüzdelerini son tarih geçene ya da quiz kapanana kadar görmez, yalnız puan ve doğru sayısını görür (DOM-AKD-078). Denemeleri ve ortalamayı yönetici, quizin öğretmeni (sınıftan ayrılmış olsa da) ve öğrencinin sınıf rehber öğretmeni görür; aynı sınıfa başka dersle giren öğretmen görmez. Öğrenci yalnız kendi, veli çocuğunun denemesini görür (DOM-AKD-079). Görmediği ve başka kurumun quizi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         get: operations["listQuizzes"];
         put?: never;
@@ -36792,6 +36792,8 @@ export interface operations {
                 classId?: string;
                 /** @description Ders */
                 subjectId?: string;
+                /** @description Başlık araması; Türkçe büyük/küçük harf ve aksan duyarsız, parça eşleşir */
+                q?: string;
                 /** @description `open` son tarihi gelmemiş ya da son tarihsiz, `closed` son tarihi geçmiş quizler */
                 status?: "all" | "open" | "closed";
             };

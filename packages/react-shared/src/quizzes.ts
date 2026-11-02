@@ -160,6 +160,9 @@ export function isStaffQuizDetail<T extends object>(detail: T): detail is T & Qu
   return 'answerKey' in detail
 }
 
+/** Başlık aramasının en kısa uzunluğu (sunucu `q` kuralı). */
+export const QUIZ_SEARCH_MIN = 2
+
 /** Boş süzgeç gönderilmez (sunucu boş değerde 400 verir); `status` varsayılanı `all`'dır. */
 export function quizListParams(query: QuizListQuery): QuizListQuery {
   const params: QuizListQuery = {}
@@ -167,6 +170,9 @@ export function quizListParams(query: QuizListQuery): QuizListQuery {
   if (query.pageSize !== undefined) params.pageSize = query.pageSize
   if (query.classId) params.classId = query.classId
   if (query.subjectId) params.subjectId = query.subjectId
+  // Sunucu başlık aramasını en az 2 karakterle kabul eder; kısa ya da boş metin aramasız listedir.
+  const q = query.q?.trim()
+  if (q && q.length >= QUIZ_SEARCH_MIN) params.q = q
   if (query.status && query.status !== 'all') params.status = query.status
   return params
 }

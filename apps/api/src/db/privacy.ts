@@ -226,7 +226,8 @@ export async function findConsent(
 
 /**
  * Rızayı yazar. Aynı veri sahibi + amaç + karar için ikinci etkin satır
- * `consents_subject_purpose_decision_key` ile 23505 verir (`mapDatabaseError` → 409).
+ * `consents_subject_purpose_decision_key` ile 23505 verir (`mapDatabaseError` → 409
+ * `consent_decision_exists`).
  */
 export async function insertConsent(
   tx: Database,

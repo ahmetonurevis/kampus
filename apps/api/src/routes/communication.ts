@@ -230,7 +230,7 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
   typed.get(
     '/api/v1/conversations',
     {
-      preHandler: readGuard(conversationRoles),
+      preValidation: readGuard(conversationRoles),
       schema: {
         operationId: 'listConversations',
         tags: ['communication'],
@@ -251,7 +251,7 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
   typed.get(
     '/api/v1/conversations/:conversationId/messages',
     {
-      preHandler: readGuard(conversationRoles),
+      preValidation: readGuard(conversationRoles),
       schema: {
         operationId: 'listConversationMessages',
         tags: ['communication'],
@@ -384,7 +384,7 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
   typed.get(
     '/api/v1/students/:studentId/parent-accounts',
     {
-      preHandler: readGuard(['ogretmen']),
+      preValidation: readGuard(['ogretmen']),
       schema: {
         operationId: 'listStudentParentAccounts',
         tags: ['communication'],

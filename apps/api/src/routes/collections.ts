@@ -2,7 +2,7 @@ import type { FastifyInstance, FastifyRequest } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 
 import { ROLES } from '../auth.ts'
-import { errorResponseSchema } from '../errors.ts'
+import { errorResponseSchema, NotFoundError } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import {
   collectionModule,
@@ -28,10 +28,20 @@ import {
 
 const errors = { ...authenticatedErrors, 404: errorResponseSchema } as const
 
-/** Modül çözücüsü: yol doğrulandıktan sonra çalışır; bilinmeyen koleksiyon burada 404 olur. */
+/**
+ * Modül çözücüsü: `preValidation`'da ham yol parametresini okur. Geçersiz ya da bilinmeyen
+ * koleksiyon modüle bağlı sayılmaz (`null`): 400/404'ü doğrulama ve servis verir, böylece sıra
+ * 401 → modül 403 → 400 → 404 kalır.
+ */
 function moduleOfRequest(request: FastifyRequest): string | null {
-  const { collection } = collectionParamsSchema.parse(request.params)
-  return collectionModule(collection)
+  const params = collectionParamsSchema.safeParse(request.params)
+  if (!params.success) return null
+  try {
+    return collectionModule(params.data.collection)
+  } catch (error) {
+    if (error instanceof NotFoundError) return null
+    throw error
+  }
 }
 
 type ReadQueryInput = Partial<Record<FilterField, string | string[]>> & {
@@ -73,16 +83,13 @@ function readQueryOf(query: ReadQueryInput): CollectionReadQuery {
  */
 export function registerCollectionRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
-  // Kimlik sorgu doğrulamasından önce (oturumsuz istek her sorguda 401); modül çözücüsü
-  // doğrulanmış yol parametresini okur.
-  const preValidation = [app.requireRole(ROLES)]
-  const preHandler = [app.requireModule(moduleOfRequest)]
+  // Sıra sorgu doğrulamasından önce: oturumsuz 401, kapalı modül 403 (`issues` yok), sonra 400.
+  const preValidation = [app.requireModule(moduleOfRequest), app.requireRole(ROLES)]
 
   typed.get(
     '/api/v1/collections/:collection',
     {
       preValidation,
-      preHandler,
       schema: {
         operationId: 'listCollection',
         tags: ['collections'],
@@ -111,7 +118,6 @@ export function registerCollectionRoutes(app: FastifyInstance) {
     '/api/v1/collections/:collection/counts',
     {
       preValidation,
-      preHandler,
       schema: {
         operationId: 'countCollection',
         tags: ['collections'],
@@ -141,7 +147,6 @@ export function registerCollectionRoutes(app: FastifyInstance) {
     '/api/v1/collections/:collection/:id',
     {
       preValidation,
-      preHandler,
       schema: {
         operationId: 'getCollectionRecord',
         tags: ['collections'],

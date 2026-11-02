@@ -32,7 +32,7 @@ function registerEchoRoute(app: App) {
   app.withTypeProvider<ZodTypeProvider>().post(
     '/api/v1/test-echoes',
     {
-      preHandler: app.requireRole(ROLES),
+      preValidation: app.requireRole(ROLES),
       schema: {
         hide: true,
         body: z.object({ institutionId: z.string().optional() }),

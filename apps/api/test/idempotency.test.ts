@@ -68,7 +68,7 @@ function registerPaymentRoute(app: App) {
   app.withTypeProvider<ZodTypeProvider>().post(
     '/api/v1/test-payments/:invoiceId',
     {
-      preHandler: [app.requireRole(ROLES)],
+      preValidation: [app.requireRole(ROLES)],
       schema: {
         hide: true,
         params: z.object({ invoiceId: z.string() }),
@@ -310,7 +310,7 @@ describe('Idempotency-Key (api-tasarimi.md §7, DOM-FIN aynı ödeme iki kez iş
         cookie,
         first.id,
         { method: 'Banka havalesi' },
-        { 'idempotency-key': 'kısa' },
+        { 'idempotency-key': 'kisa' },
       )
       assert.equal(response.statusCode, 400)
       assert.equal(response.json().code, 'validation_failed')

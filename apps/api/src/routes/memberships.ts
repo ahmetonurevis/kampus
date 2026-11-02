@@ -10,7 +10,7 @@ export function registerMembershipRoutes(app: FastifyInstance) {
   app.withTypeProvider<ZodTypeProvider>().get(
     '/api/v1/memberships',
     {
-      preHandler: app.requireRole(['yonetici', 'onburo']),
+      preValidation: app.requireRole(['yonetici', 'onburo']),
       schema: {
         operationId: 'listMemberships',
         tags: ['memberships'],

@@ -28,7 +28,7 @@ function registerModuleRoutes(app: App) {
   typed.get(
     '/api/v1/test-guidance',
     {
-      preHandler: [app.requireRole(ROLES), app.requireModule('guidance')],
+      preValidation: [app.requireRole(ROLES), app.requireModule('guidance')],
       schema: { hide: true, response },
     },
     async () => ({ data: { ok: true } }),
@@ -36,7 +36,7 @@ function registerModuleRoutes(app: App) {
   typed.get(
     '/api/v1/test-modules/:module',
     {
-      preHandler: [
+      preValidation: [
         app.requireRole(ROLES),
         app.requireModule((request) => {
           const { module } = z.object({ module: z.string() }).parse(request.params)

@@ -11,6 +11,7 @@ import { roleSchema, SESSION_FRESH_AGE_SECONDS, type Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
 import { AppError, AuthenticationError, ForbiddenError, MESSAGES } from '../errors.ts'
 import { findMembership } from '../services/memberships.ts'
+import { markEarlyGuard } from './early-guards.ts'
 
 /** Doğrulanmış Better Auth oturumu (etkin kurum gerekmeyen uçlar, ör. `/me`). */
 export interface SessionAuth {
@@ -44,7 +45,7 @@ declare module 'fastify' {
     authenticate: preHandlerAsyncHookHandler
     /** Yalnız oturum; etkin kurum gerekmez. */
     authenticateSession: preHandlerAsyncHookHandler
-    /** Kimlik + rol denetimi; her kimlikli rota bunu bildirir (varsayılan ret). */
+    /** Kimlik + rol denetimi; her kimlikli rota bunu bildirir (varsayılan ret). Yalnız `preValidation`. */
     requireRole: (roles: readonly Role[]) => preHandlerAsyncHookHandler
     /** Hassas işlem: oturum `freshAge`'den eskiyse 403 `reauthentication_required`. */
     requireFreshSession: preHandlerAsyncHookHandler
@@ -139,12 +140,12 @@ export function registerAuthenticate(app: FastifyInstance) {
 
   app.decorate('requireRole', (roles: readonly Role[]): preHandlerAsyncHookHandler => {
     const allowed = new Set<Role>(roles)
-    return async function (request, reply) {
+    return markEarlyGuard(async function (request, reply) {
       const auth = await loadAuth(request, reply)
       if (!allowed.has(auth.role)) {
         request.log.info({ event: 'auth.role_denied', role: auth.role })
         throw new ForbiddenError()
       }
-    }
+    })
   })
 }

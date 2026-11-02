@@ -20,6 +20,8 @@ export type RiskRow = {
   number: string
   classId: string
   class: string
+  /** Sınıfın kampüsü; kampüs süzgeci bununla eşleşir (kampüs yoksa boş). */
+  branchId: string
   branch: string
   /** Not ortalaması (0–100); hiç notu olmayan öğrencide `null` (ortalama uydurulmaz). */
   score: number | null
@@ -78,6 +80,7 @@ export function riskRows(
       number: record.number ?? '',
       classId: record.classId,
       class: schoolClass?.name ?? '—',
+      branchId: schoolClass?.branchId ?? '',
       branch: lookups.branches.get(schoolClass?.branchId ?? '')?.name ?? '—',
       score,
       absent,
@@ -91,6 +94,25 @@ export function riskRows(
       (a.score ?? 101) - (b.score ?? 101) ||
       a.name.localeCompare(b.name, 'tr'),
   )
+}
+
+/** Kampüs süzgecinin "tümü" değeri (URL'de parametre yazılmaz). */
+export const ALL_BRANCHES = ''
+
+/**
+ * Adresteki `?sube=` değerini süzgece çevirir: bilinen bir kampüs değilse (arşivlenmiş, kapsam dışı,
+ * bozuk bağlantı) "tümü" sayılır; kimse görmediği bir kampüsün boş listesinde kalmaz.
+ */
+export function branchFilterValue(
+  requested: string | null,
+  branches: ReadonlyMap<string, unknown>,
+): string {
+  return requested !== null && branches.has(requested) ? requested : ALL_BRANCHES
+}
+
+/** Kampüs süzgeci (Vue `Management.vue` "Şube seç"): boş değer tüm satırları döndürür. */
+export function filterByBranch(rows: readonly RiskRow[], branchId: string): readonly RiskRow[] {
+  return branchId === ALL_BRANCHES ? rows : rows.filter((row) => row.branchId === branchId)
 }
 
 export type RiskSummary = { tracked: number; high: number }

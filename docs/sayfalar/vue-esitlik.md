@@ -8,13 +8,13 @@ Kapsam: Vue menüsündeki (`full-navigation.ts`, `apiOnly` olmayanlar) ve rotas�
 
 | Durum                | Sayı   |
 | -------------------- | ------ |
-| `eşit`               | 44     |
-| `kısmi`              | 24     |
+| `eşit`               | 47     |
+| `kısmi`              | 21     |
 | `yok`                | 1      |
 | `bilerek kaldırıldı` | 5      |
 | **Toplam satır**     | **74** |
 
-Rol dağılımı: yönetici 13 (7 eşit, 6 kısmi), ön büro 1 (kısmi), öğretmen 18 (9 eşit, 8 kısmi, 1 yok), öğrenci 20 (14 eşit, 6 kısmi), veli 15 (12 eşit, 3 kısmi), kabuk ve genel 7 (2 eşit, 5 bilerek kaldırıldı). Menüdeki bütün sayfaların React kaydı vardır (`page-coverage.test.ts` izin listesi boş); eksikler sayfa içindeki davranışlardır.
+Rol dağılımı: yönetici 13 (10 eşit, 3 kısmi), ön büro 1 (kısmi), öğretmen 18 (9 eşit, 8 kısmi, 1 yok), öğrenci 20 (14 eşit, 6 kısmi), veli 15 (12 eşit, 3 kısmi), kabuk ve genel 7 (2 eşit, 5 bilerek kaldırıldı). Menüdeki bütün sayfaların React kaydı vardır (`page-coverage.test.ts` izin listesi boş); eksikler sayfa içindeki davranışlardır.
 
 ### OG-072'yi bloke eden eksikler (öncelik sırasıyla)
 
@@ -33,7 +33,7 @@ Rol dağılımı: yönetici 13 (7 eşit, 6 kısmi), ön büro 1 (kısmi), öğre
 | 9    | P2      | Öğretmen ödev listesinde başlık araması ve sıralama yok                         | `/ogretmen/odevler`                                              | OG-979                         |
 | 10   | P3      | Öğrenci sorusuna dosya/fotoğraf eki                                             | `/ogrenci/soru-sor`                                              | OG-260                         |
 | 11   | P3      | Kampüs ve kadro özet kartları (aktif kampüs/sınıf/öğrenci, kadro, branş)        | `/yonetici/subeler`, `/yonetici/personel`                        | OG-980 bitti                   |
-| 12   | P3      | Risk listesinde şube süzgeci                                                    | `/yonetici/risk-listesi`                                         | OG-981                         |
+| 12   | P3      | Risk listesinde şube süzgeci                                                    | `/yonetici/risk-listesi`                                         | OG-981 bitti                   |
 | 13   | P3      | Kişisel bildirim kanal ve konu tercihleri (Vue'da yalnız demo kaydı)            | `/ogrenci/ayarlar`, `/veli/ayarlar`                              | OG-107                         |
 | 14   | P2      | Vue e2e'den React'e kalan senaryolar ve React e2e'si olmayan rol/sayfa çiftleri | aşağıdaki tablolarda "React: yok" satırları                      | OG-228, OG-076, yeni görev Ö-5 |
 
@@ -54,7 +54,7 @@ Bir Vue davranışı ancak şu gerekçelerden biriyle `bilerek kaldırıldı` sa
 | Yönetici | `/yonetici/subeler`             | `/yonetici/subeler`             | eşit  | Liste, arama, kampüs/düzey süzgeci, CSV, sınıf özeti, özet kartları (aktif kampüs, sınıf, öğrenci; sunucu sayımı), çok adımlı sınıf formu, arşiv/geri alma ve "Ortalama" sütunu aynı                     | —              | Vue: component-refresh, demo, ux-flows · React: yonetim, yonetim-arsiv, yonetim-yazma                                                              |
 | Yönetici | `/yonetici/personel`            | `/yonetici/personel`            | eşit  | Kampüs/branş süzgeci, CSV, "Performans" sütunu, özet kartları (aktif kadro, ders branşı, öğrenci; sunucu sayımı), form ve arşiv aynı                                                                     | —              | Vue: demo, documents-lists, ux-flows · React: yonetim, yonetim-arsiv, yonetim-yazma                                                                |
 | Yönetici | `/yonetici/sla-raporu`          | `/yonetici/sla-raporu`          | eşit  | Sütunlar, özet kartları ve CSV aynı (React ayrıca soru sayısı ve SLA uyumu sütunu)                                                                                                                       | —              | Vue: yok · React: okuma-sayfalari-2                                                                                                                |
-| Yönetici | `/yonetici/risk-listesi`        | `/yonetici/risk-listesi`        | kısmi | Liste, arama, CSV, özet kartları ve öğrenci paneli var; şube süzgeci yok                                                                                                                                 | Ö-4            | Vue: yok · React: okuma-sayfalari                                                                                                                  |
+| Yönetici | `/yonetici/risk-listesi`        | `/yonetici/risk-listesi`        | eşit  | Liste, arama, "Şube seç" süzgeci (varsayılan tüm şubeler, adreste `?sube=`), CSV, özet kartları ve öğrenci paneli aynı                                                                                   | Ö-4            | Vue: yok · React: okuma-sayfalari                                                                                                                  |
 | Yönetici | `/yonetici/ayarlar`             | `/yonetici/ayarlar`             | eşit  | Kurum & Modüller, Kullanıcı & Yetkiler (salt okuma, Vue'da da öyle), İşlem Geçmişi var; React'te ayrıca Eğitim yılı. "Demo verilerini sıfırla" kabuk tablosunda                                          | —              | Vue: assessment-automation, demo, student-goals, school-workflows, ux-flows · React: ayarlar, ayarlar-kullanici-gecmis, akademik-yil, kurum-ve-api |
 | Yönetici | `/yonetici/optik-degerlendirme` | `/yonetici/optik-degerlendirme` | kısmi | Dosya ön kontrolü, önizleme, onaylı kayıt, profil ve cevap anahtarı yazma var; sonuç CSV'si, cevap anahtarı şablonu ve örnek dosya indirme yok; kayıtlı değerlendirmenin kazanım/soru ayrıntı paneli yok | OG-209, OG-208 | Vue: assessment-automation · React: optik-etut                                                                                                     |
 | Yönetici | `/yonetici/otomatik-etut`       | `/yonetici/otomatik-etut`       | kısmi | Planlama önizlemesi, onay, yoklama, iptal ve uygunluk saatleri var; "Etüt listesini CSV indir" ve plan önizlemesi CSV'si yok                                                                             | OG-209         | Vue: yok · React: optik-etut                                                                                                                       |
@@ -158,13 +158,13 @@ Kabukta eşit olanlar (satır açılmadı): kategorili menü, kapalı modülün 
 
 Görev tablosunda karşılığı olmayan, OG-072'yi bloke eden eksikler. Satırları patron ekler; ID'ler geçicidir (Ö-n).
 
-| Geçici ID           | Başlık                                                                                                                                                                       | Boyut | Bağımlılık                                                                 |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | -------------------------------------------------------------------------- |
-| Ö-1                 | Genel Bakış eksik kartları: öğrenci ve velide "Bugünkü ders programı" ile son quiz sonucu, yönetici "SLA ihlali" sayacı                                                      | S     | OG-226 ile aynı dalda yapılabilir; finans kartları (tahsilat oranı) ON-036 |
-| Ö-2                 | Öğretmen ödev listesinde başlık araması ve sıralama                                                                                                                          | S     | `/homework` ucunda `q` ve `sort` (API); yoksa önce uç                      |
-| Ö-3 (OG-980, bitti) | Kampüsler & Sınıflar ve Eğitim Kadrosu özet kartları (aktif kampüs, sınıf, öğrenci, kayıt durumu; aktif kadro, branş)                                                        | S     | Sunucu sayımı (`counts`) uçları var; OG-038 takibi                         |
-| Ö-4                 | Risk listesinde şube süzgeci                                                                                                                                                 | S     | Yok; `TODO(api-risk-listesi)` sunucu toplamıyla birlikte düşünülebilir     |
-| Ö-5                 | React e2e boşlukları: öğrenci mesaj ve duyuru, öğrenci ve öğretmen deneme sınavları, öğrenci rehberlik, veli otomatik etüt, yönetici çalışma planı, öğretmen öğrenci profili | M     | OG-076 kapsamına eklenebilir; profil senaryosu OG-205 sonrası              |
+| Geçici ID           | Başlık                                                                                                                                                                       | Boyut | Bağımlılık                                                                   |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----- | ---------------------------------------------------------------------------- |
+| Ö-1                 | Genel Bakış eksik kartları: öğrenci ve velide "Bugünkü ders programı" ile son quiz sonucu, yönetici "SLA ihlali" sayacı                                                      | S     | OG-226 ile aynı dalda yapılabilir; finans kartları (tahsilat oranı) ON-036   |
+| Ö-2                 | Öğretmen ödev listesinde başlık araması ve sıralama                                                                                                                          | S     | `/homework` ucunda `q` ve `sort` (API); yoksa önce uç                        |
+| Ö-3 (OG-980, bitti) | Kampüsler & Sınıflar ve Eğitim Kadrosu özet kartları (aktif kampüs, sınıf, öğrenci, kayıt durumu; aktif kadro, branş)                                                        | S     | Sunucu sayımı (`counts`) uçları var; OG-038 takibi                           |
+| Ö-4 (OG-981, bitti) | Risk listesinde şube süzgeci                                                                                                                                                 | S     | Eklendi; `TODO(api-risk-listesi)` sunucu toplamıyla birlikte OG-151'de kalır |
+| Ö-5                 | React e2e boşlukları: öğrenci mesaj ve duyuru, öğrenci ve öğretmen deneme sınavları, öğrenci rehberlik, veli otomatik etüt, yönetici çalışma planı, öğretmen öğrenci profili | M     | OG-076 kapsamına eklenebilir; profil senaryosu OG-205 sonrası                |
 
 ## Takip notları
 

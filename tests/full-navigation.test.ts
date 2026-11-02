@@ -56,11 +56,11 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
     )
   assert.deepEqual(
     navigation.ogretmen.filter((p) => p.apiOnly).map((p) => p.path),
-    ['kurlar', 'icerik-havuzu', 'duyurular', 'mesajlar'],
+    ['kurlar', 'gruplar', 'icerik-havuzu', 'duyurular', 'mesajlar'],
   )
 })
 
-test('Kur sayfası yalnız dil okulunda, personelde ve kategorisinin sonunda (IST-076)', () => {
+test('Kur ve grup sayfaları yalnız dil okulunda, personelde ve kategorisinin sonunda (IST-076, IST-077)', () => {
   const expected: Record<Role, string | null> = {
     yonetici: 'YÖNETİM',
     onburo: 'KAYIT & SATIŞ',
@@ -70,7 +70,7 @@ test('Kur sayfası yalnız dil okulunda, personelde ve kategorisinin sonunda (IS
   }
   for (const role of roleKeys) {
     const pages = navigation[role]
-    for (const path of ['kurlar']) {
+    for (const path of ['kurlar', 'gruplar']) {
       const page = pages.find((p) => p.path === path)
       if (expected[role] === null) {
         assert.equal(page, undefined, `${role}/${path}`)
@@ -92,7 +92,14 @@ test('Kur sayfası yalnız dil okulunda, personelde ve kategorisinin sonunda (IS
         `${role} ${group} kategorisi bölünmedi`,
       )
   }
-  assert.ok(navigation.yonetici.every((p) => p.path === 'kurlar' || pageAvailableFor(p, 'school')))
+  // Okul kurumunda kur ve grup dışındaki her sayfa açıktır.
+  for (const role of roleKeys)
+    assert.ok(
+      navigation[role].every(
+        (p) => p.path === 'kurlar' || p.path === 'gruplar' || pageAvailableFor(p, 'school'),
+      ),
+      role,
+    )
 })
 
 test('İçerik Havuzu yalnız yönetici ve öğretmende, learning modülüne bağlı ve ÖĞRENME kategorisindedir (DOM-YTK-021)', () => {

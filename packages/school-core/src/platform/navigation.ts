@@ -135,13 +135,22 @@ const languageSchoolPage = (
 
 const coursesPage = (group: string, description: string) =>
   languageSchoolPage('kurlar', 'Kurlar', 'Languages', description, group)
+const groupsPage = (group: string, description: string) =>
+  languageSchoolPage('gruplar', 'Gruplar', 'UsersRound', description, group)
 
 export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> = {
   yonetici: [
     coursesPage('YÖNETİM', 'Kur programını tanımlayın, etkinleştirin ve e-Özel kaydını izleyin.'),
+    groupsPage('YÖNETİM', 'Kurlardan grup açın; öğretmen, derslik ve takvimi planlayın.'),
   ],
-  onburo: [coursesPage('KAYIT & SATIŞ', 'Etkin kurları ve kapasitelerini inceleyin.')],
-  ogretmen: [coursesPage('AKADEMİK', 'Koordinatörü olduğunuz seviyelerin kurlarını yönetin.')],
+  onburo: [
+    coursesPage('KAYIT & SATIŞ', 'Etkin kurları ve kapasitelerini inceleyin.'),
+    groupsPage('KAYIT & SATIŞ', 'Grupların doluluğunu ve kursiyerlerini izleyin.'),
+  ],
+  ogretmen: [
+    coursesPage('AKADEMİK', 'Koordinatörü olduğunuz seviyelerin kurlarını yönetin.'),
+    groupsPage('AKADEMİK', 'Gruplarınızın takvimini ve doluluğunu izleyin.'),
+  ],
   ogrenci: [],
   veli: [],
 }

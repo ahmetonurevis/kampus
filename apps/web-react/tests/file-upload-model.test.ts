@@ -15,6 +15,9 @@ import {
   isUploadBusy,
   pickProblems,
   runUploadQueue,
+  scanAnnouncement,
+  scanRowView,
+  scanWatchIds,
   type FileUploadItem,
   type UploadAttempt,
 } from '../src/components/file-upload-model.ts'
@@ -351,5 +354,55 @@ describe('Alan meşgul sayılır (OG-250, DOM-KYN-006)', () => {
 
   test('yeniden deneme bitince ya da vazgeçilince meşgul değildir', () => {
     assert.equal(isUploadBusy(false, 0), false)
+  })
+})
+
+describe('Yüklenen dosyanın güvenlik taraması (OG-987, IST-027; ADR 0003 karar 8)', () => {
+  test('IST-027: taranan, beklemesi dolan ya da reddedilen dosya gönderimi kilitler', () => {
+    assert.equal(isUploadBusy(false, 0, ['processing']), true)
+    assert.equal(isUploadBusy(false, 0, ['ready', 'timed_out']), true)
+    assert.equal(isUploadBusy(false, 0, ['ready', 'rejected']), true)
+  })
+
+  test('IST-027: hazır, tarayıcısız (pending) ve okunamayan dosya kilitlemez', () => {
+    assert.equal(isUploadBusy(false, 0, ['ready', 'pending', 'failed']), false)
+    assert.equal(isUploadBusy(false, 0, []), false)
+  })
+
+  test('IST-027: yalnız bu alanda yüklenip taranan ve hâlâ listede olan dosya izlenir', () => {
+    const items: FileUploadItem[] = [
+      { id: 'eski', name: 'onceki.pdf' },
+      { id: 'b', name: 'b.pdf' },
+      { id: 'a', name: 'a.pdf' },
+    ]
+    assert.deepEqual(scanWatchIds(items, new Set(['a', 'b', 'kaldirildi'])), ['b', 'a'])
+    assert.deepEqual(scanWatchIds(items, new Set()), [])
+  })
+
+  test('IST-027: satır taranırken "Taranıyor…", süre dolunca yeniden dene, retde Türkçe ileti', () => {
+    assert.deepEqual(scanRowView('processing'), {
+      text: 'Taranıyor…',
+      tone: 'muted',
+      retry: false,
+    })
+    const timedOut = scanRowView('timed_out')
+    assert.equal(timedOut?.retry, true)
+    assert.match(timedOut?.text ?? '', /güvenlik taramasında, birazdan yeniden deneyin/)
+    assert.deepEqual(scanRowView('rejected'), {
+      text: 'Dosya güvenlik taramasından geçmedi. Başka bir dosya yükleyin.',
+      tone: 'danger',
+      retry: false,
+    })
+    for (const state of ['ready', 'pending', 'failed', undefined] as const)
+      assert.equal(scanRowView(state), null)
+  })
+
+  test('IST-027: canlı bölge en önemli durumu duyurur', () => {
+    assert.equal(scanAnnouncement([]), null)
+    assert.match(scanAnnouncement(['ready', 'processing']) ?? '', /taramasında/)
+    assert.match(scanAnnouncement(['processing', 'timed_out']) ?? '', /birazdan yeniden deneyin/)
+    assert.match(scanAnnouncement(['timed_out', 'rejected']) ?? '', /taramasından geçmedi/)
+    assert.equal(scanAnnouncement(['ready', 'ready']), 'Dosya güvenlik taramasından geçti.')
+    assert.equal(scanAnnouncement(['ready', 'pending']), null)
   })
 })

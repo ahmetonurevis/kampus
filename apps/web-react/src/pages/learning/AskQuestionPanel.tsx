@@ -10,6 +10,7 @@ import {
   QUESTION_TEXT_MIN_LENGTH,
   QUESTION_TITLE_MAX_LENGTH,
 } from '@kampus/school-core/lib/questions.ts'
+import { fileAttachField } from '@kampus/react-shared/files.ts'
 import { useAskQuestion } from '@kampus/react-shared/use-question-commands.ts'
 import { FileUploadField, type FileUploadItem } from '@/components/FileUploadField.tsx'
 import { FormField } from '@/components/FormField.tsx'
@@ -140,8 +141,10 @@ function AskQuestionForm({
     }
     const focus = focusFirstError(form.setError)
     const outcome = await ask.submit(result.body, {
-      // Sunucunun `fileIds` maddesi formdaki fotoğraf listesinde görünür.
+      // Sunucunun `fileIds` maddesi formdaki fotoğraf listesinde görünür; yolsuz bağlama hatası
+      // (taranan ya da reddedilen fotoğraf, 422 `file_not_ready`/`file_rejected`) da oraya yazılır.
       setError: (name: string, error) => focus(askFieldName(name), error),
+      fieldFor: fileAttachField('fileIds'),
     })
     if (outcome.status === 'success') {
       notify.success('Sorunuz öğretmeninize iletildi.')

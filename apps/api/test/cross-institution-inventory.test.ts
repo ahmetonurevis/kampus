@@ -453,6 +453,7 @@ const tableCase =
   ]
 const platform = tableCase('cross-institution-platform.test.ts')
 const learning = tableCase('cross-institution-learning.test.ts')
+const access = tableCase('cross-institution-access.test.ts')
 const PLATFORM: Readonly<Record<string, Proof>> = Object.fromEntries([
   platform('kayıt', 'DELETE /api/v1/branches/:branchId'),
   platform('kayıt', 'POST /api/v1/branches/:branchId/restore'),
@@ -504,12 +505,52 @@ const LEARNING: Readonly<Record<string, Proof>> = Object.fromEntries([
 ])
 
 /**
+ * `cross-institution-access.test.ts`: KVKK metinleri, eğitim yılı, dosya yükleme ve bildirim
+ * sayımı. Dönem uçları tablo koşucusuyla, kimliksiz uçlar ayrı testlerle (B'nin metni, yılı,
+ * kotası ve bildirimi A'nın yanıtına girmez; A'nın yazması B'yi değiştirmez).
+ */
+const ACCESS: Readonly<Record<string, Proof>> = {
+  'POST /api/v1/privacy-notices': govde(
+    'cross-institution-access.test.ts',
+    'POST /api/v1/privacy-notices: gövdedeki institutionId etkisiz',
+  ),
+  'GET /api/v1/privacy-notices/current': liste(
+    'cross-institution-access.test.ts',
+    'GET /api/v1/privacy-notices/current: başka kurumun metni görünmez',
+  ),
+  'GET /api/v1/consent-texts/:purpose': liste(
+    'cross-institution-access.test.ts',
+    'GET /api/v1/consent-texts/:purpose: başka kurumun rıza metni',
+  ),
+  'GET /api/v1/academic-years/current': liste(
+    'cross-institution-access.test.ts',
+    'GET /api/v1/academic-years/current: başka kurumun etkin yılı',
+  ),
+  'POST /api/v1/files': govde(
+    'cross-institution-access.test.ts',
+    'POST /api/v1/files: çok parçalı gövdedeki institutionId etkisiz',
+  ),
+  'GET /api/v1/notifications/unread-count': liste(
+    'cross-institution-access.test.ts',
+    'GET /api/v1/notifications/unread-count: başka kurumun bildirimi',
+  ),
+  'POST /api/v1/notifications/read-all': liste(
+    'cross-institution-access.test.ts',
+    'POST /api/v1/notifications/read-all: başka kurumun bildirimi',
+  ),
+  ...Object.fromEntries([
+    access('kayıt', 'POST /api/v1/academic-years/:startYear/terms'),
+    access('kayıt', 'PATCH /api/v1/academic-years/:startYear/terms/:termId'),
+    access('kayıt', 'DELETE /api/v1/academic-years/:startYear/terms/:termId'),
+    access('kayıt', 'POST /api/v1/academic-years/:startYear/close'),
+  ]),
+}
+
+/**
  * Çapraz kurum testi henüz yazılmamış uçlar. Her biri aşağıda `test.todo` olarak görünür; test
  * yazılınca satır buradan tabloya taşınır. Yeni uç bu listeye eklenmez, tabloya testiyle girer.
  */
 const TODO: readonly string[] = [
-  'GET /api/v1/notifications/unread-count',
-  'POST /api/v1/notifications/read-all',
   'GET /api/v1/finance/totals',
   'GET /api/v1/finance/summary',
   'POST /api/v1/payments/:paymentId/mebbis-record',
@@ -521,15 +562,6 @@ const TODO: readonly string[] = [
   'GET /api/v1/prospects/:prospectId/guardian-matches',
   'GET /api/v1/students/:studentId/identity',
   'POST /api/v1/prospects/:prospectId/trial-lessons',
-  'POST /api/v1/privacy-notices',
-  'GET /api/v1/privacy-notices/current',
-  'GET /api/v1/consent-texts/:purpose',
-  'GET /api/v1/academic-years/current',
-  'POST /api/v1/academic-years/:startYear/terms',
-  'PATCH /api/v1/academic-years/:startYear/terms/:termId',
-  'DELETE /api/v1/academic-years/:startYear/terms/:termId',
-  'POST /api/v1/academic-years/:startYear/close',
-  'POST /api/v1/files',
 ]
 
 const EXPECTED: Readonly<Record<string, Proof>> = {
@@ -537,6 +569,7 @@ const EXPECTED: Readonly<Record<string, Proof>> = {
   ...WORKFLOWS,
   ...PLATFORM,
   ...LEARNING,
+  ...ACCESS,
 }
 
 /** Çapraz kurum senaryosunu anan test adı. */

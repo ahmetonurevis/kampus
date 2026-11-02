@@ -427,6 +427,10 @@ describe('kur programı uçları', () => {
       422,
       'course_next_level',
     )
+    // Bağlanılan kurun seviyesi önceki kurun altına inmez; satır değişmez.
+    const before = await courseRows(institution.id)
+    fails(await patch(cookies.admin, next.id, { level: 'A1' }, 1), 422, 'course_next_level')
+    assert.deepEqual(await courseRows(institution.id), before)
     await ok(await patch(cookies.admin, course.id, { nextCourseId: null }, 1))
     const archived = await ok(await archive(cookies.admin, next.id, 1))
     assert.equal(archived.status, 'archived')

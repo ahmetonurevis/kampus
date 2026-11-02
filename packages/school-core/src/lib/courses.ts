@@ -348,6 +348,44 @@ function assertUniqueName(courses: readonly Course[], course: Course) {
 }
 
 /**
+ * Bağın iki ucu (DOM-DIL-007): sonraki kur aynı dildedir, seviyesi öncekinden düşük değildir.
+ * `edited` hangi ucun formda değiştiğini söyler; hata yolu ve metni o uca göre yazılır.
+ */
+function assertLinkCompatible(previous: Course, next: Course, edited: 'previous' | 'next') {
+  const onPrevious = edited === 'previous'
+  if (next.language !== previous.language)
+    throw new DomainError(
+      'course_next_language',
+      onPrevious
+        ? 'Sonraki kur aynı dilde olmalı.'
+        : 'Bu kuru sonraki kur gösteren kurlarla aynı dilde olmalı.',
+      { path: [onPrevious ? 'nextCourseId' : 'language'] },
+    )
+  if (levelRank(next.level) < levelRank(previous.level))
+    throw new DomainError(
+      'course_next_level',
+      onPrevious
+        ? 'Sonraki kurun seviyesi bu kurun seviyesinden düşük olamaz.'
+        : 'Seviye, bu kuru sonraki kur gösteren kurun seviyesinden düşük olamaz.',
+      { path: [onPrevious ? 'nextCourseId' : 'level'] },
+    )
+}
+
+/**
+ * Bu kuru sonraki kur gösteren arşivlenmemiş kurlar (DOM-DIL-007): kurun dili ya da seviyesi
+ * değişince bağ onların tarafından da denetlenir; yoksa B1 → B2 bağındaki B2, A1'e çekilebilirdi.
+ */
+function assertPreviousCourses(courses: readonly Course[], course: Course) {
+  for (const previous of courses)
+    if (
+      previous.id !== course.id &&
+      previous.status !== 'archived' &&
+      previous.nextCourseId === course.id
+    )
+      assertLinkCompatible(previous, course, 'next')
+}
+
+/**
  * Sonraki kur bağı (DOM-DIL-007): bağlanan kur kurumda vardır ve arşivde değildir, kurun kendisi
  * değildir, aynı dildedir, seviyesi bu kurunkinden düşük değildir (aynı seviyede `B1.1 → B1.2`
  * olur) ve zincir döngü kurmaz.
@@ -360,14 +398,7 @@ function assertNextCourse(courses: readonly Course[], course: Course) {
   const next = courses.find((item) => item.id === course.nextCourseId)
   if (!next || next.status === 'archived')
     throw new DomainError('course_next_not_found', 'Sonraki kur bulunamadı.', { path })
-  if (next.language !== course.language)
-    throw new DomainError('course_next_language', 'Sonraki kur aynı dilde olmalı.', { path })
-  if (levelRank(next.level) < levelRank(course.level))
-    throw new DomainError(
-      'course_next_level',
-      'Sonraki kurun seviyesi bu kurun seviyesinden düşük olamaz.',
-      { path },
-    )
+  assertLinkCompatible(course, next, 'previous')
   const byId = new Map(courses.map((item) => [item.id, item]))
   byId.set(course.id, course)
   const seen = new Set<string>([course.id])
@@ -473,6 +504,8 @@ export function planCourseUpdate(input: {
       { path: [programChanged[0] ?? 'level'] },
     )
   assertCourse(input.courses, next)
+  if (fields.includes('language') || fields.includes('level'))
+    assertPreviousCourses(input.courses, next)
   const resetEOzel = programChanged.length > 0 && current.eOzel.approval !== 'not_submitted'
   return {
     course: resetEOzel

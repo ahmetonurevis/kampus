@@ -344,6 +344,29 @@ describe('sonraki kur bağı (DOM-DIL-007)', () => {
     )
   })
 
+  test('DOM-DIL-007 bağlanılan kurun dili ve seviyesi önceki kurlara göre de denetlenir', () => {
+    const b11ToB12 = { ...b11, nextCourseId: B12 }
+    // Başarılı yol: önceki kurun seviyesinden düşmeyen değişiklik ve dil dışı alanlar serbesttir.
+    assert.equal(update([b11ToB12, b12], { level: 'B2' }, B12).course.level, 'B2')
+    assert.equal(update([b11ToB12, b12], { name: 'B1.2 yeni' }, B12).course.name, 'B1.2 yeni')
+    // Arşivli önceki kur bağ kuralı taşımaz.
+    const archived = { ...b11ToB12, status: 'archived' as const }
+    assert.equal(update([archived, b12], { level: 'A1' }, B12).course.level, 'A1')
+
+    const level = frozen([b11ToB12, b12])
+    assert.throws(
+      () => update(level.courses, { level: 'A1' }, B12),
+      isDomainError('course_next_level'),
+    )
+    level.unchanged()
+    const language = frozen([b11ToB12, b12])
+    assert.throws(
+      () => update(language.courses, { language: 'de' }, B12),
+      isDomainError('course_next_language'),
+    )
+    language.unchanged()
+  })
+
   test('DOM-DIL-007 başka kurun sonraki kuru arşivlenmez', () => {
     const linked = { ...a2, nextCourseId: B11 }
     assert.throws(

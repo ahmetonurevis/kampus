@@ -52,6 +52,7 @@ import {
 
 import { institutions } from './auth.ts'
 import { keys, oneOf, requiredColumns } from './columns.ts'
+import { files } from './files.ts'
 import { resources, resourceVersions } from './resources.ts'
 
 /**
@@ -73,9 +74,10 @@ import { resources, resourceVersions } from './resources.ts'
  *   korunur; yalnız arşivlenir (DOM-BEC-022).
  * - Tablolar yeni ve boştur; kısıtlar `not valid` adımına gerek olmadan tek adımda eklenir.
  *
- * TODO(F3c2-files): `attempt_media_plays` (dinleme hakkı, ADR 0003 karar 6) ve teslim sürümünün
- * `files` bağlantıları (el yazısı ve konuşma kaydı) `files` tablosuyla birlikte ileri migration'da
- * eklenir. O zamana kadar yalnız metin teslimi saklanabilir.
+ * - Dinleme hakkı `attempt_media_plays` satırlarıyla sayılır (migration 0030, OG-049).
+ *
+ * TODO(F3c2-files): teslim sürümünün `files` bağlantıları (el yazısı ve konuşma kaydı) ileri
+ * migration'da eklenir. O zamana kadar yalnız metin teslimi saklanabilir.
  */
 
 const required = requiredColumns
@@ -418,6 +420,59 @@ export const taskAttempts = pgTable(
       table.assignmentId,
       table.learnerId,
     ),
+  ],
+)
+
+/** Bir deneme × dosyada sayılabilecek en çok dinleme: core dinleme hakkının üst sınırı (1 veya 2). */
+const LISTENING_PLAY_NUMBERS = [1, 2] as const
+
+/**
+ * Dinleme hakkı sayımı (ADR 0003 karar 6, ADR 0004 karar 6; DOM-BEC-005, IST-045). Öğrencinin
+ * süren denemesinde dinleme kaydının imzalı bağlantısı sayılarak verildiğinde bir satır yazılır
+ * (`services/listening-plays.ts`); kalan hak satırlardan sayılır, sayaç kolonu yoktur.
+ *
+ * - `play_number` deneme × dosya içinde 1'den başlar; tekil indeks eşzamanlı iki yazmadan birini
+ *   reddeder, kontrol kısıtı core'un en büyük hakkını (2) aşan satırı reddeder.
+ * - `played_at` sunucu saatidir; aynı dinlemenin yeniden bağlantı penceresi buradan hesaplanır.
+ * - Satır değişmezdir: migration 0030'daki tetikleyici (`kampus_reject_immutable_change`) her
+ *   `update`/`delete`/`truncate`'i reddeder; yalnız imha işi silebilir.
+ */
+export const attemptMediaPlays = pgTable(
+  'attempt_media_plays',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    id: uuid('id').notNull(),
+    attemptId: uuid('attempt_id').notNull(),
+    fileId: uuid('file_id').notNull(),
+    playNumber: integer('play_number').notNull(),
+    playedAt: timestamp('played_at', { withTimezone: true }).notNull(),
+    ...required(),
+  },
+  (table) => [
+    primaryKey({ name: 'attempt_media_plays_pkey', columns: [table.institutionId, table.id] }),
+    foreignKey({
+      name: 'attempt_media_plays_attempt_fkey',
+      columns: [table.institutionId, table.attemptId],
+      foreignColumns: [taskAttempts.institutionId, taskAttempts.id],
+    }),
+    foreignKey({
+      name: 'attempt_media_plays_file_fkey',
+      columns: [table.institutionId, table.fileId],
+      foreignColumns: [files.institutionId, files.id],
+    }),
+    check('attempt_media_plays_play_number_check', oneOf(table.playNumber, LISTENING_PLAY_NUMBERS)),
+    check('attempt_media_plays_version_check', firstVersion(table)),
+    // Eşzamanlı iki sayımdan biri reddedilir; deneme yabancı anahtarının da indeksidir.
+    uniqueIndex('attempt_media_plays_attempt_file_number_key').on(
+      table.institutionId,
+      table.attemptId,
+      table.fileId,
+      table.playNumber,
+    ),
+    // Dosya yabancı anahtarının indeksi.
+    index('attempt_media_plays_file_idx').on(table.institutionId, table.fileId),
   ],
 )
 

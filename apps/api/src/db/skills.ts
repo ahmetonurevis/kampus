@@ -41,6 +41,7 @@ import {
 import type { Database } from './client.ts'
 import { resources, resourceVersions } from './schema/resources.ts'
 import {
+  attemptMediaPlays,
   resubmissionRequests,
   rubrics,
   rubricScores,
@@ -1004,14 +1005,19 @@ export async function loadAttempts(
   return rows.map(toAttempt)
 }
 
-/** Arşivlenmemiş deneme; yoksa, arşivliyse veya başka kurumdaysa `null`. */
+/**
+ * Arşivlenmemiş deneme; yoksa, arşivliyse veya başka kurumdaysa `null`. `lock` satırı transaction
+ * sonuna kadar kilitler (`for update`): dinleme sayımı aynı denemenin sayımlarını ve teslimini
+ * sıraya sokar (`services/listening-plays.ts`).
+ */
 export async function findAttempt(
   db: Database,
   institutionId: string,
   attemptId: string,
+  options: { lock?: boolean } = {},
 ): Promise<StoredAttempt | null> {
   if (!UUID.test(attemptId)) return null
-  const [row] = await db
+  const query = db
     .select()
     .from(taskAttempts)
     .where(
@@ -1021,6 +1027,7 @@ export async function findAttempt(
         isNull(taskAttempts.archivedAt),
       ),
     )
+  const [row] = options.lock ? await query.for('update') : await query
   return row === undefined ? null : toAttempt(row)
 }
 
@@ -1126,6 +1133,89 @@ export async function loadAttemptsAmong(
       asc(taskAttempts.attemptNumber),
     )
   return rows.map(toAttempt)
+}
+
+/**
+ * İçerik sürümüne sabitlenmiş, arşivlenmemiş atamalar, sınırlı ve sınırsız dinleme hakkıyla
+ * (DOM-BEC-005). Dinleme kaydının bağlantısı istendiğinde hakkın hangi denemeden düşeceği bunlardan
+ * bulunur; sınırsız atamanın süren denemesi de karara girer (`services/listening-plays.ts`).
+ */
+export async function loadVersionAssignments(
+  db: Database,
+  institutionId: string,
+  resourceVersionId: string,
+): Promise<StoredAssignment[]> {
+  if (!UUID.test(resourceVersionId)) return []
+  const rows = await db
+    .select()
+    .from(taskAssignments)
+    .where(
+      and(
+        eq(taskAssignments.institutionId, institutionId),
+        eq(taskAssignments.resourceVersionId, resourceVersionId),
+        isNull(taskAssignments.archivedAt),
+      ),
+    )
+    .orderBy(asc(taskAssignments.createdAt), asc(taskAssignments.id))
+  return withTargets(db, institutionId, rows)
+}
+
+// --- Dinleme sayımı -----------------------------------------------------------------------
+
+type MediaPlayRow = typeof attemptMediaPlays.$inferSelect
+
+/** Sayılmış bir dinleme (`attempt_media_plays`; değişmez); zaman ISO 8601 UTC. */
+export type StoredMediaPlay = Pick<MediaPlayRow, 'fileId' | 'playNumber'> & { playedAt: string }
+
+/** Denemenin sayılmış dinlemeleri, dosya ve sıra numarasıyla. */
+export async function loadMediaPlays(
+  db: Database,
+  institutionId: string,
+  attemptId: string,
+): Promise<StoredMediaPlay[]> {
+  const rows = await db
+    .select({
+      fileId: attemptMediaPlays.fileId,
+      playNumber: attemptMediaPlays.playNumber,
+      playedAt: attemptMediaPlays.playedAt,
+    })
+    .from(attemptMediaPlays)
+    .where(
+      and(
+        eq(attemptMediaPlays.institutionId, institutionId),
+        eq(attemptMediaPlays.attemptId, attemptId),
+      ),
+    )
+    .orderBy(asc(attemptMediaPlays.fileId), asc(attemptMediaPlays.playNumber))
+  return rows.map((row) => ({ ...row, playedAt: iso(row.playedAt) }))
+}
+
+/**
+ * Yeni dinleme sayımı. Aynı deneme × dosya × sıra ikinci kez 409 `listening_play_conflict`
+ * (eşzamanlı ikinci sayım; servis deneme satırını kilitlediği için olağan akışta oluşmaz).
+ */
+export function insertMediaPlay(
+  tx: Database,
+  institutionId: string,
+  play: Pick<MediaPlayRow, 'id' | 'attemptId' | 'fileId' | 'playNumber' | 'playedAt'>,
+): Promise<void> {
+  return constraintAs(
+    tx
+      .insert(attemptMediaPlays)
+      .values({
+        institutionId,
+        ...play,
+        createdAt: play.playedAt,
+        updatedAt: play.playedAt,
+      })
+      .then(() => undefined),
+    {
+      attempt_media_plays_attempt_file_number_key: conflict(
+        'listening_play_conflict',
+        'Dinleme aynı anda iki kez başlatıldı; yeniden deneyin.',
+      ),
+    },
+  )
 }
 
 /** Yazılacak deneme: kimlik ve okunduğu satır sürümü (iyimser kilit). */

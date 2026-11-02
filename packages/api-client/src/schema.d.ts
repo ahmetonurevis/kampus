@@ -3019,7 +3019,7 @@ export interface paths {
         put?: never;
         /**
          * Görev ata
-         * @description İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Geçici sınırlar: dosyalı ve sesli teslim 422 `submission_kind_unavailable`, dinleme hakkı sayımı açılana kadar gönderilmeyen hak sınırsız (`null`) saklanır, 1 veya 2 seçilirse 422 `listening_plays_unavailable`. Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Geçici sınır: dosyalı ve sesli teslim 422 `submission_kind_unavailable`. Dinleme görevinde hak core varsayılanıyla 2'dir; 1, 2 veya sınırsız (`null`) seçilebilir ve öğrencinin denemesinde sayılır (IST-045, DOM-BEC-005). Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["createTaskAssignment"];
         delete?: never;
@@ -4237,7 +4237,7 @@ export interface paths {
         };
         /**
          * İmzalı indirme bağlantısı
-         * @description Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk. Tür ve `Content-Disposition` (belge `attachment`, görsel/ses/görüntü `inline`) imzaya dahildir. Dosya işlenirken 409 `file_processing`. Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına `file.access` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.
+         * @description Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk, dinleme kaydında kayıt süresi + 60 sn (en az 5 dk; süre ölçülmemişse 16 dk). Tür ve `Content-Disposition` (belge `attachment`, görsel/ses/görüntü `inline`) imzaya dahildir. Dosya işlenirken 409 `file_processing`. Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına `file.access` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Dinleme hakkı altyapısı (IST-045, DOM-BEC-005; bugün devrede değil, atama dolu hakkı 422 `listening_plays_unavailable` ile reddeder): öğrenci, hakkı sınırlı atamanın içerik sürümüne bağlı `listening_audio` kaydını süren denemesinde istediğinde hak deneme × kayıt başına sayılır ve yanıtın `listening` alanında döner; hak bitince 422 `listening_plays_exhausted`, süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`. Son sayımın bağlantısı geçerliyken yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner; aralık istekleri sayılmaz. Öğretmen, yönetici ve veli bağlantısı, sınırsız atamanın denemesi ve teslim kapandıktan sonraki bağlantı sayılmaz. Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.
          */
         get: operations["getFileUrl"];
         put?: never;
@@ -4846,6 +4846,21 @@ export interface components {
              * @description Bağlantının geçerlilik sonu
              */
             expiresAt: string;
+            /** @description Dinleme hakkı sayımı (IST-045): yalnız öğrencinin süren denemesinde sınırlı dinleme kaydında dolu, diğerlerinde `null` */
+            listening: {
+                /**
+                 * Format: uuid
+                 * @description Hakkın düştüğü süren deneme
+                 */
+                attemptId: string;
+                /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
+                limit: number;
+                /** @description Bu deneme ve kayıtta sayılan dinleme */
+                used: number;
+                remaining: number;
+                /** @description Bu istek yeni dinleme saydı mı; yeniden bağlantı penceresinde `false` */
+                counted: boolean;
+            } | null;
         };
         HealthInput: {
             /**
@@ -6119,6 +6134,23 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
+            /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
+            listening: {
+                /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
+                limit: number;
+                /** @description İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla */
+                media: {
+                    /**
+                     * Format: uuid
+                     * @description Dinleme kaydı (`listening_audio`)
+                     */
+                    fileId: string;
+                    /** @description Bu denemede sayılan dinleme */
+                    used: number;
+                    /** @description Kalan dinleme hakkı */
+                    remaining: number;
+                }[];
+            } | null;
         };
         TaskWordCountInput: {
             count: number;
@@ -7389,6 +7421,21 @@ export interface components {
              * @description Bağlantının geçerlilik sonu
              */
             expiresAt: string;
+            /** @description Dinleme hakkı sayımı (IST-045): yalnız öğrencinin süren denemesinde sınırlı dinleme kaydında dolu, diğerlerinde `null` */
+            listening: {
+                /**
+                 * Format: uuid
+                 * @description Hakkın düştüğü süren deneme
+                 */
+                attemptId: string;
+                /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
+                limit: number;
+                /** @description Bu deneme ve kayıtta sayılan dinleme */
+                used: number;
+                remaining: number;
+                /** @description Bu istek yeni dinleme saydı mı; yeniden bağlantı penceresinde `false` */
+                counted: boolean;
+            } | null;
         };
         Health: {
             /**
@@ -8661,6 +8708,23 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
+            /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
+            listening: {
+                /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
+                limit: number;
+                /** @description İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla */
+                media: {
+                    /**
+                     * Format: uuid
+                     * @description Dinleme kaydı (`listening_audio`)
+                     */
+                    fileId: string;
+                    /** @description Bu denemede sayılan dinleme */
+                    used: number;
+                    /** @description Kalan dinleme hakkı */
+                    remaining: number;
+                }[];
+            } | null;
         };
         TaskWordCount: {
             count: number;
@@ -35811,6 +35875,15 @@ export interface operations {
             };
             /** @description Default Response */
             409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

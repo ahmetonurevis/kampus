@@ -115,8 +115,8 @@ const MODULELESS: Readonly<Record<string, string>> = {
 
 /**
  * Kurum türüne bağlı uçlar: modül denetimi taşımaz, kurum türü uymazsa rol denetiminden önce 404
- * döner (bulunmaz gibi; DOM-YTK-012). Kur programı (DOM-DIL-005) ve yakında kur grupları
- * (`/groups*`) yalnız dil okulundadır. Bir dil okulu modülüne bağlanması ayrı karardır; o zamana
+ * döner (bulunmaz gibi; DOM-YTK-012). Kur programı (DOM-DIL-005) ve kur grupları (`/groups*`,
+ * DOM-DIL-008) yalnız dil okulundadır. Bir dil okulu modülüne bağlanması ayrı karardır; o zamana
  * dek modül kapatma bu uçları etkilemez.
  */
 const INSTITUTION_TYPE_ROUTES: Readonly<Record<string, InstitutionType>> = {
@@ -127,6 +127,14 @@ const INSTITUTION_TYPE_ROUTES: Readonly<Record<string, InstitutionType>> = {
   'POST /api/v1/courses/:courseId/activate': 'language_school',
   'DELETE /api/v1/courses/:courseId': 'language_school',
   'POST /api/v1/courses/:courseId/record-e-ozel': 'language_school',
+  'GET /api/v1/groups': 'language_school',
+  'GET /api/v1/groups/:groupId': 'language_school',
+  'GET /api/v1/groups/:groupId/waitlist': 'language_school',
+  'POST /api/v1/groups': 'language_school',
+  'PATCH /api/v1/groups/:groupId': 'language_school',
+  'POST /api/v1/groups/:groupId/open': 'language_school',
+  'POST /api/v1/groups/:groupId/cancel': 'language_school',
+  'POST /api/v1/groups/:groupId/merge': 'language_school',
 }
 
 /** Oğuzhan'ın modüle bağlı uçları (iş akışı köprüsü core komut kaydından aşağıda türetilir). */

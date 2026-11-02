@@ -243,6 +243,9 @@ function buildScoringContext(
       entries = content.items
       if (content.passageVersionId !== null) {
         const linked = questionPairs.get(content.passageVersionId)?.version
+        // Kaldırılan parça okunamaz: metin `null` gelir, deneme sürer.
+        // TODO(okuma-parca-kaldirma): kaldırılan/telif askısındaki parçalı etkinliğin yeni deneme
+        // kapısı OG-070 deneme/teslim süzgeciyle (DOM-KYN-025) birlikte karara bağlanacak.
         passage = linked?.content?.type === 'reading_passage' ? linked : null
       }
       versions = new Map()

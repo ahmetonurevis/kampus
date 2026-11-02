@@ -10,6 +10,7 @@ import {
   defaultDraft,
   draftFormSchema,
   draftFromHead,
+  emptyGlossaryEntry,
   MATERIAL_FILE_REQUIRED,
   MATERIAL_FILE_RULE,
   nextOptionId,
@@ -18,6 +19,7 @@ import {
   rejectSchema,
   resourceRow,
   skillOptionsFor,
+  SUBSKILL_OPTIONS,
   tagSummary,
   type DraftFormValues,
 } from '../src/pages/content/content-pool-model.ts'
@@ -179,6 +181,84 @@ describe('Taslak formu şeması (DOM-KYN-020, 002)', () => {
       license: { kind: 'public_domain', basisNote: '' },
     })
     assert.equal(result.success, false)
+  })
+})
+
+describe('Okuma etkinliği alanları (IST-042, DOM-BEC-006)', () => {
+  const withGlossary = (glossary: DraftFormValues['content']['glossary']) => ({
+    ...validReading(),
+    content: { type: 'reading_passage' as const, body: 'Metin.', glossary },
+  })
+
+  test('DOM-BEC-006: sözlükçenin boş örnek cümlesi null olur', () => {
+    const parsed = draftFormSchema.parse(
+      withGlossary([{ term: 'ferry', meaning: 'vapur', example: '' }]),
+    )
+    assert.deepEqual(parsed.content, {
+      type: 'reading_passage',
+      body: 'Metin.',
+      glossary: [{ term: 'ferry', meaning: 'vapur', example: null }],
+    })
+  })
+
+  test('DOM-BEC-006: boş sözlükçe satırı alanın altında Türkçe hata verir', () => {
+    const result = draftFormSchema.safeParse(withGlossary([emptyGlossaryEntry()]))
+    assert.equal(result.success, false)
+    const paths = result.error?.issues.map((issue) => issue.path.join('.'))
+    assert.ok(paths?.includes('content.glossary.0.term'))
+    assert.ok(paths?.includes('content.glossary.0.meaning'))
+  })
+
+  test('DOM-BEC-006: aynı kelime büyük/küçük harf farkıyla da bir kez yer alır', () => {
+    const result = draftFormSchema.safeParse(
+      withGlossary([
+        { term: 'Ferry', meaning: 'vapur', example: null },
+        { term: 'ferry', meaning: 'feribot', example: null },
+      ]),
+    )
+    assert.equal(result.success, false)
+    assert.deepEqual(result.error?.issues[0]?.path, ['content', 'glossary'])
+    assert.equal(result.error?.issues[0]?.message, 'Aynı kelime sözlükçede bir kez yer alır.')
+  })
+
+  test('DOM-BEC-006: alt beceri yalnız soruda seçilir; seçenekler core etiketleridir', () => {
+    assert.deepEqual(
+      SUBSKILL_OPTIONS.map((option) => option.label),
+      ['Ana fikir', 'Ayrıntı', 'Çıkarım', 'Kelime bilgisi'],
+    )
+    const question = {
+      ...defaultDraft('question'),
+      title: 'Soru',
+      content: {
+        type: 'question' as const,
+        question: {
+          questionType: 'multiple_choice' as const,
+          stem: 'Where?',
+          options: ['a', 'b', 'c', 'd'].map((id) => ({ id, text: `Seçenek ${id}` })),
+          imageFileId: null,
+        },
+      },
+      answerKey: {
+        questionType: 'multiple_choice' as const,
+        correctOptionId: 'a',
+        explanation: 'Metnin son cümlesi.',
+      },
+      tags: { ...validReading().tags, primarySkill: null, subskill: 'inference' as const },
+      license: { kind: 'institution_original' as const },
+    }
+    assert.equal(patchFromDraft(draftFormSchema.parse(question)).tags.subskill, 'inference')
+    const reading = draftFormSchema.safeParse({
+      ...validReading(),
+      tags: { ...validReading().tags, subskill: 'detail' },
+    })
+    assert.equal(reading.success, false)
+    assert.deepEqual(reading.error?.issues[0]?.path, ['tags', 'subskill'])
+  })
+
+  test('soru baş sürümünün alt becerisi forma gelir', () => {
+    const base = questionHead()
+    const values = draftFromHead({ ...base, tags: { ...base.tags, subskill: 'main_idea' } })
+    assert.equal(values?.tags?.subskill, 'main_idea')
   })
 })
 

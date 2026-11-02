@@ -307,4 +307,64 @@ test.describe('okuma-anlama etkinliği', () => {
     expect(detail.result.subskills).toBeNull()
     expect(detail.result.items).toBeNull()
   })
+
+  test('DOM-BEC-006: içerik havuzunda okuma parçasına sözlükçe yazılır; şema hatası alanın altında görünür', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await tenant({ roles: [] })
+    const admin = await api(school.user('yonetici'))
+    const title = 'Sözlükçeli feribot parçası'
+    await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/icerik-havuzu')
+    await page.getByRole('button', { name: 'Yeni içerik' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Yeni içerik' })
+    await dialog.getByLabel('Başlık').fill(title)
+    await dialog.getByLabel('Okuma metni').fill(BODY)
+    const glossary = dialog.getByRole('group', { name: 'Sözlükçe' })
+    // Alt beceri yalnız soruda seçilir; okuma parçası formunda alan yoktur.
+    await expect(dialog.getByLabel('Alt beceri')).toHaveCount(0)
+
+    await glossary.getByRole('button', { name: 'Kelime ekle' }).click()
+    await glossary.getByRole('button', { name: 'Kelime ekle' }).click()
+    await glossary.getByLabel('1. kelime', { exact: true }).fill('Ferry')
+    await glossary.getByLabel('1. kelimenin anlamı').fill(GLOSSARY[0].meaning)
+    await glossary.getByLabel('1. örnek cümle (isteğe bağlı)').fill(GLOSSARY[0].example)
+    await glossary.getByLabel('2. kelime', { exact: true }).fill('ferry')
+    await dialog.getByLabel('Ders').selectOption({ label: 'İngilizce' })
+    await dialog.getByLabel('7. sınıf', { exact: true }).check()
+    await dialog.getByLabel('CEFR düzeyi').selectOption('A2')
+    await dialog.getByLabel('Menşe ve lisans').selectOption('institution_original')
+    await dialog.getByLabel(/Bu içeriği kullanma hakkım var/).check()
+    await dialog.getByRole('button', { name: 'Taslağı kaydet' }).click()
+
+    // Core `glossaryEntrySchema`: boş anlam alanın altında, yinelenen kelime listenin altında.
+    await expect(glossary.getByText('Anlamını yazın.', { exact: true })).toBeVisible()
+    await expect(glossary.getByLabel('2. kelimenin anlamı')).toHaveAttribute('aria-invalid', 'true')
+    await glossary.getByLabel('2. kelime', { exact: true }).fill(GLOSSARY[1].term)
+    await glossary.getByLabel('2. kelimenin anlamı').fill(GLOSSARY[1].meaning)
+    await glossary.getByRole('button', { name: 'Kelime ekle' }).click()
+    await glossary.getByLabel('3. kelime', { exact: true }).fill('ferry')
+    await glossary.getByLabel('3. kelimenin anlamı').fill('feribot')
+    await dialog.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(
+      glossary.getByText('Aynı kelime sözlükçede bir kez yer alır.', { exact: true }),
+    ).toBeVisible()
+    await glossary.getByRole('button', { name: '3. kelimeyi sil' }).click()
+    await dialog.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(page.getByRole('dialog', { name: title })).toBeVisible()
+
+    // Kalıcılık API'den: sıra yazarınki, boş örnek cümle `null`.
+    const list = await expectOk(await admin.get('/api/v1/resources?page=1&pageSize=20'), 200)
+    const id = (list as unknown as { id: string; version: { title: string } }[]).find(
+      (item) => item.version.title === title,
+    )?.id
+    const detail = await expectOk(await admin.get(`/api/v1/resources/${id}`), 200)
+    expect(detail.head.content.glossary).toEqual([
+      { term: 'Ferry', meaning: GLOSSARY[0].meaning, example: GLOSSARY[0].example },
+      { term: GLOSSARY[1].term, meaning: GLOSSARY[1].meaning, example: null },
+    ])
+  })
 })

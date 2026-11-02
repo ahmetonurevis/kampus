@@ -1,5 +1,6 @@
 import { Controller, get, useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form'
 import type { AuthorableType } from '@kampus/react-shared/resource-model.ts'
+import { GLOSSARY_MAX } from '@kampus/school-core/content/resource.ts'
 import { FileUploadField, type FileUploadItem } from '@/components/FileUploadField.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -11,6 +12,7 @@ import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { CheckGroup } from '../communication/CheckGroup.tsx'
 import {
   CEFR_OPTIONS,
+  emptyGlossaryEntry,
   GRADE_OPTIONS,
   LICENSE_NOTES,
   LICENSE_OPTIONS,
@@ -22,6 +24,7 @@ import {
   OUTCOME_SOURCE_OPTIONS,
   requiresAttribution,
   skillOptionsFor,
+  SUBSKILL_OPTIONS,
   type DraftFormOutput,
   type DraftFormValues,
 } from './content-pool-model.ts'
@@ -71,24 +74,126 @@ type ContentProps = Omit<FieldsProps, 'languageSchool'> & {
 }
 
 /**
- * İçerik gövdesi: okuma metni, çoktan seçmeli soru (kök, seçenekler, doğru cevap, çözüm) ya da
- * materyal dosyaları.
+ * İçerik gövdesi: okuma metni ve sözlükçesi, çoktan seçmeli soru (kök, seçenekler, doğru cevap,
+ * çözüm) ya da materyal dosyaları.
  */
 export function ContentFields({ form, type, busy, onUploadingChange }: ContentProps) {
   return (
     <div className="grid gap-5">
       {type === 'reading_passage' ? (
-        <FormField id="icerik-metin" label="Okuma metni" error={fieldError(form, 'content.body')}>
-          {(control) => (
-            <Textarea {...control} {...form.register('content.body')} rows={10} disabled={busy} />
-          )}
-        </FormField>
+        <>
+          <FormField id="icerik-metin" label="Okuma metni" error={fieldError(form, 'content.body')}>
+            {(control) => (
+              <Textarea {...control} {...form.register('content.body')} rows={10} disabled={busy} />
+            )}
+          </FormField>
+          <GlossaryFields form={form} busy={busy} />
+        </>
       ) : type === 'file' ? (
         <MaterialFileFields form={form} busy={busy} onUploadingChange={onUploadingChange} />
       ) : (
         <QuestionFields form={form} busy={busy} />
       )}
     </div>
+  )
+}
+
+/**
+ * Okuma parçasının sözlükçesi (DOM-BEC-006, IST-042): kelime, Türkçe anlamı ve isteğe bağlı örnek
+ * cümle. Kural core `glossaryEntrySchema`'dadır (uzunluk, en çok `GLOSSARY_MAX` kelime, aynı kelime
+ * bir kez); hata alanın ya da listenin altında yazılır. Kursiyer metnin altında görür.
+ */
+function GlossaryFields({ form, busy }: { form: DraftForm; busy: boolean }) {
+  const entries = useFieldArray({ control: form.control, name: 'content.glossary' })
+  const listError = fieldError(form, 'content.glossary')
+  return (
+    <fieldset className="grid gap-3">
+      <legend className="mb-1 text-sm font-medium">Sözlükçe</legend>
+      <p className="text-xs text-muted-foreground">
+        Öğrencinin metinde zorlanabileceği kelimeleri anlamıyla ekleyin; öğrenci metnin altında
+        görür.
+      </p>
+      {entries.fields.map((field, index) => (
+        <div key={field.id} className="grid gap-3 rounded-card border p-3 sm:grid-cols-2">
+          <FormField
+            id={`icerik-sozluk-kelime-${index}`}
+            label={`${index + 1}. kelime`}
+            error={fieldError(form, `content.glossary.${index}.term`)}
+          >
+            {(control) => (
+              <Input
+                {...control}
+                {...form.register(`content.glossary.${index}.term`)}
+                lang="en"
+                disabled={busy}
+              />
+            )}
+          </FormField>
+          <FormField
+            id={`icerik-sozluk-anlam-${index}`}
+            label={`${index + 1}. kelimenin anlamı`}
+            error={fieldError(form, `content.glossary.${index}.meaning`)}
+          >
+            {(control) => (
+              <Input
+                {...control}
+                {...form.register(`content.glossary.${index}.meaning`)}
+                disabled={busy}
+              />
+            )}
+          </FormField>
+          <div className="sm:col-span-2">
+            <FormField
+              id={`icerik-sozluk-ornek-${index}`}
+              label={`${index + 1}. örnek cümle (isteğe bağlı)`}
+              error={fieldError(form, `content.glossary.${index}.example`)}
+            >
+              {(control) => (
+                <Input
+                  {...control}
+                  {...form.register(`content.glossary.${index}.example`)}
+                  lang="en"
+                  disabled={busy}
+                />
+              )}
+            </FormField>
+          </div>
+          <div className="sm:col-span-2">
+            <Button
+              type="button"
+              variant="outline"
+              size="sm"
+              aria-label={`${index + 1}. kelimeyi sil`}
+              onClick={() => entries.remove(index)}
+              disabled={busy}
+            >
+              <Icon name="Trash2" size={15} aria-hidden="true" />
+              Kelimeyi sil
+            </Button>
+          </div>
+        </div>
+      ))}
+      {listError ? (
+        <p role="alert" className="text-sm text-destructive">
+          {listError.message}
+        </p>
+      ) : null}
+      <div>
+        <Button
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => {
+            form.clearErrors('content.glossary')
+            entries.append(emptyGlossaryEntry())
+          }}
+          disabled={busy || entries.fields.length >= GLOSSARY_MAX}
+        >
+          <Icon name="Plus" size={15} aria-hidden="true" />
+          Kelime ekle
+        </Button>
+      </div>
+    </fieldset>
   )
 }
 
@@ -381,6 +486,42 @@ export function TagFields({ form, type, languageSchool, busy }: FieldsProps) {
           </FormField>
         )}
       />
+      {type === 'question' ? (
+        <Controller
+          control={form.control}
+          name="tags.subskill"
+          render={({ field }) => (
+            <FormField
+              id="icerik-alt-beceri"
+              label="Alt beceri"
+              error={fieldError(form, 'tags.subskill')}
+              description="Okuma-anlama sorusunda sonuç dökümü bu etikete göre çıkar."
+            >
+              {(control) => (
+                <NativeSelect
+                  {...control}
+                  value={field.value ?? ''}
+                  onChange={(event) =>
+                    field.onChange(
+                      SUBSKILL_OPTIONS.find((option) => option.value === event.target.value)
+                        ?.value ?? null,
+                    )
+                  }
+                  className="w-full"
+                  disabled={busy}
+                >
+                  <NativeSelectOption value="">Seçilmedi</NativeSelectOption>
+                  {SUBSKILL_OPTIONS.map((option) => (
+                    <NativeSelectOption key={option.value} value={option.value}>
+                      {option.label}
+                    </NativeSelectOption>
+                  ))}
+                </NativeSelect>
+              )}
+            </FormField>
+          )}
+        />
+      ) : null}
       {!languageSchool ? (
         // TODO(katalog): kazanım kataloğu gelince kod yerine katalogdan seçim yapılır.
         <fieldset className="grid gap-2 sm:col-span-2">

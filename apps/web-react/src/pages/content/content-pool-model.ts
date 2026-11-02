@@ -27,6 +27,7 @@ import {
   RESOURCE_FILE_RULES,
   SHARE_SCOPES,
   SKILLS,
+  SUBSKILLS,
   type ContentType,
   type LicenseKind,
 } from '@kampus/school-core/content/taxonomy.ts'
@@ -94,6 +95,8 @@ const options = <T extends string>(record: Record<T, { label: string }>) =>
 export const TYPE_OPTIONS = options(CONTENT_TYPES)
 export const CEFR_OPTIONS = options(CEFR_LEVELS)
 export const SKILL_OPTIONS = PRIMARY_SKILLS.map((value) => ({ value, label: SKILLS[value].label }))
+/** Okuma-anlama sorusunun alt becerisi (DOM-BEC-006); yalnız soru türünde seçilir. */
+export const SUBSKILL_OPTIONS = options(SUBSKILLS)
 export const STATUS_OPTIONS = (
   ['draft', 'in_review', 'published', 'rejected', 'archived'] as const
 ).map((value) => ({ value, label: RESOURCE_STATUSES[value].label }))
@@ -228,8 +231,8 @@ export type DraftFormValues = Omit<DraftFormInput, 'content' | 'answerKey'> & {
     type: AuthorableType
     body?: string
     /**
-     * Okuma parçasının sözlükçesi: formda henüz düzenleme alanı yok, olduğu gibi taşınır ve yamaya
-     * geri konur; yoksa başlık düzeltmesi sunucudaki sözlükçeyi `[]` yapardı (DOM-BEC-006).
+     * Okuma parçasının sözlükçesi (DOM-BEC-006): formda satır satır düzenlenir, yamaya bütün olarak
+     * gider. Örnek cümle boş bırakılırsa core `null` yapar.
      */
     glossary?: GlossaryEntry[]
     /** Materyal dosyasının ana dosyası; çözümleyici listenin ilkiyle doldurur. */
@@ -249,6 +252,9 @@ export type DraftFormValues = Omit<DraftFormInput, 'content' | 'answerKey'> & {
   /** Sürümün dosyaları, sırasıyla (adı gösterim içindir; gövdeye yalnız kimlik gider). */
   files: FileUploadItem[]
 }
+
+/** Sözlükçeye eklenen boş satır; alanlar doldurulunca core `glossaryEntrySchema` doğrular. */
+export const emptyGlossaryEntry = (): GlossaryEntry => ({ term: '', meaning: '', example: null })
 
 /** Seçenek kimlikleri `a`, `b`, … biçiminde üretilir (core kimlik kuralına uyar). */
 export const OPTION_IDS = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'] as const

@@ -435,32 +435,48 @@ const WORKFLOWS: Readonly<Record<string, Proof>> = Object.fromEntries(
   ]),
 )
 
+/** `cross-institution-platform.test.ts` satırları: test adı uç anahtarını taşır. */
+const platform = (kind: 'kayıt' | 'gövde', key: string): [string, Proof] => [
+  key,
+  proof(kind)(
+    'cross-institution-platform.test.ts',
+    kind === 'kayıt'
+      ? 'başka kurumun kaydı olmayan kayıtla aynı 404'
+      : 'gövdedeki başka kurum kimliği ve institutionId etkisiz',
+    `'${key}'`,
+  ),
+]
+const PLATFORM: Readonly<Record<string, Proof>> = Object.fromEntries([
+  platform('kayıt', 'DELETE /api/v1/branches/:branchId'),
+  platform('kayıt', 'POST /api/v1/branches/:branchId/restore'),
+  platform('gövde', 'POST /api/v1/classes'),
+  platform('kayıt', 'POST /api/v1/classes/:classId/restore'),
+  platform('gövde', 'POST /api/v1/teachers'),
+  platform('kayıt', 'PATCH /api/v1/teachers/:teacherId'),
+  platform('kayıt', 'DELETE /api/v1/teachers/:teacherId'),
+  platform('kayıt', 'POST /api/v1/teachers/:teacherId/restore'),
+  platform('gövde', 'POST /api/v1/tutor-sessions'),
+  platform('kayıt', 'POST /api/v1/tutor-sessions/:sessionId/attendance'),
+  platform('gövde', 'POST /api/v1/assessment/profile'),
+  platform('gövde', 'POST /api/v1/assessment/evaluate/preview'),
+  platform('gövde', 'POST /api/v1/assessment/slot'),
+  platform('gövde', 'POST /api/v1/announcements'),
+  platform('kayıt', 'PATCH /api/v1/announcements/:announcementId'),
+  platform('kayıt', 'POST /api/v1/announcements/:announcementId/withdraw'),
+  platform('kayıt', 'POST /api/v1/announcements/:announcementId/read'),
+  platform('kayıt', 'POST /api/v1/conversations/:conversationId/read'),
+  platform('kayıt', 'GET /api/v1/students/:studentId/parent-accounts'),
+  platform('gövde', 'POST /api/v1/absences'),
+  platform('gövde', 'POST /api/v1/questions'),
+  platform('kayıt', 'PATCH /api/v1/questions/:questionId'),
+])
+
 /**
  * Çapraz kurum testi henüz yazılmamış uçlar. Her biri aşağıda `test.todo` olarak görünür; test
  * yazılınca satır buradan tabloya taşınır. Yeni uç bu listeye eklenmez, tabloya testiyle girer.
  */
 const TODO: readonly string[] = [
-  'DELETE /api/v1/branches/:branchId',
-  'POST /api/v1/branches/:branchId/restore',
-  'POST /api/v1/classes',
-  'POST /api/v1/classes/:classId/restore',
-  'POST /api/v1/teachers',
-  'PATCH /api/v1/teachers/:teacherId',
-  'DELETE /api/v1/teachers/:teacherId',
-  'POST /api/v1/teachers/:teacherId/restore',
-  'POST /api/v1/absences',
-  'POST /api/v1/tutor-sessions',
-  'POST /api/v1/tutor-sessions/:sessionId/attendance',
-  'POST /api/v1/assessment/profile',
   'POST /api/v1/assessment/profile/:recordId',
-  'POST /api/v1/assessment/evaluate/preview',
-  'POST /api/v1/assessment/slot',
-  'POST /api/v1/announcements',
-  'PATCH /api/v1/announcements/:announcementId',
-  'POST /api/v1/announcements/:announcementId/withdraw',
-  'POST /api/v1/announcements/:announcementId/read',
-  'POST /api/v1/conversations/:conversationId/read',
-  'GET /api/v1/students/:studentId/parent-accounts',
   'GET /api/v1/notifications/unread-count',
   'POST /api/v1/notifications/read-all',
   'GET /api/v1/finance/totals',
@@ -474,8 +490,6 @@ const TODO: readonly string[] = [
   'GET /api/v1/prospects/:prospectId/guardian-matches',
   'GET /api/v1/students/:studentId/identity',
   'POST /api/v1/prospects/:prospectId/trial-lessons',
-  'POST /api/v1/questions',
-  'PATCH /api/v1/questions/:questionId',
   'POST /api/v1/resources',
   'POST /api/v1/resources/:resourceId/versions/:versionId/publish',
   'POST /api/v1/resources/:resourceId/versions/:versionId/withdraw',
@@ -507,7 +521,7 @@ const TODO: readonly string[] = [
   'POST /api/v1/files',
 ]
 
-const EXPECTED: Readonly<Record<string, Proof>> = { ...ROUTES, ...WORKFLOWS }
+const EXPECTED: Readonly<Record<string, Proof>> = { ...ROUTES, ...WORKFLOWS, ...PLATFORM }
 
 /** Çapraz kurum senaryosunu anan test adı. */
 const CROSS_TITLE =
@@ -603,10 +617,12 @@ describe('IST-002: rota → çapraz kurum testi envanteri (DOM-YTK-001, DOM-YTK-
         problems.push(`${key}: ${entry.file} bulunamadı`)
         continue
       }
+      // Tablo kalıbıyla üretilen testlerde ad şablondur; parça dosyadaki ad metnindedir.
       const titles = testTitles(text).filter((title) => title.includes(entry.test))
-      if (titles.length === 0)
+      const templated = titles.length === 0 && text.includes(`'${entry.test}`)
+      if (titles.length === 0 && !templated)
         problems.push(`${key}: ${entry.file} içinde "${entry.test}" testi yok`)
-      else if (!titles.some((title) => CROSS_TITLE.test(title)))
+      else if (![...titles, ...(templated ? [entry.test] : [])].some((t) => CROSS_TITLE.test(t)))
         problems.push(`${key}: "${entry.test}" testi çapraz kurum senaryosunu anmıyor`)
       const url = key.slice(key.indexOf(' ') + 1)
       const found =

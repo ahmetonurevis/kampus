@@ -429,6 +429,33 @@ test('Veli onayı seçili çocuk ve süreyi doğrular; tekrar onay aynı kaydı 
     /aynı/,
   )
 })
+test('DOM-ILT-074 OG-032 kapsam dışı çocuk için veli onayı kayıt durumunu sızdırmaz: pasif, etkin ve olmayan öğrenci aynı 403', () => {
+  const state = seed()
+  const scopeDenied = isDomainError('student_scope_denied', 'forbidden')
+  const consent = (childId: string) =>
+    run(state, 'consent', { decision: 'Onaylandı' }, 'event-science', 'veli', childId)
+  // Kapsam dışı s3 etkinken ve pasifken, olmayan öğrenci de: hep 403, asla 422/404.
+  unchangedOnFailure(state, () => consent('s3'), scopeDenied)
+  const outside = state.students.find((student) => student.id === 's3')!
+  outside.isActive = false
+  unchangedOnFailure(state, () => consent('s3'), scopeDenied)
+  unchangedOnFailure(state, () => consent('olmayan-ogrenci'), scopeDenied)
+  // Kapsamdaki pasif çocuk kayıt durumunu görür (kendi çocuğu): 422 record_inactive.
+  const own = state.students.find((student) => student.id === 's1')!
+  own.isActive = false
+  unchangedOnFailure(state, () => consent('s1'), isDomainError('record_inactive'))
+  // Yönetici kurumun bütün kayıtlarını görür; olmayan öğrenci 404 kalır.
+  unchangedOnFailure(
+    state,
+    () =>
+      run(state, 'transport-assign', {
+        studentId: 'olmayan-ogrenci',
+        routeId: 'route-b1',
+        stop: 'Bahariye',
+      }),
+    isDomainError('record_not_found', 'not_found'),
+  )
+})
 test('Servis ataması çoğalmaz; kapasite, durak ve kampüs denetlenir; dolu güzergâh arşivlenmez', () => {
   const state = seed(),
     input = { studentId: 's1', routeId: 'route-b1', stop: 'Bahariye' }

@@ -31,6 +31,7 @@ import {
 } from './consent-rows.ts'
 
 const NO_STUDENTS: ReadonlyArray<{ id: string; name: string }> = []
+const NO_PURPOSES: readonly ConsentPurpose[] = []
 
 /**
  * Rızalarım (IST-017; DOM-YTK-057…062): veli çocuk başına ve hesabı için, öğrenci kendisi için
@@ -75,7 +76,20 @@ export function ConsentsSection({ session }: { session: Session }) {
                 />
               ) : null,
             )}
-            <ConsentSubject title="Hesabım" purposes={ACCOUNT_PURPOSES} session={session} />
+            <ConsentSubject
+              title="Hesabım"
+              purposes={ACCOUNT_PURPOSES}
+              subjectKind="user"
+              session={session}
+            />
+            <ConsentSubject
+              title="Erişiminiz kalkan öğrenciler"
+              description="Erişiminiz kalksa da daha önce verdiğiniz rızaları buradan geri çekebilirsiniz."
+              purposes={NO_PURPOSES}
+              subjectKind="student"
+              hideWhenEmpty
+              session={session}
+            />
           </>
         ) : ownStudentId ? (
           <ConsentSubject
@@ -90,25 +104,39 @@ export function ConsentsSection({ session }: { session: Session }) {
   )
 }
 
+/**
+ * `studentId` olmadan liste velinin hesap rızalarıyla birlikte, erişimi kalkan (velayeti
+ * kaldırılan, iletişimi kısıtlanan) öğrenciler için kendi verdiği açık rızaları da getirir
+ * (KVKK m.11; DOM-YTK-059, OG-032): `subjectKind` hangisinin gösterileceğini seçer. Öğrenci adı
+ * API'den dönmez; o satırlar yalnız geri çekmek içindir, yeni rıza verilmez.
+ */
 function ConsentSubject({
   title,
   studentId,
   purposes,
+  subjectKind,
+  description,
+  hideWhenEmpty = false,
   session,
 }: {
   title: string
+  description?: string
   studentId?: string
   purposes: readonly ConsentPurpose[]
+  subjectKind?: 'user' | 'student'
+  hideWhenEmpty?: boolean
   session: Session
 }) {
   const now = useNow(false)
   const list = useConsents(studentId)
-  const status = useConsentStatus(studentId)
+  const status = useConsentStatus(studentId, { enabled: purposes.length > 0 })
   const withdraw = useWithdrawConsent()
   const [target, setTarget] = useState<ConsentRow | null>(null)
-  const rows = consentRows(list.data?.data ?? [], now, status.data?.data)
-  const candidates =
-    session.role === 'ogrenci' && studentId ? objectionCandidates(list.data?.data ?? [], now) : []
+  const views = (list.data?.data ?? []).filter(
+    (view) => subjectKind === undefined || view.subjectKind === subjectKind,
+  )
+  const rows = consentRows(views, now, status.data?.data)
+  const candidates = session.role === 'ogrenci' && studentId ? objectionCandidates(views, now) : []
   const copy = target ? WITHDRAW_COPY[target.kind] : null
 
   async function confirmWithdraw() {
@@ -119,9 +147,12 @@ function ConsentSubject({
     setTarget(null)
   }
 
+  if (hideWhenEmpty && rows.length === 0 && target === null) return null
+
   return (
     <div className="grid gap-4" role="group" aria-label={`${title} rızaları`}>
       <h3 className="text-base font-semibold">{title}</h3>
+      {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
       {list.isPending ? (
         <p role="status" className="text-sm text-muted-foreground">
           Rızalar yükleniyor…
@@ -168,10 +199,12 @@ function ConsentSubject({
       {candidates.length > 0 ? (
         <ObjectionPanel studentId={studentId} purposes={candidates} />
       ) : null}
-      <div className="grid gap-3">
-        <h4 className="text-sm font-semibold">Rıza ver</h4>
-        <ConsentStep studentId={studentId} purposes={purposes} showGranted={false} />
-      </div>
+      {purposes.length > 0 ? (
+        <div className="grid gap-3">
+          <h4 className="text-sm font-semibold">Rıza ver</h4>
+          <ConsentStep studentId={studentId} purposes={purposes} showGranted={false} />
+        </div>
+      ) : null}
       <Modal
         open={target !== null}
         onOpenChange={(open) => {

@@ -3,6 +3,7 @@ import assert from 'node:assert/strict'
 import {
   accessibleStudentIds,
   guardianBondsFor,
+  guardedActorLinks,
   guardianLinksView,
   hasCustody,
   isContactRestricted,
@@ -289,6 +290,42 @@ describe('veli–öğrenci bağı (IST-019)', () => {
       { studentId: 's1', verified: true, custody: true },
       { studentId: 's2', verified: true, custody: true },
     ])
+  })
+
+  test('IST-019 DOM-ILT-074 iletişim kısıtlı velinin çocuk bağlantısı okuma kapsamından düşer', () => {
+    const links = [
+      { kind: 'child', recordId: 's1' },
+      { kind: 'child', recordId: 's2' },
+    ] as const
+    // Velayetli ve kısıtsız anne iki çocuğunu da görür.
+    assert.deepEqual(guardedActorLinks(links, LINKS, 'm-ayse'), links)
+    // Kısıtlı baba Deniz'i görmez; bağlantısı olsa da kapsam boştur.
+    assert.deepEqual(guardedActorLinks(links.slice(0, 1), LINKS, 'm-kemal'), [])
+    // Kısıt kaldırılıp velayet verilince yeniden görür.
+    const lifted = { ...father, custody: 'joint' as const, contactRestricted: false }
+    assert.deepEqual(guardedActorLinks(links.slice(0, 1), [mother, lifted], 'm-kemal'), [
+      { kind: 'child', recordId: 's1' },
+    ])
+    // Başka hesabın bağı kapsam vermez.
+    assert.deepEqual(guardedActorLinks(links, LINKS, 'm-baska'), [])
+  })
+
+  test('IST-019 DOM-ILT-070 velayeti olmayan kısıtsız veli de kapsam dışıdır; bağsız bağlantı kapalı başarısız', () => {
+    const noCustody = { ...father, contactRestricted: false }
+    const links = [{ kind: 'child', recordId: 's1' }] as const
+    assert.deepEqual(guardedActorLinks(links, [mother, noCustody], 'm-kemal'), [])
+    // Bağı kaldırılmış (yüklenmeyen) ya da hiç kurulmamış bağlantı kapsam vermez.
+    assert.deepEqual(guardedActorLinks(links, [], 'm-ayse'), [])
+    assert.deepEqual(guardedActorLinks([{ kind: 'child', recordId: 's9' }], LINKS, 'm-ayse'), [])
+  })
+
+  test('IST-019 öğrenci ve öğretmen bağlantıları velayetten etkilenmez', () => {
+    const student = [{ kind: 'student', recordId: 's1' }] as const
+    const teacher = [{ kind: 'teacher', recordId: 't1' }] as const
+    assert.deepEqual(guardedActorLinks(student, [], 'm-deniz'), student)
+    assert.deepEqual(guardedActorLinks(teacher, LINKS, 'm-kemal'), teacher)
+    const mixed = [...student, { kind: 'child', recordId: 's1' }] as const
+    assert.deepEqual(guardedActorLinks(mixed, [], 'm-x'), student)
   })
 
   test('DOM-ILT-073 rol kapsamı: yönetici ve ön büro hepsini, veli yalnız kendi bağını kısıtsız görür', () => {

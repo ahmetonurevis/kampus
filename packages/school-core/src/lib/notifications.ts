@@ -50,8 +50,9 @@ import type { Actor } from './scope.ts'
 // konu bazında kanal tercihi (DOM-ILT-020) sonraki F6 işleridir; hedefli duyuru (IST-066),
 // dijital veli onayı (IST-067), kurallı mesaj (IST-070) ve devamsızlık bildirimi (IST-072,
 // DOM-ILT-052) de bildirim üretmez.
-// TODO(velayet-kapsam): velayeti olmayan ebeveyn (DOM-ILT-070) bugün de bağlı çocuğunun
-// bildirimini görür; bağ velayet durumunu taşımaz.
+// Veli kitlesi (`parent`) aktörün çocuk bağlantılarından çözülür; velayeti olmayan ya da
+// iletişim kısıtlı velinin bağlantısı aktör kurulurken düştüğü için bildirim ona ulaşmaz
+// (`lib/guardianship.ts` `guardedActorLinks`; DOM-ILT-070, -074).
 
 export {
   NOTIFICATION_AUDIENCES,

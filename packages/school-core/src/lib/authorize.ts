@@ -298,7 +298,13 @@ function decide(
       return fromCommunication(startDecision(scope, source, request.target))
     case 'message.send':
       return fromCommunication(
-        sendDecision(scope, source, request.target.userId, request.target.conversation),
+        sendDecision(
+          scope,
+          source,
+          request.target.userId,
+          request.target.conversation,
+          request.target.parentUserIds,
+        ),
       )
     case 'message.read':
       return fromCommunication(

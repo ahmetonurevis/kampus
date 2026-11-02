@@ -39,7 +39,15 @@ export type PlatformWriteTargets = {
   'announcement.withdraw': { announcement: { publishedBy?: AnnouncementPublisher } | undefined }
   'announcement.read': Record<string, never>
   'conversation.start': ConversationParties
-  'message.send': { conversation: ConversationParties | undefined; userId: string }
+  /**
+   * `parentUserIds`: yazışmanın öğrencisine velayetli ve kısıtsız bağı olan veli hesapları
+   * (API `student_guardians`'tan verir; DOM-ILT-070, -074). Verilmezse veli kısıtı denetlenmez.
+   */
+  'message.send': {
+    conversation: ConversationParties | undefined
+    userId: string
+    parentUserIds?: readonly string[] | undefined
+  }
   'message.read': { conversation: ConversationParties | undefined; userId: string }
   'conversation.access': { reason: string; conversation?: ConversationParties | undefined }
   // Talep ve izin/mazeret (`lib/requests.ts`): hedef öğrenci istemciden gelir, kapsamla denetlenir.

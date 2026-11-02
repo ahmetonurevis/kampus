@@ -15,6 +15,12 @@ const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
 /**
  * Aylık not ortalamaları, eskiden yeniye. `YYYY-MM` olmayan grup (tarihsiz not) ve notu olmayan ay
  * girmez. Ortalama `scoreSum / count`, tam sayıya yuvarlanır (core `average` ile aynı).
+ * Sayım ucunda `grades` için puanı olanı süzen alan yoktur (`graded` yalnız `submissions`'tadır);
+ * `count` puansız notu da içerir ve ortalamayı düşürürdü. Core kayıt şeması puanı zorunlu tutar
+ * (`gradeRecordSchema`: puan ya da quiz bağı, quiz notunda puan cevaptan hesaplanıp yazılır), bu
+ * yüzden normal yazma yolunda puansız not oluşmaz; yalnız dışarıdan aktarılmış kayıt etkiler.
+ * TODO(api-grade-score-count): sayım ucu `grades` için `graded` süzgeci kabul edince eğilim
+ * sorgusu `graded=true` ile çağrılır.
  */
 export function monthlyGradePoints(
   groups: readonly CollectionCountGroup[],

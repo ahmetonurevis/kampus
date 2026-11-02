@@ -256,6 +256,50 @@ test.describe('yönetici: Risk Altındaki Öğrenciler', () => {
     await expect(bodyRows(page, RISK_TABLE).filter({ hasText: 'Deniz Yılmaz' })).toHaveCount(0)
   })
 
+  test("şube süzgeci (OG-981) listeyi ve CSV'yi seçili şubeye daraltır; adreste korunur, tümüne dönülür", async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs('yonetici')
+    await page.goto(RISK_URL)
+    await expect(resultCount(page)).toContainText('/ 47 kayıt')
+    const branch = page.getByLabel('Şube seç')
+    await expect(branch).toHaveValue('')
+    const options = await branch.locator('option').allTextContents()
+    expect(options[0]).toBe('Tüm şubeler')
+    expect(options.length).toBeGreaterThan(2)
+    const name = options[1] ?? ''
+
+    // Sayfa 2'deyken süzgeç değişince sayfa başa döner.
+    await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
+    await expect(resultCount(page)).toContainText('9–16 / 47 kayıt')
+    await branch.selectOption({ label: name })
+    await expect(page).toHaveURL(/[?&]sube=/)
+    await expect(resultCount(page)).not.toContainText('/ 47 kayıt')
+    await expect(resultCount(page)).toContainText('1–')
+    await expectEveryRow(bodyRows(page, RISK_TABLE), name)
+
+    const narrowed = await downloadReport(page)
+    expect(narrowed.length).toBeGreaterThan(1)
+    expect(narrowed.length).toBeLessThan(1 + 47)
+    for (const row of narrowed.slice(1)) expect(row[3]).toBe(name)
+
+    // Adres paylaşılabilir: yeniden yüklemede süzgeç korunur.
+    await page.reload()
+    await expect(page.getByLabel('Şube seç')).toHaveValue(/.+/)
+    await expectEveryRow(bodyRows(page, RISK_TABLE), name)
+
+    // Bilinmeyen şube adresi "tüm şubeler" sayılır.
+    await page.goto(`${RISK_URL}?sube=yok-sube`)
+    await expect(page.getByLabel('Şube seç')).toHaveValue('')
+    await expect(resultCount(page)).toContainText('/ 47 kayıt')
+
+    await branch.selectOption({ label: name })
+    await branch.selectOption({ label: 'Tüm şubeler' })
+    await expect(page).not.toHaveURL(/[?&]sube=/)
+    await expect(resultCount(page)).toContainText('/ 47 kayıt')
+  })
+
   test('satırdan sağ panel açılır, geri düğmesi kapatır; panel rehberlik verisi içermez', async ({
     page,
     loginAs,

@@ -156,13 +156,36 @@ export interface SubmissionTarget {
   version: number
 }
 
-/** Boş süzgeç gönderilmez (sunucu boş değerde 400 verir); `status` varsayılanı `all`'dır. */
+/** Başlık aramasının en kısa uzunluğu (sunucu `q` kuralı). */
+export const HOMEWORK_SEARCH_MIN = 2
+
+/** Liste sıralama alanları; sunucunun beyaz listesi (`sort`, eksi azalan). */
+export const HOMEWORK_SORT_FIELDS = ['dueDate', 'title', 'createdAt'] as const
+export type HomeworkSortField = (typeof HOMEWORK_SORT_FIELDS)[number]
+
+/** Sütun alanı ve yönden API `sort` değeri; beyaz liste dışındaki alan için `undefined`. */
+export function homeworkSort(
+  field: string,
+  direction: 1 | -1,
+): NonNullable<HomeworkListQuery['sort']> | undefined {
+  const known = HOMEWORK_SORT_FIELDS.find((item) => item === field)
+  if (!known) return undefined
+  return direction === -1 ? `-${known}` : known
+}
+
+/**
+ * Boş süzgeç gönderilmez (sunucu boş değerde 400 verir); `status` varsayılanı `all`'dır. Başlık
+ * araması en az 2 karakterle gider (kısa ya da boş metin aramasız listedir).
+ */
 export function homeworkListParams(query: HomeworkListQuery): HomeworkListQuery {
   const params: HomeworkListQuery = {}
   if (query.page !== undefined) params.page = query.page
   if (query.pageSize !== undefined) params.pageSize = query.pageSize
   if (query.classId) params.classId = query.classId
   if (query.subjectId) params.subjectId = query.subjectId
+  const q = query.q?.trim()
+  if (q && q.length >= HOMEWORK_SEARCH_MIN) params.q = q
+  if (query.sort) params.sort = query.sort
   if (query.status && query.status !== 'all') params.status = query.status
   if (query.dateFrom) params.dateFrom = query.dateFrom
   if (query.dateTo) params.dateTo = query.dateTo

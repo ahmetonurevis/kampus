@@ -33,10 +33,33 @@ const day = (edge: string) =>
     .optional()
     .describe(`Son teslim anının Europe/Istanbul günü için ${edge} (\`YYYY-MM-DD\`, dahil)`)
 
+export const HOMEWORK_SORTS = [
+  'dueDate',
+  '-dueDate',
+  'title',
+  '-title',
+  'createdAt',
+  '-createdAt',
+] as const
+export type HomeworkSort = (typeof HOMEWORK_SORTS)[number]
+
 export const homeworkListQuerySchema = pageQuerySchema
   .extend({
     classId: identifier.optional().describe('Sınıf'),
     subjectId: identifier.optional().describe('Ders'),
+    q: z
+      .string()
+      .trim()
+      .min(2)
+      .max(100)
+      .optional()
+      .describe('Başlık araması; Türkçe büyük/küçük harf ve aksan duyarsız, parça eşleşir'),
+    sort: z
+      .enum(HOMEWORK_SORTS)
+      .default('-dueDate')
+      .describe(
+        'Sıralama; eksi azalan: son teslim anı (`dueDate`), başlık (`title`, Türkçe sıra) ya da oluşturma anı (`createdAt`). Eşitlikte ödev kimliği',
+      ),
     status: z
       .enum(HOMEWORK_STATUS_FILTERS)
       .default('all')

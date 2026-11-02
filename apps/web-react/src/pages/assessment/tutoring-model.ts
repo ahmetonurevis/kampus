@@ -29,6 +29,7 @@ export const TUTORING_LIST_SOURCES = [
 export const TUTORING_PLAN_SOURCES = [
   'mockExams',
   'subjects',
+  'branches',
 ] as const satisfies readonly CollectionName[]
 
 export const ATTENDANCE_MARKS = ['Geldi', 'Gelmedi', 'İzinli'] as const satisfies AttendanceMark[]
@@ -39,6 +40,7 @@ export type TutorRow = {
   date: string
   when: string
   teacher: string
+  campus: string
   room: string
   status: string
   studentCount: number
@@ -68,6 +70,7 @@ export function tutorRows(state: State, session: Session, now: string): TutorRow
         date: entry.date,
         when: `${dateLabel(entry.date)} ${timeLabel(entry.date)}`,
         teacher: state.teachers.find((t) => t.id === entry.teacherId)?.name ?? '—',
+        campus: state.branches.find((b) => b.id === entry.branchId)?.name ?? '—',
         room: entry.room,
         status: entry.status,
         studentCount: entry.studentIds.length,
@@ -126,6 +129,7 @@ export function defaultPlanValues(now: string, examId = ''): PlanFormValues {
 export type PlanSessionRow = {
   key: string
   title: string
+  campus: string
   when: string
   teacher: string
   room: string
@@ -138,6 +142,7 @@ export type PlanSessionRow = {
 export type PlanUnresolvedRow = {
   key: string
   title: string
+  campus: string
   students: string
   studentCount: number
   reason: string
@@ -159,7 +164,7 @@ export type PlanView = {
   }
 }
 
-type Names = Pick<State, 'subjects' | 'teachers' | 'students'>
+type Names = Pick<State, 'subjects' | 'teachers' | 'students' | 'branches'>
 
 /**
  * Sunucu plan önizlemesini ekran satırlarına çevirir: öğretmen, ders ve öğrenci adları okunan
@@ -169,12 +174,14 @@ type Names = Pick<State, 'subjects' | 'teachers' | 'students'>
 export function planView(plan: TutoringPlanPreview, state: Names): PlanView {
   const subject = (id: string) => state.subjects.find((item) => item.id === id)?.name ?? id
   const teacher = (id: string) => state.teachers.find((item) => item.id === id)?.name ?? id
+  const campus = (id: string) => state.branches.find((item) => item.id === id)?.name ?? id
   const names = (ids: readonly string[]) =>
     ids.map((id) => state.students.find((item) => item.id === id)?.name ?? id).join(', ')
   return {
     sessions: plan.sessions.map((item, index) => ({
       key: `${item.subjectId}:${item.topic}:${item.date}:${item.teacherId}:${item.roomClassId}:${index}`,
       title: `${subject(item.subjectId)} · ${item.topic}`,
+      campus: campus(item.branchId),
       when: `${dateLabel(item.date)} ${timeLabel(item.date)}`,
       teacher: teacher(item.teacherId),
       room: item.room,
@@ -185,6 +192,7 @@ export function planView(plan: TutoringPlanPreview, state: Names): PlanView {
     unresolved: plan.unresolved.map((item, index) => ({
       key: `${item.subjectId}:${item.topic}:${index}`,
       title: `${subject(item.subjectId)} · ${item.topic}`,
+      campus: campus(item.branchId),
       students: names(item.studentIds),
       studentCount: item.studentIds.length,
       reason: item.reason,

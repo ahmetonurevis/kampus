@@ -42,6 +42,8 @@ type Props = {
   /** Koleksiyonlar yükleniyor: profil listesi boş görünür ama henüz yok demek değildir. */
   loading: boolean
   onDownloadExample: (profileId: string) => void
+  /** Seçili profilin cevap anahtarı CSV'si (içe aktarma biçiminde). */
+  onDownloadKey: (profileId: string) => void
 }
 
 /**
@@ -51,7 +53,13 @@ type Props = {
  * sonuçları kaydet" `POST /assessment/evaluate` (önizlemenin özetiyle). Önizlemeden sonra
  * veri değişirse sunucu 409 `evaluation_stale` döner; ekran yeniden önizleme ister.
  */
-export function OpticalEvaluateSection({ profiles, subjects, loading, onDownloadExample }: Props) {
+export function OpticalEvaluateSection({
+  profiles,
+  subjects,
+  loading,
+  onDownloadExample,
+  onDownloadKey,
+}: Props) {
   const [profileId, setProfileId] = useState('')
   const [text, setText] = useState('')
   const [encoding, setEncoding] = useState<keyof typeof ENCODING_LABELS | null>(null)
@@ -248,6 +256,10 @@ export function OpticalEvaluateSection({ profiles, subjects, loading, onDownload
             <Button type="button" variant="secondary" onClick={() => onDownloadExample(selected)}>
               <Icon name="Download" size={16} aria-hidden="true" />
               Örnek cevap dosyasını indir
+            </Button>
+            <Button type="button" variant="secondary" onClick={() => onDownloadKey(selected)}>
+              <Icon name="Download" size={16} aria-hidden="true" />
+              Cevap anahtarını indir
             </Button>
           </div>
         </form>

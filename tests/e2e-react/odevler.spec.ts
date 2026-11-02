@@ -57,7 +57,7 @@ function istanbulDay(days: number, time: string): string {
 const istanbulToUtc = (local: string) => new Date(`${local}:00+03:00`).toISOString()
 
 /** Kurulum: öğretmen 7-A Matematik'e üç gün sonra teslimli ödev verir (arayüzden geçmeden). */
-async function assignHomework(teacher: ApiClient, title: string): Promise<HomeworkView> {
+async function assignHomework(teacher: ApiClient, title: string, days = 3): Promise<HomeworkView> {
   const result = await teacher.post(
     '/api/v1/homework',
     {
@@ -65,7 +65,7 @@ async function assignHomework(teacher: ApiClient, title: string): Promise<Homewo
       subjectId: 'math',
       title,
       description: 'Ders kitabı 42. sayfa.',
-      dueDate: istanbulToUtc(istanbulDay(3, '17:00')),
+      dueDate: istanbulToUtc(istanbulDay(days, '17:00')),
     },
     { 'idempotency-key': randomUUID() },
   )
@@ -188,6 +188,62 @@ test.describe('Ödevler: öğretmen', () => {
     await expect(panelOf(page, 'Ödev teslim durumu')).toHaveCount(0)
     await expect(bodyRows(page).filter({ hasText: title })).toHaveCount(0)
     expect(await homeworkList(teacher)).toHaveLength(0)
+  })
+
+  test('başlık araması ve sıralama sunucuda uygulanır; süzgeç değişince sayfa başa döner (IST-095, DOM-AKD-074)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen'] })
+    const teacher = await api(school.user('ogretmen'))
+    await loginAs(school.user('ogretmen'))
+    // Son teslim sırası: Kesirler (2 gün), Ondalık (4 gün), Çarpanlar (6 gün); başlık sırası: Çarpanlar, Kesirler, Ondalık.
+    await assignHomework(teacher, 'Kesirler çalışma kâğıdı', 2)
+    await assignHomework(teacher, 'Ondalık gösterim testi', 4)
+    await assignHomework(teacher, 'Çarpanlar ve katlar', 6)
+    const titles = async () =>
+      (await bodyRows(page).locator('td:first-child').allTextContents()).map((text) => text.trim())
+
+    await page.goto(TEACHER_HOMEWORK)
+    // Varsayılan sıra: son teslim yeniden eskiye.
+    await expect
+      .poll(titles)
+      .toEqual(['Çarpanlar ve katlar', 'Ondalık gösterim testi', 'Kesirler çalışma kâğıdı'])
+
+    // Arama başlıkta aksan ve harf duyarsızdır; sorgu sunucuya gider.
+    const search = page.getByLabel('Tabloda ara')
+    const searched = page.waitForRequest((request) => request.url().includes('/api/v1/homework?'))
+    await search.fill('ONDALIK')
+    expect(new URL((await searched).url()).searchParams.get('q')).toBe('ONDALIK')
+    await expect.poll(titles).toEqual(['Ondalık gösterim testi'])
+    await search.fill('olmayan bir başlık')
+    await expect(page.getByText('Bu süzgeçlere uyan ödev yok.')).toBeVisible()
+    await search.fill('')
+    await expect.poll(async () => (await titles()).length).toBe(3)
+
+    // Başlık sütunu sunucuda sıralanır: artan Türkçe sıra, sonra azalan; sıralama URL'de tutulur.
+    const header = page.getByRole('columnheader', { name: 'Ödev', exact: true })
+    await header.getByRole('button').click()
+    await expect(header).toHaveAttribute('aria-sort', 'ascending')
+    await expect(page).toHaveURL(/[?&]sirala=title/)
+    await expect
+      .poll(titles)
+      .toEqual(['Çarpanlar ve katlar', 'Kesirler çalışma kâğıdı', 'Ondalık gösterim testi'])
+    await header.getByRole('button').click()
+    await expect(header).toHaveAttribute('aria-sort', 'descending')
+    await expect
+      .poll(titles)
+      .toEqual(['Ondalık gösterim testi', 'Kesirler çalışma kâğıdı', 'Çarpanlar ve katlar'])
+
+    // Son teslim sütunu: artan sırada en yakın tarih ilk.
+    const due = page.getByRole('columnheader', { name: 'Son teslim', exact: true })
+    await due.getByRole('button').click()
+    await expect(due).toHaveAttribute('aria-sort', 'ascending')
+    await expect
+      .poll(titles)
+      .toEqual(['Kesirler çalışma kâğıdı', 'Ondalık gösterim testi', 'Çarpanlar ve katlar'])
   })
 })
 

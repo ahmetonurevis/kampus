@@ -11,6 +11,7 @@ import { automationExams } from '@kampus/school-core/lib/assessment-automation.t
 import type { Session as CoreSession } from '@kampus/school-core/lib/domain.ts'
 import type { Session } from '@/auth/auth-port.ts'
 import { FormField } from '@/components/FormField.tsx'
+import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -23,10 +24,12 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { exportCsv } from '@/lib/download.ts'
 import { notify } from '@/lib/notify.ts'
 import { useSourcesState } from '../workflows/use-workflow-state.ts'
 import { collectionSources } from '../workflows/workflow-state.ts'
 import { AssessmentPanel } from './AssessmentPanel.tsx'
+import { PLAN_CSV_COLUMNS, planCsvRows } from './assessment-csv.ts'
 import {
   checkPlanForm,
   defaultPlanValues,
@@ -364,7 +367,18 @@ function PlanResult({
   const { summary } = view
   return (
     <div className="mt-6 grid gap-4">
-      <h3 className="text-base font-semibold">Etüt planı önizlemesi</h3>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h3 className="text-base font-semibold">Etüt planı önizlemesi</h3>
+        <Button
+          type="button"
+          variant="secondary"
+          disabled={view.sessions.length + view.unresolved.length === 0}
+          onClick={() => exportCsv('etut-onizleme', PLAN_CSV_COLUMNS, planCsvRows(view))}
+        >
+          <Icon name="Download" size={16} aria-hidden="true" />
+          Önizlemeyi CSV indir
+        </Button>
+      </div>
       <p role="status" className="text-sm text-muted-foreground">
         {summary.sessions} etüt, {summary.students} öğrenci
         {summary.unresolvedStudents ? ` · ${summary.unresolvedStudents} öğrenci yerleşemedi` : ''}

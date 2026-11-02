@@ -72002,7 +72002,7 @@
         "tags": [
           "homework"
         ],
-        "description": "Ödevler son teslim anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `status` (`open`, `closed`, `all`), `dateFrom`/`dateTo` (son teslim anının Europe/Istanbul günü, dahil; ters aralık 400). Her satır okuyanın gördüğü teslimlerin sayılarını taşır (`submissionCounts`). Bilinmeyen parametre 400. Yönetici kurumun bütün ödevlerini, öğretmen derse girdiği sınıfların ve kendi verdiği ödevleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının ödevlerini okur; ön büro okumaz (403). Teslimleri öğrenci yalnız kendisininkini, veli çocuğununkini, öğretmen sınıflarındaki öğrencilerinkini görür (DOM-AKD-074). Görmediği ve başka kurumun ödevi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "Ödevler varsayılan olarak son teslim anına göre yeniden eskiye (`sort`: `dueDate`, `title`, `createdAt`; eksi azalan; eşitlikte kimlik), sayfalı; süzgeç ve sıralama sayfalamadan önce uygulanır. Süzgeç: `classId`, `subjectId`, `q` (başlıkta harf ve aksan duyarsız arama), `status` (`open`, `closed`, `all`), `dateFrom`/`dateTo` (son teslim anının Europe/Istanbul günü, dahil; ters aralık 400). Her satır okuyanın gördüğü teslimlerin sayılarını taşır (`submissionCounts`). Bilinmeyen parametre 400. Yönetici kurumun bütün ödevlerini, öğretmen derse girdiği sınıfların ve kendi verdiği ödevleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının ödevlerini okur; ön büro okumaz (403). Teslimleri öğrenci yalnız kendisininkini, veli çocuğununkini, öğretmen sınıflarındaki öğrencilerinkini görür (DOM-AKD-074). Görmediği ve başka kurumun ödevi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {
@@ -72049,6 +72049,35 @@
             "name": "subjectId",
             "required": false,
             "description": "Ders"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Başlık araması; Türkçe büyük/küçük harf ve aksan duyarsız, parça eşleşir"
+          },
+          {
+            "schema": {
+              "default": "-dueDate",
+              "type": "string",
+              "enum": [
+                "dueDate",
+                "-dueDate",
+                "title",
+                "-title",
+                "createdAt",
+                "-createdAt"
+              ]
+            },
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "description": "Sıralama; eksi azalan: son teslim anı (`dueDate`), başlık (`title`, Türkçe sıra) ya da oluşturma anı (`createdAt`). Eşitlikte ödev kimliği"
           },
           {
             "schema": {

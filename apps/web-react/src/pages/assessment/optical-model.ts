@@ -131,6 +131,8 @@ export type EvaluationRow = {
   correct: number
   wrong: number
   blank: number
+  multiple: number
+  cancelled: number
   net: number
   /** Etüt planlamasında kullanılabilir mi; değilse neden (eski analiz). */
   current: boolean
@@ -177,6 +179,8 @@ export function evaluationRows(state: State, session: Session): EvaluationRow[] 
         correct: evaluation.correct,
         wrong: evaluation.wrong,
         blank: evaluation.blank,
+        multiple: evaluation.multiple,
+        cancelled: evaluation.cancelled,
         net: evaluation.net,
         current,
         staleReason,

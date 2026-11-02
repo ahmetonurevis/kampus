@@ -220,7 +220,7 @@ export function CoordinatorDutiesPage({ page }: { page: NavPage }) {
       </section>
       {rows !== undefined ? (
         <CoordinatorDutyFormPanel
-          open={formPanel.selectedId !== ''}
+          open={formPanel.selectedId === NEW_DUTY}
           type={type}
           teachers={teachers}
           branchOf={branchOf}

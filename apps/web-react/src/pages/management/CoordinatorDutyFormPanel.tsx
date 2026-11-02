@@ -14,7 +14,9 @@ import {
   type DutyFormValues,
 } from './coordinator-duty-forms.ts'
 import { dutyTexts, scopeOptions, type TeacherOption } from './coordinator-duty-rows.ts'
-import { errorRoutes, FormActions, RootError } from './FormParts.tsx'
+import { errorRoutes, FormActions, RootError, useFocusAfterSubmit } from './FormParts.tsx'
+
+const DUTY_ROUTES = errorRoutes(DUTY_ERROR_FIELDS)
 
 type Props = {
   open: boolean
@@ -58,18 +60,18 @@ function DutyForm({ type, teachers, branchOf, onClose }: Omit<Props, 'open'>) {
   })
   const busy = assign.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
 
   const onSubmit = form.handleSubmit(async (values) => {
     const outcome = await assign.submit(values, {
       setError: form.setError,
-      ...errorRoutes(DUTY_ERROR_FIELDS),
+      ...DUTY_ROUTES,
     })
     if (outcome.status === 'success') {
       notify.success(`${texts.kindLabel} görevi verildi.`)
       onClose()
     } else if (outcome.status === 'failed') {
-      const field = DUTY_ERROR_FIELDS[outcome.error.code as keyof typeof DUTY_ERROR_FIELDS]
-      if (field) form.setFocus(field)
+      focusAfterSubmit(DUTY_ROUTES.fieldFor(outcome.error))
     }
   })
 
@@ -91,7 +93,10 @@ function DutyForm({ type, teachers, branchOf, onClose }: Omit<Props, 'open'>) {
               onChange: (event: { target: { value: string } }) => {
                 // Okulda öğretmenin branşı biliniyorsa ders önceden seçilir; kullanıcı değiştirebilir.
                 const branch = type === 'school' ? branchOf(event.target.value) : null
-                if (branch) form.setValue('scopeId', branch, { shouldDirty: true })
+                if (branch) {
+                  form.setValue('scopeId', branch, { shouldDirty: true })
+                  form.clearErrors('scopeId')
+                }
               },
             })}
             className="w-full"

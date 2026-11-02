@@ -1,6 +1,7 @@
 // Kampüs, sınıf ve kadro formlarının ortak parçaları: sürüm çakışması uyarısı, eylem düğmeleri
 // ve gönderim hatasını alana bağlayan yardımcılar.
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import type { FieldValues, Path, UseFormReturn } from 'react-hook-form'
 import { isApiError, type ApiError } from '@kampus/api-client/errors.ts'
 import { RECORD_CHANGED_MESSAGE } from '@kampus/react-shared/use-management-commands.ts'
 import { Icon } from '@/components/Icon.tsx'
@@ -58,6 +59,27 @@ export function errorRoutes(fields: Readonly<Record<string, string>>, byPath = f
       fields[error.code] ??
       (byPath ? error.issues.find((issue) => issue.path.length > 0)?.path.join('.') : undefined),
     silent: isVersionConflict,
+  }
+}
+
+/**
+ * Sunucu reddinden sonra odağı hatalı alana verir. Gönderim sürerken alanlar kilitlidir (`disabled`)
+ * ve kilitli alan odak almaz; bu yüzden hata alanı tutulur, gönderim bitip alanlar açılınca
+ * (`busy` false) odak verilir. Dönen işlev `fieldFor` sonucunu alır; alan yoksa hiçbir şey yapmaz.
+ */
+export function useFocusAfterSubmit<TValues extends FieldValues>(
+  form: Pick<UseFormReturn<TValues>, 'setFocus'>,
+  busy: boolean,
+) {
+  const [request, setRequest] = useState<{ field: string } | null>(null)
+  const served = useRef<object | null>(null)
+  useEffect(() => {
+    if (request === null || busy || served.current === request) return
+    served.current = request
+    form.setFocus(request.field as Path<TValues>)
+  }, [request, busy, form])
+  return (next: string | undefined) => {
+    if (next) setRequest({ field: next })
   }
 }
 

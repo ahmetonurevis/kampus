@@ -2,6 +2,8 @@ import { randomUUID } from 'node:crypto'
 
 import type { Page } from '@playwright/test'
 
+import { COORDINATOR_DUTY_MESSAGES } from '../../packages/react-shared/src/use-coordinator-duties.ts'
+
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
@@ -97,6 +99,8 @@ test('IST-005, DOM-YTK-027: yönetici öğretmene zümre başkanlığı verir; d
   await again.getByRole('button', { name: 'Görevi ver' }).click()
   await expect(again.getByLabel('Ders')).toHaveAttribute('aria-invalid', 'true')
   await expect(again.getByText('Bu görev öğretmene zaten verilmiş.')).toBeVisible()
+  // Gönderim sürerken alanlar kilitlidir; odak gönderim bitince hatalı alana gelir.
+  await expect(again.getByLabel('Ders')).toBeFocused()
   expect(await dutyCount(admin)).toBe(1)
 
   // Öğretmenin branşı dışındaki ders reddedilir (duty_outside_branch).
@@ -105,6 +109,8 @@ test('IST-005, DOM-YTK-027: yönetici öğretmene zümre başkanlığı verir; d
   await expect(
     again.getByText('Zümre başkanlığı öğretmenin kendi branşında verilir.'),
   ).toBeVisible()
+  await expect(again.getByLabel('Ders')).toHaveAttribute('aria-invalid', 'true')
+  await expect(again.getByLabel('Ders')).toBeFocused()
   expect(await dutyCount(admin)).toBe(1)
   await again.getByRole('button', { name: 'Vazgeç' }).click()
   await expect(again).toHaveCount(0)
@@ -153,6 +159,45 @@ test('DOM-YTK-027: görev başka yerden kaldırıldıysa kaldırma Türkçe uyar
   await expect(page.getByRole('alertdialog')).toHaveCount(0)
   await expect(row).toHaveCount(0)
   await expect(page.getByText('Henüz zümre başkanı atanmadı.')).toBeVisible()
+})
+
+test('DOM-YTK-027: görev sürümü eskidiyse kaldırma 409 ile reddedilir, pencere kapanır ve liste tazelenir', async ({
+  loginAs,
+  api,
+  tenant,
+}) => {
+  const school = await tenant({ roles: ['ogretmen'] })
+  const adminUser = school.user('yonetici')
+  const admin = await api(adminUser)
+  const teacher = school.user('ogretmen').name
+  await assignViaApi(admin, await teacherMembershipId(admin, teacher), 'math')
+
+  const page = await loginAs(adminUser)
+  await openDutiesPage(page)
+  const row = page.getByRole('row', { name: new RegExp(`${teacher}.*Matematik`) })
+  await expect(row).toBeVisible()
+
+  // Ekrandaki görev eskimiş sürümle gider: sunucu gerçekten 409 `version_conflict` döndürür.
+  await page.route('**/api/v1/coordinator-duties/*', async (route) => {
+    if (route.request().method() !== 'DELETE') return route.continue()
+    return route.continue({ headers: { ...route.request().headers(), 'if-match': '"99"' } })
+  })
+  const refreshed = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/coordinator-duties') &&
+      response.request().method() === 'GET',
+  )
+  await page.getByRole('button', { name: `${teacher} Matematik görevini kaldır` }).click()
+  await page
+    .getByRole('alertdialog', { name: 'Görevi kaldır' })
+    .getByRole('button', { name: 'Görevi kaldır' })
+    .click()
+  await expect(page.getByText(COORDINATOR_DUTY_MESSAGES.version_conflict)).toBeVisible()
+  await expect(page.getByRole('alertdialog')).toHaveCount(0)
+  await refreshed
+  // Görev sunucuda durur (arşivlenmedi) ve liste tazelenmiş hâliyle görünür.
+  await expect(row).toBeVisible()
+  expect(await dutyCount(admin)).toBe(1)
 })
 
 test('IST-005, DOM-YTK-027: dil okulunda alanlar koordinatör ve seviye dilindedir; seviye süzgeci çalışır, seviyesiz gönderim alanda reddedilir', async ({

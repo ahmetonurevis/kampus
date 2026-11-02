@@ -41,11 +41,13 @@ export const taskAssignmentListQuerySchema = pageQuerySchema
 
 /**
  * Yeni atama: core `assignmentInputSchema` (içerik sürümü, ayarlar, hedefler). Tek fark dinleme
- * hakkının varsayılanıdır: core değerlendirmede 2 verir (DOM-BEC-005), ama API dinleme sayısını
- * `attempt_media_plays` gelene kadar tutamaz. Gönderilmeyen hak sınırsız (`null`) saklanır; dolu
- * hak (1 veya 2) serviste 422 `listening_plays_unavailable` alır (ADR 0004 karar 6 uygulama notu).
+ * hakkının varsayılanıdır: core değerlendirmede 2 verir (DOM-BEC-005), ama core içerik modeli
+ * dinleme kaydını (`listening_audio`) atanabilen türlere (soru, quiz, alıştırma seti, ödev şablonu)
+ * bağlamaz; sayım altyapısı (`attempt_media_plays`, OG-049) sayacak kayıt bulamaz. Gönderilmeyen
+ * hak sınırsız (`null`) saklanır; dolu hak (1 veya 2) serviste 422 `listening_plays_unavailable`
+ * alır (ADR 0004 karar 6 uygulama notu, OG-049).
  */
-// TODO(F3c2-files): `attempt_media_plays` gelince core varsayılanına (2) dönülür.
+// TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türlere bağlayınca core varsayılanına (2) dönülür.
 export const taskAssignmentBodySchema = assignmentInputSchema.extend({
   settings: assignmentSettingsSchema
     .safeExtend({

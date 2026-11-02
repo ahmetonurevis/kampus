@@ -56,6 +56,20 @@ export const fileUrlResponseSchema = dataResponse(
     .object({
       url: z.url().describe('Kısa ömürlü imzalı GET bağlantısı'),
       expiresAt: instant.describe('Bağlantının geçerlilik sonu'),
+      listening: z
+        .object({
+          attemptId: z.uuid().describe('Hakkın düştüğü süren deneme'),
+          limit: z.number().int().min(1).max(2).describe('Atamanın dinleme hakkı (DOM-BEC-005)'),
+          used: z.number().int().min(0).describe('Bu deneme ve kayıtta sayılan dinleme'),
+          remaining: z.number().int().min(0),
+          counted: z
+            .boolean()
+            .describe('Bu istek yeni dinleme saydı mı; yeniden bağlantı penceresinde `false`'),
+        })
+        .nullable()
+        .describe(
+          'Dinleme hakkı sayımı (IST-045): yalnız öğrencinin süren denemesinde sınırlı dinleme kaydında dolu, diğerlerinde `null`',
+        ),
     })
     .meta({ id: 'FileUrl' }),
 )
@@ -71,6 +85,7 @@ export const uploadErrors = {
 } as const
 
 export const fileReadErrors = { ...readErrors, 409: errorResponseSchema } as const
+export const fileUrlErrors = { ...fileReadErrors, 422: errorResponseSchema } as const
 
 export const downloadErrors = {
   400: errorResponseSchema,

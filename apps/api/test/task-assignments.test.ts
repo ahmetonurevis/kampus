@@ -547,7 +547,7 @@ describe('görev atama uçları', () => {
     assert.deepEqual(await snapshot(t.institution.id), before)
   })
 
-  test('ADR 0004 karar 6 (F4b2b): dosyalı ve sesli teslim 422 submission_kind_unavailable; dinleme görevi gönderilmeyen hakla sınırsız atanır, dolu hak 422 listening_plays_unavailable', async () => {
+  test('ADR 0004 karar 6 (F4b2b, OG-049): dosyalı ve sesli teslim 422 submission_kind_unavailable; DOM-BEC-005: dinleme görevi gönderilmeyen hakla sınırsız atanır, dolu hak 422 listening_plays_unavailable', async () => {
     const t = await tenant()
     const before = await snapshot(t.institution.id)
     for (const submission of [
@@ -571,7 +571,8 @@ describe('görev atama uçları', () => {
       settings: { deadline: { dueAt: DUE }, ...settings },
       targets: [{ kind: 'class', id: '9-A' }],
     })
-    // Dinleme sayımı (`attempt_media_plays`) yokken açık hak denetlenemez: 1 ve 2 reddedilir.
+    // Core içerik modeli dinleme kaydını atanabilen türe bağlamadığından hak sayılamaz: 1 ve 2
+    // reddedilir (TODO(dinleme-icerik-bagi)); kabul edilse sessizce sınırsız olurdu.
     for (const listeningPlays of [1, 2]) {
       const rejected = await create(t.cookies.teacher, listening({ listeningPlays }))
       fails(rejected, 422, 'listening_plays_unavailable')

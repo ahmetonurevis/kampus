@@ -41,6 +41,7 @@ import { actorStudentConsent, actorStudentHasConsent } from './consents.ts'
 import { contentTypeMismatch, detectContentType, dispositionFor } from './file-detection.ts'
 import { FILE_PURPOSE_ACCESS, fileAttachmentKind } from './file-registry.ts'
 import { requestFingerprint } from './idempotency.ts'
+import { grantListeningPlay, listeningWindowMs } from './listening-plays.ts'
 import { getInstitutionModules } from './modules.ts'
 import { runCommand, type CommandResponse } from './operation-runner.ts'
 
@@ -369,7 +370,13 @@ export async function getFile(ctx: ServiceContext, fileId: string) {
  * Kısa ömürlü imzalı indirme bağlantısı (karar 6). Tarama/dönüşüm sürerken (`processing`)
  * bağlantı verilmez (409 `file_processing`). Teslim ve konuşma kaydında her üretim
  * `file.access` olarak denetime yazılır (DOM-BEC-053, DOM-YTK-052).
- * TODO(F4b4-listening): dinleme hakkı (IST-045) burada sayılır; hak bitince bağlantı verilmez.
+ *
+ * Dinleme kaydının bağlantısı kayıt süresi + 60 sn yaşar, en az 5 dk; süre ölçülmemişse 16 dk
+ * (`listeningWindowMs`). Dinleme hakkı (IST-045, DOM-BEC-005) burada, bağlantıyla aynı
+ * transaction'da sayılır (`grantListeningPlay`): hak bitince 422 `listening_plays_exhausted`, süren
+ * deneme yokken açık görevde 422 `listening_attempt_required`. Yeniden bağlantı penceresinde bitiş
+ * anı ilk sayımın bitişidir; imzalama başarısız olursa sayım da yazılmaz. Sayım bugün devrede
+ * değildir: atama dolu hakkı reddeder (`TODO(dinleme-icerik-bagi)`).
  */
 export async function getFileUrl(ctx: ServiceContext, storage: StorageDriver, fileId: string) {
   return ctx.db.transaction(async (tx) => {
@@ -377,7 +384,13 @@ export async function getFileUrl(ctx: ServiceContext, storage: StorageDriver, fi
     if (row.status === 'processing')
       throw new AppError(409, 'file_processing', FILE_MESSAGES.file_processing)
     const access = FILE_PURPOSE_ACCESS[row.purpose]
-    const expiresAt = new Date(ctx.now.getTime() + access.linkTtlSeconds * 1000)
+    const listening = await grantListeningPlay(tx, ctx, row)
+    // Dinleme kaydının bağlantısı kaydın sonuna kadar yaşar (kayıt süresi + 60 sn, en az 5 dk).
+    const ttlMs =
+      row.purpose === 'listening_audio'
+        ? listeningWindowMs(row.durationMs)
+        : access.linkTtlSeconds * 1000
+    const expiresAt = listening?.expiresAt ?? new Date(ctx.now.getTime() + ttlMs)
     const url = await storage.signedGetUrl(row.storageKey, {
       institutionId: row.institutionId,
       fileId: row.id,
@@ -385,7 +398,20 @@ export async function getFileUrl(ctx: ServiceContext, storage: StorageDriver, fi
       disposition: dispositionFor(row.contentType),
     })
     if (access.auditAccess) await audit(tx, ctx, 'file.access', row.id, [])
-    return { url, expiresAt: expiresAt.toISOString() }
+    return {
+      url,
+      expiresAt: expiresAt.toISOString(),
+      listening:
+        listening === null
+          ? null
+          : {
+              attemptId: listening.attemptId,
+              limit: listening.limit,
+              used: listening.used,
+              remaining: listening.remaining,
+              counted: listening.counted,
+            },
+    }
   })
 }
 

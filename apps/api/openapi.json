@@ -2287,11 +2287,59 @@
             "format": "date-time",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
             "description": "Bağlantının geçerlilik sonu"
+          },
+          "listening": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "attemptId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Hakkın düştüğü süren deneme"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2,
+                    "description": "Atamanın dinleme hakkı (DOM-BEC-005)"
+                  },
+                  "used": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Bu deneme ve kayıtta sayılan dinleme"
+                  },
+                  "remaining": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "counted": {
+                    "type": "boolean",
+                    "description": "Bu istek yeni dinleme saydı mı; yeniden bağlantı penceresinde `false`"
+                  }
+                },
+                "required": [
+                  "attemptId",
+                  "limit",
+                  "used",
+                  "remaining",
+                  "counted"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dinleme hakkı sayımı (IST-045): yalnız öğrencinin süren denemesinde sınırlı dinleme kaydında dolu, diğerlerinde `null`"
           }
         },
         "required": [
           "url",
-          "expiresAt"
+          "expiresAt",
+          "listening"
         ]
       },
       "HealthInput": {
@@ -7711,6 +7759,61 @@
               ]
             },
             "description": "Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık"
+          },
+          "listening": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2,
+                    "description": "Atamanın dinleme hakkı (DOM-BEC-005)"
+                  },
+                  "media": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "fileId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "description": "Dinleme kaydı (`listening_audio`)"
+                        },
+                        "used": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Bu denemede sayılan dinleme"
+                        },
+                        "remaining": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Kalan dinleme hakkı"
+                        }
+                      },
+                      "required": [
+                        "fileId",
+                        "used",
+                        "remaining"
+                      ]
+                    },
+                    "description": "İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla"
+                  }
+                },
+                "required": [
+                  "limit",
+                  "media"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`"
           }
         },
         "required": [
@@ -7729,7 +7832,8 @@
           "answers",
           "result",
           "rowVersion",
-          "questions"
+          "questions",
+          "listening"
         ]
       },
       "TaskWordCountInput": {
@@ -12696,11 +12800,60 @@
             "format": "date-time",
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
             "description": "Bağlantının geçerlilik sonu"
+          },
+          "listening": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "attemptId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Hakkın düştüğü süren deneme"
+                  },
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2,
+                    "description": "Atamanın dinleme hakkı (DOM-BEC-005)"
+                  },
+                  "used": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Bu deneme ve kayıtta sayılan dinleme"
+                  },
+                  "remaining": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991
+                  },
+                  "counted": {
+                    "type": "boolean",
+                    "description": "Bu istek yeni dinleme saydı mı; yeniden bağlantı penceresinde `false`"
+                  }
+                },
+                "required": [
+                  "attemptId",
+                  "limit",
+                  "used",
+                  "remaining",
+                  "counted"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dinleme hakkı sayımı (IST-045): yalnız öğrencinin süren denemesinde sınırlı dinleme kaydında dolu, diğerlerinde `null`"
           }
         },
         "required": [
           "url",
-          "expiresAt"
+          "expiresAt",
+          "listening"
         ],
         "additionalProperties": false
       },
@@ -18271,6 +18424,63 @@
               "additionalProperties": false
             },
             "description": "Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık"
+          },
+          "listening": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "limit": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2,
+                    "description": "Atamanın dinleme hakkı (DOM-BEC-005)"
+                  },
+                  "media": {
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "fileId": {
+                          "type": "string",
+                          "format": "uuid",
+                          "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                          "description": "Dinleme kaydı (`listening_audio`)"
+                        },
+                        "used": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Bu denemede sayılan dinleme"
+                        },
+                        "remaining": {
+                          "type": "integer",
+                          "minimum": 0,
+                          "maximum": 9007199254740991,
+                          "description": "Kalan dinleme hakkı"
+                        }
+                      },
+                      "required": [
+                        "fileId",
+                        "used",
+                        "remaining"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "description": "İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla"
+                  }
+                },
+                "required": [
+                  "limit",
+                  "media"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`"
           }
         },
         "required": [
@@ -18289,7 +18499,8 @@
           "answers",
           "result",
           "rowVersion",
-          "questions"
+          "questions",
+          "listening"
         ],
         "additionalProperties": false
       },
@@ -55332,7 +55543,7 @@
         "tags": [
           "task-assignments"
         ],
-        "description": "İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Geçici sınırlar: dosyalı ve sesli teslim 422 `submission_kind_unavailable`, dinleme hakkı sayımı açılana kadar gönderilmeyen hak sınırsız (`null`) saklanır, 1 veya 2 seçilirse 422 `listening_plays_unavailable`. Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Geçici sınır: dosyalı ve sesli teslim 422 `submission_kind_unavailable`. Dinleme görevinde hak core varsayılanıyla 2'dir; 1, 2 veya sınırsız (`null`) seçilebilir ve öğrencinin denemesinde sayılır (IST-045, DOM-BEC-005). Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -68211,7 +68422,7 @@
         "tags": [
           "files"
         ],
-        "description": "Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk. Tür ve `Content-Disposition` (belge `attachment`, görsel/ses/görüntü `inline`) imzaya dahildir. Dosya işlenirken 409 `file_processing`. Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına `file.access` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.",
+        "description": "Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk, dinleme kaydında kayıt süresi + 60 sn (en az 5 dk; süre ölçülmemişse 16 dk). Tür ve `Content-Disposition` (belge `attachment`, görsel/ses/görüntü `inline`) imzaya dahildir. Dosya işlenirken 409 `file_processing`. Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına `file.access` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Dinleme hakkı altyapısı (IST-045, DOM-BEC-005; bugün devrede değil, atama dolu hakkı 422 `listening_plays_unavailable` ile reddeder): öğrenci, hakkı sınırlı atamanın içerik sürümüne bağlı `listening_audio` kaydını süren denemesinde istediğinde hak deneme × kayıt başına sayılır ve yanıtın `listening` alanında döner; hak bitince 422 `listening_plays_exhausted`, süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`. Son sayımın bağlantısı geçerliyken yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner; aralık istekleri sayılmaz. Öğretmen, yönetici ve veli bağlantısı, sınırsız atamanın denemesi ve teslim kapandıktan sonraki bağlantı sayılmaz. Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {
@@ -68286,6 +68497,16 @@
             }
           },
           "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
             "description": "Default Response",
             "content": {
               "application/json": {

@@ -420,10 +420,12 @@ async function audit(
 }
 
 /**
- * Geçici API sınırları (ADR 0004 karar 6 uygulama notu, F4b2): dosyalı ve sesli teslim `files`
- * gelene kadar saklanamaz; dinleme hakkı `attempt_media_plays` gelene kadar sayılamaz. Aksi hâlde
- * kursiyer teslim edemeyeceği veya hakkı denetlenmeyen görev alır. Dinleme görevi yine atanır:
- * gövde şeması gönderilmeyen hakkı sınırsız (`null`) yapar; yalnız açıkça seçilen 1 veya 2 reddedilir.
+ * Geçici API sınırları (ADR 0004 karar 6 uygulama notu, F4b2, OG-049): dosyalı ve sesli teslim
+ * `files` gelene kadar saklanamaz; dinleme hakkı sayılamaz, çünkü sayım altyapısı
+ * (`services/listening-plays.ts`) hazır olsa da core içerik modeli dinleme kaydını atanabilen
+ * türlere bağlamaz. Aksi hâlde kursiyer teslim edemeyeceği veya hakkı sessizce sınırsız olan görev
+ * alır. Dinleme görevi yine atanır: gövde şeması gönderilmeyen hakkı sınırsız (`null`) yapar;
+ * yalnız açıkça seçilen 1 veya 2 reddedilir.
  */
 function assertSupportedByApi(plan: AssignmentPlan): void {
   const kind = plan.assignment.submission?.submissionKind
@@ -442,7 +444,7 @@ function assertSupportedByApi(plan: AssignmentPlan): void {
         ],
       },
     )
-  // TODO(F3c2-files): `attempt_media_plays` gelince dinleme hakkı sayılır ve bu sınır kalkar.
+  // TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türe bağlayınca bu sınır kalkar.
   if (plan.assignment.listeningPlays !== null)
     throw new RuleViolationError(
       'listening_plays_unavailable',

@@ -113,6 +113,23 @@ const taskAttemptDetailSchema = z
         }),
       )
       .describe('Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık'),
+    listening: z
+      .object({
+        limit: z.number().int().min(1).max(2).describe('Atamanın dinleme hakkı (DOM-BEC-005)'),
+        media: z
+          .array(
+            z.object({
+              fileId: id.describe('Dinleme kaydı (`listening_audio`)'),
+              used: z.number().int().min(0).describe('Bu denemede sayılan dinleme'),
+              remaining: z.number().int().min(0).describe('Kalan dinleme hakkı'),
+            }),
+          )
+          .describe('İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla'),
+      })
+      .nullable()
+      .describe(
+        'Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`',
+      ),
   })
   .meta({ id: 'TaskAttemptDetail' })
 

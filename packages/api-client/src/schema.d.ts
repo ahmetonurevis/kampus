@@ -4205,7 +4205,7 @@ export interface paths {
         };
         /**
          * Ödevler
-         * @description Ödevler son teslim anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `classId`, `subjectId`, `status` (`open`, `closed`, `all`), `dateFrom`/`dateTo` (son teslim anının Europe/Istanbul günü, dahil; ters aralık 400). Her satır okuyanın gördüğü teslimlerin sayılarını taşır (`submissionCounts`). Bilinmeyen parametre 400. Yönetici kurumun bütün ödevlerini, öğretmen derse girdiği sınıfların ve kendi verdiği ödevleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının ödevlerini okur; ön büro okumaz (403). Teslimleri öğrenci yalnız kendisininkini, veli çocuğununkini, öğretmen sınıflarındaki öğrencilerinkini görür (DOM-AKD-074). Görmediği ve başka kurumun ödevi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Ödevler varsayılan olarak son teslim anına göre yeniden eskiye (`sort`: `dueDate`, `title`, `createdAt`; eksi azalan; eşitlikte kimlik), sayfalı; süzgeç ve sıralama sayfalamadan önce uygulanır. Süzgeç: `classId`, `subjectId`, `q` (başlıkta harf ve aksan duyarsız arama), `status` (`open`, `closed`, `all`), `dateFrom`/`dateTo` (son teslim anının Europe/Istanbul günü, dahil; ters aralık 400). Her satır okuyanın gördüğü teslimlerin sayılarını taşır (`submissionCounts`). Bilinmeyen parametre 400. Yönetici kurumun bütün ödevlerini, öğretmen derse girdiği sınıfların ve kendi verdiği ödevleri, öğrenci kendi sınıfının, veli çocuğunun sınıfının ödevlerini okur; ön büro okumaz (403). Teslimleri öğrenci yalnız kendisininkini, veli çocuğununkini, öğretmen sınıflarındaki öğrencilerinkini görür (DOM-AKD-074). Görmediği ve başka kurumun ödevi olmayan kimlikle aynı 404. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         get: operations["listHomework"];
         put?: never;
@@ -36513,6 +36513,10 @@ export interface operations {
                 classId?: string;
                 /** @description Ders */
                 subjectId?: string;
+                /** @description Başlık araması; Türkçe büyük/küçük harf ve aksan duyarsız, parça eşleşir */
+                q?: string;
+                /** @description Sıralama; eksi azalan: son teslim anı (`dueDate`), başlık (`title`, Türkçe sıra) ya da oluşturma anı (`createdAt`). Eşitlikte ödev kimliği */
+                sort?: "dueDate" | "-dueDate" | "title" | "-title" | "createdAt" | "-createdAt";
                 /** @description `open` son teslim anı gelmemiş, `closed` geçmiş ödevler; varsayılan `all` */
                 status?: "all" | "open" | "closed";
                 /** @description Son teslim anının Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil) */

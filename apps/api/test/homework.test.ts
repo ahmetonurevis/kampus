@@ -846,4 +846,112 @@ describe('ödev uçları', () => {
       )
     })
   })
+
+  test('IST-095, DOM-AKD-074: başlık araması harf ve aksan duyarsızdır, kapsam dışı ödev sızmaz, süzgeçlerle birleşir', async () => {
+    const a = await institution()
+    await institution({}, ONLY_B)
+    const s1 = await student(a.id, 's1')
+    const t5 = await teacher(a.id, 't5')
+    const search = async (cookie: string, query: string) => {
+      const list = await read(cookie, `/api/v1/homework?pageSize=100&${query}`)
+      assert.equal(list.statusCode, 200, list.body)
+      return list
+    }
+    const admin = a.adminCookie
+    const turkish = await search(admin, 'q=T%C3%9CRK%C3%87E')
+    assert.deepEqual(ids(turkish).sort(), ['hw12', 'hw2'])
+    assert.equal(turkish.json().meta.total, 2)
+    assert.deepEqual(ids(await search(admin, 'q=turkce')).sort(), ['hw12', 'hw2'])
+    assert.deepEqual(ids(await search(admin, 'q=PARAGRAF')), ['hw2'])
+    assert.deepEqual(ids(await search(admin, 'q=%20paragraf%20')), ['hw2'])
+    const none = await search(admin, 'q=yok-boyle-bir-odev')
+    assert.deepEqual(ids(none), [])
+    assert.equal(none.json().meta.total, 0)
+    // Sınıf, durum ve arama birleşir.
+    assert.deepEqual(ids(await search(admin, 'q=turkce&classId=c2')), ['hw12'])
+    assert.deepEqual(ids(await search(admin, 'q=matematik&status=closed&classId=c1')).sort(), [
+      'hw-review',
+      'hw1',
+    ])
+    assert.deepEqual(ids(await search(admin, 'q=turkce&status=closed')), [])
+    // Öğrenci yalnız kendi sınıfında arar; hiçbir sınıfa girmeyen öğretmen hiçbir ödev görmez.
+    assert.deepEqual(ids(await search(s1, 'q=turkce')), ['hw2'])
+    assert.deepEqual(ids(await search(s1, 'q=geometri')), [])
+    assert.deepEqual(ids(await search(t5, 'q=matematik')), [])
+    // Başka kurumun ödevi (yalnız B'de) A'nın aramasında çıkmaz.
+    assert.deepEqual(ids(await search(admin, 'q=B%20kurumunun')), [])
+  })
+
+  test('IST-095: ödev listesi dueDate, title, createdAt ile sıralanır; eksi azalan, eşitlikte kimlik; sayfalama sıralamadan sonra', async () => {
+    const a = await institution()
+    const s1 = await student(a.id, 's1')
+    const admin = a.adminCookie
+    const items = async (cookie: string, query: string) => {
+      const list = await read(cookie, `/api/v1/homework?${query}`)
+      assert.equal(list.statusCode, 200, list.body)
+      return list.json().data as { id: string; title: string; dueDate: string }[]
+    }
+    const all = (await items(admin, 'pageSize=100&sort=dueDate')).map((item) => item.id)
+    // Varsayılan -dueDate: sıra sort=-dueDate ile aynıdır, eşitlikte kimlik artan.
+    const defaulted = await items(admin, 'pageSize=100')
+    assert.deepEqual(ids(await read(admin, '/api/v1/homework?pageSize=100&sort=-dueDate')), [
+      ...defaulted.map((item) => item.id),
+    ])
+    for (let i = 1; i < defaulted.length; i += 1) {
+      const [prev, next] = [defaulted[i - 1], defaulted[i]]
+      assert.ok(prev && next)
+      assert.ok(prev.dueDate >= next.dueDate)
+      if (prev.dueDate === next.dueDate) assert.ok(prev.id < next.id)
+    }
+    const ascending = await items(admin, 'pageSize=100&sort=dueDate')
+    assert.equal(ascending[0]?.id, 'hw-review', 'en erken son teslim ilk')
+    assert.equal(ascending.length, all.length)
+    // Başlık: Türkçe sıra, artan ve azalan.
+    const byTitle = await items(admin, 'pageSize=100&sort=title')
+    const titles = byTitle.map((item) => item.title)
+    assert.deepEqual(
+      titles,
+      [...titles].sort((x, y) => x.localeCompare(y, 'tr')),
+    )
+    const byTitleDesc = await items(admin, 'pageSize=100&sort=-title')
+    assert.deepEqual(
+      byTitleDesc.map((item) => item.title),
+      [...titles].reverse(),
+    )
+    // Oluşturma: hw-review en eski; diğerleri aynı anda, kimliğe göre.
+    const created = await items(admin, 'pageSize=100&sort=createdAt')
+    assert.equal(created[0]?.id, 'hw-review')
+    const createdDesc = await items(admin, 'pageSize=100&sort=-createdAt')
+    assert.equal(createdDesc.at(-1)?.id, 'hw-review')
+    // Sayfalama süzgeç ve sıralamadan sonra: ikinci sayfa tam listenin dilimidir, toplam süzgeçlidir.
+    const page2 = await read(admin, '/api/v1/homework?pageSize=3&page=2&sort=title&classId=c1')
+    assert.equal(page2.statusCode, 200, page2.body)
+    const c1Titles = (await items(admin, 'pageSize=100&sort=title&classId=c1')).map((x) => x.id)
+    assert.deepEqual(ids(page2), c1Titles.slice(3, 6))
+    assert.equal(page2.json().meta.total, c1Titles.length)
+    // Sıralama kapsamı genişletmez: öğrenci yalnız kendi sınıfını sıralı görür.
+    const own = await items(s1, 'pageSize=100&sort=-title')
+    assert.ok(own.length > 0 && !own.some((item) => item.id === 'hw11'))
+    assert.equal(own.length, (await items(s1, 'pageSize=100')).length)
+  })
+
+  test('IST-095: geçersiz sort ve q 400, kayıtlar değişmez', async () => {
+    const a = await institution()
+    await unchanged(a.id, async () => {
+      for (const query of [
+        'sort=id',
+        'sort=-dueDates',
+        'sort=title,dueDate',
+        'sort=',
+        'q=a',
+        'q=%20%20a%20',
+        `q=${'a'.repeat(101)}`,
+        'q=&sort=title',
+        'order=title',
+      ]) {
+        const response = await read(a.adminCookie, `/api/v1/homework?${query}`)
+        assertError(response, 400, 'validation_failed')
+      }
+    })
+  })
 })

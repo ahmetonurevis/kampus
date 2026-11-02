@@ -347,7 +347,6 @@ const CASES: readonly Case[] = [
     kind: 'kayıt',
     tracked: ASSESSMENT,
     make: profileCopy,
-    todo: 'olmayan profil kimliği sınav çakışmasından önce 404 vermiyor (409)',
     request: (id) => ({
       method: 'POST',
       url: `/api/v1/assessment/profile/${id}`,

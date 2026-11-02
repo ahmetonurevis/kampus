@@ -457,6 +457,7 @@ const PLATFORM: Readonly<Record<string, Proof>> = Object.fromEntries([
   platform('kayıt', 'POST /api/v1/teachers/:teacherId/restore'),
   platform('gövde', 'POST /api/v1/tutor-sessions'),
   platform('kayıt', 'POST /api/v1/tutor-sessions/:sessionId/attendance'),
+  platform('kayıt', 'POST /api/v1/assessment/profile/:recordId'),
   platform('gövde', 'POST /api/v1/assessment/profile'),
   platform('gövde', 'POST /api/v1/assessment/evaluate/preview'),
   platform('gövde', 'POST /api/v1/assessment/slot'),
@@ -476,7 +477,6 @@ const PLATFORM: Readonly<Record<string, Proof>> = Object.fromEntries([
  * yazılınca satır buradan tabloya taşınır. Yeni uç bu listeye eklenmez, tabloya testiyle girer.
  */
 const TODO: readonly string[] = [
-  'POST /api/v1/assessment/profile/:recordId',
   'GET /api/v1/notifications/unread-count',
   'POST /api/v1/notifications/read-all',
   'GET /api/v1/finance/totals',

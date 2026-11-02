@@ -62,8 +62,10 @@ export function StudentWritingWorkspace({
   const detailQuery = useTaskSubmission(summary?.id ?? '')
   const draftQuery = useTaskDraft(assignmentId)
   const nowMs = useNow(true, 30_000)
-  // İlk teslimden sonra sürüm ayrıntısı yeniden yüklenirken sayfa yükleniyor ekranına dönmez:
-  // dönerse ses kaydı durumu (atılan kayıt sayısı, teslim iletisi) kaybolurdu.
+  // Konuşma görevinde ilk tesliminden sonra sürüm ayrıntısı yeniden yüklenirken sayfa yükleniyor
+  // ekranına dönmez: dönerse ses kaydı durumu (atılan kayıt sayısı, teslim iletisi) kaybolurdu.
+  // Yazma görevinde dönülür: editör eski taslakla ve açık düğmeyle görünüp yazılan metni
+  // kaybettirmesin ya da aynı metni yeniden gönderttirmesin.
   const [shown, setShown] = useState(false)
 
   const assignment =
@@ -105,8 +107,9 @@ export function StudentWritingWorkspace({
   const detail = detailQuery.data?.data
   const waitingDetail = summary !== undefined && !detail && !detailQuery.error
   const loaded = !!assignment && !!listQuery.data && !draftQuery.isPending
+  const keepShown = shown && assignment !== undefined && isSpeakingTask(assignment)
   if (loaded && !waitingDetail && !shown) setShown(true)
-  if (!loaded || (waitingDetail && !shown))
+  if (!loaded || (waitingDetail && !keepShown))
     return (
       <>
         <PageHeading title={page.title} actions={back} />

@@ -344,6 +344,48 @@ test.describe('öğrenci görevleri: yazma', () => {
     await expect(page.getByRole('button', { name: 'Teslim et' })).toBeDisabled()
   })
 
+  test('DOM-BEC-040, 043: ilk tesliminden sonra sürüm ayrıntısı yenilenirken editör eski taslakla ve açık gönder düğmesiyle görünmez', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await schoolOf(tenant, api)
+    const homework = await seedHomework(school.tenant.institutionId, school.ownerId, 'Tatil yazısı')
+    const assignmentId = await assignTask(school.admin, {
+      resourceVersionId: homework,
+      settings: {
+        submission: { submissionKind: 'text', maxVersions: 3, minWords: 5, maxWords: 80 },
+        rubricVersionId: await seedRubric(school.tenant.institutionId, school.ownerId),
+      },
+    })
+    await loginAs(school.tenant.user('ogrenci'))
+    await page.goto(`/ogrenci/odevler?yaz=${assignmentId}`)
+    await page.getByLabel('Metniniz').fill(ESSAY)
+    await expect(page.getByText(/Taslak kaydedildi/)).toBeVisible()
+
+    // Teslimden sonra sürüm ayrıntısı yanıtı tutulur: bu aralıkta editör (eski taslak, açık
+    // düğme) görünmez, sayfa yükleniyor durumunda bekler.
+    let release: () => void = () => undefined
+    const held = new Promise<void>((resolve) => {
+      release = resolve
+    })
+    await page.route(/\/api\/v1\/task-submissions\/[^/?]+(\?|$)/, async (route) => {
+      await held
+      await route.continue()
+    })
+    await page.getByRole('button', { name: 'Teslim et' }).click()
+    await expect(page.getByRole('status').filter({ hasText: 'Görev yükleniyor…' })).toBeVisible()
+    await expect(page.getByLabel('Metniniz')).toHaveCount(0)
+    await expect(page.getByRole('button', { name: 'Teslim et' })).toHaveCount(0)
+
+    release()
+    const versions = page.getByRole('list', { name: 'Gönderilen sürümler' })
+    await expect(versions.getByRole('heading', { name: '1. sürüm' })).toBeVisible()
+    // Hak 3 iken bir sürüm gönderildi: editör kalan hakla yeniden açılır.
+    await expect(page.getByLabel('Metniniz')).toBeVisible()
+  })
+
   test('DOM-BEC-040, 045: puanlanan teslimde puan ve geri bildirim görünür; yeniden teslim istenince yeni sürüm gönderilir', async ({
     page,
     loginAs,

@@ -1,3 +1,6 @@
+import type { FinanceExportProfile } from '@kampus/school-core/lib/finance-export-profile.ts'
+
+import { requireIfMatch } from './commands.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 
@@ -56,6 +59,33 @@ export function useStudentBalance(studentId: string, options: { enabled?: boolea
         params: { path: { studentId } },
         signal,
       }),
+  })
+}
+
+const EXPORT_PROFILE_KEY = ['payments', 'export-profile'] as const
+
+/** Muhasebe aktarım profili (ON-024); yalnız yönetici okur. */
+export function useFinanceExportProfile(options: { enabled?: boolean } = {}) {
+  return useApiQuery({
+    key: EXPORT_PROFILE_KEY,
+    enabled: options.enabled ?? true,
+    request: (client, signal) => client.GET('/api/v1/finance/export-profile', { signal }),
+  })
+}
+
+/** Profili kaydeder; `profile: null` standart dosyaya döndürür. */
+export function useSetFinanceExportProfile() {
+  return useApiCommand({
+    request: (client, input: { profile: FinanceExportProfile | null; version: number }, headers) =>
+      client.PATCH('/api/v1/finance/export-profile', {
+        params: { header: { ...headers, 'if-match': requireIfMatch(headers) } },
+        body: { profile: input.profile },
+      }),
+    invalidates: [EXPORT_PROFILE_KEY],
+    version: (input) => input.version,
+    messages: {
+      version_conflict: 'Profil başka bir oturumda değişti. Sayfayı yenileyip yeniden deneyin.',
+    },
   })
 }
 

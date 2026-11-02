@@ -461,6 +461,39 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('dialog')).toContainText('Öğrenim ücreti')
   })
 
+  test('ON-024: yönetici dosya sütunlarını eşler, dosya yeni başlıkla iner; ön büroda düğme yok', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s21'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s21-5', 'Kredi kartı')
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
+    await page.getByRole('button', { name: 'Dosya sütunları' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Dosya sütunları' })
+    await dialog.getByLabel('Tahsilat dosyası 1. sütun başlığı').fill('')
+    await dialog.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(dialog.getByText('Sütun başlığını girin.')).toBeVisible()
+    await dialog.getByLabel('Tahsilat dosyası 1. sütun başlığı').fill('Fiş Tarihi')
+    await dialog.getByLabel('Tarih biçimi').selectOption('tr')
+    await dialog.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Dosya sütunları kaydedildi.')).toBeVisible()
+
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Tahsilat dosyası' }).click()
+    const body = await readFile(await (await downloading).path(), 'utf8')
+    expect(body).toContain('"Fiş Tarihi"')
+    expect(body).toMatch(/"\d{2}\.\d{2}\.\d{4}"/)
+
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/tahsilat-takip?gorunum=aktarim')
+    await expect(page.getByLabel('Dönem toplamları').or(page.getByRole('main'))).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Dosya sütunları' })).toHaveCount(0)
+  })
+
   test('IST-111: dönem toplamı dosya toplamına eşittir; dosya yöneticiye iner, ön büro indiremez', async ({
     page,
     loginAs,

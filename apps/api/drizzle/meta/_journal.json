@@ -288,6 +288,13 @@
       "when": 1793645164319,
       "tag": "0040_allow_promissory_note_payment",
       "breakpoints": true
+    },
+    {
+      "idx": 41,
+      "version": "7",
+      "when": 1793648879734,
+      "tag": "0041_create_finance_export_profiles",
+      "breakpoints": true
     }
   ]
 }

@@ -1,7 +1,11 @@
-import type { FastifyInstance, FastifyRequest } from 'fastify'
+import type { FastifyReply, FastifyInstance, FastifyRequest } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
+import {
+  financeExportProfileSchema,
+  setFinanceExportProfileSchema,
+} from '@kampus/school-core/lib/finance-export-profile.ts'
 import {
   financeExportQuerySchema,
   financeOverviewQuerySchema,
@@ -15,9 +19,12 @@ import {
   financeSummaryFor,
   financeTotalsFor,
   studentBalanceFor,
+  financeExportProfileFor,
+  setFinanceExportProfile,
   studentStatementFor,
 } from '../services/finance-exports.ts'
-import { commandErrors } from './commands.schemas.ts'
+import { captureInput, options, requireIfMatch } from './commands.ts'
+import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import { dataResponse } from './common.schemas.ts'
 
 /**
@@ -236,6 +243,67 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
       },
     },
     async (request) => ({ data: await financeSummaryFor(contextOf(request), request.query) }),
+  )
+
+  const profileResponse = dataResponse(
+    z.object({
+      profile: financeExportProfileSchema
+        .nullable()
+        .describe('Kurumun aktarım profili; boşsa standart dosya iner'),
+      version: z.number().int().describe('`If-Match` için profil sürümü'),
+    }),
+  )
+
+  typed.get(
+    '/api/v1/finance/export-profile',
+    {
+      preValidation: [app.authenticate, finance, app.requireRole(['yonetici'])],
+      schema: {
+        operationId: 'getFinanceExportProfile',
+        tags: ['finance-exports'],
+        summary: 'Muhasebe aktarım profili',
+        description:
+          'Aktarım dosyasının sütun adı, sırası, tarih ve tutar biçimi (ON-024, IST-111). Satır yoksa `profile` boştur ve standart dosya iner. Roller: `yonetici`.',
+        response: { 200: profileResponse, ...commandErrors },
+      },
+    },
+    async (request) => ({ data: await financeExportProfileFor(contextOf(request)) }),
+  )
+
+  typed.patch(
+    '/api/v1/finance/export-profile',
+    {
+      preValidation: [
+        app.authenticate,
+        finance,
+        app.requireRole(['yonetici']),
+        requireIfMatch(),
+        captureInput(),
+      ],
+      schema: {
+        operationId: 'setFinanceExportProfile',
+        tags: ['finance-exports'],
+        summary: 'Muhasebe aktarım profilini kaydet',
+        description:
+          'Kurumun dosya biçimini kaydeder; `profile: null` standart dosyaya döner. Profil yalnız biçimi belirler, satırları ve toplamları değiştirmez. `If-Match` ve `Idempotency-Key` zorunludur; sürüm tutmazsa 409. Roller: `yonetici`.',
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        body: setFinanceExportProfileSchema,
+        response: { 200: profileResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const { idempotency, expectedVersion } = options(request, 'required')
+      if (expectedVersion === null) throw new Error('If-Match guard did not run')
+      const result = await setFinanceExportProfile(
+        contextOf(request),
+        request.commandInput,
+        expectedVersion,
+        idempotency,
+      )
+      if (result.replayed) void reply.header('idempotent-replayed', 'true')
+      void (reply as FastifyReply).status(result.statusCode)
+      return profileResponse.parse(result.body)
+    },
   )
 
   typed.get(

@@ -83,6 +83,14 @@ test('IST-065, DOM-ILT-023: veri tür şemasıyla doğrulanır; fazla alan, eksi
     kind: 'feedback_released',
     subject: { type: 'task_submission', id: 'sub-1' },
   })
+  assert.deepEqual(notificationSubject('appeal_decided', { submissionId: 'sub-1' }), {
+    kind: 'appeal_decided',
+    subject: { type: 'task_submission', id: 'sub-1' },
+  })
+  assert.throws(
+    () => notificationSubject('appeal_decided', { submissionId: 'sub-1', outcome: 'rejected' }),
+    /invalid notification data/,
+  )
   assert.deepEqual(notificationSubject('enrollment_completed', { studentId: 's1' }).subject, {
     type: 'students',
     id: 's1',

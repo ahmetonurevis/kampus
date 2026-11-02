@@ -3985,6 +3985,7 @@
             "type": "string",
             "enum": [
               "feedback_released",
+              "appeal_decided",
               "enrollment_completed"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
@@ -12520,6 +12521,7 @@
             "type": "string",
             "enum": [
               "feedback_released",
+              "appeal_decided",
               "enrollment_completed"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"

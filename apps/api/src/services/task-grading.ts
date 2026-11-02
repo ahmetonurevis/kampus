@@ -370,6 +370,8 @@ async function writeScore(
             type: 'feedback_released',
             recipients: { studentIds: [work.submission.learnerId] },
             data: { submissionId: work.submission.id },
+            // Bir sürümün sonucu bir kez kesinleşir; aynı sürüm için ikinci bildirim yazılmaz.
+            dedupeKey: draft.submissionVersionId,
           })
         await insertRubricScore(tx, ctx.institutionId, { id: randomUUID(), ...draft }, ctx.now)
         await touchSubmission(tx, ctx.institutionId, work.submission, ctx.now)
@@ -798,7 +800,8 @@ export interface AppealDecisionWriteInput {
  * İtiraz kararı (DOM-BEC-025; core `planAppealDecision`): o sürümü hiçbir rolde puanlamamış
  * öğretmen (409 `rater_not_independent`; rota yalnız `ogretmen` rolüne açar, yönetici 403), gerekçeyle; kabulde yeni `final` puan
  * eklenir, ilk puan ve önceki puanlar kayıt geçmişinde kalır. Sonuçlanmış itiraz 409
- * `appeal_decided`. `If-Match` teslimin `rowVersion`'ıdır. Karar gerekçesi loglanmaz.
+ * `appeal_decided`. `If-Match` teslimin `rowVersion`'ıdır. Karar gerekçesi loglanmaz. Karar kabulde
+ * de retle de öğrenciye ve velisine `appeal_decided` bildirimi yazar (aynı transaction).
  */
 export async function decideTaskAppeal(
   ctx: ServiceContext,
@@ -850,6 +853,16 @@ export async function decideTaskAppeal(
       },
       after: async (tx, { work, assignment, appeal, plan }) => {
         await decideAppeal(tx, ctx.institutionId, appeal, plan.appeal, ctx.now)
+        // Karar kabulde de retle de öğrenciye ve (18 yaş altında) veliye bildirilir (DOM-BEC-025:
+        // "sonuç gerekçesiyle bildirilir"); aynı transaction'da, karar yazılamazsa bildirim de
+        // yoktur. İletişim ya da öğrenme modülü kapalıysa `notify` yazmadan döner. Sonuç ve
+        // gerekçe bildirimde yok (DOM-ILT-023); itiraz başına tek bildirim.
+        await notify(tx, ctx, {
+          type: 'appeal_decided',
+          recipients: { studentIds: [work.submission.learnerId] },
+          data: { submissionId: work.submission.id },
+          dedupeKey: appeal.id,
+        })
         if (plan.score !== null)
           await insertRubricScore(
             tx,

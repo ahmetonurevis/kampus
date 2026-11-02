@@ -24,4 +24,23 @@ export const PLATFORM_NOTIFICATION_TYPES = {
       parent: '{öğrenci} için öğretmen geri bildirimi geldi.',
     },
   }),
+  /**
+   * İtiraz sonuçlandı (DOM-BEC-025): kabul ya da ret, ikisinde de bildirilir. `feedback_released`
+   * kullanılmadı: ret yeni geri bildirim açmaz, o başlık yanıltırdı. Sonuç ve gerekçe yalnız
+   * teslim ayrıntısında okunur, bildirimde yoktur (DOM-ILT-023).
+   */
+  appeal_decided: defineNotificationType({
+    topic: 'grade',
+    category: 'service',
+    mandatory: false,
+    module: 'learning',
+    audiences: { minor: ['student', 'parent'], adult: ['student'] },
+    subjectType: 'task_submission',
+    data: z.strictObject({ submissionId: notificationId }),
+    subjectId: (data) => data.submissionId,
+    titles: {
+      student: 'Görev itirazın sonuçlandı.',
+      parent: '{öğrenci} için görev itirazı sonuçlandı.',
+    },
+  }),
 } as const

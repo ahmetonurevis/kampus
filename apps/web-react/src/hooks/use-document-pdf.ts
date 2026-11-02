@@ -8,9 +8,11 @@ import { useAuth } from '@/auth/use-auth.ts'
 import {
   documentErrorMessage,
   loadDocumentState,
+  studentDisplayName,
   studentPaidCents,
 } from '@/lib/pdf/document-state.ts'
 import { contractDocument } from '@/lib/pdf/templates/contract.ts'
+import { studentStatementDocument } from '@/lib/pdf/templates/finance-statement.ts'
 import { homeworkDocument } from '@/lib/pdf/templates/homework.ts'
 import { materialDocument } from '@/lib/pdf/templates/material.ts'
 import { paymentPlanDocument } from '@/lib/pdf/templates/payment-plan.ts'
@@ -79,6 +81,23 @@ export function useDocumentPdf(
           )
           const { blob, pages } = await renderPdf((measurer) =>
             refundStatementDocument(measurer, data, options),
+          )
+          return { blob, pages, filename: documentFilename(type, recordId) }
+        }
+        if (type === 'student-statement') {
+          // Kayıt kimliği öğrenci kimliğidir. Bakiye ve satırlar API ekstresinden gelir; burada
+          // yeniden hesaplanmaz (DOM-FIN-054). Kapsam ekstre ucundadır.
+          const [{ data }, studentName] = await Promise.all([
+            runRequest(() =>
+              client.GET('/api/v1/finance/students/{studentId}/statement', {
+                params: { path: { studentId: recordId } },
+                signal,
+              }),
+            ),
+            studentDisplayName(client, recordId, signal),
+          ])
+          const { blob, pages } = await renderPdf((measurer) =>
+            studentStatementDocument(measurer, data, { ...options, studentName }),
           )
           return { blob, pages, filename: documentFilename(type, recordId) }
         }

@@ -33,8 +33,8 @@ async function optional<T>(read: Promise<T>): Promise<T | undefined> {
 type Records = Partial<Record<CollectionName, unknown[]>>
 
 export type DocumentRequest = {
-  /** Tahsilat dekontu ve iade kırılımı kendi kaydından üretilir (`use-document-pdf.ts`). */
-  type: Exclude<PdfDocumentType, 'payment-receipt' | 'refund-statement'>
+  /** Tahsilat dekontu, iade kırılımı ve cari ekstre kendi ucundan üretilir (`use-document-pdf.ts`). */
+  type: Exclude<PdfDocumentType, 'payment-receipt' | 'refund-statement' | 'student-statement'>
   recordId: string
   /** Ödev çalışma kâğıdında belgeyi alan öğrenci; yoksa öğrenci alanları boş bırakılır (öğretmen). */
   studentId?: string
@@ -168,6 +168,18 @@ export async function studentPaidCents(
     ),
   )
   return balance?.data.paidCents
+}
+
+/** Cari ekstre başlığındaki öğrenci adı; öğrenci kaydı okunamazsa belge "—" yazar. */
+export async function studentDisplayName(
+  client: KampusClient,
+  studentId: string,
+  signal?: AbortSignal,
+): Promise<string> {
+  const student = await optional(
+    fetchCollectionItem<State['students'][number]>(client, 'students', studentId, signal),
+  )
+  return student?.record.name ?? '—'
 }
 
 /** Kullanıcıya gösterilen ileti: core'un Türkçe kullanıcı hatası aynen, teknik hata genel ileti. */

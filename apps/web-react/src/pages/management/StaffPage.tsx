@@ -40,6 +40,7 @@ import {
   type TeacherRow,
 } from './management-rows.ts'
 import { TeacherSummaryPanel } from './TeacherSummaryPanel.tsx'
+import { StaffStats } from './ManagementStats.tsx'
 import { useManagementLookups } from './use-management-lookups.ts'
 
 const TEACHER_LIST = {
@@ -244,6 +245,7 @@ export function StaffPage({ page }: { page: NavPage }) {
           </>
         }
       />
+      <StaffStats />
       <ArchiveTabs
         archived={archived}
         onChange={setArchive}

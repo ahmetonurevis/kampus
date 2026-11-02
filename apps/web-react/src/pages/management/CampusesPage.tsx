@@ -46,6 +46,7 @@ import {
   type CampusSummary,
   type ClassRow,
 } from './management-rows.ts'
+import { CampusStats } from './ManagementStats.tsx'
 import { useManagementLookups } from './use-management-lookups.ts'
 
 // Sunucu listesi yapılandırması: hangi sütun sunucuda sıralanır, hangi filtre hangi alana gider.
@@ -255,6 +256,7 @@ export function CampusesPage({ page }: { page: NavPage }) {
           </>
         }
       />
+      <CampusStats />
       <ArchiveTabs
         archived={archived}
         onChange={setArchive}

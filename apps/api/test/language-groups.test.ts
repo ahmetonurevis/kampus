@@ -433,12 +433,18 @@ describe('dil okulu grup uçları', () => {
     await addMembers(institution.id, target.id, ['s1', 's2'])
     await addMembers(institution.id, source.id, ['s3', 's4', 's5'])
     fails(
-      await command(cookies.admin, target.id, 'merge', 1, { sourceGroupId: source.id }),
+      await command(cookies.admin, target.id, 'merge', 1, {
+        sourceGroupId: source.id,
+        sourceVersion: 1,
+      }),
       422,
       'group_merge_capacity',
     )
     fails(
-      await command(cookies.admin, target.id, 'merge', 1, { sourceGroupId: randomUUID() }),
+      await command(cookies.admin, target.id, 'merge', 1, {
+        sourceGroupId: randomUUID(),
+        sourceVersion: 1,
+      }),
       404,
       'not_found',
     )
@@ -454,7 +460,10 @@ describe('dil okulu grup uçları', () => {
       status: 'waiting',
     })
     const merged = await ok(
-      await command(cookies.admin, target.id, 'merge', 2, { sourceGroupId: source.id }),
+      await command(cookies.admin, target.id, 'merge', 2, {
+        sourceGroupId: source.id,
+        sourceVersion: 1,
+      }),
     )
     assert.equal(merged.activeLearners, 5)
     assert.equal(merged.rowVersion, 3)
@@ -565,5 +574,48 @@ describe('dil okulu grup uçları', () => {
     assert.equal(archived.status, 'archived')
     // Arşivlenen kurdan grup planlanmaz.
     fails(await create(cookies.admin, body({ name: 'Yeni' })), 422, 'group_course_inactive')
+  })
+
+  test('inceleme: kur mevcudu grup kapasitesinin altına inmez, açılmış grubun öğretmeni boşaltılamaz, bayat kaynak 409', async () => {
+    const { institution, users, cookies, body, courseId } = await tenant()
+    const group = await ok(await create(cookies.admin, body()), 201)
+    fails(
+      await call('PATCH', `/courses/${courseId}`, cookies.admin, { maxLearners: 9 }, match(2)),
+      422,
+      'course_max_below_group_capacity',
+    )
+    await addMembers(institution.id, group.id, ['s1', 's2'])
+    await ok(await command(cookies.admin, group.id, 'open', 1))
+    const before = await groupRows(institution.id)
+    fails(
+      await patch(cookies.admin, group.id, { teacherMembershipId: null }, 2),
+      422,
+      'group_teacher_required',
+    )
+    fails(await patch(cookies.admin, group.id, { room: null }, 2), 422, 'group_room_required')
+    assert.deepEqual(await groupRows(institution.id), before)
+    const source = await ok(
+      await create(
+        cookies.admin,
+        body({ name: 'B1 Akşam 2', teacherMembershipId: users.other.membershipId, room: 'D2' }),
+      ),
+      201,
+    )
+    await ok(await patch(cookies.admin, source.id, { capacity: 8 }, 1))
+    fails(
+      await command(cookies.admin, group.id, 'merge', 2, {
+        sourceGroupId: source.id,
+        sourceVersion: 1,
+      }),
+      409,
+      'version_conflict',
+    )
+    const merged = await ok(
+      await command(cookies.admin, group.id, 'merge', 2, {
+        sourceGroupId: source.id,
+        sourceVersion: 2,
+      }),
+    )
+    assert.equal(merged.rowVersion, 3)
   })
 })

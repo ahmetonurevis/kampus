@@ -224,6 +224,8 @@ export type UpdateGroupInput = z.infer<typeof updateGroupSchema>
 export const cancelGroupSchema = z.strictObject({ reason })
 export const mergeGroupSchema = z.strictObject({
   sourceGroupId: z.uuid('Birleştirilecek grubu seçin.'),
+  /** Kaynak grubun okunan sürümü (`rowVersion`); bayatsa birleştirme 409 (API). */
+  sourceVersion: z.number().int().min(1),
   /** Gün/saat farklıysa kursiyerlerin onayı alındı mı (DOM-DIL-042). */
   learnersConsented: z.boolean().optional(),
 })
@@ -542,11 +544,19 @@ export function groupOccupancy(
 }
 
 /**
- * Kapasite (DOM-DIL-008, -040): 1–18 (şema), kurun en çok mevcudundan büyük olamaz, dolu yerden
+ * Kapasite (DOM-DIL-008, -040): 1–18 (şema), kurun en çok mevcudundan büyük olamaz (yalnız
+ * kapasite yazılırken), dolu yerden
  * (aktif kursiyer + süresi dolmamış teklif) az olamaz.
  */
-function assertCapacity(ctx: GroupPlanningContext, group: LanguageGroup, course: Course) {
-  if (group.capacity > course.maxLearners)
+function assertCapacity(
+  ctx: GroupPlanningContext,
+  group: LanguageGroup,
+  course: Course,
+  capacityChanged: boolean,
+) {
+  // Kurun mevcudu grup kapasitesinin altına inemez (`planCourseUpdate`); yine de eski grup
+  // kapasitesine dokunmayan değişiklik bu yüzden kilitlenmesin diye yalnız kapasite değişince bakılır.
+  if (capacityChanged && group.capacity > course.maxLearners)
     throw new DomainError(
       'group_capacity_exceeds_course',
       `Kapasite kurun en çok mevcudunu (${course.maxLearners}) aşamaz.`,
@@ -576,6 +586,18 @@ function assertStaffing(ctx: GroupPlanningContext, group: LanguageGroup) {
     })
 }
 
+/** Açılmış grupta öğretmen ve (yüz yüzede) derslik zorunludur (DOM-DIL-042). */
+function assertStaffed(group: LanguageGroup) {
+  if (group.teacherMembershipId === null)
+    throw new DomainError('group_teacher_required', 'Açılan grubun öğretmeni olmalı.', {
+      path: ['teacherMembershipId'],
+    })
+  if (group.delivery === 'in_person' && group.room === null)
+    throw new DomainError('group_room_required', 'Yüz yüze açılan grubun dersliği olmalı.', {
+      path: ['room'],
+    })
+}
+
 function assertStartNotPassed(group: LanguageGroup, now: string) {
   if (group.startDate < dayKey(now))
     throw new DomainError('group_start_passed', 'Başlangıç tarihi geçmiş olamaz.', {
@@ -583,10 +605,16 @@ function assertStartNotPassed(group: LanguageGroup, now: string) {
     })
 }
 
-function assertGroup(ctx: GroupPlanningContext, group: LanguageGroup, course: Course) {
+function assertGroup(
+  ctx: GroupPlanningContext,
+  group: LanguageGroup,
+  course: Course,
+  capacityChanged: boolean,
+) {
   assertSchedule(group, course)
   assertStaffing(ctx, group)
-  assertCapacity(ctx, group, course)
+  if (group.state === 'open') assertStaffed(group)
+  assertCapacity(ctx, group, course, capacityChanged)
   assertUniqueName(ctx.groups, group)
   assertNoConflicts(ctx, group, course)
 }
@@ -627,7 +655,7 @@ export function planGroupCreation(
     mergedIntoGroupId: null,
   }
   assertStartNotPassed(group, ctx.now)
-  assertGroup(ctx, group, course)
+  assertGroup(ctx, group, course, true)
   return group
 }
 
@@ -640,7 +668,10 @@ const SCHEDULE_FIELDS = ['schedule', 'startDate', 'ageBand'] as const
  * Grubu değiştirir (IST-077). Kapanmış grup 409 `group_closed`. Başlamış ya da kursiyeri olan
  * grupta gün/saat, başlangıç ve yaş bandı değişmez (422 `group_schedule_locked`): tarih ve saat
  * sözleşmenin esasıdır, değişiklik kursiyer onayıyla birleştirme ya da yeni grupla yapılır
- * (DOM-DIL-042). Yanıt yeni grup ve gerçekten değişen alanlardır (denetim).
+ * (DOM-DIL-042). Kur değişmez (gövdede yoktur). Açılmış grupta öğretmen ve (yüz yüzede) derslik
+ * boşaltılamaz (422 `group_teacher_required`, `group_room_required`). Başlangıcı geçmiş, hiç
+ * açılmamış ve kursiyersiz `planned` grup ileri bir başlangıca alınabilir. Yanıt yeni grup ve
+ * gerçekten değişen alanlardır (denetim).
  */
 export function planGroupUpdate(ctx: GroupPlanningContext & { groupId: string; input: unknown }): {
   group: LanguageGroup
@@ -684,7 +715,7 @@ export function planGroupUpdate(ctx: GroupPlanningContext & { groupId: string; i
       { path: [locked[0] ?? 'schedule'] },
     )
   if (fields.includes('startDate')) assertStartNotPassed(next, ctx.now)
-  assertGroup(ctx, next, course)
+  assertGroup(ctx, next, course, fields.includes('capacity'))
   return { group: next, fields: next.endDate === current.endDate ? fields : [...fields, 'endDate'] }
 }
 
@@ -704,14 +735,7 @@ export function planGroupOpen(ctx: GroupPlanningContext & { groupId: string }): 
     })
   assertActiveCourse(course)
   assertStartNotPassed(group, ctx.now)
-  if (group.teacherMembershipId === null)
-    throw new DomainError('group_teacher_required', 'Grubu açmadan önce öğretmen atayın.', {
-      path: ['teacherMembershipId'],
-    })
-  if (group.delivery === 'in_person' && group.room === null)
-    throw new DomainError('group_room_required', 'Yüz yüze grubu açmadan önce derslik atayın.', {
-      path: ['room'],
-    })
+  assertStaffed(group)
   const { active } = groupOccupancy(group, ctx.members, ctx.waitlist, ctx.now)
   if (active < course.minLearners)
     throw new DomainError(
@@ -719,8 +743,55 @@ export function planGroupOpen(ctx: GroupPlanningContext & { groupId: string }): 
       `Grup en az ${course.minLearners} kursiyerle açılır; şu an ${active} kursiyer var.`,
       { path: ['members'] },
     )
-  assertGroup(ctx, group, course)
+  assertGroup(ctx, group, course, false)
   return { ...group, state: 'open', openedAt: ctx.now }
+}
+
+/** Grubun 21.00 sonrasına taşan oturumu var mı (DOM-DIL-003). */
+const runsLate = (group: Pick<LanguageGroup, 'schedule'>, course: Course) =>
+  group.schedule.some(
+    (slot) => minutesOf(slot.startTime) + course.sessionMinutes > MINOR_DAY_END_MINUTES,
+  )
+
+/** Kursiyerin kapanmamış gruplarındaki satırları; `ignore` gruplar hariç. */
+function learnerMemberships(
+  groups: readonly LanguageGroup[],
+  members: readonly GroupMember[],
+  studentId: string,
+  now: string,
+  ignore: ReadonlySet<string> = new Set(),
+): GroupMember[] {
+  const statusOf = new Map(groups.map((item) => [item.id, groupStatus(item, now)]))
+  return members.filter(
+    (member) =>
+      member.studentId === studentId &&
+      !ignore.has(member.groupId) &&
+      !isGroupClosed(statusOf.get(member.groupId) ?? 'cancelled'),
+  )
+}
+
+/** Kursiyerin diğer gruplarıyla saat çakışması (422 `learner_schedule_conflict`). */
+function assertLearnerSchedule(
+  input: { courses: readonly Course[]; groups: readonly LanguageGroup[] },
+  group: LanguageGroup,
+  course: Course,
+  memberships: readonly GroupMember[],
+  path: string[],
+) {
+  const courses = new Map(input.courses.map((item) => [item.id, item]))
+  const byId = new Map(input.groups.map((item) => [item.id, item]))
+  for (const member of memberships) {
+    const other = byId.get(member.groupId)
+    const otherCourse = other === undefined ? undefined : courses.get(other.courseId)
+    if (other === undefined || otherCourse === undefined) continue
+    const slot = overlappingSlot(group, course.sessionMinutes, other, otherCourse.sessionMinutes)
+    if (slot !== null)
+      throw new DomainError(
+        'learner_schedule_conflict',
+        `Kursiyerin ${slotLabel(slot)} saatinde "${other.name}" grubunda dersi var.`,
+        { path },
+      )
+  }
 }
 
 /**
@@ -746,8 +817,18 @@ export function planGroupCancellation(
  * `group_merge_mismatch`) olmalı; taşınan aktif kursiyer + hedefin doluluğu hedefin kapasitesini
  * (≤ 18) aşamaz (422 `group_merge_capacity`). Gün/saat ya da başlangıç farklıysa kursiyer onayı
  * beyan edilmeli (422 `group_merge_consent_required`). Hedefte zaten olan kursiyer taşınmaz.
+ * Taşınan her kursiyer yerleştirme gibi denetlenir: diğer gruplarıyla saat çakışması (422
+ * `learner_schedule_conflict`) ve hedef 21.00 sonrasına taşıyorsa 18 yaş altı (422
+ * `group_minor_late`; doğum tarihi bilinmiyorsa 422 `learner_birth_date_required`).
  */
-export function planGroupMerge(ctx: GroupPlanningContext & { groupId: string; input: unknown }): {
+export function planGroupMerge(
+  ctx: GroupPlanningContext & {
+    groupId: string
+    input: unknown
+    /** Kaynak grubun kursiyerlerinin doğum tarihi (bilinmiyorsa `null`); 21.00 sınırı için. */
+    learnerBirthDates: Readonly<Record<string, string | null>>
+  },
+): {
   target: LanguageGroup
   source: LanguageGroup
   movedStudentIds: string[]
@@ -793,6 +874,32 @@ export function planGroupMerge(ctx: GroupPlanningContext & { groupId: string; in
       'Gün/saati farklı gruba taşıma için kursiyerlerin onayını alın ve işaretleyin.',
       { path: ['learnersConsented'] },
     )
+  const late = runsLate(target, course)
+  const ignore = new Set([source.id, target.id])
+  for (const member of moving) {
+    if (late) {
+      const birthDate = ctx.learnerBirthDates[member.studentId] ?? null
+      if (birthDate === null)
+        throw new DomainError(
+          'learner_birth_date_required',
+          "Hedef grubun dersi 21.00'den sonra bitiyor; taşınan kursiyerlerin doğum tarihi gerekli.",
+          { path: ['sourceGroupId'] },
+        )
+      if (ageBandOf(birthDate, ctx.now) !== 'adult')
+        throw new DomainError(
+          'group_minor_late',
+          "Taşınan bir kursiyer 18 yaş altında; dersleri 21.00'de biter, hedef grubun dersi daha geç.",
+          { path: ['sourceGroupId'] },
+        )
+    }
+    assertLearnerSchedule(
+      ctx,
+      target,
+      course,
+      learnerMemberships(ctx.groups, ctx.members, member.studentId, ctx.now, ignore),
+      ['sourceGroupId'],
+    )
+  }
   return {
     target,
     source: {
@@ -805,6 +912,9 @@ export function planGroupMerge(ctx: GroupPlanningContext & { groupId: string; in
     movedStudentIds: moving.map((member) => member.studentId),
   }
 }
+
+/** Seviye istisnasının gerekçesini yazabilen roller (DOM-DIL-041: öğretmen gerekçesi). */
+const LEVEL_REASON_ROLES: readonly Role[] = ['ogretmen', 'yonetici']
 
 /** Kursiyerin yerleştirmede bilinen bilgisi (kayıt akışı yükler). */
 export type PlacementLearner = {
@@ -822,9 +932,11 @@ export type PlacementLearner = {
  * - kursiyer bu grupta (409 `group_member_exists`) ya da aynı kurun kapanmamış başka grubunda
  *   (409 `group_member_same_course`) değil;
  * - boş yer var (422 `group_full`; kursiyerin kendi süresi dolmamış teklifi yer sayılır);
- * - seviye kurun seviyesi; değilse öğretmen gerekçesi (`levelReason`, 422 `group_level_mismatch`);
- * - 18 yaş altı yetişkin grubuna, yetişkin çocuk/genç grubuna yalnız yönetici gerekçesiyle
- *   (`ageReason`, 422 `group_age_band_mismatch`); doğum tarihi zorunlu (422 `learner_birth_date_required`);
+ * - seviye kurun seviyesi; değilse öğretmen ya da yönetici gerekçesi (`levelReason`, `actorRole`
+ *   `ogretmen`/`yonetici`; 422 `group_level_mismatch`);
+ * - yaş bandı grubunki (çocuk < 12, genç 12–17, yetişkin 18+); istisna yalnız 18 yaş altının
+ *   yetişkin grubuna, yetişkinin genç grubuna yönetici gerekçesiyle girmesidir (`ageReason`, 422
+ *   `group_age_band_mismatch`); doğum tarihi zorunlu (422 `learner_birth_date_required`);
  * - 18 yaş altı kursiyer 21.00 sonrasına taşan gruba girmez (422 `group_minor_late`);
  * - kursiyerin kapanmamış diğer gruplarıyla saat çakışması yok (422 `learner_schedule_conflict`).
  */
@@ -847,12 +959,7 @@ export function planGroupPlacement(input: {
   assertNotClosed(group, input.now)
   assertActiveCourse(course)
   const { learner, now } = input
-  const statusOf = new Map(input.groups.map((item) => [item.id, groupStatus(item, now)]))
-  const own = input.members.filter(
-    (member) =>
-      member.studentId === learner.studentId &&
-      !isGroupClosed(statusOf.get(member.groupId) ?? 'cancelled'),
-  )
+  const own = learnerMemberships(input.groups, input.members, learner.studentId, now)
   if (own.some((member) => member.groupId === group.id))
     throw new DomainError('group_member_exists', 'Kursiyer zaten bu grupta.', { kind: 'conflict' })
   const byId = new Map(input.groups.map((item) => [item.id, item]))
@@ -873,10 +980,13 @@ export function planGroupPlacement(input: {
     throw new DomainError('group_full', 'Grup dolu; kursiyeri bekleme listesine alın.', {
       path: ['groupId'],
     })
-  if (learner.placementLevel !== course.level && data.levelReason === undefined)
+  if (
+    learner.placementLevel !== course.level &&
+    (data.levelReason === undefined || !LEVEL_REASON_ROLES.includes(input.actorRole))
+  )
     throw new DomainError(
       'group_level_mismatch',
-      'Kursiyerin seviyesi kurun seviyesinden farklı; öğretmen gerekçesini yazın.',
+      'Kursiyerin seviyesi kurun seviyesinden farklı; öğretmen ya da yönetici gerekçeyle yerleştirir.',
       { path: ['levelReason'] },
     )
   if (learner.birthDate === null)
@@ -885,42 +995,30 @@ export function planGroupPlacement(input: {
     })
   const band = ageBandOf(learner.birthDate, now)
   const minor = band !== 'adult'
-  if (
-    minor !== (group.ageBand !== 'adult') &&
-    (data.ageReason === undefined || input.actorRole !== 'yonetici')
-  )
-    throw new DomainError(
-      'group_age_band_mismatch',
-      minor
-        ? '18 yaş altı kursiyer yetişkin grubuna yalnız yönetici onayı ve gerekçeyle girer.'
-        : 'Yetişkin kursiyer çocuk ya da genç grubuna yalnız yönetici onayı ve gerekçeyle girer.',
-      { path: ['ageReason'] },
-    )
+  if (band !== group.ageBand) {
+    // DOM-DIL-041 istisnaları: 18 yaş altı yetişkin grubuna, yetişkin genç grubuna yönetici
+    // gerekçesiyle girer; çocuk–genç geçişi ve yetişkinin çocuk grubu hiç yoktur.
+    const exception =
+      (minor && group.ageBand === 'adult') || (band === 'adult' && group.ageBand === 'teen')
+    if (!exception || data.ageReason === undefined || input.actorRole !== 'yonetici')
+      throw new DomainError(
+        'group_age_band_mismatch',
+        !exception
+          ? `Kursiyerin yaş bandı (${GROUP_AGE_BAND_LABELS[band]}) grubunkiyle uyuşmuyor.`
+          : minor
+            ? '18 yaş altı kursiyer yetişkin grubuna yalnız yönetici onayı ve gerekçeyle girer.'
+            : 'Yetişkin kursiyer genç grubuna yalnız yönetici onayı ve gerekçeyle girer.',
+        { path: ['ageReason'] },
+      )
+  }
   // TODO(zorunlu-egitim-cagi): zorunlu eğitim çağı 18 yaş altıyla yaklaşık alınır (DOM-DIL-003).
-  if (
-    minor &&
-    group.schedule.some(
-      (slot) => minutesOf(slot.startTime) + course.sessionMinutes > MINOR_DAY_END_MINUTES,
-    )
-  )
+  if (minor && runsLate(group, course))
     throw new DomainError(
       'group_minor_late',
       "18 yaş altı kursiyerin dersleri 21.00'de biter; bu grubun dersi daha geç.",
       { path: ['groupId'] },
     )
-  const courses = new Map(input.courses.map((item) => [item.id, item]))
-  for (const member of own) {
-    const other = byId.get(member.groupId)
-    const otherCourse = other === undefined ? undefined : courses.get(other.courseId)
-    if (other === undefined || otherCourse === undefined) continue
-    const slot = overlappingSlot(group, course.sessionMinutes, other, otherCourse.sessionMinutes)
-    if (slot !== null)
-      throw new DomainError(
-        'learner_schedule_conflict',
-        `Kursiyerin ${slotLabel(slot)} saatinde "${other.name}" grubunda dersi var.`,
-        { path: ['groupId'] },
-      )
-  }
+  assertLearnerSchedule(input, group, course, own, ['groupId'])
   return { groupId: group.id, studentId: learner.studentId, status: 'active', joinedAt: now }
 }
 
@@ -1060,15 +1158,17 @@ export function groupView(
 }
 
 /**
- * Kurun arşivini engelleyen gruplar (DOM-DIL-008): planlanan, açık ya da devam eden grup kuru
- * kullanır. Kur arşivi (`planCourseArchive`) bunları `openGroups` olarak alır.
+ * Kurun kapanmamış grupları (DOM-DIL-008): planlanan (başlangıcı geçmiş olsa da), açık ya da devam
+ * eden grup kuru kullanır. Kur arşivi (`planCourseArchive`) bunları `openGroups` olarak alır ve
+ * reddeder; kur değişikliği (`planCourseUpdate`) en çok mevcudu bunların kapasitesinin altına
+ * indirmez. Başlangıcı geçmiş `planned` grup ileri tarihe alınır ya da iptal edilir.
  */
 export function groupsBlockingCourseArchive(
   groups: readonly LanguageGroup[],
   courseId: string,
   now: string,
-): { courseId: string; name: string }[] {
+): { courseId: string; name: string; capacity: number }[] {
   return groups
     .filter((group) => group.courseId === courseId && !isGroupClosed(groupStatus(group, now)))
-    .map((group) => ({ courseId: group.courseId, name: group.name }))
+    .map((group) => ({ courseId: group.courseId, name: group.name, capacity: group.capacity }))
 }

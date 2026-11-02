@@ -18,6 +18,7 @@ import {
   suggestWaitlistOffers,
   waitlistQueue,
   isLiveOffer,
+  mergeGroupSchema,
   type GroupMember,
   type GroupPlanningContext,
   type GroupReader,
@@ -41,6 +42,7 @@ import {
   saveGroup,
   type StoredGroup,
 } from '../db/language-groups.ts'
+import { findStudentIdentity } from '../db/student-identities.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { getInstitution, listMembershipLinks } from './memberships.ts'
@@ -357,6 +359,24 @@ type GroupChange = {
 }
 
 /**
+ * Kursiyerlerin doğum tarihi kimlik satırından (`student_identities`, ADR 0006 karar 9); yoksa
+ * `null` (core bilinmeyen doğum tarihini 21.00 sınırında reddeder). Grup en çok 18 kursiyerdir.
+ */
+async function birthDatesOf(
+  tx: Database,
+  ctx: ServiceContext,
+  studentIds: readonly string[],
+): Promise<Record<string, string | null>> {
+  const entries = await Promise.all(
+    [...new Set(studentIds)].map(async (studentId) => {
+      const identity = await findStudentIdentity(tx, ctx.institutionId, studentId)
+      return [studentId, identity?.birthDate ?? null] as const
+    }),
+  )
+  return Object.fromEntries(entries)
+}
+
+/**
  * Var olan gruba komut: kurum kilidi altında yükler; grup yoksa 404, `If-Match` tutmazsa 409
  * (plandan önce). Core planını çalıştırır, sürüm koşuluyla yazar ve denetime yazar.
  */
@@ -365,7 +385,9 @@ function runGroupCommand(
   command: {
     action: string
     target: GroupTarget
-    plan: (planning: Planning) => GroupChange
+    plan: (planning: Planning, learnerBirthDates: Record<string, string | null>) => GroupChange
+    /** Doğum tarihi yüklenecek kursiyerler (birleştirmede taşınanlar; 21.00 sınırı). */
+    learnersOf?: (planning: Planning) => string[]
   },
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
@@ -383,8 +405,13 @@ function runGroupCommand(
         if (!group) throw new NotFoundError()
         // Sıra 404 → (rol 403 uçta) → 409 sürüm → core kuralları (koordinatör 403, 409, 422).
         if (group.rowVersion !== expectedVersion) throw new ConflictError()
+        const birthDates = await birthDatesOf(tx, ctx, command.learnersOf?.(planning) ?? [])
         return {
-          run: () => ({ ...command.plan(planning), rowVersion: group.rowVersion, planning }),
+          run: () => ({
+            ...command.plan(planning, birthDates),
+            rowVersion: group.rowVersion,
+            planning,
+          }),
         }
       },
       after: async (tx, change) => {
@@ -490,8 +517,8 @@ export function cancelGroup(
 
 /**
  * Kaynak grubu hedefe (`:groupId`) birleştirir (DOM-DIL-042): kaynak iptal edilir, kursiyerleri ve
- * bekleyenleri hedefe taşınır. `If-Match` hedefin sürümüdür; kaynak kurum kilidi altında güncel
- * sürümüyle yazılır.
+ * bekleyenleri hedefe taşınır. `If-Match` hedefin, gövdedeki `sourceVersion` kaynağın sürümüdür;
+ * ikisi de tutmalıdır (409 `version_conflict`). Taşınanların doğum tarihi 21.00 sınırı için yüklenir.
  */
 export function mergeGroup(
   ctx: ServiceContext,
@@ -504,8 +531,28 @@ export function mergeGroup(
     {
       action: 'language_group.merge',
       target,
-      plan: (planning) => {
-        const result = planGroupMerge({ ...planning, groupId: target.groupId, input })
+      learnersOf: (planning) => {
+        const parsed = mergeGroupSchema.safeParse(input)
+        if (!parsed.success) return []
+        return planning.members
+          .filter((member) => member.groupId === parsed.data.sourceGroupId)
+          .map((member) => member.studentId)
+      },
+      plan: (planning, learnerBirthDates) => {
+        // Kaynağın okunan sürümü (`sourceVersion`) tutmazsa kurallardan önce 409: başkası kaynağı
+        // değiştirmiştir. Geçersiz gövde ve bulunmayan kaynak core'da 400/404 olur.
+        const body = mergeGroupSchema.safeParse(input)
+        const current = body.success
+          ? planning.groups.find((item) => item.id === body.data.sourceGroupId)
+          : undefined
+        if (body.success && current && current.rowVersion !== body.data.sourceVersion)
+          throw new ConflictError()
+        const result = planGroupMerge({
+          ...planning,
+          groupId: target.groupId,
+          input,
+          learnerBirthDates,
+        })
         const stored = planning.groups.find((item) => item.id === result.source.id) as StoredGroup
         const moved = new Set(result.movedStudentIds)
         return {

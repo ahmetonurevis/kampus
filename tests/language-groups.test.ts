@@ -5,6 +5,7 @@ import { authorize, type AuthorizationSource } from '../packages/school-core/src
 import { NO_COORDINATOR_SCOPE } from '../packages/school-core/src/lib/coordinator-duties.ts'
 import {
   planCourseArchive,
+  planCourseUpdate,
   type Course,
   type CourseManager,
 } from '../packages/school-core/src/lib/courses.ts'
@@ -487,9 +488,10 @@ describe('grup birleştirme (DOM-DIL-042)', () => {
   test('kaynak kapanır, kursiyerleri hedefe taşınır; hedefte olan taşınmaz', () => {
     const members = [member('s1'), member('s2', G2), member('s1', G2), member('s3', G2, 'frozen')]
     const result = planGroupMerge({
+      learnerBirthDates: {},
       ...ctx({ groups: [target, source], members }),
       groupId: G1,
-      input: { sourceGroupId: G2 },
+      input: { sourceGroupId: G2, sourceVersion: 1 },
     })
     assert.deepEqual(result.movedStudentIds, ['s2', 's3'])
     assert.equal(result.source.state, 'cancelled')
@@ -508,20 +510,33 @@ describe('grup birleştirme (DOM-DIL-042)', () => {
     const context = ctx({ groups: [target, source], members })
     unchangedOnFailure(
       context,
-      () => planGroupMerge({ ...context, groupId: G1, input: { sourceGroupId: G2 } }),
+      () =>
+        planGroupMerge({
+          learnerBirthDates: {},
+          ...context,
+          groupId: G1,
+          input: { sourceGroupId: G2, sourceVersion: 1 },
+        }),
       'group_merge_capacity',
     )
     assert.throws(
-      () => planGroupMerge({ ...context, groupId: G1, input: { sourceGroupId: G1 } }),
+      () =>
+        planGroupMerge({
+          learnerBirthDates: {},
+          ...context,
+          groupId: G1,
+          input: { sourceGroupId: G1, sourceVersion: 1 },
+        }),
       isDomainError('group_merge_same'),
     )
     for (const changed of [{ courseId: OTHER_COURSE_ID }, { ageBand: 'teen' as const }])
       assert.throws(
         () =>
           planGroupMerge({
+            learnerBirthDates: {},
             ...ctx({ groups: [target, { ...source, ...changed }] }),
             groupId: G1,
-            input: { sourceGroupId: G2 },
+            input: { sourceGroupId: G2, sourceVersion: 1 },
           }),
         isDomainError('group_merge_mismatch'),
       )
@@ -531,23 +546,31 @@ describe('grup birleştirme (DOM-DIL-042)', () => {
     }
     const moving = ctx({ groups: [target, later], members: [member('s3', G2)] })
     assert.throws(
-      () => planGroupMerge({ ...moving, groupId: G1, input: { sourceGroupId: G2 } }),
+      () =>
+        planGroupMerge({
+          learnerBirthDates: {},
+          ...moving,
+          groupId: G1,
+          input: { sourceGroupId: G2, sourceVersion: 1 },
+        }),
       isDomainError('group_merge_consent_required'),
     )
     assert.deepEqual(
       planGroupMerge({
+        learnerBirthDates: {},
         ...moving,
         groupId: G1,
-        input: { sourceGroupId: G2, learnersConsented: true },
+        input: { sourceGroupId: G2, sourceVersion: 1, learnersConsented: true },
       }).movedStudentIds,
       ['s3'],
     )
     assert.throws(
       () =>
         planGroupMerge({
+          learnerBirthDates: {},
           ...ctx({ groups: [target, { ...source, state: 'cancelled' }] }),
           groupId: G1,
-          input: { sourceGroupId: G2 },
+          input: { sourceGroupId: G2, sourceVersion: 1 },
         }),
       isDomainError('group_closed', 'conflict'),
     )
@@ -611,36 +634,50 @@ describe('yerleştirme kuralı (ON-058 sözleşmesi; DOM-DIL-040, -041, -045)', 
     assert.equal(place({ groups: [group({ capacity: 1 })], waitlist: [offer] }).studentId, 's-new')
   })
 
-  test('DOM-DIL-041 seviye ve yaş bandı istisnaları gerekçe ister', () => {
+  test('DOM-DIL-041 seviye istisnası yalnız öğretmen ya da yönetici gerekçesiyle', () => {
     const a2 = { ...ADULT, placementLevel: 'A2' as const }
+    const reasoned = { studentId: 's-new', levelReason: 'Öğretmen önerisi' }
     assert.throws(() => place({ learner: a2 }), isDomainError('group_level_mismatch'))
     assert.throws(
       () => place({ learner: { ...ADULT, placementLevel: null } }),
       isDomainError('group_level_mismatch'),
     )
-    assert.equal(
-      place({ learner: a2, input: { studentId: 's-new', levelReason: 'Öğretmen önerisi' } })
-        .groupId,
-      G1,
+    // Ön büro gerekçe yazsa da seviye istisnası yapamaz.
+    assert.throws(
+      () => place({ learner: a2, input: reasoned }),
+      isDomainError('group_level_mismatch'),
     )
+    for (const actorRole of ['ogretmen', 'yonetici'] as const)
+      assert.equal(place({ learner: a2, input: reasoned, actorRole }).groupId, G1)
+  })
+
+  test('DOM-DIL-041 yaş bandı: çocuk, genç 12–17, yetişkin; istisna yalnız yönetici gerekçesiyle', () => {
     const teen = { ...ADULT, birthDate: '2010-05-05' }
-    assert.throws(() => place({ learner: teen }), isDomainError('group_age_band_mismatch'))
+    const child = { ...ADULT, birthDate: '2016-01-01' }
     const approved = { studentId: 's-new', ageReason: 'Veli ve rehber onayı' }
+    assert.throws(() => place({ learner: teen }), isDomainError('group_age_band_mismatch'))
     assert.throws(
       () => place({ learner: teen, input: approved }),
       isDomainError('group_age_band_mismatch'),
     )
+    // İstisna 1: 18 yaş altı yetişkin grubuna; istisna 2: yetişkin genç grubuna.
     assert.equal(place({ learner: teen, input: approved, actorRole: 'yonetici' }).groupId, G1)
-    assert.throws(
-      () => place({ groups: [group({ ageBand: 'teen' })] }),
-      isDomainError('group_age_band_mismatch'),
-    )
-    // Çocuk ve genç bandı arasında onay gerekmez (ikisi de 18 yaş altı).
-    assert.equal(
-      place({ groups: [group({ ageBand: 'teen' })], learner: { ...teen, birthDate: '2016-01-01' } })
-        .groupId,
-      G1,
-    )
+    const teenGroup = { groups: [group({ ageBand: 'teen' })] }
+    assert.throws(() => place(teenGroup), isDomainError('group_age_band_mismatch'))
+    assert.equal(place({ ...teenGroup, input: approved, actorRole: 'yonetici' }).groupId, G1)
+    assert.equal(place({ ...teenGroup, learner: teen }).groupId, G1)
+    // Çocuk–genç geçişi ve yetişkinin çocuk grubu istisna değildir: yönetici gerekçesi de yetmez.
+    const childGroup = { groups: [group({ ageBand: 'child' })] }
+    for (const overrides of [
+      { ...childGroup, learner: teen },
+      { ...childGroup, learner: ADULT },
+      { ...teenGroup, learner: child },
+    ])
+      assert.throws(
+        () => place({ ...overrides, input: approved, actorRole: 'yonetici' }),
+        isDomainError('group_age_band_mismatch'),
+      )
+    assert.equal(place({ ...childGroup, learner: child }).groupId, G1)
     assert.throws(
       () => place({ learner: { ...ADULT, birthDate: null } }),
       isDomainError('learner_birth_date_required'),
@@ -840,7 +877,7 @@ describe('kur arşivi (DOM-DIL-008, OG-028 takibi)', () => {
   test('kapanmamış grubu olan kur arşivlenmez', () => {
     const groups = [group(), group({ id: G2, name: 'Eski', state: 'cancelled' })]
     const blocking = groupsBlockingCourseArchive(groups, COURSE_ID, NOW)
-    assert.deepEqual(blocking, [{ courseId: COURSE_ID, name: 'B1 Akşam' }])
+    assert.deepEqual(blocking, [{ courseId: COURSE_ID, name: 'B1 Akşam', capacity: 10 }])
     const archive = (openGroups: { courseId: string; name: string }[]) =>
       planCourseArchive({
         institutionType: LANG,
@@ -858,5 +895,131 @@ describe('kur arşivi (DOM-DIL-008, OG-028 takibi)', () => {
       '2026-11-01T09:00:00.000Z',
     )
     assert.equal(archive(done).status, 'archived')
+  })
+})
+
+describe('inceleme düzeltmeleri (OG-029)', () => {
+  test('DOM-DIL-008 en çok mevcut kapanmamış grubun kapasitesinin altına inmez', () => {
+    const update = (maxLearners: number, groups: LanguageGroup[]) =>
+      planCourseUpdate({
+        institutionType: LANG,
+        manager: ADMIN,
+        courses: [course()],
+        courseId: COURSE_ID,
+        input: { maxLearners },
+        openGroups: groupsBlockingCourseArchive(groups, COURSE_ID, NOW),
+      })
+    assert.throws(() => update(9, [group()]), isDomainError('course_max_below_group_capacity'))
+    assert.equal(update(10, [group()]).course.maxLearners, 10)
+    assert.equal(update(9, [group({ state: 'cancelled' })]).course.maxLearners, 9)
+    // Eski kapasite kurun üstünde kalsa da kapasiteye dokunmayan değişiklik geçer.
+    const legacy = group({ capacity: 14 })
+    const context = ctx({ groups: [legacy] })
+    assert.equal(
+      planGroupUpdate({ ...context, groupId: G1, input: { name: 'B1 Yeni' } }).group.name,
+      'B1 Yeni',
+    )
+    assert.throws(
+      () => planGroupUpdate({ ...context, groupId: G1, input: { capacity: 13 } }),
+      isDomainError('group_capacity_exceeds_course'),
+    )
+  })
+
+  test('DOM-DIL-042 açılmış grubun öğretmeni ve yüz yüzede dersliği boşaltılamaz', () => {
+    const opened = group({ state: 'open', openedAt: NOW })
+    // Açık (başlamamış) ve devam eden grup.
+    for (const now of [NOW, '2026-10-14T09:00:00.000Z']) {
+      const context = ctx({ groups: [opened], now })
+      unchangedOnFailure(
+        context,
+        () => planGroupUpdate({ ...context, groupId: G1, input: { teacherMembershipId: null } }),
+        'group_teacher_required',
+      )
+      unchangedOnFailure(
+        context,
+        () => planGroupUpdate({ ...context, groupId: G1, input: { room: null } }),
+        'group_room_required',
+      )
+      assert.equal(
+        planGroupUpdate({ ...context, groupId: G1, input: { delivery: 'online' } }).group.room,
+        null,
+      )
+    }
+    // Planlanan grupta öğretmen ve derslik sonradan atanabilir.
+    assert.equal(
+      planGroupUpdate({ ...ctx({ groups: [group()] }), groupId: G1, input: { room: null } }).group
+        .room,
+      null,
+    )
+  })
+
+  test('DOM-DIL-042 başlangıcı geçmiş planlanan grup açılmaz, ileri tarihe alınır, kur arşivini engeller', () => {
+    const later = '2026-10-20T09:00:00.000Z'
+    const stale = group()
+    const context = ctx({ groups: [stale], now: later })
+    assert.equal(groupStatus(stale, later), 'planned')
+    assert.throws(
+      () => planGroupOpen({ ...context, groupId: G1 }),
+      isDomainError('group_start_passed'),
+    )
+    const moved = planGroupUpdate({ ...context, groupId: G1, input: { startDate: '2026-10-26' } })
+    assert.equal(moved.group.endDate, '2026-11-11')
+    assert.throws(
+      () => planGroupUpdate({ ...context, groupId: G1, input: { startDate: '2026-10-19' } }),
+      isDomainError('group_start_passed'),
+    )
+    // Kursiyeri varsa tarih sözleşmedir: birleştirme ya da iptal.
+    assert.throws(
+      () =>
+        planGroupUpdate({
+          ...ctx({ groups: [stale], members: [member('s1')], now: later }),
+          groupId: G1,
+          input: { startDate: '2026-10-26' },
+        }),
+      isDomainError('group_schedule_locked'),
+    )
+    assert.equal(groupsBlockingCourseArchive([stale], COURSE_ID, later).length, 1)
+  })
+
+  test('DOM-DIL-042 birleştirmede taşınan kursiyerin saatleri ve 21.00 sınırı denetlenir', () => {
+    const target = group()
+    const source = group({ id: G2, name: 'B1 Akşam 2', teacherMembershipId: 't-can', room: 'D2' })
+    const otherCourse = course({ id: OTHER_COURSE_ID, totalHours: 3, weeklyHours: 1 })
+    const ielts = group({
+      id: NEW,
+      courseId: OTHER_COURSE_ID,
+      name: 'IELTS',
+      teacherMembershipId: 't-can',
+      room: 'D3',
+      schedule: [{ weekday: 3, startTime: '18:30' }],
+    })
+    const conflicting = ctx({
+      courses: [course(), otherCourse],
+      groups: [target, source, ielts],
+      members: [member('s3', G2), member('s3', NEW)],
+    })
+    unchangedOnFailure(
+      conflicting,
+      () =>
+        planGroupMerge({
+          ...conflicting,
+          learnerBirthDates: {},
+          groupId: G1,
+          input: { sourceGroupId: G2, sourceVersion: 1, learnersConsented: true },
+        }),
+      'learner_schedule_conflict',
+    )
+    const late = group({ schedule: [...SCHEDULE.slice(0, 3), { weekday: 5, startTime: '21:00' }] })
+    const lateCtx = ctx({ groups: [late, source], members: [member('s3', G2)] })
+    const merge = (learnerBirthDates: Record<string, string | null>) =>
+      planGroupMerge({
+        ...lateCtx,
+        learnerBirthDates,
+        groupId: G1,
+        input: { sourceGroupId: G2, sourceVersion: 1, learnersConsented: true },
+      })
+    assert.throws(() => merge({ s3: '2010-05-05' }), isDomainError('group_minor_late'))
+    assert.throws(() => merge({}), isDomainError('learner_birth_date_required'))
+    assert.deepEqual(merge({ s3: '1990-01-01' }).movedStudentIds, ['s3'])
   })
 })

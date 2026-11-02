@@ -259,7 +259,10 @@ function runCourseCommand(
   )
 }
 
-/** Kuru değiştirir (DOM-DIL-005…007); etkin kurun program alanları 422 `course_active_locked`. */
+/**
+ * Kuru değiştirir (DOM-DIL-005…007); etkin kurun program alanları 422 `course_active_locked`, en çok
+ * mevcut kapanmamış grubun kapasitesinin altına 422 `course_max_below_group_capacity`.
+ */
 export function updateCourse(
   ctx: ServiceContext,
   target: CourseTarget,
@@ -271,13 +274,14 @@ export function updateCourse(
     {
       action: 'course.update',
       ...target,
-      plan: ({ all, institutionType, manager }) =>
+      plan: ({ all, institutionType, manager, groups }) =>
         planCourseUpdate({
           institutionType,
           manager,
           courses: all,
           courseId: target.courseId,
           input,
+          openGroups: groupsBlockingCourseArchive(groups, target.courseId, ctx.now.toISOString()),
         }),
     },
     idempotency,

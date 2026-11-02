@@ -33281,6 +33281,7 @@ export interface operations {
                 "application/json": {
                     /** Format: uuid */
                     sourceGroupId: string;
+                    sourceVersion: number;
                     learnersConsented?: boolean;
                 };
             };

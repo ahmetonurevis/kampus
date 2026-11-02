@@ -176,8 +176,11 @@ test.describe('İzin formları: rehber öğretmen ve yönetici', () => {
     // Kapat: onay ister; kapatılan form düzenlenmez ve yeniden açılmaz, kayıt korunur.
     await updated.getByRole('button', { name: 'Formu kapat' }).click()
     const confirm = page.getByRole('alertdialog', { name: 'Formu kapat' })
-    await confirm.getByRole('button', { name: 'Formu kapat' }).click()
+    // Çift tık tek istek atar: taze kayıt okunurken de pencere meşguldür.
+    await confirm.getByRole('button', { name: 'Formu kapat' }).dblclick()
     await expect(page.getByText(`${title} (güncel) kapatıldı.`)).toBeVisible()
+    await expect(page.getByText('İzin formu bu arada değişti')).toHaveCount(0)
+    await expect(page.getByText('zaten kapatılmış')).toHaveCount(0)
     await expect(updated.getByRole('button', { name: 'Düzenle' })).toBeDisabled()
     await expect(updated.getByRole('button', { name: 'Formu kapat' })).toBeDisabled()
     await expect(updated).toContainText('Kapatılmış form düzenlenemez')

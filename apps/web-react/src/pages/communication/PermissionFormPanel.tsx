@@ -2,7 +2,7 @@
 // içeriği adresteki parametreye göre değişir: `?izin=` form ayrıntısı ve öğrenci bazlı durum,
 // `?izin-form=` aç/düzenle. Karar satırı ve veli notu yalnız yönetici ve rehber öğretmene gelir;
 // derse giren öğretmen yalnız durumu görür (DOM-ILT-037). Panel kapatılınca form → ayrıntı döner.
-import { useMemo, useState } from 'react'
+import { useMemo, useRef, useState } from 'react'
 import {
   hasDecisions,
   PERMISSION_DECISION_LABELS,
@@ -293,6 +293,27 @@ function useFreshForm(formId: string) {
   return fetchFresh
 }
 
+/**
+ * Onay penceresinin meşgul durumu: taze kayıt okunurken de (komut henüz başlamamışken) tutulur.
+ * Ref aynı olay döngüsündeki ikinci tıklamayı da durdurur; çift tık iki istek atmaz.
+ */
+function useConfirmBusy() {
+  const running = useRef(false)
+  const [busy, setBusy] = useState(false)
+  async function run(action: () => Promise<void>) {
+    if (running.current) return
+    running.current = true
+    setBusy(true)
+    try {
+      await action()
+    } finally {
+      running.current = false
+      setBusy(false)
+    }
+  }
+  return { busy, run }
+}
+
 function CloseDialog({
   form,
   open,
@@ -304,8 +325,10 @@ function CloseDialog({
 }) {
   const close = useClosePermissionForm()
   const fetchFresh = useFreshForm(form.id)
-  const busy = close.isPending
-  async function confirm() {
+  const confirming = useConfirmBusy()
+  const busy = confirming.busy || close.isPending
+  const confirm = () => confirming.run(submit)
+  async function submit() {
     const result = await submitWithFreshRecord(fetchFresh, (fresh) =>
       close.submit({ formId: fresh.id, version: fresh.version }),
     )
@@ -360,8 +383,10 @@ function ArchiveDialog({
 }) {
   const archive = useArchivePermissionForm()
   const fetchFresh = useFreshForm(form.id)
-  const busy = archive.isPending
-  async function confirm() {
+  const confirming = useConfirmBusy()
+  const busy = confirming.busy || archive.isPending
+  const confirm = () => confirming.run(submit)
+  async function submit() {
     const result = await submitWithFreshRecord(fetchFresh, (fresh) =>
       archive.submit({ formId: fresh.id, version: fresh.version }),
     )

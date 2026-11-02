@@ -5,8 +5,10 @@ import { after, before, describe, test } from 'node:test'
 import { and, eq } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
+import { insertProgressionDecision, listProgressionDecisions } from '../src/db/cefr.ts'
 import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { progressionDecisions } from '../src/db/schema/cefr.ts'
 import { coordinatorDuties } from '../src/db/schema/coordinator-duties.ts'
 import { records } from '../src/db/schema/records.ts'
 import {
@@ -710,5 +712,116 @@ describe('dil okulu grup uçları', () => {
     assert.equal((await memberRows(institution.id, source.id)).length, 1)
     const merged = await ok(await merge(true))
     assert.equal(merged.activeLearners, 1)
+  })
+
+  test('DOM-DIL-042, DOM-DIL-070: taşınan kursiyerin açık kur kararı birleştirmeyi 422 ile durdurur; sonuçlanmış karar eski kayıtta kalır', async () => {
+    const { institution, users, cookies, body, courseId } = await tenant()
+    const target = await ok(await create(cookies.admin, body()), 201)
+    const source = await ok(
+      await create(
+        cookies.admin,
+        body({ name: 'B1 Akşam 2', teacherMembershipId: users.other.membershipId, room: 'D2' }),
+      ),
+      201,
+    )
+    await addMembers(institution.id, source.id, ['s1', 's2'])
+    const [enrollment] = (await memberRows(institution.id, source.id)).filter(
+      (row) => row.studentId === 's2',
+    )
+    assert.ok(enrollment)
+    const decisionId = randomUUID()
+    await insertProgressionDecision(
+      db,
+      institution.id,
+      {
+        enrollmentId: enrollment.id,
+        groupId: source.id,
+        courseId,
+        learnerId: 's2',
+        outcome: 'passed',
+        status: 'pending',
+        rationale: 'Koşullar sağlandı.',
+        correctsDecisionId: null,
+        decidedByUserId: users.other.id,
+        decidedAt: FIXED_NOW.toISOString(),
+        reviewedByUserId: null,
+        reviewedAt: null,
+        rejectionReason: null,
+        basis: {
+          schemaVersion: 1,
+          attendance: {
+            totalHours: 12,
+            attendedHours: 12,
+            absentHours: 0,
+            unrecordedHours: 0,
+            requiredHours: 10,
+            minAttendancePermille: 800,
+            met: true,
+          },
+          finalPassScore: 60,
+          assessments: [],
+          conditions: { attendance: true, finalScore: true, skills: true },
+        },
+        evidenceSnapshot: {
+          schemaVersion: 2,
+          context: 'general',
+          computedAt: FIXED_NOW.toISOString(),
+          overall: { status: 'insufficient', missingSkills: ['reading'] },
+          skills: [],
+          evidence: [],
+        },
+      },
+      decisionId,
+    )
+    const merge = () =>
+      command(cookies.admin, target.id, 'merge', 1, {
+        sourceGroupId: source.id,
+        sourceVersion: 1,
+      })
+    const beforeGroups = await groupRows(institution.id)
+    const beforeSource = await memberRows(institution.id, source.id)
+    const beforeAudit = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.institutionId, institution.id))
+    fails(await merge(), 422, 'progression_pending')
+    // Hiçbir kayıt değişmez: iki grup, kaynak satırları, hedef ve denetim.
+    assert.deepEqual(await groupRows(institution.id), beforeGroups)
+    assert.deepEqual(await memberRows(institution.id, source.id), beforeSource)
+    assert.deepEqual(await memberRows(institution.id, target.id), [])
+    assert.deepEqual(
+      await db.select().from(auditLog).where(eq(auditLog.institutionId, institution.id)),
+      beforeAudit,
+    )
+
+    // Koordinatör onaylayınca birleştirme geçer; onaylı karar arşivlenen eski kayıtta geçmiş kalır.
+    await db
+      .update(progressionDecisions)
+      .set({ status: 'approved', reviewedByUserId: users.coordinator.id, reviewedAt: FIXED_NOW })
+      .where(
+        and(
+          eq(progressionDecisions.institutionId, institution.id),
+          eq(progressionDecisions.id, decisionId),
+        ),
+      )
+    const merged = await ok(await merge())
+    assert.equal(merged.activeLearners, 2)
+    const history = await listProgressionDecisions(db, institution.id, { learnerId: 's2' })
+    assert.deepEqual(
+      history.map((decision) => [decision.id, decision.enrollmentId, decision.status]),
+      [[decisionId, enrollment.id, 'approved']],
+    )
+    const [archived] = (await memberRows(institution.id, source.id)).filter(
+      (row) => row.id === enrollment.id,
+    )
+    assert.ok(archived?.archivedAt)
+    const moved = (await memberRows(institution.id, target.id)).find(
+      (row) => row.studentId === 's2',
+    )
+    assert.ok(moved)
+    assert.deepEqual(
+      await listProgressionDecisions(db, institution.id, { enrollmentId: moved.id }),
+      [],
+    )
   })
 })

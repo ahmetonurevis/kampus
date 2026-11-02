@@ -126,6 +126,12 @@ export const REDACTED_PATHS = [
   // yukarıda.
   'feedback',
   '*.feedback',
+  // kvkk: Ç — seviye ve kur sonu kararının gerekçesi ile ret gerekçesi; çoğu zaman reşit olmayan
+  // kursiyerin ölçme yorumudur (DOM-BEC-034, DOM-DIL-070; `cefr.ts` tabloları).
+  'rationale',
+  '*.rationale',
+  'rejectionReason',
+  '*.rejectionReason',
   '*.cookie',
   '*.authorization',
 ]

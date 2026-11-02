@@ -856,6 +856,29 @@ test.describe('Genel Bakış: haberler, yanıt bekleyen sorular ve not eğilimi'
     await expect(page.getByRole('dialog')).toBeVisible()
   })
 
+  test('öğretmen: soru listesi sayfa sınırını aşarsa kartlar sakin hata metni gösterir', async ({
+    page,
+    loginAs,
+  }) => {
+    // İlk gerçek sayfa her sayfa isteğinde döner ve toplam çok büyük bildirilir (gerçek ikinci sayfa
+    // boş gelir ve okumayı erken bitirirdi): tüm sayfaları çeken okuma sayfa sınırına çarpar.
+    let first: { data: unknown[]; meta: Record<string, unknown> } | null = null
+    await page.route(/\/collections\/questions\?/, async (route) => {
+      first ??= (await (await route.fetch()).json()) as NonNullable<typeof first>
+      await route.fulfill({
+        status: 200,
+        json: { ...first, meta: { ...first.meta, total: 1_000_000 } },
+      })
+    })
+    await loginAs('ogretmen')
+    await openDashboard(page, 'ogretmen')
+    const list = region(page, 'Yanıt bekleyen sorular')
+    await expect(list).toContainText('Kayıt sayısı çok fazla')
+    await expect(list.getByRole('button', { name: 'Yeniden dene' })).toHaveCount(0)
+    await expect(list).not.toContainText(/CollectionTooLarge|Error/)
+    await expect(card(page, 'Yanıt bekleyen soru')).toContainText('Kayıt sayısı çok fazla')
+  })
+
   test('öğrenci ve veli: not ortalaması eğilimi aylık ortalamalardan gelir, çocuğa göre değişir', async ({
     page,
     loginAs,

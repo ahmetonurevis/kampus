@@ -1,23 +1,14 @@
 import { useEffect } from 'react'
 import { isApiError } from '@kampus/api-client/errors.ts'
-import { isModuleDisabledError } from '@kampus/react-shared/collections.ts'
+import { CollectionTooLargeError, isModuleDisabledError } from '@kampus/react-shared/collections.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/auth/use-auth.ts'
 import { pageHref } from '@/lib/navigation.ts'
+import { queryErrorMessage } from './query-error-message.ts'
 import { ModuleClosedRedirect } from '@/pages/shell/ModuleClosedRedirect.tsx'
 
-const FALLBACK = 'Kayıtlar yüklenemedi. Lütfen yeniden deneyin.'
-const FORBIDDEN = 'Bu kayıtları görüntüleme yetkiniz yok.'
-export const NOT_FOUND_MESSAGE = 'Kayıt bulunamadı. Silinmiş veya arşive taşınmış olabilir.'
-
-/** Kullanıcıya gösterilecek Türkçe metin; teknik ayrıntı (kod, istek kimliği) yalnız loga gider. */
-export function queryErrorMessage(error: unknown): string {
-  if (!isApiError(error)) return FALLBACK
-  if (error.status === 403 && error.code === 'forbidden') return FORBIDDEN
-  if (error.status === 404) return NOT_FOUND_MESSAGE
-  return error.message || FALLBACK
-}
+export { NOT_FOUND_MESSAGE, queryErrorMessage } from './query-error-message.ts'
 
 type QueryErrorProps = {
   error: unknown
@@ -32,6 +23,8 @@ type QueryErrorProps = {
 export function QueryError({ error, onRetry }: QueryErrorProps) {
   const { session } = useAuth()
   const moduleClosed = isModuleDisabledError(error)
+  // Liste sayfa sınırını aştıysa yeniden denemek aynı sonucu verir.
+  const retry = error instanceof CollectionTooLargeError ? undefined : onRetry
 
   useEffect(() => {
     if (moduleClosed) return
@@ -48,8 +41,8 @@ export function QueryError({ error, onRetry }: QueryErrorProps) {
     <div className="query-error flex flex-col items-center gap-3 text-center">
       <Icon name="TriangleAlert" size={26} aria-hidden="true" className="text-danger" />
       <p className="max-w-[52ch] text-base">{queryErrorMessage(error)}</p>
-      {onRetry ? (
-        <Button variant="secondary" size="sm" onClick={onRetry}>
+      {retry ? (
+        <Button variant="secondary" size="sm" onClick={retry}>
           <Icon name="RefreshCw" size={15} aria-hidden="true" />
           Yeniden dene
         </Button>

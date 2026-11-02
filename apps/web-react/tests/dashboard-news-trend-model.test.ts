@@ -2,7 +2,11 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import type { AnnouncementRecord } from '@kampus/react-shared/announcement-model.ts'
-import type { CollectionPage, CollectionRow } from '@kampus/react-shared/collections.ts'
+import {
+  CollectionTooLargeError,
+  type CollectionPage,
+  type CollectionRow,
+} from '@kampus/react-shared/collections.ts'
 import {
   gradeTrendPending,
   gradeTrendSummary,
@@ -14,6 +18,7 @@ import {
   newsExcerpt,
   newsItems,
 } from '../src/pages/dashboard/dashboard-news-model.ts'
+import { queryErrorMessage } from '../src/components/query-error-message.ts'
 import { openQuestions } from '../src/pages/dashboard/dashboard-teacher-model.ts'
 
 // Genel Bakış "Kampüsten haberler", "Yanıt bekleyen sorular" ve not ortalaması eğilimi (OG-226):
@@ -298,4 +303,16 @@ test('haber: boş sayfa gelirse (okuma sırasında silinme) sonsuz döngüye gir
   })
   assert.deepEqual(rows, [])
   assert.deepEqual(calls, [1])
+})
+
+test('soru kartı: liste sayfa sınırını aşınca sakin ve doğru yönlendiren bir metin gösterilir', () => {
+  const message = queryErrorMessage(new CollectionTooLargeError())
+  assert.match(message, /çok fazla/)
+  assert.match(message, /Tam listeyi sayfasından açın/)
+  assert.doesNotMatch(message, /yeniden deneyin/i)
+  // Bilinmeyen teknik hata yine genel metindedir; teknik ayrıntı sızmaz.
+  assert.equal(
+    queryErrorMessage(new Error('ECONNRESET')),
+    'Kayıtlar yüklenemedi. Lütfen yeniden deneyin.',
+  )
 })

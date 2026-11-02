@@ -363,6 +363,24 @@ describe('işlem çalıştırıcı', () => {
     assert.deepEqual(await snapshot(ctx.institutionId), before)
   })
 
+  test('after içindeki depo kuralı (DomainError) türüne göre eşlenir ve bütün işlemi geri alır', async () => {
+    const ctx = await institution(['invoices'])
+    const before = await snapshot(ctx.institutionId)
+    await assert.rejects(
+      runOperation(ctx, {
+        action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
+        collections: ['invoices'],
+        run: (state, { now }) => pay(state, now),
+        after: async () => {
+          throw new DomainError('progression_pending', 'Onay bekleyen karar var.')
+        },
+      }),
+      hasStatus(422, 'progression_pending'),
+    )
+    assert.deepEqual(await snapshot(ctx.institutionId), before)
+  })
+
   test('listeden çıkarılan kayıt arşivlenir; State dışı alanlar bağlamdan gelir', async () => {
     const ctx = await institution(['transportAssignments'])
     const assignment = seed.transportAssignments[0]

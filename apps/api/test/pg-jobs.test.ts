@@ -39,7 +39,7 @@ import {
 } from './support/app.ts'
 import { MP3, multipart, tempStorage, uploadParts } from './support/files-sample.ts'
 import { FakeTranscoder } from './support/media-sample.ts'
-import { createPgDatabase, PG_SKIP, TEST_PG_URL } from './support/pg.ts'
+import { createPgDatabase, PG_SKIP } from './support/pg.ts'
 
 /**
  * PostgreSQL 16: gerçek pg-boss kuyruğu (OG-094). Kuyruk kendi şemasını kurar, zamanlamayı
@@ -52,13 +52,14 @@ const PURGE_DISPATCH = dispatchQueueName(idempotencyPurgeJob)
 
 describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
   let db: Database
+  let url = ''
   let close: () => Promise<void>
   let store: Awaited<ReturnType<typeof tempStorage>>
   const apps: App[] = []
   const transcoder = new FakeTranscoder()
 
   before(async () => {
-    ;({ db, close } = await createPgDatabase())
+    ;({ db, url, close } = await createPgDatabase())
     store = await tempStorage()
   })
   after(async () => {
@@ -82,7 +83,7 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
     })
     apps.push(app)
     const queue = await startJobs(app, {
-      connectionString: TEST_PG_URL ?? '',
+      connectionString: url,
       storage: store.storage,
       jobs: [idempotencyPurgeJob],
       ...extra,
@@ -384,10 +385,9 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
   })
 
   test('OG-262: kuyruksuz açılış kurtarmasının oturum kilidi tekildir; ikinci süreç atlar, kilit iş bitince ya da hatada bırakılır', async () => {
-    assert.ok(TEST_PG_URL)
     const name = `test-recovery-${randomUUID()}`
-    const first = postgresSessionLock(TEST_PG_URL, name)
-    const second = postgresSessionLock(TEST_PG_URL, name)
+    const first = postgresSessionLock(url, name)
+    const second = postgresSessionLock(url, name)
     let release = () => {}
     const gate = new Promise<void>((resolve) => (release = resolve))
     let entered = () => {}

@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
 
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import {
   groupNameKey,
   groupRoomKey,
@@ -12,6 +13,7 @@ import {
 
 import type { Database } from './client.ts'
 import { memberships } from './schema/auth.ts'
+import { progressionDecisions } from './schema/cefr.ts'
 import {
   languageGroupMembers,
   languageGroups,
@@ -219,6 +221,15 @@ export async function saveGroup(
 /**
  * Birleştirmede kursiyer taşıma (DOM-DIL-042): kaynak grubun bütün satırları arşivlenir (geçmiş
  * kalır), taşınan kursiyerlere hedefte aynı durumla yeni satır yazılır.
+ *
+ * Kur sonu kararı (DOM-DIL-070) kayıt satırına bağlıdır (`progression_decisions`, migration 0034)
+ * ve yeni satıra taşınmaz:
+ * - Taşınan kursiyerin açık (`pending`) kararı varsa birleştirme 422 `progression_pending` ile
+ *   reddedilir; hiçbir şey yazılmadan önce denetlenir ve işlem geri alınır. Açık karar eski kayıtta
+ *   kalsaydı yeni kayıtta core `progression_pending` denetimi atlanır, ikinci karar açılabilirdi.
+ *   Koordinatör önce onaylar ya da reddeder.
+ * - Onaylı ya da reddedilmiş karar arşivlenen eski kayıtta geçmiş olarak kalır; kursiyerin geçmişi
+ *   (`listProgressionDecisions({ learnerId })`) onu gösterir, yeni kaydın kararları boş başlar.
  */
 export async function moveGroupMembers(
   tx: Database,
@@ -226,6 +237,36 @@ export async function moveGroupMembers(
   input: { sourceGroupId: string; targetGroupId: string; members: readonly GroupMember[] },
   now: Date,
 ): Promise<void> {
+  const movedStudents = input.members.map((member) => member.studentId)
+  if (movedStudents.length > 0) {
+    const [pending] = await tx
+      .select({ id: progressionDecisions.id })
+      .from(progressionDecisions)
+      .innerJoin(
+        languageGroupMembers,
+        and(
+          eq(languageGroupMembers.institutionId, progressionDecisions.institutionId),
+          eq(languageGroupMembers.id, progressionDecisions.enrollmentId),
+        ),
+      )
+      .where(
+        and(
+          eq(progressionDecisions.institutionId, institutionId),
+          eq(progressionDecisions.groupId, input.sourceGroupId),
+          inArray(progressionDecisions.learnerId, movedStudents),
+          eq(progressionDecisions.status, 'pending'),
+          isNull(progressionDecisions.archivedAt),
+          isNull(languageGroupMembers.archivedAt),
+        ),
+      )
+      .limit(1)
+    if (pending !== undefined)
+      throw new DomainError(
+        'progression_pending',
+        'Taşınacak bir kursiyerin onay bekleyen kur sonu kararı var; karar sonuçlanmadan gruplar birleştirilemez.',
+        { kind: 'rule' },
+      )
+  }
   await tx
     .update(languageGroupMembers)
     .set({ archivedAt: now, updatedAt: now, version: sql`${languageGroupMembers.version} + 1` })

@@ -1,5 +1,5 @@
 {
-  "id": "ee20baa5-03f7-406b-83d0-cbb57336349e",
+  "id": "0caf9040-ad1e-4e76-915d-d828db3554d8",
   "prevId": "0762b2dc-245d-4212-b13d-39d584e2a6f1",
   "version": "7",
   "dialect": "postgresql",
@@ -1147,6 +1147,1107 @@
       "checkConstraints": {},
       "isRLSEnabled": false
     },
+    "public.level_decisions": {
+      "name": "level_decisions",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learner_kind": {
+          "name": "learner_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learner_id": {
+          "name": "learner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learner_collection": {
+          "name": "learner_collection",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "generated": {
+            "as": "case \"learner_kind\" when 'student' then 'students' when 'prospect' then 'prospects' end",
+            "type": "stored"
+          }
+        },
+        "kind": {
+          "name": "kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "placement_session_id": {
+          "name": "placement_session_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "skill": {
+          "name": "skill",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "level": {
+          "name": "level",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rationale": {
+          "name": "rationale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "decided_by_user_id": {
+          "name": "decided_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_snapshot": {
+          "name": "evidence_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "level_decisions_placement_skill_key": {
+          "name": "level_decisions_placement_skill_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "placement_session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "coalesce(\"skill\", 'overall')",
+              "asc": true,
+              "isExpression": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"level_decisions\".\"placement_session_id\" is not null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "level_decisions_learner_idx": {
+          "name": "level_decisions_learner_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "decided_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "level_decisions_placement_session_idx": {
+          "name": "level_decisions_placement_session_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "placement_session_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "level_decisions_decided_by_idx": {
+          "name": "level_decisions_decided_by_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "decided_by_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "level_decisions_institution_id_institutions_id_fk": {
+          "name": "level_decisions_institution_id_institutions_id_fk",
+          "tableFrom": "level_decisions",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "level_decisions_learner_fkey": {
+          "name": "level_decisions_learner_fkey",
+          "tableFrom": "level_decisions",
+          "tableTo": "records",
+          "columnsFrom": [
+            "institution_id",
+            "learner_collection",
+            "learner_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "collection",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "level_decisions_placement_session_fkey": {
+          "name": "level_decisions_placement_session_fkey",
+          "tableFrom": "level_decisions",
+          "tableTo": "placement_sessions",
+          "columnsFrom": [
+            "institution_id",
+            "placement_session_id",
+            "learner_kind",
+            "learner_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id",
+            "learner_kind",
+            "learner_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "level_decisions_decided_by_fkey": {
+          "name": "level_decisions_decided_by_fkey",
+          "tableFrom": "level_decisions",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "decided_by_user_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "user_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "level_decisions_pkey": {
+          "name": "level_decisions_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {
+        "level_decisions_learner_kind_check": {
+          "name": "level_decisions_learner_kind_check",
+          "value": "\"level_decisions\".\"learner_kind\" in ('student', 'prospect')"
+        },
+        "level_decisions_kind_check": {
+          "name": "level_decisions_kind_check",
+          "value": "\"level_decisions\".\"kind\" in ('placement', 'progression', 'correction')"
+        },
+        "level_decisions_skill_check": {
+          "name": "level_decisions_skill_check",
+          "value": "\"level_decisions\".\"skill\" is null or \"level_decisions\".\"skill\" in ('reading', 'listening', 'writing', 'speaking', 'mediation', 'language_use')"
+        },
+        "level_decisions_level_check": {
+          "name": "level_decisions_level_check",
+          "value": "\"level_decisions\".\"level\" in ('Pre-A1', 'A1', 'A2', 'A2+', 'B1', 'B1+', 'B2', 'B2+', 'C1', 'C2')"
+        },
+        "level_decisions_rationale_check": {
+          "name": "level_decisions_rationale_check",
+          "value": "char_length(btrim(\"level_decisions\".\"rationale\")) >= 1 and char_length(\"level_decisions\".\"rationale\") <= 2000"
+        },
+        "level_decisions_placement_check": {
+          "name": "level_decisions_placement_check",
+          "value": "(\"level_decisions\".\"kind\" = 'placement') = (\"level_decisions\".\"placement_session_id\" is not null)"
+        },
+        "level_decisions_evidence_snapshot_check": {
+          "name": "level_decisions_evidence_snapshot_check",
+          "value": "jsonb_typeof(\"level_decisions\".\"evidence_snapshot\") = 'object' and \"level_decisions\".\"evidence_snapshot\" ->> 'schemaVersion' = '2'"
+        },
+        "level_decisions_version_check": {
+          "name": "level_decisions_version_check",
+          "value": "\"level_decisions\".\"version\" = 1 and \"level_decisions\".\"archived_at\" is null"
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.placement_sessions": {
+      "name": "placement_sessions",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learner_kind": {
+          "name": "learner_kind",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learner_id": {
+          "name": "learner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learner_collection": {
+          "name": "learner_collection",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true,
+          "generated": {
+            "as": "case \"learner_kind\" when 'student' then 'students' when 'prospect' then 'prospects' end",
+            "type": "stored"
+          }
+        },
+        "form_id": {
+          "name": "form_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "form_version_id": {
+          "name": "form_version_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "mode": {
+          "name": "mode",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "started_at": {
+          "name": "started_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "completed_at": {
+          "name": "completed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "placement_sessions_in_progress_key": {
+          "name": "placement_sessions_in_progress_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learner_kind",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"placement_sessions\".\"completed_at\" is null and \"placement_sessions\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "placement_sessions_learner_idx": {
+          "name": "placement_sessions_learner_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "started_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "placement_sessions_form_idx": {
+          "name": "placement_sessions_form_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "form_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "placement_sessions_form_version_idx": {
+          "name": "placement_sessions_form_version_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "form_version_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "placement_sessions_institution_id_institutions_id_fk": {
+          "name": "placement_sessions_institution_id_institutions_id_fk",
+          "tableFrom": "placement_sessions",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "placement_sessions_learner_fkey": {
+          "name": "placement_sessions_learner_fkey",
+          "tableFrom": "placement_sessions",
+          "tableTo": "records",
+          "columnsFrom": [
+            "institution_id",
+            "learner_collection",
+            "learner_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "collection",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "placement_sessions_form_fkey": {
+          "name": "placement_sessions_form_fkey",
+          "tableFrom": "placement_sessions",
+          "tableTo": "resources",
+          "columnsFrom": [
+            "institution_id",
+            "form_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "placement_sessions_form_version_fkey": {
+          "name": "placement_sessions_form_version_fkey",
+          "tableFrom": "placement_sessions",
+          "tableTo": "resource_versions",
+          "columnsFrom": [
+            "institution_id",
+            "form_version_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "placement_sessions_pkey": {
+          "name": "placement_sessions_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "placement_sessions_learner_key": {
+          "name": "placement_sessions_learner_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "id",
+            "learner_kind",
+            "learner_id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "placement_sessions_learner_kind_check": {
+          "name": "placement_sessions_learner_kind_check",
+          "value": "\"placement_sessions\".\"learner_kind\" in ('student', 'prospect')"
+        },
+        "placement_sessions_mode_check": {
+          "name": "placement_sessions_mode_check",
+          "value": "\"placement_sessions\".\"mode\" in ('in_person', 'remote')"
+        },
+        "placement_sessions_completed_check": {
+          "name": "placement_sessions_completed_check",
+          "value": "\"placement_sessions\".\"completed_at\" is null or \"placement_sessions\".\"completed_at\" >= \"placement_sessions\".\"started_at\""
+        }
+      },
+      "isRLSEnabled": false
+    },
+    "public.progression_decisions": {
+      "name": "progression_decisions",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "id": {
+          "name": "id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "enrollment_id": {
+          "name": "enrollment_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "group_id": {
+          "name": "group_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "course_id": {
+          "name": "course_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "learner_id": {
+          "name": "learner_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "outcome": {
+          "name": "outcome",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "status": {
+          "name": "status",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "rationale": {
+          "name": "rationale",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "corrects_decision_id": {
+          "name": "corrects_decision_id",
+          "type": "uuid",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "decided_by_user_id": {
+          "name": "decided_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "decided_at": {
+          "name": "decided_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "reviewed_by_user_id": {
+          "name": "reviewed_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "reviewed_at": {
+          "name": "reviewed_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "rejection_reason": {
+          "name": "rejection_reason",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "basis": {
+          "name": "basis",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "evidence_snapshot": {
+          "name": "evidence_snapshot",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {
+        "progression_decisions_pending_key": {
+          "name": "progression_decisions_pending_key",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "enrollment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": true,
+          "where": "\"progression_decisions\".\"status\" = 'pending' and \"progression_decisions\".\"archived_at\" is null",
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "progression_decisions_enrollment_idx": {
+          "name": "progression_decisions_enrollment_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "enrollment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "decided_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "progression_decisions_group_idx": {
+          "name": "progression_decisions_group_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "group_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "course_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "progression_decisions_course_idx": {
+          "name": "progression_decisions_course_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "course_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "progression_decisions_learner_idx": {
+          "name": "progression_decisions_learner_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "learner_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "decided_at",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "progression_decisions_corrects_idx": {
+          "name": "progression_decisions_corrects_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "enrollment_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "corrects_decision_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "progression_decisions_decided_by_idx": {
+          "name": "progression_decisions_decided_by_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "decided_by_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        },
+        "progression_decisions_reviewed_by_idx": {
+          "name": "progression_decisions_reviewed_by_idx",
+          "columns": [
+            {
+              "expression": "institution_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            },
+            {
+              "expression": "reviewed_by_user_id",
+              "isExpression": false,
+              "asc": true,
+              "nulls": "last"
+            }
+          ],
+          "isUnique": false,
+          "concurrently": false,
+          "method": "btree",
+          "with": {}
+        }
+      },
+      "foreignKeys": {
+        "progression_decisions_institution_id_institutions_id_fk": {
+          "name": "progression_decisions_institution_id_institutions_id_fk",
+          "tableFrom": "progression_decisions",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        },
+        "progression_decisions_enrollment_fkey": {
+          "name": "progression_decisions_enrollment_fkey",
+          "tableFrom": "progression_decisions",
+          "tableTo": "language_group_members",
+          "columnsFrom": [
+            "institution_id",
+            "enrollment_id",
+            "group_id",
+            "learner_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id",
+            "group_id",
+            "student_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "progression_decisions_group_fkey": {
+          "name": "progression_decisions_group_fkey",
+          "tableFrom": "progression_decisions",
+          "tableTo": "language_groups",
+          "columnsFrom": [
+            "institution_id",
+            "group_id",
+            "course_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "id",
+            "course_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "progression_decisions_corrects_fkey": {
+          "name": "progression_decisions_corrects_fkey",
+          "tableFrom": "progression_decisions",
+          "tableTo": "progression_decisions",
+          "columnsFrom": [
+            "institution_id",
+            "enrollment_id",
+            "corrects_decision_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "enrollment_id",
+            "id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "progression_decisions_decided_by_fkey": {
+          "name": "progression_decisions_decided_by_fkey",
+          "tableFrom": "progression_decisions",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "decided_by_user_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "user_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        },
+        "progression_decisions_reviewed_by_fkey": {
+          "name": "progression_decisions_reviewed_by_fkey",
+          "tableFrom": "progression_decisions",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "institution_id",
+            "reviewed_by_user_id"
+          ],
+          "columnsTo": [
+            "institution_id",
+            "user_id"
+          ],
+          "onDelete": "restrict",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {
+        "progression_decisions_pkey": {
+          "name": "progression_decisions_pkey",
+          "columns": [
+            "institution_id",
+            "id"
+          ]
+        }
+      },
+      "uniqueConstraints": {
+        "progression_decisions_enrollment_id_key": {
+          "name": "progression_decisions_enrollment_id_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "enrollment_id",
+            "id"
+          ]
+        }
+      },
+      "policies": {},
+      "checkConstraints": {
+        "progression_decisions_outcome_check": {
+          "name": "progression_decisions_outcome_check",
+          "value": "\"progression_decisions\".\"outcome\" in ('passed', 'repeat', 'incomplete_attendance')"
+        },
+        "progression_decisions_status_check": {
+          "name": "progression_decisions_status_check",
+          "value": "\"progression_decisions\".\"status\" in ('pending', 'approved', 'rejected')"
+        },
+        "progression_decisions_rationale_check": {
+          "name": "progression_decisions_rationale_check",
+          "value": "char_length(btrim(\"progression_decisions\".\"rationale\")) >= 1 and char_length(\"progression_decisions\".\"rationale\") <= 2000"
+        },
+        "progression_decisions_review_check": {
+          "name": "progression_decisions_review_check",
+          "value": "(\"progression_decisions\".\"status\" = 'pending') = (\"progression_decisions\".\"reviewed_by_user_id\" is null)\n        and (\"progression_decisions\".\"reviewed_by_user_id\" is null) = (\"progression_decisions\".\"reviewed_at\" is null)\n        and (\"progression_decisions\".\"status\" = 'rejected') = (\"progression_decisions\".\"rejection_reason\" is not null)\n        and (\"progression_decisions\".\"rejection_reason\" is null\n          or char_length(btrim(\"progression_decisions\".\"rejection_reason\")) >= 1 and char_length(\"progression_decisions\".\"rejection_reason\") <= 2000)\n        and (\"progression_decisions\".\"reviewed_at\" is null or \"progression_decisions\".\"reviewed_at\" >= \"progression_decisions\".\"decided_at\")"
+        },
+        "progression_decisions_corrects_check": {
+          "name": "progression_decisions_corrects_check",
+          "value": "\"progression_decisions\".\"corrects_decision_id\" is null or \"progression_decisions\".\"corrects_decision_id\" <> \"progression_decisions\".\"id\""
+        },
+        "progression_decisions_basis_check": {
+          "name": "progression_decisions_basis_check",
+          "value": "jsonb_typeof(\"progression_decisions\".\"basis\") = 'object' and \"progression_decisions\".\"basis\" ->> 'schemaVersion' = '1'"
+        },
+        "progression_decisions_evidence_snapshot_check": {
+          "name": "progression_decisions_evidence_snapshot_check",
+          "value": "jsonb_typeof(\"progression_decisions\".\"evidence_snapshot\") = 'object' and \"progression_decisions\".\"evidence_snapshot\" ->> 'schemaVersion' = '2'"
+        }
+      },
+      "isRLSEnabled": false
+    },
     "public.coordinator_duties": {
       "name": "coordinator_duties",
       "schema": "",
@@ -2195,7 +3296,7 @@
       "checkConstraints": {
         "files_purpose_check": {
           "name": "files_purpose_check",
-          "value": "\"files\".\"purpose\" in ('submission', 'material', 'question_image', 'student_question_photo', 'listening_audio', 'speaking_recording', 'document')"
+          "value": "\"files\".\"purpose\" in ('submission', 'material', 'question_image', 'listening_audio', 'speaking_recording', 'document')"
         },
         "files_status_check": {
           "name": "files_status_check",
@@ -2962,7 +4063,18 @@
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "language_group_members_id_group_student_key": {
+          "name": "language_group_members_id_group_student_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "id",
+            "group_id",
+            "student_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "language_group_members_status_check": {
@@ -3586,7 +4698,17 @@
           ]
         }
       },
-      "uniqueConstraints": {},
+      "uniqueConstraints": {
+        "language_groups_id_course_key": {
+          "name": "language_groups_id_course_key",
+          "nullsNotDistinct": false,
+          "columns": [
+            "institution_id",
+            "id",
+            "course_id"
+          ]
+        }
+      },
       "policies": {},
       "checkConstraints": {
         "language_groups_name_check": {

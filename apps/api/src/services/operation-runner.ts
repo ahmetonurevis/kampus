@@ -149,7 +149,8 @@ interface OperationBase<R> {
   makeId?: MakeId
   /**
    * İşlemden sonra aynı transaction'da çalışan ek yazma (ör. State değiştirmeyen işlemin kendi
-   * denetim kaydı, `conversation.access`). Hata işlemi bütünüyle geri alır.
+   * denetim kaydı, `conversation.access`). Hata işlemi bütünüyle geri alır; `DomainError`
+   * türüne göre HTTP hatasına çevrilir (`mapOperationError`).
    */
   after?: (tx: Database, result: R) => Promise<void>
 }
@@ -539,7 +540,15 @@ async function applyOperation<R>(
       createdAt: ctx.now,
     })
   }
-  if (request.after) await request.after(tx, result)
+  if (request.after) {
+    try {
+      await request.after(tx, result)
+    } catch (error) {
+      // `after`'daki depo kuralı da kullanıcı hatasıdır (ör. birleştirmede açık kur kararı,
+      // `moveGroupMembers`); veritabanı ve uygulama hataları olduğu gibi yukarı gider.
+      throw error instanceof DomainError ? mapOperationError(error) : error
+    }
+  }
   ctx.log.info({
     event: 'operation.applied',
     action: request.action,

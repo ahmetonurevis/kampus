@@ -59,7 +59,7 @@ function assertLanguageSchool(institutionType: InstitutionType): void {
 
 /** Servisin yüklediği kur kaydı: kursiyerin bir dil grubundaki kaydı ve kurun tanımı. */
 export type CourseEnrollment = {
-  /** Dil grubu kaydı (`records` kimliği). */
+  /** Dil grubu kaydı: API `language_group_members` satırının kimliği (OG-029). */
   id: string
   learnerId: string
   courseId: string

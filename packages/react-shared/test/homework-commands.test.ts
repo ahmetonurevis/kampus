@@ -19,6 +19,7 @@ import {
   homeworkErrorField,
   homeworkListKey,
   homeworkListParams,
+  homeworkSort,
   homeworkStale,
   isHomeworkVersionConflict,
   SUBMISSION_CHANGED_MESSAGE,
@@ -224,6 +225,23 @@ describe('ödev istekleri (IST-095)', () => {
     assert.deepEqual(
       homeworkListKey({ subjectId: 'math', classId: 'c1' }),
       homeworkListKey({ classId: 'c1', subjectId: 'math' }),
+    )
+  })
+
+  test('IST-095: başlık araması kırpılıp en az 2 karakterle, sıralama beyaz listeyle gönderilir', () => {
+    assert.deepEqual(homeworkListParams({ q: '  kesir ', sort: '-title' }), {
+      q: 'kesir',
+      sort: '-title',
+    })
+    assert.deepEqual(homeworkListParams({ q: 'k' }), {})
+    assert.deepEqual(homeworkListParams({ q: '   ' }), {})
+    assert.equal(homeworkSort('dueDate', 1), 'dueDate')
+    assert.equal(homeworkSort('title', -1), '-title')
+    assert.equal(homeworkSort('createdAt', -1), '-createdAt')
+    assert.equal(homeworkSort('className', 1), undefined)
+    assert.notDeepEqual(
+      homeworkListKey({ q: 'kesir', sort: 'title' }),
+      homeworkListKey({ q: 'kesir', sort: '-title' }),
     )
   })
 

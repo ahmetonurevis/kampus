@@ -93,18 +93,21 @@ export function registerHomeworkRoutes(app: FastifyInstance) {
         operationId: 'listHomework',
         tags: ['homework'],
         summary: 'Ödevler',
-        description: `Ödevler son teslim anına göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: \`classId\`, \`subjectId\`, \`status\` (\`open\`, \`closed\`, \`all\`), \`dateFrom\`/\`dateTo\` (son teslim anının Europe/Istanbul günü, dahil; ters aralık 400). Her satır okuyanın gördüğü teslimlerin sayılarını taşır (\`submissionCounts\`). Bilinmeyen parametre 400. ${READ_ACCESS}`,
+        description: `Ödevler varsayılan olarak son teslim anına göre yeniden eskiye (\`sort\`: \`dueDate\`, \`title\`, \`createdAt\`; eksi azalan; eşitlikte kimlik), sayfalı; süzgeç ve sıralama sayfalamadan önce uygulanır. Süzgeç: \`classId\`, \`subjectId\`, \`q\` (başlıkta harf ve aksan duyarsız arama), \`status\` (\`open\`, \`closed\`, \`all\`), \`dateFrom\`/\`dateTo\` (son teslim anının Europe/Istanbul günü, dahil; ters aralık 400). Her satır okuyanın gördüğü teslimlerin sayılarını taşır (\`submissionCounts\`). Bilinmeyen parametre 400. ${READ_ACCESS}`,
         querystring: homeworkListQuerySchema,
         response: { 200: homeworkListResponseSchema, ...readErrors },
       },
     },
     async (request) => {
-      const { page, pageSize, classId, subjectId, status, dateFrom, dateTo } = request.query
+      const { page, pageSize, classId, subjectId, q, sort, status, dateFrom, dateTo } =
+        request.query
       const result = await listHomework(contextOf(request), {
         page,
         pageSize,
         classId,
         subjectId,
+        q,
+        sort,
         status,
         dateFrom,
         dateTo,

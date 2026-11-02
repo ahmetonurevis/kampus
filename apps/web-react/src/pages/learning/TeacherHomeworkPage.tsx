@@ -1,6 +1,6 @@
 import { useMemo } from 'react'
 import { countOf } from '@kampus/react-shared/collections.ts'
-import type { HomeworkStatusFilter } from '@kampus/react-shared/homework.ts'
+import { homeworkSort, type HomeworkStatusFilter } from '@kampus/react-shared/homework.ts'
 import { useHomeworkList } from '@kampus/react-shared/use-homework.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { useAuth } from '@/auth/use-auth.ts'
@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll, useCoreCounts } from '@/hooks/use-core-collection.ts'
+import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
@@ -24,7 +25,8 @@ import { teacherHomeworkRow, uniqueValues, type TeacherHomeworkRow } from './lea
 
 // Panel parametreleri (`odev`, `odev-form`, `teslim`) süzgeç adlarıyla çakışmamalı.
 const URL_FILTERS = { classId: 'sinif', subjectId: 'ders', status: 'durum' }
-const NO_SORT: readonly string[] = []
+/** Sunucunun sıraladığı sütunlar (API `sort` alanları: başlık, son teslim). */
+const SORTABLE = ['title', 'dueDate'] as const
 const MOBILE_COLUMNS = ['className', 'dueDate', 'delivered']
 const NONE: readonly never[] = []
 
@@ -38,9 +40,10 @@ const isStatus = (value: string): value is Exclude<HomeworkStatusFilter, 'all'> 
 
 /**
  * Ödevler & Değerlendirme (öğretmen; IST-095, DOM-AKD-070…074): kapsamdaki ödevler `/homework`
- * ucundan sunucu sayfalı; sınıf, ders ve durum süzgeci. Ödev ver ve düzenle, teslim durumu,
- * değerlendirme ve arşiv aynı sağ panelde açılır. Teslim sayısı yalnız teslimleri görebilen okura
- * (ödevin öğretmeni, rehber öğretmen, yönetici) gösterilir; sınıf mevcudu sunucu sayımındandır.
+ * ucundan sunucu sayfalı; başlık araması, başlık ve son teslim sıralaması, sınıf, ders ve durum
+ * süzgeci. Ödev ver ve düzenle, teslim durumu, değerlendirme ve arşiv aynı sağ panelde açılır.
+ * Teslim sayısı yalnız teslimleri görebilen okura (ödevin öğretmeni, rehber öğretmen, yönetici)
+ * gösterilir; sınıf mevcudu sunucu sayımındandır.
  */
 export function TeacherHomeworkPage({
   page,
@@ -68,9 +71,14 @@ export function TeacherHomeworkPage({
   const subjectId = filterValue(list.state.filters.subjectId)
   const statusValue = filterValue(list.state.filters.status)
   const status = isStatus(statusValue) ? statusValue : undefined
+  // Sunucu başlık araması: her tuşta istek atılmaz; sayfa arama değişince `useListState`'te sıfırlanır.
+  const search = useDebouncedValue(list.state.query)
+  const sort = homeworkSort(list.state.sortKey, list.state.sortDirection)
   const homework = useHomeworkList({
     page: list.state.page,
     pageSize: list.state.pageSize,
+    q: search,
+    ...(sort ? { sort } : {}),
     ...(classId ? { classId } : {}),
     ...(subjectId ? { subjectId } : {}),
     ...(status ? { status } : {}),
@@ -195,10 +203,9 @@ export function TeacherHomeworkPage({
           list={list}
           rows={rows}
           total={homework.data?.total ?? 0}
-          sortable={NO_SORT}
+          sortable={SORTABLE}
           columns={columns}
           mobileColumns={MOBILE_COLUMNS}
-          search={false}
           caption="Ödev ve teslim listesi"
           empty="Henüz ödev yok."
           emptyFiltered="Bu süzgeçlere uyan ödev yok."

@@ -19,6 +19,7 @@ import { findFile } from '../db/files.ts'
 import { findRecord, loadRecords, type RecordFilter, type StoredRecord } from '../db/records.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { searchKey } from './collection-reads.ts'
 import { environment } from './commands.ts'
 import { defineFileAttachment } from './file-registry.ts'
 import { attachFile, detachFile } from './files.ts'
@@ -78,6 +79,8 @@ const metaOf = (row: StoredRecord): RowMeta => ({
 })
 
 export type HomeworkStatus = 'open' | 'closed'
+/** Liste sıralaması; eksi azalan (route şemasındaki `HOMEWORK_SORTS` ile aynı küme). */
+export type HomeworkSort = 'dueDate' | '-dueDate' | 'title' | '-title' | 'createdAt' | '-createdAt'
 
 const statusAt = (dueDate: string, now: Date): HomeworkStatus =>
   isHomeworkClosed({ dueDate }, now.toISOString()) ? 'closed' : 'open'
@@ -173,14 +176,28 @@ export interface HomeworkListInput {
   pageSize: number
   classId?: string | undefined
   subjectId?: string | undefined
+  /** Başlık araması; harf ve aksan duyarsız (`searchKey`). */
+  q?: string | undefined
+  sort: HomeworkSort
   status: HomeworkStatus | 'all'
   dateFrom?: string | undefined
   dateTo?: string | undefined
 }
 
+/** Sıralama anahtarı: son teslim ve oluşturma anı metin (ISO), başlık Türkçe sırayla. */
+function compareHomework(sort: HomeworkSort, a: StoredRecord, b: StoredRecord): number {
+  const field = sort.replace(/^-/, '') as 'dueDate' | 'title' | 'createdAt'
+  const left = text(a.data[field]) ?? ''
+  const right = text(b.data[field]) ?? ''
+  const order = field === 'title' ? left.localeCompare(right, 'tr') : left.localeCompare(right)
+  return (sort.startsWith('-') ? -order : order) || a.id.localeCompare(b.id)
+}
+
 /**
- * Ödev listesi: son teslim anına göre yeniden eskiye, sonra kimliğe göre, sayfalı. Süzgeçler
- * SQL'de (sınıf, ders, son teslim günü aralığı), durum (`open`/`closed`) bellekte ana göre.
+ * Ödev listesi: `sort` sırasıyla (varsayılan son teslim anına göre yeniden eskiye), eşitlikte
+ * kimliğe göre, sayfalı; süzgeç ve sıralama sayfalamadan önce uygulanır. Süzgeçler SQL'de (sınıf,
+ * ders, son teslim günü aralığı); başlık araması (`q`) ve durum (`open`/`closed`) okunabilir
+ * satırlar üzerinde bellekte (kayıtlar JSON; parametreli, ham SQL yok).
  * Her satır görünen teslimlerin sayılarını taşır (öğrenci ve velide yalnız kendi teslimi).
  */
 export async function listHomework(ctx: ServiceContext, input: HomeworkListInput) {
@@ -196,18 +213,16 @@ export async function listHomework(ctx: ServiceContext, input: HomeworkListInput
   if (prefilter) match.push(prefilter)
   const rows = await loadRecords(ctx.db, ctx.institutionId, [HOMEWORK], { match })
   const now = ctx.now.toISOString()
+  const needle = input.q === undefined ? null : searchKey(input.q.trim())
   const visible = rows
     .filter((row) => scope.canRead(HOMEWORK, row.data))
+    .filter((row) => needle === null || searchKey(text(row.data.title) ?? '').includes(needle))
     .filter((row) => {
       if (input.status === 'all') return true
       const closed = isHomeworkClosed({ dueDate: text(row.data.dueDate) ?? '' }, now)
       return input.status === 'closed' ? closed : !closed
     })
-    .sort(
-      (a, b) =>
-        (text(b.data.dueDate) ?? '').localeCompare(text(a.data.dueDate) ?? '') ||
-        a.id.localeCompare(b.id),
-    )
+    .sort((a, b) => compareHomework(input.sort, a, b))
   const start = (input.page - 1) * input.pageSize
   const page = visible.slice(start, start + input.pageSize)
   const submissions = await visibleSubmissions(

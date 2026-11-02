@@ -35,6 +35,7 @@ import type { Database } from './client.ts'
 import {
   resources,
   resourceShares,
+  resourceVersionFiles,
   resourceVersionItems,
   resourceVersionOutcomes,
   resourceVersions,
@@ -126,10 +127,8 @@ function toStoredResource(
   }
 }
 
-function toStoredVersion(
-  row: ResourceVersionRow,
-  outcomes: ResourceTags['outcomes'],
-): StoredResourceVersion {
+function toStoredVersion(row: ResourceVersionRow, links: VersionLinks): StoredResourceVersion {
+  const outcomes = links.outcomes.get(row.id) ?? []
   return {
     id: row.id,
     resourceId: row.resourceId,
@@ -151,6 +150,7 @@ function toStoredVersion(
     license: row.license ?? null,
     licenseKind: row.licenseKind,
     attributions: row.attributions,
+    fileIds: links.files.get(row.id) ?? [],
     tags: {
       subjectId: row.subjectId,
       gradeLevels: row.gradeLevels,
@@ -235,7 +235,7 @@ function versionValues(institutionId: string, version: ResourceVersion, now: Dat
   }
 }
 
-/** Sürümü kazanım ve soru bağlantılarıyla ekler. */
+/** Sürümü kazanım, dosya ve soru bağlantılarıyla ekler. */
 export async function insertResourceVersion(
   db: Database,
   institutionId: string,
@@ -253,6 +253,17 @@ export async function insertResourceVersion(
     updatedAt: now,
   }))
   if (outcomes.length > 0) await db.insert(resourceVersionOutcomes).values(outcomes)
+  if (version.fileIds.length > 0)
+    await db.insert(resourceVersionFiles).values(
+      version.fileIds.map((fileId, position) => ({
+        institutionId,
+        versionId: version.id,
+        fileId,
+        position,
+        createdAt: now,
+        updatedAt: now,
+      })),
+    )
   const content = version.content
   if (
     version.status !== 'removed' &&
@@ -635,13 +646,13 @@ export async function listVisibleResources(
       .innerJoin(resourceVersions, eq(resourceVersions.institutionId, resources.institutionId))
       .where(where),
   ])
-  const [shares, outcomes] = await Promise.all([
+  const [shares, links] = await Promise.all([
     loadShares(
       db,
       institutionId,
       rows.map((row) => row.resource.id),
     ),
-    loadOutcomes(
+    loadVersionLinks(
       db,
       institutionId,
       rows.map((row) => row.version.id),
@@ -650,7 +661,7 @@ export async function listVisibleResources(
   return {
     rows: rows.map((row) => ({
       resource: toStoredResource(row.resource, row.ownerActive, shares.get(row.resource.id) ?? []),
-      version: toStoredVersion(row.version, outcomes.get(row.version.id) ?? []),
+      version: toStoredVersion(row.version, links),
     })),
     total: totals?.total ?? 0,
   }
@@ -720,6 +731,75 @@ async function loadOutcomes(
   return map
 }
 
+/** Sürümlerin etkin dosya bağları, sırasıyla (DOM-KYN-006). */
+async function loadFileLinks(
+  db: Database,
+  institutionId: string,
+  versionIds: readonly string[],
+): Promise<Map<string, string[]>> {
+  const map = new Map<string, string[]>()
+  if (versionIds.length === 0) return map
+  const rows = await db
+    .select({ versionId: resourceVersionFiles.versionId, fileId: resourceVersionFiles.fileId })
+    .from(resourceVersionFiles)
+    .where(
+      and(
+        eq(resourceVersionFiles.institutionId, institutionId),
+        inArray(resourceVersionFiles.versionId, [...new Set(versionIds)]),
+        isNull(resourceVersionFiles.archivedAt),
+      ),
+    )
+    .orderBy(asc(resourceVersionFiles.position))
+  for (const row of rows) {
+    const list = map.get(row.versionId) ?? []
+    list.push(row.fileId)
+    map.set(row.versionId, list)
+  }
+  return map
+}
+
+/** Sürüm satırının bağlantı tablolarındaki alanları (kazanım ve dosya). */
+interface VersionLinks {
+  outcomes: ReadonlyMap<string, ResourceTags['outcomes']>
+  files: ReadonlyMap<string, string[]>
+}
+
+async function loadVersionLinks(
+  db: Database,
+  institutionId: string,
+  versionIds: readonly string[],
+): Promise<VersionLinks> {
+  const [outcomes, files] = await Promise.all([
+    loadOutcomes(db, institutionId, versionIds),
+    loadFileLinks(db, institutionId, versionIds),
+  ])
+  return { outcomes, files }
+}
+
+/**
+ * Dosyaya etkin bağ açan sürümler (DOM-KYN-006): dosyanın okuma kuralı bunlardan okunabilir
+ * olanı arar. Başka kurumun dosyası sonuçta yoktur.
+ */
+export async function listFileVersionIds(
+  db: Database,
+  institutionId: string,
+  fileId: string,
+): Promise<string[]> {
+  if (!UUID.test(fileId)) return []
+  const rows = await db
+    .select({ versionId: resourceVersionFiles.versionId })
+    .from(resourceVersionFiles)
+    .where(
+      and(
+        eq(resourceVersionFiles.institutionId, institutionId),
+        eq(resourceVersionFiles.fileId, fileId),
+        isNull(resourceVersionFiles.archivedAt),
+      ),
+    )
+    .orderBy(asc(resourceVersionFiles.versionId))
+  return rows.map((row) => row.versionId)
+}
+
 /** Kaynak, sahibin etkinliği ve paylaşım hedefleriyle; yoksa veya başka kurumdaysa `null`. */
 export async function findResource(
   db: Database,
@@ -757,12 +837,12 @@ export async function listResourceVersions(
       ),
     )
     .orderBy(asc(resourceVersions.versionNumber))
-  const outcomes = await loadOutcomes(
+  const links = await loadVersionLinks(
     db,
     institutionId,
     rows.map((row) => row.id),
   )
-  return rows.map((row) => toStoredVersion(row, outcomes.get(row.id) ?? []))
+  return rows.map((row) => toStoredVersion(row, links))
 }
 
 /** Sürüm kimliklerinin denetim alanları (quiz/alıştırma setinin soruları, DOM-KYN-013). */
@@ -795,13 +875,13 @@ export async function loadItemVersionRefs(
     .where(
       and(eq(resourceVersions.institutionId, institutionId), inArray(resourceVersions.id, ids)),
     )
-  const outcomes = await loadOutcomes(
+  const links = await loadVersionLinks(
     db,
     institutionId,
     rows.map((row) => row.version.id),
   )
   for (const row of rows) {
-    const stored = toStoredVersion(row.version, outcomes.get(row.version.id) ?? [])
+    const stored = toStoredVersion(row.version, links)
     map.set(stored.id, {
       id: stored.id,
       status: stored.status,
@@ -843,13 +923,13 @@ export async function loadVersionPairs(
     .where(
       and(eq(resourceVersions.institutionId, institutionId), inArray(resourceVersions.id, ids)),
     )
-  const [shares, outcomes] = await Promise.all([
+  const [shares, links] = await Promise.all([
     loadShares(
       db,
       institutionId,
       rows.map((row) => row.resource.id),
     ),
-    loadOutcomes(
+    loadVersionLinks(
       db,
       institutionId,
       rows.map((row) => row.version.id),
@@ -858,7 +938,7 @@ export async function loadVersionPairs(
   for (const row of rows)
     map.set(row.version.id, {
       resource: toStoredResource(row.resource, row.ownerActive, shares.get(row.resource.id) ?? []),
-      version: toStoredVersion(row.version, outcomes.get(row.version.id) ?? []),
+      version: toStoredVersion(row.version, links),
     })
   return map
 }

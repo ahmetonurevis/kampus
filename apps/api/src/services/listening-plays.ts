@@ -151,6 +151,9 @@ export async function grantListeningPlay(
     file.attachedId === null
   )
     return null
+  // TODO(dinleme-surum-bagi): dosyanın yalnız ilk bağlandığı sürüm (`attached_id`) okunur; sonraki
+  // sürüm ve kopyanın bağları `resource_version_files`'tadır (DOM-KYN-006). Sayım devreye
+  // girmeden önce atamalar bağ tablosundaki bütün sürümlerden yüklenmeli.
   const assignments = await loadVersionAssignments(tx, ctx.institutionId, file.attachedId)
   const limited = assignments.filter((assignment) => assignment.listeningPlays !== null)
   if (limited.length === 0) return null
@@ -230,6 +233,7 @@ export async function listeningSummary(
 ) {
   const limit = assignment.listeningPlays
   if (limit === null) return null
+  // TODO(dinleme-surum-bagi): yalnız ilk bağı bu sürüm olan kayıtlar bulunur; bağ tablosu okunmalı.
   const media = await listAttachedFiles(db, institutionId, {
     type: RESOURCE_VERSION_ATTACHMENT,
     id: assignment.resourceVersionId,

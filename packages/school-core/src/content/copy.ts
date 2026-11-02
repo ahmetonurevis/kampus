@@ -106,6 +106,8 @@ export function planCopy(input: CopyInput): CopyPlan {
         path: ['license', 'expiryDate'],
       })
     }
+    // Dosya bağları aynı dosyaları gösterir (DOM-KYN-006): dosya içeriği değişmez, kopya yeni bayt
+    // ve kota açmaz; erişim kopyanın okuma kuralından geçer.
     data = versionData(version)
   } else {
     if (!canBrowseLibrary(actor.role) || !libraryVersionVisible(source.version)) notFound()
@@ -119,8 +121,9 @@ export function planCopy(input: CopyInput): CopyPlan {
       )
     }
     // TODO(F3b): platform `fileId`'leri kurumun dosyası değildir; servis kopyada dosyaları kurum
-    // deposuna kopyalayıp yeni kimliklerle değiştirmeli (ADR 0003 karar 3, kurum kapsamı).
-    data = { ...versionData(source.version), license: copyLineage(source).license }
+    // deposuna kopyalayıp yeni kimliklerle değiştirmeli (ADR 0003 karar 3, kurum kapsamı). O
+    // zamana kadar kopyanın dosya bağı boştur (DOM-KYN-006).
+    data = { ...versionData(source.version), license: copyLineage(source).license, fileIds: [] }
   }
 
   const issues =

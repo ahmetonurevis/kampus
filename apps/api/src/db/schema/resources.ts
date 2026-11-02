@@ -32,11 +32,13 @@ import {
   LICENSE_KINDS,
   OUTCOME_SOURCES,
   PRIMARY_SKILLS,
+  RESOURCE_FILE_LIST_MAX,
   SHARE_SCOPES,
 } from '@kampus/school-core/content/taxonomy.ts'
 
 import { institutions } from './auth.ts'
 import { keys, oneOf, requiredColumns } from './columns.ts'
+import { files } from './files.ts'
 
 /**
  * İçerik havuzu (ADR 0004 karar 1, 3; docs/domain/kaynak-platformu.md). Kaynak (`resources`)
@@ -290,6 +292,54 @@ export const resourceVersionItems = pgTable(
     check('resource_version_items_points_check', sql`${table.points} between 1 and 100`),
     // Soru yabancı anahtarı ve kaldırmada soruyu içeren quiz'ler (DOM-KYN-051).
     index('resource_version_items_item_idx').on(table.institutionId, table.itemVersionId),
+  ],
+)
+
+/**
+ * Sürümün dosyaları (DOM-KYN-006; ADR 0003 karar 5), sırasıyla. Core `fileIds` listesiyle aynıdır;
+ * içerikteki ana dosya alanı (`fileId`) bu listeden birini gösterir.
+ *
+ * - Dosya satırı değişmezdir (migration 0015 tetikleyicisi); aynı dosyaya birden çok sürüm bağ
+ *   açabilir: yeni sürüm ve kopya önceki sürümün dosyalarını yeni satırla gösterir, bayt
+ *   kopyalanmaz. `files.attached_*` dosyayı ilk bağlandığı sürüme yazar (24 saat temizliğinden
+ *   çıkar); erişim bu tablodaki okunabilir herhangi bir sürümden geçer.
+ * - Yalnız taslak düzenlemesi bağı değiştirir: çıkan dosya arşivlenir (`archived_at`), geri gelen
+ *   açılır. Kullanılmış (yayımlanmış, incelemede, arşivli) sürümün bağı değişmez; servis reddeder.
+ * - Kurum kilitli bileşik yabancı anahtarlar: başka kurumun sürümüne veya dosyasına bağ imkânsız.
+ */
+export const resourceVersionFiles = pgTable(
+  'resource_version_files',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    versionId: uuid('version_id').notNull(),
+    fileId: uuid('file_id').notNull(),
+    /** Dosya sırası (core listesi sırası). */
+    position: integer('position').notNull(),
+    ...required(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'resource_version_files_pkey',
+      columns: [table.institutionId, table.versionId, table.fileId],
+    }),
+    foreignKey({
+      name: 'resource_version_files_version_fkey',
+      columns: [table.institutionId, table.versionId],
+      foreignColumns: [resourceVersions.institutionId, resourceVersions.id],
+    }),
+    foreignKey({
+      name: 'resource_version_files_file_fkey',
+      columns: [table.institutionId, table.fileId],
+      foreignColumns: [files.institutionId, files.id],
+    }),
+    check(
+      'resource_version_files_position_check',
+      sql`${table.position} >= 0 and ${table.position} < ${sql.raw(String(RESOURCE_FILE_LIST_MAX))}`,
+    ),
+    // Dosya yabancı anahtarı ve dosyadan sürümlere erişim (okuma kuralı, kaldırma).
+    index('resource_version_files_file_idx').on(table.institutionId, table.fileId),
   ],
 )
 

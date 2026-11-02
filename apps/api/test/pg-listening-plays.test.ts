@@ -8,8 +8,8 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { files } from '../src/db/schema/files.ts'
+import { resourceVersionFiles } from '../src/db/schema/resources.ts'
 import { attemptMediaPlays, taskAssignments } from '../src/db/schema/skills.ts'
-import { defineFileAttachment } from '../src/services/file-registry.ts'
 import { listeningWindowMs, RESOURCE_VERSION_ATTACHMENT } from '../src/services/listening-plays.ts'
 import {
   buildTestApp,
@@ -28,16 +28,11 @@ import { seedResource } from './support/resources-sample.ts'
  * Deneme satırı `for update` ile kilitlenir; aynı anda gelen bağlantı isteklerinden yalnız biri
  * sayar, ötekiler yeniden bağlantı penceresinde sayılmadan bağlantı alır. PGlite tek bağlantılı
  * olduğundan gerçek eşzamanlılık yalnız burada sınanır. Gerçek akışı iddia etmez: dosya soru
- * sürümüne elle bağlanır, okuma kuralı sahtedir ve atamanın hakkı veritabanında verilir (API dolu
+ * sürümüne elle bağlanır (okuma kuralı kaynağınkidir, sürüm 9-A'ya paylaşılır) ve atamanın hakkı veritabanında verilir (API dolu
  * hakkı 422 ile reddeder; `TODO(dinleme-icerik-bagi)`, ayrıntı `listening-plays.test.ts`).
  */
 
 const WINDOW = listeningWindowMs(null)
-
-defineFileAttachment(RESOURCE_VERSION_ATTACHMENT, {
-  purposes: ['listening_audio'],
-  canRead: async () => true,
-})
 
 describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () => {
   let db: Database
@@ -100,6 +95,9 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
     const admin = await signInAs(app, institution.admin)
     const { versions } = await seedResource(db, institution.id, {
       ownerUserId: institution.admin.id,
+      // Dosyanın okuma kuralı kaynağınkidir (DOM-KYN-006): 9-A'ya paylaşılan sürümü öğrenci okur.
+      shareScope: 'classes',
+      sharedClassIds: ['9-A'],
       versions: [
         {
           status: 'published',
@@ -144,6 +142,14 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
       attachedType: RESOURCE_VERSION_ATTACHMENT,
       attachedId: versionId,
       attachedAt: FIXED_NOW,
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })
+    await db.insert(resourceVersionFiles).values({
+      institutionId: institution.id,
+      versionId,
+      fileId,
+      position: 0,
       createdAt: FIXED_NOW,
       updatedAt: FIXED_NOW,
     })

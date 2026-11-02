@@ -22,6 +22,7 @@ import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import {
   draftPatchBodySchema,
   emptyBodySchema,
+  newVersionBodySchema,
   reasonBodySchema,
   removalResponseSchema,
   resourceCreateBodySchema,
@@ -44,6 +45,9 @@ const MODULE = 'learning'
 const WRITERS: readonly Role[] = ['yonetici', 'ogretmen']
 const ACCESS =
   'Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.'
+
+const FILES =
+  'Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`.'
 
 const created = { 201: resourceWriteResponseSchema, ...commandErrors }
 const updated = { 200: resourceWriteResponseSchema, ...commandErrors }
@@ -90,7 +94,7 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
         operationId: 'createResource',
         tags: ['resources'],
         summary: 'Kaynak oluştur',
-        description: `Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam \`private\`. Gövde core \`resourceVersionInputSchema\` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 \`quiz_item_missing\`; dosyalı içerik henüz 422 \`resource_files_unsupported\`. Başarı 201 ve \`Location\`. ${ACCESS}`,
+        description: `Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam \`private\`. Gövde core \`resourceVersionInputSchema\` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 \`quiz_item_missing\`. ${FILES} Başarı 201 ve \`Location\`. ${ACCESS}`,
         body: resourceCreateBodySchema,
         headers: commandHeadersSchema('optional', { ifMatch: false }),
         response: created,
@@ -115,7 +119,7 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
         operationId: 'updateResourceDraft',
         tags: ['resources'],
         summary: 'Taslağı düzenle',
-        description: `Taslak veya reddedilmiş sürümün alanlarını değiştirir (DOM-KYN-030, 032); verilmeyen alan aynen kalır, \`tags\` bütün olarak değişir. Yalnız yazar (403). Yayımlanmış, incelemedeki veya arşivli sürüm 409 \`version_immutable\`; içerik türü değişmez (422 \`content_type_immutable\`). Kopyada miras lisans ve kaynak gösterimi değişmez (422 \`license_inherited\`, \`attribution_inherited\`; DOM-KYN-050). Reddedilen sürüm taslağa döner. \`If-Match\` zorunlu: sürümün \`rowVersion\`'ı (yoksa 400 \`if_match_required\`, tutmazsa 409). ${ACCESS}`,
+        description: `Taslak veya reddedilmiş sürümün alanlarını değiştirir (DOM-KYN-030, 032); verilmeyen alan aynen kalır, \`tags\` bütün olarak değişir. Yalnız yazar (403). Yayımlanmış, incelemedeki veya arşivli sürüm 409 \`version_immutable\`; içerik türü değişmez (422 \`content_type_immutable\`). Kopyada miras lisans ve kaynak gösterimi değişmez (422 \`license_inherited\`, \`attribution_inherited\`; DOM-KYN-050). Reddedilen sürüm taslağa döner. \`fileIds\` verilirse liste bütün olarak değişir; taslakta zaten bulunan dosya yeniden denetlenmez, listeden çıkan ve yalnız bu taslağa bağlı dosyanın bağı kalkar. ${FILES} \`If-Match\` zorunlu: sürümün \`rowVersion\`'ı (yoksa 400 \`if_match_required\`, tutmazsa 409). ${ACCESS}`,
         params: resourceVersionParamsSchema,
         body: draftPatchBodySchema,
         headers: commandHeadersSchema('optional'),
@@ -143,9 +147,9 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
         operationId: 'createResourceVersion',
         tags: ['resources'],
         summary: 'Yeni sürüm aç',
-        description: `Yayındaki (yoksa son) sürümün içeriğinden yeni taslak sürüm açar (DOM-KYN-032); numara bir artar. Sahip, zümre başkanı veya yönetici (403). Açık sürüm varken 409 \`open_version_exists\`, kaldırılmış kaynakta 409 \`resource_removed\`. Arşivlenmiş kaynak yeniden açılır. Başarı 201. ${ACCESS}`,
+        description: `Yayındaki (yoksa son) sürümün içeriğinden yeni taslak sürüm açar (DOM-KYN-032); numara bir artar. Sahip, zümre başkanı veya yönetici (403). Açık sürüm varken 409 \`open_version_exists\`, kaldırılmış kaynakta 409 \`resource_removed\`. Arşivlenmiş kaynak yeniden açılır. Yeni sürüm temel sürümün dosyalarını miras alır (aynı dosyaya yeni bağ); \`fileIds\` verilirse liste onun yerine geçer, temel sürümün dosyaları yeniden denetlenmez. ${FILES} Başarı 201. ${ACCESS}`,
         params: resourceParamsSchema,
-        body: emptyBodySchema,
+        body: newVersionBodySchema,
         headers: commandHeadersSchema('optional', { ifMatch: false }),
         response: created,
       },
@@ -154,7 +158,7 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
       ifMatchVersion(request, false)
       const result = await openNewVersion(
         contextOf(request),
-        request.params.resourceId,
+        { resourceId: request.params.resourceId, fileIds: request.body.fileIds },
         idempotencyOf(request, false),
       )
       return send(reply, resourceWriteResponseSchema, result)
@@ -260,7 +264,7 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
         operationId: 'copyResource',
         tags: ['resources'],
         summary: 'Kaynağı kopyala',
-        description: `Yayındaki güncel sürümü yeni kaynağa kopyalar (DOM-KYN-050): sahibi kopyalayan, kapsam \`private\`, durum \`Taslak\`; \`derivedFromVersionId\`, lisans ve kaynak gösterimleri miras alınır ve sonraki taslaklarda değiştirilemez. Yayında sürüm yoksa 409 \`copy_source_not_published\`; uyarlamaya izin vermeyen lisans 403 \`license_forbids_copy\`; süresi dolan lisans 409 \`license_expired\`. Başarı 201 ve \`Location\`. ${ACCESS}`,
+        description: `Yayındaki güncel sürümü yeni kaynağa kopyalar (DOM-KYN-050): sahibi kopyalayan, kapsam \`private\`, durum \`Taslak\`; \`derivedFromVersionId\`, lisans ve kaynak gösterimleri miras alınır ve sonraki taslaklarda değiştirilemez. Dosyalar kopyalanmaz: kopya aynı dosyalara yeni bağ açar (DOM-KYN-006). Yayında sürüm yoksa 409 \`copy_source_not_published\`; uyarlamaya izin vermeyen lisans 403 \`license_forbids_copy\`; süresi dolan lisans 409 \`license_expired\`. Başarı 201 ve \`Location\`. ${ACCESS}`,
         params: resourceParamsSchema,
         body: emptyBodySchema,
         headers: commandHeadersSchema('optional', { ifMatch: false }),

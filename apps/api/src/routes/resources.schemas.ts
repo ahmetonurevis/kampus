@@ -5,6 +5,7 @@ import {
   attributionSchema as coreAttributionSchema,
   RESOURCE_STATUSES,
   resourceContentSchema,
+  resourceFileIdsSchema,
   resourceLicenseSchema,
   resourceTagsSchema,
   resourceVersionInputSchema,
@@ -29,6 +30,7 @@ import {
 
 import { RESOURCE_SORTS } from '../db/resources.ts'
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
+import { filePurposeSchema } from './files.schemas.ts'
 
 /**
  * İçerik havuzu okuma uçlarının şemaları. İçerik, cevap anahtarı ve lisans ayrıntısı tür başına
@@ -124,6 +126,35 @@ const contentSchema = z
   .record(z.string(), z.unknown())
   .describe('Tür başına içerik (school-core `resourceContentSchema`; `type` alanı türdür)')
 
+/**
+ * Sürüm dosyasının meta verisi (DOM-KYN-006); içerik `GET /files/:fileId/url` ile, dosyayı açan
+ * sürümün okuma kuralından geçerek indirilir. Yükleyen ve depo anahtarı yanıta girmez.
+ */
+const resourceFileSchema = z
+  .object({
+    id,
+    name: z.string().nullable().describe('Temizlenmiş özgün ad; yalnız gösterim için'),
+    contentType: z.string().describe('İçerikten tespit edilen MIME türü'),
+    byteSize: z.number().int().min(1),
+    purpose: filePurposeSchema,
+    durationMs: z
+      .number()
+      .int()
+      .min(0)
+      .nullable()
+      .describe('Ses/video süresi; ölçülmediyse `null`'),
+    status: z
+      .enum(['processing', 'ready', 'deleted'])
+      .describe(
+        '`processing` dönüştürülüyor (bağlantı verilmez); `deleted` saklama sonunda silindi',
+      ),
+  })
+  .meta({ id: 'ResourceFile' })
+
+const filesSchema = z
+  .array(resourceFileSchema)
+  .describe('Sürümün dosyaları, `fileIds` sırasıyla; kaldırılan sürümde boş (DOM-KYN-051)')
+
 const versionSummarySchema = z
   .object({
     id,
@@ -158,6 +189,7 @@ const staffVersionSchema = versionSummarySchema
     reviewedAt: instant.nullable(),
     rejectionReason: z.string().nullable(),
     removalReason: z.string().nullable(),
+    files: filesSchema,
     rowVersion: z.number().int().min(1).describe('İyimser kilit sürümü (`If-Match`)'),
   })
   .meta({ id: 'ResourceVersion' })
@@ -173,6 +205,7 @@ const learnerVersionSchema = z
     tags: tagsSchema,
     attributions: z.array(attributionSchema),
     licenseKind,
+    files: filesSchema,
   })
   .meta({ id: 'LearnerResourceVersion' })
 
@@ -281,11 +314,23 @@ export const draftPatchBodySchema = z
     tags: resourceTagsSchema.optional().describe('Etiketler bütün olarak değişir'),
     license: resourceLicenseSchema.nullable().optional(),
     attributions: z.array(coreAttributionSchema).max(30).optional(),
+    fileIds: resourceFileIdsSchema
+      .optional()
+      .describe(
+        'Sürümün sıralı dosya listesi, bütün olarak değişir; içerikteki dosya listede bulunmalıdır (DOM-KYN-006)',
+      ),
   })
   .refine((patch) => Object.keys(patch).length > 0, 'En az bir alanı değiştirin.')
 
 /** Gövdesiz komutlar: istemci `{}` gönderir; bilinmeyen alan 400. */
 export const emptyBodySchema = z.strictObject({})
+
+/** Yeni sürüm: dosya listesi verilmezse temel sürümün listesi aynen kalır (DOM-KYN-006, 032). */
+export const newVersionBodySchema = z.strictObject({
+  fileIds: resourceFileIdsSchema
+    .optional()
+    .describe('Yeni sürümün sıralı dosya listesi; temel sürümün dosyaları yeniden denetlenmez'),
+})
 
 export const transitionBodySchema = z.strictObject({
   reason: z.string().max(1000).optional().describe('Kullanılmaz; yalnız ret ve telif bildiriminde'),

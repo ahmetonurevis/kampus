@@ -79,3 +79,32 @@ Sözleşme:
 - Öğrenci henüz oluşmadıysa (`studentId` yok) öğrenci amaçları "öğrenci seçilmeden istenemez" der.
 
 **Kancalar** (`packages/react-shared/src/use-consents.ts`, web ve mobil ortak): `useConsentText(purpose)` / `useConsentTexts(purposes)` güncel metin ve en düşük sürüm; `useConsents(studentId?, { status })` rıza ve itiraz satırları (varsayılan geçmiş dahil); `useConsentStatus(studentId?)` amaç başına geçerli/değil ve rızayı kimin verdiği (`grantor`); `useGiveConsent()` rıza ya da `decision: 'objected'` itirazı; `useWithdrawConsent()` geri çekme. Yazma kancaları `useApiCommand` üzerindedir: `Idempotency-Key` kancada üretilir ve belirsiz hatadan sonra aynı gövdeyle yeniden denemede aynı kalır; başarıda ve 409'da `['consents']` önekli sorgular (metin, liste, sonuç) tazelenir. `CONSENT_MESSAGES` `consent_text_outdated`, `consent_adult_self`, `consent_exists`, `consent_required` ve diğer rıza kodlarını Türkçe iletiye eşler; `isConsentInlineError` olanlar (`consent_text_outdated`, `consent_exists`, `consent_text_not_found`) `submit(…, { silent })` ile formda anlatılır.
+
+## Pano kartı ekleme (IST-116, OG-025)
+
+Genel Bakış gövdesi sayfa kodunda değil kart kaydındadır. `apps/web-react/src/pages/dashboard/dashboard-cards.tsx` (ortak dosya) iki kaynağı birleştirir: Oğuzhan'ın kartları ve `// Onur: kayıt ve finans` bloğu. `DashboardCardGrid` kaydı rol ve kapalı modüle göre tek yerde süzer (`dashboard-cards-model.ts`), sayaçları `StatGrid`'e, kalan kartları 2:1 `DashboardGrid` satırlarına dizer; sayfalar (`RoleDashboard`, `StudentDashboard`) kartları bilmez.
+
+Kart kaydı (`defineCard`): `id` (`<grup>.<ad>`, kayıtta tekil; yinelenirse açılışta hata), `roles` (kartı gören roller), `module` (kapalıysa kart çizilmez), `section` (modülün okuduğu özet bölümü; yanıt geldiyse sunucunun `null` kararı, gelmediyse oturum bayrağı), isteğe bağlı `when` (ek koşul), `area` (`stat` sayaç, `main` geniş sütun, `side` dar sütun), `order` (rol içinde artan) ve `component`. Bileşen `{ ctx }` alır: `ctx.data` rolün özet yanıtı (gelene kadar `null`), `ctx.state` sorgu durumu, `ctx.role`, `ctx.session`, `ctx.now`; kendi iskeletini ve hatasını `StatCard`/`ListCard` ile çizer. Yerleşim: `main` kart yeni satır açar, ardından gelen ilk `side` kart aynı satıra girer; ana kartı gizli yan kart ilk sütunda tek başına durur.
+
+Onur için örnek (kendi dosyasında kart, ortak dosyada bir satır):
+
+```tsx
+// apps/web-react/src/pages/finance/DashboardCards.tsx (Onur'un dosyası)
+export const COLLECTION_CARDS = [
+  defineCard({
+    id: 'yonetici.tahsilat-ozeti',
+    roles: ['yonetici'],
+    module: 'finance',
+    section: (data) => data.finance,
+    area: 'stat',
+    order: 45,
+    component: ({ ctx }) => <StatCard label="…" icon="Wallet" value="…" state={ctx.state} />,
+  }),
+]
+
+// dashboard-cards.tsx, Onur bloğu
+import { COLLECTION_CARDS } from '../finance/DashboardCards.tsx'
+const ONUR_CARDS: readonly DashboardCard[] = [...COLLECTION_CARDS]
+```
+
+Bugünkü finans ve kayıt kartları (yönetici tahsilat sayaçları, taksit durumu, aylık tahsilat; ön büro taksit sayaçları ve listeleri; veli bakiyesi; ön büro CRM aday kartları) bileşen olarak `HandoverFinanceCards.tsx` ve `HandoverEnrollmentCards.tsx` dosyalarında (Oğuzhan alanında, ad bilerek Onur desenleri dışında), girişleri `dashboard-cards.tsx` "Onur'a devredilecek" listesindedir (ON-032). Onur kartı kendi klasörüne taşıyınca girişi Onur bloğuna alır, devredilecek listeden siler. Testler: `apps/web-react/tests/dashboard-cards.test.ts`.

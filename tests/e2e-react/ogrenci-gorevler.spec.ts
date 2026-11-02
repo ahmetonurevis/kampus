@@ -12,7 +12,9 @@ import {
   QUIZ_QUESTIONS,
   requestSecondRating,
   seedHomework,
+  PASSAGE_TEXT,
   seedQuiz,
+  seedReadingQuiz,
   seedRubric,
   userIdOf,
 } from './support/tasks.ts'
@@ -302,6 +304,42 @@ test.describe('öğrenci görevleri: quiz denemesi', () => {
     await page.goto(`/ogrenci/soru-coz?coz=${assignmentId}`)
     await expect(main(page).getByText('Bu içerik şu an kullanıma kapalı.')).toBeVisible()
     await expect(page.getByRole('button', { name: /deneme başlat/i })).toHaveCount(0)
+  })
+
+  test('DOM-KYN-051, OG-985: kaldırılmış içerikte süren deneme çözme ekranını açmaz; soru ve metin görünmez, sakin not gösterilir', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await schoolOf(tenant, api)
+    const { quiz, passageResourceId } = await seedReadingQuiz(
+      school.tenant.institutionId,
+      school.ownerId,
+      'Kaldırılan okuma',
+    )
+    const assignmentId = await assignTask(school.admin, {
+      resourceVersionId: quiz,
+      settings: { attempts: { kind: 'practice' } },
+    })
+    const started = await school.student.post(
+      `/api/v1/task-assignments/${assignmentId}/attempts`,
+      {},
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(started.status, JSON.stringify(started.body)).toBe(201)
+    const removed = await school.admin.post(
+      `/api/v1/resources/${passageResourceId}/remove`,
+      { reason: 'Telif ihlali kabul edildi' },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(removed.status, JSON.stringify(removed.body)).toBe(200)
+    await loginAs(school.tenant.user('ogrenci'))
+    await page.goto(`/ogrenci/soru-coz?coz=${assignmentId}`)
+    await expect(main(page).getByText('Bu içerik şu an kullanıma kapalı.')).toBeVisible()
+    await expect(page.getByText(QUIZ_QUESTIONS[0])).toHaveCount(0)
+    await expect(page.getByText(PASSAGE_TEXT)).toHaveCount(0)
+    await expect(page.getByRole('button', { name: /teslim et/i })).toHaveCount(0)
   })
 
   test('DOM-BEC-042: son tarihi geçmiş görevde deneme başlatılamaz ve neden yazılır', async ({

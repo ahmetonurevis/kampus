@@ -1,9 +1,11 @@
 // Taksit taahhütnamesi: güncel ödeme planı, tahsilat özeti ve imza alanı.
 import { money } from '@kampus/school-core/lib/format.ts'
 import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
-import { COLORS, date, DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
+import { date, DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
 import { INSTALLMENT_COLUMNS, studentFields } from './finance-shared.ts'
 import type { TemplateOptions } from './shared.ts'
+
+const COMMITMENT_BLOCK_MM = 29
 
 /**
  * Taksit taahhütnamesi: öğrencinin güncel ödeme planı, tahsilat özeti ve imza alanı.
@@ -22,9 +24,10 @@ export function paymentPlanDocument(
     institution: options.institution,
     generatedAt: options.generatedAt ?? new Date(),
     reference: data.reference,
-    footerNote: 'Ödeme planı özetidir; kurumun imzalı sözleşmesi veya resmî makbuz yerine geçmez.',
+    footerNote:
+      'Tahsilat durumu belgenin oluşturulduğu andaki kayıtlardır; sözleşme veya resmî makbuz yerine geçmez.',
   })
-  doc.heading('Taksit taahhütnamesi', 'Öğrenciye ait güncel ödeme planı ve tahsilat özeti')
+  doc.heading('Taksit taahhütnamesi')
   doc.fields(studentFields(data))
   doc.metrics([
     ['TOPLAM BEDEL', money(data.total)],
@@ -42,12 +45,9 @@ export function paymentPlanDocument(
     ]),
     true,
   )
-  doc.paragraph(
-    'Bu plan, belgenin oluşturulduğu andaki tahsilat durumunu gösterir. Tamamlanan her tahsilat için ayrı bir dekont alınabilir.',
-    8,
-    COLORS.muted,
-  )
-  doc.paragraph('Yukarıdaki taksitleri vade tarihlerinde ödemeyi taahhüt ederim.')
+  // Taahhüt ile imza ayrı sayfaya düşmez: 10 pt tek satır 8,7 mm, sıkışık imza alanı 20 mm.
+  doc.ensure(COMMITMENT_BLOCK_MM)
+  doc.paragraph('Ödenmemiş taksitleri vade tarihlerinde ödemeyi taahhüt ederim.')
   doc.signatures(
     // Yetişkin kursiyerde veli yoktur; taahhüdü ödeyen olarak kendisi verir.
     data.parent ? `Veli · ${data.parent.name}` : `Ödeyen · ${data.student.name}`,

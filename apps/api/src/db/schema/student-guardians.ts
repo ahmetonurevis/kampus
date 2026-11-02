@@ -69,7 +69,8 @@ export const studentGuardians = pgTable(
       'student_guardians_restriction_check',
       sql`not ${table.isContactRestricted} or (${table.custody} = 'none' and not ${table.isPayer} and not ${table.isPickupAuthorized})`,
     ),
-    // Öğrencinin en çok bir ödeyicisi (DOM-ILT-074); eşzamanlı ikinci ödeyici 23505 → 409.
+    // Öğrencinin en çok bir ödeyicisi (DOM-ILT-074); ikinci ödeyici 23505 → 409
+    // `guardian_payer_exists` (unique-constraints.ts).
     uniqueIndex('student_guardians_payer_key')
       .on(table.institutionId, table.studentId)
       .where(sql`${table.isPayer} and ${table.archivedAt} is null`),

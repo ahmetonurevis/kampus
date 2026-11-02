@@ -885,7 +885,9 @@ describe('dosya uçları', () => {
     )
     const [row] = (await rowsOf(t.institution.id)).filter((file) => file.id === id)
     assert.equal(row?.status, 'rejected')
-    assert.equal((await get(t.student.cookie, `/api/v1/files/${id}/url`)).statusCode, 404)
+    // Sabah kararı 42: yükleyen ayrı kod alır, başkası 404.
+    assert.equal((await get(t.student.cookie, `/api/v1/files/${id}/url`)).statusCode, 422)
+    assert.equal((await get(t.otherStudent.cookie, `/api/v1/files/${id}/url`)).statusCode, 404)
   })
 
   test('ret yeniden bildirilince yalnız nesne silme yeniden çalışır; durum ve denetim değişmez, ready 409 kalır', async () => {
@@ -929,7 +931,7 @@ describe('dosya uçları', () => {
     })
   })
 
-  test('reddedilen dosyanın nesnesi silinir ve görünmez', async () => {
+  test('reddedilen dosyanın nesnesi silinir; yükleyen 422 file_rejected alır, başkası ve başka kurum 404 (Sabah kararı 42)', async () => {
     const t = await tenant()
     const id: string = (await upload(t.student.cookie, uploadParts('submission', PDF))).json().data
       .id
@@ -941,7 +943,16 @@ describe('dosya uçları', () => {
       log: app.log,
     })
     assert.equal(await store.storage.head(row.storageKey), null)
-    assert.equal((await get(t.student.cookie, `/api/v1/files/${id}/url`)).statusCode, 404)
+    // Sabah kararı 42: yükleyene 422 `file_rejected`; başkasına, yöneticiye ve başka kuruma 404
+    // (varlık ipucu yok).
+    for (const url of [`/api/v1/files/${id}`, `/api/v1/files/${id}/url`]) {
+      const own = await get(t.student.cookie, url)
+      assert.equal(own.statusCode, 422)
+      assert.equal(own.json().code, 'file_rejected')
+      assert.equal((await get(t.otherStudent.cookie, url)).statusCode, 404)
+      assert.equal((await get(t.admin.cookie, url)).statusCode, 404)
+      assert.equal((await get((await tenant()).student.cookie, url)).statusCode, 404)
+    }
   })
 
   test('ADR 0003 karar 5 bağlanmamış dosya 24 saat sonra temizlenir; bağlı ve yeni dosya kalır', async () => {

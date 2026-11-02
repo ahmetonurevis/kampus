@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { SUBSKILLS } from '@kampus/school-core/content/taxonomy.ts'
 import {
   useSubmitTaskAttempt,
   type TaskAttemptDetail,
@@ -10,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
 import { QuestionInput } from './QuestionInput.tsx'
+import { ReadingPassage } from './ReadingPassage.tsx'
 import { answeredCount, formatRemaining, isAnswered } from './student-task-model.ts'
 import { useAttemptAnswers, type SaveState } from './use-attempt-answers.ts'
 
@@ -33,7 +35,9 @@ const SAVE_TEXT: Record<SaveState, string> = {
 /**
  * Deneme çözme ekranı (DOM-BEC-042, 043, 045): sorular tek tek, cevaplar otomatik kaydedilir,
  * süre sunucu saatinden gelir. Çözüm sırasında doğru cevap ya da puan yoktur; teslimden sonra
- * sonuç ekranı sunucunun açtığı kadarını gösterir.
+ * sonuç ekranı sunucunun açtığı kadarını gösterir. Okuma-anlama etkinliğinde (IST-042) metin
+ * geniş ekranda soruların solunda kendi içinde kayar, dar ekranda üstte durur; soru başında alt
+ * beceri etiketi (DOM-BEC-006) yazılır.
  */
 export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }: Props) {
   const answers = useAttemptAnswers(attempt)
@@ -79,10 +83,10 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
   }
 
   if (!question) return null
-  return (
+  const player = (
     <section
       aria-labelledby="deneme-baslik"
-      className="panel rounded-card border bg-surface p-6 max-[650px]:p-4"
+      className="panel min-w-0 rounded-card border bg-surface p-6 max-[650px]:p-4"
     >
       <header className="mb-4 flex flex-wrap items-center justify-between gap-3">
         <h2 id="deneme-baslik" className="text-lg font-semibold [overflow-wrap:anywhere]">
@@ -114,6 +118,12 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
         />
       </div>
 
+      {question.subskill ? (
+        <p className="mb-3">
+          <span className="sr-only">Alt beceri: </span>
+          <StatusBadge text={SUBSKILLS[question.subskill].label} tone="gray" />
+        </p>
+      ) : null}
       <QuestionInput
         key={question.questionVersionId}
         question={question}
@@ -227,5 +237,15 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
         </p>
       </Modal>
     </section>
+  )
+  if (!attempt.passage) return player
+  return (
+    <div className="grid items-start gap-5 lg:grid-cols-2">
+      <ReadingPassage
+        passage={attempt.passage}
+        className="min-w-0 lg:sticky lg:top-(--topbar-clearance) lg:max-h-[calc(100dvh-var(--topbar-clearance)-16px)] lg:overflow-y-auto"
+      />
+      {player}
+    </div>
   )
 }

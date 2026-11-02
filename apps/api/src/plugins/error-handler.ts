@@ -1,7 +1,14 @@
 import type { FastifyError, FastifyInstance } from 'fastify'
 import { hasZodFastifySchemaValidationErrors } from 'fastify-type-provider-zod'
 
-import { AppError, codeForStatus, MESSAGES, type ErrorResponse, type Issue } from '../errors.ts'
+import {
+  AppError,
+  codeForStatus,
+  MESSAGES,
+  UnclassifiedUniqueViolationError,
+  type ErrorResponse,
+  type Issue,
+} from '../errors.ts'
 
 function issuePath(instancePath: string): string[] {
   return instancePath.split('/').filter(Boolean)
@@ -65,6 +72,12 @@ export function registerErrorHandler(app: FastifyInstance) {
       if (error.issues) body.issues = error.issues
       if (error.statusCode >= 500)
         request.log.error({ err: loggableError(error) }, 'request failed')
+      // Sınıflanmamış tekillik kısıtı: yalnız kısıt adı (değer ve kişisel veri yok; OG-279).
+      if (error instanceof UnclassifiedUniqueViolationError)
+        request.log.warn({
+          event: 'db.unclassified_unique_violation',
+          constraint: error.constraint,
+        })
       return reply.status(error.statusCode).send(body)
     }
     const status = typeof error.statusCode === 'number' ? error.statusCode : 500

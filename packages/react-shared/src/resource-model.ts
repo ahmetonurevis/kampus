@@ -124,8 +124,8 @@ export const RESOURCE_MESSAGES = {
   // boyut ve tür (`file_too_large`, `file_type_not_allowed`) sınırı taşıdığından sunucunun
   // Türkçe iletisi gösterilir.
   ...RESOURCE_FILE_MESSAGES,
-  // Dosya taranırken (`pending`) eklenmek istenirse; ödev ve soru ekindeki gibi sakin ileti.
-  // TODO(F3c2-scan): dosya tarama işi (OG-092) gelene kadar dosya `ready` olmaz.
+  // Dosya taranırken (`processing`) ya da tarayıcı kapalı ortamda (`pending`, `FILE_SCANNER=off`)
+  // eklenmek istenirse; ödev ve soru ekindeki gibi sakin ileti. Tarama `ready` yapınca eklenir.
   file_not_ready: RESOURCE_FILE_NOT_READY_MESSAGE,
 } as const satisfies CommandMessages
 

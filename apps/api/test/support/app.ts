@@ -77,6 +77,8 @@ export interface TestAppOptions {
    * `processing` kalır, kuyruk açıkmış gibi). Kuyruksuz yol için `inlineTranscodeScheduler`.
    */
   media?: BuildAppOptions['media']
+  /** Dosya taraması; varsayılan ortamınki (testte `off`: yüklenen dosya `pending` kalır). */
+  fileScan?: BuildAppOptions['fileScan']
 }
 
 export async function buildTestApp(db: Database, options: TestAppOptions = {}): Promise<App> {
@@ -102,6 +104,7 @@ export async function buildTestApp(db: Database, options: TestAppOptions = {}): 
       transcoder: new FakeTranscoder(),
       scheduler: new RecordingScheduler(),
     },
+    ...(options.fileScan ? { fileScan: options.fileScan } : {}),
   })
   options.extend?.(app)
   await app.ready()

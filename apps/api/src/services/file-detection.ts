@@ -8,9 +8,11 @@ import { canonicalMimeType, type AllowedMimeType } from '@kampus/school-core/con
  * Her tür tek kanonik MIME ile saklanır (core `FILE_PURPOSES` listesindeki değer); istemcinin
  * bildirdiği takma adlar core `canonicalMimeType` ile çözülür (web/mobil ön denetimiyle aynı tablo).
  *
- * TODO(F3c2-scan): makrosuz OOXML ve parola korumalı PDF/Office reddi ClamAV taramasıyla
- * (`AlertOLE2Macros`, `AlertEncrypted`; karar 8) gelir. Makrolu OOXML (`.docm` vb.) burada
- * zaten tanınmaz ve reddedilir.
+ * Makrolu OOXML (`.docm` vb.) burada tanınmaz ve reddedilir. Makrolu eski Office (OLE2) ve parola
+ * korumalı/şifreli PDF ya da Office reddi tür tespitinde değil, `file.scan` taramasındadır (karar
+ * 8, OG-092): `clamd` `AlertOLE2Macros`, `AlertEncrypted` ve PDF sezgileriyle (`HeuristicAlerts`)
+ * çalışır (`deploy/clamav/clamd.conf`), bulgu dosyayı reddeder. Tarayıcı kapalıyken
+ * (`FILE_SCANNER=off`, yalnız üretim dışı) bu denetim yoktur ve dosya `pending` kalır.
  */
 
 type FileKind = {

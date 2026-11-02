@@ -17,6 +17,7 @@ import { z } from 'zod'
 import { createAuth, type Auth } from './auth.ts'
 import { isDevelopmentLike, publicUrl, type Config } from './config.ts'
 import type { Database } from './db/client.ts'
+import { InlineScanScheduler } from './jobs/file-scan.ts'
 import { InlineTranscodeScheduler, inlineTranscodeScheduler } from './jobs/media-transcode.ts'
 import { registerAuthenticate } from './plugins/authenticate.ts'
 import { registerBetterAuth } from './plugins/better-auth.ts'
@@ -37,6 +38,8 @@ import { registerProspectRoutes } from './routes/prospects.ts'
 import { createFfmpegTranscoder, type AudioTranscoder } from './services/audio-transcoder.ts'
 import { MAX_UPLOAD_BYTES } from './services/files.ts'
 import type { Mailer } from './services/mailer.ts'
+import type { FileScanRuntime, FileScanScheduler } from './services/file-scan.ts'
+import { createFileScanner, type FileScanner } from './services/file-scanner.ts'
 import type { MediaRuntime, MediaTranscodeScheduler } from './services/media-transcode.ts'
 import { createStorage } from './storage/create.ts'
 import type { DiskStorage } from './storage/disk.ts'
@@ -186,6 +189,8 @@ declare module 'fastify' {
     clock: Clock
     /** Ses dönüştürücü ve dönüşüm kuyruğu; kuyruk açılınca `scheduler` değişir (`startJobs`). */
     media: MediaRuntime
+    /** Dosya tarayıcısı ve tarama kuyruğu (`null`: tarama kapalı); kuyruk açılınca değişir. */
+    fileScan: FileScanRuntime
   }
 }
 
@@ -206,6 +211,12 @@ export interface BuildAppOptions {
    * (`FFMPEG_PATH`, `FFPROBE_PATH`) ve kuyruk açılana kadar dönüşüm süreç içinde çalışır.
    */
   media?: { transcoder?: AudioTranscoder; scheduler?: MediaTranscodeScheduler }
+  /**
+   * Dosya taraması (ADR 0003 karar 8). Verilmezse tarayıcı ortamdandır (`FILE_SCANNER`; testte
+   * `off`); `scanner: null` taramayı kapatır. Tarayıcı varken kuyruk açılana kadar tarama süreç
+   * içinde çalışır. Testte sahte tarayıcı buradan verilir.
+   */
+  fileScan?: { scanner?: FileScanner | null; scheduler?: FileScanScheduler }
 }
 
 export type App = FastifyInstance
@@ -246,6 +257,18 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   if (scheduler instanceof InlineTranscodeScheduler) app.addHook('onClose', () => scheduler.close())
   const media: MediaRuntime = { transcoder, scheduler }
   app.decorate('media', media)
+  const scanner =
+    options.fileScan?.scanner === undefined ? createFileScanner(config) : options.fileScan.scanner
+  const scanScheduler =
+    scanner === null
+      ? null
+      : (options.fileScan?.scheduler ??
+        new InlineScanScheduler({ db, storage, scanner, log: app.log, clock }))
+  // Kuyruksuz taramalar kapanışta iptal edilir; dosya `processing` kalır (açılışta yeniden).
+  if (scanScheduler instanceof InlineScanScheduler)
+    app.addHook('onClose', () => scanScheduler.close())
+  const fileScan: FileScanRuntime = { scanner, scheduler: scanScheduler }
+  app.decorate('fileScan', fileScan)
 
   registerErrorHandler(app)
   registerRequestContext(app)

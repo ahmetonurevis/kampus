@@ -396,12 +396,15 @@ export async function scheduleSubjectFilesPurge(
 /**
  * Kurumun bağlanmamış ve `before`'dan önce yüklenmiş, silinmemiş dosyaları (karar 5: 24 saat);
  * en eskiler önce, `limit` kadar. Tarama `(institution_id, created_at)` indeksini kullanır.
+ * Taranan ya da dönüştürülen (`processing`) dosya ancak `processingBefore`'dan önce yüklendiyse
+ * listeye girer: tarayıcı kesintisi dosyayı bağlanmadan silmesin (OG-092).
  */
 export async function listStaleUnattachedFiles(
   db: Database,
   institutionId: string,
   before: Date,
   limit: number,
+  processingBefore: Date,
 ): Promise<StoredFile[]> {
   return db
     .select()
@@ -412,6 +415,7 @@ export async function listStaleUnattachedFiles(
         isNull(files.attachedId),
         ne(files.status, 'deleted'),
         lt(files.createdAt, before),
+        or(ne(files.status, 'processing'), lt(files.createdAt, processingBefore)),
       ),
     )
     .orderBy(asc(files.createdAt), asc(files.id))

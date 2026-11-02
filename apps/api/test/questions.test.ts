@@ -630,7 +630,7 @@ describe('Öğretmenime Sor uçları', () => {
 
   // --- Fotoğraf (DOM-ILT-094) ----------------------------------------------------------------
 
-  /** Dosya yükler; `ready` ise taramadan geçmiş gibi işaretler (tarama işi yok, TODO(F3c2-scan)). */
+  /** Dosya yükler; `ready` ise taramadan geçmiş gibi işaretler (test uygulamasında tarayıcı `off`). */
   async function uploadPhoto(
     institutionId: string,
     cookie: string,

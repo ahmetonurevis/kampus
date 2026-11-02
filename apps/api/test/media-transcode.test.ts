@@ -431,7 +431,7 @@ describe('ses dönüştürme (media.transcode)', () => {
     assert.deepEqual(rows, [{ a: "x'; drop table files; --", b: 4, c: '$' }])
   })
 
-  test('migration 0032: içerik kolonları yalnız processing → ready geçişinde değişir', async () => {
+  test('migration 0033: içerik kolonları yalnız processing → ready geçişinde değişir', async () => {
     const t = await tenant()
     const id = await uploaded(t)
     const immutable = (error: unknown) =>

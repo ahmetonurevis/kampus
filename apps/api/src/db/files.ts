@@ -234,7 +234,7 @@ export function setFileStatus(
 /**
  * Ses dönüşümünün sonucu (ADR 0003 karar 10): `processing` satır dönüşmüş nesnenin anahtarı, türü,
  * boyutu, özeti ve ölçülen süresiyle `ready` olur. İçerik kolonları yalnız bu geçişte değişebilir
- * (migration 0032 tetikleyicisi); iyimser kilit tutmazsa `null`.
+ * (migration 0033 tetikleyicisi); iyimser kilit tutmazsa `null`.
  */
 export async function completeFileTranscode(
   tx: Database,

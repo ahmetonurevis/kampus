@@ -235,7 +235,7 @@ function ScoringArea({
   )
 }
 
-function ScoreCard({ score, rubric }: { score: TaskScore; rubric: RubricVersion | null }) {
+export function ScoreCard({ score, rubric }: { score: TaskScore; rubric: RubricVersion | null }) {
   const aspects = new Map((rubric?.criteria ?? []).map((item) => [item.id, item.aspect]))
   return (
     <div

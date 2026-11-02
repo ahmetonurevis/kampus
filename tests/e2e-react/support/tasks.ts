@@ -13,7 +13,7 @@ import {
 
 import { connectPostgres } from '../../../apps/api/src/db/client.ts'
 import { insertResourceWithVersions } from '../../../apps/api/src/db/resources.ts'
-import { insertSecondRatingRequest } from '../../../apps/api/src/db/skills.ts'
+import { insertRubricScore, insertSecondRatingRequest } from '../../../apps/api/src/db/skills.ts'
 import { rubrics, rubricVersions } from '../../../apps/api/src/db/schema/skills.ts'
 import { expect } from '@playwright/test'
 import pg from 'pg'
@@ -31,8 +31,8 @@ const SECRET_EXPLANATION = 'GIZLI-ACIKLAMA'
 
 export const QUIZ_QUESTIONS = ['Where does Ann live?', 'What is the main idea?'] as const
 
-const tags = (skill: 'reading' | 'writing' | 'speaking') => ({
-  subjectId: 'ingilizce',
+const tags = (skill: 'reading' | 'writing' | 'speaking', subjectId = 'ingilizce') => ({
+  subjectId,
   gradeLevels: [9],
   primarySkill: skill,
   cefrLevel: 'A2' as const,
@@ -138,8 +138,16 @@ export async function seedQuiz(institutionId: string, ownerUserId: string, title
   })
 }
 
-/** Metin teslimli yazma ödevi şablonu. */
-export function seedHomework(institutionId: string, ownerUserId: string, title: string) {
+/**
+ * Metin teslimli yazma ödevi şablonu. `subjectId` içeriğin dersidir; zümre başkanı kapsamı onunla
+ * eşleşir (DOM-YTK-027; seed müfredatında İngilizce `english`).
+ */
+export function seedHomework(
+  institutionId: string,
+  ownerUserId: string,
+  title: string,
+  subjectId?: string,
+) {
   return seed(institutionId, ownerUserId, {
     title,
     content: {
@@ -149,7 +157,7 @@ export function seedHomework(institutionId: string, ownerUserId: string, title: 
       criteria: 'Zaman ifadeleri, paragraf düzeni ve yazım.',
       rubricId: null,
     },
-    tags: tags('writing'),
+    tags: tags('writing', subjectId),
   })
 }
 
@@ -292,6 +300,46 @@ export async function requestSecondRating(
       db,
       institutionId,
       { submissionId, source: 'manual', requestedByUserId, requestedAt: now.toISOString() },
+      now,
+    )
+  } finally {
+    await close()
+  }
+}
+
+/**
+ * Başka bir öğretmenin kör ikinci puanı (DOM-BEC-024). Tenant'ta tek öğretmen hesabı vardır ve o
+ * hesap uyuşmazlığı çözecek koordinatördür (puanlayıcı olamaz); ikinci puanlayıcı testte yalnız
+ * kimliktir, puan satırı doğrudan yazılır. Teslim istendiği ve ilk puan verildiği varsayılır.
+ */
+export async function seedSecondScore(
+  institutionId: string,
+  input: {
+    submissionVersionId: string
+    rubricVersionId: string
+    bands: Readonly<Record<string, number>>
+  },
+): Promise<void> {
+  const { db, close } = connectPostgres(e2e.databaseUrl)
+  try {
+    const now = new Date()
+    await insertRubricScore(
+      db,
+      institutionId,
+      {
+        id: randomUUID(),
+        submissionVersionId: input.submissionVersionId,
+        rubricVersionId: input.rubricVersionId,
+        raterUserId: `e2e-ikinci-${randomUUID().slice(0, 8)}`,
+        raterRole: 'second',
+        criteria: Object.entries(input.bands).map(([criterionId, band]) => ({
+          criterionId,
+          band,
+          comment: band < 3 ? 'İkinci puanlayıcının kısa yorumu' : null,
+        })),
+        overallComment: 'İkinci puanlayıcının genel yorumu',
+        scoredAt: now.toISOString(),
+      },
       now,
     )
   } finally {

@@ -26,6 +26,7 @@ import { versionAllowance } from '@kampus/school-core/skills/submission.ts'
 import type { Database } from '../db/client.ts'
 import { activeDutiesOf } from '../db/coordinator-duties.ts'
 import {
+  assignmentContentRefs,
   decideAppeal,
   findAssignment,
   findRubricVersion,
@@ -55,6 +56,7 @@ import { runCommand, type CommandResponse, type IdempotencyRequest } from './ope
 import { coordinates, viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
   APPEAL_HOLIDAYS,
+  canResolveFinal,
   coordinatorReaches,
   detailView,
   gradingDeadlineOf,
@@ -994,15 +996,26 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
   const shown = rows.filter((row) => {
     const assignment = assignments.get(row.submission.assignmentId)
     const grading = book.bySubmission.get(row.submission.id)
-    return (
-      assignment !== undefined &&
-      grading !== undefined &&
-      (visible(viewer, assignment) || coordinatorReaches(viewer, assignment, row, grading))
-    )
+    if (assignment === undefined || grading === undefined) return false
+    const latest = row.versions.at(-1)
+    // Son puan kuyruğu yalnız bu kişinin son puanı verebileceği satırlardır (SQL aynı kuralı süzer).
+    if (input.awaiting === 'resolution' && viewer.kind === 'teacher')
+      return (
+        latest !== undefined &&
+        canResolveFinal(viewer, ctx.actor.userId, assignment, resolutionOf(grading, latest))
+      )
+    return visible(viewer, assignment) || coordinatorReaches(viewer, assignment, row, grading)
   })
   const dropped = rows.length - shown.length
   if (dropped > 0) ctx.log.warn({ event: 'grading_queue.visibility_mismatch', dropped })
   const summaries = await listSummaries(ctx.db, ctx, viewer, assignments, shown)
+  // Görev başlığı satırda gelir: alanındaki uyuşmazlığı okuyan koordinatör atamayı görmeyebilir
+  // (DOM-YTK-027), atama listesinden eşleyemez. Başlık içerik sürümünündür, kişisel veri değildir.
+  const refs = await assignmentContentRefs(
+    ctx.db,
+    ctx.institutionId,
+    [...assignments.values()].map((assignment) => assignment.resourceVersionId),
+  )
   return {
     total: total - dropped,
     items: summaries.map((summary, index) => {
@@ -1012,7 +1025,11 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
       const latest = work?.versions.at(-1)
       if (!work || !assignment || !grading || !latest)
         throw new Error('grading queue row without its submission')
-      return { ...summary, grading: queueGrading(ctx, assignment, work, grading, latest) }
+      return {
+        ...summary,
+        assignmentTitle: refs.get(assignment.resourceVersionId)?.title ?? null,
+        grading: queueGrading(ctx, assignment, work, grading, latest),
+      }
     }),
   }
 }

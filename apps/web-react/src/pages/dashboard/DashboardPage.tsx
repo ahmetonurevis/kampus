@@ -4,10 +4,8 @@ import { PageHeading } from '@/components/PageHeading.tsx'
 import { useAuth } from '@/auth/use-auth.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage, RoleKey } from '@/lib/navigation.ts'
-import { AdminDashboard } from './AdminDashboard.tsx'
-import { FrontDeskDashboard } from './FrontDeskDashboard.tsx'
+import { RoleDashboard } from './RoleDashboard.tsx'
 import { StudentDashboard } from './StudentDashboard.tsx'
-import { TeacherDashboard } from './TeacherDashboard.tsx'
 import { firstName } from './dashboard-model.ts'
 
 const DESCRIPTIONS = {
@@ -20,7 +18,7 @@ const DESCRIPTIONS = {
 
 /**
  * Genel Bakış (beş rol; Vue `Dashboard.vue`). Başlık menü kaydındandır; selamlama ve tarih
- * açıklamadadır. Rol içeriği kendi bileşenindedir; bütün değerler tek özet isteğinden (`useDashboard`) gelir.
+ * açıklamadadır. Gövde kart kaydından çizilir (`dashboard-cards.tsx`); bütün değerler tek özet isteğinden (`useDashboard`) gelir.
  */
 export function DashboardPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -35,12 +33,8 @@ export function DashboardPage({ page }: { page: NavPage }) {
         title={page.title}
         description={`Merhaba ${firstName(session.user.name)}, ${today}. ${DESCRIPTIONS[session.role]}`}
       />
-      {session.role === 'yonetici' ? (
-        <AdminDashboard session={session} />
-      ) : session.role === 'onburo' ? (
-        <FrontDeskDashboard session={session} />
-      ) : session.role === 'ogretmen' ? (
-        <TeacherDashboard session={session} now={now} />
+      {session.role === 'yonetici' || session.role === 'onburo' || session.role === 'ogretmen' ? (
+        <RoleDashboard session={session} role={session.role} now={now} />
       ) : (
         <StudentDashboard session={session} now={now} />
       )}

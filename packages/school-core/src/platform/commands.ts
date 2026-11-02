@@ -143,4 +143,14 @@ export const PLATFORM_OPERATION_COMMANDS = {
   // aktörün gördüğü bildirimleri ve kendi okundu işaretlerini yükler.
   'notification.read': spec('communication', [...SCOPE, 'notifications', 'notificationReads']),
   'notification.read_all': spec('communication', [...SCOPE, 'notifications', 'notificationReads']),
+  // Aydınlatma ve açık rıza (`lib/privacy-notices.ts`, `lib/consents.ts`; DOM-YTK-056…062):
+  // platform yeteneğidir, modül kapatılamaz (aydınlatma ve geri çekme her zaman açık olmalı).
+  // Kayıtlar ilişkisel tablolardadır (`privacy_notices`, `notice_acknowledgements`, `consents`);
+  // API kapsam kaynağını yalnız okuma kapsamı (`consent.read`, `consent.status`) için yükler.
+  'notice.publish': spec(null, [...SCOPE]),
+  'notice.acknowledge': spec(null, [...SCOPE]),
+  'consent.give': spec(null, [...SCOPE]),
+  'consent.withdraw': spec(null, [...SCOPE]),
+  'consent.read': spec(null, [...SCOPE]),
+  'consent.status': spec(null, [...SCOPE]),
 } as const satisfies Record<string, CommandSpec>

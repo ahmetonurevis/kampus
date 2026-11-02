@@ -60,6 +60,17 @@ export type PlatformWriteTargets = {
   // Bildirim okundu işareti: görünürlük `lib/notifications.ts` `canSeeNotification`'dadır.
   'notification.read': Record<string, never>
   'notification.read_all': Record<string, never>
+  // Aydınlatma ve açık rıza (DOM-YTK-056…062): kim rıza verir ve geri çeker kararı
+  // `lib/consents.ts` (`requireConsentAuthority`, `planConsentWithdrawal`), gösterim kararı
+  // `lib/privacy-notices.ts`'tedir; burada yalnız rol ve okuma kapsamı.
+  'notice.publish': Record<string, never>
+  'notice.acknowledge': Record<string, never>
+  'consent.give': Record<string, never>
+  'consent.withdraw': Record<string, never>
+  /** Rıza satırları; `studentId` yoksa aktörün kendi hesap rızaları (tanıtım iletisi). */
+  'consent.read': { studentId: string | undefined }
+  /** Öğrencinin amaç başına geçerli rıza sonucu (var/yok). */
+  'consent.status': { studentId: string }
 }
 
 /** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları `lib/authorize.ts`). */
@@ -118,4 +129,16 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   // `lib/notifications.ts` `canSeeNotification`'dadır (DOM-ILT-020, DOM-ILT-073).
   'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
   'notification.read_all': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+  // Aydınlatma metnini yönetici yayımlar; her rol kendi kitlesinin metnini görür ve gösterimini
+  // kaydeder (DOM-YTK-056).
+  'notice.publish': ['yonetici'],
+  'notice.acknowledge': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+  // Rızayı velayetli veli ya da 18 yaşını doldurmuş öğrenci verir ve geri çeker; itirazı 18 yaş
+  // altı öğrenci kendisi verir. Personel rıza vermez (DOM-YTK-057, -059, -062).
+  'consent.give': ['ogrenci', 'veli'],
+  'consent.withdraw': ['ogrenci', 'veli'],
+  // Yetki matrisi "Fotoğraf/video rızası": yönetici ve ön büro okur, öğretmen yalnız sonucu
+  // (var/yok) görür, öğrenci ve veli kendi kapsamını okur.
+  'consent.read': ['yonetici', 'onburo', 'ogrenci', 'veli'],
+  'consent.status': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
 } as const satisfies Record<PlatformAction, readonly Role[]>

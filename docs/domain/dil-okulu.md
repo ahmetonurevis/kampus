@@ -139,7 +139,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Mevzuat grupların yaş ve bilgi düzeyine göre oluşturulmasını ister; reşit olmayanla yetişkinin aynı grupta olması ayrı bir koruma değerlendirmesi gerektirir.
 - **Kaynak:** ÖÖKY md. 48/2; yaş bantları işletme kuralı.
 - **Kurum türü:** `language_school`
-- **Kodda:** kısmen — grup yaş bandı (`GROUP_AGE_BANDS`, genç 12+) taşır; `planGroupPlacement` seviye farkında öğretmen gerekçesi (`group_level_mismatch`), bant dışı yaşta yönetici gerekçesi (`group_age_band_mismatch`) ister. Yerleştirme yazması kayıt akışındadır (ON-058); çocuk bandının programa göre alt sınırı yok.
+- **Kodda:** kısmen — grup yaş bandı (`GROUP_AGE_BANDS`: çocuk < 12, genç 12–17, yetişkin 18+) taşır; `planGroupPlacement` seviye farkında öğretmen ya da yönetici gerekçesi (`group_level_mismatch`) ister; bant dışı yaş reddedilir, yalnız 18 yaş altının yetişkin ve yetişkinin genç grubuna girişi yönetici gerekçesiyle açılır (`group_age_band_mismatch`). Birleştirme yaş bandı farklı grupları reddeder. Yerleştirme yazması kayıt akışındadır (ON-058); çocuk bandının programa göre alt sınırı yok.
 
 ### DOM-DIL-042 · Grup açılış sayısı ve birleştirme
 
@@ -147,7 +147,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Kurum kaynaklı iptalde kursiyer kesintiye uğramamalı; tarih/saat sözleşmenin esasıdır.
 - **Kaynak:** İşletme kuralı; tam iade, ÖÖKY md. 56/3-b'deki %10 kesintinin kursiyer kaynaklı ayrılış için olduğu yorumuna dayanır — **doğrulanmalı**.
 - **Kurum türü:** `language_school`
-- **Kodda:** kısmen — `packages/school-core/src/lib/language-groups.ts` `planGroupOpen` açılışı asgari sayıya (kurun `minLearners`) bağlar (422 `group_below_minimum`), başlangıç geçmişse açmaz; `planGroupCancellation` gerekçeyle iptal eder; `planGroupMerge` aynı kur ve yaş bandını birleştirir, kapasiteyi denetler, gün/saat farklıysa kursiyer onayı beyanı ister (`group_merge_consent_required`), kaynak iptal edilir. Uçlar `POST /api/v1/groups/:groupId/open|cancel|merge`. Kursiyere seçenek sunma ve iade kayıt/finans akışındadır (ON-058).
+- **Kodda:** kısmen — `packages/school-core/src/lib/language-groups.ts` `planGroupOpen` açılışı asgari sayıya (kurun `minLearners`) bağlar (422 `group_below_minimum`), başlangıç geçmişse açmaz; `planGroupCancellation` gerekçeyle iptal eder; `planGroupMerge` aynı kur ve yaş bandını birleştirir, kapasiteyi, taşınan kursiyerin saat çakışmasını ve 21.00 sınırını denetler, gün/saat farklıysa kursiyer onayı beyanı ister (`group_merge_consent_required`), kaynak iptal edilir. Açılmış grupta öğretmen ve derslik boşaltılamaz. Başlangıcı geçmiş hiç açılmamış grup açılmaz; kursiyersizse ileri tarihe alınır, kursiyerliyse birleştirilir ya da iptal edilir ve iptale kadar kur arşivini engeller. Uçlar `POST /api/v1/groups/:groupId/open|cancel|merge`. Kursiyere seçenek sunma ve iade kayıt/finans akışındadır (ON-058).
 
 ### DOM-DIL-043 · Bekleme listesi
 

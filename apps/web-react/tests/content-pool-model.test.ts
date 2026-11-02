@@ -206,6 +206,21 @@ describe('Taslaktan form değeri ve PATCH gövdesi', () => {
     assert.equal(draftFromHead(head({ content: null, status: 'removed' })), null)
   })
 
+  test('sözlükçeli okuma parçasında başlık düzeltmesi sözlükçeyi silmez (DOM-BEC-006)', () => {
+    const glossary = [
+      { term: 'shadow', meaning: 'gölge', example: 'A long shadow.' },
+      { term: 'light', meaning: 'ışık', example: null },
+    ]
+    const values = draftFromHead(
+      head({ content: { type: 'reading_passage', body: 'Bir metin.', glossary } }),
+    )
+    assert.ok(values)
+    const parsed = draftFormSchema.parse({ ...values, title: 'Yeni başlık' })
+    const patch = patchFromDraft(parsed)
+    assert.equal(patch.title, 'Yeni başlık')
+    assert.deepEqual(patch.content, { type: 'reading_passage', body: 'Bir metin.', glossary })
+  })
+
   test('PATCH gövdesi taslağın bütün alanlarını taşır', () => {
     const parsed = draftFormSchema.parse(validReading())
     assert.deepEqual(Object.keys(patchFromDraft(parsed)).sort(), [

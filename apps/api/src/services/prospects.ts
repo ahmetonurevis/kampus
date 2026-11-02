@@ -30,6 +30,11 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
 import { findPublishedTariff } from '../db/fee-tariffs.ts'
+import {
+  countScholarshipAwards,
+  findScholarshipProgram,
+  insertScholarshipAward,
+} from '../db/finance-scholarships.ts'
 import { findRecord, loadRecords } from '../db/records.ts'
 import { users } from '../db/schema/auth.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
@@ -256,7 +261,7 @@ export function enrollProspectCommand(
   options: CommandOptions,
 ): Promise<CommandResponse> {
   const spec = OPERATION_COMMANDS['prospect.enroll']
-  const identity = enrollProspectSchema.parse(input).identity
+  const { identity, scholarshipProgramId } = enrollProspectSchema.parse(input)
   return runCommand(
     ctx,
     {
@@ -284,6 +289,14 @@ export function enrollProspectCommand(
         const academicYear = settings?.academicYear ?? Number(dayKey(ctx.now).slice(0, 4))
         const tariff = await findPublishedTariff(tx, ctx.institutionId, academicYear)
         const identityHolderId = await findIdentityHolder(tx, ctx.institutionId, identity.number)
+        // Kontenjan kurum kilidi altında sayılır: iki eşzamanlı kayıt son yeri birlikte alamaz.
+        const [scholarshipProgram, scholarshipAwardedCount] =
+          scholarshipProgramId === undefined
+            ? [null, 0]
+            : [
+                await findScholarshipProgram(tx, ctx.institutionId, scholarshipProgramId),
+                await countScholarshipAwards(tx, ctx.institutionId, scholarshipProgramId),
+              ]
         return {
           scalars,
           run: (state, { now, makeId }) => {
@@ -296,6 +309,8 @@ export function enrollProspectCommand(
               approvedByUserId: ctx.actor.userId,
               canApproveCapException: ctx.actor.role === 'yonetici',
               today: dayKey(ctx.now),
+              scholarshipProgram,
+              scholarshipAwardedCount,
             })
           },
         }
@@ -311,6 +326,25 @@ export function enrollProspectCommand(
           birthDate: result.identity.birthDate,
           now: ctx.now,
         })
+        if (result.scholarshipAward !== null) {
+          const awardId = randomUUID()
+          await insertScholarshipAward(tx, ctx.institutionId, {
+            id: awardId,
+            programId: result.scholarshipAward.programId,
+            studentId: result.student.id,
+            academicYear: result.academicYear,
+            amountCents: result.scholarshipAward.amountCents,
+            awardedByUserId: ctx.actor.userId,
+            now: ctx.now,
+          })
+          await auditWork(
+            tx,
+            ctx,
+            'scholarship.award',
+            { type: 'scholarship_awards', id: awardId },
+            ['programId', 'studentId', 'amountCents'],
+          )
+        }
         // Veli–öğrenci bağı: veli velayet sahibi ve ödeyici olarak kurulur (DOM-ILT-070, -074);
         // yetişkin kursiyerin kendisi veli değildir, bağ yazılmaz. Kuralı core `planGuardianLink`
         // verir; yeni öğrencinin başka bağı olmadığı için değişmezler boş kümeye uygulanır.

@@ -534,6 +534,76 @@ test('DOM-ILT-070, DOM-ILT-074: veli varsa kayıt veli–öğrenci bağı tasla�
   assert.equal(adult.guardianBond, null)
 })
 
+const SCHOLARSHIP_ID = '00000000-0000-4000-8000-000000000001'
+const scholarshipContext = (percentBasisPoints: number): Partial<EnrollmentContext> => ({
+  canApproveCapException: true,
+  scholarshipProgram: {
+    id: SCHOLARSHIP_ID,
+    academicYear: 2026,
+    percentBasisPoints,
+    amountCents: null,
+    capacity: 5,
+    notifiedDate: '2026-09-01',
+  },
+  scholarshipAwardedCount: 0,
+})
+
+test('DOM-FIN-021, DOM-FIN-025: burs netten düşer, sözleşmeye yazılır, indirim tavanına girmez', () => {
+  const { state, result } = enroll(
+    { scholarshipProgramId: SCHOLARSHIP_ID },
+    scholarshipContext(6000),
+  )
+  const gross = result.contract.grossCents ?? 0
+  assert.ok(gross > 0)
+  const amountCents = Math.floor((gross * 6000) / 10_000)
+  // %60 burs %50 indirim tavanının üstündedir ama indirim değildir.
+  assert.deepEqual(result.contract.scholarship, { programId: SCHOLARSHIP_ID, amountCents })
+  assert.equal(result.contract.netCents, gross - amountCents)
+  assert.deepEqual(result.scholarshipAward, { programId: SCHOLARSHIP_ID, amountCents })
+  const invoices = state.invoices.filter((item) => item.studentId === result.student.id)
+  assert.equal(
+    invoices.reduce((sum, item) => sum + item.amount, 0),
+    gross - amountCents,
+  )
+  assert.equal(enroll().result.scholarshipAward, null)
+})
+
+test('DOM-FIN-025: tam bursta öğrenim taksiti açılmaz, sözleşme yazılır', () => {
+  const { state, result } = enroll(
+    { scholarshipProgramId: SCHOLARSHIP_ID },
+    scholarshipContext(10_000),
+  )
+  assert.equal(result.contract.netCents, 0)
+  assert.equal(result.contract.amount, 0)
+  assert.deepEqual(result.contract.invoiceIds, [])
+  assert.equal(state.invoices.filter((item) => item.studentId === result.student.id).length, 0)
+  assert.equal(
+    state.students.some((item) => item.id === result.student.id),
+    true,
+  )
+})
+
+test('DOM-FIN-025: bursta kural reddi kayıt yazmaz; ön büro burs atayamaz', () => {
+  const body = { scholarshipProgramId: SCHOLARSHIP_ID }
+  rejectsUnchanged(
+    body,
+    { ...scholarshipContext(2500), canApproveCapException: false },
+    'scholarship_approval_required',
+  )
+  rejectsUnchanged(
+    body,
+    { ...scholarshipContext(2500), scholarshipProgram: null },
+    'scholarship_program_not_found',
+    'not_found',
+  )
+  rejectsUnchanged(
+    body,
+    { ...scholarshipContext(2500), scholarshipAwardedCount: 5 },
+    'scholarship_capacity_full',
+    'conflict',
+  )
+})
+
 test('DOM-KAY-012: veli adı, telefonu ve yakınlığı kaydedilir', () => {
   const { state, result } = enroll()
   const parent = state.parents.find((p) => p.id === result.student.parentId)

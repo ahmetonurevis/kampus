@@ -617,6 +617,18 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'cross-institution-finance.test.ts',
     'GET /api/v1/finance/totals, /finance/summary ve /finance/overview: başka kurumun tahsilatı',
   ),
+  'GET /api/v1/finance/scholarship-programs': liste(
+    'cross-institution-finance.test.ts',
+    'GET ve POST /api/v1/finance/scholarship-programs, GET /finance/scholarship-awards: başka kurumun bursu',
+  ),
+  'POST /api/v1/finance/scholarship-programs': govde(
+    'cross-institution-finance.test.ts',
+    'GET ve POST /api/v1/finance/scholarship-programs, GET /finance/scholarship-awards: başka kurumun bursu',
+  ),
+  'GET /api/v1/finance/scholarship-awards': liste(
+    'cross-institution-finance.test.ts',
+    'GET ve POST /api/v1/finance/scholarship-programs, GET /finance/scholarship-awards: başka kurumun bursu',
+  ),
   'GET /api/v1/finance/overview': liste(
     'cross-institution-finance.test.ts',
     'GET /api/v1/finance/totals, /finance/summary ve /finance/overview: başka kurumun tahsilatı',
@@ -648,6 +660,8 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     finance('kayıt', 'POST /api/v1/prospects/:prospectId/marketing-consent'),
     finance('kayıt', 'PATCH /api/v1/prospects/:prospectId/details'),
     finance('kayıt', 'GET /api/v1/finance/students/:studentId/balance'),
+    finance('kayıt', 'POST /api/v1/finance/scholarship-programs/:programId/notify'),
+    finance('kayıt', 'POST /api/v1/finance/scholarship-awards/:awardId/mebbis-record'),
   ]),
 }
 

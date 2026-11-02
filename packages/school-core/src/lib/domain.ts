@@ -24,6 +24,8 @@ export interface ContractTerms {
   extras: readonly { kind: string; amountCents: number }[]
   approvedByUserId: string
   payer: 'guardian' | 'student'
+  /** Kayıtta atanan burs (DOM-FIN-025); `netCents` burstan sonraki tutardır. */
+  scholarship?: { programId: string; amountCents: number }
 }
 // Oturum: rol ve velinin seçili çocuğu. API oturumu üyelik bağlantılarını (`links`) ve işlemi
 // yapan kişinin kullanıcı kimliğini (`userId`) da taşır; çevrimdışı demoda bağlantılar sabit demo

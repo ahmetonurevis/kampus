@@ -1,5 +1,5 @@
 import { useCallback, useId, useMemo } from 'react'
-import { useSearchParams } from 'react-router'
+import { useLocation, useSearchParams } from 'react-router'
 import { isUnreadableCollectionError } from '@kampus/react-shared/collections.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -26,6 +26,7 @@ type TableRow = ExamRow & { counts: string; analysis: string }
 export function ExamResultsSection({ studentId }: { studentId: string }) {
   const headingId = useId()
   const [params, setParams] = useSearchParams()
+  const { state: historyState } = useLocation()
   const exams = useCoreAll('mockExams')
   const results = useCoreAll('mockResults', { filters: { studentId } })
   const profiles = useCoreAll('opticalProfiles')
@@ -64,9 +65,10 @@ export function ExamResultsSection({ studentId }: { studentId: string }) {
           else next.delete(EXAM_PARAM)
           return next
         },
-        { preventScrollReset: true },
+        // `state.from` (geri dönüş adresi) seçimle silinmez.
+        { preventScrollReset: true, state: historyState },
       ),
-    [setParams],
+    [setParams, historyState],
   )
 
   const columns = useMemo<DataColumn<TableRow>[]>(

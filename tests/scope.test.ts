@@ -654,6 +654,15 @@ test('DOM-DIL-031, DOM-YTK-080: öğretmen adayı yalnız kendi deneme grubunda 
   )
   assert.deepEqual(visibleRecords(state, student(), 'prospects', language), [])
   assert.deepEqual(visibleRecords(state, parent(), 'prospects', language), [])
-  // Denemesi olmayan aday (okulda hepsi böyledir) öğretmene hiç görünmez.
-  assert.deepEqual(visibleRecords(createSeed(new Date(now)), teacher('t1'), 'prospects'), [])
+  // Okul kurumunda öğretmen aday koleksiyonuna hiç erişemez; dil okulunda denemesi olmayan aday görünmez.
+  const school = createSeed(new Date(now))
+  assert.deepEqual(visibleRecords(school, teacher('t1'), 'prospects'), [])
+  assert.deepEqual(scopeFor(school, teacher('t1')).access('prospects'), {
+    allowed: false,
+    reason: 'role_denied',
+  })
+  assert.deepEqual(visibleRecords(school, teacher('t1'), 'prospects', language), [])
+  assert.deepEqual(scopeFor(school, teacher('t1'), language).access('prospects'), {
+    allowed: true,
+  })
 })

@@ -198,6 +198,13 @@ const PROSPECT_TEACHER_VISIBLE = {
 const PROSPECT_TEACHER_HIDDEN = Object.entries(PROSPECT_TEACHER_VISIBLE)
   .filter(([, visible]) => !visible)
   .map(([field]) => field)
+/**
+ * Yalnız dil okulunda okuyabilen roller: öğretmenin deneme adayı okuması dil okuluna özgüdür
+ * (DOM-DIL-030); okulda deneme dersi yoktur ve öğretmen aday koleksiyonuna hiç erişemez (403).
+ */
+const ONUR_LANGUAGE_SCHOOL_ONLY_READS: Readonly<Record<string, readonly Role[]>> = {
+  prospects: ['ogretmen'],
+}
 const ONUR_HIDDEN_FIELDS: FieldRules = {
   prospects: (context) => (context.role === 'ogretmen' ? PROSPECT_TEACHER_HIDDEN : NONE),
 }
@@ -382,6 +389,12 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     if (status === 'unknown') return deny('unknown_collection')
     if (status === 'unavailable') return deny('module_unavailable')
     if (status === 'disabled') return deny('module_disabled')
+    if (
+      role &&
+      institutionType !== 'language_school' &&
+      ONUR_LANGUAGE_SCHOOL_ONLY_READS[collection]?.includes(role) === true
+    )
+      return deny('role_denied')
     const module = collectionModule(collection)
     const moduleRoles = module && module !== ALWAYS_ON ? MODULE_ROLES.get(module) : undefined
     const viaRule = !!role && READ_BEYOND_MODULE_ROLES[collection]?.includes(role) === true

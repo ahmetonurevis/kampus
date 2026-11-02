@@ -1940,6 +1940,14 @@ describe('aday uçları', () => {
     const adminView = await a_get(a.adminCookie, `/api/v1/collections/prospects/${child.id}`)
     assert.equal(adminView.statusCode, 200, adminView.body)
     assert.ok('phone' in adminView.json().data.record)
+    // Okul kurumunda öğretmen aday koleksiyonuna hiç erişemez (deneme dersi yoktur).
+    const school = await institution()
+    const schoolTeacher = (await member(school.id, 'ogretmen')).cookie
+    assert.equal((await a_get(schoolTeacher, '/api/v1/collections/prospects')).statusCode, 403)
+    assert.equal(
+      (await a_get(schoolTeacher, '/api/v1/collections/prospects/counts?groupBy=stage')).statusCode,
+      403,
+    )
     // Denemesi olmayan aday öğretmene tek kayıt okumasında da 404.
     const hiddenOne = await a_get(teacher, '/api/v1/collections/prospects/pr1')
     assert.equal(hiddenOne.statusCode, 404, hiddenOne.body)

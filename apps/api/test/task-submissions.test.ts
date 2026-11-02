@@ -1086,6 +1086,47 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     }
   })
 
+  test('DOM-KYN-021, OG-985: lisansı dolmuş ve teslim penceresi kapanmış yazma görevinde işi olmayan öğrencinin özeti locked değil license_expired (yazma ucu içerik kuralını pencereden önce sınar: 409 resource_license_expired)', async () => {
+    const t = await tenant()
+    const { versionId } = await seedOwned(t, {
+      ...homework(),
+      license: {
+        kind: 'licensed_publication',
+        publisher: 'Örnek Yayınevi',
+        contractNumber: 'SZ-2026-01',
+        coverage: 'Kurumun bütün öğrencileri',
+        expiryDate: '2026-10-06',
+        restrictedToBookOwners: false,
+      },
+    })
+    const assignmentId = await assignBoth(t, versionId)
+    // Son teslimden (20 Ekim) sonra: pencere kapalı, lisans dolmuş, Can'ın taslağı ve teslimi yok.
+    now = new Date('2026-10-25T09:00:00.000Z')
+    try {
+      const before = await snapshot(t.institution.id)
+      fails(
+        await saveDraft(assignmentId, t.cookies.otherStudent, 'Taslak'),
+        409,
+        'resource_license_expired',
+      )
+      fails(await submit(assignmentId, t.cookies.otherStudent), 409, 'resource_license_expired')
+      assert.deepEqual(await snapshot(t.institution.id), before)
+      const detail = await ok(
+        await call('GET', `/task-assignments/${assignmentId}`, t.cookies.otherStudent),
+      )
+      const row = (await ok(await call('GET', '/task-assignments', t.cookies.otherStudent))).find(
+        (item: Json) => item.id === assignmentId,
+      )
+      for (const progress of [detail.progress[0], row.progress[0]])
+        assert.deepEqual(
+          [progress.canAct, progress.blockedBy, progress.actionableUntil],
+          [false, 'license_expired', null],
+        )
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
   test('DOM-YTK-028, IST-047: servis de yalnız öğrenciye yazdırır: veli çocuğunun taslağını okuyamaz ve kaydedemez, teslim gönderemez (403); kayıt değişmez', async () => {
     const t = await tenant()
     const assignmentId = await assign(t)

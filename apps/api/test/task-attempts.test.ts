@@ -960,6 +960,36 @@ describe('görev deneme uçları', () => {
     assert.deepEqual(await stored(t.institution.id), before)
   })
 
+  test("DOM-KYN-051, OG-985: quiz'in bağlı sorusu kaldırılınca görev ayrıntısı da içeriği göstermez (özetle aynı sürüm kümesi); özet content_unavailable; başka kurum 404", async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t, question('Linked question?', 'a'))
+    const quizId = await t.seed({
+      title: 'Bağlı soru quizi',
+      content: { type: 'quiz', items: [{ questionVersionId: versionId, points: 1 }] },
+      license: { kind: 'institution_original' },
+      tags: { subjectId: 'ingilizce', gradeLevels: [9], primarySkill: 'reading', cefrLevel: 'A2' },
+    })
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, quizId)
+    const gate = async () => {
+      const seen = await progressOf(assignmentId, t.cookies.student)
+      return [seen.contentUnavailable, seen.content?.versionId ?? null, seen.progress[0].blockedBy]
+    }
+    assert.deepEqual(await gate(), [null, quizId, null])
+    await ok(
+      await call('POST', `/resources/${resourceId}/remove`, t.cookies.admin, {
+        reason: 'Telif ihlali kabul edildi',
+      }),
+    )
+    // Quiz'in kendisi kaldırılmadı; soru kaldırıldığı için yazma ucu 422 verir, ayrıntı da kapalı.
+    assert.deepEqual(await gate(), ['unavailable', null, 'content_unavailable'])
+    fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
+    fails(
+      await call('GET', `/task-assignments/${assignmentId}`, await foreignStudent()),
+      404,
+      'not_found',
+    )
+  })
+
   test('DOM-KYN-025, IST-036: telif bildirimiyle incelemedeki kaynakta yeni deneme 422 content_unavailable; süren deneme kaydedilir ve teslim edilir, mükerrer teslim yeni kayıt açmaz; yeniden yayında deneme açılır', async () => {
     const t = await tenant()
     const { resourceId, versionId } = await seedOwned(t, question('Reported question?', 'a'))

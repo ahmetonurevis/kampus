@@ -218,18 +218,19 @@ function contentBlocks(
 }
 
 /**
- * Satıra içerik engelini işler. Kapalı içerik (`content_unavailable`) yazma uçlarında her kuraldan
- * önce gelir: süren deneme, hak ve pencere engellerinin yerine geçer. Lisans engeli yalnız başka
- * engel yokken yazılır (süren işi olana lisans engeli zaten dönmez). İçerik kapalıyken yeni işlem
- * penceresi (`actionableUntil`) anlamsızdır; süren denemenin bitişi kalır (durum zamanla değişir).
+ * Satıra içerik engelini işler. İçerik kuralı yazma uçlarında (`assertWorkOpen`) her kuraldan önce
+ * çalışır: kapalı içerik (`content_unavailable`) ve lisans engeli (`license_expired`) süren deneme,
+ * hak ve pencere engellerinin yerine geçer. Süren işi olana lisans engeli dönmez; dolayısıyla
+ * lisans engeli yalnız yeni iş açan satırda pencere ya da hak engelini örter (yazma ucu da önce 409
+ * `resource_license_expired` döner). İçerik kapalıyken yeni işlem penceresi (`actionableUntil`)
+ * anlamsızdır; süren denemenin bitişi kalır (durum zamanla değişir).
  */
 function withContentBlock(row: RawProgress, block: LearnerWorkBlock) {
   if (block === null) return row
-  const blockedBy = block === 'content_unavailable' ? block : (row.blockedBy ?? block)
   return {
     ...row,
     canAct: false,
-    blockedBy,
+    blockedBy: block,
     actionableUntil: row.status === 'in_progress' ? row.actionableUntil : null,
   }
 }
@@ -267,9 +268,10 @@ export async function learnerHasWork(
 }
 
 /**
- * Sabitlenen sürümün kursiyer içeriği. Telif askısında süren işi olan kursiyer yönergeyi görmeye
- * devam eder (Sabah kararı 47; `learnerContentGate` `content` yüzü); yeni işi olmayan görmez,
- * kaldırılmış içeriği kimse görmez.
+ * Sabitlenen sürümün kursiyer içeriği. Kapı, özetin ve yazma uçlarının sınadığı bütün sürümlere
+ * bakar (`workPairsOf`: sabitlenen sürüm, puanlama sürümü, soruları ve okuma parçası). Telif
+ * askısında süren işi olan kursiyer yönergeyi görmeye devam eder (Sabah kararı 47;
+ * `learnerContentGate` `content` yüzü); yeni işi olmayan görmez, kaldırılmış içeriği kimse görmez.
  */
 async function learnerContent(
   ctx: ServiceContext,
@@ -279,11 +281,12 @@ async function learnerContent(
 ) {
   const progress = rawProgressOf(ctx, viewer, book, assignment)
   const pair = book.pairs.get(assignment.resourceVersionId)
+  // Özetle aynı küme (`workPairsOf`): bağlı soru ya da okuma parçası kapalıysa görev içeriği de.
   const gate = await learnerContentGate(
     ctx,
     viewer,
     assignment,
-    [pair],
+    workPairsOf(assignment, book.pairs),
     () => Promise.resolve(hasWork(book, assignment, progress)),
     'content',
   )

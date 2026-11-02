@@ -1,4 +1,9 @@
-import type { FastifyInstance, FastifyRequest, preHandlerAsyncHookHandler } from 'fastify'
+import type {
+  FastifyInstance,
+  FastifyRequest,
+  preHandlerAsyncHookHandler,
+  RouteOptions,
+} from 'fastify'
 
 import { moduleAvailableFor } from '@kampus/school-core/modules/collection-modules.ts'
 
@@ -22,8 +27,24 @@ export class ModuleDisabledError extends AppError {
  */
 export type ModuleSource = string | ((request: FastifyRequest) => string | null)
 
+/**
+ * Rota → modül envanterinin bir satırı (IST-009, `test/module-inventory.test.ts`). `modules`
+ * rotanın `preValidation` listesindeki `requireModule` kaynaklarıdır; boş liste rotanın modül
+ * denetimi taşımadığını söyler.
+ */
+export interface RouteModuleEntry {
+  method: string
+  url: string
+  modules: readonly ModuleSource[]
+}
+
+/** `requireModule` ön işleyicisi → modül kaynağı; envanter rotadaki denetimi buradan tanır. */
+const GUARD_MODULES = new WeakMap<object, ModuleSource>()
+
 declare module 'fastify' {
   interface FastifyInstance {
+    /** Kayıtlı rotaların modül envanteri (HEAD hariç), kayıt sırasıyla. */
+    routeModules: () => readonly RouteModuleEntry[]
     /**
      * Kimlik + etkin kurumda modül var ve açık mı. Kurum türünde olmayan modül 404 (bulunmaz
      * gibi, DOM-YTK-012), kapalı modül 403 `module_disabled` (DOM-YTK-040). Yalnız `preValidation`'da
@@ -43,10 +64,22 @@ function assertModuleKey(key: string): void {
 export function registerModuleGuard(app: FastifyInstance) {
   // Modül ve rol denetimi `preValidation`'da olmalıdır; yanlış yerleşim açılışta hata verir.
   registerEarlyGuardCheck(app)
+  const inventory: RouteModuleEntry[] = []
+  app.decorate('routeModules', () => inventory)
+  app.addHook('onRoute', (route: RouteOptions) => {
+    for (const method of [route.method].flat()) {
+      if (method === 'HEAD') continue
+      const modules = [route.preValidation ?? []].flat().flatMap((hook) => {
+        const source = GUARD_MODULES.get(hook)
+        return source === undefined ? [] : [source]
+      })
+      inventory.push({ method, url: route.url, modules })
+    }
+  })
   app.decorate('requireModule', (module: ModuleSource): preHandlerAsyncHookHandler => {
     // Sabit anahtar yazım hatası uygulama açılırken yakalanır.
     if (typeof module === 'string') assertModuleKey(module)
-    return markEarlyGuard(async function (request, reply) {
+    const guard = markEarlyGuard(async function (request, reply) {
       await app.authenticate.call(app, request, reply)
       const key = typeof module === 'string' ? module : module(request)
       if (key === null) return
@@ -61,6 +94,8 @@ export function registerModuleGuard(app: FastifyInstance) {
         request.log.info({ event: 'module.disabled_denied', module: key })
         throw new ModuleDisabledError()
       }
-    })
+    } satisfies preHandlerAsyncHookHandler)
+    GUARD_MODULES.set(guard, module)
+    return guard
   })
 }

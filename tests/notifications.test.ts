@@ -4,6 +4,7 @@ import { createSeed, type State } from '../packages/school-core/src/data/seed.ts
 import type { Participant } from '../packages/school-core/src/lib/communication.ts'
 import {
   canSeeNotification,
+  hiddenNotificationKinds,
   isMinorLearner,
   learnerIsMinor,
   markAllNotificationsRead,
@@ -19,7 +20,10 @@ import {
 } from '../packages/school-core/src/lib/notifications.ts'
 import { visibleRecords } from '../packages/school-core/src/lib/scope.ts'
 import { OPERATION_COMMANDS } from '../packages/school-core/src/modules/commands.ts'
-import { collectionModule } from '../packages/school-core/src/modules/collection-modules.ts'
+import {
+  collectionModule,
+  MODULE_KEYS,
+} from '../packages/school-core/src/modules/collection-modules.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 const now = '2026-10-06T10:00:00.000Z'
@@ -307,4 +311,23 @@ test('DOM-YTK-040: iletişim modülü kapalıyken okundu işaretleri 403 module_
   state.modules = { ...state.modules, communication: true }
   markAllNotificationsRead(state, parent, now, { institutionType: 'language_school' })
   assert.equal(state.notificationReads.length, 1)
+})
+
+test('DOM-YTK-040: kapalı modülün ve kapalı bildirim merkezinin türleri gizlenir', () => {
+  const all = Object.keys(NOTIFICATION_KINDS)
+  const open = Object.fromEntries(MODULE_KEYS.map((key) => [key, true]))
+  assert.deepEqual(hiddenNotificationKinds(open), [])
+  assert.deepEqual(hiddenNotificationKinds({}).sort(), [...all].sort())
+  assert.deepEqual(
+    hiddenNotificationKinds({ ...open, communication: false }).sort(),
+    [...all].sort(),
+  )
+  const learningClosed = hiddenNotificationKinds({ ...open, learning: false })
+  assert.ok(learningClosed.length > 0)
+  for (const kind of all)
+    assert.equal(
+      learningClosed.includes(kind as never),
+      NOTIFICATION_KINDS[kind as keyof typeof NOTIFICATION_KINDS].module === 'learning',
+      kind,
+    )
 })

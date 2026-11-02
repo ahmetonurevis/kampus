@@ -1,5 +1,17 @@
-import type { State } from '../data/seed.ts'
-import type { CollectionName, ModuleKey } from './collection-modules.ts'
+import {
+  ASSESSMENT_COMMANDS,
+  PLATFORM_OPERATION_COMMANDS,
+  PLATFORM_WORKFLOW_COMMANDS,
+} from '../platform/commands.ts'
+import {
+  CONFLICTS,
+  SCOPE,
+  spec,
+  workflow,
+  type CommandSpec,
+  type ModuleCommandSpec,
+  type ScalarKey,
+} from './command-builders.ts'
 
 /**
  * Komut → modül ve komut → koleksiyon tabloları. API bir işlemi çalıştırmadan önce hangi modülün
@@ -13,51 +25,20 @@ import type { CollectionName, ModuleKey } from './collection-modules.ts'
  *   boş verir ve kendi denetim kaydını yazar.
  * - `scalars`: dizi olmayan State alanları (kurum ayarından gelir).
  *
+ * İki kaynak birleşir: Oğuzhan'ın komutları `platform/commands.ts`, kayıt ve finans komutları
+ * aşağıdaki `// Onur: kayıt ve finans` blokları. Bir komut adı yalnız bir kaynakta bulunur
+ * (test yakalar). Yapı taşları `command-builders.ts`'tedir.
+ *
  * Testler her komutun başarılı yolunu, yalnız listedeki anahtarları açan bir State görünümüyle
  * çalıştırarak tablonun eksiksiz olduğunu doğrular (`tests/commands.test.ts`).
  */
 
-export type ScalarKey = Extract<keyof State, 'modules' | 'academicYear'>
-export type CommandSpec = {
-  readonly module: ModuleKey | null
-  readonly collections: readonly CollectionName[]
-  readonly scalars: readonly ScalarKey[]
-}
+export type { CommandSpec, ModuleCommandSpec, ScalarKey }
+export { ASSESSMENT_COMMANDS }
 
-/** Kapsam (`scopeFor`) ve yetki (`authorize`) kaynağı; `lib/scope.ts` SCOPE_SOURCE_COLLECTIONS. */
-const SCOPE = ['students', 'teachers', 'classes', 'assignments', 'clubs', 'mockExams'] as const
-/** Oturum aktörü ve iş akışı kapsamı veliyi de okur (`sessionActor`). */
-const SESSION = [...SCOPE, 'parents'] as const
-// Ders/etkinlik/etüt çakışma denetimi (`lib/tutor-conflicts.ts`).
-const CONFLICTS = ['schedule', 'appointments', 'tutorSessions', 'schoolEvents'] as const
-
-const spec = (
-  module: ModuleKey | null,
-  collections: readonly CollectionName[],
-  scalars: readonly ScalarKey[] = ['modules'],
-): CommandSpec => ({ module, collections: [...new Set(collections)], scalars })
-/** İş akışı ve otomasyon komutu her zaman bir modüle bağlıdır. */
-export type ModuleCommandSpec = CommandSpec & { readonly module: ModuleKey }
-const workflow = (
-  module: ModuleKey,
-  extra: readonly CollectionName[],
-  scalars?: ScalarKey[],
-): ModuleCommandSpec => ({ ...spec(module, [...SESSION, ...extra], scalars), module })
-
-/** Okul iş akışı komutları (`runWorkflow`). */
-export const WORKFLOW_COMMANDS = {
-  goal: workflow('goals', ['studentGoals', 'mockExams', 'mockResults']),
-  'goal-review': workflow('goals', ['studentGoals']),
-  'goal-step': workflow('goals', ['studentGoals']),
-  'goal-step-done': workflow('goals', ['studentGoals']),
-  'goal-suggest': workflow('goals', ['studentGoals', 'mockResults', 'subjects']),
-  'goal-comment': workflow('goals', ['studentGoals']),
-  'goal-close': workflow('goals', ['studentGoals']),
-  guidance: workflow('guidance', ['guidanceCases']),
-  'guidance-note': workflow('guidance', ['guidanceCases']),
-  exam: workflow('exams', ['mockExams']),
-  'exam-result': workflow('exams', ['mockExams', 'mockResults']),
-  'exam-import': workflow('exams', ['mockExams', 'mockResults']),
+// Onur: kayıt ve finans
+/** Yenileme planlama ve sınıf geçişi komutları (`runWorkflow`). */
+export const ONUR_WORKFLOW_COMMANDS = {
   renewal: workflow(
     'renewal',
     ['branches', 'contracts', 'invoices', 'renewals'],
@@ -78,48 +59,10 @@ export const WORKFLOW_COMMANDS = {
     ],
     ['modules', 'academicYear'],
   ),
-  lesson: workflow('planning', ['branches', 'subjects', ...CONFLICTS]),
-  substitute: workflow('planning', ['branches', 'subjects', ...CONFLICTS]),
-  'lesson-cancel': workflow('planning', ['schedule']),
-  'study-task': workflow('study', ['studyTasks']),
-  'study-complete': workflow('study', ['studyTasks']),
-  'study-review': workflow('study', ['studyTasks']),
-  event: workflow('calendar', ['branches', ...CONFLICTS]),
-  consent: workflow('calendar', ['schoolEvents', 'eventConsents']),
-  'event-cancel': workflow('calendar', ['schoolEvents']),
-  route: workflow('transport', ['branches', 'transportRoutes', 'transportAssignments']),
-  'route-archive': workflow('transport', ['transportRoutes', 'transportAssignments']),
-  'transport-assign': workflow('transport', ['transportRoutes', 'transportAssignments']),
-  'transport-remove': workflow('transport', ['transportRoutes', 'transportAssignments']),
-  meal: workflow('meals', ['branches', 'mealMenus']),
-  club: workflow('clubs', ['branches']),
-  'club-enroll': workflow('clubs', ['clubMemberships']),
-  'club-leave': workflow('clubs', ['clubMemberships']),
-  'club-attendance': workflow('clubs', ['clubMemberships', 'clubAttendance']),
-  achievement: workflow('clubs', ['clubMemberships', 'socialAchievements']),
-  'club-archive': workflow('clubs', ['clubMemberships']),
 } as const satisfies Record<string, ModuleCommandSpec>
-export type WorkflowCommand = keyof typeof WORKFLOW_COMMANDS
 
-const OPTICAL = ['mockExams', 'mockResults', 'opticalProfiles', 'opticalEvaluations'] as const
-/** Optik değerlendirme ve otomatik etüt komutları (`runAssessment`). */
-export const ASSESSMENT_COMMANDS = {
-  profile: workflow('optical', ['mockExams', 'opticalProfiles', 'subjects']),
-  evaluate: workflow('optical', [...OPTICAL]),
-  plan: workflow('tutoring', [...OPTICAL, 'branches', 'availability', ...CONFLICTS]),
-  slot: workflow('tutoring', ['availability', ...CONFLICTS]),
-  // Randevusu olan saat kaldırılamaz (DOM-ILT-101); randevular okunur, yazılmaz.
-  'slot-remove': workflow('tutoring', ['availability', 'appointments']),
-  cancel: workflow('tutoring', ['tutorSessions']),
-  attendance: workflow('tutoring', ['tutorSessions']),
-} as const satisfies Record<string, ModuleCommandSpec>
-export type AssessmentCommand = keyof typeof ASSESSMENT_COMMANDS
-
-/**
- * Temel yazma işlemleri; anahtarlar `lib/authorize.ts` eylem adlarıdır. Yetki kaynağı (`SCOPE`)
- * her işleme eklidir.
- */
-export const OPERATION_COMMANDS = {
+/** Tahsilat, tarife, ayrılış, aday/CRM ve kesin kayıt işlemleri. */
+export const ONUR_OPERATION_COMMANDS = {
   'invoice.pay': spec('finance', [...SCOPE, 'invoices']),
   'payment.reverse': spec('finance', [...SCOPE, 'invoices']),
   'tariff.manage': spec('finance', [...SCOPE]),
@@ -135,80 +78,6 @@ export const OPERATION_COMMANDS = {
   ]),
   // Ödeme sağlayıcısı bağlanınca okuyacağı koleksiyonlar; şimdilik işlem çağırmaz (authorize.ts).
   'invoice.payOnline': spec('finance', [...SCOPE, 'invoices']),
-  'attendance.record': spec('academic', [...SCOPE, 'attendance']),
-  'grade.record': spec('academic', [...SCOPE, 'grades', 'quizzes', 'quizAttempts']),
-  'grade.update': spec('academic', [...SCOPE, 'grades']),
-  'record.archive': spec(null, [
-    ...SCOPE,
-    'branches',
-    'contracts',
-    'guidanceCases',
-    'homework',
-    'submissions',
-    'questions',
-    'prospects',
-    'renewals',
-    'studyTasks',
-    'availability',
-    'mealMenus',
-    'clubMemberships',
-    'transportRoutes',
-    'transportAssignments',
-    ...CONFLICTS,
-  ]),
-  'record.restore': spec(null, [...SCOPE, 'branches']),
-  // Kampüs/öğretmen/sınıf kaydı (`saveBranch`, `saveTeacher`, `saveClass`): çekirdek kayıtlar,
-  // modül kapatılamaz. Öğretmen kampüs/branş değişikliği gelecek etütleri, sınıf düzenlemesi
-  // program/randevu/etüt/etkinlik çakışmalarını denetler ve açık ödev, soru, quiz ve çalışma
-  // görevlerini yeni ders öğretmenine taşır.
-  'branch.save': spec(null, [...SCOPE, 'branches']),
-  'teacher.save': spec(null, [...SCOPE, 'branches', 'tutorSessions']),
-  'class.save': spec(null, [
-    ...SCOPE,
-    'branches',
-    'homework',
-    'submissions',
-    'questions',
-    'quizzes',
-    'quizAttempts',
-    'studyTasks',
-    ...CONFLICTS,
-  ]),
-  // İletişim (`lib/communication.ts`); alıcı çözümü kampüs listesini de okur.
-  'announcement.publish': spec('communication', [...SCOPE, 'branches', 'announcements']),
-  'announcement.revise': spec('communication', [...SCOPE, 'announcements']),
-  'announcement.withdraw': spec('communication', [...SCOPE, 'announcements']),
-  'announcement.read': spec('communication', [...SCOPE, 'announcements']),
-  // Mesajlar ayrı kayıtlardır (ADR 0005). API bu komutlarda koleksiyonları kısmi yükler: yalnız
-  // hedef yazışma, aynı öğrencinin yazışmaları ve yalnız okunmamış karşı taraf mesajları
-  // (`services/communication.ts`); mesaj gönderimi var olan mesajları hiç yüklemez.
-  'conversation.start': spec('communication', [...SCOPE, 'conversations', 'conversationMessages']),
-  'message.send': spec('communication', [...SCOPE, 'conversations', 'conversationMessages']),
-  'message.read': spec('communication', [...SCOPE, 'conversations', 'conversationMessages']),
-  'conversation.access': spec('communication', [...SCOPE, 'conversations']),
-  // Talep ve izin/mazeret (`lib/requests.ts`). API talep açarken talepleri hiç, güncellerken
-  // yalnız hedef talebi; bildirimde yalnız aynı öğrencinin bildirimlerini yükler.
-  'request.open': spec('communication', [...SCOPE, 'requests']),
-  'request.update': spec('communication', [...SCOPE, 'requests']),
-  'absence.notify': spec('academic', [...SCOPE, 'absences']),
-  // Randevu (`lib/appointments.ts`): talep seçilen uygunluk saatini, onay ve talep çakışmayı
-  // okur (DOM-ILT-101). API talepte yalnız seçilen uygunluk saatini yükler.
-  'appointment.book': spec('communication', [...SCOPE, 'availability', ...CONFLICTS]),
-  'appointment.update': spec('communication', [...SCOPE, ...CONFLICTS]),
-  // Alınabilir saat listesi (DOM-ILT-105): yazmaz; her saati talepteki çakışma denetiminden
-  // geçirir, öğretmenin kampüs ve ders adını okur.
-  'appointment.slots': spec('communication', [
-    ...SCOPE,
-    'availability',
-    'branches',
-    'subjects',
-    ...CONFLICTS,
-  ]),
-  // Öğretmenime Sor (`lib/questions.ts`); kazanım denetimi ders listesini okur. API soru açarken
-  // soruları hiç, yanıt ve geri çekmede yalnız hedef soruyu yükler.
-  'question.ask': spec('learning', [...SCOPE, 'subjects', 'questions']),
-  'question.answer': spec('learning', [...SCOPE, 'questions']),
-  'question.withdraw': spec('learning', [...SCOPE, 'questions']),
   // Aday/CRM (`lib/prospects.ts`). Tekillik bütün adayları okur; görüşme çakışması diğer adayların
   // görüşmelerini ve ders/randevu/etüt/etkinlik kayıtlarını, deneme dersi ders programını okur.
   'prospect.create': spec('crm', [...SCOPE, 'branches', 'prospects']),
@@ -225,11 +94,22 @@ export const OPERATION_COMMANDS = {
     'invoices',
     'contracts',
   ]),
-  // Uygulama içi bildirimin okundu işareti (`lib/notifications.ts`, DOM-ILT-020, -073). Görünürlük
-  // üyelik bağlantılarındandır; kapsam kaynağı yalnız yetki (modül, rol) için okunur. API yalnız
-  // aktörün gördüğü bildirimleri ve kendi okundu işaretlerini yükler.
-  'notification.read': spec('communication', [...SCOPE, 'notifications', 'notificationReads']),
-  'notification.read_all': spec('communication', [...SCOPE, 'notifications', 'notificationReads']),
+} as const satisfies Record<string, CommandSpec>
+// Onur: kayıt ve finans sonu
+
+/** Okul iş akışı komutları (`runWorkflow`); iki kaynağın birleşimi. */
+export const WORKFLOW_COMMANDS = {
+  ...PLATFORM_WORKFLOW_COMMANDS,
+  ...ONUR_WORKFLOW_COMMANDS,
+} as const satisfies Record<string, ModuleCommandSpec>
+export type WorkflowCommand = keyof typeof WORKFLOW_COMMANDS
+
+export type AssessmentCommand = keyof typeof ASSESSMENT_COMMANDS
+
+/** Temel yazma işlemleri; anahtarlar `lib/authorize.ts` eylem adlarıdır; iki kaynağın birleşimi. */
+export const OPERATION_COMMANDS = {
+  ...PLATFORM_OPERATION_COMMANDS,
+  ...ONUR_OPERATION_COMMANDS,
 } as const satisfies Record<string, CommandSpec>
 export type OperationCommand = keyof typeof OPERATION_COMMANDS
 

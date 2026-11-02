@@ -1,0 +1,89 @@
+import type { NavigationPage } from '../modules/full-navigation.ts'
+import type { Role } from '../modules/navigation.ts'
+
+/**
+ * Platform menü sayfaları: temel menüde olmayan, yalnız API'li yüzeylerde (yeni web, mobil) açılan
+ * iletişim ve içerik havuzu sayfaları. Yerleştirme (hangi kategorinin yanına gireceği) ve okul iş
+ * akışı modülleri `modules/full-navigation.ts`'te birleşir.
+ */
+
+const communicationPage = (
+  path: string,
+  title: string,
+  icon: string,
+  description: string,
+): NavigationPage => ({
+  path,
+  title,
+  icon,
+  module: 'communication',
+  view: 'Communication',
+  description,
+  group: 'İLETİŞİM',
+  apiOnly: true,
+})
+
+// Temel menüde olmayan iletişim sayfaları (öğrenci ve veli için temel menüde zaten vardır). Hesap
+// grubu varsa ondan önce, yoksa sona eklenir; yönetici ve ön büro mesajı yalnız yeni web açar,
+// mobil bunlardan yalnız kendi taşıdığı sayfaları gösterir.
+export const API_COMMUNICATION_PAGES: Record<Role, readonly NavigationPage[]> = {
+  yonetici: [
+    communicationPage(
+      'duyurular',
+      'Duyurular',
+      'Megaphone',
+      'Kurum duyurularını yayınlayın ve izleyin.',
+    ),
+    communicationPage(
+      'mesajlar',
+      'Mesajlar',
+      'MessagesSquare',
+      'Öğrenci–öğretmen yazışmalarının üst verisini görün; içeriği gerekçeyle açın.',
+    ),
+  ],
+  onburo: [
+    communicationPage(
+      'duyurular',
+      'Duyurular',
+      'Megaphone',
+      'İdari duyuruları yayınlayın ve izleyin.',
+    ),
+  ],
+  ogretmen: [
+    communicationPage('duyurular', 'Duyurular', 'Megaphone', 'Sınıflarınıza duyuru yayınlayın.'),
+    communicationPage(
+      'mesajlar',
+      'Mesajlar',
+      'MessagesSquare',
+      'Öğrencileriniz ve velileriyle yazışın.',
+    ),
+  ],
+  ogrenci: [],
+  veli: [],
+}
+
+// İçerik havuzu (ADR 0004, docs/domain/kaynak-platformu.md): yalnız içerik personeli (yönetici,
+// öğretmen; DOM-YTK-021). Öğrenci ve veli içeriği paylaşım ve atamayla görür, ön büro görmez.
+// Vue demosunun karşılığı yoktur; mobil API menüsü yalnız taşıdığı sayfaları gösterir.
+const contentPoolPage = (description: string): NavigationPage => ({
+  path: 'icerik-havuzu',
+  title: 'İçerik Havuzu',
+  icon: 'Library',
+  module: 'learning',
+  view: 'ContentPool',
+  description,
+  group: 'ÖĞRENME',
+  apiOnly: true,
+})
+
+export const API_LEARNING_PAGES: Record<Role, readonly NavigationPage[]> = {
+  yonetici: [
+    contentPoolPage('Kurumun okuma parçası ve soru havuzunu inceleyin, onaylayın ve yönetin.'),
+  ],
+  onburo: [],
+  ogretmen: [
+    contentPoolPage('Okuma parçası ve soru hazırlayın, onaya gönderin, yayındaki içeriği izleyin.'),
+  ],
+  ogrenci: [],
+  veli: [],
+}

@@ -3,6 +3,8 @@ import assert from 'node:assert/strict'
 import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
 import {
   ASSESSMENT_COMMANDS,
+  ONUR_OPERATION_COMMANDS,
+  ONUR_WORKFLOW_COMMANDS,
   OPERATION_COMMANDS,
   WORKFLOW_COMMANDS,
   commandSpec,
@@ -11,6 +13,10 @@ import {
   isWorkflowCommand,
   type CommandSpec,
 } from '../packages/school-core/src/modules/commands.ts'
+import {
+  PLATFORM_OPERATION_COMMANDS,
+  PLATFORM_WORKFLOW_COMMANDS,
+} from '../packages/school-core/src/platform/commands.ts'
 import {
   COLLECTION_NAMES,
   MODULE_KEYS,
@@ -145,6 +151,22 @@ test('Komut tabloları geçerli modül ve koleksiyon adlarını, kapsam kaynağ�
   assert.deepEqual(Object.keys(OPERATION_COMMANDS), [...WRITE_ACTIONS])
   assert.equal(OPERATION_COMMANDS['record.archive'].module, null)
   assert.equal(OPERATION_COMMANDS['invoice.pay'].module, 'finance')
+})
+
+test('Komut adı iki kaynakta (platform ve Onur bloğu) birden bulunmaz; birleşik tablo ikisinin toplamıdır', () => {
+  const pairs = [
+    ['iş akışı', PLATFORM_WORKFLOW_COMMANDS, ONUR_WORKFLOW_COMMANDS, WORKFLOW_COMMANDS],
+    ['işlem', PLATFORM_OPERATION_COMMANDS, ONUR_OPERATION_COMMANDS, OPERATION_COMMANDS],
+  ] as const
+  for (const [ad, platform, onur, merged] of pairs) {
+    const shared = Object.keys(platform).filter((name) => Object.hasOwn(onur, name))
+    assert.deepEqual(shared, [], `${ad} komutu iki kaynakta: ${shared.join(', ')}`)
+    assert.equal(
+      Object.keys(merged).length,
+      Object.keys(platform).length + Object.keys(onur).length,
+      ad,
+    )
+  }
 })
 
 test('Komut adı yerleşik özellik olduğunda tanınmaz; yürütücü adı ayırır', () => {

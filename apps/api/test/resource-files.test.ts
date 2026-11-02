@@ -77,11 +77,12 @@ describe('kaynak sürümü dosyaları', () => {
   let close: () => Promise<void>
   let app: App
   let store: Awaited<ReturnType<typeof tempStorage>>
+  let now = FIXED_NOW
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
     store = await tempStorage()
-    app = await buildTestApp(db, { storage: store.storage })
+    app = await buildTestApp(db, { storage: store.storage, clock: () => now })
   })
   after(async () => {
     await app.close()
@@ -847,5 +848,122 @@ describe('kaynak sürümü dosyaları', () => {
     for (const cookie of [t.cookies.teacher, t.cookies.student, t.cookies.parent])
       fails(await fileUrl(cookie, fileId), 404, 'not_found')
     await ok(await fileUrl(t.cookies.admin, fileId))
+  })
+
+  /** Yayınevi lisansı (DOM-KYN-021); bitiş günü `FIXED_NOW`'un günüdür. */
+  const licensed = (restrictedToBookOwners: boolean) => ({
+    kind: 'licensed_publication' as const,
+    publisher: 'Örnek Yayınevi',
+    contractNumber: 'SZ-2026-01',
+    coverage: 'Kitap sahibi öğrenciler',
+    expiryDate: '2026-10-06',
+    restrictedToBookOwners,
+  })
+
+  /**
+   * Yayındaki lisanslı soruyu depo fonksiyonuyla ekler (lisanslı yayın onayla yayımlanır) ve
+   * görseli sürüme bağlar.
+   */
+  async function seedLicensedQuestion(
+    t: Tenant,
+    image: string,
+    license: ReturnType<typeof licensed>,
+    share: { shareScope?: 'students'; sharedStudentIds?: string[]; gradeLevels?: number[] } = {},
+  ) {
+    const seeded = await seedResource(db, t.institution.id, {
+      ownerUserId: t.institution.admin.id,
+      ...(share.shareScope ? { shareScope: share.shareScope } : {}),
+      sharedStudentIds: share.sharedStudentIds ?? [],
+      versions: [
+        {
+          status: 'published',
+          input: {
+            ...question(image),
+            license,
+            tags: { subjectId: 'matematik', gradeLevels: share.gradeLevels ?? [9], outcomes },
+          } as never,
+        },
+      ],
+    })
+    const versionId = seeded.versions[0]!.id
+    await db
+      .update(files)
+      .set({ attachedType: 'resource_version', attachedId: versionId, attachedAt: FIXED_NOW })
+      .where(and(eq(files.institutionId, t.institution.id), eq(files.id, image)))
+    return versionId
+  }
+
+  test('DOM-KYN-006, DOM-KYN-021: lisansı dolmuş içeriğin dosyası görevden yalnız süren işi olana açılır; personel açmaya devam eder', async () => {
+    const t = await tenant()
+    const image = await upload(t, t.cookies.admin, { purpose: 'question_image' })
+    const versionId = await seedLicensedQuestion(t, image, licensed(false))
+    const assignmentId = await assign(t, versionId, '9-A')
+    // Bitiş günü dahil geçerlidir.
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      await ok(await fileUrl(cookie, image))
+
+    const expire = async (check: () => Promise<void>) => {
+      now = new Date('2026-10-07T09:00:00.000Z')
+      try {
+        await check()
+      } finally {
+        now = FIXED_NOW
+      }
+    }
+    // Süren işi olmayan kursiyere görev içeriği gibi dosya da kapanır (`license_expired`).
+    await expire(async () => {
+      for (const cookie of [t.cookies.student, t.cookies.parent])
+        fails(await fileUrl(cookie, image), 404, 'not_found')
+      for (const cookie of [t.cookies.teacher, t.cookies.admin])
+        await ok(await fileUrl(cookie, image))
+    })
+    // Süren deneme işi bitirir: öğrenci ve velisi dosyayı açar.
+    await ok(
+      await post(
+        `/task-assignments/${assignmentId}/attempts`,
+        t.cookies.student,
+        {},
+        { 'idempotency-key': randomUUID() },
+      ),
+      201,
+    )
+    await expire(async () => {
+      for (const cookie of [t.cookies.student, t.cookies.parent])
+        await ok(await fileUrl(cookie, image))
+    })
+  })
+
+  test('DOM-KYN-006, DOM-KYN-021: kitap sahibiyle sınırlı lisansta görevden dosya yalnız kitap sahibine açılır', async () => {
+    const t = await tenant()
+    const image = await upload(t, t.cookies.admin, { purpose: 'question_image' })
+    // Deniz kitap sahibidir; içerik 10. sınıfa etiketli olduğundan havuzdan okuyamaz.
+    const versionId = await seedLicensedQuestion(t, image, licensed(true), {
+      shareScope: 'students',
+      sharedStudentIds: ['s-1'],
+      gradeLevels: [10],
+    })
+    for (const cookie of [t.cookies.student, t.cookies.otherStudent])
+      fails(await fileUrl(cookie, image), 404, 'not_found')
+    await ok(
+      await post(
+        '/task-assignments',
+        t.cookies.admin,
+        {
+          resourceVersionId: versionId,
+          settings: { deadline: { dueAt: DUE } },
+          targets: [
+            { kind: 'class', id: '9-A' },
+            { kind: 'class', id: '10-B' },
+          ],
+        },
+        { 'idempotency-key': randomUUID() },
+      ),
+      201,
+    )
+    // Atama iki sınıfa da gider; dosya yalnız kitap sahibi Deniz'e ve velilerine açılır.
+    for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.siblingsParent])
+      await ok(await fileUrl(cookie, image))
+    fails(await fileUrl(t.cookies.otherStudent, image), 404, 'not_found')
+    await ok(await fileUrl(t.cookies.teacher, image))
   })
 })

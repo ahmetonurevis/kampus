@@ -1,5 +1,5 @@
 import { PLACEMENT_MODES } from '@kampus/school-core/cefr/placement.ts'
-import { EXCLUSION_REASONS, LEVEL_DECISION_KINDS } from '@kampus/school-core/cefr/suggestion.ts'
+import { LEVEL_DECISION_KINDS } from '@kampus/school-core/cefr/suggestion.ts'
 import { PRIMARY_SKILLS, SKILLS, type PrimarySkill } from '@kampus/school-core/content/taxonomy.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { isStaffProfile, type CefrProfile } from '@kampus/react-shared/cefr.ts'
@@ -71,14 +71,6 @@ export function estimateSkillRows(estimate: CefrProfile['estimate']): LevelRow[]
             ? `${row.missingEvidence} kanıt daha gerekir`
             : 'Kanıt yetersiz',
     }))
-}
-
-export function excludedRows(estimate: CefrProfile['estimate']) {
-  return estimate.excluded.map((row) => ({
-    key: row.id,
-    label: row.title,
-    reason: EXCLUSION_REASONS[row.reason].label,
-  }))
 }
 
 const VALIDITY = {

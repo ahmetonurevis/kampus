@@ -120,7 +120,7 @@ export function CefrProfileCards({ studentId }: { studentId: string }) {
         </ListCard>
         <ListCard
           title="Tahmini seviye"
-          description="Son görev ve tespit sonuçlarından hesaplanır"
+          description="Tespit sonuçlarından hesaplanır"
           state={state}
           isEmpty={false}
           emptyText=""

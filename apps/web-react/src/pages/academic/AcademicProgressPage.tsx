@@ -9,6 +9,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { combineStates, DashboardGrid, ListCard, ShareBar } from '../dashboard/DashboardParts.tsx'
 import { CefrProfileCards } from '../language/CefrProfileParts.tsx'
+import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { LookupError } from './AcademicParts.tsx'
 import { ScoreBars, TrendChart } from './AnalysisParts.tsx'
 import { gradeTrend, studyPriority, subjectScores } from './exam-analysis-model.ts'
@@ -39,7 +40,9 @@ function LanguageProgress({ page }: { page: NavPage }) {
       {error ? <LookupError error={error} onRetry={retry} /> : null}
       {student ? (
         <CefrProfileCards key={student.id} studentId={student.id} />
-      ) : !pending && !error ? (
+      ) : pending ? (
+        <SummaryLoading />
+      ) : !error ? (
         <EmptyState
           title="Bağlı öğrenci bulunamadı."
           description="Hesabınıza bağlı bir öğrenci olduğunda seviye gelişimi burada görünür."

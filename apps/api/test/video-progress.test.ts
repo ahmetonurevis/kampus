@@ -314,12 +314,27 @@ describe('video izleme ilerlemesi ucu', () => {
     assert.equal(edge.json().data.durationSeconds, 1)
   })
 
-  test('DOM-KYN-005: sık yazılan ilerleme denetim satırı üretmez', async () => {
+  test('DOM-KYN-005: denetim satırı yalnız ilk kayıtta yazılır, sonraki güncellemelerde yazılmaz', async () => {
     const a = await institution()
     const s1 = await student(a.id)
+    const videoAudit = async () =>
+      (await db.select().from(auditLog).where(eq(auditLog.institutionId, a.id))).filter(
+        (row) => row.entityType === 'videoProgress',
+      )
     await post(s1, 'v2', BODY)
+    const first = await videoAudit()
+    assert.equal(first.length, 1)
+    assert.equal(first[0]?.action, 'video.progress')
+    assert.equal(first[0]?.entityId, 's1:v2')
     await post(s1, 'v2', { positionSeconds: 60, durationSeconds: 120 })
-    const audit = await db.select().from(auditLog).where(eq(auditLog.institutionId, a.id))
-    assert.equal(audit.filter((row) => row.entityType === 'videoProgress').length, 0)
+    await post(s1, 'v2', { positionSeconds: 90, durationSeconds: 120 })
+    assert.equal((await videoAudit()).length, 1)
+    // Örnekten gelen kaydı güncellemek (s1/v1) ilk yazım değildir: satır yazılmaz.
+    await post(s1, 'v1', BODY)
+    assert.equal((await videoAudit()).length, 1)
+    // Başka öğrencinin yeni kaydı (s25/v2) yeniden bir denetim satırı yazar (kayıt başına bir).
+    await post(await student(a.id, 's25'), 'v2', BODY)
+    const all = await videoAudit()
+    assert.deepEqual(all.map((row) => row.entityId).sort(), ['s1:v2', 's25:v2'])
   })
 })

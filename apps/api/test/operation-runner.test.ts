@@ -857,6 +857,57 @@ describe('işlem çalıştırıcı', () => {
   })
 })
 
+describe('auditPolicy: firstWriteOnly', () => {
+  let db: Database
+  let close: () => Promise<void>
+  let app: App
+  before(async () => {
+    ;({ db, close } = await createTestDatabase())
+    app = await buildTestApp(db, { clock: () => FIXED_NOW })
+  })
+  after(async () => {
+    await app.close()
+    await close()
+  })
+
+  test('video.progress dışındaki eylem seçeneği kullanamaz: 500, kayıt değişmez', async () => {
+    const created = await createInstitution(app)
+    await insertMissingRecords(db, created.id, seedItems(['invoices']), FIXED_NOW)
+    const ctx: ServiceContext = {
+      db,
+      institutionId: created.id,
+      actor: {
+        userId: created.admin.id,
+        role: 'yonetici',
+        membershipId: created.adminMembershipId,
+      },
+      now: LATER,
+      log: app.log,
+    }
+    const target = seed.invoices.find((invoice) => !invoice.paidAt)
+    assert.ok(target)
+    const before = await db.select().from(records).where(eq(records.institutionId, created.id))
+    await assert.rejects(
+      runOperation(ctx, {
+        action: 'invoice.pay',
+        auditPolicy: 'firstWriteOnly',
+        entity: { type: 'invoices', id: target.id },
+        collections: ['invoices'],
+        run: (state, { now }) => payInvoice(state, target.id, 'Kredi kartı', now),
+      }),
+      hasStatus(500, 'internal_error'),
+    )
+    const after = await db.select().from(records).where(eq(records.institutionId, created.id))
+    assert.equal(after.length, before.length)
+    assert.deepEqual(
+      after.map((row) => row.version).sort(),
+      before.map((row) => row.version).sort(),
+    )
+    const audit = await db.select().from(auditLog).where(eq(auditLog.institutionId, created.id))
+    assert.equal(audit.length, 0)
+  })
+})
+
 describe('veritabanı hata eşlemesi', () => {
   /** Drizzle sürücü hatasını `cause`'a sarar; eşleme zinciri izler. */
   const wrapped = (code: string, constraint?: string) =>

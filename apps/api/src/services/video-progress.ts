@@ -18,8 +18,9 @@ import { runCommand, type IdempotencyRequest, type LoadScope } from './operation
  * Oynatıcı bu ucu 15 sn'de bir çağırır, bu yüzden işlem dar yüklenir: kurumun bütün öğrenci ve
  * sınıfları yerine öğrencinin kendi kaydı ve sınıfı, hedef video ve öğrencinin o videodaki satırı.
  * Kapsam kaynağının yüklenmeyen koleksiyonları boştur; öğrenci kapsamı (kendi düzeyi) yalnız
- * kendi öğrenci ve sınıf kaydıyla çözülür. Denetim satırı yazılmaz (`skipAudit`): her 15 sn'lik
- * konum güncellemesi denetim değeri taşımaz.
+ * kendi öğrenci ve sınıf kaydıyla çözülür. Denetim satırı yalnız kaydın ilk yazımında bırakılır
+ * (`auditPolicy: 'firstWriteOnly'`): her 15 sn'lik konum güncellemesi denetim değeri taşımaz, kaydın
+ * açılışı taşır.
  */
 
 const NONE: LoadScope = { ids: [] }
@@ -68,7 +69,7 @@ export async function recordVideoProgressCommand(
       action: 'video.progress',
       collections: SPEC.collections,
       loadScope,
-      skipAudit: true,
+      auditPolicy: 'firstWriteOnly',
       entity: { type: 'videoProgress', id: progressKey ?? videoId },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)

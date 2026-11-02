@@ -2,12 +2,8 @@ import { z } from 'zod'
 import { subjects, subjectsForGrade } from '@kampus/school-core/data/curriculum.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { addConversationMessage } from '@kampus/school-core/lib/communication.ts'
-import {
-  requiredText,
-  prospectSchema,
-  type MakeId,
-  type Session,
-} from '@kampus/school-core/lib/domain.ts'
+import { requiredText, type MakeId, type Session } from '@kampus/school-core/lib/domain.ts'
+import { prospectSchema } from '@kampus/school-core/lib/prospects.ts'
 import { payInvoice } from '@kampus/school-core/lib/payments.ts'
 import { enrollProspect } from '@kampus/school-core/lib/enrollment.ts'
 import type { DocumentType } from '@kampus/school-core/lib/document-data.ts'

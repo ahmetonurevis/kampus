@@ -59,7 +59,7 @@ K9 Onur'a, K10 Oğuzhan'a verildi; ERP kümeleri (K20–K24, K26) Onur'da, K25 v
 - **Kapsam:** aday yaşam döngüsü, tanışma görüşmesi ve deneme dersi, kesin kayıt (tarife, kimlik, veli ve ödeyici, kampüs onayı), kayıt sözleşmesi ve onayı, kayıt yenileme, sınıf geçişi ve mezuniyet işlemi, dondurma ve ayrılış kaydı, yetişkin kursiyerin sözleşme tarafı olması, resmî kayıt listeleri, kayıt hunisi.
 - **Menü:** Aday Öğrenciler, Tanışma Görüşmeleri, Kayıt İşlemleri, Kayıt Raporları, Kayıt Yenileme. Modüller `crm`, `renewal`.
 - **IST:** Faz 1: 079, 091. Faz 1'e çekilen: 092, 100. Faz 2: 059, 082, 085, 088, 117. Bölünen: 007, 084, 134.
-- **Dizinler:** core `lib/{prospects,prospect-form,enrollment}.ts`, `school-workflows.ts` içindeki renewal bloğu; API `routes/prospects*`, `services/prospects.ts`, `db/student-identities.ts`; web `pages/crm/`, sonra `pages/renewal/`; e2e `adaylar.spec.ts` ve kayıt senaryoları.
+- **Dizinler:** core `lib/{prospects,enrollment}.ts`, `school-workflows.ts` içindeki renewal bloğu; API `routes/prospects*`, `services/prospects.ts`, `db/student-identities.ts`; web `pages/crm/`, sonra `pages/renewal/`; e2e `adaylar.spec.ts` ve kayıt senaryoları.
 - **PDF ve bildirim:** kayıt sözleşmesi, yenileme sözleşmesi, öğrenci belgesi. Görüşme ve deneme dersi hatırlatması, kayıt onayı, yenileme daveti, sözleşme onay isteği.
 - **Belge:** `kayit-ve-crm.md` (DOM-KAY); `dil-okulu.md` içinde Deneme dersi ve Kursiyer türleri bölümleri.
 - **Sınır:** yılsonu geçme kararını K4 verir. Sınıf geçişini ve mezuniyeti Onur bu kararı okuyarak işler.

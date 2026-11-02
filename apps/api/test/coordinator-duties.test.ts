@@ -628,6 +628,126 @@ describe('zümre başkanı ve akademik koordinatör', () => {
     fails(await finalScore(id, t.cookies.colleague, 4), 409, 'rater_not_independent')
   })
 
+  /**
+   * Üç uyuşmazlık: `own` İngilizce teslimi `teacher` ile `colleague` puanlar, `english` ile `math`
+   * teslimlerini `colleague` ile `extra` puanlar (`math` matematik içeriğidir). Hepsi 9-A'dadır;
+   * `teacher` (zümre başkanı, 9-A öğretmeni) üçünü de atama olarak görür.
+   */
+  async function disputeSet(t: Tenant) {
+    const extra = await createMember(app, t.institution.id, 'ogretmen', [
+      { kind: 'teacher', recordId: 't-eng' } as never,
+    ])
+    const extraCookie = await signInAs(app, extra)
+    const seed = async (subjectId: string, title: string) =>
+      (
+        await seedResource(db, t.institution.id, {
+          ownerUserId: t.users.teacher.id,
+          versions: [
+            {
+              status: 'published',
+              input: {
+                ...homework(),
+                title,
+                tags: { ...homework().tags!, subjectId },
+              } as Partial<ResourceVersionInput>,
+            },
+          ],
+        })
+      ).versions[0]!.id
+    const englishHomework = await seed('ingilizce', 'İkinci yazı')
+    const mathHomework = await seed('matematik', 'Problem çözümü')
+    const dispute = async (resourceVersionId: string, first: string, second: string) => {
+      const assignment = await ok(
+        await call(
+          'POST',
+          '/task-assignments',
+          t.cookies.admin,
+          {
+            resourceVersionId,
+            settings: {
+              deadline: { dueAt: DUE },
+              submission: { submissionKind: 'text', maxVersions: 1 },
+              rubricVersionId: t.rubricVersionId,
+            },
+            targets: [{ kind: 'class', id: '9-A' }],
+          },
+          key(),
+        ),
+        201,
+      )
+      const id = (
+        await ok(
+          await call(
+            'POST',
+            `/task-assignments/${assignment.id}/submissions`,
+            t.cookies.student,
+            { submissionKind: 'text', body: SECRET_TEXT },
+            key(),
+          ),
+          201,
+        )
+      ).id as string
+      const post = (path: string, cookie: string, version: number, body: unknown) =>
+        call('POST', `/task-submissions/${id}/${path}`, cookie, body, {
+          ...match(version),
+          ...key(),
+        })
+      await ok(await post('second-rating-requests', t.cookies.admin, 1, { versionNumber: 1 }), 201)
+      await ok(await post('scores', first, 2, scoreBody()), 201)
+      await ok(await post('second-scores', second, 3, disagreeing()), 201)
+      return id
+    }
+    for (const [user, scopeId] of [
+      [t.users.head, 'ingilizce'],
+      [t.users.teacher, 'ingilizce'],
+      [t.users.mathTeacher, 'matematik'],
+    ] as const)
+      await ok(await assign(t.cookies.admin, { membershipId: user.membershipId, scopeId }), 201)
+    return {
+      own: await dispute(t.homeworkId, t.cookies.teacher, t.cookies.colleague),
+      english: await dispute(englishHomework, t.cookies.colleague, extraCookie),
+      math: await dispute(mathHomework, t.cookies.colleague, extraCookie),
+    }
+  }
+  const resolutionIds = async (cookie: string, extra = '') =>
+    (await ok(await queue(cookie, `&awaiting=resolution${extra}`))).map((row: Json) => row.id)
+
+  test('OG-058, DOM-YTK-027: uyuşmazlık kuyruğu alan dışını listelemez: İngilizce zümre başkanı kendi sınıfındaki matematik uyuşmazlığını görmez; matematik koordinatörü atamayı görmese de listeler', async () => {
+    const t = await tenant()
+    const { math, english } = await disputeSet(t)
+    const teacherIds = await resolutionIds(t.cookies.teacher)
+    assert.ok(!teacherIds.includes(math), 'alan dışı uyuşmazlık kuyrukta')
+    assert.ok(teacherIds.includes(english))
+    assert.deepEqual(await resolutionIds(t.cookies.mathTeacher), [math])
+    assert.ok(!(await resolutionIds(t.cookies.head)).includes(math))
+  })
+
+  test('OG-058, DOM-BEC-024: uyuşmazlık kuyruğu kişinin kendi puanladığı teslimi listelemez; son puanı veremeyeceği satır kuyrukta yoktur', async () => {
+    const t = await tenant()
+    const { own, english } = await disputeSet(t)
+    assert.ok(!(await resolutionIds(t.cookies.teacher)).includes(own), 'kendi puanladığı kuyrukta')
+    fails(await finalScore(own, t.cookies.teacher, 4), 409, 'rater_not_independent')
+    // İkinci puanlayıcı da son puanı veremez.
+    assert.ok(!(await resolutionIds(t.cookies.colleague)).includes(english))
+    // Aynı teslim başka koordinatörde listelenir.
+    assert.ok((await resolutionIds(t.cookies.head)).includes(own))
+  })
+
+  test('OG-058, DOM-BEC-024, DOM-YTK-027: alanındaki ve puanlamadığı uyuşmazlık listelenir; toplam ve sayfalama süzülmüş satırlar üzerindendir; yönetici davranışı değişmez', async () => {
+    const t = await tenant()
+    const { own, english, math } = await disputeSet(t)
+    assert.deepEqual(await resolutionIds(t.cookies.teacher), [english])
+    assert.deepEqual((await resolutionIds(t.cookies.head)).sort(), [english, own].sort())
+    const paged = await queue(t.cookies.head, '&awaiting=resolution&pageSize=1')
+    assert.equal(paged.json().data.length, 1)
+    assert.equal(paged.json().meta.total, 2)
+    const second = await queue(t.cookies.head, '&awaiting=resolution&pageSize=1&page=2')
+    assert.deepEqual([second.json().data.length, second.json().meta.total], [1, 2])
+    const teacherPage = await queue(t.cookies.teacher, '&awaiting=resolution&pageSize=1')
+    assert.deepEqual([teacherPage.json().data.length, teacherPage.json().meta.total], [1, 1])
+    assert.deepEqual((await resolutionIds(t.cookies.admin)).sort(), [english, math, own].sort())
+  })
+
   /** Kurumun bildirim kayıtları (F6a): alıcı kitlesi, öğrenci ve konu teslimi. */
   async function noticeRows(institutionId: string) {
     const rows = await db

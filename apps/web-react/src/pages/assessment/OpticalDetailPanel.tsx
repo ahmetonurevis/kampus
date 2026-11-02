@@ -1,5 +1,6 @@
 import { useMemo } from 'react'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
+import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import type { EvaluationRow, QuestionDetailRow, TopicRow } from './optical-model.ts'
@@ -9,6 +10,9 @@ type Props = {
   selectedId: string
   row: EvaluationRow | undefined
   pending: boolean
+  /** Okuma hatası; varsa "bulunamadı" yerine hata ve yeniden deneme gösterilir. */
+  error?: unknown
+  onRetry?: () => void
   onClose: () => void
 }
 
@@ -21,12 +25,14 @@ const QUESTION_COLUMNS = ['number', 'outcome']
  * sonuçları. Veri kayıtlı analizden gelir; kapsam sunucudadır (öğretmen yalnız kendi branşını, öğrenci
  * ve veli yalnız bağlı öğrenciyi alır), istemci ek gizleme yapmaz. Eski analiz durumu açıkça yazılır.
  */
-export function OpticalDetailPanel({ selectedId, row, pending, onClose }: Props) {
+export function OpticalDetailPanel({ selectedId, row, pending, error, onRetry, onClose }: Props) {
   const title = row
     ? `${row.student} · ${row.subject}`
     : pending
       ? 'Analiz yükleniyor'
-      : 'Analiz bulunamadı'
+      : error
+        ? 'Analiz yüklenemedi'
+        : 'Analiz bulunamadı'
   return (
     <SidePanel
       open={Boolean(selectedId)}
@@ -40,6 +46,8 @@ export function OpticalDetailPanel({ selectedId, row, pending, onClose }: Props)
         <p role="status" className="text-sm text-muted-foreground">
           Analiz yükleniyor…
         </p>
+      ) : error ? (
+        <QueryError error={error} onRetry={onRetry} />
       ) : (
         <p className="text-sm text-muted-foreground">
           Değerlendirme mevcut rol kapsamında bulunamadı. Listeye dönüp yeniden seçin.
@@ -139,7 +147,7 @@ function DetailBody({ row }: { row: EvaluationRow }) {
           Kazanım başarıları
         </h3>
         <DataTable
-          listKey="optik-ayrinti-kazanim"
+          listKey={`optik-ayrinti-kazanim:${row.id}`}
           urlPrefix="kazanim-"
           rows={row.topics}
           columns={topicColumns}
@@ -158,7 +166,7 @@ function DetailBody({ row }: { row: EvaluationRow }) {
           Çoklu işaret yanlış sayılır; iptal edilen sorular kazanım oranından çıkarılır.
         </p>
         <DataTable
-          listKey="optik-ayrinti-soru"
+          listKey={`optik-ayrinti-soru:${row.id}`}
           urlPrefix="soru-"
           rows={row.questions}
           columns={questionColumns}

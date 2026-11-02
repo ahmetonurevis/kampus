@@ -269,6 +269,8 @@ function OpticalView({ page, session }: { page: NavPage; session: Session }) {
         selectedId={panel.selectedId}
         row={selected}
         pending={data.pending}
+        error={data.error}
+        onRetry={data.retry}
         onClose={panel.close}
       />
       {admin && editing ? (

@@ -234,11 +234,13 @@ export function evaluationRows(state: State, session: Session): EvaluationRow[] 
       const current = usable.has(evaluation.id)
       const staleReason = current
         ? ''
-        : profile?.revision !== evaluation.keyRevision
-          ? 'Cevap anahtarı değişti; dosyayı yeniden değerlendirin.'
-          : result?.evaluationId !== evaluation.id
-            ? 'Deneme sonucu değişti; dosyayı yeniden değerlendirin.'
-            : 'Bu analiz kapsamınızda kullanılamaz.'
+        : !profile
+          ? 'Optik profili bulunamadı; profili yeniden oluşturup dosyayı değerlendirin.'
+          : profile.revision !== evaluation.keyRevision
+            ? 'Cevap anahtarı değişti; dosyayı yeniden değerlendirin.'
+            : result?.evaluationId !== evaluation.id
+              ? 'Deneme sonucu değişti; dosyayı yeniden değerlendirin.'
+              : 'Bu analiz kapsamınızda kullanılamaz.'
       return {
         id: evaluation.id,
         student: state.students.find((s) => s.id === evaluation.studentId)?.name ?? '—',

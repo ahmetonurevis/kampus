@@ -57,6 +57,9 @@ const CONVERSATION = kayit('communication.test.ts', 'kurumlar arası 404: başka
 const GROUP = kayit('language-groups.test.ts', 'başka kurumun grubu 404, listede görünmez')
 const GROUP_COMMAND = (verb: string) =>
   kayit('language-groups.test.ts', 'başka kurumun grubu açılmaz ve birleştirilmez', `'${verb}'`)
+const PLACEMENT = kayit('cefr.test.ts', 'başka kurumun oturumu ve öğrencisi 404, B değişmez')
+const PLACEMENT_COMMAND = (verb: string) =>
+  kayit('cefr.test.ts', 'başka kurumun oturumu ve öğrencisi 404, B değişmez', `'${verb}'`)
 const COURSE = kayit('courses.test.ts', 'başka kurumun kuru 404, listede görünmez ve değişmez')
 const CONSENT = kayit('consents.test.ts', 'başka kurum: kayıt ve metin 404, B değişmez')
 const DUTY = kayit('coordinator-duties.test.ts', 'başka kurumun yöneticisi 404')
@@ -413,6 +416,19 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     "'cancel'",
   ),
   'POST /api/v1/groups/:groupId/merge': GROUP_COMMAND('merge'),
+
+  // --- Seviye tespiti ve CEFR profili (yalnız dil okulu; OG-054) ------------------------------
+  'GET /api/v1/placement-sessions': PLACEMENT,
+  'GET /api/v1/placement-sessions/:sessionId': PLACEMENT,
+  'POST /api/v1/placement-sessions': PLACEMENT,
+  'POST /api/v1/placement-sessions/:sessionId/score': PLACEMENT_COMMAND('score'),
+  'POST /api/v1/placement-sessions/:sessionId/complete': PLACEMENT_COMMAND('complete'),
+  'POST /api/v1/placement-sessions/:sessionId/decide': PLACEMENT_COMMAND('decide'),
+  'GET /api/v1/students/:studentId/cefr-profile': kayit(
+    'cefr.test.ts',
+    'başka kurumun oturumu ve öğrencisi 404',
+    'cefr-profile',
+  ),
 
   // --- Ders programı ---------------------------------------------------------------------------
   'GET /api/v1/lessons': LESSON_READ,

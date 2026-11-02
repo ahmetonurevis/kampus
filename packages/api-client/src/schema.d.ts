@@ -4576,6 +4576,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/placement-sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kişinin seviye tespitleri
+         * @description Öğrencinin ya da adayın tespit oturumları, başlangıca göre eskiden yeniye, sayfalı; geçerlilik (90 gün, DOM-DIL-012) her okumada hesaplanır. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        get: operations["listPlacementSessions"];
+        put?: never;
+        /**
+         * Seviye tespiti aç
+         * @description Öğrenci ya da aday için tespit oturumu açar (DOM-DIL-010, 012). Kişi kurumun kaydı (404), form kurumun quiz kaynağının sürümü olmalı (404, 422 `placement_form_invalid`). Süren oturum varken (409 `placement_in_progress`) ya da iki tespitten sonra (409 `placement_limit_reached`) yenisi açılmaz; ikinci tespit farklı formla (422 `placement_form_repeated`). Başarı 201 ve `Location`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["openPlacementSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/placement-sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Seviye tespiti
+         * @description Tek oturum: beş bölümün sonucu (dil kullanımı, okuma, dinleme otomatik; yazma, konuşma rubrikli), geçerlilik, önerilen seviye (tespit bağlamı, DOM-DIL-010) ve verilmiş yerleştirme kararı. Puan ve öneri saklanmaz. Olmayan ya da başka kurumun oturumu 404. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        get: operations["getPlacementSession"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/placement-sessions/{sessionId}/score": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Tespit bölümünü puanla
+         * @description Bölüm girişi (DOM-DIL-010, IST-058). Dil kullanımı, okuma ve dinleme `answers` taşır; puan formun o bölümdeki sorularının anahtarıyla sunucuda hesaplanır, yalnız süren oturumda (409 `placement_completed`), formda bölüm yoksa 422 `placement_section_empty`. Yazma ve konuşma yayındaki, bölümle aynı becerideki rubrik sürümüyle (404, 409 `rubric_version_unpublished`, 422 `placement_rubric_skill_mismatch`) kriter bantı ve görevin hedef seviyesini taşır; oturum bittikten sonra da girilir. Her bölüm bir kez (409 `placement_section_scored`); karar verilmiş oturumda giriş yok (409 `placement_already_decided`). Gövdedeki `version` oturumun satır sürümüdür; tutmazsa 409 `version_conflict`, olmayan ya da başka kurumun oturumu 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["scorePlacementSection"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/placement-sessions/{sessionId}/complete": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Seviye tespitini bitir
+         * @description Süren oturumu bitirir; bitiş anı sunucu saatidir ve 90 günlük geçerlilik ondan sayılır (DOM-DIL-012). Bitmiş oturum 409 `placement_completed`. Gövdedeki `version` oturumun satır sürümüdür; tutmazsa 409 `version_conflict`, olmayan ya da başka kurumun oturumu 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["completePlacementSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/placement-sessions/{sessionId}/decide": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Yerleştirme kararı ver
+         * @description Öğretmen veya akademik koordinatör gerekçeyle genel seviyeyi ve isteğe bağlı beceri seviyelerini seçer (DOM-DIL-010); öneriden farklı olabilir. Her satır `level_decisions`'a karar anının önerisiyle yazılır ve değişmez. Oturum bitmiş (409 `placement_incomplete`), kurumda yapılmış (422 `placement_preliminary`), 90 günü dolmamış (422 `placement_expired`) ve yazma ile konuşma puanlanmış (422 `placement_production_missing`) olmalı; oturum başına bir karar (409 `placement_already_decided`). Gövdedeki `version` oturumun satır sürümüdür; tutmazsa 409 `version_conflict`, olmayan ya da başka kurumun oturumu 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["decidePlacement"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/students/{studentId}/cefr-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * CEFR profili
+         * @description Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi ve tespit oturumları. Öneri karar değildir ve saklanmaz. Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        get: operations["getCefrProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -7669,6 +7793,225 @@ export interface components {
              */
             studentStatus: "pending" | "approved" | "rejected";
         };
+        CefrProfileStaffInput: {
+            /**
+             * @description Yönetici ve öğretmen görünümü
+             * @constant
+             */
+            view: "staff";
+            studentId: string;
+            title: string;
+            estimate: {
+                /** @enum {string} */
+                context: "general" | "placement";
+                /** Format: date-time */
+                computedAt: string;
+                overall: {
+                    /** @constant */
+                    status: "suggested";
+                    /** @enum {string} */
+                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                } | {
+                    /** @constant */
+                    status: "insufficient";
+                    missingSkills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use")[];
+                };
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    label: string;
+                    /** @enum {string} */
+                    status: "suggested" | "insufficient";
+                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                    plus: boolean;
+                    demonstratedBy: ("general" | "placement") | null;
+                    missingEvidence: number;
+                    missingItems: number;
+                    evidenceIds: string[];
+                }[];
+                /** @description "Tahmini seviye": öneri karar değildir (DOM-BEC-034) */
+                label: string;
+                evidence: {
+                    id: string;
+                    title: string;
+                    /** @enum {string} */
+                    source: "task" | "placement";
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @enum {string} */
+                    targetLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    /** Format: date-time */
+                    performedAt: string;
+                    /** Format: date-time */
+                    expiresAt: string;
+                    successful: boolean;
+                    percent: number;
+                }[];
+                excluded: {
+                    id: string;
+                    title: string;
+                    /** @enum {string} */
+                    reason: "practice" | "preliminary" | "no_skill" | "no_target_level" | "unscored" | "appeal_pending" | "not_yet" | "expired";
+                }[];
+            };
+            /** @description Beceri başına güncel seviye: en yeni insan kararı */
+            current: {
+                /** @description Boşsa genel seviye */
+                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                /** @enum {string} */
+                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                /** Format: uuid */
+                decisionId: string;
+                /** Format: date-time */
+                decidedAt: string;
+            }[];
+            placements: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                mode: "in_person" | "remote";
+                /** Format: date-time */
+                startedAt: string;
+                completedAt: string | null;
+                validity: {
+                    /** @enum {string} */
+                    status: "in_progress" | "valid" | "expired";
+                    preliminary: boolean;
+                    /** Format: date-time */
+                    completedAt?: string;
+                    /**
+                     * Format: date-time
+                     * @description Geçerliliğin bittiği an (hariç)
+                     */
+                    validUntil?: string;
+                };
+            }[];
+            /** @description Kararların zaman çizelgesi, en yeniden eskiye */
+            timeline: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "placement" | "progression" | "correction";
+                /** @description Boşsa genel seviye */
+                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                /** @enum {string} */
+                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                rationale: string;
+                decidedByUserId: string;
+                /** Format: date-time */
+                decidedAt: string;
+                placementSessionId: string | null;
+            }[];
+        };
+        CefrProfileLearnerInput: {
+            /**
+             * @description Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur
+             * @constant
+             */
+            view: "learner";
+            studentId: string;
+            title: string;
+            estimate: {
+                /** @enum {string} */
+                context: "general" | "placement";
+                /** Format: date-time */
+                computedAt: string;
+                overall: {
+                    /** @constant */
+                    status: "suggested";
+                    /** @enum {string} */
+                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                } | {
+                    /** @constant */
+                    status: "insufficient";
+                    missingSkills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use")[];
+                };
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    label: string;
+                    /** @enum {string} */
+                    status: "suggested" | "insufficient";
+                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                    plus: boolean;
+                    demonstratedBy: ("general" | "placement") | null;
+                    missingEvidence: number;
+                    missingItems: number;
+                    evidenceIds: string[];
+                }[];
+                /** @description "Tahmini seviye": öneri karar değildir (DOM-BEC-034) */
+                label: string;
+                evidence: {
+                    id: string;
+                    title: string;
+                    /** @enum {string} */
+                    source: "task" | "placement";
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @enum {string} */
+                    targetLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    /** Format: date-time */
+                    performedAt: string;
+                    /** Format: date-time */
+                    expiresAt: string;
+                    successful: boolean;
+                    percent: number;
+                }[];
+                excluded: {
+                    id: string;
+                    title: string;
+                    /** @enum {string} */
+                    reason: "practice" | "preliminary" | "no_skill" | "no_target_level" | "unscored" | "appeal_pending" | "not_yet" | "expired";
+                }[];
+            };
+            /** @description Beceri başına güncel seviye: en yeni insan kararı */
+            current: {
+                /** @description Boşsa genel seviye */
+                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                /** @enum {string} */
+                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                /** Format: uuid */
+                decisionId: string;
+                /** Format: date-time */
+                decidedAt: string;
+            }[];
+            placements: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                mode: "in_person" | "remote";
+                /** Format: date-time */
+                startedAt: string;
+                completedAt: string | null;
+                validity: {
+                    /** @enum {string} */
+                    status: "in_progress" | "valid" | "expired";
+                    preliminary: boolean;
+                    /** Format: date-time */
+                    completedAt?: string;
+                    /**
+                     * Format: date-time
+                     * @description Geçerliliğin bittiği an (hariç)
+                     */
+                    validUntil?: string;
+                };
+            }[];
+            /** @description Kararların zaman çizelgesi, en yeniden eskiye */
+            timeline: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "placement" | "progression" | "correction";
+                /** @description Boşsa genel seviye */
+                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                /** @enum {string} */
+                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                /** Format: date-time */
+                decidedAt: string;
+                placementSessionId: string | null;
+            }[];
+        };
+        CefrProfileInput: components["schemas"]["CefrProfileStaffInput"] | components["schemas"]["CefrProfileLearnerInput"];
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -10677,6 +11020,225 @@ export interface components {
              */
             studentStatus: "pending" | "approved" | "rejected";
         };
+        CefrProfileStaff: {
+            /**
+             * @description Yönetici ve öğretmen görünümü
+             * @constant
+             */
+            view: "staff";
+            studentId: string;
+            title: string;
+            estimate: {
+                /** @enum {string} */
+                context: "general" | "placement";
+                /** Format: date-time */
+                computedAt: string;
+                overall: {
+                    /** @constant */
+                    status: "suggested";
+                    /** @enum {string} */
+                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                } | {
+                    /** @constant */
+                    status: "insufficient";
+                    missingSkills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use")[];
+                };
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    label: string;
+                    /** @enum {string} */
+                    status: "suggested" | "insufficient";
+                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                    plus: boolean;
+                    demonstratedBy: ("general" | "placement") | null;
+                    missingEvidence: number;
+                    missingItems: number;
+                    evidenceIds: string[];
+                }[];
+                /** @description "Tahmini seviye": öneri karar değildir (DOM-BEC-034) */
+                label: string;
+                evidence: {
+                    id: string;
+                    title: string;
+                    /** @enum {string} */
+                    source: "task" | "placement";
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @enum {string} */
+                    targetLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    /** Format: date-time */
+                    performedAt: string;
+                    /** Format: date-time */
+                    expiresAt: string;
+                    successful: boolean;
+                    percent: number;
+                }[];
+                excluded: {
+                    id: string;
+                    title: string;
+                    /** @enum {string} */
+                    reason: "practice" | "preliminary" | "no_skill" | "no_target_level" | "unscored" | "appeal_pending" | "not_yet" | "expired";
+                }[];
+            };
+            /** @description Beceri başına güncel seviye: en yeni insan kararı */
+            current: {
+                /** @description Boşsa genel seviye */
+                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                /** @enum {string} */
+                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                /** Format: uuid */
+                decisionId: string;
+                /** Format: date-time */
+                decidedAt: string;
+            }[];
+            placements: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                mode: "in_person" | "remote";
+                /** Format: date-time */
+                startedAt: string;
+                completedAt: string | null;
+                validity: {
+                    /** @enum {string} */
+                    status: "in_progress" | "valid" | "expired";
+                    preliminary: boolean;
+                    /** Format: date-time */
+                    completedAt?: string;
+                    /**
+                     * Format: date-time
+                     * @description Geçerliliğin bittiği an (hariç)
+                     */
+                    validUntil?: string;
+                };
+            }[];
+            /** @description Kararların zaman çizelgesi, en yeniden eskiye */
+            timeline: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "placement" | "progression" | "correction";
+                /** @description Boşsa genel seviye */
+                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                /** @enum {string} */
+                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                rationale: string;
+                decidedByUserId: string;
+                /** Format: date-time */
+                decidedAt: string;
+                placementSessionId: string | null;
+            }[];
+        };
+        CefrProfileLearner: {
+            /**
+             * @description Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur
+             * @constant
+             */
+            view: "learner";
+            studentId: string;
+            title: string;
+            estimate: {
+                /** @enum {string} */
+                context: "general" | "placement";
+                /** Format: date-time */
+                computedAt: string;
+                overall: {
+                    /** @constant */
+                    status: "suggested";
+                    /** @enum {string} */
+                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                } | {
+                    /** @constant */
+                    status: "insufficient";
+                    missingSkills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use")[];
+                };
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    label: string;
+                    /** @enum {string} */
+                    status: "suggested" | "insufficient";
+                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                    plus: boolean;
+                    demonstratedBy: ("general" | "placement") | null;
+                    missingEvidence: number;
+                    missingItems: number;
+                    evidenceIds: string[];
+                }[];
+                /** @description "Tahmini seviye": öneri karar değildir (DOM-BEC-034) */
+                label: string;
+                evidence: {
+                    id: string;
+                    title: string;
+                    /** @enum {string} */
+                    source: "task" | "placement";
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @enum {string} */
+                    targetLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    /** Format: date-time */
+                    performedAt: string;
+                    /** Format: date-time */
+                    expiresAt: string;
+                    successful: boolean;
+                    percent: number;
+                }[];
+                excluded: {
+                    id: string;
+                    title: string;
+                    /** @enum {string} */
+                    reason: "practice" | "preliminary" | "no_skill" | "no_target_level" | "unscored" | "appeal_pending" | "not_yet" | "expired";
+                }[];
+            };
+            /** @description Beceri başına güncel seviye: en yeni insan kararı */
+            current: {
+                /** @description Boşsa genel seviye */
+                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                /** @enum {string} */
+                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                /** Format: uuid */
+                decisionId: string;
+                /** Format: date-time */
+                decidedAt: string;
+            }[];
+            placements: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                mode: "in_person" | "remote";
+                /** Format: date-time */
+                startedAt: string;
+                completedAt: string | null;
+                validity: {
+                    /** @enum {string} */
+                    status: "in_progress" | "valid" | "expired";
+                    preliminary: boolean;
+                    /** Format: date-time */
+                    completedAt?: string;
+                    /**
+                     * Format: date-time
+                     * @description Geçerliliğin bittiği an (hariç)
+                     */
+                    validUntil?: string;
+                };
+            }[];
+            /** @description Kararların zaman çizelgesi, en yeniden eskiye */
+            timeline: {
+                /** Format: uuid */
+                id: string;
+                /** @enum {string} */
+                kind: "placement" | "progression" | "correction";
+                /** @description Boşsa genel seviye */
+                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                /** @enum {string} */
+                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                /** Format: date-time */
+                decidedAt: string;
+                placementSessionId: string | null;
+            }[];
+        };
+        CefrProfile: components["schemas"]["CefrProfileStaff"] | components["schemas"]["CefrProfileLearner"];
     };
     responses: never;
     parameters: never;
@@ -39564,6 +40126,1205 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPlacementSessions: {
+        parameters: {
+            query: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Kişinin türü: öğrenci ya da aday */
+                learnerKind: "student" | "prospect";
+                /** @description Öğrenci ya da aday kaydı kimliği */
+                learnerId: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            learnerKind: "student" | "prospect";
+                            learnerId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            /** @enum {string} */
+                            mode: "in_person" | "remote";
+                            /** Format: date-time */
+                            startedAt: string;
+                            completedAt: string | null;
+                            version: number;
+                            validity: {
+                                /** @enum {string} */
+                                status: "in_progress" | "valid" | "expired";
+                                preliminary: boolean;
+                                /** Format: date-time */
+                                completedAt?: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Geçerliliğin bittiği an (hariç)
+                                 */
+                                validUntil?: string;
+                            };
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    openPlacementSession: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    learnerKind: "student" | "prospect";
+                    learnerId: string;
+                    formId: string;
+                    formVersionId: string;
+                    /** @enum {string} */
+                    mode: "in_person" | "remote";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            learnerKind: "student" | "prospect";
+                            learnerId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            /** @enum {string} */
+                            mode: "in_person" | "remote";
+                            /** Format: date-time */
+                            startedAt: string;
+                            completedAt: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            sections: {
+                                /** @enum {string} */
+                                section: "language_use" | "reading" | "listening" | "writing" | "speaking";
+                                label: string;
+                                /** @enum {string} */
+                                scoring: "auto" | "rubric";
+                                /** @enum {string} */
+                                status: "missing" | "pending" | "scored";
+                                percent: number | null;
+                                targetLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                enteredByUserId: string | null;
+                                enteredAt: string | null;
+                            }[];
+                            validity: {
+                                /** @enum {string} */
+                                status: "in_progress" | "valid" | "expired";
+                                preliminary: boolean;
+                                /** Format: date-time */
+                                completedAt?: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Geçerliliğin bittiği an (hariç)
+                                 */
+                                validUntil?: string;
+                            };
+                            preliminary: boolean;
+                            suggestion: {
+                                /** @enum {string} */
+                                context: "general" | "placement";
+                                /** Format: date-time */
+                                computedAt: string;
+                                overall: {
+                                    /** @enum {string} */
+                                    status: "suggested";
+                                    /** @enum {string} */
+                                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                } | {
+                                    /** @enum {string} */
+                                    status: "insufficient";
+                                    missingSkills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use")[];
+                                };
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                                    label: string;
+                                    /** @enum {string} */
+                                    status: "suggested" | "insufficient";
+                                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    plus: boolean;
+                                    demonstratedBy: ("general" | "placement") | null;
+                                    missingEvidence: number;
+                                    missingItems: number;
+                                    evidenceIds: string[];
+                                }[];
+                            };
+                            decisions: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                kind: "placement" | "progression" | "correction";
+                                /** @description Boşsa genel seviye */
+                                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                rationale: string;
+                                decidedByUserId: string;
+                                /** Format: date-time */
+                                decidedAt: string;
+                                placementSessionId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPlacementSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tespit oturumu kimliği */
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            learnerKind: "student" | "prospect";
+                            learnerId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            /** @enum {string} */
+                            mode: "in_person" | "remote";
+                            /** Format: date-time */
+                            startedAt: string;
+                            completedAt: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            sections: {
+                                /** @enum {string} */
+                                section: "language_use" | "reading" | "listening" | "writing" | "speaking";
+                                label: string;
+                                /** @enum {string} */
+                                scoring: "auto" | "rubric";
+                                /** @enum {string} */
+                                status: "missing" | "pending" | "scored";
+                                percent: number | null;
+                                targetLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                enteredByUserId: string | null;
+                                enteredAt: string | null;
+                            }[];
+                            validity: {
+                                /** @enum {string} */
+                                status: "in_progress" | "valid" | "expired";
+                                preliminary: boolean;
+                                /** Format: date-time */
+                                completedAt?: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Geçerliliğin bittiği an (hariç)
+                                 */
+                                validUntil?: string;
+                            };
+                            preliminary: boolean;
+                            suggestion: {
+                                /** @enum {string} */
+                                context: "general" | "placement";
+                                /** Format: date-time */
+                                computedAt: string;
+                                overall: {
+                                    /** @enum {string} */
+                                    status: "suggested";
+                                    /** @enum {string} */
+                                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                } | {
+                                    /** @enum {string} */
+                                    status: "insufficient";
+                                    missingSkills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use")[];
+                                };
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                                    label: string;
+                                    /** @enum {string} */
+                                    status: "suggested" | "insufficient";
+                                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    plus: boolean;
+                                    demonstratedBy: ("general" | "placement") | null;
+                                    missingEvidence: number;
+                                    missingItems: number;
+                                    evidenceIds: string[];
+                                }[];
+                            };
+                            decisions: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                kind: "placement" | "progression" | "correction";
+                                /** @description Boşsa genel seviye */
+                                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                rationale: string;
+                                decidedByUserId: string;
+                                /** Format: date-time */
+                                decidedAt: string;
+                                placementSessionId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    scorePlacementSection: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Tespit oturumu kimliği */
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    version: number;
+                    /** @enum {string} */
+                    section: "language_use" | "reading" | "listening";
+                    answers: {
+                        [key: string]: {
+                            /** @enum {string} */
+                            questionType: "multiple_choice";
+                            optionId: string | null;
+                        } | {
+                            /** @enum {string} */
+                            questionType: "true_false";
+                            answer: ("true" | "false" | "not_given") | null;
+                        } | {
+                            /** @enum {string} */
+                            questionType: "matching";
+                            pairs: {
+                                promptId: string;
+                                choiceId: string;
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "gap_fill";
+                            gaps: {
+                                gapId: string;
+                                value: string;
+                            }[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "ordering";
+                            order: string[];
+                        } | {
+                            /** @enum {string} */
+                            questionType: "short_answer";
+                            value: string;
+                        };
+                    };
+                } | {
+                    version: number;
+                    /** @enum {string} */
+                    section: "writing" | "speaking";
+                    rubricVersionId: string;
+                    /** @enum {string} */
+                    targetLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    criteria: {
+                        criterionId: string;
+                        band: number;
+                        /** @default null */
+                        comment?: string | null;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            learnerKind: "student" | "prospect";
+                            learnerId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            /** @enum {string} */
+                            mode: "in_person" | "remote";
+                            /** Format: date-time */
+                            startedAt: string;
+                            completedAt: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            sections: {
+                                /** @enum {string} */
+                                section: "language_use" | "reading" | "listening" | "writing" | "speaking";
+                                label: string;
+                                /** @enum {string} */
+                                scoring: "auto" | "rubric";
+                                /** @enum {string} */
+                                status: "missing" | "pending" | "scored";
+                                percent: number | null;
+                                targetLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                enteredByUserId: string | null;
+                                enteredAt: string | null;
+                            }[];
+                            validity: {
+                                /** @enum {string} */
+                                status: "in_progress" | "valid" | "expired";
+                                preliminary: boolean;
+                                /** Format: date-time */
+                                completedAt?: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Geçerliliğin bittiği an (hariç)
+                                 */
+                                validUntil?: string;
+                            };
+                            preliminary: boolean;
+                            suggestion: {
+                                /** @enum {string} */
+                                context: "general" | "placement";
+                                /** Format: date-time */
+                                computedAt: string;
+                                overall: {
+                                    /** @enum {string} */
+                                    status: "suggested";
+                                    /** @enum {string} */
+                                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                } | {
+                                    /** @enum {string} */
+                                    status: "insufficient";
+                                    missingSkills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use")[];
+                                };
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                                    label: string;
+                                    /** @enum {string} */
+                                    status: "suggested" | "insufficient";
+                                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    plus: boolean;
+                                    demonstratedBy: ("general" | "placement") | null;
+                                    missingEvidence: number;
+                                    missingItems: number;
+                                    evidenceIds: string[];
+                                }[];
+                            };
+                            decisions: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                kind: "placement" | "progression" | "correction";
+                                /** @description Boşsa genel seviye */
+                                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                rationale: string;
+                                decidedByUserId: string;
+                                /** Format: date-time */
+                                decidedAt: string;
+                                placementSessionId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    completePlacementSession: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Tespit oturumu kimliği */
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @description Oturumun satır sürümü */
+                    version: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            learnerKind: "student" | "prospect";
+                            learnerId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            /** @enum {string} */
+                            mode: "in_person" | "remote";
+                            /** Format: date-time */
+                            startedAt: string;
+                            completedAt: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            sections: {
+                                /** @enum {string} */
+                                section: "language_use" | "reading" | "listening" | "writing" | "speaking";
+                                label: string;
+                                /** @enum {string} */
+                                scoring: "auto" | "rubric";
+                                /** @enum {string} */
+                                status: "missing" | "pending" | "scored";
+                                percent: number | null;
+                                targetLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                enteredByUserId: string | null;
+                                enteredAt: string | null;
+                            }[];
+                            validity: {
+                                /** @enum {string} */
+                                status: "in_progress" | "valid" | "expired";
+                                preliminary: boolean;
+                                /** Format: date-time */
+                                completedAt?: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Geçerliliğin bittiği an (hariç)
+                                 */
+                                validUntil?: string;
+                            };
+                            preliminary: boolean;
+                            suggestion: {
+                                /** @enum {string} */
+                                context: "general" | "placement";
+                                /** Format: date-time */
+                                computedAt: string;
+                                overall: {
+                                    /** @enum {string} */
+                                    status: "suggested";
+                                    /** @enum {string} */
+                                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                } | {
+                                    /** @enum {string} */
+                                    status: "insufficient";
+                                    missingSkills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use")[];
+                                };
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                                    label: string;
+                                    /** @enum {string} */
+                                    status: "suggested" | "insufficient";
+                                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    plus: boolean;
+                                    demonstratedBy: ("general" | "placement") | null;
+                                    missingEvidence: number;
+                                    missingItems: number;
+                                    evidenceIds: string[];
+                                }[];
+                            };
+                            decisions: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                kind: "placement" | "progression" | "correction";
+                                /** @description Boşsa genel seviye */
+                                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                rationale: string;
+                                decidedByUserId: string;
+                                /** Format: date-time */
+                                decidedAt: string;
+                                placementSessionId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    decidePlacement: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Tespit oturumu kimliği */
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    /** @default [] */
+                    skillLevels?: {
+                        /** @enum {string} */
+                        skill: "language_use" | "reading" | "listening" | "writing" | "speaking";
+                        /** @enum {string} */
+                        level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    }[];
+                    rationale: string;
+                    /** @description Oturumun satır sürümü */
+                    version: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** Format: uuid */
+                            id: string;
+                            /** @enum {string} */
+                            learnerKind: "student" | "prospect";
+                            learnerId: string;
+                            /** Format: uuid */
+                            formId: string;
+                            /** Format: uuid */
+                            formVersionId: string;
+                            /** @enum {string} */
+                            mode: "in_person" | "remote";
+                            /** Format: date-time */
+                            startedAt: string;
+                            completedAt: string | null;
+                            version: number;
+                            /** Format: date-time */
+                            updatedAt: string;
+                            sections: {
+                                /** @enum {string} */
+                                section: "language_use" | "reading" | "listening" | "writing" | "speaking";
+                                label: string;
+                                /** @enum {string} */
+                                scoring: "auto" | "rubric";
+                                /** @enum {string} */
+                                status: "missing" | "pending" | "scored";
+                                percent: number | null;
+                                targetLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                enteredByUserId: string | null;
+                                enteredAt: string | null;
+                            }[];
+                            validity: {
+                                /** @enum {string} */
+                                status: "in_progress" | "valid" | "expired";
+                                preliminary: boolean;
+                                /** Format: date-time */
+                                completedAt?: string;
+                                /**
+                                 * Format: date-time
+                                 * @description Geçerliliğin bittiği an (hariç)
+                                 */
+                                validUntil?: string;
+                            };
+                            preliminary: boolean;
+                            suggestion: {
+                                /** @enum {string} */
+                                context: "general" | "placement";
+                                /** Format: date-time */
+                                computedAt: string;
+                                overall: {
+                                    /** @enum {string} */
+                                    status: "suggested";
+                                    /** @enum {string} */
+                                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                } | {
+                                    /** @enum {string} */
+                                    status: "insufficient";
+                                    missingSkills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use")[];
+                                };
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                                    label: string;
+                                    /** @enum {string} */
+                                    status: "suggested" | "insufficient";
+                                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    plus: boolean;
+                                    demonstratedBy: ("general" | "placement") | null;
+                                    missingEvidence: number;
+                                    missingItems: number;
+                                    evidenceIds: string[];
+                                }[];
+                            };
+                            decisions: {
+                                /** Format: uuid */
+                                id: string;
+                                /** @enum {string} */
+                                kind: "placement" | "progression" | "correction";
+                                /** @description Boşsa genel seviye */
+                                skill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                rationale: string;
+                                decidedByUserId: string;
+                                /** Format: date-time */
+                                decidedAt: string;
+                                placementSessionId: string | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCefrProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kaydı kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CefrProfile"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

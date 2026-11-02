@@ -1,4 +1,5 @@
 import { useId, useMemo } from 'react'
+import { useAuth } from '@/auth/use-auth.ts'
 import { EmptyState } from '@/components/EmptyState.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
@@ -7,6 +8,8 @@ import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { combineStates, DashboardGrid, ListCard, ShareBar } from '../dashboard/DashboardParts.tsx'
+import { CefrProfileCards } from '../language/CefrProfileParts.tsx'
+import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { LookupError } from './AcademicParts.tsx'
 import { ScoreBars, TrendChart } from './AnalysisParts.tsx'
 import { gradeTrend, studyPriority, subjectScores } from './exam-analysis-model.ts'
@@ -17,12 +20,39 @@ const NONE: readonly never[] = []
 /**
  * Akademik Gelişim (öğrenci ve veli, Vue `Academic.vue` `seviye-takibi`): dönem ilerlemesi, ders
  * başına çalışma önceliği, ders başarısı ve not geçmişi. Öğrencide kendi, velide seçili çocuğun
- * kayıtları. Ders ortalamaları ve eğilim notlardan hesaplanır, saklanmaz.
- * TODO(api-cefr-progress): dil okulunda CEFR seviye/beceri ilerlemesi için API'de okuma ucu yok;
- * o kurumda şimdilik not kayıtlarından türeyen bölümler gösterilir.
+ * kayıtları. Ders ortalamaları ve eğilim notlardan hesaplanır, saklanmaz. Dil okulunda sayfa CEFR
+ * profilini gösterir (OG-054; IST-060): güncel seviye, tahmini seviye, karar geçmişi ve tespitler;
+ * öğrenci ve veli görünümünde kararın gerekçesi ve vereni sunucudan gelmez.
  */
 export function AcademicProgressPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
+  const { session } = useAuth()
+  if (session?.institution.type === 'language_school') return <LanguageProgress page={page} />
+  return <SchoolProgress page={page} />
+}
+
+/** Dil okulu: seçili öğrencinin (velide çocuğun) CEFR profili. */
+function LanguageProgress({ page }: { page: NavPage }) {
+  const { student, error, retry, pending } = useAnalysisStudent()
+  return (
+    <>
+      <PageHeading title={page.title} description={page.description} />
+      {error ? <LookupError error={error} onRetry={retry} /> : null}
+      {student ? (
+        <CefrProfileCards key={student.id} studentId={student.id} />
+      ) : pending ? (
+        <SummaryLoading />
+      ) : !error ? (
+        <EmptyState
+          title="Bağlı öğrenci bulunamadı."
+          description="Hesabınıza bağlı bir öğrenci olduğunda seviye gelişimi burada görünür."
+        />
+      ) : null}
+    </>
+  )
+}
+
+function SchoolProgress({ page }: { page: NavPage }) {
   const { student, lookups, error, retry, pending } = useAnalysisStudent()
   const grades = useCoreAll(
     'grades',

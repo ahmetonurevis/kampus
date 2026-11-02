@@ -20,6 +20,7 @@ import {
   placementDecisionInputSchema,
   type LearnerKind,
   type PlacementMode,
+  type PlacementSectionEntry,
 } from '@kampus/school-core/cefr/placement.ts'
 import {
   PROGRESSION_DECISION_STATUSES,
@@ -144,10 +145,24 @@ export const placementSessions = pgTable(
     mode: text('mode').$type<PlacementMode>().notNull(),
     startedAt: timestamp('started_at', { withTimezone: true }).notNull(),
     completedAt: timestamp('completed_at', { withTimezone: true }),
+    /**
+     * Bölüm girişleri (OG-054; core `PlacementSectionEntry`): otomatik bölümde cevaplar, rubrikli
+     * bölümde rubrik sürümü, hedef seviye ve kriter bantları. Puan saklanmaz; her okumada formun
+     * anahtarı ve rubrik sürümüyle hesaplanır (karar 5). Yapı core şemasıyla doğrulanır.
+     */
+    // kvkk: Ç (kursiyerin ölçme cevapları ve üretim bantları; loglanmaz)
+    sectionEntries: jsonb('section_entries')
+      .$type<PlacementSectionEntry[]>()
+      .notNull()
+      .default(sql`'[]'::jsonb`),
     ...required(),
   },
   (table) => [
     primaryKey({ name: 'placement_sessions_pkey', columns: [table.institutionId, table.id] }),
+    check(
+      'placement_sessions_section_entries_check',
+      sql`jsonb_typeof(${table.sectionEntries}) = 'array' and jsonb_array_length(${table.sectionEntries}) <= 5`,
+    ),
     // Kararın oturumla aynı kişiye ait olması için bileşik yabancı anahtar hedefi. Kısıt (indeks
     // değil): drizzle-kit yabancı anahtarları indekslerden önce oluşturur.
     unique('placement_sessions_learner_key').on(

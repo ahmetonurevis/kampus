@@ -454,6 +454,7 @@ const tableCase =
 const platform = tableCase('cross-institution-platform.test.ts')
 const learning = tableCase('cross-institution-learning.test.ts')
 const access = tableCase('cross-institution-access.test.ts')
+const finance = tableCase('cross-institution-finance.test.ts')
 const PLATFORM: Readonly<Record<string, Proof>> = Object.fromEntries([
   platform('kayıt', 'DELETE /api/v1/branches/:branchId'),
   platform('kayıt', 'POST /api/v1/branches/:branchId/restore'),
@@ -547,22 +548,50 @@ const ACCESS: Readonly<Record<string, Proof>> = {
 }
 
 /**
- * Çapraz kurum testi henüz yazılmamış uçlar. Her biri aşağıda `test.todo` olarak görünür; test
- * yazılınca satır buradan tabloya taşınır. Yeni uç bu listeye eklenmez, tabloya testiyle girer.
+ * `cross-institution-finance.test.ts` (Onur'un uçları; test dosyası Oğuzhan'ın alanında, kaynağa
+ * dokunmaz): MEBBİS işareti, banka hesabı, tahsilat ayarı, muhasebe toplamları, aday veli
+ * eşleşmesi, öğrenci kimlik özeti ve deneme dersi.
  */
-const TODO: readonly string[] = [
-  'GET /api/v1/finance/totals',
-  'GET /api/v1/finance/summary',
-  'POST /api/v1/payments/:paymentId/mebbis-record',
-  'GET /api/v1/bank-accounts',
-  'POST /api/v1/bank-accounts',
-  'DELETE /api/v1/bank-accounts/:bankAccountId',
-  'GET /api/v1/payment-settings',
-  'PATCH /api/v1/payment-settings',
-  'GET /api/v1/prospects/:prospectId/guardian-matches',
-  'GET /api/v1/students/:studentId/identity',
-  'POST /api/v1/prospects/:prospectId/trial-lessons',
-]
+const FINANCE: Readonly<Record<string, Proof>> = {
+  'GET /api/v1/finance/totals': liste(
+    'cross-institution-finance.test.ts',
+    'GET /api/v1/finance/totals ve /finance/summary: başka kurumun tahsilatı',
+  ),
+  'GET /api/v1/finance/summary': liste(
+    'cross-institution-finance.test.ts',
+    'GET /api/v1/finance/totals ve /finance/summary: başka kurumun tahsilatı',
+  ),
+  'GET /api/v1/bank-accounts': liste(
+    'cross-institution-finance.test.ts',
+    'GET /api/v1/bank-accounts ve POST /bank-accounts: başka kurumun hesabı',
+  ),
+  'POST /api/v1/bank-accounts': govde(
+    'cross-institution-finance.test.ts',
+    'GET /api/v1/bank-accounts ve POST /bank-accounts: başka kurumun hesabı',
+  ),
+  'GET /api/v1/payment-settings': liste(
+    'cross-institution-finance.test.ts',
+    'GET ve PATCH /api/v1/payment-settings: başka kurumun ayarı',
+  ),
+  'PATCH /api/v1/payment-settings': govde(
+    'cross-institution-finance.test.ts',
+    'GET ve PATCH /api/v1/payment-settings: başka kurumun ayarı',
+  ),
+  ...Object.fromEntries([
+    finance('kayıt', 'POST /api/v1/payments/:paymentId/mebbis-record'),
+    finance('kayıt', 'DELETE /api/v1/bank-accounts/:bankAccountId'),
+    finance('kayıt', 'GET /api/v1/prospects/:prospectId/guardian-matches'),
+    finance('kayıt', 'GET /api/v1/students/:studentId/identity'),
+    finance('kayıt', 'POST /api/v1/prospects/:prospectId/trial-lessons'),
+  ]),
+}
+
+/**
+ * Çapraz kurum testi henüz yazılmamış uçlar: boştur (OG-034'te bütün uçlar sınıflandı). Geçici
+ * olarak eklenen uç `test.todo` olarak görünür ve gerekçesi satır yorumunda yazılır; yeni uç bu
+ * listeye eklenmez, tabloya testiyle girer.
+ */
+const TODO: readonly string[] = []
 
 const EXPECTED: Readonly<Record<string, Proof>> = {
   ...ROUTES,
@@ -570,6 +599,7 @@ const EXPECTED: Readonly<Record<string, Proof>> = {
   ...PLATFORM,
   ...LEARNING,
   ...ACCESS,
+  ...FINANCE,
 }
 
 /** Çapraz kurum senaryosunu anan test adı. */

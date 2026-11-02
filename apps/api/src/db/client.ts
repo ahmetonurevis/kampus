@@ -8,6 +8,7 @@ import * as academicYearsSchema from './schema/academic-years.ts'
 import * as auditLogSchema from './schema/audit-log.ts'
 import * as authSchema from './schema/auth.ts'
 import * as coordinatorDutiesSchema from './schema/coordinator-duties.ts'
+import * as coursesSchema from './schema/courses.ts'
 import * as filesSchema from './schema/files.ts'
 import * as idempotencyKeysSchema from './schema/idempotency-keys.ts'
 import * as institutionSettingsSchema from './schema/institution-settings.ts'
@@ -30,6 +31,7 @@ export const schema = {
   ...filesSchema,
   ...privacySchema,
   ...academicYearsSchema,
+  ...coursesSchema,
 }
 export type Schema = typeof schema
 

@@ -4,10 +4,12 @@ import { after, before, describe, test } from 'node:test'
 import { count, eq } from 'drizzle-orm'
 
 import { seedTermId } from '@kampus/school-core/platform/seed-academic.ts'
+import { seedCourseId } from '@kampus/school-core/platform/seed-courses.ts'
 
 import type { App } from '../src/app.ts'
 import { loadAcademicYears } from '../src/db/academic-years.ts'
 import type { Database } from '../src/db/client.ts'
+import { loadCourses } from '../src/db/courses.ts'
 import {
   DEFAULT_DEMO_PASSWORD,
   DEMO_MEMBERS,
@@ -147,6 +149,18 @@ describe('demo tohumu', () => {
       dil.map((item) => [item.startYear, item.status, item.terms.length]),
       [[year, 'active', 0]],
     )
+  })
+
+  test('IST-076 dil okuluna örnek kur programı tohumlanır, okula tohumlanmaz; ikinci tohum değiştirmez (DOM-DIL-005, -007)', async () => {
+    const seeded = await seedDemo(app.auth, db, DEFAULT_DEMO_PASSWORD, { now: FIXED_NOW })
+    await seedDemo(app.auth, db, DEFAULT_DEMO_PASSWORD, { now: LATER })
+    assert.deepEqual(await loadCourses(db, seeded.institutionIds.akademi!), [])
+    const dil = await loadCourses(db, seeded.institutionIds['kampus-dil']!)
+    assert.equal(dil.length, 6)
+    assert.ok(dil.every((course) => course.rowVersion === 1))
+    const a1 = dil.find((course) => course.id === seedCourseId(1))
+    assert.equal(a1?.nextCourseId, seedCourseId(2))
+    assert.equal(a1?.eOzel.approval, 'approved')
   })
 
   test('kayıtlar core dizisinin sırasıyla yüklenir; ikinci tohum sırayı değiştirmez', async () => {

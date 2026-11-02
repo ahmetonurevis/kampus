@@ -190,6 +190,13 @@
       "when": 1793589335619,
       "tag": "0026_create_academic_years",
       "breakpoints": true
+    },
+    {
+      "idx": 27,
+      "version": "7",
+      "when": 1793593176316,
+      "tag": "0028_create_courses",
+      "breakpoints": true
     }
   ]
 }

@@ -10,14 +10,17 @@ import type { TaskSubmission } from '@kampus/react-shared/use-task-submissions.t
 import {
   acceptedText,
   answeredCount,
+  attemptStatusBadge,
   autoProgress,
   blockedByMessage,
   describeKey,
   describeResponse,
+  formatPoints,
   formatRemaining,
   FAILED,
   isAnswered,
   isLearnerAssignment,
+  itemOutcome,
   newerRowVersion,
   writingBrief,
   writingInitialBody,
@@ -670,5 +673,43 @@ describe('W22a inceleme düzeltmeleri', () => {
     assert.equal(isLearnerAssignment(auto()), true)
     assert.equal(isLearnerAssignment(detail()), true)
     assert.equal(isLearnerAssignment({ view: 'staff' }), false)
+  })
+})
+
+describe('personel deneme görünümü (OG-983; DOM-BEC-042, DOM-BEC-045)', () => {
+  const item = (overrides: Partial<Parameters<typeof itemOutcome>[0]> = {}) => ({
+    questionVersionId: 'qv-1',
+    parts: 1,
+    correctParts: 1,
+    answered: true,
+    points: 1,
+    earned: 1,
+    ...overrides,
+  })
+
+  test('DOM-BEC-045: madde sonucu doğru, kısmen doğru, yanlış ve cevapsız ayrılır', () => {
+    assert.deepEqual(itemOutcome(item()), { label: 'Doğru', tone: 'green' })
+    assert.equal(itemOutcome(item({ parts: 3, correctParts: 2 })).label, 'Kısmen doğru')
+    assert.equal(itemOutcome(item({ correctParts: 0, earned: 0 })).label, 'Yanlış')
+    // Cevapsız madde yanlış sayılır ama ayrı yazılır; parça sayısı sıfır olsa da doğru değildir.
+    assert.equal(itemOutcome(item({ answered: false, correctParts: 0 })).label, 'Cevapsız')
+    assert.equal(itemOutcome(item({ parts: 0, correctParts: 0 })).label, 'Yanlış')
+  })
+
+  test('DOM-BEC-042: deneme durumu süren, geç, süre dolunca ve teslim olarak gösterilir', () => {
+    const base = { status: 'submitted', late: false, autoSubmitted: false } as const
+    assert.equal(attemptStatusBadge({ ...base, status: 'in_progress' }).label, 'Sürüyor')
+    assert.equal(attemptStatusBadge(base).label, 'Teslim edildi')
+    assert.equal(attemptStatusBadge({ ...base, late: true }).label, 'Geç teslim')
+    assert.equal(
+      attemptStatusBadge({ ...base, status: 'expired', autoSubmitted: true }).label,
+      'Süre dolunca teslim',
+    )
+  })
+
+  test('puan tamsayıda ondalıksız, kesirde en çok iki ondalık', () => {
+    assert.equal(formatPoints(2), '2')
+    assert.equal(formatPoints(1.5), '1,5')
+    assert.equal(formatPoints(0.333), '0,33')
   })
 })

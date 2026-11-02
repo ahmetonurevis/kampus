@@ -17,6 +17,12 @@ export type FileUploadItem = {
   key?: string
 }
 
+/**
+ * Alan meşgul mü: yükleme sürüyorsa ya da yeniden denenecek (ağ hatasıyla yarım kalmış) dosya
+ * varsa. İkinci durumda çağıran gönderim düğmesini açmaz; yoksa kayıt eksik dosyayla gider.
+ */
+export const isUploadBusy = (uploading: boolean, retryCount: number) => uploading || retryCount > 0
+
 /** Amaca göre tarayıcı seçicisinin `accept` değeri; çekirdekteki tür tablosundan türetilir. */
 export function acceptFor(purpose: FilePurpose): string {
   return FILE_PURPOSES[purpose].mimeTypes.join(',')

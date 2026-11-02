@@ -276,6 +276,66 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Kodda:** var — maske ve karar `packages/school-core/src/lib/parent-contact.ts` (`maskPhone`, `maskEmail`, `parentContactDecision`, `revealParentContact`); alan ayıklaması `lib/scope.ts` (`parents`: öğretmende maskeli ve aranmaz, öğrencide ayıklanır; velide ayıklama kayıt testinin beklentisi değişene kadar açık, TODO #10). API `POST /api/v1/parents/:parentId/reveal-contact` (`{ studentId, field }`, modül `communication`, yalnız `ogretmen`, `Cache-Control: no-store`, kullanıcı ve kurum başına dakikada 10, aşılırsa 429 `rate_limited`) `audit_log`'a `parent_contact.reveal` yazar (`entityType` `parents`, `entityId` veli, `changes` `{ fields: [alan], studentId }`). React web: öğretmenin sınıf özetindeki "Veli iletişimi" bölümü.
 - **Açık:** TODO(F2): veli aydınlatma metnine "velinin iletişim bilgisi, çocuğuna ders veren öğretmene maskeli gösterilir; öğretmen tam değeri kayıt altında açabilir" kullanımı eklenecek. Denetim kaydı ekranı `changes.studentId`'yi henüz göstermez.
 
+## Aydınlatma ve açık rıza
+
+Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts`, `lib/privacy-notices.ts`, `lib/consents.ts`); tablolar `privacy_notices`, `notice_acknowledgements`, `consents` (migration `0024`). Uçlar ve ekranlar henüz yok (OG-016, OG-017). Mühendislik çerçevesi `docs/muhendislik/guvenlik-kvkk.md` §9.
+
+### DOM-YTK-056 · Aydınlatma metni sürümlü ve rol bazlıdır
+
+- **Kural:** Aydınlatma metni veli, öğrenci ve personel (yönetici, ön büro, öğretmen) kitlesine ayrı, sürümlü yayımlanır; yayımlanmış metin değişmez, düzeltme yeni sürümdür. Kullanıcıya kitlesinin son sürümü, görmediyse ilk girişte gösterilir; yeni sürüm yayımlanınca yeniden gösterilir. Gösterim kaydı kullanıcı, metin sürümü, kanal ve zamanı taşır; aynı sürüm ikinci kez kaydedilmez, eski sürüm kaydedilmez. Gösterim rıza değildir.
+- **Gerekçe:** Aydınlatma veri toplanırken yapılır ve ispatı veri sorumlusundadır; metin değişince eski gösterim yeni metni ispatlamaz.
+- **Kaynak:** KVKK md. 10; Aydınlatma Yükümlülüğünün Yerine Getirilmesinde Uyulacak Usul ve Esaslar Hakkında Tebliğ. IST-016.
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — core `lib/privacy-notices.ts` (`planNoticePublication`, `needsNoticeAcknowledgement`, `planNoticeAcknowledgement`); tablolar `privacy_notices` (yayımlanmış içerik tetikleyiciyle değişmez) ve `notice_acknowledgements` (değişmez satır). Uç ve ekran yok (OG-016/017). Çocuğun algı düzeyine uygun ayrı öğrenci metni kitle içinde tek sürümdür (`TODO(cocuk-aydinlatma)`).
+
+### DOM-YTK-057 · Rızayı kim verir
+
+- **Kural:** Öğrenciye ait amaçlarda (fotoğraf/video, konuşma kaydı) rızayı öğrenci 18 yaşını doldurana kadar yalnız doğrulanmış bağı ve velayeti bulunan veli, 18 yaşını doldurduğu günden itibaren (Europe/Istanbul günü) yalnız öğrencinin kendisi verir. Doğum tarihi bilinmeyen öğrenci 18 yaş altı sayılır. Hesaba ait amaçta (tanıtım iletisi) rızayı yalnız hesap sahibi (veli ya da 18 yaşını doldurmuş öğrenci) verir; 18 yaş altı öğrenciden alınmaz. Personel rıza vermez. Kapsam dışı öğrenci "bulunamadı" alır.
+- **Gerekçe:** Reşit olmayanın yasal temsilcisi velayet sahibidir; ergin kişinin rızasını başkası veremez (`DOM-YTK-025`, `DOM-YTK-031`).
+- **Kaynak:** TMK md. 11, 335, 342; KVKK md. 3/1-a, 5. Velayeti olmayan ebeveynin rıza veremeyeceği yorumu **doğrulanmalı**.
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — `lib/consents.ts` `requireConsentAuthority`, `canGiveConsent`, `isAdultStudent`. Velayet ve doğrulama bilgisi çağırandan (`GuardianBond`) gelir; üyelik bağlantısı bugün velayet taşımaz (`TODO(velayet-kapsam)`). Ergin kılınma ve kısıtlılık (`DOM-YTK-031`, `DOM-YTK-032`) yok.
+
+### DOM-YTK-058 · Rıza amaca ve metin sürümüne bağlıdır, tek etkin rıza
+
+- **Kural:** Rıza belirli bir amaç kodu için, o amacın gösterilen son rıza metni sürümüne ve kanalına (web, mobil) bağlı yeni satır olarak yazılır; satır veri sahibini, vereni ve ilişkisini (kendisi/veli) taşır, metni taşımaz. Eski sürümlü metinle rıza alınmaz. Aynı veri sahibi + amaç için tek etkin rıza bulunur; yürürlükteki rıza varken ikinci rıza mükerrerdir. Süresi dolmuş ya da yeniden rıza gerektiren sürümden eski rıza, yenisi verilirken aynı işlemde "yenilendi" nedeniyle kapatılır. Fotoğraf/video rızası en geç eğitim yılı sonunda biter (`DOM-ILT-033`); velinin verdiği rıza öğrencinin 18. yaş gününde biter.
+- **Gerekçe:** Açık rıza belirli konuya ilişkin olmalı ve ispatlanabilmelidir (`DOM-ILT-034`).
+- **Kaynak:** KVKK md. 3/1-a, 5/1. Velinin rızasının erginlikte düşmesi muhafazakâr yorumdur, **doğrulanmalı**.
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — `lib/consents.ts` `planConsent`; `consents` tablosunda kısmi benzersiz indeks `consents_subject_purpose_decision_key` (geri çekilmemiş, arşivlenmemiş satır). Islak imza taramasıyla kayıt yok.
+
+### DOM-YTK-059 · Geri çekme tek işlem ve anında etkili
+
+- **Kural:** Rıza verildiği kadar kolay, tek işlemle geri çekilir: aynı satıra geri çekme anı, geri çeken ve neden yazılır; başka alan değişmez. Geri çekilmiş satır hiçbir anda rıza saymaz. Geri çekmeyi rızayı veren, veri sahibi için şu an rıza verebilecek kişi (diğer velayetli veli; 18 yaşını dolduran öğrenci velinin rızasını) yapar; hesap rızasını ve itirazı yalnız veren. İkinci geri çekme mükerrerdir.
+- **Gerekçe:** Rızaya dayalı işleme geri çekmeyle durur; kayıt ispat için silinmez.
+- **Kaynak:** KVKK md. 5, 11; guvenlik-kvkk §9.
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — `lib/consents.ts` `planConsentWithdrawal`; `consents` tetikleyicisi yalnız bir kez geri çekme kolonlarının yazılmasına izin verir. Geri çekmenin ardından rızaya dayalı kayıtların imhası (konuşma kaydı, ADR 0003 karar 9) yok.
+
+### DOM-YTK-060 · Yeni rıza metni sürümü eski rızayı yeni amaca taşımaz
+
+- **Kural:** Rıza metni değişince yeni sürüm yayımlanır. Amacı genişleten sürüm "yeniden rıza gerekir" işaretiyle yayımlanır; bu sürümden eski metne verilmiş rıza geçersizdir ve kullanıcıdan yeniden istenir. Yalnız düzeltme içeren sürüm eski rızayı geçersiz kılmaz.
+- **Gerekçe:** Rıza bilgilendirilmiş olmalıdır; kişi görmediği amaca rıza vermiş sayılmaz.
+- **Kaynak:** KVKK md. 3/1-a; guvenlik-kvkk §9. Düzeltme sürümünün yeniden rıza istemeyeceği yorumu **doğrulanmalı**.
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — `lib/privacy-notices.ts` `minimumConsentTextVersion`; `hasValidConsent` `minimumTextVersion`.
+
+### DOM-YTK-061 · Rızaya bağlı işlem geçerli rıza ister
+
+- **Kural:** Rızaya bağlı işlem (bülten fotoğrafı IST-068, konuşma kaydı yükleme ADR 0003 karar 9, tanıtım iletisi) yalnız işlem anında geçerli rıza varsa yapılır: aynı veri sahibi ve amaç için geri çekilmemiş, süresi dolmamış, en düşük geçerli metin sürümüne verilmiş rıza ve etkin itiraz yok. Rıza yokken temel eğitim hizmeti engellenmez (konuşma görevi yüz yüze değerlendirilir, `DOM-BEC-050`).
+- **Gerekçe:** Geri çekme ve süre dolması anında etkili olmalıdır.
+- **Kaynak:** KVKK md. 5; IST-017.
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — `lib/consents.ts` `hasValidConsent`; dosya yüklemesi henüz bağlı değil (`apps/api/src/services/files.ts` `TODO(F3c2-consents)`, OG-016).
+
+### DOM-YTK-062 · Öğrencinin fotoğraf itirazı
+
+- **Kural:** 18 yaş altı öğrenci fotoğraf/video amaçlarında kendisi için itiraz kaydeder; itiraz etkinken velinin rızası geçersizdir, itiraz geri çekilince rıza yeniden geçerlidir. İtirazı yalnız öğrenci geri çeker; itiraz edilemeyen amaçta ve 18 yaşını doldurmuş öğrencide itiraz kaydı alınmaz.
+- **Gerekçe:** Ayırt etme gücüne sahip küçüğün görüntüsü kişiliğine sıkı sıkıya bağlıdır (`DOM-ILT-033`).
+- **Kaynak:** TMK md. 16/1; işletme kuralı (`DOM-ILT-033`).
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — `lib/consents.ts` `planConsent` (`decision: 'objected'`), `hasValidConsent`.
+
 ## Mevcut kodla farklar
 
 | Kural                 | Fark                                                                                                                                                                                                                  |

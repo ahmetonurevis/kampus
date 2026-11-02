@@ -476,7 +476,36 @@ export function enrollProspectWithTariff(
     academicYear: context.academicYear,
     /** Arşivlenecek eski kimlik satırının öğrencisi. */
     supersededStudentId: context.identityHolderId,
+    /**
+     * Yazılacak veli–öğrenci bağı (DOM-ILT-070, DOM-ILT-074): veli varsa sözleşmenin ödeyicisidir
+     * (`payer: 'guardian'`), velayet sahibi sayılır; yetişkin kursiyerin kendisi veli değildir,
+     * bağ yazılmaz. Servis bağı `student_guardians`'a aynı işlemde yazar.
+     */
+    guardianBond:
+      data.guardian === null
+        ? null
+        : {
+            parentId: result.student.parentId,
+            relationship: bondRelationship(existing, data.guardian),
+            isPayer: true,
+          },
   }
+}
+
+/**
+ * Bağın yakınlığı: yeni veli formda seçilen değeri, mevcut veli (kardeş) kendi kaydındaki değeri
+ * taşır; kayıtta tanınan bir yakınlık yoksa (eski yer tutucu) `other`.
+ */
+function bondRelationship(
+  existing: { relationship?: string | undefined } | undefined,
+  guardian: z.infer<typeof guardianSchema>,
+): GuardianRelationship {
+  const wanted = existing
+    ? existing.relationship
+    : 'relationship' in guardian
+      ? guardian.relationship
+      : undefined
+  return GUARDIAN_RELATIONSHIPS.find((item) => item === wanted) ?? 'other'
 }
 
 export const OTHER_CAMPUS_CONFIRM_LABEL = 'Başka kampüsün sınıfını bilerek seçiyorum'

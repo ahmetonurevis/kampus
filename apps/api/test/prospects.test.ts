@@ -14,6 +14,7 @@ import { auditLog } from '../src/db/schema/audit-log.ts'
 import { institutionSettings } from '../src/db/schema/institution-settings.ts'
 import { records } from '../src/db/schema/records.ts'
 import { studentIdentities } from '../src/db/schema/student-identities.ts'
+import { loadStudentGuardians } from '../src/db/student-guardians.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { addProspectNoteCommand } from '../src/services/prospects.ts'
@@ -88,6 +89,25 @@ const PROSPECT = {
   privacyNoticeVersion: 'aydinlatma-2026-1',
 }
 const MEETING = { date: SATURDAY, duration: 45, room: 'Görüşme odası' }
+
+/** Bağın karşılaştırılan alanları (kimlik ve sürüm hariç). */
+const bondOf = (link: {
+  parentId: string | null
+  membershipId: string | null
+  relationship: string
+  custody: string
+  contactRestricted: boolean
+  isPayer: boolean
+  canPickUp: boolean
+}) => ({
+  parentId: link.parentId,
+  membershipId: link.membershipId,
+  relationship: link.relationship,
+  custody: link.custody,
+  contactRestricted: link.contactRestricted,
+  isPayer: link.isPayer,
+  canPickUp: link.canPickUp,
+})
 
 describe('aday uçları', () => {
   let db: Database
@@ -1173,6 +1193,26 @@ describe('aday uçları', () => {
     const parent = parents.find((row) => row.id === student?.data.parentId)
     assert.equal(parent?.data.name, ENROLLMENT.guardian.name)
     assert.equal(parent?.data.relationship, 'mother')
+    // Veli–öğrenci bağı aynı işlemde yazılır: velayet sahibi ve ödeyici, hesapsız (DOM-ILT-070, -074).
+    const links = await loadStudentGuardians(db, a.id, studentId)
+    assert.deepEqual(links.map(bondOf), [
+      {
+        parentId: parent?.id,
+        membershipId: null,
+        relationship: 'mother',
+        custody: 'full',
+        contactRestricted: false,
+        isPayer: true,
+        canPickUp: false,
+      },
+    ])
+    const linkAudit = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'guardian.link')))
+    assert.equal(linkAudit.length, 1)
+    assert.equal(linkAudit[0]?.entityId, links[0]?.id)
+    assert.equal(JSON.stringify(linkAudit[0]).includes(String(prospect?.data.phone)), false)
 
     const audit = await db
       .select()
@@ -1332,6 +1372,14 @@ describe('aday uçları', () => {
     assert.deepEqual(contracts.at(-1)?.data.discounts, [
       { kind: 'sibling', amountCents: Math.floor(TUITION.amountCents / 10) },
     ])
+    // Kardeşin bağı aynı veli kaydına yazılır; her öğrencinin kendi ödeyicisi vardır (DOM-ILT-074).
+    for (const studentId of [elder?.id, second.json().data.entity.id as string]) {
+      const links = await loadStudentGuardians(db, a.id, String(studentId))
+      assert.equal(links.length, 1)
+      assert.equal(links[0]?.parentId, parentId)
+      assert.equal(links[0]?.isPayer, true)
+      assert.equal(links[0]?.custody, 'full')
+    }
     assertError(await a_get(cookie, '/api/v1/prospects/yok/guardian-matches'), 404)
     assertError(
       await a_get((await member(a.id, 'veli')).cookie, `/api/v1/prospects/pr2/guardian-matches`),
@@ -1498,6 +1546,14 @@ describe('aday uçları', () => {
     assert.equal(contract?.data.title, 'Dil kursu eğitim sözleşmesi')
     assert.equal(contract?.data.grossCents, 2_000_000)
     assert.equal(contract?.data.payer, 'student')
+    // Yetişkin kursiyerin kendisi veli değildir: veli bağı yazılmaz (DOM-YTK-030).
+    const studentId = done.json().data.entity.id as string
+    assert.deepEqual(await loadStudentGuardians(db, a.id, studentId), [])
+    const linkAudit = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'guardian.link')))
+    assert.equal(linkAudit.length, 0)
   })
 
   test('DOM-KAY-012: dil okulunda yetişkin kursiyere veli verilmez (422); yaş grubu seçimiyle uyuşmayan doğum tarihi 422', async () => {

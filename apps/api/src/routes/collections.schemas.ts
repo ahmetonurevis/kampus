@@ -1,5 +1,7 @@
 import { z } from 'zod'
 
+import { CEFR_LEVELS, GRADE_LEVEL_RANGE } from '@kampus/school-core/content/taxonomy.ts'
+
 import { INVOICE_STATUS_LABELS } from '../db/records.ts'
 import { READABLE_COLLECTIONS } from '../services/collection-access.ts'
 import {
@@ -26,9 +28,12 @@ const SORT_PATTERN = new RegExp(
   `^-?(${SORT_FIELDS.join('|')})(,-?(${SORT_FIELDS.join('|')})){0,2}$`,
 )
 
+const CEFR_KEYS = Object.keys(CEFR_LEVELS)
+
 const FILTER_DESCRIPTIONS: Partial<Record<(typeof FILTER_FIELDS)[number], string>> = {
   classId:
     '`classId` eşitlik filtresi; çoklu değer parametre tekrarıyla. Kaydında sınıf olmayan öğrenci koleksiyonlarında (`grades`, `invoices`, `absences`, `submissions`, `quizAttempts`, `mockResults`, `studentGoals`, `guidanceCases`, `studyTasks`, `appointments`, `requests`, `renewals`, `eventConsents`, `transportAssignments`, `clubMemberships`, `socialAchievements`) öğrencinin güncel sınıfıdır',
+  level: `\`level\` eşitlik filtresi (düzey; IST-035); çoklu değer parametre tekrarıyla. Değer CEFR seviyesi (${CEFR_KEYS.map((key) => `\`${key}\``).join(', ')}) ya da \`N. Sınıf\` (${GRADE_LEVEL_RANGE.min}–${GRADE_LEVEL_RANGE.max}) olmalıdır; başka değer 400. Örnek: \`materials\` düzeyi \`7. Sınıf\``,
   status: `\`status\` eşitlik filtresi; çoklu değer parametre tekrarıyla. \`invoices\`'ta durum saklanmaz, core \`invoiceStatus\` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: ${INVOICE_STATUS_LABELS.map((label) => `\`${label}\``).join(', ')}; başka değer 400`,
 }
 
@@ -36,10 +41,33 @@ const filterValue = z
   .union([z.string().min(1).max(200), z.array(z.string().min(1).max(200)).min(1).max(20)])
   .optional()
 
+/**
+ * `level` değerleri (IST-035): dil okulunda CEFR seviyesi (`CEFR_LEVELS`), okulda `N. Sınıf`
+ * (`GRADE_LEVEL_RANGE`; materyal düzeyi bu biçimde saklanır). Başka değer 400: yazım hatası
+ * sessizce boş liste döndürmez.
+ */
+const GRADE_LEVEL_TEXT = /^(\d{1,2})\. Sınıf$/
+function isLevelValue(value: string): boolean {
+  if (Object.hasOwn(CEFR_LEVELS, value)) return true
+  const grade = GRADE_LEVEL_TEXT.exec(value)
+  return (
+    grade !== null &&
+    Number(grade[1]) >= GRADE_LEVEL_RANGE.min &&
+    Number(grade[1]) <= GRADE_LEVEL_RANGE.max
+  )
+}
+const levelMessage = `Düzey ${CEFR_KEYS.join(', ')} seviyelerinden biri ya da ${GRADE_LEVEL_RANGE.min}. Sınıf ile ${GRADE_LEVEL_RANGE.max}. Sınıf arasında bir sınıf düzeyi olmalıdır.`
+const levelValue = z
+  .union([z.string().min(1).max(200), z.array(z.string().min(1).max(200)).min(1).max(20)])
+  .refine((value) => (typeof value === 'string' ? [value] : value).every(isLevelValue), {
+    message: levelMessage,
+  })
+  .optional()
+
 const filterShape = Object.fromEntries(
   FILTER_FIELDS.map((field) => [
     field,
-    filterValue.describe(
+    (field === 'level' ? levelValue : filterValue).describe(
       FILTER_DESCRIPTIONS[field] ??
         `\`${field}\` eşitlik filtresi; çoklu değer parametre tekrarıyla`,
     ),

@@ -94,9 +94,9 @@ test.describe('Öğrenme: öğretmen', () => {
     await expect(
       page.getByRole('heading', { level: 1, name: 'Ödevler & Değerlendirme' }),
     ).toBeVisible()
-    const ownTotal = await total(teacher, '/api/v1/collections/homework')
+    const ownTotal = await total(teacher, '/api/v1/homework')
     expect(ownTotal, 'yönetici daha fazlasını görür').toBeLessThan(
-      await total(admin, '/api/v1/collections/homework'),
+      await total(admin, '/api/v1/homework'),
     )
     await expect(page.getByText(`${ownTotal} ödev · Sınıflarınızın ödevleri`)).toBeVisible()
 
@@ -109,7 +109,7 @@ test.describe('Öğrenme: öğretmen', () => {
     // 7-A (c1) seçilince adreste durur ve sayı API'nin o sınıf sayısıyla eşleşir.
     await classSelect.selectOption('c1')
     await expect(page).toHaveURL(/[?&]sinif=c1/)
-    const c1Total = await total(teacher, '/api/v1/collections/homework?classId=c1')
+    const c1Total = await total(teacher, '/api/v1/homework?classId=c1')
     await expect(page.getByText(`${c1Total} ödev · `)).toBeVisible()
     await expect(resultCount(page)).toContainText(`/ ${c1Total} kayıt`)
     const classCells = bodyRows(page, 'Ödev ve teslim listesi').locator('td:nth-child(2)')
@@ -121,7 +121,7 @@ test.describe('Öğrenme: öğretmen', () => {
     await page.goto(TEACHER_HOMEWORK)
     await page.getByLabel('Ders', { exact: true }).selectOption('math')
     await expect(page).toHaveURL(/[?&]ders=math/)
-    const mathTotal = await total(teacher, '/api/v1/collections/homework?subjectId=math')
+    const mathTotal = await total(teacher, '/api/v1/homework?subjectId=math')
     await expect(resultCount(page)).toContainText(`/ ${mathTotal} kayıt`)
     const subjectCells = bodyRows(page, 'Ödev ve teslim listesi').locator('td:nth-child(3)')
     await expectEveryRow(subjectCells, 'Matematik', true)
@@ -132,10 +132,9 @@ test.describe('Öğrenme: öğretmen', () => {
     api,
   }) => {
     const teacher = await api('ogretmen')
-    const submissions = await all<Submission>(
-      teacher,
-      '/api/v1/collections/submissions?homeworkId=hw2',
-    )
+    const detail = await teacher.get('/api/v1/homework/hw2')
+    expect(detail.status).toBe(200)
+    const submissions = (detail.body as { data: { submissions: Submission[] } }).data.submissions
     const classStudents = await total(teacher, '/api/v1/collections/students?classId=c1')
     const delivered = submissions.length
     expect(delivered, 'seed: hw2 teslimleri var').toBeGreaterThan(0)
@@ -148,7 +147,7 @@ test.describe('Öğrenme: öğretmen', () => {
     expect(late + pending, 'teslim etmeyenler geciken veya bekleyendir').toBe(
       classStudents - delivered,
     )
-    const evaluated = submissions.filter((row) => row.record.score !== null).length
+    const evaluated = submissions.filter((row) => row.score !== null).length
     await expect(metric(panel, 'Değerlendirilen')).toHaveText(String(evaluated))
     await expect(
       panel.getByRole('list', { name: 'Öğrenci teslim durumu' }).getByRole('listitem'),
@@ -177,7 +176,7 @@ test.describe('Öğrenme: öğretmen', () => {
     )
     expect(homework && quiz, 'başka kampüsün ödevi ve quizi').toBeTruthy()
 
-    expect((await teacher.get(`/api/v1/collections/homework/${homework?.id}`)).status).toBe(404)
+    expect((await teacher.get(`/api/v1/homework/${homework?.id}`)).status).toBe(404)
     await page.goto(`${TEACHER_HOMEWORK}?odev=${homework?.id}`)
     await expect(panelOf(page, 'Ödev teslim durumu')).toContainText(NOT_FOUND)
 

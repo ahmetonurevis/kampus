@@ -267,24 +267,36 @@ function HomeworkForm({
           </FormField>
           <FormField id="odev-ders" label="Ders" error={errors.subjectId}>
             {(control) => (
-              <NativeSelect
-                {...control}
-                {...form.register('subjectId')}
-                disabled={busy || editing || !classId}
-                className="w-full"
-              >
-                <NativeSelectOption value="">
-                  {classId ? 'Ders seçin' : 'Önce sınıf seçin'}
-                </NativeSelectOption>
-                {(editing
-                  ? [{ value: homework.subjectId, label: homework.subject }]
-                  : subjectOptions
-                ).map((option) => (
-                  <NativeSelectOption key={option.value} value={option.value}>
-                    {option.label}
-                  </NativeSelectOption>
-                ))}
-              </NativeSelect>
+              // Denetimli seçim: sınıf değişince ders seçenekleri bir sonraki çizimde gelir;
+              // `setValue` kayıtlı (denetimsiz) seçime henüz olmayan seçeneği yazamaz.
+              <Controller
+                control={form.control}
+                name="subjectId"
+                render={({ field }) => (
+                  <NativeSelect
+                    {...control}
+                    name={field.name}
+                    ref={field.ref}
+                    value={field.value}
+                    onChange={field.onChange}
+                    onBlur={field.onBlur}
+                    disabled={busy || editing || !classId}
+                    className="w-full"
+                  >
+                    <NativeSelectOption value="">
+                      {classId ? 'Ders seçin' : 'Önce sınıf seçin'}
+                    </NativeSelectOption>
+                    {(editing
+                      ? [{ value: homework.subjectId, label: homework.subject }]
+                      : subjectOptions
+                    ).map((option) => (
+                      <NativeSelectOption key={option.value} value={option.value}>
+                        {option.label}
+                      </NativeSelectOption>
+                    ))}
+                  </NativeSelect>
+                )}
+              />
             )}
           </FormField>
         </div>

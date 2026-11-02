@@ -1,4 +1,4 @@
-import { useMemo, type ReactNode } from 'react'
+import { useEffect, useMemo, useRef, type ReactNode } from 'react'
 import { Link, useLocation, useParams, useSearchParams } from 'react-router'
 import { isApiError } from '@kampus/api-client/errors.ts'
 import { useAuth } from '@/auth/use-auth.ts'
@@ -102,12 +102,20 @@ function Profile({ student, back, page }: { student: Student; back: ReactNode; p
   const tabs = profileTabs(modules)
   const tab = profileTab(params.get('sekme'), tabs)
   // Sekme değişince bölümlerin süzgeç ve panel parametreleri sıfırlanır; geri dönüş adresi
-  // (`state.from`) korunur.
-  const selectTab = (next: ProfileTab) =>
+  // (`state.from`) korunur. Çizgi sekme odak ve tıklamada aynı seçimi iki kez bildirir; gezinme
+  // henüz tamamlanmadığından ikincisi geçmişe fazladan girdi eklerdi (geri bir adım atlanırdı).
+  const requested = useRef<ProfileTab>(tab)
+  useEffect(() => {
+    requested.current = tab
+  }, [tab])
+  const selectTab = (next: ProfileTab) => {
+    if (requested.current === next) return
+    requested.current = next
     setParams(next === tabs[0]?.value ? {} : { sekme: next }, {
       preventScrollReset: true,
       state: location.state,
     })
+  }
 
   const grades = useCoreAll('grades', { filters: { studentId: student.id } })
   const attendance = useCoreAll('attendance', { filters: { studentId: student.id } })

@@ -43,7 +43,7 @@ import { readErrors } from './communication.schemas.ts'
 
 const TYPE_ONLY =
   'Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.'
-const PLACEMENT_ACCESS = `Roller: ${PLACEMENT_DECIDER_ROLES.map((r) => `\`${r}\``).join(', ')} (öğretmen veya akademik koordinatör); diğer roller 403. ${TYPE_ONLY}`
+const PLACEMENT_ACCESS = `Roller: ${PLACEMENT_DECIDER_ROLES.map((r) => `\`${r}\``).join(', ')} (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. ${TYPE_ONLY}`
 const VERSIONED =
   'Gövdedeki `version` oturumun satır sürümüdür; tutmazsa 409 `version_conflict`, olmayan ya da başka kurumun oturumu 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir.'
 

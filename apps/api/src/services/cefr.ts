@@ -249,6 +249,53 @@ async function sessionView(db: Database, ctx: ServiceContext, session: StoredPla
   }
 }
 
+// --- Okuma kapsamı ------------------------------------------------------------------------
+
+/**
+ * Öğretmenin kursiyeri görmesi (IST-060): kursiyerin grubunu okuyabilmesi (kendi grubu ya da
+ * akademik koordinatörü olduğu seviyenin grubu; core `canReadGroup`).
+ */
+async function teacherReaches(
+  db: Database,
+  ctx: ServiceContext,
+  studentId: string,
+): Promise<boolean> {
+  const [members, groups, courses, duties] = await Promise.all([
+    loadMembershipsOfStudents(db, ctx.institutionId, [studentId]),
+    loadGroups(db, ctx.institutionId),
+    loadCourses(db, ctx.institutionId),
+    activeDutiesOf(db, ctx.institutionId, ctx.actor.membershipId),
+  ])
+  const reader = {
+    role: ctx.actor.role,
+    membershipId: ctx.actor.membershipId,
+    coordination: duties.length === 0 ? NO_COORDINATOR_SCOPE : coordinatorScopeOf(duties),
+    studentIds: [] as string[],
+  }
+  const courseOf = new Map(courses.map((course) => [course.id, course]))
+  return members.some((member) => {
+    const group = groups.find((item) => item.id === member.groupId)
+    const course = group === undefined ? undefined : courseOf.get(group.courseId)
+    return (
+      group !== undefined && course !== undefined && canReadGroup(reader, group, course, members)
+    )
+  })
+}
+
+/**
+ * Tespit uçlarında kişi kapsamı (IST-058, IST-060): yönetici kurumun her kişisine, öğretmen yalnız
+ * grubundan okuyabildiği öğrenciye ulaşır; kapsam dışı öğrenci 404 (varlık sızmaz). Aday (CRM
+ * `prospect`) henüz bir gruba bağlı olmadığından her öğretmen adayın tespitini yürütebilir.
+ */
+async function assertLearnerReach(
+  db: Database,
+  ctx: ServiceContext,
+  learner: { learnerKind: LearnerKind; learnerId: string },
+) {
+  if (ctx.actor.role === 'yonetici' || learner.learnerKind === 'prospect') return
+  if (!(await teacherReaches(db, ctx, learner.learnerId))) throw new NotFoundError()
+}
+
 // --- Okuma --------------------------------------------------------------------------------
 
 /** Tek oturum; olmayan ya da başka kurumun oturumu 404. */
@@ -257,14 +304,19 @@ export async function getPlacementSession(ctx: ServiceContext, sessionId: string
     ? await findPlacementSession(ctx.db, ctx.institutionId, sessionId)
     : null
   if (session === null) throw new NotFoundError()
+  await assertLearnerReach(ctx.db, ctx, session)
   return sessionView(ctx.db, ctx, session)
 }
 
-/** Kişinin oturumları, başlangıca göre eskiden yeniye (özet; bölüm ve öneri tek oturumda). */
+/**
+ * Kişinin oturumları, başlangıca göre eskiden yeniye (özet; bölüm ve öneri tek oturumda).
+ * Öğretmenin kapsamı dışındaki öğrenci 404.
+ */
 export async function listLearnerPlacementSessions(
   ctx: ServiceContext,
   learner: { learnerKind: LearnerKind; learnerId: string },
 ) {
+  await assertLearnerReach(ctx.db, ctx, learner)
   const sessions = await listPlacementSessions(ctx.db, ctx.institutionId, {
     kind: learner.learnerKind,
     id: learner.learnerId,
@@ -348,6 +400,7 @@ export function openPlacementSession(
       load: async (tx) => {
         const institutionType = await institutionTypeOf(tx, ctx)
         await assertLearner(tx, ctx, input.learnerKind, input.learnerId)
+        await assertLearnerReach(tx, ctx, input)
         await assertForm(tx, ctx, input.formId, input.formVersionId)
         const termSessions = await listPlacementSessions(tx, ctx.institutionId, {
           kind: input.learnerKind,
@@ -383,8 +436,9 @@ export function openPlacementSession(
 }
 
 /**
- * Var olan oturuma komut: kurum kilidi altında yükler; oturum yoksa 404, gövdedeki `version`
- * tutmazsa 409 (plandan önce). Plan oturumun yeni alanlarını verir; sürüm koşuluyla yazılır.
+ * Var olan oturuma komut: kurum kilidi altında yükler; oturum yoksa ya da kişisi kapsam dışıysa
+ * 404, gövdedeki `version` tutmazsa 409 (plandan önce). Plan oturumun yeni alanlarını verir; sürüm
+ * koşuluyla yazılır.
  */
 function runSessionCommand<R>(
   ctx: ServiceContext,
@@ -413,6 +467,7 @@ function runSessionCommand<R>(
           ? await findPlacementSession(tx, ctx.institutionId, command.sessionId)
           : null
         if (session === null) throw new NotFoundError()
+        await assertLearnerReach(tx, ctx, session)
         if (session.rowVersion !== command.expectedVersion) throw new ConflictError()
         const institutionType = await institutionTypeOf(tx, ctx)
         const run = await command.plan(tx, session, institutionType)
@@ -595,33 +650,6 @@ export function decidePlacement(
 // --- CEFR profili -------------------------------------------------------------------------
 
 /**
- * Öğretmenin kursiyeri görmesi (IST-060): kursiyerin grubunu okuyabilmesi (kendi grubu ya da
- * akademik koordinatörü olduğu seviyenin grubu; core `canReadGroup`).
- */
-async function teacherReaches(ctx: ServiceContext, studentId: string): Promise<boolean> {
-  const [members, groups, courses, duties] = await Promise.all([
-    loadMembershipsOfStudents(ctx.db, ctx.institutionId, [studentId]),
-    loadGroups(ctx.db, ctx.institutionId),
-    loadCourses(ctx.db, ctx.institutionId),
-    activeDutiesOf(ctx.db, ctx.institutionId, ctx.actor.membershipId),
-  ])
-  const reader = {
-    role: ctx.actor.role,
-    membershipId: ctx.actor.membershipId,
-    coordination: duties.length === 0 ? NO_COORDINATOR_SCOPE : coordinatorScopeOf(duties),
-    studentIds: [] as string[],
-  }
-  const courseOf = new Map(courses.map((course) => [course.id, course]))
-  return members.some((member) => {
-    const group = groups.find((item) => item.id === member.groupId)
-    const course = group === undefined ? undefined : courseOf.get(group.courseId)
-    return (
-      group !== undefined && course !== undefined && canReadGroup(reader, group, course, members)
-    )
-  })
-}
-
-/**
  * Kursiyerin CEFR profili (IST-060; DOM-BEC-034; core `cefrProfileView`): beceri başına güncel
  * seviye (insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi.
  * Öğrenci kendisi, veli bağlı çocuğu, öğretmen kursiyerin grubuna göre, yönetici herkesi görür;
@@ -635,7 +663,7 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   const links = await listMembershipLinks(ctx.db, ctx.institutionId, ctx.actor.membershipId)
   const actor = { role: ctx.actor.role, links, userId: ctx.actor.userId }
   if (!canViewCefrProfile(actor, studentId)) throw new NotFoundError()
-  if (ctx.actor.role === 'ogretmen' && !(await teacherReaches(ctx, studentId)))
+  if (ctx.actor.role === 'ogretmen' && !(await teacherReaches(ctx.db, ctx, studentId)))
     throw new NotFoundError()
 
   const learner = { kind: 'student' as const, id: studentId }

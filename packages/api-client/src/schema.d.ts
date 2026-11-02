@@ -4585,13 +4585,13 @@ export interface paths {
         };
         /**
          * Kişinin seviye tespitleri
-         * @description Öğrencinin ya da adayın tespit oturumları, başlangıca göre eskiden yeniye, sayfalı; geçerlilik (90 gün, DOM-DIL-012) her okumada hesaplanır. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         * @description Öğrencinin ya da adayın tespit oturumları, başlangıca göre eskiden yeniye, sayfalı; geçerlilik (90 gün, DOM-DIL-012) her okumada hesaplanır. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
          */
         get: operations["listPlacementSessions"];
         put?: never;
         /**
          * Seviye tespiti aç
-         * @description Öğrenci ya da aday için tespit oturumu açar (DOM-DIL-010, 012). Kişi kurumun kaydı (404), form kurumun quiz kaynağının sürümü olmalı (404, 422 `placement_form_invalid`). Süren oturum varken (409 `placement_in_progress`) ya da iki tespitten sonra (409 `placement_limit_reached`) yenisi açılmaz; ikinci tespit farklı formla (422 `placement_form_repeated`). Başarı 201 ve `Location`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         * @description Öğrenci ya da aday için tespit oturumu açar (DOM-DIL-010, 012). Kişi kurumun kaydı (404), form kurumun quiz kaynağının sürümü olmalı (404, 422 `placement_form_invalid`). Süren oturum varken (409 `placement_in_progress`) ya da iki tespitten sonra (409 `placement_limit_reached`) yenisi açılmaz; ikinci tespit farklı formla (422 `placement_form_repeated`). Başarı 201 ve `Location`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
          */
         post: operations["openPlacementSession"];
         delete?: never;
@@ -4609,7 +4609,7 @@ export interface paths {
         };
         /**
          * Seviye tespiti
-         * @description Tek oturum: beş bölümün sonucu (dil kullanımı, okuma, dinleme otomatik; yazma, konuşma rubrikli), geçerlilik, önerilen seviye (tespit bağlamı, DOM-DIL-010) ve verilmiş yerleştirme kararı. Puan ve öneri saklanmaz. Olmayan ya da başka kurumun oturumu 404. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         * @description Tek oturum: beş bölümün sonucu (dil kullanımı, okuma, dinleme otomatik; yazma, konuşma rubrikli), geçerlilik, önerilen seviye (tespit bağlamı, DOM-DIL-010) ve verilmiş yerleştirme kararı. Puan ve öneri saklanmaz. Olmayan ya da başka kurumun oturumu 404. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
          */
         get: operations["getPlacementSession"];
         put?: never;
@@ -4631,7 +4631,7 @@ export interface paths {
         put?: never;
         /**
          * Tespit bölümünü puanla
-         * @description Bölüm girişi (DOM-DIL-010, IST-058). Dil kullanımı, okuma ve dinleme `answers` taşır; puan formun o bölümdeki sorularının anahtarıyla sunucuda hesaplanır, yalnız süren oturumda (409 `placement_completed`), formda bölüm yoksa 422 `placement_section_empty`. Yazma ve konuşma yayındaki rubrik sürümüyle (404, 409 `rubric_version_unpublished`) kriter bantı ve görevin hedef seviyesini taşır; oturum bittikten sonra da girilir. Her bölüm bir kez (409 `placement_section_scored`); karar verilmiş oturumda giriş yok (409 `placement_already_decided`). Gövdedeki `version` oturumun satır sürümüdür; tutmazsa 409 `version_conflict`, olmayan ya da başka kurumun oturumu 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         * @description Bölüm girişi (DOM-DIL-010, IST-058). Dil kullanımı, okuma ve dinleme `answers` taşır; puan formun o bölümdeki sorularının anahtarıyla sunucuda hesaplanır, yalnız süren oturumda (409 `placement_completed`), formda bölüm yoksa 422 `placement_section_empty`. Yazma ve konuşma yayındaki rubrik sürümüyle (404, 409 `rubric_version_unpublished`) kriter bantı ve görevin hedef seviyesini taşır; oturum bittikten sonra da girilir. Her bölüm bir kez (409 `placement_section_scored`); karar verilmiş oturumda giriş yok (409 `placement_already_decided`). Gövdedeki `version` oturumun satır sürümüdür; tutmazsa 409 `version_conflict`, olmayan ya da başka kurumun oturumu 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
          */
         post: operations["scorePlacementSection"];
         delete?: never;
@@ -4651,7 +4651,7 @@ export interface paths {
         put?: never;
         /**
          * Seviye tespitini bitir
-         * @description Süren oturumu bitirir; bitiş anı sunucu saatidir ve 90 günlük geçerlilik ondan sayılır (DOM-DIL-012). Bitmiş oturum 409 `placement_completed`. Gövdedeki `version` oturumun satır sürümüdür; tutmazsa 409 `version_conflict`, olmayan ya da başka kurumun oturumu 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         * @description Süren oturumu bitirir; bitiş anı sunucu saatidir ve 90 günlük geçerlilik ondan sayılır (DOM-DIL-012). Bitmiş oturum 409 `placement_completed`. Gövdedeki `version` oturumun satır sürümüdür; tutmazsa 409 `version_conflict`, olmayan ya da başka kurumun oturumu 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
          */
         post: operations["completePlacementSession"];
         delete?: never;
@@ -4671,7 +4671,7 @@ export interface paths {
         put?: never;
         /**
          * Yerleştirme kararı ver
-         * @description Öğretmen veya akademik koordinatör gerekçeyle genel seviyeyi ve isteğe bağlı beceri seviyelerini seçer (DOM-DIL-010); öneriden farklı olabilir. Her satır `level_decisions`'a karar anının önerisiyle yazılır ve değişmez. Oturum bitmiş (409 `placement_incomplete`), kurumda yapılmış (422 `placement_preliminary`), 90 günü dolmamış (422 `placement_expired`) ve yazma ile konuşma puanlanmış (422 `placement_production_missing`) olmalı; oturum başına bir karar (409 `placement_already_decided`). Gövdedeki `version` oturumun satır sürümüdür; tutmazsa 409 `version_conflict`, olmayan ya da başka kurumun oturumu 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         * @description Öğretmen veya akademik koordinatör gerekçeyle genel seviyeyi ve isteğe bağlı beceri seviyelerini seçer (DOM-DIL-010); öneriden farklı olabilir. Her satır `level_decisions`'a karar anının önerisiyle yazılır ve değişmez. Oturum bitmiş (409 `placement_incomplete`), kurumda yapılmış (422 `placement_preliminary`), 90 günü dolmamış (422 `placement_expired`) ve yazma ile konuşma puanlanmış (422 `placement_production_missing`) olmalı; oturum başına bir karar (409 `placement_already_decided`). Gövdedeki `version` oturumun satır sürümüdür; tutmazsa 409 `version_conflict`, olmayan ya da başka kurumun oturumu 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
          */
         post: operations["decidePlacement"];
         delete?: never;

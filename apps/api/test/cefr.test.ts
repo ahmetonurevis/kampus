@@ -199,9 +199,80 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
       mode: 'in_person',
       ...overrides,
     })
-    return { institution, users, cookies, questions, openBody, rubricVersionId }
+    const t = { institution, users, cookies, questions, openBody, rubricVersionId }
+    if (type === 'language_school') await joinTeacherGroup(t)
+    return t
   }
   type Tenant = Awaited<ReturnType<typeof tenant>>
+
+  /** Deniz öğretmenin (`teacher`) grubuna eklenir; `other` öğretmenin grubu yoktur. */
+  async function joinTeacherGroup(t: {
+    institution: { id: string }
+    users: { teacher: { membershipId: string } }
+    cookies: { admin: string }
+  }) {
+    const course = await ok(
+      await call(
+        'POST',
+        '/courses',
+        t.cookies.admin,
+        {
+          name: 'Genel İngilizce B1.1',
+          level: 'B1',
+          totalHours: 12,
+          weeklyHours: 4,
+          minLearners: 2,
+          maxLearners: 12,
+        },
+        key(),
+      ),
+      201,
+    )
+    await ok(
+      await call(
+        'POST',
+        `/courses/${course.id}/activate`,
+        t.cookies.admin,
+        {},
+        {
+          'if-match': '"1"',
+        },
+      ),
+    )
+    const group = await ok(
+      await call(
+        'POST',
+        '/groups',
+        t.cookies.admin,
+        {
+          courseId: course.id,
+          name: 'B1 Akşam',
+          ageBand: 'adult',
+          teacherMembershipId: t.users.teacher.membershipId,
+          delivery: 'in_person',
+          room: 'Derslik 1',
+          schedule: [
+            { weekday: 1, startTime: '18:00' },
+            { weekday: 1, startTime: '18:45' },
+            { weekday: 3, startTime: '18:00' },
+            { weekday: 3, startTime: '18:45' },
+          ],
+          startDate: '2026-10-12',
+          capacity: 10,
+        },
+        key(),
+      ),
+      201,
+    )
+    await db.insert(languageGroupMembers).values({
+      institutionId: t.institution.id,
+      id: randomUUID(),
+      groupId: group.id,
+      studentId: 's-deniz',
+      status: 'active',
+      joinedAt: FIXED_NOW,
+    })
+  }
 
   const open = (t: Tenant, overrides: Record<string, unknown> = {}, cookie = t.cookies.teacher) =>
     call('POST', '/placement-sessions', cookie, t.openBody(overrides), key())
@@ -552,71 +623,51 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
     fails(await call('GET', '/students/s-yok/cefr-profile', a.cookies.admin), 404, 'not_found')
   })
 
+  test('DOM-DIL-010 IST-060 öğretmen yalnız grubundaki öğrencinin tespitine erişir; kapsam dışı 404, kayıt değişmez', async () => {
+    const t = await tenant()
+    const session = await scoredSession(t)
+    const other = t.cookies.other
+    fails(
+      await call('GET', '/placement-sessions?learnerKind=student&learnerId=s-deniz', other),
+      404,
+      'not_found',
+    )
+    fails(await call('GET', `/placement-sessions/${session.id}`, other), 404, 'not_found')
+    fails(await open(t, {}, other), 404, 'not_found')
+    fails(
+      await command(other, session.id, 'score', autoBody(t, 'reading', session.version)),
+      404,
+      'not_found',
+    )
+    fails(
+      await command(other, session.id, 'complete', { version: session.version }),
+      404,
+      'not_found',
+    )
+    fails(await command(other, session.id, 'decide', decideBody(session.version)), 404, 'not_found')
+    // Grubu olan öğretmen de gruba girmemiş öğrenciye ulaşamaz.
+    fails(await open(t, { learnerId: 's-ece' }), 404, 'not_found')
+    fails(
+      await call(
+        'GET',
+        '/placement-sessions?learnerKind=student&learnerId=s-ece',
+        t.cookies.teacher,
+      ),
+      404,
+      'not_found',
+    )
+    const [row] = await sessionRows(t.institution.id)
+    assert.equal(row?.version, session.version)
+    assert.equal((await sessionRows(t.institution.id)).length, 1)
+    assert.equal((await decisionRows(t.institution.id)).length, 0)
+    // Aday gruba bağlı değildir; her öğretmen açabilir. Yönetici gruptan bağımsızdır.
+    await ok(await open(t, { learnerKind: 'prospect', learnerId: 'p-aday' }, other), 201)
+    await ok(await open(t, { learnerId: 's-ece' }, t.cookies.admin), 201)
+  })
+
   test('IST-060 profil kapsamı: öğrenci kendisi, veli çocuğu, öğretmen grubundaki kursiyer', async () => {
     const t = await tenant()
     await scoredSession(t)
-    // Deniz öğretmenin grubuna eklenir.
-    const course = await ok(
-      await call(
-        'POST',
-        '/courses',
-        t.cookies.admin,
-        {
-          name: 'Genel İngilizce B1.1',
-          level: 'B1',
-          totalHours: 12,
-          weeklyHours: 4,
-          minLearners: 2,
-          maxLearners: 12,
-        },
-        key(),
-      ),
-      201,
-    )
-    await ok(
-      await call(
-        'POST',
-        `/courses/${course.id}/activate`,
-        t.cookies.admin,
-        {},
-        {
-          'if-match': '"1"',
-        },
-      ),
-    )
-    const group = await ok(
-      await call(
-        'POST',
-        '/groups',
-        t.cookies.admin,
-        {
-          courseId: course.id,
-          name: 'B1 Akşam',
-          ageBand: 'adult',
-          teacherMembershipId: t.users.teacher.membershipId,
-          delivery: 'in_person',
-          room: 'Derslik 1',
-          schedule: [
-            { weekday: 1, startTime: '18:00' },
-            { weekday: 1, startTime: '18:45' },
-            { weekday: 3, startTime: '18:00' },
-            { weekday: 3, startTime: '18:45' },
-          ],
-          startDate: '2026-10-12',
-          capacity: 10,
-        },
-        key(),
-      ),
-      201,
-    )
-    await db.insert(languageGroupMembers).values({
-      institutionId: t.institution.id,
-      id: randomUUID(),
-      groupId: group.id,
-      studentId: 's-deniz',
-      status: 'active',
-      joinedAt: FIXED_NOW,
-    })
     const profile = (studentId: string, cookie: string) =>
       call('GET', `/students/${studentId}/cefr-profile`, cookie)
     for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.teacher, t.cookies.admin])

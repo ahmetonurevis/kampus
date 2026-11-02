@@ -191,7 +191,7 @@ async function answerAll(page: Page, choices: readonly string[]) {
   for (const [index, choice] of choices.entries()) {
     if (index > 0) await page.getByRole('button', { name: 'Sonraki' }).click()
     await expect(page.getByText(QUESTIONS[index]!.stem, { exact: true })).toBeVisible()
-    await page.getByLabel(choice, { exact: true }).check()
+    await page.getByRole('radio', { name: choice, exact: true }).check()
     await expect(page.getByText('Cevaplarınız kaydedildi.', { exact: true })).toBeVisible()
   }
 }
@@ -221,7 +221,7 @@ test.describe('okuma-anlama etkinliği', () => {
     // Parça: başlık, seviye, sistemin saydığı kelime sayısı (DOM-KYN-002), kaynak gösterimi.
     const passage = passageOf(page)
     await expect(passage.getByRole('heading', { name: PASSAGE_TITLE })).toBeVisible()
-    await expect(passage.getByText('A2', { exact: true })).toBeVisible()
+    await expect(passage.getByText('CEFR A2', { exact: true })).toBeVisible()
     await expect(passage.getByText(`${wordCount(BODY)} kelime`, { exact: true })).toBeVisible()
     await expect(passage.getByText(/Every morning she takes the ferry/)).toBeVisible()
     await expect(passage.getByRole('region', { name: 'Kaynak gösterimi' })).toContainText(

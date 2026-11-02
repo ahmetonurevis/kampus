@@ -47395,6 +47395,357 @@
         }
       }
     },
+    "/api/v1/finance/students/{studentId}/statement": {
+      "get": {
+        "operationId": "getStudentStatement",
+        "summary": "Öğrencinin cari ekstresi",
+        "tags": [
+          "finance-exports"
+        ],
+        "description": "Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "totalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "paidCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "openCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "overdueCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "overdueCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "nextDue": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "date": {
+                                  "type": "string"
+                                },
+                                "amountCents": {
+                                  "type": "integer",
+                                  "minimum": -9007199254740991,
+                                  "maximum": 9007199254740991
+                                }
+                              },
+                              "required": [
+                                "date",
+                                "amountCents"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "debitTotalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Borç sütunu toplamı (kuruş)"
+                        },
+                        "creditTotalCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Alacak sütunu toplamı (kuruş)"
+                        },
+                        "unappliedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Taksite dağıtılmayan, iade alacağı olan tutar (kuruş)"
+                        },
+                        "lines": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string",
+                                "enum": [
+                                  "installment",
+                                  "payment",
+                                  "payment_reversal",
+                                  "legacy_payment"
+                                ],
+                                "description": "Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme"
+                              },
+                              "date": {
+                                "type": "string",
+                                "description": "İşlem günü (YYYY-MM-DD, Europe/Istanbul)"
+                              },
+                              "debitCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Borç (kuruş)"
+                              },
+                              "creditCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Alacak (kuruş)"
+                              },
+                              "balanceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Satır sonrası bakiye (kuruş)"
+                              },
+                              "invoiceId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "installment": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "openCents": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Taksitin açık kalan kısmı (kuruş)"
+                              },
+                              "isOverdue": {
+                                "type": "boolean"
+                              },
+                              "paymentId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "method": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "reference": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "receiptYear": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "receiptNumber": {
+                                "anyOf": [
+                                  {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "unappliedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Tahsilatın taksite dağıtılmayan kısmı (kuruş)"
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "date",
+                              "debitCents",
+                              "creditCents",
+                              "balanceCents",
+                              "invoiceId",
+                              "installment",
+                              "openCents",
+                              "isOverdue",
+                              "paymentId",
+                              "method",
+                              "reference",
+                              "receiptYear",
+                              "receiptNumber",
+                              "unappliedCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "studentId",
+                        "totalCents",
+                        "paidCents",
+                        "openCents",
+                        "overdueCents",
+                        "overdueCount",
+                        "nextDue",
+                        "debitTotalCents",
+                        "creditTotalCents",
+                        "unappliedCents",
+                        "lines"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/summary": {
       "get": {
         "operationId": "getFinanceSummary",

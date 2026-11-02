@@ -15,6 +15,7 @@ import {
   financeSummaryFor,
   financeTotalsFor,
   studentBalanceFor,
+  studentStatementFor,
 } from '../services/finance-exports.ts'
 import { commandErrors } from './commands.schemas.ts'
 import { dataResponse } from './common.schemas.ts'
@@ -147,6 +148,76 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
     },
     async (request) => ({
       data: await studentBalanceFor(contextOf(request), request.params.studentId),
+    }),
+  )
+
+  typed.get(
+    '/api/v1/finance/students/:studentId/statement',
+    {
+      preValidation: [
+        app.authenticate,
+        finance,
+        app.requireRole(['yonetici', 'onburo', 'veli', 'ogrenci']),
+      ],
+      schema: {
+        operationId: 'getStudentStatement',
+        tags: ['finance-exports'],
+        summary: 'Öğrencinin cari ekstresi',
+        description:
+          'Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.',
+        params: z.object({ studentId: z.string().min(1).max(200).describe('Öğrenci kimliği') }),
+        response: {
+          200: dataResponse(
+            z.object({
+              studentId: z.string(),
+              totalCents: z.number().int(),
+              paidCents: z.number().int(),
+              openCents: z.number().int(),
+              overdueCents: z.number().int(),
+              overdueCount: z.number().int(),
+              nextDue: z.object({ date: z.string(), amountCents: z.number().int() }).nullable(),
+              debitTotalCents: z.number().int().describe('Borç sütunu toplamı (kuruş)'),
+              creditTotalCents: z.number().int().describe('Alacak sütunu toplamı (kuruş)'),
+              unappliedCents: z
+                .number()
+                .int()
+                .describe('Taksite dağıtılmayan, iade alacağı olan tutar (kuruş)'),
+              lines: z.array(
+                z.object({
+                  kind: z
+                    .enum(['installment', 'payment', 'payment_reversal', 'legacy_payment'])
+                    .describe('Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme'),
+                  date: z.string().describe('İşlem günü (YYYY-MM-DD, Europe/Istanbul)'),
+                  debitCents: z.number().int().describe('Borç (kuruş)'),
+                  creditCents: z.number().int().describe('Alacak (kuruş)'),
+                  balanceCents: z.number().int().describe('Satır sonrası bakiye (kuruş)'),
+                  invoiceId: z.string().nullable(),
+                  installment: z.number().int().nullable(),
+                  openCents: z
+                    .number()
+                    .int()
+                    .nullable()
+                    .describe('Taksitin açık kalan kısmı (kuruş)'),
+                  isOverdue: z.boolean(),
+                  paymentId: z.string().nullable(),
+                  method: z.string().nullable(),
+                  reference: z.string().nullable(),
+                  receiptYear: z.number().int().nullable(),
+                  receiptNumber: z.number().int().nullable(),
+                  unappliedCents: z
+                    .number()
+                    .int()
+                    .describe('Tahsilatın taksite dağıtılmayan kısmı (kuruş)'),
+                }),
+              ),
+            }),
+          ),
+          ...commandErrors,
+        },
+      },
+    },
+    async (request) => ({
+      data: await studentStatementFor(contextOf(request), request.params.studentId),
     }),
   )
 

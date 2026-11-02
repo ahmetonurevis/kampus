@@ -404,6 +404,22 @@ export async function listPayments(
 }
 
 /** Sürüm koşulu tutmazsa `null` döner. */
+/** Öğrencinin bütün tahsilatları, iptal edilenler dahil; ekstre sayfalanmaz (IST-107). */
+export async function paymentsOfStudent(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+): Promise<StoredPayment[]> {
+  const rows = await db
+    .select(COLUMNS)
+    .from(payments)
+    .leftJoin(records, STUDENT_JOIN)
+    .leftJoin(bankAccounts, BANK_JOIN)
+    .where(and(eq(payments.institutionId, institutionId), eq(payments.studentId, studentId)))
+    .orderBy(asc(payments.paidAt), asc(payments.receiptNumber))
+  return withAllocations(db, institutionId, rows)
+}
+
 export async function markPaymentReversed(
   tx: Database,
   institutionId: string,

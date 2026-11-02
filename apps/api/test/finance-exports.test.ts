@@ -462,6 +462,71 @@ describe('muhasebe dışa aktarımı', () => {
     }
   })
 
+  const statement = (cookie: string | null, studentId: string) =>
+    get(cookie, `/api/v1/finance/students/${studentId}/statement`)
+
+  test('IST-107: ekstre tahsilat ve taksit kayıtlarıyla tutarlıdır; iptal ters kayıt açar', async () => {
+    const a = await institution()
+    const studentId = String(STUDENT?.id)
+    const paid = await pay(a.cookie, 1_000_000, 'TR-EKSTRE-1')
+    assert.equal(paid.statusCode, 201, paid.body)
+    assert.equal((await pay(a.cookie, 500_000, 'TR-EKSTRE-2')).statusCode, 201)
+
+    const parent = await linked(a.id, 'veli', 'child', studentId)
+    const pupil = await linked(a.id, 'ogrenci', 'student', studentId)
+    const reads = []
+    for (const cookie of [a.cookie, await member(a.id, 'onburo'), parent, pupil]) {
+      const read = await statement(cookie, studentId)
+      assert.equal(read.statusCode, 200, read.body)
+      reads.push(read.json().data)
+    }
+    const data = reads[0]
+    for (const other of reads) assert.deepEqual(other, data)
+    const summary = (await balance(a.cookie, studentId)).json().data
+    for (const field of ['totalCents', 'paidCents', 'openCents', 'overdueCents'])
+      assert.equal(data[field], summary[field], field)
+    assert.equal(data.debitTotalCents - data.creditTotalCents, summary.openCents)
+    assert.equal(data.lines.at(-1).balanceCents, summary.openCents)
+    assert.equal(data.creditTotalCents, 1_500_000)
+    const methods = data.lines.filter((line: { kind: string }) => line.kind === 'payment')
+    assert.equal(methods.length, 2)
+    assert.equal('reversalReason' in methods[0], false)
+
+    const paymentId = paid.json().data.id as string
+    const reversed = await app.inject({
+      method: 'POST',
+      url: `/api/v1/payments/${paymentId}/reverse`,
+      headers: {
+        cookie: a.cookie,
+        'if-match': `"${String(paid.json().data.version)}"`,
+        'idempotency-key': 'test-ekstre-iptal-01',
+      },
+      payload: { reason: 'Yanlış öğrenciye kaydedildi' },
+    })
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    const after = (await statement(a.cookie, studentId)).json().data
+    assert.equal(after.paidCents, 500_000)
+    assert.equal(after.openCents, summary.openCents + 1_000_000)
+    assert.equal(after.lines.at(-1).balanceCents, after.openCents)
+    assert.equal(
+      after.lines.filter((line: { kind: string }) => line.kind === 'payment_reversal').length,
+      1,
+    )
+  })
+
+  test('IST-107: ekstre oturumsuz 401, öğretmen 403, modül kapalı 403; başka çocuk 404', async () => {
+    const a = await institution()
+    const studentId = String(STUDENT?.id)
+    const other = await otherStudent(a.id)
+    assertError(await statement(null, studentId), 401)
+    assertError(await statement(await member(a.id, 'ogretmen'), studentId), 403, 'forbidden')
+    const parent = await linked(a.id, 'veli', 'child', studentId)
+    assertError(await statement(parent, other), 404, 'not_found')
+    assertError(await statement(a.cookie, 'ogrenci-yok'), 404, 'not_found')
+    const closed = await institution({ enabledModules: { finance: false } })
+    assertError(await statement(closed.cookie, studentId), 403)
+  })
+
   test('DOM-FIN-052: oturumsuz 401, öğretmen 403, modül kapalı 403; başka çocuk ve olmayan öğrenci 404', async () => {
     const a = await institution()
     const studentId = String(STUDENT?.id)

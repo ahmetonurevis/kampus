@@ -23,8 +23,17 @@ import {
   type FinanceTotals,
   type StudentBalance,
 } from '@kampus/school-core/lib/finance-export.ts'
+import {
+  studentStatement,
+  type StudentStatement,
+} from '@kampus/school-core/lib/finance-statement.ts'
 
-import { allocatedForInvoices, allocatedTotals, paymentsTouchingPeriod } from '../db/payments.ts'
+import {
+  allocatedForInvoices,
+  allocatedTotals,
+  paymentsOfStudent,
+  paymentsTouchingPeriod,
+} from '../db/payments.ts'
 import { loadRecords } from '../db/records.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { refundsPaidInPeriod } from '../db/withdrawals.ts'
@@ -161,6 +170,38 @@ export async function studentBalanceFor(
     invoices.map((invoice) => invoice.id),
   )
   return studentBalance(studentId, invoices, allocated, dayKey(ctx.now))
+}
+
+const statementInvoice = balanceInvoice.extend({
+  installment: z.number().int(),
+  method: z.string().nullable().optional(),
+})
+
+/**
+ * Cari ekstre (`GET /finance/students/:id/statement`, IST-107). Kapsam bakiyeyle aynıdır; hesap
+ * core `studentStatement`'tadır. İptal gerekçesi personel alanı olduğu için satıra girmez.
+ */
+export async function studentStatementFor(
+  ctx: ServiceContext,
+  studentId: string,
+): Promise<StudentStatement> {
+  const scope = await readScope(ctx)
+  assertReadable(ctx, scope, 'invoices')
+  if (!scope.studentIds.has(studentId)) throw new NotFoundError()
+  const rows = await loadRecords(ctx.db, ctx.institutionId, ['invoices'], {
+    match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
+  })
+  const invoices = rows.map((row) => {
+    const invoice = statementInvoice.parse({ ...row.data, id: row.id })
+    return { ...invoice, paidAt: invoice.paidAt ?? null }
+  })
+  const stored = await paymentsOfStudent(ctx.db, ctx.institutionId, studentId)
+  const payments = stored.map((payment) => ({
+    ...payment,
+    paidAt: payment.paidAt.toISOString(),
+    reversedAt: payment.reversedAt?.toISOString() ?? null,
+  }))
+  return studentStatement(studentId, invoices, payments, dayKey(ctx.now))
 }
 
 export async function financeSummaryFor(

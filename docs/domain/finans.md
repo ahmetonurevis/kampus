@@ -272,6 +272,14 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Kurum türü:** ikisi
 - **Kodda:** çelişiyor — denetim kaydı son 200 kayıtla kesilir (`packages/school-core/src/lib/school-workflows.js:1334`).
 
+### DOM-FIN-054 · Cari ekstre
+
+- **Kural:** Öğrencinin ekstresi taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle gösterir. Borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat silinmez, iptal gününe ters kayıt olarak yazılır. Taksite dağıtılmayan tutar iade alacağıdır, bakiyeyi düşürmez.
+- **Gerekçe:** Veliye verilen ekstre taksit ve tahsilat kayıtlarıyla kuruşu kuruşuna tutmalıdır (IST-107).
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** var (core ve API) — `lib/finance-statement.ts`, `GET /api/v1/finance/students/:studentId/statement`. Ekran ve PDF ON-022'dedir.
+
 ## Mevcut kodla farklar
 
 | Kural       | Fark                                                                                                                                                            |

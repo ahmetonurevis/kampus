@@ -495,6 +495,45 @@ test('class_campus_mismatch: çevrimdışı demo her kampüsün sınıfını esk
   assert.equal(result.student.classId, other.id)
 })
 
+test('DOM-ILT-070, DOM-ILT-074: veli varsa kayıt veli–öğrenci bağı taslağı döndürür; veli ödeyicidir, yetişkin kursiyerde bağ yoktur', () => {
+  // Yeni veli: formdaki yakınlık bağın yakınlığıdır, bağ veli kaydına yazılır.
+  const { result } = enroll()
+  assert.deepEqual(result.guardianBond, {
+    parentId: result.student.parentId,
+    relationship: 'mother',
+    isPayer: true,
+  })
+  const father = enroll({ guardian: { ...INPUT.guardian, relationship: 'legal_guardian' } })
+  assert.equal(father.result.guardianBond?.relationship, 'legal_guardian')
+  // Mevcut veli (kardeş): bağ mevcut veli kaydına ve onun kayıtlı yakınlığına yazılır.
+  const state = createSeed(new Date(NOW))
+  const parent = state.parents[0]
+  assert.ok(parent)
+  parent.relationship = 'father'
+  const sibling = enroll({ guardian: { existingParentId: parent.id } }, {}, state)
+  assert.deepEqual(sibling.result.guardianBond, {
+    parentId: parent.id,
+    relationship: 'father',
+    isPayer: true,
+  })
+  // Tanınan yakınlığı olmayan eski veli kaydı `other` bağlanır.
+  const legacy = createSeed(new Date(NOW))
+  const legacyParent = legacy.parents[0]
+  assert.ok(legacyParent)
+  delete legacyParent.relationship
+  assert.equal(
+    enroll({ guardian: { existingParentId: legacyParent.id } }, {}, legacy).result.guardianBond
+      ?.relationship,
+    'other',
+  )
+  // Yetişkin kursiyerin kendisi veli değildir: bağ yoktur.
+  const adult = languageEnroll({
+    identity: { ...INPUT.identity, birthDate: '2000-01-01' },
+    guardian: null,
+  }).run()
+  assert.equal(adult.guardianBond, null)
+})
+
 test('DOM-KAY-012: veli adı, telefonu ve yakınlığı kaydedilir', () => {
   const { state, result } = enroll()
   const parent = state.parents.find((p) => p.id === result.student.parentId)

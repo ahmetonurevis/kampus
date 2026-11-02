@@ -185,6 +185,16 @@ export type ProspectTrialLesson = {
   result?: ProspectTrialResult
 }
 export type MarketingConsent = Record<MarketingChannel, { granted: boolean; at: string }>
+/**
+ * Ticari ileti onayı olayı (DOM-KAY-004): her verme ve geri alma ayrı satırdır, geçmiş silinmez;
+ * güncel durum `marketingConsent`'tedir. İlk onay seçimi aday açılırken `marketingConsent`'e yazılır.
+ */
+export type MarketingConsentEvent = {
+  channel: MarketingChannel
+  granted: boolean
+  at: string
+  by: RequestActor
+}
 /** Aday işlemlerinin eklediği alanlar; örnek veri ve eski kayıtlar taşımaz. */
 export type ProspectFields = {
   /** 18 yaş altı mı; eski kayıtta yoksa 18 yaş altı sayılır (DOM-KAY-009). */
@@ -198,6 +208,8 @@ export type ProspectFields = {
   /** Gösterilen aydınlatma metninin sürümü ve anı (DOM-KAY-003, KVKK md. 10). */
   privacyNotice?: { version: string; shownAt: string }
   marketingConsent?: MarketingConsent
+  /** Açılıştan sonraki verme ve geri alma olayları, eskiden yeniye (DOM-KAY-004). */
+  marketingConsentHistory?: MarketingConsentEvent[]
   lostReason?: ProspectLostReason
   lostAt?: string
   /** Planlanan tanışma görüşmesi; `trialAt` eski okuyucular için görüşme anını taşır. */
@@ -312,6 +324,12 @@ export const revertProspectStageSchema = z.strictObject({
     ),
 })
 export type RevertProspectStageInput = z.input<typeof revertProspectStageSchema>
+
+export const setMarketingConsentSchema = z.strictObject({
+  channel: z.enum(MARKETING_CHANNELS, 'Onay kanalını seçin.'),
+  granted: z.boolean('Onay verilecek mi geri alınacak mı belirtin.'),
+})
+export type SetMarketingConsentInput = z.input<typeof setMarketingConsentSchema>
 
 export const addProspectNoteSchema = z.strictObject({
   text: z
@@ -544,8 +562,9 @@ export function createProspect(
     },
     createdBy: actorOf(by),
   }
-  // TODO(crm-consent): ticari ileti onayının geri alınması (ret hakkı) ve İYS bildirimi ayrı
-  // işlemdir (DOM-KAY-004); aday bilgisi düzeltme işlemi de yoktur.
+  // TODO(crm-consent): İYS bildirimi (OG-108) ve adayın aydınlatma metninin platform metin
+  // deposundan gösterilmesi (aday kitlesi platformda yok, iş isteği #14) ayrıdır; aday bilgisi
+  // düzeltme işlemi de yok.
   state.prospects.unshift(prospect)
   return prospect
 }
@@ -733,6 +752,56 @@ export function revertProspectStage(
     { from: current, to: data.stage, reason: data.reason, at: now, by: actorOf(by) },
   ]
   prospect.stage = data.stage
+  prospect.updatedAt = now
+  return prospect
+}
+
+/** Aday bu kanalda geçerli ticari ileti onayına sahip mi (DOM-KAY-004); onay yoksa tanıtım iletisi gitmez. */
+export function hasMarketingConsent(
+  prospect: { marketingConsent?: Partial<MarketingConsent> | undefined },
+  channel: MarketingChannel,
+): boolean {
+  return prospect.marketingConsent?.[channel]?.granted === true
+}
+
+/**
+ * Adayın kanal bazlı ticari ileti onayını verir ya da geri alır (DOM-KAY-004, ret hakkı). Geri
+ * alma anında etkilidir ve aday aşamasından bağımsızdır (vazgeçen ve kayıtlı adayda da yapılır);
+ * her değişiklik kalıcı olay olarak geçmişe eklenir. Aynı karara ikinci istek mükerrerdir (409).
+ * E-posta onayı için adayın e-postası olmalıdır. Randevu teyidi gibi hizmet iletileri onaya bağlı
+ * değildir; yalnız tanıtım iletisi bu denetime girer.
+ */
+export function setProspectMarketingConsent(
+  state: State,
+  by: Participant,
+  prospectId: string,
+  input: unknown,
+  now: string,
+  options: ProspectOptions = {},
+): ProspectRecord {
+  const data = setMarketingConsentSchema.parse(input)
+  requireAuthorized(by, 'prospect.consent', {}, state, options)
+  const prospect = requireProspect(state, prospectId)
+  if (hasMarketingConsent(prospect, data.channel) === data.granted)
+    throw new DomainError(
+      'marketing_consent_unchanged',
+      data.granted ? 'Bu kanal için onay zaten verilmiş.' : 'Bu kanal için onay zaten yok.',
+      { kind: 'conflict', path: ['granted'] },
+    )
+  if (data.granted && data.channel === 'email' && !prospect.email?.trim())
+    throw new DomainError('consent_contact_missing', 'E-posta onayı için e-posta adresi girin.', {
+      path: ['channel'],
+    })
+  const current: MarketingConsent = prospect.marketingConsent ?? {
+    sms: { granted: false, at: prospect.createdAt },
+    email: { granted: false, at: prospect.createdAt },
+    call: { granted: false, at: prospect.createdAt },
+  }
+  prospect.marketingConsent = { ...current, [data.channel]: { granted: data.granted, at: now } }
+  prospect.marketingConsentHistory = [
+    ...(prospect.marketingConsentHistory ?? []),
+    { channel: data.channel, granted: data.granted, at: now, by: actorOf(by) },
+  ]
   prospect.updatedAt = now
   return prospect
 }

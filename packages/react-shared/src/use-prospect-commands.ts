@@ -8,7 +8,7 @@ import { useApiQuery } from './use-api-query.ts'
 
 // Aday/CRM yazma komutları (`POST /prospects`, `PATCH /prospects/:id`,
 // `POST /prospects/:id/{notes,meetings,trial-lessons,enroll}`; core `prospect.create`
-// `prospect.stage` `prospect.stageRevert` `prospect.note` `prospect.meeting` `prospect.trial` `prospect.enroll`,
+// `prospect.stage` `prospect.stageRevert` `prospect.consent` `prospect.note` `prospect.meeting` `prospect.trial` `prospect.enroll`,
 // docs/domain/kayit-ve-crm.md DOM-KAY-001…011, DOM-KAY-030…035, DOM-DIL-030). Okuma genel
 // koleksiyon kancalarındadır (`prospects`).
 // Hepsi `exclusive`: yollu `issues` (mükerrer aday `phone`, kardeş `siblingOfId`, görüşme çakışması
@@ -27,6 +27,7 @@ type JsonBody<TOperation extends keyof operations> =
 export type CreateProspectBody = JsonBody<'createProspect'>
 export type ChangeProspectStageBody = JsonBody<'changeProspectStage'>
 export type RevertProspectStageBody = JsonBody<'revertProspectStage'>
+export type SetProspectMarketingConsentBody = JsonBody<'setProspectMarketingConsent'>
 export type AddProspectNoteBody = JsonBody<'addProspectNote'>
 export type ScheduleProspectMeetingBody = JsonBody<'scheduleProspectMeeting'>
 export type ScheduleTrialLessonBody = JsonBody<'scheduleTrialLesson'>
@@ -40,6 +41,7 @@ interface ProspectCommandInput<TBody> {
 }
 export type ChangeProspectStageInput = ProspectCommandInput<ChangeProspectStageBody>
 export type RevertProspectStageInput = ProspectCommandInput<RevertProspectStageBody>
+export type SetProspectMarketingConsentInput = ProspectCommandInput<SetProspectMarketingConsentBody>
 export type AddProspectNoteInput = ProspectCommandInput<AddProspectNoteBody>
 export type ScheduleProspectMeetingInput = ProspectCommandInput<ScheduleProspectMeetingBody>
 export type ScheduleTrialLessonInput = ProspectCommandInput<ScheduleTrialLessonBody>
@@ -99,6 +101,17 @@ export function revertProspectStageRequest(
   headers: CommandHeaders,
 ) {
   return client.POST('/api/v1/prospects/{prospectId}/stage-revert', {
+    params: { path: { prospectId }, header: versioned(headers) },
+    body,
+  })
+}
+
+export function setProspectMarketingConsentRequest(
+  client: KampusClient,
+  { prospectId, body }: SetProspectMarketingConsentInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/prospects/{prospectId}/marketing-consent', {
     params: { path: { prospectId }, header: versioned(headers) },
     body,
   })
@@ -202,6 +215,18 @@ export function useRevertProspectStage(options: CommandOptions = {}) {
   return useApiCommand({
     request: revertProspectStageRequest,
     version: versionOf<RevertProspectStageBody>,
+    invalidates: PROSPECT_INVALIDATES,
+    messages: PROSPECT_MESSAGES,
+    exclusive: true,
+    ...success(options),
+  })
+}
+
+/** Adayın kanal bazlı ticari ileti onayını verir ya da geri alır (DOM-KAY-004). */
+export function useSetProspectMarketingConsent(options: CommandOptions = {}) {
+  return useApiCommand({
+    request: setProspectMarketingConsentRequest,
+    version: versionOf<SetProspectMarketingConsentBody>,
     invalidates: PROSPECT_INVALIDATES,
     messages: PROSPECT_MESSAGES,
     exclusive: true,

@@ -17,6 +17,7 @@ import {
   scheduleProspectMeeting,
   recordTrialResult,
   revertProspectStage,
+  setProspectMarketingConsent,
   scheduleTrialLesson,
   type ProspectOptions,
 } from '@kampus/school-core/lib/prospects.ts'
@@ -70,6 +71,7 @@ type ProspectAction =
   | 'prospect.create'
   | 'prospect.stage'
   | 'prospect.stageRevert'
+  | 'prospect.consent'
   | 'prospect.note'
   | 'prospect.meeting'
   | 'prospect.trial'
@@ -416,6 +418,27 @@ export function revertProspectStageCommand(
       subjectId: prospectId,
       run: (state, by, { now }, prospectOptions) => {
         revertProspectStage(state, by, prospectId, input, now, prospectOptions)
+        return { id: prospectId, statusCode: 200 }
+      },
+    },
+    options,
+  )
+}
+
+/** Adayın kanal bazlı ticari ileti onayını verir ya da geri alır (DOM-KAY-004). 200. */
+export function setMarketingConsentCommand(
+  ctx: ServiceContext,
+  prospectId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  return execute(
+    ctx,
+    {
+      action: 'prospect.consent',
+      subjectId: prospectId,
+      run: (state, by, { now }, prospectOptions) => {
+        setProspectMarketingConsent(state, by, prospectId, input, now, prospectOptions)
         return { id: prospectId, statusCode: 200 }
       },
     },

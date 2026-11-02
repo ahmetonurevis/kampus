@@ -542,9 +542,15 @@ describe('Genel Bakış özeti', () => {
       await insertMissingRecords(
         db,
         created.id,
-        SEED.classes
-          .filter((item) => item.id === 'c11')
-          .map((data) => ({ collection: 'classes' as const, id: data.id, data })),
+        [
+          ...SEED.classes
+            .filter((item) => item.id === 'c11')
+            .map((data) => ({ collection: 'classes' as const, id: data.id, data })),
+          ...SEED.teachers
+            .filter((item) => item.branchId === 'b2')
+            .slice(0, 1)
+            .map((data) => ({ collection: 'teachers' as const, id: data.id, data })),
+        ],
         FIXED_NOW,
       )
       return created
@@ -587,6 +593,10 @@ describe('Genel Bakış özeti', () => {
         )
         assert.equal(data.campuses[0].students, data.students.active)
         assert.equal(data.classes.campusCount, 1)
+        const teachers = await counts(cookie, 'teachers', `groupBy=isActive&branchId=${branch}`)
+        assert.deepEqual(data.teachers, { active: countOf(teachers, true) })
+        assert.equal(data.teachers.active, branch === 'b1' ? 2 : 1, `${branch} öğretmen kadrosu`)
+        assert.ok(data.teachers.active < all.teachers.active, `${branch} kadrosu kurumdan dardır`)
         assert.ok(data.students.active < all.students.active, `${branch} kurumdan dardır`)
         const recent = await listIds(
           cookie,
@@ -635,6 +645,25 @@ describe('Genel Bakış özeti', () => {
         data.finance.recentPayments.map((row: { id: string }) => row.id),
         paid.ids,
       )
+    })
+
+    test('başka kurumun gerçek kampüs kimliği 404 döner, o kurumda çözülür', async () => {
+      const mine = await twoCampuses()
+      const other = await institution()
+      const foreign = 'b-baska-kurum'
+      const branch = SEED.branches.find((item) => item.id === 'b3')
+      assert.ok(branch)
+      await insertMissingRecords(
+        db,
+        other.id,
+        [{ collection: 'branches', id: foreign, data: { ...branch, id: foreign } }],
+        FIXED_NOW,
+      )
+      const query = `/api/v1/dashboard?branchId=${foreign}`
+      assert.equal((await get(query, other.adminCookie)).statusCode, 200)
+      assert.equal((await get(query, mine.adminCookie)).statusCode, 404)
+      const desk = await memberCookie(mine.id, 'onburo')
+      assert.equal((await get(query, desk)).statusCode, 404)
     })
 
     test('olmayan kampüs 404; öğretmen, öğrenci ve velide 400', async () => {

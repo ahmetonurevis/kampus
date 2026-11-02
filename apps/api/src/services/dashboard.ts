@@ -133,7 +133,10 @@ const NO_CLASS = '__kampusta-sinif-yok__'
 
 export interface BranchScope {
   branchId: string
-  /** Kampüsün bütün sınıfları (pasif ve arşivli dahil; geçmiş taksit ve yoklama onlara bağlıdır). */
+  /**
+   * Kampüsün arşivlenmemiş sınıfları (pasif dahil). Arşivli sınıflar `all()` okumasında yoktur;
+   * taksit ve yoklama öğrencinin güncel sınıfından çözüldüğü için sayılar bundan etkilenmez.
+   */
   classFilter: { classId: string[] }
 }
 
@@ -317,7 +320,7 @@ async function adminDashboard(
       count(ctx, 'students', { groupBy: 'isActive', filters: ofBranch }),
       count(ctx, 'students', { groupBy: 'classId', isActive: true, filters: ofBranch }),
       count(ctx, 'classes', { groupBy: 'branchId', sum: 'capacity', filters: inBranch, ...ACTIVE }),
-      count(ctx, 'teachers', { groupBy: 'isActive' }),
+      count(ctx, 'teachers', { groupBy: 'isActive', filters: inBranch }),
       list(ctx, 'students', {
         pageSize: SHORT_LIST,
         sort: [{ field: 'createdAt', descending: true }],

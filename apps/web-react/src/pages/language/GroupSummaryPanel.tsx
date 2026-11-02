@@ -25,6 +25,7 @@ import {
   slotLines,
   type TeacherNames,
 } from './group-rows.ts'
+import { RECORD_UNAVAILABLE_MESSAGE, submitWithFreshRecord } from './fresh-submit.ts'
 import { GroupWaitlist } from './GroupWaitlist.tsx'
 import { useLanguageAccess } from './use-language-access.ts'
 import { canReadWaitlist } from './waitlist-rows.ts'
@@ -55,8 +56,12 @@ export function GroupSummaryPanel({ groupId, names, onClose, onEdit, onCancel, o
 
   async function openGroup() {
     if (!group) return
-    const outcome = await open.submit({ groupId: group.id, version: group.rowVersion ?? 0 })
-    if (outcome.status === 'success') notify.success(`${group.name} açıldı.`)
+    const result = await submitWithFreshRecord(
+      async () => (await item.refetch()).data?.data,
+      (fresh) => open.submit({ groupId: fresh.id, version: fresh.rowVersion ?? 0 }),
+    )
+    if (result.status === 'missing') notify.error(RECORD_UNAVAILABLE_MESSAGE)
+    else if (result.outcome.status === 'success') notify.success(`${group.name} açıldı.`)
   }
 
   const footer =

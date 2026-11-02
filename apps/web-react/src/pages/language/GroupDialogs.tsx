@@ -1,10 +1,11 @@
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch } from 'react-hook-form'
-import { GROUP_REASON_MAX } from '@kampus/school-core/lib/language-groups.ts'
+import { GROUP_REASON_MAX, isGroupClosed } from '@kampus/school-core/lib/language-groups.ts'
 import type { LanguageGroup } from '@kampus/react-shared/language-groups.ts'
 import {
   useAllLanguageGroups,
   useCancelLanguageGroup,
+  useLanguageGroup,
   useMergeLanguageGroup,
 } from '@kampus/react-shared/use-language-groups.ts'
 import { FormField } from '@/components/FormField.tsx'
@@ -15,7 +16,13 @@ import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
-import { FormActions, isVersionConflict, RootError } from '../management/FormParts.tsx'
+import {
+  ConflictNotice,
+  FormActions,
+  isVersionConflict,
+  RootError,
+  useEditConflict,
+} from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import {
   cancelFormSchema,
@@ -24,6 +31,7 @@ import {
   type CancelFormValues,
   type MergeFormValues,
 } from './group-forms.ts'
+import { RECORD_UNAVAILABLE_MESSAGE, submitWithFreshRecord } from './fresh-submit.ts'
 import { mergeCandidates, mergeNeedsConsent, occupancyText, scheduleText } from './group-rows.ts'
 import { useDiscardGuard, useReportDirty } from './use-discard-guard.tsx'
 
@@ -64,18 +72,40 @@ type FormProps = {
 
 function CancelForm({ group, onCancel, onDone, setDirty }: FormProps) {
   const cancel = useCancelLanguageGroup()
+  const item = useLanguageGroup(group.id)
   const form = useForm<CancelFormValues>({
     resolver: zodResolver(cancelFormSchema),
     defaultValues: { reason: '' },
   })
+  // Gerekçe korunur; "Güncel kaydı yükle" yalnız kaydı yeniler (sürüm gönderimde okunur).
+  const conflict = useEditConflict<null>({
+    initialVersion: group.rowVersion ?? 0,
+    reload: async () => {
+      const fresh = (await item.refetch()).data?.data
+      return fresh ? { version: fresh.rowVersion ?? 0, values: null } : null
+    },
+    apply: () => undefined,
+  })
   useReportDirty(form.formState.isDirty, setDirty)
   const busy = cancel.isPending || form.formState.isSubmitting
   const submit = form.handleSubmit(async (body) => {
-    const outcome = await cancel.submit(
-      { groupId: group.id, version: group.rowVersion ?? 0, body },
-      { setError: form.setError, silent: isVersionConflict },
+    const result = await submitWithFreshRecord(
+      async () => {
+        const fresh = (await item.refetch()).data?.data
+        return fresh && !isGroupClosed(fresh.status) ? fresh : undefined
+      },
+      (fresh) =>
+        cancel.submit(
+          { groupId: fresh.id, version: fresh.rowVersion ?? 0, body },
+          { setError: form.setError, silent: isVersionConflict },
+        ),
     )
-    if (outcome.status === 'success') {
+    if (result.status === 'missing') {
+      notify.error(RECORD_UNAVAILABLE_MESSAGE)
+      return
+    }
+    if (result.conflicted) conflict.markConflict()
+    if (result.outcome.status === 'success') {
       notify.success(`${group.name} iptal edildi.`)
       onDone()
     }
@@ -87,6 +117,12 @@ function CancelForm({ group, onCancel, onDone, setDirty }: FormProps) {
       onSubmit={(event) => void submit(event)}
       className="grid gap-5"
     >
+      {conflict.conflicted ? (
+        <ConflictNotice
+          onReload={() => void conflict.reloadRecord()}
+          reloading={conflict.reloading}
+        />
+      ) : null}
       <p className="text-sm">
         <strong className="font-semibold">{group.name}</strong> ({group.courseName}) iptal edilecek.
       </p>
@@ -102,7 +138,12 @@ function CancelForm({ group, onCancel, onDone, setDirty }: FormProps) {
         )}
       </FormField>
       <RootError message={form.formState.errors.root?.server?.message} />
-      <FormActions busy={busy} onCancel={onCancel} submitLabel="Grubu iptal et" />
+      <FormActions
+        busy={busy}
+        disabled={conflict.conflicted}
+        onCancel={onCancel}
+        submitLabel="Grubu iptal et"
+      />
     </form>
   )
 }
@@ -159,9 +200,20 @@ function MergeForm({
   setDirty,
 }: FormProps & { candidates: readonly LanguageGroup[] }) {
   const merge = useMergeLanguageGroup()
+  const item = useLanguageGroup(group.id)
+  const all = useAllLanguageGroups({ courseId: group.courseId })
   const form = useForm<MergeFormValues>({
     resolver: zodResolver(mergeFormSchema),
     defaultValues: { sourceGroupId: '', learnersConsented: false },
+  })
+  const conflict = useEditConflict<null>({
+    initialVersion: group.rowVersion ?? 0,
+    reload: async () => {
+      const [fresh] = await Promise.all([item.refetch(), all.refetch()])
+      const target = fresh.data?.data
+      return target ? { version: target.rowVersion ?? 0, values: null } : null
+    },
+    apply: () => undefined,
   })
   useReportDirty(form.formState.isDirty, setDirty)
   const sourceId = useWatch({ control: form.control, name: 'sourceGroupId' })
@@ -171,24 +223,41 @@ function MergeForm({
   const errors = form.formState.errors
 
   const submit = form.handleSubmit(async (values) => {
-    const chosen = candidates.find((candidate) => candidate.id === values.sourceGroupId)
-    if (!chosen) return
-    const outcome = await merge.submit(
-      {
-        groupId: group.id,
-        version: group.rowVersion ?? 0,
-        body: {
-          sourceGroupId: chosen.id,
-          sourceVersion: chosen.rowVersion ?? 0,
-          ...(mergeNeedsConsent(group, chosen)
-            ? { learnersConsented: values.learnersConsented }
-            : {}),
-        },
+    // Hedef ve kaynak gönderimde kimlikle yeniden okunur; kaynak artık aday değilse istek atılmaz.
+    const result = await submitWithFreshRecord(
+      async () => {
+        const [freshTarget, freshGroups] = await Promise.all([item.refetch(), all.refetch()])
+        const target = freshTarget.data?.data
+        if (!target || isGroupClosed(target.status) || !freshGroups.data) return undefined
+        const source = mergeCandidates(target, freshGroups.data).find(
+          (candidate) => candidate.id === values.sourceGroupId,
+        )
+        return source ? { target, source } : undefined
       },
-      { setError: form.setError, fieldFor: mergeFormErrorField, silent: isVersionConflict },
+      ({ target, source }) =>
+        merge.submit(
+          {
+            groupId: target.id,
+            version: target.rowVersion ?? 0,
+            body: {
+              sourceGroupId: source.id,
+              sourceVersion: source.rowVersion ?? 0,
+              ...(mergeNeedsConsent(target, source)
+                ? { learnersConsented: values.learnersConsented }
+                : {}),
+            },
+          },
+          { setError: form.setError, fieldFor: mergeFormErrorField, silent: isVersionConflict },
+        ),
     )
-    if (outcome.status === 'success') {
-      notify.success(`${chosen.name}, ${group.name} grubuna birleştirildi.`)
+    if (result.status === 'missing') {
+      notify.error(RECORD_UNAVAILABLE_MESSAGE)
+      return
+    }
+    if (result.conflicted) conflict.markConflict()
+    if (result.outcome.status === 'success') {
+      const chosen = candidates.find((candidate) => candidate.id === values.sourceGroupId)
+      notify.success(`${chosen?.name ?? 'Grup'}, ${group.name} grubuna birleştirildi.`)
       onDone()
     }
   })
@@ -200,6 +269,12 @@ function MergeForm({
       onSubmit={(event) => void submit(event)}
       className="grid gap-5"
     >
+      {conflict.conflicted ? (
+        <ConflictNotice
+          onReload={() => void conflict.reloadRecord()}
+          reloading={conflict.reloading}
+        />
+      ) : null}
       <p className="text-sm">
         Hedef: <strong className="font-semibold">{group.name}</strong> ·{' '}
         {scheduleText(group.schedule, group.sessionMinutes)} · {occupancyText(group)}
@@ -260,7 +335,12 @@ function MergeForm({
         </div>
       ) : null}
       <RootError message={errors.root?.server?.message} />
-      <FormActions busy={busy} onCancel={onCancel} submitLabel="Birleştir" />
+      <FormActions
+        busy={busy}
+        disabled={conflict.conflicted}
+        onCancel={onCancel}
+        submitLabel="Birleştir"
+      />
     </form>
   )
 }

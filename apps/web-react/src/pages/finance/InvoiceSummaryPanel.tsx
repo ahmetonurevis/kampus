@@ -10,6 +10,7 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import { SummaryLoading, SummaryMetrics } from '../management/SummaryParts.tsx'
 import { invoiceRow, type InvoiceRow } from './finance-rows.ts'
+import { StudentStatementDownload } from './StudentStatementSection.tsx'
 
 type Props = {
   invoiceId: string
@@ -77,6 +78,7 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
           actions?.(row)
         )}
         <PaymentPlanButton studentId={row.studentId} />
+        <StudentStatementDownload studentId={row.studentId} studentName={row.studentName} />
       </div>
     </>
   )

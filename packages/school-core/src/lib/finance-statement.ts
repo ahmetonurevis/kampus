@@ -184,3 +184,25 @@ export function studentStatement(
     }),
   }
 }
+
+const receiptOf = (line: StatementLine) =>
+  line.receiptYear === null
+    ? ''
+    : ` · Dekont ${String(line.receiptYear)}-${String(line.receiptNumber)}`
+
+/** Ekran ve PDF aynı açıklamayı yazar; ekstre ile dekont numarası bu metinden eşleşir. */
+export function statementLineLabel(line: StatementLine): string {
+  const method = line.method ? ` · ${line.method}` : ''
+  switch (line.kind) {
+    case 'installment':
+      return `${String(line.installment)}. taksit${line.isOverdue ? ' · Gecikmiş' : ''}`
+    case 'payment':
+      return `Tahsilat${method}${receiptOf(line)}`
+    case 'payment_reversal':
+      return `Tahsilat iptali${receiptOf(line)}`
+    case 'legacy_payment':
+      return `${String(line.installment)}. taksit ödemesi${method}`
+    default:
+      return line.kind satisfies never
+  }
+}

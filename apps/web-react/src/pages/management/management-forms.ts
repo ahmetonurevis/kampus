@@ -177,6 +177,7 @@ export const ARCHIVE_ERROR_CODES: ReadonlySet<string> = new Set([
   'transfer_target_invalid',
   'replacement_teacher_required',
   'replacement_schedule_conflict',
+  'tutor_schedule_conflict',
   'club_teacher_campus_required',
 ])
 
@@ -239,6 +240,54 @@ export function archiveDestinations(
     .filter((item) => item.id !== id && item.subjectId === source?.subjectId)
     .map((item) => ({ id: item.id, label: `${item.name} · ${branchName(item.branchId)}` }))
 }
+
+/**
+ * Arşivlenecek kaydın ekranda bilinen bağlı aktif kayıtları (Vue arşiv kuralının görünür kısmı):
+ * kampüste aktif sınıf, öğrenci ve öğretmen; sınıfta aktif öğrenci; öğretmende aktif sınıflardaki
+ * ders atamaları ve danışmanlıklar. Liste boş değilse aktarım hedefi gerekir. Sunucu ayrıca ekranda
+ * olmayan bağları da (aday, bekleyen soru, görüşme, kulüp…) denetler; boş liste "hedef gerekmez"
+ * garantisi değildir, karar core `archiveRecord`'dadır.
+ */
+export function archiveDependents(
+  kind: ManagedKind,
+  id: string,
+  lookups: ManagementLookups,
+): string[] {
+  const parts: string[] = []
+  const add = (count: number, label: string) => {
+    if (count > 0) parts.push(`${count} ${label}`)
+  }
+  if (kind === 'branch') {
+    const classes = activeOf(lookups.classes.values()).filter((item) => item.branchId === id)
+    add(classes.length, 'sınıf')
+    add(
+      classes.reduce((sum, item) => sum + (lookups.studentCounts.get(item.id) ?? 0), 0),
+      'öğrenci',
+    )
+    add(
+      activeOf(lookups.teachers.values()).filter((item) => item.branchId === id).length,
+      'öğretmen',
+    )
+  } else if (kind === 'class') add(lookups.studentCounts.get(id) ?? 0, 'öğrenci')
+  else {
+    const lessons = (lookups.assignmentsByTeacher.get(id) ?? []).filter(
+      (assignment) => lookups.classes.get(assignment.classId)?.isActive,
+    )
+    add(lessons.length, 'ders ataması')
+    add(
+      activeOf(lookups.classes.values()).filter((item) => item.teacherId === id).length,
+      'sınıf danışmanlığı',
+    )
+  }
+  return parts
+}
+
+/** Hedef seçilemiyorsa (aktif aday yok) kullanıcıya ne yapacağını söyleyen metin. */
+export const NO_DESTINATION = {
+  branch: 'Aktarım için başka aktif kampüs yok. Önce yeni bir kampüs ekleyin.',
+  class: 'Aynı düzeyde başka aktif sınıf yok. Önce aynı düzeyde bir sınıf açın.',
+  teacher: 'Aynı branşta başka aktif öğretmen yok. Önce aynı branştan bir öğretmen ekleyin.',
+} as const satisfies Record<ManagedKind, string>
 
 const COLLECTION_LABELS: Readonly<Record<string, string>> = {
   students: 'öğrenci',

@@ -6,6 +6,7 @@ import {
   campusesInView,
   campusSummaries,
   classCsvRow,
+  averageText,
   classRow,
   isActiveFilter,
   isArchiveView,
@@ -13,6 +14,8 @@ import {
   recordStatus,
   studentCountsByClass,
   teacherCsvRow,
+  metricValues,
+  performanceText,
   teacherRow,
   type ManagementSources,
 } from '../src/pages/management/management-rows.ts'
@@ -182,4 +185,27 @@ test('kampüs kartları sekmeye göre süzülür', () => {
   const cards = [{ status: 'Aktif' }, { status: 'Arşivde' }, { status: 'Aktif' }]
   assert.equal(campusesInView(cards, false).length, 2)
   assert.deepEqual(campusesInView(cards, true), [{ status: 'Arşivde' }])
+})
+
+test('ortalama ve performans sunucu ölçüsünden; ölçüsüz sınıf "Henüz not yok", ölçü yoksa "—" (IST-010)', () => {
+  const data = sources()
+  const lookups = managementLookups(data, activeStudentCounts())
+  const c1 = data.classes.find((row) => row.id === 'c1')!
+  const c2 = data.classes.find((row) => row.id === 'c2')!
+  const averages = metricValues(
+    [{ classId: 'c1', averageScore: 78 }],
+    (row) => row.classId,
+    (row) => row.averageScore,
+  )
+  assert.equal(classCsvRow(classRow(c1, lookups, averages)).average, '78/100')
+  assert.equal(averageText(classRow(c2, lookups, averages).average), 'Henüz not yok')
+  assert.equal(averageText(classRow(c1, lookups).average), '—')
+  const t1 = data.teachers.find((row) => row.id === 't1')!
+  const performances = metricValues(
+    [{ id: 't1', value: 73 }],
+    (row) => row.id,
+    (row) => row.value,
+  )
+  assert.equal(teacherCsvRow(teacherRow(t1, lookups, performances)).performance, '73/100')
+  assert.equal(performanceText(teacherRow(t1, lookups).performance), '—')
 })

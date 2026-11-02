@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react'
+import { useTeacherMetrics } from '@kampus/react-shared/use-management-metrics.ts'
 import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
@@ -32,6 +33,8 @@ import {
   archiveViewFilter,
   isActiveFilter,
   isArchiveView,
+  metricValues,
+  performanceText,
   teacherCsvRow,
   teacherRow,
   type TeacherRow,
@@ -45,7 +48,9 @@ const TEACHER_LIST = {
 } satisfies CollectionListConfig
 const TEACHER_URL_FILTERS = { branchId: 'kampus', subjectId: 'brans', archive: 'durum' }
 const SORTABLE = sortableColumns(TEACHER_LIST)
-const MOBILE_COLUMNS = ['subject', 'branch', 'attendanceRate']
+const MOBILE_COLUMNS = ['subject', 'branch', 'performance']
+const MOBILE_COLUMNS_WITHOUT_METRICS = ['subject', 'branch', 'attendanceRate']
+const PERFORMANCE_KEY = 'performance'
 const ALL = 'all'
 
 const filterValue = (value: unknown) => (typeof value === 'string' ? value : '')
@@ -58,8 +63,8 @@ const filterValue = (value: unknown) => (typeof value === 'string' ? value : '')
  * "Aktif kayıtlar / Arşiv" sekmesi (`?durum=arsiv`) sunucu `isActive` filtresidir.
  * Arama (`q`) sunucuda öğretmenin alanlarında ve kampüs adında yapılır; kampüs adı satırın
  * `joined.branchName` alanından gelir.
- * TODO(api-aggregate): Vue'daki "Performans" sütunu soru/SLA verisinden hesaplanır; toplu uç
- * veya kaynak ucu gelince eklenir.
+ * "Performans" sütunu sunucu toplamıdır (`GET /teacher-metrics`, SQL; IST-010): yoklama, ödev
+ * takibi ve soru süresi uyumunun ortalaması. Soru (öğrenme) modülü kapalıysa sütun gösterilmez.
  */
 export function StaffPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -76,15 +81,26 @@ export function StaffPage({ page }: { page: NavPage }) {
     'teachers',
     withActive(collectionQueryFromList(list.state, TEACHER_LIST, search)),
   )
+  const { session } = useAuth()
+  const withMetrics = session?.modules.learning === true
+  const metrics = useTeacherMetrics({ enabled: withMetrics })
+  const performances = useMemo(
+    () =>
+      metricValues(
+        metrics.data?.data,
+        (row) => row.teacherId,
+        (row) => row.performance,
+      ),
+    [metrics.data],
+  )
   const rows = useMemo(
-    () => teachers.data?.rows.map((item) => teacherRow(item, lookups)),
-    [teachers.data, lookups],
+    () => teachers.data?.rows.map((item) => teacherRow(item, lookups, performances)),
+    [teachers.data, lookups, performances],
   )
   const panel = useDetailPanel('ogretmen')
   const openTeacher = panel.open
   const teacherForm = useDetailPanel('ogretmen-form')
   const openTeacherForm = teacherForm.open
-  const { session } = useAuth()
   const canManage = canManageStructure(session?.role)
   const [archiveTarget, setArchiveTarget] = useState<ArchiveTarget | null>(null)
   const restoreTeacher = useRestoreAction('teacher')
@@ -101,8 +117,7 @@ export function StaffPage({ page }: { page: NavPage }) {
     canManage,
     onEdit: openTeacherForm,
     onArchive: (id) => setArchiveTarget({ kind: 'teacher', id }),
-    onRestore: (id) =>
-      void restoreTeacher.restore(id, lookups.teachers.get(id)?.name ?? 'Öğretmen'),
+    onRestore: (id) => restoreTeacher.restore(id, lookups.teachers.get(id)?.name ?? 'Öğretmen'),
     restoring: restoreTeacher.pending,
   }
 
@@ -141,6 +156,19 @@ export function StaffPage({ page }: { page: NavPage }) {
       { key: 'attendanceRate', label: 'Yoklama', cell: (row) => `%${row.attendanceRate}` },
       { key: 'homeworkRate', label: 'Ödev takibi', cell: (row) => `%${row.homeworkRate}` },
       {
+        key: PERFORMANCE_KEY,
+        label: 'Performans',
+        cell: (row) =>
+          typeof row.performance === 'number' ? (
+            <StatusBadge
+              text={performanceText(row.performance)}
+              tone={row.performance >= 80 ? 'green' : 'amber'}
+            />
+          ) : (
+            performanceText(row.performance)
+          ),
+      },
+      {
         key: ACTIONS_KEY,
         label: 'İşlemler',
         cell: (row) => (
@@ -161,7 +189,7 @@ export function StaffPage({ page }: { page: NavPage }) {
               canManage={canManage}
               onEdit={openTeacherForm}
               onArchive={(id) => setArchiveTarget({ kind: 'teacher', id })}
-              onRestore={(id) => void restoreTeacher.restore(id, row.name)}
+              onRestore={(id) => restoreTeacher.restore(id, row.name)}
               restoring={restoreTeacher.pending}
             />
           </span>
@@ -170,13 +198,21 @@ export function StaffPage({ page }: { page: NavPage }) {
     ],
     [openTeacher, openTeacherForm, canManage, restoreTeacher],
   )
+  // Soru modülü kapalıyken ölçü yoktur: sütun ne tabloda ne CSV'de görünür.
+  const visibleColumns = useMemo(
+    () => (withMetrics ? columns : columns.filter((column) => column.key !== PERFORMANCE_KEY)),
+    [columns, withMetrics],
+  )
 
   function download() {
     const query = withActive(exportQueryFromList(list.state, TEACHER_LIST, search))
     void csv.download(
       page.title,
-      columns.filter((column) => column.key !== ACTIONS_KEY),
-      async () => (await fetchAll(query)).map((item) => teacherCsvRow(teacherRow(item, lookups))),
+      visibleColumns.filter((column) => column.key !== ACTIONS_KEY),
+      async () =>
+        (await fetchAll(query)).map((item) =>
+          teacherCsvRow(teacherRow(item, lookups, performances)),
+        ),
     )
   }
 
@@ -235,8 +271,8 @@ export function StaffPage({ page }: { page: NavPage }) {
           rows={rows}
           total={total}
           sortable={SORTABLE}
-          columns={columns}
-          mobileColumns={MOBILE_COLUMNS}
+          columns={visibleColumns}
+          mobileColumns={withMetrics ? MOBILE_COLUMNS : MOBILE_COLUMNS_WITHOUT_METRICS}
           caption="Branş öğretmenleri"
           loading={teachers.isPending}
           fetching={teachers.isFetching && !teachers.isPending}

@@ -264,7 +264,15 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await expect(bodyRows(page, CLASS_TABLE)).toHaveCount(8)
 
     const all = await downloadList(page)
-    expect(all[0]).toEqual(['Sınıf', 'Kampüs', 'Sınıf danışmanı', 'Öğrenci / Kontenjan', 'Branş'])
+    // CSV ekrandaki sütunları izler; "Ortalama" sunucu ölçüsünden gelir (IST-010).
+    expect(all[0]).toEqual([
+      'Sınıf',
+      'Kampüs',
+      'Sınıf danışmanı',
+      'Öğrenci / Kontenjan',
+      'Branş',
+      'Ortalama',
+    ])
     // Görünen yalnız ilk sayfa (8 satır) olsa da dosya 24 sınıfın tamamıdır.
     expect(all).toHaveLength(1 + 24)
 

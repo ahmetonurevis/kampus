@@ -5,6 +5,7 @@ import { managementLookups } from '../src/pages/management/management-rows.ts'
 import {
   isBreach,
   NO_RESPONSE,
+  parseInstant,
   responseHours,
   responseText,
   slaRows,
@@ -163,4 +164,45 @@ test('slaSummary: toplamlar satırlardan türer; soru yoksa uyum null', () => {
     slaRate: 50,
   })
   assert.equal(slaSummary([]).slaRate, null)
+})
+
+test('parseInstant: yalnız saat dilimli ve takvimde var olan ISO anı geçerlidir (API ile aynı kural)', () => {
+  assert.equal(parseInstant('2026-10-15T09:00:00Z'), Date.parse('2026-10-15T09:00:00Z'))
+  assert.equal(parseInstant('2026-10-15T12:00+03:00'), Date.parse('2026-10-15T09:00:00Z'))
+  assert.equal(parseInstant('2024-02-29T00:00:00.5Z'), Date.parse('2024-02-29T00:00:00.5Z'))
+  for (const bad of [
+    '2026-13-01T00:00:00Z', // ay yok
+    '2026-02-30T00:00:00Z', // takvimde yok (Date.parse bunu 2 Mart yapar)
+    '2025-02-29T00:00:00Z', // artık yıl değil
+    '2026-10-15T24:00:00Z',
+    '2026-10-15T10:00:00', // saat dilimi yok
+    '2026-10-15',
+    'bozuk',
+    '',
+    null,
+    undefined,
+  ])
+    assert.equal(parseInstant(bad), null, String(bad))
+})
+
+test('tarihi bozuk soru SLA sayılarına girmez; API ile aynı kural', () => {
+  const broken = question('q-sla-b1', first.id, 30, null)
+  broken.record.createdAt = '2026-02-30T00:00:00Z'
+  const noZone = question('q-sla-b2', first.id, 30, null)
+  noZone.record.createdAt = '2026-10-14T00:00:00'
+  // Bozuk yanıt tarihi: yanıtsız sayılır, süre dolduysa ihlaldir.
+  const badAnswer = question('q-sla-b3', first.id, 30, null)
+  badAnswer.record.answeredAt = '2026-13-40T00:00:00Z'
+  const rows = slaRows(
+    wrap([first]),
+    [broken, noZone, badAnswer, question('q-sla-b4', first.id, 3, 1)],
+    lookups,
+    +NOW,
+  )
+  assert.deepEqual(
+    [rows[0]?.total, rows[0]?.response, rows[0]?.pending, rows[0]?.breaches, rows[0]?.slaRate],
+    [2, 1, 1, 1, 50],
+  )
+  assert.equal(isBreach({ createdAt: ago(30), answeredAt: '2026-13-40T00:00:00Z' }, +NOW), true)
+  assert.equal(responseHours({ createdAt: ago(30), answeredAt: '2026-13-40T00:00:00Z' }), null)
 })

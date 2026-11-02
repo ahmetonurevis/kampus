@@ -22,7 +22,9 @@ export function ArchiveTabs({ archived, onChange, activeNote }: ArchiveTabsProps
         onChange={(next) => onChange(archiveViewFilter(isArchiveView(next)))}
       />
       <span className="text-sm text-muted-foreground">
-        {archived ? 'Geçmişi korunan kayıtlar burada listelenir.' : activeNote}
+        {archived
+          ? 'Geçmişi korunan kayıtları geri alabilirsiniz; aktarılan öğrenci ve görevler geri taşınmaz.'
+          : activeNote}
       </span>
     </div>
   )

@@ -1,3 +1,4 @@
+import { useMemo } from 'react'
 import { useForm } from 'react-hook-form'
 import {
   useArchiveRecord,
@@ -9,12 +10,15 @@ import { Icon } from '@/components/Icon.tsx'
 import { Modal } from '@/components/Modal.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { useStableCallback } from '@/hooks/use-stable-callback.ts'
 import { notify } from '@/lib/notify.ts'
 import { errorRoutes, RootError } from './FormParts.tsx'
 import {
   ARCHIVE_ERROR_CODES,
   ARCHIVE_NOTES,
+  archiveDependents,
   archiveDestinations,
+  NO_DESTINATION,
   recordName,
   transferSummary,
 } from './management-forms.ts'
@@ -35,9 +39,13 @@ type Props = {
 }
 
 /**
- * Arşivleme onayı (Vue "Kaydı arşivle"): bağlı aktif kayıtların aktarılacağı hedef seçilir;
- * geçmiş finans, not ve yoklama korunur. Hedef gerektiği hâlde seçilmediyse core mesajı
- * ("Sınıf ve öğretmenlerin aktarılacağı aktif kampüsü seçin.") seçimin altında görünür.
+ * Arşivleme onayı (Vue "Kaydı arşivle"; IST-010): bağlı aktif kayıtların aktarılacağı hedef
+ * seçilir; geçmiş finans, not ve yoklama korunur. Ekranda bilinen bağlı kayıtlar (öğrenci, sınıf,
+ * öğretmen, ders ataması) pencerede sayılır ve hedef seçimi istenir. Hedef gerektiği hâlde
+ * seçilmediyse ya da hedef uygun değilse (kontenjan, branş, program veya ad/derslik çakışması)
+ * core mesajı ("Hedef sınıfta tüm öğrenciler için yeterli kontenjan yok.") seçimin altında
+ * görünür; diğer redler (ör. gelecek etüt) toast'tur. Pencere tek seçimlidir, kirli form onayı
+ * gerekmez: vazgeçmek hiçbir kaydı değiştirmez.
  */
 export function ArchiveDialog({ target, lookups, onClose }: Props) {
   return (
@@ -69,6 +77,8 @@ function ArchiveForm({
   const busy = archive.isPending || form.formState.isSubmitting
   const name = recordName(kind, id, lookups) ?? 'Kayıt'
   const destinations = archiveDestinations(kind, id, lookups)
+  const dependents = archiveDependents(kind, id, lookups)
+  const needsTarget = dependents.length > 0
 
   const onSubmit = form.handleSubmit(async ({ replacementId }) => {
     const outcome = await archive.submit(
@@ -76,8 +86,9 @@ function ArchiveForm({
       { setError: form.setError, ...errorRoutes(ARCHIVE_FIELDS) },
     )
     if (outcome.status === 'success') {
-      const destination = destinations.find((item) => item.id === replacementId)
-      const summary = transferSummary(outcome.data.data, destination?.label)
+      // Toast'ta hedefin yalnız adı (seçenek etiketindeki boş yer bilgisi arşivden önceki durumdur).
+      const destination = replacementId ? recordName(kind, replacementId, lookups) : undefined
+      const summary = transferSummary(outcome.data.data, destination)
       notify.success(
         [`${name} arşivlendi.`, summary, 'Geçmiş not, ödeme ve yoklama kayıtları korundu.']
           .filter(Boolean)
@@ -102,6 +113,12 @@ function ArchiveForm({
         <p className="mt-1 text-sm text-muted-foreground">
           {ARCHIVE_NOTES[kind]} Geçmiş not, ödeme ve yoklama kayıtları korunur.
         </p>
+        {needsTarget ? (
+          <p className="mt-2 text-sm">
+            <span className="font-medium">Bağlı aktif kayıtlar:</span> {dependents.join(', ')}.
+            Arşivlemek için aktarım hedefi seçin.
+          </p>
+        ) : null}
       </div>
       <FormField
         id="arsiv-hedef"
@@ -116,7 +133,7 @@ function ArchiveForm({
             disabled={busy}
           >
             <NativeSelectOption value="">
-              Bağlı aktif kayıt yoksa aktarım gerekmiyor
+              {needsTarget ? 'Aktarım hedefi seçin' : 'Bağlı aktif kayıt yoksa aktarım gerekmiyor'}
             </NativeSelectOption>
             {destinations.map((destination) => (
               <NativeSelectOption key={destination.id} value={destination.id}>
@@ -126,6 +143,11 @@ function ArchiveForm({
           </NativeSelect>
         )}
       </FormField>
+      {needsTarget && destinations.length === 0 ? (
+        <p role="status" className="text-sm font-medium">
+          {NO_DESTINATION[kind]}
+        </p>
+      ) : null}
       <p className="text-sm text-muted-foreground">
         Arşivden yeniden etkinleştirme, aktarılmış öğrenci ve görevleri geri taşımaz.
       </p>
@@ -145,18 +167,19 @@ function ArchiveForm({
 
 /**
  * Arşivden geri alma: onay penceresi gerekmez, tek adımdır. Sonuç toast'la bildirilir; sunucu
- * reddi (ör. bağlı kampüs hâlâ arşivde) Türkçe mesajla gösterilir ve kayıt değişmez.
+ * reddi (ör. bağlı kampüs hâlâ arşivde) Türkçe mesajla gösterilir ve kayıt değişmez. Dönen nesne
+ * yalnız `pending` değişince yenilenir (tablo sütunları her çizimde yeniden kurulmasın).
  */
 export function useRestoreAction(kind: ManagedKind) {
-  const restore = useRestoreRecord(kind)
-  return {
-    pending: restore.isPending,
-    async restore(id: string, name: string) {
-      const outcome = await restore.submit({ recordId: id })
+  const command = useRestoreRecord(kind)
+  const restore = useStableCallback((id: string, name: string) => {
+    void command.submit({ recordId: id }).then((outcome) => {
       if (outcome.status === 'success')
         notify.success(
           `${name} yeniden etkinleştirildi. Daha önce aktarılan öğrenci ve görevler geri taşınmaz.`,
         )
-    },
-  }
+    })
+  })
+  const pending = command.isPending
+  return useMemo(() => ({ pending, restore }), [pending, restore])
 }

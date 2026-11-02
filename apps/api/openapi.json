@@ -9748,6 +9748,93 @@
           "offerExpiresAt"
         ]
       },
+      "ClassMetricInput": {
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "description": "Sınıf kimliği"
+          },
+          "students": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Sınıftaki aktif öğrenci"
+          },
+          "gradedStudents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Notu olan aktif öğrenci"
+          },
+          "averageScore": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Notu olan öğrencilerin (yuvarlanmamış) not ortalamalarının ortalaması, bir kez yuvarlanmış; not yoksa `null`"
+          }
+        },
+        "required": [
+          "classId",
+          "students",
+          "gradedStudents",
+          "averageScore"
+        ]
+      },
+      "TeacherMetricInput": {
+        "type": "object",
+        "properties": {
+          "teacherId": {
+            "type": "string",
+            "description": "Öğretmen kimliği"
+          },
+          "questions": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Geri çekilmemiş soru"
+          },
+          "breaches": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "24 saat yanıt hedefini aşan soru"
+          },
+          "slaRate": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Hedefe uyan soru yüzdesi; soru yoksa 100"
+          },
+          "performance": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yoklama, ödev takibi ve soru süresi uyumunun ortalaması; oran yoksa `null`"
+          }
+        },
+        "required": [
+          "teacherId",
+          "questions",
+          "breaches",
+          "slaRate",
+          "performance"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -19749,6 +19836,95 @@
           "offerGroupId",
           "offeredAt",
           "offerExpiresAt"
+        ],
+        "additionalProperties": false
+      },
+      "ClassMetric": {
+        "type": "object",
+        "properties": {
+          "classId": {
+            "type": "string",
+            "description": "Sınıf kimliği"
+          },
+          "students": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Sınıftaki aktif öğrenci"
+          },
+          "gradedStudents": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Notu olan aktif öğrenci"
+          },
+          "averageScore": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Notu olan öğrencilerin (yuvarlanmamış) not ortalamalarının ortalaması, bir kez yuvarlanmış; not yoksa `null`"
+          }
+        },
+        "required": [
+          "classId",
+          "students",
+          "gradedStudents",
+          "averageScore"
+        ],
+        "additionalProperties": false
+      },
+      "TeacherMetric": {
+        "type": "object",
+        "properties": {
+          "teacherId": {
+            "type": "string",
+            "description": "Öğretmen kimliği"
+          },
+          "questions": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Geri çekilmemiş soru"
+          },
+          "breaches": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "24 saat yanıt hedefini aşan soru"
+          },
+          "slaRate": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 100,
+            "description": "Hedefe uyan soru yüzdesi; soru yoksa 100"
+          },
+          "performance": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yoklama, ödev takibi ve soru süresi uyumunun ortalaması; oran yoksa `null`"
+          }
+        },
+        "required": [
+          "teacherId",
+          "questions",
+          "breaches",
+          "slaRate",
+          "performance"
         ],
         "additionalProperties": false
       }
@@ -64233,6 +64409,194 @@
             }
           },
           "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/class-metrics": {
+      "get": {
+        "operationId": "listClassMetrics",
+        "summary": "Sınıf ölçüleri",
+        "tags": [
+          "school-management"
+        ],
+        "description": "Sınıf başına aktif öğrenci sayısı ve not ortalaması (IST-010): önce öğrencinin notlarının yuvarlanmamış ortalaması, sonra sınıfta notu olan öğrencilerin ortalaması; yuvarlama yalnız sonda bir kez (DOM-AKD-003). Güncel sınıf esastır (öğretim yılı alanı yok); sayı olmayan ve 0-100 dışı puan atlanır. Öğrencinin güncel sınıfı esastır; aktif öğrencisi olmayan sınıf dönmez. Toplam SQL'dedir. Yalnız yönetici (diğer roller 403); `academic` modülü kapalıysa 403 `module_disabled`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ClassMetric"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/teacher-metrics": {
+      "get": {
+        "operationId": "listTeacherMetrics",
+        "summary": "Öğretmen ölçüleri",
+        "tags": [
+          "school-management"
+        ],
+        "description": "Öğretmen başına soru sayısı, 24 saat yanıt hedefini aşan soru, hedef uyumu ve performans (yoklama, ödev takibi ve hedef uyumunun ortalaması; IST-010). Yanıtlanan soruda yanıt süresi, yanıtsız soruda geçen süre ölçülür; geri çekilen soru sayılmaz (DOM-ILT-091). Arşivlenmiş öğretmen ve soru dışlanır; geçerli oluşturma tarihi olmayan soru sayılmaz. Toplam SQL'dedir. Yalnız yönetici (diğer roller 403); `learning` modülü kapalıysa 403 `module_disabled`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TeacherMetric"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
             "description": "Default Response",
             "content": {
               "application/json": {

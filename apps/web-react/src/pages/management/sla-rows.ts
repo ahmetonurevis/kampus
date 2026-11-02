@@ -11,19 +11,46 @@ export const NO_RESPONSE = 'Henüz yanıt yok'
 
 type QuestionTimes = { createdAt: string; answeredAt?: string | null }
 
+const INSTANT =
+  /^(\d{4})-(\d{2})-(\d{2})T([01]\d|2[0-3]):[0-5]\d(?::[0-5]\d(?:\.\d+)?)?(?:Z|[+-](?:[01]\d|2[0-3]):[0-5]\d)$/
+
+/**
+ * Saat dilimli ISO anını (`2026-01-31T10:00:00Z`) milisaniyeye çevirir; biçime uymayan ya da
+ * takvimde olmayan (`2026-13-01T…`, `2026-02-30T…`) değer `null`. API'deki `db/management-metrics.ts`
+ * `ISO_INSTANT` + `pg_input_is_valid` ile aynı kural: tek kural iki ekranda aynı sayıyı verir.
+ */
+export function parseInstant(value: string | null | undefined): number | null {
+  const match = value ? INSTANT.exec(value) : null
+  if (!match) return null
+  const [year, month, day] = [Number(match[1]), Number(match[2]), Number(match[3])]
+  const inMonth = new Date(Date.UTC(year, month, 0)).getUTCDate()
+  if (month < 1 || month > 12 || day < 1 || day > inMonth) return null
+  const time = Date.parse(value as string)
+  return Number.isNaN(time) ? null : time
+}
+
+/** Soru ancak geçerli oluşturma anıyla SLA hesabına girer; tarihi bozuk soru hiçbir sayıya girmez. */
+const hasCreatedAt = (question: QuestionTimes) => parseInstant(question.createdAt) !== null
+
+/** Geçersiz `answeredAt` yanıtsız sayılır (API ile aynı). */
+const answeredTime = (question: QuestionTimes) => parseInstant(question.answeredAt)
+
 /** Soru süre hedefini aştı mı: yanıtlandıysa yanıt süresi 24 saati geçti mi, değilse süre doldu mu. */
 export function isBreach(question: QuestionTimes, now: number): boolean {
-  const created = Date.parse(question.createdAt)
-  if (Number.isNaN(created)) return false
-  if (question.answeredAt) return Date.parse(question.answeredAt) - created > SLA_MS
+  const created = parseInstant(question.createdAt)
+  if (created === null) return false
+  const answered = answeredTime(question)
+  if (answered !== null) return answered - created > SLA_MS
   return now - created >= SLA_MS
 }
 
 /** Yanıt süresi (saat); yanıtlanmamış ya da tarihi bozuk soruda `null`. */
 export function responseHours(question: QuestionTimes): number | null {
-  if (!question.answeredAt) return null
-  const hours = (Date.parse(question.answeredAt) - Date.parse(question.createdAt)) / 3_600_000
-  return Number.isFinite(hours) && hours >= 0 ? hours : null
+  const created = parseInstant(question.createdAt)
+  const answered = answeredTime(question)
+  if (created === null || answered === null) return null
+  const hours = (answered - created) / 3_600_000
+  return hours >= 0 ? hours : null
 }
 
 export type SlaRow = {
@@ -54,7 +81,8 @@ const shortClass = (name: string) => name.split(' · ')[0] ?? name
 /**
  * Aktif öğretmenlerin SLA satırları. Sıra: ihlali çok olan önce, sonra bekleyen, sonra ad.
  * Soru, öğretmene `teacherId` ile bağlıdır; arşivdeki öğretmen listelenmez. Geri çekilen soru
- * (`withdrawnAt`) toplam, bekleyen, ihlal ve uyum hesabına girmez (DOM-ILT-091).
+ * (`withdrawnAt`, DOM-ILT-091) ve geçerli `createdAt`'i olmayan soru toplam, bekleyen, ihlal ve
+ * uyum hesabına girmez.
  */
 export function slaRows(
   teachers: readonly CoreRow<'teachers'>[],
@@ -64,7 +92,7 @@ export function slaRows(
 ): SlaRow[] {
   const byTeacher = new Map<string, QuestionTimes[]>()
   for (const { record } of questions) {
-    if (record.withdrawnAt) continue
+    if (record.withdrawnAt || !hasCreatedAt(record)) continue
     const list = byTeacher.get(record.teacherId)
     if (list) list.push(record)
     else byTeacher.set(record.teacherId, [record])
@@ -86,7 +114,7 @@ export function slaRows(
         response: hours.length
           ? Math.round((hours.reduce((a, b) => a + b, 0) / hours.length) * 10) / 10
           : null,
-        pending: own.filter((question) => !question.answeredAt).length,
+        pending: own.filter((question) => answeredTime(question) === null).length,
         breaches,
         slaRate: own.length ? Math.round(((own.length - breaches) / own.length) * 100) : 100,
       }

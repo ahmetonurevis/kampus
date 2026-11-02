@@ -32,6 +32,7 @@ import { registerAcademicYearRoutes } from './academic-years.ts'
 import { registerStudentGuardianRoutes } from './student-guardians.ts'
 import { registerCourseRoutes } from './courses.ts'
 import { registerLanguageGroupRoutes } from './language-groups.ts'
+import { registerManagementMetricRoutes } from './management-metrics.ts'
 
 /**
  * Platform rota kayıtları: Onur'un kayıt ve finans uçları dışındaki her uç. Kayıt `app.ts`
@@ -78,6 +79,7 @@ export const PLATFORM_LATE_ROUTES = [
   registerStudentGuardianRoutes,
   registerCourseRoutes,
   registerLanguageGroupRoutes,
+  registerManagementMetricRoutes,
 ] as const satisfies readonly RouteRegistrar[]
 
 /** Onur bloğundan önceki platform uçlarını kaydeder. */

@@ -38,6 +38,8 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 - **Kaynak:** OİKY md. 27/2-b, 27/3-a, 28/1; OKY md. 51/1-e, 53/2, 55/1. "Dört basamak yürütülür" ifadesinin dördüncü basamakta kesme mi yuvarlama mı olduğu **doğrulanmamış**; profilde `decimalMode` parametresi, varsayılan kesme.
 - **Kurum türü:** `school`
 - **Kodda:** çelişiyor — `packages/school-core/src/lib/format.js:46-47` (`average`) her ortalamayı `Math.round` ile tam sayıya yuvarlar.
+  - **Yönetim ekranı sınıf ortalaması (IST-010, `GET /api/v1/class-metrics`):** öğrencinin notlarının ortalaması yuvarlanmaz, sınıf ortalaması yalnız sonda bir kez yuvarlanır (erken yuvarlama sonucu değiştirir). Not kaydında öğretim yılı alanı olmadığı için öğrencinin **güncel sınıfı** esastır: sınıf değiştiren öğrencinin eski sınıftaki notları yeni sınıfın ortalamasına girer. Bu bir kısıttır; kayıt öğretim yılı taşıyınca (`DOM-AKD-001` profil anahtarı) sınıf ve yıl eşlemesiyle değişir.
+  - **Notsuz öğrenci:** hiç notu olmayan öğrenci sınıf ortalamasına girmez, "notu olan öğrenci" sayısı ayrı döner. Bu, 0 sayan eski Vue davranışından bilinçli bir sapmadır; `DOM-AKD-013`'ün `K`/`G` durumu ise "puan yok ama 0 gibi sayılır" kuralıdır, ikisi karıştırılmaz: yalnız hiç not kaydı olmayan öğrenci dışarıda kalır.
 
 ### DOM-AKD-004 · Değerlendirme kaydının türü
 
@@ -81,7 +83,7 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 - **Gerekçe:** `K`/`G` puansız ama hesaba katılan özel durumlardır; boş bırakılırsa ortalama yükselir.
 - **Kaynak:** OİKY md. 22/1-b, 23/1-2, 23/4; OKY md. 48/1, 48/4, 48/5.
 - **Kurum türü:** `school`
-- **Kodda:** yok.
+- **Kodda:** yok — not kaydı yalnız 0–100 tam sayı puan saklar (`gradeRecordSchema`); `K`/`G` değeri yok. Yönetim ortalaması sorgusunda `TODO(kg-not)` bırakıldı: saklanmaya başlayınca `K`/`G` 0 sayılacak.
 
 ## Lise ölçme (OKY)
 

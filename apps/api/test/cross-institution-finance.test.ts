@@ -7,6 +7,7 @@ import { createSeed } from '@kampus/school-core/data/seed.ts'
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
+import { insertScholarshipAward } from '../src/db/finance-scholarships.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import {
   bankAccounts,
@@ -142,6 +143,39 @@ async function prospectCopy(t: Tenant) {
   return { prospectId: id }
 }
 
+const scholarshipBody = () => ({
+  academicYear: 2026,
+  name: `Burs ${randomUUID().slice(0, 8)}`,
+  conditions: 'Sınav puanı 90 ve üstü.',
+  terminationConditions: 'Disiplin cezası alan öğrencinin bursu kesilir.',
+  durationNote: 'Bir eğitim yılı',
+  percentBasisPoints: 2500,
+  capacity: 1,
+})
+async function scholarshipProgramOf(t: Tenant) {
+  const program = await made(
+    t.cookies.admin,
+    '/api/v1/finance/scholarship-programs',
+    scholarshipBody(),
+  )
+  return { programId: program.id }
+}
+/** Atama kesin kayıtta yazılır; burada yalnız kapsam sınandığı için doğrudan eklenir. */
+async function scholarshipAwardOf(t: Tenant) {
+  const { programId } = await scholarshipProgramOf(t)
+  const awardId = randomUUID()
+  await insertScholarshipAward(db, t.id, {
+    id: awardId,
+    programId,
+    studentId: String(STUDENT?.id),
+    academicYear: 2026,
+    amountCents: 1_000,
+    awardedByUserId: 'u-test',
+    now: FIXED_NOW,
+  })
+  return { awardId }
+}
+
 /** `prospectCopy` gibi, ama `Teklif verildi` aşamasında: geri alınabilir bir aday. */
 async function prospectAtOffer(t: Tenant) {
   assert.ok(PROSPECT)
@@ -270,6 +304,31 @@ const CASES: readonly (CrossCase<Tenant> & { type?: 'language_school' })[] = [
     }),
   },
   {
+    // Burs programı yöneticidedir (DOM-FIN-025); program yalnız B'de.
+    key: 'POST /api/v1/finance/scholarship-programs/:programId/notify',
+    kind: 'kayıt',
+    actor: (a) => a.cookies.admin,
+    make: scholarshipProgramOf,
+    request: ({ programId }) => ({
+      method: 'POST',
+      url: `/api/v1/finance/scholarship-programs/${programId}/notify`,
+      body: { notifiedDate: '2026-09-01' },
+      ifMatch: 1,
+    }),
+  },
+  {
+    key: 'POST /api/v1/finance/scholarship-awards/:awardId/mebbis-record',
+    kind: 'kayıt',
+    actor: (a) => a.cookies.admin,
+    make: scholarshipAwardOf,
+    request: ({ awardId }) => ({
+      method: 'POST',
+      url: `/api/v1/finance/scholarship-awards/${awardId}/mebbis-record`,
+      body: { recordedDate: '2026-09-01' },
+      ifMatch: 1,
+    }),
+  },
+  {
     // Bakiye öğrencinin kapsamından okunur (DOM-FIN-052); öğrenci yalnız B'de.
     key: 'GET /api/v1/finance/students/:studentId/balance',
     kind: 'kayıt',
@@ -382,6 +441,30 @@ describe('IST-002: kayıt ve finans uçlarında başka kurum (DOM-YTK-001, DOM-Y
     const [totals] = await views(b)
     assert.equal((totals as { paidCents: number }).paidCents, 2_500)
     assert.equal((before[0] as { paidCents: number }).paidCents, 0)
+  })
+
+  test('IST-002: GET ve POST /api/v1/finance/scholarship-programs, GET /finance/scholarship-awards: başka kurumun bursu listede yok; gövdedeki institutionId reddedilir', async () => {
+    const a = await tenant()
+    const b = await tenant()
+    await scholarshipAwardOf(b)
+    assert.deepEqual(
+      await read<unknown[]>(a.cookies.admin, '/api/v1/finance/scholarship-programs'),
+      [],
+    )
+    assert.deepEqual(
+      await read<unknown[]>(a.cookies.admin, '/api/v1/finance/scholarship-awards'),
+      [],
+    )
+    assert.equal(
+      (await read<unknown[]>(b.cookies.admin, '/api/v1/finance/scholarship-awards')).length,
+      1,
+    )
+    const forged = await call(a.cookies.admin, {
+      method: 'POST',
+      url: '/api/v1/finance/scholarship-programs',
+      body: { ...scholarshipBody(), institutionId: b.id },
+    })
+    assert.equal(forged.statusCode, 400, forged.body)
   })
 
   test('IST-002: GET /api/v1/bank-accounts ve POST /bank-accounts: başka kurumun hesabı listede yok; gövdedeki institutionId reddedilir, aynı IBAN A’da ayrı hesaptır', async () => {

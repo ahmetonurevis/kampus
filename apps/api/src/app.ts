@@ -28,6 +28,7 @@ import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 // Onur: kayıt ve finans
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
+import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
 import { registerWithdrawalRoutes } from './routes/withdrawals.ts'
 import { registerProspectRoutes } from './routes/prospects.ts'
@@ -270,6 +271,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   // Onur: kayıt ve finans
   registerFeeTariffRoutes(app)
   registerFinanceExportRoutes(app)
+  registerFinanceScholarshipRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)

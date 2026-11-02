@@ -218,6 +218,13 @@
       "when": 1793603351966,
       "tag": "0030_create_attempt_media_plays",
       "breakpoints": true
+    },
+    {
+      "idx": 31,
+      "version": "7",
+      "when": 1793619007139,
+      "tag": "0031_create_scholarship_programs",
+      "breakpoints": true
     }
   ]
 }

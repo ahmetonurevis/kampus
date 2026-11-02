@@ -354,12 +354,16 @@ describe('IST-002: kayıt ve finans uçlarında başka kurum (DOM-YTK-001, DOM-Y
     })
   }
 
-  test('IST-002: GET /api/v1/finance/totals ve /finance/summary: başka kurumun tahsilatı toplama girmez', async () => {
+  test('IST-002: GET /api/v1/finance/totals, /finance/summary ve /finance/overview: başka kurumun tahsilatı toplama girmez', async () => {
     const a = await tenant()
     const b = await tenant()
     const views = async (t: Tenant) => [
       await read<unknown>(t.cookies.admin, '/api/v1/finance/totals'),
       await read<unknown>(t.cookies.admin, '/api/v1/finance/summary?from=2026-10-01&to=2026-10-31'),
+      await read<unknown>(
+        t.cookies.admin,
+        '/api/v1/finance/overview?from=2026-10-01&to=2026-10-31',
+      ),
     ]
     const before = await views(a)
     await pay(b, 2_500)

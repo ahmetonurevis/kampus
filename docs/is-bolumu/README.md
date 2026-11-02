@@ -214,7 +214,7 @@ Değişiklik isteği izin değil, iş isteğidir ve yalnız karşı tarafın ala
 
 | Sözleşme                                                                                                             | Ne için                                                                      | Dalga |
 | -------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------- | ----- |
-| Finans özeti: `GET /finance-summary` (tahsil edilen, vadesi geçen, açık tutar; dönem kırılımı)                       | Yönetici panosu, erken uyarı (IST-121)                                       | D1    |
+| Finans özeti: `GET /finance/overview` (tahsil edilen, vadesi geçen, açık tutar; dönem kırılımı)                      | Yönetici panosu, erken uyarı (IST-121)                                       | D1    |
 | Öğrenci bakiyesi: `GET /students/:id/balance`, veli kapsamlı                                                         | Veli Genel Bakış ve Çocuklarım kartları, mobil veli ana ekranı               | D1    |
 | Pano kartları: finans ve kayıt kart bileşenleri, yuvaya kayıtlı                                                      | Yönetici ve ön büro Genel Bakış                                              | D2    |
 | Kayıt durumu ve olayları: öğrencinin `enrollmentStatus` alanı (aktif, dondurulmuş, ayrıldı, mezun) ve geçiş olayları | Sınıf listeleri, yoklama, görev hedefleri, mesaj kapsamı, bildirim alıcıları | D2    |
@@ -230,7 +230,7 @@ Kritik yollar: rıza → kayıt formu → pilot; bildirim → SMS → gecikme ha
 | ------------------------------------------------------------------------ | --------------------------------------------------------------- |
 | Kayıt formunda rıza adımı (Onur)                                         | Rıza uçları ve `<ConsentStep>` (Oğuzhan)                        |
 | Finans bildirimleri (Onur)                                               | `notify()` (Oğuzhan)                                            |
-| Pano finans kartları ve risk listesi (Oğuzhan)                           | `finance-summary` (Onur)                                        |
+| Pano finans kartları ve risk listesi (Oğuzhan)                           | `finance/overview` (Onur)                                       |
 | Tarifede yıl seçimi, iadede gün sayımı (Onur)                            | Akademik yıl, öğretim günleri (Oğuzhan)                         |
 | Kesin kayıtta veli bağı (Onur)                                           | `linkGuardian` (Oğuzhan)                                        |
 | Paket satışı (Onur)                                                      | Kur ve grup (Oğuzhan)                                           |

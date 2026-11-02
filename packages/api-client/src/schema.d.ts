@@ -2020,6 +2020,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/overview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Finans özeti: tahsilat, açık ve gecikmiş tutar
+         * @description Yönetici panosu ve erken uyarı için özet (IST-116, IST-121). `collectedCents` ve `months` dönemin tahsilatını ve ay kırılımını verir: iptal, iptal edildiği ayda düşer; vade kırılımı taksitin vade ayına göredir. `openCents` ve `overdueCents` dönemden bağımsız, bugünün kurum geneli tutarıdır ve `/finance/totals` ile aynıdır; kısmi ödemede yalnız kalan kısım sayılır. `overdueStudents` gecikmiş borcu olan öğrencileri tutar büyükten küçüğe verir. Dönem verilmezse son altı takvim ayıdır; yalnız bir uç verilirse 400. Gün Europe/Istanbul günüdür. Başlangıç bitişten sonra 422 `export_period_invalid`, dönem bir yılı aşarsa 422 `export_period_too_long`. Muhasebe dosyasının toplamı için `/finance/summary` kullanılır. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getFinanceOverview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/summary": {
         parameters: {
             query?: never;
@@ -22025,6 +22045,126 @@ export interface operations {
                             paidCents: number;
                             remainingCents: number;
                             overdueCents: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceOverview: {
+        parameters: {
+            query?: {
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            from: string;
+                            to: string;
+                            today: string;
+                            /** @description Dönemde alınan net tahsilat */
+                            collectedCents: number;
+                            /** @description Bugün kurum geneli açık tutar */
+                            openCents: number;
+                            /** @description Bugün kurum geneli gecikmiş tutar */
+                            overdueCents: number;
+                            months: {
+                                /** @description YYYY-MM, Europe/Istanbul */
+                                month: string;
+                                collectedCents: number;
+                                dueCents: number;
+                                openCents: number;
+                                overdueCents: number;
+                            }[];
+                            overdueStudents: {
+                                studentId: string;
+                                overdueCents: number;
+                                oldestDueDate: string;
+                            }[];
                         };
                     };
                 };

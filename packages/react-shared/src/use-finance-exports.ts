@@ -26,6 +26,23 @@ export function useFinanceTotals() {
   })
 }
 
+/**
+ * Finans özeti (`GET /finance/overview`; IST-116, IST-121): tahsilat, açık ve gecikmiş tutar, ay
+ * kırılımı ve gecikmiş borcu olan öğrenciler. Dönem verilmezse son altı takvim ayı. Ödeme sonrası
+ * tazelenir.
+ */
+export function useFinanceOverview(
+  period: FinancePeriod | null = null,
+  options: { enabled?: boolean } = {},
+) {
+  return useApiQuery({
+    key: ['payments', 'finance-overview', period],
+    enabled: options.enabled ?? true,
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/overview', { params: { query: period ?? {} }, signal }),
+  })
+}
+
 /** Dosyayı metin olarak alır; yazma değildir, sorgu tazelenmez. Hata mesajı toast olur. */
 export function useFinanceExport() {
   return useApiCommand({

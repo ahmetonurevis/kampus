@@ -1,6 +1,8 @@
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   assertFinancePeriod,
+  defaultOverviewPeriod,
+  financeOverview,
   financeSummary,
   financeTotals,
   invoiceLines,
@@ -11,6 +13,8 @@ import {
   refundsCsv,
   studentDirectory,
   type FinanceExportKind,
+  type FinanceOverview,
+  type FinanceOverviewQuery,
   type FinancePeriod,
   type FinanceSummary,
   type FinanceTotals,
@@ -71,6 +75,49 @@ export function financeTotalsFor(ctx: ServiceContext): Promise<FinanceTotals> {
     load: async (tx) => {
       const allocated = await allocatedTotals(tx, ctx.institutionId)
       return { run: (state) => financeTotals(state.invoices, allocated, dayKey(ctx.now)) }
+    },
+  })
+}
+
+/**
+ * Finans özeti (`GET /finance/overview`; IST-116, IST-121): dönemin tahsilatı ve ay kırılımı, bugünkü
+ * açık ve gecikmiş tutar, gecikmiş borcu olan öğrenciler. Dönem verilmezse son altı takvim ayı.
+ */
+export function financeOverviewFor(
+  ctx: ServiceContext,
+  query: FinanceOverviewQuery,
+): Promise<FinanceOverview> {
+  const today = dayKey(ctx.now)
+  const period =
+    query.from !== undefined && query.to !== undefined
+      ? { from: query.from, to: query.to }
+      : defaultOverviewPeriod(today)
+  return runReadOnly(ctx, {
+    action: 'finance.overview',
+    collections: ['invoices'],
+    load: async (tx) => {
+      const [payments, allocated] = [
+        await paymentsTouchingPeriod(
+          tx,
+          ctx.institutionId,
+          instant(period.from, -1),
+          instant(period.to, 2),
+        ),
+        await allocatedTotals(tx, ctx.institutionId),
+      ]
+      return {
+        run: (state) => {
+          // İşlem içinde denetlenir: DomainError yalnız burada 422'ye çevrilir.
+          assertFinancePeriod(period)
+          return financeOverview({
+            invoices: state.invoices,
+            allocated,
+            payments,
+            period,
+            today,
+          })
+        },
+      }
     },
   })
 }

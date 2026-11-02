@@ -1,4 +1,8 @@
-import { contentFileRefs, type ResourceContent } from '@kampus/school-core/content/resource.ts'
+import {
+  contentFileRefs,
+  isContentStaff,
+  type ResourceContent,
+} from '@kampus/school-core/content/resource.ts'
 import {
   planVersionFiles,
   type ResourceFileRow,
@@ -14,7 +18,7 @@ import {
   listFileVersionIds,
   loadVersionPairs,
 } from '../db/resources.ts'
-import { loadVersionAssignments } from '../db/skills.ts'
+import { loadVersionsAssignments } from '../db/skills.ts'
 import { ForbiddenError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { defineFileAttachment } from './file-registry.ts'
@@ -191,35 +195,48 @@ async function assignedLinkedVersion(
     if (error instanceof ForbiddenError) return false
     throw error
   }
-  const linkedIds = new Set(linked.map(({ version }) => version.id))
-  const containers = await listContainerVersions(ctx.db, ctx.institutionId, [...linkedIds])
-  // Sabitlenen sürüm → kursiyere gösterilmesi de gereken soru sürümleri.
+  // Sabitlenen sürüm → kuraldan geçmesi gereken soru sürümleri. Yalnız soru quiz'e girer: soru
+  // bağlı değilse quiz sorgusu atlanır.
   const pinned = new Map<string, VersionPair[]>(linked.map((pair) => [pair.version.id, []]))
+  const questions = linked.filter(({ resource }) => resource.contentType === 'question')
+  const containers = await listContainerVersions(
+    ctx.db,
+    ctx.institutionId,
+    questions.map(({ version }) => version.id),
+  )
   for (const { id, content } of containers)
     if (content.type === 'quiz' || content.type === 'exercise_set')
       pinned.set(
         id,
-        linked.filter(({ version }) =>
+        questions.filter(({ version }) =>
           content.items.some((item) => item.questionVersionId === version.id),
         ),
       )
-  for (const [versionId, items] of pinned) {
-    const assignments = (await loadVersionAssignments(ctx.db, ctx.institutionId, versionId)).filter(
-      (assignment) => visible(viewer, assignment),
+  // Bütün sabitlenmiş sürümlerin atamaları tek sorguda; görülmeyen atama erken düşer.
+  const assignments = (
+    await loadVersionsAssignments(ctx.db, ctx.institutionId, [...pinned.keys()])
+  ).filter((assignment) => visible(viewer, assignment))
+  if (assignments.length === 0) return false
+  if (viewer.kind !== 'learner') return true
+  // Kursiyer kuralı için yalnız eksik (quiz) sürüm çiftleri okunur; bağlı sürümlerinki zaten var.
+  const pairs = new Map<string, VersionPair>(linked.map((pair) => [pair.version.id, pair]))
+  const missing = assignments
+    .map(({ resourceVersionId }) => resourceVersionId)
+    .filter((id) => !pairs.has(id))
+  for (const [id, pair] of await loadVersionPairs(ctx.db, ctx.institutionId, missing))
+    pairs.set(id, pair)
+  for (const assignment of assignments) {
+    const gate = await learnerContentGate(
+      ctx,
+      viewer,
+      assignment,
+      [
+        pairs.get(assignment.resourceVersionId),
+        ...(pinned.get(assignment.resourceVersionId) ?? []),
+      ],
+      () => learnerHasWork(ctx, viewer, assignment),
     )
-    if (assignments.length === 0) continue
-    if (viewer.kind !== 'learner') return true
-    const pairs = await loadVersionPairs(ctx.db, ctx.institutionId, [versionId])
-    for (const assignment of assignments) {
-      const gate = await learnerContentGate(
-        ctx,
-        viewer,
-        assignment,
-        [pairs.get(versionId), ...items],
-        () => learnerHasWork(ctx, viewer, assignment),
-      )
-      if (gate === null) return true
-    }
+    if (gate === null) return true
   }
   return false
 }
@@ -243,8 +260,13 @@ async function assignedLinkedVersion(
 defineFileAttachment(RESOURCE_VERSION_ATTACHMENT, {
   purposes: ['material', 'listening_audio', 'question_image'],
   canRead: async (tx, ctx, _attachedId, file) => {
+    // Kurallar ucuzdan pahalıya: içerik havuzuna ve görevlere erişmeyen rol sorgusuz düşer (ön
+    // büro); sonra bağlar, kaldırma soyu, içerik havuzu okuması ve en son atamalar.
+    const { role } = ctx.actor
+    if (!isContentStaff(role) && role !== 'ogrenci' && role !== 'veli') return false
     const scoped = { ...ctx, db: tx }
     const versionIds = await listFileVersionIds(tx, ctx.institutionId, file.id)
+    if (versionIds.length === 0) return false
     const pairs = await loadVersionPairs(tx, ctx.institutionId, versionIds)
     const linked = await openLinkedVersions(tx, ctx.institutionId, [...pairs.values()])
     if (linked.length === 0) return false

@@ -16,11 +16,17 @@
 
 ## 2. Commit kuralları
 
-- Başlık Türkçe, emir kipinde, en fazla 72 karakter, sonunda nokta yok, önek (`feat:` vb.) yok:
-  - "Hedef ve gelişim planı modülünü ekle"
-  - "Veli etüt listesini seçili çocuğa daralt"
-  - "school-core paketini TypeScript'e taşı"
-- Gövde (gerekiyorsa) boş satırdan sonra: **neden** ve **etki**; ne yapıldığı diff'ten okunur. Satırlar 72 karakterde kırılır.
+Mesaj standardı `commit-msg` git hook'uyla denetlenir (`.githooks/commit-msg` → `.claude/hooks/commit-mesaji.ts`); uymayan commit ve merge oluşmaz, hata Türkçe ve örnekli gelir. Hook yolunu `pnpm install` kurar (kök `prepare`: `git config core.hooksPath .githooks`); denetim atlanmaz (`--no-verify` yok). Testi `pnpm test:hooks`.
+
+- **Başlık** Türkçe, emir kipinde, büyük harfle başlar, en fazla 72 karakter (bayt değil karakter), sonunda noktalama yok; önek (`feat:`, `fix(api):`), İngilizce fiil ("Add", "Fix") ve tek kelimelik/belirsiz başlık ("Düzelt", "wip", "güncelle") yok. Kod adıyla başlayan başlık küçük harfle başlayabilir (`school-core`, `` `pnpm audit` ``):
+  - "Hedef ve gelişim planı modülünü ekle (OG-004)"
+  - "Veli etüt listesini seçili çocuğa daralt (ON-012)"
+  - "school-core paketini TypeScript'e taşı (OG-008)"
+- **Görev bağı:** her commit görev ID'sini (`OG-012`, `ON-007`) ya da iş isteğini (`#11`) anar; tercihen başlık sonunda parantezde, sığmazsa gövdede. Muaf: entegrasyon dalını eşitleyen merge, `git revert` ve `fixup!`/`squash!`.
+- **Gövde** (gerekiyorsa) boş satırdan sonra: **neden** ve **etki**; ne yapıldığı diff'ten okunur. Satırlar 72 karakterde kırılır; madde için `- `. Sayılar ölçülmüş olandır ("API 451/451"); ölçülmediyse yazılmaz.
+- **Durum commit'i** (§7.2a) tek satırdır ve yalnız görev tablosunu değiştirir: `Görev durumunu güncelle: OG-012 çalışılıyor`; birden çok görev `OG-001, OG-002 bitti`, ek bilgi parantezde (`OG-006 bitti (migration 0023)`), yeni satır `OG-970 eklendi`.
+- **Merge commit'i** (§7.3) başlığı git'in ürettiği biçimdedir, gövde görev ID'si ve kısa özettir: `git merge --no-ff <dal> -m "Merge branch '<dal>' into feature/platform-gecisi" -m "OG-012: CI işleri paralel"`. Çakışma çözülen merge gövdesi çözülen dosyaları anar.
+- **Revert** git'in başlığıyla (`Revert "…"`) yazılır; gövdeye geri alma gerekçesi eklenir.
 - Bir commit tek mantıksal değişikliktir:
   - Davranış değişikliği ve testi aynı committe.
   - Şema migration'ı ve onu kullanan kod aynı committe.
@@ -28,11 +34,11 @@
   - Biçim düzeltmesi ayrı committe (veya hiç; Prettier hook'u zaten düzeltir).
 - **Her commit yeşildir:** `pnpm format:check`, `pnpm lint`, `pnpm typecheck`, ilgili testler geçer. `git bisect` her committe çalışabilmelidir.
 - Yeni bağımlılık gerekçesi gövdededir ([kod-yazim.md](kod-yazim.md#8-bağımlılık-ekleme-politikası)).
-- Yapay zekâ yardımıyla yazılan commit gövdesi sonunda `Co-Authored-By:` satırı taşır.
+- Yapay zekâ yardımıyla yazılan commit (merge dahil) son paragrafta `Co-Authored-By: <model> <noreply@anthropic.com>` satırı taşır; model adı commit'i yazan oturumunkidir.
 - Sır, `.env`, imzalama anahtarı, APK, build çıktısı commit edilmez.
 
 ```
-Veli etüt listesini seçili çocuğa daralt
+Veli etüt listesini seçili çocuğa daralt (OG-031)
 
 Veli iki çocuk arasında geçince önceki çocuğun gelecek etütleri
 listede kalıyordu. Kapsam artık school-core etüt kapsamından gelir;
@@ -46,7 +52,7 @@ Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>
 - Her değişiklik PR ile `main`'e girer. Koşullar: CI yeşil, en az bir inceleme, çözülmemiş yorum yok, dal `main`'in güncel hâli üzerine alınmış (rebase).
 - İnsan incelemesi zorunlu alanlar: kimlik doğrulama, yetki ve kiracı izolasyonu, migration, kişisel veri alanı ekleme, ödeme, bağımlılık ekleme. Diğerlerinde `inceleyici` ajanının incelemesi ilk geçiştir, onay insandadır.
 - Geçmiş doğrusaldır. Varsayılan **rebase ile birleştirme**: düzenli, her biri yeşil commitler korunur. Dalda düzeltme gürültüsü (`fixup!`, "testi düzelt") varsa birleştirmeden önce `git rebase -i --autosquash main` ile toplanır; toplanamıyorsa **squash** kullanılır ve başlık bu belgedeki kurala uyar.
-- Merge commit kullanılmaz.
+- `main`'e PR birleştirmesinde merge commit kullanılmaz; iki geliştiricili entegrasyon dalı `--no-ff` merge kullanır (§7.3).
 - PR açıklaması: ne/neden, etkilenen paketler, doğrulama sonucu sayılarla ("lint temiz, 80/80 birim, e2e 60/60"), ekran değiştiyse ekran görüntüsü ve erişilebilirlik kontrol listesi.
 
 ## 4. Sürümleme (semver)
@@ -110,7 +116,7 @@ etki: minor
 
 - Her dalga (D1–D9, Sonra) bir tablodur; D6–D9 küme alt başlıklarına bölünür: `ID | Görev | … | Durum | Dal / commit | Not` (`Boyut` S/M/L; ek sütun serbesttir, hook sütunları başlıktan okur). ID kalıcıdır (`OG-001`, `ON-001`); yeni görev dalga tablosunun sonuna dosyadaki en büyük numaradan sonrakiyle eklenir, numara yeniden verilmez, vazgeçilen görev `iptal` olur.
 - Durum yalnız `bekliyor`, `çalışılıyor`, `revizyon` (bitmişti; inceleme, kullanıcı ya da karşı taraf düzeltme istedi; Not'a gerekçe ya da `#issue`), `engelli` (Not'a beklenen ID: "ON-014 bekleniyor"; o bitince `bekliyor`a döner), `bitti`, `iptal`.
-- Başlarken (`is-baslat`) sıradaki `bekliyor` görev (önce dalga, sonra bağımlılık) `çalışılıyor` olur, Dal sütununa dal adı yazılır; bu tek satır güncel entegrasyon dalında küçük bir commit'tir ("Görev durumunu güncelle: OG-012 çalışılıyor") ve dal açılmadan gönderilir. Onur'un oturumu push'u kendisi yapar; Oğuzhan tarafında push'u kullanıcı yapar.
+- Başlarken (`is-baslat`) sıradaki `bekliyor` görev (önce dalga, sonra bağımlılık) `çalışılıyor` olur, Dal sütununa dal adı yazılır; bu tek satır güncel entegrasyon dalında küçük bir commit'tir ("Görev durumunu güncelle: OG-012 çalışılıyor") ve dal açılmadan gönderilir. Push'u iki tarafın oturumu da kendisi yapar.
 - Bitirirken (`entegre-et`) entegrasyona birleştirme commit'inin hemen arkasındaki commit satırı `bitti` yapar, Dal / commit sütununa birleştirmenin kısa hash'ini yazar.
 - Migration ve ADR numarası görev satırının Not'una yazılır ve durum commit'iyle duyurulur.
 

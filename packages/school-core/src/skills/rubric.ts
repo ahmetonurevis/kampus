@@ -670,11 +670,10 @@ export type RubricScorePlanInput = {
 /**
  * Öğretmen puanı (DOM-BEC-021…024). Yalnız son teslim sürümü ve atamanın rubrik sürümüyle
  * puanlanır. İlk ve ikinci puanlayıcı farklı kişidir ve sürüm başına birer tanedir; ikinci puan
- * yalnız istenmişse verilir. Son puan yalnız uyuşmazlıkta, iki puanlayıcıdan bağımsız
- * koordinatörce verilir. İtirazın son puanı `planAppealDecision` iledir.
+ * yalnız istenmişse verilir. Son puan yalnız uyuşmazlıkta, kapsamındaki koordinatörce verilir
+ * (DOM-YTK-027; kapsam denetimi `coordinatesArea` ile çağıranda); koordinatör o sürümün iki
+ * puanlayıcısından biri olamaz (DOM-BEC-024). İtirazın son puanı `planAppealDecision` iledir.
  */
-// TODO(beceri-koordinator-bagimsiz): Domain koordinatörün puanlayıcılardan biri olup olamayacağını
-// söylemiyor; en muhafazakâr yorumla olamaz.
 export function planRubricScore(input: RubricScorePlanInput): RubricScoreDraft {
   const data = rubricScoreInputSchema.parse(input.input)
   if (input.rubricVersion.id !== input.assignmentRubricVersionId) {
@@ -749,23 +748,47 @@ export function planRubricScore(input: RubricScorePlanInput): RubricScoreDraft {
 
 /**
  * Puanlayıcının görebildiği puanlar (DOM-BEC-024: ikinci puanlayıcı ilk puanı görmeden puanlar).
- * Koordinatör hepsini görür; diğer öğretmen kendi puanlarını ve kesinleşmiş son puanı görür.
+ * Kapsamındaki koordinatör (`coordinator: true`, DOM-YTK-027) bir sürümün bütün puanlarını yalnız
+ * ilk ve ikinci puanın ikisi de verildikten sonra görür; öncesinde (ikinci puan beklenirken) sıradan
+ * puanlayıcı gibi kördür, çünkü ikinci puanı kendisi verebilir. O sürümün ilk veya ikinci
+ * puanlayıcısıysa kör puanlama ona her zaman uygulanır. Diğer öğretmen kendi puanlarını ve
+ * kesinleşmiş son puanı görür.
  */
 export function scoresVisibleToRater(input: {
   scores: readonly RubricScoreRow[]
   viewer: RubricRater
   secondRatingRequested: boolean
 }): RubricScoreRow[] {
-  if (input.viewer.coordinator) return [...input.scores]
-  const settled = new Set<string>()
+  const shown = new Set<string>()
   for (const versionId of new Set(input.scores.map((s) => s.submissionVersionId))) {
+    const scores = input.scores.filter((s) => s.submissionVersionId === versionId)
+    const rated = scores.some(
+      (s) => s.raterUserId === input.viewer.userId && s.raterRole !== 'final',
+    )
+    const bothRated =
+      scores.some((s) => s.raterRole === 'first') && scores.some((s) => s.raterRole === 'second')
+    if (input.viewer.coordinator && !rated && bothRated) {
+      for (const s of scores) shown.add(s.id)
+      continue
+    }
     const resolution = scoreResolution({
-      scores: input.scores.filter((s) => s.submissionVersionId === versionId),
+      scores,
       secondRatingRequested: input.secondRatingRequested,
     })
-    if (resolution.status === 'settled') settled.add(resolution.score.id)
+    if (resolution.status === 'settled') shown.add(resolution.score.id)
   }
-  return input.scores.filter((s) => s.raterUserId === input.viewer.userId || settled.has(s.id))
+  return input.scores.filter((s) => s.raterUserId === input.viewer.userId || shown.has(s.id))
+}
+
+/**
+ * Sürüm koordinatörün işi mi (DOM-BEC-024): ilk ve ikinci puan var ve bir kriterde uyuşmuyor.
+ * Son puan verilmiş olsa da `true` kalır; koordinatörün okuma erişimi buna dayanır (DOM-YTK-027:
+ * öğrenci bazında erişim yalnız bu teslimlerdedir).
+ */
+export function coordinatorCase(versionScores: readonly RubricScoreRow[]): boolean {
+  const first = latestScore(versionScores.filter((s) => s.raterRole === 'first'))
+  const second = latestScore(versionScores.filter((s) => s.raterRole === 'second'))
+  return first !== null && second !== null && bandDisagreements(first, second).length > 0
 }
 
 /**

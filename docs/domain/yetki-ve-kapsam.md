@@ -23,6 +23,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 | Hedef ve gelişim planı     | Y                        | —                               | Y (kendi dersi, kendi sınıfları)                                                             | Y öneri (kendi)                              | O + yorum (çocuk)                                 |
 | Rehberlik: paylaşılan plan | O                        | —                               | rehber öğretmen Y; sınıf rehber/atanmış O                                                    | O kendi                                      | O (çocuk)                                         |
 | Rehberlik: iç not          | — (soruşturma istisnası) | —                               | yalnız rehber öğretmen Y                                                                     | —                                            | —                                                 |
+| Veli iletişim bilgisi      | O                        | O                               | O maskeli; tam değer "Göster" ile, denetimli (ders verdiği öğrencinin velisi; `DOM-YTK-055`) | —                                            | —                                                 |
 | Sağlık ve acil bilgi       | O                        | O (yalnız acil müdahale satırı) | O (sınıf rehber, etkinlik sorumlusu)                                                         | —                                            | Y (çocuk)                                         |
 | Kaynak platformu içeriği   | Y; onay                  | —                               | Y (kendi), O (kapsamdaki); zümre başkanı onay                                                | O (kapsamındaki yayında)                     | O (çocuğun gördüğü)                               |
 | Ödev, quiz                 | O                        | —                               | Y (kendi sınıfları)                                                                          | teslim/çözer (kendi)                         | O (çocuk)                                         |
@@ -154,7 +155,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Gerekçe:** İçerik kalitesi ve ortak sınav hazırlığı zümre düzeyinde yürür.
 - **Kaynak:** İşletme kuralı; zümre öğretmenler kurulu hükümleri **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — core `packages/school-core/src/lib/coordinator-duties.ts` (`planCoordinatorDuty`: yalnız öğretmene, `school`'da öğretmenin kendi branşında, dil okulunda CEFR seviyesinde; `coordinatesArea`); API (F4b3b2b) `coordinator_duties` tablosu (migration `0016`), `GET/POST /api/v1/coordinator-duties`, `DELETE /api/v1/coordinator-duties/:dutyId` (yalnız yönetici atar ve kaldırır). Görev atama görünürlüğü vermez; koordinatör alanındaki uyuşmazlıklı teslimi okur ve son puanı verir (`POST /api/v1/task-submissions/:id/final-scores`, DOM-BEC-024). Kaynak onayı (DOM-KYN-031) ve sınıf düzeyi toplu sonuç okuması henüz bağlı değil (`TODO(content-reviewer)`); bir kapsamın tek görevlisi olup olmadığı `TODO(zumre-tekil)`, artı seviyenin kapsamı `TODO(koordinator-arti-seviye)`.
 
 ### DOM-YTK-028 · Görev atamasını sınıfın öğretmeni de görür, yalnız atayan değiştirir
 
@@ -244,7 +245,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 
 ### DOM-YTK-052 · Hassas okumalar da kaydedilir
 
-- **Kural:** Şu okumalar da denetim kaydı üretir: rehberlik iç notu, sağlık ve acil bilgi, velayet/vasilik belgesi, yöneticinin gerekçeli olarak açtığı öğrenci–öğretmen yazışması, toplu dışa aktarım (CSV, PDF toplu). Diğer okumalar kaydedilmez.
+- **Kural:** Şu okumalar da denetim kaydı üretir: rehberlik iç notu, sağlık ve acil bilgi, velayet/vasilik belgesi, yöneticinin gerekçeli olarak açtığı öğrenci–öğretmen yazışması, öğretmenin açtığı veli iletişim bilgisi (`DOM-YTK-055`), toplu dışa aktarım (CSV, PDF toplu). Diğer okumalar kaydedilmez.
 - **Gerekçe:** Özel nitelikli veriye kimin baktığı ihlal incelemesinin ilk sorusudur; her okumayı kaydetmek ise gereksiz kişisel veri üretir.
 - **Kaynak:** KVKK md. 6/4 (Kurul'un yeterli önlemleri: erişim kayıtları) — **doğrulanmalı**; md. 4/2.
 - **Kurum türü:** ikisi
@@ -265,6 +266,15 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Kaynak:** CLAUDE.md "teknik hatalar yapılandırılmış logda tutulur"; KVKK md. 12/1.
 - **Kurum türü:** ikisi
 - **Kodda:** yok — kimlik doğrulama yok.
+
+### DOM-YTK-055 · Veli iletişim bilgisi öğretmene maskeli, açılışı denetimli
+
+- **Kural:** Öğrenciye ders veren öğretmen (öğrencinin sınıfında branş dersi ya da sınıf rehberliği olan; `DOM-YTK-022`) o öğrenciye bağlı velinin telefonunu ve e-postasını yalnız maskeli görür: telefonun ilk dört ve son iki hanesi (`0532 *** ** 12`), e-postanın ilk harfi ve alan adı (`a***@gmail.com`). Tam değer ayrı "Göster" işlemiyle, alan başına açılır; her açılış denetim kaydına yazılır: kim, hangi öğrencinin hangi velisinin hangi alanını, ne zaman açtı. Değer denetim kaydına, loga ve adrese yazılmaz; istemci açılan değeri yalnız bellekte tutar, kalıcı depoya yazmaz, yanıt önbelleğe alınmaz. Açılışlar kullanıcı başına dakikada 10 ile sınırlıdır; aşılırsa "Çok fazla istek gönderildi" yanıtı döner. Ders vermeyen öğretmen veliyi göremez ve açamaz; kapsam dışı öğrenci, öğrenciye bağlı olmayan veli ve olmayan veli aynı "bulunamadı" yanıtını alır. Öğrenci ve veli hiçbir velinin (aynı çocuğun diğer velisi dahil, `DOM-ILT-073`) telefonunu ve e-postasını görmez. Yönetici ve ön büro tam değeri görmeye devam eder.
+- **Gerekçe:** Öğretmen veliye ulaşmak için iletişim bilgisine ihtiyaç duyabilir, ama her listeleme tam değeri açarsa bilgi gereksiz yayılır (veri en aza indirme). Maskeli gösterim veliyi tanıtır; bilinçli açılış ve kaydı, kötüye kullanımı geriye dönük incelenebilir kılar.
+- **Kaynak:** KVKK md. 4/2-ç (amaçla bağlantılı, sınırlı ve ölçülü işleme), md. 12/1 (teknik ve idari tedbirler) — **doğrulanmalı**; maske biçimi ve dakika sınırı işletme kuralıdır. Kullanıcı kararı (KV1).
+- **Kurum türü:** ikisi (yetişkin kursiyerde veli yoktur, `DOM-YTK-030`)
+- **Kodda:** var — maske ve karar `packages/school-core/src/lib/parent-contact.ts` (`maskPhone`, `maskEmail`, `parentContactDecision`, `revealParentContact`); alan ayıklaması `lib/scope.ts` (`parents`: öğretmende maskeli ve aranmaz, öğrencide ayıklanır; velide ayıklama kayıt testinin beklentisi değişene kadar açık, TODO #10). API `POST /api/v1/parents/:parentId/reveal-contact` (`{ studentId, field }`, modül `communication`, yalnız `ogretmen`, `Cache-Control: no-store`, kullanıcı ve kurum başına dakikada 10, aşılırsa 429 `rate_limited`) `audit_log`'a `parent_contact.reveal` yazar (`entityType` `parents`, `entityId` veli, `changes` `{ fields: [alan], studentId }`). React web: öğretmenin sınıf özetindeki "Veli iletişimi" bölümü.
+- **Açık:** TODO(F2): veli aydınlatma metnine "velinin iletişim bilgisi, çocuğuna ders veren öğretmene maskeli gösterilir; öğretmen tam değeri kayıt altında açabilir" kullanımı eklenecek. Denetim kaydı ekranı `changes.studentId`'yi henüz göstermez.
 
 ## Mevcut kodla farklar
 

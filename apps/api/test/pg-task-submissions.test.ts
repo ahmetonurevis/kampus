@@ -1,12 +1,14 @@
 import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
+import { setTimeout as delay } from 'node:timers/promises'
 
-import { eq } from 'drizzle-orm'
+import { count, eq, sql } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
-import { insertMissingRecords } from '../src/db/records.ts'
+import { archiveCoordinatorDuty, insertCoordinatorDuty } from '../src/db/coordinator-duties.ts'
+import { insertMissingRecords, lockInstitution } from '../src/db/records.ts'
 import {
   rubrics,
   rubricScores,
@@ -33,7 +35,10 @@ import { sampleRubricData } from './support/skills-sample.ts'
  * ADR 0004 karar 6). Yazmalar kurum kilidi altında sıralanır: aynı revizyonla iki taslak kaydından
  * biri 409 `draft_conflict` alır; sürüm sınırı 1 iken iki eşzamanlı teslimden yalnız biri yazılır;
  * aynı sürüme eşzamanlı iki öğretmen puanından yalnız biri yazılır (F4b3b1, DOM-BEC-021); aynı
- * sürüme öğrenci ve velinin eşzamanlı itirazından yalnız biri yazılır (F4b3b2a, DOM-BEC-025).
+ * sürüme öğrenci ve velinin eşzamanlı itirazından yalnız biri yazılır (F4b3b2a, DOM-BEC-025);
+ * uyuşmazlıklı sürüme iki koordinatörün eşzamanlı son puanından yalnız biri yazılır (F4b3b2b,
+ * DOM-BEC-024, DOM-YTK-027); görevin eşzamanlı kaldırılmasından sonra kaldırılmış göreve dayanan
+ * son puan yazılmaz.
  * PGlite tek bağlantılı olduğundan gerçek eşzamanlılık yalnız burada sınanır.
  */
 
@@ -54,20 +59,40 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
   })
 
   function call(
-    method: 'POST' | 'PATCH',
+    method: 'GET' | 'POST' | 'PATCH',
     url: string,
     cookie: string,
-    payload: unknown,
-    headers: Record<string, string>,
+    payload?: unknown,
+    headers: Record<string, string> = {},
   ) {
     return app.inject({
       method,
       url: `/api/v1${url}`,
-      headers: { origin: TEST_ORIGIN, cookie, 'content-type': 'application/json', ...headers },
-      payload: JSON.stringify(payload),
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie,
+        ...(payload === undefined ? {} : { 'content-type': 'application/json' }),
+        ...headers,
+      },
+      ...(payload === undefined ? {} : { payload: JSON.stringify(payload) }),
     })
   }
   const key = () => ({ 'idempotency-key': randomUUID() })
+
+  /** Bu veritabanında bir işlem kurum kilidini (advisory) bekleyene dek bekler. */
+  async function untilAdvisoryWait() {
+    for (let attempt = 0; ; attempt += 1) {
+      const [waiting] = await db
+        .select({ n: count() })
+        .from(sql`pg_locks`)
+        .where(
+          sql`locktype = 'advisory' and not granted and database = (select oid from pg_database where datname = current_database())`,
+        )
+      if ((waiting?.n ?? 0) > 0) return
+      assert.ok(attempt < 300, 'son puan kurum kilidini beklemedi')
+      await delay(10)
+    }
+  }
 
   /** Deniz (`s-1`) 9-A'da; yönetici yazma görevini (en çok 1 sürüm) 9-A'ya atar. */
   async function setup(settings: Record<string, unknown> = {}) {
@@ -190,7 +215,7 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
   })
 
   test('DOM-BEC-040: sürüm sınırı 1 iken eşzamanlı iki teslim: biri 201, diğeri 422 version_limit_reached; tek teslim ve tek sürüm', async () => {
-    const { institution, student, assignmentId } = await setup()
+    const { institution, student, parent, assignmentId } = await setup()
     const send = (body: string) =>
       call(
         'POST',
@@ -212,6 +237,16 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
     ])
     assert.equal(submissions.length, 1)
     assert.equal(versions.length, 1)
+    // IST-051: kursiyer ve velinin atama özeti toplu sorgularla (PostgreSQL 16) aynı teslimi okur.
+    for (const cookie of [student, parent]) {
+      const listed = await call('GET', '/task-assignments', cookie)
+      assert.equal(listed.statusCode, 200, listed.body)
+      const [progress] = listed.json().data[0].progress
+      assert.deepEqual(
+        [progress.submissionId, progress.used, progress.remaining, progress.blockedBy],
+        [submissions[0]!.id, 1, 0, 'limit'],
+      )
+    }
   })
 
   test('DOM-BEC-021: aynı teslim sürümüne eşzamanlı iki puan: biri 201, diğeri 409; tek puan satırı', async () => {
@@ -397,5 +432,185 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
       [row?.grading.samplePending, row?.grading.dueAt, row?.grading.overdue],
       [true, null, false],
     )
+  })
+  test('DOM-BEC-024, DOM-YTK-027: uyuşmazlıklı sürüme iki koordinatörden eşzamanlı son puan: biri 201, diğeri 409; tek son puan satırı; koordinatör kuyruğu (seviye eşleşmesi) PostgreSQL 16’da', async () => {
+    const { institution, student, admin, assignmentId } = await setup()
+    await insertMissingRecords(
+      db,
+      institution.id,
+      ['t-eng', 't-k1', 't-k2'].map((id) => ({
+        collection: 'teachers' as const,
+        id,
+        data: { id, name: `Öğretmen ${id}`, subjectId: 'ingilizce', branchId: 'b-1' },
+      })),
+      FIXED_NOW,
+    )
+    const teacherMember = (recordId: string) =>
+      createMember(app, institution.id, 'ogretmen', [{ kind: 'teacher', recordId }])
+    const teacher = await signInAs(app, await teacherMember('t-eng'))
+    // İki koordinatör de 9-A'yı görmez; kapsamları atanan içeriğin seviyesidir (A2).
+    const coordinators: string[] = []
+    for (const recordId of ['t-k1', 't-k2']) {
+      const member = await teacherMember(recordId)
+      await insertCoordinatorDuty(
+        db,
+        institution.id,
+        {
+          id: randomUUID(),
+          membershipId: member.membershipId,
+          kind: 'academic_coordinator',
+          scopeId: 'A2',
+          assignedByUserId: institution.admin.id,
+        },
+        FIXED_NOW,
+      )
+      coordinators.push(await signInAs(app, member))
+    }
+    const submitted = await call(
+      'POST',
+      `/task-assignments/${assignmentId}/submissions`,
+      student,
+      { submissionKind: 'text', body: 'Birinci metin.' },
+      key(),
+    )
+    assert.equal(submitted.statusCode, 201, submitted.body)
+    const submissionId = submitted.json().data.id as string
+    const write = (path: string, cookie: string, version: number, body: unknown) =>
+      call('POST', `/task-submissions/${submissionId}/${path}`, cookie, body, {
+        ...key(),
+        'if-match': `"${version}"`,
+      })
+    const scoreBody = (task: number) => ({
+      versionNumber: 1,
+      criteria: [
+        { criterionId: 'task', band: task, comment: 'Görev kısmen karşılandı.' },
+        { criterionId: 'grammar', band: 3, comment: null },
+      ],
+      overallComment: 'Genel yorum yazıldı.',
+    })
+    for (const [path, cookie, version, body] of [
+      ['second-rating-requests', admin, 1, { versionNumber: 1 }],
+      ['scores', admin, 2, scoreBody(4)],
+      ['second-scores', teacher, 3, scoreBody(1)],
+    ] as const) {
+      const response = await write(path, cookie, version, body)
+      assert.equal(response.statusCode, 201, response.body)
+    }
+    for (const cookie of coordinators)
+      assert.deepEqual(
+        (await gradingQueue(cookie, '&awaiting=resolution')).data.map((row) => row.id),
+        [submissionId],
+      )
+    const responses = await Promise.all(
+      coordinators.map((cookie, index) => write('final-scores', cookie, 4, scoreBody(2 + index))),
+    )
+    assert.deepEqual(responses.map((r) => r.statusCode).sort(), [201, 409])
+    const loser = responses.find((r) => r.statusCode === 409)
+    assert.ok(
+      ['version_conflict', 'final_score_not_needed'].includes(loser?.json().code),
+      loser?.body,
+    )
+    const finals = await db
+      .select({ criteria: rubricScores.criteria, role: rubricScores.raterRole })
+      .from(rubricScores)
+      .where(eq(rubricScores.institutionId, institution.id))
+    const final = finals.filter((row) => row.role === 'final')
+    assert.equal(final.length, 1)
+    const winner = responses.find((r) => r.statusCode === 201)?.json().data
+    assert.equal(final[0]?.criteria[0]?.band, winner.versions[0].score.criteria[0].band)
+    for (const cookie of coordinators)
+      assert.equal((await gradingQueue(cookie, '&awaiting=resolution')).data.length, 0)
+  })
+
+  test('DOM-YTK-027, DOM-BEC-024: görev kaldırılırken bekleyen son puan kapsamı kilitten sonra yeniden okur: kaldırılmış göreve dayanarak yazılmaz (404); son puan satırı yok', async () => {
+    const { institution, student, admin, assignmentId } = await setup()
+    await insertMissingRecords(
+      db,
+      institution.id,
+      ['t-eng', 't-k1'].map((id) => ({
+        collection: 'teachers' as const,
+        id,
+        data: { id, name: `Öğretmen ${id}`, subjectId: 'ingilizce', branchId: 'b-1' },
+      })),
+      FIXED_NOW,
+    )
+    const teacherMember = (recordId: string) =>
+      createMember(app, institution.id, 'ogretmen', [{ kind: 'teacher', recordId }])
+    const teacher = await signInAs(app, await teacherMember('t-eng'))
+    const member = await teacherMember('t-k1')
+    const dutyId = randomUUID()
+    await insertCoordinatorDuty(
+      db,
+      institution.id,
+      {
+        id: dutyId,
+        membershipId: member.membershipId,
+        kind: 'academic_coordinator',
+        scopeId: 'A2',
+        assignedByUserId: institution.admin.id,
+      },
+      FIXED_NOW,
+    )
+    const coordinator = await signInAs(app, member)
+    const submitted = await call(
+      'POST',
+      `/task-assignments/${assignmentId}/submissions`,
+      student,
+      { submissionKind: 'text', body: 'Birinci metin.' },
+      key(),
+    )
+    assert.equal(submitted.statusCode, 201, submitted.body)
+    const submissionId = submitted.json().data.id as string
+    const write = (path: string, cookie: string, version: number, body: unknown) =>
+      call('POST', `/task-submissions/${submissionId}/${path}`, cookie, body, {
+        ...key(),
+        'if-match': `"${version}"`,
+      })
+    const scoreBody = (task: number) => ({
+      versionNumber: 1,
+      criteria: [
+        { criterionId: 'task', band: task, comment: 'Görev kısmen karşılandı.' },
+        { criterionId: 'grammar', band: 3, comment: null },
+      ],
+      overallComment: 'Genel yorum yazıldı.',
+    })
+    for (const [path, cookie, version, body] of [
+      ['second-rating-requests', admin, 1, { versionNumber: 1 }],
+      ['scores', admin, 2, scoreBody(4)],
+      ['second-scores', teacher, 3, scoreBody(1)],
+    ] as const) {
+      const response = await write(path, cookie, version, body)
+      assert.equal(response.statusCode, 201, response.body)
+    }
+
+    // Kaldırma kurum kilidini tutarken son puan isteği gelir; görevi kilitten önce okumuş olur.
+    let release!: () => void
+    const released = new Promise<void>((resolve) => (release = resolve))
+    let locked!: () => void
+    const holding = new Promise<void>((resolve) => (locked = resolve))
+    const removal = db.transaction(async (tx) => {
+      await lockInstitution(tx, institution.id)
+      locked()
+      await released
+      assert.ok(
+        await archiveCoordinatorDuty(tx, institution.id, { id: dutyId, rowVersion: 1 }, FIXED_NOW),
+      )
+    })
+    await holding
+    // `inject` tembeldir; `then` çağrılınca istek gönderilir.
+    const pending = Promise.resolve(write('final-scores', coordinator, 4, scoreBody(2)))
+    try {
+      await untilAdvisoryWait()
+    } finally {
+      release()
+    }
+    await removal
+    const response = await pending
+    assert.equal(response.statusCode, 404, response.body)
+    const finals = await db
+      .select({ role: rubricScores.raterRole })
+      .from(rubricScores)
+      .where(eq(rubricScores.institutionId, institution.id))
+    assert.deepEqual(finals.map((row) => row.role).sort(), ['first', 'second'])
   })
 })

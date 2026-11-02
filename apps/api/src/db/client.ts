@@ -6,6 +6,7 @@ import pg from 'pg'
 
 import * as auditLogSchema from './schema/audit-log.ts'
 import * as authSchema from './schema/auth.ts'
+import * as coordinatorDutiesSchema from './schema/coordinator-duties.ts'
 import * as filesSchema from './schema/files.ts'
 import * as idempotencyKeysSchema from './schema/idempotency-keys.ts'
 import * as institutionSettingsSchema from './schema/institution-settings.ts'
@@ -18,6 +19,7 @@ export const schema = {
   ...authSchema,
   ...institutionSettingsSchema,
   ...membershipLinksSchema,
+  ...coordinatorDutiesSchema,
   ...auditLogSchema,
   ...recordsSchema,
   ...idempotencyKeysSchema,

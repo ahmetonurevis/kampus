@@ -14,6 +14,7 @@ import {
   assertRubricVersionDeletable,
   bandDisagreements,
   bandMeaning,
+  coordinatorCase,
   canManageRubric,
   gradedVersionNumbers,
   gradingDueAt,
@@ -706,7 +707,7 @@ describe('ikinci puanlayıcı (DOM-BEC-024)', () => {
     assert.doesNotThrow(() => scorePlan({ scores: [scoreRow({ submissionVersionId: 'test-v1' })] }))
   })
 
-  test('DOM-BEC-024 ikinci puanlayıcı ilk puanı görmez; koordinatör hepsini görür', () => {
+  test('DOM-BEC-024, DOM-YTK-027 ikinci puanlayıcı ilk puanı görmez; koordinatör iki puan verilince hepsini görür, puanlayıcıysa kör kalır', () => {
     const first = scoreRow()
     const scores = [first]
     assert.deepEqual(
@@ -717,9 +718,48 @@ describe('ikinci puanlayıcı (DOM-BEC-024)', () => {
       scoresVisibleToRater({ scores, viewer: firstRater, secondRatingRequested: true }),
       [first],
     )
+    // DOM-BEC-024: ikinci puan beklenirken koordinatör de kördür; ikinci puanı kendisi verebilir.
     assert.deepEqual(
       scoresVisibleToRater({ scores, viewer: coordinator, secondRatingRequested: true }),
+      [],
+    )
+    const awaited = scoreRow({ raterRole: 'second', raterUserId: 'test-u-t2' })
+    assert.deepEqual(
+      scoresVisibleToRater({
+        scores: [first, { ...awaited, criteria: goodScore({ task: 1 }).criteria }],
+        viewer: coordinator,
+        secondRatingRequested: true,
+      }).map((s) => s.raterRole),
+      ['first', 'second'],
+    )
+    // DOM-YTK-027: koordinatör o sürümün puanlayıcısıysa kör puanlama ona da uygulanır.
+    const ratingCoordinator = { userId: 'test-u-t1', coordinator: true }
+    const blindSecond = scoreRow({
+      raterRole: 'second',
+      raterUserId: 'test-u-k1',
+      criteria: goodScore({ task: 1 }).criteria,
+    })
+    assert.deepEqual(
+      scoresVisibleToRater({
+        scores: [first, blindSecond],
+        viewer: { userId: 'test-u-k1', coordinator: true },
+        secondRatingRequested: true,
+      }).map((s) => s.id),
+      [blindSecond.id],
+    )
+    assert.deepEqual(
+      scoresVisibleToRater({ scores, viewer: ratingCoordinator, secondRatingRequested: true }),
       [first],
+    )
+    // Başka sürümün puanlayıcısı olmak bu sürümde koordinatörü kör yapmaz.
+    const otherVersion = scoreRow({ submissionVersionId: 'test-v1', raterUserId: 'test-u-k1' })
+    assert.deepEqual(
+      scoresVisibleToRater({
+        scores: [otherVersion, first, awaited],
+        viewer: coordinator,
+        secondRatingRequested: true,
+      }).map((s) => s.id),
+      [otherVersion.id, first.id, awaited.id],
     )
     // Kesinleşen puan puanlayıcılara açılır.
     const second = scoreRow({ raterRole: 'second', raterUserId: 'test-u-t2' })
@@ -730,6 +770,53 @@ describe('ikinci puanlayıcı (DOM-BEC-024)', () => {
         secondRatingRequested: true,
       }),
       [first, second],
+    )
+  })
+})
+
+describe('koordinatörün işi (DOM-BEC-024, DOM-YTK-027)', () => {
+  test('DOM-BEC-024 coordinatorCase: iki puan bir kriterde birden fazla bant ayrışınca; son puan verilse de koordinatörün işi kalır', () => {
+    const first = scoreRow()
+    const far = scoreRow({
+      raterRole: 'second',
+      raterUserId: 'test-u-t2',
+      criteria: goodScore({ task: 1 }).criteria,
+    })
+    const near = scoreRow({ raterRole: 'second', raterUserId: 'test-u-t2' })
+    assert.equal(coordinatorCase([first]), false)
+    assert.equal(coordinatorCase([first, near]), false)
+    assert.equal(coordinatorCase([first, far]), true)
+    const final = scoreRow({ raterRole: 'final', raterUserId: 'test-u-k1' })
+    assert.equal(coordinatorCase([first, far, final]), true)
+  })
+
+  test('DOM-BEC-024 son puanı puanlayıcı olmayan koordinatör verir; puanlayıcı koordinatör 409, koordinatör olmayan 403, uyuşmazlık yoksa 409', () => {
+    const first = scoreRow()
+    const far = scoreRow({
+      raterRole: 'second',
+      raterUserId: 'test-u-t2',
+      criteria: goodScore({ task: 1 }).criteria,
+    })
+    const finalPlan = (rater: { userId: string; coordinator: boolean }, scores = [first, far]) =>
+      scorePlan({ scores, rater, raterRole: 'final', secondRatingRequested: true })
+    assert.equal(finalPlan(coordinator).raterRole, 'final')
+    assert.throws(
+      () => finalPlan({ userId: 'test-u-t1', coordinator: true }),
+      isDomainError('rater_not_independent', 'conflict'),
+    )
+    assert.throws(
+      () => finalPlan({ userId: 'test-u-t2', coordinator: true }),
+      isDomainError('rater_not_independent', 'conflict'),
+    )
+    assert.throws(() => finalPlan(secondRater), isDomainError('coordinator_required', 'forbidden'))
+    assert.throws(
+      () => finalPlan(coordinator, [first]),
+      isDomainError('final_score_not_needed', 'conflict'),
+    )
+    const settled = scoreRow({ raterRole: 'final', raterUserId: 'test-u-k1' })
+    assert.throws(
+      () => finalPlan(coordinator, [first, far, settled]),
+      isDomainError('final_score_not_needed', 'conflict'),
     )
   })
 })

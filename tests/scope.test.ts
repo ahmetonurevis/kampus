@@ -536,7 +536,9 @@ test('guvenlik-kvkk §8, DOM-KAY-012: öğrencinin kimlik nosu yalnız yönetici
   assert.equal(other && 'nationalId' in other, false)
 })
 
-test('DOM-KAY-003, DOM-YTK-020: veli telefonu, e-postası ve yakınlığı öğretmen ve öğrenciye dönmez; veli ve personel görür', () => {
+// TODO(#10): veli de iletişimi görmemeli (DOM-ILT-073); kayıt testi değişince `parent('s1')`
+// öğrenci döngüsüne taşınır.
+test('DOM-KAY-003, DOM-YTK-020, DOM-YTK-055: yakınlık öğretmen ve öğrenciye dönmez; öğretmen iletişimi maskeli görür, öğrenci hiç görmez; veli ve personel görür', () => {
   const state = seed()
   const target = state.parents.find((p) => p.id === 'p1')
   assert.ok(target)
@@ -549,13 +551,18 @@ test('DOM-KAY-003, DOM-YTK-020: veli telefonu, e-postası ve yakınlığı öğr
     (c) => c.id === state.students.find((s) => s.id === 's1')?.classId,
   )?.teacherId
   assert.ok(teacherId)
-  for (const actor of [teacher(teacherId), student('s1')]) {
-    const row = visibleRecords(state, actor, 'parents').find((p) => p.id === 'p1') as
-      Record<string, unknown> | undefined
-    assert.ok(row, actor.role)
-    for (const field of ['phone', 'email', 'relationship'])
-      assert.equal(field in row, false, `${actor.role} ${field}`)
-  }
+  const fromStudent = visibleRecords(state, student('s1'), 'parents').find((p) => p.id === 'p1') as
+    Record<string, unknown> | undefined
+  assert.ok(fromStudent)
+  for (const field of ['phone', 'email', 'relationship'])
+    assert.equal(field in fromStudent, false, `ogrenci ${field}`)
+  const fromTeacher = visibleRecords(state, teacher(teacherId), 'parents').find(
+    (p) => p.id === 'p1',
+  ) as Record<string, unknown> | undefined
+  assert.ok(fromTeacher)
+  assert.equal('relationship' in fromTeacher, false)
+  assert.equal(fromTeacher.phone, '0555 *** ** 67')
+  assert.equal(fromTeacher.email, 'v***@kampus.example')
   for (const actor of [admin, frontOffice, parent('s1')]) {
     const row = visibleRecords(state, actor, 'parents').find((p) => p.id === 'p1') as
       Record<string, unknown> | undefined

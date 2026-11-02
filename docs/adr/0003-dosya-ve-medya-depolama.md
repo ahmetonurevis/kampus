@@ -20,7 +20,7 @@ Bağlayıcı kurallar:
 
 1. **Depolama arayüzü ve iki sürücü.** `apps/api/src/storage/` altında tek arayüz: `put(stream)`, `head`, `delete`, `signedGetUrl`. Sürücüler:
    - `s3`: `@aws-sdk/client-s3` + `@aws-sdk/s3-request-presigner`; geliştirmede ve üretimde kullanılır. Kurum başına ayrı kova açılmaz; tek kova, kurum öneki (karar 4).
-   - `disk`: `STORAGE_DIR` altında; yalnız birim/API testleri ve S3 sunucusu kurmak istemeyen yerel geliştirme için. İmzalı bağlantıyı API'nin kendi ucu (HMAC, süreli) üretir.
+   - `disk`: `STORAGE_DIR` altında; yalnız birim/API testleri ve S3 sunucusu kurmak istemeyen yerel geliştirme için. İmzalı bağlantıyı API'nin kendi ucu (HMAC, süreli) üretir Üretimde seçilirse `config.ts` başlangıçta açık bir hatayla durur.
 
    `STORAGE_DRIVER`, `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION`, `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY`, `STORAGE_PUBLIC_URL` `config.ts`'te doğrulanır. `compose.yaml`'a isteğe bağlı `storage` profiliyle S3 uyumlu yerel sunucu eklenir (yazılım seçimi Açık soru 1). Üretim sağlayıcısı Türkiye'de barındıran S3 uyumlu hizmet veya kendi sunucumuzdaki S3 uyumlu yazılımdır; seçim dağıtım ADR'sindedir.
 

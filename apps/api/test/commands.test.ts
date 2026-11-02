@@ -517,6 +517,10 @@ describe('yazma uçları', () => {
         // İkinci puanlama: örneklem, elle istek ve ikinci puan (DOM-BEC-024); itiraz ve kararı
         // (DOM-BEC-025). Yeniden denemede ikinci satır yazılmaz.
         'POST /api/v1/task-submissions/{submissionId}/second-scores',
+        // Uyuşmazlıkta koordinatörün son puanı (DOM-BEC-024, DOM-YTK-027).
+        'POST /api/v1/task-submissions/{submissionId}/final-scores',
+        // Zümre başkanı / akademik koordinatör görevi (routes/coordinator-duties.ts; DOM-YTK-027).
+        'POST /api/v1/coordinator-duties',
         'POST /api/v1/task-submissions/{submissionId}/second-rating-requests',
         'POST /api/v1/task-assignments/{assignmentId}/second-rating-sample',
         'POST /api/v1/task-submissions/{submissionId}/appeals',

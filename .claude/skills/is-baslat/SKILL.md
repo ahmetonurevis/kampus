@@ -18,7 +18,7 @@ Kurallar: `docs/muhendislik/git-ve-surum.md` §7, `.claude/rules/ortak-calisma.m
    git commit -m "Görev durumunu güncelle: OG-012 çalışılıyor" -- docs/is-bolumu/<sahip>.md
    git push origin feature/platform-gecisi
    ```
-   Onur'un oturumu push'u kendisi yapar. **Oğuzhan tarafında push'u kullanıcı yapar:** oturum komutu hazırlar ve kullanıcıya verir. Entegrasyon dalı başka bir çalışma ağacında açıksa bu commit orada yapılır.
+   İki tarafın oturumu da push'u kendisi yapar. Entegrasyon dalı başka bir çalışma ağacında açıksa bu commit orada yapılır.
 6. **Dal:** `git switch -c <sen>/<konu> origin/feature/platform-gecisi` (kebab-case, Türkçe karakter yok). Worktree'de: `git worktree add .claude/worktrees/<konu> -b <sen>/<konu> origin/feature/platform-gecisi` ve `pnpm install --frozen-lockfile`.
-7. **Çalışırken:** commit gövdesi görev ID'sini (`OG-012`) anar. Karşı alanda bir şey gerekirse durmadan `gh issue create -R ahmetonurevis/kampus --label sahip:<karşı taraf>` ile iş isteği aç (bağlı görev ID'si gövdede) ve geçici veriyle devam et; beklemen gerekirse satırı `engelli` yap, Not'a beklenen ID'yi yaz. Davranış değişikliği `packages/school-core/changes/<konu>.md` parçası yazar; sürüm ve README sayıları değişmez.
+7. **Çalışırken:** her commit görev ID'sini (`OG-012`) başlık sonunda parantezde ya da gövdede anar; mesaj standardı git-ve-surum §2, `commit-msg` hook'u denetler. Karşı alanda bir şey gerekirse durmadan `gh issue create -R ahmetonurevis/kampus --label sahip:<karşı taraf>` ile iş isteği aç (bağlı görev ID'si gövdede) ve geçici veriyle devam et; beklemen gerekirse satırı `engelli` yap, Not'a beklenen ID'yi yaz. Davranış değişikliği `packages/school-core/changes/<konu>.md` parçası yazar; sürüm ve README sayıları değişmez.
 8. Küçük, mantıklı birim yeşil olunca `entegre-et` ile hemen entegrasyona al; uzun yaşayan dal yok.

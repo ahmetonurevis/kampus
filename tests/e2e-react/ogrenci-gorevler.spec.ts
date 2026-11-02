@@ -122,11 +122,20 @@ test.describe('öğrenci görevleri: liste ve kapsam', () => {
     })
 
     await loginAs(school.tenant.user('ogrenci'))
+    // Liste durumu atama özetinden gelir: satır başına deneme/teslim isteği atılmaz.
+    const perRow: string[] = []
+    page.on('request', (request) => {
+      if (/\/api\/v1\/task-(attempts|submissions)(\?|$)/.test(request.url()))
+        perRow.push(request.url())
+    })
     await page.goto('/ogrenci/soru-coz')
     const table = taskTable(page, 'Atanan quizler')
     await expect(table.getByText('Kendi okuma quizim')).toBeVisible()
     await expect(page.getByText('Başkasının quizi')).toHaveCount(0)
     await expect(table.locator('tbody tr')).toHaveCount(1)
+    await expect(table.locator('tbody tr')).toContainText('Başlanmadı')
+    await expect(table.locator('tbody tr')).toContainText('0 / 1 deneme')
+    expect(perRow).toEqual([])
 
     // Sağ panel, çalışma alanı ve API: kapsam dışı görev bulunamaz.
     await page.goto(`/ogrenci/soru-coz?gorev=${foreignId}`)
@@ -308,8 +317,10 @@ test.describe('öğrenci görevleri: yazma', () => {
     await expect(taskTable(page, 'Atanan yazma ödevleri')).toContainText('Hafta sonu yazısı')
     await openFromList(page, 'Hafta sonu yazısı', 'Yazmaya başla')
     await expect(page).toHaveURL(new RegExp(`yaz=${assignmentId}`))
-    // Kaynak öğrenciyle paylaşılmadığı için yönerge okunamaz: açık yedek metin görünür (DOM-KYN-024).
-    await expect(page.getByText(/Yönerge bu ekranda gösterilemiyor/)).toBeVisible()
+    // Yönerge atamada sabitlenen sürümden gelir (DOM-KYN-024); kaynak öğrenciyle paylaşılmasa da
+    // görünür. Değerlendirme ölçütü (puanlama notu) öğrenciye gösterilmez.
+    await expect(page.getByText('Write about your weekend in a short text.')).toBeVisible()
+    await expect(page.getByText(/Zaman ifadeleri, paragraf düzeni/)).toHaveCount(0)
 
     const editor = page.getByLabel('Metniniz')
     await editor.fill('Too short text.')

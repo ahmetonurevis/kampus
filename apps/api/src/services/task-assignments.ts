@@ -3,6 +3,11 @@ import { randomUUID } from 'node:crypto'
 import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
 import { canReadVersion } from '@kampus/school-core/content/visibility.ts'
 import type { AuthorizationSource } from '@kampus/school-core/lib/authorize.ts'
+import {
+  coordinatesArea,
+  coordinatorScopeOf,
+  type CoordinatorScope,
+} from '@kampus/school-core/lib/coordinator-duties.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '@kampus/school-core/lib/scope.ts'
 import {
@@ -15,6 +20,7 @@ import {
 import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 
 import type { Database } from '../db/client.ts'
+import { activeDutiesOf } from '../db/coordinator-duties.ts'
 import { asCoreVersion, findResource, listResourceVersions } from '../db/resources.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
@@ -101,6 +107,11 @@ export type Viewer =
       /** Öğretmen kapsamı (`readScope`): ders verdiği sınıflar ve onların güncel öğrencileri. */
       classIds: ReadonlySet<string>
       studentIds: ReadonlySet<string>
+      /**
+       * Zümre başkanı/akademik koordinatör kapsamı (DOM-YTK-027); görevi yoksa boş. Atama
+       * görünürlüğünü genişletmez: yalnız uyuşmazlıklı teslimlerin okunması ve son puan içindir.
+       */
+      coordination: CoordinatorScope
     }
   | {
       kind: 'learner'
@@ -116,8 +127,17 @@ export async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
     case 'yonetici':
       return { kind: 'admin' }
     case 'ogretmen': {
-      const scope = await readScope(ctx)
-      return { kind: 'teacher', userId, classIds: scope.classIds, studentIds: scope.studentIds }
+      const [scope, duties] = await Promise.all([
+        readScope(ctx),
+        activeDutiesOf(ctx.db, ctx.institutionId, ctx.actor.membershipId),
+      ])
+      return {
+        kind: 'teacher',
+        userId,
+        classIds: scope.classIds,
+        studentIds: scope.studentIds,
+        coordination: coordinatorScopeOf(duties),
+      }
     }
     case 'ogrenci':
     case 'veli': {
@@ -188,6 +208,14 @@ export function visible(viewer: Viewer, assignment: StoredAssignment): boolean {
     default:
       return viewer satisfies never
   }
+}
+
+/**
+ * Kişi atamanın dersinin zümre başkanı veya seviyesinin akademik koordinatörü mü (DOM-YTK-027).
+ * Atama görünürlüğü vermez; uyuşmazlıklı teslimin okunması ve son puan bununla açılır.
+ */
+export function coordinates(viewer: Viewer, assignment: StoredAssignment): boolean {
+  return viewer.kind === 'teacher' && coordinatesArea(viewer.coordination, assignment.area)
 }
 
 function listFilter(
@@ -270,14 +298,26 @@ function staffView(assignment: StoredAssignment, content: AssignmentContentRef) 
   }
 }
 
-function viewOf(viewer: Viewer, assignment: StoredAssignment, content: AssignmentContentRef) {
-  if (viewer.kind === 'admin') return staffView(assignment, content)
-  if (viewer.kind === 'teacher') {
-    if (assignment.assignedByUserId === viewer.userId) return staffView(assignment, content)
-    // Atayan olmayan öğretmen kapsamı dışındaki sınıf ve öğrenci kimliklerini görmez (DOM-YTK-022).
-    const targets = assignment.targets.filter((target) => teacherReaches(viewer, target))
-    return staffView({ ...assignment, targets }, content)
-  }
+type StaffViewer = Exclude<Viewer, { kind: 'learner' }>
+type LearnerViewer = Extract<Viewer, { kind: 'learner' }>
+
+function staffViewOf(
+  viewer: StaffViewer,
+  assignment: StoredAssignment,
+  content: AssignmentContentRef,
+) {
+  if (viewer.kind === 'admin' || assignment.assignedByUserId === viewer.userId)
+    return staffView(assignment, content)
+  // Atayan olmayan öğretmen kapsamı dışındaki sınıf ve öğrenci kimliklerini görmez (DOM-YTK-022).
+  const targets = assignment.targets.filter((target) => teacherReaches(viewer, target))
+  return staffView({ ...assignment, targets }, content)
+}
+
+function learnerViewOf(
+  viewer: LearnerViewer,
+  assignment: StoredAssignment,
+  content: AssignmentContentRef,
+) {
   return {
     view: 'learner' as const,
     ...sharedView(assignment, content),
@@ -292,8 +332,12 @@ export type TaskAssignmentListInput = Omit<
   'assignedByUserId' | 'learnerTargets'
 >
 
-/** Rol kapsamlı, sayfalı atama listesi (IST-034). */
-export async function listTaskAssignments(ctx: ServiceContext, input: TaskAssignmentListInput) {
+/**
+ * Rol kapsamlı, sayfalı atama listesinin satırları ve içerik başlıkları (IST-034). Yanıt biçimi
+ * `assignmentView` ile kurulur; kursiyer görünümüne durum özeti `services/task-progress.ts`'te
+ * eklenir.
+ */
+export async function loadTaskAssignmentPage(ctx: ServiceContext, input: TaskAssignmentListInput) {
   const viewer = await viewerOf(ctx)
   const { rows, total } = await listAssignments(ctx.db, ctx.institutionId, {
     ...input,
@@ -311,21 +355,38 @@ export async function listTaskAssignments(ctx: ServiceContext, input: TaskAssign
     ctx.institutionId,
     shown.map((row) => row.resourceVersionId),
   )
-  return {
-    total,
-    items: shown.map((row) => viewOf(viewer, row, contentOf(ctx, refs, row))),
-  }
+  return { viewer, total, rows: shown, refs }
 }
 
 /** Tek atama; kapsam dışı, olmayan veya başka kurumun ataması 404 (varlığı sızmaz). */
-export async function getTaskAssignment(ctx: ServiceContext, assignmentId: string) {
+export async function loadTaskAssignment(ctx: ServiceContext, assignmentId: string) {
   const viewer = await viewerOf(ctx)
   const assignment = await findAssignment(ctx.db, ctx.institutionId, assignmentId)
   if (!assignment || !visible(viewer, assignment)) throw new NotFoundError()
   const refs = await assignmentContentRefs(ctx.db, ctx.institutionId, [
     assignment.resourceVersionId,
   ])
-  return viewOf(viewer, assignment, contentOf(ctx, refs, assignment))
+  return { viewer, assignment, refs }
+}
+
+/** Atamanın personel yanıt biçimi (yönetici, öğretmen). */
+export function staffAssignmentView(
+  ctx: ServiceContext,
+  viewer: StaffViewer,
+  assignment: StoredAssignment,
+  refs: ReadonlyMap<string, AssignmentContentRef>,
+) {
+  return staffViewOf(viewer, assignment, contentOf(ctx, refs, assignment))
+}
+
+/** Atamanın kursiyer ve veli yanıt biçimi; durum özeti `services/task-progress.ts`'te eklenir. */
+export function learnerAssignmentView(
+  ctx: ServiceContext,
+  viewer: LearnerViewer,
+  assignment: StoredAssignment,
+  refs: ReadonlyMap<string, AssignmentContentRef>,
+) {
+  return learnerViewOf(viewer, assignment, contentOf(ctx, refs, assignment))
 }
 
 // --- Yazma --------------------------------------------------------------------------------

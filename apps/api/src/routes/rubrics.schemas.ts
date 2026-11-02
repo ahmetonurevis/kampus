@@ -116,6 +116,13 @@ export const rubricListResponseSchema = pageResponse(
     .meta({ id: 'RubricListItem' }),
 )
 
+export const rubricVersionIdParamsSchema = z.object({
+  versionId: id.describe('Rubrik sürümü kimliği'),
+})
+
+/** Tek rubrik sürümü (atamanın sabitlediği sürüm; puanlama paneli kimlikle okur). */
+export const rubricVersionResponseSchema = dataResponse(rubricVersionSchema)
+
 export const rubricDetailResponseSchema = dataResponse(
   z
     .object({

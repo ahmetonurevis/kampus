@@ -25,6 +25,9 @@ import { TASK_SUBMISSIONS_KEY } from './use-task-submissions.ts'
  * F4b3b2a (DOM-BEC-024, 025): ikinci puanlama örneklemi (atamanın `rowVersion`'ı), elle istem,
  * kör ikinci puan, itiraz (kursiyer veya velisi; `If-Match` yok) ve itiraz kararı. Örneklem
  * atamayı da değiştirir; atama sorguları da tazelenir.
+ *
+ * F4b3b2b (DOM-YTK-027, DOM-BEC-024): uyuşmazlıkta koordinatörün son puanı (`final-scores`);
+ * kuyrukta `awaiting: 'resolution'` süzgeci. Kapsam ve puanlayıcı bağımsızlığı sunucudadır.
  */
 
 /** Puan ve istek teslimi, listeyi ve kuyruğu değiştirir. */
@@ -90,6 +93,10 @@ export const TASK_GRADING_MESSAGES = {
     'Son tarihi olmayan görevde örneklem seçilmez; ikinci puanı teslim bazında isteyin.',
   rater_not_independent: 'Bu teslimi daha önce puanladınız; bağımsız bir öğretmen puanlamalı.',
   appeal_decided: 'Bu itiraz zaten sonuçlandı.',
+  final_score_not_needed:
+    'Son puan yalnız iki puanlayıcı arasında uyuşmazlık varsa verilir; sonuç zaten kesinleşmiş olabilir.',
+  coordinator_required:
+    'Uyuşmazlıkta son puanı dersin zümre başkanı veya seviyenin akademik koordinatörü verir.',
 } as const satisfies CommandMessages
 
 /** İtiraz hata metinleri (kursiyer ve veli; DOM-BEC-025). */
@@ -232,6 +239,26 @@ export function secondScoreTaskSubmissionRequest(
   })
 }
 
+/** Son puanın girdisi; `version` teslimin okunan `rowVersion`'ıdır. Gövde ilk puanınkiyle aynı. */
+export type FinalScoreTaskSubmissionInput = ScoreTaskSubmissionInput
+
+export function finalScoreTaskSubmissionRequest(
+  client: KampusClient,
+  { submissionId, score }: FinalScoreTaskSubmissionInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/task-submissions/{submissionId}/final-scores', {
+    params: {
+      path: { submissionId },
+      header: {
+        'idempotency-key': headers['idempotency-key'],
+        'if-match': requireIfMatch(headers),
+      },
+    },
+    body: score,
+  })
+}
+
 /** Elle ikinci puanlama isteminin girdisi; `version` teslimin okunan `rowVersion`'ıdır. */
 export interface RequestSecondRatingInput {
   submissionId: string
@@ -328,6 +355,10 @@ export const secondScoreTaskSubmissionCommand = {
   ...scoreTaskSubmissionCommand,
   request: secondScoreTaskSubmissionRequest,
 } as const
+export const finalScoreTaskSubmissionCommand = {
+  ...scoreTaskSubmissionCommand,
+  request: finalScoreTaskSubmissionRequest,
+} as const
 export const requestSecondRatingCommand = {
   request: requestSecondRatingRequest,
   version: versionOf,
@@ -363,6 +394,14 @@ export const decideTaskAppealCommand = {
 /** İkinci puanı verir (`POST /task-submissions/:id/second-scores`, 201; DOM-BEC-024). */
 export function useSecondScoreTaskSubmission(options: CommandOptions = {}) {
   return useApiCommand({ ...secondScoreTaskSubmissionCommand, ...withSuccess(options) })
+}
+
+/**
+ * Uyuşmazlıkta son puanı verir (`POST /task-submissions/:id/final-scores`, 201; DOM-YTK-027,
+ * DOM-BEC-024). Yalnız kapsamındaki koordinatör; iki puanlayıcıdan biri olamaz.
+ */
+export function useFinalScoreTaskSubmission(options: CommandOptions = {}) {
+  return useApiCommand({ ...finalScoreTaskSubmissionCommand, ...withSuccess(options) })
 }
 
 /** Elle ikinci puanlama ister (`POST /task-submissions/:id/second-rating-requests`, 201). */

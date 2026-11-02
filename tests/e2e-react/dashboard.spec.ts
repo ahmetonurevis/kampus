@@ -694,6 +694,300 @@ test.describe('Genel Bakış: ders programı ve son quiz kartları', () => {
   })
 })
 
+// --- Haberler, yanıt bekleyen sorular ve not eğilimi (OG-226) -----------------------------------
+
+type ApiRow<T> = { id: string; record: T }
+type NewsRecord = { title?: string; withdrawnAt?: string }
+type QuestionRecord = { answeredAt: string | null; withdrawnAt?: string | null }
+type GradeRecord = { date?: string; score: number; subjectId: string }
+
+/** Koleksiyonun bütün satırları (ekranın hesabından ayrı, 100'lük sayfalarla). */
+async function allRows<T>(client: ApiClient, collection: string, query = ''): Promise<ApiRow<T>[]> {
+  const rows: ApiRow<T>[] = []
+  for (let pageNumber = 1; ; pageNumber += 1) {
+    const result = await client.get(
+      `/api/v1/collections/${collection}?pageSize=100&page=${pageNumber}${query}`,
+    )
+    expect(result.status, `${collection} listesi`).toBe(200)
+    const body = result.body as { data: ApiRow<T>[]; meta: { total: number } }
+    rows.push(...body.data)
+    if (body.data.length === 0 || rows.length >= body.meta.total) return rows
+  }
+}
+
+/** Ekranın göstermesi gereken haber başlıkları: rolün ilk üç yayımlanmış (geri çekilmemiş) duyurusu. */
+async function expectedNews(client: ApiClient): Promise<string[]> {
+  const result = await client.get('/api/v1/collections/announcements?sort=-date&pageSize=10')
+  expect(result.status, 'duyuru listesi').toBe(200)
+  return (result.body as { data: ApiRow<NewsRecord>[] }).data
+    .filter((row) => !row.record.withdrawnAt)
+    .slice(0, 3)
+    .map((row) => row.record.title ?? '')
+}
+
+const newsTitles = (page: Page) =>
+  region(page, 'Kampüsten haberler')
+    .getByRole('list', { name: 'Kampüsten haberler' })
+    .getByRole('listitem')
+    .getByRole('link')
+
+/** Aylık not ortalamaları (Europe/Istanbul ayı), eskiden yeniye; ekranın sayım ucundan bağımsız. */
+function monthlyAverages(grades: readonly ApiRow<GradeRecord>[]) {
+  const months = new Map<string, number[]>()
+  for (const { record } of grades) {
+    if (!record.date) continue
+    const month = istanbulDay(new Date(record.date)).slice(0, 7)
+    months.set(month, [...(months.get(month) ?? []), record.score])
+  }
+  return [...months]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .slice(-6)
+    .map(([month, scores]) => ({
+      month,
+      value: Math.round(scores.reduce((total, score) => total + score, 0) / scores.length),
+    }))
+}
+
+test.describe('Genel Bakış: haberler, yanıt bekleyen sorular ve not eğilimi', () => {
+  for (const role of roles) {
+    test(`${role}: Kampüsten haberler rolün son duyurularını gösterir ve Duyurular'a bağlanır`, async ({
+      page,
+      loginAs,
+      api,
+    }) => {
+      const expected = await expectedNews(await api(role))
+      await loginAs(role)
+      await openDashboard(page, role)
+      await expectCardsLoaded(page)
+      const news = region(page, 'Kampüsten haberler')
+      await expect(news).toBeVisible()
+      if (expected.length === 0) {
+        await expect(news.getByText('Yayında duyuru yok.')).toBeVisible()
+      } else {
+        await expect(newsTitles(page)).toHaveText(expected)
+        await expect(newsTitles(page).first()).toHaveAttribute(
+          'href',
+          new RegExp(`/${role}/duyurular\\?duyuru=`),
+        )
+      }
+      await expect(news.getByRole('link', { name: 'Duyuruları aç' })).toHaveAttribute(
+        'href',
+        `/${role}/duyurular`,
+      )
+    })
+  }
+
+  test('haber başlığı duyuruyu sağ panelde açar', async ({ page, loginAs, api }) => {
+    const [first] = await expectedNews(await api('ogrenci'))
+    expect(first, 'öğrencinin en az bir duyurusu var').toBeTruthy()
+    await loginAs('ogrenci')
+    await openDashboard(page, 'ogrenci')
+    await newsTitles(page).first().click()
+    await expect(page).toHaveURL(/\/ogrenci\/duyurular\?duyuru=/)
+    await expect(page.getByRole('dialog', { name: 'Duyuru' })).toContainText(first ?? '')
+  })
+
+  test('DOM-ILT-001: hedef kitle sunucuda süzülür: veli yalnız kendine hedeflenen duyuruyu görür', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogrenci', 'veli', 'ogretmen'] })
+    const admin = await api(school.user('yonetici'))
+    const publish = async (title: string, roles: readonly string[]) => {
+      const response = await admin.context.fetch('/api/v1/announcements', {
+        method: 'POST',
+        data: {
+          title,
+          text: 'Hedef kitle sınaması için yayınlandı.',
+          category: 'Bilgilendirme',
+          target: { roles },
+        },
+        headers: { 'idempotency-key': randomUUID() },
+        failOnStatusCode: false,
+      })
+      expect([200, 201], await response.text()).toContain(response.status())
+    }
+    await publish('Velilere özel toplantı', ['veli'])
+    await publish('Öğrencilere özel etkinlik', ['ogrenci'])
+
+    await loginAs(school.user('veli'))
+    await openDashboard(page, 'veli')
+    await expect(newsTitles(page)).toHaveText(['Velilere özel toplantı'])
+    await loginAs(school.user('ogrenci'))
+    await openDashboard(page, 'ogrenci')
+    await expect(newsTitles(page)).toHaveText(['Öğrencilere özel etkinlik'])
+    await loginAs(school.user('ogretmen'))
+    await openDashboard(page, 'ogretmen')
+    await expect(region(page, 'Kampüsten haberler').getByText('Yayında duyuru yok.')).toBeVisible()
+    await loginAs(school.user('yonetici'))
+    await openDashboard(page, 'yonetici')
+    await expect(newsTitles(page)).toHaveText([
+      'Öğrencilere özel etkinlik',
+      'Velilere özel toplantı',
+    ])
+  })
+
+  test('öğretmen: yanıt bekleyen soru sayacı ve listesi kendi kuyruğuyla eşleşir', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const teacher = await api('ogretmen')
+    const open = (await allRows<QuestionRecord>(teacher, 'questions')).filter(
+      (row) => !row.record.answeredAt && !row.record.withdrawnAt,
+    )
+    expect(open.length, 'Selin Kaya yanıt bekleyen soruya sahip').toBeGreaterThan(0)
+    await loginAs('ogretmen')
+    await openDashboard(page, 'ogretmen')
+    await expectCardsLoaded(page)
+    await expect
+      .poll(() => cardValue(page, 'Yanıt bekleyen soru').innerText())
+      .toBe(tr(open.length))
+    const list = region(page, 'Yanıt bekleyen sorular')
+    await expect(list.getByRole('listitem')).toHaveCount(Math.min(3, open.length))
+    await expect(list.getByRole('link', { name: 'Soru kuyruğunu aç' })).toHaveAttribute(
+      'href',
+      '/ogretmen/sorular',
+    )
+    await list.getByRole('listitem').first().getByRole('link').first().click()
+    await expect(page).toHaveURL(/\/ogretmen\/sorular\?soru=/)
+    await expect(page.getByRole('dialog')).toBeVisible()
+  })
+
+  test('öğrenci ve veli: not ortalaması eğilimi aylık ortalamalardan gelir, çocuğa göre değişir', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const parent = await api('veli')
+    const children = await students(parent)
+    const summaries: string[] = []
+    await loginAs('veli')
+    for (const name of ['Deniz Yılmaz', 'Ece Yılmaz']) {
+      const child = children.find((row) => row.record.name === name)
+      expect(child, `${name} velinin çocuğu`).toBeTruthy()
+      const months = monthlyAverages(
+        await allRows<GradeRecord>(parent, 'grades', `&studentId=${child?.id}`),
+      )
+      expect(months.length, `${name} en az iki aylık not`).toBeGreaterThanOrEqual(2)
+      await openDashboard(page, 'veli', `?cocuk=${child?.id}`)
+      const trend = region(page, 'Not ortalaması eğilimi')
+      await expect(trend).toBeVisible()
+      await expect(trend.locator('.trend-bars')).toHaveAttribute('aria-hidden', 'true')
+      const first = months[0]
+      const last = months.at(-1)
+      const summary = trend.getByText(/ayında .*En yüksek ay/)
+      await expect(summary).toContainText(`ayında ${first?.value},`)
+      await expect(summary).toContainText(`ayında ${last?.value} `)
+      summaries.push(await summary.innerText())
+      await expect(trend.getByRole('link', { name: 'Notları aç' })).toHaveAttribute(
+        'href',
+        new RegExp(`/veli/akademik-takip\\?cocuk=${child?.id}&sekme=notlar$`),
+      )
+    }
+    expect(summaries[0], 'iki çocuğun özeti farklı').not.toBe(summaries[1])
+
+    const student = await api('ogrenci')
+    const own = (await students(student))[0]
+    const months = monthlyAverages(
+      await allRows<GradeRecord>(student, 'grades', `&studentId=${own?.id}`),
+    )
+    await loginAs('ogrenci')
+    await openDashboard(page, 'ogrenci')
+    await expect(region(page, 'Not ortalaması eğilimi')).toContainText(
+      `ayında ${months.at(-1)?.value} `,
+    )
+  })
+
+  test('öğretmen: sınıf branş ortalaması eğilimi kendi branşının notlarından hesaplanır', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const teacher = await api('ogretmen')
+    const own = (await allRows<{ subjectId: string }>(teacher, 'teachers'))[0]
+    const months = monthlyAverages(
+      (await allRows<GradeRecord>(teacher, 'grades')).filter(
+        (row) => row.record.subjectId === own?.record.subjectId,
+      ),
+    )
+    expect(months.length, 'öğretmenin branşında en az iki aylık not').toBeGreaterThanOrEqual(2)
+    await loginAs('ogretmen')
+    await openDashboard(page, 'ogretmen')
+    const trend = region(page, 'Sınıf branş ortalaması')
+    await expect(trend).toBeVisible()
+    await expect(trend).toContainText(`ayında ${months[0]?.value},`)
+    await expect(trend).toContainText(`ayında ${months.at(-1)?.value} `)
+    await expect(trend.locator('.trend-bars')).toHaveAttribute('aria-hidden', 'true')
+  })
+
+  test('iki aydan az notta grafik yerine kısa metin gösterilir', async ({ page, loginAs }) => {
+    // Sayım ucu tek aylık seri döndürür; gerçek kayıt yazılmaz.
+    await page.route(/\/collections\/grades\/counts/, (route) =>
+      route.fulfill({
+        status: 200,
+        json: { data: [{ value: '2026-10', count: 2, sum: 120 }], meta: { total: 2, sum: 120 } },
+      }),
+    )
+    await loginAs('ogrenci')
+    await openDashboard(page, 'ogrenci')
+    await expectCardsLoaded(page)
+    const trend = region(page, 'Not ortalaması eğilimi')
+    await expect(trend.getByText('Eğilim için en az 2 ayın notu gerekir.')).toBeVisible()
+    await expect(trend.locator('.trend-bars')).toHaveCount(0)
+  })
+
+  test('modül kapalıyken bölümler çizilmez: haberler communication, soru learning, eğilim academic', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['ogretmen', 'ogrenci'] })
+    const admin = await api(school.user('yonetici'))
+    await loginAs(school.user('ogretmen'))
+    await openDashboard(page, 'ogretmen')
+    await expectCardsLoaded(page)
+    await expect(card(page, 'Yanıt bekleyen soru')).toBeVisible()
+    await expect(region(page, 'Yanıt bekleyen sorular')).toBeVisible()
+    await expect(region(page, 'Sınıf branş ortalaması')).toBeVisible()
+    await expect(region(page, 'Kampüsten haberler')).toBeVisible()
+
+    await setModule(admin, 'learning', false)
+    await openDashboard(page, 'ogretmen')
+    await expectCardsLoaded(page)
+    await expect(card(page, 'Yanıt bekleyen soru')).toHaveCount(0)
+    await expect(region(page, 'Yanıt bekleyen sorular')).toHaveCount(0)
+    await expect(region(page, 'Sınıf branş ortalaması')).toBeVisible()
+    await setModule(admin, 'learning', true)
+
+    await setModule(admin, 'academic', false)
+    await openDashboard(page, 'ogretmen')
+    await expectCardsLoaded(page)
+    await expect(region(page, 'Sınıf branş ortalaması')).toHaveCount(0)
+    await expect(region(page, 'Yanıt bekleyen sorular')).toBeVisible()
+    await setModule(admin, 'academic', true)
+
+    await setModule(admin, 'communication', false)
+    await openDashboard(page, 'ogretmen')
+    await expectCardsLoaded(page)
+    await expect(region(page, 'Kampüsten haberler')).toHaveCount(0)
+    await loginAs(school.user('ogrenci'))
+    await openDashboard(page, 'ogrenci')
+    await expectCardsLoaded(page)
+    await expect(region(page, 'Kampüsten haberler')).toHaveCount(0)
+    await expect(region(page, 'Not ortalaması eğilimi')).toBeVisible()
+    await setModule(admin, 'academic', false)
+    await openDashboard(page, 'ogrenci')
+    await expectCardsLoaded(page)
+    await expect(region(page, 'Not ortalaması eğilimi')).toHaveCount(0)
+    await setModule(admin, 'academic', true)
+    await setModule(admin, 'communication', true)
+  })
+})
+
 test.describe('Genel Bakış: dar ekran', () => {
   for (const role of roles) {
     test(`${role}: 390 px genişlikte yatay taşma olmaz`, async ({ page, loginAs }) => {

@@ -117,6 +117,14 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'toggle(',
   ),
   'GET /api/v1/dashboard': liste('dashboard.test.ts', 'başka kurumun kaydı özete girmez'),
+  'GET /api/v1/class-metrics': liste(
+    'management-metrics.test.ts',
+    'başka kurumun verisi iki ucun toplamına girmez',
+  ),
+  'GET /api/v1/teacher-metrics': liste(
+    'management-metrics.test.ts',
+    'başka kurumun verisi iki ucun toplamına girmez',
+  ),
 
   // --- Genel koleksiyon okuması ---------------------------------------------------------------
   'GET /api/v1/collections/:collection': COLLECTIONS,

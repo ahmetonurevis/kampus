@@ -22,7 +22,7 @@ Sayfa rehberi iki yerdedir: Oğuzhan'ın alanındaki React sayfaları (dashboard
 
 <!-- Onur: kayıt ve finans sonu -->
 
-Aşağıdaki tablolar Vue demosunun sayfa yollarıdır; yalnız React'te bulunan İçerik Havuzu (`/yonetici/icerik-havuzu`, `/ogretmen/icerik-havuzu`) bunlarda yer almaz.
+Aşağıdaki tablolar Vue demosunun sayfa yollarıdır; yalnız React'te bulunan İçerik Havuzu (`/yonetici/icerik-havuzu`, `/ogretmen/icerik-havuzu`) ve Yoklama Düzeltme (`/yonetici/yoklama-duzeltme`) bunlarda yer almaz.
 
 ## Yönetici
 

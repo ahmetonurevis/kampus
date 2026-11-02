@@ -1,0 +1,14 @@
+---
+etki: minor
+---
+
+Dil okulunda grup açma ve planlama kuralları eklendi (OG-029; IST-077, DOM-DIL-003, -008, -040…045).
+
+- Yeni `lib/language-groups.ts`: grup etkin bir kurun tarihli açılışıdır (ad, yaş bandı, öğretmen üyeliği, derslik ya da çevrim içi, haftalık kalıp gün + saat, başlangıç, kapasite ≤ 18 ve ≤ kurun en çok mevcudu). Seviye ve oturum uzunluğu kurdandır. Oturum takvimi ve bitiş kurun toplam saatinden hesaplanır (`groupSessions`, `groupEndDate`); `running`/`completed` tarihten türetilir (`groupStatus`).
+- İşlemler: `planGroupCreation`, `planGroupUpdate` (kursiyerli ya da başlamış grupta gün/saat, başlangıç ve yaş bandı kilitli, 422 `group_schedule_locked`), `planGroupOpen` (açılış sayısı 422 `group_below_minimum`, öğretmen/derslik zorunlu), `planGroupCancellation` (gerekçeli), `planGroupMerge` (aynı kur ve yaş bandı, kapasite, farklı gün/saatte kursiyer onayı; kaynak iptal edilir, kursiyerler taşınır).
+- Kurallar: yasal çalışma aralığı 07.00–23.00, çocuk/genç grubunda 21.00 (422 `group_outside_legal_hours`, `group_minor_late`); öğretmen ve derslik çakışması kurumun kapanmamış gruplarıyla (422 `group_teacher_conflict`, `group_room_conflict`); ad tekil (409 `group_name_exists`).
+- Yerleştirme sözleşmesi (ON-058 için): `planGroupPlacement` kapasite, mükerrer (aynı grup, aynı kurun başka grubu), seviye (öğretmen gerekçesi), yaş bandı (yönetici onayı), 21.00 ve kursiyerin saat çakışmasını denetler. Bekleme listesi: `waitlistQueue`, `suggestWaitlistOffers` (48 saatlik teklif önerisi, süresi dolanlar).
+- Okuma: `canReadGroup` (öğretmen kendi ve koordinatörü olduğu seviyenin grupları, öğrenci/veli kendi grubu), `groupView` (öğrenci/veli daraltılmış).
+- `planCourseArchive` isteğe bağlı `openGroups` alır: kapanmamış grubu olan kur 422 `course_has_open_groups` (DOM-DIL-008).
+- Yetki tablosuna `group.read` (beş rol), `group.manage` (yönetici, öğretmen + koordinatör görevi), `group.waitlist` (yönetici, ön büro) eklendi; modüle değil kurum türüne bağlıdır (okulda 404).
+- İnceleme düzeltmeleri: açılmış grupta öğretmen ve yüz yüzede derslik boşaltılamaz (422 `group_teacher_required`, `group_room_required`); grup kapasitesinin kurun mevcuduna uyumu yalnız kapasite yazılırken denetlenir; `planCourseUpdate` isteğe bağlı `openGroups` alır ve en çok mevcudu kapanmamış grubun kapasitesinin altına indirmez (422 `course_max_below_group_capacity`). `planGroupMerge` gövdesi `sourceVersion` ister, bağlamı `learnerBirthDates` alır ve taşınan her kursiyeri saat çakışması (`learner_schedule_conflict`) ve 21.00 sınırı (`group_minor_late`, `learner_birth_date_required`) için denetler. `planGroupPlacement` seviye gerekçesini yalnız öğretmen ve yöneticiden kabul eder; yaş bantları ayrıdır (çocuk–genç geçişi yok), istisna yalnız 18 yaş altının yetişkin, yetişkinin genç grubuna yönetici gerekçesiyle girmesidir. `groupsBlockingCourseArchive` kapasiteyi de döndürür.

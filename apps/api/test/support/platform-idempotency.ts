@@ -66,4 +66,6 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   'POST /api/v1/students/{studentId}/guardians',
   // Kur oluşturma (routes/courses.ts; DOM-DIL-005).
   'POST /api/v1/courses',
+  // Grup planlama (routes/language-groups.ts; IST-077, DOM-DIL-008).
+  'POST /api/v1/groups',
 ]

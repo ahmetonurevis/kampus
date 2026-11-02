@@ -168,4 +168,10 @@ export const PLATFORM_OPERATION_COMMANDS = {
   'course.read': spec(null, [...SCOPE]),
   'course.manage': spec(null, [...SCOPE]),
   'course.eozel': spec(null, [...SCOPE]),
+  // Dil okulu grubu (`lib/language-groups.ts`; IST-077, DOM-DIL-008, -040…043): kur gibi modüle
+  // değil kurum türüne bağlıdır (okulda 404). Kayıtlar ilişkisel tablolardadır (`language_groups`,
+  // `language_group_members`, `language_group_waitlist`).
+  'group.read': spec(null, [...SCOPE]),
+  'group.manage': spec(null, [...SCOPE]),
+  'group.waitlist': spec(null, [...SCOPE]),
 } as const satisfies Record<string, CommandSpec>

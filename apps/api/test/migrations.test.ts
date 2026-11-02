@@ -738,7 +738,7 @@ describe('0013: beceri görevi tabloları', () => {
         await readFile(path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'),
       )
       assert.equal(first, journal.entries.length)
-      assert.equal(journal.entries.at(-1)?.tag, '0028_create_courses')
+      assert.equal(journal.entries.at(-1)?.tag, '0029_create_groups')
       await migrate(fresh, { migrationsFolder: MIGRATIONS_FOLDER })
       assert.equal(await count(), first)
     } finally {
@@ -1087,5 +1087,169 @@ describe('0028: kur programı tablosu', () => {
     await violates(course(a.id, id(4), { next: id(2) }), 'courses_next_course_fkey')
     await violates(course(a.id, id(4), { next: id(4) }), 'courses_next_course_check')
     await db.execute(course(a.id, id(4), { next: id(1), approval: 'approved' }))
+  })
+})
+
+describe('0029: dil okulu grup tabloları', () => {
+  let db: Database
+  let close: () => Promise<void>
+  let app: Awaited<ReturnType<typeof buildTestApp>>
+
+  before(async () => {
+    ;({ db, close } = await createTestDatabase())
+    app = await buildTestApp(db)
+  })
+  after(async () => {
+    await app.close()
+    await close()
+  })
+
+  const rows = async <T>(query: ReturnType<typeof sql>) =>
+    ((await db.execute(query)) as unknown as { rows: T[] }).rows
+  const violates = async (query: ReturnType<typeof sql>, constraint: string) => {
+    await assert.rejects(db.execute(query), (error: unknown) => {
+      const cause = (error as { cause?: { constraint?: string } }).cause
+      assert.equal(cause?.constraint ?? (error as { constraint?: string }).constraint, constraint)
+      return true
+    })
+  }
+
+  test('indeksler institution_id ile başlar; kurum kolonları zorunlu, zamanlar timestamptz', async () => {
+    for (const table of ['language_groups', 'language_group_members', 'language_group_waitlist']) {
+      const indexes = await rows<{ indexname: string; indexdef: string }>(
+        sql`select indexname, indexdef from pg_indexes where tablename = ${table}`,
+      )
+      assert.ok(indexes.length >= 2, table)
+      for (const index of indexes)
+        assert.match(index.indexdef, /\(institution_id[,)]/, index.indexname)
+      const columns = await rows<{ column_name: string; data_type: string; is_nullable: string }>(
+        sql`select column_name, data_type, is_nullable from information_schema.columns
+            where table_name = ${table}`,
+      )
+      const byName = new Map(columns.map((column) => [column.column_name, column]))
+      for (const required of ['institution_id', 'created_at', 'updated_at', 'version'])
+        assert.equal(byName.get(required)?.is_nullable, 'NO', `${table}.${required}`)
+      for (const column of columns)
+        assert.notEqual(column.data_type, 'timestamp without time zone', column.column_name)
+    }
+  })
+
+  test('DOM-DIL-008, -040, -043: kur bağı, kapasite, derslik, yaşam döngüsü ve bekleme sırası veritabanında da korunur', async () => {
+    const a = await createInstitution(app, { type: 'language_school' })
+    const b = await createInstitution(app, { type: 'language_school' })
+    const id = (n: number) => `00000000-0000-4000-8000-0000000002${String(n).padStart(2, '0')}`
+    const courseId = id(99)
+    await db.execute(sql`insert into courses (institution_id, id, name, name_key, language, level,
+        total_hours, weekly_hours, session_minutes, min_learners, max_learners, certified, status,
+        activated_at, e_ozel_approval)
+      values (${a.id}, ${courseId}, 'Kur', 'kur', 'en', 'B1', 12, 4, 45, 2, 12, false, 'active',
+        ${FIXED_NOW}, 'not_submitted')`)
+    const group = (
+      institutionId: string,
+      groupId: string,
+      overrides: {
+        name?: string
+        capacity?: number
+        delivery?: string
+        room?: string | null
+        state?: string
+        opened?: boolean
+        schedule?: string
+        end?: string
+        merged?: string | null
+      } = {},
+    ) => {
+      const name = overrides.name ?? `Grup ${groupId.slice(-3)}`
+      const room = overrides.room === undefined ? 'D1' : overrides.room
+      const cancelled = overrides.state === 'cancelled'
+      return sql`insert into language_groups (institution_id, id, course_id, name, name_key, age_band,
+          delivery, room, room_key, schedule, start_date, end_date, capacity, state, opened_at,
+          cancelled_at, cancel_reason, merged_into_group_id)
+        values (${institutionId}, ${groupId}, ${courseId}, ${name}, ${name.toLocaleLowerCase('tr-TR')},
+          'adult', ${overrides.delivery ?? 'in_person'}, ${room}, ${room === null ? null : room.toLowerCase()},
+          ${overrides.schedule ?? '[{"weekday":1,"startTime":"18:00"}]'}::jsonb, '2026-10-12',
+          ${overrides.end ?? '2026-10-28'}, ${overrides.capacity ?? 10}, ${overrides.state ?? 'planned'},
+          ${overrides.opened ? FIXED_NOW : null}, ${cancelled ? FIXED_NOW : null},
+          ${cancelled ? 'İptal' : null}, ${overrides.merged ?? null})`
+    }
+    await db.execute(group(a.id, id(1)))
+    // Kur aynı kurumdadır.
+    await violates(group(b.id, id(2)), 'language_groups_course_fkey')
+    await violates(group(a.id, id(2), { capacity: 19 }), 'language_groups_capacity_check')
+    await violates(group(a.id, id(2), { delivery: 'online' }), 'language_groups_room_check')
+    await violates(group(a.id, id(2), { state: 'open' }), 'language_groups_lifecycle_check')
+    await violates(group(a.id, id(2), { end: '2026-10-01' }), 'language_groups_dates_check')
+    await violates(group(a.id, id(2), { schedule: '[]' }), 'language_groups_schedule_check')
+    await violates(group(a.id, id(2), { merged: id(1) }), 'language_groups_cancel_check')
+    // Ad iptal edilmemiş gruplarda tekildir.
+    await violates(group(a.id, id(2), { name: 'Grup 201' }), 'language_groups_name_key')
+    await db.execute(group(a.id, id(2), { name: 'Grup 201', state: 'cancelled', merged: id(1) }))
+    await db.execute(
+      group(a.id, id(3), { delivery: 'online', room: null, state: 'open', opened: true }),
+    )
+
+    // Kursiyer aynı kurumun `students` kaydıdır (bileşik yabancı anahtar, üretilen koleksiyon).
+    const student = (institutionId: string, collection: string, recordId: string) =>
+      sql`insert into records (institution_id, collection, id, data, position)
+        values (${institutionId}, ${collection}, ${recordId}, '{}'::jsonb, 1)`
+    await db.execute(student(a.id, 'students', 's1'))
+    await db.execute(student(a.id, 'teachers', 's2'))
+    await db.execute(student(b.id, 'students', 's3'))
+    const member = (groupId: string, studentId: string) =>
+      sql`insert into language_group_members (institution_id, id, group_id, student_id, status, joined_at)
+        values (${a.id}, gen_random_uuid(), ${groupId}, ${studentId}, 'active', ${FIXED_NOW})`
+    for (const missing of ['s-yok', 's2', 's3'])
+      await violates(member(id(1), missing), 'language_group_members_student_fkey')
+    await db.execute(member(id(1), 's1'))
+    await violates(member(id(1), 's1'), 'language_group_members_group_student_key')
+    await db.execute(member(id(3), 's1'))
+
+    const waiting = (
+      overrides: { student?: string | null; prospect?: string | null; status?: string } = {},
+    ) =>
+      sql`insert into language_group_waitlist (institution_id, id, course_id, group_id, student_id,
+          prospect_id, requested_at, status)
+        values (${a.id}, gen_random_uuid(), ${courseId}, ${id(1)},
+          ${overrides.student === undefined ? 's9' : overrides.student},
+          ${overrides.prospect ?? null}, ${FIXED_NOW}, ${overrides.status ?? 'waiting'})`
+    await db.execute(waiting())
+    await violates(waiting(), 'language_group_waitlist_student_key')
+    await violates(waiting({ student: null }), 'language_group_waitlist_learner_check')
+    await violates(waiting({ prospect: 'p1' }), 'language_group_waitlist_learner_check')
+    await violates(
+      waiting({ student: 's8', status: 'offered' }),
+      'language_group_waitlist_offer_check',
+    )
+    await db.execute(waiting({ student: null, prospect: 'p1' }))
+  })
+
+  test('öğretmen aynı kurumun üyeliğidir; üyelik silinince yalnız öğretmen boşalır', async () => {
+    const a = await createInstitution(app, { type: 'language_school' })
+    const b = await createInstitution(app, { type: 'language_school' })
+    const courseId = '00000000-0000-4000-8000-000000000398'
+    await db.execute(sql`insert into courses (institution_id, id, name, name_key, language, level,
+        total_hours, weekly_hours, session_minutes, min_learners, max_learners, certified, status,
+        activated_at, e_ozel_approval)
+      values (${a.id}, ${courseId}, 'Kur', 'kur', 'en', 'B1', 12, 4, 45, 2, 12, false, 'active',
+        ${FIXED_NOW}, 'not_submitted')`)
+    const teacher = await createMember(app, a.id, 'ogretmen')
+    const group = (groupId: string, membershipId: string) =>
+      sql`insert into language_groups (institution_id, id, course_id, name, name_key, age_band,
+          teacher_membership_id, delivery, room, room_key, schedule, start_date, end_date, capacity,
+          state)
+        values (${a.id}, ${groupId}, ${courseId}, ${groupId}, ${groupId}, 'adult', ${membershipId},
+          'online', null, null, '[{"weekday":1,"startTime":"18:00"}]'::jsonb, '2026-10-12',
+          '2026-10-28', 10, 'planned')`
+    await violates(
+      group('00000000-0000-4000-8000-000000000301', b.adminMembershipId),
+      'language_groups_teacher_fkey',
+    )
+    const groupId = '00000000-0000-4000-8000-000000000302'
+    await db.execute(group(groupId, teacher.membershipId))
+    await db.execute(sql`delete from memberships where id = ${teacher.membershipId}`)
+    const [row] = await rows<{ institution_id: string; teacher_membership_id: string | null }>(
+      sql`select institution_id, teacher_membership_id from language_groups where id = ${groupId}`,
+    )
+    assert.deepEqual(row, { institution_id: a.id, teacher_membership_id: null })
   })
 })

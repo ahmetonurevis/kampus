@@ -24,14 +24,16 @@ import {
   type AudioTranscoder,
   type MediaContentCode,
 } from './audio-transcoder.ts'
-import { recordFileCheck } from './files.ts'
+import { recordFileCheck, releaseSupersededObject } from './files.ts'
 
 /**
  * Yüklenen sesin dönüşümü (ADR 0003 karar 10; OG-262; DOM-BEC-054). `speaking_recording` ve
  * `listening_audio` yüklemesi `processing` başlar; `media.transcode` işi nesneyi geçici klasöre
  * indirir, tek biçime çevirir, süreyi ölçer, sessiz ya da boş kaydı reddeder, dönüşmüş nesneyi
- * yazar ve satırı tek transaction'da `ready` yapar (`file.ready` denetimi); sonra özgün nesneyi
- * siler (en az veri). Teslim zamanı yükleme zamanıdır; dönüşüm satırın `created_at`'ine dokunmaz.
+ * yazar ve satırı tek transaction'da `ready` yapar (`file.ready` denetimi; özgün anahtar aynı
+ * güncellemede `superseded_storage_key`'e geçer); sonra özgün nesneyi siler (en az veri). Silme
+ * başarısızsa iz kalır ve nesneyi `files.purge-unattached` ya da imha siler. Teslim zamanı yükleme
+ * zamanıdır; dönüşüm satırın `created_at`'ine dokunmaz.
  *
  * İdempotenttir: `processing` olmayan dosyada dönüşüm yapılmaz. `ready` dosyada yalnız özgün
  * nesnenin silinmesi yeniden denenir (silme idempotenttir); eşzamanlı iki teslimden kaybedenin
@@ -74,21 +76,6 @@ export type TranscodeOutcome =
   | { outcome: 'ready'; durationMs: number }
   | { outcome: 'rejected'; code: MediaContentCode | 'media_retries_exhausted' }
   | { outcome: 'skipped'; reason: 'missing' | 'not_audio' | 'not_processing' | 'already_ready' }
-
-/**
- * Yüklemede yazılan özgün nesnenin anahtarı: yükleme anahtarı ve satırın oluşturma anı aynı
- * `now`'dan gelir (`uploadFile`), bu yüzden `ready` satırdan da yeniden kurulur.
- */
-export function originalStorageKey(
-  row: Pick<StoredFile, 'institutionId' | 'purpose' | 'id' | 'createdAt'>,
-) {
-  return storageKeyFor({
-    institutionId: row.institutionId,
-    purpose: row.purpose,
-    fileId: row.id,
-    now: row.createdAt,
-  })
-}
 
 /** Dönüşmüş nesnenin anahtarı: her deneme kendi anahtarına yazar (eşzamanlı teslimler çakışmaz). */
 function transcodedStorageKey(row: StoredFile): string {
@@ -154,9 +141,8 @@ export async function transcodeAudioFile(
   if (!row) return { outcome: 'skipped', reason: 'missing' }
   if (!needsTranscode(row.purpose)) return { outcome: 'skipped', reason: 'not_audio' }
   if (row.status === 'ready') {
-    // Önceki deneme satırı yazdı ama özgün nesneyi silemediyse burada yeniden silinir.
-    const original = originalStorageKey(row)
-    if (row.storageKey !== original) await storage.delete(original)
+    // Önceki deneme satırı yazdı ama özgün nesneyi silemediyse burada yeniden denenir.
+    await releaseSupersededObject(deps, row)
     return { outcome: 'skipped', reason: 'already_ready' }
   }
   if (row.status !== 'processing') return { outcome: 'skipped', reason: 'not_processing' }
@@ -242,9 +228,10 @@ export async function transcodeAudioFile(
     })
     if (!updated) return { outcome: 'skipped', reason: 'not_processing' }
     committed = true
-    // Özgün nesne dönüşüm doğrulanıp yazıldıktan sonra silinir. Silme hatası fırlar: yeniden
-    // deneme `ready` dalında silmeyi tekrarlar.
-    await storage.delete(row.storageKey)
+    // Özgün nesne dönüşüm doğrulanıp yazıldıktan sonra silinir. Anahtarı `ready` ile aynı
+    // güncellemede `superseded_storage_key`'e geçtiği için hiçbir an izsiz değildir; silme
+    // başarısızsa iz kalır, nesneyi sonraki temizlik ya da imha siler (DOM-BEC-052).
+    await releaseSupersededObject(deps, updated)
     log.info({ event: 'media.transcoded', ...data, durationMs: result.durationMs, byteSize })
     return { outcome: 'ready', durationMs: result.durationMs }
   } catch (error) {

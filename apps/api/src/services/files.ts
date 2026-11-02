@@ -15,12 +15,14 @@ import { moduleAvailableFor } from '@kampus/school-core/modules/collection-modul
 import type { Database } from '../db/client.ts'
 import {
   attachFileRow,
+  clearSupersededStorageKey,
   detachFileRow,
   findFile,
   insertFile,
   listExpiredFiles,
   type ExpiredFileCursor,
   listStaleUnattachedFiles,
+  listSupersededObjects,
   markFileDeleted,
   setFileStatus,
   storageQuotaSetting,
@@ -615,6 +617,77 @@ export async function recordFileCheck(
   return row
 }
 
+interface ObjectCleanupDeps {
+  db: Database
+  storage: StorageDriver
+  log: FastifyBaseLogger
+}
+
+/**
+ * Ses dönüşümünde yerini dönüşmüş nesneye bırakan özgün nesneyi siler ve izini kaldırır (ADR 0003
+ * karar 10, 13; DOM-BEC-052). Silme başarısızsa iz (`superseded_storage_key`) kalır ve hata yalnız
+ * kimliklerle loglanır: nesne sonraki temizlikte (`purgeSupersededObjects`, imha) yeniden silinir.
+ * Silme idempotenttir; anahtar yeniden yazılmadığından (yükleme anahtarı tek kullanımlıktır)
+ * eşzamanlı iki silme zararsızdır. Nesne silindiyse `true`.
+ */
+export async function releaseSupersededObject(
+  deps: ObjectCleanupDeps,
+  row: Pick<StoredFile, 'institutionId' | 'id' | 'supersededStorageKey'>,
+): Promise<boolean> {
+  const key = row.supersededStorageKey
+  if (key === null) return true
+  try {
+    await deps.storage.delete(key)
+  } catch (error) {
+    deps.log.error({
+      event: 'file.superseded_object_failed',
+      institutionId: row.institutionId,
+      fileId: row.id,
+      err: error,
+    })
+    return false
+  }
+  await clearSupersededStorageKey(deps.db, row.institutionId, row.id, key)
+  return true
+}
+
+/**
+ * Kurumun silinmeyi bekleyen özgün nesnelerinin temizliği (`releaseSupersededObject`); en çok
+ * `limit` dosyaya bakar, silinen nesne sayısını döndürür. Saatlik `files.purge-unattached` işi ve
+ * kuyruksuz açılış çağırır.
+ */
+export async function purgeSupersededObjects(
+  input: ObjectCleanupDeps & { institutionId: string; limit?: number },
+): Promise<number> {
+  const rows = await listSupersededObjects(
+    input.db,
+    input.institutionId,
+    input.limit ?? PURGE_BATCH_SIZE,
+  )
+  let released = 0
+  for (const row of rows) if (await releaseSupersededObject(input, row)) released += 1
+  return released
+}
+
+/**
+ * `deleted` yazılmış dosyanın nesnelerini siler: satırın güncel anahtarı (kilit altında okunan;
+ * aday listesindeki eski anahtar değil, bu arada dönüşüm bitmiş olabilir) ve varsa silinmeyi
+ * bekleyen özgün nesne. Nesne silinemezse satır `deleted` kalır, hata yalnız kimliklerle loglanır.
+ */
+async function deletePurgedObjects(deps: ObjectCleanupDeps, row: StoredFile) {
+  try {
+    await deps.storage.delete(row.storageKey)
+  } catch (error) {
+    deps.log.error({
+      event: 'file.purge_object_failed',
+      institutionId: row.institutionId,
+      fileId: row.id,
+      err: error,
+    })
+  }
+  await releaseSupersededObject(deps, row)
+}
+
 /**
  * Kurumun 24 saatte bağlanmayan (veya reddedilen) dosyalarının temizliği (karar 5, 13): nesne
  * silinir, satır `deleted` kalır ve özgün ad silinir; her dosya `file.purge` olarak denetime
@@ -642,11 +715,12 @@ export async function purgeUnattachedFiles(input: {
   )
   let purged = 0
   for (const candidate of stale) {
-    const done = await db.transaction(async (tx) => {
+    const deleted = await db.transaction(async (tx) => {
       const current = await findFile(tx, candidate.institutionId, candidate.id, { lock: true })
       // Bu arada bağlanan veya silinen dosyaya dokunulmaz.
-      if (!current || current.attachedId !== null || current.status === 'deleted') return false
-      if (!(await markFileDeleted(tx, current.institutionId, current, now))) return false
+      if (!current || current.attachedId !== null || current.status === 'deleted') return null
+      const row = await markFileDeleted(tx, current.institutionId, current, now)
+      if (!row) return null
       await tx.insert(auditLog).values({
         institutionId: current.institutionId,
         action: 'file.purge',
@@ -655,20 +729,11 @@ export async function purgeUnattachedFiles(input: {
         changes: { fields: ['status', 'deletedAt', 'originalName'] },
         createdAt: now,
       })
-      return true
+      return row
     })
-    if (!done) continue
+    if (!deleted) continue
     purged += 1
-    try {
-      await storage.delete(candidate.storageKey)
-    } catch (error) {
-      log.error({
-        event: 'file.purge_object_failed',
-        institutionId: input.institutionId,
-        fileId: candidate.id,
-        err: error,
-      })
-    }
+    await deletePurgedObjects({ db, storage, log }, deleted)
   }
   log.info({ event: 'file.purged', institutionId: input.institutionId, count: purged })
   return purged
@@ -714,7 +779,8 @@ export async function purgeExpiredFiles(input: {
         (await kind.purgeHeld(tx, current.institutionId, current.attachedId, current))
       )
         return 'held'
-      if (!(await markFileDeleted(tx, current.institutionId, current, now))) return 'skipped'
+      const row = await markFileDeleted(tx, current.institutionId, current, now)
+      if (!row) return 'skipped'
       await tx.insert(auditLog).values({
         institutionId: current.institutionId,
         action: 'file.purge',
@@ -723,21 +789,12 @@ export async function purgeExpiredFiles(input: {
         changes: { fields: ['status', 'deletedAt', 'originalName'] },
         createdAt: now,
       })
-      return 'purged'
+      return row
     })
     if (outcome === 'held') held += 1
-    if (outcome !== 'purged') continue
+    if (typeof outcome === 'string') continue
     purged += 1
-    try {
-      await storage.delete(candidate.storageKey)
-    } catch (error) {
-      log.error({
-        event: 'file.purge_object_failed',
-        institutionId: input.institutionId,
-        fileId: candidate.id,
-        err: error,
-      })
-    }
+    await deletePurgedObjects({ db, storage, log }, outcome)
   }
   log.info({
     event: 'file.retention_purged',

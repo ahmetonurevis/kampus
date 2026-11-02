@@ -6,10 +6,12 @@ import { and, eq, sql } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
-import { insertFile } from '../src/db/files.ts'
+import { insertFile, scheduleSubjectFilesPurge } from '../src/db/files.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { files } from '../src/db/schema/files.ts'
 import { bootJobs } from '../src/jobs/boot.ts'
+import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
+import { filesPurgeJob } from '../src/jobs/files-purge.ts'
 import {
   STALE_TRANSCODE_MS,
   transactionConnection,
@@ -21,11 +23,7 @@ import {
   MediaToolError,
   TRANSCODED_CONTENT_TYPE,
 } from '../src/services/audio-transcoder.ts'
-import {
-  originalStorageKey,
-  transcodeAudioFile,
-  type TranscodeDeps,
-} from '../src/services/media-transcode.ts'
+import { transcodeAudioFile, type TranscodeDeps } from '../src/services/media-transcode.ts'
 import { STORAGE_KEY_PATTERN } from '../src/storage/storage.ts'
 import {
   buildTestApp,
@@ -182,7 +180,8 @@ describe('ses dönüştürme (media.transcode)', () => {
     assert.equal(row.createdAt.toISOString(), before.createdAt.toISOString())
     assert.notEqual(row.storageKey, before.storageKey)
     assert.match(row.storageKey, STORAGE_KEY_PATTERN)
-    assert.equal(before.storageKey, originalStorageKey(row))
+    // Özgün nesne silindi, izi de kalmadı.
+    assert.equal(row.supersededStorageKey, null)
     assert.equal(await store.storage.head(before.storageKey), null)
     assert.equal((await store.storage.head(row.storageKey))?.byteSize, row.byteSize)
     assert.deepEqual(await objectsOf(id), [`${store.root}/${row.storageKey}`])
@@ -305,25 +304,148 @@ describe('ses dönüştürme (media.transcode)', () => {
     )
   })
 
-  test('OG-262: özgün nesne silinemezse hata fırlar, satır ready kalır; yeniden deneme yalnız özgün nesneyi siler', async () => {
+  test('OG-262, DOM-BEC-052: özgün nesne silinemezse dosya ready olur ve özgün anahtar izde kalır; tekrarlanan iş ve saatlik temizlik nesneyi siler, izi kaldırır', async () => {
     const t = await tenant()
     const id = await uploaded(t)
     const original = (await rowOf(t, id)).storageKey
     store.storage.failDeletes = true
     try {
-      await assert.rejects(transcodeAudioFile(deps(), job(t, id), now), /simulated delete/)
+      assert.equal((await transcodeAudioFile(deps(), job(t, id), now)).outcome, 'ready')
+      // Silme yine başarısız: tekrarlanan iş izi korur.
+      assert.deepEqual(await transcodeAudioFile(deps(), job(t, id), now), {
+        outcome: 'skipped',
+        reason: 'already_ready',
+      })
     } finally {
       store.storage.failDeletes = false
     }
     const row = await rowOf(t, id)
     assert.equal(row.status, 'ready')
+    assert.equal(row.supersededStorageKey, original)
     assert.notEqual(await store.storage.head(original), null)
+    const log = logs.join('')
+    assert.ok(log.includes('"event":"file.superseded_object_failed"'))
+    assert.equal(log.includes(FILE_NAME), false)
+
+    // Tekrarlanan iş (`ready` dalı) nesneyi siler ve izi kaldırır; sürüm değişmez.
     assert.deepEqual(await transcodeAudioFile(deps(), job(t, id), now), {
       outcome: 'skipped',
       reason: 'already_ready',
     })
     assert.equal(await store.storage.head(original), null)
-    assert.equal((await rowOf(t, id)).version, row.version)
+    const cleared = await rowOf(t, id)
+    assert.equal(cleared.supersededStorageKey, null)
+    assert.equal(cleared.version, row.version)
+    assert.deepEqual(await objectsOf(id), [`${store.root}/${row.storageKey}`])
+
+    // Saatlik `files.purge-unattached` işi de izdeki nesneleri siler (iş gelmese bile).
+    const other = await uploaded(t)
+    const otherOriginal = (await rowOf(t, other)).storageKey
+    store.storage.failDeletes = true
+    try {
+      await transcodeAudioFile(deps(), job(t, other), now)
+    } finally {
+      store.storage.failDeletes = false
+    }
+    assert.equal((await rowOf(t, other)).supersededStorageKey, otherOriginal)
+    const purge = await filesPurgeJob.run(
+      { db, storage: store.storage, log: app.log },
+      { institutionId: t.institution.id },
+      now,
+    )
+    assert.equal(purge.released, 1)
+    assert.equal(await store.storage.head(otherOriginal), null)
+    assert.equal((await rowOf(t, other)).supersededStorageKey, null)
+    assert.equal((await rowOf(t, other)).status, 'ready')
+  })
+
+  test('OG-262, DOM-BEC-052, DOM-YTK-059: saklama sonu imhası ve rıza geri çekme izdeki özgün nesneyi de siler', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    const original = (await rowOf(t, id)).storageKey
+    store.storage.failDeletes = true
+    try {
+      await transcodeAudioFile(deps(), job(t, id), now)
+    } finally {
+      store.storage.failDeletes = false
+    }
+    const ready = await rowOf(t, id)
+    assert.equal(ready.supersededStorageKey, original)
+    // Rıza geri çekme imha işaretini koyar (saklama sonu `now`), imha işi siler.
+    await db.transaction((tx) =>
+      scheduleSubjectFilesPurge(
+        tx,
+        t.institution.id,
+        {
+          purpose: 'listening_audio',
+          dataSubjectId: 'yok',
+          uploaderUserIds: [t.institution.admin.id],
+        },
+        now,
+      ),
+    )
+    const result = await filesPurgeExpiredJob.run(
+      { db, storage: store.storage, log: app.log },
+      { institutionId: t.institution.id },
+      now,
+    )
+    assert.equal(result.purged, 1)
+    const row = await rowOf(t, id)
+    assert.equal(row.status, 'deleted')
+    assert.equal(row.supersededStorageKey, null)
+    assert.deepEqual(await objectsOf(id), [])
+  })
+
+  test('OG-262, DOM-BEC-052: dönüşüm sürerken imha edilen ya da rızası geri çekilen kaydın hiçbir nesnesi kalmaz', async () => {
+    const t = await tenant()
+    const purgeNow = () =>
+      filesPurgeExpiredJob.run(
+        { db, storage: store.storage, log: app.log },
+        { institutionId: t.institution.id },
+        now,
+      )
+    const markForPurge = () =>
+      db.transaction((tx) =>
+        scheduleSubjectFilesPurge(
+          tx,
+          t.institution.id,
+          {
+            purpose: 'listening_audio',
+            dataSubjectId: 'yok',
+            uploaderUserIds: [t.institution.admin.id],
+          },
+          now,
+        ),
+      )
+    try {
+      // İmha dönüşüm sürerken çalışır: dönüşüm satırı yazmaz, kendi nesnesini siler.
+      const purged = await uploaded(t)
+      transcoder.during = async () => {
+        await markForPurge()
+        assert.equal((await purgeNow()).purged, 1)
+      }
+      assert.deepEqual(await transcodeAudioFile(deps(), job(t, purged), now), {
+        outcome: 'skipped',
+        reason: 'not_processing',
+      })
+      assert.equal((await rowOf(t, purged)).status, 'deleted')
+      assert.deepEqual(await objectsOf(purged), [])
+
+      // Rıza dönüşüm sürerken geri çekilir: dosya ready olur, imha işi iki nesneyi de siler.
+      const withdrawn = await uploaded(t)
+      transcoder.during = async () => {
+        await markForPurge()
+      }
+      assert.equal((await transcodeAudioFile(deps(), job(t, withdrawn), now)).outcome, 'ready')
+      transcoder.during = null
+      assert.equal((await purgeNow()).purged, 1)
+      const row = await rowOf(t, withdrawn)
+      assert.equal(row.status, 'deleted')
+      assert.equal(row.supersededStorageKey, null)
+      assert.deepEqual(await objectsOf(withdrawn), [])
+    } finally {
+      transcoder.during = null
+    }
   })
 
   test('OG-262: ses dışı, olmayan ve başka durumdaki dosyaya dokunulmaz', async () => {
@@ -472,6 +594,20 @@ describe('ses dönüştürme (media.transcode)', () => {
     const after = await rowOf(t, id)
     assert.equal(after.storageKey, ready.storageKey)
     assert.equal(after.sha256, ready.sha256)
+    // Silinecek özgün anahtar sonradan başka bir nesneye yöneltilemez; yalnız boşaltılır.
+    await assert.rejects(
+      db.execute(
+        sql`update files set superseded_storage_key = ${`${t.institution.id}/x`} where id = ${id}`,
+      ),
+      immutable,
+    )
+    await assert.rejects(
+      db.execute(sql`update files set superseded_storage_key = storage_key where id = ${id}`),
+      (error: unknown) =>
+        /files_superseded_storage_key_check|immutable|55000/.test(
+          JSON.stringify(error) + String(error),
+        ),
+    )
     // Reddedilen dosya da processing'e dönmez.
     const rejected = await uploaded(t)
     transcoder.result = { durationMs: 5_000, silent: true }

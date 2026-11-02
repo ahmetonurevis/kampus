@@ -19,9 +19,12 @@ import type {
 export class FakeTranscoder implements AudioTranscoder {
   result: TranscodeResult | Error = { durationMs: 30_000, silent: false }
   readonly calls: TranscodeInput[] = []
+  /** Dönüşüm sürerken çalışır (ör. eşzamanlı imha ya da rıza geri çekme benzetimi). */
+  during: (() => Promise<void>) | null = null
 
   async transcode(input: TranscodeInput): Promise<TranscodeResult> {
     this.calls.push(input)
+    await this.during?.()
     if (this.result instanceof Error) throw this.result
     await copyFile(input.inputPath, input.outputPath)
     return this.result

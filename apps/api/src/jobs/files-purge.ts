@@ -1,4 +1,8 @@
-import { purgeUnattachedFiles, PURGE_BATCH_SIZE } from '../services/files.ts'
+import {
+  purgeSupersededObjects,
+  purgeUnattachedFiles,
+  PURGE_BATCH_SIZE,
+} from '../services/files.ts'
 import { HOUR_SECONDS, type InstitutionJob } from './types.ts'
 
 /** Bir çalıştırmada en çok tur; kalan dosyalar sonraki saatte silinir. */
@@ -10,8 +14,12 @@ const MAX_ROUNDS = 20
  * çalışır (her saatin 17. dakikası, Europe/Istanbul): dosya en geç 25 saatte silinir. Kurum başına
  * tur tur (`PURGE_BATCH_SIZE`) ilerler; dolu tur bir sonrakini başlatır. İdempotenttir: silinmiş
  * dosya taramaya girmez.
+ *
+ * Aynı iş ses dönüşümünde silinemeyen özgün nesneleri de (`superseded_storage_key`; ADR 0003 karar
+ * 10, DOM-BEC-052) tur başına `PURGE_BATCH_SIZE` kadar yeniden siler (`released`): silinemeyen
+ * nesne en geç bir saat sonra yeniden denenir.
  */
-export const filesPurgeJob: InstitutionJob<{ purged: number; rounds: number }> = {
+export const filesPurgeJob: InstitutionJob<{ purged: number; rounds: number; released: number }> = {
   name: 'files.purge-unattached',
   cron: '17 * * * *',
   slotSeconds: HOUR_SECONDS,
@@ -25,6 +33,10 @@ export const filesPurgeJob: InstitutionJob<{ purged: number; rounds: number }> =
       purged += count
       if (count < PURGE_BATCH_SIZE) break
     }
-    return { purged, rounds }
+    const released =
+      signal?.aborted === true
+        ? 0
+        : await purgeSupersededObjects({ db, storage, log, institutionId })
+    return { purged, rounds, released }
   },
 }

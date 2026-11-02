@@ -233,8 +233,9 @@ export function setFileStatus(
 
 /**
  * Ses dönüşümünün sonucu (ADR 0003 karar 10): `processing` satır dönüşmüş nesnenin anahtarı, türü,
- * boyutu, özeti ve ölçülen süresiyle `ready` olur. İçerik kolonları yalnız bu geçişte değişebilir
- * (migration 0033 tetikleyicisi); iyimser kilit tutmazsa `null`.
+ * boyutu, özeti ve ölçülen süresiyle `ready` olur; özgün nesnenin anahtarı aynı güncellemede
+ * `superseded_storage_key`'e geçer (silinene kadar izlenir). İçerik kolonları yalnız bu geçişte
+ * değişebilir (migration 0033 tetikleyicisi); iyimser kilit tutmazsa `null`.
  */
 export async function completeFileTranscode(
   tx: Database,
@@ -245,7 +246,13 @@ export async function completeFileTranscode(
 ): Promise<StoredFile | null> {
   const [row] = await tx
     .update(files)
-    .set({ ...output, status: 'ready', updatedAt: now, version: current.version + 1 })
+    .set({
+      ...output,
+      status: 'ready',
+      supersededStorageKey: current.storageKey,
+      updatedAt: now,
+      version: current.version + 1,
+    })
     .where(
       and(
         eq(files.institutionId, institutionId),
@@ -283,6 +290,49 @@ export async function listStaleProcessingFiles(
     )
     .orderBy(asc(files.updatedAt), asc(files.id))
     .limit(limit)
+}
+
+/**
+ * Silinmeyi bekleyen özgün nesnesi olan dosyalar (`superseded_storage_key` dolu; ses dönüşümü,
+ * ADR 0003 karar 10): durumdan bağımsız, kimlik sırasıyla `limit` kadar.
+ */
+export async function listSupersededObjects(
+  db: Database,
+  institutionId: string,
+  limit: number,
+): Promise<Pick<StoredFile, 'institutionId' | 'id' | 'supersededStorageKey'>[]> {
+  return db
+    .select({
+      institutionId: files.institutionId,
+      id: files.id,
+      supersededStorageKey: files.supersededStorageKey,
+    })
+    .from(files)
+    .where(and(eq(files.institutionId, institutionId), isNotNull(files.supersededStorageKey)))
+    .orderBy(asc(files.id))
+    .limit(limit)
+}
+
+/**
+ * Özgün nesne depodan silindikten sonra izini kaldırır. Yalnız anahtar hâlâ aynıysa yazar
+ * (eşzamanlı iki temizlik zararsızdır); iç kayıttır, sürüm ve güncelleme zamanı değişmez.
+ */
+export async function clearSupersededStorageKey(
+  db: Database,
+  institutionId: string,
+  fileId: string,
+  key: string,
+): Promise<void> {
+  await db
+    .update(files)
+    .set({ supersededStorageKey: null })
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        eq(files.id, fileId),
+        eq(files.supersededStorageKey, key),
+      ),
+    )
 }
 
 /** İmha: nesne silindikten sonra satır `deleted` kalır, özgün ad (K) silinir (karar 13). */

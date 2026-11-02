@@ -8,6 +8,7 @@ import { listStaleProcessingFiles } from '../db/files.ts'
 import { listInstitutionIds } from '../db/institutions.ts'
 import type { StorageDriver } from '../storage/storage.ts'
 import { AUDIO_TRANSCODE_PROFILES, type TranscodedPurpose } from '../services/audio-transcoder.ts'
+import { purgeSupersededObjects } from '../services/files.ts'
 import {
   transcodeAudioFile,
   type MediaTranscodeScheduler,
@@ -169,7 +170,11 @@ export async function requeueStaleTranscodes(
   return queued
 }
 
-/** Kuyruk kapalıyken açılışta: yarıda kalmış dönüşümler süreç içinde tek denemeyle işlenir. */
+/**
+ * Kuyruk kapalıyken açılışta: önce silinemeyip izde kalan özgün nesneler silinir (kuyruksuzken
+ * saatlik `files.purge-unattached` çalışmaz), sonra yarıda kalmış dönüşümler süreç içinde tek
+ * denemeyle işlenir. İşlenen dönüşüm sayısı döner.
+ */
 export async function recoverStaleTranscodes(input: {
   db: Database
   storage: StorageDriver
@@ -177,6 +182,8 @@ export async function recoverStaleTranscodes(input: {
   log: FastifyBaseLogger
   clock: () => Date
 }): Promise<number> {
+  for (const institutionId of await listInstitutionIds(input.db))
+    await purgeSupersededObjects({ ...input, institutionId })
   const stale = await staleTranscodes(input.db, input.clock())
   for (const data of stale) await runInlineTranscode(input, data)
   return stale.length

@@ -143,6 +143,11 @@ describe('PostgreSQL 16: dosya kotası yarışı ve içerik tetikleyicisi', { sk
     const kept = await rowOf(audio.id)
     assert.equal(kept?.sha256, 'b'.repeat(64))
     assert.equal(kept?.storageKey, `${audio.storageKey}-m4a`)
+    // Silinecek özgün anahtar yalnız dönüşüm geçişinde yazılır; sonra başka nesneye yöneltilemez.
+    await assert.rejects(
+      update(audio.id, sql`superseded_storage_key = ${`${institution.id}/baska`}`),
+      immutable,
+    )
 
     const rejected = await insert('listening_audio')
     await update(rejected.id, sql`status = 'rejected'`)

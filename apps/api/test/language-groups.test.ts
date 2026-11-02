@@ -447,6 +447,8 @@ describe('dil okulu grup uçları', () => {
     )
     await addMembers(institution.id, target.id, ['s1', 's2'])
     await addMembers(institution.id, source.id, ['s3', 's4', 's5'])
+    const beforeGroups = await groupRows(institution.id)
+    const beforeTargetMembers = await memberRows(institution.id, target.id)
     fails(
       await command(cookies.admin, target.id, 'merge', 1, {
         sourceGroupId: source.id,
@@ -464,6 +466,9 @@ describe('dil okulu grup uçları', () => {
       'not_found',
     )
     assert.equal((await memberRows(institution.id, source.id)).length, 3)
+    // 422 ve 404 sonrası iki grup da (sürümleri dahil) ve hedefin kursiyerleri değişmez.
+    assert.deepEqual(await groupRows(institution.id), beforeGroups)
+    assert.deepEqual(await memberRows(institution.id, target.id), beforeTargetMembers)
     await ok(await patch(cookies.admin, target.id, { capacity: 5 }, 1))
     await db.insert(languageGroupWaitlist).values({
       institutionId: institution.id,
@@ -632,5 +637,42 @@ describe('dil okulu grup uçları', () => {
       }),
     )
     assert.equal(merged.rowVersion, 3)
+  })
+
+  test('403 ve kursiyer onayı: reddedilen yazma satırı değiştirmez; farklı saate birleştirme onay ister', async () => {
+    const { institution, users, cookies, body } = await tenant()
+    const target = await ok(await create(cookies.admin, body()), 201)
+    const source = await ok(
+      await create(
+        cookies.admin,
+        body({
+          name: 'B1 Sabah',
+          schedule: MORNING,
+          teacherMembershipId: users.other.membershipId,
+        }),
+      ),
+      201,
+    )
+    await addMembers(institution.id, source.id, ['s1'])
+    const before = await groupRows(institution.id)
+    for (const [cookie, code] of [
+      [cookies.teacher, 'course_coordinator_required'],
+      [cookies.frontDesk, 'forbidden'],
+    ] as const) {
+      fails(await patch(cookie, target.id, { name: 'Ele geçirildi' }, 1), 403, code)
+      fails(await command(cookie, target.id, 'cancel', 1, { reason: 'X' }), 403, code)
+    }
+    const merge = (learnersConsented?: boolean) =>
+      command(cookies.admin, target.id, 'merge', 1, {
+        sourceGroupId: source.id,
+        sourceVersion: 1,
+        ...(learnersConsented === undefined ? {} : { learnersConsented }),
+      })
+    fails(await merge(), 422, 'group_merge_consent_required')
+    fails(await merge(false), 422, 'group_merge_consent_required')
+    assert.deepEqual(await groupRows(institution.id), before)
+    assert.equal((await memberRows(institution.id, source.id)).length, 1)
+    const merged = await ok(await merge(true))
+    assert.equal(merged.activeLearners, 1)
   })
 })

@@ -8,6 +8,7 @@ import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
+import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { exportCsv, saveBlob } from '@/lib/download.ts'
 import type { NavPage } from '@/lib/navigation.ts'
@@ -16,6 +17,7 @@ import { useSourcesState } from '../workflows/use-workflow-state.ts'
 import { collectionSources, coreSession } from '../workflows/workflow-state.ts'
 import { AssessmentPanel } from './AssessmentPanel.tsx'
 import { answerKeyCsv, RESULT_CSV_COLUMNS, resultCsvRows } from './assessment-csv.ts'
+import { OpticalDetailPanel } from './OpticalDetailPanel.tsx'
 import { OpticalEvaluateSection } from './OpticalEvaluateSection.tsx'
 import { OpticalProfileForm } from './OpticalProfileForm.tsx'
 import {
@@ -47,6 +49,10 @@ function OpticalView({ page, session }: { page: NavPage; session: Session }) {
   const profiles = profileRows(data.state)
   const evaluations = evaluationRows(data.state, actor)
   const missing = examsWithoutProfile(data.state, actor)
+  // Seçili kayıtlı değerlendirme URL'dedir (`?degerlendirme=`); paylaşılabilir, geri/ileri paneli açar kapatır.
+  const panel = useDetailPanel('degerlendirme')
+  const selected = evaluations.find((row) => row.id === panel.selectedId)
+  const openEvaluation = panel.open
 
   const admin = session.role === 'yonetici'
   const writer = admin || session.role === 'ogretmen'
@@ -139,7 +145,20 @@ function OpticalView({ page, session }: { page: NavPage; session: Session }) {
   )
   const evaluationColumns = useMemo<DataColumn<EvaluationRow>[]>(
     () => [
-      { key: 'student', label: 'Öğrenci' },
+      {
+        key: 'student',
+        label: 'Öğrenci',
+        cell: (row) => (
+          <button
+            type="button"
+            aria-label={`${row.student} · ${row.subject} ayrıntısını aç`}
+            onClick={() => openEvaluation(row.id)}
+            className="record-link text-left font-medium text-primary hover:underline"
+          >
+            {row.student}
+          </button>
+        ),
+      },
       { key: 'exam', label: 'Deneme' },
       { key: 'subject', label: 'Ders' },
       { key: 'booklet', label: 'Kitapçık' },
@@ -163,7 +182,7 @@ function OpticalView({ page, session }: { page: NavPage; session: Session }) {
           ),
       },
     ],
-    [],
+    [openEvaluation],
   )
 
   return (
@@ -243,8 +262,15 @@ function OpticalView({ page, session }: { page: NavPage; session: Session }) {
           searchKeys={['student', 'exam', 'subject']}
           caption="Kayıtlı optik değerlendirmeler"
           empty="Henüz kaydedilmiş değerlendirme yok."
+          onRowClick={(row) => openEvaluation(row.id)}
         />
       </AssessmentPanel>
+      <OpticalDetailPanel
+        selectedId={panel.selectedId}
+        row={selected}
+        pending={data.pending}
+        onClose={panel.close}
+      />
       {admin && editing ? (
         <OpticalProfileForm
           key={editing}

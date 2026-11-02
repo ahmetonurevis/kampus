@@ -453,6 +453,44 @@ test.describe('aday detayı', () => {
   })
 })
 
+test.describe('ticari ileti onayı', () => {
+  test('ön büro kanal onayını kaydeder ve tek tıkla geri alır; değişiklikler geçmişte görünür (DOM-KAY-004)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [prospect({ id: 'e2e-pr-o1', name: 'Onay Adayı', phone: '05550300061' })],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(detailUrl('onburo', 'e2e-pr-o1'))
+    await expect(page.getByRole('heading', { name: 'Onay Adayı', level: 1 })).toBeVisible()
+    const panel = page.getByRole('region', { name: 'Ticari ileti onayı' })
+    const sms = panel.getByRole('listitem').filter({ hasText: 'SMS' })
+    await expect(sms.getByText('Onay yok')).toBeVisible()
+    await panel.getByRole('button', { name: 'SMS onayını kaydet' }).click()
+    await expect(toast(page, 'SMS onayı kaydedildi.')).toBeVisible()
+    await expect(sms.getByText('Onay var')).toBeVisible()
+    await panel.getByRole('button', { name: 'SMS onayını geri al' }).click()
+    await expect(toast(page, 'SMS onayı geri alındı.')).toBeVisible()
+    await expect(sms.getByText('Onay yok')).toBeVisible()
+    await expect(panel.getByText('SMS onayı geri alındı ·', { exact: false })).toBeVisible()
+    await expect(panel.getByText('SMS onayı verildi ·', { exact: false })).toBeVisible()
+    // Sunucuda güncel karar geri alınmış, geçmiş iki olay.
+    const client = await api(school.user('onburo'))
+    await expect
+      .poll(async () => {
+        const item = (await prospectsOf(client)).find((entry) => entry.id === 'e2e-pr-o1')
+        return JSON.stringify(
+          (item?.record as { marketingConsentHistory?: unknown[] }).marketingConsentHistory?.length,
+        )
+      })
+      .toBe('2')
+  })
+})
+
 test.describe('aşama geri alma', () => {
   test('yönetici yanlışlıkla ileri alınan aşamayı gerekçeyle geri alır; görüşmesiz adayda Görüşme planlandı sunulmaz (DOM-KAY-030)', async ({
     page,

@@ -15,6 +15,7 @@ import { prospectStageLabel } from '@kampus/school-core/lib/prospects.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { ProspectNoteForm } from './ProspectNoteForm.tsx'
 import { ProspectPlanPanel } from './ProspectPlanPanel.tsx'
+import { ProspectConsentPanel } from './ProspectConsentPanel.tsx'
 import { ProspectStageForm } from './ProspectStageForm.tsx'
 import { ProspectStageRevertForm } from './ProspectStageRevertForm.tsx'
 import { dateTimeLabel, isOpenStage, slotLabel, stageTone } from './prospect-rows.ts'
@@ -246,6 +247,12 @@ function Detail({
               type={type}
             />
           ) : null}
+          <ProspectConsentPanel
+            key={`consent:${version}`}
+            prospectId={prospect.id}
+            version={version}
+            prospect={prospect}
+          />
           {enrolled ? (
             <p className="text-xs text-muted-foreground">
               Kesin kayıt tamamlandı; öğrenci kaydı Kayıt İşlemleri ve öğrenci listelerinde görünür.

@@ -83,6 +83,7 @@ export const ONUR_OPERATION_COMMANDS = {
   'prospect.create': spec('crm', [...SCOPE, 'branches', 'prospects']),
   'prospect.stage': spec('crm', [...SCOPE, 'prospects']),
   'prospect.stageRevert': spec('crm', [...SCOPE, 'prospects']),
+  'prospect.consent': spec('crm', [...SCOPE, 'prospects']),
   'prospect.note': spec('crm', [...SCOPE, 'prospects']),
   'prospect.meeting': spec('crm', [...SCOPE, 'branches', 'prospects', ...CONFLICTS]),
   'prospect.trial': spec('crm', [...SCOPE, 'prospects', 'schedule']),

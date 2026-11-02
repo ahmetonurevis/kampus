@@ -23,6 +23,8 @@ import {
   recordTrialResult,
   revertableProspectStages,
   revertProspectStage,
+  setProspectMarketingConsent,
+  hasMarketingConsent,
   scheduleProspectMeeting,
   scheduleTrialLesson,
 } from '../packages/school-core/src/lib/prospects.ts'
@@ -1857,4 +1859,100 @@ test('DOM-KAY-030: geri alınmış aday yeniden ileri alınabilir; geçmiş gör
   changeProspectStage(state, front, child.id, { stage: 'Teklif verildi' }, after, language)
   assert.equal(child.stage, 'Teklif verildi')
   assert.equal(child.stageReverts?.length, 1)
+})
+
+// --- Ticari ileti onayı (DOM-KAY-004) ---------------------------------------------------------
+
+const consentInput = (channel: string, granted: boolean) => ({ channel, granted })
+
+test('DOM-KAY-004: onay kanal bazlı verilir ve anında geri alınır; her değişiklik geçmişe yazılır', () => {
+  const state = seed()
+  const created = createProspect(state, front, input({ marketingConsent: { sms: true } }), id, now)
+  assert.equal(hasMarketingConsent(created, 'sms'), true)
+  assert.equal(hasMarketingConsent(created, 'email'), false)
+  const later = '2026-10-07T10:00:00.000Z'
+  // Geri alma: ret hakkı; yalnız o kanal değişir.
+  setProspectMarketingConsent(state, front, created.id, consentInput('sms', false), later)
+  assert.equal(hasMarketingConsent(created, 'sms'), false)
+  assert.deepEqual(created.marketingConsent?.sms, { granted: false, at: later })
+  assert.equal(created.marketingConsent?.call.granted, false)
+  assert.equal(created.updatedAt, later)
+  // Yeniden verme de yeni olaydır; geçmiş silinmez.
+  const again = '2026-10-08T10:00:00.000Z'
+  setProspectMarketingConsent(state, admin, created.id, consentInput('call', true), again)
+  setProspectMarketingConsent(state, admin, created.id, consentInput('sms', true), again)
+  assert.deepEqual(
+    created.marketingConsentHistory?.map((event) => [event.channel, event.granted, event.at]),
+    [
+      ['sms', false, later],
+      ['call', true, again],
+      ['sms', true, again],
+    ],
+  )
+  assert.deepEqual(created.marketingConsentHistory?.[1]?.by, {
+    role: 'yonetici',
+    userId: 'u-admin',
+  })
+})
+
+test('DOM-KAY-004: aynı karar ikinci kez 409, e-postasız adayda e-posta onayı 422; kayıt değişmez', () => {
+  const state = seed()
+  const created = createProspect(state, front, input({ email: '' }), id, now)
+  const attempt = (channel: string, granted: boolean) => () =>
+    setProspectMarketingConsent(state, front, created.id, consentInput(channel, granted), now)
+  // Onay yokken geri alma mükerrerdir.
+  unchangedOnFailure(
+    state,
+    attempt('sms', false),
+    fails('marketing_consent_unchanged', 'conflict', ['granted']),
+  )
+  unchangedOnFailure(
+    state,
+    attempt('email', true),
+    fails('consent_contact_missing', 'rule', ['channel']),
+  )
+  setProspectMarketingConsent(state, front, created.id, consentInput('sms', true), now)
+  unchangedOnFailure(
+    state,
+    attempt('sms', true),
+    fails('marketing_consent_unchanged', 'conflict', ['granted']),
+  )
+  // Geçersiz gövde doğrulamadan döner.
+  for (const body of [
+    {},
+    { channel: 'sms' },
+    { granted: true },
+    { channel: 'posta', granted: true },
+    { channel: 'sms', granted: 'evet' },
+    { channel: 'sms', granted: true, extra: 1 },
+  ])
+    assert.throws(() => setProspectMarketingConsent(state, front, created.id, body, now), zodError)
+  unchangedOnFailure(
+    state,
+    () => setProspectMarketingConsent(state, front, 'pr-yok', consentInput('sms', true), now),
+    fails('prospect_not_found', 'not_found'),
+  )
+})
+
+test('DOM-KAY-004: yönetici ve ön büro işler; öğretmen, öğrenci ve veli 403; vazgeçen ve kayıtlı adayda da geri alınır', () => {
+  const state = seed()
+  for (const role of ['ogretmen', 'ogrenci', 'veli'] as const)
+    unchangedOnFailure(
+      state,
+      () => setProspectMarketingConsent(state, people[role], 'pr1', consentInput('sms', true), now),
+      fails('permission_denied', 'forbidden'),
+    )
+  // Seed adayında onay kaydı yoktur: eski kayıt onaysız sayılır, onay verilebilir ve geri alınabilir.
+  const lost = prospectOf(state, 'pr5')
+  assert.equal(lost.stage, 'Vazgeçti')
+  setProspectMarketingConsent(state, front, 'pr5', consentInput('sms', true), now)
+  setProspectMarketingConsent(state, front, 'pr5', consentInput('sms', false), now)
+  assert.equal(hasMarketingConsent(lost, 'sms'), false)
+  const enrolled = prospectOf(state, 'pr15')
+  assert.equal(enrolled.stage, 'Kayıt oldu')
+  setProspectMarketingConsent(state, admin, 'pr15', consentInput('call', true), now)
+  setProspectMarketingConsent(state, admin, 'pr15', consentInput('call', false), now)
+  assert.equal(enrolled.marketingConsentHistory?.length, 2)
+  // Onay yoksa tanıtım iletisi gitmez; alanı olmayan eski kayıtta da kapalıdır.
+  assert.equal(hasMarketingConsent({}, 'sms'), false)
 })

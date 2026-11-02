@@ -50,6 +50,8 @@
     "apps/web-react/src/pages/page-registry.tsx",
     "apps/web-react/src/lib/page-coverage.ts",
     "apps/api/test/commands.test.ts",
+    "apps/api/test/support/commands-harness.ts",
+    "docs/sayfalar.md",
     "README.md",
     "CLAUDE.md",
     ".claude/**",

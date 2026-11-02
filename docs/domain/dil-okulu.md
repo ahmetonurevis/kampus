@@ -12,7 +12,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Seviye önerisi, kur geçme ve raporlar ortak ölçekle karşılaştırılabilir olmalı; kurların ayrıntısı kurumdan kuruma değişir.
 - **Kaynak:** CEFR-CV (Pre-A1 ve artı seviyeler A2+, B1+, B2+). C1+ gibi resmî olmayan ara değerler kullanılmaz.
 - **Kurum türü:** `language_school` (`school` İngilizce dersinde yalnız beceri profili için, bkz. `DOM-BEC-060`)
-- **Kodda:** yok — kodda CEFR ve kur kavramı yok.
+- **Kodda:** seviye ölçeği `packages/school-core/src/content/taxonomy.ts` `CEFR_LEVELS` (sıra `rank`); kur `packages/school-core/src/lib/courses.ts` (`DOM-DIL-005`), tablo `courses`. Kur sırası seviye sırası ve addır (`orderedCourses`); seviye içi sıra `nextCourseId` zinciridir (`DOM-DIL-007`).
 
 ### DOM-DIL-002 · Kur süresi ders saatiyle tanımlanır
 
@@ -20,7 +20,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Ücret, devam oranı ve iade ders saatiyle hesaplanır; onaylı programın süresinin altına inen kur denetimde sorun çıkarır.
 - **Kaynak:** ÖÖKY md. 10/6 (45 dakika, 90 dakika blok), md. 46/3 (onaylı program uygulanır); GLH (A1 ≈ 90–100 … C2 ≈ 1.000–1.200, birikimli, yalnız rehber). Onaylı yabancı dil programlarındaki seviye başı saatler **doğrulanmalı**.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** kısmen — `lib/courses.ts` kurda toplam ve haftalık ders saatini (45 dk), oturum uzunluğunu (45/90 dk; 90 dakikada saatler çift) ve hesaplanan süreyi (`courseDurationWeeks`, saklanmaz) tutar; toplam saat 1.200'ü aşamaz. Başlangıç/bitiş tarihi gruptadır (`DOM-DIL-008`); onaylı programdaki seviye başı asgari saat denetimi yok.
 
 ### DOM-DIL-003 · Ders saatleri yasal çalışma aralığında
 
@@ -37,6 +37,38 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Kaynak:** ÖÖKY md. 10/4, md. 67/5.
 - **Kurum türü:** `language_school`
 - **Kodda:** yok.
+
+### DOM-DIL-005 · Kur tanımı ve yaşam döngüsü
+
+- **Kural:** Kur kurumun öğretim programıdır: ad, öğretim dili, tek CEFR seviyesi, isteğe bağlı beceri odağı (dört temel beceri), toplam ve haftalık ders saati, oturum uzunluğu, en az (açılış, `DOM-DIL-042`) ve en çok mevcut (≤ 18, `DOM-DIL-040`), belgeli/belgesiz bilgisi ve sonraki kur. Durum `taslak → etkin → arşiv`; arşiv geri alınmaz. Ad, kurumun arşivlenmemiş kurlarında tekildir (büyük/küçük harf duyarsız). Etkin kurun dili, seviyesi, saatleri, oturum uzunluğu ve belge türü değişmez; değişiklik yeni kur olarak tanımlanır. Kuru yönetici ve o seviyenin akademik koordinatörü (`DOM-YTK-027`) yönetir; ön büro, öğretmen, öğrenci ve veli okur. Öğrenci ve veli yalnız etkin kurların katalog alanlarını görür (açılış sayısı, e-Özel kaydı ve durum anları görünmez).
+- **Gerekçe:** Gruplar, devam oranı, kur geçme ve paket satışı kurun saat ve seviyesine dayanır; etkin kurda bunların değişmesi açılmış grupların hesabını bozar. Kur tanımı e-Özel kurs planı alanlarını karşılamalıdır (IST-076).
+- **Kaynak:** ÖÖKY md. 10/6, md. 46/3; e-Özel kurum kılavuzu (kurs programı planlama). Kurum içi karar: arşiv geri alınmaz, ad tekilliği.
+- **Kurum türü:** `language_school` (okulda kur yoktur; uçlar her rol için 404)
+- **Kodda:** `packages/school-core/src/lib/courses.ts` (`planCourseCreation`, `planCourseUpdate`, `planCourseActivation`, `planCourseArchive`, `courseView`), `apps/api/src/routes/courses.ts`, tablo `courses` (migration `0028_create_courses`).
+
+### DOM-DIL-006 · Kurun e-Özel kaydı
+
+- **Kural:** Kurun e-Özel kurs programı kodu ve onay durumu (`işlenmedi`, `onay bekliyor`, `onaylandı`, `reddedildi`) kurda tutulur; kurum e-Özel'e elle işler, platformda yönetici işaretler ve işaretleyen ile an iz olarak saklanır. Program kodu kurumun arşivlenmemiş kurlarında tekildir. Belgeli kur, programı e-Özel'de onaylanmadan etkinleştirilemez; etkin belgeli kurun e-Özel kaydı değişmez. Taslakta program alanı (dil, seviye, saatler, oturum, belge türü) değişirse onay `işlenmedi`ye döner, program kodu kalır.
+- **Gerekçe:** Belgeli kursun bitirme belgesi (`DOM-DIL-080`) ancak müdür ve ilçe MEM onaylı programa bağlı kursiyere düzenlenir; onaysız programla açılan kurs belgesiz kalır. Platform e-Özel'e yazmaz, durumu izler (ister listesi, e-Özel satırı).
+- **Kaynak:** e-Özel kurum kılavuzu (kurs programı müdür ve ilçe MEM onayı). Belgesiz kursun da e-Özel'de program kaydı gerektirip gerektirmediği ve alan eşlemesi (seviye, süre, sınıf) **doğrulanmalı**.
+- **Kurum türü:** `language_school`
+- **Kodda:** `lib/courses.ts` `planCourseEOzelRecord`, `planCourseActivation`; `POST /api/v1/courses/:courseId/record-e-ozel` (yalnız yönetici).
+
+### DOM-DIL-007 · Seviyeli kursta sonraki kur
+
+- **Kural:** Kur, geçen kursiyerin devam ettiği sonraki kuru gösterebilir. Sonraki kur aynı kurumda, arşivlenmemiş, aynı dilde ve seviyesi bu kurunkinden düşük olmayan bir kurdur (aynı seviyede `B1.1 → B1.2` olur); zincir kendine dönemez. Başka bir arşivlenmemiş kurun sonraki kuru olan kur arşivlenmez; önce bağ kaldırılır. Öğrenci ve veli sonraki kuru yalnız etkinse görür.
+- **Gerekçe:** Kur geçme kararı (`DOM-DIL-070`) ve seviyeli kurslarda üst seviyeye kayıt bu bağı kullanır; kopuk ya da döngülü zincir yanlış yerleştirmeye yol açar.
+- **Kaynak:** e-Özel kurum kılavuzu (seviyeli kurslarda üst seviyeye kayıt); kurum içi karar.
+- **Kurum türü:** `language_school`
+- **Kodda:** `lib/courses.ts` (`assertNextCourse`, `planCourseArchive`).
+
+### DOM-DIL-008 · Program ile grup ayrıdır
+
+- **Kural:** Kur tarih, öğretmen, derslik ve fiyat taşımaz. Tarihli açılış (başlangıç/bitiş, takvim, eğitmen, derslik, kursiyerler) kura bağlı gruptur; grup kapasitesi kurun en çok mevcudunu aşamaz ve yalnız etkin kurdan açılır. Fiyat paket satışındadır (`DOM-DIL-050`): paket kura `courseId` ile bağlanır, satışta kurun etkin olması aranır, ders saati ve seviye satış satırına kopyalanır. Açık grubu olan kur arşivlenmez.
+- **Gerekçe:** Aynı program dönem dönem ve farklı saatlerde yeniden açılır; program alanlarının tek yerde tutulması e-Özel eşlemesini ve kur geçme hesabını tutarlı kılar. Satış satırındaki kopya, kur sonradan arşivlense de satılan saati korur.
+- **Kaynak:** ÖÖKY md. 10/4 (takvim), e-Özel kurum kılavuzu; kurum içi karar.
+- **Kurum türü:** `language_school`
+- **Kodda:** kısmen — kurda tarih ve fiyat alanı yok (`lib/courses.ts`). Grup (OG-029) ve paket satışı (ON-058) henüz yok; arşivde açık grup denetimi grupla gelecek.
 
 ## Seviye tespiti
 
@@ -307,7 +339,8 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 | Kural       | Fark                                                                                                                                                                                                                         |
 | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DOM-DIL-001 | CEFR seviyesi, kur ve `language_school` kurum türü kodda yok; ders/sınıf düzeyi modeli tek modeldir.                                                                                                                         |
+| DOM-DIL-001 | Kur (`lib/courses.ts`, tablo `courses`) ve `language_school` türü var; grup, devam ve kur geçme henüz kura bağlı değil, ders/sınıf düzeyi modeli sürüyor.                                                                    |
+| DOM-DIL-008 | Grup (OG-029) ve paket satışı (ON-058) yok; kur arşivinde açık grup denetimi ve ruhsat türüne göre haftalık saat/süre sınırı (`DOM-DIL-053`) uygulanmıyor.                                                                   |
 | DOM-DIL-040 | Dil grubu kavramı yok; sınıf kapasitesi 40'a kadar girilebiliyor (`packages/school-core/src/lib/school-management.js:23`), dil grubu tavanı 18.                                                                              |
 | DOM-DIL-050 | Kayıt tutarı serbest TL toplamıdır, ders saati ve saat ücreti yok (`packages/school-core/src/lib/domain.ts:27-31`).                                                                                                          |
 | DOM-DIL-053 | Dönem `academicYear` tamsayı yıldır; kur bazlı esnek dönem yok.                                                                                                                                                              |

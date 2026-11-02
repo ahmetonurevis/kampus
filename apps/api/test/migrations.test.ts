@@ -738,7 +738,7 @@ describe('0013: beceri görevi tabloları', () => {
         await readFile(path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'),
       )
       assert.equal(first, journal.entries.length)
-      assert.equal(journal.entries.at(-1)?.tag, '0027_create_student_guardians')
+      assert.equal(journal.entries.at(-1)?.tag, '0028_create_courses')
       await migrate(fresh, { migrationsFolder: MIGRATIONS_FOLDER })
       assert.equal(await count(), first)
     } finally {
@@ -976,5 +976,116 @@ describe('0027: veli bağı tablosu', () => {
           where institution_id = ${a.id} and is_payer`,
     )
     await db.execute(bond(a.id, 'p4', { payer: true }))
+  })
+})
+
+describe('0028: kur programı tablosu', () => {
+  let db: Database
+  let close: () => Promise<void>
+  let app: Awaited<ReturnType<typeof buildTestApp>>
+
+  before(async () => {
+    ;({ db, close } = await createTestDatabase())
+    app = await buildTestApp(db)
+  })
+  after(async () => {
+    await app.close()
+    await close()
+  })
+
+  const rows = async <T>(query: ReturnType<typeof sql>) =>
+    ((await db.execute(query)) as unknown as { rows: T[] }).rows
+  const violates = async (query: ReturnType<typeof sql>, constraint: string) => {
+    await assert.rejects(db.execute(query), (error: unknown) => {
+      const cause = (error as { cause?: { constraint?: string } }).cause
+      assert.equal(cause?.constraint ?? (error as { constraint?: string }).constraint, constraint)
+      return true
+    })
+  }
+
+  test('indeksler institution_id ile başlar; kurum kolonları zorunlu, zamanlar timestamptz', async () => {
+    const indexes = await rows<{ indexname: string; indexdef: string }>(
+      sql`select indexname, indexdef from pg_indexes where tablename = 'courses'`,
+    )
+    assert.deepEqual(indexes.map((index) => index.indexname).sort(), [
+      'courses_e_ozel_program_key',
+      'courses_name_key',
+      'courses_next_course_idx',
+      'courses_pkey',
+    ])
+    for (const index of indexes)
+      assert.match(index.indexdef, /\(institution_id[,)]/, index.indexname)
+    const columns = await rows<{ column_name: string; data_type: string; is_nullable: string }>(
+      sql`select column_name, data_type, is_nullable from information_schema.columns
+          where table_name = 'courses'`,
+    )
+    const byName = new Map(columns.map((column) => [column.column_name, column]))
+    for (const required of ['institution_id', 'created_at', 'updated_at', 'version'])
+      assert.equal(byName.get(required)?.is_nullable, 'NO', required)
+    for (const column of columns)
+      assert.notEqual(column.data_type, 'timestamp without time zone', column.column_name)
+  })
+
+  test('DOM-DIL-005…007: saat, mevcut, yaşam döngüsü, e-Özel izi, ad tekilliği ve sonraki kur bağı veritabanında da korunur', async () => {
+    const a = await createInstitution(app, { type: 'language_school' })
+    const b = await createInstitution(app, { type: 'language_school' })
+    const id = (n: number) => `00000000-0000-4000-8000-0000000001${String(n).padStart(2, '0')}`
+    const course = (
+      institutionId: string,
+      courseId: string,
+      overrides: {
+        name?: string
+        total?: number
+        weekly?: number
+        session?: number
+        min?: number
+        max?: number
+        status?: string
+        activated?: boolean
+        certified?: boolean
+        approval?: string
+        next?: string | null
+        focus?: string
+      } = {},
+    ) => {
+      const name = overrides.name ?? `Kur ${courseId.slice(-3)}`
+      const approval = overrides.approval ?? 'not_submitted'
+      const recorded = approval === 'not_submitted' ? null : FIXED_NOW
+      return sql`insert into courses (institution_id, id, name, name_key, language, level, skill_focus,
+          total_hours, weekly_hours, session_minutes, min_learners, max_learners, certified,
+          next_course_id, status, activated_at, archived_at, e_ozel_program_code, e_ozel_program_key,
+          e_ozel_approval, e_ozel_recorded_at, e_ozel_recorded_by_user_id)
+        values (${institutionId}, ${courseId}, ${name}, ${name.toLocaleLowerCase('tr-TR')}, 'en', 'B1',
+          ${overrides.focus ?? '{}'}::text[], ${overrides.total ?? 72}, ${overrides.weekly ?? 6},
+          ${overrides.session ?? 45}, ${overrides.min ?? 6}, ${overrides.max ?? 14},
+          ${overrides.certified ?? false}, ${overrides.next ?? null}, ${overrides.status ?? 'draft'},
+          ${overrides.activated ? FIXED_NOW : null},
+          ${overrides.status === 'archived' ? FIXED_NOW : null},
+          ${recorded ? `P-${courseId.slice(-3)}` : null}, ${recorded ? `P-${courseId.slice(-3)}` : null},
+          ${approval}, ${recorded}, ${recorded ? 'user-x' : null})`
+    }
+    await db.execute(course(a.id, id(1)))
+    await violates(course(a.id, id(2), { total: 4 }), 'courses_hours_check')
+    await violates(course(a.id, id(2), { session: 90, weekly: 3 }), 'courses_session_check')
+    await violates(course(a.id, id(2), { max: 19 }), 'courses_learners_check')
+    await violates(course(a.id, id(2), { min: 10, max: 8 }), 'courses_learners_check')
+    await violates(course(a.id, id(2), { focus: '{grammar}' }), 'courses_skill_focus_check')
+    await violates(course(a.id, id(2), { status: 'active' }), 'courses_lifecycle_check')
+    await violates(
+      course(a.id, id(2), { status: 'active', activated: true, certified: true }),
+      'courses_certified_check',
+    )
+    await violates(
+      sql`update courses set e_ozel_approval = 'pending' where institution_id = ${a.id} and id = ${id(1)}`,
+      'courses_e_ozel_check',
+    )
+    // Ad arşivlenmemiş kurlarda tekildir; başka kurumda ve arşivde serbesttir.
+    await violates(course(a.id, id(2), { name: 'Kur 101' }), 'courses_name_key')
+    await db.execute(course(b.id, id(2), { name: 'Kur 101' }))
+    await db.execute(course(a.id, id(3), { name: 'Kur 101', status: 'archived' }))
+    // Sonraki kur aynı kurumdadır ve kendisi olamaz.
+    await violates(course(a.id, id(4), { next: id(2) }), 'courses_next_course_fkey')
+    await violates(course(a.id, id(4), { next: id(4) }), 'courses_next_course_check')
+    await db.execute(course(a.id, id(4), { next: id(1), approval: 'approved' }))
   })
 })

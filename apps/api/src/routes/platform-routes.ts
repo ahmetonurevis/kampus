@@ -30,6 +30,7 @@ import { registerTaskAttemptRoutes } from './task-attempts.ts'
 import { registerTaskSubmissionRoutes } from './task-submissions.ts'
 import { registerAcademicYearRoutes } from './academic-years.ts'
 import { registerStudentGuardianRoutes } from './student-guardians.ts'
+import { registerCourseRoutes } from './courses.ts'
 
 /**
  * Platform rota kayıtları: Onur'un kayıt ve finans uçları dışındaki her uç. Kayıt `app.ts`
@@ -74,6 +75,7 @@ export const PLATFORM_LATE_ROUTES = [
   registerPrivacyRoutes,
   registerAcademicYearRoutes,
   registerStudentGuardianRoutes,
+  registerCourseRoutes,
 ] as const satisfies readonly RouteRegistrar[]
 
 /** Onur bloğundan önceki platform uçlarını kaydeder. */

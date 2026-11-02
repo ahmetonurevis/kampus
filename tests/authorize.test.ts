@@ -88,6 +88,9 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'academicYear.manage': ['yonetici'],
     'guardian.read': ['yonetici', 'onburo', 'veli'],
     'guardian.manage': ['yonetici', 'onburo'],
+    'course.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+    'course.manage': ['yonetici', 'ogretmen'],
+    'course.eozel': ['yonetici'],
   })
   // Sıra anlamsızdır: komut tablosu iki kaynaktan birleşir (platform ve Onur bloğu).
   assert.deepEqual(Object.keys(WRITE_ACTION_ROLES).sort(), [...WRITE_ACTIONS].sort())

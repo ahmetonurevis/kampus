@@ -196,6 +196,13 @@ export function authorize<A extends WriteAction>(
   // yetkisiz rol 403 ile işlemin varlığını öğrenmesin (DOM-YTK-012).
   if (action === 'prospect.trial' && institutionType !== 'language_school')
     return deny('trial_lesson_unavailable', 'İlgili kayıt bulunamadı.', 'DOM-DIL-030', 'not_found')
+  if (action.startsWith('course.') && institutionType !== 'language_school')
+    return deny(
+      'module_unavailable_for_type',
+      'İlgili kayıt bulunamadı.',
+      'DOM-DIL-005',
+      'not_found',
+    )
   if (!ROLE_TABLE[action].includes(actor.role)) return roleDenied('DOM-YTK-001')
   // Hedef tipi eyleme bağlıdır; birleşimi daraltmak için eylem adıyla ayrıştırılır.
   const request = { action, target } as WriteRequest
@@ -393,6 +400,12 @@ function decide(
     // okuma alanları `lib/guardianship.ts` `guardianLinksView`'da daralır (DOM-ILT-073).
     case 'guardian.read':
     case 'guardian.manage':
+      return ALLOWED
+    // Kur kurum geneli katalogdur; koordinatörün seviye kapsamı `lib/courses.ts`
+    // `assertCourseManager`'da, öğrenci/veli daraltması `courseView`'dadır (DOM-DIL-005).
+    case 'course.read':
+    case 'course.manage':
+    case 'course.eozel':
       return ALLOWED
     case 'consent.read':
     case 'consent.status': {

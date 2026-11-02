@@ -4,6 +4,7 @@ import {
   createGuardianLinks,
   type GuardianSeedAccount,
 } from '@kampus/school-core/platform/seed-guardians.ts'
+import { createCourses } from '@kampus/school-core/platform/seed-courses.ts'
 
 import type { Auth, InstitutionType, Role } from '../auth.ts'
 import { AppError, MESSAGES } from '../errors.ts'
@@ -17,6 +18,7 @@ import {
 } from '../services/identity.ts'
 import { ensureAcademicYears } from './academic-years.ts'
 import type { Database } from './client.ts'
+import { ensureCourses } from './courses.ts'
 import { recordKey, STORED_COLLECTIONS, type RecordData } from './collections.ts'
 import { insertMissingRecords } from './records.ts'
 import { ensureGuardianLinks } from './student-guardians.ts'
@@ -260,6 +262,14 @@ export async function seedDemo(auth: Auth, db: Database, password: string, optio
       createAcademicYears(state.academicYear, institution.type),
       options.now,
     )
+    // Dil okulunun örnek kur programı (IST-076); e-Özel izini kurucu yönetici işaretlemiş sayılır.
+    if (institution.type === 'language_school')
+      await ensureCourses(
+        db,
+        institutionId,
+        createCourses(state.academicYear, founder.id),
+        options.now,
+      )
     await ensureInstitutionSettings(db, institutionId, {
       academicYear: state.academicYear,
       now: options.now,

@@ -3728,6 +3728,98 @@ export interface paths {
         patch: operations["updateStudentGuardian"];
         trace?: never;
     };
+    "/api/v1/courses": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kurlar
+         * @description Kurumun kur programı: seviye sırasıyla (Pre-A1 … C2), sonra ada göre, sayfalı. Arşiv varsayılan olarak dışlanır, `status=archived` ile okunur. Süzgeç `status`, `level`, `language`; bilinmeyen parametre 400. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`. Öğrenci ve veli yalnız etkin kurları ve katalog alanlarını görür (en az mevcut, durum, e-Özel kaydı, işlem anları ve sürüm dönmez; sonraki kur yalnız etkinse). Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        get: operations["listCourses"];
+        put?: never;
+        /**
+         * Kur oluştur
+         * @description Yeni kur `draft` durumunda açılır (core `planCourseCreation`, DOM-DIL-005). Dil verilmezse `en`, oturum 45 dakika, belgesiz. Ad arşivlenmemiş kurlarda tekil (409 `course_name_exists`); toplam saat haftalık saatten az olamaz (422 `course_hours_invalid`); 90 dakikalık oturumda saatler çift (422 `course_session_mismatch`); en az mevcut en çok mevcudu aşamaz (422 `course_learners_invalid`); sonraki kur aynı dilde, seviyesi düşük olmayan, arşivlenmemiş ve döngüsüz (422 `course_next_*`, DOM-DIL-007). `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarını yönetir (403 `course_coordinator_required`; seviye değişiminde eski ve yeni seviye). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["createCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/courses/{courseId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kur
+         * @description Tek kur; olmayan, başka kurumun ya da rolün göremediği (öğrenci ve velide etkin olmayan) kur 404. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`. Öğrenci ve veli yalnız etkin kurları ve katalog alanlarını görür (en az mevcut, durum, e-Özel kaydı, işlem anları ve sürüm dönmez; sonraki kur yalnız etkinse). Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        get: operations["getCourse"];
+        put?: never;
+        post?: never;
+        /**
+         * Kuru arşivle
+         * @description Taslak ya da etkin kuru arşivler (DOM-DIL-005); arşiv geri alınmaz. Arşivlenmemiş başka bir kurun sonraki kuruysa arşivlenmez (422 `course_has_dependents`, DOM-DIL-007). `If-Match` kurun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun kuru 404. Arşivli kur değişmez: 409 `course_archived`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarını yönetir (403 `course_coordinator_required`; seviye değişiminde eski ve yeni seviye). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        delete: operations["archiveCourse"];
+        options?: never;
+        head?: never;
+        /**
+         * Kuru değiştir
+         * @description Kurun alanlarını değiştirir (DOM-DIL-005…007); kurallar oluşturmadaki gibidir. Etkin kurun dili, seviyesi, saatleri, oturumu ve belge türü değişmez (422 `course_active_locked`; yeni kur tanımlanır). Taslakta bu alanlardan biri değişirse e-Özel onayı sıfırlanır (`not_submitted`, program kodu kalır; DOM-DIL-006). `If-Match` kurun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun kuru 404. Arşivli kur değişmez: 409 `course_archived`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarını yönetir (403 `course_coordinator_required`; seviye değişiminde eski ve yeni seviye). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        patch: operations["updateCourse"];
+        trace?: never;
+    };
+    "/api/v1/courses/{courseId}/activate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kuru etkinleştir
+         * @description Taslak kuru etkinleştirir (DOM-DIL-005); yalnız taslak (409 `course_not_draft`). Belgeli kur, programı e-Özel'de onaylanmadan etkinleşmez (422 `course_program_not_approved`, DOM-DIL-006). Gövde yok ya da boş nesne. `If-Match` kurun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun kuru 404. Arşivli kur değişmez: 409 `course_archived`. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`; diğer roller 403. Öğretmen yalnız akademik koordinatörü olduğu seviyenin kurlarını yönetir (403 `course_coordinator_required`; seviye değişiminde eski ve yeni seviye). Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["activateCourse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/courses/{courseId}/record-e-ozel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kurun e-Özel kaydını işaretle
+         * @description Kurumun e-Özel'e elle işlediği kurs programının kodunu ve onay durumunu (`pending`, `approved`, `rejected`) işaretler; iz işaretleyen ve anla tutulur (DOM-DIL-006). Platform e-Özel'e yazmaz. Program kodu arşivlenmemiş kurlarda tekil (409 `course_program_code_exists`, büyük/küçük harf duyarsız). Etkin belgeli kurun kaydı değişmez (422 `course_active_locked`). `If-Match` kurun `rowVersion`'ı (zorunlu), tutmazsa 409 `version_conflict`; olmayan ya da başka kurumun kuru 404. Arşivli kur değişmez: 409 `course_archived`. `Idempotency-Key` isteğe bağlı. Yalnız `yonetici`; diğer roller 403. Denetime yalnız alan adları yazılır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        post: operations["recordCourseEOzel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -6035,6 +6127,60 @@ export interface components {
             /** @description Düzenleme ve kaldırmada `If-Match` değeri */
             rowVersion: number;
         };
+        CourseEOzelInput: {
+            /** @description e-Özel kurs programı kodu */
+            programCode: string | null;
+            /** @enum {string} */
+            approval: "not_submitted" | "pending" | "approved" | "rejected";
+            /** @description Kurumun e-Özel kaydını son işaretlediği an */
+            recordedAt: string | null;
+            /** @description İşaretleyen kullanıcı */
+            recordedByUserId: string | null;
+        };
+        CourseInput: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            language: "en" | "de" | "fr" | "es" | "it" | "ru" | "ar" | "zh" | "ja" | "ko" | "tr";
+            /** @enum {string} */
+            level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+            /** @description Boş liste genel kurdur */
+            skillFocus: ("reading" | "listening" | "writing" | "speaking")[];
+            description: string | null;
+            /** @description Toplam ders saati (45 dk) */
+            totalHours: number;
+            weeklyHours: number;
+            /** @enum {number} */
+            sessionMinutes: 45 | 90;
+            /** @description Toplam ÷ haftalık saat, yukarı yuvarlanır; saklanmaz */
+            durationWeeks: number;
+            maxLearners: number;
+            /** @description Belgeli kurs (MEBBİS Kurs Bitirme Belgesi) */
+            certified: boolean;
+            /** @description Seviyeli kursta sonraki kur; öğrenci ve velide yalnız etkinse döner */
+            nextCourseId: string | null;
+            /** @description Yalnız personele döner */
+            minLearners?: number;
+            /**
+             * @description Yalnız personele döner
+             * @enum {string}
+             */
+            status?: "draft" | "active" | "archived";
+            /** @description Yalnız personele döner */
+            activatedAt?: string | null;
+            /** @description Yalnız personele döner */
+            archivedAt?: string | null;
+            /** @description Yalnız personele döner */
+            eOzel?: components["schemas"]["CourseEOzelInput"];
+            /** @description Yazmada `If-Match`. Yalnız personele döner */
+            rowVersion?: number;
+            /**
+             * Format: date-time
+             * @description Yalnız personele döner
+             */
+            updatedAt?: string;
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -8256,6 +8402,60 @@ export interface components {
             archivedAt: string | null;
             /** @description Düzenleme ve kaldırmada `If-Match` değeri */
             rowVersion: number;
+        };
+        CourseEOzel: {
+            /** @description e-Özel kurs programı kodu */
+            programCode: string | null;
+            /** @enum {string} */
+            approval: "not_submitted" | "pending" | "approved" | "rejected";
+            /** @description Kurumun e-Özel kaydını son işaretlediği an */
+            recordedAt: string | null;
+            /** @description İşaretleyen kullanıcı */
+            recordedByUserId: string | null;
+        };
+        Course: {
+            /** Format: uuid */
+            id: string;
+            name: string;
+            /** @enum {string} */
+            language: "en" | "de" | "fr" | "es" | "it" | "ru" | "ar" | "zh" | "ja" | "ko" | "tr";
+            /** @enum {string} */
+            level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+            /** @description Boş liste genel kurdur */
+            skillFocus: ("reading" | "listening" | "writing" | "speaking")[];
+            description: string | null;
+            /** @description Toplam ders saati (45 dk) */
+            totalHours: number;
+            weeklyHours: number;
+            /** @enum {number} */
+            sessionMinutes: 45 | 90;
+            /** @description Toplam ÷ haftalık saat, yukarı yuvarlanır; saklanmaz */
+            durationWeeks: number;
+            maxLearners: number;
+            /** @description Belgeli kurs (MEBBİS Kurs Bitirme Belgesi) */
+            certified: boolean;
+            /** @description Seviyeli kursta sonraki kur; öğrenci ve velide yalnız etkinse döner */
+            nextCourseId: string | null;
+            /** @description Yalnız personele döner */
+            minLearners?: number;
+            /**
+             * @description Yalnız personele döner
+             * @enum {string}
+             */
+            status?: "draft" | "active" | "archived";
+            /** @description Yalnız personele döner */
+            activatedAt?: string | null;
+            /** @description Yalnız personele döner */
+            archivedAt?: string | null;
+            /** @description Yalnız personele döner */
+            eOzel?: components["schemas"]["CourseEOzel"];
+            /** @description Yazmada `If-Match`. Yalnız personele döner */
+            rowVersion?: number;
+            /**
+             * Format: date-time
+             * @description Yalnız personele döner
+             */
+            updatedAt?: string;
         };
     };
     responses: never;
@@ -31222,6 +31422,730 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["StudentGuardian"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCourses: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Durum süzgeci; verilmezse arşiv dışındakiler (öğrenci ve velide yalnız `active`) */
+                status?: "draft" | "active" | "archived";
+                /** @description CEFR seviyesi */
+                level?: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                /** @description Öğretim dili (ISO 639-1) */
+                language?: "en" | "de" | "fr" | "es" | "it" | "ru" | "ar" | "zh" | "ja" | "ko" | "tr";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Course"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createCourse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name: string;
+                    /** @enum {string} */
+                    language?: "en" | "de" | "fr" | "es" | "it" | "ru" | "ar" | "zh" | "ja" | "ko" | "tr";
+                    /** @enum {string} */
+                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    skillFocus?: ("reading" | "listening" | "writing" | "speaking")[];
+                    description?: string | null;
+                    totalHours: number;
+                    weeklyHours: number;
+                    /** @enum {number} */
+                    sessionMinutes?: 45 | 90;
+                    minLearners: number;
+                    maxLearners: number;
+                    certified?: boolean;
+                    nextCourseId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Course"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCourse: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kur kimliği */
+                courseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Course"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveCourse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Kur kimliği */
+                courseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Course"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateCourse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Kur kimliği */
+                courseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    name?: string;
+                    /** @enum {string} */
+                    language?: "en" | "de" | "fr" | "es" | "it" | "ru" | "ar" | "zh" | "ja" | "ko" | "tr";
+                    /** @enum {string} */
+                    level?: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    skillFocus?: ("reading" | "listening" | "writing" | "speaking")[];
+                    description?: string | null;
+                    totalHours?: number;
+                    weeklyHours?: number;
+                    /** @enum {number} */
+                    sessionMinutes?: 45 | 90;
+                    minLearners?: number;
+                    maxLearners?: number;
+                    certified?: boolean;
+                    nextCourseId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Course"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    activateCourse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Kur kimliği */
+                courseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Course"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordCourseEOzel: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Kur kimliği */
+                courseId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    programCode: string;
+                    /** @enum {string} */
+                    approval: "pending" | "approved" | "rejected";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Course"];
                     };
                 };
             };

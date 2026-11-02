@@ -170,6 +170,14 @@ Migration `0027_create_student_guardians`; şema `apps/api/src/db/schema/student
 - Velayet ve kısıt Ç sınıfıdır: belge ve karar ayrıntısı tutulmaz, denetime yalnız alan adları yazılır. Kaldırma arşivdir; arşivli bağ velayet, rıza ve kapsam vermez.
 - Migration sonuna elle eklenen geri doldurma doğrulanmış eski hesap bağlantılarını (`membership_links` `child`) velayetli (`full`), kısıtsız bağ olarak yazar; yeni `child` bağlantısı aynı bağı `ensureMembershipLinks` ile alır. `membership_links` okuma kapsamının kaynağı olarak kalır; bağdan kapsam OG-032'dedir (`TODO(velayet-kapsam)`).
 
+### Kur programı tablosu (IST-076)
+
+Migration `0028_create_courses`; şema `apps/api/src/db/schema/courses.ts`, depo `apps/api/src/db/courses.ts`, kurallar core `lib/courses.ts` (DOM-DIL-005…008). Ölçüt 2 (ad ve e-Özel program kodu tekilliği, yaşam döngüsü veritabanı kısıtıdır) ve ilerideki grup ve paket satışının yabancı anahtarla bağlanması gereği `records`'ta değildir.
+
+- `courses`: birincil anahtar `(institution_id, id)`; tarih, öğretmen, derslik ve fiyat kolonu yoktur (grup ve paket ayrı tablolar olacak), süre saklanmaz. Saat, oturum (90 dakikada saatler çift) ve mevcut (≤ 18) kuralları `check`'tir. `courses_lifecycle_check` durumu (`draft`/`active`/`archived`) işlem anlarıyla birlikte tutar; arşiv satır arşividir (`status = 'archived'` ile `archived_at` birlikte), geri alınmaz. `courses_certified_check` onaysız etkin belgeli kuru reddeder; `courses_e_ozel_check` işaretlenmiş e-Özel kaydında kod, an ve işaretleyeni birlikte ister.
+- Tekillik arşivlenmemiş kurlarda kısmi tekil indekslerdir: `courses_name_key` core `courseNameKey(name)` (NFC, kırpılmış, Türkçe küçük harf), `courses_e_ozel_program_key` core `courseProgramKey` (büyük harf). Depo anahtarları her yazmada türetir; `lower()` kullanılmaz.
+- Sonraki kur bağı `(institution_id, next_course_id)` bileşik yabancı anahtardır (`on delete restrict`, başka kurumun kuruna bağlanamaz); zincir döngüsü, dil ve seviye kuralı core'da kurum kilidi altında denetlenir. Kurumun kurları azdır (katalog): işlem tutarlılığı için arşivliler dahil hepsi yüklenir, sıralama ve sayfalama serviste yapılır.
+
 ## 5. Migration kuralları
 
 - Şema değişikliği yalnız migration ile: `pnpm --filter @kampus/api exec drizzle-kit generate --name <ne_yapildigi>` (ör. `add_audit_log`). Üretilen SQL okunur, gerekirse elle düzenlenir ve commit edilir.

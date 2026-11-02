@@ -79,6 +79,11 @@ export type PlatformWriteTargets = {
   // `guardianLinksView`'dadır (veli yalnız kendi bağını, kısıt alanı olmadan görür).
   'guardian.read': Record<string, never>
   'guardian.manage': Record<string, never>
+  // Dil okulu kur programı (DOM-DIL-005…007): kural `lib/courses.ts`. Koordinatörün seviye kapsamı
+  // (`assertCourseManager`) ve öğrenci/veli görünümü (`courseView`) orada çözülür.
+  'course.read': Record<string, never>
+  'course.manage': Record<string, never>
+  'course.eozel': Record<string, never>
 }
 
 /** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları `lib/authorize.ts`). */
@@ -157,4 +162,10 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   // (DOM-ILT-071); veli yalnız kendi bağını okur (DOM-ILT-073).
   'guardian.read': ['yonetici', 'onburo', 'veli'],
   'guardian.manage': ['yonetici', 'onburo'],
+  // Kur kataloğunu beş rol okur (öğrenci ve veli yalnız etkin kurları, daraltılmış). Kuru yönetici
+  // ve seviyenin akademik koordinatörü (öğretmen + görev, DOM-YTK-027) yönetir; e-Özel kaydını
+  // yalnız yönetici işaretler (DOM-DIL-005, -006; IST-076).
+  'course.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
+  'course.manage': ['yonetici', 'ogretmen'],
+  'course.eozel': ['yonetici'],
 } as const satisfies Record<PlatformAction, readonly Role[]>

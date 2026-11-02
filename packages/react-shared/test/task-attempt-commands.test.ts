@@ -211,7 +211,8 @@ describe('yazma taslağı ve teslim komutları', () => {
         .message
     assert.equal(feedback('draft_conflict', 409), TASK_DRAFT_CHANGED_MESSAGE)
     assert.equal(feedback('submission_closed'), 'Bu görevin teslim süresi doldu.')
-    assert.match(feedback('submission_kind_unavailable') ?? '', /henüz açık değil/)
+    // OG-048 sesli ve dosyalı teslimi açtı: eski "henüz açık değil" iletisi kalktı.
+    assert.equal('submission_kind_unavailable' in submitTaskSubmissionCommand.messages, false)
     assert.equal(
       feedback('version_limit_reached', 422, 'En fazla 3 sürüm gönderebilirsiniz.'),
       'En fazla 3 sürüm gönderebilirsiniz.',
@@ -226,6 +227,41 @@ describe('yazma taslağı ve teslim komutları', () => {
         message,
       )
     assert.equal(saveTaskDraftCommand.exclusive, true)
+  })
+
+  test('IST-051, DOM-BEC-050, DOM-BEC-054: sesli teslimin rıza ve kayıt hataları teknik ayrıntısız Türkçe', () => {
+    const feedback = (code: string, status = 422, message = 'Sunucu mesajı.') =>
+      commandFeedback(new ApiError({ status, code, message }), submitTaskSubmissionCommand.messages)
+        .message
+    assert.match(feedback('consent_required', 403) ?? '', /yüz yüze değerlendirilecek/)
+    assert.match(feedback('file_not_ready') ?? '', /işleniyor/)
+    assert.match(feedback('file_unavailable') ?? '', /yeniden kaydedin/)
+    assert.match(feedback('file_already_attached', 409) ?? '', /zaten gönderildi/)
+    // Kayıt ölçüm hataları core'un iletisiyle gelir (süre sınırı sayısı sunucudadır).
+    assert.equal(
+      feedback('recording_too_long', 422, 'Kayıt en fazla 60 saniye olabilir.'),
+      'Kayıt en fazla 60 saniye olabilir.',
+    )
+    for (const message of Object.values(submitTaskSubmissionCommand.messages))
+      assert.doesNotMatch(message, /[a-z]+_[a-z]+|HTTP/)
+  })
+
+  test('IST-051: sesli teslim gövdesi yalnız kayıt kimliğini taşır', async () => {
+    const { client, sent } = fakeClient()
+    const submission = { submissionKind: 'audio' as const, recordingFileId: 'file-9' }
+    await runRequest(() =>
+      submitTaskSubmissionRequest(
+        client,
+        { assignmentId: 'as-2', submission },
+        commandHeaders('key-67890', null),
+      ),
+    )
+    assert.equal(
+      `${sent[0]?.method} ${sent[0]?.path}`,
+      'POST /api/v1/task-assignments/as-2/submissions',
+    )
+    assert.equal(sent[0]?.headers.get('if-match'), null)
+    assert.deepEqual(sent[0]?.body, submission)
   })
 })
 

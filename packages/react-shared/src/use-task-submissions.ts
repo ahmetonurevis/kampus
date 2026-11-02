@@ -14,8 +14,10 @@ import { useApiQuery } from './use-api-query.ts'
 import { TASK_ASSIGNMENTS_KEY } from './use-task-assignments.ts'
 
 /**
- * Yazma görevinin taslak ve teslim kancaları (`/api/v1/task-submissions`, taslak ve teslim
- * atamanın altında; ADR 0004 karar 6; DOM-BEC-023, 040, 044, 046; IST-047, IST-051). Sürüm sınırı,
+ * Yazma ve konuşma görevinin taslak ve teslim kancaları (`/api/v1/task-submissions`, taslak ve
+ * teslim atamanın altında; ADR 0004 karar 6; DOM-BEC-023, 040, 044, 046, 054; IST-047, IST-051).
+ * Konuşmada gövde `{ submissionKind: 'audio', recordingFileId }`'dir; kayıt önce `POST /files`
+ * (amaç `speaking_recording`) ile yüklenir ve `ready` olunca gönderilir. Sürüm sınırı,
  * pencere ve sözcük sayısı sunucudadır; burada çağrı, önbellek tazeleme ve Türkçe hata metni
  * vardır. Taslak kaydı `If-Match` olarak taslağın okunan `revision`'ını taşır; yalnız henüz taslak
  * yokken (`revision: null`) başlıksız gider, sunucu taslak varken başlıksız isteği 400 ile reddeder;
@@ -56,13 +58,23 @@ export const TASK_DRAFT_CHANGED_MESSAGE =
 export const TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE =
   'Taslak başka bir pencerede kaydedildi, son hâli yüklendi.'
 
-/** `version_limit_reached` sunucunun mesajıyla gelir (sınır sayısını içerir). */
+/**
+ * `version_limit_reached` sunucunun mesajıyla gelir (sınır sayısını, konuşmada deneme hakkını
+ * içerir). Sesli teslimin kayıt hataları (`recording_empty`, `recording_too_long`,
+ * `recording_not_measured`) core'un Türkçe iletisiyle gelir; rıza ve dosya iletileri burada
+ * teknik ayrıntısız yazılır (DOM-BEC-050, 054).
+ */
 export const TASK_SUBMISSION_MESSAGES = {
   not_found: 'Görev bulunamadı.',
   draft_conflict: TASK_DRAFT_CHANGED_MESSAGE,
   submission_closed: 'Bu görevin teslim süresi doldu.',
   submission_not_expected: 'Bu görev teslim beklemiyor; deneme olarak çözülür.',
-  submission_kind_unavailable: 'Dosyalı ve sesli teslim henüz açık değil; metin olarak gönderin.',
+  submission_kind_mismatch: 'Bu görev başka türde teslim bekliyor; sayfayı yenileyin.',
+  consent_required:
+    'Ses kaydı için gerekli onay bulunmuyor; bu görev öğretmeninizle yüz yüze değerlendirilecek.',
+  file_not_ready: 'Kaydınız henüz işleniyor; biraz sonra yeniden deneyin.',
+  file_unavailable: 'Bu kayıt artık kullanılamıyor; yeniden kaydedin.',
+  file_already_attached: 'Bu kayıt zaten gönderildi; sayfayı yenileyin.',
   draft_not_supported: 'Taslak yalnız yazma görevinde tutulur.',
   resubmission_not_requested:
     'Teslim puanlandı; yeni sürüm için öğretmenin yeniden teslim istemesi gerekir.',

@@ -14,6 +14,7 @@ import { WRITING_PARAM } from './StudentWritingWorkspace.tsx'
 import {
   FAILED,
   isLearnerAssignment,
+  isSpeakingTask,
   studentTaskRow,
   summaryProgress,
   taskKindLabel,
@@ -35,9 +36,9 @@ const COPY = {
     workspace: QUIZ_PARAM,
   },
   teacher: {
-    heading: 'Atanan yazma ödevleri',
-    caption: 'Atanan yazma ödevleri',
-    empty: 'Henüz size atanmış yazma ödevi yok.',
+    heading: 'Atanan yazma ve konuşma görevleri',
+    caption: 'Atanan yazma ve konuşma görevleri',
+    empty: 'Henüz size atanmış yazma ya da konuşma görevi yok.',
     listKey: 'gorevler-yazma',
     workspace: WRITING_PARAM,
   },
@@ -50,7 +51,11 @@ const dueLabel = (iso: string | null) =>
  * Durum metnine göre panel düğmesi: ana işlem görünür, sonuç/ayrıntı sakin kalır. İşlem şu an
  * yapılamıyorsa (hak, süre, lisans) düğme yalnız ayrıntıyı açar.
  */
-function actionLabel(status: string, canAct: boolean): { text: string; primary: boolean } {
+function actionLabel(
+  status: string,
+  canAct: boolean,
+  speaking: boolean,
+): { text: string; primary: boolean } {
   if (!canAct) return { text: 'Ayrıntıyı aç', primary: false }
   switch (status) {
     case 'Sürüyor':
@@ -58,9 +63,15 @@ function actionLabel(status: string, canAct: boolean): { text: string; primary: 
     case 'Başlanmadı':
       return { text: 'Göreve başla', primary: true }
     case 'Bekliyor':
-      return { text: 'Yazmaya başla', primary: true }
+      return { text: speaking ? 'Kayda başla' : 'Yazmaya başla', primary: true }
     case 'Yeniden teslim istendi':
-      return { text: 'Yeni sürüm yaz', primary: true }
+      return { text: speaking ? 'Yeni kayıt yap' : 'Yeni sürüm yaz', primary: true }
+    case 'Teslim edildi':
+    case 'Geç teslim edildi':
+      // Konuşmada hak kaldıysa yeni deneme gönderilebilir (DOM-BEC-040).
+      return speaking
+        ? { text: 'Yeni kayıt yap', primary: false }
+        : { text: 'Ayrıntıyı aç', primary: false }
     default:
       return { text: 'Ayrıntıyı aç', primary: false }
   }
@@ -135,8 +146,9 @@ export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
 
   const selected = learners.find((item) => item.id === panel.selectedId)
   const selectedProgress = selected ? (summaryProgress(selected, now) ?? FAILED) : null
+  const speaking = selected ? isSpeakingTask(selected) : false
   const action = selectedProgress
-    ? actionLabel(selectedProgress.status, selectedProgress.canAct)
+    ? actionLabel(selectedProgress.status, selectedProgress.canAct, speaking)
     : null
 
   return (
@@ -203,7 +215,10 @@ export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
                   />,
                 ],
                 ['Son teslim', dueLabel(selected.deadline.dueAt)],
-                [mode === 'auto' ? 'Deneme hakkı' : 'Sürüm hakkı', selectedProgress.rights],
+                [
+                  mode === 'auto' || speaking ? 'Deneme hakkı' : 'Sürüm hakkı',
+                  selectedProgress.rights,
+                ],
                 ...(selected.timeLimitMinutes
                   ? ([['Süre sınırı', `${selected.timeLimitMinutes} dk`]] as const)
                   : []),
@@ -222,7 +237,11 @@ export function StudentTaskSection({ mode }: { mode: StudentTaskMode }) {
                 className="justify-self-start"
                 onClick={() => workspace.open(selected.id)}
               >
-                <Icon name={mode === 'auto' ? 'Play' : 'Pencil'} size={16} aria-hidden="true" />
+                <Icon
+                  name={mode === 'auto' ? 'Play' : speaking ? 'Mic' : 'Pencil'}
+                  size={16}
+                  aria-hidden="true"
+                />
                 {action.text}
               </Button>
             ) : null}

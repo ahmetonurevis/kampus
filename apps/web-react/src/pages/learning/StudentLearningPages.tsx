@@ -65,7 +65,9 @@ export function LearningStudentGate({
 export function StudentHomeworkPage({ page }: { page: NavPage }) {
   const [params] = useSearchParams()
   const writing = params.get(WRITING_PARAM) ?? ''
-  if (writing) return <StudentWritingWorkspace page={page} assignmentId={writing} />
+  // Anahtar görev kimliğidir: `?yaz=A` → `?yaz=B` geçişinde kayıt, sayaç ve gösterim durumu
+  // (liste ekranına uğramadan geçmişte gezilirse) önceki görevden taşınmaz.
+  if (writing) return <StudentWritingWorkspace key={writing} page={page} assignmentId={writing} />
   return (
     <LearningStudentGate page={page} before={<StudentTaskSection mode="teacher" />}>
       {(student) => <StudentHomeworkView student={student} title="Ödevlerim" mode="student" />}

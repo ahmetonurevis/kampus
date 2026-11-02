@@ -7,8 +7,10 @@ import { z } from 'zod'
 import {
   answerQuestionSchema,
   askQuestionSchema,
+  QUESTION_PHOTO_LIMIT,
   type AskQuestionInput,
 } from '@kampus/school-core/lib/questions.ts'
+import type { FileUploadItem } from '@/components/FileUploadField.tsx'
 import type { CoreRow } from '@/hooks/use-core-collection.ts'
 
 export type AskTeacher = { id: string; name: string }
@@ -75,12 +77,38 @@ export const askFormSchema = z.object({
   topic: z.string(),
   title: askQuestionSchema.shape.title,
   text: askQuestionSchema.shape.text,
+  /** Yüklenmiş fotoğraflar (`student_question_photo`); gövdeye yalnız kimlikleri gider. */
+  files: z
+    .array(
+      z.object({
+        id: z.string().min(1),
+        name: z.string(),
+        key: z.string().optional(),
+      }) satisfies z.ZodType<FileUploadItem>,
+    )
+    .max(QUESTION_PHOTO_LIMIT, `En fazla ${QUESTION_PHOTO_LIMIT} fotoğraf ekleyebilirsiniz.`),
 })
 export type AskFormValues = z.input<typeof askFormSchema>
 
 export function askDefaults(): AskFormValues {
-  return { subjectId: '', teacherId: '', topic: '', title: '', text: '' }
+  return { subjectId: '', teacherId: '', topic: '', title: '', text: '', files: [] }
 }
+
+/**
+ * Yüklenen fotoğrafı listeye ekler; aynı kimlik (aynı dosya yeniden seçildi, sunucu aynı kaydı
+ * döndürdü) iki kez eklenmez ve liste soru sınırında kalır (DOM-ILT-094).
+ */
+export function addQuestionPhoto(
+  current: readonly FileUploadItem[],
+  item: FileUploadItem,
+): FileUploadItem[] {
+  if (current.some((file) => file.id === item.id)) return [...current]
+  return [...current, item].slice(0, QUESTION_PHOTO_LIMIT)
+}
+
+/** Sunucunun alan adı → formdaki alan (fotoğraf listesi formda `files`'tır). */
+export const askFieldName = (name: string): string =>
+  name === 'fileIds' || name.startsWith('fileIds.') ? 'files' : name
 
 export type AskOutcome =
   | { ok: true; body: AskQuestionInput }
@@ -107,6 +135,7 @@ export function askQuestionBody(values: AskFormValues, options: readonly AskOpti
       ...(topic === '' ? {} : { topic }),
       title: values.title.trim(),
       text: values.text.trim(),
+      ...(values.files.length === 0 ? {} : { fileIds: values.files.map((file) => file.id) }),
     },
   }
 }

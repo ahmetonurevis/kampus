@@ -42,7 +42,12 @@ import { loadMembershipGuardians } from '../db/student-guardians.ts'
 import { ConflictError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment } from './commands.ts'
-import { getInstitution, listMembershipLinks, listStudentAccountUserIds } from './memberships.ts'
+import {
+  getInstitution,
+  listMembershipLinks,
+  listStoredMembershipLinks,
+  listStudentAccountUserIds,
+} from './memberships.ts'
 import {
   runCommand,
   runReadOnly,
@@ -97,8 +102,11 @@ export async function consentStudentOf(
 
 async function consentActorOf(tx: Database, ctx: ServiceContext): Promise<ConsentGiver> {
   const { membershipId } = ctx.actor
+  // Kayıtlı bağlantılar (velayet süzgecisiz): velayetsiz veli 404 değil 403
+  // `consent_custody_required` alır; velayet kararı aşağıdaki bağlardan verilir. Okuma kapsamı
+  // (`readWithScope`) daraltılmış bağlantıyla kalır.
   const [links, guardians] = await Promise.all([
-    listMembershipLinks(tx, ctx.institutionId, membershipId),
+    listStoredMembershipLinks(tx, ctx.institutionId, membershipId),
     ctx.actor.role === 'veli'
       ? loadMembershipGuardians(tx, ctx.institutionId, membershipId)
       : Promise.resolve([]),

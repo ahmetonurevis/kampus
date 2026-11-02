@@ -29,6 +29,7 @@ import {
   type MessageView,
   type Participant,
 } from '@kampus/school-core/lib/communication.ts'
+import { hasCustody } from '@kampus/school-core/lib/guardianship.ts'
 import type { Actor, Scope } from '@kampus/school-core/lib/scope.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
@@ -44,6 +45,7 @@ import { findRecord, loadRecords, type FieldMatch } from '../db/records.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { memberships, users } from '../db/schema/auth.ts'
 import { membershipLinks } from '../db/schema/membership-links.ts'
+import { loadStudentGuardians } from '../db/student-guardians.ts'
 import { NotFoundError, ValidationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
@@ -267,9 +269,12 @@ export async function listConversationMessages(
 
 /**
  * Öğrencinin platformdaki veli hesapları (`membership_links` kind `child`): öğretmenin veli
- * yazışmasında veli seçimi için (DOM-ILT-010). Kapsam `startConversation` kuralıyla birebir
- * aynıdır (core `parentAccountsDecision`): öğretmen o öğrenci için veli yazışması açabiliyorsa
- * görür, aksi halde (kapsam dışı, var olmayan, başka kurum) 404. Ad dışında kişisel veri dönmez.
+ * yazışmasında veli seçimi için (DOM-ILT-010). Yalnız velayetli ve kısıtsız bağı olan hesaplar
+ * döner (core `hasCustody`; DOM-ILT-070, DOM-ILT-074): iletişim kısıtlı ya da velayeti olmayan
+ * veliyle yazışma başlatılamaz, adı da listede görünmez. Kapsam `startConversation` kuralıyla
+ * birebir aynıdır (core `parentAccountsDecision`): öğretmen o öğrenci için veli yazışması
+ * açabiliyorsa görür, aksi halde (kapsam dışı, var olmayan, başka kurum) 404. Ad dışında kişisel
+ * veri dönmez.
  */
 export async function listStudentParentAccounts(
   ctx: ServiceContext,
@@ -285,8 +290,18 @@ async function parentAccounts(
   institutionId: string,
   studentId: string,
 ): Promise<{ userId: string; name: string }[]> {
+  const [rows, guardians] = await Promise.all([
+    linkedParentAccounts(db, institutionId, studentId),
+    loadStudentGuardians(db, institutionId, studentId),
+  ])
+  return rows
+    .filter((row) => hasCustody(guardians, studentId, row.membershipId))
+    .map(({ userId, name }) => ({ userId, name }))
+}
+
+function linkedParentAccounts(db: Database, institutionId: string, studentId: string) {
   return db
-    .select({ userId: memberships.userId, name: users.name })
+    .select({ userId: memberships.userId, name: users.name, membershipId: memberships.id })
     .from(membershipLinks)
     .innerJoin(memberships, eq(memberships.id, membershipLinks.membershipId))
     .innerJoin(users, eq(users.id, memberships.userId))

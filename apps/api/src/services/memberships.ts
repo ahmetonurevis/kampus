@@ -1,10 +1,13 @@
 import { and, asc, count, eq, isNull, type SQL } from 'drizzle-orm'
 
+import { guardedActorLinks } from '@kampus/school-core/lib/guardianship.ts'
+
 import { roleSchema, type Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
 import { institutions, memberships, users } from '../db/schema/auth.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
 import { membershipLinks, type MembershipLinkKind } from '../db/schema/membership-links.ts'
+import { loadMembershipGuardians } from '../db/student-guardians.ts'
 import { effectiveModules, toModuleMap } from './modules.ts'
 
 /**
@@ -61,11 +64,36 @@ export async function getInstitution(db: Database, institutionId: string) {
   }
 }
 
+export type MembershipLink = { kind: MembershipLinkKind; recordId: string }
+
+/**
+ * Aktörün okuma kapsamı bağlantıları (IST-019; DOM-ILT-070, DOM-ILT-074). Kapsamın tek kaynağıdır:
+ * `scopeFor`, `/me` çocuk listesi, bildirim kitlesi, yazışma, pano ve dosya erişimi buradan okur.
+ * Veli `child` bağlantısı yalnız velayetli ve kısıtsız veli–öğrenci bağıyla (`student_guardians`)
+ * kapsam verir (core `guardedActorLinks`): iletişim kısıtlı ya da velayeti olmayan veli öğrenciyi
+ * hiç görmez; kısıt kalkınca yeniden görür. Bağ tablosu yalnız çocuk bağlantısı varsa okunur.
+ */
 export async function listMembershipLinks(
   db: Database,
   institutionId: string,
   membershipId: string,
-): Promise<{ kind: MembershipLinkKind; recordId: string }[]> {
+): Promise<MembershipLink[]> {
+  const links = await listStoredMembershipLinks(db, institutionId, membershipId)
+  if (!links.some((link) => link.kind === 'child')) return links
+  const guardians = await loadMembershipGuardians(db, institutionId, membershipId)
+  return guardedActorLinks(links, guardians, membershipId)
+}
+
+/**
+ * Üyeliğin kayıtlı bağlantıları, velayet süzgeci olmadan. Okuma kapsamı için kullanılmaz; yalnız
+ * kararı bağ tablosundan ayrıca okuyan yerler içindir (rıza: velayetsiz veliye 403
+ * `consent_custody_required`, `services/consents.ts`).
+ */
+export async function listStoredMembershipLinks(
+  db: Database,
+  institutionId: string,
+  membershipId: string,
+): Promise<MembershipLink[]> {
   return db
     .select({ kind: membershipLinks.kind, recordId: membershipLinks.recordId })
     .from(membershipLinks)

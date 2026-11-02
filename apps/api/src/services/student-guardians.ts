@@ -37,9 +37,10 @@ import { auditWork } from './task-work.ts'
  * Yazmalar `runCommand` ile kurum kilidi altında tek transaction'dır; denetime yalnız alan adları
  * yazılır (velayet ve kısıt değeri loglanmaz).
  *
- * TODO(velayet-kapsam): okuma kapsamı hâlâ üyelik bağlantısından (`membership_links` `child`)
- * gelir; bağ `membership_links`'i güncellemez. Velayetsiz ebeveynin kapsam dışı kalması OG-032'de
- * core `accessibleStudentIds` ile bağlanır. Rıza velayeti bu tablodan okur (`services/consents.ts`).
+ * Okuma kapsamı bu tablodan daralır: çocuk bağlantısı (`membership_links` `child`) yalnız
+ * velayetli ve kısıtsız bağla kapsam verir (`services/memberships.ts` `listMembershipLinks`, core
+ * `guardedActorLinks`; OG-032). Bağ değişikliği bir sonraki istekte geçerlidir; ayrı senkron yok.
+ * Rıza velayeti de bu tablodan okur (`services/consents.ts`).
  */
 
 const ENTITY = 'student_guardian'

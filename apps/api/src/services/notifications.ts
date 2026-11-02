@@ -1,7 +1,6 @@
 import { SCOPE_SOURCE_COLLECTIONS } from '@kampus/school-core/lib/scope.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
 import {
-  isMinorLearner,
   markAllNotificationsRead,
   markNotificationRead,
   notificationAudienceOf,
@@ -13,17 +12,14 @@ import {
 } from '@kampus/school-core/lib/notifications.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
-import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
 import { notificationPage, unreadNotificationTotal, type AudienceIds } from '../db/notifications.ts'
-import { loadRecords, loadRecordsByIds } from '../db/records.ts'
-import { findStudentIdentity } from '../db/student-identities.ts'
+import { loadRecordsByIds } from '../db/records.ts'
 import { ValidationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
 import { listMembershipLinks } from './memberships.ts'
-import { getInstitutionModules } from './modules.ts'
 import { runCommand, type CommandResponse, type LoadScope } from './operation-runner.ts'
 
 /**
@@ -39,8 +35,8 @@ import { runCommand, type CommandResponse, type LoadScope } from './operation-ru
  * işaretlerini yükler; kapsam kaynağı yalnız yetki (modül, rol) içindir, yüklenmez.
  *
  * Başlık ve öğrenci adı loglanmaz; denetim kaydına yalnız alan adları yazılır (çalıştırıcı).
- * Bildirim üretimi kendi işlemlerindedir (kesin kayıt `services/prospects.ts`, öğretmen puanı
- * `services/task-grading.ts`) ve aynı transaction'da yazılır.
+ * Bildirim üretimi `services/notify.ts` `notify` iledir: olayın kendi işleminde ve aynı
+ * transaction'da (öğretmen puanı `services/task-grading.ts`).
  */
 
 const NONE: LoadScope = { ids: [] }
@@ -215,39 +211,4 @@ export async function readAllNotificationsCommand(
     },
     options,
   )
-}
-
-/** Öğrenciye ait olayın bildirim kararı: bildirim merkezi açık mı, öğrenci 18 yaş altında mı. */
-export interface StudentNotice {
-  /** İletişim modülü kapalıysa bildirim merkezi yoktur, bildirim üretilmez. */
-  enabled: boolean
-  /** Core `isMinorLearner`; yetişkin kursiyerin bildirimi veliye gitmez. */
-  minor: boolean
-}
-
-/**
- * İşlemin transaction'ında öğrencinin bildirim kararını okur (State dışı işlemler için; ADR 0004
- * karar 2). Okulda yalnız modül haritası okunur; dil okulunda öğrencinin kimlik satırındaki doğum
- * tarihi (`student_identities`, ADR 0006 karar 9), yoksa kesin kayda alınan adayın 18 yaş seçimi
- * okunur. Kişisel veri loglanmaz.
- */
-export async function studentNotice(
-  tx: Database,
-  ctx: ServiceContext,
-  studentId: string,
-): Promise<StudentNotice> {
-  const institution = await getInstitutionModules(tx, ctx.institutionId)
-  const enabled = institution?.modules.communication === true
-  const institutionType = institution?.type ?? 'school'
-  const options = { institutionType, now: ctx.now.toISOString() }
-  if (!enabled || institutionType === 'school')
-    return { enabled, minor: isMinorLearner({}, options) }
-  const identity = await findStudentIdentity(tx, ctx.institutionId, studentId)
-  if (identity !== null)
-    return { enabled, minor: isMinorLearner({ birthDate: identity.birthDate }, options) }
-  const [prospect] = await loadRecords(tx, ctx.institutionId, ['prospects'], {
-    match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
-  })
-  const prospectMinor = typeof prospect?.data.minor === 'boolean' ? prospect.data.minor : undefined
-  return { enabled, minor: isMinorLearner({ prospectMinor }, options) }
 }

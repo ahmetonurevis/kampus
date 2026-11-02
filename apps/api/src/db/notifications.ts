@@ -1,9 +1,13 @@
-import { and, count, desc, eq, inArray, isNull, or, sql, type SQL } from 'drizzle-orm'
+import { and, count, desc, eq, inArray, isNull, max, or, sql, type SQL } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
-import type { NotificationAudience } from '@kampus/school-core/lib/notifications.ts'
+import type {
+  NotificationAudience,
+  NotificationRecord,
+} from '@kampus/school-core/lib/notifications.ts'
 
 import type { Database } from './client.ts'
+import { POSITION_STEP } from './positions.ts'
 import { records } from './schema/records.ts'
 
 /**
@@ -119,4 +123,68 @@ export async function unreadNotificationTotal(
     .leftJoin(reads, readOf(institutionId, userId))
     .where(and(visible, isNull(reads.id)))
   return row?.total ?? 0
+}
+
+/**
+ * Kurumda bulunan öğrenci kimlikleri (arşivlenmiş dahil: ayrılan öğrencinin velisine iade
+ * bildirimi gidebilir). Başka kurumun ya da olmayan öğrencinin kimliği dönmez (`notify` alıcı
+ * çözümü).
+ */
+export async function institutionStudentIds(
+  db: Database,
+  institutionId: string,
+  studentIds: readonly string[],
+): Promise<Set<string>> {
+  if (studentIds.length === 0) return new Set()
+  const rows = await db
+    .select({ id: records.id })
+    .from(records)
+    .where(
+      and(
+        eq(records.institutionId, institutionId),
+        eq(records.collection, 'students'),
+        inArray(records.id, [...studentIds]),
+      ),
+    )
+  return new Set(rows.map((row) => row.id))
+}
+
+/**
+ * Bildirimleri verilen sırayla koleksiyonun sonuna ekler; aynı kimlikte kayıt (arşivlenmiş dahil)
+ * varsa o bildirim atlanır (`notify` `dedupeKey`: aynı olay aynı alıcıya ikinci kez yazılmaz,
+ * eşzamanlı iki yazma da tek satır bırakır). Yazılan kimlikleri döndürür. Çağıranın
+ * transaction'ında çalışır; ayrı transaction açmaz.
+ */
+export async function insertNotifications(
+  db: Database,
+  institutionId: string,
+  rows: readonly NotificationRecord[],
+  now: Date,
+): Promise<string[]> {
+  if (rows.length === 0) return []
+  const [last] = await db
+    .select({ position: max(records.position) })
+    .from(records)
+    .where(and(eq(records.institutionId, institutionId), eq(records.collection, NOTIFICATIONS)))
+  const start =
+    last?.position === null || last?.position === undefined
+      ? 0
+      : Number(last.position) + POSITION_STEP
+  const inserted = await db
+    .insert(records)
+    .values(
+      rows.map((row, index) => ({
+        institutionId,
+        collection: NOTIFICATIONS,
+        id: row.id,
+        data: row,
+        position: start + index * POSITION_STEP,
+        createdAt: now,
+        updatedAt: now,
+      })),
+    )
+    .onConflictDoNothing({ target: [records.institutionId, records.collection, records.id] })
+    .returning({ id: records.id })
+  const written = new Set(inserted.map((row) => row.id))
+  return rows.filter((row) => written.has(row.id)).map((row) => row.id)
 }

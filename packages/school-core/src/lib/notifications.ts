@@ -192,7 +192,9 @@ export type StudentEvent = {
 
 /**
  * Öğrenciye ait olay için bildirimleri yazar: türün alıcı kitlesi başına bir kayıt. Ticari tür
- * ileti onayı denetimi gelmeden yazılmaz (DOM-ILT-022). Yalnız `notifications` yazılır.
+ * ileti onayı denetimi gelmeden yazılmaz (DOM-ILT-022). Yalnız `notifications` yazılır. State
+ * üzerinde çalışan saf karşılıktır; API üretimi modül, alıcı ve mükerrer denetimiyle
+ * `apps/api/src/services/notify.ts` `notify`'dadır.
  */
 export function notifyStudentEvent(
   state: Pick<State, 'notifications'>,

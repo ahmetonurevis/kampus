@@ -151,6 +151,16 @@ Migration `0024_create_privacy_consents`; şema `apps/api/src/db/schema/privacy.
 - `consents`: veri sahibi (`subject_kind` + `subject_id`), veren ve ilişkisi, amaç, karar (`granted`/`objected`), metin sürümü (`text_id` + `text_version`), kanal, `given_at`, `expires_at`, geri çekme üçlüsü (`withdrawn_at`, `withdrawn_by_user_id`, `withdrawal_reason`; birlikte dolu ya da boş). Kısmi benzersiz `consents_subject_purpose_decision_key` (`withdrawn_at is null and archived_at is null`) aynı veri sahibi + amaç + karar için ikinci etkin satırı 23505 ile reddeder. `kampus_reject_consent_change()` yalnız geri çekilmemiş satıra bir kez geri çekme yazılmasına izin verir; arşiv de reddedilir.
 - Metin sürümüne işaret eden yabancı anahtarlar `on delete restrict`'tir: gösterilmiş ya da rıza verilmiş sürüm silinemez. Tetikleyiciler 0024'ün sonuna elle yazılmıştır; silme yalnız imha ayarıyla (§7).
 
+### Eğitim yılı tabloları (IST-011)
+
+Migration `0026_create_academic_years`; şema `apps/api/src/db/schema/academic-years.ts`, depo `apps/api/src/db/academic-years.ts`, kurallar core `lib/academic-years.ts` (DOM-YTK-063…067). Ölçüt 2 (tek etkin yıl ve yıl başına tekil dönem adı veritabanı kısıtıdır) ve 3 (raporlar SQL'de dönem aralığıyla süzülür) gereği `records`'ta değildir.
+
+- `academic_years`: birincil anahtar `(institution_id, start_year)`; `start_year` mevcut sayı temsiliyle (`fee_tariffs.academic_year`, `institution_settings.academic_year`) aynıdır, eski kayıtlar değişmeden yıla bağlanır. `academic_years_dates_check` başlangıç gününü başlangıç yılına ve aralığı bir yıldan kısaya bağlar; `academic_years_lifecycle_check` durumu (`planned`/`active`/`closed`) işlem anlarıyla birlikte tutar; kısmi tekil `academic_years_active_key` kurumda ikinci etkin yılı 23505 (409) ile reddeder.
+- `academic_terms`: birincil anahtar `(institution_id, id)`, yıla bileşik yabancı anahtar (`on delete restrict`); ad yılda büyük/küçük harf duyarsız tekil (`academic_terms_year_name_key`, arşivli hariç). Sıra saklanmaz, başlangıç gününden hesaplanır. Kaldırma arşivdir.
+- Yılların ve dönemlerin örtüşmemesi aralık kısıtı ister (`btree_gist` yok); core kuralı kurum kilidi altında denetler.
+- Yılın `version`'ı yıl ve dönemlerinin ortak iyimser kilididir (`If-Match`): dönem yazan her işlem yılın sürümünü de artırır, böylece istemci tek sürümle bütün takvimi kilitler.
+- Etkinleştirme `institution_settings.academic_year`'ı aynı transaction'da etkin yıla eşitler; yenileme, rıza süresi ve tarife bu sayıyı okumaya devam eder. Migration geri doldurma yapmaz (üretim boş; demo tohumu `ensureAcademicYears` yazar).
+
 ## 5. Migration kuralları
 
 - Şema değişikliği yalnız migration ile: `pnpm --filter @kampus/api exec drizzle-kit generate --name <ne_yapildigi>` (ör. `add_audit_log`). Üretilen SQL okunur, gerekirse elle düzenlenir ve commit edilir.

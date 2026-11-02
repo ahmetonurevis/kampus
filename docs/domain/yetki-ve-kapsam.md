@@ -35,6 +35,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 | Servis, yemek menüsü       | Y                        | Y                               | —                                                                                            | O kendi                                      | O (çocuk)                                         |
 | Kulüp                      | Y                        | —                               | Y (sorumlusu olduğu kulüp)                                                                   | kayıt/ayrılma (kendi)                        | kayıt/ayrılma (çocuk)                             |
 | Fotoğraf/video rızası      | O                        | O                               | O (yalnız sonuç: var/yok)                                                                    | itiraz (kendi)                               | Y (çocuk)                                         |
+| Eğitim yılı, dönem         | Y (kurum)                | O                               | O                                                                                            | O (ad, tarih, etkinlik)                      | O (ad, tarih, etkinlik)                           |
 | Modül ayarları             | Y                        | —                               | —                                                                                            | —                                            | —                                                 |
 | Denetim kaydı              | O (kurum)                | —                               | —                                                                                            | —                                            | —                                                 |
 | Kendi bildirim tercihi     | Y                        | Y                               | Y                                                                                            | Y                                            | Y                                                 |
@@ -335,6 +336,50 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Kaynak:** TMK md. 16/1; işletme kuralı (`DOM-ILT-033`).
 - **Kurum türü:** ikisi
 - **Kodda:** kısmen — `lib/consents.ts` `planConsent` (`decision: 'objected'`; bitiş 18. yaş günü), `hasValidConsent` (itiraz güncel yaşla yalnız 18 yaş altında etkili).
+
+## Eğitim yılı ve dönem
+
+Model ve kurallar core'dadır (`packages/school-core/src/lib/academic-years.ts`); tablolar `academic_years`, `academic_terms` (migration `0026`, model kararı `docs/muhendislik/veritabani.md` §4). API uçları `apps/api/src/routes/academic-years.ts` (servis `services/academic-years.ts`; OG-023, IST-011); ekranlar OG-024'tedir. Eğitim yılı platform yeteneğidir: modüle bağlı değildir, kapatılamaz. Kurlar (dil okulu) ayrı modeldir (OG-028).
+
+### DOM-YTK-063 · Eğitim yılı başlangıç yılıyla tanımlanır, aralığı tek ve örtüşmez
+
+- **Kural:** Eğitim yılı kurum içinde başlangıç yılıyla tanımlanır (`startYear`; 2026 → "2026–2027"); aynı başlangıç yılı ikinci kez açılmaz. Varsayılan aralık 1 Eylül – ertesi yılın 31 Ağustos'udur, kurum değiştirebilir: başlangıç günü başlangıç yılının içindedir, bitiş başlangıçtan sonradır ve bir yıldan kısadır. Aynı kurumun yılları örtüşmez. Yıl `planned` (planlandı) açılır. Yılı yalnız yönetici açar ve değiştirir.
+- **Gerekçe:** Tarife, sözleşme, yenileme ve rıza süresi bugün eğitim yılını tek bir sayıyla (`academicYear`) taşır; yıl kimliği aynı sayı olunca mevcut kayıtlar değişmeden yıla bağlanır. Örtüşen yıl bir günü iki yıla düşürür, rapor aralıkları belirsizleşir.
+- **Kaynak:** İşletme kuralı. IST-011.
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `planAcademicYearCreation`, `planAcademicYearUpdate` (422 `academic_year_start_mismatch`, `academic_year_dates_invalid`, `academic_year_too_long`, `academic_year_overlap`; 409 `academic_year_exists`); tablo denetimi `academic_years_dates_check`. API `POST /api/v1/academic-years` (`Idempotency-Key` zorunlu), `PATCH /api/v1/academic-years/:startYear` (`If-Match`); test `apps/api/test/academic-years.test.ts`.
+
+### DOM-YTK-064 · Dönem yılın içindedir, örtüşmez; sıra hesaplanır
+
+- **Kural:** Dönem (okulda birinci/ikinci dönem, dil okulunda kurumun tanımladığı dönem) eğitim yılının başlangıç ve bitiş günleri arasında kalır, aynı yılın dönemleriyle örtüşmez, adı yılda tekildir (büyük/küçük harf duyarsız) ve yılda en çok 12 dönem bulunur. Dönemin sırası başlangıç gününden hesaplanır, saklanmaz. Dönem kaldırma arşivdir. Yıl ve dönemleri tek sürümle kilitlenir: dönem değişikliği yılın sürümünü artırır.
+- **Gerekçe:** Not, karne ve rapor dönem aralığıyla süzülür; örtüşen ya da yıl dışına taşan dönem aynı kaydı iki döneme ya da hiçbir yıla düşürmez. Saklanan sıra dönem eklenince bozulur.
+- **Kaynak:** İşletme kuralı; okulda dönemleri MEB çalışma takvimi belirler. IST-011.
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `planTermCreation`, `planTermUpdate`, `planTermRemoval`, `orderedTerms`, `termSequence` (422 `academic_term_outside_year`, `academic_term_overlap`, `academic_term_limit`; 409 `academic_term_name_exists`); tablo indeksi `academic_terms_year_name_key`. API `POST /api/v1/academic-years/:startYear/terms` (201), `PATCH` ve `DELETE …/terms/:termId`.
+
+### DOM-YTK-065 · Kurumda tek etkin yıl; etkinleştirme önceki yılı kapatır
+
+- **Kural:** Kurumda en çok bir etkin (`active`) yıl bulunur. Bir yılı etkinleştirmek önceki etkin yılı aynı işlemde kapatır (yıl geçişi) ve kurumun güncel yılını (`academicYear`) bu yıla eşitler. Daha yeni bir yıl etkinken eski yıl etkinleştirilmez; bitmiş yıl (son günü geçmiş) etkinleştirilmez; okulda (`school`) dönemsiz yıl etkinleştirilmez ve etkin okul yılının son dönemi kaldırılamaz. Dil okulunda dönem isteğe bağlıdır.
+- **Gerekçe:** Yenileme, rıza süresi ve tarife varsayılanı "güncel yıl"ı okur; iki etkin yıl bu sorunun iki cevabı demektir. Geçişin tek işlemde olması ara durumda etkin yılsız ya da iki etkin yıllı kurumu önler.
+- **Kaynak:** İşletme kuralı. IST-011.
+- **Kurum türü:** ikisi (dönem zorunluluğu yalnız `school`)
+- **Kodda:** var — core `planAcademicYearActivation` (409 `academic_year_already_active`; 422 `academic_year_activation_order`, `academic_year_ended`, `academic_terms_required`); tablo kısmi tekil indeksi `academic_years_active_key`; kurum ayarı `institution_settings.academic_year` aynı transaction'da yazılır. API `POST /api/v1/academic-years/:startYear/activate`.
+
+### DOM-YTK-066 · Yıl son gününden itibaren kapanır, kapanan yıl değişmez
+
+- **Kural:** Yalnız etkin yıl ve yalnız son gününden itibaren (Europe/Istanbul günü) kapatılır; yıl ortasında geçiş yeni yılın etkinleştirilmesiyle yapılır. Kapanan yıl ve dönemleri değişmez, yıl yeniden açılmaz.
+- **Gerekçe:** Kapanmış yılın notu, karnesi ve finansı o yılın aralığına bağlıdır; aralığı ya da dönemleri sonradan değiştirmek geçmiş raporları değiştirir.
+- **Kaynak:** İşletme kuralı. IST-011.
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `planAcademicYearClosure` (422 `academic_year_not_active`, `academic_year_not_ended`), kapalı yıla her değişiklik 409 `academic_year_closed`; tablo denetimi `academic_years_lifecycle_check`. API `POST /api/v1/academic-years/:startYear/close`.
+
+### DOM-YTK-067 · Eğitim yılını herkes okur; öğrenci ve veli yalnız ad, tarih ve etkinlik görür
+
+- **Kural:** Beş rol kurumun eğitim yıllarını, dönemlerini ve bugünün yıl ve dönemini okur. Öğrenci ve veli yalnız ad, tarih, sıra ve etkinlik bilgisini görür; durum, işlem anları, sürüm ve dönem kimliği personele döner. Bugün Europe/Istanbul günüdür: gün etkin yılın içindeyse etkin yıl, değilse günü içeren yıl, o da yoksa etkin yıl; dönem yalnız gün bir döneme düşüyorsa doludur. Rapor süzgeci yılın ya da dönemin gün aralığını (iki uç dahil) kullanır.
+- **Gerekçe:** Takvim herkesin bilgisidir; yönetim alanları (sürüm, işlem anları) yalnız yazanın işine yarar ve gereksiz veri paylaşılmaz (veri en aza indirme).
+- **Kaynak:** KVKK md. 4/2-ç (ölçülülük); IST-011.
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `academicYearView`, `currentAcademicPeriod`, `locateDay`, `periodRange`, `isWithinPeriod`; yetki `academicYear.read` (beş rol), `academicYear.manage` (yönetici). API `GET /api/v1/academic-years`, `GET /api/v1/academic-years/current`, `GET /api/v1/academic-years/:startYear`. Rapor uçlarının dönem süzgeci yok (`TODO(rapor-donem)`).
 
 ## Mevcut kodla farklar
 

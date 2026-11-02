@@ -17,6 +17,14 @@ export const dashboardQuerySchema = z
       .describe(
         'Yalnız öğrenci ve velide: özeti gösterilecek öğrenci. Velide seçili çocuk (verilmezse kapsamdaki ilk çocuk); kapsam dışı öğrenci 404. Diğer rollerde 400',
       ),
+    branchId: z
+      .string()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe(
+        'Yalnız yönetici ve ön büroda: özeti daraltılacak kampüs. Öğrenci, sınıf, taksit ve yoklama değerleri kampüsün sınıflarıyla sınırlanır; kampüs yok ya da kapsam dışıysa 404. Diğer rollerde 400',
+      ),
   })
   .strict()
 
@@ -72,11 +80,13 @@ const adminSchema = z
         invoices: invoiceSummary,
         collectedToday: statusTotal.describe('Bugün (`paidAt` günü) ödenen taksitler'),
         monthlyCollection: z.object({
-          count: count.describe('Son 6 ayda ödenen taksit'),
+          count: count.describe('Son 12 ayda ödenen taksit'),
           amount: cents,
           months: z
             .array(z.object({ month: z.string().describe('`YYYY-MM`'), count, amount: cents }))
-            .describe('Eskiden yeniye 6 ay (`paidAt:month`); kaydı olmayan ay sıfır'),
+            .describe(
+              'Eskiden yeniye 12 ay (`paidAt:month`); kaydı olmayan ay sıfır. Son 6 ay dönem seçicisi içindir',
+            ),
         }),
       })
       .nullable()

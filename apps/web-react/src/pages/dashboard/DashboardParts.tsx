@@ -1,10 +1,14 @@
-import { useId, type ReactNode } from 'react'
+import { lazy, Suspense, useId, type ReactNode } from 'react'
 import { Link } from 'react-router'
 import { isModuleDisabledError } from '@kampus/react-shared/collections.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError, queryErrorMessage } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import type { TrendPoint } from './dashboard-model.ts'
+
+// recharts yalnız grafik çizileceği anda ayrı parça olarak yüklenir (ADR 0002).
+const Sparkline = lazy(() => import('./Sparkline.tsx'))
 
 /** Kartın veri durumu: TanStack Query sonucunun gereken kısmı (birden çok sorgu birleşebilir). */
 export type CardState = {
@@ -56,13 +60,18 @@ type StatCardProps = {
   /** İlgili listeye derin bağlantı (filtre adreste). */
   href?: string
   state: CardState
+  /**
+   * Gerçek kayıttan türetilmiş mini grafik (ör. son 6 ayın tahsilatı). Nokta yoksa çizilmez;
+   * `label` grafiğin erişilebilir adıdır (ay ay değerleri içerir).
+   */
+  spark?: { label: string; points: readonly TrendPoint[] }
 }
 
 /**
  * Sayaç kartı: değer sunucu sayımından gelir. Kartın tamamı bağlantıdır (etiket bağlantının adı,
  * kart alanı tıklanabilir); yükleniyor, hata ve kapalı modül durumları kendisindedir.
  */
-export function StatCard({ label, icon, value, note, href, state }: StatCardProps) {
+export function StatCard({ label, icon, value, note, href, state, spark }: StatCardProps) {
   const id = useId()
   if (state.error && isModuleDisabledError(state.error)) return null
   return (
@@ -107,6 +116,13 @@ export function StatCard({ label, icon, value, note, href, state }: StatCardProp
       {note && !state.error && !state.isPending ? (
         <p className="text-sm text-muted-foreground">{note}</p>
       ) : null}
+      {spark && spark.points.length > 0 && !state.error && !state.isPending ? (
+        <div role="img" aria-label={spark.label} className="min-w-0">
+          <Suspense fallback={<div className="h-8" aria-hidden="true" />}>
+            <Sparkline points={spark.points} />
+          </Suspense>
+        </div>
+      ) : null}
     </article>
   )
 }
@@ -121,6 +137,8 @@ type ListCardProps = {
   emptyText: string
   children: ReactNode
   className?: string
+  /** Başlık satırında eylemin yanında duran denetim (ör. dönem seçici). */
+  headerExtra?: ReactNode
 }
 
 /**
@@ -137,6 +155,7 @@ export function ListCard({
   emptyText,
   children,
   className,
+  headerExtra,
 }: ListCardProps) {
   const id = useId()
   if (state.error && isModuleDisabledError(state.error)) return null
@@ -153,14 +172,19 @@ export function ListCard({
           </h2>
           {description ? <p className="text-sm text-muted-foreground">{description}</p> : null}
         </div>
-        {action ? (
-          <Link
-            to={action.href}
-            className="text-link inline-flex min-h-6 items-center gap-1 text-sm font-medium text-primary hover:underline"
-          >
-            {action.label}
-            <Icon name="ArrowRight" size={14} aria-hidden="true" />
-          </Link>
+        {action || headerExtra ? (
+          <div className="flex flex-wrap items-center gap-3">
+            {headerExtra}
+            {action ? (
+              <Link
+                to={action.href}
+                className="text-link inline-flex min-h-6 items-center gap-1 text-sm font-medium text-primary hover:underline"
+              >
+                {action.label}
+                <Icon name="ArrowRight" size={14} aria-hidden="true" />
+              </Link>
+            ) : null}
+          </div>
         ) : null}
       </header>
       <div className="min-w-0 flex-1 px-5 py-4">

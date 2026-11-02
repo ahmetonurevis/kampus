@@ -4928,11 +4928,11 @@ export interface components {
                 /** @description Bugün (`paidAt` günü) ödenen taksitler */
                 collectedToday: components["schemas"]["DashboardStatusTotalInput"];
                 monthlyCollection: {
-                    /** @description Son 6 ayda ödenen taksit */
+                    /** @description Son 12 ayda ödenen taksit */
                     count: number;
                     /** @description Kuruş */
                     amount: number;
-                    /** @description Eskiden yeniye 6 ay (`paidAt:month`); kaydı olmayan ay sıfır */
+                    /** @description Eskiden yeniye 12 ay (`paidAt:month`); kaydı olmayan ay sıfır. Son 6 ay dönem seçicisi içindir */
                     months: {
                         /** @description `YYYY-MM` */
                         month: string;
@@ -7912,11 +7912,11 @@ export interface components {
                 /** @description Bugün (`paidAt` günü) ödenen taksitler */
                 collectedToday: components["schemas"]["DashboardStatusTotal"];
                 monthlyCollection: {
-                    /** @description Son 6 ayda ödenen taksit */
+                    /** @description Son 12 ayda ödenen taksit */
                     count: number;
                     /** @description Kuruş */
                     amount: number;
-                    /** @description Eskiden yeniye 6 ay (`paidAt:month`); kaydı olmayan ay sıfır */
+                    /** @description Eskiden yeniye 12 ay (`paidAt:month`); kaydı olmayan ay sıfır. Son 6 ay dönem seçicisi içindir */
                     months: {
                         /** @description `YYYY-MM` */
                         month: string;
@@ -11877,6 +11877,8 @@ export interface operations {
             query?: {
                 /** @description Yalnız öğrenci ve velide: özeti gösterilecek öğrenci. Velide seçili çocuk (verilmezse kapsamdaki ilk çocuk); kapsam dışı öğrenci 404. Diğer rollerde 400 */
                 studentId?: string;
+                /** @description Yalnız yönetici ve ön büroda: özeti daraltılacak kampüs. Öğrenci, sınıf, taksit ve yoklama değerleri kampüsün sınıflarıyla sınırlanır; kampüs yok ya da kapsam dışıysa 404. Diğer rollerde 400 */
+                branchId?: string;
             };
             header?: never;
             path?: never;

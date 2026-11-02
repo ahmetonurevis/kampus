@@ -3,8 +3,10 @@ import type { DashboardOf } from '@kampus/react-shared/dashboard.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { scoreText, scoreTone } from '../academic/academic-rows.ts'
 import { AbsenceTrend } from './AbsenceTrend.tsx'
+import { useGradeSpark } from './use-grade-spark.ts'
 import { CardList, ListCard, ShareBar, StatCard } from './DashboardParts.tsx'
 import { defineCard, type DashboardCardContext } from './dashboard-cards-model.ts'
+import { sparkLabel } from './dashboard-filter-model.ts'
 import {
   attendanceSummary,
   dashboardHref,
@@ -34,6 +36,27 @@ export function linkFor(ctx: StudentContext, data: Summary) {
  * göredir. Öğrencinin özetinde ödeme alanı yoktur; veli bakiyesi `HandoverFinanceCards.tsx`'tedir.
  * Sayfa özet gelmeden kartları çizmez, bu yüzden `data` her zaman doludur.
  */
+function OverallAverageCard({ ctx }: { ctx: StudentContext }) {
+  const { data } = ctx
+  const points = useGradeSpark(data?.student.id)
+  if (!data?.academic) return null
+  const average = overallAverage(data.academic.grades)
+  return (
+    <StatCard
+      label="Genel not ortalaması"
+      icon="Award"
+      value={average === null ? '—' : `${average}/100`}
+      note={`${number(data.academic.grades.count)} değerlendirme`}
+      href={linkFor(ctx, data)('notlarim', 'notlar')}
+      state={ctx.state}
+      spark={{
+        label: sparkLabel('Aylık not ortalaması', points, (value) => `${value}/100`),
+        points,
+      }}
+    />
+  )
+}
+
 export const STUDENT_CARDS = [
   defineCard({
     id: 'ogrenci.not-ortalamasi',
@@ -42,21 +65,7 @@ export const STUDENT_CARDS = [
     section: (data) => data.academic,
     area: 'stat',
     order: 10,
-    component: ({ ctx }) => {
-      const { data } = ctx
-      if (!data?.academic) return null
-      const average = overallAverage(data.academic.grades)
-      return (
-        <StatCard
-          label="Genel not ortalaması"
-          icon="Award"
-          value={average === null ? '—' : `${average}/100`}
-          note={`${number(data.academic.grades.count)} değerlendirme`}
-          href={linkFor(ctx, data)('notlarim', 'notlar')}
-          state={ctx.state}
-        />
-      )
-    },
+    component: OverallAverageCard,
   }),
   defineCard({
     id: 'ogrenci.devamsizlik',

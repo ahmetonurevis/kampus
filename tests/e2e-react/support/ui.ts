@@ -64,7 +64,7 @@ export async function expectEveryRow(rows: Locator, texts: string | string[], ex
 
 /**
  * Özet kartlarının içeriği kartın içinde kalır: hiçbir alt öğe kartın sağ/alt kenarını aşmaz ve
- * hiçbir öğenin kendi içeriği kırpılmaz (`scrollWidth <= clientWidth`). Sayfa düzeyindeki yatay
+ * hiçbir öğenin kendi içeriği kırpılmaz (`scrollWidth <= clientWidth`; kutusuz öğeler hariç). Sayfa düzeyindeki yatay
  * taşma testi, `overflow: hidden` ile kırpılan ya da kart dışına sızan uzun tutarı yakalamaz.
  */
 export async function expectContentInsideCards(cards: Locator) {
@@ -78,7 +78,12 @@ export async function expectContentInsideCards(cards: Locator) {
             const rect = element.getBoundingClientRect()
             const outside =
               rect.width > 0 && (rect.right > box.right + 0.5 || rect.left < box.left - 0.5)
-            const clipped = element.scrollWidth > element.clientWidth + 1
+            // Muafiyet yalnız grafik ölçüm düğümlerine (recharts sarmalayıcısı, aria-hidden alt ağaç)
+            // tanınır: bunların kutusu sıfır olabilir ve görünür içerik taşımaz. Diğer öğelerde
+            // 0 px'e ezilmiş görünür metin de kırpılmış sayılır (`scrollWidth > clientWidth`).
+            const measuring = element.closest('.recharts-wrapper, [aria-hidden="true"]') !== null
+            const clipped =
+              element.scrollWidth > element.clientWidth + 1 && (rect.width > 0 || !measuring)
             return outside || clipped
               ? [
                   `${(card.textContent ?? '').trim().slice(0, 40)} › ${element.tagName.toLowerCase()}`,

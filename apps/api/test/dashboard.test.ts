@@ -124,7 +124,7 @@ describe('Genel Bakış özeti', () => {
     total: value.total,
   })
 
-  test('gün yardımcıları: pazartesi, 8 hafta ve 6 ay Europe/Istanbul günü üzerinden', () => {
+  test('gün yardımcıları: pazartesi, 8 hafta ve 6 ve 12 ay Europe/Istanbul günü üzerinden', () => {
     assert.equal(mondayOf('2026-10-06'), '2026-10-05')
     assert.equal(mondayOf('2026-10-05'), '2026-10-05')
     assert.equal(mondayOf('2026-10-04'), '2026-09-28')
@@ -133,7 +133,7 @@ describe('Genel Bakış özeti', () => {
     assert.equal(weeks.length, 8)
     assert.deepEqual(weeks.at(-1), { from: '2026-10-05', to: '2026-10-11' })
     assert.deepEqual(weeks[0], { from: '2026-08-17', to: '2026-08-23' })
-    assert.deepEqual(monthKeys('2026-02-10'), [
+    assert.deepEqual(monthKeys('2026-02-10', 6), [
       '2025-09',
       '2025-10',
       '2025-11',
@@ -141,6 +141,9 @@ describe('Genel Bakış özeti', () => {
       '2026-01',
       '2026-02',
     ])
+    const year = monthKeys('2026-10-06')
+    assert.equal(year.length, 12)
+    assert.deepEqual([year[0], year.at(-1)], ['2025-11', '2026-10'])
   })
 
   test('oturumsuz istek 401 unauthenticated', async () => {
@@ -200,13 +203,13 @@ describe('Genel Bakış özeti', () => {
     const monthly = await counts(
       cookie,
       'invoices',
-      `groupBy=paidAt:month&sum=amount&dateField=paidAt&dateFrom=2026-05-01&dateTo=${TODAY}`,
+      `groupBy=paidAt:month&sum=amount&dateField=paidAt&dateFrom=2025-11-01&dateTo=${TODAY}`,
     )
     assert.equal(data.finance.monthlyCollection.count, monthly.total)
     assert.equal(data.finance.monthlyCollection.amount, monthly.sum)
     assert.deepEqual(
       data.finance.monthlyCollection.months.map((month: { month: string }) => month.month),
-      ['2026-05', '2026-06', '2026-07', '2026-08', '2026-09', '2026-10'],
+      monthKeys(TODAY, 12),
     )
     for (const month of data.finance.monthlyCollection.months)
       assert.deepEqual(month, {
@@ -530,5 +533,157 @@ describe('Genel Bakış özeti', () => {
     assert.equal(data.role, 'yonetici')
     assert.notEqual(data.finance, null)
     assert.notEqual(data.attendanceToday, null)
+  })
+
+  describe('kampüs süzgeci (branchId)', () => {
+    // `s1`, `s2` `b1` kampüsündeki `c1`, `c2` sınıfında; `s11` `b2` kampüsündeki `c11` sınıfında.
+    async function twoCampuses() {
+      const created = await institution()
+      await insertMissingRecords(
+        db,
+        created.id,
+        [
+          ...SEED.classes
+            .filter((item) => item.id === 'c11')
+            .map((data) => ({ collection: 'classes' as const, id: data.id, data })),
+          ...SEED.teachers
+            .filter((item) => item.branchId === 'b2')
+            .slice(0, 1)
+            .map((data) => ({ collection: 'teachers' as const, id: data.id, data })),
+        ],
+        FIXED_NOW,
+      )
+      return created
+    }
+    const CAMPUS_CLASSES: Record<string, string[]> = { b1: ['c1', 'c2', 'c3'], b2: ['c11'] }
+    const classQuery = (branch: string) =>
+      (CAMPUS_CLASSES[branch] ?? []).map((id) => `classId=${id}`).join('&')
+
+    test('yönetici: öğrenci, taksit, yoklama ve kampüs doluluğu seçili kampüse daralır', async () => {
+      const { adminCookie: cookie } = await twoCampuses()
+      const all = await dashboard(cookie)
+      for (const branch of ['b1', 'b2']) {
+        const data = await dashboard(cookie, `?branchId=${branch}`)
+        const students = await counts(cookie, 'students', `groupBy=isActive&${classQuery(branch)}`)
+        assert.deepEqual(data.students, {
+          active: countOf(students, true),
+          archived: countOf(students, false),
+        })
+        const invoices = await counts(
+          cookie,
+          'invoices',
+          `groupBy=status&sum=amount&${classQuery(branch)}`,
+        )
+        assert.deepEqual(data.finance.invoices, invoiceSummaryOf(invoices))
+        const monthly = await counts(
+          cookie,
+          'invoices',
+          `groupBy=paidAt:month&sum=amount&dateField=paidAt&dateFrom=2025-11-01&dateTo=${TODAY}&${classQuery(branch)}`,
+        )
+        assert.equal(data.finance.monthlyCollection.amount, monthly.sum)
+        const attendance = await counts(
+          cookie,
+          'attendance',
+          `groupBy=status&dateFrom=${TODAY}&dateTo=${TODAY}&${classQuery(branch)}`,
+        )
+        assert.deepEqual(data.attendanceToday, attendanceOf(attendance))
+        assert.deepEqual(
+          data.campuses.map((campus: { id: string }) => campus.id),
+          [branch],
+        )
+        assert.equal(data.campuses[0].students, data.students.active)
+        assert.equal(data.classes.campusCount, 1)
+        const teachers = await counts(cookie, 'teachers', `groupBy=isActive&branchId=${branch}`)
+        assert.deepEqual(data.teachers, { active: countOf(teachers, true) })
+        assert.equal(data.teachers.active, branch === 'b1' ? 2 : 1, `${branch} öğretmen kadrosu`)
+        assert.ok(data.teachers.active < all.teachers.active, `${branch} kadrosu kurumdan dardır`)
+        assert.ok(data.students.active < all.students.active, `${branch} kurumdan dardır`)
+        const recent = await listIds(
+          cookie,
+          'students',
+          `pageSize=5&sort=-createdAt&isActive=true&${classQuery(branch)}`,
+        )
+        assert.deepEqual(
+          data.recentStudents.map((item: { id: string }) => item.id),
+          recent.ids,
+        )
+      }
+    })
+
+    test('sınıfı olmayan kampüs boş döner, kurum toplamına düşmez', async () => {
+      const { adminCookie: cookie } = await twoCampuses()
+      const data = await dashboard(cookie, '?branchId=b3')
+      assert.deepEqual(data.students, { active: 0, archived: 0 })
+      assert.equal(data.finance.invoices.total, 0)
+      assert.equal(data.finance.monthlyCollection.amount, 0)
+      assert.equal(data.attendanceToday.total, 0)
+      assert.deepEqual(data.recentStudents, [])
+      assert.deepEqual(
+        data.campuses.map((campus: { id: string }) => campus.id),
+        ['b3'],
+      )
+    })
+
+    test('ön büro: taksit özeti ve listeleri seçili kampüse daralır', async () => {
+      const { id } = await twoCampuses()
+      const cookie = await memberCookie(id, 'onburo')
+      const data = await dashboard(cookie, '?branchId=b2')
+      const invoices = await counts(
+        cookie,
+        'invoices',
+        `groupBy=status&sum=amount&${classQuery('b2')}`,
+      )
+      assert.deepEqual(data.finance.invoices, invoiceSummaryOf(invoices))
+      assert.ok(data.finance.invoices.total > 0)
+      assert.ok(data.finance.invoices.total < (await dashboard(cookie)).finance.invoices.total)
+      const paid = await listIds(
+        cookie,
+        'invoices',
+        `pageSize=5&sort=-updatedAt,-dueDate&status=Ödendi&${classQuery('b2')}`,
+      )
+      assert.deepEqual(
+        data.finance.recentPayments.map((row: { id: string }) => row.id),
+        paid.ids,
+      )
+    })
+
+    test('başka kurumun gerçek kampüs kimliği 404 döner, o kurumda çözülür', async () => {
+      const mine = await twoCampuses()
+      const other = await institution()
+      const foreign = 'b-baska-kurum'
+      const branch = SEED.branches.find((item) => item.id === 'b3')
+      assert.ok(branch)
+      await insertMissingRecords(
+        db,
+        other.id,
+        [{ collection: 'branches', id: foreign, data: { ...branch, id: foreign } }],
+        FIXED_NOW,
+      )
+      const query = `/api/v1/dashboard?branchId=${foreign}`
+      assert.equal((await get(query, other.adminCookie)).statusCode, 200)
+      assert.equal((await get(query, mine.adminCookie)).statusCode, 404)
+      const desk = await memberCookie(mine.id, 'onburo')
+      assert.equal((await get(query, desk)).statusCode, 404)
+    })
+
+    test('olmayan kampüs 404; öğretmen, öğrenci ve velide 400', async () => {
+      const { id, adminCookie } = await twoCampuses()
+      const missing = await get('/api/v1/dashboard?branchId=yok', adminCookie)
+      assert.equal(missing.statusCode, 404)
+      const desk = await get('/api/v1/dashboard?branchId=yok', await memberCookie(id, 'onburo'))
+      assert.equal(desk.statusCode, 404)
+      for (const [role, links] of [
+        ['ogretmen', [{ kind: 'teacher', recordId: 't1' }]],
+        ['ogrenci', [{ kind: 'student', recordId: 's1' }]],
+        ['veli', [{ kind: 'child', recordId: 's1' }]],
+      ] as const) {
+        const response = await get(
+          '/api/v1/dashboard?branchId=b1',
+          await memberCookie(id, role, [...links]),
+        )
+        assert.equal(response.statusCode, 400, role)
+        assert.deepEqual(response.json().issues[0].path, ['branchId'], role)
+      }
+    })
   })
 })

@@ -9,6 +9,8 @@ import { monthLabel, type TrendPoint } from './dashboard-model.ts'
 export const GRADE_TREND_MONTHS = 6
 /** Eğilim için gereken en az ay sayısı; daha azında grafik yerine kısa metin gösterilir. */
 export const MIN_TREND_MONTHS = 2
+/** Sayaç kartı mini grafiğinde gösterilen en çok ay (Vue: son 6 ay). */
+export const GRADE_SPARK_MONTHS = 6
 
 const MONTH = /^\d{4}-(0[1-9]|1[0-2])$/
 
@@ -66,4 +68,13 @@ export function gradeTrendSummary(points: readonly TrendPoint[], subject: string
     `${subject} ${first.label} ayında ${first.value}, ${last.label} ayında ${last.value} ` +
     `(${change}). En yüksek ay: ${best.label} (${best.value}).`
   )
+}
+
+/**
+ * Sayaç kartı mini grafiği (Vue `gradeSpark`): son `SPARK_MONTHS` ayın not ortalaması; eğilim
+ * için gereken en az ay yoksa boş (çizilmez).
+ */
+export function gradeSpark(groups: readonly CollectionCountGroup[]): TrendPoint[] {
+  const points = monthlyGradePoints(groups, GRADE_SPARK_MONTHS)
+  return hasGradeTrend(points) ? points : []
 }

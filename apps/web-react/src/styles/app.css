@@ -197,9 +197,16 @@
   fill: var(--chart-axis);
 }
 
+.sparkline .recharts-line-curve {
+  stroke: var(--chart-bar);
+}
+
 @media (forced-colors: active) {
   .trend-bars .recharts-bar-rectangle path,
   .trend-bars .recharts-bar-rectangle rect {
     fill: Highlight;
+  }
+  .sparkline .recharts-line-curve {
+    stroke: Highlight;
   }
 }

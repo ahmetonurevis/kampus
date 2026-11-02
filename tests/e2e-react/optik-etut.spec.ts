@@ -143,6 +143,90 @@ test.describe('optik değerlendirme', () => {
     expect(key.lines[1]).toMatch(/^"A";1;"[a-z-]+";".+";"[A-E-]"$/)
   })
 
+  test('kayıtlı değerlendirme ayrıntı paneli kazanım ve soru satırlarını gösterir; URL ile açılır', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s1'],
+      collections: OPTICAL_DATA,
+    })
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/optik-degerlendirme')
+    await page.getByLabel('Optik dosya içeriği', { exact: true }).fill(`${HEADER}\n${GOOD_ROW}\n`)
+    await page.getByRole('button', { name: 'Sonuçları önizle', exact: true }).click()
+    await page.getByRole('button', { name: 'Onayla ve sonuçları kaydet', exact: true }).click()
+    const saved = page.getByRole('region', { name: 'Kayıtlı değerlendirmeler' })
+    await expect(saved.getByRole('row').filter({ hasText: 'Deniz Yılmaz' }).first()).toBeVisible()
+
+    // Kayıttaki matematik: A kitapçığı, 4 soru (Denklemler); cevaplar B,B,B,D, anahtar A,B,C,...
+    await saved.getByRole('button', { name: 'Deniz Yılmaz · Matematik ayrıntısını aç' }).click()
+    const panel = page.getByRole('dialog', { name: 'Deniz Yılmaz · Matematik' })
+    await expect(panel).toBeVisible()
+    await expect(page).toHaveURL(/degerlendirme=/)
+    const url = page.url()
+    await expect(panel.getByText('Güncel', { exact: true })).toBeVisible()
+    await expect(panel.getByText('Kitapçık', { exact: true })).toBeVisible()
+    await expect(panel.getByText('Net', { exact: true })).toBeVisible()
+
+    const topics = panel.getByRole('table', { name: 'Kazanım başarıları' })
+    const topicRow = topics.getByRole('row').filter({ hasText: 'Denklemler' })
+    await expect(topicRow).toHaveCount(1)
+    await expect(topicRow).toContainText('%')
+    const questions = panel.getByRole('table', { name: 'Soru ayrıntıları' })
+    await expect(questions.getByRole('row').filter({ hasText: 'Denklemler' })).toHaveCount(4)
+    const second = questions.getByRole('row').filter({ hasText: 'Denklemler' }).nth(1)
+    await expect(second).toContainText('Doğru')
+    const first = questions.getByRole('row').filter({ hasText: 'Denklemler' }).first()
+    await expect(first).toContainText('Yanlış')
+
+    // Bağlantıyla doğrudan açılır; Escape kapatır ve parametreyi siler.
+    await page.goto(url)
+    await expect(page.getByRole('dialog', { name: 'Deniz Yılmaz · Matematik' })).toBeVisible()
+    await page.keyboard.press('Escape')
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page).not.toHaveURL(/degerlendirme=/)
+  })
+
+  test('anahtar revizyonu sonrası ayrıntı paneli eski analizi nedeniyle gösterir', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s1'],
+      collections: OPTICAL_DATA,
+    })
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/optik-degerlendirme')
+    await page.getByLabel('Optik dosya içeriği', { exact: true }).fill(`${HEADER}\n${GOOD_ROW}\n`)
+    await page.getByRole('button', { name: 'Sonuçları önizle', exact: true }).click()
+    await page.getByRole('button', { name: 'Onayla ve sonuçları kaydet', exact: true }).click()
+    const saved = page.getByRole('region', { name: 'Kayıtlı değerlendirmeler' })
+    await expect(saved.getByRole('row').filter({ hasText: 'Deniz Yılmaz' }).first()).toBeVisible()
+
+    // Anahtar içeriği değişir (ilk sorunun cevabı): revizyon artar, kayıtlı analizler eskir.
+    const profiles = page.getByRole('region', { name: 'Okuyucu profilleri' })
+    await profiles.getByRole('button', { name: /profilini düzenle/ }).click()
+    const edit = page.getByRole('dialog', { name: 'Optik profili düzenle' })
+    const key = edit.getByLabel('Cevap anahtarı (CSV)')
+    const csv = await key.inputValue()
+    await key.fill(csv.replace('A;1;math;Denklemler;A', 'A;1;math;Denklemler;B'))
+    await edit.getByRole('button', { name: 'Profili kaydet', exact: true }).click()
+    await expect(edit).toHaveCount(0)
+
+    await saved.getByRole('button', { name: 'Deniz Yılmaz · Matematik ayrıntısını aç' }).click()
+    const panel = page.getByRole('dialog', { name: 'Deniz Yılmaz · Matematik' })
+    await expect(panel.getByText('Eski analiz', { exact: true })).toBeVisible()
+    await expect(panel).toContainText('Cevap anahtarı değişti')
+    await expect(panel.getByText('Güncel', { exact: true })).toHaveCount(0)
+    // Ayrıntı kayıtlı analizden gösterilmeye devam eder.
+    await expect(
+      panel.getByRole('table', { name: 'Soru ayrıntıları' }).getByRole('row'),
+    ).not.toHaveCount(0)
+  })
+
   test('hatalı satır alan mesajıyla satır numarasını gösterir ve hiçbir şey kaydetmez', async ({
     loginAs,
     api,

@@ -192,7 +192,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Yasal dayanağı ve tavanı doğrulanmamış bir bedel otomatik uygulanırsa ilan dışı tahsilat sayılabilir (`DOM-FIN-004`).
 - **Kaynak:** Gecikme durumu işletme kuralı. Gecikme faizinin dayanağı (TBK temerrüt hükümleri, 6502 sayılı Kanun kapsamı, MEB tip sözleşmesindeki hüküm) **doğrulanmamış**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `packages/school-core/src/lib/format.js:48-50` (`invoiceStatus`) gecikmiş durumu türetir; kısmi ödeme ve bedel yok (bedelin olmaması doğru varsayılandır).
+- **Kodda:** kısmen — `packages/school-core/src/lib/format.js:48-50` (`invoiceStatus`) gecikmiş durumu türetir; kısmi ödeme ve bedel yok (bedelin olmaması doğru varsayılandır). Finans özeti `GET /api/v1/finance-summary` (core `financeOverview`; yönetici ve ön büro, modül `finance`; IST-116, IST-121): dönemin net tahsilatı ve ay kırılımı (iptal, iptal edildiği ayda düşer; vade kırılımı taksitin vade ayına göre), bugünün kurum geneli açık ve gecikmiş tutarı (`/finance/totals` ile aynı kural; kısmi ödemede yalnız kalan kısım) ve gecikmiş borcu olan öğrenciler (`overdueStudents`, en eski ödenmemiş vade ile; erken uyarı listesi bunu okur). Dönem verilmezse son altı takvim ayıdır.
 
 ### DOM-FIN-035 · Ödeme hatırlatması
 

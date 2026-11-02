@@ -4,12 +4,14 @@ import { z } from 'zod'
 
 import {
   financeExportQuerySchema,
+  financeOverviewQuerySchema,
   financePeriodSchema,
 } from '@kampus/school-core/lib/finance-export.ts'
 
 import { contextOf } from '../plugins/authenticate.ts'
 import {
   financeExportFor,
+  financeOverviewFor,
   financeSummaryFor,
   financeTotalsFor,
 } from '../services/finance-exports.ts'
@@ -29,6 +31,33 @@ const summarySchema = dataResponse(
     invoices: totals
       .extend({ paidCents: z.number().int() })
       .describe('Vadesi dönemde olan taksitler'),
+  }),
+)
+
+const overviewSchema = dataResponse(
+  z.object({
+    from: z.string(),
+    to: z.string(),
+    today: z.string(),
+    collectedCents: z.number().int().describe('Dönemde alınan net tahsilat'),
+    openCents: z.number().int().describe('Bugün kurum geneli açık tutar'),
+    overdueCents: z.number().int().describe('Bugün kurum geneli gecikmiş tutar'),
+    months: z.array(
+      z.object({
+        month: z.string().describe('YYYY-MM, Europe/Istanbul'),
+        collectedCents: z.number().int(),
+        dueCents: z.number().int(),
+        openCents: z.number().int(),
+        overdueCents: z.number().int(),
+      }),
+    ),
+    overdueStudents: z.array(
+      z.object({
+        studentId: z.string(),
+        overdueCents: z.number().int(),
+        oldestDueDate: z.string(),
+      }),
+    ),
   }),
 )
 
@@ -65,6 +94,23 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
       },
     },
     async (request) => ({ data: await financeTotalsFor(contextOf(request)) }),
+  )
+
+  typed.get(
+    '/api/v1/finance-summary',
+    {
+      preValidation: [app.authenticate, finance, app.requireRole(['yonetici', 'onburo'])],
+      schema: {
+        operationId: 'getFinanceOverview',
+        tags: ['finance-exports'],
+        summary: 'Finans özeti: tahsilat, açık ve gecikmiş tutar',
+        description:
+          'Yönetici panosu ve erken uyarı için özet (IST-116, IST-121). `collectedCents` ve `months` dönemin tahsilatını ve ay kırılımını verir: iptal, iptal edildiği ayda düşer; vade kırılımı taksitin vade ayına göredir. `openCents` ve `overdueCents` dönemden bağımsız, bugünün kurum geneli tutarıdır ve `/finance/totals` ile aynıdır; kısmi ödemede yalnız kalan kısım sayılır. `overdueStudents` gecikmiş borcu olan öğrencileri tutar büyükten küçüğe verir. Dönem verilmezse son altı takvim ayıdır; yalnız bir uç verilirse 400. Gün Europe/Istanbul günüdür. Başlangıç bitişten sonra 422 `export_period_invalid`, dönem bir yılı aşarsa 422 `export_period_too_long`. Muhasebe dosyasının toplamı için `/finance/summary` kullanılır. Roller: `yonetici`, `onburo`.',
+        querystring: financeOverviewQuerySchema,
+        response: { 200: overviewSchema, ...commandErrors },
+      },
+    },
+    async (request) => ({ data: await financeOverviewFor(contextOf(request), request.query) }),
   )
 
   typed.get(

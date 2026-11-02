@@ -5,6 +5,9 @@ import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import { csvAmount, csvCell } from '../packages/school-core/src/lib/csv.ts'
 import {
   assertFinancePeriod,
+  defaultOverviewPeriod,
+  financeOverview,
+  financeOverviewQuerySchema,
   financeSummary,
   financeTotals,
   invoiceLines,
@@ -191,4 +194,186 @@ test('DOM-FIN-030: kartlar kısmi ödemeyi sayar; gecikmiş tutar kalan kısımd
     remainingCents: 16_500,
     overdueCents: 7_500,
   })
+})
+
+// --- Finans özeti (IST-116, IST-121) -------------------------------------------------------
+
+const overviewInvoice = (id: string, studentId: string, amount: number, dueDate: string) => ({
+  id,
+  studentId,
+  amount,
+  dueDate,
+  paidAt: null as string | null,
+})
+
+test('IST-116: özet tahsilatı, açık ve gecikmiş tutarı ay kırılımıyla verir; kısmi ödemede yalnız kalan sayılır', () => {
+  const overview = financeOverview({
+    invoices: [
+      overviewInvoice('i1', 's1', 100_000, '2026-09-15T09:00:00.000Z'),
+      overviewInvoice('i2', 's1', 100_000, '2026-10-15T09:00:00.000Z'),
+      overviewInvoice('i3', 's2', 50_000, '2026-11-15T09:00:00.000Z'),
+      {
+        ...overviewInvoice('i4', 's3', 70_000, '2026-09-20T09:00:00.000Z'),
+        paidAt: '2026-09-20T10:00:00.000Z',
+      },
+    ],
+    allocated: new Map([['i1', 30_000]]),
+    payments: [
+      payment({ amountCents: 30_000, paidAt: '2026-09-25T09:00:00.000Z' }),
+      payment({ amountCents: 70_000, paidAt: '2026-09-20T10:00:00.000Z' }),
+    ],
+    period: { from: '2026-09-01', to: '2026-11-30' },
+    today: '2026-10-20',
+  })
+  assert.equal(overview.collectedCents, 100_000)
+  // i1'in kalanı (70 bin) ve i2 (100 bin) gecikmiş; i3 henüz vadesinde.
+  assert.equal(overview.overdueCents, 170_000)
+  assert.equal(overview.openCents, 220_000)
+  assert.deepEqual(overview.months, [
+    {
+      month: '2026-09',
+      collectedCents: 100_000,
+      dueCents: 170_000,
+      openCents: 70_000,
+      overdueCents: 70_000,
+    },
+    {
+      month: '2026-10',
+      collectedCents: 0,
+      dueCents: 100_000,
+      openCents: 100_000,
+      overdueCents: 100_000,
+    },
+    { month: '2026-11', collectedCents: 0, dueCents: 50_000, openCents: 50_000, overdueCents: 0 },
+  ])
+  // Tam ödeyen ve vadesi gelmeyen öğrenci listede yok; en eski ödenmemiş vade gösterilir.
+  assert.deepEqual(overview.overdueStudents, [
+    { studentId: 's1', overdueCents: 170_000, oldestDueDate: '2026-09-15' },
+  ])
+})
+
+test('IST-116: açık ve gecikmiş tutar dönemden bağımsızdır ve finans toplamlarıyla aynıdır', () => {
+  const invoices = [
+    overviewInvoice('i1', 's1', 100_000, '2026-01-15T09:00:00.000Z'),
+    overviewInvoice('i2', 's2', 40_000, '2026-12-15T09:00:00.000Z'),
+  ]
+  const allocated = new Map([['i1', 25_000]])
+  const today = '2026-10-20'
+  const overview = financeOverview({
+    invoices,
+    allocated,
+    payments: [],
+    period: { from: '2026-10-01', to: '2026-10-31' },
+    today,
+  })
+  const totals = financeTotals(invoices, allocated, today)
+  assert.equal(overview.openCents, totals.remainingCents)
+  assert.equal(overview.overdueCents, totals.overdueCents)
+  // Dönem dışındaki taksit kırılıma girmez; öğrenci yine gecikmiş listededir.
+  assert.deepEqual(overview.months, [
+    { month: '2026-10', collectedCents: 0, dueCents: 0, openCents: 0, overdueCents: 0 },
+  ])
+  assert.equal(overview.overdueStudents[0]?.overdueCents, 75_000)
+})
+
+test('DOM-FIN-033: iptal, iptal edildiği ayda düşer; özet muhasebe toplamıyla aynıdır', () => {
+  const payments = [
+    payment({
+      amountCents: 40_000,
+      paidAt: '2026-09-10T09:00:00.000Z',
+      reversedAt: '2026-10-05T09:00:00.000Z',
+    }),
+    payment({ amountCents: 10_000, paidAt: '2026-10-10T09:00:00.000Z' }),
+  ]
+  const period = { from: '2026-09-01', to: '2026-10-31' }
+  const overview = financeOverview({
+    invoices: [],
+    allocated: new Map(),
+    payments,
+    period,
+    today: '2026-10-20',
+  })
+  assert.deepEqual(
+    overview.months.map((month) => [month.month, month.collectedCents]),
+    [
+      ['2026-09', 40_000],
+      ['2026-10', -30_000],
+    ],
+  )
+  assert.equal(overview.collectedCents, 10_000)
+  const lines = paymentLines(payments, students, period)
+  assert.equal(financeSummary(lines, [], []).payments.totalCents, overview.collectedCents)
+})
+
+test('IST-121: gecikmiş öğrenciler tutar büyükten küçüğe, eşitlikte kimlikle sıralanır; ödenen taksit düşer', () => {
+  const overview = financeOverview({
+    invoices: [
+      overviewInvoice('i1', 's-b', 10_000, '2026-09-01T09:00:00.000Z'),
+      overviewInvoice('i2', 's-a', 10_000, '2026-09-01T09:00:00.000Z'),
+      overviewInvoice('i3', 's-c', 90_000, '2026-09-01T09:00:00.000Z'),
+      overviewInvoice('i4', 's-d', 5_000, '2026-09-01T09:00:00.000Z'),
+      overviewInvoice('i5', 's-c', 1_000, '2026-08-01T09:00:00.000Z'),
+    ],
+    // Dağıtım taksit tutarını aşsa bile kalan eksiye düşmez.
+    allocated: new Map([['i4', 9_000]]),
+    payments: [],
+    period: { from: '2026-09-01', to: '2026-09-30' },
+    today: '2026-10-20',
+  })
+  assert.deepEqual(
+    overview.overdueStudents.map((row) => [row.studentId, row.overdueCents, row.oldestDueDate]),
+    [
+      ['s-c', 91_000, '2026-08-01'],
+      ['s-a', 10_000, '2026-09-01'],
+      ['s-b', 10_000, '2026-09-01'],
+    ],
+  )
+})
+
+test('vade günü Europe/Istanbul gününe göre aya düşer; bugün vadesi gelen gecikmiş sayılmaz', () => {
+  const overview = financeOverview({
+    // 30 Eylül 22:00 UTC İstanbul'da 1 Ekim'dir.
+    invoices: [
+      overviewInvoice('i1', 's1', 10_000, '2026-09-30T22:00:00.000Z'),
+      overviewInvoice('i2', 's2', 20_000, '2026-10-20T09:00:00.000Z'),
+    ],
+    allocated: new Map(),
+    payments: [],
+    period: { from: '2026-09-01', to: '2026-10-31' },
+    today: '2026-10-20',
+  })
+  assert.deepEqual(
+    overview.months.map((month) => [month.month, month.dueCents, month.overdueCents]),
+    [
+      ['2026-09', 0, 0],
+      ['2026-10', 30_000, 10_000],
+    ],
+  )
+})
+
+test('varsayılan özet dönemi içinde bulunulan ay dahil son altı aydır; yıl sınırını geçer', () => {
+  assert.deepEqual(defaultOverviewPeriod('2026-10-20'), { from: '2026-05-01', to: '2026-10-20' })
+  assert.deepEqual(defaultOverviewPeriod('2026-02-03'), { from: '2025-09-01', to: '2026-02-03' })
+  const overview = financeOverview({
+    invoices: [],
+    allocated: new Map(),
+    payments: [],
+    period: defaultOverviewPeriod('2026-02-03'),
+    today: '2026-02-03',
+  })
+  assert.deepEqual(
+    overview.months.map((month) => month.month),
+    ['2025-09', '2025-10', '2025-11', '2025-12', '2026-01', '2026-02'],
+  )
+})
+
+test('özet sorgusunda dönem ya birlikte ya hiç verilir', () => {
+  assert.equal(financeOverviewQuerySchema.safeParse({}).success, true)
+  assert.equal(
+    financeOverviewQuerySchema.safeParse({ from: '2026-01-01', to: '2026-02-01' }).success,
+    true,
+  )
+  assert.equal(financeOverviewQuerySchema.safeParse({ from: '2026-01-01' }).success, false)
+  assert.equal(financeOverviewQuerySchema.safeParse({ to: '2026-01-01' }).success, false)
+  assert.equal(financeOverviewQuerySchema.safeParse({ extra: '1' }).success, false)
 })

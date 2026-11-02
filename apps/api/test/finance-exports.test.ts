@@ -96,6 +96,8 @@ describe('muhasebe dışa aktarımı', () => {
     get(cookie, `/api/v1/finance/exports?kind=${kind}&${query}`)
   const summary = (cookie: string | null, query = PERIOD) =>
     get(cookie, `/api/v1/finance/summary?${query}`)
+  const overview = (cookie: string | null, query = '', target: App = app) =>
+    get(cookie, `/api/v1/finance-summary${query === '' ? '' : `?${query}`}`, target)
   const pay = (cookie: string, amountCents: number, reference: string) =>
     app.inject({
       method: 'POST',
@@ -312,5 +314,93 @@ describe('muhasebe dışa aktarımı', () => {
     const { id, version } = created.json().data
     await reverse(a.cookie, id, version)
     assert.equal((await get(a.cookie, url)).json().data.record.paidCents, undefined)
+  })
+
+  // --- Finans özeti (IST-116, IST-121) ---------------------------------------------------------
+
+  test('IST-116: özet oturumsuz 401; yönetici ve ön büro okur, diğer roller 403; modül kapalı 403', async () => {
+    assertError(await overview(null), 401)
+    const a = await institution()
+    assert.equal((await overview(a.cookie)).statusCode, 200)
+    assert.equal((await overview(await member(a.id, 'onburo'))).statusCode, 200)
+    for (const role of ['ogretmen', 'ogrenci', 'veli'] as const)
+      assertError(await overview(await member(a.id, role)), 403, 'forbidden')
+    const closed = await institution({ enabledModules: { finance: false } })
+    assertError(await overview(closed.cookie), 403, 'module_disabled')
+  })
+
+  test('IST-116: dönem verilmezse son altı ay; tek uç 400, ters dönem ve bir yılı aşan dönem 422', async () => {
+    const a = await institution()
+    const defaulted = await overview(a.cookie)
+    assert.equal(defaulted.statusCode, 200, defaulted.body)
+    const data = defaulted.json().data
+    assert.equal(data.from, '2026-05-01')
+    assert.equal(data.to, '2026-10-06')
+    assert.equal(data.months.length, 6)
+    assertError(await overview(a.cookie, 'from=2026-01-01'), 400)
+    assertError(await overview(a.cookie, 'to=2026-01-01'), 400)
+    assertError(await overview(a.cookie, 'bilinmeyen=1'), 400)
+    assertError(
+      await overview(a.cookie, 'from=2026-10-31&to=2026-10-01'),
+      422,
+      'export_period_invalid',
+    )
+    assertError(
+      await overview(a.cookie, 'from=2025-01-01&to=2026-10-01'),
+      422,
+      'export_period_too_long',
+    )
+  })
+
+  test('IST-116, IST-121, DOM-FIN-033: kısmi ödeme ve iptal özete yansır; açık ve gecikmiş tutar finans toplamlarıyla aynıdır', async () => {
+    const a = await institution()
+    const paid = await pay(a.cookie, 1_000_000, 'TR-OZET-1')
+    assert.equal(paid.statusCode, 201, paid.body)
+    const query = 'from=2026-10-01&to=2026-12-31'
+    const first = (await overview(a.cookie, query)).json().data
+    assert.equal(first.collectedCents, 1_000_000)
+    assert.equal(first.openCents, NET - 1_000_000)
+    // FIXED_NOW 6 Ekim: vadesi gelmiş taksit yok.
+    assert.equal(first.overdueCents, 0)
+    assert.deepEqual(first.overdueStudents, [])
+    assert.deepEqual(
+      first.months.map((month: { month: string; dueCents: number }) => [
+        month.month,
+        month.dueCents,
+      ]),
+      [
+        ['2026-10', NET / 2],
+        ['2026-11', NET / 2],
+        ['2026-12', 0],
+      ],
+    )
+    // 1 Aralık: iki taksit de vadesini geçti; kısmi ödemenin kalanı gecikmiş sayılır.
+    const later = await buildTestApp(db, { clock: () => new Date('2026-12-01T09:00:00.000Z') })
+    try {
+      const data = (await overview(a.cookie, query, later)).json().data
+      assert.equal(data.overdueCents, NET - 1_000_000)
+      assert.deepEqual(data.overdueStudents, [
+        {
+          studentId: STUDENT?.id,
+          overdueCents: NET - 1_000_000,
+          oldestDueDate: '2026-10-15',
+        },
+      ])
+      const totals = (await get(a.cookie, '/api/v1/finance/totals', later)).json().data
+      assert.equal(data.openCents, totals.remainingCents)
+      assert.equal(data.overdueCents, totals.overdueCents)
+    } finally {
+      await later.close()
+    }
+    // İptal tahsilatı düşürür, açık tutarı geri getirir; özet muhasebe toplamıyla aynı kalır.
+    const reversed = await reverse(a.cookie, paid.json().data.id, 1)
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    const after_ = (await overview(a.cookie, query)).json().data
+    assert.equal(after_.collectedCents, 0)
+    assert.equal(after_.openCents, NET)
+    assert.equal(
+      (await summary(a.cookie, query)).json().data.payments.totalCents,
+      after_.collectedCents,
+    )
   })
 })

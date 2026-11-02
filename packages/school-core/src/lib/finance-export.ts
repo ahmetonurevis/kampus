@@ -28,6 +28,15 @@ export const financeExportQuerySchema = z.strictObject({
   kind: z.enum(FINANCE_EXPORT_KINDS, 'Aktarım türünü seçin.'),
 })
 
+/** Finans özeti sorgusu: dönem verilmezse son altı takvim ayıdır; yalnız bir uç verilemez. */
+export const financeOverviewQuerySchema = z
+  .strictObject({ from: daySchema.optional(), to: daySchema.optional() })
+  .refine((query) => (query.from === undefined) === (query.to === undefined), {
+    message: 'Dönemin başlangıcını ve bitişini birlikte seçin.',
+    path: ['from'],
+  })
+export type FinanceOverviewQuery = z.output<typeof financeOverviewQuerySchema>
+
 export function assertFinancePeriod({ from, to }: FinancePeriod): void {
   if (from > to)
     throw new DomainError('export_period_invalid', 'Dönem başlangıcı bitişinden sonra olamaz.', {
@@ -309,4 +318,141 @@ export function financeTotals(
     if (dayKey(invoice.dueDate) < today) overdueCents += invoice.amount - paid
   }
   return { totalCents, paidCents, remainingCents: totalCents - paidCents, overdueCents }
+}
+
+/** Varsayılan özet dönemi: içinde bulunulan ay dahil son altı takvim ayı, bugüne kadar. */
+export const FINANCE_OVERVIEW_DEFAULT_MONTHS = 6
+
+export function defaultOverviewPeriod(today: string): FinancePeriod {
+  const year = Number(today.slice(0, 4))
+  const month = Number(today.slice(5, 7))
+  const start = new Date(Date.UTC(year, month - FINANCE_OVERVIEW_DEFAULT_MONTHS, 1))
+  return { from: start.toISOString().slice(0, 10), to: today }
+}
+
+export interface FinanceOverviewMonth {
+  /** Europe/Istanbul takvim ayı (`YYYY-MM`). */
+  month: string
+  /** Bu ayda alınan tahsilat; iptal, iptal edildiği ayda düşer (DOM-FIN-033). */
+  collectedCents: number
+  /** Vadesi bu ayda olan taksitlerin toplamı. */
+  dueCents: number
+  /** Vadesi bu ayda olan taksitlerin bugün kalan kısmı. */
+  openCents: number
+  /** Vadesi bu ayda olup bugün gecikmiş kalan kısım. */
+  overdueCents: number
+}
+
+export interface OverdueStudent {
+  // kvkk: K — öğrenci kaydı
+  studentId: string
+  overdueCents: number
+  /** Ödenmemiş en eski gecikmiş vade günü. */
+  oldestDueDate: string
+}
+
+export interface FinanceOverview {
+  from: string
+  to: string
+  /** Hesabın yapıldığı Europe/Istanbul günü. */
+  today: string
+  /** Dönemde alınan net tahsilat. */
+  collectedCents: number
+  /** Kurum geneli bugün açık tutar (dönemden bağımsız; `/finance/totals` ile aynı). */
+  openCents: number
+  /** Kurum geneli bugün gecikmiş tutar (dönemden bağımsız; `/finance/totals` ile aynı). */
+  overdueCents: number
+  /** Dönemin bütün ayları, eskiden yeniye; hareketsiz ay sıfırla döner. */
+  months: FinanceOverviewMonth[]
+  /** Gecikmiş borcu olan öğrenciler, tutar büyükten küçüğe (erken uyarı, IST-121). */
+  overdueStudents: OverdueStudent[]
+}
+
+function monthsOf({ from, to }: FinancePeriod): string[] {
+  const months: string[] = []
+  const last = to.slice(0, 7)
+  let year = Number(from.slice(0, 4))
+  let month = Number(from.slice(5, 7))
+  for (;;) {
+    const key = `${String(year)}-${String(month).padStart(2, '0')}`
+    months.push(key)
+    if (key >= last) return months
+    month += 1
+    if (month > 12) {
+      month = 1
+      year += 1
+    }
+  }
+}
+
+/**
+ * Finans özeti (IST-116, IST-121): tahsil edilen, açık ve gecikmiş tutar ile ay kırılımı. Tahsilat
+ * `paymentLines`, açık ve gecikmiş tutar `financeTotals` kuralıyla hesaplanır; pano rakamı listelerin
+ * toplamıyla aynı kalır. Kısmi ödemede yalnız kalan kısım açık ya da gecikmiş sayılır.
+ */
+export function financeOverview(input: {
+  invoices: readonly Pick<
+    State['invoices'][number],
+    'id' | 'studentId' | 'amount' | 'paidAt' | 'dueDate'
+  >[]
+  allocated: ReadonlyMap<string, number>
+  payments: readonly ExportPayment[]
+  period: FinancePeriod
+  today: string
+}): FinanceOverview {
+  const { invoices, allocated, payments, period, today } = input
+  const totals = financeTotals(invoices, allocated, today)
+  const months = new Map<string, FinanceOverviewMonth>(
+    monthsOf(period).map((month) => [
+      month,
+      { month, collectedCents: 0, dueCents: 0, openCents: 0, overdueCents: 0 },
+    ]),
+  )
+  const students = new Map<string, OverdueStudent>()
+  for (const invoice of invoices) {
+    const day = dayKey(invoice.dueDate)
+    const paid = invoice.paidAt
+      ? invoice.amount
+      : Math.min(allocated.get(invoice.id) ?? 0, invoice.amount)
+    const open = invoice.amount - paid
+    const overdue = day < today ? open : 0
+    if (inPeriod(day, period)) {
+      const entry = months.get(day.slice(0, 7))
+      if (entry) {
+        entry.dueCents += invoice.amount
+        entry.openCents += open
+        entry.overdueCents += overdue
+      }
+    }
+    if (overdue > 0) {
+      const student = students.get(invoice.studentId)
+      if (student) {
+        student.overdueCents += overdue
+        if (day < student.oldestDueDate) student.oldestDueDate = day
+      } else
+        students.set(invoice.studentId, {
+          studentId: invoice.studentId,
+          overdueCents: overdue,
+          oldestDueDate: day,
+        })
+    }
+  }
+  let collectedCents = 0
+  for (const line of paymentLines(payments, new Map(), period)) {
+    collectedCents += line.amountCents
+    const entry = months.get(line.date.slice(0, 7))
+    if (entry) entry.collectedCents += line.amountCents
+  }
+  return {
+    from: period.from,
+    to: period.to,
+    today,
+    collectedCents,
+    openCents: totals.remainingCents,
+    overdueCents: totals.overdueCents,
+    months: [...months.values()],
+    overdueStudents: [...students.values()].sort(
+      (a, b) => b.overdueCents - a.overdueCents || a.studentId.localeCompare(b.studentId),
+    ),
+  }
 }

@@ -1,10 +1,12 @@
 import { useMemo } from 'react'
+import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
@@ -13,17 +15,23 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { collectionQueryFromList, sortableColumns } from '@/lib/collection-list.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { ClassSubjectFilters, filterValue, useClassSubjectFilters } from './LearningFilters.tsx'
-import { MATERIAL_LIST, materialRow, type MaterialRow } from './learning-rows.ts'
+import {
+  MATERIAL_LIST,
+  materialLevelOptions,
+  materialRow,
+  type MaterialRow,
+} from './learning-rows.ts'
 import { MaterialPanel } from './MaterialPanel.tsx'
 
-const URL_FILTERS = { subjectId: 'ders' }
+const URL_FILTERS = { subjectId: 'ders', level: 'duzey' }
 const SORTABLE = sortableColumns(MATERIAL_LIST)
 const MOBILE_COLUMNS = ['subject', 'level']
 const NONE: readonly never[] = []
 
 /**
  * Materyal Kütüphanesi (öğretmen, Vue `Learning.vue` `/materyal-yukle`): öğretmenin paylaştığı
- * materyaller sunucu sayfalı; ders filtresi, başlık araması, satırdan içerik özeti. Yalnız okuma.
+ * materyaller sunucu sayfalı; ders ve düzey filtresi (sunucuda, sayfalamadan önce; IST-035),
+ * başlık araması, satırdan içerik özeti. Yalnız okuma.
  * TODO(api-material-write): materyal yükleme dosya depolama ADR'si (0003) onaylanınca gelir.
  * TODO(api-video): video kütüphanesi ayrı görevdir.
  */
@@ -33,19 +41,32 @@ export function TeacherMaterialsPage({ page }: { page: NavPage }) {
   const teachers = useCoreAll('teachers')
   const teacherId = teachers.data?.[0]?.record.id
   const filters = useClassSubjectFilters(NONE)
+  const { session } = useAuth()
+  const levelOptions = useMemo(
+    () => materialLevelOptions(session?.institution.type ?? 'school'),
+    [session?.institution.type],
+  )
 
   const list = useListState('materyaller', { urlFilters: URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
   const query = useMemo(() => {
     const base = collectionQueryFromList(list.state, MATERIAL_LIST, search)
-    return { ...base, filters: { ...base.filters, ...(teacherId ? { teacherId } : {}) } }
-  }, [list.state, search, teacherId])
+    const { level, ...rest } = base.filters ?? {}
+    // Adres çubuğundan gelen geçersiz düzey sunucuda 400 olmasın diye seçeneklerde yoksa düşer.
+    const known = typeof level === 'string' && levelOptions.includes(level)
+    return {
+      ...base,
+      filters: { ...rest, ...(known ? { level } : {}), ...(teacherId ? { teacherId } : {}) },
+    }
+  }, [list.state, search, teacherId, levelOptions])
   const materials = useCoreList('materials', query, { enabled: teacherId !== undefined })
   const rows = useMemo(() => materials.data?.rows.map(materialRow), [materials.data])
 
   const panel = useDetailPanel('materyal')
   const openMaterial = panel.open
   const subjectId = filterValue(list.state.filters.subjectId)
+  const rawLevel = filterValue(list.state.filters.level)
+  const level = levelOptions.includes(rawLevel) ? rawLevel : ''
 
   const columns = useMemo<DataColumn<MaterialRow>[]>(
     () => [
@@ -122,17 +143,42 @@ export function TeacherMaterialsPage({ page }: { page: NavPage }) {
             ) : undefined
           }
           onRowClick={(row) => openMaterial(row.id)}
-          externalActive={subjectId !== ''}
-          externalLabel={subjectId ? `Ders: ${filters.subjectName(subjectId)}` : ''}
-          onReset={() => list.dispatch({ type: 'filter', key: 'subjectId', value: '' })}
+          externalActive={subjectId !== '' || level !== ''}
+          externalLabel={[
+            subjectId ? `Ders: ${filters.subjectName(subjectId)}` : '',
+            level ? `Düzey: ${level}` : '',
+          ]
+            .filter(Boolean)
+            .join(' · ')}
+          onReset={() => {
+            for (const key of ['subjectId', 'level'] as const)
+              list.dispatch({ type: 'filter', key, value: '' })
+          }}
           toolbar={
-            <ClassSubjectFilters
-              filters={filters}
-              classId=""
-              subjectId={subjectId}
-              withClass={false}
-              onChange={(key, value) => list.dispatch({ type: 'filter', key, value })}
-            />
+            <>
+              <ClassSubjectFilters
+                filters={filters}
+                classId=""
+                subjectId={subjectId}
+                withClass={false}
+                onChange={(key, value) => list.dispatch({ type: 'filter', key, value })}
+              />
+              <NativeSelect
+                aria-label="Düzey"
+                value={level}
+                onChange={(event) =>
+                  list.dispatch({ type: 'filter', key: 'level', value: event.target.value })
+                }
+                className="min-h-9 text-sm"
+              >
+                <NativeSelectOption value="">Tüm düzeyler</NativeSelectOption>
+                {levelOptions.map((option) => (
+                  <NativeSelectOption key={option} value={option}>
+                    {option}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            </>
           }
         />
       </section>

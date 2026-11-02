@@ -5,6 +5,7 @@ import {
   activeRoster,
   deliverySummary,
   homeworkRow,
+  materialLevelOptions,
   materialRow,
   MATERIAL_LIST,
   studentQuizRow,
@@ -285,7 +286,33 @@ test('liste yapılandırmaları API beyaz listesindeki alanları kullanır', () 
     for (const field of Object.values(config.sortFields)) assert.ok(sortable.has(field), field)
     for (const field of config.defaultSort) assert.ok(sortable.has(field.replace(/^-/, '')), field)
   }
-  const filterable = new Set(['classId', 'subjectId'])
+  const filterable = new Set(['classId', 'subjectId', 'level'])
   for (const config of [MATERIAL_LIST])
     for (const field of Object.values(config.filterFields)) assert.ok(filterable.has(field), field)
+})
+
+test('IST-035: materyal düzey seçenekleri kurum türüne göre sunucunun kabul ettiği değerlerdir', () => {
+  assert.deepEqual(materialLevelOptions('school'), [
+    '5. Sınıf',
+    '6. Sınıf',
+    '7. Sınıf',
+    '8. Sınıf',
+    '9. Sınıf',
+    '10. Sınıf',
+    '11. Sınıf',
+    '12. Sınıf',
+  ])
+  assert.deepEqual(materialLevelOptions('language_school'), [
+    'Pre-A1',
+    'A1',
+    'A2',
+    'A2+',
+    'B1',
+    'B1+',
+    'B2',
+    'B2+',
+    'C1',
+    'C2',
+  ])
+  assert.equal(MATERIAL_LIST.filterFields.level, 'level')
 })

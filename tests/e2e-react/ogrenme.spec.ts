@@ -212,6 +212,40 @@ test.describe('Öğrenme: öğretmen', () => {
     await expect(panel).toContainText('Dosya')
   })
 
+  test('IST-035: materyal düzey süzgeci sunucuda süzer ve adreste korunur', async ({
+    page,
+    api,
+  }) => {
+    const teacher = await api('ogretmen')
+    const own = await all<{ id: string }>(teacher, '/api/v1/collections/teachers')
+    const teacherId = own[0]?.id
+    const level = encodeURIComponent('7. Sınıf')
+    const sevenths = await total(
+      teacher,
+      `/api/v1/collections/materials?teacherId=${teacherId}&level=${level}`,
+    )
+    const mine = await total(teacher, `/api/v1/collections/materials?teacherId=${teacherId}`)
+    expect(sevenths).toBeGreaterThan(0)
+    expect(sevenths).toBeLessThan(mine)
+    expect((await teacher.get('/api/v1/collections/materials?level=Yok')).status).toBe(400)
+
+    await page.goto(TEACHER_MATERIALS)
+    await expect(resultCount(page)).toContainText(`/ ${mine} kayıt`)
+    await page.getByLabel('Düzey', { exact: true }).selectOption('7. Sınıf')
+    await expect(resultCount(page)).toContainText(`/ ${sevenths} kayıt`)
+    await expectEveryRow(
+      bodyRows(page, 'Paylaştığınız materyaller').locator('td:nth-child(3)'),
+      '7. Sınıf',
+      true,
+    )
+    await expect(page).toHaveURL(/duzey=/)
+
+    // Adres yenilenince süzgeç korunur.
+    await page.reload()
+    await expect(page.getByLabel('Düzey', { exact: true })).toHaveValue('7. Sınıf')
+    await expect(resultCount(page)).toContainText(`/ ${sevenths} kayıt`)
+  })
+
   test('quiz listesi soru sayısını ve sınıf ortalamasını cevaplardan hesaplar', async ({
     page,
     api,

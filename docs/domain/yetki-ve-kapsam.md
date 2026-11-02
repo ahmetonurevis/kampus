@@ -399,7 +399,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/academic-years.ts`)
 
 ### DOM-YTK-080 · Öğretmen kendi grubunun deneme adayını sınırlı okur ve sonucunu yazar
 
-- **Kural:** Deneme dersine kendi grubunun dersinde katılan adayı `ogretmen` okur ve deneme sonucunu (`suitable`, `lower_level`, `upper_level` ve kısa not) yazar; başka grubun adayı, denemesi olmayan aday ve okul kurumundaki aday öğretmene görünmez (404; adayın varlığı sızmaz). Öğretmene yalnız ad, kampüs, ilgi, aşama, 18 yaş altı bayrağı ve deneme dersi bilgisi döner; telefon, e-posta, veli adı, aday notları, kaynak, rıza ve aydınlatma kaydı, tanışma görüşmesi ve oluşturan kişi dönmez. Sonuç yazmak aday aşamasını değiştirmez. Ön büro, yönetici, öğrenci ve veli sonuç yazamaz (403).
+- **Kural:** Deneme dersine kendi grubunun dersinde katılan adayı `ogretmen` okur ve deneme sonucunu (`suitable`, `lower_level`, `upper_level` ve kısa not) yazar; başka grubun adayı ve denemesi olmayan aday öğretmene görünmez (404; adayın varlığı sızmaz); okul kurumunda öğretmen aday koleksiyonuna hiç erişemez (403, deneme dersi yoktur). Öğretmene yalnız ad, kampüs, ilgi, aşama, 18 yaş altı bayrağı ve deneme dersi bilgisi döner; telefon, e-posta, veli adı, aday notları, kaynak, rıza ve aydınlatma kaydı, tanışma görüşmesi ve oluşturan kişi dönmez. Sonuç yazmak aday aşamasını değiştirmez. Ön büro, yönetici, öğrenci ve veli sonuç yazamaz (403).
 - **Gerekçe:** Deneme sonucu akademik bir değerlendirmedir ve dersi veren öğretmenin işidir (`DOM-DIL-031`); iletişim ve satış bilgisi öğretmenin işi için gerekmez, veri en aza indirilir.
 - **Kaynak:** İşletme kuralı; KVKK md. 4/2-ç (ölçülülük).
 - **Kurum türü:** `language_school`

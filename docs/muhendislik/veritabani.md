@@ -142,6 +142,15 @@ Migration `0015_create_files`; şema `apps/api/src/db/schema/files.ts`, depo `ap
 - İndeksler `institution_id` ile başlar: bağlı kayıt araması `(institution_id, attached_type, attached_id)`, temizlik taraması `(institution_id, created_at)`. Kurumlar arası temizlik taraması büyüyünce `EXPLAIN` ile yeniden değerlendirilir.
 - **Bağlanmamış dosya temizliği.** `purgeUnattachedFiles` 24 saatte bağlanmayan veya reddedilen dosyanın nesnesini siler, satırı `deleted` yapar; zamanlayıcı (`pg-boss`) henüz yok (`TODO(jobs)`).
 
+### Aydınlatma ve rıza tabloları (guvenlik-kvkk §9)
+
+Migration `0024_create_privacy_consents`; şema `apps/api/src/db/schema/privacy.ts`, depo `apps/api/src/db/privacy.ts`, kurallar core `lib/privacy-notices.ts` ve `lib/consents.ts` (DOM-YTK-056…062). Ölçüt 2 (veritabanı kısıtı: tek etkin rıza) ve 5 (ayrı saklama/ispat kuralı) gereği `records`'ta değildir.
+
+- `privacy_notices`: sürümlü aydınlatma (`kind = 'notice'`, `audience`) ve rıza metni (`kind = 'consent_text'`, `purpose`). Sürüm kolonu `notice_version`'dır (`version` iyimser kilittir); konu başına tekil (`privacy_notices_audience_version_key`, `privacy_notices_purpose_version_key`). Satır `kampus_reject_immutable_change()` ve `privacy_notices_version_check` ile hiç değişmez, arşivlenmez: arşiv sürümü listeden düşürüp aynı sürüm numarasını yeniden kullandırır (23505) ya da yeniden rıza isteyen sürümü saklayıp eski rızaları geçerli kılardı. Yerini yeni sürüm alır; `listPrivacyNotices` bütün sürümleri döndürür.
+- `notice_acknowledgements`: kullanıcı × metin sürümü tekil (`notice_acknowledgements_user_notice_key`); değişmez satır (`kampus_reject_immutable_change`).
+- `consents`: veri sahibi (`subject_kind` + `subject_id`), veren ve ilişkisi, amaç, karar (`granted`/`objected`), metin sürümü (`text_id` + `text_version`), kanal, `given_at`, `expires_at`, geri çekme üçlüsü (`withdrawn_at`, `withdrawn_by_user_id`, `withdrawal_reason`; birlikte dolu ya da boş). Kısmi benzersiz `consents_subject_purpose_decision_key` (`withdrawn_at is null and archived_at is null`) aynı veri sahibi + amaç + karar için ikinci etkin satırı 23505 ile reddeder. `kampus_reject_consent_change()` yalnız geri çekilmemiş satıra bir kez geri çekme yazılmasına izin verir; arşiv de reddedilir.
+- Metin sürümüne işaret eden yabancı anahtarlar `on delete restrict`'tir: gösterilmiş ya da rıza verilmiş sürüm silinemez. Tetikleyiciler 0024'ün sonuna elle yazılmıştır; silme yalnız imha ayarıyla (§7).
+
 ## 5. Migration kuralları
 
 - Şema değişikliği yalnız migration ile: `pnpm --filter @kampus/api exec drizzle-kit generate --name <ne_yapildigi>` (ör. `add_audit_log`). Üretilen SQL okunur, gerekirse elle düzenlenir ve commit edilir.

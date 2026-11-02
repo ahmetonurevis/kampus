@@ -154,7 +154,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Görüntü kişisel veridir; tanıtım amaçlı kullanım sözleşmenin ifası için zorunlu olmadığından açık rızaya dayanır. Rıza "özgür irade" ile verilmelidir; hizmete bağlanan rıza özgür değildir.
 - **Kaynak:** KVKK md. 3/1-a ("belirli bir konuya ilişkin, bilgilendirilmeye dayanan ve özgür iradeyle açıklanan rıza"), md. 5/1-2; TMK md. 342 (yasal temsil) ve md. 16/1 (ayırt etme gücüne sahip küçüğün kişiye sıkı sıkıya bağlı hakları). Rızanın hizmet şartına bağlanamayacağı (Kurul kararı 2018/19) ve aydınlatma ile açık rıza metninin ayrı olması (Kurul ilke kararı 2026/347) ikincil kaynaklardan görüldü — **doğrulanmalı**. Öğrencinin itirazının velinin rızasına üstün tutulması ve bir yıllık süre işletme kuralıdır.
 - **Kurum türü:** ikisi (yetişkin kursiyer rızayı kendisi verir)
-- **Kodda:** yok.
+- **Kodda:** kısmen — dört kanal ayrı amaç kodudur (`photo_video_sharing`, `photo_video_website`, `photo_video_social_media`, `photo_video_print`; `packages/school-core/src/lib/consent-purposes.ts`); veren, itiraz, eğitim yılı bitişi ve geri çekme `lib/consents.ts` (`DOM-YTK-057`…`062`), tablo `consents`. Uç, ekran ve yayından kaldırma yok (OG-016/017).
 
 ### DOM-ILT-034 · Rıza kaydı ispat taşır
 
@@ -162,7 +162,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Açık rızanın alındığını ispat yükü veri sorumlusundadır.
 - **Kaynak:** KVKK md. 5/1, md. 12/1; ispat yükü yorumu **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `eventConsents` öğrenci, veli, karar, not ve zaman damgası taşır (`packages/school-core/src/lib/school-workflows.js:1062-1074`); metin sürümü ve geçmiş yok.
+- **Kodda:** kısmen — açık rıza için `consents` tablosu (migration `0024`) veren kullanıcıyı, ilişkisini (kendisi/veli), veri sahibini, metin sürümünü, amacı, kararı (`granted`/`objected`), kanalı, zamanı ve geri çekmeyi taşır; satır yalnız bir kez geri çekilerek değişir (`DOM-YTK-058`, `DOM-YTK-059`). Velayet durumu satıra yazılmaz, veren anda doğrulanır. Etkinlik izni (`eventConsents`, `packages/school-core/src/lib/school-workflows.js:1062-1074`) öğrenci, veli, karar, not ve zaman damgası taşır; metin sürümü ve geçmiş yok.
 
 ### DOM-ILT-035 · Sağlık ve özel nitelikli veri
 

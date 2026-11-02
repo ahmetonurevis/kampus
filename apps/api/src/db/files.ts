@@ -1,4 +1,18 @@
-import { and, asc, eq, gt, inArray, isNull, lt, ne, notInArray, or, sql } from 'drizzle-orm'
+import {
+  and,
+  asc,
+  eq,
+  gt,
+  inArray,
+  isNotNull,
+  isNull,
+  lt,
+  lte,
+  ne,
+  notInArray,
+  or,
+  sql,
+} from 'drizzle-orm'
 
 import type { Database } from './client.ts'
 import { files, type FileStatus } from './schema/files.ts'
@@ -292,5 +306,32 @@ export async function listStaleUnattachedFiles(
       ),
     )
     .orderBy(asc(files.createdAt), asc(files.id))
+    .limit(limit)
+}
+
+/**
+ * Kurumun saklama sonu gelmiş (`retention_until <= now`), silinmemiş dosyaları (karar 13; imha
+ * işi `files.purge-expired`): bağlı ya da bağsız, rıza geri çekmesiyle işaretlenmiş olanlar dahil.
+ * En eski saklama sonu önce, `limit` kadar. Saklama sonu yalnız konuşma kaydında yazılır
+ * (`TODO(F3c2-retention)`); tarama kurumun satırlarıyla sınırlıdır.
+ */
+export async function listExpiredFiles(
+  db: Database,
+  institutionId: string,
+  now: Date,
+  limit: number,
+): Promise<StoredFile[]> {
+  return db
+    .select()
+    .from(files)
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        isNotNull(files.retentionUntil),
+        lte(files.retentionUntil, now),
+        ne(files.status, 'deleted'),
+      ),
+    )
+    .orderBy(asc(files.retentionUntil), asc(files.id))
     .limit(limit)
 }

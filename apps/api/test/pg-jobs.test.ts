@@ -1,13 +1,18 @@
 import assert from 'node:assert/strict'
+import { randomUUID } from 'node:crypto'
+import { Readable } from 'node:stream'
 import { setTimeout as delay } from 'node:timers/promises'
 import { after, before, describe, test } from 'node:test'
 
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import { buildApp, type App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
+import { insertFile } from '../src/db/files.ts'
+import { files } from '../src/db/schema/files.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { dispatchQueueName } from '../src/jobs/dispatch.ts'
+import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
 import {
   JOB_SCHEMA,
@@ -16,8 +21,9 @@ import {
   type JobQueue,
   type StartJobsOptions,
 } from '../src/jobs/queue.ts'
+import { storageKeyFor } from '../src/storage/storage.ts'
 import { createInstitution, FIXED_NOW, testConfig, uniqueId } from './support/app.ts'
-import { tempStorage } from './support/files-sample.ts'
+import { MP3, tempStorage } from './support/files-sample.ts'
 import { createPgDatabase, PG_SKIP, TEST_PG_URL } from './support/pg.ts'
 
 /**
@@ -163,6 +169,59 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
         await queue.boss.deleteQueue(name)
       }
     }
+  })
+
+  test('DOM-BEC-052, DOM-YTK-059: files.purge-expired kuyruktan çalışır; saklama sonu gelen konuşma kaydı imha edilir, gelecektekine dokunulmaz', async () => {
+    const { queue } = await appWithJobs({ jobs: [filesPurgeExpiredJob] })
+    const institution = await createInstitution(apps[0] as App)
+    const recording = async (retentionUntil: Date) => {
+      const id = randomUUID()
+      const storageKey = storageKeyFor({
+        institutionId: institution.id,
+        purpose: 'speaking_recording',
+        fileId: id,
+        now: FIXED_NOW,
+      })
+      await store.storage.put(storageKey, Readable.from(MP3))
+      await insertFile(
+        db,
+        institution.id,
+        {
+          id,
+          purpose: 'speaking_recording',
+          storageKey,
+          contentType: 'audio/mpeg',
+          byteSize: MP3.length,
+          sha256: '0'.repeat(64),
+          originalName: 'kayit.mp3',
+          uploadedByUserId: uniqueId('test-user'),
+        },
+        FIXED_NOW,
+      )
+      await db
+        .update(files)
+        .set({ status: 'ready', retentionUntil })
+        .where(and(eq(files.institutionId, institution.id), eq(files.id, id)))
+      return { id, storageKey }
+    }
+    const expired = await recording(new Date(FIXED_NOW.getTime() - HOUR))
+    const kept = await recording(new Date(FIXED_NOW.getTime() + HOUR))
+    const statusOf = async (id: string) =>
+      (
+        await db
+          .select({ status: files.status })
+          .from(files)
+          .where(and(eq(files.institutionId, institution.id), eq(files.id, id)))
+      )[0]?.status
+
+    await queue.boss.send(dispatchQueueName(filesPurgeExpiredJob), {})
+    await until(
+      () => statusOf(expired.id),
+      (status) => status === 'deleted',
+    )
+    assert.equal(await store.storage.head(expired.storageKey), null)
+    assert.equal(await statusOf(kept.id), 'ready')
+    assert.notEqual(await store.storage.head(kept.storageKey), null)
   })
 
   test('bozuk yük yeniden denenmeden düşer: iş failed olur, deneme sayısı artmaz', async () => {

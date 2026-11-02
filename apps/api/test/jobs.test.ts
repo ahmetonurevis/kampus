@@ -2,15 +2,17 @@ import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 
 import type { FastifyBaseLogger } from 'fastify'
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 import { DrizzleQueryError } from 'drizzle-orm/errors'
 
 import type { App } from '../src/app.ts'
 import { jobsEnabled, parseConfig } from '../src/config.ts'
 import type { Database } from '../src/db/client.ts'
+import { auditLog } from '../src/db/schema/audit-log.ts'
 import { files } from '../src/db/schema/files.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { dispatchInstitutionJobs, dispatchQueueName, type JobSender } from '../src/jobs/dispatch.ts'
+import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { filesPurgeJob } from '../src/jobs/files-purge.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
 import { bootJobs } from '../src/jobs/boot.ts'
@@ -62,11 +64,12 @@ describe('arka plan işleri', () => {
   let app: App
   let deps: JobDeps
   let store: Awaited<ReturnType<typeof tempStorage>>
+  const logs: string[] = []
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())
     store = await tempStorage()
-    app = await buildTestApp(db, { storage: store.storage })
+    app = await buildTestApp(db, { storage: store.storage, logs })
     deps = { db, storage: store.storage, log: app.log }
   })
   after(async () => {
@@ -171,9 +174,9 @@ describe('arka plan işleri', () => {
 
   let serial = 0
   /** Kurumda öğrenci olarak bağlanmamış PDF yükler; dosya kimliğini döndürür. */
-  async function uploadIn(institutionId: string): Promise<string> {
+  async function uploadIn(institutionId: string, fileName?: string): Promise<string> {
     const user = await createMember(app, institutionId, 'ogrenci')
-    const body = multipart(uploadParts('submission', PDF))
+    const body = multipart(uploadParts('submission', PDF, fileName))
     const response = await app.inject({
       method: 'POST',
       url: '/api/v1/files',
@@ -224,6 +227,123 @@ describe('arka plan işleri', () => {
       purged: 0,
       rounds: 1,
     })
+  })
+
+  /** Saklama sonunu (ve verilirse bağı) doğrudan yazar; imha işinin girdisi. */
+  async function setRetention(
+    institutionId: string,
+    id: string,
+    retentionUntil: Date | null,
+    attachedId?: string,
+  ) {
+    await db
+      .update(files)
+      .set({
+        retentionUntil,
+        status: 'ready',
+        ...(attachedId === undefined
+          ? {}
+          : {
+              attachedType: 'task_submission_version',
+              attachedId,
+              attachedAt: FIXED_NOW,
+              dataSubjectId: 's-1',
+            }),
+      })
+      .where(and(eq(files.institutionId, institutionId), eq(files.id, id)))
+  }
+  const purgeAudits = async (institutionId: string) =>
+    (
+      await db
+        .select({ entityId: auditLog.entityId, changes: auditLog.changes })
+        .from(auditLog)
+        .where(and(eq(auditLog.institutionId, institutionId), eq(auditLog.action, 'file.purge')))
+    ).map((row) => row.entityId)
+
+  test('DOM-BEC-052, DOM-YTK-059, ADR 0003 karar 13: files.purge-expired saklama sonu gelen (bağlı ya da bağsız) dosyayı imha eder, bağ ve süre kalır, denetime file.purge düşer; gelecek ve boş saklama sonu, başka kurum kalır; ikinci çalıştırma 0', async () => {
+    const a = await createInstitution(app)
+    const b = await createInstitution(app)
+    const past = new Date(FIXED_NOW.getTime() - HOUR)
+    const future = new Date(FIXED_NOW.getTime() + HOUR)
+    const attached = await uploadIn(a.id)
+    const withdrawn = await uploadIn(a.id)
+    const fresh = await uploadIn(a.id)
+    const unset = await uploadIn(a.id)
+    const other = await uploadIn(b.id)
+    await setRetention(a.id, attached, past, 'surum-1')
+    await setRetention(a.id, withdrawn, FIXED_NOW)
+    await setRetention(a.id, fresh, future, 'surum-2')
+    await setRetention(a.id, unset, null)
+    await setRetention(b.id, other, past)
+
+    assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
+      purged: 2,
+      rounds: 1,
+    })
+    for (const id of [attached, withdrawn]) {
+      const row = await fileOf(a.id, id)
+      assert.equal(row?.status, 'deleted')
+      assert.equal(row?.deletedAt?.toISOString(), FIXED_NOW.toISOString())
+      assert.equal(row?.originalName, null)
+      assert.ok(row && (await store.storage.head(row.storageKey)) === null)
+    }
+    // Bağlı kayıt teslim sürümünde `deleted` görünür; bağ ve veri sahibi kalır.
+    const kept = await fileOf(a.id, attached)
+    assert.equal(kept?.attachedId, 'surum-1')
+    assert.equal(kept?.dataSubjectId, 's-1')
+    for (const [institutionId, id] of [
+      [a.id, fresh],
+      [a.id, unset],
+      [b.id, other],
+    ] as const) {
+      const row = await fileOf(institutionId, id)
+      assert.equal(row?.status, 'ready')
+      assert.ok(row && (await store.storage.head(row.storageKey)) !== null)
+    }
+    assert.deepEqual((await purgeAudits(a.id)).sort(), [attached, withdrawn].sort())
+    assert.deepEqual(await purgeAudits(b.id), [])
+
+    assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
+      purged: 0,
+      rounds: 1,
+    })
+    assert.equal((await purgeAudits(a.id)).length, 2)
+    // Saklama sonu gelince ertesi çalıştırma siler.
+    assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, future), {
+      purged: 1,
+      rounds: 1,
+    })
+    assert.equal((await fileOf(a.id, fresh))?.status, 'deleted')
+  })
+
+  test('files.purge-expired: nesne silinemezse satır deleted kalır, hata yalnız kimliklerle loglanır (dosya adı yok); iş düşmez ve tekrar çalıştırma satırı yeniden işlemez', async () => {
+    const a = await createInstitution(app)
+    const fileName = 'Deniz-imha-kaydi.pdf'
+    const id = await uploadIn(a.id, fileName)
+    await setRetention(a.id, id, FIXED_NOW)
+    const from = logs.length
+    store.storage.failDeletes = true
+    try {
+      assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
+        purged: 1,
+        rounds: 1,
+      })
+    } finally {
+      store.storage.failDeletes = false
+    }
+    const row = await fileOf(a.id, id)
+    assert.equal(row?.status, 'deleted')
+    assert.equal(row?.originalName, null)
+    const written = logs.slice(from).join('')
+    assert.match(written, /file\.purge_object_failed/)
+    assert.ok(written.includes(id))
+    assert.equal(written.includes(fileName), false)
+    assert.equal(written.includes('Deniz'), false)
+    assert.deepEqual(await filesPurgeExpiredJob.run(deps, { institutionId: a.id }, FIXED_NOW), {
+      purged: 0,
+      rounds: 1,
+    })
+    assert.deepEqual(await purgeAudits(a.id), [id])
   })
 
   test("DOM-ILT-039: izin formu hatırlatması İstanbul saatiyle 07:00'den önce (gece tetiklemesi) hiçbir şey yazmadan çıkar", async () => {

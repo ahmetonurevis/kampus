@@ -1,5 +1,5 @@
 import { focusManager, useQueries, useQueryClient, type Query } from '@tanstack/react-query'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 
 import type { ApiError } from '@kampus/api-client/errors.ts'
 
@@ -8,15 +8,12 @@ import {
   fetchFileUrl,
   fileItemKey,
   filePollInterval,
+  createWaitDeadlines,
   fileProcessing,
   getFileRequest,
-  pauseWaitClock,
-  resumeWaitClock,
-  startWaitClock,
-  waitRemainingMs,
+  queryReads,
   type FileProcessing,
   type StoredFile,
-  type WaitClock,
 } from './files.ts'
 import { useKampusClient } from './kampus-context.ts'
 import { institutionKey } from './query-keys.ts'
@@ -46,65 +43,31 @@ export function useFileUrlFetcher() {
   return (fileId: string) => fetchFileUrl(client, fileId)
 }
 
-/** Bekleme saatleri: kimlik başına görünür süre ve süresi dolmuşluk. */
-type WaitEntry = { clock: WaitClock; expired: boolean }
-
 /**
  * Bekleme üst süresi (`FILE_WAIT_LIMIT_MS`) yalnız sekme görünürken işler (`focusManager`: webde
  * `visibilitychange`, mobilde uygulama durumu). Listeye giren kimliğin saati başlar, listeden
- * çıkanın saati silinir; `restart` saati sıfırlar. Süresi dolan kimlikler döner.
+ * çıkanın saati silinir; `restart` saati ve geri çekilme sayacını sıfırlar. Mantık
+ * `createWaitDeadlines`'tadır (saf, `node --test` ile sınanır); kanca yalnız bağlar.
  */
 function useWaitDeadlines(fileIds: readonly string[]) {
-  const entries = useRef(new Map<string, WaitEntry>())
   const [expired, setExpired] = useState<readonly string[]>([])
-  const [round, setRound] = useState(0)
+  const [deadlines] = useState(() =>
+    createWaitDeadlines({
+      now: () => Date.now(),
+      visible: () => focusManager.isFocused(),
+      subscribe: (listener) => focusManager.subscribe(listener),
+      setTimer: (run, ms) => setTimeout(run, ms),
+      clearTimer: (timer) => clearTimeout(timer as ReturnType<typeof setTimeout>),
+      onExpired: setExpired,
+    }),
+  )
   const idsKey = fileIds.join('\n')
   useEffect(() => {
-    const ids = idsKey === '' ? [] : idsKey.split('\n')
-    const map = entries.current
-    const visible = focusManager.isFocused()
-    for (const id of [...map.keys()]) if (!ids.includes(id)) map.delete(id)
-    for (const id of ids)
-      if (!map.has(id)) map.set(id, { clock: startWaitClock(Date.now(), visible), expired: false })
-    const publish = () =>
-      setExpired((current) => {
-        const next = ids.filter((id) => map.get(id)?.expired === true)
-        return next.length === current.length && next.every((id, i) => current[i] === id)
-          ? current
-          : next
-      })
-    let timer: ReturnType<typeof setTimeout> | undefined
-    const schedule = () => {
-      clearTimeout(timer)
-      const now = Date.now()
-      let next = Infinity
-      for (const entry of map.values()) {
-        if (entry.expired || entry.clock.visibleSince === null) continue
-        const left = waitRemainingMs(entry.clock, now)
-        if (left === 0) entry.expired = true
-        else next = Math.min(next, left)
-      }
-      publish()
-      if (next !== Infinity) timer = setTimeout(schedule, next)
-    }
-    const unsubscribe = focusManager.subscribe((focused) => {
-      const now = Date.now()
-      for (const entry of map.values())
-        entry.clock = focused ? resumeWaitClock(entry.clock, now) : pauseWaitClock(entry.clock, now)
-      schedule()
-    })
-    schedule()
-    return () => {
-      clearTimeout(timer)
-      unsubscribe()
-    }
-  }, [idsKey, round])
-  const restart = useCallback((fileId: string) => {
-    entries.current.delete(fileId)
-    setExpired((current) => current.filter((id) => id !== fileId))
-    setRound((value) => value + 1)
-  }, [])
-  return { expired, restart }
+    deadlines.sync(idsKey === '' ? [] : idsKey.split('\n'))
+  }, [deadlines, idsKey])
+  // Kalkınca zamanlayıcı ve abonelik bırakılır (Strict Mode'da yeniden bağlanınca `sync` yeniden abone olur).
+  useEffect(() => () => deadlines.dispose(), [deadlines])
+  return { expired, attempt: deadlines.attempt, restart: deadlines.restart }
 }
 
 export interface FileProcessingView {
@@ -117,11 +80,12 @@ export interface FileProcessingView {
 
 /**
  * Yeni yüklenen dosyaların işlenmesini izler (`GET /files/:id`; ADR 0003 karar 8, 10; OG-987):
- * dosya `ready` olana, reddedilene (422 `file_rejected` ya da 404) ya da tarayıcısız ortamda
- * `pending` görünene kadar geri çekilen aralıkla (`filePollInterval`) yeniden okunur. Yoklama
- * sekme gizliyken durur, görününce sürer; üst süre de yalnız görünür sürede işler. Bekleme
+ * dosya `ready` olana, reddedilene (422 `file_rejected`), bulunamayana (404) ya da tarayıcısız
+ * ortamda `pending` görünene kadar geri çekilen aralıkla (`filePollInterval`) yeniden okunur.
+ * Yoklama sekme gizliyken durur, görününce sürer; üst süre de yalnız görünür sürede işler. Bekleme
  * `FILE_WAIT_LIMIT_MS` sürerse yoklama durur ve durum `timed_out` olur; `retry(fileId)` yeniden
- * yükleme gerektirmeden beklemeyi baştan başlatır. Sıra `fileIds` sırasıdır; boş kimlik atlanır.
+ * yükleme gerektirmeden beklemeyi ve geri çekilmeyi (ilk aralık 1,5 sn) baştan başlatır. Sıra
+ * `fileIds` sırasıdır; boş kimlik atlanır.
  */
 export function useFilesProcessing(fileIds: readonly string[]) {
   const client = useKampusClient()
@@ -143,7 +107,8 @@ export function useFilesProcessing(fileIds: readonly string[]) {
             query.state.data,
             query.state.error,
             timedOut,
-            query.state.dataUpdateCount + query.state.errorUpdateCount,
+            // Yeniden denemeden ya da yeniden izlemeden bu yana yapılan okuma sayısı.
+            deadlines.attempt(fileId, queryReads(query.state)),
           ),
         refetchIntervalInBackground: false,
       }

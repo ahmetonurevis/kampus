@@ -141,7 +141,8 @@ function SpeakingRecorder({ assignmentId, limits, remaining, canSubmit, blockedR
   const settle = useStableCallback(
     (state: Exclude<FileProcessing, 'processing'>, fileId: string) => {
       if (state === 'timed_out') return dispatch({ type: 'send_failed', message: STILL_PROCESSING })
-      if (state === 'rejected') return dispatch({ type: 'file_rejected' })
+      // Ses dönüşümünün reddettiği kayıt okumada bulunmaz (404, `missing`); tarama reddi `rejected`.
+      if (state === 'rejected' || state === 'missing') return dispatch({ type: 'file_rejected' })
       if (state === 'failed') return dispatch({ type: 'send_failed', message: FAILED_UPLOAD })
       dispatch({ type: 'file_ready' })
       void submit

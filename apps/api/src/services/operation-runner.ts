@@ -107,6 +107,12 @@ interface OperationBase<R> {
    */
   auditAction?: string
   /**
+   * Denetim satırı yazılmaz. Yalnız sık yazılan ve tek başına denetim değeri taşımayan teknik
+   * kayıtlar içindir (video izleme ilerlemesi, her 15 sn'de bir); kullanıcı kararı veya veri
+   * değişikliği taşıyan işlemde kullanılmaz.
+   */
+  skipAudit?: boolean
+  /**
    * İşlemin okuduğu ve yazabileceği koleksiyonlar; yüklenmeyen koleksiyona erişim 500'dür.
    * Core `audit` her zaman boş verilir ve yazılmaz; listede olması gerekmez.
    */
@@ -502,7 +508,7 @@ async function applyOperation<R>(
   const { writes, fields } = difference(collections, before, target, partial)
   const changes = await writeRecords(tx, ctx.institutionId, writes, ctx.now)
   const first = changes[0]
-  if (first) {
+  if (first && !request.skipAudit) {
     // Yeni kaydın kimliği işlem çalışınca belli olur (ör. oluşturulan hedef).
     const entity = typeof request.entity === 'function' ? request.entity(result) : request.entity
     await tx.insert(auditLog).values({

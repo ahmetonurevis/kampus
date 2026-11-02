@@ -4556,6 +4556,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/videos/{videoId}/progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Video izleme ilerlemesini yaz
+         * @description Öğrenci kendi video izleme ilerlemesini yazar (core `recordVideoProgress`, DOM-KYN-005). Öğrenci oturumdan gelir; gövdede oynatıcının son konumu (`positionSeconds`) ve video süresi (`durationSeconds`, saniye) bulunur. Yüzde sunucuda hesaplanır, 0–100'e sıkıştırılır ve geri gitmez (izlenen en yüksek değer); son konum her istekte güncellenir ve konum süreyi aşamaz. İlk istek kaydı açar, sonrakiler günceller; aynı istek tekrarlanınca kayıt değişmez. Öğrencinin düzeyi dışındaki video, olmayan video ve başka kurumun videosu 404 `not_found`, bağlantısız öğrenci 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Okuma `GET /collections/videoProgress`'tedir (öğrenci yalnız kendi kaydını, veli çocuğununkini, öğretmen sınıflarındakini görür). Sık çağrılır (istemci 15 sn'de bir): denetim satırı yazılmaz. `Idempotency-Key` isteğe bağlıdır, `If-Match` kabul edilmez. Modül `learning`. Roller: `ogrenci`.
+         */
+        post: operations["recordVideoProgress"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -39319,6 +39339,121 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["PermissionDecisionResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordVideoProgress: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Video kimliği */
+                videoId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    positionSeconds: number;
+                    durationSeconds: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            videoId: string;
+                            /** @description İzlenen en yüksek yüzde (geri gitmez) */
+                            progress: number;
+                            /** @description Son konum (saniye) */
+                            positionSeconds: number;
+                            /** @description Son bildirilen video süresi (saniye) */
+                            durationSeconds: number;
+                        };
                     };
                 };
             };

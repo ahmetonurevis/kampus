@@ -177,6 +177,14 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'GET /api/v1/appointments/slots': ['communication'],
   'POST /api/v1/appointments': ['communication'],
   'PATCH /api/v1/appointments/:appointmentId': ['communication'],
+  // Ders programı ve yedek görevlendirme (IST-094; DOM-YTK-068, -069). Okuma ayrıca koleksiyonun
+  // modülünü (`academic`) core okuma kuralıyla ister.
+  'GET /api/v1/lessons': ['planning'],
+  'GET /api/v1/lessons/:lessonId': ['planning'],
+  'POST /api/v1/lessons': ['planning'],
+  'PATCH /api/v1/lessons/:lessonId': ['planning'],
+  'POST /api/v1/lessons/:lessonId/substitute': ['planning'],
+  'POST /api/v1/lessons/:lessonId/cancel': ['planning'],
   // Öğrenme: Öğretmenime Sor, içerik havuzu, rubrik, görev, deneme, teslim ve puanlama.
   'POST /api/v1/questions': ['learning'],
   'POST /api/v1/questions/:questionId/answers': ['learning'],

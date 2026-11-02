@@ -95,6 +95,9 @@ export const COLLECTION_MODULES = {
   availability: 'communication',
   notifications: 'communication',
   notificationReads: 'communication',
+  // Dijital veli onayı ve izin formu (IST-067); okul takvimi etkinlik onayı `eventConsents`'tedir.
+  permissionForms: 'communication',
+  permissionDecisions: 'communication',
   guidanceCases: 'guidance',
   mockExams: 'exams',
   mockResults: 'exams',

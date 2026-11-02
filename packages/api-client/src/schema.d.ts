@@ -4300,6 +4300,98 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/permission-forms": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İzin formları
+         * @description İzin formları son güne göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `status` (`open` karar alan, `closed` kapatılmış ya da son günü geçmiş, `all`), `topic`. Her satır okuyanın gördüğü öğrencilerin bekleyen, onay ve ret sayılarını taşır (`counts`; durum kararlardan hesaplanır, bir ret onayın önüne geçer, DOM-ILT-031). Bilinmeyen parametre 400. Yönetici bütün formları, öğretmen açtığı ve sınıflarına ya da öğrencilerine açılmış formları, veli çocuğunun, öğrenci kendisinin hedefte olduğu formları okur; ön büro okumaz (403). Hedef öğrencilerden yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli çocuğunu, öğrenci kendisini görür; sayılar yalnız görünen öğrencilerdendir. Görmediği ve başka kurumun formu olmayan kimlikle aynı 404. Modül `communication`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listPermissionForms"];
+        put?: never;
+        /**
+         * İzin formu aç
+         * @description Yeni izin formu (core `createPermissionForm`, DOM-ILT-036): konu (`trip`, `event`, `photo`, `club`, `other`), başlık, açıklama, son gün (`YYYY-MM-DD`, Europe/Istanbul; o günün sonuna kadar) ve hedef (`classIds` ve/veya `studentIds`). Hedef öğrenciler açılışta çözülür ve saklanır. Öğretmen yalnız rehberi olduğu sınıflara ve onların öğrencilerine (403 `permission_form_scope_denied`). Son gün bugünden önce 422 `permission_form_deadline_in_past`; olmayan sınıf ya da öğrenci 404, pasif sınıf 422 `record_inactive`, pasif öğrenci 422 `student_inactive`, öğrencisiz hedef 422 `permission_form_no_students`. Aynı işlemde 18 yaş altında velilere, yetişkin öğrencide kendisine `permission_form_opened` bildirimi yazılır. `Idempotency-Key` zorunlu; `If-Match` 400. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`.
+         */
+        post: operations["createPermissionForm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/permission-forms/{formId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İzin formu
+         * @description Tek form; okuyanın gördüğü her öğrencinin geçerli durumu ve görebildiği kararlar (`students`). Veli yalnız kendi kararını ve notunu görür, öbür velinin reddi durumda görünür (DOM-ILT-037). Karar verenin kullanıcı kimliği yalnız yöneticiye döner. Yönetici bütün formları, öğretmen açtığı ve sınıflarına ya da öğrencilerine açılmış formları, veli çocuğunun, öğrenci kendisinin hedefte olduğu formları okur; ön büro okumaz (403). Hedef öğrencilerden yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli çocuğunu, öğrenci kendisini görür; sayılar yalnız görünen öğrencilerdendir. Görmediği ve başka kurumun formu olmayan kimlikle aynı 404. Modül `communication`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getPermissionForm"];
+        put?: never;
+        post?: never;
+        /**
+         * İzin formunu arşivle
+         * @description Kararsız formu arşivler (core `archivePermissionForm`); kayıt silinmez. Kararı olan form arşivlenmez, kapatılır: 409 `permission_form_has_decisions` (kararlar ispat kaydıdır, DOM-ILT-034). `If-Match` formun `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Formu gören başka öğretmen 403 `permission_form_not_owner`, görmeyen ve başka kurumun formu 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
+         */
+        delete: operations["archivePermissionForm"];
+        options?: never;
+        head?: never;
+        /**
+         * İzin formunu düzenle
+         * @description Başlık, açıklama, son gün ve hedef (core `updatePermissionForm`, DOM-ILT-038); konu değişmez (gövdede 400). Kapalı form 422 `permission_form_closed`; son günü geçmiş formun son günü 422 `permission_form_deadline_passed`; kararı olan formun hedefinden sınıf ya da öğrenci çıkarılamaz (422 `permission_form_scope_locked`). Hedefe yeni giren öğrencilere aynı işlemde `permission_form_opened` bildirimi yazılır. `If-Match` formun `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Formu gören başka öğretmen 403 `permission_form_not_owner`, görmeyen ve başka kurumun formu 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
+         */
+        patch: operations["updatePermissionForm"];
+        trace?: never;
+    };
+    "/api/v1/permission-forms/{formId}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin formunu kapat
+         * @description Son günden önce karar almayı bitirir (core `closePermissionForm`, DOM-ILT-038); kararlar korunur. Kapalı form 409 `permission_form_closed`. `If-Match` formun `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Formu gören başka öğretmen 403 `permission_form_not_owner`, görmeyen ve başka kurumun formu 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
+         */
+        post: operations["closePermissionForm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/permission-forms/{formId}/decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin kararı ver
+         * @description Öğrenci için onay ya da ret (`{ studentId, decision: approved | rejected, note? }`; core `decidePermission`, DOM-ILT-030, -031, -037). 18 yaş altında velayetli ve iletişim kısıtı olmayan her veli kendi kararını verir; 18 yaşını doldurmuş öğrenci kendisi verir (veliye 403 `permission_adult_self`, 18 altı öğrenciye 403 `permission_guardian_required`). Yaş kimlik satırındaki doğum tarihinden, yoksa öğrenci kaydından hesaplanır; bilinmiyorsa 18 altıdır. Başka çocuk, velayeti olmayan veli, formun hedefinde olmayan öğrenci, olmayan ve başka kurumun formu 404. Kapalı form 422 `permission_form_closed`, son gün geçtiyse 422 `permission_form_deadline_passed`, pasif öğrenci 422 `student_inactive`. Her karar yeni satırdır: yeni karar 201 + `Location`, son kararla aynı karar ve not 200 (yeni satır yok). Yanıt öğrencinin güncel durumunu taşır (`studentStatus`). `Idempotency-Key` zorunlu; `If-Match` 400. Roller: `veli`, `ogrenci`.
+         */
+        post: operations["decidePermissionForm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -5361,7 +5453,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -7166,6 +7258,164 @@ export interface components {
             /** @description Cevap anahtarsız sorular */
             questions: components["schemas"]["QuizQuestionInput"][];
         };
+        PermissionFormInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            /** @enum {string} */
+            topic: "trip" | "event" | "photo" | "club" | "other";
+            title: string;
+            description: string;
+            /**
+             * Format: date
+             * @description Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)
+             */
+            deadline: string;
+            /** @description Son günün bittiği an, ISO 8601 UTC */
+            deadlineEndsAt: string;
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
+            studentIds: string[];
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
+            /**
+             * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            closedAt: string | null;
+            /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
+            acceptingDecisions: boolean;
+            /** @description ISO 8601 UTC */
+            createdAt: string;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+        };
+        /** @description Okuyanın gördüğü öğrencilerin geçerli izin durumlarının sayıları */
+        PermissionCountsInput: {
+            pending: number;
+            approved: number;
+            rejected: number;
+            total: number;
+        };
+        PermissionDecisionInput: {
+            id: string;
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note: string;
+            /**
+             * @description `guardian` 18 yaş altında veli, `self` 18 yaşını doldurmuş öğrenci
+             * @enum {string}
+             */
+            relation: "guardian" | "self";
+            /** @description ISO 8601 UTC */
+            decidedAt: string;
+            /** @description Kararı okuyan kişi mi verdi */
+            mine: boolean;
+            /** @description Kararı veren kullanıcı; yalnız yöneticiye */
+            decidedByUserId: string | null;
+        };
+        PermissionFormStudentInput: {
+            studentId: string;
+            /**
+             * @description Öğrencinin geçerli durumu (saklanmaz): bir ret varsa `rejected`, yoksa bir onay `approved`, karar yoksa `pending`
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected";
+            /** @description Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`) */
+            decisions: components["schemas"]["PermissionDecisionInput"][];
+        };
+        PermissionFormListItemInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            /** @enum {string} */
+            topic: "trip" | "event" | "photo" | "club" | "other";
+            title: string;
+            description: string;
+            /**
+             * Format: date
+             * @description Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)
+             */
+            deadline: string;
+            /** @description Son günün bittiği an, ISO 8601 UTC */
+            deadlineEndsAt: string;
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
+            studentIds: string[];
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
+            /**
+             * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            closedAt: string | null;
+            /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
+            acceptingDecisions: boolean;
+            /** @description ISO 8601 UTC */
+            createdAt: string;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            counts: components["schemas"]["PermissionCountsInput"];
+        };
+        PermissionFormDetailInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            /** @enum {string} */
+            topic: "trip" | "event" | "photo" | "club" | "other";
+            title: string;
+            description: string;
+            /**
+             * Format: date
+             * @description Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)
+             */
+            deadline: string;
+            /** @description Son günün bittiği an, ISO 8601 UTC */
+            deadlineEndsAt: string;
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
+            studentIds: string[];
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
+            /**
+             * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            closedAt: string | null;
+            /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
+            acceptingDecisions: boolean;
+            /** @description ISO 8601 UTC */
+            createdAt: string;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            counts: components["schemas"]["PermissionCountsInput"];
+            students: components["schemas"]["PermissionFormStudentInput"][];
+        };
+        PermissionDecisionResultInput: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            formId: string;
+            studentId: string;
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note: string;
+            /** @enum {string} */
+            relation: "guardian" | "self";
+            /** @description ISO 8601 UTC */
+            decidedAt: string;
+            /**
+             * @description Öğrencinin geçerli durumu (saklanmaz): bir ret varsa `rejected`, yoksa bir onay `approved`, karar yoksa `pending`
+             * @enum {string}
+             */
+            studentStatus: "pending" | "approved" | "rejected";
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -8143,7 +8393,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -9946,6 +10196,164 @@ export interface components {
             attempt: components["schemas"]["QuizAttempt"];
             /** @description Cevap anahtarsız sorular */
             questions: components["schemas"]["QuizQuestion"][];
+        };
+        PermissionForm: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            /** @enum {string} */
+            topic: "trip" | "event" | "photo" | "club" | "other";
+            title: string;
+            description: string;
+            /**
+             * Format: date
+             * @description Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)
+             */
+            deadline: string;
+            /** @description Son günün bittiği an, ISO 8601 UTC */
+            deadlineEndsAt: string;
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
+            studentIds: string[];
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
+            /**
+             * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            closedAt: string | null;
+            /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
+            acceptingDecisions: boolean;
+            /** @description ISO 8601 UTC */
+            createdAt: string;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+        };
+        /** @description Okuyanın gördüğü öğrencilerin geçerli izin durumlarının sayıları */
+        PermissionCounts: {
+            pending: number;
+            approved: number;
+            rejected: number;
+            total: number;
+        };
+        PermissionDecision: {
+            id: string;
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note: string;
+            /**
+             * @description `guardian` 18 yaş altında veli, `self` 18 yaşını doldurmuş öğrenci
+             * @enum {string}
+             */
+            relation: "guardian" | "self";
+            /** @description ISO 8601 UTC */
+            decidedAt: string;
+            /** @description Kararı okuyan kişi mi verdi */
+            mine: boolean;
+            /** @description Kararı veren kullanıcı; yalnız yöneticiye */
+            decidedByUserId: string | null;
+        };
+        PermissionFormStudent: {
+            studentId: string;
+            /**
+             * @description Öğrencinin geçerli durumu (saklanmaz): bir ret varsa `rejected`, yoksa bir onay `approved`, karar yoksa `pending`
+             * @enum {string}
+             */
+            status: "pending" | "approved" | "rejected";
+            /** @description Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`) */
+            decisions: components["schemas"]["PermissionDecision"][];
+        };
+        PermissionFormListItem: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            /** @enum {string} */
+            topic: "trip" | "event" | "photo" | "club" | "other";
+            title: string;
+            description: string;
+            /**
+             * Format: date
+             * @description Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)
+             */
+            deadline: string;
+            /** @description Son günün bittiği an, ISO 8601 UTC */
+            deadlineEndsAt: string;
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
+            studentIds: string[];
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
+            /**
+             * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            closedAt: string | null;
+            /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
+            acceptingDecisions: boolean;
+            /** @description ISO 8601 UTC */
+            createdAt: string;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            counts: components["schemas"]["PermissionCounts"];
+        };
+        PermissionFormDetail: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            /** @enum {string} */
+            topic: "trip" | "event" | "photo" | "club" | "other";
+            title: string;
+            description: string;
+            /**
+             * Format: date
+             * @description Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)
+             */
+            deadline: string;
+            /** @description Son günün bittiği an, ISO 8601 UTC */
+            deadlineEndsAt: string;
+            /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
+            classIds?: string[];
+            /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
+            studentIds: string[];
+            /** @description Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner */
+            teacherId?: string | null;
+            /**
+             * @description Türetilir: kapatılmış ya da son günü geçmişse `closed`
+             * @enum {string}
+             */
+            status: "open" | "closed";
+            closedAt: string | null;
+            /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
+            acceptingDecisions: boolean;
+            /** @description ISO 8601 UTC */
+            createdAt: string;
+            /** @description Kaydın son değiştiği an */
+            updatedAt: string;
+            counts: components["schemas"]["PermissionCounts"];
+            students: components["schemas"]["PermissionFormStudent"][];
+        };
+        PermissionDecisionResult: {
+            id: string;
+            /** @description Kaydın sürümü; yazmada `If-Match` */
+            version: number;
+            formId: string;
+            studentId: string;
+            /** @enum {string} */
+            decision: "approved" | "rejected";
+            note: string;
+            /** @enum {string} */
+            relation: "guardian" | "self";
+            /** @description ISO 8601 UTC */
+            decidedAt: string;
+            /**
+             * @description Öğrencinin geçerli durumu (saklanmaz): bir ret varsa `rejected`, yoksa bir onay `approved`, karar yoksa `pending`
+             * @enum {string}
+             */
+            studentStatus: "pending" | "approved" | "rejected";
         };
     };
     responses: never;
@@ -36874,6 +37282,718 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["QuizAttempt"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPermissionForms: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description `open` karar alan, `closed` kapatılmış ya da son günü geçmiş; varsayılan `all` */
+                status?: "all" | "open" | "closed";
+                /** @description Konu türü */
+                topic?: "trip" | "event" | "photo" | "club" | "other";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PermissionFormListItem"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createPermissionForm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    topic: "trip" | "event" | "photo" | "club" | "other";
+                    title: string;
+                    description: string;
+                    /** Format: date */
+                    deadline: string;
+                    classIds?: string[];
+                    studentIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PermissionForm"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPermissionForm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description İzin formu kimliği */
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PermissionFormDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archivePermissionForm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin formu kimliği */
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PermissionForm"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updatePermissionForm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin formu kimliği */
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    title?: string;
+                    description?: string;
+                    /** Format: date */
+                    deadline?: string;
+                    classIds?: string[];
+                    studentIds?: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PermissionForm"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closePermissionForm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin formu kimliği */
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PermissionForm"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    decidePermissionForm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description İzin formu kimliği */
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    studentId: string;
+                    /** @enum {string} */
+                    decision: "approved" | "rejected";
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PermissionDecisionResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PermissionDecisionResult"];
                     };
                 };
             };

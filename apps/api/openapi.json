@@ -4035,6 +4035,8 @@
               "feedback_released",
               "appeal_decided",
               "homework_graded",
+              "permission_form_opened",
+              "permission_form_reminder",
               "absence_recorded",
               "absence_corrected",
               "enrollment_completed"
@@ -11267,6 +11269,514 @@
           "questions"
         ]
       },
+      "PermissionFormInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "trip",
+              "event",
+              "photo",
+              "club",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)"
+          },
+          "deadlineEndsAt": {
+            "type": "string",
+            "description": "Son günün bittiği an, ISO 8601 UTC"
+          },
+          "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "studentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
+          },
+          "teacherId": {
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: kapatılmış ya da son günü geçmişse `closed`"
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acceptingDecisions": {
+            "type": "boolean",
+            "description": "Form karar alıyor mu (açık ve son gün geçmemiş)"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "topic",
+          "title",
+          "description",
+          "deadline",
+          "deadlineEndsAt",
+          "studentIds",
+          "status",
+          "closedAt",
+          "acceptingDecisions",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "PermissionCountsInput": {
+        "type": "object",
+        "properties": {
+          "pending": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "approved": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "rejected": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "pending",
+          "approved",
+          "rejected",
+          "total"
+        ],
+        "description": "Okuyanın gördüğü öğrencilerin geçerli izin durumlarının sayıları"
+      },
+      "PermissionDecisionInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "guardian",
+              "self"
+            ],
+            "description": "`guardian` 18 yaş altında veli, `self` 18 yaşını doldurmuş öğrenci"
+          },
+          "decidedAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC"
+          },
+          "mine": {
+            "type": "boolean",
+            "description": "Kararı okuyan kişi mi verdi"
+          },
+          "decidedByUserId": {
+            "description": "Kararı veren kullanıcı; yalnız yöneticiye",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "decision",
+          "note",
+          "relation",
+          "decidedAt",
+          "mine",
+          "decidedByUserId"
+        ]
+      },
+      "PermissionFormStudentInput": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "description": "Öğrencinin geçerli durumu (saklanmaz): bir ret varsa `rejected`, yoksa bir onay `approved`, karar yoksa `pending`"
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionDecisionInput"
+            },
+            "description": "Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`)"
+          }
+        },
+        "required": [
+          "studentId",
+          "status",
+          "decisions"
+        ]
+      },
+      "PermissionFormListItemInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "trip",
+              "event",
+              "photo",
+              "club",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)"
+          },
+          "deadlineEndsAt": {
+            "type": "string",
+            "description": "Son günün bittiği an, ISO 8601 UTC"
+          },
+          "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "studentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
+          },
+          "teacherId": {
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: kapatılmış ya da son günü geçmişse `closed`"
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acceptingDecisions": {
+            "type": "boolean",
+            "description": "Form karar alıyor mu (açık ve son gün geçmemiş)"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/PermissionCountsInput"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "topic",
+          "title",
+          "description",
+          "deadline",
+          "deadlineEndsAt",
+          "studentIds",
+          "status",
+          "closedAt",
+          "acceptingDecisions",
+          "createdAt",
+          "updatedAt",
+          "counts"
+        ]
+      },
+      "PermissionFormDetailInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "trip",
+              "event",
+              "photo",
+              "club",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)"
+          },
+          "deadlineEndsAt": {
+            "type": "string",
+            "description": "Son günün bittiği an, ISO 8601 UTC"
+          },
+          "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "studentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
+          },
+          "teacherId": {
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: kapatılmış ya da son günü geçmişse `closed`"
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acceptingDecisions": {
+            "type": "boolean",
+            "description": "Form karar alıyor mu (açık ve son gün geçmemiş)"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/PermissionCountsInput"
+          },
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionFormStudentInput"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "topic",
+          "title",
+          "description",
+          "deadline",
+          "deadlineEndsAt",
+          "studentIds",
+          "status",
+          "closedAt",
+          "acceptingDecisions",
+          "createdAt",
+          "updatedAt",
+          "counts",
+          "students"
+        ]
+      },
+      "PermissionDecisionResultInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "formId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "guardian",
+              "self"
+            ]
+          },
+          "decidedAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC"
+          },
+          "studentStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "description": "Öğrencinin geçerli durumu (saklanmaz): bir ret varsa `rejected`, yoksa bir onay `approved`, karar yoksa `pending`"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "formId",
+          "studentId",
+          "decision",
+          "note",
+          "relation",
+          "decidedAt",
+          "studentStatus"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -15410,6 +15920,8 @@
               "feedback_released",
               "appeal_decided",
               "homework_graded",
+              "permission_form_opened",
+              "permission_form_reminder",
               "absence_recorded",
               "absence_corrected",
               "enrollment_completed"
@@ -22811,6 +23323,521 @@
         "required": [
           "attempt",
           "questions"
+        ],
+        "additionalProperties": false
+      },
+      "PermissionForm": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "trip",
+              "event",
+              "photo",
+              "club",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)"
+          },
+          "deadlineEndsAt": {
+            "type": "string",
+            "description": "Son günün bittiği an, ISO 8601 UTC"
+          },
+          "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "studentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
+          },
+          "teacherId": {
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: kapatılmış ya da son günü geçmişse `closed`"
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acceptingDecisions": {
+            "type": "boolean",
+            "description": "Form karar alıyor mu (açık ve son gün geçmemiş)"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "topic",
+          "title",
+          "description",
+          "deadline",
+          "deadlineEndsAt",
+          "studentIds",
+          "status",
+          "closedAt",
+          "acceptingDecisions",
+          "createdAt",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "PermissionCounts": {
+        "type": "object",
+        "properties": {
+          "pending": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "approved": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "rejected": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "total": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "pending",
+          "approved",
+          "rejected",
+          "total"
+        ],
+        "additionalProperties": false,
+        "description": "Okuyanın gördüğü öğrencilerin geçerli izin durumlarının sayıları"
+      },
+      "PermissionDecision": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "guardian",
+              "self"
+            ],
+            "description": "`guardian` 18 yaş altında veli, `self` 18 yaşını doldurmuş öğrenci"
+          },
+          "decidedAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC"
+          },
+          "mine": {
+            "type": "boolean",
+            "description": "Kararı okuyan kişi mi verdi"
+          },
+          "decidedByUserId": {
+            "description": "Kararı veren kullanıcı; yalnız yöneticiye",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "id",
+          "decision",
+          "note",
+          "relation",
+          "decidedAt",
+          "mine",
+          "decidedByUserId"
+        ],
+        "additionalProperties": false
+      },
+      "PermissionFormStudent": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "description": "Öğrencinin geçerli durumu (saklanmaz): bir ret varsa `rejected`, yoksa bir onay `approved`, karar yoksa `pending`"
+          },
+          "decisions": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionDecision"
+            },
+            "description": "Okuyanın görebildiği kararlar, karar anına göre: yönetici ve öğrencinin rehber öğretmeni hepsini, öğrenci kendisininkileri, veli yalnız kendi kararını görür; derse giren öğretmene boş döner (yalnız `status`)"
+          }
+        },
+        "required": [
+          "studentId",
+          "status",
+          "decisions"
+        ],
+        "additionalProperties": false
+      },
+      "PermissionFormListItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "trip",
+              "event",
+              "photo",
+              "club",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)"
+          },
+          "deadlineEndsAt": {
+            "type": "string",
+            "description": "Son günün bittiği an, ISO 8601 UTC"
+          },
+          "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "studentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
+          },
+          "teacherId": {
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: kapatılmış ya da son günü geçmişse `closed`"
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acceptingDecisions": {
+            "type": "boolean",
+            "description": "Form karar alıyor mu (açık ve son gün geçmemiş)"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/PermissionCounts"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "topic",
+          "title",
+          "description",
+          "deadline",
+          "deadlineEndsAt",
+          "studentIds",
+          "status",
+          "closedAt",
+          "acceptingDecisions",
+          "createdAt",
+          "updatedAt",
+          "counts"
+        ],
+        "additionalProperties": false
+      },
+      "PermissionFormDetail": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "topic": {
+            "type": "string",
+            "enum": [
+              "trip",
+              "event",
+              "photo",
+              "club",
+              "other"
+            ]
+          },
+          "title": {
+            "type": "string"
+          },
+          "description": {
+            "type": "string"
+          },
+          "deadline": {
+            "type": "string",
+            "format": "date",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+            "description": "Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)"
+          },
+          "deadlineEndsAt": {
+            "type": "string",
+            "description": "Son günün bittiği an, ISO 8601 UTC"
+          },
+          "classIds": {
+            "description": "Hedef sınıflar; yalnız yönetici ve öğretmene döner",
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "studentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür"
+          },
+          "teacherId": {
+            "description": "Formu açan öğretmen; yönetici açtıysa `null`. Yalnız yönetici ve öğretmene döner",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "open",
+              "closed"
+            ],
+            "description": "Türetilir: kapatılmış ya da son günü geçmişse `closed`"
+          },
+          "closedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "description": "ISO 8601 UTC"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "acceptingDecisions": {
+            "type": "boolean",
+            "description": "Form karar alıyor mu (açık ve son gün geçmemiş)"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC"
+          },
+          "updatedAt": {
+            "type": "string",
+            "description": "Kaydın son değiştiği an"
+          },
+          "counts": {
+            "$ref": "#/components/schemas/PermissionCounts"
+          },
+          "students": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PermissionFormStudent"
+            }
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "topic",
+          "title",
+          "description",
+          "deadline",
+          "deadlineEndsAt",
+          "studentIds",
+          "status",
+          "closedAt",
+          "acceptingDecisions",
+          "createdAt",
+          "updatedAt",
+          "counts",
+          "students"
+        ],
+        "additionalProperties": false
+      },
+      "PermissionDecisionResult": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kaydın sürümü; yazmada `If-Match`"
+          },
+          "formId": {
+            "type": "string"
+          },
+          "studentId": {
+            "type": "string"
+          },
+          "decision": {
+            "type": "string",
+            "enum": [
+              "approved",
+              "rejected"
+            ]
+          },
+          "note": {
+            "type": "string"
+          },
+          "relation": {
+            "type": "string",
+            "enum": [
+              "guardian",
+              "self"
+            ]
+          },
+          "decidedAt": {
+            "type": "string",
+            "description": "ISO 8601 UTC"
+          },
+          "studentStatus": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "approved",
+              "rejected"
+            ],
+            "description": "Öğrencinin geçerli durumu (saklanmaz): bir ret varsa `rejected`, yoksa bir onay `approved`, karar yoksa `pending`"
+          }
+        },
+        "required": [
+          "id",
+          "version",
+          "formId",
+          "studentId",
+          "decision",
+          "note",
+          "relation",
+          "decidedAt",
+          "studentStatus"
         ],
         "additionalProperties": false
       }
@@ -70986,6 +72013,1108 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/QuizAttempt"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/permission-forms": {
+      "get": {
+        "operationId": "listPermissionForms",
+        "summary": "İzin formları",
+        "tags": [
+          "permission-forms"
+        ],
+        "description": "İzin formları son güne göre yeniden eskiye, sonra kimliğe göre sıralı, sayfalı. Süzgeç: `status` (`open` karar alan, `closed` kapatılmış ya da son günü geçmiş, `all`), `topic`. Her satır okuyanın gördüğü öğrencilerin bekleyen, onay ve ret sayılarını taşır (`counts`; durum kararlardan hesaplanır, bir ret onayın önüne geçer, DOM-ILT-031). Bilinmeyen parametre 400. Yönetici bütün formları, öğretmen açtığı ve sınıflarına ya da öğrencilerine açılmış formları, veli çocuğunun, öğrenci kendisinin hedefte olduğu formları okur; ön büro okumaz (403). Hedef öğrencilerden yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli çocuğunu, öğrenci kendisini görür; sayılar yalnız görünen öğrencilerdendir. Görmediği ve başka kurumun formu olmayan kimlikle aynı 404. Modül `communication`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "default": "all",
+              "type": "string",
+              "enum": [
+                "all",
+                "open",
+                "closed"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`open` karar alan, `closed` kapatılmış ya da son günü geçmiş; varsayılan `all`"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "trip",
+                "event",
+                "photo",
+                "club",
+                "other"
+              ]
+            },
+            "in": "query",
+            "name": "topic",
+            "required": false,
+            "description": "Konu türü"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/PermissionFormListItem"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createPermissionForm",
+        "summary": "İzin formu aç",
+        "tags": [
+          "permission-forms"
+        ],
+        "description": "Yeni izin formu (core `createPermissionForm`, DOM-ILT-036): konu (`trip`, `event`, `photo`, `club`, `other`), başlık, açıklama, son gün (`YYYY-MM-DD`, Europe/Istanbul; o günün sonuna kadar) ve hedef (`classIds` ve/veya `studentIds`). Hedef öğrenciler açılışta çözülür ve saklanır. Öğretmen yalnız rehberi olduğu sınıflara ve onların öğrencilerine (403 `permission_form_scope_denied`). Son gün bugünden önce 422 `permission_form_deadline_in_past`; olmayan sınıf ya da öğrenci 404, pasif sınıf 422 `record_inactive`, pasif öğrenci 422 `student_inactive`, öğrencisiz hedef 422 `permission_form_no_students`. Aynı işlemde 18 yaş altında velilere, yetişkin öğrencide kendisine `permission_form_opened` bildirimi yazılır. `Idempotency-Key` zorunlu; `If-Match` 400. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "topic": {
+                    "type": "string",
+                    "enum": [
+                      "trip",
+                      "event",
+                      "photo",
+                      "club",
+                      "other"
+                    ]
+                  },
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 4000
+                  },
+                  "deadline": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  "classIds": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "studentIds": {
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  }
+                },
+                "required": [
+                  "topic",
+                  "title",
+                  "description",
+                  "deadline"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PermissionForm"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/permission-forms/{formId}": {
+      "get": {
+        "operationId": "getPermissionForm",
+        "summary": "İzin formu",
+        "tags": [
+          "permission-forms"
+        ],
+        "description": "Tek form; okuyanın gördüğü her öğrencinin geçerli durumu ve görebildiği kararlar (`students`). Veli yalnız kendi kararını ve notunu görür, öbür velinin reddi durumda görünür (DOM-ILT-037). Karar verenin kullanıcı kimliği yalnız yöneticiye döner. Yönetici bütün formları, öğretmen açtığı ve sınıflarına ya da öğrencilerine açılmış formları, veli çocuğunun, öğrenci kendisinin hedefte olduğu formları okur; ön büro okumaz (403). Hedef öğrencilerden yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli çocuğunu, öğrenci kendisini görür; sayılar yalnız görünen öğrencilerdendir. Görmediği ve başka kurumun formu olmayan kimlikle aynı 404. Modül `communication`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "formId",
+            "required": true,
+            "description": "İzin formu kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PermissionFormDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updatePermissionForm",
+        "summary": "İzin formunu düzenle",
+        "tags": [
+          "permission-forms"
+        ],
+        "description": "Başlık, açıklama, son gün ve hedef (core `updatePermissionForm`, DOM-ILT-038); konu değişmez (gövdede 400). Kapalı form 422 `permission_form_closed`; son günü geçmiş formun son günü 422 `permission_form_deadline_passed`; kararı olan formun hedefinden sınıf ya da öğrenci çıkarılamaz (422 `permission_form_scope_locked`). Hedefe yeni giren öğrencilere aynı işlemde `permission_form_opened` bildirimi yazılır. `If-Match` formun `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Formu gören başka öğretmen 403 `permission_form_not_owner`, görmeyen ve başka kurumun formu 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "title": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "description": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 4000
+                  },
+                  "deadline": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  },
+                  "classIds": {
+                    "maxItems": 50,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  },
+                  "studentIds": {
+                    "maxItems": 500,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "minLength": 1,
+                      "maxLength": 200
+                    }
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "formId",
+            "required": true,
+            "description": "İzin formu kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PermissionForm"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archivePermissionForm",
+        "summary": "İzin formunu arşivle",
+        "tags": [
+          "permission-forms"
+        ],
+        "description": "Kararsız formu arşivler (core `archivePermissionForm`); kayıt silinmez. Kararı olan form arşivlenmez, kapatılır: 409 `permission_form_has_decisions` (kararlar ispat kaydıdır, DOM-ILT-034). `If-Match` formun `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Formu gören başka öğretmen 403 `permission_form_not_owner`, görmeyen ve başka kurumun formu 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "formId",
+            "required": true,
+            "description": "İzin formu kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PermissionForm"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/permission-forms/{formId}/close": {
+      "post": {
+        "operationId": "closePermissionForm",
+        "summary": "İzin formunu kapat",
+        "tags": [
+          "permission-forms"
+        ],
+        "description": "Son günden önce karar almayı bitirir (core `closePermissionForm`, DOM-ILT-038); kararlar korunur. Kapalı form 409 `permission_form_closed`. `If-Match` formun `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Formu gören başka öğretmen 403 `permission_form_not_owner`, görmeyen ve başka kurumun formu 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "formId",
+            "required": true,
+            "description": "İzin formu kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PermissionForm"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/permission-forms/{formId}/decisions": {
+      "post": {
+        "operationId": "decidePermissionForm",
+        "summary": "İzin kararı ver",
+        "tags": [
+          "permission-forms"
+        ],
+        "description": "Öğrenci için onay ya da ret (`{ studentId, decision: approved | rejected, note? }`; core `decidePermission`, DOM-ILT-030, -031, -037). 18 yaş altında velayetli ve iletişim kısıtı olmayan her veli kendi kararını verir; 18 yaşını doldurmuş öğrenci kendisi verir (veliye 403 `permission_adult_self`, 18 altı öğrenciye 403 `permission_guardian_required`). Yaş kimlik satırındaki doğum tarihinden, yoksa öğrenci kaydından hesaplanır; bilinmiyorsa 18 altıdır. Başka çocuk, velayeti olmayan veli, formun hedefinde olmayan öğrenci, olmayan ve başka kurumun formu 404. Kapalı form 422 `permission_form_closed`, son gün geçtiyse 422 `permission_form_deadline_passed`, pasif öğrenci 422 `student_inactive`. Her karar yeni satırdır: yeni karar 201 + `Location`, son kararla aynı karar ve not 200 (yeni satır yok). Yanıt öğrencinin güncel durumunu taşır (`studentStatus`). `Idempotency-Key` zorunlu; `If-Match` 400. Roller: `veli`, `ogrenci`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "decision": {
+                    "type": "string",
+                    "enum": [
+                      "approved",
+                      "rejected"
+                    ]
+                  },
+                  "note": {
+                    "type": "string",
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "studentId",
+                  "decision"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "formId",
+            "required": true,
+            "description": "İzin formu kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PermissionDecisionResult"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PermissionDecisionResult"
                     }
                   },
                   "required": [

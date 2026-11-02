@@ -72,6 +72,10 @@ const HOMEWORK = kayit(
   'başka kurumun ödevi ve teslimi olmayan kimlikle aynı 404, B değişmez',
 )
 const QUIZ = kayit('quizzes.test.ts', 'başka kurumun quizi olmayan kimlikle aynı 404, B değişmez')
+const PERMISSION_FORM = kayit(
+  'permission-forms.test.ts',
+  'başka kurumun formu olmayan kimlikle aynı 404, B değişmez',
+)
 const RESOURCE_READ = kayit('resources.test.ts', 'başka kurumun kaynağı 404 ve listede yok')
 const RESOURCE_WRITE = kayit(
   'resource-commands.test.ts',
@@ -435,6 +439,14 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'DELETE /api/v1/quizzes/:quizId': QUIZ,
   'POST /api/v1/quizzes/:quizId/attempt': QUIZ,
   'POST /api/v1/quizzes/:quizId/attempt/submit': QUIZ,
+  // --- İzin formu -----------------------------------------------------------------------------
+  'GET /api/v1/permission-forms': PERMISSION_FORM,
+  'GET /api/v1/permission-forms/:formId': PERMISSION_FORM,
+  'POST /api/v1/permission-forms': govde('permission-forms.test.ts', 'gövdedeki institutionId 400'),
+  'PATCH /api/v1/permission-forms/:formId': PERMISSION_FORM,
+  'POST /api/v1/permission-forms/:formId/close': PERMISSION_FORM,
+  'DELETE /api/v1/permission-forms/:formId': PERMISSION_FORM,
+  'POST /api/v1/permission-forms/:formId/decisions': PERMISSION_FORM,
 
   // --- Dosya ----------------------------------------------------------------------------------
   'GET /api/v1/files/:fileId': kayit('files.test.ts', 'başka kurum ve başkası 404'),

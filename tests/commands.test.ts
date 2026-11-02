@@ -72,6 +72,13 @@ import {
   updateHomework,
 } from '../packages/school-core/src/lib/homework.ts'
 import {
+  archivePermissionForm,
+  closePermissionForm,
+  createPermissionForm,
+  decidePermission,
+  updatePermissionForm,
+} from '../packages/school-core/src/lib/permission-forms.ts'
+import {
   addProspectNote,
   changeProspectStage,
   createProspect,
@@ -690,6 +697,58 @@ test('Ödev işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır (D
     now,
   )
   archiveHomework(operation(state, 'homework.archive'), teacher, homework.id)
+})
+
+test('İzin formu işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır (DOM-ILT-036…038)', () => {
+  const state = seed()
+  const teacher = {
+    role: 'ogretmen' as const,
+    links: [{ kind: 'teacher' as const, recordId: 't1' }],
+    userId: 'u-t1',
+  }
+  const parent = {
+    role: 'veli' as const,
+    links: [{ kind: 'child' as const, recordId: 's1' }],
+    userId: 'u-p1',
+  }
+  const input = {
+    topic: 'trip',
+    title: 'Müze gezisi',
+    description: 'Cuma günü müze gezisi.',
+    deadline: '2026-10-09',
+    classIds: ['c1'],
+  }
+  const form = createPermissionForm(
+    operation(state, 'permissionForm.create'),
+    teacher,
+    input,
+    id,
+    now,
+  )
+  const spare = createPermissionForm(
+    operation(state, 'permissionForm.create'),
+    teacher,
+    input,
+    id,
+    now,
+  )
+  updatePermissionForm(
+    operation(state, 'permissionForm.update'),
+    teacher,
+    form.id,
+    { title: 'Yeni' },
+    now,
+  )
+  decidePermission(
+    operation(state, 'permissionForm.decide'),
+    parent,
+    form.id,
+    { studentId: 's1', decision: 'approved' },
+    id,
+    now,
+  )
+  closePermissionForm(operation(state, 'permissionForm.close'), teacher, form.id, now)
+  archivePermissionForm(operation(state, 'permissionForm.archive'), teacher, spare.id)
 })
 
 test('Aday/CRM işlemleri yalnız komut tablosundaki koleksiyonlarla çalışır', () => {

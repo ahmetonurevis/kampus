@@ -46,6 +46,8 @@ const COLLECTION_FLAGS = {
   absences: true,
   notifications: true,
   notificationReads: true,
+  permissionForms: true,
+  permissionDecisions: true,
   contracts: true,
   audit: true,
   guidanceCases: true,

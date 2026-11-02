@@ -77,4 +77,8 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   'POST /api/v1/quizzes',
   'POST /api/v1/quizzes/{quizId}/attempt',
   'POST /api/v1/quizzes/{quizId}/attempt/submit',
+  // İzin formu açma ve veli kararı: yeniden denemede ikinci form ya da karar satırı açılmaz
+  // (routes/permission-forms.ts; DOM-ILT-036, DOM-ILT-037).
+  'POST /api/v1/permission-forms',
+  'POST /api/v1/permission-forms/{formId}/decisions',
 ]

@@ -31,6 +31,7 @@ import {
 } from '../db/skills.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { listeningSummary } from './listening-plays.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
@@ -259,6 +260,7 @@ async function detailView(
   return {
     ...attemptView(viewer, assignment, context, attempt, learnerAttempts, ctx.now.toISOString()),
     questions: questionsFor(context, attempt.id),
+    listening: await listeningSummary(db, ctx.institutionId, assignment, attempt.id),
   }
 }
 

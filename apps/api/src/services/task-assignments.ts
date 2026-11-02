@@ -420,10 +420,9 @@ async function audit(
 }
 
 /**
- * Geçici API sınırları (ADR 0004 karar 6 uygulama notu, F4b2): dosyalı ve sesli teslim `files`
- * gelene kadar saklanamaz; dinleme hakkı `attempt_media_plays` gelene kadar sayılamaz. Aksi hâlde
- * kursiyer teslim edemeyeceği veya hakkı denetlenmeyen görev alır. Dinleme görevi yine atanır:
- * gövde şeması gönderilmeyen hakkı sınırsız (`null`) yapar; yalnız açıkça seçilen 1 veya 2 reddedilir.
+ * Geçici API sınırı (ADR 0004 karar 6 uygulama notu, F4b2): dosyalı ve sesli teslim `files`
+ * gelene kadar saklanamaz; aksi hâlde kursiyer teslim edemeyeceği görev alır. Dinleme hakkı
+ * `attempt_media_plays` ile sayılır (OG-049); atamada 1, 2 veya sınırsız seçilebilir.
  */
 function assertSupportedByApi(plan: AssignmentPlan): void {
   const kind = plan.assignment.submission?.submissionKind
@@ -438,22 +437,6 @@ function assertSupportedByApi(plan: AssignmentPlan): void {
             path: ['settings', 'submission', 'submissionKind'],
             code: 'submission_kind_unavailable',
             message: 'Dosyalı ve sesli teslim henüz açık değil; metin teslimi seçin.',
-          },
-        ],
-      },
-    )
-  // TODO(F3c2-files): `attempt_media_plays` gelince dinleme hakkı sayılır ve bu sınır kalkar.
-  if (plan.assignment.listeningPlays !== null)
-    throw new RuleViolationError(
-      'listening_plays_unavailable',
-      'Dinleme hakkı sınırı henüz uygulanamıyor; dinleme hakkını boş bırakın, görev sınırsız dinlemeyle atanır.',
-      {
-        issues: [
-          {
-            path: ['settings', 'listeningPlays'],
-            code: 'listening_plays_unavailable',
-            message:
-              'Dinleme hakkı sınırı henüz uygulanamıyor; dinleme hakkını boş bırakın, görev sınırsız dinlemeyle atanır.',
           },
         ],
       },

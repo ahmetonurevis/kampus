@@ -3380,6 +3380,154 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/privacy-notices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Aydınlatma ve rıza metinleri
+         * @description Kurumun yayımlanmış bütün aydınlatma (`notice`) ve rıza (`consent_text`) metni sürümleri, konu ve sürüm sırasıyla, sayfalı. Yayımlanmış metin değişmez. Bilinmeyen parametre 400. Roller: `yonetici`; diğer roller 403.
+         */
+        get: operations["listPrivacyNotices"];
+        put?: never;
+        /**
+         * Aydınlatma veya rıza metni yayımla
+         * @description Yeni metin sürümü yayımlar (core `planNoticePublication`, DOM-YTK-056, DOM-YTK-060): sürüm konunun (kitle ya da amaç) son sürümünün bir fazlasıdır; yayımlanmış metin değiştirilmez, düzeltme yeni sürümdür. Rıza metninde `requiresReconsent` doğruysa eski sürüme verilmiş rızalar geçersiz sayılır ve yeniden rıza istenir. Eşzamanlı yayım çakışırsa 409. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Denetime yalnız alan adları (metin gövdesi loglanmaz). Roller: `yonetici`; diğer roller 403.
+         */
+        post: operations["publishPrivacyNotice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy-notices/current": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Güncel aydınlatma metni
+         * @description Oturum rolünün kitlesine ait son aydınlatma metni ve kullanıcının bu sürümü görüp görmediği (IST-016, DOM-YTK-056). İlk girişte ve yeni sürüm yayımlanınca `needsAcknowledgement` doğrudur; istemci metni gösterip `POST /privacy-notices/{noticeId}/acknowledge` çağırır. Yayımlanmış metin yoksa `notice` boştur. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.
+         */
+        get: operations["getCurrentPrivacyNotice"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/privacy-notices/{noticeId}/acknowledge": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Aydınlatma metninin gösterildiğini kaydet
+         * @description Aydınlatma metninin kullanıcıya gösterildiğini kaydeder (DOM-YTK-056); aydınlatma onay değildir, yalnız gösterim kaydıdır. Yalnız kitlenin son sürümü kaydedilir: eski sürüm 409 `notice_outdated`, başka kitlenin metni, rıza metni, olmayan ya da başka kurumun metni 404. İlk kayıt 201; aynı sürümün ikinci kaydı yeni satır açmaz, ilk gösterimi 200 ile döndürür. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.
+         */
+        post: operations["acknowledgePrivacyNotice"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consent-texts/{purpose}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Amacın güncel rıza metni
+         * @description Amacın son yayımlanmış rıza metni ve geçerli rıza için gereken en düşük metin sürümü (DOM-YTK-058, DOM-YTK-060). Rıza formu bu metni gösterir ve `textId` olarak gönderir. Metin yoksa 404 `consent_text_not_found` (o amaçta rıza alınamaz). Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.
+         */
+        get: operations["getConsentText"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Rıza kayıtları
+         * @description Veri sahibinin rıza ve itiraz satırları, amaç ve veriliş sırasıyla, sayfalı (DOM-ILT-034). `studentId` verilirse öğrenci amaçları, verilmezse oturum sahibinin hesap amaçları (tanıtım iletisi). `status=open` geri çekilmemiş satırlar (varsayılan), `all` geçmiş dahil; bugün geçerli olup olmadığı `GET /consents/status`'tadır. Kapsam: yönetici ve ön büro kurumun öğrencileri, veli bağlı çocukları, öğrenci kendi kaydı; kapsam dışı ya da başka kurumun öğrencisi 404 `not_found`. Öğretmen satırları okuyamaz (403), yalnız var/yok sonucunu görür (DOM-YTK-061). Bilinmeyen parametre 400. Roller: `yonetici`, `onburo`, `ogrenci`, `veli`.
+         */
+        get: operations["listConsents"];
+        put?: never;
+        /**
+         * Açık rıza ver veya itiraz kaydet
+         * @description Amaç ve metin sürümüne bağlı açık rıza ya da öğrenci itirazı kaydeder (IST-017, core `planConsent`; DOM-YTK-057, -058, -062). Öğrenci amaçlarında `studentId` zorunludur: 18 yaş altında yalnız doğrulanmış velayet sahibi veli (aksi 403 `consent_guardian_required` / `consent_custody_required`), 18 ve üstünde yalnız öğrencinin kendisi (veli 403 `consent_adult_self`); yaş güncel doğum tarihinden, Europe/Istanbul gününe göre. Hesap amaçlarında `studentId` verilmez. `textId` amacın güncel metni olmalı: eski sürüm 409 `consent_text_outdated`, olmayan metin 404 `consent_text_not_found`. Aynı amaçta geçerli rıza varsa 409 `consent_exists`; süresi dolmuş satır aynı işlemde `renewed` ile kapanır. Eğitim yılı amaçları kurum eğitim yılının sonunda (ertesi yılın 1 Eylül 00:00 Europe/Istanbul) düşer; eğitim yılı tanımsızsa 422 `academic_year_required`. Kapsam dışı ya da başka kurumun öğrencisi 404. Gövdedeki bilinmeyen alan (`institutionId` dahil) 400. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Denetime yalnız alan adları. Roller: `ogrenci`, `veli`; personel rıza veremez (403).
+         */
+        post: operations["giveConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consents/status": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Amaç başına geçerli rıza sonucu
+         * @description Amaç başına yalnız var/yok sonucu (DOM-YTK-061): geçerli rıza var ve etkin itiraz yok. Süresi dolmuş (eğitim yılı sonu, 18. yaş günü), geri çekilmiş ya da yeniden rıza gerektiren eski metne verilmiş rıza geçersizdir; geri çekme anında yansır. `studentId` verilirse öğrenci amaçları, verilmezse oturum sahibinin hesap amaçları. Kapsam: yönetici ve ön büro kurumun, öğretmen yalnız ders verdiği sınıfların öğrencileri, veli bağlı çocukları, öğrenci kendisi; kapsam dışı ya da başka kurumun öğrencisi 404 `not_found`. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.
+         */
+        get: operations["getConsentStatus"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/consents/{consentId}/withdraw": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Rızayı veya itirazı geri çek
+         * @description Rızayı ya da itirazı geri çeker (DOM-YTK-059): tek işlem, anında etkili; `GET /consents/status` hemen yok döner. Geri çekme rızayı veren tarafındır (18 yaş altında velayetli veli, 18 ve üstünde öğrenci). Konuşma kaydı rızası geri çekilirse öğrencinin o amaçtaki dosyaları aynı işlemde imhaya işaretlenir (`retention_until = now`). İkinci geri çekme 409 `consent_already_withdrawn`; olmayan, kapsam dışı ya da başka kurumun kaydı 404. Gövde yok ya da boş nesne. `Idempotency-Key` isteğe bağlı. Roller: `ogrenci`, `veli`.
+         */
+        post: operations["withdrawConsent"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -4451,6 +4599,104 @@ export interface components {
             createdAt: string;
             /** @description Okuyanın ilk okuma anı; okunmamışsa `null` */
             readAt: string | null;
+        };
+        PrivacyNoticeInput: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description `notice` aydınlatma metni (kitleye), `consent_text` rıza metni (amaca)
+             * @enum {string}
+             */
+            kind: "notice" | "consent_text";
+            /** @description Aydınlatma kitlesi */
+            audience: ("veli" | "ogrenci" | "personel") | null;
+            purpose: ("photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording") | null;
+            /** @description Konu içinde artan sürüm */
+            version: number;
+            title: string;
+            body: string;
+            /** @description Bu sürümden eski metne verilmiş rıza geçersizdir (DOM-YTK-060) */
+            requiresReconsent: boolean;
+            /** Format: date-time */
+            publishedAt: string;
+        };
+        CurrentPrivacyNoticeInput: {
+            /**
+             * @description Oturum rolünün kitlesi
+             * @enum {string}
+             */
+            audience: "veli" | "ogrenci" | "personel";
+            /** @description Kitlenin son sürümü; yayımlanmamışsa boş */
+            notice: components["schemas"]["PrivacyNoticeInput"] | null;
+            /** @description Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli */
+            needsAcknowledgement: boolean;
+            /** @description Son sürümün gösterim anı */
+            acknowledgedAt: string | null;
+        };
+        NoticeAcknowledgementInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            noticeId: string;
+            userId: string;
+            /** @enum {string} */
+            channel: "web" | "mobile";
+            /** Format: date-time */
+            acknowledgedAt: string;
+        };
+        ConsentTextInput: {
+            text: components["schemas"]["PrivacyNoticeInput"];
+            /** @description Geçerli rıza için gereken en düşük metin sürümü (DOM-YTK-060) */
+            minimumVersion: number;
+        };
+        ConsentInput: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description `student` öğrenci kaydı, `user` hesabın kendisi
+             * @enum {string}
+             */
+            subjectKind: "student" | "user";
+            /** @description Öğrenci kaydı ya da kullanıcı kimliği */
+            subjectId: string;
+            /**
+             * @description Rıza amacı kodu
+             * @enum {string}
+             */
+            purpose: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
+            /**
+             * @description `granted` rıza, `objected` öğrenci itirazı
+             * @enum {string}
+             */
+            decision: "granted" | "objected";
+            grantedByUserId: string;
+            /**
+             * @description `self` kendisi, `guardian` veli
+             * @enum {string}
+             */
+            grantorRelation: "self" | "guardian";
+            /** Format: uuid */
+            textId: string;
+            textVersion: number;
+            /** @enum {string} */
+            channel: "web" | "mobile";
+            /** Format: date-time */
+            givenAt: string;
+            /** @description Eğitim yılı sonu ya da öğrencinin 18. yaş günü */
+            expiresAt: string | null;
+            withdrawnAt: string | null;
+            /** @description `withdrawn` geri çekme, `renewed` yenilenerek kapanma */
+            withdrawalReason: ("withdrawn" | "renewed") | null;
+            rowVersion: number;
+        };
+        ConsentStatusInput: {
+            /**
+             * @description Rıza amacı kodu
+             * @enum {string}
+             */
+            purpose: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
+            /** @description Şu anda geçerli rıza var ve etkin itiraz yok (DOM-YTK-061) */
+            valid: boolean;
         };
         BookableSlotInput: {
             /** @description Uygunluk saati kimliği; talepte `slotId` olarak gönderilir */
@@ -6453,6 +6699,104 @@ export interface components {
             createdAt: string;
             /** @description Okuyanın ilk okuma anı; okunmamışsa `null` */
             readAt: string | null;
+        };
+        PrivacyNotice: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description `notice` aydınlatma metni (kitleye), `consent_text` rıza metni (amaca)
+             * @enum {string}
+             */
+            kind: "notice" | "consent_text";
+            /** @description Aydınlatma kitlesi */
+            audience: ("veli" | "ogrenci" | "personel") | null;
+            purpose: ("photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording") | null;
+            /** @description Konu içinde artan sürüm */
+            version: number;
+            title: string;
+            body: string;
+            /** @description Bu sürümden eski metne verilmiş rıza geçersizdir (DOM-YTK-060) */
+            requiresReconsent: boolean;
+            /** Format: date-time */
+            publishedAt: string;
+        };
+        CurrentPrivacyNotice: {
+            /**
+             * @description Oturum rolünün kitlesi
+             * @enum {string}
+             */
+            audience: "veli" | "ogrenci" | "personel";
+            /** @description Kitlenin son sürümü; yayımlanmamışsa boş */
+            notice: components["schemas"]["PrivacyNotice"] | null;
+            /** @description Son sürüm bu kullanıcıya henüz gösterilmedi; ilk girişte gösterilmeli */
+            needsAcknowledgement: boolean;
+            /** @description Son sürümün gösterim anı */
+            acknowledgedAt: string | null;
+        };
+        NoticeAcknowledgement: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            noticeId: string;
+            userId: string;
+            /** @enum {string} */
+            channel: "web" | "mobile";
+            /** Format: date-time */
+            acknowledgedAt: string;
+        };
+        ConsentText: {
+            text: components["schemas"]["PrivacyNotice"];
+            /** @description Geçerli rıza için gereken en düşük metin sürümü (DOM-YTK-060) */
+            minimumVersion: number;
+        };
+        Consent: {
+            /** Format: uuid */
+            id: string;
+            /**
+             * @description `student` öğrenci kaydı, `user` hesabın kendisi
+             * @enum {string}
+             */
+            subjectKind: "student" | "user";
+            /** @description Öğrenci kaydı ya da kullanıcı kimliği */
+            subjectId: string;
+            /**
+             * @description Rıza amacı kodu
+             * @enum {string}
+             */
+            purpose: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
+            /**
+             * @description `granted` rıza, `objected` öğrenci itirazı
+             * @enum {string}
+             */
+            decision: "granted" | "objected";
+            grantedByUserId: string;
+            /**
+             * @description `self` kendisi, `guardian` veli
+             * @enum {string}
+             */
+            grantorRelation: "self" | "guardian";
+            /** Format: uuid */
+            textId: string;
+            textVersion: number;
+            /** @enum {string} */
+            channel: "web" | "mobile";
+            /** Format: date-time */
+            givenAt: string;
+            /** @description Eğitim yılı sonu ya da öğrencinin 18. yaş günü */
+            expiresAt: string | null;
+            withdrawnAt: string | null;
+            /** @description `withdrawn` geri çekme, `renewed` yenilenerek kapanma */
+            withdrawalReason: ("withdrawn" | "renewed") | null;
+            rowVersion: number;
+        };
+        ConsentStatus: {
+            /**
+             * @description Rıza amacı kodu
+             * @enum {string}
+             */
+            purpose: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
+            /** @description Şu anda geçerli rıza var ve etkin itiraz yok (DOM-YTK-061) */
+            valid: boolean;
         };
         BookableSlot: {
             /** @description Uygunluk saati kimliği; talepte `slotId` olarak gönderilir */
@@ -28163,6 +28507,865 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["TaskSubmissionDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listPrivacyNotices: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PrivacyNotice"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    publishPrivacyNotice: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    kind: "notice";
+                    /** @enum {string} */
+                    audience: "veli" | "ogrenci" | "personel";
+                    title: string;
+                    body: string;
+                } | {
+                    /** @enum {string} */
+                    kind: "consent_text";
+                    /** @enum {string} */
+                    purpose: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
+                    title: string;
+                    body: string;
+                    /** @default false */
+                    requiresReconsent?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PrivacyNotice"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCurrentPrivacyNotice: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CurrentPrivacyNotice"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    acknowledgePrivacyNotice: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Aydınlatma metni sürümünün kimliği */
+                noticeId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    channel: "web" | "mobile";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NoticeAcknowledgement"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NoticeAcknowledgement"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getConsentText: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Rıza amacı kodu */
+                purpose: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ConsentText"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listConsents: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Veri sahibi öğrenci; yoksa oturum sahibinin hesap rızaları */
+                studentId?: string;
+                /** @description Rıza amacı kodu */
+                purpose?: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
+                /** @description `open` geri çekilmemiş satırlar, `all` geçmiş dahil */
+                status?: "open" | "all";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Consent"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    giveConsent: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    purpose: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
+                    /**
+                     * @default granted
+                     * @enum {string}
+                     */
+                    decision?: "granted" | "objected";
+                    studentId?: string;
+                    /** Format: uuid */
+                    textId: string;
+                    /** @enum {string} */
+                    channel: "web" | "mobile";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Consent"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getConsentStatus: {
+        parameters: {
+            query?: {
+                /** @description Veri sahibi öğrenci; yoksa oturum sahibinin hesap amaçları */
+                studentId?: string;
+                /** @description Rıza amacı kodu */
+                purpose?: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ConsentStatus"][];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    withdrawConsent: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Rıza kaydı kimliği */
+                consentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["Consent"];
                     };
                 };
             };

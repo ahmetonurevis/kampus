@@ -55,4 +55,7 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   'POST /api/v1/task-submissions/{submissionId}/appeals/{appealId}/decision',
   // Dosya yükleme: yeniden denemede ikinci nesne ve satır açılmaz (routes/files.ts; ADR 0003).
   'POST /api/v1/files',
+  // Aydınlatma/rıza metni yayımı ve açık rıza (routes/privacy.ts; DOM-YTK-056, -057, -060).
+  'POST /api/v1/privacy-notices',
+  'POST /api/v1/consents',
 ]

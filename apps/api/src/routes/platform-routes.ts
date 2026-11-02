@@ -19,6 +19,7 @@ import { registerModuleRoutes } from './modules.ts'
 import { registerResourceCommandRoutes } from './resource-commands.ts'
 import { registerQuestionRoutes } from './questions.ts'
 import { registerNotificationRoutes } from './notifications.ts'
+import { registerPrivacyRoutes } from './privacy.ts'
 import { registerRequestRoutes } from './requests.ts'
 import { registerAppointmentRoutes } from './appointments.ts'
 import { registerParentRoutes } from './parents.ts'
@@ -68,6 +69,7 @@ export const PLATFORM_LATE_ROUTES = [
   registerTaskAssignmentRoutes,
   registerTaskAttemptRoutes,
   registerTaskSubmissionRoutes,
+  registerPrivacyRoutes,
 ] as const satisfies readonly RouteRegistrar[]
 
 /** Onur bloğundan önceki platform uçlarını kaydeder. */

@@ -416,6 +416,7 @@ describe('görev deneme uçları', () => {
       possible: 4,
       percent: 25,
       items: null,
+      subskills: null,
       answerKey: null,
     })
     fails(await submit(started.id, t.cookies.student, {}, 2), 409, 'version_conflict')
@@ -580,6 +581,7 @@ describe('görev deneme uçları', () => {
       possible: 1,
       percent: 0,
       items: null,
+      subskills: null,
       answerKey: null,
     })
 

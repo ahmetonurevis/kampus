@@ -1,7 +1,10 @@
 import { z } from 'zod'
 
 import { answerKeySchema, questionBodySchema } from '@kampus/school-core/content/resource.ts'
+import { CEFR_LEVELS, enumKeys, SUBSKILLS } from '@kampus/school-core/content/taxonomy.ts'
 import { answersSchema } from '@kampus/school-core/skills/scoring.ts'
+
+import { attributionSchema } from './resources.schemas.ts'
 
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
 
@@ -57,6 +60,18 @@ const itemScoreSchema = z
   })
   .meta({ id: 'TaskAttemptItemScore' })
 
+const subskill = z.enum(enumKeys(SUBSKILLS))
+
+const subskillScoreSchema = z
+  .object({
+    subskill,
+    items: z.number().int().min(1).describe('Bu alt beceriyle etiketli madde sayısı'),
+    earned: z.number().describe('Kazanılan puan (iki ondalık)'),
+    possible: z.number(),
+    percent: z.number().int().describe('100 üzerinden puan'),
+  })
+  .meta({ id: 'TaskAttemptSubskillScore' })
+
 const resultSchema = z
   .object({
     earned: z.number().describe('Kazanılan puan (iki ondalık)'),
@@ -66,6 +81,12 @@ const resultSchema = z
       .array(itemScoreSchema)
       .nullable()
       .describe('Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045)'),
+    subskills: z
+      .array(subskillScoreSchema)
+      .nullable()
+      .describe(
+        'Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır',
+      ),
     answerKey: z
       .array(z.object({ questionVersionId: z.string(), answerKey: answerKeySchema }))
       .nullable()
@@ -109,10 +130,29 @@ const taskAttemptDetailSchema = z
         z.object({
           questionVersionId: z.string(),
           points: z.number(),
+          subskill: subskill.nullable().describe('Sorunun alt becerisi (DOM-BEC-006)'),
           question: questionBodySchema,
         }),
       )
       .describe('Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık'),
+    passage: z
+      .object({
+        versionId: id.describe('Okuma parçası sürümü'),
+        title: z.string(),
+        body: z.string(),
+        wordCount: z.number().int().min(0).describe('Sistem hesaplar (DOM-KYN-002)'),
+        cefrLevel: z.enum(enumKeys(CEFR_LEVELS)).nullable(),
+        glossary: z
+          .array(
+            z.object({ term: z.string(), meaning: z.string(), example: z.string().nullable() }),
+          )
+          .describe('Sözlükçe, yazarın sırasıyla'),
+        attributions: z.array(attributionSchema).describe('Kaynak gösterimi (DOM-KYN-024)'),
+      })
+      .nullable()
+      .describe(
+        'Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner',
+      ),
     listening: z
       .object({
         limit: z.number().int().min(1).max(2).describe('Atamanın dinleme hakkı (DOM-BEC-005)'),

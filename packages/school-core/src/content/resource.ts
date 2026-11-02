@@ -18,6 +18,7 @@ import {
   SHARE_SCOPES,
   SKILLS,
   SUBMISSION_KINDS,
+  SUBSKILLS,
   enumKeys,
   licenseExpired,
   type CefrLevel,
@@ -294,17 +295,52 @@ const itemList = <T extends 'quiz' | 'exercise_set'>(type: T) =>
         .max(200, 'En fazla 200 soru eklenebilir.'),
       timeLimitMinutes: z.number().int().min(1).max(300).nullable().default(null),
       shuffleItems: z.boolean().default(false),
+      /**
+       * Okuma-anlama etkinliğinin metni (IST-042; DOM-BEC-006): okuma parçası sürümü. Sürüm
+       * kimliğiyle bağlanır; parçanın yeni sürümü etkinliği değiştirmez (karar 3).
+       */
+      passageVersionId: identifier.nullable().default(null),
     })
     .refine((c) => new Set(c.items.map((i) => i.questionVersionId)).size === c.items.length, {
       message: 'Aynı soru iki kez eklenemez.',
       path: ['items'],
     })
 
+/**
+ * Okuma parçasının sözlükçesi (DOM-KYN-002; IST-042): kelime, Türkçe anlamı ve isteğe bağlı örnek
+ * cümle. Aynı kelime (büyük/küçük harf duyarsız) bir kez yer alır; boş örnek `null` olur.
+ */
+export const glossaryEntrySchema = z.object({
+  term: text(100, 'Kelimeyi yazın.'),
+  meaning: text(500, 'Anlamını yazın.'),
+  example: z
+    .string()
+    .trim()
+    .max(500, 'En fazla 500 karakter girebilirsiniz.')
+    .nullable()
+    .default(null)
+    .transform((value) => (value === '' ? null : value)),
+})
+export type GlossaryEntry = z.output<typeof glossaryEntrySchema>
+
+export const GLOSSARY_MAX = 100
+
+const glossary = z
+  .array(glossaryEntrySchema)
+  .max(GLOSSARY_MAX, `En fazla ${GLOSSARY_MAX} kelime eklenebilir.`)
+  .default([])
+  .refine(
+    (entries) =>
+      new Set(entries.map((entry) => entry.term.toLocaleLowerCase('en-US'))).size ===
+      entries.length,
+    'Aynı kelime sözlükçede bir kez yer alır.',
+  )
+
 /** Tür başına içerik (DOM-KYN-002, DOM-KYN-027, IST-030, IST-033, IST-036). */
 export const resourceContentSchema = z.discriminatedUnion('type', [
   textLike('text'),
   textLike('worksheet'),
-  z.object({ type: z.literal('reading_passage'), body: bodyText }),
+  z.object({ type: z.literal('reading_passage'), body: bodyText, glossary }),
   media('audio'),
   media('video'),
   z.object({ type: z.literal('file'), fileId: fileRef }),
@@ -371,6 +407,8 @@ export const resourceTagsSchema = z
       .default([])
       .transform(distinct),
     activityMode: z.enum(enumKeys(ACTIVITY_MODES)).nullable().default(null),
+    /** Anlama sorusunun alt becerisi (DOM-BEC-006); yalnız soruda (`resourceVersionInputSchema`). */
+    subskill: z.enum(enumKeys(SUBSKILLS)).nullable().default(null),
     interactionChannel: z.enum(enumKeys(INTERACTION_CHANNELS)).nullable().default(null),
     /** Aracılık görevi kaynak ve hedef beceriyi birlikte taşır (DOM-BEC-001). */
     mediation: z
@@ -537,6 +575,13 @@ export const resourceVersionInputSchema = z
     fileIds: resourceFileIdsSchema.default([]),
   })
   .superRefine((version, ctx) => {
+    if (version.tags.subskill !== null && version.content.type !== 'question') {
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Alt beceri yalnız soruda etiketlenir.',
+        path: ['tags', 'subskill'],
+      })
+    }
     if (version.answerKey === null) return
     if (version.content.type !== 'question') {
       ctx.addIssue({
@@ -613,6 +658,8 @@ export type PublicationContext = {
   now: Date | string
   /** Quiz/alıştırma setinin soru sürümleri, kimliğe göre; bulunmayan soru yayımı engeller. */
   itemVersions?: ReadonlyMap<string, ItemVersionRef> | undefined
+  /** Quiz/alıştırma setinin bağlı okuma parçası (`passageVersionId`); bulunmazsa yayım olmaz. */
+  passageVersion?: ItemVersionRef | undefined
 }
 
 const ENGLISH_SUBJECT_ID = 'english'
@@ -759,6 +806,10 @@ export function publicationIssues(context: PublicationContext): PublicationIssue
         const issue = itemIssue(context.itemVersions?.get(entry.questionVersionId))
         if (issue) add(issue.code, issue.message, 'content', 'items', String(index))
       })
+      if (content.passageVersionId !== null) {
+        const issue = passageIssue(context.passageVersion, content.passageVersionId)
+        if (issue) add(issue.code, issue.message, 'content', 'passageVersionId')
+      }
       break
     case 'text':
     case 'worksheet':
@@ -787,6 +838,23 @@ function itemIssue(ref: ItemVersionRef | undefined): Omit<PublicationIssue, 'pat
       code: 'quiz_item_untagged',
       message: 'Kazanım veya beceri etiketi olmayan soru eklenemez.',
     }
+  }
+  return null
+}
+
+/** Okuma-anlama etkinliğinin parçası yayında bir okuma parçası olmalı (IST-042; DOM-BEC-006). */
+function passageIssue(
+  ref: ItemVersionRef | undefined,
+  passageVersionId: string,
+): Omit<PublicationIssue, 'path'> | null {
+  if (!ref || ref.id !== passageVersionId) {
+    return { code: 'passage_missing', message: 'Okuma parçası bulunamadı.' }
+  }
+  if (ref.contentType !== 'reading_passage') {
+    return { code: 'passage_not_reading', message: 'Bağlanan içerik okuma parçası olmalıdır.' }
+  }
+  if (ref.status !== 'published') {
+    return { code: 'passage_not_published', message: 'Okuma parçası yayında olmalıdır.' }
   }
   return null
 }
@@ -947,6 +1015,7 @@ export type TransitionInput = {
   /** Ret ve telif bildiriminde zorunlu. */
   reason?: string | undefined
   itemVersions?: PublicationContext['itemVersions']
+  passageVersion?: PublicationContext['passageVersion']
 }
 
 export type VersionTransition = {
@@ -1018,6 +1087,7 @@ export function planVersionTransition(input: TransitionInput): VersionTransition
       version,
       now: input.now,
       itemVersions: input.itemVersions,
+      passageVersion: input.passageVersion,
     })
   }
   if (action === 'publish' && requiresReview(version.license, resource.shareScope)) {
@@ -1181,7 +1251,8 @@ export function planResourceRemoval(input: ResourceRemovalInput): ResourceRemova
     .filter(
       ({ content }) =>
         (content.type === 'quiz' || content.type === 'exercise_set') &&
-        content.items.some((item) => removedIds.has(item.questionVersionId)),
+        (content.items.some((item) => removedIds.has(item.questionVersionId)) ||
+          (content.passageVersionId !== null && removedIds.has(content.passageVersionId))),
     )
     .map((container) => container.id)
   return {
@@ -1619,6 +1690,40 @@ export function learnerView(
   }
 }
 
+/** Okuma-anlama etkinliğinde kursiyerin okuduğu metin (IST-042; DOM-KYN-002, DOM-BEC-006). */
+export type PassageView = {
+  versionId: string
+  title: string
+  body: string
+  /** Sistem hesaplar, saklanmaz (DOM-KYN-002). */
+  wordCount: number
+  cefrLevel: CefrLevel | null
+  glossary: GlossaryEntry[]
+  /** Kaynak gösterimi kursiyer ekranında korunur (DOM-KYN-024). */
+  attributions: Attribution[]
+}
+
+/**
+ * Okuma parçası sürümünün kursiyer görünümü: metin, seviye, hesaplanan kelime sayısı, sözlükçe ve
+ * kaynak gösterimi. Parçada cevap anahtarı yoktur; lisans ayrıntısı ve etiketlerin geri kalanı
+ * girmez. Okuma parçası değilse `null`.
+ */
+export function passageView(
+  version: Pick<ResourceVersion, 'id' | 'title' | 'content' | 'tags' | 'attributions'>,
+): PassageView | null {
+  const { content } = version
+  if (content.type !== 'reading_passage') return null
+  return {
+    versionId: version.id,
+    title: version.title,
+    body: content.body,
+    wordCount: wordCount(content.body),
+    cefrLevel: version.tags.cefrLevel,
+    glossary: content.glossary,
+    attributions: version.attributions,
+  }
+}
+
 // --- Arama ve sözcük sayısı ---------------------------------------------------------------
 
 /**
@@ -1665,6 +1770,7 @@ export function searchDocument(version: ResourceVersionData): string {
       break
     case 'reading_passage':
       parts.push(content.body)
+      for (const entry of content.glossary) parts.push(entry.term, entry.meaning)
       break
     case 'link':
       if (content.provider !== null) parts.push(content.provider)

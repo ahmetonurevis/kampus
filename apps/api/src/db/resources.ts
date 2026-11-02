@@ -159,6 +159,7 @@ function toStoredVersion(row: ResourceVersionRow, links: VersionLinks): StoredRe
       primarySkill: row.primarySkill,
       skills: row.skills,
       activityMode: row.activityMode,
+      subskill: row.subskill,
       interactionChannel: row.interactionChannel,
       mediation: row.mediation ?? null,
       durationMinutes: row.durationMinutes,
@@ -191,6 +192,7 @@ export function versionContentValues(version: ResourceVersion) {
     primarySkill: version.tags.primarySkill,
     skills: version.tags.skills,
     activityMode: version.tags.activityMode,
+    subskill: version.tags.subskill,
     interactionChannel: version.tags.interactionChannel,
     mediation: version.tags.mediation,
     durationMinutes: version.tags.durationMinutes,
@@ -989,6 +991,32 @@ export async function listCopies(
       ),
     )
     .orderBy(asc(resources.id))
+}
+
+/**
+ * Verilen okuma parçası sürümlerine bağlı quiz ve alıştırma seti sürümleri (DOM-KYN-051; IST-042).
+ * Bağ içerikteki `passageVersionId`'dir (ayrı tablo yok); sorgu kurumun sürümlerini `jsonb`
+ * alanıyla süzer. Yalnız kaldırmada (seyrek, yönetici işlemi) çalışır, indeks istemez.
+ */
+export async function listPassageContainerVersions(
+  db: Database,
+  institutionId: string,
+  passageVersionIds: readonly string[],
+): Promise<{ id: string; content: ResourceContent }[]> {
+  if (passageVersionIds.length === 0) return []
+  const rows = await db
+    .select({ id: resourceVersions.id, content: resourceVersions.content })
+    .from(resourceVersions)
+    .where(
+      and(
+        eq(resourceVersions.institutionId, institutionId),
+        inArray(sql<string>`${resourceVersions.content} ->> 'passageVersionId'`, [
+          ...passageVersionIds,
+        ]),
+      ),
+    )
+    .orderBy(asc(resourceVersions.id))
+  return rows.flatMap((row) => (row.content === null ? [] : [{ id: row.id, content: row.content }]))
 }
 
 /** Verilen soru sürümlerini içeren quiz ve alıştırma seti sürümleri (DOM-KYN-051). */

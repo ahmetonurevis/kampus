@@ -25,6 +25,7 @@ const TAGS: StaffResourceVersion['tags'] = {
   primarySkill: 'reading',
   skills: ['reading'],
   activityMode: null,
+  subskill: null,
   interactionChannel: null,
   mediation: null,
   durationMinutes: null,

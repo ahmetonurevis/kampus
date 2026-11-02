@@ -12,6 +12,7 @@ import {
   planAttemptSubmit,
   scoreAttempt,
   submissionWindow,
+  subskillBreakdown,
   type Answers,
   type CompletedAttempt,
 } from '@kampus/school-core/skills/scoring.ts'
@@ -41,6 +42,7 @@ import {
   learnerFilter,
   ownedLearners,
   ownRecord,
+  passageFor,
   questionsFor,
   readableLearners,
   scoringContext,
@@ -142,6 +144,9 @@ function attemptView(
             possible: score.possible,
             percent: score.percent,
             items: level === 'score' ? null : score.items,
+            // Alt beceri dökümü madde sonuçlarıyla aynı anda açılır: tek maddeli alt beceri
+            // maddenin doğruluğunu verir (DOM-BEC-006, DOM-BEC-045).
+            subskills: level === 'score' ? null : subskillBreakdown(context.items, score),
             answerKey:
               level === 'full'
                 ? context.items.map((item) => ({
@@ -260,6 +265,7 @@ async function detailView(
   return {
     ...attemptView(viewer, assignment, context, attempt, learnerAttempts, ctx.now.toISOString()),
     questions: questionsFor(context, attempt.id),
+    passage: passageFor(context),
     listening: await listeningSummary(db, ctx.institutionId, assignment, attempt.id),
   }
 }

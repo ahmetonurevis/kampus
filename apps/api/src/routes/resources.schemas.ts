@@ -27,6 +27,7 @@ import {
   PRIMARY_SKILLS,
   SHARE_SCOPES,
   SKILLS,
+  SUBSKILLS,
 } from '@kampus/school-core/content/taxonomy.ts'
 
 import { RESOURCE_SORTS } from '../db/resources.ts'
@@ -102,6 +103,10 @@ const tagsSchema = z
     primarySkill: z.enum(PRIMARY_SKILLS).nullable(),
     skills: z.array(z.enum(enumKeys(SKILLS))),
     activityMode: z.enum(enumKeys(ACTIVITY_MODES)).nullable(),
+    subskill: z
+      .enum(enumKeys(SUBSKILLS))
+      .nullable()
+      .describe('Anlama sorusunun alt becerisi (DOM-BEC-006); yalnız soruda dolar'),
     interactionChannel: z.enum(enumKeys(INTERACTION_CHANNELS)).nullable(),
     mediation: z
       .object({ sourceSkill: z.enum(MEDIATION_SKILLS), targetSkill: z.enum(MEDIATION_SKILLS) })

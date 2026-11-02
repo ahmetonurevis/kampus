@@ -20,6 +20,12 @@ export interface RecordAttendanceInput {
   date: string
   /** Öğrenci kimliği → durum; sınıfın bütün aktif öğrencileri bulunmalıdır. */
   marks: Readonly<Record<string, AttendanceMark>>
+  /**
+   * Öğrenci kimliği → geç kalma dakikası (DOM-AKD-036); yalnız `late` öğrenci için, pozitif
+   * tamsayı. Verilirse (boş nesne dahil) geç gelenlerin dakikasını belirler; verilmezse kayıtlı
+   * dakikalar korunur.
+   */
+  lateMinutes?: Readonly<Record<string, number>>
   /** Yönetici düzeltmesinin gerekçesi (DOM-AKD-035); öğretmende gönderilmez. */
   reason?: string
   /** Sınıf kaydının okunan sürümü (`If-Match`); yoksa başlık gönderilmez. */
@@ -93,12 +99,17 @@ export const GRADE_MESSAGES = {
 /** `POST /classes/:classId/attendance` isteği; ayrı verilir ki sahte istemciyle sınanabilsin. */
 export function recordAttendanceRequest(
   client: KampusClient,
-  { classId, date, marks, reason }: RecordAttendanceInput,
+  { classId, date, marks, lateMinutes, reason }: RecordAttendanceInput,
   headers: CommandHeaders,
 ) {
   return client.POST('/api/v1/classes/{classId}/attendance', {
     params: { path: { classId }, header: headers },
-    body: { date, marks: { ...marks }, ...(reason ? { reason } : {}) },
+    body: {
+      date,
+      marks: { ...marks },
+      ...(lateMinutes ? { lateMinutes: { ...lateMinutes } } : {}),
+      ...(reason ? { reason } : {}),
+    },
   })
 }
 

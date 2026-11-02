@@ -77,6 +77,55 @@ export function markCounts(
   return counts
 }
 
+/** Toplu işaretleme: seçili öğrencilere aynı durum; diğerlerinin işaretine dokunulmaz. */
+export function bulkMark(
+  edits: Readonly<Record<string, AttendanceStatus>>,
+  studentIds: Iterable<string>,
+  status: AttendanceStatus,
+): Record<string, AttendanceStatus> {
+  const next = { ...edits }
+  for (const id of studentIds) next[id] = status
+  return next
+}
+
+/**
+ * Kayıtlı geç kalma dakikaları (öğrenci kimliği → metin). Dakika yalnız `late` kayıtta bulunur
+ * (DOM-AKD-036); alan metni formda düzenlenir.
+ */
+export function savedLateMinutes(
+  saved: readonly { studentId: string; lateMinutes?: number | undefined }[],
+): Record<string, string> {
+  return Object.fromEntries(
+    saved.flatMap((item) =>
+      item.lateMinutes === undefined ? [] : [[item.studentId, String(item.lateMinutes)]],
+    ),
+  )
+}
+
+export const LATE_MINUTES_INVALID = 'Dakikayı 1 veya daha büyük bir tam sayı olarak girin.'
+
+/**
+ * Gönderilecek geç kalma dakikaları: yalnız "Geç geldi" işaretli öğrencinin dolu alanı. Boş alan
+ * dakikasız geç gelmedir. Pozitif tamsayı olmayan değer o öğrencinin hatasıdır (istek atılmaz);
+ * üst sınır (günün ders süresi) sunucuda denetlenir.
+ */
+export function lateMinutesPayload(
+  marks: Readonly<Record<string, AttendanceStatus>>,
+  text: Readonly<Record<string, string>>,
+): { minutes: Record<string, number>; errors: Record<string, string> } {
+  const minutes: Record<string, number> = {}
+  const errors: Record<string, string> = {}
+  for (const [studentId, status] of Object.entries(marks)) {
+    if (status !== 'late') continue
+    const raw = (text[studentId] ?? '').trim()
+    if (raw === '') continue
+    const value = Number(raw)
+    if (/^\d+$/.test(raw) && Number.isSafeInteger(value) && value >= 1) minutes[studentId] = value
+    else errors[studentId] = LATE_MINUTES_INVALID
+  }
+  return { minutes, errors }
+}
+
 /** Eylül–Ocak 1. dönem, Şubat–Ağustos 2. dönem (MEB takvimine yakın varsayılan; seçilebilir). */
 export function defaultTerm(day: string): 1 | 2 {
   const month = Number(day.slice(5, 7))

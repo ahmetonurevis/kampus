@@ -23,7 +23,8 @@ import {
   ATTENDANCE_OPTIONS,
   attendanceCounts,
   attendanceCsvRow,
-  attendanceDayFilters,
+  attendanceRangeError,
+  attendanceRangeFilters,
   attendanceRow,
   isDayKey,
   NO_REASON,
@@ -39,8 +40,13 @@ const ATTENDANCE_LIST = {
 } satisfies CollectionListConfig
 const SORTABLE = sortableColumns(ATTENDANCE_LIST)
 const ALL = 'all'
-const TEACHER_URL_FILTERS: UrlFilters = { classId: 'sinif', status: 'durum', date: 'tarih' }
-const STUDENT_URL_FILTERS: UrlFilters = { status: 'durum', date: 'tarih' }
+const TEACHER_URL_FILTERS: UrlFilters = {
+  classId: 'sinif',
+  status: 'durum',
+  from: 'baslangic',
+  to: 'bitis',
+}
+const STUDENT_URL_FILTERS: UrlFilters = { status: 'durum', from: 'baslangic', to: 'bitis' }
 
 const filterValue = (value: unknown) => (typeof value === 'string' ? value : '')
 const today = () => new Date().toISOString().slice(0, 10)
@@ -59,8 +65,10 @@ type AttendanceViewProps = {
  * öğretmende sınıf) filtresi, tarih/durum sıralaması, satırdan sağ panelde ayrıntı. Öğrencide
  * katılım sayıları kayıtlardan hesaplanır. Yalnız okuma.
  * TODO(D-attendance-write): yoklama alma core işlemi gelince "Yoklama al" eklenir.
- * Tarih süzgeci tek gündür (`?tarih=YYYY-MM-DD`) ve sunucuya `dateFrom` = `dateTo` olarak gider
- * (Europe/Istanbul günü); serbest arama ayrıdır.
+ * Tarih aralığı (`?baslangic=` ve `?bitis=`, `YYYY-MM-DD`; IST-093, DOM-AKD-036) sunucuya
+ * `dateFrom`/`dateTo` olarak gider (Europe/Istanbul günü, iki uç dahil) ve sayfalamadan önce
+ * süzülür; tek uç açık aralıktır. Bitiş başlangıçtan önce ya da aralık 1 yıldan uzunsa istek
+ * atılmaz, hata alanın altında yazılır. Serbest arama ayrıdır.
  */
 export function AttendanceView({
   audience,
@@ -75,18 +83,21 @@ export function AttendanceView({
   const list = useListState(`${urlPrefix}yoklama`, { urlFilters, urlPrefix })
   const classId = teacher ? filterValue(list.state.filters.classId) : ''
   const status = filterValue(list.state.filters.status)
-  const dateValue = filterValue(list.state.filters.date)
-  const day = isDayKey(dateValue) ? dateValue : ''
+  const fromValue = filterValue(list.state.filters.from)
+  const toValue = filterValue(list.state.filters.to)
+  const from = isDayKey(fromValue) ? fromValue : ''
+  const to = isDayKey(toValue) ? toValue : ''
+  const rangeError = attendanceRangeError(from, to)
   const search = useDebouncedValue(list.state.query)
 
-  // Sabit öğrenci (veli: seçili çocuk) ve tek gün süzgeci sunucu filtresi olarak eklenir.
+  // Sabit öğrenci (veli: seçili çocuk) ve tarih aralığı sunucu filtresi olarak eklenir.
   const withScope = <T extends { filters?: Record<string, string | readonly string[]> }>(
     query: T,
   ): T => ({
     ...query,
     filters: {
       ...query.filters,
-      ...attendanceDayFilters(day),
+      ...attendanceRangeFilters(from, to),
       ...(studentId ? { studentId } : {}),
     },
   })
@@ -112,7 +123,7 @@ export function AttendanceView({
     [own.data],
   )
 
-  const setFilter = (key: 'classId' | 'status' | 'date', value: string) =>
+  const setFilter = (key: 'classId' | 'status' | 'from' | 'to', value: string) =>
     list.dispatch({ type: 'filter', key, value: value === ALL ? '' : value })
 
   const columns = useMemo<DataColumn<AttendanceRow>[]>(
@@ -157,7 +168,14 @@ export function AttendanceView({
       {
         key: 'statusLabel',
         label: 'Katılım',
-        cell: (row) => <StatusBadge text={row.statusLabel} />,
+        cell: (row) => (
+          <span className="inline-flex flex-wrap items-center gap-2">
+            <StatusBadge text={row.statusLabel} />
+            {row.lateMinutes === null ? null : (
+              <span className="text-sm text-muted-foreground">{row.lateMinutes} dk</span>
+            )}
+          </span>
+        ),
       },
       { key: 'reason', label: 'Not', cell: (row) => row.reason || NO_REASON },
     ],
@@ -174,7 +192,9 @@ export function AttendanceView({
   const total = records.data?.total ?? 0
   const className = lookups.classes.get(classId)?.name
   const statusLabel = ATTENDANCE_OPTIONS.find((option) => option.value === status)?.label
-  const dayLabel = day ? dateLabel(`${day}T09:00:00.000Z`, { year: 'numeric' }) : undefined
+  const dayText = (day: string) => dateLabel(`${day}T09:00:00.000Z`, { year: 'numeric' })
+  const rangeLabel =
+    from || to ? `${from ? dayText(from) : '…'} – ${to ? dayText(to) : '…'}` : undefined
   return (
     <>
       {data.error ? <LookupError error={data.error} onRetry={data.retry} /> : null}
@@ -216,12 +236,13 @@ export function AttendanceView({
             ) : undefined
           }
           onRowClick={(row) => openRecord(row.id)}
-          externalActive={classId !== '' || status !== '' || day !== ''}
-          externalLabel={[className, statusLabel, dayLabel].filter(Boolean).join(' · ')}
+          externalActive={classId !== '' || status !== '' || from !== '' || to !== ''}
+          externalLabel={[className, statusLabel, rangeLabel].filter(Boolean).join(' · ')}
           onReset={() => {
             setFilter('classId', ALL)
             setFilter('status', ALL)
-            setFilter('date', ALL)
+            setFilter('from', ALL)
+            setFilter('to', ALL)
           }}
           toolbar={
             <>
@@ -253,14 +274,38 @@ export function AttendanceView({
                   </NativeSelectOption>
                 ))}
               </NativeSelect>
-              <Input
-                type="date"
-                aria-label="Yoklama tarihi"
-                value={day}
-                max={today()}
-                onChange={(event) => setFilter('date', event.target.value)}
-                className="min-h-9 w-auto text-sm"
-              />
+              <label className="flex items-center gap-2 text-sm">
+                Başlangıç
+                <Input
+                  type="date"
+                  aria-label="Yoklama başlangıç tarihi"
+                  value={from}
+                  max={to || today()}
+                  onChange={(event) => setFilter('from', event.target.value)}
+                  aria-invalid={rangeError ? true : undefined}
+                  aria-describedby={rangeError ? 'yoklama-aralik-hata' : undefined}
+                  className="min-h-9 w-auto text-sm"
+                />
+              </label>
+              <label className="flex items-center gap-2 text-sm">
+                Bitiş
+                <Input
+                  type="date"
+                  aria-label="Yoklama bitiş tarihi"
+                  value={to}
+                  min={from || undefined}
+                  max={today()}
+                  onChange={(event) => setFilter('to', event.target.value)}
+                  aria-invalid={rangeError ? true : undefined}
+                  aria-describedby={rangeError ? 'yoklama-aralik-hata' : undefined}
+                  className="min-h-9 w-auto text-sm"
+                />
+              </label>
+              {rangeError ? (
+                <p id="yoklama-aralik-hata" role="alert" className="basis-full text-sm text-danger">
+                  {rangeError} Aralık uygulanmadı.
+                </p>
+              ) : null}
             </>
           }
         />

@@ -5,6 +5,8 @@ import { Avatar } from '@/components/Avatar.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { Button } from '@/components/ui/button'
+import { Checkbox } from '@/components/ui/checkbox'
+import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
@@ -17,7 +19,13 @@ import {
   type AcademicLookups,
   type AttendanceStatus,
 } from './academic-rows.ts'
-import { attendanceMarks, markCounts } from './academic-write.ts'
+import {
+  attendanceMarks,
+  bulkMark,
+  lateMinutesPayload,
+  markCounts,
+  savedLateMinutes,
+} from './academic-write.ts'
 import { useAcademicLookups } from './use-academic-lookups.ts'
 import { useTeacherScope } from './use-teacher-scope.ts'
 
@@ -35,6 +43,9 @@ const SELECTED_TONE = {
  * yüklenir. Tek gönderim yapılır; aynı gün ikinci gönderim kaydı günceller. Öğretmen yalnız bugünü
  * alır (geçmiş günü yönetici düzeltir, DOM-AKD-035); sınıf listesi API kapsamından ve ders
  * atamalarından gelir, yetkiyi sunucu yine denetler.
+ * Toplu işaretleme (IST-093): "Tümünü geldi işaretle" ve onay kutusuyla seçilen satırlara toplu
+ * durum yalnız ekrandaki seçimi hızlandırır; gönderim yine sınıfın tek isteğidir. "Geç geldi"
+ * satırında isteğe bağlı dakika alanı çıkar (DOM-AKD-036); üst sınırı (ders süresi) sunucu denetler.
  */
 export function AttendanceTaking() {
   const headingId = useId()
@@ -133,6 +144,10 @@ function AttendanceSheet({ classId, className, classVersion, lookups }: SheetPro
   // Kullanıcının dokunduğu işaretler; kayıtlı veya varsayılan durum bunun altında türetilir.
   const [edits, setEdits] = useState<Record<string, AttendanceStatus>>({})
   const [result, setResult] = useState('')
+  // Toplu işaretleme için seçili satırlar ve geç kalma dakikası alanları (ham metin).
+  const [selected, setSelected] = useState<ReadonlySet<string>>(() => new Set())
+  const [minuteEdits, setMinuteEdits] = useState<Record<string, string>>({})
+  const [minuteErrors, setMinuteErrors] = useState<Record<string, string>>({})
 
   const savedRecords = useMemo(() => saved.data?.map((row) => row.record) ?? [], [saved.data])
   const marks = useMemo(
@@ -144,6 +159,10 @@ function AttendanceSheet({ classId, className, classVersion, lookups }: SheetPro
       ),
     [students, savedRecords, edits],
   )
+  const minuteText = useMemo(
+    () => ({ ...savedLateMinutes(savedRecords), ...minuteEdits }),
+    [savedRecords, minuteEdits],
+  )
   const counts = markCounts(marks)
   const alreadyTaken = savedRecords.length > 0
   const busy = record.isPending
@@ -151,13 +170,37 @@ function AttendanceSheet({ classId, className, classVersion, lookups }: SheetPro
     setResult('')
     setEdits((current) => ({ ...current, [studentId]: status }))
   }
+  const markMany = (ids: Iterable<string>, status: AttendanceStatus) => {
+    setResult('')
+    setEdits((current) => bulkMark(current, ids, status))
+  }
+  const allSelected = students.length > 0 && students.every((student) => selected.has(student.id))
+  const toggleSelected = (studentId: string, on: boolean) =>
+    setSelected((current) => {
+      const next = new Set(current)
+      if (on) next.add(studentId)
+      else next.delete(studentId)
+      return next
+    })
 
   async function save() {
     const updating = alreadyTaken
-    const outcome = await record.submit({ classId, date: today, marks, classVersion })
+    // Dakika alanı: geçersiz değer istek atılmadan satırda gösterilir.
+    const late = lateMinutesPayload(marks, minuteText)
+    setMinuteErrors(late.errors)
+    if (Object.keys(late.errors).length > 0) return
+    const outcome = await record.submit({
+      classId,
+      date: today,
+      marks,
+      lateMinutes: late.minutes,
+      classVersion,
+    })
     if (outcome.status !== 'success') return
     const message = updating ? 'Yoklama güncellendi.' : 'Yoklama kaydedildi.'
     setEdits({})
+    setMinuteEdits({})
+    setSelected(new Set())
     setResult(message)
     notify.success(message)
   }
@@ -187,14 +230,51 @@ function AttendanceSheet({ classId, className, classVersion, lookups }: SheetPro
           variant="secondary"
           size="sm"
           disabled={busy}
-          onClick={() =>
-            setEdits(Object.fromEntries(students.map((student) => [student.id, 'present'])))
-          }
+          onClick={() => {
+            markMany(
+              students.map((student) => student.id),
+              'present',
+            )
+            setSelected(new Set())
+          }}
         >
           <Icon name="CheckCheck" size={16} aria-hidden="true" />
-          Herkes geldi
+          Tümünü geldi işaretle
         </Button>
       </div>
+      {students.length > 0 ? (
+        <div className="flex flex-wrap items-center gap-3 border-t bg-surface-soft px-6 py-2 text-sm max-[650px]:px-4">
+          <label className="flex items-center gap-2 font-medium">
+            <Checkbox
+              checked={allSelected}
+              disabled={busy}
+              onCheckedChange={(on) =>
+                setSelected(
+                  on === true ? new Set(students.map((student) => student.id)) : new Set(),
+                )
+              }
+            />
+            Tümünü seç
+          </label>
+          <span aria-live="polite" className="text-muted-foreground">
+            {selected.size} öğrenci seçili
+          </span>
+          <span role="group" aria-label="Seçilenlere toplu durum" className="flex flex-wrap gap-2">
+            {ATTENDANCE_OPTIONS.map((option) => (
+              <Button
+                key={option.value}
+                type="button"
+                variant="outline"
+                size="sm"
+                disabled={busy || selected.size === 0}
+                onClick={() => markMany(selected, option.value)}
+              >
+                Seçilenleri {option.label.toLocaleLowerCase('tr')} işaretle
+              </Button>
+            ))}
+          </span>
+        </div>
+      ) : null}
       {alreadyTaken ? (
         <p className="border-t bg-surface-soft px-6 py-2 text-sm max-[650px]:px-4">
           Bu sınıfın bugünkü yoklaması kayıtlı; gönderim kaydı günceller.
@@ -216,6 +296,12 @@ function AttendanceSheet({ classId, className, classVersion, lookups }: SheetPro
               className="flex flex-wrap items-center justify-between gap-3 border-t px-6 py-3 max-[650px]:px-4"
             >
               <span className="person-cell flex min-w-0 items-center gap-2.5">
+                <Checkbox
+                  checked={selected.has(student.id)}
+                  disabled={busy}
+                  onCheckedChange={(on) => toggleSelected(student.id, on === true)}
+                  aria-label={`${student.name} seç`}
+                />
                 <Avatar name={student.name} size="small" />
                 <span className="font-medium">{student.name}</span>
               </span>
@@ -246,6 +332,41 @@ function AttendanceSheet({ classId, className, classVersion, lookups }: SheetPro
                   </ToggleGroupItem>
                 ))}
               </ToggleGroup>
+              {marks[student.id] === 'late' ? (
+                <div className="grid w-full gap-1 sm:ml-12">
+                  <label className="flex flex-wrap items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">
+                      Geç kalma süresi (dk, isteğe bağlı)
+                    </span>
+                    <Input
+                      type="number"
+                      inputMode="numeric"
+                      min={1}
+                      step={1}
+                      value={minuteText[student.id] ?? ''}
+                      disabled={busy}
+                      aria-label={`${student.name} geç kalma süresi (dakika)`}
+                      aria-invalid={minuteErrors[student.id] ? true : undefined}
+                      aria-describedby={
+                        minuteErrors[student.id] ? `dakika-${student.id}` : undefined
+                      }
+                      onChange={(event) => {
+                        setResult('')
+                        setMinuteEdits((current) => ({
+                          ...current,
+                          [student.id]: event.target.value,
+                        }))
+                      }}
+                      className="min-h-9 w-24 text-sm"
+                    />
+                  </label>
+                  {minuteErrors[student.id] ? (
+                    <p id={`dakika-${student.id}`} role="alert" className="text-sm text-danger">
+                      {minuteErrors[student.id]}
+                    </p>
+                  ) : null}
+                </div>
+              ) : null}
             </li>
           ))}
         </ul>

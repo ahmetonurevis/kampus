@@ -15,6 +15,10 @@ import {
   gradeCsvRow,
   gradeRow,
   attendanceDayFilters,
+  attendanceRangeError,
+  attendanceRangeFilters,
+  ATTENDANCE_RANGE_LONG_ERROR,
+  ATTENDANCE_RANGE_ORDER_ERROR,
   isDayKey,
   overallAverage,
   scoreText,
@@ -222,6 +226,44 @@ test('tek gün süzgeci dateFrom ve dateTo aynı günü taşır; geçersiz gün 
   })
   assert.deepEqual(attendanceDayFilters(''), {})
   assert.deepEqual(attendanceDayFilters('15.10.2026'), {})
+})
+
+test('IST-093: tarih aralığı hatası bitiş < başlangıç ve 1 yıldan uzun aralığı yakalar', () => {
+  assert.equal(attendanceRangeError('2026-10-06', '2026-10-05'), ATTENDANCE_RANGE_ORDER_ERROR)
+  assert.equal(attendanceRangeError('2025-10-05', '2026-10-06'), ATTENDANCE_RANGE_LONG_ERROR)
+  // Başlangıçtan bir yıl sonraki gün dahildir; artık yıl ve tek uçlu aralık geçerlidir.
+  assert.equal(attendanceRangeError('2025-10-06', '2026-10-06'), '')
+  assert.equal(attendanceRangeError('2024-02-29', '2025-03-01'), '')
+  assert.equal(attendanceRangeError('2024-02-29', '2025-03-02'), ATTENDANCE_RANGE_LONG_ERROR)
+  assert.equal(attendanceRangeError('2026-10-06', '2026-10-06'), '')
+  assert.equal(attendanceRangeError('', '2026-10-05'), '')
+  assert.equal(attendanceRangeError('2026-10-06', ''), '')
+})
+
+test('IST-093: aralık süzgeci geçerli uçları sunucuya taşır; geçersiz aralık uygulanmaz', () => {
+  assert.deepEqual(attendanceRangeFilters('2026-10-01', '2026-10-15'), {
+    dateFrom: '2026-10-01',
+    dateTo: '2026-10-15',
+  })
+  assert.deepEqual(attendanceRangeFilters('2026-10-01', ''), { dateFrom: '2026-10-01' })
+  assert.deepEqual(attendanceRangeFilters('', '2026-10-15'), { dateTo: '2026-10-15' })
+  assert.deepEqual(attendanceRangeFilters('', ''), {})
+  assert.deepEqual(attendanceRangeFilters('2026-10-15', '2026-10-01'), {})
+  assert.deepEqual(attendanceRangeFilters('2024-01-01', '2026-10-01'), {})
+})
+
+test('DOM-AKD-036: geç geldi satırı dakikayı taşır; CSV durumu "Geç geldi · 12 dk" yazar', () => {
+  const { seed, lookups } = sources()
+  const base = { ...seed.attendance[0]!, classId: 'c1', reason: '' }
+  const late = attendanceRow(wrap([{ ...base, status: 'late', lateMinutes: 12 }])[0]!, lookups)
+  assert.equal(late.lateMinutes, 12)
+  assert.equal(attendanceCsvRow(late).statusLabel, 'Geç geldi · 12 dk')
+  const plain = attendanceRow(wrap([{ ...base, status: 'late' }])[0]!, lookups)
+  assert.equal(plain.lateMinutes, null)
+  assert.equal(attendanceCsvRow(plain).statusLabel, 'Geç geldi')
+  // Dakika yalnız geç gelen kayıtta anlamlıdır.
+  const other = attendanceRow(wrap([{ ...base, status: 'present', lateMinutes: 5 }])[0]!, lookups)
+  assert.equal(other.lateMinutes, null)
 })
 
 // --- Sınıflar -----------------------------------------------------------------

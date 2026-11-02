@@ -11,6 +11,9 @@ const DashboardPage = lazy(async () => ({
 const CampusesPage = lazy(async () => ({
   default: (await import('../management/CampusesPage.tsx')).CampusesPage,
 }))
+const CoordinatorDutiesPage = lazy(async () => ({
+  default: (await import('../management/CoordinatorDutiesPage.tsx')).CoordinatorDutiesPage,
+}))
 const RiskListPage = lazy(async () => ({
   default: (await import('../management/RiskListPage.tsx')).RiskListPage,
 }))
@@ -161,6 +164,8 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
       return <GroupsPage page={page} />
     case 'yonetici/yoklama-duzeltme':
       return <AttendanceCorrectionPage page={page} />
+    case 'yonetici/koordinator-gorevleri':
+      return <CoordinatorDutiesPage page={page} />
     case 'yonetici/risk-listesi':
       return <RiskListPage page={page} />
     case 'yonetici/sla-raporu':

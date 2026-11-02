@@ -1,4 +1,5 @@
 import { createSeed, type State } from '@kampus/school-core/data/seed.ts'
+import { createAcademicYears } from '@kampus/school-core/platform/seed-academic.ts'
 
 import type { Auth, InstitutionType, Role } from '../auth.ts'
 import { AppError, MESSAGES } from '../errors.ts'
@@ -10,6 +11,7 @@ import {
   ensureUser,
   type MembershipLinkInput,
 } from '../services/identity.ts'
+import { ensureAcademicYears } from './academic-years.ts'
 import type { Database } from './client.ts'
 import { recordKey, STORED_COLLECTIONS, type RecordData } from './collections.ts'
 import { insertMissingRecords } from './records.ts'
@@ -206,6 +208,13 @@ export async function seedDemo(auth: Auth, db: Database, password: string, optio
         if (parentUserId === undefined) delete record.parentUserId
         else record.parentUserId = parentUserId
     await ensureInstitutionSettings(db, institutionId, { academicYear: state.academicYear })
+    // Etkin örnek yıl kurum ayarındaki yılla aynıdır: okulda iki dönem, dil okulunda dönemsiz.
+    await ensureAcademicYears(
+      db,
+      institutionId,
+      createAcademicYears(state.academicYear, institution.type),
+      options.now,
+    )
     const rows = stateRecords(state)
     insertedRecords[institution.slug] = await insertMissingRecords(
       db,

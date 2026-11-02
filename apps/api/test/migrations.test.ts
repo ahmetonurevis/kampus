@@ -724,11 +724,79 @@ describe('0013: beceri görevi tabloları', () => {
         await readFile(path.join(MIGRATIONS_FOLDER, 'meta', '_journal.json'), 'utf8'),
       )
       assert.equal(first, journal.entries.length)
-      assert.equal(journal.entries.at(-1)?.tag, '0025_index_notifications')
+      assert.equal(journal.entries.at(-1)?.tag, '0026_create_academic_years')
       await migrate(fresh, { migrationsFolder: MIGRATIONS_FOLDER })
       assert.equal(await count(), first)
     } finally {
       await client.close()
     }
+  })
+})
+
+describe('0026: eğitim yılı tabloları', () => {
+  let db: Database
+  let close: () => Promise<void>
+  let app: Awaited<ReturnType<typeof buildTestApp>>
+
+  before(async () => {
+    ;({ db, close } = await createTestDatabase())
+    app = await buildTestApp(db)
+  })
+  after(async () => {
+    await app.close()
+    await close()
+  })
+
+  const violates = async (query: ReturnType<typeof sql>, constraint: string) => {
+    await assert.rejects(db.execute(query), (error: unknown) => {
+      const cause = (error as { cause?: { constraint?: string } }).cause
+      assert.equal(cause?.constraint ?? (error as { constraint?: string }).constraint, constraint)
+      return true
+    })
+  }
+
+  test('DOM-YTK-063, 065: tek etkin yıl, yıl aralığı, yaşam döngüsü ve dönem kısıtları veritabanında da korunur', async () => {
+    const a = await createInstitution(app)
+    const b = await createInstitution(app)
+    const year = (institutionId: string, startYear: number, status = 'active') =>
+      sql`insert into academic_years (institution_id, start_year, start_date, end_date, status, activated_at)
+          values (${institutionId}, ${startYear}, ${`${startYear}-09-01`}, ${`${startYear + 1}-08-31`},
+            ${status}, ${status === 'planned' ? null : FIXED_NOW})`
+    await db.execute(year(a.id, 2026))
+    // Başka kurumun etkin yılı kısıtlamaz; aynı kurumda ikinci etkin yıl reddedilir.
+    await db.execute(year(b.id, 2026))
+    await violates(year(a.id, 2027), 'academic_years_active_key')
+    await db.execute(year(a.id, 2027, 'planned'))
+    await violates(
+      sql`insert into academic_years (institution_id, start_year, start_date, end_date, status)
+          values (${a.id}, 2028, '2028-09-01', '2029-09-01', 'planned')`,
+      'academic_years_dates_check',
+    )
+    await violates(
+      sql`insert into academic_years (institution_id, start_year, start_date, end_date, status)
+          values (${a.id}, 2029, '2030-01-01', '2030-06-01', 'planned')`,
+      'academic_years_dates_check',
+    )
+    await violates(
+      sql`update academic_years set status = 'closed'
+          where institution_id = ${a.id} and start_year = 2027`,
+      'academic_years_lifecycle_check',
+    )
+    // Dönem başka kurumun yılına bağlanamaz (bileşik yabancı anahtar).
+    await violates(
+      sql`insert into academic_terms (institution_id, id, start_year, name, start_date, end_date)
+          values (${a.id}, gen_random_uuid(), 2030, 'Güz', '2030-09-10', '2031-01-10')`,
+      'academic_terms_year_fkey',
+    )
+    const term = (name: string) =>
+      sql`insert into academic_terms (institution_id, id, start_year, name, start_date, end_date)
+          values (${a.id}, gen_random_uuid(), 2026, ${name}, '2026-09-10', '2027-01-10')`
+    await db.execute(term('1. dönem'))
+    await violates(term('1. DÖNEM'.toLowerCase()), 'academic_terms_year_name_key')
+    await violates(
+      sql`insert into academic_terms (institution_id, id, start_year, name, start_date, end_date)
+          values (${a.id}, gen_random_uuid(), 2026, 'Ters', '2027-02-10', '2027-02-01')`,
+      'academic_terms_dates_check',
+    )
   })
 })

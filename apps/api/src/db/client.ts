@@ -4,6 +4,7 @@ import { drizzle } from 'drizzle-orm/node-postgres'
 import type { PgDatabase, PgQueryResultHKT } from 'drizzle-orm/pg-core'
 import pg from 'pg'
 
+import * as academicYearsSchema from './schema/academic-years.ts'
 import * as auditLogSchema from './schema/audit-log.ts'
 import * as authSchema from './schema/auth.ts'
 import * as coordinatorDutiesSchema from './schema/coordinator-duties.ts'
@@ -28,6 +29,7 @@ export const schema = {
   ...skillsSchema,
   ...filesSchema,
   ...privacySchema,
+  ...academicYearsSchema,
 }
 export type Schema = typeof schema
 

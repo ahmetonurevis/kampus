@@ -1,4 +1,5 @@
 import type { QuestionParties } from '../lib/authorize.ts'
+import type { HomeworkParties } from '../lib/homework.ts'
 import type { AnnouncementPublisher, AnnouncementTarget } from '../lib/communication.ts'
 import type { ConversationParties } from '../lib/communication-access.ts'
 import type { ArchiveKind } from '../lib/school-management.ts'
@@ -65,6 +66,13 @@ export type PlatformWriteTargets = {
   'question.ask': { studentId: string | undefined; subjectId: string; teacherId?: string }
   'question.answer': { question: QuestionParties | undefined }
   'question.withdraw': { question: QuestionParties | undefined }
+  // Ödev (`lib/homework.ts`; DOM-AKD-070…073): sınıf ve ders gövdeden, öğrenci oturumdan gelir;
+  // kayıt yoksa `undefined` (varlık işlemin işidir, 404).
+  'homework.assign': { classId: string; subjectId: string }
+  'homework.update': { homework: HomeworkParties | undefined }
+  'homework.archive': { homework: HomeworkParties | undefined }
+  'homework.submit': { studentId: string | undefined; homework: { classId: string } | undefined }
+  'homework.grade': { homework: HomeworkParties | undefined }
   // Bildirim okundu işareti: görünürlük `lib/notifications.ts` `canSeeNotification`'dadır.
   'notification.read': Record<string, never>
   'notification.read_all': Record<string, never>
@@ -152,6 +160,14 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   'question.ask': ['ogrenci'],
   'question.answer': ['ogretmen'],
   'question.withdraw': ['ogrenci'],
+  // Ödevi derse giren öğretmen kendi sınıf ve branşına, yönetici her sınıfa verir; düzenleme ve
+  // arşiv ödevin öğretmeni ya da yöneticidedir. Teslim öğrencinin, değerlendirme ödevin
+  // öğretmeninindir; veli salt okur, ön büro ödev görmez (DOM-AKD-070…074, DOM-YTK-021).
+  'homework.assign': ['yonetici', 'ogretmen'],
+  'homework.update': ['yonetici', 'ogretmen'],
+  'homework.archive': ['yonetici', 'ogretmen'],
+  'homework.submit': ['ogrenci'],
+  'homework.grade': ['ogretmen'],
   // Bildirimin okundu işareti alıcınındır; her rol kendi bildirim merkezini kullanır, görünürlük
   // `lib/notifications.ts` `canSeeNotification`'dadır (DOM-ILT-020, DOM-ILT-073).
   'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],

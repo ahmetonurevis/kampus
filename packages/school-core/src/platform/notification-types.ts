@@ -44,6 +44,26 @@ export const PLATFORM_NOTIFICATION_TYPES = {
     },
   }),
   /**
+   * Ödev teslimi değerlendirildi (DOM-AKD-073): öğretmen puan ve geri bildirim yazınca öğrenciye
+   * ve 18 yaş altında veliye; yeniden değerlendirmede de yazılır. Puan ve geri bildirim metni
+   * bildirimde yoktur, teslim ayrıntısında okunur (DOM-ILT-023).
+   */
+  homework_graded: defineNotificationType({
+    topic: 'homework',
+    category: 'service',
+    mandatory: false,
+    module: 'learning',
+    audiences: { minor: ['student', 'parent'], adult: ['student'] },
+    // Konu ödevdir: istemci ödev ayrıntısını açar, öğrenci orada kendi teslimini görür.
+    subjectType: 'homework',
+    data: z.strictObject({ homeworkId: notificationId }),
+    subjectId: (data) => data.homeworkId,
+    titles: {
+      student: 'Ödevin değerlendirildi.',
+      parent: '{öğrenci} için ödev değerlendirildi.',
+    },
+  }),
+  /**
    * Yoklamada "gelmedi" işaretlendi (DOM-ILT-052): 18 yaş altında velilere, yetişkin kursiyerde
    * kendisine aynı gün bildirilir. Zorunludur, konu tercihiyle kapanmaz (DOM-ILT-020). Başlık
    * gün ve ders söylemez (okunduğu gün farklı olabilir); gün bildirimin kendi zamanıdır. Neden,

@@ -59,6 +59,19 @@ export function useStudentBalance(studentId: string, options: { enabled?: boolea
   })
 }
 
+/** Cari ekstre (IST-107): tarih sıralı borç ve tahsilat satırları, yürüyen bakiye. */
+export function useStudentStatement(studentId: string, options: { enabled?: boolean } = {}) {
+  return useApiQuery({
+    key: ['payments', 'student-statement', studentId],
+    enabled: options.enabled ?? true,
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/students/{studentId}/statement', {
+        params: { path: { studentId } },
+        signal,
+      }),
+  })
+}
+
 /** Dosyayı metin olarak alır; yazma değildir, sorgu tazelenmez. Hata mesajı toast olur. */
 export function useFinanceExport() {
   return useApiCommand({

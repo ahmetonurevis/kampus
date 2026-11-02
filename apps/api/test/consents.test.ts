@@ -69,6 +69,7 @@ describe('aydınlatma ve açık rıza uçları', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
+  let now = FIXED_NOW
   let serial = 0
   const key = () => ({ 'idempotency-key': `test-consent-${String(++serial).padStart(5, '0')}` })
 
@@ -79,7 +80,7 @@ describe('aydınlatma ve açık rıza uçları', () => {
       'örnek veride t2 7-A’ya ders vermeli, 9-A’ya vermemeli',
     )
     ;({ db, close } = await createTestDatabase())
-    app = await buildTestApp(db, { clock: () => FIXED_NOW })
+    app = await buildTestApp(db, { clock: () => now })
   })
   after(async () => {
     await app.close()
@@ -506,8 +507,18 @@ describe('aydınlatma ve açık rıza uçları', () => {
     assert.equal(given.statusCode, 201, given.body)
     const id = given.json().data.id as string
 
-    // Veli başka çocuğun rızasını okuyamaz ve geri çekemez.
+    // Veli başka çocuğun, öğrenci başka öğrencinin rızasını okuyamaz; veli geri çekemez.
     assert.equal((await read(w.parent.cookie, '/api/v1/consents?studentId=s5')).statusCode, 404)
+    for (const [cookie, studentId] of [
+      [w.minor.cookie, 's5'],
+      [w.minor.cookie, 's25'],
+      [w.adult.cookie, 's1'],
+    ] as const) {
+      const response = await read(cookie, `/api/v1/consents?studentId=${studentId}&status=all`)
+      assert.equal(response.statusCode, 404, `${studentId}: ${response.body}`)
+      assert.equal(response.json().code, 'not_found')
+      assert.equal(response.body.includes(id), false)
+    }
     assert.equal(
       (await read(w.parent.cookie, '/api/v1/consents/status?studentId=s5')).statusCode,
       404,
@@ -607,6 +618,98 @@ describe('aydınlatma ve açık rıza uçları', () => {
       'withdrawnByUserId',
       'withdrawalReason',
     ])
+  })
+
+  test('DOM-YTK-062 öğrenci itirazı: 18 yaş altı öğrenci velinin rızasına itiraz eder, rıza geçersizleşir; itirazı yalnız kendisi geri çeker', async () => {
+    const w = await world()
+    const granted = await give(w.parent.cookie, {
+      purpose: 'photo_video_sharing',
+      studentId: 's1',
+      textId: w.texts.sharing.id,
+    })
+    assert.equal(granted.statusCode, 201, granted.body)
+    const objection = {
+      purpose: 'photo_video_sharing',
+      decision: 'objected',
+      studentId: 's1',
+      textId: w.texts.sharing.id,
+    }
+
+    // Veli, 18 yaşını dolduran öğrenci ve itiraz edilemeyen amaç 422; başka öğrenci 404.
+    const notApplicable: [cookie: string, body: Record<string, unknown>][] = [
+      [w.parent.cookie, objection],
+      [w.adult.cookie, { ...objection, studentId: 's25' }],
+      [
+        w.minor.cookie,
+        { ...objection, purpose: 'speaking_recording', textId: w.texts.speaking.id },
+      ],
+    ]
+    for (const [cookie, body] of notApplicable) {
+      const response = await give(cookie, body)
+      assert.equal(response.statusCode, 422, response.body)
+      assert.equal(response.json().code, 'objection_not_applicable')
+    }
+    const foreign = await give(w.minor.cookie, { ...objection, studentId: 's5' })
+    assert.equal(foreign.statusCode, 404)
+    assert.equal((await consentRows(w.id)).length, 1)
+
+    const objected = await give(w.minor.cookie, objection)
+    assert.equal(objected.statusCode, 201, objected.body)
+    const data = objected.json().data
+    assert.equal(data.decision, 'objected')
+    assert.equal(data.grantorRelation, 'self')
+    // İtiraz da öğrencinin 18. yaş gününde düşer.
+    assert.equal(data.expiresAt, '2027-10-06T21:00:00.000Z')
+    for (const cookie of [w.parent.cookie, w.minor.cookie, w.teacher.cookie, w.admin])
+      assert.equal((await status(cookie, 'studentId=s1')).photo_video_sharing, false)
+    const again = await give(w.minor.cookie, objection)
+    assert.equal(again.statusCode, 409)
+    assert.equal(again.json().code, 'objection_exists')
+    // Velinin rızası açık kalır; veli de satırları görür.
+    const list = await read(w.parent.cookie, '/api/v1/consents?studentId=s1')
+    assert.deepEqual((list.json().data as Json[]).map((item) => item.decision).sort(), [
+      'granted',
+      'objected',
+    ])
+
+    // İtirazı veli geri çekemez (404); öğrenci geri çekince velinin rızası yeniden geçerli.
+    const byParent = await withdraw(w.parent.cookie, data.id)
+    assert.equal(byParent.statusCode, 404, byParent.body)
+    assert.equal((await consentRows(w.id)).find((row) => row.id === data.id)?.withdrawnAt, null)
+    const lifted = await withdraw(w.minor.cookie, data.id)
+    assert.equal(lifted.statusCode, 200, lifted.body)
+    assert.equal(lifted.json().data.withdrawalReason, 'withdrawn')
+    assert.equal((await status(w.teacher.cookie, 'studentId=s1')).photo_video_sharing, true)
+  })
+
+  test('DOM-YTK-057 DOM-YTK-059 18 yaşını dolduran öğrenci velinin 17 yaşındayken verdiği rızayı geri çeker', async () => {
+    const w = await world()
+    now = new Date(FIXED_NOW.getTime() - 86_400_000)
+    let given
+    try {
+      given = await give(w.parent.cookie, {
+        purpose: 'speaking_recording',
+        studentId: 's25',
+        textId: w.texts.speaking.id,
+      })
+    } finally {
+      now = FIXED_NOW
+    }
+    assert.equal(given.statusCode, 201, given.body)
+    assert.equal(given.json().data.grantorRelation, 'guardian')
+    assert.equal(given.json().data.expiresAt, '2026-10-05T21:00:00.000Z')
+    const id = given.json().data.id as string
+
+    // Başka öğrenci geri çekemez (404); 18 yaşını dolduran öğrencinin kendisi çeker.
+    const stranger = await withdraw(w.minor.cookie, id)
+    assert.equal(stranger.statusCode, 404, stranger.body)
+    const own = await withdraw(w.adult.cookie, id)
+    assert.equal(own.statusCode, 200, own.body)
+    assert.equal(own.json().data.withdrawnAt, FIXED_NOW.toISOString())
+    const [row] = (await consentRows(w.id)).filter((item) => item.id === id)
+    assert.equal(row?.withdrawnByUserId, w.adult.id)
+    assert.equal(row?.withdrawalReason, 'withdrawn')
+    assert.equal((await status(w.adult.cookie, 'studentId=s25')).speaking_recording, false)
   })
 
   test('DOM-YTK-060 eski metin sürümüne rıza 409; yeniden rıza gerektiren yeni sürüm eski rızayı geçersiz kılar', async () => {

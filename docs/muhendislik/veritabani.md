@@ -37,7 +37,7 @@ ADR 0002 gereği kimlik ve kiracı çekirdeği Better Auth'undur; ADR 0001'deki 
 
 ### `pg-boss`
 
-`pg-boss` kendi şemasını (`pgboss`) kendisi kurar ve yükseltir; bu şema drizzle-kit migration'larına girmez ve uygulama kodu ona doğrudan sorgu yazmaz. Testte PGlite ile çalışmıyorsa işler bellek içi sahte kuyrukla çağrılır, gerçek kuyruk `test:pg` takımında denenir.
+`pg-boss` kendi şemasını (`pgboss`) kuyruk açılışında kendisi kurar ve yükseltir (`migrate`, `createSchema` varsayılan); bu şema drizzle-kit migration'larına girmez ve uygulama kodu ona doğrudan sorgu yazmaz. Gerekçe (OG-094): şemanın SQL'i pg-boss sürümüne bağlıdır ve paket kendi sürüm tablosuyla yükseltir; drizzle-kit bu şemayı üretemez, elle kopyalanmış SQL her pg-boss güncellemesinde ikinci bir migration ve sürüm uyuşmazlığı riski olurdu. Yükseltme danışma kilidiyle yapıldığından birden çok örnek aynı anda açılsa da tek kez çalışır. Sonuçları: uygulama rolünün veritabanında şema açma yetkisi olmalıdır (yerel `kampus` sahiptir; üretim rolü ayrılırsa şema önceden açılıp role verilir), pg-boss sürüm yükseltmesi ayrı commit'tir ve `test:pg` takımı (`test/pg-jobs.test.ts`) şema kurulumunu sınar. API testleri (PGlite) kuyruk açmaz; işleyiciler doğrudan çağrılır. Ayrıntı: [api-tasarimi.md §12](api-tasarimi.md#12-iş-kuyruğu).
 
 Tip kuralları:
 
@@ -140,8 +140,8 @@ Migration `0015_create_files`; şema `apps/api/src/db/schema/files.ts`, depo `ap
 - Bağlı kayıt çok biçimlidir (`attached_type` + `attached_id` + `attached_at`, üçü birlikte dolu veya boş); yabancı anahtar yoktur, bütünlüğü bağlayan işlem sağlar (`attachFile`, aynı transaction). Kayıt türleri `services/file-registry.ts`'te `defineFileAttachment` ile kaydedilir; erişim bağlı kaydın okuma kuralından geçer (karar 6).
 - **İçerik kolonları değişmez.** `kampus_reject_file_content_change()` tetikleyicisi `purpose`, `storage_key`, `content_type`, `byte_size`, `sha256` ve `uploaded_by_user_id` kolonlarını değiştiren `update`'i 55000 ile reddeder; durum, bağlama, saklama ve silme kolonları işlem akışıyla değişir. Satır silinmez (imha nesneyi siler, satır `deleted` kalır); `delete` yalnız imha işinin `set local kampus.allow_immutable_purge = 'on'` ayarıyla geçer (§7). Tetikleyici 0015'in sonuna elle yazılmıştır.
 - **Kota.** `institution_settings.storage_quota_bytes` (boş veya > 0); boşsa varsayılan 50 GB (`DEFAULT_STORAGE_QUOTA_BYTES`). Kullanım `deleted` dışı satırların `byte_size` toplamıdır ve yükleme transaction'ında **kurum kilidi altında** sayılır: eşzamanlı iki yükleme sırayla değerlendirilir, kotayı aşan 422 `storage_quota_exceeded` alır ve nesnesi silinir (`test:pg`, `pg-files.test.ts`). Kota yönetim ucu yok (`TODO(F3c2-quota)`).
-- İndeksler `institution_id` ile başlar: bağlı kayıt araması `(institution_id, attached_type, attached_id)`, temizlik taraması `(institution_id, created_at)`. Kurumlar arası temizlik taraması büyüyünce `EXPLAIN` ile yeniden değerlendirilir.
-- **Bağlanmamış dosya temizliği.** `purgeUnattachedFiles` 24 saatte bağlanmayan veya reddedilen dosyanın nesnesini siler, satırı `deleted` yapar; zamanlayıcı (`pg-boss`) henüz yok (`TODO(jobs)`).
+- İndeksler `institution_id` ile başlar: bağlı kayıt araması `(institution_id, attached_type, attached_id)`, temizlik taraması `(institution_id, created_at)`; temizlik kurum başına çalıştığından tarama bu indeksi kullanır.
+- **Bağlanmamış dosya temizliği.** `purgeUnattachedFiles` kurumun 24 saatte bağlanmayan veya reddedilen dosyalarının nesnesini siler, satırı `deleted` yapar; saatlik `files.purge-unattached` işi kurum başına çağırır (api-tasarimi §12).
 
 ### Aydınlatma ve rıza tabloları (guvenlik-kvkk §9)
 
@@ -223,7 +223,7 @@ Migration `0029_create_groups`; şema `apps/api/src/db/schema/language-groups.ts
 - Kullanıcı işlemiyle silme = arşivleme: `archived_at = now()`, `version + 1`. Sorgular varsayılan olarak `archived_at is null` süzer; depo fonksiyonları bunu varsayılan yapar.
 - Arşivden geri alma `archived_at = null`; çalıştırıcıda core arşivli bir kaydın kimliğini yeniden eklerse kayıt yeniden açılır: veri core'un yeni kaydıyla değişir, `version` arşivdeki sürümden artarak sürer, yazma `restore` olarak döner ve denetim kaydının `changes`'ına `restored: [{ collection, id }]` eklenir; aktarılmış bağlı görevler otomatik geri taşınmaz (CLAUDE.md iş kuralı).
 - Bağlı kaydı olan kayıt arşivlenirken bağlılar school-core kuralıyla aktarılır veya işlem reddedilir; geçmiş finans/not/yoklama korunur.
-- Kalıcı silme (`delete`) yalnız üç yolla: saklama süresi dolan kayıtların imha işi, veri sahibinin silme talebi, süresi dolan teknik kayıtlar (Better Auth `sessions` ve `verifications`, `idempotency_keys`; günlük `pg-boss` temizlik işiyle). Her biri denetim kaydına yazılır. Ayrıntı: [guvenlik-kvkk.md](guvenlik-kvkk.md#10-saklama-ve-silme).
+- Kalıcı silme (`delete`) yalnız üç yolla: saklama süresi dolan kayıtların imha işi, veri sahibinin silme talebi, süresi dolan teknik kayıtlar (Better Auth `sessions` ve `verifications`; günlük `idempotency.purge` işiyle `idempotency_keys`). Her biri denetim kaydına yazılır. Ayrıntı: [guvenlik-kvkk.md](guvenlik-kvkk.md#10-saklama-ve-silme).
 - Değişmez tablolardan (§4 beceri görevi tabloları) silen imha işi ve veri sahibi talebi, silmeyle aynı transaction'da önce `set local kampus.allow_immutable_purge = 'on'` çalıştırır. Ayar transaction bitince kendiliğinden düşer; yalnız satır `delete`'ine izin verir, `update` ve `truncate` yine reddedilir. Silme yabancı anahtar sırasına uyar (aktarım → rubrik puanı → yeniden teslim isteği → teslim sürümü). Uygulama kodu bu ayarı başka hiçbir yerde açmaz; süper kullanıcı isteyen `session_replication_role` kullanılmaz. `audit_log`'daki rol ayrımı (§8) üretimde ek katman olarak kalır.
 
 ## 8. Denetim kaydı (`audit_log`)

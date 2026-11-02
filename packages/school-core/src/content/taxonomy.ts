@@ -344,6 +344,14 @@ export const FILE_PURPOSES = {
     mimeTypes: [MIME.jpeg, MIME.png, MIME.webp],
     maxBytes: 2 * MB,
   },
+  // kvkk: K — öğrencinin öğretmene sorduğu soruya eklediği fotoğraf (defter, kitap sayfası); kişisel
+  // veridir, yalnız sorunun okuma kapsamına açılır (DOM-ILT-094). Soru başına en çok 3.
+  student_question_photo: {
+    label: 'Soru fotoğrafı',
+    mimeTypes: [MIME.jpeg, MIME.png, MIME.webp],
+    maxBytes: 5 * MB,
+    maxFiles: 3,
+  },
   listening_audio: {
     label: 'Dinleme sesi',
     mimeTypes: [MIME.mp3, MIME.m4a, MIME.m4aAlt, MIME.wav, MIME.webmAudio],

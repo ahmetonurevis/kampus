@@ -1,4 +1,10 @@
 import { z } from 'zod'
+import {
+  assertFileAllowed,
+  FILE_PURPOSES,
+  type FileCandidate,
+  type FilePurpose,
+} from '../content/taxonomy.ts'
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { requireAuthorized } from './authorize.ts'
@@ -25,6 +31,8 @@ import type { RequestActor } from './requests.ts'
  *   öğretmene taşınır (`class.save`, `record.archive`). Verilmiş yanıt değişmez; düzeltme ek
  *   yanıtla (`followUps`) yapılır (DOM-ILT-092).
  * - Yanıt süresi saklanmaz; `questionResponse` ile hesaplanır (DOM-ILT-013, DOM-ILT-093).
+ * - Soruya en çok 3 fotoğraf eklenir (`student_question_photo`, DOM-ILT-094). Kayda yalnız dosya
+ *   kimlikleri (`fileIds`) girer; ad ve içerik girmez. Dosyayı soruya API aynı işlemde bağlar.
  *
  * Eski kayıtlar ve örnek veri `answer` + `answeredAt` alanlarını taşır; ilk yanıt bu alanlara
  * yazıldığı için SLA raporu ve Vue/telefon görünümü aynı alanları okumaya devam eder.
@@ -35,6 +43,25 @@ import type { RequestActor } from './requests.ts'
 z.config(z.locales.tr())
 
 export type QuestionOptions = { institutionType?: InstitutionType }
+
+/** Soruya eklenen fotoğrafın dosya amacı (DOM-ILT-094). */
+export const QUESTION_PHOTO_PURPOSE = 'student_question_photo' satisfies FilePurpose
+/** Soru başına en çok fotoğraf (`FILE_PURPOSES.student_question_photo.maxFiles`). */
+export const QUESTION_PHOTO_LIMIT: number = FILE_PURPOSES[QUESTION_PHOTO_PURPOSE].maxFiles
+/**
+ * Gövdenin kabul ettiği en çok dosya kimliği: kötüye kullanım sınırıdır (400). İş sınırı
+ * `QUESTION_PHOTO_LIMIT`'tir ve core'da 422 `question_photo_limit` ile denetlenir.
+ */
+const QUESTION_FILE_IDS_MAX = 20
+
+/**
+ * Öğrencinin soruya ekleyebileceği dosya: servis yalnız aktörün kendi yüklediği, silinmemiş ve
+ * reddedilmemiş dosyaları verir. Listede olmayan kimlik (başkasının, başka kurumun ya da olmayan
+ * dosya) ayırt edilmez.
+ */
+export type QuestionFile = FileCandidate & { id: string; purpose: FilePurpose }
+
+export type AskQuestionOptions = QuestionOptions & { files?: readonly QuestionFile[] }
 
 export const QUESTION_TITLE_MAX_LENGTH = 120
 export const QUESTION_TEXT_MIN_LENGTH = 10
@@ -79,8 +106,16 @@ export const askQuestionSchema = z.strictObject({
       `Konu başlığı en fazla ${QUESTION_TITLE_MAX_LENGTH} karakter olabilir.`,
     ),
   text: questionText,
-  /** Ek dosya; dosya deposu gelene kadar kabul edilmez (422 `question_files_unsupported`). */
-  files: z.array(z.string().trim().min(1).max(200)).max(3).optional(),
+  /**
+   * Dosya ucundan (`POST /files`, amaç `student_question_photo`) yüklenen, öğrencinin kendi
+   * fotoğrafları (DOM-ILT-094). Sayı ve amaç core'da denetlenir (422).
+   */
+  // kvkk: K — fotoğrafın kendisi kişisel veridir; kayda yalnız kimliği girer.
+  fileIds: z
+    .array(identifier('Dosya kimliği geçersiz.'))
+    .max(QUESTION_FILE_IDS_MAX, `En fazla ${QUESTION_PHOTO_LIMIT} fotoğraf ekleyebilirsiniz.`)
+    .refine((ids) => new Set(ids).size === ids.length, 'Aynı fotoğrafı bir kez ekleyin.')
+    .optional(),
 })
 export type AskQuestionInput = z.input<typeof askQuestionSchema>
 
@@ -117,6 +152,8 @@ export type QuestionAnswer = {
 export type QuestionFields = {
   /** Dersin kazanımı/konusu (`subjects[].topics`). */
   topic?: string
+  /** Soruya bağlı fotoğrafların dosya kimlikleri (DOM-ILT-094); ad ve içerik kayda girmez. */
+  fileIds?: string[]
   askedBy?: RequestActor
   /** İlk yanıtı yazan öğretmen; ilk yanıtın metni `answer`, anı `answeredAt`'tadır. */
   answeredBy?: RequestActor
@@ -175,6 +212,10 @@ function linkedStudentId(state: State, by: Participant): string | undefined {
  * sızdırmaz), pasif öğrenci 422 `student_inactive`, öğretmeni pasif ders 422
  * `question_teacher_unavailable`, dersin listesinde olmayan kazanım 422 `question_topic_unknown`.
  * Mükerrer gönderim istek anahtarıyla önlenir (API `Idempotency-Key` zorunlu).
+ *
+ * Fotoğraflar (DOM-ILT-094) `options.files` içinde olmalı ve amacı `student_question_photo`
+ * olmalı: 3'ten fazlası 422 `question_photo_limit`, listede olmayan 422 `question_photo_unavailable`,
+ * başka amaçlı 422 `question_photo_purpose`, tür/boyut dışı 422 (`assertFileAllowed`).
  */
 export function askQuestion(
   state: State,
@@ -182,7 +223,7 @@ export function askQuestion(
   input: unknown,
   makeId: MakeId,
   now: string,
-  options: QuestionOptions = {},
+  options: AskQuestionOptions = {},
 ): QuestionRecord {
   const data = askQuestionSchema.parse(input)
   const studentId = linkedStudentId(state, by)
@@ -235,14 +276,8 @@ export function askQuestion(
         path: ['topic'],
       })
   }
-  // TODO(question-files): soru fotoğrafı dosya deposu gelince eklenir; o zamana kadar dosyalı
-  // soru açılmaz (Vue demosu yalnız dosya adını saklıyordu).
-  if (data.files !== undefined && data.files.length > 0)
-    throw new DomainError(
-      'question_files_unsupported',
-      'Dosya ekleme henüz kullanılamıyor; sorunuzu yazıyla gönderin.',
-      { path: ['files'] },
-    )
+  const fileIds = data.fileIds ?? []
+  assertQuestionPhotos(fileIds, options.files ?? [])
   const question: QuestionRecord = {
     id: makeId('ask'),
     studentId: student.id,
@@ -255,12 +290,43 @@ export function askQuestion(
     answeredAt: null,
     answer: '',
     fileName: null,
+    fileIds,
     askedBy: actorOf(by),
     followUps: [],
   }
   // TODO(notifications): öğretmene uygulama içi bildirim (DOM-ILT-020).
   state.questions.unshift(question)
   return question
+}
+
+/** Soru fotoğraflarının sayı, varlık, amaç, tür ve boyut denetimi (DOM-ILT-094). */
+function assertQuestionPhotos(fileIds: readonly string[], files: readonly QuestionFile[]): void {
+  if (fileIds.length > QUESTION_PHOTO_LIMIT)
+    throw new DomainError(
+      'question_photo_limit',
+      `En fazla ${QUESTION_PHOTO_LIMIT} fotoğraf ekleyebilirsiniz.`,
+      { path: ['fileIds'] },
+    )
+  const byId = new Map(files.map((file) => [file.id, file]))
+  const path = ['fileIds']
+  for (const fileId of fileIds) {
+    const file = byId.get(fileId)
+    if (!file)
+      throw new DomainError(
+        'question_photo_unavailable',
+        'Fotoğraf bulunamadı. Fotoğrafı yeniden yükleyin.',
+        { path },
+      )
+    if (file.purpose !== QUESTION_PHOTO_PURPOSE)
+      throw new DomainError('question_photo_purpose', 'Bu dosya soruya eklenemez.', { path })
+    try {
+      assertFileAllowed(QUESTION_PHOTO_PURPOSE, file)
+    } catch (error) {
+      if (error instanceof DomainError)
+        throw new DomainError(error.code, error.message, { path, cause: error })
+      throw error
+    }
+  }
 }
 
 function findQuestion(state: State, questionId: string): QuestionRecord | undefined {

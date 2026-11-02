@@ -310,7 +310,7 @@ test.describe('Öğrenme: öğrenci', () => {
     await page.goto(`${STUDENT_HOMEWORK}?odev=${graded?.record.homeworkId}`)
     const panel = panelOf(page, 'Ödev ayrıntısı')
     await expect(panel).toContainText('Deniz-')
-    await expect(panel.getByText('Değerlendirildi')).toBeVisible()
+    await expect(panel.getByText('Değerlendirildi', { exact: true })).toBeVisible()
     expect(await factOf(panel, 'Not')).toBe(String(graded?.record.score))
 
     await page.goto(`${STUDENT_HOMEWORK}?odev=${open?.id}`)

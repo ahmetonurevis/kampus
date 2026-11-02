@@ -229,11 +229,12 @@ function HomeworkDetail({
   )
 }
 
-/** Teslim dosyası özeti: eski kayıtlarda dosya adı, yeni teslimde dosya sayısı. */
+/** Teslim dosyası özeti: tek dosyada adı (eski kayıtlarda da), birden çok dosyada sayısı. */
 function fileSummary(submission: HomeworkRecord['submissions'][number] | undefined): string {
   if (!submission) return '—'
+  if (submission.fileIds.length > 1) return `${submission.fileIds.length} dosya`
   if (submission.fileName) return submission.fileName
-  return submission.fileIds.length ? `${submission.fileIds.length} dosya` : '—'
+  return submission.fileIds.length ? '1 dosya' : '—'
 }
 
 function SubmissionArea({

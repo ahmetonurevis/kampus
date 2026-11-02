@@ -88,6 +88,10 @@
   --space-section: 24px;
   --space-card: 24px;
   --shell-inset: 12px;
+  /* Yüzen üst çubuğun en az yüksekliği; çubuk (Topbar) ve altında yapışan paneller aynı değeri kullanır. */
+  --topbar-height: 72px;
+  /* Üst çubuğun altında yapışan panelin üst boşluğu: kabuk boşluğu + çubuk + 16 px aralık. */
+  --topbar-clearance: calc(var(--shell-inset) + var(--topbar-height) + 16px);
   --sidebar-width: 244px;
   --content-max: 1630px;
 
@@ -268,5 +272,6 @@
 
   --spacing-sidebar: var(--sidebar-width);
   --spacing-shell: var(--shell-inset);
+  --spacing-topbar: var(--topbar-height);
   --container-content: var(--content-max);
 }

@@ -2,13 +2,15 @@ import type { TaskAttemptDetail } from '@kampus/react-shared/use-task-attempts.t
 import { Icon } from '@/components/Icon.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { describeKey, describeResponse } from './student-task-model.ts'
+import { SubskillBreakdown } from './SubskillBreakdown.tsx'
 
 type Props = { attempt: TaskAttemptDetail; title: string }
 
 /**
  * Tamamlanan denemenin sonucu (DOM-BEC-045): kursiyer yalnız kendi toplam puanını görür; madde
  * sonuçları, doğru cevaplar ve açıklamalar yalnız sunucu açtıysa (`items`/`answerKey` dolu)
- * gelir. Açılmadıysa bu alanlar hiç çizilmez; nedenine dair ipucu verilmez.
+ * gelir. Açılmadıysa bu alanlar hiç çizilmez; nedenine dair ipucu verilmez. Okuma-anlama
+ * etkinliğinin alt beceri dökümü (DOM-BEC-006) aynı kuralla açılır.
  */
 export function AttemptResult({ attempt, title }: Props) {
   const result = attempt.result
@@ -47,6 +49,7 @@ export function AttemptResult({ attempt, title }: Props) {
           <StatusBadge text="Süre dolduğu için teslim edildi" tone="amber" />
         ) : null}
       </div>
+      <SubskillBreakdown subskills={result.subskills} />
       {items && keys ? (
         <ol aria-label="Soru soru sonuç" className="grid gap-3">
           {attempt.questions.map((question, index) => {

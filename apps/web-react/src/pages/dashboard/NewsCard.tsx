@@ -1,23 +1,55 @@
+import { useQuery } from '@tanstack/react-query'
 import { Link } from 'react-router'
+import type { ApiError } from '@kampus/api-client/errors.ts'
 import type { AnnouncementRecord } from '@kampus/react-shared/announcement-model.ts'
-import { useCollectionList } from '@kampus/react-shared/use-collection.ts'
+import {
+  collectionQueryKey,
+  fetchCollectionPage,
+  type CollectionRow,
+} from '@kampus/react-shared/collections.ts'
+import { useKampusClient } from '@kampus/react-shared/kampus-context.ts'
+import { institutionKey } from '@kampus/react-shared/query-keys.ts'
+import { useActiveInstitutionId } from '@kampus/react-shared/use-active-institution.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { CardList, ListCard } from './DashboardParts.tsx'
 import { defineCard, type DashboardCardContext } from './dashboard-cards-model.ts'
 import { dashboardHref } from './dashboard-model.ts'
-import { newsExcerpt, newsItems, NEWS_FETCH_SIZE } from './dashboard-news-model.ts'
+import { fetchNewsRows, newsExcerpt, newsItems, NEWS_FETCH_SIZE } from './dashboard-news-model.ts'
 
-const QUERY = { sort: ['-date'], page: 1, pageSize: NEWS_FETCH_SIZE } as const
+const QUERY = { sort: ['-date'], pageSize: NEWS_FETCH_SIZE } as const
+
+/**
+ * Duyuru listesi ucundan haber adayları: sayfalar yeterli yayında duyuru bulunana kadar okunur
+ * (bkz. `fetchNewsRows`). Anahtar `collections` önekindedir; duyuru yazıları listeyi birlikte
+ * yeniler.
+ */
+function useNewsRows() {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQuery<CollectionRow<AnnouncementRecord>[], ApiError>({
+    queryKey: institutionKey(institutionId, ...collectionQueryKey('announcements', QUERY), 'news'),
+    queryFn: ({ signal }) =>
+      fetchNewsRows((page) =>
+        fetchCollectionPage<AnnouncementRecord>(
+          client,
+          'announcements',
+          { ...QUERY, page },
+          signal,
+        ),
+      ),
+    enabled: institutionId !== null,
+  })
+}
 
 /**
  * Kampüsten haberler (Vue `Dashboard.vue`, beş rol): rolün görebileceği son duyurular. Liste
  * Duyurular sayfasıyla aynı uçtan okunur (`GET /collections/announcements`, yeniden eskiye, tek
- * sayfa); kurum, rol ve hedef kitle kapsamını sunucu uygular, istemci yeniden süzmez. Geri çekilen
+ * sayfa; hepsi geri çekilmişse sonraki sayfalar); kurum, rol ve hedef kitle kapsamını sunucu uygular, istemci yeniden süzmez. Geri çekilen
  * duyuru gösterilmez. Başlık duyuruyu sağ panelde açar (`?duyuru=`).
  */
 function NewsCard({ ctx }: { ctx: DashboardCardContext }) {
-  const announcements = useCollectionList<AnnouncementRecord>('announcements', QUERY)
-  const items = newsItems(announcements.data?.rows ?? [])
+  const announcements = useNewsRows()
+  const items = newsItems(announcements.data ?? [])
   const state = {
     isPending: announcements.isPending,
     error: announcements.error,

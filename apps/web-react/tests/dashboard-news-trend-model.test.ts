@@ -2,14 +2,18 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import type { AnnouncementRecord } from '@kampus/react-shared/announcement-model.ts'
-import type { CollectionRow } from '@kampus/react-shared/collections.ts'
+import type { CollectionPage, CollectionRow } from '@kampus/react-shared/collections.ts'
 import {
   gradeTrendPending,
   gradeTrendSummary,
   hasGradeTrend,
   monthlyGradePoints,
 } from '../src/pages/dashboard/dashboard-grade-trend-model.ts'
-import { newsExcerpt, newsItems } from '../src/pages/dashboard/dashboard-news-model.ts'
+import {
+  fetchNewsRows,
+  newsExcerpt,
+  newsItems,
+} from '../src/pages/dashboard/dashboard-news-model.ts'
 import { openQuestions } from '../src/pages/dashboard/dashboard-teacher-model.ts'
 
 // Genel Bakış "Kampüsten haberler", "Yanıt bekleyen sorular" ve not ortalaması eğilimi (OG-226):
@@ -225,4 +229,73 @@ test('eğilim: önceki çocuğun sayımı (placeholder) yeni çocuğun başlığ
     true,
   )
   assert.equal(gradeTrendPending(ready, { isPending: false, isPlaceholderData: false }), false)
+})
+
+/** Sayfalı sahte uç: `rows` sırayla `pageSize`'lık sayfalara bölünür, çağrılan sayfalar kaydedilir. */
+function pager(rows: CollectionRow<AnnouncementRecord>[], pageSize = 2) {
+  const calls: number[] = []
+  const fetchPage = async (page: number): Promise<CollectionPage<AnnouncementRecord>> => {
+    calls.push(page)
+    return {
+      rows: rows.slice((page - 1) * pageSize, page * pageSize),
+      page,
+      pageSize,
+      total: rows.length,
+    }
+  }
+  return { calls, fetchPage }
+}
+
+const withdrawn = (id: string) => news(id, { withdrawnAt: '2026-10-11T09:00:00.000Z' })
+
+test('haber: ilk sayfa tamamen geri çekilmişse daha eski yayındaki duyuru için sonraki sayfa okunur', async () => {
+  const rows = [
+    withdrawn('g1'),
+    withdrawn('g2'),
+    withdrawn('g3'),
+    withdrawn('g4'),
+    news('y1'),
+    news('y2'),
+  ]
+  const { calls, fetchPage } = pager(rows)
+  const items = newsItems(await fetchNewsRows(fetchPage))
+  assert.deepEqual(
+    items.map((row) => row.id),
+    ['y1', 'y2'],
+  )
+  assert.deepEqual(calls, [1, 2, 3])
+})
+
+test('haber: yeterli yayında duyuru bulununca sayfa okuması durur', async () => {
+  const { calls, fetchPage } = pager(['a', 'b', 'c', 'd', 'e', 'f'].map((id) => news(id)))
+  const items = newsItems(await fetchNewsRows(fetchPage))
+  assert.deepEqual(
+    items.map((row) => row.id),
+    ['a', 'b', 'c'],
+  )
+  assert.deepEqual(calls, [1, 2])
+})
+
+test('haber: kayıt bitince durur ve hiç yayında duyuru yoksa liste boş döner', async () => {
+  const { calls, fetchPage } = pager([withdrawn('g1'), withdrawn('g2'), withdrawn('g3')])
+  assert.deepEqual(newsItems(await fetchNewsRows(fetchPage)), [])
+  assert.deepEqual(calls, [1, 2])
+})
+
+test('haber: sayfa üst sınırında durur, hata vermez ve bulunanı döner', async () => {
+  const rows = [...Array.from({ length: 8 }, (_, i) => withdrawn(`g${i}`)), news('y1')]
+  const { calls, fetchPage } = pager(rows)
+  const items = newsItems(await fetchNewsRows(fetchPage, 3, 3))
+  assert.deepEqual(items, [])
+  assert.deepEqual(calls, [1, 2, 3])
+})
+
+test('haber: boş sayfa gelirse (okuma sırasında silinme) sonsuz döngüye girmez', async () => {
+  const calls: number[] = []
+  const rows = await fetchNewsRows(async (page) => {
+    calls.push(page)
+    return { rows: [], page, pageSize: 2, total: 10 }
+  })
+  assert.deepEqual(rows, [])
+  assert.deepEqual(calls, [1])
 })

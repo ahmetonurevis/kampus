@@ -1,6 +1,6 @@
 import type { FastifyBaseLogger } from 'fastify'
 import { sql, type SQL } from 'drizzle-orm'
-import type { Db, PgBoss, QueueOptions, SendOptions } from 'pg-boss'
+import type { Db, PgBoss, Queue, SendOptions } from 'pg-boss'
 import pg from 'pg'
 import { z } from 'zod'
 
@@ -44,14 +44,25 @@ export const transcodeJobDataSchema = z.strictObject({
   fileId: z.uuid(),
 })
 
-/** Kuyruk ayarı: dönüşüm kısa sürer; süre sınırı iki süreç sınırının (120 sn) üstündedir. */
+/**
+ * Kuyruk ayarı: dönüşüm kısa sürer; süre sınırı iki süreç sınırının (120 sn) üstündedir.
+ *
+ * Politika `exclusive`: pg-boss 12'de `singletonKey` yalnız kuyruk politikasının benzersiz
+ * indeksiyle tekilleşir; `standard` politikada (varsayılan) indeks yoktur ve aynı anahtarla ikinci
+ * iş açılır. `exclusive` anahtar başına `created`, `retry` ve `active` durumlarının toplamında tek
+ * iş tutar (`job_i6`; `short` yalnız `created`, `singleton` yalnız `active`, `stately` her durumda
+ * ayrı birer iş bırakır): bekleyen, yeniden denenecek ya da çalışan iş varken aynı dosya için
+ * `send` iş açmaz (`null`). Politika kuyruk oluşturulurken yazılır; `createQueue` var olan kuyruğu
+ * değiştirmez, `updateQueue` politikayı reddeder (`startJobs` uyuşmazlığı loglar).
+ */
 export const MEDIA_QUEUE_OPTIONS = {
+  policy: 'exclusive',
   retryLimit: 3,
   retryDelay: 30,
   retryBackoff: true,
   retryDelayMax: 900,
   expireInSeconds: 600,
-} as const satisfies QueueOptions
+} as const satisfies Omit<Queue, 'name'>
 
 /** İşçi: ffmpeg işlemciyi yoğun kullanır, süreç başına tek dönüşüm. */
 export const MEDIA_WORK_OPTIONS = { batchSize: 1, localConcurrency: 1 } as const
@@ -97,7 +108,10 @@ export function transactionConnection(tx: Database): Db {
   }
 }
 
-/** Kuyruk açıkken: iş yüklemenin transaction'ında eklenir; aynı dosya için ikinci iş açılmaz. */
+/**
+ * Kuyruk açıkken: iş yüklemenin transaction'ında eklenir. Anahtar dosya kimliğidir; `exclusive`
+ * politikası (`MEDIA_QUEUE_OPTIONS`) bekleyen ya da çalışan iş varken ikinci işi açmaz.
+ */
 export function queuedTranscodeScheduler(boss: Pick<PgBoss, 'send'>): MediaTranscodeScheduler {
   return {
     async enqueue(tx, data) {
@@ -212,7 +226,10 @@ async function staleTranscodes(
   return found
 }
 
-/** Kuyruk açılışında: işi kaybolmuş dönüşümler yeniden kuyruğa girer. Sayı döner. */
+/**
+ * Kuyruk açılışında: işi kaybolmuş dönüşümler yeniden kuyruğa girer; dosyanın bekleyen, yeniden
+ * denenecek ya da çalışan işi varsa yenisi açılmaz (`exclusive`). Açılan iş sayısı döner.
+ */
 export async function requeueStaleTranscodes(
   db: Database,
   boss: Pick<PgBoss, 'send'>,

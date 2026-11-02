@@ -1,6 +1,6 @@
 import { execFile } from 'node:child_process'
 
-import { MIME, type FilePurpose } from '@kampus/school-core/content/taxonomy.ts'
+import { FILE_PURPOSES, MIME, type FilePurpose } from '@kampus/school-core/content/taxonomy.ts'
 
 /**
  * Ses dönüştürücü (ADR 0003 karar 10; OG-262). `ffmpeg`/`ffprobe` sistem ikilileri ayrı süreç
@@ -21,6 +21,15 @@ export type TranscodedPurpose = keyof typeof AUDIO_TRANSCODE_PROFILES
 
 export function needsTranscode(purpose: FilePurpose): purpose is TranscodedPurpose {
   return Object.hasOwn(AUDIO_TRANSCODE_PROFILES, purpose)
+}
+
+/**
+ * Çıktı süresinin üst sınırı (ffmpeg `-t`): amacın süre sınırı + 1 sn. Uzun girdi bu noktada
+ * kesilir (işlemci ve disk sınırlı kalır); ölçülen süre sınırı aştığından kayıt yine
+ * `media_too_long` ile reddedilir (sınırdaki kayıt kesilmez).
+ */
+export function outputLimitSeconds(purpose: TranscodedPurpose): number {
+  return FILE_PURPOSES[purpose].maxDurationSeconds + 1
 }
 
 /** Çıktının kanonik türü: AAC-LC, M4A kabı (core `MIME.m4a`). */
@@ -77,6 +86,8 @@ export interface TranscodeInput {
   /** Yüklemede içerikten tespit edilen tür; ffmpeg'in giriş biçimini sabitler. */
   contentType: string
   bitrateKbps: number
+  /** Çıktı bu süreden (sn) sonra kesilir (`outputLimitSeconds`). */
+  maxOutputSeconds: number
   signal?: AbortSignal
 }
 
@@ -198,7 +209,8 @@ export interface FfmpegOptions {
 
 /**
  * Gerçek dönüştürücü: önce `ffprobe` ile girdide ses akışı aranır, sonra `ffmpeg` AAC-LC, M4A,
- * mono, 48 kHz'e çevirir (meta veri ve bölümler atılır, `+faststart`) ve aynı geçişte
+ * mono, 48 kHz'e çevirir (meta veri ve bölümler atılır, `+faststart`, çıktı
+ * `maxOutputSeconds`'ta kesilir) ve aynı geçişte
  * `silencedetect` sessiz aralıkları bildirir; süre çıktıdan `ffprobe` ile ölçülür.
  */
 export function createFfmpegTranscoder(options: FfmpegOptions): AudioTranscoder {
@@ -267,6 +279,8 @@ export function createFfmpegTranscoder(options: FfmpegOptions): AudioTranscoder 
             `${input.bitrateKbps}k`,
             '-threads',
             '1',
+            '-t',
+            String(input.maxOutputSeconds),
             '-movflags',
             '+faststart',
             '-f',

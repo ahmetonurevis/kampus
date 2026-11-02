@@ -20,6 +20,7 @@ import {
   AUDIO_TRANSCODE_PROFILES,
   MediaContentError,
   needsTranscode,
+  outputLimitSeconds,
   TRANSCODED_CONTENT_TYPE,
   type AudioTranscoder,
   type MediaContentCode,
@@ -172,6 +173,7 @@ export async function transcodeAudioFile(
         outputPath,
         contentType: row.contentType,
         bitrateKbps: AUDIO_TRANSCODE_PROFILES[row.purpose].bitrateKbps,
+        maxOutputSeconds: outputLimitSeconds(row.purpose),
         ...(deps.signal ? { signal: deps.signal } : {}),
       })
     } catch (error) {

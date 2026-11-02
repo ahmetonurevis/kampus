@@ -12,7 +12,12 @@ import { insertFile } from '../src/db/files.ts'
 import { files } from '../src/db/schema/files.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { dispatchQueueName } from '../src/jobs/dispatch.ts'
-import { MEDIA_TRANSCODE_JOB, postgresSessionLock } from '../src/jobs/media-transcode.ts'
+import {
+  MEDIA_TRANSCODE_JOB,
+  postgresSessionLock,
+  requeueStaleTranscodes,
+  STALE_TRANSCODE_MS,
+} from '../src/jobs/media-transcode.ts'
 import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
 import { HOUR_SECONDS, type AnyInstitutionJob } from '../src/jobs/types.ts'
@@ -410,5 +415,55 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
       /kurtarma hatası/,
     )
     assert.deepEqual(await first(async () => 'yeniden'), { acquired: true, value: 'yeniden' })
+  })
+
+  test('OG-262: media.transcode kuyruğu exclusive; dosyanın bekleyen işi varken ne ikinci gönderim ne açılış kurtarması yeni iş açar, işi olmayan bayat dosyaya tek iş açılır', async () => {
+    const { app, queue } = await appWithJobs()
+    assert.equal((await queue.boss.getQueue(MEDIA_TRANSCODE_JOB))?.policy, 'exclusive')
+    const institution = await createInstitution(app)
+    const insert = async () => {
+      const id = randomUUID()
+      await db.transaction((tx) =>
+        insertFile(
+          tx,
+          institution.id,
+          {
+            id,
+            purpose: 'listening_audio',
+            storageKey: storageKeyFor({
+              institutionId: institution.id,
+              purpose: 'listening_audio',
+              fileId: id,
+              now: FIXED_NOW,
+            }),
+            contentType: 'audio/mpeg',
+            byteSize: MP3.length,
+            sha256: 'a'.repeat(64),
+            originalName: null,
+            uploadedByUserId: institution.admin.id,
+          },
+          FIXED_NOW,
+          'processing',
+        ),
+      )
+      return { institutionId: institution.id, fileId: id }
+    }
+    const waiting = await insert()
+    const orphan = await insert()
+    // İşçi bekleyen işi bir saat çekmez: iş `created` durumunda kalır.
+    const options = { singletonKey: waiting.fileId, startAfter: 3600 }
+    assert.notEqual(await queue.boss.send(MEDIA_TRANSCODE_JOB, waiting, options), null)
+    assert.equal(await queue.boss.send(MEDIA_TRANSCODE_JOB, waiting, options), null)
+    // Kurtarma iki dosyayı da bayat bulur; bekleyen işi olana yeni iş açmaz.
+    const later = new Date(FIXED_NOW.getTime() + STALE_TRANSCODE_MS + 60_000)
+    await requeueStaleTranscodes(db, queue.boss, later)
+    const find = (data: object) => queue.boss.findJobs(MEDIA_TRANSCODE_JOB, { data })
+    assert.equal((await find(waiting)).length, 1)
+    assert.equal((await find(orphan)).length, 1)
+    // İkinci kurtarma da iş açmaz: öksüz dosyanın işi bekliyor ya da çalışıyorsa `exclusive`
+    // engeller; bittiyse dosya artık `processing` değildir (nesnesi olmadığından reddedilir).
+    await requeueStaleTranscodes(db, queue.boss, later)
+    assert.equal((await find(waiting)).length, 1)
+    assert.equal((await find(orphan)).length, 1)
   })
 })

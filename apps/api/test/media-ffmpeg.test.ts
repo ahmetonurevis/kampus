@@ -9,6 +9,7 @@ import {
   createFfmpegTranscoder,
   MediaContentError,
   MediaToolError,
+  outputLimitSeconds,
   silentMs,
 } from '../src/services/audio-transcoder.ts'
 
@@ -36,6 +37,7 @@ describe('ses dönüştürücü: araç hataları ve sessizlik ölçümü', () =>
         outputPath: '/yok/cikti.m4a',
         contentType: 'audio/wav',
         bitrateKbps: 64,
+        maxOutputSeconds: 601,
       }),
       (error: unknown) =>
         error instanceof MediaToolError && error.code === 'media_tool_unavailable',
@@ -103,6 +105,7 @@ describe('ses dönüştürücü: gerçek ffmpeg', { skip: !available && 'ffmpeg 
       outputPath,
       contentType: 'audio/wav',
       bitrateKbps: 64,
+      maxOutputSeconds: 601,
     })
     assert.equal(result.silent, false)
     assert.ok(Math.abs(result.durationMs - 2000) < 100, String(result.durationMs))
@@ -143,6 +146,7 @@ describe('ses dönüştürücü: gerçek ffmpeg', { skip: !available && 'ffmpeg 
       outputPath,
       contentType: 'audio/webm',
       bitrateKbps: 64,
+      maxOutputSeconds: 601,
     })
     assert.equal(result.silent, false)
     assert.ok(Math.abs(result.durationMs - 1500) < 150, String(result.durationMs))
@@ -156,6 +160,7 @@ describe('ses dönüştürücü: gerçek ffmpeg', { skip: !available && 'ffmpeg 
       outputPath: join(dir, 'sessiz.m4a'),
       contentType: 'audio/wav',
       bitrateKbps: 64,
+      maxOutputSeconds: 601,
     })
     assert.equal(result.silent, true)
     assert.ok(result.durationMs > 1500)
@@ -173,6 +178,7 @@ describe('ses dönüştürücü: gerçek ffmpeg', { skip: !available && 'ffmpeg 
         outputPath: join(dir, 'bozuk.m4a'),
         contentType: 'audio/wav',
         bitrateKbps: 64,
+        maxOutputSeconds: 601,
       }),
       (error: unknown) => error instanceof MediaContentError,
     )
@@ -186,6 +192,7 @@ describe('ses dönüştürücü: gerçek ffmpeg', { skip: !available && 'ffmpeg 
       outputPath: join(dir, 'uzun.m4a'),
       contentType: 'audio/wav',
       bitrateKbps: 64,
+      maxOutputSeconds: 601,
       signal: controller.signal,
     })
     controller.abort()
@@ -204,8 +211,23 @@ describe('ses dönüştürücü: gerçek ffmpeg', { skip: !available && 'ffmpeg 
         outputPath: join(dir, 'uzun-2.m4a'),
         contentType: 'audio/wav',
         bitrateKbps: 64,
+        maxOutputSeconds: 601,
       }),
       (error: unknown) => error instanceof MediaToolError && error.code === 'media_timeout',
     )
+  })
+
+  test('OG-262: çıktı amaç sınırı + 1 saniyede kesilir (-t); ölçülen süre sınırı aştığından kayıt reddedilir', async () => {
+    const input = generate('sinir.wav', 'sine=frequency=440:duration=4')
+    const result = await transcoder.transcode({
+      inputPath: input,
+      outputPath: join(dir, 'sinir.m4a'),
+      contentType: 'audio/wav',
+      bitrateKbps: 64,
+      maxOutputSeconds: 2,
+    })
+    assert.ok(Math.abs(result.durationMs - 2000) < 100, String(result.durationMs))
+    assert.equal(outputLimitSeconds('speaking_recording'), 10 * 60 + 1)
+    assert.equal(outputLimitSeconds('listening_audio'), 15 * 60 + 1)
   })
 })

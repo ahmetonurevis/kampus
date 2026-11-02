@@ -174,6 +174,8 @@ describe('ses dönüştürme (media.transcode)', () => {
     const call = transcoder.calls.at(-1)
     assert.equal(call?.contentType, 'audio/mpeg')
     assert.equal(call?.bitrateKbps, AUDIO_TRANSCODE_PROFILES.listening_audio.bitrateKbps)
+    // Çıktı amaç sınırı + 1 sn'de kesilir (dinleme sesi 15 dk).
+    assert.equal(call?.maxOutputSeconds, 15 * 60 + 1)
     const row = await rowOf(t, id)
     assert.equal(row.status, 'ready')
     assert.equal(row.durationMs, 42_500)

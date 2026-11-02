@@ -236,6 +236,15 @@ export async function startJobs(
     // Olaya bağlı ses dönüşümü: yükleme işi kendi transaction'ında ekler; açılışta işi kaybolmuş
     // dönüşümler yeniden kuyruğa girer.
     await boss.createQueue(MEDIA_TRANSCODE_JOB, MEDIA_QUEUE_OPTIONS)
+    // `createQueue` var olan kuyruğun politikasını değiştirmez (`updateQueue` de reddeder): eski
+    // politikayla kurulmuş kuyrukta tekillik yoktur, işleyici yine idempotenttir.
+    const mediaQueue = await boss.getQueue(MEDIA_TRANSCODE_JOB)
+    if (mediaQueue?.policy !== MEDIA_QUEUE_OPTIONS.policy)
+      log.warn({
+        event: 'media.queue_policy_mismatch',
+        policy: mediaQueue?.policy ?? null,
+        expected: MEDIA_QUEUE_OPTIONS.policy,
+      })
     const mediaDeps = {
       db: app.db,
       storage: options.storage,

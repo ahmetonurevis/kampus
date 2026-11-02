@@ -12,6 +12,7 @@ import {
   fetchAllPages,
   fetchAuditPage,
   fetchMemberPage,
+  memberAllKey,
   memberListKey,
   memberListParams,
 } from '../src/institution-lists.ts'
@@ -96,6 +97,15 @@ describe('sorgu anahtarları', () => {
     assert.notDeepEqual(left, memberListKey('u2', { q: 'selin', page: 1 }))
     assert.notDeepEqual(auditListKey('u1', {}), auditListKey('u2', {}))
     assert.deepEqual(memberListKey('u1', { q: 'x' }), memberListKey('u1', {}))
+  })
+
+  test('bütün kullanıcılar anahtarı sayfalı listeyle çakışmaz, rol ve kullanıcıya bağlıdır', () => {
+    const all = memberAllKey('u1', { role: 'ogretmen' })
+    assert.deepEqual(all.slice(0, 4), memberListKey('u1', { role: 'ogretmen' }))
+    assert.equal(all.at(-1), 'all')
+    assert.notDeepEqual(all, memberListKey('u1', { role: 'ogretmen' }))
+    assert.notDeepEqual(all, memberAllKey('u1', { role: 'yonetici' }))
+    assert.notDeepEqual(all, memberAllKey('u2', { role: 'ogretmen' }))
   })
 
   test('anahtar kökleri ayrıdır', () => {

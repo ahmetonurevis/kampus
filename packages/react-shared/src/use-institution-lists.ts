@@ -9,6 +9,7 @@ import {
   fetchAllPages,
   fetchAuditPage,
   fetchMemberPage,
+  memberAllKey,
   memberListKey,
   type AuditEvent,
   type AuditQuery,
@@ -46,6 +47,29 @@ export function useInstitutionMembers(
     queryFn: ({ signal }) => fetchMemberPage(client, query, signal),
     enabled: ready && (options.enabled ?? true),
     placeholderData: keepPreviousData,
+  })
+}
+
+/**
+ * Süzgece uyan bütün kullanıcılar (100'lük sayfalarla): ad eşlemesi gibi küçük kümeler için;
+ * sayfa sınırı olan `useInstitutionMembers` kimlik çözümünde kişileri sessizce düşürürdü.
+ * Sayfa sayısı sınırı aşılırsa `CollectionTooLargeError`.
+ */
+export function useInstitutionMembersAll(
+  query: Omit<MemberQuery, 'page' | 'pageSize'>,
+  options: Options = {},
+): UseQueryResult<InstitutionMember[], ApiError> {
+  const client = useKampusClient()
+  const { institutionId, userId, ready } = useListScope()
+  return useQuery<InstitutionMember[], ApiError>({
+    queryKey: institutionKey(institutionId, ...memberAllKey(userId, query)),
+    queryFn: ({ signal }) =>
+      fetchAllPages<MemberQuery, InstitutionMember>(
+        (pageQuery, pageSignal) => fetchMemberPage(client, pageQuery, pageSignal),
+        query,
+        signal,
+      ),
+    enabled: ready && (options.enabled ?? true),
   })
 }
 

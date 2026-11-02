@@ -12,14 +12,14 @@ import {
   subjectAverageRows,
 } from './dashboard-model.ts'
 
-type Summary = DashboardOf<'ogrenci'> | DashboardOf<'veli'>
-type StudentContext = DashboardCardContext<Summary>
+export type Summary = DashboardOf<'ogrenci'> | DashboardOf<'veli'>
+export type StudentContext = DashboardCardContext<Summary>
 
 /**
  * Öğrenci ve veli bağlantısı: velide çocuk sekmesi `akademik-takip` sayfasında, öğrencide kendi
  * sayfasındadır. Çocuk adreste `?cocuk=` olarak taşınır.
  */
-function linkFor(ctx: StudentContext, data: Summary) {
+export function linkFor(ctx: StudentContext, data: Summary) {
   const parent = data.role === 'veli'
   const child = parent ? data.student.id : ''
   return (studentPath: string, tab: string, params: Record<string, string> = {}) =>

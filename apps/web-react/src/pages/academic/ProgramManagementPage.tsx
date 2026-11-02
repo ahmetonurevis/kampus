@@ -45,6 +45,8 @@ import {
 } from './schedule-model.ts'
 import { useAcademicLookups } from './use-academic-lookups.ts'
 
+// Panel parametreleri (`ders`, `ders-form`, `ders-yedek`, `ders-iptal`) bu adlarla çakışmamalı:
+// aynı ad hem süzgeç hem panel olursa süzgeç değeri kayıt kimliği gibi açılır.
 const URL_FILTERS = {
   view: 'gorunum',
   day: 'gun',
@@ -125,8 +127,8 @@ export function ProgramManagementPage({ page }: { page: NavPage }) {
 
   const panel = useDetailPanel('ders')
   const lessonForm = useDetailPanel('ders-form')
-  const substituteForm = useDetailPanel('yedek')
-  const cancelForm = useDetailPanel('iptal')
+  const substituteForm = useDetailPanel('ders-yedek')
+  const cancelForm = useDetailPanel('ders-iptal')
   const openLesson = panel.open
 
   const days = viewDays(view, anchor)

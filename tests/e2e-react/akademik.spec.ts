@@ -457,17 +457,17 @@ test.describe('ders programı: iptal edilen dersler görünmez', () => {
       const mondayCount = await monday(page).getByRole('button', { name: /dk/ }).count()
       expect(before).toBeGreaterThan(mondayCount)
 
-      // API iptal edilmiş dersleri de döndürür (geçmiş korunur); ekranın gösterdiği haftanın
-      // pazartesisindeki bütün dersler iptal edilmiş gibi işaretlenir. Seed iptal ders içermez.
-      // Gün İstanbul saatine göre hesaplanır: seed haftası UTC pazartesisinden başlar, bu yüzden
-      // pazartesi 00.00–03.00 arasında yanıtın en erken günü önceki haftadadır.
+      // Sunucu iptal edilen dersi programda döndürmez (`cancelled=false`); ekran da iptal
+      // durumundaki dersi göstermez. Yanıtta ekranın gösterdiği haftanın pazartesisindeki bütün
+      // dersler iptal edilmiş gibi işaretlenir (seed iptal ders içermez). Gün İstanbul saatine
+      // göre hesaplanır: seed haftası UTC pazartesisinden başlar, bu yüzden pazartesi 00.00–03.00
+      // arasında yanıtın en erken günü önceki haftadadır.
       const shownMonday = mondayOf(dayKey())
-      await page.route(/\/api\/v1\/collections\/schedule\?/, async (route) => {
+      await page.route(/\/api\/v1\/lessons\?/, async (route) => {
         const response = await route.fetch()
-        const body = (await response.json()) as CollectionPage
-        for (const row of body.data)
-          if (dayKey(String(row.record.date)) === shownMonday)
-            row.record.cancelledAt = '2026-01-01T00:00:00.000Z'
+        const body = (await response.json()) as { data: { date: string; status: string }[] }
+        for (const lesson of body.data)
+          if (dayKey(lesson.date) === shownMonday) lesson.status = 'cancelled'
         await route.fulfill({ response, json: body })
       })
       await page.reload()

@@ -118,7 +118,9 @@ test.describe('ders programı', () => {
     const panel = page.getByRole('dialog', { name: 'Ders ayrıntısı' })
     await panel.getByRole('button', { name: 'Yedek öğretmen ata' }).click()
     const substitute = page.getByRole('dialog', { name: 'Yedek öğretmen ata' })
-    await substitute.getByLabel('Yedek öğretmen').selectOption({ label: 'Selin Kaya' })
+    await substitute
+      .getByLabel('Yedek öğretmen', { exact: true })
+      .selectOption({ label: 'Selin Kaya' })
     await substitute.getByRole('button', { name: 'Yedeği ata' }).click()
     await expect(substitute.getByLabel('Görevlendirme gerekçesi')).toHaveAttribute(
       'aria-invalid',
@@ -200,6 +202,8 @@ test.describe('ders programı', () => {
     await page.keyboard.press('Escape')
     await expect(daily.getByRole('button').filter({ hasText: room })).toHaveCount(0)
     await page.getByLabel('İptalleri göster').check()
+    // Süzgeç parametresi (`iptal=goster`) iptal penceresini açmaz.
+    await expect(page.getByRole('dialog', { name: 'Dersi iptal et' })).toHaveCount(0)
     await expect(daily.getByRole('button').filter({ hasText: room })).toContainText('İptal edildi')
 
     await loginAs(student)
@@ -213,5 +217,8 @@ test.describe('ders programı', () => {
     await expect(page.getByRole('button', { name: 'Ders planla' })).toHaveCount(0)
     await expect(page.getByLabel('İptalleri göster')).toHaveCount(0)
     await expect(page.getByRole('table', { name: 'Ders listesi' })).toBeVisible()
+    // Kapsamı kendi dersleridir: tohumdaki Selin Kaya dersleri listede görünür.
+    const rows = page.getByRole('table', { name: 'Ders listesi' }).getByRole('row')
+    await expect(rows.filter({ hasText: 'Selin Kaya' }).first()).toBeVisible()
   })
 })

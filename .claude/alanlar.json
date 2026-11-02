@@ -49,6 +49,8 @@
     "packages/api-client/src/schema.d.ts",
     "apps/web-react/src/pages/page-registry.tsx",
     "apps/web-react/src/lib/page-coverage.ts",
+    "apps/web-react/src/pages/dashboard/dashboard-cards.tsx",
+    "apps/web-react/src/pages/settings/settings-sections.tsx",
     "apps/api/test/commands.test.ts",
     "apps/api/test/support/commands-harness.ts",
     "docs/sayfalar.md",

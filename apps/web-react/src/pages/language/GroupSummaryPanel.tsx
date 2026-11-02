@@ -7,6 +7,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { LineTabs } from '@/components/LineTabs.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { Button } from '@/components/ui/button'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
 import {
@@ -25,6 +26,7 @@ import {
   slotLines,
   type TeacherNames,
 } from './group-rows.ts'
+import { CefrProfileSummary } from './CefrProfileParts.tsx'
 import { RECORD_UNAVAILABLE_MESSAGE, submitWithFreshRecord } from './fresh-submit.ts'
 import { GroupWaitlist } from './GroupWaitlist.tsx'
 import { useLanguageAccess } from './use-language-access.ts'
@@ -45,7 +47,8 @@ type Props = {
  * listesi yalnız tek grup okumasında ve personele döner; ad öğrenci kayıtlarından eşlenir, kapsam
  * dışı kayıt adsız "Kursiyer" olarak kalır. İşlemler (aç, düzenle, birleştir, iptal) yönetici ve
  * seviyenin koordinatörü öğretmendedir. Yönetici ve ön büro "Bekleme sırası" sekmesini de görür
- * (salt okur; DOM-DIL-043).
+ * (salt okur; DOM-DIL-043). Yönetici ve öğretmen "Seviye profili" sekmesinde kursiyerin CEFR
+ * profilini gerekçeli karar geçmişiyle görür (OG-054; IST-060); ön büro göremez.
  */
 export function GroupSummaryPanel({ groupId, names, onClose, onEdit, onCancel, onMerge }: Props) {
   const access = useLanguageAccess()
@@ -116,29 +119,41 @@ export function GroupSummaryPanel({ groupId, names, onClose, onEdit, onCancel, o
           names={names}
           membershipId={access.membershipId}
           showWaitlist={canReadWaitlist(access.role)}
+          showProfiles={access.role === 'yonetici' || access.role === 'ogretmen'}
         />
       )}
     </SidePanel>
   )
 }
 
-type SummaryTab = 'ozet' | 'bekleme'
+type SummaryTab = 'ozet' | 'bekleme' | 'seviye'
 
 function GroupSummary({
   group,
   names,
   membershipId,
   showWaitlist,
+  showProfiles,
 }: {
   group: LanguageGroup
   names: TeacherNames | null
   membershipId: string | undefined
   showWaitlist: boolean
+  showProfiles: boolean
 }) {
   const row = groupRow(group, names, membershipId)
   const members = group.members ?? []
   const [tab, setTab] = useState<SummaryTab>('ozet')
+  const [profileStudentId, setProfileStudentId] = useState('')
   const waitlistOpen = showWaitlist && tab === 'bekleme'
+  const profilesVisible = showProfiles && members.length > 0
+  const profileOpen = profilesVisible && tab === 'seviye'
+  const selectedStudentId = profileStudentId || (members[0]?.studentId ?? '')
+  const tabs = [
+    { value: 'ozet' as const, label: 'Özet' },
+    ...(showWaitlist ? [{ value: 'bekleme' as const, label: 'Bekleme sırası' }] : []),
+    ...(profilesVisible ? [{ value: 'seviye' as const, label: 'Seviye profili' }] : []),
+  ]
   const students = useCoreAll('students', {}, { enabled: members.length > 0 || waitlistOpen })
   const studentNames = useMemo(
     () => new Map((students.data ?? []).map(({ record }) => [record.id, record.name])),
@@ -153,21 +168,31 @@ function GroupSummary({
         status={row.status}
         tone={groupStatusTone(group.status)}
       />
-      {showWaitlist ? (
+      {tabs.length > 1 ? (
         <div className="mb-5">
-          <LineTabs
-            label="Grup özeti bölümleri"
-            value={tab}
-            options={[
-              { value: 'ozet', label: 'Özet' },
-              { value: 'bekleme', label: 'Bekleme sırası' },
-            ]}
-            onChange={setTab}
-          />
+          <LineTabs label="Grup özeti bölümleri" value={tab} options={tabs} onChange={setTab} />
         </div>
       ) : null}
       {waitlistOpen ? (
         <GroupWaitlist groupId={group.id} studentNames={studentNames} />
+      ) : profileOpen ? (
+        <>
+          <label className="mb-5 grid gap-1.5 text-sm font-medium">
+            Kursiyer
+            <NativeSelect
+              value={selectedStudentId}
+              onChange={(event) => setProfileStudentId(event.target.value)}
+              className="min-h-9 w-full text-sm"
+            >
+              {members.map((member) => (
+                <NativeSelectOption key={member.studentId} value={member.studentId}>
+                  {studentNames.get(member.studentId) ?? 'Kursiyer'}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </label>
+          <CefrProfileSummary key={selectedStudentId} studentId={selectedStudentId} />
+        </>
       ) : (
         <>
           <SummaryMetrics

@@ -74,3 +74,31 @@ export function notificationListKey(filters: { unread: boolean }) {
 export function unreadNotificationsKey() {
   return [NOTIFICATIONS_KEY_ROOT, 'unread-count'] as const
 }
+
+/**
+ * Açık rıza anahtar parçaları (IST-017; `GET /consent-texts/{purpose}`, `/consents`,
+ * `/consents/status`). Metin, satırlar ve geçerlilik sonucu ayrı alt kollardadır; rıza verme ve
+ * geri çekme sonrası `['consents']` önekiyle üçü birlikte tazelenir (yeni metin sürümü de aynı
+ * önekle yenilenir).
+ */
+export const CONSENTS_KEY_ROOT = 'consents'
+
+export function consentsPrefix(): readonly unknown[] {
+  return [CONSENTS_KEY_ROOT]
+}
+
+export function consentTextKey(purpose: string) {
+  return [CONSENTS_KEY_ROOT, 'text', purpose] as const
+}
+
+export function consentListKey(filters: { studentId?: string | undefined; status: string }) {
+  return [
+    CONSENTS_KEY_ROOT,
+    'list',
+    { studentId: filters.studentId ?? null, status: filters.status },
+  ] as const
+}
+
+export function consentStatusKey(filters: { studentId?: string | undefined }) {
+  return [CONSENTS_KEY_ROOT, 'status', { studentId: filters.studentId ?? null }] as const
+}

@@ -29,9 +29,12 @@ const FIELD_NOUNS: Record<ParentContactField, string> = {
 export function ParentContactSection({
   students,
   canReveal,
+  emptyText = 'Bu sınıfta kayıtlı veli yok.',
 }: {
   students: readonly ContactStudent[]
   canReveal: boolean
+  /** Eşleşen veli yokken gösterilen metin (sınıf özetinde sınıf, profilde öğrenci için). */
+  emptyText?: string
 }) {
   const parents = useCoreAll('parents')
   const contact = useParentContactReveal()
@@ -53,7 +56,7 @@ export function ParentContactSection({
           Veliler yükleniyor…
         </p>
       ) : rows.length === 0 ? (
-        <p className="text-sm text-muted-foreground">Bu sınıfta kayıtlı veli yok.</p>
+        <p className="text-sm text-muted-foreground">{emptyText}</p>
       ) : (
         <>
           <p className="mb-3 text-sm text-muted-foreground">

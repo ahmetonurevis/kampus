@@ -6,7 +6,12 @@ import { AppLayout } from '@/layout/AppLayout.tsx'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
 import { withChildParam } from '@/lib/child-selection.ts'
 import { loginHref } from '@/lib/return-path.ts'
-import { resolveProspectDetail, resolveShell, showsClosedNotice } from '@/lib/route-guard.ts'
+import {
+  resolveProspectDetail,
+  resolveShell,
+  resolveStudentProfile,
+  showsClosedNotice,
+} from '@/lib/route-guard.ts'
 import { SECURITY_PATH, SECURITY_TITLE } from '@/lib/account-pages.ts'
 import { isMigratedPage, MigratedPage } from '@/pages/page-registry.tsx'
 import { ModuleClosedPage } from './ModuleClosedPage.tsx'
@@ -39,13 +44,16 @@ function PageLoading() {
 /** Korumalı rol kabuğu: karar `resolveShell`'de, burada yalnız çizilir. */
 export function RoleShell() {
   const { status, session, isSigningOut } = useAuth()
-  const { role, page: path, prospectId } = useParams()
+  const { role, page: path, prospectId, studentId } = useParams()
   const location = useLocation()
-  // `/<rol>/aday/:id` menüde olmayan kayıt sayfasıdır; kararı kendi koruması verir.
+  // `/<rol>/aday/:id` ve `/ogretmen/ogrenci/:id` menüde olmayan kayıt sayfalarıdır; kararı kendi
+  // korumaları verir.
   const decision =
-    prospectId === undefined
-      ? resolveShell(session, role, path)
-      : resolveProspectDetail(session, role)
+    prospectId !== undefined
+      ? resolveProspectDetail(session, role)
+      : studentId !== undefined
+        ? resolveStudentProfile(session, role)
+        : resolveShell(session, role, path)
   const child = useChildSelection(session)
 
   // Oturum durumu bilinmeden yönlendirme yapılmaz; yenilemede girişe düşülmesin.

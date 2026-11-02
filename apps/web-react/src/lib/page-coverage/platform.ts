@@ -38,6 +38,8 @@ export const PLATFORM_MIGRATED: readonly string[] = [
   'ogrenci/ayarlar',
   'veli/ayarlar',
   'ogretmen/siniflarim',
+  // Menü dışı öğrenci profili (`/ogretmen/ogrenci/:id`, OG-205); koruması `resolveStudentProfile`.
+  'ogretmen/ogrenci',
   'ogretmen/yoklama',
   'ogretmen/ders-programi',
   'ogrenci/notlarim',

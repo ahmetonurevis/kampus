@@ -2,16 +2,14 @@
 etki: minor
 ---
 
-- Uygulama içi bildirim merkezi eklendi (F6a, OG-003; IST-065'in ilk parçası; `docs/domain/iletisim-ve-veli.md` DOM-ILT-020, DOM-ILT-022, DOM-ILT-023, DOM-ILT-073).
-- Core: yeni `lib/notifications.ts`; bildirim türleri kaydı `NOTIFICATION_KINDS` (`feedback_released` DOM-BEC-045, `enrollment_completed` DOM-KAY-011; konu, `service`/`commercial` ayrımı, zorunluluk, alıcı kitlesi ve başlık şablonu), `notifyStudentEvent` (yalnız ekler), `notificationAudienceOf`/`canSeeNotification` (öğrenci kendi `student`, veli bağlı çocuğunun `parent` bildirimini görür; personelin bildirimi yok), `markNotificationRead` ve `markAllNotificationsRead` (kullanıcı başına okundu işareti; görülemeyen bildirim 404 `notification_not_found`, tekrar çağrı ilk anı korur), `unreadNotificationCount`, `notificationTitle` (yalnız ilk ad), `learnerIsMinor` ve State'siz `isMinorLearner` (yetişkin kursiyerin bildirimi veliye gitmez).
-- Core: bildirim kaydında serbest metin yoktur; `notificationRecordSchema` katı şemadır (tür, kitle, öğrenci, konu kimliği, an), başlık okumada şablondan üretilir (DOM-ILT-023).
-- Core: State'e iki koleksiyon eklendi, `notifications` ve `notificationReads` (modül `communication`; örnek veri ve çevrimdışı demo boş başlar, demo bildirim üretmez). Kapsam kuralı `lib/scope.ts`'tedir; yönetici bu koleksiyonları okumaz.
-- Core: `notification.read` ve `notification.read_all` komutları eklendi (modül `communication`, bütün roller).
-- Core: `skills/rubric.ts` `releasesFeedback` eklendi; yeni puan sürümün puanını kesinleştirip öğretmen geri bildirimini o anda açıyor mu (DOM-BEC-045), bildirim bu anda üretilir.
-- API: `GET /api/v1/notifications` (imleçli: `cursor`, `limit` ≤ 100, `unread`; `meta.nextCursor`, toplam yok), `GET /api/v1/notifications/unread-count`, `POST /api/v1/notifications/:notificationId/read` ve `POST /api/v1/notifications/read-all` (`Idempotency-Key` isteğe bağlı, `If-Match` 400) eklendi. Modül `communication`; kapalıysa 403 `module_disabled`. Öğrenci kendi, veli bağlı çocuğunun veli bildirimini görür; görülemeyen bildirim 404, imleci 400 (DOM-ILT-073). Okundu kullanıcıya özeldir.
-- API: okuma uçları kimlik, modül ve rol denetimini sorgu doğrulamasından önce (`preValidation`) yapar; oturumsuz geçersiz sorgu 401, modül kapalıyken 403 `module_disabled` alır.
-- API: kayıtlar `records` tabanlıdır (`notifications`, `notificationReads`; migration yok) ve genel koleksiyon okumasına kapalıdır. Log ve denetime yalnız alan adları girer (DOM-ILT-023).
-- API: puanı kesinleştirip geri bildirimi açan öğretmen puanı aynı transaction'da öğrenciye ve 18 yaş altında veliye `feedback_released` bildirimi yazar (DOM-BEC-045); bildirim kaydının denetim satırı ayrı `notification.create` eylemiyle (`runCommand` `auditAction`) düşer, puanın tek `task_submission.score`/`second_score` satırı kalır.
-- Kesin kayıt `enrollment_completed` bildirimini henüz üretmiyor; tür core'da kayıtlıdır (`TODO(onur-istek)`: kesin kayıt bildirimi).
-- `react-shared`: `use-notifications.ts` eklendi (`useNotifications` imleçli, `useUnreadNotificationCount`, `useReadNotification`, `useReadAllNotifications`); `useApiQuery` isteğe bağlı `refetchInterval` alır. Okunmamış sayısının yedek tazelemesi 5 dk'dır, sekme odağa dönünce (bayatsa) ve okundu işaretinde tazelenir. Sayım ifade indeksi gelene kadar kurumun bildirim satırlarını tarar (`TODO(F6-bildirim-indeksi)`).
-- OpenAPI ve `api-client` şeması yeniden üretildi.
+Uygulama içi bildirim merkezi (F6a, OG-003; IST-065'in ilk parçası; `docs/domain/iletisim-ve-veli.md` DOM-ILT-020, DOM-ILT-022, DOM-ILT-023, DOM-ILT-073). API tarafı `apps/api/changes/bildirim-merkezi.md`'dedir.
+
+- Yeni `lib/notifications.ts` eklendi: bildirim türleri kaydı `NOTIFICATION_KINDS` (`feedback_released` DOM-BEC-045, `enrollment_completed` DOM-KAY-011; konu, `service`/`commercial` ayrımı, zorunluluk, alıcı kitlesi ve başlık şablonu), `notifyStudentEvent` (yalnız ekler), `notificationAudienceOf`/`canSeeNotification` (öğrenci kendi `student`, veli bağlı çocuğunun `parent` bildirimini görür; personelin bildirimi yok), `markNotificationRead` ve `markAllNotificationsRead` (kullanıcı başına okundu işareti; görülemeyen bildirim 404 `notification_not_found`, tekrar çağrı ilk anı korur), `unreadNotificationCount`, `notificationTitle` (yalnız ilk ad), `learnerIsMinor` ve State'siz `isMinorLearner` (yetişkin kursiyerin bildirimi veliye gitmez).
+- Bildirim kaydında serbest metin yoktur; `notificationRecordSchema` katı şemadır (tür, kitle, öğrenci, konu kimliği, an), başlık okumada şablondan üretilir (DOM-ILT-023).
+- State'e iki koleksiyon eklendi, `notifications` ve `notificationReads` (modül `communication`; örnek veri ve çevrimdışı demo boş başlar, demo bildirim üretmez). Kapsam kuralı `lib/scope.ts`'tedir; yönetici bu koleksiyonları okumaz.
+- `notification.read` ve `notification.read_all` komutları eklendi (modül `communication`, bütün roller).
+- `skills/rubric.ts` `releasesFeedback` eklendi; yeni puan (ilk, ikinci ya da koordinatör son puanı) sürümün puanını kesinleştirip öğretmen geri bildirimini o anda açıyor mu (DOM-BEC-045), bildirim bu anda üretilir.
+
+React ortak kancaları (`packages/react-shared`):
+
+- `use-notifications.ts` eklendi (`useNotifications` imleçli, `useUnreadNotificationCount`, `useReadNotification`, `useReadAllNotifications`); `useApiQuery` isteğe bağlı `refetchInterval` alır. Okunmamış sayısının yedek tazelemesi 5 dk'dır, sekme odağa dönünce (bayatsa) ve okundu işaretinde tazelenir.

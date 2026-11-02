@@ -509,7 +509,7 @@ describe('ses taraması (OG-988)', () => {
     assert.deepEqual(await objectsOf(id), [])
   })
 
-  test('migration 0044, OG-988: dönüşüm içeriği taraması süren seste bir kez yazar; ikinci içerik değişimi, izin boşaltılması ve taranmamış sesin ready yazımı reddedilir', async () => {
+  test('migration 0042, OG-988: dönüşüm içeriği taraması süren seste bir kez yazar; ikinci içerik değişimi, izin boşaltılması ve taranmamış sesin ready yazımı reddedilir', async () => {
     const t = await tenant()
     const fileId = randomUUID()
     const storageKey = `${t.institution.id}/listening_audio/2026/10/${fileId}`

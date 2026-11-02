@@ -1,5 +1,4 @@
--- Ses dosyalarının virüs taraması (OG-988; ADR 0003 karar 8, 10). Numara 0044 görev satırında
--- ayrıldı (0041 ve 0042 başka göreve ayrıldı). Kolon ve kısıt Drizzle şemasından üretildi;
+-- Ses dosyalarının virüs taraması (OG-988; ADR 0003 karar 8, 10). Kolon ve kısıt Drizzle şemasından üretildi;
 -- tetikleyici işlevi elle eklendi (Drizzle tetikleyici işlevini izlemez, migration 0015, 0033).
 --
 -- `scan_pending`: tarayıcı açıkken yüklenen sesin taraması sürüyor. Dönüşüm taramayı beklemez;

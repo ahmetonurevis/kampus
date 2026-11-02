@@ -249,7 +249,7 @@ export function setFileStatus(
  * `superseded_storage_key`'e geçer (silinene kadar izlenir). Taraması süren seste (`scanPending`,
  * OG-988) içerik yazılır ama dosya `processing` kalır; `ready`'yi tarama yazar
  * (`completeAudioScan`). İçerik kolonları yalnız bu geçişte ve bir kez değişebilir (migration 0033,
- * 0044 tetikleyicisi); iyimser kilit tutmazsa `null`.
+ * 0042 tetikleyicisi); iyimser kilit tutmazsa `null`.
  */
 export async function completeFileTranscode(
   tx: Database,

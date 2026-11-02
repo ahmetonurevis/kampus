@@ -9,16 +9,29 @@ import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { files } from '../src/db/schema/files.ts'
 import { bootJobs } from '../src/jobs/boot.ts'
+import type { Job } from 'pg-boss'
+
 import {
   InlineScanScheduler,
+  runScanRequeue,
+  SCAN_QUEUE_OPTIONS,
   SCANNED_PURPOSES,
   scanJobDataSchema,
   STALE_SCAN_MS,
 } from '../src/jobs/file-scan.ts'
+import { runScanJob } from '../src/jobs/queue.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { defineFileAttachment } from '../src/services/file-registry.ts'
 import { scanStoredFile, type ScanDeps } from '../src/services/file-scan.ts'
-import { attachFile } from '../src/services/files.ts'
+import {
+  attachFile,
+  PROCESSING_FILE_TTL_MS,
+  purgeUnattachedFiles,
+  UNATTACHED_FILE_TTL_MS,
+} from '../src/services/files.ts'
+import { planFiles } from '../src/services/resource-files.ts'
+import { usableFiles } from '../src/services/task-submission-files.ts'
+import type { StorageDriver } from '../src/storage/storage.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -235,7 +248,7 @@ describe('dosya taraması (file.scan)', () => {
     assert.ok(logs.join('').includes('"event":"file.scanned"'))
   })
 
-  test('DOM-KYN-004, IST-027: zararlı dosya reddedilir, nesne silinir, file.reject yazılır; indirme ve okuma 404, bağlanamaz; log imza adını taşır, dosya adını taşımaz', async () => {
+  test('DOM-KYN-004, IST-027: zararlı dosya reddedilir, nesne silinir, file.reject yazılır; indirme 404, yükleyen okuma ve bağlamada 422 file_rejected, başkası 404 (Sabah kararı 42); log imza adını taşır, dosya adını taşımaz', async () => {
     const t = await tenant()
     const id = await uploaded(t)
     const before = await rowOf(t, id)
@@ -269,9 +282,18 @@ describe('dosya taraması (file.scan)', () => {
     )
     const download = await app.inject({ method: 'GET', url: signed.pathname + signed.search })
     assert.equal(download.statusCode, 404)
-    assert.equal((await get(t, `/api/v1/files/${id}`)).statusCode, 404)
-    assert.equal((await get(t, `/api/v1/files/${id}/url`)).statusCode, 404)
-    await assert.rejects(attach(t, id), { code: 'file_unavailable' })
+    // Sabah kararı 42: yükleyen ayrı kod alır; başkası (aynı kurumun yöneticisi) yine 404.
+    for (const url of [`/api/v1/files/${id}`, `/api/v1/files/${id}/url`]) {
+      const own = await get(t, url)
+      assert.equal(own.statusCode, 422, own.body)
+      assert.equal(own.json().code, 'file_rejected')
+      assert.equal(
+        own.json().message,
+        'Dosya güvenlik taramasından geçmedi. Başka bir dosya yükleyin.',
+      )
+      assert.equal((await get(t, url, t.admin.cookie)).statusCode, 404)
+    }
+    await assert.rejects(attach(t, id), { code: 'file_rejected', statusCode: 422 })
     const written = logs.slice(mark).join('')
     assert.ok(written.includes('"event":"file.scan_rejected"'))
     assert.ok(written.includes(`"signature":"${FAKE_SIGNATURE}"`))
@@ -311,7 +333,10 @@ describe('dosya taraması (file.scan)', () => {
       scanner.result = 'clean'
     }
     const scans = scanner.scanned.length
-    for (const id of [clean, infected]) {
+    for (const [id, reason] of [
+      [clean, 'not_processing'],
+      [infected, 'already_rejected'],
+    ] as const) {
       const before = await rowOf(t, id)
       const auditsBefore = await auditsOf(t, id)
       // İkinci denemede tarayıcı zararlı dese de sonuç değişmez.
@@ -319,7 +344,7 @@ describe('dosya taraması (file.scan)', () => {
       try {
         assert.deepEqual(await scanStoredFile(deps(), job(t, id), now), {
           outcome: 'skipped',
-          reason: 'not_processing',
+          reason,
         })
       } finally {
         scanner.result = 'clean'
@@ -465,6 +490,215 @@ describe('dosya taraması (file.scan)', () => {
     } finally {
       now = FIXED_NOW
     }
+  })
+
+  test('ADR 0003 karar 8: ret yazılıp nesne silinemezse yeniden denemede yalnız silme tekrar çalışır; tarama ve denetim yinelenmez', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    const key = (await rowOf(t, id)).storageKey
+    let failures = 1
+    const remove = async (target: string) => {
+      if (failures > 0) {
+        failures -= 1
+        throw new Error('depo geçici olarak erişilemez')
+      }
+      return store.storage.delete(target)
+    }
+    // Sürücünün özel alanları korunur: yalnız `delete` değişir, öteki yöntemler sürücüye bağlıdır.
+    const flaky = new Proxy(store.storage, {
+      get(target, property) {
+        if (property === 'delete') return remove
+        const value: unknown = Reflect.get(target, property)
+        return typeof value === 'function' ? value.bind(target) : value
+      },
+    }) satisfies StorageDriver
+    scanner.result = 'infected'
+    try {
+      await assert.rejects(scanStoredFile(deps({ storage: flaky }), job(t, id), now), {
+        message: 'depo geçici olarak erişilemez',
+      })
+      assert.equal((await rowOf(t, id)).status, 'rejected')
+      assert.notEqual(await store.storage.head(key), null)
+      const scans = scanner.scanned.length
+      assert.deepEqual(await scanStoredFile(deps({ storage: flaky }), job(t, id), now), {
+        outcome: 'skipped',
+        reason: 'already_rejected',
+      })
+      assert.equal(scanner.scanned.length, scans)
+    } finally {
+      scanner.result = 'clean'
+    }
+    assert.equal(await store.storage.head(key), null)
+    assert.deepEqual(
+      (await auditsOf(t, id)).map((item) => item.action),
+      ['file.upload', 'file.reject'],
+    )
+  })
+
+  test('Sabah kararı 43: tarama sınırını aşan içerik taramasız ready olmaz; reddedilir ve nesnesi silinir', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    const key = (await rowOf(t, id)).storageKey
+    scanner.result = 'limit'
+    try {
+      assert.deepEqual(await scanStoredFile(deps(), job(t, id), now), {
+        outcome: 'rejected',
+        code: 'scan_limit_exceeded',
+      })
+    } finally {
+      scanner.result = 'clean'
+    }
+    assert.equal((await rowOf(t, id)).status, 'rejected')
+    assert.equal(await store.storage.head(key), null)
+  })
+
+  test('ADR 0003 karar 8: son deneme de tarayıcıya ulaşamazsa iş failed olur, dosya processing kalır ve nesnesi silinmez', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    const before = await rowOf(t, id)
+    const mark = logs.length
+    scanner.result = 'unavailable'
+    try {
+      const scanJob = {
+        id: 'test-scan-job',
+        name: 'file.scan',
+        data: job(t, id),
+        retryCount: SCAN_QUEUE_OPTIONS.retryLimit,
+        signal: new AbortController().signal,
+      } as unknown as Job<unknown>
+      const result = await runScanJob(
+        app,
+        { db, storage: store.storage, scanner, log: app.log },
+        scanJob,
+      )
+      assert.equal(result.status, 'failed')
+    } finally {
+      scanner.result = 'clean'
+    }
+    assert.deepEqual(await rowOf(t, id), before)
+    assert.notEqual(await store.storage.head(before.storageKey), null)
+    assert.ok(logs.slice(mark).join('').includes('"event":"file.scan_retries_exhausted"'))
+  })
+
+  test('periyodik yeniden kuyruklama: denemeleri biten bayat tarama kilit altında yeniden kuyruğa girer; kilit başkasındaysa tur atlanır', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    const sent: { name: string; data: object }[] = []
+    const boss = {
+      send: async (name: string, data: object) => {
+        sent.push({ name, data })
+        return 'is-kimligi'
+      },
+    } as unknown as Parameters<typeof runScanRequeue>[0]['boss']
+    const later = () => new Date(FIXED_NOW.getTime() + STALE_SCAN_MS + 1000)
+    assert.equal(
+      await runScanRequeue({
+        db,
+        boss,
+        log: app.log,
+        clock: later,
+        lock: async () => ({ acquired: false }),
+      }),
+      null,
+    )
+    assert.equal(sent.length, 0)
+    const queued = await runScanRequeue({
+      db,
+      boss,
+      log: app.log,
+      clock: later,
+      lock: async (work) => ({ acquired: true, value: await work() }),
+    })
+    assert.ok((queued ?? 0) >= 1)
+    assert.ok(
+      sent.some(
+        (item) => item.name === 'file.scan' && 'fileId' in item.data && item.data.fileId === id,
+      ),
+    )
+    // Taze dosya (15 dakikadan yeni) kuyruğa alınmaz.
+    sent.length = 0
+    await runScanRequeue({
+      db,
+      boss,
+      log: app.log,
+      clock: () => FIXED_NOW,
+      lock: async (work) => ({ acquired: true, value: await work() }),
+    })
+    assert.ok(!sent.some((item) => 'fileId' in item.data && item.data.fileId === id))
+  })
+
+  test('bağsız dosya temizliği: tarama bekleyen dosya 24 saatte silinmez, 7 gün sonra silinir; hazır dosya 24 saatte silinir', async () => {
+    const t = await tenant()
+    const waiting = await uploaded(t)
+    const clean = await uploaded(t)
+    await scanStoredFile(deps(), job(t, clean), now)
+    const purge = (offset: number) =>
+      purgeUnattachedFiles({
+        db,
+        storage: store.storage,
+        institutionId: t.institution.id,
+        now: new Date(FIXED_NOW.getTime() + offset),
+        log: app.log,
+      })
+    await purge(UNATTACHED_FILE_TTL_MS + 60_000)
+    assert.equal((await rowOf(t, waiting)).status, 'processing')
+    assert.equal((await rowOf(t, clean)).status, 'deleted')
+    await purge(PROCESSING_FILE_TTL_MS + 60_000)
+    assert.equal((await rowOf(t, waiting)).status, 'deleted')
+    assert.deepEqual(await objectsOf(waiting), [])
+  })
+
+  test('Sabah kararı 42: teslim, soru ve kaynak sürümü yollarında yükleyenin reddedilen dosyası 422 file_rejected (alan yolu), başkasınınki ayırt edilmez', async () => {
+    const t = await tenant()
+    const id = await uploaded(t)
+    scanner.result = 'infected'
+    try {
+      await scanStoredFile(deps(), job(t, id), now)
+    } finally {
+      scanner.result = 'clean'
+    }
+    const own = contextFor(t, t.student, 'ogrenci')
+    const other = await createMember(app, t.institution.id, 'ogrenci')
+    await db.transaction(async (tx) => {
+      await assert.rejects(usableFiles(tx, own, [id]), (error: unknown) => {
+        assert.ok(error instanceof Error && 'code' in error && error.code === 'file_rejected')
+        assert.deepEqual((error as unknown as { issues: { path: unknown[] }[] }).issues[0]?.path, [
+          'fileIds',
+          0,
+        ])
+        return true
+      })
+      // Başkasının reddedilen dosyası listede yoktur (core genel 404'e çevirir).
+      assert.deepEqual(await usableFiles(tx, contextFor(t, other, 'ogrenci'), [id]), [])
+    })
+    const row = await rowOf(t, id)
+    const fileRow = {
+      id,
+      purpose: row.purpose,
+      status: row.status,
+      uploadedByUserId: row.uploadedByUserId,
+      attached: false,
+      contentType: row.contentType,
+      byteSize: row.byteSize,
+      durationSeconds: null,
+    }
+    const content = { type: 'text', body: 'metin' } as unknown as Parameters<
+      typeof planFiles
+    >[1]['content']
+    assert.throws(() => planFiles(own, { content, fileIds: [id], files: [fileRow], kept: [] }), {
+      code: 'file_rejected',
+    })
+    assert.throws(
+      () =>
+        planFiles(contextFor(t, other, 'ogrenci'), {
+          content,
+          fileIds: [id],
+          files: [fileRow],
+          kept: [],
+        }),
+      (error: unknown) =>
+        error instanceof Error && 'code' in error && error.code !== 'file_rejected',
+    )
   })
 
   test('iş yükü yalnız kimlik taşır: fazladan alan ve bozuk dosya kimliği reddedilir', () => {

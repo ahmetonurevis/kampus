@@ -25,8 +25,10 @@ import { RECOVERY_BATCH_SIZE, transactionConnection, type SessionLock } from './
  * - Kuyruk açıkken iş satırı yüklemeyi yazan transaction'da eklenir (pg-boss `send({ db })`).
  * - Tarayıcıya ulaşılamaz ya da süre aşılırsa iş geri çekilmeli yeniden denenir (6 kez, yaklaşık
  *   30 dk). Son deneme de düşerse dosya `processing` kalır (taramasız `ready` olmaz), iş `failed`
- *   olur; dosya açılışta yeniden kuyruğa girer (`requeueStaleScans`) ya da bağlanamadığı için en
- *   geç 24 saatte `files.purge-unattached` ile silinir.
+ *   olur; dosya açılışta ve 15 dakikada bir zamanlanmış `file.scan-requeue` işiyle yeniden kuyruğa
+ *   girer (`requeueStaleScans`): `clamd` uzun süre kapalı kalsa da süreç yeniden başlamadan tarama
+ *   sürer. Tarama bekleyen dosya 24 saatlik bağsız dosya temizliğine girmez; ancak yüklemeden 7 gün
+ *   sonra silinir (`PROCESSING_FILE_TTL_MS`, `services/files.ts`).
  * - Kuyruk kapalıyken (`JOBS_ENABLED=false` ya da açılamadı) tarama yüklemenin transaction'ından
  *   sonra süreç içinde, arka planda tek denemeyle çalışır (`InlineScanScheduler`); geçici hatada
  *   dosya `processing` kalır ve açılış kurtarması (`recoverStaleScans`) yeniden dener.
@@ -191,6 +193,42 @@ export async function requeueStaleScans(
     if ((await boss.send(FILE_SCAN_JOB, data, { singletonKey: data.fileId })) !== null) queued += 1
   }
   return queued
+}
+
+/**
+ * Periyodik yeniden kuyruklama (OG-092; ADR 0003 karar 8): denemeleri biten
+ * ya da işi kaybolmuş taramalar 15 dakikada bir yeniden kuyruğa girer. pg-boss zamanlaması her
+ * oluşumu bir kez kuyruğa koyar; ayrıca işçi oturum kilidi (`pg_try_advisory_lock`) altında çalışır,
+ * kilit başka süreçteyse tur atlanır. Dosyanın bekleyen ya da çalışan işi varsa `exclusive` politika
+ * yenisini açmaz; yük yoktur (kurum kimliği bile gerekmez, sorgu kurum kurum yürür).
+ */
+export const FILE_SCAN_REQUEUE_JOB = 'file.scan-requeue'
+export const SCAN_REQUEUE_CRON = '*/15 * * * *'
+export const SCAN_REQUEUE_LOCK_NAME = 'file.scan-requeue'
+/** Yeniden kuyruklama işinin kuyruk ayarı: kaçan tur sonraki oluşumda yapılır, yeniden deneme yok. */
+export const SCAN_REQUEUE_QUEUE_OPTIONS = {
+  retryLimit: 0,
+  expireInSeconds: 600,
+} as const satisfies Omit<Queue, 'name'>
+
+/**
+ * Tek yeniden kuyruklama turu: kilit alınırsa bayat taramalar kuyruğa girer ve açılan iş sayısı
+ * döner; kilit başka süreçteyse `null`.
+ */
+export async function runScanRequeue(input: {
+  db: Database
+  boss: Pick<PgBoss, 'send'>
+  log: FastifyBaseLogger
+  clock: () => Date
+  lock: SessionLock
+}): Promise<number | null> {
+  const outcome = await input.lock(() => requeueStaleScans(input.db, input.boss, input.clock()))
+  if (!outcome.acquired) {
+    input.log.info({ event: 'file.scan_requeue_skipped' })
+    return null
+  }
+  input.log.info({ event: 'file.scan_requeued', count: outcome.value })
+  return outcome.value
 }
 
 /** Kuyruksuz açılış kurtarmasının kilit adı (ses dönüşümünün kilidinden ayrı). */

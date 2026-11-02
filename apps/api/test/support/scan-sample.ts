@@ -2,17 +2,18 @@ import type { Readable } from 'node:stream'
 
 import type { FileScanJobData, FileScanScheduler } from '../../src/services/file-scan.ts'
 import {
+  ScanLimitExceededError,
   ScannerUnavailableError,
   type FileScanner,
   type ScanVerdict,
 } from '../../src/services/file-scanner.ts'
 
 /**
- * Dosya tarama testlerinin sahte bağımlılıkları (OG-092). Gerçek `clamd` yalnız
- * `file-scan-clamd.test.ts`'te (`TEST_CLAMAV_HOST` verilirse) koşar.
+ * Dosya tarama testlerinin sahte bağımlılıkları (OG-092). INSTREAM istemcisi
+ * `file-scanner.test.ts`'te sahte `clamd` sunucusuyla sınanır.
  */
 
-export type FakeScanResult = 'clean' | 'infected' | 'unavailable'
+export type FakeScanResult = 'clean' | 'infected' | 'unavailable' | 'limit'
 
 /** Sahte imza adı: EICAR test dosyasının ClamAV'deki adı. */
 export const FAKE_SIGNATURE = 'Eicar-Test-Signature'
@@ -33,6 +34,8 @@ export class FakeFileScanner implements FileScanner {
         return { infected: true, signature: FAKE_SIGNATURE }
       case 'unavailable':
         throw new ScannerUnavailableError('connect ECONNREFUSED 127.0.0.1:3310')
+      case 'limit':
+        throw new ScanLimitExceededError()
       default:
         return this.result satisfies never
     }

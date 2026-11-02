@@ -18,7 +18,7 @@ import {
   requeueStaleTranscodes,
   STALE_TRANSCODE_MS,
 } from '../src/jobs/media-transcode.ts'
-import { FILE_SCAN_JOB } from '../src/jobs/file-scan.ts'
+import { FILE_SCAN_JOB, FILE_SCAN_REQUEUE_JOB, SCAN_REQUEUE_CRON } from '../src/jobs/file-scan.ts'
 import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
 import { HOUR_SECONDS, type AnyInstitutionJob } from '../src/jobs/types.ts'
@@ -574,5 +574,55 @@ describe('PostgreSQL 16: iş kuyruğu', { skip: PG_SKIP }, () => {
     } finally {
       scanner.result = 'clean'
     }
+  })
+
+  test('OG-092: file.scan-requeue 15 dakikada bir zamanlanır; işçi süreç yeniden başlamadan işi kaybolmuş bayat taramayı kuyruğa alır ve dosya ready olur', async () => {
+    const { app, queue } = await appWithJobs()
+    const schedules = await queue.boss.getSchedules(FILE_SCAN_REQUEUE_JOB)
+    assert.equal(schedules.length, 1)
+    assert.equal(schedules[0]?.cron, SCAN_REQUEUE_CRON)
+    assert.equal(schedules[0]?.timezone, JOB_TIME_ZONE)
+    // Denemeleri bitmiş gibi: bir saat önce yüklenmiş, işi olmayan `processing` dosya.
+    const institution = await createInstitution(app)
+    const id = randomUUID()
+    const storageKey = storageKeyFor({
+      institutionId: institution.id,
+      purpose: 'material',
+      fileId: id,
+      now: FIXED_NOW,
+    })
+    await store.storage.put(storageKey, Readable.from(PDF))
+    await db.transaction((tx) =>
+      insertFile(
+        tx,
+        institution.id,
+        {
+          id,
+          purpose: 'material',
+          storageKey,
+          contentType: 'application/pdf',
+          byteSize: PDF.length,
+          sha256: 'b'.repeat(64),
+          originalName: null,
+          uploadedByUserId: institution.admin.id,
+        },
+        new Date(FIXED_NOW.getTime() - HOUR),
+        'processing',
+      ),
+    )
+    // Zamanlamanın bırakacağı işi elle bırakır (oluşumu beklemeden).
+    assert.notEqual(await queue.boss.send(FILE_SCAN_REQUEUE_JOB, null), null)
+    const row = async () =>
+      (
+        await db
+          .select()
+          .from(files)
+          .where(and(eq(files.institutionId, institution.id), eq(files.id, id)))
+      )[0]
+    assert.equal((await until(row, (value) => value?.status === 'ready'))?.status, 'ready')
+    const jobs = await queue.boss.findJobs(FILE_SCAN_JOB, {
+      data: { institutionId: institution.id, fileId: id },
+    })
+    assert.equal(jobs.length, 1)
   })
 })

@@ -13,7 +13,7 @@ import { extendFileRetention, loadFilesByIds, type StoredFile } from '../db/file
 import { loadGroups, loadMembershipsOfStudents } from '../db/language-groups.ts'
 import type { StoredAssignment, StoredSubmission } from '../db/skills.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
-import { attachFile } from './files.ts'
+import { attachFile, FileRejectedError, isScanRejected } from './files.ts'
 import { getInstitutionModules } from './modules.ts'
 
 /**
@@ -54,7 +54,8 @@ export function bodyFileIds(
 /**
  * Kursiyerin teslimde kullanabileceği dosyalar (core `SubmissionFile`): aynı kurumda, kendi
  * yüklediği, silinmemiş ve reddedilmemiş. Başkasının ya da olmayan dosyası listede yoktur; core
- * bunu `submission_file_not_found` ile reddeder, API genel 404 döner (varlığı sızmaz). Hazır
+ * bunu `submission_file_not_found` ile reddeder, API genel 404 döner (varlığı sızmaz); kendi
+ * taramada reddedilmiş dosyası 422 `file_rejected` (Sabah kararı 42, yol `fileIds.<sıra>`). Hazır
  * olmayan, başka kayda bağlı ya da saklama sonu gelmiş (rıza geri çekilince imhaya işaretlenen)
  * dosyayı bağlama satır kilidi altında reddeder (`attachFile`, 422 `file_unavailable`). Süre milisaniyeden
  * saniyeye çevrilir; ölçülmemiş süre `null` kalır (core `recording_not_measured`).
@@ -65,6 +66,14 @@ export async function usableFiles(
   fileIds: readonly string[],
 ): Promise<SubmissionFile[]> {
   const rows = await loadFilesByIds(tx, ctx.institutionId, fileIds)
+  // Kursiyerin kendi taramada reddedilmiş dosyası ayrı kodla döner (Sabah kararı 42); başkasınınki
+  // listede olmadığından genel 404 kalır.
+  const rejected = fileIds.findIndex((id) =>
+    rows.some(
+      (row) => row.id === id && row.uploadedByUserId === ctx.actor.userId && isScanRejected(row),
+    ),
+  )
+  if (rejected >= 0) throw new FileRejectedError(['fileIds', rejected])
   return rows
     .filter(
       (row) =>

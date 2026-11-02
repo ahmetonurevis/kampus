@@ -29,7 +29,8 @@ import { jobErrorInfo } from './job-error.ts'
  * - Geçici hata pg-boss'un yeniden denemesine kalır (3 kez, geri çekilmeli); son denemedeki geçici
  *   hata dosyayı reddeder (`media_retries_exhausted`). Süre aşımında son deneme de düşerse satır
  *   `processing` kalır ve açılışta yeniden kuyruğa girer (`requeueStaleTranscodes`); bağlanamayan
- *   dosya en geç 24 saatte `files.purge-unattached` ile silinir.
+ *   `processing` dosyayı `files.purge-unattached` yüklemeden 7 gün sonra siler
+ *   (`PROCESSING_FILE_TTL_MS`).
  * - Kuyruk kapalıyken (`JOBS_ENABLED=false` ya da açılamadı) dönüşüm yüklemenin transaction'ından
  *   sonra süreç içinde, arka planda (yanıt beklemez) tek denemeyle çalışır ve her hata dosyayı
  *   reddeder (`InlineTranscodeScheduler`); yarıda kalanlar (süreç çöktü ya da kapandı) açılıştan

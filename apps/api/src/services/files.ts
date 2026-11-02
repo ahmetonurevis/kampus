@@ -73,6 +73,14 @@ export const DEFAULT_STORAGE_QUOTA_BYTES = 50 * GB
 /** Bağlanmamış dosyanın ömrü (karar 5). */
 export const UNATTACHED_FILE_TTL_MS = 24 * 60 * 60 * 1000
 
+/**
+ * İşlenmeyi (tarama, ses dönüşümü) bekleyen bağsız dosyanın ömrü (OG-092). Tarama `clamd`
+ * kesintisinde süresiz yeniden denenir (geçici hata dosyayı reddetmez); dosya bağlanamadığından
+ * 24 saatlik sınır onu tarama bitmeden silerdi. Hafta sonu süren kesintiyi kapsar; bu süreyi aşan
+ * dosya terk edilmiş sayılır ve silinir.
+ */
+export const PROCESSING_FILE_TTL_MS = 7 * 24 * 60 * 60 * 1000
+
 /** Bağlanmamış dosya temizliğinin bir turda baktığı en çok dosya. */
 export const PURGE_BATCH_SIZE = 500
 
@@ -95,7 +103,35 @@ export const FILE_MESSAGES = {
   storage_quota_exceeded: 'Kurumunuzun dosya depolama alanı doldu. Yöneticinize başvurun.',
   consent_required: 'Ses kaydı için gerekli onay bulunmuyor; görev yüz yüze değerlendirilecek.',
   file_processing: 'Dosya henüz işleniyor. Biraz sonra yeniden deneyin.',
+  file_rejected: 'Dosya güvenlik taramasından geçmedi. Başka bir dosya yükleyin.',
 } as const
+
+/**
+ * Taramada reddedilmiş dosya (Sabah kararı 42; ADR 0003 karar 8, OG-092): ses dışı amaçta
+ * `rejected` durum yalnız `file.scan`'den gelir. Ses dönüşümünün reddi (boş, sessiz, çözülemeyen
+ * kayıt) tarama reddi değildir; o dosya eskisi gibi bulunmaz (404 / 422 `file_unavailable`).
+ */
+export function isScanRejected(row: Pick<StoredFile, 'status' | 'purpose'>): boolean {
+  return row.status === 'rejected' && !needsTranscode(row.purpose)
+}
+
+/**
+ * Yükleyenin kendi taramada reddedilmiş dosyası: 422 `file_rejected` (Sabah kararı 42). Varlık
+ * ipucu kuralı: kod yalnız dosyayı yükleyen kişiye döner; başka kurumun, başkasının ya da kapsam
+ * dışı dosyası çağıranın kendi bulunmadı yanıtını alır (404 ya da 422 `file_unavailable`).
+ */
+export class FileRejectedError extends RuleViolationError {
+  /** `path` verilirse hata o alana yazılır (ör. `fileIds.<sıra>`). */
+  constructor(path?: readonly (string | number)[]) {
+    const message = FILE_MESSAGES.file_rejected
+    super(
+      'file_rejected',
+      message,
+      path === undefined ? {} : { issues: [{ path: [...path], code: 'file_rejected', message }] },
+    )
+    this.name = 'FileRejectedError'
+  }
+}
 
 export class FileTooLargeError extends AppError {
   constructor() {
@@ -382,7 +418,9 @@ async function readableFile(
   fileId: string,
 ): Promise<StoredFile> {
   const row = await findFile(tx, ctx.institutionId, fileId)
-  if (!row || row.status === 'deleted' || row.status === 'rejected') throw new NotFoundError()
+  if (!row || row.status === 'deleted') throw new NotFoundError()
+  // Ses dönüşümünün reddi bulunmaz; tarama reddi yalnız yükleyene ayrı kodla döner (aşağıda).
+  if (row.status === 'rejected' && !isScanRejected(row)) throw new NotFoundError()
   if (row.attachedType === null || row.attachedId === null) {
     if (row.uploadedByUserId !== ctx.actor.userId) throw new NotFoundError()
   } else {
@@ -395,6 +433,8 @@ async function readableFile(
   }
   // İşlemin bağlantısıyla: PGlite tek bağlantılıdır, `ctx.db` burada beklerdi.
   await assertPurposeModule(tx, ctx, row.purpose)
+  // Kapsam ve modülden sonra: reddedilen dosya bağsızdır, buraya yalnız yükleyeni gelir.
+  if (isScanRejected(row)) throw new FileRejectedError()
   return row
 }
 
@@ -471,6 +511,7 @@ export const ATTACH_MESSAGES = {
   file_not_ready: 'Dosya henüz kullanıma hazır değil.',
   file_purpose_mismatch: 'Bu dosya bu kayda eklenemez.',
   file_already_attached: 'Bu dosya başka bir kayda eklenmiş.',
+  file_rejected: FILE_MESSAGES.file_rejected,
 } as const
 
 /**
@@ -487,7 +528,7 @@ export function isPurgeDue(row: Pick<StoredFile, 'retentionUntil'>, now: Date): 
  * transaction'ında çağırır. Dosya aynı kurumda, aynı yükleyicinin, `ready` ve bağsız olmalı;
  * amacı kayıt türünün kabul ettikleri arasında olmalı. Başkasının, olmayan ya da saklama sonu
  * gelmiş (imhaya işaretli, `isPurgeDue`) dosya ayırt edilmez (422 `file_unavailable`; kullanıcı
- * yeniden yükler).
+ * yeniden yükler). Yükleyenin taramada reddedilmiş dosyası 422 `file_rejected` (Sabah kararı 42).
  *
  * Rıza gereken amaçta (konuşma kaydı; karar 9, DOM-BEC-050, DOM-YTK-059, DOM-YTK-061) veri sahibi
  * çağırandan alınmaz (`dataSubjectId` yok sayılır): yükleyenin `student` bağlantısından türetilir
@@ -513,12 +554,10 @@ export async function attachFile(
   const kind = fileAttachmentKind(input.attachedType)
   if (!kind) throw new Error(`unknown file attachment type: ${input.attachedType}`)
   const row = await findFile(tx, ctx.institutionId, input.fileId, { lock: true })
-  if (
-    !row ||
-    row.uploadedByUserId !== ctx.actor.userId ||
-    row.status === 'deleted' ||
-    row.status === 'rejected'
-  )
+  if (!row || row.uploadedByUserId !== ctx.actor.userId || row.status === 'deleted')
+    throw new RuleViolationError('file_unavailable', ATTACH_MESSAGES.file_unavailable)
+  if (isScanRejected(row)) throw new FileRejectedError()
+  if (row.status === 'rejected')
     throw new RuleViolationError('file_unavailable', ATTACH_MESSAGES.file_unavailable)
   if (!kind.purposes.includes(row.purpose))
     throw new RuleViolationError('file_purpose_mismatch', ATTACH_MESSAGES.file_purpose_mismatch)
@@ -706,7 +745,8 @@ async function deletePurgedObjects(deps: ObjectCleanupDeps, row: StoredFile) {
 }
 
 /**
- * Kurumun 24 saatte bağlanmayan (veya reddedilen) dosyalarının temizliği (karar 5, 13): nesne
+ * Kurumun 24 saatte bağlanmayan (veya reddedilen) dosyalarının temizliği (karar 5, 13); işlenmeyi
+ * bekleyen (`processing`) dosya yüklemeden 7 gün sonra (`PROCESSING_FILE_TTL_MS`). Nesne
  * silinir, satır `deleted` kalır ve özgün ad silinir; her dosya `file.purge` olarak denetime
  * yazılır. Satır kilitlenip `deleted` yazıldıktan sonra nesne silinir: aynı anda bağlanan dosyanın
  * nesnesi silinemez (bağlama da satırı kilitler ve `deleted` dosyayı reddeder). Nesne silinemezse
@@ -724,11 +764,13 @@ export async function purgeUnattachedFiles(input: {
 }): Promise<number> {
   const { db, storage, now, log } = input
   const before = new Date(now.getTime() - UNATTACHED_FILE_TTL_MS)
+  const processingBefore = new Date(now.getTime() - PROCESSING_FILE_TTL_MS)
   const stale = await listStaleUnattachedFiles(
     db,
     input.institutionId,
     before,
     input.limit ?? PURGE_BATCH_SIZE,
+    processingBefore,
   )
   let purged = 0
   for (const candidate of stale) {

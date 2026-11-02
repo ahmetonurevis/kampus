@@ -951,6 +951,7 @@ describe('Sürüm durum geçişleri', () => {
             items: [{ questionVersionId: 'test-r1-v1', points: 1 }],
             timeLimitMinutes: null,
             shuffleItems: false,
+            passageVersionId: null,
           },
         },
         {
@@ -960,6 +961,7 @@ describe('Sürüm durum geçişleri', () => {
             items: [{ questionVersionId: 'test-q-other', points: 1 }],
             timeLimitMinutes: null,
             shuffleItems: false,
+            passageVersionId: null,
           },
         },
         { id: 'test-text-v1', content: { type: 'text', body: 'x', fileId: null } },

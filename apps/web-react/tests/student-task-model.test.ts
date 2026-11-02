@@ -79,7 +79,7 @@ const attempt = (overrides: Partial<TaskAttempt> = {}): TaskAttempt => ({
   late: false,
   counted: true,
   answers: {},
-  result: { earned: 3, possible: 4, percent: 75, items: null, answerKey: null },
+  result: { earned: 3, possible: 4, percent: 75, items: null, subskills: null, answerKey: null },
   rowVersion: 3,
   ...overrides,
 })
@@ -455,6 +455,7 @@ test('IST-051: satır türü ve amacı atamadan, durumu özetten gelir', () => {
 const question = (body: AttemptQuestion['question']): AttemptQuestion => ({
   questionVersionId: 'q-1',
   points: 1,
+  subskill: null,
   question: body,
 })
 

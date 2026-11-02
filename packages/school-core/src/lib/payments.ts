@@ -28,13 +28,14 @@ export function installmentAmounts(cents: number, count: number) {
   return Array.from({ length: count }, (_, i) => base + (i < cents % count ? 1 : 0))
 }
 /** Tahsilat yöntemleri: saklanan değer Türkçe etikettir (örnek veri ve mevcut kayıtlar aynı metni taşır). */
-export const PAYMENT_METHODS = ['Banka havalesi', 'Nakit', 'Kredi kartı'] as const
+export const PAYMENT_METHODS = ['Banka havalesi', 'Nakit', 'Kredi kartı', 'Senet'] as const
 export type PaymentMethod = (typeof PAYMENT_METHODS)[number]
 /** Yöntem değeri → kullanıcıya gösterilen Türkçe etiket. */
 export const PAYMENT_METHOD_LABELS = {
   'Banka havalesi': 'Banka havalesi',
   Nakit: 'Nakit',
   'Kredi kartı': 'Kredi kartı',
+  Senet: 'Senet',
 } as const satisfies Record<PaymentMethod, string>
 /** Tahsilat girdisi; API gövde şeması ve web/mobil form şemasıdır. */
 export const paymentInputSchema = z.object({
@@ -69,6 +70,20 @@ export function payInvoice(
 }
 
 const CASH: PaymentMethod = 'Nakit'
+const PROMISSORY_NOTE: PaymentMethod = 'Senet'
+
+/** Bursluya burs belgeleri dışında senet ve taahhüt düzenlenmez (DOM-FIN-025). */
+export const hasScholarshipContract = (
+  contracts: readonly { studentId: string; scholarship?: unknown }[],
+  studentId: string,
+): boolean =>
+  contracts.some(
+    (contract) => contract.studentId === studentId && contract.scholarship !== undefined,
+  )
+
+/** Banka kanalından geçmeyen yöntem hesaba bağlanmaz (DOM-FIN-032). */
+export const usesBankAccount = (method: PaymentMethod): boolean =>
+  method !== CASH && method !== PROMISSORY_NOTE
 /** Saklanan öğle öncesi saat, gün değerinin Europe/Istanbul'da aynı güne düşmesi içindir. */
 const DAY_TIME = 'T09:00:00.000Z'
 
@@ -267,7 +282,11 @@ export function planPayment(state: State, input: unknown, context: PaymentContex
     throw new DomainError('payment_reference_required', 'İşlem referansını girin.', {
       path: ['reference'],
     })
-  const bankAccountId = data.method === CASH ? null : resolveBankAccount(data, context)
+  const bankAccountId = usesBankAccount(data.method) ? resolveBankAccount(data, context) : null
+  if (data.method === PROMISSORY_NOTE && hasScholarshipContract(state.contracts, data.studentId))
+    throw new DomainError('scholarship_promissory_note', 'Burslu öğrenciden senet alınamaz.', {
+      path: ['method'],
+    })
   if (reference !== null && context.referenceInUse)
     throw new DomainError('payment_reference_used', 'Bu işlem referansı daha önce kaydedilmiş.', {
       kind: 'conflict',

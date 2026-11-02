@@ -3,7 +3,7 @@ import { useStudentPayments } from '@kampus/react-shared/use-payment-commands.ts
 import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
-import { receiptNumberLabel } from '@/lib/pdf/finance-templates.ts'
+import { receiptNumberLabel } from '@/lib/pdf/templates/payment-receipt.ts'
 
 /**
  * Veli ve öğrencinin tahsilat geçmişi (DOM-FIN-030, -050, -052): sunucu kapsamı kendi öğrencisiyle

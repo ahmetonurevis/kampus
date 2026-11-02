@@ -176,7 +176,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat eğitim ücretinin bildirilmiş banka hesabına yatırılarak tahsilini ve MEBBİS'e işlenmesini ister.
 - **Kaynak:** ÖÖKY md. 55/3.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — API nakdi kurum ayarıyla denetler (`lib/payments.ts`, 422 `cash_payment_disabled`; `PATCH /api/v1/payment-settings`). Bildirilmiş hesaplar `/api/v1/bank-accounts` ile tutulur; hesap tanımlıysa nakit dışı tahsilat bir hesaba bağlanır (422 `bank_account_required`), hiç hesap tanımlanmadıysa tahsilat engellenmez. MEBBİS işareti `POST /api/v1/payments/:paymentId/mebbis-record` ile elle tutulur; MEBBİS'e bağlantı yoktur. Çevrimdışı demo formu ayarı bilmez (`apps/web/src/views/Finance.vue`).
+- **Kodda:** kısmen — API nakdi kurum ayarıyla denetler (`lib/payments.ts`, 422 `cash_payment_disabled`; `PATCH /api/v1/payment-settings`). Bildirilmiş hesaplar `/api/v1/bank-accounts` ile tutulur; hesap tanımlıysa nakit dışı tahsilat bir hesaba bağlanır (422 `bank_account_required`), hiç hesap tanımlanmadıysa tahsilat engellenmez. Senet (`Senet`, IST-106) banka kanalından geçmediği için hesaba bağlanmaz, referansı senet numarasıdır; burslu öğrenciden alınmaz (`scholarship_promissory_note`, DOM-FIN-025). MEBBİS işareti `POST /api/v1/payments/:paymentId/mebbis-record` ile elle tutulur; MEBBİS'e bağlantı yoktur. Çevrimdışı demo formu ayarı bilmez (`apps/web/src/views/Finance.vue`).
 
 ### DOM-FIN-033 · Tahsilat silinmez, ters kayıtla düzeltilir
 
@@ -254,7 +254,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Veliye verilen belge ile sistemdeki borç ayrışmamalıdır.
 - **Kaynak:** İşletme kuralı; ÖÖKY md. 53/1.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `packages/school-core/src/lib/document-data.js:20-45` sözleşme ve plan belgesini aynı kayıttan üretir; sürüm yok.
+- **Kodda:** kısmen — `packages/school-core/src/lib/document-data.ts` sözleşme ve plan belgesini aynı kayıttan üretir; sürüm yok. Taahhütname taahhüt cümlesi ve imza taşır (`templates/payment-plan.ts`); burslu öğrenciye sunulmaz (`hasScholarshipContract`, DOM-FIN-025), öğrenci rolüne açık değildir. Kısmi ödeme tutarı şablona `collectedCents` ile verilir; web bağlantısı #19'da beklemektedir.
 
 ### DOM-FIN-052 · Finans yetki ve kapsamı
 

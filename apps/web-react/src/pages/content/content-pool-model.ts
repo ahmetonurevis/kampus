@@ -13,6 +13,7 @@ import {
   RESOURCE_STATUSES,
   resourceVersionInputSchema,
   transitionReasonSchema,
+  type GlossaryEntry,
   type ResourceStatus,
 } from '@kampus/school-core/content/resource.ts'
 import {
@@ -226,6 +227,11 @@ export type DraftFormValues = Omit<DraftFormInput, 'content' | 'answerKey'> & {
   content: {
     type: AuthorableType
     body?: string
+    /**
+     * Okuma parçasının sözlükçesi: formda henüz düzenleme alanı yok, olduğu gibi taşınır ve yamaya
+     * geri konur; yoksa başlık düzeltmesi sunucudaki sözlükçeyi `[]` yapardı (DOM-BEC-006).
+     */
+    glossary?: GlossaryEntry[]
     /** Materyal dosyasının ana dosyası; çözümleyici listenin ilkiyle doldurur. */
     fileId?: string | null
     question?: {
@@ -331,7 +337,11 @@ export function draftFromHead(head: StaffResourceVersion): DraftFormValues | nul
   // Liste sürüm yanıtının `files` alanından gelir (adlarıyla); `fileIds` ön işlemde yeniden kurulur.
   const rest = { title, tags, license, attributions, files: draftFiles(head) }
   if (content.type === 'reading_passage')
-    return { ...rest, content: { type: 'reading_passage', body: content.body }, answerKey: null }
+    return {
+      ...rest,
+      content: { type: 'reading_passage', body: content.body, glossary: content.glossary },
+      answerKey: null,
+    }
   if (content.type === 'file')
     return { ...rest, content: { type: 'file', fileId: content.fileId }, answerKey: null }
   if (content.type === 'question' && content.question.questionType === 'multiple_choice') {

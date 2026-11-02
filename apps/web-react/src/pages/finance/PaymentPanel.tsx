@@ -3,6 +3,7 @@ import { useForm, useWatch } from 'react-hook-form'
 import {
   PAYMENT_METHOD_LABELS,
   PAYMENT_METHODS,
+  usesBankAccount,
   type PaymentMethod,
 } from '@kampus/school-core/lib/payments.ts'
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
@@ -118,7 +119,9 @@ function PaymentForm({
     },
   })
   const busy = pay.isPending || form.formState.isSubmitting
-  const isCash = useWatch({ control: form.control, name: 'method' }) === CASH
+  const selectedMethod = useWatch({ control: form.control, name: 'method' })
+  const isCash = selectedMethod === CASH
+  const isNote = selectedMethod === 'Senet'
 
   const onSubmit = form.handleSubmit(
     async ({ amount, method, reference, paidDate, bankAccountId }) => {
@@ -131,7 +134,7 @@ function PaymentForm({
           amountCents,
           method,
           ...(method === CASH ? {} : { reference }),
-          ...(method === CASH || bankAccountId === '' ? {} : { bankAccountId }),
+          ...(!usesBankAccount(method) || bankAccountId === '' ? {} : { bankAccountId }),
           // Bugün için gün gönderilmez: tahsilat kayıt anını taşır.
           ...(paidDate === today ? {} : { paidDate }),
         },
@@ -195,7 +198,7 @@ function PaymentForm({
           </NativeSelect>
         )}
       </FormField>
-      {isCash || accounts.length === 0 ? null : (
+      {!usesBankAccount(selectedMethod) || accounts.length === 0 ? null : (
         <FormField id="tahsilat-hesap" label="Banka hesabı" error={errors.bankAccountId}>
           {(control) => (
             <NativeSelect {...control} {...form.register('bankAccountId')} disabled={busy}>
@@ -211,9 +214,11 @@ function PaymentForm({
       {isCash ? null : (
         <FormField
           id="tahsilat-referans"
-          label="İşlem referansı"
+          label={isNote ? 'Senet numarası' : 'İşlem referansı'}
           error={errors.reference}
-          description="Banka dekontundaki veya POS fişindeki numara."
+          description={
+            isNote ? 'Senet üzerindeki numara.' : 'Banka dekontundaki veya POS fişindeki numara.'
+          }
         >
           {(control) => (
             <Input

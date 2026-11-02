@@ -134,6 +134,22 @@ test.describe('DOM-FIN-052 veli: Finans, Dekontlar ve Ödeme Yap', () => {
     await expect(summary(page)).toContainText('Deniz Yılmaz')
   })
 
+  test('DOM-FIN-025: burslu çocuğun belgelerinde taahhütname sunulmaz', async ({ page }) => {
+    await page.route('**/api/v1/collections/contracts**', async (route) => {
+      const response = await route.fetch()
+      const body = (await response.json()) as { data: Record<string, unknown>[] }
+      for (const row of body.data)
+        row.record = {
+          ...(row.record as object),
+          scholarship: { programId: 'test-program', amountCents: 100 },
+        }
+      await route.fulfill({ response, json: body })
+    })
+    await page.goto('/veli/sozlesmeler?cocuk=s2')
+    await expect(page.getByRole('heading', { name: 'Özel okul eğitim sözleşmesi' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Taksit taahhütnamesi' })).toHaveCount(0)
+  })
+
   test('Sözleşmeler seçili çocuğun belgelerini listeler; 390 px yatay taşmaz', async ({ page }) => {
     await page.goto('/veli/sozlesmeler?cocuk=s2')
     await expect(summary(page)).toContainText('Ece Yılmaz')

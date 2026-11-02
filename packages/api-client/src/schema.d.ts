@@ -2199,7 +2199,7 @@ export interface paths {
         put?: never;
         /**
          * Tahsilat kaydet
-         * @description Tahsilatı ayrı kayıt olarak yazar ve önce `invoiceId` ile seçilen taksite, sonra en eski vadeye dağıtır; kısmi ödeme kabul edilir, açık taksitleri aşan kısım `creditCents` olarak iade alacağıdır (DOM-FIN-030). Açık taksit yoksa 409 `no_open_installments`, ödenmiş taksit seçilirse 409 `invoice_already_paid`. Nakit dışı yöntemde `reference` zorunlu (422 `payment_reference_required`); kullanılmış referans 409 `payment_reference_used` (DOM-FIN-031). Nakit kurumda kapalıysa 422 `cash_payment_disabled`. Kurumda bildirilmiş hesap varsa nakit dışı tahsilat `bankAccountId` ister (422 `bank_account_required`), arşivli veya başka kurumun hesabı 422 `bank_account_invalid` (DOM-FIN-032). İleri tarih 422 `payment_date_in_future`. Olmayan veya başka kurumun öğrencisi 404. Gövde katıdır. `Idempotency-Key` zorunludur: aynı anahtar ikinci tahsilat açmaz, ilk yanıtı döner. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         * @description Tahsilatı ayrı kayıt olarak yazar ve önce `invoiceId` ile seçilen taksite, sonra en eski vadeye dağıtır; kısmi ödeme kabul edilir, açık taksitleri aşan kısım `creditCents` olarak iade alacağıdır (DOM-FIN-030). Açık taksit yoksa 409 `no_open_installments`, ödenmiş taksit seçilirse 409 `invoice_already_paid`. Nakit dışı yöntemde `reference` zorunlu (422 `payment_reference_required`); kullanılmış referans 409 `payment_reference_used` (DOM-FIN-031). Nakit kurumda kapalıysa 422 `cash_payment_disabled`. Kurumda bildirilmiş hesap varsa nakit dışı tahsilat `bankAccountId` ister (422 `bank_account_required`), arşivli veya başka kurumun hesabı 422 `bank_account_invalid` (DOM-FIN-032). Senet hesaba bağlanmaz, `reference` senet numarasıdır; burslu öğrenciden 422 `scholarship_promissory_note` (DOM-FIN-025). İleri tarih 422 `payment_date_in_future`. Olmayan veya başka kurumun öğrencisi 404. Gövde katıdır. `Idempotency-Key` zorunludur: aynı anahtar ikinci tahsilat açmaz, ilk yanıtı döner. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
          */
         post: operations["recordPayment"];
         delete?: never;
@@ -2751,7 +2751,7 @@ export interface paths {
         put?: never;
         /**
          * Kaynak oluştur
-         * @description Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         * @description Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`; bağlanan okuma parçası (`passageVersionId`, IST-042) için 422 `passage_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
          */
         post: operations["createResource"];
         delete?: never;
@@ -5560,6 +5560,8 @@ export interface components {
             primarySkill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
             skills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
             activityMode: ("reception" | "production" | "interaction" | "mediation") | null;
+            /** @description Anlama sorusunun alt becerisi (DOM-BEC-006); yalnız soruda dolar */
+            subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
             interactionChannel: ("spoken" | "written" | "online") | null;
             mediation: {
                 /** @enum {string} */
@@ -6439,6 +6441,17 @@ export interface components {
             points: number;
             earned: number;
         };
+        TaskAttemptSubskillScoreInput: {
+            /** @enum {string} */
+            subskill: "main_idea" | "detail" | "inference" | "vocabulary";
+            /** @description Bu alt beceriyle etiketli madde sayısı */
+            items: number;
+            /** @description Kazanılan puan (iki ondalık) */
+            earned: number;
+            possible: number;
+            /** @description 100 üzerinden puan */
+            percent: number;
+        };
         TaskAttemptResultInput: {
             /** @description Kazanılan puan (iki ondalık) */
             earned: number;
@@ -6447,6 +6460,8 @@ export interface components {
             percent: number;
             /** @description Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045) */
             items: components["schemas"]["TaskAttemptItemScoreInput"][] | null;
+            /** @description Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır */
+            subskills: components["schemas"]["TaskAttemptSubskillScoreInput"][] | null;
             /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) */
             answerKey: {
                 questionVersionId: string;
@@ -6617,6 +6632,8 @@ export interface components {
             questions: {
                 questionVersionId: string;
                 points: number;
+                /** @description Sorunun alt becerisi (DOM-BEC-006) */
+                subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
                 question: {
                     /** @constant */
                     questionType: "multiple_choice";
@@ -6674,6 +6691,27 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
+            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner */
+            passage: {
+                /**
+                 * Format: uuid
+                 * @description Okuma parçası sürümü
+                 */
+                versionId: string;
+                title: string;
+                body: string;
+                /** @description Sistem hesaplar (DOM-KYN-002) */
+                wordCount: number;
+                cefrLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @description Sözlükçe, yazarın sırasıyla */
+                glossary: {
+                    term: string;
+                    meaning: string;
+                    example: string | null;
+                }[];
+                /** @description Kaynak gösterimi (DOM-KYN-024) */
+                attributions: components["schemas"]["ResourceAttributionInput"][];
+            } | null;
             /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
             listening: {
                 /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
@@ -8790,6 +8828,8 @@ export interface components {
             primarySkill: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use") | null;
             skills: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
             activityMode: ("reception" | "production" | "interaction" | "mediation") | null;
+            /** @description Anlama sorusunun alt becerisi (DOM-BEC-006); yalnız soruda dolar */
+            subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
             interactionChannel: ("spoken" | "written" | "online") | null;
             mediation: {
                 /** @enum {string} */
@@ -9669,6 +9709,17 @@ export interface components {
             points: number;
             earned: number;
         };
+        TaskAttemptSubskillScore: {
+            /** @enum {string} */
+            subskill: "main_idea" | "detail" | "inference" | "vocabulary";
+            /** @description Bu alt beceriyle etiketli madde sayısı */
+            items: number;
+            /** @description Kazanılan puan (iki ondalık) */
+            earned: number;
+            possible: number;
+            /** @description 100 üzerinden puan */
+            percent: number;
+        };
         TaskAttemptResult: {
             /** @description Kazanılan puan (iki ondalık) */
             earned: number;
@@ -9677,6 +9728,8 @@ export interface components {
             percent: number;
             /** @description Madde sonuçları; kursiyer ve veli yalnız anahtar açılınca görür (DOM-BEC-045) */
             items: components["schemas"]["TaskAttemptItemScore"][] | null;
+            /** @description Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır */
+            subskills: components["schemas"]["TaskAttemptSubskillScore"][] | null;
             /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) */
             answerKey: {
                 questionVersionId: string;
@@ -9847,6 +9900,8 @@ export interface components {
             questions: {
                 questionVersionId: string;
                 points: number;
+                /** @description Sorunun alt becerisi (DOM-BEC-006) */
+                subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
                 question: {
                     /** @constant */
                     questionType: "multiple_choice";
@@ -9903,6 +9958,27 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
+            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner */
+            passage: {
+                /**
+                 * Format: uuid
+                 * @description Okuma parçası sürümü
+                 */
+                versionId: string;
+                title: string;
+                body: string;
+                /** @description Sistem hesaplar (DOM-KYN-002) */
+                wordCount: number;
+                cefrLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @description Sözlükçe, yazarın sırasıyla */
+                glossary: {
+                    term: string;
+                    meaning: string;
+                    example: string | null;
+                }[];
+                /** @description Kaynak gösterimi (DOM-KYN-024) */
+                attributions: components["schemas"]["ResourceAttribution"][];
+            } | null;
             /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
             listening: {
                 /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
@@ -24001,7 +24077,7 @@ export interface operations {
                             /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
                             creditCents: number;
                             /** @enum {string} */
-                            method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                            method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
                             /** @description Banka veya POS işlem referansı */
                             reference: string | null;
                             /** @description Ödeme anı (ISO 8601 UTC) */
@@ -24120,7 +24196,7 @@ export interface operations {
                     studentId: string;
                     amountCents: number;
                     /** @enum {string} */
-                    method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                    method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
                     reference?: string;
                     paidDate?: string;
                     invoiceId?: string;
@@ -24145,7 +24221,7 @@ export interface operations {
                             /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
                             creditCents: number;
                             /** @enum {string} */
-                            method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                            method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
                             /** @description Banka veya POS işlem referansı */
                             reference: string | null;
                             /** @description Ödeme anı (ISO 8601 UTC) */
@@ -24275,7 +24351,7 @@ export interface operations {
                             /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
                             creditCents: number;
                             /** @enum {string} */
-                            method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                            method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
                             /** @description Banka veya POS işlem referansı */
                             reference: string | null;
                             /** @description Ödeme anı (ISO 8601 UTC) */
@@ -24416,7 +24492,7 @@ export interface operations {
                             /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
                             creditCents: number;
                             /** @enum {string} */
-                            method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                            method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
                             /** @description Banka veya POS işlem referansı */
                             reference: string | null;
                             /** @description Ödeme anı (ISO 8601 UTC) */
@@ -24557,7 +24633,7 @@ export interface operations {
                             /** @description Taksitlere dağıtılmayan, iade alacağı olan tutar (kuruş) */
                             creditCents: number;
                             /** @enum {string} */
-                            method: "Banka havalesi" | "Nakit" | "Kredi kartı";
+                            method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
                             /** @description Banka veya POS işlem referansı */
                             reference: string | null;
                             /** @description Ödeme anı (ISO 8601 UTC) */
@@ -27765,6 +27841,12 @@ export interface operations {
                         /** @enum {string} */
                         type: "reading_passage";
                         body: string;
+                        glossary?: {
+                            term: string;
+                            meaning: string;
+                            /** @default null */
+                            example?: string | null;
+                        }[];
                     } | {
                         /** @enum {string} */
                         type: "audio";
@@ -27875,6 +27957,8 @@ export interface operations {
                         timeLimitMinutes?: number | null;
                         /** @default false */
                         shuffleItems?: boolean;
+                        /** @default null */
+                        passageVersionId?: string | null;
                     } | {
                         /** @enum {string} */
                         type: "exercise_set";
@@ -27887,6 +27971,8 @@ export interface operations {
                         timeLimitMinutes?: number | null;
                         /** @default false */
                         shuffleItems?: boolean;
+                        /** @default null */
+                        passageVersionId?: string | null;
                     } | {
                         /** @enum {string} */
                         type: "homework_template";
@@ -27949,6 +28035,8 @@ export interface operations {
                         skills?: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
                         /** @default null */
                         activityMode?: ("reception" | "production" | "interaction" | "mediation") | null;
+                        /** @default null */
+                        subskill?: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
                         /** @default null */
                         interactionChannel?: ("spoken" | "written" | "online") | null;
                         /** @default null */
@@ -28310,6 +28398,12 @@ export interface operations {
                         /** @enum {string} */
                         type: "reading_passage";
                         body: string;
+                        glossary?: {
+                            term: string;
+                            meaning: string;
+                            /** @default null */
+                            example?: string | null;
+                        }[];
                     } | {
                         /** @enum {string} */
                         type: "audio";
@@ -28420,6 +28514,8 @@ export interface operations {
                         timeLimitMinutes?: number | null;
                         /** @default false */
                         shuffleItems?: boolean;
+                        /** @default null */
+                        passageVersionId?: string | null;
                     } | {
                         /** @enum {string} */
                         type: "exercise_set";
@@ -28432,6 +28528,8 @@ export interface operations {
                         timeLimitMinutes?: number | null;
                         /** @default false */
                         shuffleItems?: boolean;
+                        /** @default null */
+                        passageVersionId?: string | null;
                     } | {
                         /** @enum {string} */
                         type: "homework_template";
@@ -28494,6 +28592,8 @@ export interface operations {
                         skills?: ("reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use" | "vocabulary" | "grammar" | "pronunciation")[];
                         /** @default null */
                         activityMode?: ("reception" | "production" | "interaction" | "mediation") | null;
+                        /** @default null */
+                        subskill?: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
                         /** @default null */
                         interactionChannel?: ("spoken" | "written" | "online") | null;
                         /** @default null */

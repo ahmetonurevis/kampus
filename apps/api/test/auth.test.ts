@@ -231,6 +231,16 @@ describe('parola değişimi ve oturum yönetimi (IST-003)', () => {
     assert.equal(await sessionUser(renewed), user.id)
     assert.equal(await sessionUser(other), null)
     assert.equal((await db.select().from(sessions).where(eq(sessions.userId, user.id))).length, 1)
+    // Eski oturum da gerçekten iptal edilir (listede ayrı satır olarak kalmaz): Better Auth
+    // hepsini siler ve bu cihaza yenisini açar; liste tek ve "bu cihaz" satırıdır.
+    assert.equal(await sessionUser(here), null)
+    const listed = await call('GET', '/list-sessions', renewed)
+    assert.equal(listed.statusCode, 200)
+    const rows: { current: boolean }[] = listed.json()
+    assert.deepEqual(
+      rows.map((row) => row.current),
+      [true],
+    )
   })
 
   test('IST-003: diğer cihazlardan çıkışta yenilenen oturum etkin kurumu korur', async () => {

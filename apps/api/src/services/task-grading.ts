@@ -26,6 +26,7 @@ import { versionAllowance } from '@kampus/school-core/skills/submission.ts'
 import type { Database } from '../db/client.ts'
 import { activeDutiesOf } from '../db/coordinator-duties.ts'
 import {
+  assignmentContentRefs,
   decideAppeal,
   findAssignment,
   findRubricVersion,
@@ -1003,6 +1004,13 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
   const dropped = rows.length - shown.length
   if (dropped > 0) ctx.log.warn({ event: 'grading_queue.visibility_mismatch', dropped })
   const summaries = await listSummaries(ctx.db, ctx, viewer, assignments, shown)
+  // Görev başlığı satırda gelir: alanındaki uyuşmazlığı okuyan koordinatör atamayı görmeyebilir
+  // (DOM-YTK-027), atama listesinden eşleyemez. Başlık içerik sürümünündür, kişisel veri değildir.
+  const refs = await assignmentContentRefs(
+    ctx.db,
+    ctx.institutionId,
+    [...assignments.values()].map((assignment) => assignment.resourceVersionId),
+  )
   return {
     total: total - dropped,
     items: summaries.map((summary, index) => {
@@ -1012,7 +1020,11 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
       const latest = work?.versions.at(-1)
       if (!work || !assignment || !grading || !latest)
         throw new Error('grading queue row without its submission')
-      return { ...summary, grading: queueGrading(ctx, assignment, work, grading, latest) }
+      return {
+        ...summary,
+        assignmentTitle: refs.get(assignment.resourceVersionId)?.title ?? null,
+        grading: queueGrading(ctx, assignment, work, grading, latest),
+      }
     }),
   }
 }

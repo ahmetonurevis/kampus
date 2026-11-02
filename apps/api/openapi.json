@@ -8951,6 +8951,13 @@
             ],
             "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045)"
           },
+          "assignmentTitle": {
+            "description": "Atanan içerik sürümünün başlığı; atamayı görmeyen koordinatör de okur (DOM-YTK-027). Sürüm bulunamazsa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "grading": {
             "type": "object",
             "properties": {
@@ -9009,6 +9016,7 @@
           "latestVersion",
           "resubmission",
           "rowVersion",
+          "assignmentTitle",
           "grading"
         ]
       },
@@ -22268,6 +22276,13 @@
             ],
             "description": "Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045)"
           },
+          "assignmentTitle": {
+            "description": "Atanan içerik sürümünün başlığı; atamayı görmeyen koordinatör de okur (DOM-YTK-027). Sürüm bulunamazsa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "grading": {
             "type": "object",
             "properties": {
@@ -22327,6 +22342,7 @@
           "latestVersion",
           "resubmission",
           "rowVersion",
+          "assignmentTitle",
           "grading"
         ],
         "additionalProperties": false
@@ -65020,7 +65036,7 @@
         "tags": [
           "task-submissions"
         ],
-        "description": "Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü ilk puanı veya istenmiş ikinci puanı (DOM-BEC-024) almamış teslimler ile iki puanı uyuşmayıp koordinatörü bekleyen teslimler, en eski gönderim önce, sayfalı; kişinin bir rolde puanladığı bekleyen sürüm listede yoktur (aynı kişi iki rolde puanlamaz), uyuşmazlıklı sürüm puanlayıcılara da görünür. Her kayıtta son sürümün özeti (metin yok) ve `grading`: bekleyen roller (`awaiting`; ikinci puan bekleyenler ayrı görünür), uyuşmazlık (`awaitingResolution`; yalnız iki puan da verilince), örneklem bekleniyor mu, puanlama süresi (`dueAt`: son teslim + 7 gün, core `gradingDueAt`; örneklemli görevde örneklem anından, örneklemden önce `null`) ve gecikme (`overdue`; DOM-BEC-025). Süzgeçler: `assignmentId`, `awaiting=first|second` (uyuşmazlıklı satırları dışarıda bırakır), `awaiting=resolution` (yalnız koordinatörün son puanını bekleyen uyuşmazlıklar), `overdue=true|false`; bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün, `ogretmen` gördüğü atamaların (DOM-YTK-028) teslimleri, zümre başkanı/akademik koordinatör ayrıca alanındaki (atanan içeriğin dersi/seviyesi; DOM-YTK-027) uyuşmazlıklı teslimleri; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "Öğretmenin puanlama kuyruğu: kişinin gördüğü arşivsiz, rubrikli atamalarda son sürümü ilk puanı veya istenmiş ikinci puanı (DOM-BEC-024) almamış teslimler ile iki puanı uyuşmayıp koordinatörü bekleyen teslimler, en eski gönderim önce, sayfalı; kişinin bir rolde puanladığı bekleyen sürüm listede yoktur (aynı kişi iki rolde puanlamaz), uyuşmazlıklı sürüm puanlayıcılara da görünür. Her kayıtta son sürümün özeti (metin yok), görev başlığı (`assignmentTitle`; atamayı görmeyen koordinatör de okur) ve `grading`: bekleyen roller (`awaiting`; ikinci puan bekleyenler ayrı görünür), uyuşmazlık (`awaitingResolution`; yalnız iki puan da verilince), örneklem bekleniyor mu, puanlama süresi (`dueAt`: son teslim + 7 gün, core `gradingDueAt`; örneklemli görevde örneklem anından, örneklemden önce `null`) ve gecikme (`overdue`; DOM-BEC-025). Süzgeçler: `assignmentId`, `awaiting=first|second` (uyuşmazlıklı satırları dışarıda bırakır), `awaiting=resolution` (yalnız koordinatörün son puanını bekleyen uyuşmazlıklar), `overdue=true|false`; bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün, `ogretmen` gördüğü atamaların (DOM-YTK-028) teslimleri, zümre başkanı/akademik koordinatör ayrıca alanındaki (atanan içeriğin dersi/seviyesi; DOM-YTK-027) uyuşmazlıklı teslimleri; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {

@@ -487,8 +487,14 @@ describe('zümre başkanı ve akademik koordinatör', () => {
     for (const cookie of [t.cookies.head, t.cookies.admin]) {
       const rows = await ok(await queue(cookie, '&awaiting=resolution'))
       assert.deepEqual(
-        rows.map((row: Json) => [row.id, row.grading.awaitingResolution, row.grading.overdue]),
-        [[id, true, false]],
+        rows.map((row: Json) => [
+          row.id,
+          row.assignmentTitle,
+          row.grading.awaitingResolution,
+          row.grading.overdue,
+        ]),
+        // Atamayı görmeyen koordinatör de görev başlığını kuyruktan okur (OG-058).
+        [[id, 'Hafta sonu yazısı', true, false]],
       )
     }
     assert.deepEqual(await ok(await queue(t.cookies.head, '&awaiting=first')), [])

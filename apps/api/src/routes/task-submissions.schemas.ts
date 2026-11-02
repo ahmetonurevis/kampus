@@ -328,6 +328,12 @@ export const gradingQueueQuerySchema = pageQuerySchema
 const gradingQueueItemSchema = z
   .object({
     ...summaryShape,
+    assignmentTitle: z
+      .string()
+      .nullable()
+      .describe(
+        'Atanan içerik sürümünün başlığı; atamayı görmeyen koordinatör de okur (DOM-YTK-027). Sürüm bulunamazsa `null`',
+      ),
     grading: z.object({
       awaiting: z
         .array(z.enum(['first', 'second']))

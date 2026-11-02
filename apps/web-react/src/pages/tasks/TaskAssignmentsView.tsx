@@ -13,6 +13,7 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { NEW_ASSIGNMENT, TaskAssignmentForm } from './TaskAssignmentForm.tsx'
 import { TaskAssignmentPanel } from './TaskAssignmentPanel.tsx'
 import { SubmissionGradingModal } from './SubmissionGradingModal.tsx'
+import { ATTEMPT_PARAM, AttemptReviewModal } from './AttemptReviewModal.tsx'
 import {
   assignmentRow,
   dateTimeLabel,
@@ -30,7 +31,7 @@ const MOBILE_COLUMNS = ['contentType', 'dueAt', 'owner']
  * Görevler (öğretmen ve yönetici): atadıklarım ve sınıflarımı hedefleyen atamalar, sunucu sayfalı
  * (kapsam sunucuda; DOM-YTK-028: sınıfın öğretmeni görür, yalnız atayan değiştirir). Satırdan
  * ayrıntı sağ panelde (`?gorev=`), yeni atama geniş pencerede (`?gorev-form=yeni`), teslim
- * puanlama penceresi `?puanla=` ile açılır.
+ * puanlama penceresi `?puanla=`, otomatik puanlı görevin deneme ayrıntısı `?deneme=` ile açılır.
  */
 export function TaskAssignmentsView() {
   const { session } = useAuth()
@@ -54,6 +55,9 @@ export function TaskAssignmentsView() {
   const panel = useDetailPanel('gorev')
   const form = useDetailPanel('gorev-form')
   const grading = useDetailPanel('puanla')
+  const review = useDetailPanel(ATTEMPT_PARAM)
+  // Panel açıkken deneme penceresi panelin içinde (iç içe pencere), değilse tek başına çizilir.
+  const reviewModal = <AttemptReviewModal attemptId={review.selectedId} onClose={review.close} />
   const openPanel = panel.open
   const navigate = useNavigate()
   /** Yeni görev kaydedilince form kapanır, yeni kaydın ayrıntısı açılır (tek geçmiş adımı). */
@@ -176,13 +180,17 @@ export function TaskAssignmentsView() {
         assignmentId={panel.selectedId}
         onClose={panel.close}
         onGrade={grading.open}
-      />
+        onReview={review.open}
+      >
+        {panel.selectedId ? reviewModal : null}
+      </TaskAssignmentPanel>
       <TaskAssignmentForm
         open={form.selectedId === NEW_ASSIGNMENT}
         onClose={form.close}
         onCreated={showCreated}
       />
       <SubmissionGradingModal submissionId={grading.selectedId} onClose={grading.close} />
+      {panel.selectedId ? null : reviewModal}
     </section>
   )
 }

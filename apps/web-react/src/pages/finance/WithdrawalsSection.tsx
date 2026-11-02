@@ -20,6 +20,7 @@ import {
   useWithdrawals,
   useWithdrawStudent,
 } from '@kampus/react-shared/use-withdrawals.ts'
+import { ReauthModal } from '@/auth/ReauthModal.tsx'
 import { useAuth } from '@/auth/use-auth.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { FormField } from '@/components/FormField.tsx'
@@ -35,7 +36,6 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
-import { ReauthModal } from './ReauthModal.tsx'
 
 type WithdrawalRow = {
   id: string

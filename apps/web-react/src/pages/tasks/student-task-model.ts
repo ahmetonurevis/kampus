@@ -685,3 +685,38 @@ export function describeKey(body: QuestionBody, key: KeyEntry): string {
 /** Atama okuması 404 döndüyse görev yok ya da öğrencinin kapsamında değil (varlığı sızdırılmaz). */
 export const isNotFoundError = (error: unknown): boolean =>
   isApiError(error) && error.status === 404
+
+// --- Deneme sonucu (kursiyer, personel, veli) ----------------------------------------------
+
+type ItemScore = NonNullable<NonNullable<TaskAttemptDetail['result']>['items']>[number]
+
+/**
+ * Puan gösterimi: tamsayıysa ondalıksız, değilse en çok iki ondalık (sunucu iki ondalığa
+ * yuvarlar).
+ */
+export const formatPoints = (value: number) =>
+  value.toLocaleString('tr-TR', { maximumFractionDigits: 2, minimumFractionDigits: 0 })
+
+/**
+ * Maddenin sunucu sonucundan okunur durum (DOM-BEC-045): yalnız sunucu madde sonucunu açtıysa
+ * çağrılır. Cevapsız madde yanlış sayılır ama ayrı yazılır; çok parçalı maddede (eşleştirme,
+ * boşluk doldurma) bir kısmı doğruysa "Kısmen doğru".
+ */
+export function itemOutcome(score: ItemScore): { label: string; tone: BadgeTone } {
+  if (!score.answered) return { label: 'Cevapsız', tone: 'gray' }
+  if (score.parts > 0 && score.correctParts === score.parts)
+    return { label: 'Doğru', tone: 'green' }
+  if (score.correctParts > 0) return { label: 'Kısmen doğru', tone: 'amber' }
+  return { label: 'Yanlış', tone: 'red' }
+}
+
+/** Personelin deneme listesindeki durum (DOM-BEC-042, 043): süren, teslim, süre dolunca teslim. */
+export function attemptStatusBadge(
+  attempt: Pick<TaskAttempt, 'status' | 'late' | 'autoSubmitted'>,
+): { label: string; tone: BadgeTone } {
+  if (attempt.status === 'in_progress') return { label: 'Sürüyor', tone: 'amber' }
+  if (attempt.late) return { label: 'Geç teslim', tone: 'red' }
+  if (attempt.status === 'expired' || attempt.autoSubmitted)
+    return { label: 'Süre dolunca teslim', tone: 'gray' }
+  return { label: 'Teslim edildi', tone: 'purple' }
+}

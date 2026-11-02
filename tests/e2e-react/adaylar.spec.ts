@@ -255,6 +255,8 @@ test.describe('aday ekleme', () => {
     await form.getByRole('button', { name: 'Adayı ekle' }).click()
 
     await expect(form.getByText(SAME_MESSAGE)).toBeVisible()
+    await expect(form.getByLabel('Veli telefonu')).toBeFocused()
+    await expect(form.getByLabel('Veli telefonu')).toHaveAttribute('aria-invalid', 'true')
     await expect(form.getByText('Mina Kaya')).toHaveCount(0)
     await expect(form.getByLabel('Kardeş aday')).toHaveCount(0)
     expect(await prospectsOf(await api(school.user('onburo')))).toHaveLength(1)

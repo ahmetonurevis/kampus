@@ -769,4 +769,32 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
     fails(await profile('s-deniz', t.cookies.other), 404, 'not_found')
     assert.equal((await ok(await profile('s-ece', t.cookies.admin))).current.length, 0)
   })
+
+  test('IST-060 öğretmen kapsamı yalnız etkin üyelikle kurulur: dondurulan ya da gruptan ayrılan kursiyer 404', async () => {
+    const t = await tenant()
+    const session = await scoredSession(t)
+    const teacher = t.cookies.teacher
+    const membership = eq(languageGroupMembers.institutionId, t.institution.id)
+    const reaches = async () => [
+      (await call('GET', '/students/s-deniz/cefr-profile', teacher)).statusCode,
+      (await call('GET', `/placement-sessions/${session.id}`, teacher)).statusCode,
+      (await call('GET', '/placement-sessions?learnerKind=student&learnerId=s-deniz', teacher))
+        .statusCode,
+    ]
+    assert.deepEqual(await reaches(), [200, 200, 200])
+
+    await db.update(languageGroupMembers).set({ status: 'frozen' }).where(membership)
+    assert.deepEqual(await reaches(), [404, 404, 404])
+    // Yönetici etkilenmez.
+    await ok(await call('GET', '/students/s-deniz/cefr-profile', t.cookies.admin))
+
+    await db.update(languageGroupMembers).set({ status: 'active' }).where(membership)
+    assert.deepEqual(await reaches(), [200, 200, 200])
+
+    await db
+      .update(languageGroupMembers)
+      .set({ archivedAt: new Date(FIXED_NOW) })
+      .where(membership)
+    assert.deepEqual(await reaches(), [404, 404, 404])
+  })
 })

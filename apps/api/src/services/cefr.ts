@@ -257,14 +257,16 @@ async function sessionView(db: Database, ctx: ServiceContext, session: StoredPla
 
 /**
  * Öğretmenin kursiyeri görmesi (IST-060): kursiyerin grubunu okuyabilmesi (kendi grubu ya da
- * akademik koordinatörü olduğu seviyenin grubu; core `canReadGroup`).
+ * akademik koordinatörü olduğu seviyenin grubu; core `canReadGroup`). Kapsam yalnız ETKİN grup
+ * üyeliğiyle kurulur: dondurulan ya da gruptan ayrılan (arşivlenen) kursiyerin eski öğretmeni
+ * profile ve tespitlere ulaşamaz (404).
  */
 async function teacherReaches(
   db: Database,
   ctx: ServiceContext,
   studentId: string,
 ): Promise<boolean> {
-  const [members, groups, courses, duties] = await Promise.all([
+  const [memberships, groups, courses, duties] = await Promise.all([
     loadMembershipsOfStudents(db, ctx.institutionId, [studentId]),
     loadGroups(db, ctx.institutionId),
     loadCourses(db, ctx.institutionId),
@@ -276,6 +278,7 @@ async function teacherReaches(
     coordination: duties.length === 0 ? NO_COORDINATOR_SCOPE : coordinatorScopeOf(duties),
     studentIds: [] as string[],
   }
+  const members = memberships.filter((member) => member.status === 'active')
   const courseOf = new Map(courses.map((course) => [course.id, course]))
   return members.some((member) => {
     const group = groups.find((item) => item.id === member.groupId)

@@ -212,7 +212,7 @@ Platform e-Okul'un yerini tutmaz. Resmî not, devamsızlık, karne ve sınıf ge
 - **Gerekçe:** Geç kalmanın devamsızlık sayılıp sayılmayacağı mevzuata ve kurul kararına bağlıdır; veriyi kaybetmeden ayrı tutmak sonradan doğru hesabı mümkün kılar, yanlış hesap öğrenciyi haksız yere sınıra yaklaştırır. Yoklamada hız toplu işaretlemeyle gelir, ama kayıt tek işlemde kalmalıdır.
 - **Kaynak:** İşletme kuralı (güvenli varsayılan); `DOM-AKD-031` ve OİKY md. 18, OKY md. 36 ile uyumlu.
 - **Kurum türü:** `school`
-- **Kodda:** kısmen — `packages/school-core/src/lib/domain.ts` (`attendanceInputSchema.lateMinutes`, `lateMinutesLimit`, `recordAttendance`), `lib/attendance-alerts.ts` (geç gelmede bildirim yok); API `POST /api/v1/classes/:classId/attendance` ve `GET /api/v1/collections/attendance?dateFrom&dateTo` (aralık denetimi `services/collection-reads.ts`); web `apps/web-react/src/pages/academic/AttendanceTaking.tsx`, `AttendanceView.tsx`. Yarım gün hesabı ve "5 geç = yarım gün" yok (`DOM-AKD-031`).
+- **Kodda:** kısmen — `packages/school-core/src/lib/domain.ts` (`attendanceInputSchema.lateMinutes`, `lateMinutesLimit`, `recordAttendance`), `lib/attendance-alerts.ts` (geç gelmede bildirim yok); API `POST /api/v1/classes/:classId/attendance` ve `GET /api/v1/collections/attendance?dateFrom&dateTo` (aralık denetimi `services/collection-reads.ts`); web `apps/web-react/src/pages/academic/AttendanceTaking.tsx`, `AttendanceView.tsx`. Yarım gün hesabı ve "5 geç = yarım gün" yok (`DOM-AKD-031`). Dil okulunda (`language_school`) yoklama grup ders saati bazlıdır (`DOM-DIL-061`, F5b); orada sınır grubun ders süresi (`course.sessionMinutes`) olacaktır, bugün sınıf yoklamasında ders bulunmazsa 40 dakikaya düşer (`TODO(yoklama-dil-okulu-siniri)`).
 
 ## Sınıf geçme
 

@@ -144,6 +144,10 @@ export const DEFAULT_LESSON_MINUTES = 40
 /**
  * Geç kalma dakikasının üst sınırı (DOM-AKD-036): sınıfın o günkü iptal edilmemiş derslerinin en
  * uzununun süresi; programda ders yoksa `DEFAULT_LESSON_MINUTES`. Gün Europe/Istanbul günüdür.
+ * TODO(yoklama-dil-okulu-siniri): dil okulunda yoklama sınıf değil grup ders saati bazlıdır
+ * (DOM-DIL-061, F5b); grubun `course.sessionMinutes` süresi bu sınırın kaynağı olacak. Bugün bu uç
+ * yalnız `school` kurumunun sınıf yoklamasıdır, dil okulunda ders programı sınıf dersi taşımaz ve
+ * sınır 40 dakikaya düşer.
  */
 export function lateMinutesLimit(
   state: Pick<State, 'schedule'>,

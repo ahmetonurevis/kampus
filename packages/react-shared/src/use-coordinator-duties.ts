@@ -58,15 +58,21 @@ export const COORDINATOR_DUTY_MESSAGES = {
 export const coordinatorDutyStale = (error: ApiError) =>
   error.status === 404 || (error.status === 409 && error.code === 'version_conflict')
 
-/** Etkin görevler (sayfalı); öğretmende sunucu kendi üyeliğiyle sınırlar. */
-export function useCoordinatorDuties(query: CoordinatorDutyListQuery) {
+/**
+ * Etkin görevler (sayfalı); öğretmende sunucu kendi üyeliğiyle sınırlar. Ön büro, öğrenci ve veli
+ * 403 alır: onlarda `enabled: false` verilir.
+ */
+export function useCoordinatorDuties(
+  query: CoordinatorDutyListQuery,
+  options: { enabled?: boolean } = {},
+) {
   const client = useKampusClient()
   const institutionId = useActiveInstitutionId()
   return useQuery({
     queryKey: institutionKey(institutionId, COORDINATOR_DUTIES_KEY, 'list', query),
     queryFn: ({ signal }) =>
       runRequest(() => client.GET('/api/v1/coordinator-duties', { params: { query }, signal })),
-    enabled: institutionId !== null,
+    enabled: institutionId !== null && (options.enabled ?? true),
     placeholderData: keepPreviousData,
   })
 }

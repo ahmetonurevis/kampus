@@ -6,7 +6,7 @@ Hesap güvenliği (React web, IST-003): giriş ekranındaki **Parolamı unuttum*
 
 React web (`apps/web-react`, `pnpm dev:react`) sayfaları API'den okur; taşınmayan sayfalar yer tutucudur. Taşınan sayfalar finans, akademik yazma ve okul iş akışları dışında yalnız okuma yapar: sunucu sayfalı tablo, arama/filtre/sıralama/sayfa ve sağ panel URL'dedir, CSV tüm filtrelenmiş sonucu içerir. Kapsam sunucuda uygulanır; kapsam dışı ayrıntı adresi "Kayıt bulunamadı" görünümüne düşer (API 404).
 
-Sayfa rehberi iki yerdedir: Oğuzhan'ın alanındaki React sayfaları (dashboard, akademik, okul iş akışları, içerik havuzu, iletişim, Ayarlar) [sayfalar/platform.md](sayfalar/platform.md) belgesinde; kayıt ve finans sayfaları aşağıdaki Onur bölümünde, Vue demosunun rol tabloları en altta.
+Sayfa rehberi iki yerdedir: Oğuzhan'ın alanındaki React sayfaları (dashboard, akademik, okul iş akışları, dil okulu kur ve grupları, içerik havuzu, iletişim, Ayarlar) [sayfalar/platform.md](sayfalar/platform.md) belgesinde; kayıt ve finans sayfaları aşağıdaki Onur bölümünde, Vue demosunun rol tabloları en altta.
 
 <!-- Onur: kayıt ve finans -->
 
@@ -154,7 +154,7 @@ Toplam: **99 menü sayfası + 2 kayıt detayı = 101 panel sayfası**, ayrıca g
 
 ## React'te henüz yer tutucu
 
-React web (`apps/web-react`) menüsünde olup henüz kendi ekranı bulunmayan sayfalar "Bu ekran taşınıyor" yer tutucusuyla açılır. Liste `apps/web-react/tests/page-coverage.test.ts` izin listesidir: `school` ve `language_school` için beş rolün menüsü sayfa kaydıyla (`apps/web-react/src/lib/page-coverage.ts`) karşılaştırılır; liste yalnız küçülebilir, React karşılığı olmayan yeni menü sayfası testi kırar. Menü iki kurum türünde de aynı sayfaları verir (modül türe uymuyorsa sayfa o kurumda yoktur; aşağıdaki sayfaların hepsi iki türde de vardır). Vue karşılığı `apps/web/src/views/` altındaki görünümdür.
+React web (`apps/web-react`) menüsünde olup henüz kendi ekranı bulunmayan sayfalar "Bu ekran taşınıyor" yer tutucusuyla açılır. Liste `apps/web-react/tests/page-coverage.test.ts` izin listesidir: `school` ve `language_school` için beş rolün menüsü sayfa kaydıyla (`apps/web-react/src/lib/page-coverage.ts`) karşılaştırılır; liste yalnız küçülebilir, React karşılığı olmayan yeni menü sayfası testi kırar. Menü iki kurum türünde de aynı sayfaları verir (modül türe uymuyorsa sayfa o kurumda yoktur; aşağıdaki sayfaların hepsi iki türde de vardır). İstisna dil okulu Kurlar ve Gruplar sayfalarıdır: modüle değil kurum türüne bağlıdır, yalnız `language_school` menüsünde bulunur. Vue karşılığı `apps/web/src/views/` altındaki görünümdür.
 
 Öncelik ölçüsü: P1 veli/öğrenci günlük kullanımı ve para (ödeme sayfaları W13'te, akademik analiz sayfaları W15'te, izin/mazeret ve şikayet/talep sayfaları W16'da, öğretmen Sınıf Analizi ile yönetici Risk Listesi ve Kayıt Raporları W17'de, yönetici SLA Raporu ile öğrenci Ders Videoları W18'de, öğrenci Öğretmenime Sor ile öğretmen Soru Kuyruğu W19'da, öğrenci Etüt Randevusu, öğretmen Etüt & Görüşmeler ve veli Randevular sekmesi W20'de taşındı; İçerik Havuzu yeni sayfa olarak doğrudan React'te eklendi; P1 boş), P2 veli/öğrenci akademik ve iletişim, P3 öğretmen günlük işi, P4 yönetim ve ön büro raporları (son yer tutucu Kayıt İşlemleri W21b'de taşındı).
 

@@ -32,7 +32,7 @@ type SidebarContentProps = {
 export function SidebarContent({ session, onNavigate, onSignOut }: SidebarContentProps) {
   const { page: activePath } = useParams()
   const [expanded, setExpanded] = useState<GroupState>(storedGroups)
-  const groups = sidebarGroups(session.role, session.modules)
+  const groups = sidebarGroups(session.role, session.modules, session.institution.type)
   const term = academicYearLabel(session.institution.academicYear)
 
   function toggle(group: string, open: boolean) {

@@ -1,11 +1,15 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
-import { navigation } from '../packages/school-core/src/modules/full-navigation.ts'
+import {
+  navigation,
+  pageAvailableFor,
+} from '../packages/school-core/src/modules/full-navigation.ts'
 import { navigation as baseNavigation } from '../packages/school-core/src/modules/navigation.ts'
 import { navigation as demoNavigation } from '../apps/web/src/modules/navigation.js'
 import {
   API_ACADEMIC_PAGES,
   API_COMMUNICATION_PAGES,
+  API_LANGUAGE_SCHOOL_PAGES,
   API_LEARNING_PAGES,
 } from '../packages/school-core/src/platform/navigation.ts'
 import type { Role } from '../packages/school-core/src/modules/navigation.ts'
@@ -52,8 +56,50 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
     )
   assert.deepEqual(
     navigation.ogretmen.filter((p) => p.apiOnly).map((p) => p.path),
-    ['icerik-havuzu', 'duyurular', 'mesajlar'],
+    ['kurlar', 'gruplar', 'icerik-havuzu', 'duyurular', 'mesajlar'],
   )
+})
+
+test('Kur ve grup sayfaları yalnız dil okulunda, personelde ve kategorisinin sonunda (IST-076, IST-077)', () => {
+  const expected: Record<Role, string | null> = {
+    yonetici: 'YÖNETİM',
+    onburo: 'KAYIT & SATIŞ',
+    ogretmen: 'AKADEMİK',
+    ogrenci: null,
+    veli: null,
+  }
+  for (const role of roleKeys) {
+    const pages = navigation[role]
+    for (const path of ['kurlar', 'gruplar']) {
+      const page = pages.find((p) => p.path === path)
+      if (expected[role] === null) {
+        assert.equal(page, undefined, `${role}/${path}`)
+        continue
+      }
+      assert.ok(page, `${role}/${path}`)
+      assert.equal(page.group, expected[role])
+      assert.equal(page.module, null)
+      assert.equal(page.apiOnly, true)
+      assert.deepEqual(page.institutionTypes, ['language_school'])
+      assert.equal(pageAvailableFor(page, 'school'), false)
+      assert.equal(pageAvailableFor(page, 'language_school'), true)
+    }
+    const groups = pages.map((p) => p.group)
+    for (const group of new Set(groups))
+      assert.equal(
+        groups.lastIndexOf(group) - groups.indexOf(group) + 1,
+        groups.filter((g) => g === group).length,
+        `${role} ${group} kategorisi bölünmedi`,
+      )
+  }
+  // Okul kurumunda kur ve grup dışındaki her sayfa açıktır.
+  for (const role of roleKeys)
+    assert.ok(
+      navigation[role].every(
+        (p) => p.path === 'kurlar' || p.path === 'gruplar' || pageAvailableFor(p, 'school'),
+      ),
+      role,
+    )
 })
 
 test('İçerik Havuzu yalnız yönetici ve öğretmende, learning modülüne bağlı ve ÖĞRENME kategorisindedir (DOM-YTK-021)', () => {
@@ -104,6 +150,7 @@ test('Platform sayfaları temel menüde bulunmaz ve her biri birleşik menüde t
       ...API_COMMUNICATION_PAGES[role],
       ...API_LEARNING_PAGES[role],
       ...API_ACADEMIC_PAGES[role],
+      ...API_LANGUAGE_SCHOOL_PAGES[role],
     ]) {
       const copies = navigation[role].filter((p) => p.path === page.path)
       assert.ok(!base.has(page.path), `${role}/${page.path} temel menüde de var`)

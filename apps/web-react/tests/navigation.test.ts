@@ -112,3 +112,35 @@ test('iletişim sayfaları hesap grubundan önce, iletişim kategorisinde durur'
   assert.ok(communication.pages.some((page) => page.path === 'duyurular'))
   assert.ok(!labels.includes('Hesap'))
 })
+
+test('kur ve grup sayfaları yalnız dil okulu menüsündedir (IST-076, IST-077)', () => {
+  for (const role of ['yonetici', 'onburo', 'ogretmen'] as const) {
+    const school = visiblePages(role, allOpen, 'school').map((page) => page.path)
+    const language = visiblePages(role, allOpen, 'language_school').map((page) => page.path)
+    for (const path of ['kurlar', 'gruplar']) {
+      assert.ok(!school.includes(path), `${role} ${path}`)
+      assert.ok(language.includes(path), `${role} ${path}`)
+      // Tür verilmezse okul sayılır.
+      assert.ok(!visiblePages(role, allOpen).some((page) => page.path === path), role)
+    }
+    const groups = sidebarGroups(role, allOpen, 'language_school')
+    const courseGroup = groups.find((group) => group.pages.some((page) => page.path === 'kurlar'))
+    assert.ok(courseGroup, role)
+    // Gruplar, kurlarla aynı kategoridedir.
+    assert.ok(
+      courseGroup.pages.some((page) => page.path === 'gruplar'),
+      role,
+    )
+  }
+  for (const role of ['ogrenci', 'veli'] as const) {
+    const language = visiblePages(role, allOpen, 'language_school').map((page) => page.path)
+    assert.ok(!language.includes('kurlar'), role)
+    assert.ok(!language.includes('gruplar'), role)
+  }
+  assert.equal(findPage('yonetici', 'kurlar')?.group, 'YÖNETİM')
+  assert.equal(findPage('onburo', 'kurlar')?.group, 'KAYIT & SATIŞ')
+  assert.equal(findPage('ogretmen', 'kurlar')?.group, 'AKADEMİK')
+  assert.equal(findPage('yonetici', 'gruplar')?.group, 'YÖNETİM')
+  assert.equal(findPage('onburo', 'gruplar')?.group, 'KAYIT & SATIŞ')
+  assert.equal(findPage('ogretmen', 'gruplar')?.group, 'AKADEMİK')
+})

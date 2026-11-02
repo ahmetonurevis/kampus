@@ -1,7 +1,9 @@
 import { navigation as baseNavigation, type Role } from './navigation.ts'
+import type { InstitutionType } from './collection-modules.ts'
 import {
   API_ACADEMIC_PAGES,
   API_COMMUNICATION_PAGES,
+  API_LANGUAGE_SCHOOL_PAGES,
   API_LEARNING_PAGES,
 } from '../platform/navigation.ts'
 import { schoolModules } from './school-workflows.ts'
@@ -16,7 +18,18 @@ const SCHOOL_LIFE_MODULES = ['transport', 'meals', 'clubs', 'calendar']
 // akışı kaydından (`school-workflows.ts`) gelir.
 // `apiOnly`: sayfa yalnız API'li yüzeylerde (yeni web, mobil) vardır; Vue demosunun karşılığı
 // olmadığı için demo rotası ve menüsü `apiOnly` sayfaları düşürür (`apps/web/src/modules/navigation.js`).
-export type NavigationPage = (typeof baseNavigation)[Role][number] & { apiOnly?: true }
+// `institutionTypes`: sayfa yalnız bu kurum türlerinde vardır (dil okulu kur ve grup sayfaları);
+// başka türde menüde görünmez ve doğrudan adresi kapalıdır. Verilmezse her türde vardır.
+export type NavigationPage = (typeof baseNavigation)[Role][number] & {
+  apiOnly?: true
+  institutionTypes?: readonly InstitutionType[]
+}
+
+/** Sayfa kurum türünde var mı (`institutionTypes` verilmemişse her türde). */
+export const pageAvailableFor = (
+  page: Pick<NavigationPage, 'institutionTypes'>,
+  type: InstitutionType,
+) => page.institutionTypes === undefined || page.institutionTypes.includes(type)
 
 /**
  * ÖĞRENME kategorisi varsa onun sonuna, yoksa RAPORLAR'dan (o da yoksa SİSTEM'den) önce; hiçbiri
@@ -49,8 +62,24 @@ function withAcademic(role: Role, pages: NavigationPage[]): NavigationPage[] {
   return result
 }
 
+/** Kurum türüne bağlı sayfalar kendi kategorilerinin sonuna, kategori yoksa iletişimden önce. */
+function withLanguageSchool(role: Role, pages: NavigationPage[]): NavigationPage[] {
+  const result = [...pages]
+  for (const added of API_LANGUAGE_SCHOOL_PAGES[role]) {
+    if (result.some((page) => page.path === added.path)) continue
+    const last = result.findLastIndex((page) => page.group === added.group)
+    const before = result.findIndex((page) => page.group === 'İLETİŞİM' || page.group === 'HESABIM')
+    const at = last >= 0 ? last + 1 : before >= 0 ? before : result.length
+    result.splice(at, 0, added)
+  }
+  return result
+}
+
 function withCommunication(role: Role): NavigationPage[] {
-  const base: NavigationPage[] = withLearning(role, withAcademic(role, [...baseNavigation[role]]))
+  const base: NavigationPage[] = withLanguageSchool(
+    role,
+    withLearning(role, withAcademic(role, [...baseNavigation[role]])),
+  )
   const extra = API_COMMUNICATION_PAGES[role].filter(
     (added) => !base.some((page) => page.path === added.path),
   )

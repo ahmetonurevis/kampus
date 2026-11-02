@@ -3,8 +3,9 @@ import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { documentData } from '@kampus/school-core/lib/document-data.ts'
 import { COLORS, PAGE } from '../src/lib/pdf/layout.ts'
-import { homeworkDocument, submissionDocument } from '../src/lib/pdf/homework-templates.ts'
-import { documentFilename } from '../src/lib/pdf/templates.ts'
+import { homeworkDocument } from '../src/lib/pdf/templates/homework.ts'
+import { documentFilename } from '../src/lib/pdf/templates/shared.ts'
+import { submissionDocument } from '../src/lib/pdf/templates/submission.ts'
 import { allTexts, measurer, texts } from './support/pdf-measurer.ts'
 
 const NOW = new Date('2026-10-15T09:00:00.000Z')

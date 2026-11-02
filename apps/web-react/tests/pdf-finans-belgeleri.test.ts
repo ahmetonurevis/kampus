@@ -9,7 +9,7 @@ import {
   type ReceiptPayment,
   type RefundWithdrawal,
 } from '../src/lib/pdf/finance-templates.ts'
-import { contractDocument } from '../src/lib/pdf/templates.ts'
+import { contractDocument } from '../src/lib/pdf/templates/contract.ts'
 import { allTexts, measurer } from './support/pdf-measurer.ts'
 
 const NOW = new Date('2026-10-15T09:00:00.000Z')

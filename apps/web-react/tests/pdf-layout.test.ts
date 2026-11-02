@@ -11,12 +11,10 @@ import {
   type PdfOp,
   type TextMeasurer,
 } from '../src/lib/pdf/layout.ts'
-import {
-  contractDocument,
-  documentFilename,
-  materialDocument,
-  receiptDocument,
-} from '../src/lib/pdf/templates.ts'
+import { contractDocument } from '../src/lib/pdf/templates/contract.ts'
+import { materialDocument } from '../src/lib/pdf/templates/material.ts'
+import { receiptDocument } from '../src/lib/pdf/templates/receipt.ts'
+import { documentFilename } from '../src/lib/pdf/templates/shared.ts'
 
 /** Sahte ölçer: karakter başına sabit genişlik (jsPDF ve yazı tipi gerekmez). */
 const measurer: TextMeasurer = {

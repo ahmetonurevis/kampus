@@ -2,7 +2,7 @@ import { useRef, useState, type ComponentProps } from 'react'
 import { Icon } from '@/components/Icon.tsx'
 import { PdfPreview } from '@/components/PdfPreview.tsx'
 import { Button } from '@/components/ui/button'
-import type { PdfDocumentType } from '@/lib/pdf/templates.ts'
+import type { PdfDocumentType } from '@/lib/pdf/templates/shared.ts'
 
 type Props = {
   type: PdfDocumentType

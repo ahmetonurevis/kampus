@@ -44,7 +44,8 @@ export function subjectScores(
  */
 export function topicScores(
   grades: readonly Pick<Grade, 'subjectId' | 'topic' | 'score'>[],
-  attempts: readonly Pick<Attempt, 'quizId' | 'topicScores'>[],
+  // Öğrenci ve velide konu yüzdeleri quizin son tarihi geçene kadar yanıtta yoktur (DOM-AKD-078).
+  attempts: readonly (Pick<Attempt, 'quizId'> & Partial<Pick<Attempt, 'topicScores'>>)[],
   quizzes: readonly Quiz[],
   subjectId: string,
 ): TopicScore[] {
@@ -56,7 +57,8 @@ export function topicScores(
     .map((grade) => ({ topic: grade.topic ?? '', score: grade.score }))
   for (const attempt of attempts)
     if (quizSubject.get(attempt.quizId) === subjectId)
-      for (const item of attempt.topicScores) results.push({ topic: item.topic, score: item.score })
+      for (const item of attempt.topicScores ?? [])
+        results.push({ topic: item.topic, score: item.score })
   return [...new Set(results.map((item) => item.topic))].map((topic) => ({
     topic,
     score: average(results.filter((item) => item.topic === topic).map((item) => item.score)),

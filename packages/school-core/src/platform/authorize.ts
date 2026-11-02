@@ -75,6 +75,10 @@ export type PlatformWriteTargets = {
   // `academicYearView`'dadır (öğrenci ve veli yalnız ad, tarih, etkinlik).
   'academicYear.read': Record<string, never>
   'academicYear.manage': Record<string, never>
+  // Veli–öğrenci bağı (DOM-ILT-070…075): kural `lib/guardianship.ts`; okuma alan kapsamı
+  // `guardianLinksView`'dadır (veli yalnız kendi bağını, kısıt alanı olmadan görür).
+  'guardian.read': Record<string, never>
+  'guardian.manage': Record<string, never>
 }
 
 /** Matrisin bu eylemlerdeki varsayılanı (rapor ve testler için; kapsam kuralları `lib/authorize.ts`). */
@@ -149,4 +153,8 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   // yönetir (DOM-YTK-067, DOM-YTK-020).
   'academicYear.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
   'academicYear.manage': ['yonetici'],
+  // Velayet ve veli bağını yönetici veya yetkili ön büro belgeye dayanarak değiştirir
+  // (DOM-ILT-071); veli yalnız kendi bağını okur (DOM-ILT-073).
+  'guardian.read': ['yonetici', 'onburo', 'veli'],
+  'guardian.manage': ['yonetici', 'onburo'],
 } as const satisfies Record<PlatformAction, readonly Role[]>

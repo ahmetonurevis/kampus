@@ -1,0 +1,294 @@
+import test, { describe } from 'node:test'
+import assert from 'node:assert/strict'
+import {
+  accessibleStudentIds,
+  guardianBondsFor,
+  guardianLinksView,
+  hasCustody,
+  isContactRestricted,
+  payerOf,
+  planGuardianLink,
+  planGuardianUnlink,
+  planGuardianUpdate,
+  type GuardianLink,
+} from '../packages/school-core/src/lib/guardianship.ts'
+import { createGuardianLinks } from '../packages/school-core/src/platform/seed-guardians.ts'
+import { isDomainError } from './support/domain-error.ts'
+
+const ZodError = { name: 'ZodError' }
+
+/** Deniz (s1): annesi Ayşe velayetli ve ödeyici; babası velayetsiz ve iletişim kısıtlı. */
+const mother: GuardianLink = {
+  id: 'g1',
+  studentId: 's1',
+  parentId: 'p1',
+  membershipId: 'm-ayse',
+  relationship: 'mother',
+  custody: 'full',
+  contactRestricted: false,
+  isPayer: true,
+  canPickUp: true,
+}
+const father: GuardianLink = {
+  id: 'g2',
+  studentId: 's1',
+  parentId: null,
+  membershipId: 'm-kemal',
+  relationship: 'father',
+  custody: 'none',
+  contactRestricted: true,
+  isPayer: false,
+  canPickUp: false,
+}
+const sibling: GuardianLink = { ...mother, id: 'g3', studentId: 's2' }
+const LINKS: readonly GuardianLink[] = Object.freeze([mother, father, sibling])
+
+const link = (input: Record<string, unknown>, links: readonly GuardianLink[] = LINKS) =>
+  planGuardianLink({ studentId: 's1', links, account: { role: 'veli' }, input })
+
+describe('veli–öğrenci bağı (IST-019)', () => {
+  test('DOM-ILT-070 bağ kurulur; kısıt, ödeyici ve teslim alma varsayılan kapalı', () => {
+    assert.deepEqual(link({ membershipId: 'm-new', relationship: 'other', custody: 'joint' }), {
+      studentId: 's1',
+      parentId: null,
+      membershipId: 'm-new',
+      relationship: 'other',
+      custody: 'joint',
+      contactRestricted: false,
+      isPayer: false,
+      canPickUp: false,
+    })
+    // Hesabı olmayan veli kaydı da bağlanır (kesin kayıt, ON-010).
+    assert.equal(
+      planGuardianLink({
+        studentId: 's9',
+        links: [],
+        account: null,
+        input: { parentId: 'p9', relationship: 'father', custody: 'full', isPayer: true },
+      }).isPayer,
+      true,
+    )
+  })
+
+  test('DOM-ILT-070 girdi doğrulaması: veli kimliği, yakınlık ve velayet zorunlu; bilinmeyen alan red', () => {
+    assert.throws(() => link({ relationship: 'mother', custody: 'full' }), ZodError)
+    assert.throws(() => link({ parentId: 'p5', relationship: 'aunt', custody: 'full' }), ZodError)
+    assert.throws(() => link({ parentId: 'p5', relationship: 'mother' }), ZodError)
+    assert.throws(
+      () => link({ parentId: 'p5', relationship: 'mother', custody: 'full', institutionId: 'x' }),
+      ZodError,
+    )
+    assert.deepEqual(LINKS, [mother, father, sibling])
+  })
+
+  test('DOM-ILT-070 hesap veli rolünde olmalı; aynı veli ikinci kez bağlanmaz (409)', () => {
+    assert.throws(
+      () =>
+        planGuardianLink({
+          studentId: 's1',
+          links: [],
+          account: { role: 'ogretmen' },
+          input: { membershipId: 'm-t', relationship: 'other', custody: 'full' },
+        }),
+      isDomainError('guardian_account_not_parent'),
+    )
+    assert.throws(
+      () => link({ membershipId: 'm-ayse', relationship: 'mother', custody: 'full' }),
+      isDomainError('guardian_link_exists', 'conflict'),
+    )
+    assert.throws(
+      () => link({ parentId: 'p1', relationship: 'mother', custody: 'full' }),
+      isDomainError('guardian_link_exists', 'conflict'),
+    )
+    // Kardeşin bağı başka öğrencidedir; aynı veli Deniz'e değil Ece'ye bağlıysa çakışmaz.
+    assert.equal(
+      planGuardianLink({
+        studentId: 's2',
+        links: [father],
+        account: { role: 'veli' },
+        input: { membershipId: 'm-kemal', relationship: 'father', custody: 'joint' },
+      }).custody,
+      'joint',
+    )
+  })
+
+  test('DOM-ILT-074 öğrencinin en çok bir ödeyicisi var; kısıtlı veli ödeyici, velayetli, teslim alan olamaz', () => {
+    assert.throws(
+      () => link({ parentId: 'p7', relationship: 'father', custody: 'joint', isPayer: true }),
+      isDomainError('guardian_payer_exists', 'conflict'),
+    )
+    const restricted = { parentId: 'p7', relationship: 'father', contactRestricted: true }
+    assert.throws(
+      () => link({ ...restricted, custody: 'joint' }),
+      isDomainError('guardian_restricted_custody'),
+    )
+    assert.throws(
+      () => link({ ...restricted, custody: 'none', isPayer: true }),
+      isDomainError('guardian_restricted_payer'),
+    )
+    assert.throws(
+      () => link({ ...restricted, custody: 'none', canPickUp: true }),
+      isDomainError('guardian_restricted_pickup'),
+    )
+    assert.equal(link({ ...restricted, custody: 'none' }).contactRestricted, true)
+  })
+
+  test('DOM-ILT-072 vasi velayetli kaydedilir', () => {
+    assert.throws(
+      () => link({ parentId: 'p7', relationship: 'legal_guardian', custody: 'none' }),
+      isDomainError('guardian_legal_custody'),
+    )
+    assert.equal(
+      link({ parentId: 'p7', relationship: 'legal_guardian', custody: 'full' }).custody,
+      'full',
+    )
+  })
+
+  test('DOM-ILT-075 bağı olan öğrencide en az bir velayetli bağ: ilk bağ velayetsiz olamaz', () => {
+    assert.throws(
+      () =>
+        planGuardianLink({
+          studentId: 's9',
+          links: [],
+          account: null,
+          input: { parentId: 'p9', relationship: 'father', custody: 'none' },
+        }),
+      isDomainError('guardian_custody_required'),
+    )
+  })
+
+  test('DOM-ILT-071 bağ değişir; yalnız gönderilen alanlar, değişmezler korunur', () => {
+    const result = planGuardianUpdate({
+      studentId: 's1',
+      linkId: 'g1',
+      links: LINKS,
+      input: { custody: 'joint', canPickUp: false },
+    })
+    assert.deepEqual(result.fields, ['custody', 'canPickUp'])
+    assert.deepEqual(result.link, { ...mother, custody: 'joint', canPickUp: false })
+    assert.equal(mother.custody, 'full', 'girdi değişmez')
+    // Son velayetli bağın velayeti kaldırılamaz.
+    assert.throws(
+      () =>
+        planGuardianUpdate({
+          studentId: 's1',
+          linkId: 'g1',
+          links: LINKS,
+          input: { custody: 'none' },
+        }),
+      isDomainError('guardian_custody_required'),
+    )
+    // Kısıtlı velinin kısıtı kalkmadan ödeyici yapılamaz; ödeyici zaten var.
+    assert.throws(
+      () =>
+        planGuardianUpdate({
+          studentId: 's1',
+          linkId: 'g2',
+          links: LINKS,
+          input: { isPayer: true },
+        }),
+      isDomainError('guardian_restricted_payer'),
+    )
+    assert.throws(
+      () =>
+        planGuardianUpdate({
+          studentId: 's1',
+          linkId: 'g2',
+          links: LINKS,
+          input: { contactRestricted: false, isPayer: true },
+        }),
+      isDomainError('guardian_payer_exists', 'conflict'),
+    )
+    // Ödeyici kendisi ödeyici kalır (kendisiyle çakışmaz).
+    assert.equal(
+      planGuardianUpdate({ studentId: 's1', linkId: 'g1', links: LINKS, input: { isPayer: true } })
+        .link.isPayer,
+      true,
+    )
+    assert.throws(
+      () => planGuardianUpdate({ studentId: 's1', linkId: 'g1', links: LINKS, input: {} }),
+      ZodError,
+    )
+    assert.throws(
+      () =>
+        planGuardianUpdate({
+          studentId: 's1',
+          linkId: 'g3',
+          links: LINKS,
+          input: { canPickUp: true },
+        }),
+      isDomainError('guardian_link_not_found', 'not_found'),
+    )
+  })
+
+  test('DOM-ILT-075 bağ kaldırılır; son velayetli bağ başka bağ varken kaldırılamaz', () => {
+    assert.equal(planGuardianUnlink({ studentId: 's1', linkId: 'g2', links: LINKS }), father)
+    assert.throws(
+      () => planGuardianUnlink({ studentId: 's1', linkId: 'g1', links: LINKS }),
+      isDomainError('guardian_custody_required'),
+    )
+    // Tek bağ kaldırılabilir (yetişkin kursiyer, yanlış kayıt).
+    assert.equal(planGuardianUnlink({ studentId: 's2', linkId: 'g3', links: LINKS }), sibling)
+    assert.throws(
+      () => planGuardianUnlink({ studentId: 's1', linkId: 'yok', links: LINKS }),
+      isDomainError('guardian_link_not_found', 'not_found'),
+    )
+  })
+
+  test('DOM-ILT-070, 074 yardımcılar: velayet, kısıt, ödeyici, erişilen öğrenciler, rıza bağı', () => {
+    assert.equal(hasCustody(LINKS, 's1', 'm-ayse'), true)
+    assert.equal(hasCustody(LINKS, 's1', 'm-kemal'), false)
+    assert.equal(hasCustody(LINKS, 's3', 'm-ayse'), false)
+    assert.equal(isContactRestricted(LINKS, 's1', 'm-kemal'), true)
+    assert.equal(isContactRestricted(LINKS, 's1', 'm-ayse'), false)
+    assert.equal(payerOf(LINKS, 's1'), mother)
+    assert.equal(payerOf(LINKS, 's5'), null)
+    assert.deepEqual(accessibleStudentIds(LINKS, 'm-ayse'), ['s1', 's2'])
+    assert.deepEqual(accessibleStudentIds(LINKS, 'm-kemal'), [])
+    assert.deepEqual(guardianBondsFor(LINKS, 'm-kemal'), [
+      { studentId: 's1', verified: true, custody: false },
+    ])
+    assert.deepEqual(guardianBondsFor(LINKS, 'm-ayse'), [
+      { studentId: 's1', verified: true, custody: true },
+      { studentId: 's2', verified: true, custody: true },
+    ])
+  })
+
+  test('DOM-ILT-073 rol kapsamı: yönetici ve ön büro hepsini, veli yalnız kendi bağını kısıtsız görür', () => {
+    const deniz = [mother, father]
+    assert.deepEqual(guardianLinksView(deniz, { role: 'yonetici', membershipId: 'm-a' }), deniz)
+    assert.deepEqual(guardianLinksView(deniz, { role: 'onburo', membershipId: 'm-o' }), deniz)
+    const own = guardianLinksView(deniz, { role: 'veli', membershipId: 'm-ayse' })
+    assert.equal(own.length, 1)
+    assert.equal(own[0]?.id, 'g1')
+    assert.equal('contactRestricted' in (own[0] ?? {}), false)
+    // Kısıtlı veli öğrencinin verisini görmez.
+    assert.deepEqual(guardianLinksView(deniz, { role: 'veli', membershipId: 'm-kemal' }), [])
+    for (const role of ['ogretmen', 'ogrenci'] as const)
+      assert.deepEqual(guardianLinksView(deniz, { role, membershipId: 'm-ayse' }), [])
+  })
+})
+
+describe('örnek veli bağları (IST-019)', () => {
+  test('DOM-ILT-074, 075 örnek bağlar deterministik ve kurallara uyar: Ayşe velayetli ödeyici, ikinci veli kısıtlı', () => {
+    const seed = createGuardianLinks()
+    assert.deepEqual(createGuardianLinks(), seed)
+    assert.equal(new Set(seed.map((item) => item.id)).size, seed.length)
+    // Bağlar sırayla core işleminden geçer: hiçbiri değişmezleri bozmaz.
+    const links: GuardianLink[] = []
+    for (const { id, account, studentId, ...input } of seed) {
+      const draft = planGuardianLink({
+        studentId,
+        links,
+        account: { role: 'veli' },
+        input: { ...input, parentId: input.parentId ?? undefined, membershipId: account },
+      })
+      links.push({ id, ...draft })
+    }
+    assert.equal(payerOf(links, 's1')?.membershipId, 'parent')
+    assert.equal(payerOf(links, 's2')?.membershipId, 'parent')
+    assert.equal(hasCustody(links, 's1', 'restrictedParent'), false)
+    assert.equal(isContactRestricted(links, 's1', 'restrictedParent'), true)
+    assert.equal(createGuardianLinks({ parentRelationship: 'father' })[0]?.relationship, 'father')
+  })
+})

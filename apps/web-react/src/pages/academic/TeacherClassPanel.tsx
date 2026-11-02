@@ -1,10 +1,13 @@
-import { Link } from 'react-router'
+import { useMemo } from 'react'
+import { Link, useLocation } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
+import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { Button } from '@/components/ui/button'
 import { useCoreItem } from '@/hooks/use-core-collection.ts'
+import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import {
   SummaryHeader,
   SummaryIcon,
@@ -14,12 +17,36 @@ import {
 } from '../management/SummaryParts.tsx'
 import { ROLE_HOMEROOM, type AcademicLookups } from './academic-rows.ts'
 import { ParentContactSection } from './ParentContactSection.tsx'
+import { studentProfileHref, type ProfileLinkState } from './student-profile-model.ts'
 
 type StudentRow = { id: string; name: string; number: string }
-const STUDENT_COLUMNS: DataColumn<StudentRow>[] = [
-  { key: 'name', label: 'Öğrenci' },
-  { key: 'number', label: 'Okul numarası' },
-]
+
+/**
+ * Öğrenci sütunları; "Profili aç" öğrenci profiline gider ve bu adresi (panel açık, liste
+ * süzgeçleri dahil) geçmiş durumuna yazar: profildeki "Listeye dön" buraya döner.
+ */
+function studentColumns(from: string): DataColumn<StudentRow>[] {
+  const state: ProfileLinkState = { from }
+  return [
+    { key: 'name', label: 'Öğrenci' },
+    { key: 'number', label: 'Okul numarası' },
+    {
+      key: ACTIONS_KEY,
+      label: 'İşlemler',
+      cell: (row) => (
+        <Link
+          to={studentProfileHref(row.id)}
+          state={state}
+          aria-label={`${row.name} profilini aç`}
+          className="text-link inline-flex min-h-6 items-center gap-1 text-sm font-medium text-primary hover:underline"
+        >
+          Profili aç
+          <Icon name="ArrowRight" size={14} aria-hidden="true" />
+        </Link>
+      ),
+    },
+  ]
+}
 
 type Props = {
   classId: string
@@ -31,7 +58,8 @@ type Props = {
 /**
  * Sınıf özeti (Vue "Öğrenci listesi" bölümü): sınıf tek kayıt ucundan okunur; öğretmenin
  * kapsamı dışındaki sınıf 404 olur ve "bulunamadı" gösterilir. Öğrenciler yalnız kapsamdakilerdir;
- * velilerin iletişim bilgisi maskeli gelir, "Göster" ile denetimli açılır (DOM-YTK-055).
+ * velilerin iletişim bilgisi maskeli gelir, "Göster" ile denetimli açılır (DOM-YTK-055). Her
+ * öğrenciden öğrenci profiline (`/ogretmen/ogrenci/:id`) geçilir.
  */
 export function TeacherClassPanel({ classId, teacherId, lookups, onClose }: Props) {
   return (
@@ -48,6 +76,9 @@ export function TeacherClassPanel({ classId, teacherId, lookups, onClose }: Prop
 function ClassSummary({ classId, teacherId, lookups }: Omit<Props, 'onClose'>) {
   const item = useCoreItem('classes', classId)
   const { session } = useAuth()
+  const location = useLocation()
+  const from = `${location.pathname}${location.search}`
+  const columns = useMemo(() => studentColumns(from), [from])
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
   const record = item.data.record
@@ -81,7 +112,7 @@ function ClassSummary({ classId, teacherId, lookups }: Omit<Props, 'onClose'>) {
               name: student.name,
               number: student.number ?? '',
             }))}
-            columns={STUDENT_COLUMNS}
+            columns={columns}
             caption={`${record.name} öğrencileri`}
             empty="Bu sınıfta aktif öğrenci yok."
           />

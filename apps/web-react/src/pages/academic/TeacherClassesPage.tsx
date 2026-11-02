@@ -47,9 +47,8 @@ const isTab = (value: string | null): value is Tab => TABS.some((tab) => tab.val
 /**
  * Sınıflarım (öğretmen, Vue `Academic.vue` `siniflarim`): kapsamdaki sınıflar ve Not listesi
  * sekmesi. Sınıf ve öğrenci kapsamı sunucuda school-core'dan gelir (öğretmen yalnız ders
- * verdiği ve danışmanı olduğu sınıfları, kendi branşının notlarını görür). Yalnız okuma.
- * TODO(D-student-profile): Vue'daki öğrenci profil sayfası (`/ogretmen/ogrenci/:id`) taşınınca
- * sınıf özetinden bağlanır.
+ * verdiği ve danışmanı olduğu sınıfları, kendi branşının notlarını görür). Sınıf özetinden
+ * öğrenci profiline (`/ogretmen/ogrenci/:id`, `TeacherStudentProfilePage`) geçilir.
  */
 export function TeacherClassesPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)

@@ -88,6 +88,10 @@ export type PlatformWriteTargets = {
     studentId: string
     form: { studentIds: readonly string[] } | undefined
   }
+  // Video izleme ilerlemesi (`lib/video-progress.ts`; DOM-KYN-005): öğrenci oturumdan, video
+  // kayıttan gelir; kayıt yoksa `undefined` (varlık işlemin işidir, 404). Video düzeyi okuma
+  // kapsamıyla (`videos`) denetlenir.
+  'video.progress': { studentId: string | undefined; video: { level: string } | undefined }
   // Bildirim okundu işareti: görünürlük `lib/notifications.ts` `canSeeNotification`'dadır.
   'notification.read': Record<string, never>
   'notification.read_all': Record<string, never>
@@ -198,6 +202,9 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   'permissionForm.close': ['yonetici', 'ogretmen'],
   'permissionForm.archive': ['yonetici', 'ogretmen'],
   'permissionForm.decide': ['veli', 'ogrenci'],
+  // İzleme ilerlemesini öğrenci kendisi için yazar; veli ve personel yazmaz, salt okur
+  // (DOM-KYN-005).
+  'video.progress': ['ogrenci'],
   // Bildirimin okundu işareti alıcınındır; her rol kendi bildirim merkezini kullanır, görünürlük
   // `lib/notifications.ts` `canSeeNotification`'dadır (DOM-ILT-020, DOM-ILT-073).
   'notification.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],

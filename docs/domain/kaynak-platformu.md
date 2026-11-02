@@ -44,6 +44,14 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Kurum türü:** ikisi
 - **Kodda:** çelişiyor — yalnız uzantıya bakılır (`apps/web/src/views/Learning.vue:281-285`); dosya içeriği saklanmaz, yalnız ad ve boyut kaydedilir. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/taxonomy.ts` (`FILE_PURPOSES`, `assertFileAllowed`). API (F3c2a, ADR 0003): `POST /api/v1/files` türü içerikten (sihirli bayt, `file-type`) bulur, amaç sınırında akışı keser (413), kurum kotasını kurum kilidi altında sayar (`institution_settings.storage_quota_bytes`, boşsa 50 GB); dosya depolama arayüzünün (`apps/api/src/storage`, disk sürücüsü) arkasındadır ve `GET /api/v1/files/:fileId/url` kapsam denetimli, HMAC imzalı ve süreli bağlantı verir (`apps/api/src/services/files.ts`). Web istemcisi yüklemeden önce aynı core tablosuyla uyarır (`packages/react-shared/src/use-file-upload.ts`); bildirilen tür iki tarafta da `canonicalMimeType` ile takma addan (`audio/x-m4a`, `image/jpg`, `video/webm`) kanonik MIME'a çevrilir, tanınmayan türde karar sunucuya kalır. Eksik: makro/parola korumalı Office ve virüs taraması (ClamAV, `TODO(F3c2-scan)`), tür başına sınırın kurum ayarı olması, ekran.
 
+### DOM-KYN-005 · Video izleme ilerlemesi
+
+- **Kural:** Öğrencinin ders videosunu izleme ilerlemesi sunucuda tutulur; öğrenci videoyu yeniden açınca kaldığı yerden devam eder. Yalnız öğrenci kendi ilerlemesini yazar ve yalnız kendi düzeyindeki (okuma kapsamındaki) videoya; başka düzeyin videosu olmayan videoyla aynı "bulunamadı" yanıtını alır. Yüzde konum ve süreden hesaplanır, 0–100 arasına sıkıştırılır ve geri gitmez (izlenen en yüksek değer saklanır); son konum ayrı saklanır ve her kayıtta güncellenir, konum süreyi aşamaz. Aynı kayıt tekrarlanınca sonuç değişmez. Veli ve öğretmen ilerlemeyi okuma kapsamında görür, yazmaz. Modül `learning` kapalıysa yazılmaz.
+- **Gerekçe:** Uzun dersi tek oturumda bitirmeyen öğrencinin kaldığı yeri her cihazda bulması gerekir; yüzdenin geri gitmesi tamamlanmış dersi "yarım" gösterir ve öğretmenin izleme verisini bozar.
+- **Kaynak:** İşletme kuralı; IST-041 (kaldığı yerden devam sunucuda tutulur).
+- **Kurum türü:** ikisi
+- **Kodda:** var — core `packages/school-core/src/lib/video-progress.ts` (`recordVideoProgress`, `video.progress` eylemi `lib/authorize.ts`); API `POST /api/v1/videos/:videoId/progress` (`apps/api/src/services/video-progress.ts`); web `apps/web-react/src/pages/learning/VideoPanel.tsx`. İlerleme kaydı `videoProgress` koleksiyonundadır (`<studentId>:<videoId>` anahtarı); yazma sıklığı istemci tarafında sınırlanır (15 sn; duraklatma, kapatma, bitiş).
+
 ## Etiketler
 
 ### DOM-KYN-010 · Kurum türüne göre zorunlu etiketler

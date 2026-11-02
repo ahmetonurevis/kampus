@@ -509,6 +509,20 @@ function decide(
       if (form === undefined || form.studentIds.includes(studentId)) return ALLOWED
       return deny('permission_form_not_found', 'İzin formu bulunamadı.', 'DOM-ILT-037', 'not_found')
     }
+    case 'video.progress': {
+      // Öğrenci yalnız kendisi için ve okuma kapsamındaki (kendi düzeyinin) videoya yazar
+      // (DOM-KYN-005); kapsam dışı video olmayan videoyla aynı 404'tür.
+      const { studentId, video } = request.target
+      if (studentId === undefined || !scope.studentIds.has(studentId))
+        return deny(
+          'student_scope_denied',
+          'Bu öğrenci için işlem yetkiniz bulunmuyor.',
+          'DOM-KYN-005',
+        )
+      return video !== undefined && scope.canRead('videos', video)
+        ? ALLOWED
+        : deny('video_not_found', 'Video bulunamadı.', 'DOM-KYN-005', 'not_found')
+    }
     // Deneme dersinin kurum türü (yalnız dil okulu, DOM-DIL-030) `authorize` içinde rolden önce
     // denetlenir.
     case 'prospect.create':

@@ -4688,6 +4688,8 @@ export interface components {
             withdrawnAt: string | null;
             /** @description `withdrawn` geri çekme, `renewed` yenilenerek kapanma */
             withdrawalReason: ("withdrawn" | "renewed") | null;
+            /** @description Oturumdaki kullanıcı bu satırı şu anda geri çekebilir: satır açık ve kullanıcı ya veren ya da veri sahibi için şu anda rıza verebilecek kişi; itirazı ve hesap rızasını yalnız veren (DOM-YTK-059) */
+            canWithdraw: boolean;
             rowVersion: number;
         };
         ConsentStatusInput: {
@@ -4698,6 +4700,8 @@ export interface components {
             purpose: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
             /** @description Şu anda geçerli rıza var ve etkin itiraz yok (DOM-YTK-061) */
             valid: boolean;
+            /** @description Bu amaçta rızayı kim verir (DOM-YTK-057): öğrenci amacında 18 yaşını doldurmuş öğrencinin kendisi `self`, değilse ya da doğum tarihi bilinmiyorsa veli `guardian`; hesap amacında hesap sahibi `self`, 18 yaş altı öğrenci hesabında `null` (alınmaz). Doğum tarihi dönmez, yalnız sonuç. Öğretmene dönmez; öğretmen yalnız var/yok görür (DOM-YTK-061) */
+            grantor?: ("self" | "guardian") | null;
         };
         BookableSlotInput: {
             /** @description Uygunluk saati kimliği; talepte `slotId` olarak gönderilir */
@@ -6789,6 +6793,8 @@ export interface components {
             withdrawnAt: string | null;
             /** @description `withdrawn` geri çekme, `renewed` yenilenerek kapanma */
             withdrawalReason: ("withdrawn" | "renewed") | null;
+            /** @description Oturumdaki kullanıcı bu satırı şu anda geri çekebilir: satır açık ve kullanıcı ya veren ya da veri sahibi için şu anda rıza verebilecek kişi; itirazı ve hesap rızasını yalnız veren (DOM-YTK-059) */
+            canWithdraw: boolean;
             rowVersion: number;
         };
         ConsentStatus: {
@@ -6799,6 +6805,8 @@ export interface components {
             purpose: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
             /** @description Şu anda geçerli rıza var ve etkin itiraz yok (DOM-YTK-061) */
             valid: boolean;
+            /** @description Bu amaçta rızayı kim verir (DOM-YTK-057): öğrenci amacında 18 yaşını doldurmuş öğrencinin kendisi `self`, değilse ya da doğum tarihi bilinmiyorsa veli `guardian`; hesap amacında hesap sahibi `self`, 18 yaş altı öğrenci hesabında `null` (alınmaz). Doğum tarihi dönmez, yalnız sonuç. Öğretmene dönmez; öğretmen yalnız var/yok görür (DOM-YTK-061) */
+            grantor?: ("self" | "guardian") | null;
         };
         BookableSlot: {
             /** @description Uygunluk saati kimliği; talepte `slotId` olarak gönderilir */

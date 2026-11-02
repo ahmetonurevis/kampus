@@ -214,6 +214,27 @@ export function canGiveConsent(input: Parameters<typeof requireConsentAuthority>
   }
 }
 
+/**
+ * Bu amaçta rızayı kim verir (DOM-YTK-057), ekranın formu mu bilgi metnini mi göstereceği için.
+ * Öğrenci amaçlarında `student` veri sahibidir: 18 yaşını doldurmuşsa öğrencinin kendisi
+ * (`self`), değilse ya da doğum tarihi bilinmiyorsa velayet sahibi veli (`guardian`). Hesap
+ * amaçlarında (`user`) `student` hesap sahibinin kendi öğrenci kaydıdır (öğrenci olmayan hesapta
+ * `null`): hesap sahibi verir (`self`); 18 yaş altı öğrenci hesabında rıza alınmaz (`null`).
+ * Yaş `requireConsentAuthority` ile aynı kuraldır (`isAdultStudent`); velayet ve kapsam bunu
+ * değiştirmez, yalnız yetkiyi kısar. Doğum tarihi dışarı verilmez, yalnız bu sonuç.
+ */
+export function consentGrantor(input: {
+  purpose: ConsentPurpose
+  student: ConsentStudent | null
+  now: string
+}): GrantorRelation | null {
+  const { student, now } = input
+  const adult = student !== null && isAdultStudent(student, now)
+  if (CONSENT_PURPOSES[input.purpose].subject === 'user')
+    return student === null || adult ? 'self' : null
+  return adult ? 'self' : 'guardian'
+}
+
 const ownsStudent = (actor: ConsentActor, studentId: string) =>
   actor.links.some((link) => link.kind === 'student' && link.recordId === studentId)
 
@@ -465,21 +486,7 @@ export function planConsentWithdrawal(input: {
   const data = withdrawConsentSchema.parse(input.input)
   const { actor, consent, now } = input
   if (consent === null || consent.id !== data.consentId) throw consentNotFound()
-  const own = consent.grantedByUserId === actor.userId
-  // Hesap rızasını ve itirazı yalnız veren kişi geri çeker; öğrenci rızasını şu anki yetkili de.
-  if (!own && (consent.decision === 'objected' || consent.subjectKind === 'user'))
-    throw consentNotFound()
-  if (
-    !own &&
-    !canGiveConsent({
-      actor,
-      purpose: consent.purpose,
-      student: input.student?.id === consent.subjectId ? input.student : null,
-      guardianBonds: input.guardianBonds,
-      now,
-    })
-  )
-    throw consentNotFound()
+  if (!mayWithdrawConsent({ ...input, consent })) throw consentNotFound()
   if (consent.withdrawnAt !== null)
     throw new DomainError('consent_already_withdrawn', 'Bu kayıt zaten geri çekilmiş.', {
       kind: 'conflict',
@@ -490,6 +497,32 @@ export function planConsentWithdrawal(input: {
     withdrawnByUserId: actor.userId,
     withdrawalReason: 'withdrawn',
   }
+}
+
+/**
+ * Aktör bu satırı geri çekme yetkisinde mi (DOM-YTK-059, DOM-YTK-062): satırı veren kullanıcı ya
+ * da veri sahibi için şu anda rıza verebilecek kişi (`canGiveConsent`); hesap rızasını ve itirazı
+ * yalnız veren. Satırın açık olup olmadığına bakmaz (ikinci geri çekme ayrıca 409'dur).
+ * `planConsentWithdrawal` bunu kullanır; liste yanıtı `canWithdraw` alanını da bundan hesaplar
+ * ki ekran 404 alacak bir "Geri çek" göstermesin (ör. 18 yaş altı öğrenciye velinin satırı).
+ */
+export function mayWithdrawConsent(input: {
+  actor: ConsentActor
+  consent: ConsentRecord
+  student: ConsentStudent | null
+  guardianBonds: readonly GuardianBond[]
+  now: string
+}): boolean {
+  const { actor, consent } = input
+  if (consent.grantedByUserId === actor.userId) return true
+  if (consent.decision === 'objected' || consent.subjectKind === 'user') return false
+  return canGiveConsent({
+    actor,
+    purpose: consent.purpose,
+    student: input.student?.id === consent.subjectId ? input.student : null,
+    guardianBonds: input.guardianBonds,
+    now: input.now,
+  })
 }
 
 const consentNotFound = () =>

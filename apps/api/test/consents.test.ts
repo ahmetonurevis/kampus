@@ -12,6 +12,7 @@ import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { consents, noticeAcknowledgements, privacyNotices } from '../src/db/schema/privacy.ts'
+import { records } from '../src/db/schema/records.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
   buildTestApp,
@@ -480,6 +481,82 @@ describe('aydınlatma ve açık rıza uçları', () => {
     assert.equal((await status(w.otherParent.cookie, '')).promotional_messages, false)
     const own = await read(w.parent.cookie, '/api/v1/consents')
     assert.equal(own.json().meta.total, 1)
+  })
+
+  test('DOM-YTK-057 status rızayı kimin verdiğini yaş kuralıyla döndürür; doğum tarihi dönmez', async () => {
+    const w = await world()
+    const grantors = async (cookie: string, query: string) => {
+      const response = await read(cookie, `/api/v1/consents/status?${query}`)
+      assert.equal(response.statusCode, 200, response.body)
+      assert.equal(response.body.includes('birthDate'), false)
+      assert.equal(response.body.includes('2009-10-07'), false)
+      return new Set(
+        (response.json().data as { purpose: string; grantor: string | null }[]).map(
+          (item) => `${item.purpose}:${String(item.grantor)}`,
+        ),
+      )
+    }
+    // 17 yaşındaki s1 için veli, 18 yaşını dolduran s25 için öğrencinin kendisi; soran fark etmez.
+    for (const cookie of [w.parent.cookie, w.minor.cookie, w.admin])
+      assert.ok((await grantors(cookie, 'studentId=s1')).has('speaking_recording:guardian'))
+    for (const cookie of [w.parent.cookie, w.adult.cookie])
+      assert.ok((await grantors(cookie, 'studentId=s25')).has('speaking_recording:self'))
+    // Hesap amacı: veli ve reşit öğrenci kendisi verir; 18 yaş altı öğrenciden alınmaz.
+    assert.deepEqual(await grantors(w.parent.cookie, ''), new Set(['promotional_messages:self']))
+    assert.deepEqual(await grantors(w.adult.cookie, ''), new Set(['promotional_messages:self']))
+    assert.deepEqual(await grantors(w.minor.cookie, ''), new Set(['promotional_messages:null']))
+
+    // Doğum tarihi bilinmeyen öğrenci 18 yaş altı sayılır: rızayı veli verir.
+    const s5 = SAMPLE.students?.find((item) => item.id === 's5')
+    assert.ok(s5)
+    await db
+      .update(records)
+      .set({ data: { ...s5, birthDate: null } })
+      .where(
+        and(
+          eq(records.institutionId, w.id),
+          eq(records.collection, 'students'),
+          eq(records.id, 's5'),
+        ),
+      )
+    assert.ok(
+      (await grantors(w.otherParent.cookie, 'studentId=s5')).has('speaking_recording:guardian'),
+    )
+  })
+
+  test('DOM-YTK-059 DOM-YTK-062 liste canWithdraw: 18 yaş altı öğrenci velinin satırını geri çekemez, kendi itirazını çeker', async () => {
+    const w = await world()
+    const granted = await give(w.parent.cookie, {
+      purpose: 'photo_video_sharing',
+      studentId: 's1',
+      textId: w.texts.sharing.id,
+    })
+    assert.equal(granted.statusCode, 201, granted.body)
+    assert.equal(granted.json().data.canWithdraw, true)
+    const objected = await give(w.minor.cookie, {
+      purpose: 'photo_video_sharing',
+      decision: 'objected',
+      studentId: 's1',
+      textId: w.texts.sharing.id,
+    })
+    assert.equal(objected.statusCode, 201, objected.body)
+    const flags = async (cookie: string) => {
+      const response = await read(cookie, '/api/v1/consents?studentId=s1&status=all')
+      assert.equal(response.statusCode, 200, response.body)
+      return Object.fromEntries(
+        (response.json().data as Json[]).map((item) => [item.decision, item.canWithdraw]),
+      )
+    }
+    assert.deepEqual(await flags(w.minor.cookie), { granted: false, objected: true })
+    assert.deepEqual(await flags(w.parent.cookie), { granted: true, objected: false })
+    assert.deepEqual(await flags(w.admin), { granted: false, objected: false })
+    // Bayrak sunucunun kararıyla aynıdır: öğrencinin velinin satırını çekmesi 404.
+    const denied = await withdraw(w.minor.cookie, granted.json().data.id)
+    assert.equal(denied.statusCode, 404, denied.body)
+    const lifted = await withdraw(w.minor.cookie, objected.json().data.id)
+    assert.equal(lifted.statusCode, 200, lifted.body)
+    assert.equal(lifted.json().data.canWithdraw, false)
+    assert.deepEqual(await flags(w.minor.cookie), { granted: false, objected: false })
   })
 
   test('DOM-YTK-057 DOM-YTK-061 kapsam: veli başka çocuğa rıza veremez; öğretmen yalnız ders verdiği öğrencinin var/yok sonucunu görür', async () => {

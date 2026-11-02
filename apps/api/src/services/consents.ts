@@ -10,7 +10,9 @@ import {
 } from '@kampus/school-core/lib/consent-purposes.ts'
 import {
   academicYearEndsAt,
+  consentGrantor,
   hasValidConsent,
+  mayWithdrawConsent,
   planConsent,
   planConsentWithdrawal,
   type ConsentActor,
@@ -109,7 +111,11 @@ async function consentActorOf(tx: Database, ctx: ServiceContext): Promise<Consen
  */
 const GRANTOR_VISIBLE_ROLES: readonly Role[] = ['yonetici', 'onburo']
 
-export function consentView(row: StoredConsent, viewer: Role) {
+/**
+ * Satırın yanıt görünümü. `canWithdraw` çağıranın hesapladığı geri çekme yetkisidir
+ * (`withdrawable`); ekran düğmeyi buna göre gösterir.
+ */
+export function consentView(row: StoredConsent, viewer: Role, canWithdraw: boolean) {
   return {
     id: row.id,
     subjectKind: row.subjectKind,
@@ -125,8 +131,28 @@ export function consentView(row: StoredConsent, viewer: Role) {
     expiresAt: row.expiresAt,
     withdrawnAt: row.withdrawnAt,
     withdrawalReason: row.withdrawalReason,
+    canWithdraw,
     rowVersion: row.rowVersion,
   }
+}
+
+/** Satır açık ve aktör geri çekme yetkisinde (core `mayWithdrawConsent`, DOM-YTK-059). */
+function withdrawable(
+  row: StoredConsent,
+  actor: ConsentActor,
+  student: ConsentStudent | null,
+  now: string,
+) {
+  return (
+    row.withdrawnAt === null &&
+    mayWithdrawConsent({
+      actor,
+      consent: row,
+      student,
+      guardianBonds: guardianBondsOf(actor.links),
+      now,
+    })
+  )
 }
 
 const subjectKindOf = (studentId: string | undefined): ConsentSubjectKind =>
@@ -151,6 +177,7 @@ export function giveConsent(
   const id = randomUUID()
   const out: { body?: unknown } = {}
   let open: StoredConsent[] = []
+  let giver: { actor: ConsentActor; student: ConsentStudent | null } | null = null
   return runCommand<Planned>(
     ctx,
     {
@@ -177,6 +204,7 @@ export function giveConsent(
               ).filter((row) => row.purpose === input.purpose)
         const yearEnd =
           institution?.academicYear == null ? null : academicYearEndsAt(institution.academicYear)
+        giver = { actor, student: user ? null : student }
         return {
           run: (_state, { now }) =>
             planConsent({
@@ -225,7 +253,14 @@ export function giveConsent(
         ])
         const saved = await findConsent(tx, ctx.institutionId, id)
         if (saved === null) throw new Error('consent disappeared after insert')
-        out.body = { data: consentView(saved, ctx.actor.role) }
+        if (giver === null) throw new Error('consent actor was not loaded')
+        out.body = {
+          data: consentView(
+            saved,
+            ctx.actor.role,
+            withdrawable(saved, giver.actor, giver.student, ctx.now.toISOString()),
+          ),
+        }
       },
     },
     () => {
@@ -326,7 +361,8 @@ export function withdrawConsent(
         }
         const saved = await findConsent(tx, ctx.institutionId, consent.id)
         if (saved === null) throw new Error('consent disappeared after withdrawal')
-        out.body = { data: consentView(saved, ctx.actor.role) }
+        // Geri çekilmiş satır yeniden geri çekilemez.
+        out.body = { data: consentView(saved, ctx.actor.role, false) }
       },
     },
     () => {
@@ -389,17 +425,21 @@ export interface ConsentListInput {
 export async function listConsents(ctx: ServiceContext, input: ConsentListInput) {
   const subject = readSubject(ctx, input.studentId)
   const rows = await readWithScope(ctx, 'consent.read', input.studentId, async (tx) => {
-    const all = await listConsentsOfSubject(tx, ctx.institutionId, {
-      ...subject,
-      openOnly: input.status === 'open',
-    })
-    return () => all.filter((row) => input.purpose === undefined || row.purpose === input.purpose)
+    const [all, actor, student] = await Promise.all([
+      listConsentsOfSubject(tx, ctx.institutionId, {
+        ...subject,
+        openOnly: input.status === 'open',
+      }),
+      consentActorOf(tx, ctx),
+      consentStudentOf(tx, ctx.institutionId, input.studentId),
+    ])
+    return (now: string) =>
+      all
+        .filter((row) => input.purpose === undefined || row.purpose === input.purpose)
+        .map((row) => consentView(row, ctx.actor.role, withdrawable(row, actor, student, now)))
   })
   const start = (input.page - 1) * input.pageSize
-  return {
-    items: rows.slice(start, start + input.pageSize).map((row) => consentView(row, ctx.actor.role)),
-    total: rows.length,
-  }
+  return { items: rows.slice(start, start + input.pageSize), total: rows.length }
 }
 
 /**
@@ -415,11 +455,28 @@ export function consentStatus(
     (purpose) => input.purpose === undefined || purpose === input.purpose,
   )
   return readWithScope(ctx, 'consent.status', input.studentId, async (tx) => {
-    const [rows, texts, student] = await Promise.all([
+    // Hesap amacında rızayı kimin verdiği hesap sahibinin kendi öğrenci kaydının yaşına bağlıdır.
+    const ownStudent =
+      subject.kind === 'user' && ctx.actor.role === 'ogrenci'
+        ? ownStudentId(await listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId))
+        : undefined
+    const [rows, texts, student, account] = await Promise.all([
       listConsentsOfSubject(tx, ctx.institutionId, subject),
       listPrivacyNotices(tx, ctx.institutionId),
       consentStudentOf(tx, ctx.institutionId, input.studentId),
+      ctx.actor.role === 'ogrenci'
+        ? consentStudentOf(tx, ctx.institutionId, ownStudent)
+        : Promise.resolve(null),
     ])
+    // Öğretmen yalnız var/yok görür (DOM-YTK-061); kimin verdiği formu gösteren rollere döner.
+    const showGrantor = ctx.actor.role !== 'ogretmen'
+    const grantorOf = (purpose: ConsentPurpose, now: string) =>
+      subject.kind === 'student'
+        ? consentGrantor({ purpose, student, now })
+        : // Öğrenci hesabının kaydı bulunamazsa 18 yaş altı sayılır (rıza alınmaz).
+          ctx.actor.role === 'ogrenci' && account === null
+          ? null
+          : consentGrantor({ purpose, student: account, now })
     return (now: string) =>
       purposes.map((purpose) => ({
         purpose,
@@ -432,6 +489,7 @@ export function consentStatus(
               )
             : student !== null &&
               hasValidConsent(rows, { purpose, subject: { kind: 'student', student }, texts }, now),
+        ...(showGrantor ? { grantor: grantorOf(purpose, now) } : {}),
       }))
   })
 }

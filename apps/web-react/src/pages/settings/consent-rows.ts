@@ -20,7 +20,11 @@ export interface ConsentRow {
   withdrawnLabel: string | null
   version: number
   grantor: 'Kendisi' | 'Veli'
-  /** Açık ve süresi dolmamış satır tek işlemle geri çekilir. */
+  /**
+   * Sunucu bu oturuma geri çekme yetkisi veriyor (`canWithdraw`, core `mayWithdrawConsent`;
+   * ör. 18 yaş altı öğrenci velinin satırını çekemez) ve satır süresi dolmamış: tek işlemle geri
+   * çekilir. Kim çekebilir kuralı burada yeniden yazılmaz.
+   */
   canWithdraw: boolean
   /** Geri çekme düğmesinin erişilebilir adı ("… rızasını geri çek"). */
   withdrawName: string
@@ -73,7 +77,7 @@ export function consentRow(
     withdrawnLabel: view.withdrawnAt ? day(view.withdrawnAt) : null,
     version: view.textVersion,
     grantor: view.grantorRelation === 'guardian' ? 'Veli' : 'Kendisi',
-    canWithdraw: view.withdrawnAt === null && !expired,
+    canWithdraw: view.canWithdraw && view.withdrawnAt === null && !expired,
     withdrawName: `${label} ${objection ? 'itirazını' : 'rızasını'} geri çek`,
   }
 }

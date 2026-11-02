@@ -26,6 +26,7 @@ function consent(over: Partial<ConsentView> = {}): ConsentView {
     expiresAt: '2027-08-31T21:00:00Z',
     withdrawnAt: null,
     withdrawalReason: null,
+    canWithdraw: true,
     rowVersion: 1,
     ...over,
   }
@@ -140,4 +141,25 @@ test('DOM-YTK-062: itiraz yalnız itiraz edilebilir amaçta, açık rıza varken
     'photo_video_sharing',
     'photo_video_print',
   ])
+})
+
+test('DOM-YTK-059 DOM-YTK-062: öğrenci velinin satırını geri çekemez; düğme sunucunun canWithdraw kararını izler', () => {
+  // 18 yaş altı öğrencinin oturumunda velinin rızası: API canWithdraw=false döndürür.
+  const guardianRow = consentRow(consent({ canWithdraw: false }), NOW, undefined)
+  assert.equal(guardianRow.grantor, 'Veli')
+  assert.equal(guardianRow.canWithdraw, false)
+  // Aynı oturumda kendi itirazı geri çekilir.
+  const objection = consentRow(
+    consent({ decision: 'objected', grantorRelation: 'self', canWithdraw: true }),
+    NOW,
+    undefined,
+  )
+  assert.equal(objection.canWithdraw, true)
+  assert.equal(
+    objection.withdrawName,
+    'Fotoğraf ve video: kurum içi platform ve sınıf panosu itirazını geri çek',
+  )
+  // Yetki olsa da süresi dolan satırda düğme çıkmaz.
+  const expired = consentRow(consent({ expiresAt: '2026-10-31T21:00:00Z' }), NOW, undefined)
+  assert.equal(expired.canWithdraw, false)
 })

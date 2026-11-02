@@ -78,8 +78,12 @@ export async function expectContentInsideCards(cards: Locator) {
             const rect = element.getBoundingClientRect()
             const outside =
               rect.width > 0 && (rect.right > box.right + 0.5 || rect.left < box.left - 0.5)
-            // Kutusu olmayan öğe (ör. recharts'ın sıfır boyutlu ölçüm düğümü) görünür içeriği kırpmaz.
-            const clipped = rect.width > 0 && element.scrollWidth > element.clientWidth + 1
+            // Muafiyet yalnız grafik ölçüm düğümlerine (recharts sarmalayıcısı, aria-hidden alt ağaç)
+            // tanınır: bunların kutusu sıfır olabilir ve görünür içerik taşımaz. Diğer öğelerde
+            // 0 px'e ezilmiş görünür metin de kırpılmış sayılır (`scrollWidth > clientWidth`).
+            const measuring = element.closest('.recharts-wrapper, [aria-hidden="true"]') !== null
+            const clipped =
+              element.scrollWidth > element.clientWidth + 1 && (rect.width > 0 || !measuring)
             return outside || clipped
               ? [
                   `${(card.textContent ?? '').trim().slice(0, 40)} › ${element.tagName.toLowerCase()}`,

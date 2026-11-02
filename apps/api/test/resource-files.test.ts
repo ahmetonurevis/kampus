@@ -944,7 +944,7 @@ describe('kaynak sürümü dosyaları', () => {
     })
     for (const cookie of [t.cookies.student, t.cookies.otherStudent])
       fails(await fileUrl(cookie, image), 404, 'not_found')
-    await ok(
+    const assigned = await ok(
       await post(
         '/task-assignments',
         t.cookies.admin,
@@ -965,5 +965,10 @@ describe('kaynak sürümü dosyaları', () => {
       await ok(await fileUrl(cookie, image))
     fails(await fileUrl(t.cookies.otherStudent, image), 404, 'not_found')
     await ok(await fileUrl(t.cookies.teacher, image))
+    // Görev içeriği de aynı kuraldan geçer: kitap sahibi olmayana `unavailable`.
+    const detail = async (cookie: string) =>
+      (await ok(await call('GET', `/task-assignments/${assigned.id}`, cookie))).contentUnavailable
+    assert.equal(await detail(t.cookies.student), null)
+    assert.equal(await detail(t.cookies.otherStudent), 'unavailable')
   })
 })

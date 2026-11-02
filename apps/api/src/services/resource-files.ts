@@ -22,7 +22,7 @@ import { attachFile, detachFile } from './files.ts'
 import { RESOURCE_VERSION_ATTACHMENT } from './listening-plays.ts'
 import { contentReader } from './resources.ts'
 import { viewerOf, visible, type Viewer } from './task-assignments.ts'
-import { shownToLearners } from './task-progress.ts'
+import { learnerContentGate, learnerHasWork } from './task-progress.ts'
 
 /**
  * Kaynak sürümünün dosyaları (DOM-KYN-006; ADR 0003 karar 5, 6). Kural core
@@ -141,9 +141,9 @@ async function readsLinkedVersion(
  * Kişinin, dosyaya bağ açan sürümü sabitleyen görülebilir bir ataması var mı (DOM-YTK-028): öğrenci
  * kendisine, veli çocuklarına (kardeşler dahil) hedeflenen; öğretmen atadığı ya da kapsamındaki
  * sınıfa hedeflenen; yönetici kurumdaki atamayı görür (`visible`). Soru görseli, soruyu içeren quiz
- * veya alıştırma setinin atamasıyla da açılır. Kursiyerde atamanın sürümü kursiyere gösterilebilir
- * olmalı (`shownToLearners`: yayın geçmişi var, telif incelemesinde veya kaldırılmış değil); quiz
- * yolunda sorunun kaynağı da.
+ * veya alıştırma setinin atamasıyla da açılır. Kursiyerde görev içeriğinin kuralı aynen uygulanır
+ * (`learnerContentGate`: yayın geçmişi, kitap sahibi sınırı, telif incelemesi ve kaldırma, lisans
+ * süresi dolmuşsa yalnız süren iş); quiz yolunda sorunun sürümü de bu kuraldan geçer.
  */
 async function assignedLinkedVersion(
   ctx: ServiceContext,
@@ -169,13 +169,22 @@ async function assignedLinkedVersion(
         ),
       )
   for (const [versionId, items] of pinned) {
-    const assignments = await loadVersionAssignments(ctx.db, ctx.institutionId, versionId)
-    if (!assignments.some((assignment) => visible(viewer, assignment))) continue
+    const assignments = (await loadVersionAssignments(ctx.db, ctx.institutionId, versionId)).filter(
+      (assignment) => visible(viewer, assignment),
+    )
+    if (assignments.length === 0) continue
     if (viewer.kind !== 'learner') return true
     const pairs = await loadVersionPairs(ctx.db, ctx.institutionId, [versionId])
-    let shown = await shownToLearners(ctx.db, ctx.institutionId, pairs.get(versionId))
-    for (const item of items) shown &&= await shownToLearners(ctx.db, ctx.institutionId, item)
-    if (shown) return true
+    for (const assignment of assignments) {
+      const gate = await learnerContentGate(
+        ctx,
+        viewer,
+        assignment,
+        [pairs.get(versionId), ...items],
+        () => learnerHasWork(ctx, viewer, assignment),
+      )
+      if (gate === null) return true
+    }
   }
   return false
 }

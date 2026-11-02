@@ -193,23 +193,38 @@ export function canReadVersion(viewer: ContentViewer, context: VisibilityContext
   }
 }
 
+/**
+ * Kitap sahibi sınırı (DOM-KYN-021): lisans "basılı kitap sahibi öğrenciler" ile sınırlıysa içerik
+ * yalnız kaynağın tek tek seçilmiş öğrencilerine (kitap sahipleri) açılır; sınıf veya kurum
+ * paylaşımı ve görev ataması bu sınırı aşamaz. Sınırsız lisansta her öğrenci için doğrudur.
+ * İçerik havuzu okuması ve atanmış görevin içeriği (API) aynı kuralı kullanır.
+ */
+export function reachesBookOwner(
+  resource: Pick<ResourceRecord, 'shareScope' | 'sharedStudentIds'>,
+  version: Pick<ResourceVersion, 'license'>,
+  studentId: string,
+): boolean {
+  const license = version.license
+  if (license?.kind !== 'licensed_publication' || !license.restrictedToBookOwners) return true
+  return resource.shareScope === 'students' && resource.sharedStudentIds.includes(studentId)
+}
+
 function learnerCanRead(learner: ContentLearner, context: VisibilityContext): boolean {
   const { institutionType, resource, version, now } = context
   // Öğrenci kütüphanesinde yalnız güncel yayın sürümü; atanmış eski sürüm görev üzerinden açılır.
   if (version.status !== 'published' || resource.currentVersionId !== version.id) return false
   if (version.resourceId !== resource.id || licenseExpired(version.license, now)) return false
-  const license = version.license
-  const restricted = license?.kind === 'licensed_publication' && license.restrictedToBookOwners
+  if (!reachesBookOwner(resource, version, learner.studentId)) return false
   let inScope: boolean
   switch (resource.shareScope) {
     case 'students':
       inScope = resource.sharedStudentIds.includes(learner.studentId)
       break
     case 'classes':
-      inScope = !restricted && learner.classIds.some((id) => resource.sharedClassIds.includes(id))
+      inScope = learner.classIds.some((id) => resource.sharedClassIds.includes(id))
       break
     case 'institution':
-      inScope = !restricted
+      inScope = true
       break
     case 'department':
     case 'private':

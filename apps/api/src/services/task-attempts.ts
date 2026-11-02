@@ -252,14 +252,6 @@ export function learnerAttemptProgress(
   }
 }
 
-/**
- * Denemenin ayrıntısı: soruları, okuma parçası ve dinleme hakkı. Soru ve parça metni içerik
- * kapısından geçer (`attemptContentGate`; DOM-KYN-025, 051): kaldırılmış içerikte süren ya da
- * tamamlanmış hiçbir denemede, telif askısında süren denemesi olmayan kursiyerde, lisansı dolmuş
- * içerikte süren denemesi olmayan kursiyerde metin ve cevap anahtarı (açıklamasıyla) dönmez
- * (`questions: []`, `passage: null`, `result.answerKey: null`) ve `contentUnavailable` nedeni
- * söyler. Cevaplar, puan ve madde sonuçları görünür kalır.
- */
 /** Kursiyerin bu atamada süren denemesi var mı (içerik kapısının süren işi; Sabah kararı 47). */
 function hasRunning(assignment: StoredAssignment, attempts: readonly StoredAttempt[], now: string) {
   const timing = timingOf(assignment)
@@ -273,6 +265,14 @@ function withoutKey<V extends ReturnType<typeof attemptView>>(view: V, open: boo
     : { ...view, result: { ...view.result, answerKey: null } }
 }
 
+/**
+ * Denemenin ayrıntısı: soruları, okuma parçası ve dinleme hakkı. Soru ve parça metni içerik
+ * kapısından geçer (`attemptContentGate`; DOM-KYN-025, 051): kaldırılmış içerikte süren ya da
+ * tamamlanmış hiçbir denemede, telif askısında süren denemesi olmayan kursiyerde, lisansı dolmuş
+ * içerikte süren denemesi olmayan kursiyerde metin ve cevap anahtarı (açıklamasıyla) dönmez
+ * (`questions: []`, `passage: null`, `result.answerKey: null`) ve `contentUnavailable` nedeni
+ * söyler. Cevaplar, puan ve madde sonuçları görünür kalır.
+ */
 async function detailView(
   db: Database,
   ctx: ServiceContext,

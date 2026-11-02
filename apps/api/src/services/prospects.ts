@@ -47,6 +47,7 @@ import { insertGuardianLink } from '../db/student-guardians.ts'
 import { archiveStudentIdentity } from '../db/withdrawals.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { notify } from './notify.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
 import { auditWork } from './task-work.ts'
@@ -370,6 +371,12 @@ export function enrollProspectCommand(
             Object.keys(draft),
           )
         }
+        // Kitleyi kimlik kaydındaki doğum tarihi belirler: 18 altında veli, yetişkinde kursiyer.
+        await notify(tx, ctx, {
+          type: 'enrollment_completed',
+          recipients: { studentIds: [result.student.id] },
+          data: { studentId: result.student.id },
+        })
       },
     },
     (outcome) =>

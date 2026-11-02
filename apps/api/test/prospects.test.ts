@@ -1741,7 +1741,7 @@ describe('aday uçları', () => {
     assert.equal(teacherView.body.includes(existing.phone), false)
   })
 
-  test('DOM-YTK-020: veli telefonu öğrenciye gitmez; yönetici ve velinin kendisi görür', async () => {
+  test('DOM-YTK-020: veli telefonu öğrenciye gitmez; yönetici görür', async () => {
     const a = await pricedInstitution()
     const done = await enroll(a.adminCookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
     assert.equal(done.statusCode, 201, done.body)
@@ -1762,11 +1762,29 @@ describe('aday uçları', () => {
     const admin = await a_get(a.adminCookie, url)
     assert.equal(admin.statusCode, 200, admin.body)
     assert.equal(admin.body.includes(phone), true)
-    const parent = await signInAs(
-      app,
-      await createMember(app, a.id, 'veli', [{ kind: 'child', recordId: studentId }]),
+    // Velinin göreceği alanlar `parent-contact.test.ts`'te (DOM-YTK-055, DOM-ILT-073).
+  })
+
+  test('DOM-KAY-011: kesin kayıt bildirimi veliye gider; iletişim kapalıyken yazılmaz, kayıt yine olur', async () => {
+    const a = await pricedInstitution()
+    const done = await enroll(a.adminCookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(done.statusCode, 201, done.body)
+    const studentId = String(done.json().data.entity.id)
+    const rows = await loadRecords(db, a.id, ['notifications'])
+    assert.deepEqual(
+      rows.map((row) => [row.data.kind ?? row.data.type, row.data.audience, row.data.subject]),
+      [['enrollment_completed', 'parent', { type: 'students', id: studentId }]],
     )
-    assert.equal((await a_get(parent, url)).body.includes(phone), true)
+
+    const closed = await pricedInstitution({ enabledModules: { communication: false } })
+    const silent = await enroll(
+      closed.adminCookie,
+      'pr1',
+      ENROLLMENT,
+      await versionOf(closed.id, 'pr1'),
+    )
+    assert.equal(silent.statusCode, 201, silent.body)
+    assert.deepEqual(await loadRecords(db, closed.id, ['notifications']), [])
   })
 
   test('DOM-KAY-011: kimlik tekilliği yıla bağlı değildir; pasif kaydın kimliği yeniden kullanılır', async () => {

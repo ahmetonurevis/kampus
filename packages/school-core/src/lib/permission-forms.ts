@@ -156,7 +156,11 @@ export type PermissionFormRecord = {
   deadline: string
   /** Hedef sınıflar (girildiği gibi). */
   classIds: string[]
-  /** Tek tek hedeflenen öğrenciler (girildiği gibi). */
+  /**
+   * Tek tek hedeflenen öğrenciler (girildiği gibi; çözülmüş `studentIds`'ten ayrı saklanır, çünkü
+   * sınıf değiştiren ya da hem sınıfta hem tek seçili öğrenci çözülmüş listeden ayırt edilemez).
+   * Alan form açılışından beri (OG-055) yazılır; okurken alanı olmayan kayıt boş liste sayılır.
+   */
   targetStudentIds: string[]
   /** Açılışta çözülen hedef öğrenciler: sınıfların etkin öğrencileri ve tek tek seçilenler. */
   studentIds: string[]
@@ -434,7 +438,8 @@ export function updatePermissionForm(
     if (
       locked &&
       (removed(form.classIds, targets.classIds).length > 0 ||
-        removed(form.targetStudentIds, targets.targetStudentIds).length > 0)
+        // Alanı olmayan kayıt (tek tek hedef ayrı saklanmadan önce) yalnız sınıf hedeflidir.
+        removed(form.targetStudentIds ?? [], targets.targetStudentIds).length > 0)
     )
       throw new DomainError(
         'permission_form_scope_locked',

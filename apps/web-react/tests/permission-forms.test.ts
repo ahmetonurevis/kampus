@@ -289,8 +289,8 @@ describe('veli ve öğrenci kararı (DOM-ILT-030, DOM-ILT-037, DOM-ILT-038)', ()
 
   test('çocuğun satırı yalnız hedef olduğu formda bulunur', () => {
     const students = [
-      { studentId: 's1', status: 'pending' as const, decisions: [] },
-      { studentId: 's2', status: 'approved' as const, decisions: [] },
+      { studentId: 's1', status: 'pending' as const, canDecide: true, decisions: [] },
+      { studentId: 's2', status: 'approved' as const, canDecide: true, decisions: [] },
     ]
     assert.equal(studentEntry({ students }, 's2')?.status, 'approved')
     assert.equal(studentEntry({ students }, 's9'), undefined)

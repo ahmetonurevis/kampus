@@ -711,6 +711,140 @@ describe('izin formu uçları', () => {
     assert.deepEqual(notes(await detail(await student(a.id, 's1'), form.id)), expected)
   })
 
+  test('DOM-ILT-036, DOM-ILT-038: tek tek hedeflenen öğrenciler ve karar varlığı yalnız formu yönetene döner', async () => {
+    const a = await institution()
+    const t1 = await teacher(a.id, 't1')
+    // Ece (s2) 5-A'dadır: 7-A'ya ek olarak tek tek hedeflenir.
+    const created = await create(t1, { ...FORM, studentIds: ['s2'] })
+    assert.equal(created.statusCode, 201, created.body)
+    const form = created.json().data as Json
+    assert.deepEqual(form.targetStudentIds, ['s2'])
+    assert.equal(form.hasDecisions, false)
+    assert.ok((form.studentIds as string[]).includes('s2'))
+
+    const managed = async (cookie: string) => {
+      const listed = (await read(cookie, '/api/v1/permission-forms')).json().data[0] as Json
+      const seen = await detail(cookie, form.id)
+      return [
+        listed.targetStudentIds,
+        listed.hasDecisions,
+        seen.targetStudentIds,
+        seen.hasDecisions,
+      ]
+    }
+    assert.deepEqual(await managed(t1), [['s2'], false, ['s2'], false])
+    assert.deepEqual(await managed(a.adminCookie), [['s2'], false, ['s2'], false])
+    // Formu gören öbür öğretmen, veli ve öğrenci almaz.
+    const anne = await mother(a.id)
+    for (const cookie of [await teacher(a.id, 't2'), anne.cookie, await student(a.id, 's1')])
+      assert.deepEqual(await managed(cookie), [undefined, undefined, undefined, undefined])
+
+    // Kararı veren velinin velayeti kalksa da karar satırı kalır: sayılar sıfır, kilit sürer.
+    await father(a.id)
+    assert.equal((await decide(anne.cookie, form.id, APPROVE)).statusCode, 201)
+    await setBond(a, anne.membershipId, { custody: 'none' })
+    const admin = await detail(a.adminCookie, form.id)
+    assert.equal(admin.counts.approved, 0)
+    assert.equal(admin.hasDecisions, true)
+    // Yazma yanıtı da yöneten görünümüdür.
+    const edited = await patch(t1, form.id, { title: 'Müze ve saray gezisi' }, ifMatch(1))
+    assert.equal(edited.statusCode, 200, edited.body)
+    assert.deepEqual(edited.json().data.targetStudentIds, ['s2'])
+    assert.equal(edited.json().data.hasDecisions, true)
+    const closed = await closeForm(t1, form.id, ifMatch(2))
+    assert.equal(closed.json().data.hasDecisions, true)
+  })
+
+  test('DOM-ILT-036: tek tek hedef alanı olmayan eski kayıt boş hedef sayılır, düzenlenebilir', async () => {
+    const legacy = {
+      id: 'pf-legacy',
+      topic: 'event',
+      title: 'Eski kayıt',
+      description: 'Tek tek hedef alanı yok.',
+      deadline: '2026-10-20',
+      classIds: ['c1'],
+      studentIds: C1_STUDENTS,
+      teacherId: 't1',
+      status: 'open',
+      closedAt: null,
+      createdBy: { role: 'ogretmen', userId: 'u-eski' },
+      createdAt: '2026-10-01T09:00:00.000Z',
+      updatedAt: '2026-10-01T09:00:00.000Z',
+    }
+    const a = await institution({}, { permissionForms: [legacy] })
+    assert.deepEqual((await detail(a.adminCookie, legacy.id)).targetStudentIds, [])
+    // Kararlı formda daraltma denetimi de eksik alanı boş liste sayar.
+    assert.equal((await decide((await mother(a.id)).cookie, legacy.id, APPROVE)).statusCode, 201)
+    const version = await versionOf(a.id, legacy.id)
+    const edited = await patch(
+      a.adminCookie,
+      legacy.id,
+      { classIds: ['c1'], studentIds: ['s2'] },
+      ifMatch(version),
+    )
+    assert.equal(edited.statusCode, 200, edited.body)
+    assert.deepEqual(edited.json().data.targetStudentIds, ['s2'])
+  })
+
+  test('DOM-ILT-030, DOM-ILT-037: karar verebilme öğrenci başına döner; aile listesi öğrenci satırlarını taşır', async () => {
+    const a = await institution()
+    // Nehir (s25) 18 yaşını doldurmuştur, Deniz (s1) 18 yaşından küçüktür.
+    await identity(a.id, 's25', '2007-05-01')
+    const t1 = await teacher(a.id, 't1')
+    const form = await opened(t1)
+    const anne = await mother(a.id)
+    assert.equal((await decide(anne.cookie, form.id, APPROVE)).statusCode, 201)
+
+    const entries = async (cookie: string) => {
+      const listed = (await read(cookie, '/api/v1/permission-forms')).json().data[0] as Json
+      const seen = await detail(cookie, form.id)
+      return { listed: listed.students as Json[] | undefined, seen: seen.students as Json[] }
+    }
+    const pick = (list: Json[] | undefined) =>
+      (list ?? []).map((item) => [item.studentId, item.status, item.canDecide])
+
+    const parent = await entries(anne.cookie)
+    assert.deepEqual(pick(parent.listed), [['s1', 'approved', true]])
+    assert.deepEqual(pick(parent.seen), pick(parent.listed))
+    assert.equal((parent.listed?.[0]?.decisions as Json[]).length, 1)
+
+    // Velisi onaylamış küçük öğrenci durumu görür, karar vermez.
+    const minor = await entries(await student(a.id, 's1'))
+    assert.deepEqual(pick(minor.listed), [['s1', 'approved', false]])
+    assert.deepEqual(pick(minor.seen), pick(minor.listed))
+    const adult = await entries(await student(a.id, 's25'))
+    assert.deepEqual(pick(adult.listed), [['s25', 'pending', true]])
+
+    // Personel listesi öğrenci satırı taşımaz; ayrıntıda karar veremez.
+    const staff = await entries(t1)
+    assert.equal(staff.listed, undefined)
+    assert.ok(staff.seen.every((item) => item.canDecide === false))
+  })
+
+  test('IST-067: liste başlıkta harf ve aksan duyarsız arar; kapsam dışı form sızmaz, kısa arama 400', async () => {
+    const a = await institution()
+    const t1 = await teacher(a.id, 't1')
+    const mine = await opened(t1, { ...FORM, title: 'Işıklı Müze Gezisi' })
+    await opened(t1, { ...FORM, title: 'Kulüp tanıtımı', topic: 'club' })
+    // Yönetici 5-A'ya benzer başlıkla form açar; yalnız Deniz'in (7-A) velisi olan baba onu görmez.
+    const other = await opened(a.adminCookie, {
+      ...FORM,
+      title: 'Müze gezisi 5-A',
+      classIds: ['c2'],
+    })
+    const search = async (cookie: string, q: string) =>
+      ids(await read(cookie, `/api/v1/permission-forms?q=${encodeURIComponent(q)}`))
+    assert.deepEqual(await search(t1, 'ışıklı'), [mine.id])
+    assert.deepEqual(await search(t1, 'MUZE'), [mine.id, other.id].sort())
+    assert.deepEqual(await search((await father(a.id)).cookie, 'müze'), [mine.id])
+    assert.deepEqual(await search(await teacher(a.id, 't5'), 'müze'), [])
+    assert.deepEqual(await search((await mother(a.id)).cookie, '5-A'), [other.id])
+    assert.deepEqual(await search(t1, 'yok böyle'), [])
+    assertError(await read(t1, '/api/v1/permission-forms?q=m'), 400, 'validation_failed')
+    const total = await read(t1, `/api/v1/permission-forms?q=${encodeURIComponent('  müze ')}`)
+    assert.equal(total.json().meta.total, 2)
+  })
+
   test('DOM-ILT-031, DOM-ILT-034: eşzamanlı kararlar sırayla yazılır; aynı kişinin aynı kararı tek satır', async () => {
     const a = await institution()
     const form = await opened(await teacher(a.id, 't1'))

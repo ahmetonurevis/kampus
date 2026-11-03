@@ -541,3 +541,105 @@ export function certificateVerificationView(
     institutionName: certificate.content.institutionName,
   }
 }
+
+// --- MEBBİS Kurs Bitirme Belgesi izi (DOM-DIL-080) ----------------------------------------
+
+/** MEBBİS belge numarasının üst sınırı. */
+export const MEBBIS_NUMBER_MAX = 100
+
+/**
+ * MEBBİS izi gövdesi: resmî belgenin MEBBİS'teki numarası ve tarihi. Platform belgeyi üretmez,
+ * yalnız düzenlendiğini işaretler.
+ */
+export const mebbisRecordInputSchema = z.object({
+  // kvkk: K
+  certificateNumber: z
+    .string()
+    .trim()
+    .min(1, 'MEBBİS belge numarasını yazın.')
+    .max(MEBBIS_NUMBER_MAX, 'En fazla 100 karakter girebilirsiniz.'),
+  issuedDate: z.iso.date('Geçerli bir tarih girin.'),
+})
+export type MebbisRecordInput = z.input<typeof mebbisRecordInputSchema>
+
+/** Saklanan MEBBİS izi (API `mebbis_certificate_records`). */
+export type MebbisRecord = {
+  id: string
+  enrollmentId: string
+  learnerId: string
+  decisionId: string
+  // kvkk: K
+  certificateNumber: string
+  issuedDate: string
+  // kvkk: K
+  recordedByUserId: string
+  recordedAt: string
+}
+export type MebbisRecordDraft = Omit<MebbisRecord, 'id'>
+
+/**
+ * Belgeyi MEBBİS'te düzenlendi olarak işaretler (DOM-DIL-080). Yalnız belgeye hak kazanan kayıt
+ * (geçerli karar onaylı `passed`; devamsızlık ve tekrar listeye girmez) ve kararın kendisi;
+ * karar başına bir iz (409). Tarih düzenleme anından ileri olamaz (Europe/Istanbul günü).
+ */
+export function planMebbisRecord(input: {
+  institutionType: InstitutionType
+  enrollment: { id: string; learnerId: string }
+  decisions: readonly ProgressionDecisionRecord[]
+  decisionId: string
+  existing: readonly Pick<MebbisRecord, 'decisionId'>[]
+  actor: ProgressionActor
+  input: unknown
+  now: Instant
+}): MebbisRecordDraft {
+  assertLanguageSchool(input.institutionType)
+  assertIssuer(input.actor, 'MEBBİS belge kaydını')
+  const data = mebbisRecordInputSchema.parse(input.input)
+  const own = input.decisions.filter((d) => d.enrollmentId === input.enrollment.id)
+  if (!own.some((d) => d.id === input.decisionId)) {
+    throw new DomainError('progression_not_found', 'Kur sonu kararı bulunamadı.', {
+      kind: 'not_found',
+      path: ['decisionId'],
+    })
+  }
+  const effective = certificateEligibleDecision(own)
+  if (effective.id !== input.decisionId) {
+    throw new DomainError(
+      'certificate_decision_superseded',
+      'Bu karar düzeltildi; belge kaydın geçerli kararıyla işaretlenir.',
+      { path: ['decisionId'] },
+    )
+  }
+  if (input.existing.some((row) => row.decisionId === effective.id)) {
+    throw new DomainError(
+      'mebbis_already_recorded',
+      'Bu kursiyerin MEBBİS belgesi zaten işaretlendi.',
+      { kind: 'conflict', path: ['decisionId'] },
+    )
+  }
+  if (data.issuedDate > dayKey(toMs(input.now))) {
+    throw new DomainError('mebbis_date_in_future', 'MEBBİS belge tarihi ileri bir gün olamaz.', {
+      path: ['issuedDate'],
+    })
+  }
+  return {
+    enrollmentId: input.enrollment.id,
+    learnerId: input.enrollment.learnerId,
+    decisionId: effective.id,
+    certificateNumber: data.certificateNumber,
+    issuedDate: data.issuedDate,
+    recordedByUserId: input.actor.userId,
+    recordedAt: toIso(input.now),
+  }
+}
+
+/**
+ * Kaydın MEBBİS listesindeki yeri (DOM-DIL-080): geçerli karar onaylı `passed` ise karar kimliği,
+ * değilse `null` (listeye girmez). Saftır; hata atmaz.
+ */
+export function mebbisEligibleDecisionId(
+  decisions: readonly ProgressionDecisionRecord[],
+): string | null {
+  const effective = effectiveProgressionDecision(decisions)
+  return effective !== null && effective.outcome === 'passed' ? effective.id : null
+}

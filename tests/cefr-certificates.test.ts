@@ -13,10 +13,12 @@ import {
   containsForbiddenPhrase,
   formatCertificateNumber,
   formatVerificationCode,
+  mebbisEligibleDecisionId,
   nameInitials,
   normalizeVerificationCode,
   planCertificateCancellation,
   planCertificateIssue,
+  planMebbisRecord,
   type CertificateRecord,
 } from '../packages/school-core/src/cefr/certificates.ts'
 import {
@@ -403,5 +405,81 @@ describe('doğrulama kodu ve yanıtı (DOM-DIL-082)', () => {
     const text = JSON.stringify(cancelled)
     for (const hidden of ['Deniz', 'Yılmaz', 'test-st1', 'KB-2026', 'test-enr1', '82'])
       assert.equal(text.includes(hidden), false, hidden)
+  })
+})
+
+describe('MEBBİS Kurs Bitirme Belgesi izi (DOM-DIL-080)', () => {
+  const record = (over: Partial<Parameters<typeof planMebbisRecord>[0]> = {}) =>
+    planMebbisRecord({
+      institutionType: 'language_school',
+      enrollment: { id: 'test-enr1', learnerId: 'test-st1' },
+      decisions: [decision()],
+      decisionId: 'test-pd1',
+      existing: [],
+      actor: admin,
+      input: { certificateNumber: ' 2026-34-000123 ', issuedDate: '2026-11-20' },
+      now,
+      ...over,
+    })
+
+  test('DOM-DIL-080 belgeye hak kazanan kaydın MEBBİS belgesi no, tarih ve işleyenle işaretlenir', () => {
+    assert.deepEqual(record(), {
+      enrollmentId: 'test-enr1',
+      learnerId: 'test-st1',
+      decisionId: 'test-pd1',
+      certificateNumber: '2026-34-000123',
+      issuedDate: '2026-11-20',
+      recordedByUserId: admin.userId,
+      recordedAt: now,
+    })
+    assert.equal(mebbisEligibleDecisionId([decision()]), 'test-pd1')
+  })
+
+  test('DOM-DIL-080 devamsızlık, tekrar ve onaysız karar listeye girmez ve işaretlenmez', () => {
+    for (const over of [
+      { outcome: 'incomplete_attendance' as const },
+      { outcome: 'repeat' as const },
+      { status: 'pending' as const, reviewedAt: null, reviewedByUserId: null },
+    ]) {
+      assert.equal(mebbisEligibleDecisionId([decision(over)]), null)
+      assert.throws(
+        () => record({ decisions: [decision(over)] }),
+        (error: Error) => error.name === 'DomainError',
+      )
+    }
+    assert.equal(mebbisEligibleDecisionId([]), null)
+  })
+
+  test('DOM-DIL-080 karar başına bir iz 409; ileri tarih 422; geçersiz gövde; yetki ve kurum türü', () => {
+    assert.throws(
+      () => record({ existing: [{ decisionId: 'test-pd1' }] }),
+      isDomainError('mebbis_already_recorded', 'conflict'),
+    )
+    assert.throws(
+      () => record({ input: { certificateNumber: 'A1', issuedDate: '2026-11-21' } }),
+      isDomainError('mebbis_date_in_future'),
+    )
+    for (const input of [
+      {},
+      { certificateNumber: ' ', issuedDate: '2026-11-20' },
+      { certificateNumber: 'A', issuedDate: '20.11.2026' },
+    ])
+      assert.throws(() => record({ input }), ZodError)
+    assert.throws(() => record({ actor: teacher }), isDomainError('permission_denied', 'forbidden'))
+    assert.throws(
+      () => record({ decisionId: 'test-pd-yok' }),
+      isDomainError('progression_not_found', 'not_found'),
+    )
+    assert.throws(
+      () =>
+        record({
+          decisions: [decision(), decision({ id: 'test-pd2', correctsDecisionId: 'test-pd1' })],
+        }),
+      isDomainError('certificate_decision_superseded'),
+    )
+    assert.throws(
+      () => record({ institutionType: 'school' }),
+      isDomainError('module_unavailable_for_type', 'not_found'),
+    )
   })
 })

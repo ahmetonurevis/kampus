@@ -40,24 +40,20 @@ export const taskAssignmentListQuerySchema = pageQuerySchema
   .strict()
 
 /**
- * Yeni atama: core `assignmentInputSchema` (içerik sürümü, ayarlar, hedefler). Tek fark dinleme
- * hakkının varsayılanıdır: core değerlendirmede 2 verir (DOM-BEC-005), ama core içerik modeli
- * dinleme kaydını (`listening_audio`) atanabilen türlere (soru, quiz, alıştırma seti, ödev şablonu)
- * bağlamaz; sayım altyapısı (`attempt_media_plays`, OG-049) sayacak kayıt bulamaz. Gönderilmeyen
- * hak sınırsız (`null`) saklanır; dolu hak (1 veya 2) serviste 422 `listening_plays_unavailable`
- * alır (ADR 0004 karar 6 uygulama notu, OG-049).
+ * Yeni atama: core `assignmentInputSchema` (içerik sürümü, ayarlar, hedefler). Dinleme hakkı
+ * (DOM-BEC-005) gönderilmezse dinleme görevinde core varsayılanı (2) uygulanır; ama hak yalnız
+ * dinleme kaydına (`listening_audio` dosyalı ses sürümü) bağlı quiz/alıştırma setinde sayılabilir
+ * (IST-045). Kaydı olmayan dinleme görevinde gönderilmeyen hak sınırsız (`null`) saklanır, dolu
+ * hak (1 veya 2) serviste 422 `listening_plays_unavailable` alır (ADR 0004 karar 6 uygulama notu).
  */
-// TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türlere bağlayınca core varsayılanına (2) dönülür.
 export const taskAssignmentBodySchema = assignmentInputSchema.extend({
+  // Yalnız OpenAPI açıklaması eklenir; doğrulama core'unkiyle aynıdır (`safeExtend` core'un
+  // `superRefine`'ını korur).
   settings: assignmentSettingsSchema
     .safeExtend({
-      listeningPlays: z
-        .union([z.literal(1), z.literal(2)])
-        .nullable()
-        .default(null)
-        .describe(
-          'Dinleme hakkı; gönderilmezse sınırsız. Dinleme sayımı açılana kadar yalnız sınırsız kabul edilir.',
-        ),
+      listeningPlays: assignmentSettingsSchema.shape.listeningPlays.describe(
+        'Dinleme hakkı (DOM-BEC-005, IST-045): 1, 2 veya `null` (sınırsız). Gönderilmezse kayda bağlı etkinlikte (quiz/alıştırma seti `listeningVersionId` → `listening_audio` dosyalı ses sürümü) 2, kaydı olmayanda sınırsız; kaydı olmayanda 1 veya 2 422 `listening_plays_unavailable`.',
+      ),
     })
     .prefault({}),
 })

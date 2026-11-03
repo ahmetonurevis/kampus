@@ -94,7 +94,7 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
         operationId: 'createResource',
         tags: ['resources'],
         summary: 'Kaynak oluştur',
-        description: `Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam \`private\`. Gövde core \`resourceVersionInputSchema\` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 \`quiz_item_missing\`; bağlanan okuma parçası (\`passageVersionId\`, IST-042) için 422 \`passage_missing\`. ${FILES} Başarı 201 ve \`Location\`. ${ACCESS}`,
+        description: `Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam \`private\`. Gövde core \`resourceVersionInputSchema\` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 \`quiz_item_missing\`; bağlanan okuma parçası (\`passageVersionId\`, IST-042) için 422 \`passage_missing\`, bağlanan dinleme kaydı (\`listeningVersionId\`, IST-045) için 422 \`listening_missing\`. ${FILES} Başarı 201 ve \`Location\`. ${ACCESS}`,
         body: resourceCreateBodySchema,
         headers: commandHeadersSchema('optional', { ifMatch: false }),
         response: created,

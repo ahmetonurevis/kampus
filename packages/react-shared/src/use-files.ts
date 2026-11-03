@@ -13,6 +13,7 @@ import {
   getFileRequest,
   queryReads,
   type FileProcessing,
+  type FileUrlOptions,
   type StoredFile,
 } from './files.ts'
 import { useKampusClient } from './kampus-context.ts'
@@ -37,10 +38,13 @@ export function useFileInfos(fileIds: readonly string[]) {
   })
 }
 
-/** Dosyanın imzalı indirme bağlantısını isteyen işlev (kullanıcı dosyayı açınca). */
+/**
+ * Dosyanın imzalı indirme bağlantısını isteyen işlev (kullanıcı dosyayı açınca). Dinleme kaydında
+ * öğrencinin süren denemesi `attemptId` ile verilir ve hak o denemeden düşer (`listening.ts`).
+ */
 export function useFileUrlFetcher() {
   const client = useKampusClient()
-  return (fileId: string) => fetchFileUrl(client, fileId)
+  return (fileId: string, options?: FileUrlOptions) => fetchFileUrl(client, fileId, options)
 }
 
 /**

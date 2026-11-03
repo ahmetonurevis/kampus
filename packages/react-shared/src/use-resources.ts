@@ -70,6 +70,22 @@ export function useResourceDetail(resourceId: string) {
   })
 }
 
+/**
+ * Kaynağın tek sürümü (`GET /resources/:id/versions/:versionId`); ikisinden biri boşken istek
+ * atılmaz. Atama formu atanacak yayındaki sürümün içeriğini (ör. dinleme kaydı bağı) okur.
+ */
+export function useResourceVersion(resourceId: string, versionId: string) {
+  return useApiQuery({
+    key: [RESOURCES_KEY, 'version', resourceId, versionId],
+    request: (client, signal) =>
+      client.GET('/api/v1/resources/{resourceId}/versions/{versionId}', {
+        params: { path: { resourceId, versionId } },
+        signal,
+      }),
+    enabled: resourceId !== '' && versionId !== '',
+  })
+}
+
 export type ResourceListError = ApiError
 
 interface CommandOptions {

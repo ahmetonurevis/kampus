@@ -5,7 +5,7 @@ import { after, before, describe, test } from 'node:test'
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
-import { insertMissingRecords } from '../src/db/records.ts'
+import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import { findMembership, listActorLinks, listMembershipLinks } from '../src/services/memberships.ts'
@@ -96,7 +96,7 @@ describe('ödeyici velinin kapsamı (OG-1002, K-04)', () => {
       ...ctx,
       actor: { userId: parent.id, role: 'veli', membershipId: parent.membershipId },
     })
-    return { institution, admin, mother, father, ctx, parentCtx }
+    return { institution, admin, mother, father, ctx, parentCtx, member }
   }
   type World = Awaited<ReturnType<typeof world>>
 
@@ -219,6 +219,92 @@ describe('ödeyici velinin kapsamı (OG-1002, K-04)', () => {
     })
     assert.equal(given.statusCode, 403, given.body)
     assert.equal(given.json().code, 'consent_custody_required')
+  })
+
+  test('OG-1002 DOM-ILT-074 velayetsiz ödeyici veli izin formu kararı, mazeret ve rıza yazamaz; kayıt değişmez', async () => {
+    const w = await world()
+    const teacher = await w.member('ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+    const opened = await call('POST', '/api/v1/permission-forms', teacher.cookie, {
+      topic: 'trip',
+      title: 'Müze gezisi',
+      description: 'Cuma günü İstanbul Arkeoloji Müzesi gezisi.',
+      deadline: '2026-10-09',
+      classIds: ['c1'],
+    })
+    assert.equal(opened.statusCode, 201, opened.body)
+    const formId = opened.json().data.id as string
+    const text = await call('POST', '/api/v1/privacy-notices', w.admin.cookie, {
+      kind: 'consent_text',
+      purpose: 'photo_video_sharing',
+      title: 'Rıza metni',
+      body: 'Açık rıza metni.',
+    })
+    assert.equal(text.statusCode, 201, text.body)
+    await payerOnly(w)
+
+    const stored = async () =>
+      (
+        await loadRecords(
+          db,
+          w.institution.id,
+          ['permissionForms', 'permissionDecisions', 'absences'],
+          {
+            includeArchived: true,
+          },
+        )
+      )
+        .map((row) => [row.collection, row.id, row.version, row.archivedAt, row.data])
+        .sort((a, b) => String(a[1]).localeCompare(String(b[1])))
+    const consents = async () => await data(w.admin.cookie, '/api/v1/consents?studentId=s1')
+    const records = await stored()
+    const consentsBefore = await consents()
+
+    for (const decision of [
+      { studentId: 's1', decision: 'approved' },
+      { studentId: 's1', decision: 'rejected', note: 'Sağlık kontrolü var.' },
+    ]) {
+      const response = await call(
+        'POST',
+        `/api/v1/permission-forms/${formId}/decisions`,
+        w.mother.cookie,
+        decision,
+      )
+      assert.ok([403, 404].includes(response.statusCode), `izin kararı: ${response.body}`)
+    }
+    const absence = await call('POST', '/api/v1/absences', w.mother.cookie, {
+      studentId: 's1',
+      startDate: '2026-10-08',
+      endDate: '2026-10-09',
+      reasonCategory: 'health',
+    })
+    assert.ok([403, 404].includes(absence.statusCode), `mazeret: ${absence.body}`)
+    const consent = await call('POST', '/api/v1/consents', w.mother.cookie, {
+      purpose: 'photo_video_sharing',
+      studentId: 's1',
+      textId: text.json().data.id,
+      decision: 'granted',
+      channel: 'web',
+    })
+    assert.ok([403, 404].includes(consent.statusCode), `rıza: ${consent.body}`)
+
+    assert.deepEqual(await stored(), records)
+    assert.deepEqual(await consents(), consentsBefore)
+
+    // Karşılaştırma: velayetli baba aynı işlemleri yapabilir, ret kapsamdandır.
+    const approved = await call(
+      'POST',
+      `/api/v1/permission-forms/${formId}/decisions`,
+      w.father.cookie,
+      { studentId: 's1', decision: 'approved' },
+    )
+    assert.equal(approved.statusCode, 201, approved.body)
+    const notified = await call('POST', '/api/v1/absences', w.father.cookie, {
+      studentId: 's1',
+      startDate: '2026-10-08',
+      endDate: '2026-10-09',
+      reasonCategory: 'health',
+    })
+    assert.equal(notified.statusCode, 201, notified.body)
   })
 
   test('OG-1002 DOM-ILT-074 ödeyici veli finans bildirimini görür ve okur; diğer türler velayetli veliye kalır', async () => {

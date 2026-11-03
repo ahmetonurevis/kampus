@@ -1,0 +1,42 @@
+[
+  {
+    "name": "Giriş JS (index + çalışma zamanı + clsx)",
+    "path": [
+      "apps/web-react/dist/assets/index-*.js",
+      "apps/web-react/dist/assets/rolldown-runtime-*.js",
+      "apps/web-react/dist/assets/clsx-*.js"
+    ],
+    "gzip": true,
+    "limit": "200 kB"
+  },
+  {
+    "name": "İlk yükleme CSS (giriş + giriş sayfası)",
+    "path": [
+      "apps/web-react/dist/assets/index-*.css",
+      "apps/web-react/dist/assets/LoginPage-*.css"
+    ],
+    "gzip": true,
+    "limit": "50 kB"
+  },
+  {
+    "name": "Kabuk rota parçası (RoleShell)",
+    "path": "apps/web-react/dist/assets/RoleShell-*.js",
+    "gzip": true,
+    "limit": "100 kB"
+  },
+  {
+    "name": "Tembel: grafik parçası (recharts)",
+    "path": "apps/web-react/dist/assets/CartesianChart-*.js",
+    "gzip": true,
+    "limit": "85 kB"
+  },
+  {
+    "name": "Tembel: belge parçaları (pdf.js görüntüleyici + jspdf)",
+    "path": [
+      "apps/web-react/dist/assets/PdfPages-*.js",
+      "apps/web-react/dist/assets/jspdf.es.min-*.js"
+    ],
+    "gzip": true,
+    "limit": "290 kB"
+  }
+]

@@ -13000,6 +13000,178 @@
                       "type": "null"
                     }
                   ]
+                },
+                "decidedByName": {
+                  "description": "Kararı verenin adı",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "previousLevel": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Aynı becerideki bir önceki kararın seviyesi"
+                },
+                "change": {
+                  "type": "string",
+                  "enum": [
+                    "first",
+                    "up",
+                    "down",
+                    "same"
+                  ]
+                },
+                "evidence": {
+                  "type": "object",
+                  "properties": {
+                    "context": {
+                      "type": "string",
+                      "enum": [
+                        "general",
+                        "placement"
+                      ]
+                    },
+                    "suggestedLevel": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "Pre-A1",
+                            "A1",
+                            "A2",
+                            "A2+",
+                            "B1",
+                            "B1+",
+                            "B2",
+                            "B2+",
+                            "C1",
+                            "C2"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Karar anındaki öneri; kanıt yetersizse boş"
+                    },
+                    "followsSuggestion": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "successful": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "taskId": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "task",
+                              "placement"
+                            ]
+                          },
+                          "skill": {
+                            "type": "string",
+                            "enum": [
+                              "reading",
+                              "listening",
+                              "writing",
+                              "speaking",
+                              "mediation",
+                              "language_use"
+                            ]
+                          },
+                          "targetLevel": {
+                            "type": "string",
+                            "enum": [
+                              "Pre-A1",
+                              "A1",
+                              "A2",
+                              "A2+",
+                              "B1",
+                              "B1+",
+                              "B2",
+                              "B2+",
+                              "C1",
+                              "C2"
+                            ]
+                          },
+                          "performedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "successful": {
+                            "type": "boolean"
+                          },
+                          "percent": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "basis": {
+                            "type": "boolean",
+                            "description": "Karar anındaki önerinin dayandığı kanıt"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "taskId",
+                          "title",
+                          "source",
+                          "skill",
+                          "targetLevel",
+                          "performedAt",
+                          "successful",
+                          "percent",
+                          "basis"
+                        ]
+                      }
+                    }
+                  },
+                  "required": [
+                    "context",
+                    "suggestedLevel",
+                    "followsSuggestion",
+                    "successful",
+                    "items"
+                  ],
+                  "description": "Karar anındaki kanıt özeti: beceri kararında o becerinin, genel kararda hepsinin"
                 }
               },
               "required": [
@@ -13010,7 +13182,11 @@
                 "rationale",
                 "decidedByUserId",
                 "decidedAt",
-                "placementSessionId"
+                "placementSessionId",
+                "decidedByName",
+                "previousLevel",
+                "change",
+                "evidence"
               ]
             },
             "description": "Kararların zaman çizelgesi, en yeniden eskiye"
@@ -13032,7 +13208,7 @@
           "view": {
             "type": "string",
             "const": "learner",
-            "description": "Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur"
+            "description": "Öğrenci ve veli görünümü: kararın gerekçesi, vereni ve kanıtı yoktur"
           },
           "studentId": {
             "type": "string"
@@ -13534,6 +13710,38 @@
                       "type": "null"
                     }
                   ]
+                },
+                "previousLevel": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Aynı becerideki bir önceki kararın seviyesi"
+                },
+                "change": {
+                  "type": "string",
+                  "enum": [
+                    "first",
+                    "up",
+                    "down",
+                    "same"
+                  ]
                 }
               },
               "required": [
@@ -13542,7 +13750,9 @@
                 "skill",
                 "level",
                 "decidedAt",
-                "placementSessionId"
+                "placementSessionId",
+                "previousLevel",
+                "change"
               ]
             },
             "description": "Kararların zaman çizelgesi, en yeniden eskiye"
@@ -27014,6 +27224,180 @@
                       "type": "null"
                     }
                   ]
+                },
+                "decidedByName": {
+                  "description": "Kararı verenin adı",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "previousLevel": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Aynı becerideki bir önceki kararın seviyesi"
+                },
+                "change": {
+                  "type": "string",
+                  "enum": [
+                    "first",
+                    "up",
+                    "down",
+                    "same"
+                  ]
+                },
+                "evidence": {
+                  "type": "object",
+                  "properties": {
+                    "context": {
+                      "type": "string",
+                      "enum": [
+                        "general",
+                        "placement"
+                      ]
+                    },
+                    "suggestedLevel": {
+                      "anyOf": [
+                        {
+                          "type": "string",
+                          "enum": [
+                            "Pre-A1",
+                            "A1",
+                            "A2",
+                            "A2+",
+                            "B1",
+                            "B1+",
+                            "B2",
+                            "B2+",
+                            "C1",
+                            "C2"
+                          ]
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Karar anındaki öneri; kanıt yetersizse boş"
+                    },
+                    "followsSuggestion": {
+                      "type": [
+                        "boolean",
+                        "null"
+                      ]
+                    },
+                    "successful": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "items": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "taskId": {
+                            "type": "string"
+                          },
+                          "title": {
+                            "type": "string"
+                          },
+                          "source": {
+                            "type": "string",
+                            "enum": [
+                              "task",
+                              "placement"
+                            ]
+                          },
+                          "skill": {
+                            "type": "string",
+                            "enum": [
+                              "reading",
+                              "listening",
+                              "writing",
+                              "speaking",
+                              "mediation",
+                              "language_use"
+                            ]
+                          },
+                          "targetLevel": {
+                            "type": "string",
+                            "enum": [
+                              "Pre-A1",
+                              "A1",
+                              "A2",
+                              "A2+",
+                              "B1",
+                              "B1+",
+                              "B2",
+                              "B2+",
+                              "C1",
+                              "C2"
+                            ]
+                          },
+                          "performedAt": {
+                            "type": "string",
+                            "format": "date-time",
+                            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                          },
+                          "successful": {
+                            "type": "boolean"
+                          },
+                          "percent": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "basis": {
+                            "type": "boolean",
+                            "description": "Karar anındaki önerinin dayandığı kanıt"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "taskId",
+                          "title",
+                          "source",
+                          "skill",
+                          "targetLevel",
+                          "performedAt",
+                          "successful",
+                          "percent",
+                          "basis"
+                        ],
+                        "additionalProperties": false
+                      }
+                    }
+                  },
+                  "required": [
+                    "context",
+                    "suggestedLevel",
+                    "followsSuggestion",
+                    "successful",
+                    "items"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Karar anındaki kanıt özeti: beceri kararında o becerinin, genel kararda hepsinin"
                 }
               },
               "required": [
@@ -27024,7 +27408,11 @@
                 "rationale",
                 "decidedByUserId",
                 "decidedAt",
-                "placementSessionId"
+                "placementSessionId",
+                "decidedByName",
+                "previousLevel",
+                "change",
+                "evidence"
               ],
               "additionalProperties": false
             },
@@ -27048,7 +27436,7 @@
           "view": {
             "type": "string",
             "const": "learner",
-            "description": "Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur"
+            "description": "Öğrenci ve veli görünümü: kararın gerekçesi, vereni ve kanıtı yoktur"
           },
           "studentId": {
             "type": "string"
@@ -27559,6 +27947,38 @@
                       "type": "null"
                     }
                   ]
+                },
+                "previousLevel": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Aynı becerideki bir önceki kararın seviyesi"
+                },
+                "change": {
+                  "type": "string",
+                  "enum": [
+                    "first",
+                    "up",
+                    "down",
+                    "same"
+                  ]
                 }
               },
               "required": [
@@ -27567,7 +27987,9 @@
                 "skill",
                 "level",
                 "decidedAt",
-                "placementSessionId"
+                "placementSessionId",
+                "previousLevel",
+                "change"
               ],
               "additionalProperties": false
             },
@@ -83811,7 +84233,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), \"Tahmini seviye\" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi ve tespit oturumları. Öneri karar değildir ve saklanmaz. Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.",
+        "description": "Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), \"Tahmini seviye\" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi (en yeniden eskiye, aynı becerinin önceki seviyesi ve değişim yönüyle) ve tespit oturumları. Öneri karar değildir ve saklanmaz. Personel çizelgesinde kararı veren (ad) ve gerekçe ile kararın değişmez kanıt kopyasından özet (karar anındaki öneri, kanıt görevleri, dayanak işareti) bulunur; öğrenci ve veli çizelgesinde bunlar yoktur (OG-079). Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.",
         "parameters": [
           {
             "schema": {

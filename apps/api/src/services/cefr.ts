@@ -29,6 +29,7 @@ import {
   type CefrSuggestion,
   type LevelDecisionRow,
 } from '@kampus/school-core/cefr/suggestion.ts'
+import { decisionEvidence, levelTimeline } from '@kampus/school-core/cefr/timeline.ts'
 import { SKILLS, type PrimarySkill } from '@kampus/school-core/content/taxonomy.ts'
 import {
   coordinatorScopeOf,
@@ -42,6 +43,7 @@ import {
   findPlacementSession,
   insertLevelDecisions,
   insertPlacementSession,
+  levelDeciderNames,
   listLevelDecisions,
   listPlacementSessions,
   listSessionDecisions,
@@ -701,7 +703,9 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   const suggestion = suggestCefrLevels({ candidates, now: ctx.now })
   const decisions = await listLevelDecisions(ctx.db, ctx.institutionId, learner)
   const view = cefrProfileView({ institutionType: 'language_school', suggestion, decisions })
-  const timeline = (view.decisions?.history ?? []).map(decisionView)
+  // Çizelge core `levelTimeline` ile: en yeniden eskiye, aynı becerinin önceki kararına göre
+  // değişim (OG-079). Sıra `view.decisions.history` ile aynıdır.
+  const timeline = levelTimeline(decisions)
   const shared = {
     studentId,
     title: view.title,
@@ -737,6 +741,8 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   }
   // Öğrenci ve veli kararın gerekçesini (öğretmenin serbest metni) ve vereni görmez (Sabah kararı
   // 35); alan kapsamı role özgü yanıt şemasıyla da kapanır.
+  // Kanıt özeti de yalnız personeldedir (OG-079 güvenli taraf; Sabah kararı önerisi): öğrenci ve
+  // veli çizelgede seviye, tür, an ve önceki seviyeyi görür.
   if (ctx.actor.role === 'ogrenci' || ctx.actor.role === 'veli') {
     return {
       view: 'learner' as const,
@@ -748,8 +754,25 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
         level: d.level,
         decidedAt: d.decidedAt,
         placementSessionId: d.placementSessionId,
+        previousLevel: d.previousLevel,
+        change: d.change,
       })),
     }
   }
-  return { view: 'staff' as const, ...shared, timeline }
+  const names = await levelDeciderNames(
+    ctx.db,
+    ctx.institutionId,
+    timeline.map((d) => d.decidedByUserId),
+  )
+  return {
+    view: 'staff' as const,
+    ...shared,
+    timeline: timeline.map((d) => ({
+      ...decisionView(d),
+      decidedByName: names.get(d.decidedByUserId) ?? null,
+      previousLevel: d.previousLevel,
+      change: d.change,
+      evidence: decisionEvidence(d),
+    })),
+  }
 }

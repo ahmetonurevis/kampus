@@ -6,6 +6,7 @@ import {
   LEVEL_DECISION_KINDS,
   SUGGESTION_CONTEXTS,
 } from '@kampus/school-core/cefr/suggestion.ts'
+import { LEVEL_CHANGES } from '@kampus/school-core/cefr/timeline.ts'
 import {
   LEARNER_KINDS,
   PLACEMENT_MODES,
@@ -133,11 +134,54 @@ export const placementSessionListResponseSchema = pageResponse(
   z.object({ ...sessionBase, validity: validitySchema }),
 )
 
+/** Çizelgede aynı becerinin önceki kararına göre değişim (OG-079; core `levelTimeline`). */
+const changeShape = {
+  previousLevel: level.nullable().describe('Aynı becerideki bir önceki kararın seviyesi'),
+  change: z.enum(enumKeys(LEVEL_CHANGES)),
+}
+
 /**
- * Kursiyer (öğrenci, veli) görünümündeki karar: gerekçe (öğretmenin serbest metni, kvkk Ç) ve
- * kararı veren kullanıcı yoktur (Sabah kararı 35). Seviye, tür ve an görünür.
+ * Personel çizelgesindeki karar (OG-079; IST-060 kabulü): kim (`decidedByName`, kurum üyeliğinden)
+ * ve hangi kanıtla (`evidence`, yalnız kararın değişmez `evidence_snapshot` kopyasından; core
+ * `decisionEvidence`).
  */
-const learnerDecisionSchema = decisionSchema.omit({ rationale: true, decidedByUserId: true })
+const staffTimelineSchema = decisionSchema.extend({
+  // kvkk: K
+  decidedByName: z.string().nullable().describe('Kararı verenin adı'),
+  ...changeShape,
+  evidence: z
+    .object({
+      context: z.enum(enumKeys(SUGGESTION_CONTEXTS)),
+      suggestedLevel: level.nullable().describe('Karar anındaki öneri; kanıt yetersizse boş'),
+      followsSuggestion: z.boolean().nullable(),
+      successful: z.number().int(),
+      // kvkk: K
+      items: z.array(
+        z.object({
+          id: z.string(),
+          taskId: z.string(),
+          title: z.string(),
+          source: z.enum(enumKeys(EVIDENCE_SOURCES)),
+          skill,
+          targetLevel: level,
+          performedAt: instant,
+          successful: z.boolean(),
+          percent: z.number().int(),
+          basis: z.boolean().describe('Karar anındaki önerinin dayandığı kanıt'),
+        }),
+      ),
+    })
+    .describe('Karar anındaki kanıt özeti: beceri kararında o becerinin, genel kararda hepsinin'),
+})
+
+/**
+ * Kursiyer (öğrenci, veli) görünümündeki karar: gerekçe (öğretmenin serbest metni, kvkk Ç),
+ * kararı veren (Sabah kararı 35) ve kanıt özeti (OG-079, güvenli taraf) yoktur. Seviye, tür, an
+ * ve önceki seviye görünür.
+ */
+const learnerDecisionSchema = decisionSchema
+  .omit({ rationale: true, decidedByUserId: true })
+  .extend(changeShape)
 
 const profileShape = {
   studentId: z.string(),
@@ -190,7 +234,9 @@ const staffProfileSchema = z
   .object({
     view: z.literal('staff').describe('Yönetici ve öğretmen görünümü'),
     ...profileShape,
-    timeline: z.array(decisionSchema).describe('Kararların zaman çizelgesi, en yeniden eskiye'),
+    timeline: z
+      .array(staffTimelineSchema)
+      .describe('Kararların zaman çizelgesi, en yeniden eskiye'),
   })
   .meta({ id: 'CefrProfileStaff' })
 
@@ -198,7 +244,7 @@ const learnerProfileSchema = z
   .object({
     view: z
       .literal('learner')
-      .describe('Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur'),
+      .describe('Öğrenci ve veli görünümü: kararın gerekçesi, vereni ve kanıtı yoktur'),
     ...profileShape,
     timeline: z
       .array(learnerDecisionSchema)

@@ -180,3 +180,27 @@ jobs:
             artifacts/e2e-react/*.log
           retention-days: 7
           if-no-files-found: ignore
+
+  web-budget:
+    # Web paket boyutu bütçesi (gzip) ve Lighthouse (docs/muhendislik/erisilebilirlik-performans.md §2).
+    # Bütçe aşımı ve erişilebilirlik < 0,9 işi kırar; performans ve en iyi uygulamalar yalnız uyarır.
+    name: Web bütçesi (paket boyutu, Lighthouse)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: ./.github/actions/kurulum
+      - run: pnpm --filter @kampus/web-react build
+      - run: pnpm size
+      # Runner'daki hazır Chrome kullanılır (chrome-launcher bulur); `vite preview` 4174'te açılır.
+      # Rapor yalnız artifact olarak saklanır, dış depoya yüklenmez. lhci kök bağımlılığa alınmaz:
+      # lighthouse + puppeteer ağacı her kurulumu büyütür ve yalnız geliştirme aracında yamasız
+      # yüksek açıklar getirir (tmp, extract-zip, basic-ftp); sürüm burada sabittir.
+      - run: pnpm dlx @lhci/cli@0.15.1 autorun
+      - if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: web-budget-lighthouse
+          path: artifacts/lighthouse/
+          retention-days: 3
+          if-no-files-found: ignore

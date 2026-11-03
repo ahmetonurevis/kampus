@@ -156,7 +156,7 @@ export const UNIQUE_CONSTRAINTS = {
     'progression_pending',
     'Bu kayıt için onay bekleyen bir karar var.',
   ),
-  // Kur içi ölçme ve ders saati yoklaması (OG-086, migration 0051).
+  // Kur içi ölçme ve ders saati yoklaması (OG-086, migration 0052).
   course_assessments_pkey: RETRY,
   course_assessments_enrollment_point_key: rule(
     'assessment_already_recorded',

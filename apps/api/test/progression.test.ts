@@ -515,6 +515,39 @@ describe('kur sonu değerlendirme ve geçiş kararı uçları', () => {
     assert.equal(table.learners[0].decisions[0].status, 'approved')
   })
 
+  test('DOM-DIL-070 başka seviyenin koordinatörü 404; koordinatör olmayan eski sürümle 403, karar pending kalır', async () => {
+    const t = await tenant()
+    await db.insert(coordinatorDuties).values({
+      institutionId: t.institution.id,
+      id: randomUUID(),
+      membershipId: t.users.other.membershipId,
+      kind: 'academic_coordinator',
+      scopeId: 'A1',
+      assignedByUserId: t.institution.admin.id,
+    })
+    await attend(t)
+    await assessAll(t)
+    const decision = await ok(await propose(t), 201)
+    fails(
+      await review(t.cookies.other, decision.id, 'approve', decision.rowVersion),
+      404,
+      'not_found',
+    )
+    fails(
+      await review(t.cookies.teacher, decision.id, 'approve', decision.rowVersion + 1),
+      403,
+      'permission_denied',
+    )
+    fails(
+      await review(t.cookies.coordinator, decision.id, 'approve', null),
+      400,
+      'if_match_required',
+    )
+    const { decisions } = await snapshot(t.institution.id)
+    assert.equal(decisions[0]!.status, 'pending')
+    assert.equal(decisions[0]!.version, decision.rowVersion)
+  })
+
   test('DOM-DIL-070 kararı veren kendi kararını onaylayamaz; ret gerekçeyle kalıcı, yeniden önerilebilir', async () => {
     const t = await tenant()
     // Grubun öğretmeni aynı zamanda B1 koordinatörüdür.

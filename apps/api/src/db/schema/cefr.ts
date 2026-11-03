@@ -453,7 +453,7 @@ export const progressionDecisions = pgTable(
  * dil grubu kaydıdır: `(institution_id, enrollment_id, group_id, learner_id)` → `language_group_members`
  * bileşik yabancı anahtarı, kur sonu kararıyla aynı kilit. Nokta (`baseline`, `midterm`, `final`)
  * kayıt başına bir kezdir (`assessment_already_recorded`). Puan değişmez satırdır:
- * `kampus_reject_immutable_change()` tetikleyicileri (migration 0051, elle) her `update`/`delete`/
+ * `kampus_reject_immutable_change()` tetikleyicileri (migration 0052, elle) her `update`/`delete`/
  * `truncate`'i 55000 ile reddeder; düzeltme modeli yok (`TODO(cefr-olcme-duzeltme)`). Beceri
  * puanları ve geri bildirimler `skills` jsonb'sindedir (dört beceri, core sırası); yapı core
  * şemasıyla doğrulanır.

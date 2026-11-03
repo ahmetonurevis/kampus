@@ -378,7 +378,7 @@ export type ProgressionReviewBody = { action: 'approve' } | { action: 'reject'; 
  * Kararı onaylar ya da reddeder (DOM-DIL-070; core `planProgressionReview`). Yalnız kurun
  * seviyesinin akademik koordinatörü (403); kararı veren onaylayamaz (403
  * `progression_self_review`); sonuçlanmış karar 409 `progression_already_reviewed`. `If-Match`
- * kararın satır sürümüdür (tutmazsa 409, plandan önce); eşzamanlı ikinci onay 409. Onaylı `passed`
+ * kararın satır sürümüdür (tutmazsa 409, rol ve plan denetiminden sonra); eşzamanlı ikinci onay 409. Onaylı `passed`
  * kararında yanıt üst kur çıktısını (`next`, core `progressionNextStep`) taşır.
  */
 export function reviewProgressionDecision(
@@ -401,12 +401,10 @@ export function reviewProgressionDecision(
         if (decision === null) throw new NotFoundError()
         const institutionType = await languageSchool(tx, ctx)
         const scope = await enrollmentContext(tx, ctx, decision.enrollmentId)
-        if (decision.rowVersion !== command.expectedVersion) throw new ConflictError()
         const evidence = await evidenceOf(tx, ctx, scope.stored.id)
         return {
-          run: () => ({
-            scope,
-            reviewed: planProgressionReview({
+          run: () => {
+            const reviewed = planProgressionReview({
               institutionType,
               enrollment: scope.enrollment,
               ...evidence,
@@ -414,8 +412,11 @@ export function reviewProgressionDecision(
               actor: scope.actor,
               input: { ...command.body, decisionId: decision.id },
               now: ctx.now,
-            }),
-          }),
+            })
+            // Sürüm denetimi rol/plan denetiminden sonra: yetkisiz çağıran 403 alır, 409 değil.
+            if (decision.rowVersion !== command.expectedVersion) throw new ConflictError()
+            return { scope, reviewed }
+          },
         }
       },
       after: async (tx, { reviewed, scope }) => {

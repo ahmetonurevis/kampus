@@ -8,6 +8,7 @@ import {
   GENERAL_LEVEL_LABEL,
   levelChart,
   placementRows,
+  resolveTimelineFilter,
   timelineFilterOptions,
   timelineRows,
 } from '../src/pages/language/cefr-profile-model.ts'
@@ -299,4 +300,28 @@ test('IST-060: mini grafik yalnız seçili becerinin gerçek kararlarından; "T�
   assert.equal(levelChart(staff, 'all'), null)
   assert.equal(levelChart(base, 'general'), null)
   assert.equal(levelChart(staff, 'reading'), null)
+})
+
+test('IST-060: kararlar tek becerideyse süzgeç çıkmaz, grafik "Tümü"nde o beceriyle çizilir', () => {
+  const single: CefrProfile = {
+    ...staff,
+    timeline: staff.timeline.filter((row) => row.skill === 'speaking'),
+  }
+  assert.deepEqual(timelineFilterOptions(single), [])
+  const chart = levelChart(single, 'all')
+  assert.equal(chart?.label, 'Konuşma seviye grafiği')
+  assert.deepEqual(
+    chart?.points.map((point) => point.key),
+    ['d2', 'd4'],
+  )
+  // Tek beceride tek karar: grafik yok.
+  assert.equal(levelChart({ ...single, timeline: [single.timeline[0]!] }, 'all'), null)
+})
+
+test('IST-060: süzgeç yeni kursiyerin seçeneklerinde yoksa "Tümü"ne döner', () => {
+  const options = timelineFilterOptions(staff)
+  assert.equal(resolveTimelineFilter(options, 'speaking'), 'speaking')
+  assert.equal(resolveTimelineFilter(options, 'reading'), 'all')
+  // Süzgeci çıkmayan (tek becerili) kursiyere geçince eski seçim kalmaz.
+  assert.equal(resolveTimelineFilter(timelineFilterOptions(base), 'speaking'), 'all')
 })

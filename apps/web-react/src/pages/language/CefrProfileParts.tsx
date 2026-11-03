@@ -14,6 +14,7 @@ import {
   estimateSummary,
   levelChart,
   placementRows,
+  resolveTimelineFilter,
   timelineFilterOptions,
   timelineRows,
   type LevelRow,
@@ -152,12 +153,13 @@ function EvidenceDetails({ evidence }: { evidence: NonNullable<TimelineRow['evid
 /**
  * Seviye kararlarının zaman çizelgesi (OG-079; IST-060): beceri süzgeci, seçili becerinin mini
  * grafiği ve en yeniden eskiye karar listesi. Personel kararı vereni, gerekçeyi ve karar anının
- * kanıt görevlerini de görür; öğrenci ve veli yanıtında bunlar yoktur.
+ * kanıt görevlerini de görür; öğrenci ve veli yanıtında bunlar yoktur. Süzgeç seçimi kursiyere
+ * bağlıdır: çağıran `key={profile.studentId}` verir, başka kursiyere geçince "Tümü"ne döner.
  */
 function TimelineList({ profile }: { profile: CefrProfile }) {
   const [filter, setFilter] = useState<TimelineFilter>('all')
   const options = timelineFilterOptions(profile)
-  const active = options.some((option) => option.value === filter) ? filter : 'all'
+  const active = resolveTimelineFilter(options, filter)
   const rows = timelineRows(profile, active)
   const chart = levelChart(profile, active)
   return (
@@ -237,7 +239,7 @@ export function CefrProfileCards({ studentId }: { studentId: string }) {
           isEmpty={!profile?.timeline.length}
           emptyText={EMPTY.timeline}
         >
-          {profile ? <TimelineList profile={profile} /> : null}
+          {profile ? <TimelineList key={profile.studentId} profile={profile} /> : null}
         </ListCard>
         <ListCard
           title="Seviye tespitleri"
@@ -285,7 +287,7 @@ export function CefrProfileSummary({ studentId }: { studentId: string }) {
       </SummarySection>
       <SummarySection title="Seviye geçmişi">
         {profile.timeline.length ? (
-          <TimelineList profile={profile} />
+          <TimelineList key={profile.studentId} profile={profile} />
         ) : (
           <p className="text-sm text-muted-foreground">{EMPTY.timeline}</p>
         )}

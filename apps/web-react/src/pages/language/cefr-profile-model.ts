@@ -143,6 +143,17 @@ export interface TimelineFilterOption {
 }
 
 /**
+ * Geçerli süzgeç: seçili değer seçeneklerde yoksa (başka kursiyere geçildi, süzgeç çıkmıyor)
+ * "Tümü"ne döner.
+ */
+export function resolveTimelineFilter(
+  options: readonly TimelineFilterOption[],
+  filter: TimelineFilter,
+): TimelineFilter {
+  return options.some((option) => option.value === filter) ? filter : 'all'
+}
+
+/**
  * Süzgeç seçenekleri: "Tümü", sonra kararı olan genel seviye ve beceriler (core `timelineSkills`).
  * Tek beceride karar varsa süzgeç gösterilmez.
  */
@@ -261,14 +272,17 @@ const MAX_RANK = Math.max(...Object.values(CEFR_LEVELS).map((level) => level.ran
 
 /**
  * Seçili becerinin seviye grafiği (core `levelSeries`): yalnız gerçek karar noktaları, eşit
- * aralıklı sıra ekseninde; ara değer üretilmez. "Tümü"nde ya da tek kararda grafik yoktur.
+ * aralıklı sıra ekseninde; ara değer üretilmez. Kararlar tek becerideyse süzgeç çıkmaz ve grafik
+ * "Tümü"nde o beceriyle çizilir; birden çok becerili "Tümü"nde ya da tek kararda grafik yoktur.
  */
 export function levelChart(
   profile: CefrProfile,
   filter: TimelineFilter,
 ): { label: string; points: ChartPoint[]; summary: string } | null {
-  if (filter === 'all') return null
-  const skill = filterSkill(filter)
+  const skills = timelineSkills(profile.timeline, PRIMARY_SKILLS)
+  const only = skills.length === 1 ? skills[0] : undefined
+  if (filter === 'all' && only === undefined) return null
+  const skill = filter === 'all' ? (only ?? null) : filterSkill(filter)
   const series = levelSeries(profile.timeline, skill)
   const first = series[0]
   const last = series.at(-1)

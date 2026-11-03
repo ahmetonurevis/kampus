@@ -123,8 +123,10 @@ test('IST-060 OG-079: koordinatör çizelgeyi kim ve hangi kanıtla görür, vel
   const panel = page.getByRole('dialog', { name: 'Grup özeti' })
   await panel.getByRole('button', { name: 'Seviye profili' }).click()
   const timeline = panel.getByRole('list', { name: 'Seviye kararları' })
-  await expect(timeline.getByRole('listitem')).toHaveCount(3)
-  const latest = timeline.getByRole('listitem').first()
+  // Yalnız karar satırları sayılır; iç içe kanıt görevi `li`'leri sayılmaz.
+  const decisions = timeline.locator(':scope > li')
+  await expect(decisions).toHaveCount(3)
+  const latest = decisions.first()
   await expect(latest.getByText('Konuşma: B1', { exact: true })).toBeVisible()
   await expect(latest.getByText('A2 → B1', { exact: true })).toBeVisible()
   await expect(latest.getByText(`Karar veren: ${school.user('yonetici').name}`)).toBeVisible()
@@ -133,20 +135,17 @@ test('IST-060 OG-079: koordinatör çizelgeyi kim ve hangi kanıtla görür, vel
   await expect(
     latest.getByRole('list', { name: 'Kanıt görevleri' }).getByText('E2E sunum görevi'),
   ).toBeVisible()
-  // Kanıt listesi kapanır; çizelge sayımı yalnız karar satırlarını görür.
-  await latest.getByText('1 kanıt görevi, 1 başarılı', { exact: true }).click()
-  await expect(latest.getByRole('list', { name: 'Kanıt görevleri' })).toBeHidden()
 
   const filter = panel.getByRole('toolbar', { name: 'Beceri süzgeci' })
   await filter.getByRole('button', { name: /^Konuşma/ }).click()
-  await expect(timeline.getByRole('listitem')).toHaveCount(2)
+  await expect(decisions).toHaveCount(2)
   await expect(
     panel.getByRole('figure', {
       name: /^Konuşma seviye grafiği: 2 karar: A2 \(.+\) → B1 \(.+\)$/,
     }),
   ).toBeVisible()
   await filter.getByRole('button', { name: /^Genel seviye/ }).click()
-  await expect(timeline.getByRole('listitem')).toHaveCount(1)
+  await expect(decisions).toHaveCount(1)
   await expect(timeline.getByText('Genel seviye: B1', { exact: true })).toBeVisible()
   // Tek kararlı beceride grafik yoktur.
   await expect(panel.getByRole('figure')).toHaveCount(0)
@@ -158,7 +157,7 @@ test('IST-060 OG-079: koordinatör çizelgeyi kim ve hangi kanıtla görür, vel
   await page.goto('/veli/seviye-takibi')
   await expect(page.getByRole('heading', { name: 'Akademik Gelişim', level: 1 })).toBeVisible()
   const childTimeline = page.getByRole('list', { name: 'Seviye kararları' })
-  await expect(childTimeline.getByRole('listitem')).toHaveCount(3)
+  await expect(childTimeline.locator(':scope > li')).toHaveCount(3)
   await expect(childTimeline.getByText('Konuşma: B1', { exact: true })).toBeVisible()
   await expect(childTimeline.getByText('A2 → B1', { exact: true })).toBeVisible()
   await expect(page.getByText(/^Karar veren:/)).toHaveCount(0)

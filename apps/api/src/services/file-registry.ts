@@ -52,6 +52,14 @@ export const FILE_PURPOSE_ACCESS = {
     linkTtlSeconds: 120,
     auditAccess: true,
   },
+  // Özür belgesi (DOM-ILT-053): bildirimi yapan veli yükler; sağlık verisi olabilir, her bağlantı
+  // denetimde. İzin/mazeret bildirimi gibi `academic` modülüne bağlıdır.
+  absence_document: {
+    module: 'academic',
+    uploaders: ['veli'],
+    linkTtlSeconds: 300,
+    auditAccess: true,
+  },
   // Kurum belgesi (imzalı sözleşme taraması vb.) modüle bağlı değildir.
   document: {
     module: null,

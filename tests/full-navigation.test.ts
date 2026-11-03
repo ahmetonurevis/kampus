@@ -63,7 +63,15 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
     )
   assert.deepEqual(
     navigation.ogretmen.filter((p) => p.apiOnly).map((p) => p.path),
-    ['kurlar', 'gruplar', 'icerik-havuzu', 'duyurular', 'mesajlar', 'izin-formlari'],
+    [
+      'mazeret-bildirimleri',
+      'kurlar',
+      'gruplar',
+      'icerik-havuzu',
+      'duyurular',
+      'mesajlar',
+      'izin-formlari',
+    ],
   )
 })
 
@@ -274,6 +282,25 @@ test('Zümre & Koordinatörler yalnız yöneticide, academic modülünde, iki ku
   const admin = navigation.yonetici.map((p) => p.path)
   assert.equal(admin[admin.indexOf('yoklama-duzeltme') + 1], 'koordinator-gorevleri')
   assert.ok(!demoNavigation.yonetici.some((p) => p.path === 'koordinator-gorevleri'))
+})
+
+test('DOM-ILT-053: Mazeret Bildirimleri yönetici ve öğretmende, academic modülünde; ön büro, öğrenci ve veli görmez', () => {
+  for (const role of roleKeys) {
+    const page = navigation[role].find((p) => p.path === 'mazeret-bildirimleri')
+    if (role !== 'yonetici' && role !== 'ogretmen') {
+      assert.equal(page, undefined, `${role} mazeret bildirimleri sayfasını görmemeli`)
+      continue
+    }
+    assert.ok(page, `${role} menüsünde mazeret-bildirimleri yok`)
+    assert.equal(page.module, 'academic')
+    assert.equal(page.group, role === 'yonetici' ? 'YÖNETİM' : 'AKADEMİK')
+    assert.equal(page.apiOnly, true)
+    assert.equal(page.institutionTypes, undefined)
+  }
+  const admin = navigation.yonetici.map((p) => p.path)
+  assert.equal(admin[admin.indexOf('koordinator-gorevleri') + 1], 'mazeret-bildirimleri')
+  assert.ok(!demoNavigation.yonetici.some((p) => p.path === 'mazeret-bildirimleri'))
+  assert.ok(!demoNavigation.ogretmen.some((p) => p.path === 'mazeret-bildirimleri'))
 })
 
 test('DOM-KAY-035: yönetici de Kayıt İşlemleri sayfasını görür; Vue demosunda karşılığı yoktur', () => {

@@ -1,4 +1,10 @@
 import { z } from 'zod'
+import {
+  assertFileAllowed,
+  FILE_PURPOSES,
+  type FileCandidate,
+  type FilePurpose,
+} from '../content/taxonomy.ts'
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import type { Role } from '../modules/navigation.ts'
@@ -16,7 +22,8 @@ import { dayKey } from './format.ts'
 /**
  * Veli talep/şikayet/öneri ve izin/mazeret bildirimi (docs/domain/iletisim-ve-veli.md). Saf
  * işlemler; önce bütün kurallar denetlenir, sonra State değişir. Yetki `lib/authorize.ts`
- * tablosundadır (`request.open`, `request.update`, `absence.notify`).
+ * tablosundadır (`request.open`, `request.update`, `absence.notify`, `absence.attach`,
+ * `absence.approve`, `absence.reject`).
  *
  * - Talep (`requests`, modül `communication`): veli bağlı çocuğu için açar; ön büro ve yönetici
  *   durumu ve ilgili birimi değiştirir, yanıt yazar. Yanıtlar `replies` listesine eklenir,
@@ -26,6 +33,10 @@ import { dayKey } from './format.ts'
  *   geçmiş tarihli mazeret bildirir (DOM-ILT-053). Bildirim yoklama kaydını değiştirmez
  *   (IST-072); yoklamaya bağlantı öğrenci ve gün eşleşmesinden hesaplanır (`absenceNotices`):
  *   yoklamada "Mazeret bildirildi" görünür, özürlü sayılması belge ve idare onayıyla kesinleşir.
+ *   Özür belgesi (`absence_document`, en çok 3) bildirimle ya da sonradan, karar verilmeden ve
+ *   belge süresi içinde eklenir; kayda yalnız dosya kimlikleri girer. Yönetici bildirimi onaylar
+ *   (`approved`; yoklamada özürlü gösterimi `attendanceExcuse` ile hesaplanır, henüz bağlı değil) ya da gerekçeyle reddeder (`rejected`, özürsüz kalır); karar
+ *   bir kez verilir. Durumu olmayan eski kayıt `pending` okunur, yeniden yazılmaz.
  *   Mazeret metni sağlık bilgisi içerebileceği için ayrıca talep kaydı açılmaz; ön büro
  *   `absences`'ı okuyamaz (DOM-ILT-053, DOM-YTK-021).
  *
@@ -280,7 +291,46 @@ export function absenceReasonLabel(notice: {
 // en kısa süre (3 iş günü) uygulanır.
 export const ABSENCE_EXCUSE_BUSINESS_DAYS = { middle: 3, high: 5 } as const
 
+/** Bildirim onay durumu (DOM-ILT-053); durumu olmayan eski kayıt `pending` okunur. */
+export const ABSENCE_APPROVAL_STATUSES = ['pending', 'approved', 'rejected'] as const
+export type AbsenceApprovalStatus = (typeof ABSENCE_APPROVAL_STATUSES)[number]
+export const ABSENCE_APPROVAL_LABELS: Record<AbsenceApprovalStatus, string> = {
+  pending: 'Onay bekliyor',
+  approved: 'Onaylandı',
+  rejected: 'Reddedildi',
+}
+/** Onaylanan bildirimin yoklamadaki etiketi; reddedilen bildirim özürsüz kalır. */
+export const ABSENCE_EXCUSED_LABEL = 'Özürlü'
+export const ABSENCE_REJECTED_LABEL = 'Mazeret reddedildi'
+
+/** Özür belgesinin dosya amacı (DOM-ILT-053). */
+export const ABSENCE_DOCUMENT_PURPOSE = 'absence_document' satisfies FilePurpose
+/** Bildirim başına en çok belge (`FILE_PURPOSES.absence_document.maxFiles`). */
+export const ABSENCE_DOCUMENT_LIMIT: number = FILE_PURPOSES[ABSENCE_DOCUMENT_PURPOSE].maxFiles
+/**
+ * Gövdenin kabul ettiği en çok dosya kimliği: kötüye kullanım sınırıdır (400). İş sınırı
+ * `ABSENCE_DOCUMENT_LIMIT`'tir ve 422 `absence_document_limit` ile denetlenir.
+ */
+const ABSENCE_FILE_IDS_MAX = 20
+export const ABSENCE_REJECT_REASON_MAX_LENGTH = 500
+
+/**
+ * Bildirime eklenebilecek dosya: servis yalnız aktörün kendi yüklediği, silinmemiş ve
+ * reddedilmemiş dosyaları verir. Listede olmayan kimlik (başkasının, başka kurumun ya da olmayan
+ * dosya) ayırt edilmez.
+ */
+export type AbsenceFile = FileCandidate & { id: string; purpose: FilePurpose }
+export type AbsenceFileOptions = RequestOptions & { files?: readonly AbsenceFile[] }
+
+// kvkk: Ö — belgenin kendisi sağlık verisi olabilir; kayda yalnız kimliği girer.
+const absenceFileIds = z
+  .array(z.string().trim().min(1, 'Dosya kimliği geçersiz.').max(200))
+  .max(ABSENCE_FILE_IDS_MAX, `En fazla ${ABSENCE_DOCUMENT_LIMIT} belge ekleyebilirsiniz.`)
+  .refine((ids) => new Set(ids).size === ids.length, 'Aynı belgeyi bir kez ekleyin.')
+
 // Gövde katıdır: serbest açıklama (`reason`) ve bilinmeyen alan reddedilir (API 400).
+// `fileIds`: dosya ucundan (`POST /files`, amaç `absence_document`) yüklenen, velinin kendi
+// belgeleri; sayı, amaç, tür ve boyut core'da denetlenir (422).
 export const notifyAbsenceSchema = z
   .strictObject({
     studentId: identifier,
@@ -288,14 +338,37 @@ export const notifyAbsenceSchema = z
     endDate: day,
     // kvkk: Ç — genel gerekçe kategorisi; sağlık ayrıntısı taşımaz (DOM-ILT-053, KVKK md. 6).
     reasonCategory: z.enum(ABSENCE_REASON_CATEGORIES, 'Gerekçe kategorisini seçin.'),
-    /** Özür belgesi; dosya deposu gelene kadar kabul edilmez (422 `absence_files_unsupported`). */
-    files: z.array(z.string().trim().min(1).max(200)).max(5).optional(),
+    fileIds: absenceFileIds.optional(),
   })
   .refine((data) => data.endDate >= data.startDate, {
     message: 'Bitiş tarihi başlangıçtan önce olamaz.',
     path: ['endDate'],
   })
 export type NotifyAbsenceInput = z.input<typeof notifyAbsenceSchema>
+
+/** Bildirime sonradan belge ekleme (DOM-ILT-053). */
+export const attachAbsenceDocumentsSchema = z.strictObject({
+  fileIds: absenceFileIds.min(1, 'En az bir belge seçin.'),
+})
+export type AttachAbsenceDocumentsInput = z.input<typeof attachAbsenceDocumentsSchema>
+
+/** Onayın gövdesi boştur; bilinmeyen alan 400. */
+export const approveAbsenceSchema = z.strictObject({})
+export type ApproveAbsenceInput = z.input<typeof approveAbsenceSchema>
+
+// kvkk: Ç — red gerekçesi; kayda yazılmaz, yalnız denetim kaydının gerekçesine (`audit_log.reason`)
+// girer ve loglanmaz.
+export const rejectAbsenceSchema = z.strictObject({
+  reason: z
+    .string()
+    .trim()
+    .min(2, 'Ret gerekçesini yazın.')
+    .max(
+      ABSENCE_REJECT_REASON_MAX_LENGTH,
+      `Gerekçe en fazla ${ABSENCE_REJECT_REASON_MAX_LENGTH} karakter olabilir.`,
+    ),
+})
+export type RejectAbsenceInput = z.input<typeof rejectAbsenceSchema>
 
 type AbsenceRecord = State['absences'][number]
 
@@ -328,7 +401,7 @@ export function addBusinessDays(
 
 /** Öğrencinin kademesine göre özür belgesi süresi (iş günü). */
 export function excuseBusinessDays(
-  state: Pick<State, 'classes'>,
+  state: Pick<AbsenceWindowLookup, 'classes'>,
   student: Pick<StudentRecord, 'classId'>,
   institutionType: InstitutionType = 'school',
 ): number {
@@ -351,30 +424,21 @@ export function notifyAbsence(
   input: unknown,
   makeId: MakeId,
   now: string,
-  options: RequestOptions = {},
+  options: AbsenceFileOptions = {},
   calendar: WorkingCalendar = DEFAULT_WORKING_CALENDAR,
 ): AbsenceRecord {
   const data = notifyAbsenceSchema.parse(input)
   requireAuthorized(by, 'absence.notify', { studentId: data.studentId }, state, options)
-  // TODO(absence-files): özür belgesi dosya deposu (`files`) gelince eklenir; o zamana kadar
-  // belge istenirse kayıt açılmaz.
-  if (data.files !== undefined && data.files.length > 0)
-    throw new DomainError(
-      'absence_files_unsupported',
-      'Belge ekleme henüz kullanılamıyor; belgeyi okula ayrıca iletin.',
-      { path: ['files'] },
-    )
   const student = requireActiveStudent(state, data.studentId)
-  const today = dayKey(now)
-  if (data.endDate < today) {
-    const days = excuseBusinessDays(state, student, options.institutionType)
-    if (addBusinessDays(data.endDate, days, calendar) < today)
-      throw new DomainError(
-        'absence_notice_late',
-        `Geçmiş tarihli mazeret devamsızlığın bitiminden itibaren ${days} iş günü içinde bildirilebilir.`,
-        { path: ['endDate'] },
-      )
-  }
+  const days = excuseBusinessDays(state, student, options.institutionType)
+  if (excuseWindowClosed(data.endDate, days, now, calendar))
+    throw new DomainError(
+      'absence_notice_late',
+      `Geçmiş tarihli mazeret devamsızlığın bitiminden itibaren ${days} iş günü içinde bildirilebilir.`,
+      { path: ['endDate'] },
+    )
+  const fileIds = data.fileIds ?? []
+  assertAbsenceDocuments(fileIds, 0, options.files ?? [])
   const overlap = state.absences.some(
     (a) =>
       a.studentId === data.studentId && a.startDate <= data.endDate && a.endDate >= data.startDate,
@@ -384,9 +448,9 @@ export function notifyAbsence(
       kind: 'conflict',
       path: ['startDate'],
     })
-  // TODO(kvkk-mazeret-notu): Serbest açıklama F2'de şifreli ayrı tabloyla gelir. O zamana kadar
-  // gerekçe yalnız kategoridir; okuma kapsamı yönetici, sınıf rehber öğretmeni ve velidir
-  // (DOM-ILT-053, guvenlik-kvkk.md §8).
+  // TODO(kvkk-mazeret-notu): Serbest açıklama OG-090'ın şifreli özel nitelikli veri tablosu ve
+  // `FIELD_ENCRYPTION_KEY` altyapısıyla gelir. O zamana kadar gerekçe yalnız kategoridir; okuma
+  // kapsamı yönetici, sınıf rehber öğretmeni ve velidir (DOM-ILT-053, guvenlik-kvkk.md §8).
   const notice: AbsenceRecord = {
     id: makeId('absence'),
     studentId: data.studentId,
@@ -396,24 +460,217 @@ export function notifyAbsence(
     // Eski okuyucular (liste filtresi, Vue/telefon görünümü) türü `category`'den okur.
     category: ABSENCE_REASON_LABELS[data.reasonCategory],
     status: ABSENCE_NOTICE_STATUS,
+    approvalStatus: 'pending',
+    fileIds,
     date: now,
     createdAt: now,
     notifiedBy: actorOf(by),
   }
-  // TODO(absence-approval): özürlü sayılma belge ve idare onayıyla kesinleşir (DOM-ILT-053);
-  // onay işlemi ayrıdır.
-  state.absences.unshift(notice)
+  // Yeni kayıt sona eklenir: API öğrencinin bildirimlerini kısmi yükler (yalnız sona ekleme
+  // serbesttir); başa eklemek aynı öğrencinin ikinci bildiriminde sırayı bozar.
+  state.absences.push(notice)
   return notice
+}
+
+/**
+ * Belge süresi geçti mi (DOM-ILT-053): bitişi bugünden önce olan bildirim, devamsızlığın
+ * bitiminden itibaren `days` iş günü içinde kabul edilir. İleri tarihli izin her zaman açıktır.
+ */
+function excuseWindowClosed(
+  endDate: string,
+  days: number,
+  now: string,
+  calendar: WorkingCalendar,
+): boolean {
+  const today = dayKey(now)
+  return endDate < today && addBusinessDays(endDate, days, calendar) < today
+}
+
+/** Özür belgelerinin sayı, varlık, amaç, tür ve boyut denetimi (DOM-ILT-053). */
+function assertAbsenceDocuments(
+  fileIds: readonly string[],
+  attached: number,
+  files: readonly AbsenceFile[],
+): void {
+  const path = ['fileIds']
+  if (attached + fileIds.length > ABSENCE_DOCUMENT_LIMIT)
+    throw new DomainError(
+      'absence_document_limit',
+      `Bir bildirime en fazla ${ABSENCE_DOCUMENT_LIMIT} belge eklenebilir.`,
+      { path },
+    )
+  const byId = new Map(files.map((file) => [file.id, file]))
+  for (const fileId of fileIds) {
+    const file = byId.get(fileId)
+    if (!file)
+      throw new DomainError(
+        'absence_document_unavailable',
+        'Belge bulunamadı. Belgeyi yeniden yükleyin.',
+        { path },
+      )
+    if (file.purpose !== ABSENCE_DOCUMENT_PURPOSE)
+      throw new DomainError('absence_document_purpose', 'Bu dosya bildirime eklenemez.', { path })
+    try {
+      assertFileAllowed(ABSENCE_DOCUMENT_PURPOSE, file)
+    } catch (error) {
+      if (error instanceof DomainError)
+        throw new DomainError(error.code, error.message, { path, cause: error })
+      throw error
+    }
+  }
+}
+
+/** Bildirimin onay durumu; alanı olmayan eski kayıt `pending` okunur, yeniden yazılmaz. */
+export function absenceApprovalStatus(notice: {
+  approvalStatus?: string | undefined
+}): AbsenceApprovalStatus {
+  const status = notice.approvalStatus
+  return status === 'approved' || status === 'rejected' ? status : 'pending'
+}
+
+const absenceNotFound = () =>
+  new DomainError('absence_not_found', 'Bildirim bulunamadı.', { kind: 'not_found' })
+const alreadyDecided = () =>
+  new DomainError('absence_already_decided', 'Bu bildirim için karar zaten verildi.', {
+    kind: 'conflict',
+  })
+
+/** Belge süresi hesabının okuduğu kademe verisi: öğrenci sınıfı ve sınıf düzeyi. */
+export type AbsenceWindowLookup = {
+  students: readonly Pick<StudentRecord, 'id' | 'classId'>[]
+  classes: readonly Pick<State['classes'][number], 'id' | 'grade'>[]
+}
+
+function absenceDocumentDays(
+  state: AbsenceWindowLookup,
+  notice: Pick<AbsenceRecord, 'studentId'>,
+  institutionType?: InstitutionType,
+): number {
+  const student = state.students.find((s) => s.id === notice.studentId)
+  return student
+    ? excuseBusinessDays(state, student, institutionType)
+    : ABSENCE_EXCUSE_BUSINESS_DAYS.middle
+}
+
+/**
+ * Bildirime belge ekleme süresi doldu mu (DOM-ILT-053): `attachAbsenceDocuments` ile aynı hesap
+ * (kademeye göre iş günü, tatil takvimi); arayüz süresi dolmuş bildirimde formu göstermez.
+ * Karar yine sunucudadır (422 `absence_document_late`).
+ */
+export function absenceDocumentWindowClosed(
+  state: AbsenceWindowLookup,
+  notice: Pick<AbsenceRecord, 'studentId' | 'endDate'>,
+  now: string,
+  institutionType?: InstitutionType,
+  calendar: WorkingCalendar = DEFAULT_WORKING_CALENDAR,
+): boolean {
+  const days = absenceDocumentDays(state, notice, institutionType)
+  return excuseWindowClosed(notice.endDate, days, now, calendar)
+}
+
+/**
+ * Veli, bildirimine sonradan özür belgesi ekler (DOM-ILT-053): yalnız karar verilmeden ve belge
+ * süresi içinde (bildirimdeki süre); toplam en çok `ABSENCE_DOCUMENT_LIMIT`. Kararlı bildirim
+ * 409 `absence_already_decided`, süresi geçen 422 `absence_document_late`. Başka velinin
+ * çocuğunun bildirimi olmayan kayıtla aynı 404'tür.
+ */
+export function attachAbsenceDocuments(
+  state: State,
+  by: Participant,
+  absenceId: string,
+  input: unknown,
+  now: string,
+  options: AbsenceFileOptions = {},
+  calendar: WorkingCalendar = DEFAULT_WORKING_CALENDAR,
+): AbsenceRecord {
+  const data = attachAbsenceDocumentsSchema.parse(input)
+  const notice = state.absences.find((a) => a.id === absenceId)
+  requireAuthorized(by, 'absence.attach', { studentId: notice?.studentId }, state, options)
+  if (!notice) throw absenceNotFound()
+  if (absenceApprovalStatus(notice) !== 'pending') throw alreadyDecided()
+  const days = absenceDocumentDays(state, notice, options.institutionType)
+  if (excuseWindowClosed(notice.endDate, days, now, calendar))
+    throw new DomainError(
+      'absence_document_late',
+      `Özür belgesi devamsızlığın bitiminden itibaren ${days} iş günü içinde eklenebilir.`,
+      { path: ['fileIds'] },
+    )
+  const current = notice.fileIds ?? []
+  if (data.fileIds.some((id) => current.includes(id)))
+    throw new DomainError('absence_document_duplicate', 'Bu belge bildirime zaten eklendi.', {
+      kind: 'conflict',
+      path: ['fileIds'],
+    })
+  assertAbsenceDocuments(data.fileIds, current.length, options.files ?? [])
+  notice.fileIds = [...current, ...data.fileIds]
+  notice.updatedAt = now
+  return notice
+}
+
+function decideAbsence(
+  state: State,
+  by: Participant,
+  absenceId: string,
+  action: 'absence.approve' | 'absence.reject',
+  now: string,
+  options: RequestOptions,
+): AbsenceRecord {
+  const notice = state.absences.find((a) => a.id === absenceId)
+  requireAuthorized(by, action, { studentId: notice?.studentId }, state, options)
+  if (!notice) throw absenceNotFound()
+  if (absenceApprovalStatus(notice) !== 'pending') throw alreadyDecided()
+  const approvalStatus = action === 'absence.approve' ? 'approved' : 'rejected'
+  notice.approvalStatus = approvalStatus
+  // Eski okuyucular (Vue/telefon görünümü, liste süzgeci) durumu `status` metninden okur.
+  notice.status = ABSENCE_APPROVAL_LABELS[approvalStatus]
+  notice.decidedAt = now
+  notice.decidedBy = actorOf(by)
+  notice.updatedAt = now
+  return notice
+}
+
+/**
+ * Yönetici bildirimi onaylar (DOM-ILT-053): karar kaydedilir; günlerin yoklamada özürlü
+ * gösterimi `attendanceExcuse` ile hesaplanır ama yoklama ekranına ve risk listesine henüz bağlı
+ * değildir (`TODO(absence-excuse-display)`). Yoklama kaydı değişmez. Karar bir kez verilir: ikinci karar 409
+ * `absence_already_decided`. Belge zorunlu değildir; belgeyi kâğıtta alan idare de onaylar.
+ */
+export function approveAbsence(
+  state: State,
+  by: Participant,
+  absenceId: string,
+  input: unknown,
+  now: string,
+  options: RequestOptions = {},
+): AbsenceRecord {
+  approveAbsenceSchema.parse(input)
+  return decideAbsence(state, by, absenceId, 'absence.approve', now, options)
+}
+
+/**
+ * Yönetici bildirimi gerekçeyle reddeder (DOM-ILT-053): günler özürsüz kalır. Gerekçe kayda
+ * yazılmaz; API onu denetim kaydının gerekçesine (`audit_log.reason`) yazar.
+ */
+export function rejectAbsence(
+  state: State,
+  by: Participant,
+  absenceId: string,
+  input: unknown,
+  now: string,
+  options: RequestOptions = {},
+): AbsenceRecord {
+  rejectAbsenceSchema.parse(input)
+  return decideAbsence(state, by, absenceId, 'absence.reject', now, options)
 }
 
 /**
  * Yoklama ile bildirimin bağlantısı (DOM-ILT-053): öğrenci ve gün (Europe/Istanbul) bildirim
  * aralığına düşüyorsa bildirim döner. İndeks bir kez kurulur; yoklama kaydı değişmez.
  */
-export function absenceNotices(
-  absences: readonly Pick<AbsenceRecord, 'id' | 'studentId' | 'startDate' | 'endDate'>[],
-) {
-  const byStudent = new Map<string, (typeof absences)[number][]>()
+export function absenceNotices<
+  T extends Pick<AbsenceRecord, 'id' | 'studentId' | 'startDate' | 'endDate'>,
+>(absences: readonly T[]) {
+  const byStudent = new Map<string, T[]>()
   for (const notice of absences) {
     const list = byStudent.get(notice.studentId)
     if (list) list.push(notice)
@@ -422,5 +679,32 @@ export function absenceNotices(
   return (studentId: string, date: string) => {
     const key = /^\d{4}-\d{2}-\d{2}$/.test(date) ? date : dayKey(date)
     return byStudent.get(studentId)?.find((n) => n.startDate <= key && n.endDate >= key) ?? null
+  }
+}
+
+/**
+ * Yoklama gününün mazeret durumu (DOM-ILT-053): bildirimi olmayan gün `null`; bekleyen bildirim
+ * "Mazeret bildirildi", onaylanan "Özürlü" (`excused`), reddedilen "Mazeret reddedildi" ve
+ * özürsüz. Hesap `absenceNotices` bağlantısıyladır; yoklama kaydı değişmez.
+ */
+// TODO(absence-excuse-display): yoklama ve risk listesine bağlanacak
+export function attendanceExcuse(
+  absences: readonly Pick<
+    AbsenceRecord,
+    'id' | 'studentId' | 'startDate' | 'endDate' | 'approvalStatus'
+  >[],
+) {
+  const lookup = absenceNotices(absences)
+  return (studentId: string, date: string) => {
+    const notice = lookup(studentId, date)
+    if (!notice) return null
+    const status = absenceApprovalStatus(notice)
+    const label =
+      status === 'approved'
+        ? ABSENCE_EXCUSED_LABEL
+        : status === 'rejected'
+          ? ABSENCE_REJECTED_LABEL
+          : ABSENCE_NOTICED_LABEL
+    return { absenceId: notice.id, status, excused: status === 'approved', label }
   }
 }

@@ -1783,9 +1783,69 @@ export interface paths {
         put?: never;
         /**
          * İzin veya mazeret bildir
-         * @description Veli bağlı çocuğu için ileri tarihli izin veya geçmiş tarihli mazeret bildirir (core `notifyAbsence`, DOM-ILT-053). Geçmiş tarih devamsızlığın bitiminden itibaren ortaokulda 3, lisede 5 iş günü içinde kabul edilir, aksi 422 `absence_notice_late`. Aynı öğrencinin örtüşen bildirimi 409 `absence_overlap`; belge eki (`files`) henüz 422 `absence_files_unsupported`; başka velinin çocuğu 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Gerekçe yalnız kategoridir (`reasonCategory`: `health`, `family`, `official`, `other`); serbest açıklama (`reason`) ve bilinmeyen alan 400 `validation_failed`, sağlık ayrıntısı alınmaz (KVKK md. 6, en az veri). Bildirim yoklamayı değiştirmez ve talep kaydı açmaz; ön büro bildirimleri göremez. Modül `academic`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `veli`.
+         * @description Veli bağlı çocuğu için ileri tarihli izin veya geçmiş tarihli mazeret bildirir (core `notifyAbsence`, DOM-ILT-053). Geçmiş tarih devamsızlığın bitiminden itibaren ortaokulda 3, lisede 5 iş günü içinde kabul edilir, aksi 422 `absence_notice_late`. Aynı öğrencinin örtüşen bildirimi 409 `absence_overlap`; başka velinin çocuğu 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Gerekçe yalnız kategoridir (`reasonCategory`: `health`, `family`, `official`, `other`); serbest açıklama (`reason`) ve bilinmeyen alan 400 `validation_failed`, sağlık ayrıntısı alınmaz (KVKK md. 6, en az veri). Özür belgesi (`fileIds`, en çok 3; dosya ucundan `absence_document` amacıyla yüklenmiş, velinin kendi `ready` dosyaları; PDF, JPEG, PNG, en çok 10 MB) aynı transaction'da bildirime bağlanır: 3'ten fazlası 422 `absence_document_limit`, başkasının ya da olmayan dosya 422 `absence_document_unavailable`, başka amaç 422 `absence_document_purpose`, hazır olmayan 422 `file_not_ready`, başka kayda bağlı 409 `file_already_attached`; hiçbir kayıt değişmez. Bildirim `approvalStatus: pending` ile açılır (idare onayı `POST /absences/{absenceId}/approve`). Bildirim yoklamayı değiştirmez ve talep kaydı açmaz; ön büro bildirimleri göremez. Modül `academic`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `veli`.
          */
         post: operations["notifyAbsence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/absences/{absenceId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bildirime özür belgesi ekle
+         * @description Veli, bağlı çocuğunun karar bekleyen bildirimine özür belgesi ekler (core `attachAbsenceDocuments`, DOM-ILT-053, IST-072). Belgeler aynı transaction'da bildirime bağlanır; bildirim başına toplam en çok 3 (422 `absence_document_limit`), aynı belge ikinci kez 409 `absence_document_duplicate`. Belge süresi geçen bildirim (devamsızlığın bitiminden itibaren ortaokulda 3, lisede 5 iş günü) 422 `absence_document_late`. Dosya hataları `POST /absences` ile aynıdır. Belgeyi bildirimi okuyabilen (yönetici, sınıf rehber öğretmeni, veli, öğrenci) `GET /files/{fileId}/url` ile açar; her bağlantı denetim kaydına `file.access` olarak yazılır. Olmayan, başka kurumun ya da kapsam dışı bildirim 404 `absence_not_found`; karar verilmiş bildirim 409 `absence_already_decided`. `If-Match` zorunludur (bildirimin sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Modül `academic`. Roller: `veli`.
+         */
+        post: operations["attachAbsenceDocuments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/absences/{absenceId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin/mazeret bildirimini onayla
+         * @description Yönetici bildirimi onaylar (core `approveAbsence`, DOM-ILT-053): `approvalStatus` `approved` olur, karar kaydedilir. Günlerin yoklamada ve risk listesinde özürlü gösterilmesi (core `attendanceExcuse`) henüz bağlı değildir; yoklama kaydı değişmez. Belge zorunlu değildir. Gövde boş nesnedir, bilinmeyen alan 400. Veliye (yetişkin kursiyerde kendisine) `absence_decided` bildirimi aynı transaction'da yazılır; sonuç bildirimde yoktur. Durumu olmayan eski bildirim `pending` sayılır. Olmayan, başka kurumun ya da kapsam dışı bildirim 404 `absence_not_found`; karar verilmiş bildirim 409 `absence_already_decided`. `If-Match` zorunludur (bildirimin sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Modül `academic`. Roller: `yonetici`.
+         */
+        post: operations["approveAbsence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/absences/{absenceId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin/mazeret bildirimini reddet
+         * @description Yönetici bildirimi gerekçeyle reddeder (core `rejectAbsence`, DOM-ILT-053): `approvalStatus` `rejected` olur, günler özürsüz kalır. Gerekçe (`reason`, 2–500 karakter) bildirim kaydına yazılmaz, yalnız denetim kaydının gerekçesine (`audit_log.reason`) girer ve loglanmaz. Veliye `absence_decided` bildirimi aynı transaction'da yazılır; sonuç ve gerekçe bildirimde yoktur. Olmayan, başka kurumun ya da kapsam dışı bildirim 404 `absence_not_found`; karar verilmiş bildirim 409 `absence_already_decided`. `If-Match` zorunludur (bildirimin sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Modül `academic`. Roller: `yonetici`.
+         */
+        post: operations["rejectAbsence"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4751,7 +4811,7 @@ export interface paths {
         put?: never;
         /**
          * Dosya yükle
-         * @description Tek dosya, `multipart/form-data`: önce `purpose`, sonra `file` alanı (DOM-KYN-004; ADR 0003 karar 2, 3). Dosya akışla depoya yazılır; boyut ve SHA-256 aynı geçişte hesaplanır. Tür içerikten (sihirli bayt) bulunur: amaçta olmayan tür 422 `file_type_not_allowed`, bildirilen tür veya ad uzantısı içerikle çelişirse 422 `file_type_mismatch`, boş dosya 422 `file_empty`. Amacın (türe özel) boyut sınırı aşılırsa akış kesilir, nesne silinir, 413 `file_too_large`. Kurum kotası aşılırsa 422 `storage_quota_exceeded`. Konuşma kaydı yükleyen öğrencinin kendi kaydı için geçerli rıza ister (18 yaş altında velayet sahibi velinin, 18 ve üstünde kendi rızası; geri çekilmiş, süresi dolmuş ya da itirazlı rıza sayılmaz): yoksa 403 `consent_required` (DOM-BEC-050, DOM-YTK-061). Multipart olmayan gövde 415. Tarayıcı açıkken (üretimde zorunlu) dosya `processing` başlar: `file.scan` işi ClamAV ile tarar, temiz dosya `ready` olur, zararlı ya da tarama sınırını aşan dosya `rejected` olur ve silinir (ses dışı dosyada yükleyen okumada ve bağlamada 422 `file_rejected` alır); tarayıcıya ulaşılamazsa dosya `processing` kalır ve tarama yeniden denenir, denemeleri biten tarama 15 dakikada bir yeniden kuyruğa girer (ADR 0003 karar 8). Tarayıcı kapalıyken (`FILE_SCANNER=off`, yalnız üretim dışı) dosya `pending` kalır ve bağlanamaz. Bağlanmayan dosya 24 saat sonra (`ready` dosyada `ready` olduğu andan) silinir; işlenmeyi bekleyen (`processing`) dosya yüklemeden 7 gün sonra. Ses (`speaking_recording`, `listening_audio`) `processing` başlar: `media.transcode` işi AAC-LC/M4A'ya (mono, 48 kHz) çevirir, süreyi (`durationMs`) ölçer ve dosyayı `ready` yapar (tür `audio/mp4` olur); boş, tamamen sessiz, çözülemeyen ya da sınırı aşan kayıt `rejected` olur (ADR 0003 karar 10). Tarayıcı açıkken ses de taranır: dönüşüm taramayı beklemez, dosya dönüşüm bitip tarama temiz çıkınca `ready` olur; zararlı ses `rejected` olur, özgün ve dönüşmüş nesne silinir. İşlenirken bağlantı 409 `file_processing`; istemci durumu `GET /files/{fileId}` ile izler. Kurum kimliği oturumdan gelir. `Idempotency-Key` zorunlu (aynı anahtar + aynı içerik ilk yanıtı tekrarlar); `If-Match` desteklenmez. Başarı 201 ve dosyanın `Location`'ı. Özgün ad log ve denetim kaydına yazılmaz. Roller amaca göre: `submission` ve `speaking_recording` öğrenci; `material`, `question_image`, `listening_audio` yönetici ve öğretmen (modül `learning`, kapalıysa 403 `module_disabled`); `document` yönetici ve ön büro. Diğer roller 403.
+         * @description Tek dosya, `multipart/form-data`: önce `purpose`, sonra `file` alanı (DOM-KYN-004; ADR 0003 karar 2, 3). Dosya akışla depoya yazılır; boyut ve SHA-256 aynı geçişte hesaplanır. Tür içerikten (sihirli bayt) bulunur: amaçta olmayan tür 422 `file_type_not_allowed`, bildirilen tür veya ad uzantısı içerikle çelişirse 422 `file_type_mismatch`, boş dosya 422 `file_empty`. Amacın (türe özel) boyut sınırı aşılırsa akış kesilir, nesne silinir, 413 `file_too_large`. Kurum kotası aşılırsa 422 `storage_quota_exceeded`. Konuşma kaydı yükleyen öğrencinin kendi kaydı için geçerli rıza ister (18 yaş altında velayet sahibi velinin, 18 ve üstünde kendi rızası; geri çekilmiş, süresi dolmuş ya da itirazlı rıza sayılmaz): yoksa 403 `consent_required` (DOM-BEC-050, DOM-YTK-061). Multipart olmayan gövde 415. Tarayıcı açıkken (üretimde zorunlu) dosya `processing` başlar: `file.scan` işi ClamAV ile tarar, temiz dosya `ready` olur, zararlı ya da tarama sınırını aşan dosya `rejected` olur ve silinir (ses dışı dosyada yükleyen okumada ve bağlamada 422 `file_rejected` alır); tarayıcıya ulaşılamazsa dosya `processing` kalır ve tarama yeniden denenir, denemeleri biten tarama 15 dakikada bir yeniden kuyruğa girer (ADR 0003 karar 8). Tarayıcı kapalıyken (`FILE_SCANNER=off`, yalnız üretim dışı) dosya `pending` kalır ve bağlanamaz. Bağlanmayan dosya 24 saat sonra (`ready` dosyada `ready` olduğu andan) silinir; işlenmeyi bekleyen (`processing`) dosya yüklemeden 7 gün sonra. Ses (`speaking_recording`, `listening_audio`) `processing` başlar: `media.transcode` işi AAC-LC/M4A'ya (mono, 48 kHz) çevirir, süreyi (`durationMs`) ölçer ve dosyayı `ready` yapar (tür `audio/mp4` olur); boş, tamamen sessiz, çözülemeyen ya da sınırı aşan kayıt `rejected` olur (ADR 0003 karar 10). Tarayıcı açıkken ses de taranır: dönüşüm taramayı beklemez, dosya dönüşüm bitip tarama temiz çıkınca `ready` olur; zararlı ses `rejected` olur, özgün ve dönüşmüş nesne silinir. İşlenirken bağlantı 409 `file_processing`; istemci durumu `GET /files/{fileId}` ile izler. Kurum kimliği oturumdan gelir. `Idempotency-Key` zorunlu (aynı anahtar + aynı içerik ilk yanıtı tekrarlar); `If-Match` desteklenmez. Başarı 201 ve dosyanın `Location`'ı. Özgün ad log ve denetim kaydına yazılmaz. Roller amaca göre: `submission` ve `speaking_recording` öğrenci; `material`, `question_image`, `listening_audio` yönetici ve öğretmen (modül `learning`, kapalıysa 403 `module_disabled`); `absence_document` veli (modül `academic`; DOM-ILT-053); `document` yönetici ve ön büro. Diğer roller 403.
          */
         post: operations["uploadFile"];
         delete?: never;
@@ -5355,7 +5415,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /**
              * Format: binary
              * @description Tek dosya; alan adı `file`
@@ -5369,7 +5429,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /**
              * @description `pending` yüklendi, denetim bekliyor; `processing` taranıyor/dönüştürülüyor (bağlantı verilmez); `ready` kullanıma hazır; `rejected`/`deleted` görünmez
              * @enum {string}
@@ -5637,7 +5697,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /** @description Ses/video süresi; ölçülmediyse `null` */
             durationMs: number | null;
             /**
@@ -5857,7 +5917,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "enrollment_completed";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -8763,7 +8823,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /**
              * Format: binary
              * @description Tek dosya; alan adı `file`
@@ -8777,7 +8837,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /**
              * @description `pending` yüklendi, denetim bekliyor; `processing` taranıyor/dönüştürülüyor (bağlantı verilmez); `ready` kullanıma hazır; `rejected`/`deleted` görünmez
              * @enum {string}
@@ -9045,7 +9105,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /** @description Ses/video süresi; ölçülmediyse `null` */
             durationMs: number | null;
             /**
@@ -9265,7 +9325,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "enrollment_completed";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "enrollment_completed";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -21750,13 +21810,335 @@ export interface operations {
                     endDate: string;
                     /** @enum {string} */
                     reasonCategory: "health" | "family" | "official" | "other";
-                    files?: string[];
+                    fileIds?: string[];
                 };
             };
         };
         responses: {
             /** @description Default Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    attachAbsenceDocuments: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin/mazeret bildirimi kimliği */
+                absenceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveAbsence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin/mazeret bildirimi kimliği */
+                absenceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectAbsence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin/mazeret bildirimi kimliği */
+                absenceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };

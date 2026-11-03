@@ -217,6 +217,18 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'requests.test.ts',
     'başka kurumun talebi 404; o talep değişmez',
   ),
+  'POST /api/v1/absences/:absenceId/documents': kayit(
+    'absence-approval.test.ts',
+    'veli belgeyi sonradan ekler; If-Match zorunlu, başka kurum 404',
+  ),
+  'POST /api/v1/absences/:absenceId/approve': kayit(
+    'absence-approval.test.ts',
+    'başka kurum 404 ve değişmez',
+  ),
+  'POST /api/v1/absences/:absenceId/reject': kayit(
+    'absence-approval.test.ts',
+    'başka kurum 404 ve değişmez',
+  ),
   'GET /api/v1/notifications': kayit('notifications.test.ts', 'başka kurumun bildirimi 404'),
   'POST /api/v1/notifications/:notificationId/read': kayit(
     'notifications.test.ts',

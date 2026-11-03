@@ -235,7 +235,7 @@ export function registerResourceCommandRoutes(app: FastifyInstance) {
         operationId: 'shareResource',
         tags: ['resources'],
         summary: 'Paylaşımı değiştir',
-        description: `Paylaşım kapsamı ve hedefleri (DOM-KYN-021, 031, 040): \`private\`, \`students\` (\`studentIds\`), \`classes\` (\`classIds\`), \`department\`, \`institution\`. Sahip, zümre başkanı veya yönetici (403). Öğretmen yalnız ders verdiği sınıf ve öğrencilerle paylaşır (403 \`share_target_out_of_scope\`); kurumda olmayan kimlik 422 \`share_target_not_found\`. Kitap sahibiyle sınırlı lisans sınıf/kurum kapsamına açılmaz (422 \`license_restricts_share\`); onaysız yayın zümre/kuruma açılırken 409 \`share_scope_review_required\`. \`If-Match\` isteğe bağlı: kaynağın \`rowVersion\`'ı. ${ACCESS}`,
+        description: `Paylaşım kapsamı ve hedefleri (DOM-KYN-021, 031, 040): \`private\`, \`students\` (\`studentIds\`), \`classes\` (\`classIds\`), \`department\`, \`institution\`. Sahip, zümre başkanı veya yönetici (403). Öğretmen yalnız ders verdiği sınıf ve öğrencileri ekler ya da çıkarır (403 \`share_target_out_of_scope\`); kapsamı dışındaki kayıtlı hedef değişmeden korunur. Eklenen kimlik kurumda yoksa 422 \`share_target_not_found\`. Kitap sahibiyle sınırlı lisans sınıf/kurum kapsamına açılmaz (422 \`license_restricts_share\`); onaysız yayın zümre/kuruma açılırken 409 \`share_scope_review_required\`. \`If-Match\` isteğe bağlı: kaynağın \`rowVersion\`'ı. ${ACCESS}`,
         params: resourceParamsSchema,
         body: resourceShareBodySchema,
         headers: commandHeadersSchema('optional'),

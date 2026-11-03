@@ -7,6 +7,7 @@ import {
   canEditDraft,
   canOpenNewVersion,
   isStaffDetail,
+  resourceCommands,
   type ActionKind,
   type ActionState,
   type StaffResourceDetail,
@@ -28,6 +29,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
 import { ConflictNotice, isVersionConflict } from '../management/FormParts.tsx'
+import { ContentResourceActions } from './ContentResourceActions.tsx'
 import { ResourceFileList } from './ResourceFileList.tsx'
 import {
   draftFromHead,
@@ -70,6 +72,8 @@ type PanelProps = {
   onClose: () => void
   /** Taslak düzenleme penceresini açar. */
   onEdit: (resourceId: string) => void
+  /** Başka bir kaynağın ayrıntısını açar (kopya oluşunca yeni kayıt). */
+  onOpen: (resourceId: string) => void
   /** Ders kimliği → ad (okul kurumunda etiket özeti için). */
   subjectNames: ReadonlyMap<string, string>
 }
@@ -80,7 +84,13 @@ type PanelProps = {
  * (`availableActions`); sunucu aynı kuralı yeniden uygular. Başkası içeriği değiştirmişse (409)
  * uyarı bandı ve "Güncel kaydı yükle" çıkar.
  */
-export function ContentPoolPanel({ resourceId, onClose, onEdit, subjectNames }: PanelProps) {
+export function ContentPoolPanel({
+  resourceId,
+  onClose,
+  onEdit,
+  onOpen,
+  subjectNames,
+}: PanelProps) {
   const detail = useResourceDetail(resourceId)
   const data = detail.data?.data
   const staff = data && isStaffDetail(data) ? data : null
@@ -99,6 +109,7 @@ export function ContentPoolPanel({ resourceId, onClose, onEdit, subjectNames }: 
           detail={staff}
           reload={async () => void (await detail.refetch())}
           onEdit={onEdit}
+          onOpen={onOpen}
           onClose={onClose}
           subjectNames={subjectNames}
         />
@@ -119,12 +130,14 @@ function PanelBody({
   detail,
   reload,
   onEdit,
+  onOpen,
   onClose,
   subjectNames,
 }: {
   detail: StaffResourceDetail
   reload: () => Promise<void>
   onEdit: (resourceId: string) => void
+  onOpen: (resourceId: string) => void
   onClose: () => void
   subjectNames: ReadonlyMap<string, string>
 }) {
@@ -137,6 +150,8 @@ function PanelBody({
   const [reloading, setReloading] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  // Kaynak eylemlerinden biri (kopya, bildirim, kaldırma) sürerken durum geçişleri de kilitli.
+  const [commandPending, setCommandPending] = useState(false)
   const { head, resource } = detail
   if (!session) return null
   const actor = { role: session.role, userId: session.user.id }
@@ -147,9 +162,12 @@ function PanelBody({
     institutionType,
     now: new Date(now),
   })
+  const commands = resourceCommands({ detail, actor, institutionType, now: new Date(now) })
+  const hasCommands =
+    commands.share || commands.copy !== null || commands.report !== null || commands.remove
   const editable = canEditDraft(head, actor.userId) && draftFromHead(head) !== null
   const newVersion = canOpenNewVersion({ detail, actor, institutionType })
-  const busy = transition.isPending || openVersion.isPending
+  const busy = transition.isPending || openVersion.isPending || commandPending
 
   async function run(action: ActionKind, reason?: string) {
     const outcome = await transition.submit(
@@ -307,8 +325,17 @@ function PanelBody({
             Yeni sürüm aç
           </Button>
         ) : null}
+        <ContentResourceActions
+          detail={detail}
+          commands={commands}
+          busy={busy}
+          onConflict={() => setConflict(true)}
+          onCopied={onOpen}
+          onRemoved={onClose}
+          onPendingChange={setCommandPending}
+        />
       </div>
-      {actions.length === 0 && !editable && !newVersion ? (
+      {actions.length === 0 && !editable && !newVersion && !hasCommands ? (
         <p className="text-sm text-muted-foreground">Bu içerik için yapılabilecek işlem yok.</p>
       ) : null}
 

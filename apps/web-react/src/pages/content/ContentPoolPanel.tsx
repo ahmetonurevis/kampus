@@ -456,6 +456,16 @@ function Preview({ preview, english }: { preview: ContentPreview; english: boole
         </p>
       </section>
     )
+  if (preview.kind === 'set')
+    return (
+      <section aria-label="İçerik önizlemesi" className="rounded-card border bg-surface p-4">
+        <p className="text-sm">
+          {preview.itemCount} soru
+          {preview.reading ? ' · okuma parçasına bağlı (okuma-anlama etkinliği)' : ''}
+          {preview.timeLimitMinutes ? ` · ${preview.timeLimitMinutes} dakika` : ''}
+        </p>
+      </section>
+    )
   return (
     <section
       aria-label="İçerik önizlemesi"

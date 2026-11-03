@@ -44,15 +44,18 @@ export type NewVersionBody = NonNullable<
   operations['createResourceVersion']['requestBody']
 >['content']['application/json']
 
-/** Sunucu sayfalı liste; sorgu değişirken önceki sayfa ekranda kalır. */
-export function useResourceList(query: ResourceListQuery) {
+/**
+ * Sunucu sayfalı liste; sorgu değişirken önceki sayfa ekranda kalır. `enabled: false` isteği
+ * bekletir (ör. okuma etkinliği formunda yalnız kayıtlı bağ varken özet okunur).
+ */
+export function useResourceList(query: ResourceListQuery, options: { enabled?: boolean } = {}) {
   const client = useKampusClient()
   const institutionId = useActiveInstitutionId()
   return useQuery({
     queryKey: institutionKey(institutionId, RESOURCES_KEY, 'list', query),
     queryFn: ({ signal }) =>
       runRequest(() => client.GET('/api/v1/resources', { params: { query }, signal })),
-    enabled: institutionId !== null,
+    enabled: institutionId !== null && (options.enabled ?? true),
     placeholderData: keepPreviousData,
   })
 }

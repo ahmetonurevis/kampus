@@ -26,17 +26,22 @@ export function notificationBellVisible(session: SessionScope): boolean {
 }
 
 /**
- * Telefonda karşılığı olmayan konular: randevu yalnız web'dedir (veli "Randevu ve mesaj" sayfası
- * telefonda yalnız mesajları açar), bu yüzden randevu bildirimi mesaj ekranına yönlendirilmez.
+ * Telefonda karşılığı olmayan (rol, konu) çiftleri: öğrenci randevu ekranı telefondadır
+ * (`StudentAppointments`, IST-124), ama veli randevusu henüz yoktur ve veli "Randevu ve mesaj"
+ * sayfası telefonda yalnız mesajları açar; bu yüzden velinin randevu bildirimi mesaj ekranına
+ * yönlendirilmez.
  */
-const WEB_ONLY_TOPICS: readonly Topic[] = ['appointment']
+const WEB_ONLY_TOPICS: Readonly<Record<string, readonly Topic[]>> = {
+  veli: ['appointment'],
+  ogretmen: ['appointment'],
+}
 
 /**
  * Bildirimin açacağı mobil ekran. Konunun rol sayfası mobilde kayıtlı ve modülü açıksa o ekran;
  * aksi halde `null` (ayrıntı bildirim ekranında gösterilir).
  */
 export function notificationTarget(session: SessionScope, topic: Topic): ApiScreen | null {
-  if (WEB_ONLY_TOPICS.includes(topic)) return null
+  if (WEB_ONLY_TOPICS[session.role]?.includes(topic)) return null
   const path = topicPath(session.role, topic)
   if (!path) return null
   return apiPages(session).find((page) => page.path === path)?.screen ?? null

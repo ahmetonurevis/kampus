@@ -22,6 +22,7 @@ const input = (overrides: Partial<ListeningPhaseInput> = {}): ListeningPhaseInpu
   link: null,
   exhausted: false,
   refusal: null,
+  audioPlaying: false,
   now: NOW,
   ...overrides,
 })
@@ -35,6 +36,33 @@ describe('dinleme bölümü: süren deneme', () => {
     assert.deepEqual(
       listeningPhase(input({ link: LIVE, allowance: { limit: 1, used: 1, remaining: 0 } })),
       { kind: 'playing', url: LIVE.url },
+    )
+  })
+
+  test('DOM-BEC-005: kayıt çalarken bağlantı bitimine yaklaşılsa ya da geçse de oynatıcı kaldırılmaz', () => {
+    const spent = { limit: 1, used: 1, remaining: 0 }
+    const closing = { url: LIVE.url, expiresAt: new Date(NOW + 4_000).toISOString() }
+    for (const link of [closing, EXPIRED])
+      for (const allowance of [spent, { limit: 2, used: 1, remaining: 1 }])
+        assert.deepEqual(listeningPhase(input({ link, allowance, audioPlaying: true })), {
+          kind: 'playing',
+          url: link.url,
+        })
+    assert.deepEqual(
+      listeningPhase(input({ mode: 'review', allowance: null, link: closing, audioPlaying: true })),
+      { kind: 'playing', url: closing.url },
+    )
+  })
+
+  test('DOM-BEC-005: duraklatılmış oynatıcı bağlantı bitimine 5 sn kala kapanır', () => {
+    const closing = { url: LIVE.url, expiresAt: new Date(NOW + 4_000).toISOString() }
+    assert.deepEqual(
+      listeningPhase(input({ link: closing, allowance: { limit: 1, used: 1, remaining: 0 } })),
+      { kind: 'locked' },
+    )
+    assert.deepEqual(
+      listeningPhase(input({ link: closing, allowance: { limit: 2, used: 1, remaining: 1 } })),
+      { kind: 'idle' },
     )
   })
 

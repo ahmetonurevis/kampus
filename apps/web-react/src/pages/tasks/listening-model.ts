@@ -14,6 +14,8 @@ import type { ResultAudience } from './student-task-model.ts'
  * - `review`: sonuç ekranı, personel ve veli. `attemptId` gönderilmez, sayılmaz.
  *
  * Bağlantı geçerliyken (`linkUsable`) oynatıcı açıktır ve yeniden bağlanma yeni istek atmaz.
+ * Kayıt çalarken bağlantının bitimine yaklaşılsa da oynatıcı kaldırılmaz (dinleme ortasında
+ * kesilmez); duraklatılmışsa bitime 5 sn kala kapanır ve yeni dinleme istenir.
  * Denemede hak bitmiş görünse de son dinlemenin penceresi sürüyor olabilir (sayfa yenilendi):
  * öğrenci dinlemeyi sürdürmeyi dener, sunucu pencere içindeyse saymadan bağlantı verir, değilse
  * 422 `listening_plays_exhausted` döner ve oynatıcı kilitlenir.
@@ -45,11 +47,13 @@ export interface ListeningPhaseInput {
   exhausted: boolean
   /** Sonuç ekranında sunucunun reddi ya da kuralın kapattığı kayıt; metni gösterilir. */
   refusal: string | null
+  /** Oynatıcı şu an çalıyor (`!audio.paused`); çalarken oynatıcı kaldırılmaz. */
+  audioPlaying: boolean
   now: number
 }
 
 export function listeningPhase(input: ListeningPhaseInput): ListeningPhase {
-  if (input.link && linkUsable(input.link, input.now))
+  if (input.link && (input.audioPlaying || linkUsable(input.link, input.now)))
     return { kind: 'playing', url: input.link.url }
   if (input.mode === 'review')
     return input.refusal === null

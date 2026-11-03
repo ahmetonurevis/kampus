@@ -10,7 +10,7 @@ import {
   type ListeningAllowance,
   type ListeningRecording as Recording,
 } from '@kampus/react-shared/listening.ts'
-import { useFileUrlFetcher } from '@kampus/react-shared/use-files.ts'
+import { useListeningUrlFetcher } from '@kampus/react-shared/use-files.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
@@ -49,10 +49,13 @@ const RECONNECT_LIMIT = 2
  *
  * Bağlantı kullanıcı "Kaydı dinle" deyince istenir; denemede `attemptId` ile istenir ve hak orada
  * sayılır. Bir dinleme bir bağlantı ömrüdür: oynatıcı koparsa bağlantı geçerliyken aynı adresle
- * yeniden bağlanır (yeni istek yok); sayfa yenilenince yeni istek aynı pencerede sayılmaz. Hak
- * bitince oynatıcı kilitlenir. Sayaç `aria-live="polite"` ile okunur, sınırsız hakta yoktur.
- * Altyazı (`captionsVtt`) Blob adresiyle `<track>` olur ve bölüm kapanınca adres bırakılır.
- * Döküm yalnız açıkken katlanır bölümdedir.
+ * yeniden bağlanır (yeni istek yok); sayfa yenilenince yeni istek aynı pencerede sayılmaz. Kayıt
+ * çalarken bağlantı bitimine yaklaşılsa da oynatıcı kaldırılmaz. Hak bitince oynatıcı kilitlenir.
+ * Sayılan dinleme deneme ayrıntısını eskitir (`useListeningUrlFetcher`). Sayaç `aria-live="polite"`
+ * ile okunur, sınırsız hakta yoktur. Altyazı (`captionsVtt`) Blob adresiyle `<track>` olur ve
+ * bölüm kapanınca adres bırakılır; `<audio>` altyazıyı çizmediğinden döküm açıkken etkin satır
+ * oynatıcının altında opak satırda gösterilir (`aria-live="polite"`). Döküm yalnız açıkken
+ * katlanır bölümdedir.
  */
 export function ListeningRecording({
   recording,
@@ -64,7 +67,7 @@ export function ListeningRecording({
   className,
 }: Props) {
   const headingId = useId()
-  const fetchUrl = useFileUrlFetcher()
+  const fetchUrl = useListeningUrlFetcher()
   const audioRef = useRef<HTMLAudioElement>(null)
   const reconnects = useRef(0)
   const [link, setLink] = useState<ListeningLink | null>(null)
@@ -74,15 +77,19 @@ export function ListeningRecording({
   const [pending, setPending] = useState(false)
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [playError, setPlayError] = useState(false)
+  const [audioPlaying, setAudioPlaying] = useState(false)
+  const [cue, setCue] = useState('')
   const now = useNow(link !== null, 5_000)
-  const captions = useCaptionsSource(recording.captionsVtt)
+  // Altyazı satırı yalnız döküm açıkken gösterilir (DOM-BEC-005: döküm görev kapanmadan gizli).
+  const showCaptions = recording.transcriptShown && !!recording.captionsVtt
+  const captions = useCaptionsSource(recording.captionsVtt, showCaptions ? setCue : null)
   const [transcriptOpen, setTranscriptOpen] = useState(false)
 
   const allowance =
     mode === 'attempt' ? (grant ?? listeningAllowance(listening, recording.fileId)) : null
   const refusal =
     mode === 'review' ? (refused ?? reviewRefusal(audience, recording, listening)) : null
-  const phase = listeningPhase({ mode, allowance, link, exhausted, refusal, now })
+  const phase = listeningPhase({ mode, allowance, link, exhausted, refusal, audioPlaying, now })
   const playingUrl = phase.kind === 'playing' ? phase.url : null
 
   // Yeni bağlantı gelince oynatma başlatılır; tarayıcı izin vermezse oynatıcı düğmesi kalır.
@@ -103,7 +110,7 @@ export function ListeningRecording({
     try {
       const result = await fetchUrl(
         recording.fileId,
-        mode === 'attempt' && attemptId ? { attemptId } : undefined,
+        mode === 'attempt' && attemptId ? attemptId : undefined,
       )
       if (result.listening) setGrant(allowanceOf(result.listening))
       setRefused(null)
@@ -132,6 +139,7 @@ export function ListeningRecording({
   function reconnect(event: SyntheticEvent<HTMLAudioElement>) {
     const audio = event.currentTarget
     if (!linkUsable(link, Date.now()) || reconnects.current >= RECONNECT_LIMIT) {
+      setAudioPlaying(false)
       setPlayError(true)
       return
     }
@@ -180,12 +188,31 @@ export function ListeningRecording({
             src={phase.url}
             aria-label={`Dinleme kaydı: ${recording.title}`}
             onError={reconnect}
+            onPlay={() => setAudioPlaying(true)}
+            onPause={() => setAudioPlaying(false)}
+            onEnded={() => setAudioPlaying(false)}
             className="w-full"
           >
             {recording.captionsVtt ? (
-              <track ref={captions} kind="captions" srcLang="en" label="İngilizce" default />
+              <track
+                ref={captions}
+                kind="captions"
+                srcLang="en"
+                label="İngilizce"
+                default={!showCaptions}
+              />
             ) : null}
           </audio>
+          {showCaptions ? (
+            <p
+              aria-live="polite"
+              aria-label="Altyazı"
+              lang="en"
+              className="min-h-10 rounded-md border bg-muted px-3 py-2 text-sm leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]"
+            >
+              {cue}
+            </p>
+          ) : null}
           {playError ? (
             <p role="status" className="text-xs text-muted-foreground">
               Kayıt oynatılamadı. Bağlantınızı kontrol edip oynatıcıdan yeniden deneyin.
@@ -278,21 +305,39 @@ export function ListeningRecording({
   )
 }
 
+/** Etkin altyazı satırlarının düz metni (VTT etiketleri, ör. `<v Tom>`, atılır). */
+function activeCueText(track: TextTrack): string {
+  return Array.from(track.activeCues ?? [])
+    .map((cue) => (cue instanceof VTTCue ? cue.text : '').replace(/<[^>]*>/g, '').trim())
+    .filter(Boolean)
+    .join('\n')
+}
+
 /**
  * Altyazıyı (`captionsVtt`) `<track>`'a Blob adresiyle bağlayan ref: adres öğe bağlanınca üretilir,
  * öğe kalkınca ya da metin değişince bırakılır (`revokeObjectURL`; React 19 ref temizliği).
+ * `onCue` verilirse iz gizli kipte (`hidden`) etkinleşir ve etkin satır `cuechange` ile bildirilir;
+ * `<audio>` altyazıyı kendisi çizmez.
  */
-function useCaptionsSource(vtt: string | null) {
+function useCaptionsSource(vtt: string | null, onCue: ((text: string) => void) | null) {
   return useCallback(
     (node: HTMLTrackElement | null) => {
       if (!node || !vtt) return
       const url = URL.createObjectURL(new Blob([vtt], { type: 'text/vtt' }))
       node.src = url
+      const track = node.track
+      const update = () => onCue?.(activeCueText(track))
+      if (onCue) {
+        track.mode = 'hidden'
+        track.addEventListener('cuechange', update)
+      }
       return () => {
+        track.removeEventListener('cuechange', update)
+        onCue?.('')
         node.removeAttribute('src')
         URL.revokeObjectURL(url)
       }
     },
-    [vtt],
+    [vtt, onCue],
   )
 }

@@ -1,7 +1,7 @@
 import { useScholarshipPrograms } from '@kampus/react-shared/use-finance-scholarships.ts'
 import { scholarshipAmount } from '@kampus/school-core/lib/finance-scholarships.ts'
 import { zodResolver } from '@hookform/resolvers/zod'
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useForm, useWatch } from 'react-hook-form'
 import { Link, useSearchParams } from 'react-router'
 import { installmentAmounts } from '@kampus/school-core/lib/payments.ts'
@@ -53,10 +53,22 @@ import {
   isAdultOnForm,
   prospectNoticeLabel,
 } from './enrollment-consent.ts'
-import { enrollmentServerError, guardianModeFor, prospectChangeValues } from './enrollment-form.ts'
+import {
+  enrollmentServerError,
+  guardianModeFor,
+  paymentPlanHref,
+  prospectChangeValues,
+} from './enrollment-form.ts'
 import { awardablePrograms, programValueLabel } from '../finance/scholarship-forms.ts'
 
 const STEPS = ['Aday ve sınıf', 'Kimlik ve veli', 'Ücret ve taksit', 'Kontrol'] as const
+/** Adım başlığı (Vue `step-heading`): adım değişince odak buraya gelir. */
+const STEP_TITLES = [
+  'Aday ve sınıf seçimi',
+  'Kimlik ve veli bilgileri',
+  'Ücret ve taksit planı',
+  'Kaydı tamamlamadan önce kontrol edin',
+] as const satisfies Record<keyof typeof STEPS & `${number}`, string>
 const TARIFF_PAGE_SIZE = 100
 const OPEN_STAGES: readonly (string | undefined)[] = OPEN_PROSPECT_STAGES
 const OCCUPANCY_QUERY = { groupBy: 'classId', isActive: true } as const
@@ -87,6 +99,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
   const institutionType = session?.institution.type ?? 'school'
   const year = session?.institution.academicYear ?? Number(dayKey().slice(0, 4))
   const tariffs = useFeeTariffs({ page: 1, pageSize: TARIFF_PAGE_SIZE, academicYear: year })
+  const paymentsHref = paymentPlanHref(session?.role)
   const [done, setDone] = useState<Done | null>(null)
   const [round, setRound] = useState(0)
   const published = tariffs.data?.data.find((tariff) => tariff.status === 'published')
@@ -130,11 +143,11 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
                 ariaLabel={`${done.studentName} sözleşmesini görüntüle`}
               />
             ) : null}
-            <Button asChild variant="secondary">
-              <Link to="../tahsilat-takip" relative="path">
-                Ödeme planını görüntüle
-              </Link>
-            </Button>
+            {paymentsHref ? (
+              <Button asChild variant="secondary">
+                <Link to={paymentsHref}>Ödeme planını görüntüle</Link>
+              </Button>
+            ) : null}
             <Button
               variant="secondary"
               onClick={() => {
@@ -175,6 +188,19 @@ function EnrollmentForm({
   const branches = useCoreAll('branches')
   const enroll = useEnrollProspect()
   const [step, setStep] = useState(0)
+  // Kullanıcı adım değiştirince (Devam et, Geri, adım göstergesi) odak yeni adımın başlığına gider
+  // (Vue `goToStep`); sunucu hatasının adımı geri alması odağı hatalı alanda bırakır.
+  const stepHeading = useRef<HTMLHeadingElement>(null)
+  const focusHeading = useRef(false)
+  const goToStep = (next: number) => {
+    focusHeading.current = true
+    setStep(next)
+  }
+  useEffect(() => {
+    if (!focusHeading.current) return
+    focusHeading.current = false
+    stepHeading.current?.focus()
+  }, [step])
   const today = dayKey()
   const schema = useMemo(() => enrollmentFormSchema(institutionType), [institutionType])
   const form = useForm<EnrollmentFormValues>({
@@ -258,14 +284,17 @@ function EnrollmentForm({
       : []
 
   async function next() {
-    const valid = await form.trigger(ENROLLMENT_STEP_FIELDS[step] ?? [])
+    // Hatalı ilk alan odak alır (Vue `useFormErrors`): klavye ve ekran okuyucu hatayı kaçırmaz.
+    const valid = await form.trigger(ENROLLMENT_STEP_FIELDS[step] ?? [], { shouldFocus: true })
     if (!valid) return
     if (step === 0 && !prospect) {
       form.setError('prospectId', { type: 'closed', message: 'Kaydı açık bir aday seçin.' })
+      focusAfterSubmit('prospectId')
       return
     }
     if (step === 0 && !room) {
       form.setError('classId', { type: 'branch', message: 'Adayın kampüsünden bir sınıf seçin.' })
+      focusAfterSubmit('classId')
       return
     }
     if (step === 0 && otherCampus && !values.confirmOtherCampus) {
@@ -285,7 +314,7 @@ function EnrollmentForm({
       return
     }
     form.clearErrors('root.server')
-    setStep(step + 1)
+    goToStep(step + 1)
   }
 
   const onSubmit = form.handleSubmit(async (data) => {
@@ -363,7 +392,7 @@ function EnrollmentForm({
         <h2 id="kayit-formu" className="mb-3 text-lg font-semibold">
           Öğrenci kayıt bilgileri
         </h2>
-        <FormSteps steps={STEPS} current={step} onBack={setStep} />
+        <FormSteps steps={STEPS} current={step} onBack={goToStep} />
         <form
           noValidate
           className="mt-5 grid gap-4"
@@ -373,6 +402,9 @@ function EnrollmentForm({
             else void onSubmit(event)
           }}
         >
+          <h3 ref={stepHeading} tabIndex={-1} className="text-base font-semibold">
+            {STEP_TITLES[step]}
+          </h3>
           {step === 0 ? (
             <>
               <FormField id="kayit-aday" label="Aday öğrenci" error={errors.prospectId}>
@@ -743,7 +775,7 @@ function EnrollmentForm({
                 type="button"
                 variant="secondary"
                 disabled={busy}
-                onClick={() => setStep(step - 1)}
+                onClick={() => goToStep(step - 1)}
               >
                 Geri
               </Button>

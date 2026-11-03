@@ -5008,6 +5008,50 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/learning-outcomes": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kazanım kataloğu
+         * @description Öğretim programı (platform) ve kurum kazanımları birleşik, sayfalı (DOM-KYN-011). Arşivli kod listelenmez ve yeni içerikte seçilemez; `codes` verilirse yalnız o kodlar arşivliler dahil döner (mevcut içerikteki kazanımın adı ve arşiv etiketi için). Sıra: sınıf düzeyi, ders, önce öğretim programı, kod. Bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listLearningOutcomes"];
+        put?: never;
+        /**
+         * Kurum kazanımı ekle
+         * @description Kurumun kendi kazanım kodunu ekler (DOM-KYN-011). Kod büyük harfe çevrilir; kurumda (arşivliler dahil) ya da öğretim programında kullanılan kod 409 `learning_outcome_code_taken`. `Idempotency-Key` zorunlu. Başarı 201 ve `Location`. Yalnız yönetici ve kazanımın dersinde zümre başkanı olan öğretmen (core `canManageLearningOutcomes`; diğer öğretmen 403). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["createLearningOutcome"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/learning-outcomes/{code}/archive": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kurum kazanımını arşivle
+         * @description Kurum kazanımını arşivler (DOM-KYN-011): yeni içerikte seçilemez (422 `outcome_archived`), bağlı eski içerikte korunur; kod yeniden verilmez. Olmayan, başka kurumun ya da platform kodu 404; arşivli kod 409 `learning_outcome_archived`. `If-Match` satır sürümü (`rowVersion`; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`), `Idempotency-Key` zorunlu. Yalnız yönetici ve kazanımın dersinde zümre başkanı olan öğretmen (core `canManageLearningOutcomes`; diğer öğretmen 403). Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["archiveLearningOutcome"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -8796,6 +8840,19 @@ export interface components {
             /** @description Görülen alıştırma ataması sınırı (100) aştı; en yeniler okundu */
             truncated: boolean;
         };
+        LearningOutcomeInput: {
+            /** @enum {string} */
+            source: "platform" | "institution";
+            code: string;
+            name: string;
+            subjectId: string;
+            gradeLevel: number;
+            /** @description Öğretim programı sürümü; yalnız platform satırında dolu */
+            programVersion: string | null;
+            archivedAt: string | null;
+            /** @description Satır sürümü; arşivde `If-Match` (yalnız kurum kazanımında anlamlı) */
+            rowVersion: number;
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -12497,6 +12554,19 @@ export interface components {
             };
             /** @description Görülen alıştırma ataması sınırı (100) aştı; en yeniler okundu */
             truncated: boolean;
+        };
+        LearningOutcome: {
+            /** @enum {string} */
+            source: "platform" | "institution";
+            code: string;
+            name: string;
+            subjectId: string;
+            gradeLevel: number;
+            /** @description Öğretim programı sürümü; yalnız platform satırında dolu */
+            programVersion: string | null;
+            archivedAt: string | null;
+            /** @description Satır sürümü; arşivde `If-Match` (yalnız kurum kazanımında anlamlı) */
+            rowVersion: number;
         };
     };
     responses: never;
@@ -44476,6 +44546,310 @@ export interface operations {
             };
             /** @description Default Response */
             404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listLearningOutcomes: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Ders kimliği (ör. `math`) */
+                subject?: string;
+                /** @description Sınıf düzeyi (5–12) */
+                level?: number;
+                /** @description Kodda veya adda arama; Türkçe harf ve büyük/küçük harf duyarsız, joker yok */
+                q?: string;
+                /** @description Katalog: `platform` öğretim programı, `institution` kurum kazanımı; yoksa ikisi */
+                source?: "platform" | "institution";
+                /** @description Kod; tekrarlanabilir (`codes=A&codes=B`, en çok 20). Verilirse yalnız bu kodlar birebir (büyük/küçük harf dönüşümü yok, içerikteki bağla aynı) ve arşivliler dahil döner; mevcut içerikteki kazanımın adı ve arşiv durumu için */
+                codes?: string[];
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["LearningOutcome"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createLearningOutcome: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    code: string;
+                    name: string;
+                    subjectId: string;
+                    gradeLevel: number;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["LearningOutcome"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    archiveLearningOutcome: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Kurum kazanımının kodu */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["LearningOutcome"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };

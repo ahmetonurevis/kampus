@@ -6,7 +6,7 @@ import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 import { markFilesReady } from './support/materials.ts'
 import { expectOk, idempotent, type Json } from './support/reading-activity.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectNoHorizontalOverflow, pickOutcome } from './support/ui.ts'
 
 // Dinleme etkinliği formu (OG-052; IST-045, DOM-BEC-005): öğretmen içerik havuzunda quiz'i dökümlü
 // dinleme kaydına bağlar (bağlı içerik seçicisiyle kayıt ve sorular) ve onaya gönderir; dökümsüz
@@ -18,7 +18,7 @@ const TAGS = {
   gradeLevels: [7],
   primarySkill: 'listening',
   cefrLevel: 'A2',
-  outcomes: [{ outcomeId: 'DIN.7.1', outcomeSource: 'institution' }],
+  outcomes: [{ outcomeId: 'ENG.7.2.1', outcomeSource: 'platform' }],
 }
 const LICENSE = { kind: 'institution_original' }
 const TRANSCRIPT = 'Tom reads a book every evening. On Saturday he plays football with his sister.'
@@ -149,8 +149,7 @@ async function finishQuiz(page: Page, form: ReturnType<Page['getByRole']>) {
   await form.getByLabel('Ders').selectOption({ label: 'İngilizce' })
   await form.getByLabel('7. sınıf', { exact: true }).check()
   await form.getByLabel('CEFR düzeyi').selectOption('A2')
-  await form.getByRole('button', { name: 'Kazanım ekle' }).click()
-  await form.getByLabel('1. kazanım kodu').fill('DIN.7.1')
+  await pickOutcome(form, 'ENG.7.2.1')
   await form.getByLabel('Menşe ve lisans').selectOption('institution_original')
   await form.getByLabel(/Bu içeriği kullanma hakkım var/).check()
   await form.getByRole('button', { name: 'Taslağı kaydet' }).click()

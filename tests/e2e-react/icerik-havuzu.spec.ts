@@ -4,12 +4,12 @@ import type { Locator, Page } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectNoHorizontalOverflow, pickOutcome } from './support/ui.ts'
 
 // İçerik havuzu (DOM-KYN-020, 025; DOM-YTK-021): öğretmen okuma parçası taslağı yazar ve onaya
 // gönderir, yönetici onaylar ya da gerekçeyle reddeder. Her test kendi kurumunu kurar (`tenant`);
-// sunucuda yazan işlemler seed kurumlarına dokunmaz. Ders/kazanım kataloğu yok: kazanım kodu
-// serbest yazılır (TODO(katalog)).
+// sunucuda yazan işlemler seed kurumlarına dokunmaz. Kazanım katalogdan seçilir (`pickOutcome`;
+// DOM-KYN-011).
 
 const BODY =
   'The old lighthouse stood at the edge of the village. Every evening the keeper climbed the long ' +
@@ -37,8 +37,7 @@ async function createReadingDraft(page: Page, options: DraftOptions) {
   await dialog.getByLabel('9. sınıf', { exact: true }).check()
   await dialog.getByLabel('CEFR düzeyi').selectOption('B1')
   await dialog.getByLabel('Birincil beceri').selectOption('reading')
-  await dialog.getByRole('button', { name: 'Kazanım ekle' }).click()
-  await dialog.getByLabel('1. kazanım kodu').fill('ENG.9.READ.1')
+  await pickOutcome(dialog, 'ENG.9.1.1')
   await dialog.getByLabel('Menşe ve lisans').selectOption('institution_original')
   if (options.declare ?? true) await dialog.getByLabel(/Bu içeriği kullanma hakkım var/).check()
   await dialog.getByRole('button', { name: 'Taslağı kaydet' }).click()

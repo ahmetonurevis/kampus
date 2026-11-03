@@ -233,7 +233,7 @@ export const resourceVersions = pgTable(
   ],
 )
 
-/** Sürümün kazanım bağlantıları (karar 3; kazanım kataloğu sonraki dilimde). */
+/** Sürümün kazanım bağlantıları (karar 3, 9; katalog `schema/learning-outcomes.ts`). */
 export const resourceVersionOutcomes = pgTable(
   'resource_version_outcomes',
   {
@@ -242,7 +242,9 @@ export const resourceVersionOutcomes = pgTable(
       .references(() => institutions.id),
     versionId: uuid('version_id').notNull(),
     outcomeSource: text('outcome_source').$type<keyof typeof OUTCOME_SOURCES>().notNull(),
-    // TODO(F3b-outcomes): `learning_outcomes`/`platform_learning_outcomes` gelince yabancı anahtar.
+    // Katalog kodu (`platform_learning_outcomes.code` ya da `learning_outcomes.code`). Kaynak iki
+    // tablodan birine işaret ettiği ve katalog öncesi serbest kodlar korunduğu için yabancı anahtar
+    // yoktur; yeni seçim serviste doğrulanır (`services/learning-outcomes.ts`, DOM-KYN-011).
     outcomeId: text('outcome_id').notNull(),
     /** Etiket sırası (core listesi sırası). */
     position: integer('position').notNull(),

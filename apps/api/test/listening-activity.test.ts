@@ -169,8 +169,12 @@ describe('dinleme etkinliği', () => {
   const start = (assignmentId: string, cookie: string) =>
     call('POST', `/task-assignments/${assignmentId}/attempts`, cookie, {}, key())
   const detail = (id: string, cookie?: string) => call('GET', `/task-attempts/${id}`, cookie)
-  const fileUrl = (t: Tenant, cookie?: string) =>
-    call('GET', `/files/${t.activity.fileId}/url`, cookie)
+  const fileUrl = (t: Tenant, cookie?: string, attemptId?: string) =>
+    call(
+      'GET',
+      `/files/${t.activity.fileId}/url${attemptId === undefined ? '' : `?attemptId=${attemptId}`}`,
+      cookie,
+    )
 
   const assignmentRows = (institutionId: string) =>
     db
@@ -478,7 +482,7 @@ describe('dinleme etkinliği', () => {
     const t = await tenant()
     const assignment = await assign(t)
     fails(await fileUrl(t, t.cookies.student), 422, 'listening_attempt_required')
-    await ok(await start(assignment.id as string, t.cookies.student), 201)
+    const attempt = await ok(await start(assignment.id as string, t.cookies.student), 201)
     fails(await fileUrl(t), 401, 'unauthenticated')
     const other = await tenant()
     for (const cookie of [
@@ -491,7 +495,7 @@ describe('dinleme etkinliği', () => {
     assert.deepEqual(await playRows(t.institution.id), [])
     // Veli çocuğunun görevindeki kaydı dinler; sayılmaz.
     assert.equal((await ok(await fileUrl(t, t.cookies.parent))).listening, null)
-    const counted = await ok(await fileUrl(t, t.cookies.student))
+    const counted = await ok(await fileUrl(t, t.cookies.student, attempt.id as string))
     assert.equal(counted.listening.counted, true)
     assert.equal((await playRows(t.institution.id)).length, 1)
   })
@@ -527,7 +531,7 @@ describe('dinleme etkinliği', () => {
     const t = await tenant()
     const assignment = await assign(t, { attempts: { kind: 'practice' } })
     const attempt = await ok(await start(assignment.id as string, t.cookies.student), 201)
-    await ok(await fileUrl(t, t.cookies.student))
+    await ok(await fileUrl(t, t.cookies.student, attempt.id as string))
     await ok(
       await call(
         'POST',
@@ -637,7 +641,7 @@ describe('dinleme etkinliği', () => {
     const t = await tenant()
     const assignment = await assign(t, { attempts: { kind: 'practice' } })
     const attempt = await ok(await start(assignment.id as string, t.cookies.student), 201)
-    await ok(await fileUrl(t, t.cookies.student))
+    await ok(await fileUrl(t, t.cookies.student, attempt.id as string))
     const removed = await ok(
       await call(
         'POST',

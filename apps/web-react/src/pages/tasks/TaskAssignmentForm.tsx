@@ -3,7 +3,7 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form'
 import { isStaffItem } from '@kampus/react-shared/resource-model.ts'
 import { useCreateTaskAssignment } from '@kampus/react-shared/use-task-assignments.ts'
-import { useResourceList } from '@kampus/react-shared/use-resources.ts'
+import { useResourceList, useResourceVersion } from '@kampus/react-shared/use-resources.ts'
 import { useRubrics } from '@kampus/react-shared/use-rubrics.ts'
 import { LATE_ACCEPTANCE_MAX_DAYS } from '@kampus/school-core/skills/scoring.ts'
 import { useAuth } from '@/auth/use-auth.ts'
@@ -20,11 +20,13 @@ import { RootError } from '../management/FormParts.tsx'
 import {
   assignmentBody,
   assignmentFormSchema,
+  assignmentListening,
   COUNT_POLICY_OPTIONS,
   defaultAssignment,
   formFieldFor,
   isTeacherScored,
   KIND_OPTIONS,
+  LISTENING_PLAY_OPTIONS,
   TASK_TYPE_OPTIONS,
   type AssignmentFormOutput,
   type AssignmentFormValues,
@@ -77,7 +79,6 @@ function AssignmentEditor({ onClose, onCreated }: Omit<Props, 'open'>) {
   const rubricVersionId = useWatch({ control: form.control, name: 'rubricVersionId' })
   const resourceId = useWatch({ control: form.control, name: 'resourceId' })
   const teacher = isTeacherScored(taskType)
-  const busy = create.isPending || form.formState.isSubmitting
 
   const resources = useResourceList({ page: 1, pageSize: 100, contentType: taskType })
   const assignable = useMemo(
@@ -89,6 +90,24 @@ function AssignmentEditor({ onClose, onCreated }: Omit<Props, 'open'>) {
   )
   const chosen = assignable.find((item) => item.id === resourceId)
   const skill = chosen?.version.tags.primarySkill ?? null
+  // Dinleme kaydı bağı (IST-045) yayındaki sürümün içeriğindedir; yalnız quiz/alıştırma setinde okunur.
+  const itemList = taskType === 'quiz' || taskType === 'exercise_set'
+  const chosenVersion = useResourceVersion(
+    itemList ? (chosen?.id ?? '') : '',
+    itemList ? (chosen?.currentVersionId ?? '') : '',
+  )
+  const versionData = chosenVersion.data?.data
+  // İçerik değişince yeni sürüm yüklenene kadar gönderim kilitlidir; hak seçimi form değerinde kalır.
+  const { listening, pending: listeningPending } = assignmentListening({
+    itemList,
+    selected: chosen?.currentVersionId != null,
+    loaded:
+      versionData?.view === 'staff' && versionData.version.id === chosen?.currentVersionId
+        ? { content: versionData.version.content }
+        : null,
+    failed: chosenVersion.isError,
+  })
+  const busy = create.isPending || form.formState.isSubmitting
   const rubrics = useRubrics({ page: 1, pageSize: 100 })
   const rubricOptions = useMemo(
     () =>
@@ -99,11 +118,18 @@ function AssignmentEditor({ onClose, onCreated }: Omit<Props, 'open'>) {
   )
 
   const submit = form.handleSubmit(async (values) => {
+    if (listeningPending) return
     const item = assignable.find((candidate) => candidate.id === values.resourceId)
     if (!item?.currentVersionId) return
-    const outcome = await create.submit(assignmentBody(values, item.currentVersionId, groupKind), {
-      setError: (name, error) => form.setError(formFieldFor(name) as 'resourceId', error),
-    })
+    const outcome = await create.submit(
+      assignmentBody(values, item.currentVersionId, groupKind, listening),
+      {
+        setError: (name, error) => form.setError(formFieldFor(name) as 'resourceId', error),
+        // DOM-BEC-005: kaydı olmayan içerikte seçilen hak alanın altında bildirilir.
+        fieldFor: (error) =>
+          error.code === 'listening_plays_unavailable' ? 'listeningPlays' : undefined,
+      },
+    )
     if (outcome.status === 'success') {
       notify.success('Görev atandı.')
       onCreated(outcome.data.data.id)
@@ -340,6 +366,32 @@ function AssignmentEditor({ onClose, onCreated }: Omit<Props, 'open'>) {
         ) : null}
       </div>
 
+      {listening ? (
+        <div className="grid gap-5 sm:grid-cols-2">
+          <FormField
+            id="gorev-dinleme-hakki"
+            label="Dinleme hakkı"
+            description="Kayıt her denemede bu kadar dinlenebilir; sayfa yenilemek hak harcamaz."
+            error={errors.listeningPlays}
+          >
+            {(control) => (
+              <NativeSelect
+                {...control}
+                {...form.register('listeningPlays')}
+                className="w-full"
+                disabled={busy}
+              >
+                {LISTENING_PLAY_OPTIONS.map((option) => (
+                  <NativeSelectOption key={option.value} value={option.value}>
+                    {option.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            )}
+          </FormField>
+        </div>
+      ) : null}
+
       <div className="grid gap-5 sm:grid-cols-2">
         <FormField
           id="gorev-son-teslim"
@@ -376,7 +428,11 @@ function AssignmentEditor({ onClose, onCreated }: Omit<Props, 'open'>) {
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
           Vazgeç
         </Button>
-        <Button type="submit" disabled={busy} aria-busy={busy || undefined}>
+        <Button
+          type="submit"
+          disabled={busy || listeningPending}
+          aria-busy={busy || listeningPending || undefined}
+        >
           <Icon name="Check" size={17} aria-hidden="true" />
           Görevi ata
         </Button>

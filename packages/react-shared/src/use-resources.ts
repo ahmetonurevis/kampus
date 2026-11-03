@@ -74,9 +74,9 @@ export function useResourceDetail(resourceId: string) {
 }
 
 /**
- * Tek sürüm (`GET /resources/:id/versions/:versionId`): bağlı kaydın bağlanan sürümünü okur (ör.
- * dinleme etkinliği formunda kaydın dökümü var mı; IST-045, DOM-BEC-005). Kimliklerden biri boşken
- * istek atılmaz.
+ * Kaynağın tek sürümü (`GET /resources/:id/versions/:versionId`); kimliklerden biri boşken istek
+ * atılmaz. İçerik formu bağlanan dinleme kaydının sürümünü (döküm, beceri, durum), atama formu
+ * atanacak yayındaki sürümün içeriğini (ör. dinleme kaydı bağı) okur (IST-045, DOM-BEC-005).
  */
 export function useResourceVersion(resourceId: string, versionId: string) {
   return useApiQuery({

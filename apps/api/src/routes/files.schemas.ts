@@ -79,7 +79,7 @@ export const fileUrlQuerySchema = z.object({
     .uuid()
     .optional()
     .describe(
-      'Dinleme hakkının düşeceği deneme (öğrenci; Sabah kararı 54). Kendi denemesi değilse 404, ataması bu kaydı bağlamıyorsa 422 `listening_attempt_mismatch`, deneme sürmüyorsa 422 `listening_attempt_closed`. Verilmezse süren denemelerden seçilir; personel ve velide yok sayılır.',
+      'Dinleme hakkının düşeceği deneme (öğrenci; Sabah kararı 54). Kendi denemesi değilse 404, ataması bu kaydı bağlamıyorsa 422 `listening_attempt_mismatch`, deneme sürmüyorsa 422 `listening_attempt_closed`. Verilmezse hak sayılmaz; sınırlı atamada süren deneme varsa 422 `listening_attempt_running` (Sabah kararı 56). Personel ve velide yok sayılır.',
     ),
 })
 

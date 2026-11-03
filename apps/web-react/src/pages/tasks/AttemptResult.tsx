@@ -1,6 +1,7 @@
 import type { TaskAttemptDetail } from '@kampus/react-shared/use-task-attempts.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { ListeningRecording } from './ListeningRecording.tsx'
 import {
   attemptContentNote,
   attemptResultHeading,
@@ -30,6 +31,9 @@ type Props = {
  * lisans) soru metni ve anahtar gelmez: soru listesi yerine sakin not çizilir, puan kalır.
  * Kaldırılmış içerikte (`contentRemoved`; DOM-KYN-051) not "Bu içerik kaldırıldı" der; cevap
  * anahtarı silindiği için puan hesaplanamıyorsa (`result: null`) başlık ve not çizilir.
+ * Dinleme etkinliğinin kaydı (IST-045, DOM-BEC-005) kursiyer ve velide burada, deneme kimliği
+ * gönderilmeden çalınır (hak sayılmaz); personel kaydı deneme penceresinin başında görür
+ * (`AttemptReviewModal`). Kaldırılmış içerikte kayıt gelmez.
  */
 export function AttemptResult({ attempt, title, audience = 'learner' }: Props) {
   const result = attempt.result
@@ -79,6 +83,16 @@ export function AttemptResult({ attempt, title, audience = 'learner' }: Props) {
           <StatusBadge text="Süre dolduğu için teslim edildi" tone="amber" />
         ) : null}
       </div>
+      {attempt.listeningRecording && audience !== 'staff' && !attempt.contentRemoved ? (
+        <ListeningRecording
+          recording={attempt.listeningRecording}
+          listening={attempt.listening}
+          mode="review"
+          audience={audience}
+          headingLevel={4}
+          className="p-4 max-[650px]:p-4"
+        />
+      ) : null}
       <SubskillBreakdown subskills={result.subskills} />
       {note ? (
         // Kapalı içerikte soru metni ve anahtar gelmez (DOM-KYN-025, 051); puan ve döküm kalır.

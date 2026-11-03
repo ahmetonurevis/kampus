@@ -23,13 +23,29 @@ export function getFileRequest(client: KampusClient, fileId: string, signal?: Ab
   })
 }
 
-export function fileUrlRequest(client: KampusClient, fileId: string) {
-  return client.GET('/api/v1/files/{fileId}/url', { params: { path: { fileId } } })
+export interface FileUrlOptions {
+  /**
+   * Dinleme hakkının düşeceği süren deneme (IST-045, DOM-BEC-005): yalnız öğrenci kendi süren
+   * denemesinde gönderir. Sonuç ekranında, personelde ve velide verilmez; sunucu personel ve
+   * velide yok sayar.
+   */
+  attemptId?: string | undefined
+}
+
+export function fileUrlRequest(client: KampusClient, fileId: string, options: FileUrlOptions = {}) {
+  const { attemptId } = options
+  return client.GET('/api/v1/files/{fileId}/url', {
+    params: { path: { fileId }, ...(attemptId ? { query: { attemptId } } : {}) },
+  })
 }
 
 /** İmzalı bağlantıyı ister; hata `ApiError` olarak fırlar. */
-export async function fetchFileUrl(client: KampusClient, fileId: string): Promise<FileUrl> {
-  const body = await runRequest(() => fileUrlRequest(client, fileId))
+export async function fetchFileUrl(
+  client: KampusClient,
+  fileId: string,
+  options: FileUrlOptions = {},
+): Promise<FileUrl> {
+  const body = await runRequest(() => fileUrlRequest(client, fileId, options))
   return body.data
 }
 

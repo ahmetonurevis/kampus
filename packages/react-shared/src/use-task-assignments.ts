@@ -81,6 +81,9 @@ export const TASK_ASSIGNMENT_MESSAGES = {
     'Bu içeriğin yalnız güncel yayındaki sürümü atanabilir; sayfayı yenileyin.',
   resource_license_expired: TASK_ASSIGNMENT_LICENSE_EXPIRED_MESSAGE,
   rubric_version_not_assignable: 'Yalnız yayındaki rubrik sürümü atanabilir.',
+  // IST-045, DOM-BEC-005: kaydı olmayan dinleme görevinde hak sınırlanmaz.
+  listening_plays_unavailable:
+    'Dinleme hakkı yalnız dinleme kaydına bağlı içerikte sınırlanabilir; "Sınırsız" seçin.',
 } as const satisfies CommandMessages
 
 /**

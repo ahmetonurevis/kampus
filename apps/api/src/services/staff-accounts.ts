@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
+import { and, asc, count, desc, eq, gt, inArray, isNotNull, isNull } from 'drizzle-orm'
 
 import {
   assertInvitationPending,
@@ -6,6 +6,7 @@ import {
   planStaffActivation,
   planStaffRoleChange,
   STAFF_ACCOUNT_MESSAGES,
+  STAFF_ROLES,
   staffRoleSchema,
   type StaffInvitationInput,
   type StaffMember,
@@ -99,6 +100,20 @@ function toInvitationView(row: InvitationRow): StaffInvitationView | null {
   }
 }
 
+/**
+ * Yeni davetleri engelleyen davet koşulu: kurumun bekleyen ve süresi dolmamış davetleri. Süresi
+ * dolmuş davet satırı `pending` kalsa da e-postayı, öğretmen kaydını ya da veli kaydını tutmaz
+ * (`invitation_exists` ve benzerleri); liste ve iptalde görünmeye devam eder, iptal ederek
+ * temizlenir.
+ */
+export function holdingInvitation(institutionId: string, now: Date) {
+  return and(
+    eq(invitations.institutionId, institutionId),
+    eq(invitations.status, 'pending'),
+    gt(invitations.expiresAt, now),
+  )
+}
+
 async function findInvitation(db: Database, institutionId: string, invitationId: string) {
   const [row] = await invitationQuery(db)
     .where(and(eq(invitations.institutionId, institutionId), eq(invitations.id, invitationId)))
@@ -112,7 +127,12 @@ export async function listStaffInvitations(
   institutionId: string,
   query: { page: number; pageSize: number },
 ) {
-  const where = and(eq(invitations.institutionId, institutionId), eq(invitations.status, 'pending'))
+  // Veli davetleri (DOM-YTK-071) bu listede değildir; sayım da yalnız personel davetlerini sayar.
+  const where = and(
+    eq(invitations.institutionId, institutionId),
+    eq(invitations.status, 'pending'),
+    inArray(invitations.role, [...STAFF_ROLES]),
+  )
   const [rows, [totals]] = await Promise.all([
     invitationQuery(db)
       .where(where)
@@ -131,13 +151,15 @@ export async function listStaffInvitations(
 }
 
 /**
- * Kurumun bekleyen davetlerinin tuttuğu öğretmen kayıtları (`invitations.teacher_id`). Yalnız bu
+ * Kurumun bekleyen ve süresi dolmamış davetlerinin tuttuğu öğretmen kayıtları
+ * (`invitations.teacher_id`). Yalnız bu
  * kurumun davetleri okunur: başka kurumun daveti bu kurumun kaydını tutamaz ve sonucu etkilemez.
  * `teacherIds` verilirse yalnız onlar sorulur.
  */
 export async function pendingTeacherInvitations(
   db: Database,
   institutionId: string,
+  now: Date,
   teacherIds?: readonly string[],
 ): Promise<Set<string>> {
   const rows = await db
@@ -145,8 +167,7 @@ export async function pendingTeacherInvitations(
     .from(invitations)
     .where(
       and(
-        eq(invitations.institutionId, institutionId),
-        eq(invitations.status, 'pending'),
+        holdingInvitation(institutionId, now),
         teacherIds === undefined
           ? isNotNull(invitations.teacherId)
           : inArray(invitations.teacherId, [...teacherIds]),
@@ -343,11 +364,7 @@ export async function inviteStaffMember(
           .select({ id: invitations.id })
           .from(invitations)
           .where(
-            and(
-              eq(invitations.institutionId, ctx.institutionId),
-              eq(invitations.email, input.email),
-              eq(invitations.status, 'pending'),
-            ),
+            and(holdingInvitation(ctx.institutionId, ctx.now), eq(invitations.email, input.email)),
           )
           .limit(1)
         let teacherLinked = false
@@ -369,7 +386,8 @@ export async function inviteStaffMember(
             .limit(1)
           teacherLinked = link !== undefined
           teacherInvitationPending =
-            (await pendingTeacherInvitations(tx, ctx.institutionId, [input.teacherId])).size > 0
+            (await pendingTeacherInvitations(tx, ctx.institutionId, ctx.now, [input.teacherId]))
+              .size > 0
         }
         return {
           run: () =>
@@ -429,7 +447,8 @@ export function cancelStaffInvitation(
       load: async (tx) => {
         await loadActorAdmin(tx, ctx)
         const row = await findInvitation(tx, ctx.institutionId, invitationId)
-        if (row === null) throw new NotFoundError()
+        // Veli davetinin iptali bu uçla yapılmaz: üyelik silinince velayet bağı da silinirdi.
+        if (row === null || !staffRoleSchema.safeParse(row.role).success) throw new NotFoundError()
         const [member] =
           row.membershipId === null
             ? []

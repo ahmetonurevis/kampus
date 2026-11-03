@@ -3,10 +3,29 @@ import { AppState, Pressable, View, useWindowDimensions } from 'react-native'
 import { toApiError } from '@kampus/api-client/errors.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
+import {
+  attendanceMarks,
+  bulkMark,
+  lateMinutesIssueErrors,
+  lateMinutesPayload,
+  markCounts,
+  minuteChangedIds,
+  savedLateMinutes,
+} from '@kampus/react-shared/attendance-model.ts'
 import { useRecordAttendance } from '@kampus/react-shared/use-academic-commands.ts'
 import { useCollectionAll } from '@kampus/react-shared/use-collection.ts'
 import { useLessonsInRange } from '@kampus/react-shared/use-lessons.ts'
-import { Badge, Button, Empty, Icon, Sheet, T, toneSoft, useColors } from '../../ui/components.tsx'
+import {
+  Badge,
+  Button,
+  Empty,
+  Field,
+  Icon,
+  Sheet,
+  T,
+  toneSoft,
+  useColors,
+} from '../../ui/components.tsx'
 import type { ApiScreenProps } from '../../route-types.ts'
 import { ListRow, Notice, Screen, Section, Tabs } from '../../ui/SchoolLayout.tsx'
 import {
@@ -17,15 +36,12 @@ import {
 import {
   ATTENDANCE_CHOICES,
   attendanceFailureText,
-  attendanceMarks,
   attendancePayload,
   CHANGED_ELSEWHERE_NOTICE,
   changedElsewhere,
   attendanceTargets,
   isStaleDay,
   pinnedClassVersion,
-  markAll,
-  markCounts,
   markStudent,
   teachingClassIds,
   unsavedCount,
@@ -161,6 +177,9 @@ function AttendanceSheet({
   // Yalnız kullanıcının dokunduğu işaretler; kayıtlı ya da varsayılan durum altta türetilir.
   const [edits, setEdits] = useState<Record<string, AttendanceMark>>({})
   const [failure, setFailure] = useState<string | null>(null)
+  // Geç kalma dakikası alanları (ham metin) ve alan hataları; kayıtlı dakika altta türetilir.
+  const [minuteEdits, setMinuteEdits] = useState<Record<string, string>>({})
+  const [minuteErrors, setMinuteErrors] = useState<Record<string, string>>({})
   // İlk düzenlemedeki sunucu durumu; sonradan değişirse başka yerde değişmiş demektir.
   const [baseline, setBaseline] = useState<Record<string, AttendanceMark> | null>(null)
 
@@ -172,8 +191,16 @@ function AttendanceSheet({
   const savedRecords = useMemo(() => (saved.data ?? []).map((row) => row.record), [saved.data])
   const base = useMemo(() => attendanceMarks(ids, savedRecords), [ids, savedRecords])
   const marks = useMemo(() => attendanceMarks(ids, savedRecords, edits), [ids, savedRecords, edits])
+  const minuteText = useMemo(
+    () => ({ ...savedLateMinutes(savedRecords), ...minuteEdits }),
+    [savedRecords, minuteEdits],
+  )
   const counts = markCounts(marks)
-  const changed = unsavedCount(base, marks)
+  const changed = unsavedCount(
+    base,
+    marks,
+    minuteChangedIds(marks, savedLateMinutes(savedRecords), minuteText),
+  )
   const elsewhere = changedElsewhere(baseline, base, edits)
   const alreadyTaken = savedRecords.length > 0
   const busy = record.isPending
@@ -181,8 +208,16 @@ function AttendanceSheet({
   const loading = !students.data || !saved.data
   const error = students.error ?? saved.error
 
+  // Durum değişince o öğrencinin eski dakika hatası kalkar; gönderimde yeniden hesaplanır.
+  const clearMinuteErrors = (studentIds: readonly string[]) =>
+    setMinuteErrors((current) => {
+      const next = { ...current }
+      for (const id of studentIds) delete next[id]
+      return next
+    })
   const change = (next: Record<string, AttendanceMark>) => {
     setFailure(null)
+    clearMinuteErrors(Object.keys(next).filter((id) => next[id] !== edits[id]))
     if (baseline === null && Object.keys(next).length > 0) setBaseline(base)
     setEdits(next)
   }
@@ -193,21 +228,42 @@ function AttendanceSheet({
       return
     }
     const updating = alreadyTaken
+    // Geçersiz dakika istek atılmadan o öğrencinin alanında gösterilir (kural core şemasındandır).
+    const late = lateMinutesPayload(marks, minuteText)
+    setMinuteErrors(late.errors)
+    if (Object.keys(late.errors).length > 0) {
+      setFailure('Geç kalma süresini kontrol edin.')
+      return
+    }
     const outcome = await record.submit(
-      attendancePayload({ classId: target.classId, today, marks, classVersion }),
+      attendancePayload({
+        classId: target.classId,
+        today,
+        marks,
+        classVersion,
+        lateMinutes: late.minutes,
+      }),
       // Hata pencerede gösterilir; aynı mesaj toast olarak da çıkmaz.
       { silent: () => true },
     )
     if (outcome.status === 'busy') return
     if (outcome.status === 'failed') {
       // İşaretler yerinde kalır; kayıtlı durum sunucudan tazelenir (409) ya da hiç değişmemiştir.
-      setFailure(attendanceFailureText(outcome.error))
+      // Üst sınır (ders süresi) sunucuda denetlenir; iletisi o öğrencinin alanına yazılır.
+      const fieldErrors = lateMinutesIssueErrors(outcome.error.issues)
+      setMinuteErrors(fieldErrors)
+      setFailure(
+        Object.keys(fieldErrors).length > 0
+          ? 'Geç kalma süresini kontrol edin.'
+          : attendanceFailureText(outcome.error),
+      )
       // Çakışmada sunucunun son hâli ekrandadır ve hata gösterildi: sürüm yeniden sabitlenir,
       // başka yerde değişti uyarısı bir sonraki düzenlemedeki durumdan sayılır.
       setBaseline(null)
       onRepin()
       return
     }
+    setMinuteEdits({})
     notify(updating ? 'Yoklama güncellendi.' : 'Yoklama kaydedildi.')
     onClose()
   }
@@ -278,7 +334,7 @@ function AttendanceSheet({
           <Button
             icon="CheckCheck"
             disabled={busy}
-            onPress={() => change(markAll(edits, ids, 'present'))}
+            onPress={() => change(bulkMark(edits, ids, 'present'))}
           >
             Tümünü geldi işaretle
           </Button>
@@ -304,6 +360,30 @@ function AttendanceSheet({
                   disabled={busy}
                   onChange={(status) => change(markStudent(edits, student.id, status))}
                 />
+                {marks[student.id] === 'late' && (
+                  <View style={{ gap: 6 }}>
+                    <T bold size={14}>
+                      Geç kalma süresi (dakika, isteğe bağlı)
+                    </T>
+                    <Field
+                      hideLabel
+                      compact
+                      label={`${student.name}: geç kalma süresi, dakika`}
+                      value={minuteText[student.id] ?? ''}
+                      keyboard="number-pad"
+                      maxLength={3}
+                      placeholder="Örn. 10"
+                      editable={!busy}
+                      error={minuteErrors[student.id] ?? ''}
+                      hint="Boş bırakırsanız dakikasız geç geldi olarak kaydedilir."
+                      onChange={(text) => {
+                        setFailure(null)
+                        clearMinuteErrors([student.id])
+                        setMinuteEdits((current) => ({ ...current, [student.id]: text }))
+                      }}
+                    />
+                  </View>
+                )}
               </View>
             ))}
           </View>

@@ -1,6 +1,13 @@
 import { useId, useMemo, useState } from 'react'
 import { LATE_MINUTES_MIN } from '@kampus/school-core/lib/domain.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
+import {
+  attendanceMarks,
+  bulkMark,
+  lateMinutesPayload,
+  markCounts,
+  savedLateMinutes,
+} from '@kampus/react-shared/attendance-model.ts'
 import { useRecordAttendance } from '@kampus/react-shared/use-academic-commands.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -20,13 +27,6 @@ import {
   type AcademicLookups,
   type AttendanceStatus,
 } from './academic-rows.ts'
-import {
-  attendanceMarks,
-  bulkMark,
-  lateMinutesPayload,
-  markCounts,
-  savedLateMinutes,
-} from './academic-write.ts'
 import { useAcademicLookups } from './use-academic-lookups.ts'
 import { useTeacherScope } from './use-teacher-scope.ts'
 

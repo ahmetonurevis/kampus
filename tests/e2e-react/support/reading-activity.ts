@@ -66,7 +66,7 @@ const TAGS = {
   gradeLevels: [7],
   primarySkill: 'reading',
   cefrLevel: 'A2',
-  outcomes: [{ outcomeId: 'OKU.7.1', outcomeSource: 'institution' }],
+  outcomes: [{ outcomeId: 'ENG.7.1.1', outcomeSource: 'platform' }],
 }
 
 export const idempotent = () => ({ 'idempotency-key': randomUUID() })

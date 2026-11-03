@@ -25,7 +25,7 @@ export const LISTENING_TAGS = {
   gradeLevels: [9],
   primarySkill: 'listening' as const,
   cefrLevel: 'A2' as const,
-  outcomes: [{ outcomeId: 'E9.1.L1', outcomeSource: 'platform' as const }],
+  outcomes: [{ outcomeId: 'ENG.9.4.1', outcomeSource: 'platform' as const }],
 }
 
 export const listeningAudio = (

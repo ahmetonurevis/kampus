@@ -90,7 +90,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Optik analiz, deneme eksikleri ve kaynak önerisi aynı kazanım kimliğiyle eşleşmezse "eksik kazanıma uygun kaynak" önerilemez.
 - **Kaynak:** MEB öğretim programları; 2024 sonrası programlarda "öğrenme çıktısı" kodlaması ve geçiş takvimi **doğrulanmalı**.
 - **Kurum türü:** `school`
-- **Kodda:** çelişiyor — konular serbest metin dizisidir (`packages/school-core/src/data/curriculum.js:9`); soru bankasında konu adı metin olarak tutulur (`packages/school-core/src/data/question-bank.js:3`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`resourceTagsSchema`: `outcomeId` + `outcomeSource`); katalog ve program sürümü yok.
+- **Kodda:** kısmen — katalog ve seçim kuralı `packages/school-core/src/content/outcomes.ts` (`outcomeSelectionIssues`: yeni seçilen kod katalogda ve etkin olmalı, sürümde zaten bulunan arşivli kod korunur); tablolar `platform_learning_outcomes` (program sürümüyle) ve `learning_outcomes` (kurum kodları, migration 0049); uç `GET/POST /api/v1/learning-outcomes`, `POST …/:code/archive` (`apps/api/src/routes/learning-outcomes.ts`); kaynak yazımı `apps/api/src/services/resource-commands.ts` (`assertOutcomesSelectable`); web içerik/soru formu katalogdan seçer (`apps/web-react/src/pages/content/OutcomePicker.tsx`). Eksik: platform kataloğu örnek veridir (müfredat konularından türetilir), resmî MEB kodları ve kurumun etkin program sürümü, program değişince "program güncellemesi bekliyor" işareti yok (OG-132); eski demo konuları serbest metindir (`packages/school-core/src/data/curriculum.ts`).
 
 ### DOM-KYN-012 · CEFR seviyesi ve beceri sözlüğü
 

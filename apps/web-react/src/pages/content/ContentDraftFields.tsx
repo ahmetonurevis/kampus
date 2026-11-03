@@ -1,10 +1,12 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Controller, get, useFieldArray, useWatch, type UseFormReturn } from 'react-hook-form'
 import type { AuthorableType } from '@kampus/react-shared/resource-model.ts'
+import { useLearningOutcomeList } from '@kampus/react-shared/use-learning-outcomes.ts'
 import { GLOSSARY_MAX } from '@kampus/school-core/content/resource.ts'
 import { FileUploadField, type FileUploadItem } from '@/components/FileUploadField.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
@@ -21,13 +23,21 @@ import {
   LICENSE_OPTIONS,
   MATERIAL_FILE_RULE,
   OPEN_LICENSE_OPTIONS,
-  OUTCOME_SOURCE_OPTIONS,
   requiresAttribution,
   skillOptionsFor,
   SUBSKILL_OPTIONS,
   type DraftFormOutput,
   type DraftFormValues,
 } from './content-pool-model.ts'
+import {
+  appendOutcomes,
+  OUTCOME_COPY,
+  outcomeCapacity,
+  outcomePickerDefaults,
+  selectedOutcomesQuery,
+  selectedOutcomeViews,
+} from './outcome-picker-model.ts'
+import { OutcomePicker } from './OutcomePicker.tsx'
 import { QuestionFields } from './QuestionFields.tsx'
 
 export type DraftForm = UseFormReturn<DraftFormValues, unknown, DraftFormOutput>
@@ -283,7 +293,6 @@ function MaterialFileFields({
 /** Etiketler: ders, sınıf düzeyi, CEFR, beceri, kazanım kodları (okul kurumunda ders/düzey/kazanım). */
 export function TagFields({ form, type, languageSchool, busy }: FieldsProps) {
   const subjects = useCoreAll('subjects', {}, { enabled: !languageSchool })
-  const outcomes = useFieldArray({ control: form.control, name: 'tags.outcomes' })
   return (
     <div className="grid gap-5 sm:grid-cols-2">
       {!languageSchool ? (
@@ -433,81 +442,162 @@ export function TagFields({ form, type, languageSchool, busy }: FieldsProps) {
         />
       ) : null}
       {!languageSchool ? (
-        // TODO(katalog): kazanım kataloğu gelince kod yerine katalogdan seçim yapılır.
-        <fieldset className="grid gap-2 sm:col-span-2">
-          <legend className="mb-1 text-sm font-medium">Kazanım kodları</legend>
-          <p className="text-xs text-muted-foreground">
-            Okul içeriğinin yayımı için en az bir kazanım gerekir. Kodu elle yazın.
-          </p>
-          {outcomes.fields.map((field, index) => (
-            <div key={field.id} className="flex flex-wrap items-start gap-2">
-              <div className="min-w-[160px] flex-1">
-                <FormField
-                  id={`icerik-kazanim-${index}`}
-                  label={`${index + 1}. kazanım kodu`}
-                  error={fieldError(form, `tags.outcomes.${index}.outcomeId`)}
-                >
-                  {(control) => (
-                    <Input
-                      {...control}
-                      {...form.register(`tags.outcomes.${index}.outcomeId`)}
-                      maxLength={200}
-                      disabled={busy}
-                    />
-                  )}
-                </FormField>
-              </div>
-              <div className="min-w-[160px]">
-                <FormField id={`icerik-kazanim-kaynak-${index}`} label="Kaynak">
-                  {(control) => (
-                    <NativeSelect
-                      {...control}
-                      {...form.register(`tags.outcomes.${index}.outcomeSource`)}
-                      className="w-full"
-                      disabled={busy}
-                    >
-                      {OUTCOME_SOURCE_OPTIONS.map((option) => (
-                        <NativeSelectOption key={option.value} value={option.value}>
-                          {option.label}
-                        </NativeSelectOption>
-                      ))}
-                    </NativeSelect>
-                  )}
-                </FormField>
-              </div>
-              <Button
-                type="button"
-                variant="outline"
-                size="icon"
-                className="mt-7"
-                aria-label={`${index + 1}. kazanımı sil`}
-                onClick={() => outcomes.remove(index)}
-                disabled={busy}
-              >
-                <Icon name="Trash2" size={16} aria-hidden="true" />
-              </Button>
-            </div>
-          ))}
-          {fieldError(form, 'tags.outcomes') ? (
-            <p role="alert" className="text-sm text-destructive">
-              {fieldError(form, 'tags.outcomes')?.message}
-            </p>
-          ) : null}
-          <div>
-            <Button
-              type="button"
-              variant="secondary"
-              size="sm"
-              onClick={() => outcomes.append({ outcomeId: '', outcomeSource: 'institution' })}
-              disabled={busy}
-            >
-              <Icon name="Plus" size={15} aria-hidden="true" />
-              Kazanım ekle
-            </Button>
-          </div>
-        </fieldset>
+        <OutcomeFields
+          form={form}
+          busy={busy}
+          subjectOptions={(subjects.data ?? []).map(({ record }) => ({
+            value: record.id,
+            label: record.name,
+          }))}
+        />
       ) : null}
     </div>
+  )
+}
+
+/**
+ * Kazanımlar (OG-067; DOM-KYN-011, IST-030): katalogdan seçilir, kod elle yazılmaz. Seçili
+ * kazanımın adı ve arşiv durumu `codes` sorgusuyla çözülür; arşivli kod içerikte etiketle kalır
+ * (sunucu korur) ama seçicide çıkmaz. Silmeden sonra odak sonraki satırın sil düğmesine, yoksa
+ * "Kazanım ekle"ye geçer.
+ */
+function OutcomeFields({
+  form,
+  busy,
+  subjectOptions,
+}: {
+  form: DraftForm
+  busy: boolean
+  subjectOptions: readonly { value: string; label: string }[]
+}) {
+  const outcomes = useFieldArray({ control: form.control, name: 'tags.outcomes' })
+  const selected = useWatch({ control: form.control, name: 'tags.outcomes' }) ?? []
+  const subjectId = useWatch({ control: form.control, name: 'tags.subjectId' })
+  const gradeLevels = useWatch({ control: form.control, name: 'tags.gradeLevels' })
+  const [open, setOpen] = useState(false)
+  const addButton = useRef<HTMLButtonElement>(null)
+  const removeButtons = useRef(new Map<number, HTMLButtonElement>())
+  const pendingFocus = useRef<number | null>(null)
+  const lookupQuery = selectedOutcomesQuery(selected)
+  const lookup = useLearningOutcomeList(lookupQuery ?? { page: 1, pageSize: 1 }, {
+    enabled: lookupQuery !== null,
+  })
+  const views = selectedOutcomeViews(selected, lookupQuery === null ? [] : lookup.data?.data)
+  const full = outcomeCapacity(selected) === 0
+
+  useEffect(() => {
+    const target = pendingFocus.current
+    if (target === null) return
+    pendingFocus.current = null
+    ;(removeButtons.current.get(target) ?? addButton.current)?.focus()
+  })
+
+  return (
+    <fieldset className="grid gap-2 sm:col-span-2" aria-describedby="icerik-kazanim-not">
+      <legend className="mb-1 text-sm font-medium">Kazanımlar</legend>
+      <p id="icerik-kazanim-not" className="text-xs text-muted-foreground">
+        Okul içeriğinin yayımı için en az bir kazanım gerekir. Kazanımı katalogdan seçin.
+      </p>
+      {outcomes.fields.length > 0 ? (
+        <ul aria-label="Seçili kazanımlar" className="grid gap-2">
+          {outcomes.fields.map((field, index) => {
+            const view = views[index]
+            const error = fieldError(form, `tags.outcomes.${index}.outcomeId`)
+            const errorId = `icerik-kazanim-${String(index)}-hata`
+            const noteId = `icerik-kazanim-${String(index)}-not`
+            const note =
+              view?.state === 'archived'
+                ? OUTCOME_COPY.archivedNote
+                : view?.state === 'missing'
+                  ? OUTCOME_COPY.missingNote
+                  : null
+            return (
+              <li
+                key={field.id}
+                className="flex items-start gap-3 rounded-card border bg-surface px-3 py-2.5"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="text-sm font-medium [overflow-wrap:anywhere]">
+                    {view?.code ?? field.outcomeId}
+                    {view?.name ? ` · ${view.name}` : ''}
+                  </p>
+                  <div className="mt-1 flex flex-wrap items-center gap-1.5">
+                    <StatusBadge text={view?.source ?? ''} tone="gray" />
+                    {view?.state === 'archived' ? (
+                      <StatusBadge text={OUTCOME_COPY.archived} tone="amber" />
+                    ) : null}
+                    {view?.state === 'missing' ? (
+                      <StatusBadge text={OUTCOME_COPY.missing} tone="red" />
+                    ) : null}
+                  </div>
+                  {note ? (
+                    <p id={noteId} className="mt-1 text-xs text-muted-foreground">
+                      {note}
+                    </p>
+                  ) : null}
+                  {error ? (
+                    <p id={errorId} role="alert" className="mt-1 text-sm text-destructive">
+                      {error.message}
+                    </p>
+                  ) : null}
+                </div>
+                <Button
+                  ref={(element) => {
+                    if (element) removeButtons.current.set(index, element)
+                    else removeButtons.current.delete(index)
+                  }}
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  aria-label={`${String(index + 1)}. kazanımı sil`}
+                  aria-describedby={
+                    [note ? noteId : null, error ? errorId : null].filter(Boolean).join(' ') ||
+                    undefined
+                  }
+                  onClick={() => {
+                    pendingFocus.current = index < outcomes.fields.length - 1 ? index : -1
+                    outcomes.remove(index)
+                  }}
+                  disabled={busy}
+                >
+                  <Icon name="Trash2" size={16} aria-hidden="true" />
+                </Button>
+              </li>
+            )
+          })}
+        </ul>
+      ) : null}
+      {fieldError(form, 'tags.outcomes') ? (
+        <p role="alert" className="text-sm text-destructive">
+          {fieldError(form, 'tags.outcomes')?.message}
+        </p>
+      ) : null}
+      <div className="flex flex-wrap items-center gap-2">
+        <Button
+          ref={addButton}
+          type="button"
+          variant="secondary"
+          size="sm"
+          onClick={() => setOpen(true)}
+          disabled={busy || full}
+        >
+          <Icon name="Plus" size={15} aria-hidden="true" />
+          Kazanım ekle
+        </Button>
+        {full ? <span className="text-xs text-muted-foreground">{OUTCOME_COPY.full}</span> : null}
+      </div>
+      <OutcomePicker
+        open={open}
+        onOpenChange={setOpen}
+        selected={selected}
+        defaults={outcomePickerDefaults({ subjectId, gradeLevels })}
+        subjectOptions={subjectOptions}
+        onPick={(picked) => {
+          const fresh = appendOutcomes(selected, picked)
+          if (fresh.length > 0) outcomes.append(fresh, { shouldFocus: false })
+        }}
+      />
+    </fieldset>
   )
 }
 

@@ -41,7 +41,7 @@ const TAGS = {
   gradeLevels: [9],
   primarySkill: 'reading' as const,
   cefrLevel: 'A2' as const,
-  outcomes: [{ outcomeId: 'E9.1.R1', outcomeSource: 'platform' as const }],
+  outcomes: [{ outcomeId: 'ENG.9.1.1', outcomeSource: 'platform' as const }],
 }
 
 const passage = (

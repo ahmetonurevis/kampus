@@ -151,6 +151,28 @@ describe('toplu personel aktarımı (IST-007, DOM-YTK-070)', () => {
     )
   })
 
+  test('IST-007: ayraç ilk satırdan seçilir; sekme (Excel "Unicode Metin") desteklenir, `;` önceliklidir', () => {
+    assert.deepEqual(delimitedRows('a\tb\r\n1, x\t"2\t3"'), [
+      ['a', 'b'],
+      ['1, x', '2\t3'],
+    ])
+    assert.deepEqual(delimitedRows('a;b\tc\n1;2'), [
+      ['a', 'b\tc'],
+      ['1', '2'],
+    ])
+    assert.deepEqual(delimitedRows('a,b\n1,2'), [
+      ['a', 'b'],
+      ['1', '2'],
+    ])
+    const rows = parseStaffImport(
+      csv('\uFEFFad\te-posta\trol', 'Şule Ağaç\tsule@okul.example\tÖğretmen'),
+    )
+    assert.deepEqual(
+      rows.map((row) => [row.line, row.name, row.email, row.role]),
+      [[2, 'Şule Ağaç', 'sule@okul.example', 'Öğretmen']],
+    )
+  })
+
   test('DOM-YTK-070: rol kod ya da etiketle; personel dışı rol geçersiz', () => {
     assert.equal(parseStaffRole('Öğretmen'), 'ogretmen')
     assert.equal(parseStaffRole('ÖN BÜRO'), 'onburo')

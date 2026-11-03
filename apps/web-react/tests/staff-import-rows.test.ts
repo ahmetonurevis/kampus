@@ -78,6 +78,32 @@ describe('toplu personel aktarımı modeli (IST-007)', () => {
     assert.equal(decodeImportFile(new Uint8Array([0xde, 0x75, 0x6c, 0x65, 0x20, 0xf0])), 'Şule ğ')
   })
 
+  test('IST-007: Excel "Unicode Metin" (UTF-16LE, FF FE BOM, sekme ayraçlı) bozulmadan okunur', () => {
+    const text = [
+      'ad\te-posta\trol\tbranş\tkampüs',
+      'Şule Ağaç\tsule@kampus.example\tÖğretmen\tMatematik\tKadıköy Kampüsü',
+      'Ali Can\tali@kampus.example\tÖn büro\t\t',
+    ].join('\r\n')
+    const bytes = new Uint8Array(2 + text.length * 2)
+    bytes.set([0xff, 0xfe])
+    for (let index = 0; index < text.length; index++) {
+      const code = text.charCodeAt(index)
+      bytes[2 + index * 2] = code & 0xff
+      bytes[3 + index * 2] = code >> 8
+    }
+    const decoded = decodeImportFile(bytes)
+    assert.equal(decoded, text)
+    const { rows, fileError } = importPreviewRows(decoded, [])
+    assert.equal(fileError, null)
+    assert.deepEqual(
+      rows.map((row) => [row.line, row.name, row.email]),
+      [
+        [2, 'Şule Ağaç', 'sule@kampus.example'],
+        [3, 'Ali Can', 'ali@kampus.example'],
+      ],
+    )
+  })
+
   test('IST-007: form boş içeriği reddeder; örnek dosya BOM ve başlıkla başlar', () => {
     assert.equal(importFormSchema.safeParse({ csv: '  ' }).success, false)
     assert.equal(importFormSchema.safeParse({ csv: 'ad;e-posta;rol' }).success, true)

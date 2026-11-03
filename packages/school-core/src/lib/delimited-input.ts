@@ -8,11 +8,12 @@ export interface DelimitedRecord {
 
 // CSV alanları tırnak içinde ayraç, çift tırnak ve satır sonu içerebilir. Boş satırlar atlanır;
 // satır numarası dosyadaki fiziksel satırdır (tırnak içindeki satır sonu da sayılır), böylece
-// hata iletisi kullanıcının düzenleyicide gördüğü satırı gösterir.
+// hata iletisi kullanıcının düzenleyicide gördüğü satırı gösterir. Ayraç ilk satırdan seçilir:
+// `;` (Excel Türkçe yerel CSV), yoksa sekme (Excel "Unicode Metin" .txt), yoksa `,`.
 export function delimitedRecords(raw: string): DelimitedRecord[] {
   const source = raw.replace(/^\uFEFF/, '')
   const [firstLine = ''] = source.split(/\r?\n/, 1)
-  const separator = firstLine.includes(';') ? ';' : ','
+  const separator = firstLine.includes(';') ? ';' : firstLine.includes('\t') ? '\t' : ','
   const records: DelimitedRecord[] = [],
     row: string[] = []
   let cell = '',

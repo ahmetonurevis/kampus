@@ -27,10 +27,14 @@ export function importFileProblem(file: { name: string; size: number }): string 
 }
 
 /**
- * Dosyayı çözer: önce katı UTF-8, olmazsa Windows-1254 (Excel'in Türkçe yerelde "CSV" kaydı).
- * UTF-8 dosya bozulmaz, eski kodlamadaki ş, ğ, ı doğru okunur.
+ * Dosyayı çözer: UTF-16 BOM'lu dosya (Excel'in "Unicode Metin" .txt kaydı, `FF FE` ile başlayan
+ * UTF-16LE ve sekme ayraçlı) UTF-16 olarak; değilse önce katı UTF-8, olmazsa Windows-1254 (Excel'in
+ * Türkçe yerelde "CSV" kaydı). UTF-8 dosya bozulmaz, eski kodlamadaki ş, ğ, ı doğru okunur. Sekme
+ * ayracını core ayrıştırıcı tanır (`delimitedRecords`).
  */
 export function decodeImportFile(bytes: Uint8Array): string {
+  if (bytes[0] === 0xff && bytes[1] === 0xfe) return new TextDecoder('utf-16le').decode(bytes)
+  if (bytes[0] === 0xfe && bytes[1] === 0xff) return new TextDecoder('utf-16be').decode(bytes)
   try {
     return new TextDecoder('utf-8', { fatal: true }).decode(bytes)
   } catch {

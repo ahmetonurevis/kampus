@@ -36,6 +36,7 @@ const context: StaffImportContext = {
     { id: 't-e', name: 'İkiz Ad', email: '', subjectId: 'math', branchId: 'b1' },
   ],
   linkedTeacherIds: new Set(['t-c']),
+  pendingTeacherIds: new Set(),
   campuses: [
     { id: 'b1', name: 'Kadıköy Kampüsü' },
     { id: 'b2', name: 'Beşiktaş Kampüsü' },
@@ -291,6 +292,24 @@ describe('toplu personel aktarımı (IST-007, DOM-YTK-070)', () => {
     )
     assert.deepEqual(mixed.issues, [])
     assert.equal(mixed.invitations[0]?.teacherId, 't-b')
+  })
+
+  test('DOM-YTK-070: bekleyen davetin tuttuğu öğretmen kaydı bağlanamaz', () => {
+    const result = planStaffImport(
+      parseStaffImport(
+        csv(
+          'ad;e-posta;rol;branş;kampüs',
+          'Selin Kaya;selin@okul.example;ogretmen;;',
+          'Mert Ak;mert@okul.example;ogretmen;science;b2',
+        ),
+      ),
+      { ...context, pendingTeacherIds: new Set(['t-b']) },
+    )
+    assert.deepEqual(
+      result.issues.map((issue) => `${issue.line}:${issue.field ?? '-'}:${issue.code}`),
+      ['3:-:teacher_invitation_pending'],
+    )
+    assert.deepEqual(result.invitations, [])
   })
 
   test('IST-007: gövde şeması dryRun varsayılanı false; boş ve fazladan alan reddedilir', () => {

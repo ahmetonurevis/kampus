@@ -133,6 +133,8 @@ export interface StaffImportContext {
   teachers: readonly StaffImportTeacher[]
   /** Başka hesaba bağlı öğretmen kayıtları. */
   linkedTeacherIds: ReadonlySet<string>
+  /** Kurumun bekleyen bir davetinin tuttuğu öğretmen kayıtları (`invitations.teacher_id`). */
+  pendingTeacherIds: ReadonlySet<string>
   /** Etkin kampüsler. */
   campuses: readonly { id: string; name: string }[]
   /** Branşlar (dersler). */
@@ -243,6 +245,12 @@ export function planStaffImport(
           firstLineByTeacher.set(teacher.id, row.line)
           if (context.linkedTeacherIds.has(teacher.id))
             add(null, 'teacher_already_linked', STAFF_ACCOUNT_MESSAGES.teacher_already_linked)
+          else if (context.pendingTeacherIds.has(teacher.id))
+            add(
+              null,
+              'teacher_invitation_pending',
+              STAFF_ACCOUNT_MESSAGES.teacher_invitation_pending,
+            )
         }
         teacherId = teacher.id
       } else if ((row.subject || row.campus) && !unknown)

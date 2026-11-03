@@ -382,11 +382,28 @@ describe('personel hesapları (DOM-YTK-070)', () => {
           ),
         )
       assert.equal(links.length, 0)
+      // Öğretmen bağı kaybolmaz: davette saklanır, kabulde bağlanır.
       const [stored] = await db
-        .select({ membershipId: invitations.membershipId, name: invitations.name })
+        .select({
+          membershipId: invitations.membershipId,
+          name: invitations.name,
+          teacherId: invitations.teacherId,
+        })
         .from(invitations)
         .where(eq(invitations.id, data.id))
-      assert.deepEqual(stored, { membershipId: null, name: 'Farklı Ad' })
+      assert.deepEqual(stored, { membershipId: null, name: 'Farklı Ad', teacherId: 't-a' })
+      assert.ok(!response.body.includes('t-a'), 'öğretmen kaydı yanıtta yok')
+
+      // Bekleyen davetin tuttuğu öğretmen kaydı başka davete bağlanamaz (yeni e-posta da olsa).
+      const held = await invite(cookie, {
+        email: email(),
+        name: 'İkinci Davet',
+        role: 'ogretmen',
+        teacherId: 't-a',
+      })
+      assert.equal(held.statusCode, 409, held.body)
+      assert.equal(held.json().code, 'teacher_invitation_pending')
+      assert.match(held.json().message, /bekleyen bir davete/)
 
       // Parola sıfırlama iletisi ve belirteci yok; yalnız yeni hesaba bağlantı gitti.
       assert.equal(mailer.lastTo(existing.email), undefined)
@@ -443,6 +460,35 @@ describe('personel hesapları (DOM-YTK-070)', () => {
         (await audits(institution.id, 'staff.invitation_cancel')).map((row) => row.changes),
         [{ fields: ['status'] }],
       )
+
+      // İptal edilen davet öğretmen kaydını bırakır.
+      const released = await invite(cookie, {
+        email: email(),
+        name: 'Serbest',
+        role: 'ogretmen',
+        teacherId: 't-a',
+      })
+      assert.equal(released.statusCode, 201, released.body)
+    })
+
+    test('DOM-YTK-070: başka kurumun bekleyen daveti bu kurumun öğretmen kaydını tutmaz', async () => {
+      const { cookie } = await kurum()
+      const other = await kurum()
+      // Öteki kurumda aynı kimlikli (t-a) kayda bekleyen davet var: bu kurumun kaydı serbesttir.
+      const foreign = await invite(other.cookie, {
+        email: email(),
+        name: 'Öteki',
+        role: 'ogretmen',
+        teacherId: 't-a',
+      })
+      assert.equal(foreign.statusCode, 201, foreign.body)
+      const own = await invite(cookie, {
+        email: email(),
+        name: 'Kendi',
+        role: 'ogretmen',
+        teacherId: 't-a',
+      })
+      assert.equal(own.statusCode, 201, own.body)
     })
   })
 

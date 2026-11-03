@@ -26,7 +26,11 @@ import {
   type CommandResponse,
   type IdempotencyRequest,
 } from './operation-runner.ts'
-import { loadActorAdmin, writeStaffInvitation } from './staff-accounts.ts'
+import {
+  loadActorAdmin,
+  pendingTeacherInvitations,
+  writeStaffInvitation,
+} from './staff-accounts.ts'
 
 /**
  * Toplu personel aktarımı (IST-007, DOM-YTK-070). CSV core `lib/staff-import.ts` ile ayrıştırılır
@@ -64,7 +68,7 @@ async function loadImportContext(
   emails: readonly string[],
 ): Promise<{ context: StaffImportContext; existingUsers: Map<string, string> }> {
   const list = [...emails]
-  const [members, pending, accounts, records, links] = await Promise.all([
+  const [members, pending, accounts, records, links, heldTeachers] = await Promise.all([
     list.length === 0
       ? []
       : tx
@@ -101,6 +105,7 @@ async function loadImportContext(
           isNull(membershipLinks.archivedAt),
         ),
       ),
+    pendingTeacherInvitations(tx, institutionId),
   ])
   const teachers: StaffImportTeacher[] = records
     .filter((record) => record.collection === 'teachers' && isActive(record))
@@ -120,6 +125,7 @@ async function loadImportContext(
       pendingEmails: new Set(pending.map((row) => row.email.toLowerCase())),
       teachers,
       linkedTeacherIds: new Set(links.map((row) => row.recordId)),
+      pendingTeacherIds: heldTeachers,
       campuses,
       subjects: subjects.map(({ id, name }) => ({ id, name })),
     },

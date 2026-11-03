@@ -353,6 +353,110 @@ describe('toplu personel aktarımı (IST-007, DOM-YTK-070)', () => {
     assert.equal(await invitationCount(institution.id), 4)
   })
 
+  test('DOM-YTK-070: başka kurumdaki hesabın öğretmen satırı kaydı davette tutar; tutulan kayıt ikinci kez bağlanamaz (karar 73)', async () => {
+    const { institution, cookie } = await kurum()
+    const other = await createInstitution(app)
+    const elsewhere = await createMember(app, other.id, 'ogretmen')
+    await insertMissingRecords(
+      db,
+      institution.id,
+      [
+        {
+          collection: 'teachers',
+          id: 't-z',
+          data: {
+            id: 't-z',
+            name: 'Zeki Ok',
+            email: elsewhere.email,
+            subjectId: 'math',
+            branchId: 'b-1',
+            isActive: true,
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const fresh = await upload(cookie, {
+      csv: csv(`Selin Kaya;selin.kaya@kampus.example;ogretmen;;`),
+    })
+    const response = await upload(cookie, { csv: csv(`Zeki Ok;${elsewhere.email};ogretmen;;`) })
+    // Yanıt yeni hesaptakiyle aynı biçimde; üyelik ve bağlantı açılmaz, kayıt davette durur.
+    assert.equal(response.statusCode, 201, response.body)
+    assert.equal(response.statusCode, fresh.statusCode)
+    assert.deepEqual(response.json(), fresh.json())
+    const [stored] = await db
+      .select({ membershipId: invitations.membershipId, teacherId: invitations.teacherId })
+      .from(invitations)
+      .where(
+        and(eq(invitations.institutionId, institution.id), eq(invitations.email, elsewhere.email)),
+      )
+    assert.deepEqual(stored, { membershipId: null, teacherId: 't-z' })
+    const links = await db
+      .select()
+      .from(membershipLinks)
+      .where(
+        and(eq(membershipLinks.institutionId, institution.id), eq(membershipLinks.recordId, 't-z')),
+      )
+    assert.equal(links.length, 0)
+
+    // Bekleyen davetin tuttuğu kayıt tek davetle de bağlanamaz.
+    const invite = (payload: object) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/institution-members/invitations',
+        headers: {
+          origin: TEST_ORIGIN,
+          'content-type': 'application/json',
+          cookie,
+          'idempotency-key': randomUUID(),
+        },
+        payload,
+      })
+    const single = await invite({
+      email: `z-${tag()}@kampus.example`,
+      name: 'Zeki Ok',
+      role: 'ogretmen',
+      teacherId: 't-z',
+    })
+    assert.equal(single.statusCode, 409, single.body)
+    assert.equal(single.json().code, 'teacher_invitation_pending')
+
+    // Tek davetin (başka kurumdaki hesaba) tuttuğu e-postasız kayıt aktarımda satır hatasıdır.
+    await insertMissingRecords(
+      db,
+      institution.id,
+      [
+        {
+          collection: 'teachers',
+          id: 't-y',
+          data: { id: 't-y', name: 'Yeliz Ün', subjectId: 'math', branchId: 'b-1', isActive: true },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const elsewhereTwo = await createMember(app, other.id, 'onburo')
+    const held = await invite({
+      email: elsewhereTwo.email,
+      name: 'Yeliz Ün',
+      role: 'ogretmen',
+      teacherId: 't-y',
+    })
+    assert.equal(held.statusCode, 201, held.body)
+    const preview = await upload(cookie, {
+      csv: csv(`Yeliz Ün;yeliz-${tag()}@kampus.example;ogretmen;Matematik;Kadıköy Kampüsü`),
+      dryRun: true,
+    })
+    assert.equal(preview.statusCode, 200, preview.body)
+    assert.deepEqual(preview.json().data.issues, [
+      {
+        line: 2,
+        field: null,
+        code: 'teacher_invitation_pending',
+        message: 'Bu öğretmen kaydı bekleyen bir davete bağlı. Önce o daveti iptal edin.',
+      },
+    ])
+  })
+
   test('IST-007: kurum kapsamı sunucuda; başka kurumun üyesi ve öğretmen kaydı bu kurumu etkilemez', async () => {
     const { institution, cookie } = await kurum()
     const other = await kurum()

@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 
 import {
   assertInvitationPending,
@@ -129,6 +129,31 @@ export async function listStaffInvitations(
   }
 }
 
+/**
+ * Kurumun bekleyen davetlerinin tuttuğu öğretmen kayıtları (`invitations.teacher_id`). Yalnız bu
+ * kurumun davetleri okunur: başka kurumun daveti bu kurumun kaydını tutamaz ve sonucu etkilemez.
+ * `teacherIds` verilirse yalnız onlar sorulur.
+ */
+export async function pendingTeacherInvitations(
+  db: Database,
+  institutionId: string,
+  teacherIds?: readonly string[],
+): Promise<Set<string>> {
+  const rows = await db
+    .select({ teacherId: invitations.teacherId })
+    .from(invitations)
+    .where(
+      and(
+        eq(invitations.institutionId, institutionId),
+        eq(invitations.status, 'pending'),
+        teacherIds === undefined
+          ? isNotNull(invitations.teacherId)
+          : inArray(invitations.teacherId, [...teacherIds]),
+      ),
+    )
+  return new Set(rows.flatMap((row) => (row.teacherId === null ? [] : [row.teacherId])))
+}
+
 async function findUserByEmail(db: Database, email: string) {
   const [row] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1)
   return row ?? null
@@ -212,6 +237,8 @@ export type Inviter = NonNullable<Awaited<ReturnType<BoundAuth['internalAdapter'
 /**
  * Tek davetin yazımı (tek davet ve toplu aktarım ortak): e-postanın hesabı yoksa kullanıcı
  * (parolasız), üyelik ve öğretmen bağlantısı açılır; varsa (karar 73) yalnız bekleyen davet yazılır.
+ * Öğretmen kaydı iki durumda da davette (`invitations.teacher_id`) saklanır: mevcut hesabın
+ * davetinde bağ kaybolmaz, kabulde açılır; bekleyen davetin tuttuğu kayıt başka davete bağlanamaz.
  * Denetim alanları iki durumda aynıdır: denetim listesi de hesabın varlığını belli etmez.
  */
 export async function writeStaffInvitation(
@@ -250,6 +277,7 @@ export async function writeStaffInvitation(
       teamIds: [],
       name: input.name,
       membershipId,
+      teacherId: input.teacherId ?? null,
     },
     user: inviter,
   })
@@ -271,15 +299,18 @@ export interface StaffInvitationOutcome {
 /**
  * Personel daveti (DOM-YTK-070). Kurumda kayıtlı e-posta 409 `member_exists`, bekleyen davet 409
  * `invitation_exists`; öğretmen kaydı kurumda yoksa 404, başka hesaba bağlıysa 409
- * `teacher_already_linked`. Başarı 201; parola bağlantısı işlemden sonra yalnız yeni hesaba gider.
+ * `teacher_already_linked`, kurumun bekleyen başka bir davetinde tutuluyorsa 409
+ * `teacher_invitation_pending`. Başarı 201; parola bağlantısı işlemden sonra yalnız yeni hesaba gider.
  *
- * E-posta başka kurumda hesaplıysa (karar 73) üyelik açılmaz, öğretmen kaydı bağlanmaz, parola
- * bağlantısı gitmez; yalnız bekleyen davet (girilen adla) yazılır. Yanıtın durum kodu, alanları ve
+ * E-posta başka kurumda hesaplıysa (karar 73) üyelik açılmaz, parola bağlantısı gitmez; yalnız
+ * bekleyen davet (girilen adla ve öğretmen kaydıyla) yazılır. Yanıtın durum kodu, alanları ve
  * denetim alanları yeni hesaptakiyle aynıdır: yönetici e-postanın başka kurumda hesabı olduğunu
  * öğrenemez. Kişinin bu daveti oturumla kabul ettiği akış henüz yok.
  */
-// TODO(staff-invite-accept): Mevcut hesabın daveti kendi oturumuyla kabul ettiği akış (üyeliği ve
-// öğretmen bağlantısını o an açar); o zamana kadar davet bekler ya da yönetici iptal eder.
+// TODO(staff-invite-accept): Mevcut hesabın daveti kendi oturumuyla kabul ettiği akış (üyeliği o an
+// açar). Kabulde davetin `teacherId`'si (`invitations.teacher_id`) aynı işlemde
+// `membership_links`'e `teacher` bağlantısı olarak yazılır; kayıt arada arşivlendiyse ya da başka
+// hesaba bağlandıysa bağlantı açılmaz. O zamana kadar davet bekler ya da yönetici iptal eder.
 export async function inviteStaffMember(
   ctx: ServiceContext,
   auth: Auth,
@@ -315,6 +346,7 @@ export async function inviteStaffMember(
           )
           .limit(1)
         let teacherLinked = false
+        let teacherInvitationPending = false
         if (input.teacherId !== undefined) {
           if ((await findRecord(tx, ctx.institutionId, 'teachers', input.teacherId)) === null)
             throw new NotFoundError()
@@ -331,6 +363,8 @@ export async function inviteStaffMember(
             )
             .limit(1)
           teacherLinked = link !== undefined
+          teacherInvitationPending =
+            (await pendingTeacherInvitations(tx, ctx.institutionId, [input.teacherId])).size > 0
         }
         return {
           run: () =>
@@ -338,6 +372,7 @@ export async function inviteStaffMember(
               alreadyMember,
               pendingInvitation: pending !== undefined,
               teacherLinked,
+              teacherInvitationPending,
             }),
         }
       },

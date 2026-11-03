@@ -159,6 +159,13 @@ export const ORGANIZATION_OPTIONS = {
           input: false,
           references: { model: 'member', field: 'id', onDelete: 'set null' },
         },
+        // Davetin tuttuğu öğretmen kaydı (`records`, koleksiyon `teachers`). Yeni hesapta bağlantı
+        // davette `membership_links`'e de yazılır; başka kurumda hesabı olan e-postada (karar 73)
+        // yalnız burada durur ve kabulde bağlanır. Bekleyen davetin tuttuğu kayıt başka davete ya
+        // da aktarıma bağlanamaz. Kayıtlar bileşik anahtarlı `records`'ta olduğundan yabancı anahtar
+        // yoktur (üretilen kimlik şeması koleksiyon kolonu taşıyamaz); kayıtlar silinmez, arşivlenir.
+        // Yalnız sunucu yazar.
+        teacherId: { type: 'string', required: false, input: false },
       },
     },
     session: { fields: { activeOrganizationId: 'activeInstitutionId' } },

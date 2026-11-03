@@ -131,6 +131,7 @@ describe('personel hesabı istekleri (DOM-YTK-070)', () => {
       ['self_reactivate', 'Kendi hesabınızı etkinleştiremezsiniz'],
       ['member_exists', 'zaten kayıtlı'],
       ['teacher_already_linked', 'başka bir hesaba'],
+      ['teacher_invitation_pending', 'bekleyen bir davete'],
     ] as const
     for (const [code, expected] of cases) {
       const feedback = commandFeedback(

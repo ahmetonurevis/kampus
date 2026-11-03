@@ -126,6 +126,7 @@ export const invitations = pgTable(
     membershipId: text('membership_id').references(() => memberships.id, {
       onDelete: 'set null',
     }),
+    teacherId: text('teacher_id'),
   },
   (table) => [
     index('invitations_institutionId_idx').on(table.institutionId),

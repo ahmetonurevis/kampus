@@ -13,7 +13,8 @@ import { records } from '../db/schema/records.ts'
  * yalnız bu uçta, yöneticiye döner. Durum saklanmaz, bağlı kişi kaydından türetilir: üyeliğin
  * (arşivlenmemiş) bağlantısı varsa ve bağlı kişi kayıtlarının hepsi arşivli ya da pasifse
  * (`isActive` false veya `deletedAt` dolu) üyelik `passive`tir; bağlantısı olmayan üyelik
- * (yönetici, ön büro) `active`tir. Hesabı pasifleştiren bir alan yoktur; o yazma görevi ayrıdır.
+ * (yönetici, ön büro) `active`tir. Yöneticinin pasifleştirdiği üyelik (`deactivatedAt` dolu,
+ * DOM-YTK-070; `services/staff-accounts.ts`) her durumda `passive`tir.
  */
 
 export type MemberStatus = 'active' | 'passive'
@@ -31,7 +32,7 @@ export interface MemberListQuery {
 /** Bağlantı türünün kayıt koleksiyonu: öğretmen `teachers`, öğrenci ve çocuk `students`. */
 const linkCollection = sql`case ${membershipLinks.kind} when 'teacher' then 'teachers' else 'students' end`
 
-const passiveExpression = sql<boolean>`(
+const passiveExpression = sql<boolean>`(${memberships.deactivatedAt} is not null or (
   (select count(*) from membership_links ml
     where ml.institution_id = ${memberships.institutionId}
       and ml.membership_id = ${memberships.id} and ml.archived_at is null) > 0
@@ -44,7 +45,7 @@ const passiveExpression = sql<boolean>`(
       and r.archived_at is null
       and coalesce(r.data->>'isActive', 'true') <> 'false'
       and r.data->>'deletedAt' is null) = 0
-)`
+))`
 
 function orderBy(sort: MemberSort): SQL[] {
   const direction = sort.startsWith('-') ? desc : asc
@@ -64,8 +65,10 @@ export async function listInstitutionMembers(
   institutionId: string,
   query: MemberListQuery,
   log: FastifyBaseLogger,
+  membershipId?: string,
 ) {
   const filters: SQL[] = [eq(memberships.institutionId, institutionId)]
+  if (membershipId !== undefined) filters.push(eq(memberships.id, membershipId))
   if (query.role) filters.push(eq(memberships.role, query.role))
   if (query.q) {
     const needle = foldSearch(query.q)
@@ -86,6 +89,7 @@ export async function listInstitutionMembers(
         email: users.email,
         role: memberships.role,
         passive: passiveExpression,
+        deactivatedAt: memberships.deactivatedAt,
         createdAt: memberships.createdAt,
       })
       .from(memberships)
@@ -120,6 +124,7 @@ export async function listInstitutionMembers(
         role: role.data,
         status: passive ? ('passive' as const) : ('active' as const),
         links: links.get(row.id) ?? [],
+        deactivatedAt: row.deactivatedAt?.toISOString() ?? null,
         createdAt: row.createdAt.toISOString(),
       },
     ]
@@ -128,6 +133,27 @@ export async function listInstitutionMembers(
     items,
     total: totals?.total ?? 0,
   }
+}
+
+export type InstitutionMemberItem = Awaited<
+  ReturnType<typeof listInstitutionMembers>
+>['items'][number]
+
+/** Tek üyelik, liste satırı biçiminde (yazma yanıtları); kurumda yoksa `null`. */
+export async function getInstitutionMember(
+  db: Database,
+  institutionId: string,
+  membershipId: string,
+  log: FastifyBaseLogger,
+): Promise<InstitutionMemberItem | null> {
+  const { items } = await listInstitutionMembers(
+    db,
+    institutionId,
+    { page: 1, pageSize: 1, sort: 'name' },
+    log,
+    membershipId,
+  )
+  return items[0] ?? null
 }
 
 /** Sayfadaki üyeliklerin bağlı kişi adları; yalnız ad ve tür okunur, kayıt kimliği dönmez. */

@@ -1,8 +1,10 @@
 import { z } from 'zod'
 
+import { staffRoleSchema } from '@kampus/school-core/lib/staff-accounts.ts'
+
 import { roleSchema } from '../auth.ts'
 import { MEMBERSHIP_LINK_KINDS } from '../db/schema/membership-links.ts'
-import { pageQuerySchema, pageResponse } from './common.schemas.ts'
+import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
 
 export const MEMBER_STATUSES = ['active', 'passive'] as const
 export const MEMBER_SORTS = ['name', '-name', 'role', '-role', 'createdAt', '-createdAt'] as const
@@ -21,7 +23,7 @@ export const institutionMemberListQuerySchema = pageQuerySchema
       .enum(MEMBER_STATUSES)
       .optional()
       .describe(
-        'Duruma göre süz. `passive`: bağlı kişi kaydı (öğrenci, çocuk, öğretmen) olan ve hepsi pasif ya da arşivli üyelik',
+        'Duruma göre süz. `passive`: yöneticinin pasifleştirdiği üyelik ya da bağlı kişi kaydı (öğrenci, çocuk, öğretmen) olan ve hepsi pasif ya da arşivli üyelik',
       ),
     sort: z
       .enum(MEMBER_SORTS)
@@ -48,8 +50,47 @@ export const institutionMemberSchema = z
     role: roleSchema,
     status: z.enum(MEMBER_STATUSES),
     links: z.array(institutionMemberLinkSchema).describe('Bağlı öğrenci, çocuk veya öğretmen'),
+    deactivatedAt: z.iso
+      .datetime()
+      .nullable()
+      .describe('Yöneticinin hesabı pasifleştirdiği an (UTC); etkin hesapta `null` (DOM-YTK-070)'),
     createdAt: z.iso.datetime().describe('Üyeliğin açıldığı an (UTC)'),
   })
   .meta({ id: 'InstitutionMember' })
 
 export const institutionMemberListResponseSchema = pageResponse(institutionMemberSchema)
+
+export const institutionMemberResponseSchema = dataResponse(institutionMemberSchema)
+
+export const institutionMemberParamsSchema = z.object({
+  membershipId: z.string().min(1).max(200).describe('Üyelik kimliği'),
+})
+
+export const staffInvitationParamsSchema = z.object({
+  invitationId: z.string().min(1).max(200).describe('Davet kimliği'),
+})
+
+export const staffInvitationListQuerySchema = pageQuerySchema.strict()
+
+export const staffInvitationSchema = z
+  .object({
+    id: z.string().describe('Davet kimliği'),
+    membershipId: z
+      .string()
+      .nullable()
+      .describe('Davetle açılan üyelik; iptal edilen davette `null`'),
+    name: z.string().nullable().describe('Davet edilen kişinin adı; hesap silindiyse `null`'),
+    email: z.string().describe('Davet e-postası; yalnız yöneticiye döner'),
+    role: staffRoleSchema,
+    status: z
+      .enum(['pending', 'accepted', 'canceled', 'rejected'])
+      .describe('`pending`: kişi henüz giriş yapmadı; `accepted`: ilk girişini yaptı'),
+    createdAt: z.iso.datetime(),
+    expiresAt: z.iso
+      .datetime()
+      .describe('Davet işaretinin süresi; hesap ve üyelik süreden bağımsız açıktır'),
+  })
+  .meta({ id: 'StaffInvitation' })
+
+export const staffInvitationResponseSchema = dataResponse(staffInvitationSchema)
+export const staffInvitationListResponseSchema = pageResponse(staffInvitationSchema)

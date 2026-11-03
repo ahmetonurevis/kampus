@@ -99,6 +99,7 @@ export const memberships = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     role: text('role').default('member').notNull(),
     createdAt: timestamp('created_at').notNull(),
+    deactivatedAt: timestamp('deactivated_at'),
   },
   (table) => [
     index('memberships_institutionId_idx').on(table.institutionId),

@@ -1,6 +1,7 @@
 import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from 'better-auth/api'
 import type { DBTransactionAdapter } from 'better-auth'
-import { asc, eq } from 'drizzle-orm'
+import { getOrgAdapter } from 'better-auth/plugins/organization'
+import { and, asc, eq, isNull } from 'drizzle-orm'
 
 import type { Database } from '../db/client.ts'
 import { institutions, memberships, users } from '../db/schema/auth.ts'
@@ -29,12 +30,12 @@ const RESET_REQUEST_RESPONSE = {
 export const FORWARDED_IP_HEADER = 'x-kampus-client-ip'
 export const FORWARDED_REQUEST_ID_HEADER = 'x-request-id'
 
-/** Oturum açılırken etkin kurum: kullanıcının en eski üyeliği. */
+/** Oturum açılırken etkin kurum: kullanıcının en eski etkin (pasifleştirilmemiş) üyeliği. */
 export async function defaultInstitutionId(db: Database, userId: string): Promise<string | null> {
   const [first] = await db
     .select({ institutionId: memberships.institutionId })
     .from(memberships)
-    .where(eq(memberships.userId, userId))
+    .where(and(eq(memberships.userId, userId), isNull(memberships.deactivatedAt)))
     .orderBy(asc(memberships.createdAt), asc(memberships.id))
     .limit(1)
   return first?.institutionId ?? null
@@ -48,10 +49,16 @@ export async function defaultInstitutionIdFromAdapter(
   adapter: DBTransactionAdapter,
   userId: string,
 ): Promise<string | null> {
-  const rows = await adapter.findMany<{ id: string; organizationId: string; createdAt: Date }>({
+  const all = await adapter.findMany<{
+    id: string
+    organizationId: string
+    createdAt: Date
+    deactivatedAt?: Date | null
+  }>({
     model: 'member',
     where: [{ field: 'userId', value: userId }],
   })
+  const rows = all.filter((row) => !row.deactivatedAt)
   rows.sort(
     (a, b) =>
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
@@ -145,6 +152,42 @@ async function hookSession(context: HookEndpointContext) {
   return getSessionFromCtx(context).catch(() => null)
 }
 
+/**
+ * Personel daveti (DOM-YTK-070) ilk başarılı girişte kabul edilmiş sayılır: hesap ve üyelik
+ * davette açıldığı için kabul yalnız davetin "bekliyor" işaretini kaldırır. Yalnız kişinin üye
+ * olduğu kurumların davetleri; yazma eklentinin bağdaştırıcısıyla.
+ */
+async function acceptStaffInvitations(
+  context: HookEndpointContext,
+  user: { id: string; email: string },
+): Promise<void> {
+  const adapter = context.context.adapter
+  const pending = await adapter.findMany<{ id: string; organizationId: string }>({
+    model: 'invitation',
+    where: [
+      { field: 'email', value: user.email.toLowerCase() },
+      { field: 'status', value: 'pending' },
+    ],
+  })
+  if (pending.length === 0) return
+  const organization = getOrgAdapter(context.context)
+  for (const invitation of pending) {
+    const member = await adapter.findOne<{ id: string }>({
+      model: 'member',
+      where: [
+        { field: 'userId', value: user.id },
+        { field: 'organizationId', value: invitation.organizationId },
+      ],
+    })
+    if (member === null) continue
+    await organization.updateInvitation({
+      invitationId: invitation.id,
+      status: 'accepted',
+      fromStatus: 'pending',
+    })
+  }
+}
+
 /** Giriş başarısı/başarısızlığı, kurum değişimi ve parola değişimi. Parola ve belirteç yazılmaz. */
 export function authAfterHook(ctx: HookContext) {
   return createAuthMiddleware(async (context) => {
@@ -155,6 +198,7 @@ export function authAfterHook(ctx: HookContext) {
       case '/sign-in/email': {
         const created = context.context.newSession
         if (created && !failed) {
+          await acceptStaffInvitations(context, created.user)
           await recordAudit(ctx, {
             action: 'auth.login_succeeded',
             actorUserId: created.user.id,

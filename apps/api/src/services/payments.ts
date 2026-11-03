@@ -10,6 +10,7 @@ import {
   planPayment,
   recordPaymentSchema,
   reversePayment,
+  type PaymentMethod,
   type PaymentPlan,
   type PaymentSettingsInput,
 } from '@kampus/school-core/lib/payments.ts'
@@ -409,6 +410,7 @@ export async function listPaymentsFor(
     studentId?: string | undefined
     q?: string | undefined
     mebbis?: 'pending' | undefined
+    method?: PaymentMethod | undefined
     page: number
     pageSize: number
   },

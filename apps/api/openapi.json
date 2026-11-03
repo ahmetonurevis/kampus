@@ -56251,7 +56251,7 @@
         "tags": [
           "payments"
         ],
-        "description": "Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.",
+        "description": "Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer; `method` ödeme yöntemine göre süzer. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.",
         "parameters": [
           {
             "schema": {
@@ -56310,6 +56310,21 @@
             "name": "mebbis",
             "required": false,
             "description": "Yalnız MEBBİS'e işlenmemiş geçerli tahsilatlar (personel)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "Banka havalesi",
+                "Nakit",
+                "Kredi kartı",
+                "Senet"
+              ]
+            },
+            "in": "query",
+            "name": "method",
+            "required": false,
+            "description": "Yalnız bu ödeme yöntemiyle alınanlar"
           }
         ],
         "responses": {

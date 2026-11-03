@@ -601,4 +601,39 @@ describe('tahsilat uçları', () => {
     const other = await send('GET', '/api/v1/payments?q=tr-arama', b.adminCookie)
     assert.equal(other.json().meta.total, 0)
   })
+
+  test('ON-036, DOM-FIN-030: method ödeme yöntemine göre süzer, q ile birleşir; bilinmeyen yöntem 400', async () => {
+    const a = await institution()
+    const bank = await record(a.adminCookie, payment(1_000, { reference: 'TR-YONTEM-1' }))
+    assert.equal(bank.statusCode, 201, bank.body)
+    const card = await record(
+      a.adminCookie,
+      payment(2_000, { method: 'Kredi kartı', reference: 'POS-YONTEM-1' }),
+    )
+    assert.equal(card.statusCode, 201, card.body)
+
+    const list = async (query: string) =>
+      (await send('GET', `/api/v1/payments?${query}`, a.adminCookie)).json()
+    const byCard = await list(`method=${encodeURIComponent('Kredi kartı')}`)
+    assert.equal(byCard.meta.total, 1)
+    assert.equal(byCard.data[0].method, 'Kredi kartı')
+    assert.equal(byCard.data[0].amountCents, 2_000)
+    const byBank = await list(`method=${encodeURIComponent('Banka havalesi')}`)
+    assert.equal(byBank.meta.total, 1)
+    assert.equal(byBank.data[0].reference, 'TR-YONTEM-1')
+    assert.equal((await list(`method=Senet`)).meta.total, 0)
+    assert.equal(
+      (await list(`method=${encodeURIComponent('Kredi kartı')}&q=tr-yontem`)).meta.total,
+      0,
+    )
+    assertError(await send('GET', '/api/v1/payments?method=Demo', a.adminCookie), 400)
+
+    const b = await institution()
+    const other = await send(
+      'GET',
+      `/api/v1/payments?method=${encodeURIComponent('Kredi kartı')}`,
+      b.adminCookie,
+    )
+    assert.equal(other.json().meta.total, 0)
+  })
 })

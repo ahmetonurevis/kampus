@@ -340,6 +340,41 @@ test.describe('Finans: tahsilat', () => {
     )
   })
 
+  test('ON-036, DOM-FIN-030: tahsilat geçmişi ödeme yöntemine göre sunucuda süzülür', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s19'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s19-5', 'Kredi kartı')
+    await payThroughApi(client, 'inv-s19-6', 'Banka havalesi')
+    const requests: string[] = []
+    page.on('request', (request) => {
+      const url = new URL(request.url())
+      if (url.pathname === '/api/v1/payments') requests.push(url.search)
+    })
+    await loginAs(school.user('yonetici'))
+
+    await page.goto(`${ADMIN_URL}?gorunum=tahsilatlar`)
+    const table = page.getByRole('table', { name: 'Tahsilat geçmişi' })
+    const rows = table.locator('tbody tr')
+    await expect(table).toContainText('Kredi kartı')
+    await expect(table).toContainText('Banka havalesi')
+    await page.getByLabel('Ödeme yöntemi').selectOption({ label: 'Kredi kartı' })
+    await expectEveryRow(rows, 'Kredi kartı')
+    await page.getByLabel('Ödeme yöntemi').selectOption({ label: 'Banka havalesi' })
+    await expectEveryRow(rows, 'Banka havalesi')
+    expect(
+      requests.some((search) => new URLSearchParams(search).get('method') === 'Kredi kartı'),
+    ).toBe(true)
+
+    await page.getByLabel('Ödeme yöntemi').selectOption({ label: 'Tüm yöntemler' })
+    await expect(table).toContainText('Kredi kartı')
+    await expect(table).toContainText('Banka havalesi')
+  })
+
   test('DOM-FIN-033: yönetici tahsilatı gerekçeyle iptal eder, taksit açılır, satır kalır', async ({
     page,
     loginAs,

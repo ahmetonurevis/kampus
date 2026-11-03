@@ -74,6 +74,15 @@ export const fileUrlResponseSchema = dataResponse(
     .meta({ id: 'FileUrl' }),
 )
 
+export const fileUrlQuerySchema = z.object({
+  attemptId: z
+    .uuid()
+    .optional()
+    .describe(
+      'Dinleme hakkının düşeceği deneme (öğrenci; Sabah kararı 54). Kendi denemesi değilse 404, ataması bu kaydı bağlamıyorsa 422 `listening_attempt_mismatch`, deneme sürmüyorsa 422 `listening_attempt_closed`. Verilmezse hak sayılmaz; sınırlı atamada süren deneme varsa 422 `listening_attempt_running` (Sabah kararı 56). Personel ve velide yok sayılır.',
+    ),
+})
+
 export const fileDownloadQuerySchema = z.strictObject({
   token: z.string().min(1).max(4096).describe('İmzalı bağlantı belirteci'),
 })

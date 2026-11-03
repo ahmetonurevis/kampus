@@ -2,6 +2,8 @@ import { useCallback } from 'react'
 import { useLocation, useNavigate, useSearchParams } from 'react-router'
 import { keptHistoryState, PANEL_MARKER } from '@/lib/history-state.ts'
 
+const NO_PARAMS: readonly string[] = []
+
 type PanelState = { detailPanel?: string } | null
 
 function openedBy(state: unknown, parameter: string): boolean {
@@ -14,9 +16,11 @@ function openedBy(state: unknown, parameter: string): boolean {
  * Sağ panel seçimi URL'de (`?sinif=c1`; Vue `use-detail-panel.js`): liste yerinde kalır, bağlantı
  * paylaşılabilir, tarayıcının geri/ileri düğmesi paneli kapatıp açar. Panel bu sayfadan açıldıysa
  * kapatma bir adım geri gider (geçmişte fazladan kayıt kalmaz); bağlantıyla gelindiyse parametre
- * `replace` ile silinir.
+ * `replace` ile silinir. `clears`: panelin içindeki alt listelerin (ör. `dn-sayfa`) adres
+ * parametreleri; panel bağlantıyla açıldıysa kapanırken onlar da silinir ki bir sonraki panele
+ * önceki kaydın sayfası taşınmasın (sabit dizi verin, modül düzeyi).
  */
-export function useDetailPanel(parameter: string) {
+export function useDetailPanel(parameter: string, clears: readonly string[] = NO_PARAMS) {
   const [params] = useSearchParams()
   const location = useLocation()
   const navigate = useNavigate()
@@ -48,6 +52,7 @@ export function useDetailPanel(parameter: string) {
     }
     const next = new URLSearchParams(window.location.search)
     next.delete(parameter)
+    for (const name of clears) next.delete(name)
     const search = next.toString()
     void Promise.resolve(
       navigate(
@@ -59,7 +64,7 @@ export function useDetailPanel(parameter: string) {
         },
       ),
     ).catch((error: unknown) => console.error('[panel] kapatılamadı', error))
-  }, [navigate, parameter, location.state, location.hash])
+  }, [navigate, parameter, clears, location.state, location.hash])
 
   return { selectedId, open, close } as const
 }

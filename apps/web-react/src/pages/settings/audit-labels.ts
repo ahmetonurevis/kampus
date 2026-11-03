@@ -37,6 +37,8 @@ export const ENTITY_LABELS: Readonly<Record<string, string>> = {
   opticalProfiles: 'Optik profil',
   opticalEvaluations: 'Optik değerlendirme',
   workflow: 'Okul iş akışı',
+  staff_invitation: 'Personel daveti',
+  membership: 'Kurum üyeliği',
 }
 
 const VERBS: Readonly<Record<string, string>> = {
@@ -67,6 +69,12 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   'question.ask': 'Soru gönderildi',
   'question.answer': 'Soru yanıtlandı',
   'question.withdraw': 'Soru geri çekildi',
+  'staff.invite': 'Personel davet edildi',
+  'staff.import': 'Personel toplu aktarımla davet edildi',
+  'staff.invitation_cancel': 'Personel daveti iptal edildi',
+  'staff.role_change': 'Personel rolü değiştirildi',
+  'staff.deactivate': 'Personel hesabı pasifleştirildi',
+  'staff.reactivate': 'Personel hesabı etkinleştirildi',
 }
 
 const WORKFLOW_LABELS: Readonly<Record<string, string>> = {

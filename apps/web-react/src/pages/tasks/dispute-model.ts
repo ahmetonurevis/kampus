@@ -1,6 +1,6 @@
 import type { GradingQueueItem, TaskVersionGrading } from '@kampus/react-shared/use-task-grading.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
-import { aspectLabel, dateTimeLabel } from './task-model.ts'
+import { aspectLabel, dateTimeLabel, learnerLabel } from './task-model.ts'
 
 /**
  * Koordinatörün uyuşmazlık kuyruğu ve son puan penceresi (OG-058; IST-005, IST-048;
@@ -22,13 +22,10 @@ export interface DisputeRow extends Record<string, unknown> {
  * Kuyruk satırı: öğrenci, görev, son gönderim ve puanlama süresi (aşıldıysa işaretli). Görev
  * başlığı satırdan gelir; koordinatör atamayı görmeyebilir (DOM-YTK-027).
  */
-export function disputeRow(
-  item: GradingQueueItem,
-  studentName: (id: string) => string,
-): DisputeRow {
+export function disputeRow(item: GradingQueueItem): DisputeRow {
   return {
     id: item.id,
-    learner: studentName(item.learnerId),
+    learner: learnerLabel(item),
     assignment: item.assignmentTitle ?? 'Görev',
     submittedAt: dateTimeLabel(item.latestVersion?.submittedAt),
     dueAt: dateTimeLabel(item.grading.dueAt),

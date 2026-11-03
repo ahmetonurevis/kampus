@@ -39,6 +39,14 @@ import { recordFileCheck, releaseSupersededObject } from './files.ts'
  * İdempotenttir: `processing` olmayan dosyada dönüşüm yapılmaz. `ready` dosyada yalnız özgün
  * nesnenin silinmesi yeniden denenir (silme idempotenttir); eşzamanlı iki teslimden kaybedenin
  * yazdığı nesne silinir (her deneme kendi anahtarına yazar). Log yalnız kimlik ve kod taşır.
+ *
+ * Ses taraması (ADR 0003 karar 8, OG-988): tarayıcı açıkken yüklenen ses `scanPending` başlar ve
+ * `file.scan` ile paralel çalışır; dönüşüm taramayı beklemez. Satır kilidi altında tarama hâlâ
+ * sürüyorsa dönüşmüş içerik yazılır ama dosya `processing` kalır (`transcoded`, `file.transcoded`
+ * denetimi) ve özgün nesne silinmez: tarama onu okur, `ready`'yi ve silmeyi tarama yapar. Tarama
+ * bitmişse dönüşüm eskisi gibi `ready` yazar. Dönüşmüş ama taranmamış ses yeniden dönüştürülmez
+ * (`awaiting_scan`). Tarama zararlı bulursa dosya `rejected` olur ve dönüşmüş çıktı da özgün nesne
+ * de silinir (`recordFileCheck`); sürmekte olan dönüşüm kilit altında bunu görür, çıktısını siler.
  */
 
 /** İş yükü: yalnız kimlikler (kişisel veri yok). */
@@ -78,8 +86,12 @@ export interface TranscodeDeps {
 
 export type TranscodeOutcome =
   | { outcome: 'ready'; durationMs: number }
+  | { outcome: 'transcoded'; durationMs: number }
   | { outcome: 'rejected'; code: MediaContentCode | 'media_retries_exhausted' }
-  | { outcome: 'skipped'; reason: 'missing' | 'not_audio' | 'not_processing' | 'already_ready' }
+  | {
+      outcome: 'skipped'
+      reason: 'missing' | 'not_audio' | 'not_processing' | 'already_ready' | 'awaiting_scan'
+    }
 
 /** Dönüşmüş nesnenin anahtarı: her deneme kendi anahtarına yazar (eşzamanlı teslimler çakışmaz). */
 function transcodedStorageKey(row: StoredFile): string {
@@ -151,6 +163,8 @@ export async function transcodeAudioFile(
     return { outcome: 'skipped', reason: 'already_ready' }
   }
   if (row.status !== 'processing') return { outcome: 'skipped', reason: 'not_processing' }
+  // Dönüşmüş, taraması süren ses (OG-988): `ready`'yi tarama yazar, yeniden dönüşüm yok.
+  if (row.supersededStorageKey !== null) return { outcome: 'skipped', reason: 'awaiting_scan' }
 
   const workDir = await mkdtemp(join(tmpdir(), 'kampus-media-'))
   let outputKey: string | null = null
@@ -203,8 +217,15 @@ export async function transcodeAudioFile(
     deps.signal?.throwIfAborted()
     const updated = await db.transaction(async (tx) => {
       const current = await findFile(tx, data.institutionId, data.fileId, { lock: true })
-      // Bu arada başka bir teslim bitirdiyse, dosya reddedildiyse ya da silindiyse dokunulmaz.
-      if (!current || current.status !== 'processing' || current.storageKey !== row.storageKey)
+      // Bu arada başka bir teslim bitirdiyse, dosya reddedildiyse (tarama dahil) ya da silindiyse
+      // dokunulmaz. Taramanın sürüp sürmediği burada, kilit altında okunur (OG-988): tarama bu arada
+      // bittiyse `ready`'yi bu güncelleme yazar.
+      if (
+        !current ||
+        current.status !== 'processing' ||
+        current.storageKey !== row.storageKey ||
+        current.supersededStorageKey !== null
+      )
         return null
       const next = await completeFileTranscode(
         tx,
@@ -222,7 +243,7 @@ export async function transcodeAudioFile(
       if (!next) throw new ConflictError()
       await tx.insert(auditLog).values({
         institutionId: data.institutionId,
-        action: 'file.ready',
+        action: next.status === 'ready' ? 'file.ready' : 'file.transcoded',
         entityType: 'file',
         entityId: data.fileId,
         changes: {
@@ -234,6 +255,11 @@ export async function transcodeAudioFile(
     })
     if (!updated) return { outcome: 'skipped', reason: 'not_processing' }
     committed = true
+    if (updated.status !== 'ready') {
+      // Tarama sürüyor (OG-988): özgün nesne taramaya kalır, `ready`'yi ve silmeyi tarama yapar.
+      log.info({ event: 'media.transcoded_awaiting_scan', ...data, durationMs: result.durationMs })
+      return { outcome: 'transcoded', durationMs: result.durationMs }
+    }
     // Özgün nesne dönüşüm doğrulanıp yazıldıktan sonra silinir. Anahtarı `ready` ile aynı
     // güncellemede `superseded_storage_key`'e geçtiği için hiçbir an izsiz değildir; silme
     // başarısızsa iz kalır, nesneyi sonraki temizlik ya da imha siler (DOM-BEC-052).

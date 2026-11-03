@@ -268,6 +268,7 @@ const LESSON_REASONS: readonly string[] = ['cancelReason', 'substitutions']
 const MESSAGE_HIDDEN_FIELDS: readonly string[] = ['senderUserId', 'parentUserId']
 // kvkk: K — kararı veren kullanıcı yalnız yöneticiye döner; öbürleri ilişkiyi (`relation`) görür.
 const DECIDER_FIELDS: readonly string[] = ['decidedByUserId']
+const ABSENCE_DECIDER: readonly string[] = ['decidedBy']
 // kvkk: Ç — kimlik no yalnız yönetici ve ön büroya, maskeli döner; doğum tarihini öğretmen görmez.
 const STUDENT_IDENTITY: readonly string[] = ['nationalId', 'birthDate']
 const STUDENT_NATIONAL_ID: readonly string[] = ['nationalId']
@@ -316,6 +317,9 @@ export const PLATFORM_HIDDEN_FIELDS = {
   // gönderen tarafı `sender` alanındadır (DOM-ILT-014).
   conversationMessages: () => MESSAGE_HIDDEN_FIELDS,
   permissionDecisions: (c) => (c.role === 'yonetici' ? NONE : DECIDER_FIELDS),
+  // Mazeret kararını veren kullanıcı öğrenci ve veliye dönmez; onlar durumu ve anı görür
+  // (DOM-ILT-053).
+  absences: (c) => (personal(c) ? ABSENCE_DECIDER : NONE),
   // Öğrenci ve veli kendi analizini görür; sınavın bütün cevap anahtarını (kitapçık, tüm sorular)
   // görmez, profil onlara yalnız `revision` ile güncel analizi eşlemek için döner.
   opticalProfiles: (c) => (personal(c) ? ANSWER_KEY_FIELDS : NONE),

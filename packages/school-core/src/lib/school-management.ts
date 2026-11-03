@@ -6,6 +6,7 @@ import { appointmentHoldsTime } from './appointment-status.ts'
 import { tutorConflict, type Interval } from './tutor-conflicts.ts'
 import { DomainError } from './errors.ts'
 import { isOpenQuestion } from './questions.ts'
+import { assertDutiesFitBranch, type CoordinatorDutyRow } from './coordinator-duties.ts'
 
 export const branchSchema = z.object({ name: requiredText.max(80), address: requiredText.max(240) })
 export const teacherSchema = z.object({
@@ -71,12 +72,20 @@ export function saveBranch(
   state.branches.push({ ...data, id, color: '#8674c9', isActive: true, deletedAt: null })
   return id
 }
+/**
+ * Öğretmen kaydı dışında tutulan koordinatör görevleri State'te değildir (DOM-YTK-027): API
+ * öğretmenin etkin görevlerini yükleyip verir; demo kalıcılığında görev olmadığından verilmez.
+ */
+export type TeacherSaveOptions = {
+  coordinatorDuties?: readonly Pick<CoordinatorDutyRow, 'kind' | 'scopeId'>[]
+}
 export function saveTeacher(
   state: State,
   input: unknown,
   makeId: MakeId,
   recordId: string | null = null,
   now = new Date().toISOString(),
+  options: TeacherSaveOptions = {},
 ) {
   const data = teacherSchema.parse(input)
   if (!active(state.branches, data.branchId))
@@ -92,6 +101,8 @@ export function saveTeacher(
     throw new DomainError('teacher_not_found', 'Düzenlenecek aktif öğretmen bulunamadı.', {
       kind: 'not_found',
     })
+  if (existing && existing.subjectId !== data.subjectId)
+    assertDutiesFitBranch(options.coordinatorDuties ?? [], data.subjectId)
   if (
     existing &&
     (existing.branchId !== data.branchId || existing.subjectId !== data.subjectId) &&
@@ -361,6 +372,7 @@ export function updateTeacher(
   input: unknown,
   makeId: MakeId,
   now = new Date().toISOString(),
+  options: TeacherSaveOptions = {},
 ) {
   const patch = teacherPatchSchema.parse(input)
   const { name, email, phone, subjectId, branchId } = editable(
@@ -375,6 +387,7 @@ export function updateTeacher(
     makeId,
     recordId,
     now,
+    options,
   )
 }
 

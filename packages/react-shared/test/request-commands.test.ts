@@ -6,10 +6,14 @@ import { createKampusClient } from '@kampus/api-client/client.ts'
 import { runRequest } from '../src/api-result.ts'
 import { commandFeedback, commandHeaders, IF_MATCH_MISSING_CODE } from '../src/commands.ts'
 import {
+  ABSENCE_MESSAGES,
+  approveAbsenceRequest,
+  attachAbsenceDocumentsRequest,
   notifyAbsenceRequest,
   openRequestRequest,
   REQUEST_CHANGED_MESSAGE,
   REQUEST_MESSAGES,
+  rejectAbsenceRequest,
   updateRequestRequest,
 } from '../src/use-request-commands.ts'
 
@@ -117,5 +121,74 @@ describe('talep ve izin/mazeret komutları', () => {
   test('sürüm çakışması kullanıcıya güncel kaydı yükleme mesajı verir', () => {
     assert.equal(REQUEST_MESSAGES.version_conflict, REQUEST_CHANGED_MESSAGE)
     assert.equal(typeof commandFeedback, 'function')
+  })
+
+  test('DOM-ILT-053: mazeret belgesi, onay ve red POST gönderir, If-Match taşır', async () => {
+    const { client, sent } = fakeClient()
+    const headers = commandHeaders('key-12345', 6)
+    await runRequest(() =>
+      attachAbsenceDocumentsRequest(
+        client,
+        { absenceId: 'abs 1', version: 6, body: { fileIds: ['f1', 'f2'] } },
+        headers,
+      ),
+    )
+    await runRequest(() =>
+      approveAbsenceRequest(client, { absenceId: 'abs-1', version: 6 }, headers),
+    )
+    await runRequest(() =>
+      rejectAbsenceRequest(
+        client,
+        { absenceId: 'abs-1', version: 6, body: { reason: 'Belge okunaklı değil.' } },
+        headers,
+      ),
+    )
+    assert.deepEqual(
+      sent.map((item) => `${item.method} ${item.path}`),
+      [
+        'POST /api/v1/absences/abs%201/documents',
+        'POST /api/v1/absences/abs-1/approve',
+        'POST /api/v1/absences/abs-1/reject',
+      ],
+    )
+    for (const item of sent) {
+      assert.equal(item.headers.get('idempotency-key'), 'key-12345')
+      assert.equal(item.headers.get('if-match'), '"6"')
+    }
+    assert.deepEqual(sent[0]?.body, { fileIds: ['f1', 'f2'] })
+    assert.deepEqual(sent[1]?.body, {})
+    assert.deepEqual(sent[2]?.body, { reason: 'Belge okunaklı değil.' })
+  })
+
+  test('DOM-ILT-053: okunan sürüm yoksa mazeret kararı istek atmaz', async () => {
+    const { client, sent } = fakeClient()
+    await assert.rejects(
+      runRequest(() =>
+        approveAbsenceRequest(
+          client,
+          { absenceId: 'abs-1', version: 1 },
+          commandHeaders('k-12345'),
+        ),
+      ),
+      (error: unknown) =>
+        error instanceof Error && 'code' in error && error.code === IF_MATCH_MISSING_CODE,
+    )
+    assert.equal(sent.length, 0)
+  })
+
+  test('DOM-ILT-053: mazeret hata kodları Türkçe iletiye çevrilir', () => {
+    for (const code of [
+      'absence_already_decided',
+      'absence_document_limit',
+      'absence_document_unavailable',
+      'absence_document_purpose',
+      'absence_document_late',
+      'absence_document_duplicate',
+      'file_not_ready',
+      'file_already_attached',
+      'version_conflict',
+    ] as const)
+      assert.match(ABSENCE_MESSAGES[code], /[a-zçğıöşü]{3}/)
+    assert.match(ABSENCE_MESSAGES.absence_already_decided, /karar zaten verildi/)
   })
 })

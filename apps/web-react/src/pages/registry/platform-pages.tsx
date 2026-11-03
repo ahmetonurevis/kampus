@@ -26,6 +26,9 @@ const StaffPage = lazy(async () => ({
 const ContentPoolPage = lazy(async () => ({
   default: (await import('../content/ContentPoolPage.tsx')).ContentPoolPage,
 }))
+const RubricLibraryPage = lazy(async () => ({
+  default: (await import('../rubrics/RubricLibraryPage.tsx')).RubricLibraryPage,
+}))
 const TeacherClassesPage = lazy(async () => ({
   default: (await import('../academic/TeacherClassesPage.tsx')).TeacherClassesPage,
 }))
@@ -41,6 +44,9 @@ const CoursesPage = lazy(async () => ({
 const GroupsPage = lazy(async () => ({
   default: (await import('../language/GroupsPage.tsx')).GroupsPage,
 }))
+const PlacementPage = lazy(async () => ({
+  default: (await import('../language/PlacementPage.tsx')).PlacementPage,
+}))
 const AttendanceCorrectionPage = lazy(async () => ({
   default: (await import('../academic/AttendanceCorrectionPage.tsx')).AttendanceCorrectionPage,
 }))
@@ -55,6 +61,9 @@ const StudentGradesPage = lazy(async () => ({
 }))
 const StudentAttendancePage = lazy(async () => ({
   default: (await import('../academic/StudentAttendancePage.tsx')).StudentAttendancePage,
+}))
+const ParentMaterialsPage = lazy(async () => ({
+  default: (await import('../learning/ParentMaterialsPage.tsx')).ParentMaterialsPage,
 }))
 const ParentTrackingPage = lazy(async () => ({
   default: (await import('../academic/ParentTrackingPage.tsx')).ParentTrackingPage,
@@ -79,6 +88,9 @@ const PersonalSettingsPage = lazy(async () => ({
 }))
 const SettingsPage = lazy(async () => ({
   default: (await import('../settings/SettingsPage.tsx')).SettingsPage,
+}))
+const AdminTasksPage = lazy(async () => ({
+  default: (await import('../tasks/AdminTasksPage.tsx')).AdminTasksPage,
 }))
 const TeacherTasksPage = lazy(async () => ({
   default: (await import('../tasks/TeacherTasksPage.tsx')).TeacherTasksPage,
@@ -126,6 +138,9 @@ const ParentMessagesPage = lazy(async () => ({
 const RequestsPage = lazy(async () => ({
   default: (await import('../requests/RequestsPage.tsx')).RequestsPage,
 }))
+const AbsenceApprovalsPage = lazy(async () => ({
+  default: (await import('../requests/AbsenceApprovalsPage.tsx')).AbsenceApprovalsPage,
+}))
 const AbsenceNoticesPage = lazy(async () => ({
   default: (await import('../requests/AbsenceNoticesPage.tsx')).AbsenceNoticesPage,
 }))
@@ -157,6 +172,9 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
     case 'yonetici/icerik-havuzu':
     case 'ogretmen/icerik-havuzu':
       return <ContentPoolPage page={page} />
+    case 'yonetici/rubrik-kutuphanesi':
+    case 'ogretmen/rubrik-kutuphanesi':
+      return <RubricLibraryPage page={page} />
     case 'yonetici/kurlar':
     case 'onburo/kurlar':
     case 'ogretmen/kurlar':
@@ -165,10 +183,17 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
     case 'onburo/gruplar':
     case 'ogretmen/gruplar':
       return <GroupsPage page={page} />
+    case 'yonetici/seviye-tespiti':
+    case 'ogretmen/seviye-tespiti':
+      return <PlacementPage page={page} />
     case 'yonetici/yoklama-duzeltme':
       return <AttendanceCorrectionPage page={page} />
     case 'yonetici/koordinator-gorevleri':
       return <CoordinatorDutiesPage page={page} />
+    case 'yonetici/mazeret-bildirimleri':
+      return <AbsenceApprovalsPage page={page} viewer="admin" />
+    case 'ogretmen/mazeret-bildirimleri':
+      return <AbsenceApprovalsPage page={page} viewer="teacher" />
     case 'yonetici/risk-listesi':
       return <RiskListPage page={page} />
     case 'yonetici/sla-raporu':
@@ -209,6 +234,8 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
       return <ClassAnalysisPage page={page} />
     case 'veli/ogretmen-degerlendirmeleri':
       return <TeacherReviewsPage page={page} />
+    case 'yonetici/odevler':
+      return <AdminTasksPage page={page} />
     case 'ogretmen/odevler':
       return <TeacherTasksPage page={page} />
     case 'ogretmen/materyal-yukle':
@@ -221,6 +248,8 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
       return <StudentVideosPage page={page} />
     case 'ogrenci/materyaller':
       return <StudentMaterialsPage page={page} />
+    case 'veli/materyaller':
+      return <ParentMaterialsPage page={page} />
     case 'ogrenci/soru-sor':
       return <QuestionsPage page={page} audience="student" />
     case 'ogretmen/sorular':

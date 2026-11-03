@@ -1,6 +1,7 @@
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { submittedTextLabel, type ResultAudience } from './student-task-model.ts'
 
 type Version = TaskSubmissionDetail['versions'][number]
 
@@ -10,9 +11,21 @@ const stamp = (iso: string) => `${dateLabel(iso, { year: 'numeric' })} ${timeLab
  * Gönderilen değişmez sürümler (DOM-BEC-040), yeniden eskiye. Puan ve geri bildirim yalnız sunucu
  * açtıysa (`score` dolu ve kesinleşmiş) çizilir; aksi hâlde sürümde puana dair hiçbir ifade yoktur
  * (DOM-BEC-045). Kriter adları öğrenciye açık olmadığından kriterler sıra numarasıyla anılır.
+ * Veli (`audience="parent"`) aynı alanları okur; itiraz ve puanlama iç ayrıntısı çizilmez.
  */
-export function SubmissionVersions({ versions }: { versions: readonly Version[] }) {
+export function SubmissionVersions({
+  versions,
+  audience = 'learner',
+  headingLevel = 3,
+}: {
+  versions: readonly Version[]
+  audience?: ResultAudience
+  /** Sürüm başlığı düzeyi; geri bildirim başlığı bir alt düzeydedir. Varsayılan öğrenci ekranıdır. */
+  headingLevel?: 3 | 4
+}) {
   if (versions.length === 0) return null
+  const VersionHeading = `h${headingLevel}` as const
+  const FeedbackHeading = headingLevel === 3 ? 'h4' : 'h5'
   return (
     <ol aria-label="Gönderilen sürümler" className="grid gap-4">
       {[...versions].reverse().map((version) => {
@@ -20,7 +33,7 @@ export function SubmissionVersions({ versions }: { versions: readonly Version[] 
         return (
           <li key={version.id} className="rounded-card border p-4">
             <div className="flex flex-wrap items-center gap-2">
-              <h3 className="font-semibold">{version.number}. sürüm</h3>
+              <VersionHeading className="font-semibold">{version.number}. sürüm</VersionHeading>
               <span className="text-sm text-muted-foreground">{stamp(version.submittedAt)}</span>
               {version.late ? <StatusBadge text="Geç teslim" tone="amber" /> : null}
               {version.wordCount ? (
@@ -34,7 +47,7 @@ export function SubmissionVersions({ versions }: { versions: readonly Version[] 
             {version.body ? (
               <details className="mt-3">
                 <summary className="cursor-pointer text-sm font-medium text-primary">
-                  Gönderdiğiniz metni göster
+                  {submittedTextLabel(audience)}
                 </summary>
                 <p lang="en" className="mt-2 text-sm whitespace-pre-line [overflow-wrap:anywhere]">
                   {version.body}
@@ -43,7 +56,7 @@ export function SubmissionVersions({ versions }: { versions: readonly Version[] 
             ) : null}
             {score ? (
               <div className="mt-3 grid gap-2 border-t pt-3 text-sm">
-                <h4 className="font-medium">Öğretmen geri bildirimi</h4>
+                <FeedbackHeading className="font-medium">Öğretmen geri bildirimi</FeedbackHeading>
                 {score.overallComment ? (
                   <p className="[overflow-wrap:anywhere]">{score.overallComment}</p>
                 ) : null}

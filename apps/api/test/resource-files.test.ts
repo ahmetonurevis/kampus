@@ -933,6 +933,45 @@ describe('kaynak sürümü dosyaları', () => {
     })
   })
 
+  test('DOM-KYN-006, DOM-KYN-025, OG-985: telif askısında süren denemesi olan öğrenci görev içeriğini görür ama dosyayı açamaz; başka kurum 404', async () => {
+    const t = await tenant()
+    const image = await upload(t, t.cookies.teacher, { purpose: 'question_image' })
+    const data = await create(t, question(image))
+    await publishToClass(t, data)
+    const assignmentId = await assign(t, data.version.id, '9-A')
+    await ok(
+      await post(
+        `/task-assignments/${assignmentId}/attempts`,
+        t.cookies.student,
+        {},
+        { 'idempotency-key': randomUUID() },
+      ),
+      201,
+    )
+    await ok(await fileUrl(t.cookies.student, image))
+    await ok(
+      await post(
+        `/resources/${data.resource.id}/versions/${data.version.id}/report`,
+        t.cookies.teacher,
+        {
+          reason: 'Telif ihlali şüphesi',
+        },
+      ),
+    )
+    // Sabah kararı 47: süren işi olan içeriği görür; dosya kapalıdır (sabah kararları 36, 39).
+    const detail = await ok(
+      await call('GET', `/task-assignments/${assignmentId}`, t.cookies.student),
+    )
+    assert.deepEqual(
+      [detail.contentUnavailable, detail.content?.versionId, detail.progress[0].blockedBy],
+      [null, data.version.id, 'in_progress'],
+    )
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      fails(await fileUrl(cookie, image), 404, 'not_found')
+    const foreign = await createInstitution(app)
+    fails(await fileUrl(await signInAs(app, foreign.admin), image), 404, 'not_found')
+  })
+
   test('DOM-KYN-006, DOM-KYN-021: kitap sahibiyle sınırlı lisansta görevden dosya yalnız kitap sahibine açılır', async () => {
     const t = await tenant()
     const image = await upload(t, t.cookies.admin, { purpose: 'question_image' })

@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto'
 
-import { and, asc, desc, eq, isNull, sql } from 'drizzle-orm'
+import { and, asc, desc, eq, inArray, isNull, sql } from 'drizzle-orm'
 import { z } from 'zod'
 
 import {
@@ -18,6 +18,7 @@ import type {
 import type { LevelDecisionRow } from '@kampus/school-core/cefr/suggestion.ts'
 
 import type { Database } from './client.ts'
+import { memberships, users } from './schema/auth.ts'
 import { levelDecisions, placementSessions, progressionDecisions } from './schema/cefr.ts'
 
 /**
@@ -299,6 +300,30 @@ export async function listLevelDecisions(
     .where(learnerDecisions(institutionId, learner))
     .orderBy(desc(levelDecisions.decidedAt), desc(levelDecisions.id))
   return rows.map(toLevelDecision)
+}
+
+/**
+ * Kararı verenlerin adları (OG-079; IST-060 "kim tarafından"). Karar veren kurum üyeliğine
+ * yabancı anahtarla bağlıdır (`level_decisions_decided_by_fkey`), bu yüzden ad kurumun
+ * üyeliğinden okunur; başka kurumun kullanıcısı dönmez.
+ */
+export async function levelDeciderNames(
+  db: Database,
+  institutionId: string,
+  userIds: readonly string[],
+): Promise<Map<string, string>> {
+  if (userIds.length === 0) return new Map()
+  const rows = await db
+    .select({ userId: users.id, name: users.name })
+    .from(memberships)
+    .innerJoin(users, eq(users.id, memberships.userId))
+    .where(
+      and(
+        eq(memberships.institutionId, institutionId),
+        inArray(memberships.userId, [...new Set(userIds)]),
+      ),
+    )
+  return new Map(rows.map((row) => [row.userId, row.name]))
 }
 
 // --- Kur sonu kararı ----------------------------------------------------------------------

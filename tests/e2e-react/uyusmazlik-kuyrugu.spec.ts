@@ -121,6 +121,8 @@ test('IST-005, DOM-BEC-024, DOM-YTK-027: zümre başkanı uyuşmazlık kuyruğun
   const rows = page.getByRole('table', { name: 'Uyuşmazlık kuyruğu' }).locator('tbody tr')
   await expect(rows).toHaveCount(1)
   await expect(rows).toContainText(TITLE)
+  // OG-213: koordinatör öğrencisini okumasa da ad satırla gelir ("Öğrenci" değil).
+  await expect(rows).toContainText('Deniz Yılmaz')
   await expectNoHorizontalOverflow(page)
 
   await rows.getByRole('button', { name: `Son puanı ver: ${TITLE}` }).click()

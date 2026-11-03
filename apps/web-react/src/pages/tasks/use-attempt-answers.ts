@@ -85,10 +85,19 @@ export function useAttemptAnswers(attempt: TaskAttemptDetail) {
     [flush],
   )
 
+  /**
+   * Başka bir yazma (alıştırmada madde kontrolü, DOM-BEC-047) cevabı kaydedip sürümü ilerletti:
+   * sonraki kayıt bu sürümle gider. Kontrol yalnız `flush` sonrası çağrılır; yerel cevaplar kayıtlıdır.
+   */
+  const adoptVersion = useCallback((rowVersion: number) => {
+    version.current = newerRowVersion(version.current, rowVersion)
+  }, [])
+
   return {
     answers,
     setAnswer,
     flush,
+    adoptVersion,
     state,
     /** Teslimde `If-Match` olarak gidecek, son yazmanın döndürdüğü sürüm. */
     currentVersion: () => version.current,

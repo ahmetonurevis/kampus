@@ -123,6 +123,10 @@ export const PLATFORM_OPERATION_COMMANDS = {
   'request.open': spec('communication', [...SCOPE, 'requests']),
   'request.update': spec('communication', [...SCOPE, 'requests']),
   'absence.notify': spec('academic', [...SCOPE, 'absences']),
+  // Belge ekleme, onay ve red (DOM-ILT-053): API yalnız hedef bildirimi yükler.
+  'absence.attach': spec('academic', [...SCOPE, 'absences']),
+  'absence.approve': spec('academic', [...SCOPE, 'absences']),
+  'absence.reject': spec('academic', [...SCOPE, 'absences']),
   // Randevu (`lib/appointments.ts`): talep seçilen uygunluk saatini, onay ve talep çakışmayı
   // okur (DOM-ILT-101). API talepte yalnız seçilen uygunluk saatini yükler.
   'appointment.book': spec('communication', [...SCOPE, 'availability', ...CONFLICTS]),

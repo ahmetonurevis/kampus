@@ -113,6 +113,18 @@ describe('bildirim gönderimi (notify)', () => {
     return (response.json().data as Json[]).map((n) => [n.kind, n.audience, n.studentId, n.title])
   }
 
+  test('DOM-BEC-041: notify `audiences` ile türün kitlesini daraltır; yalnız öğrenci seçilirse veliye bildirim yazılmaz', async () => {
+    const { cookies, ctx } = await tenant()
+    const result = await send(ctx, {
+      ...FEEDBACK,
+      recipients: { studentIds: ['s-1'] },
+      audiences: ['student'],
+    })
+    assert.equal(result.created.length, 1)
+    assert.equal((await seen(cookies.student)).length, 1)
+    assert.deepEqual(await seen(cookies.parent), [])
+  })
+
   test('IST-065, DOM-ILT-073: notify aynı transaction’da yazar; öğrenci ve veli kendi bildirimini görür, başkası görmez', async () => {
     const { institution, cookies, ctx } = await tenant()
     const from = logs.length

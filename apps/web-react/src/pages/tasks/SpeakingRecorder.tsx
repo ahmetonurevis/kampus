@@ -137,27 +137,31 @@ function SpeakingRecorder({ assignmentId, limits, remaining, canSubmit, blockedR
 
   // Dosya sunucuda işlenince (ADR 0003 karar 10) teslim kendiliğinden yapılır. Bekleme üst süresi
   // dolarsa `fileId` korunur: "Yeniden gönder" yüklemeden yalnız beklemeyi yeniden başlatır.
-  const settle = useStableCallback((state: Exclude<FileProcessing, 'waiting'>, fileId: string) => {
-    if (state === 'timed_out') return dispatch({ type: 'send_failed', message: STILL_PROCESSING })
-    if (state === 'rejected') return dispatch({ type: 'file_rejected' })
-    if (state === 'failed') return dispatch({ type: 'send_failed', message: FAILED_UPLOAD })
-    dispatch({ type: 'file_ready' })
-    void submit
-      .submit(
-        { assignmentId, submission: { submissionKind: 'audio', recordingFileId: fileId } },
-        { silent: () => true },
-      )
-      .then((outcome) => {
-        if (outcome.status === 'busy') return
-        if (outcome.status === 'failed') return failWith(outcome.error)
-        dispatch({ type: 'submitted' })
-        notify.success('Konuşma kaydınız teslim edildi.')
-      })
-  })
+  // Tarayıcısız ortamda (`pending`) teslim bugünkü gibi denenir, kararı sunucu verir.
+  const settle = useStableCallback(
+    (state: Exclude<FileProcessing, 'processing'>, fileId: string) => {
+      if (state === 'timed_out') return dispatch({ type: 'send_failed', message: STILL_PROCESSING })
+      // Ses dönüşümünün reddettiği kayıt okumada bulunmaz (404, `missing`); tarama reddi `rejected`.
+      if (state === 'rejected' || state === 'missing') return dispatch({ type: 'file_rejected' })
+      if (state === 'failed') return dispatch({ type: 'send_failed', message: FAILED_UPLOAD })
+      dispatch({ type: 'file_ready' })
+      void submit
+        .submit(
+          { assignmentId, submission: { submissionKind: 'audio', recordingFileId: fileId } },
+          { silent: () => true },
+        )
+        .then((outcome) => {
+          if (outcome.status === 'busy') return
+          if (outcome.status === 'failed') return failWith(outcome.error)
+          dispatch({ type: 'submitted' })
+          notify.success('Konuşma kaydınız teslim edildi.')
+        })
+    },
+  )
   const fileState = processing.state
   const fileId = sending?.step === 'processing' ? sending.fileId : null
   useEffect(() => {
-    if (fileId !== null && fileState !== 'waiting') settle(fileState, fileId)
+    if (fileId !== null && fileState !== 'processing') settle(fileState, fileId)
   }, [fileId, fileState, settle])
 
   async function sendTake() {

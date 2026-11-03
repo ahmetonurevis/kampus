@@ -72,10 +72,10 @@ async function seed(
   institutionId: string,
   ownerUserId: string,
   input: Partial<ResourceVersionInput>,
+  id: string = randomUUID(),
 ): Promise<string> {
   const { db, close } = connectPostgres(e2e.databaseUrl)
   try {
-    const id = randomUUID()
     const published = version(id, ownerUserId, input)
     const resource: Omit<ResourceRecord, 'ownerActive'> = {
       id,
@@ -136,6 +136,37 @@ export async function seedQuiz(institutionId: string, ownerUserId: string, title
     },
     tags: tags('reading'),
   })
+}
+
+export const PASSAGE_TEXT = 'Ann lives in London and takes the bus to school every morning.'
+
+/**
+ * Okuma parçasına bağlı tek sorulu quiz (IST-042); parçanın kaynak kimliği kaldırma ve telif
+ * bildirimi senaryoları için döner.
+ */
+export async function seedReadingQuiz(institutionId: string, ownerUserId: string, title: string) {
+  const passageResourceId = randomUUID()
+  const passage = await seed(
+    institutionId,
+    ownerUserId,
+    {
+      title: `${title} metni`,
+      content: { type: 'reading_passage', body: PASSAGE_TEXT, glossary: [] },
+      tags: tags('reading'),
+    },
+    passageResourceId,
+  )
+  const item = await seed(institutionId, ownerUserId, question(QUIZ_QUESTIONS[0], 'a'))
+  const quiz = await seed(institutionId, ownerUserId, {
+    title,
+    content: {
+      type: 'quiz',
+      items: [{ questionVersionId: item, points: 1 }],
+      passageVersionId: passage,
+    },
+    tags: tags('reading'),
+  })
+  return { quiz, passageResourceId }
 }
 
 /**

@@ -295,6 +295,7 @@ describe('ödev hata metinleri ve alanları (DOM-AKD-070…073)', () => {
     ['homework_closed', 422, 'süresi doldu'],
     ['submission_graded', 409, 'değiştirilemez'],
     ['file_not_ready', 422, 'güvenlik taramasında'],
+    ['file_rejected', 422, 'güvenlik taramasından geçmedi'],
     ['homework_not_owner', 403, 'öğretmeni değilsiniz'],
     ['version_conflict', 409, HOMEWORK_CHANGED_MESSAGE],
   ]
@@ -324,6 +325,8 @@ describe('ödev hata metinleri ve alanları (DOM-AKD-070…073)', () => {
     )
     assert.equal(homeworkErrorField(error(422, 'record_inactive'), 'homework'), 'classId')
     assert.equal(homeworkErrorField(error(422, 'file_not_ready'), 'submit'), 'fileIds')
+    // IST-027 (OG-987): taramada reddedilen dosya da dosya alanının altında görünür.
+    assert.equal(homeworkErrorField(error(422, 'file_rejected'), 'submit'), 'fileIds')
     assert.equal(homeworkErrorField(error(409, 'file_already_attached'), 'submit'), 'fileIds')
     assert.equal(
       homeworkErrorField(error(400, 'validation_failed', ['fileIds', 2]), 'submit'),

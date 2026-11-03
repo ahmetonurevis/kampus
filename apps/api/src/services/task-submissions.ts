@@ -58,11 +58,13 @@ import { listConsentsOfSubject } from '../db/privacy.ts'
 import { findRecord } from '../db/records.ts'
 import { AppError, MESSAGES, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { loadLearnerNames } from './task-learner-names.ts'
 import { actorStudentConsent } from './consents.ts'
 import { defineFileAttachment } from './file-registry.ts'
 import { listMembershipLinks } from './memberships.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { coordinates, viewerOf, visible, type Viewer } from './task-assignments.ts'
+import { hidesPracticeResult } from './task-attempts.ts'
 import {
   attachVersionFiles,
   bodyFileIds,
@@ -77,6 +79,7 @@ import {
   auditWork,
   canReadLearner,
   learnerFilter,
+  loadWorkPairs,
   ownedLearners,
   ownLearner,
   readableLearners,
@@ -278,7 +281,8 @@ function visibleScoresOf(
  * `scoreResolution`; koordinatörün son puanı dahil) personele her zaman, kursiyer ve veliye yalnız
  * geri bildirim açılınca (`teacherFeedbackReleased`) görünür; açılmadan önce kursiyerin gördüğü,
  * hiç puanlanmamış sürümle aynıdır (`null`). Uyuşmazlıkta puan kesinleşmez, kursiyere kapalı
- * kalır. Kesinleşmemiş puanı yalnız personel görür (`visibleScoresOf`).
+ * kalır. Kesinleşmemiş puanı yalnız personel görür (`visibleScoresOf`). Veli alıştırma puanını
+ * hiç görmez (`hidesPracticeResult`).
  */
 function shownScore(
   viewer: Viewer,
@@ -287,6 +291,9 @@ function shownScore(
   grading: Grading,
   version: VersionRow,
 ): { row: RubricScoreRow; settled: boolean } | null {
+  // Veli alıştırmanın puanını, rubriğini ve geri bildirimini görmez (DOM-BEC-041); teslim
+  // listesi, ayrıntısı ve atama durum özeti bu tek yoldan puan alır.
+  if (hidesPracticeResult(viewer, assignment)) return null
   const resolution = resolutionOf(grading, version)
   if (resolution.status === 'settled') {
     if (viewer.kind !== 'learner' || teacherFeedbackReleased(resolution.settledAt, ctx.now))
@@ -378,6 +385,7 @@ function summaryView(
   book: GradingBook,
   assignment: StoredAssignment,
   work: StoredSubmissionWork,
+  learnerNames: ReadonlyMap<string, string>,
 ) {
   const latest = work.versions.at(-1)
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
@@ -385,6 +393,7 @@ function summaryView(
     id: work.submission.id,
     assignmentId: work.submission.assignmentId,
     learnerId: work.submission.learnerId,
+    learnerName: learnerNames.get(work.submission.learnerId) ?? null,
     status: statusOf(assignment, work, ctx.now),
     versionCount: work.versions.length,
     latestVersion:
@@ -527,6 +536,37 @@ export function learnerSubmissionProgress(
   }
 }
 
+/**
+ * Teslimin kesinleşmiş puanı olan en son sürümü ve puanı (beceri ilerleme panosu, DOM-BEC-035).
+ * Kesinleşmemiş (ikinci puan ya da koordinatör bekleyen, uyuşmazlıklı) puan girmez. Kursiyer ve
+ * veliye yalnız geri bildirimi açılmış puan döner (DOM-BEC-045): daha yeni sürümün puanı açılmamışsa
+ * önceki sürümün açılmış puanı gösterilir, bu yüzden yanıt yeni sürümün puanlanıp puanlanmadığını
+ * belli etmez.
+ */
+export function settledSubmissionResult(
+  ctx: ServiceContext,
+  viewer: Viewer,
+  book: GradingBook,
+  work: StoredSubmissionWork,
+): { versionId: string; submittedAt: string; percent: number } | null {
+  const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
+  for (const version of [...work.versions].reverse()) {
+    const resolution =
+      viewer.kind === 'learner'
+        ? releasedResolution(grading, version, ctx.now)
+        : resolutionOf(grading, version)
+    if (resolution === null || resolution.status !== 'settled') continue
+    const rubric = book.rubrics.get(resolution.score.rubricVersionId)
+    if (rubric === undefined) {
+      ctx.log.warn({ event: 'task_submission.rubric_missing' })
+      return null
+    }
+    const { percent } = rubricScore(rubric, resolution.score.criteria)
+    return { versionId: version.id, submittedAt: version.submittedAt, percent }
+  }
+  return null
+}
+
 const LOCKED_MESSAGE = 'Bu teslim için şu an yeni sürüm gönderilemez.'
 
 export async function detailView(
@@ -540,9 +580,17 @@ export async function detailView(
     loadGrading(db, ctx, [work.submission.id]),
     loadVersionFiles(db, ctx.institutionId, work.versions),
   ])
+  const learnerNames = await namesOf(
+    db,
+    ctx,
+    viewer,
+    book,
+    new Map([[assignment.id, assignment]]),
+    [work],
+  )
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
   return {
-    ...summaryView(viewer, ctx, book, assignment, work),
+    ...summaryView(viewer, ctx, book, assignment, work, learnerNames),
     versions: work.versions.map((version) => ({
       ...versionView(assignment, work, version),
       body: version.body,
@@ -661,6 +709,33 @@ function appealView(viewer: Viewer, grading: Grading, version: VersionRow) {
 }
 
 /**
+ * Satırların öğrenci adları (OG-213): öğretmende kapsamındaki öğrenciler; koordinatörde ayrıca
+ * uyuşmazlıklı ve okuduğu teslimlerin öğrencisi (`coordinatorReaches`, DOM-YTK-027).
+ */
+async function namesOf(
+  db: Database,
+  ctx: ServiceContext,
+  viewer: Viewer,
+  book: GradingBook,
+  assignments: ReadonlyMap<string, StoredAssignment>,
+  rows: readonly StoredSubmissionWork[],
+) {
+  const coordinated = new Set<string>()
+  for (const work of rows) {
+    const assignment = assignments.get(work.submission.assignmentId)
+    const grading = book.bySubmission.get(work.submission.id)
+    if (assignment && grading && coordinatorReaches(viewer, assignment, work, grading))
+      coordinated.add(work.submission.learnerId)
+  }
+  return loadLearnerNames(
+    { ...ctx, db },
+    viewer,
+    rows.map((work) => work.submission.learnerId),
+    coordinated,
+  )
+}
+
+/**
  * Teslim özetleri (liste ve puanlama kuyruğu): puanlar tek seferde yüklenir. Her satırın ataması
  * `assignments`'ta olmalıdır.
  */
@@ -676,10 +751,11 @@ export async function listSummaries(
     ctx,
     rows.map((work) => work.submission.id),
   )
+  const learnerNames = await namesOf(db, ctx, viewer, book, assignments, rows)
   return rows.map((work) => {
     const assignment = assignments.get(work.submission.assignmentId)
     if (assignment === undefined) throw new Error('submission summary without its assignment')
-    return summaryView(viewer, ctx, book, assignment, work)
+    return summaryView(viewer, ctx, book, assignment, work, learnerNames)
   })
 }
 
@@ -797,8 +873,10 @@ async function writableAssignment(tx: Database, ctx: ServiceContext, viewer: Vie
  * teslimdir (görev içeriğinin okuma kuralıyla aynı). Süren işi olan kursiyer lisansı dolmuş ya da
  * telif bildirimiyle incelemedeki içerikte taslağını kaydeder ve teslim eder; olmayan yeni iş
  * açamaz. Kaldırılmış ya da kursiyerin kitap sahibi olmadığı içerikte 422 `content_unavailable`.
+ * Sürüm denetiminden (409 `draft_conflict`) sonra, core kuralından önce çalışır; deneme uçları da
+ * aynı sıradadır (`api-tasarimi.md` §6).
  */
-function assertWritingOpen(
+async function assertWritingOpen(
   tx: Database,
   ctx: ServiceContext,
   assignment: StoredAssignment,
@@ -806,7 +884,8 @@ function assertWritingOpen(
   /** Okunmuş taslak (`null`: yok); `undefined` ise gerekirse okunur. */
   draft: DraftRow | null | undefined,
 ) {
-  return assertWorkOpen(tx, ctx, assignment, learnerId, async () => {
+  const pairs = await loadWorkPairs(tx, ctx.institutionId, [assignment])
+  return assertWorkOpen(tx, ctx, assignment, pairs, learnerId, async () => {
     const current =
       draft === undefined ? await loadDraft(tx, ctx.institutionId, assignment.id, learnerId) : draft
     if (current !== null) return true

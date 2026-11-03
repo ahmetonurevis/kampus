@@ -6,6 +6,7 @@ import { AppError, MESSAGES } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import {
+  checkTaskAttemptItem,
   getTaskAttempt,
   listTaskAttempts,
   saveTaskAttemptAnswers,
@@ -18,6 +19,7 @@ import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import { readErrors } from './communication.schemas.ts'
 import {
   taskAttemptAnswersBodySchema,
+  taskAttemptCheckBodySchema,
   taskAttemptAssignmentParamsSchema,
   taskAttemptDetailResponseSchema,
   taskAttemptListQuerySchema,
@@ -69,7 +71,7 @@ export function registerTaskAttemptRoutes(app: FastifyInstance) {
         operationId: 'listTaskAttempts',
         tags: ['task-attempts'],
         summary: 'Görev denemeleri',
-        description: `Atamanın arşivlenmemiş denemeleri, kursiyer ve deneme numarası sırasıyla, sayfalı (DOM-BEC-042). \`assignmentId\` zorunlu; \`learnerId\` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. ${READ_ACCESS}`,
+        description: `Atamanın arşivlenmemiş denemeleri, kursiyer ve deneme numarası sırasıyla, sayfalı (DOM-BEC-042). \`assignmentId\` zorunlu; \`learnerId\` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. Kaldırılan içerikte de döner (\`contentRemoved\`; DOM-KYN-051): kayıt ve cevaplar korunur, anahtar silindiyse puan \`null\`. ${READ_ACCESS}`,
         querystring: taskAttemptListQuerySchema,
         response: { 200: taskAttemptListResponseSchema, ...readErrors },
       },
@@ -89,7 +91,7 @@ export function registerTaskAttemptRoutes(app: FastifyInstance) {
         operationId: 'getTaskAttempt',
         tags: ['task-attempts'],
         summary: 'Görev denemesi ayrıntısı',
-        description: `Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). ${READ_ACCESS}`,
+        description: `Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Dinleme etkinliğinde \`listeningRecording\` kaydın dosyasını ve (personelde hep, kursiyer ve velide görev kapanınca ya da alıştırmada açık ayarla) dökümünü, \`listening\` kalan hakkı taşır (IST-045, DOM-BEC-005). Kaldırılan içerikte 404 değil: kayıt ve cevaplar döner, \`contentRemoved: true\`, soru, parça ve kayıt ve anahtar gelmez (DOM-KYN-051). ${READ_ACCESS}`,
         params: taskAttemptParamsSchema,
         response: { 200: taskAttemptDetailResponseSchema, ...readErrors },
       },
@@ -136,7 +138,7 @@ export function registerTaskAttemptRoutes(app: FastifyInstance) {
         operationId: 'saveTaskAttemptAnswers',
         tags: ['task-attempts'],
         summary: 'Deneme cevaplarını kaydet',
-        description: `Süren denemeye cevap kaydı (DOM-BEC-043; core \`planAnswerSave\`): yalnız gönderilen sorular güncellenir. Süre dolduysa 422 \`attempt_time_over\`, teslim edilmiş deneme 409 \`attempt_already_submitted\`, soruyla uyuşmayan cevap 422 \`answer_invalid\`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 \`content_unavailable\` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). \`If-Match\` zorunlu: denemenin \`rowVersion\`'ı (yoksa 400 \`if_match_required\`, tutmazsa 409 \`version_conflict\`). Otomatik kayıt denetim kaydına yazılmaz. ${WRITE_ACCESS}`,
+        description: `Süren denemeye cevap kaydı (DOM-BEC-043; core \`planAnswerSave\`): yalnız gönderilen sorular güncellenir. Süre dolduysa 422 \`attempt_time_over\`, teslim edilmiş deneme 409 \`attempt_already_submitted\`, soruyla uyuşmayan cevap 422 \`answer_invalid\`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 \`content_unavailable\` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). \`If-Match\` zorunlu: denemenin \`rowVersion\`'ı (yoksa 400 \`if_match_required\`, tutmazsa 409 \`version_conflict\`; sürüm içerik kuralından önce sınanır). Otomatik kayıt denetim kaydına yazılmaz. ${WRITE_ACCESS}`,
         params: taskAttemptParamsSchema,
         body: taskAttemptAnswersBodySchema,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
@@ -165,7 +167,7 @@ export function registerTaskAttemptRoutes(app: FastifyInstance) {
         operationId: 'submitTaskAttempt',
         tags: ['task-attempts'],
         summary: 'Denemeyi teslim et',
-        description: `Denemeyi teslim eder (DOM-BEC-010, 043; core \`planAttemptSubmit\`). Puan sunucuda cevaplardan hesaplanır; gövdede puan veya bilinmeyen alan 400. Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (\`autoSubmitted\`). Son teslimden sonra geç kabul süresinde teslim \`late\` işaretlenir. İkinci teslim 409 \`attempt_already_submitted\`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 \`content_unavailable\` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). \`If-Match\` zorunlu (denemenin \`rowVersion\`'ı); \`Idempotency-Key\` zorunlu. ${WRITE_ACCESS}`,
+        description: `Denemeyi teslim eder (DOM-BEC-010, 043; core \`planAttemptSubmit\`). Puan sunucuda cevaplardan hesaplanır; gövdede puan veya bilinmeyen alan 400. Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (\`autoSubmitted\`). Son teslimden sonra geç kabul süresinde teslim \`late\` işaretlenir. İkinci teslim 409 \`attempt_already_submitted\`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 \`content_unavailable\` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). \`If-Match\` zorunlu (denemenin \`rowVersion\`'ı; tutmazsa 409 \`version_conflict\`, içerik kuralından önce); \`Idempotency-Key\` zorunlu. ${WRITE_ACCESS}`,
         params: taskAttemptParamsSchema,
         body: taskAttemptSubmitBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
@@ -178,6 +180,35 @@ export function registerTaskAttemptRoutes(app: FastifyInstance) {
         contextOf(request),
         { attemptId: request.params.attemptId, answers: request.body.answers, expectedVersion },
         idempotencyOf(request, true),
+      )
+      return send(reply, result)
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-attempts/:attemptId/checks',
+    {
+      preValidation: [...write, requireIfMatch()],
+      schema: {
+        operationId: 'checkTaskAttemptItem',
+        tags: ['task-attempts'],
+        summary: 'Alıştırma maddesini kontrol et',
+        description: `Alıştırmada anında geri bildirim (IST-056, DOM-BEC-047; core \`planItemCheck\`): cevap denemeye kaydedilir, yanıt denemenin ayrıntısıdır ve \`feedback\` maddenin doğru/yanlış sonucunu, kalan hakkı ve yalnız kilitli maddenin anahtarını taşır. Madde başına 2 hak; doğru cevap ya da hakkın bitmesi maddeyi kilitler, kilitli maddenin cevabı kayıt ve teslimde değişmez. Son kontrolle aynı cevap mükerrerdir: hak tüketmez, hiçbir şey yazılmaz. Değerlendirme 422 \`instant_feedback_unavailable\`; kilitli madde 422 \`item_check_locked\`; görevde olmayan soru ya da uyuşmayan cevap 422 \`answer_invalid\`; süre dolduysa 422 \`attempt_time_over\`; teslim edilmiş deneme 409 \`attempt_already_submitted\`. İçerik kuralı cevap kaydıyla aynıdır (422 \`content_unavailable\`). \`If-Match\` zorunlu (denemenin \`rowVersion\`'ı; tutmazsa 409 \`version_conflict\`). Denetim kaydına yazılmaz. ${WRITE_ACCESS}`,
+        params: taskAttemptParamsSchema,
+        body: taskAttemptCheckBodySchema,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        response: { 200: taskAttemptDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const result = await checkTaskAttemptItem(
+        contextOf(request),
+        {
+          attemptId: request.params.attemptId,
+          expectedVersion: requiredVersion(request),
+          check: request.body,
+        },
+        idempotencyOf(request, false),
       )
       return send(reply, result)
     },

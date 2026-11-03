@@ -5,7 +5,7 @@ import pg from 'pg'
 import { z } from 'zod'
 
 import type { Database } from '../db/client.ts'
-import { listStaleProcessingFiles } from '../db/files.ts'
+import { listStaleTranscodeFiles } from '../db/files.ts'
 import { listInstitutionIds } from '../db/institutions.ts'
 import type { StorageDriver } from '../storage/storage.ts'
 import { AUDIO_TRANSCODE_PROFILES, type TranscodedPurpose } from '../services/audio-transcoder.ts'
@@ -80,6 +80,7 @@ const TRANSCODED_PURPOSES = Object.keys(AUDIO_TRANSCODE_PROFILES) as TranscodedP
 export function transcodeSummary(result: TranscodeOutcome): Record<string, string | number> {
   switch (result.outcome) {
     case 'ready':
+    case 'transcoded':
       return { outcome: result.outcome, durationMs: result.durationMs }
     case 'rejected':
       return { outcome: result.outcome, code: result.code }
@@ -207,7 +208,11 @@ export function inlineTranscodeScheduler(deps: InlineTranscodeDeps): InlineTrans
   return new InlineTranscodeScheduler(deps)
 }
 
-/** Kurumların uzun süredir `processing` kalan ses dosyaları (işi kaybolmuş dönüşümler). */
+/**
+ * Kurumların uzun süredir `processing` kalan, henüz dönüşmemiş ses dosyaları (işi kaybolmuş
+ * dönüşümler). Dönüşmüş ama taraması süren ses dönüşüm beklemez (OG-988; `file.scan` yeniden
+ * kuyruklaması onu kapsar).
+ */
 async function staleTranscodes(
   db: Database,
   now: Date,
@@ -215,7 +220,7 @@ async function staleTranscodes(
   const before = new Date(now.getTime() - STALE_TRANSCODE_MS)
   const found: { institutionId: string; fileId: string }[] = []
   for (const institutionId of await listInstitutionIds(db)) {
-    const rows = await listStaleProcessingFiles(
+    const rows = await listStaleTranscodeFiles(
       db,
       institutionId,
       TRANSCODED_PURPOSES,

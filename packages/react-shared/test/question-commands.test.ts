@@ -126,4 +126,9 @@ describe('Öğretmenime Sor komutları', () => {
   test('sürüm çakışması kullanıcıya güncel soruyu yükleme mesajı verir', () => {
     assert.equal(QUESTION_MESSAGES.version_conflict, QUESTION_CHANGED_MESSAGE)
   })
+
+  test('DOM-ILT-094: taranan ve reddedilen fotoğraf Türkçe iletiyle döner (IST-027)', () => {
+    assert.match(QUESTION_MESSAGES.file_not_ready, /güvenlik taramasında/)
+    assert.match(QUESTION_MESSAGES.file_rejected, /Başka bir dosya yükleyin/)
+  })
 })

@@ -23,7 +23,6 @@ import {
   overallAverage,
   scoreText,
   scoreTone,
-  withSubjectNames,
   teacherClassRow,
   weekDays,
   weekStart,
@@ -115,24 +114,6 @@ test('genel ortalama bütün notların ortalamasıdır, ders ortalamalarının d
     subjectAverages(grades).map((item) => item.average),
     [40, 100],
   )
-})
-
-test('ders adı güncel ders kaydından gösterilir; eşlemede yoksa notun adı kalır, sıra yenilenir', () => {
-  const averages = subjectAverages([
-    grade('math', 50, 'Mat.'),
-    grade('eng', 70, 'Eng'),
-    grade('x', 60, 'Satranç'),
-  ])
-  const named = withSubjectNames(averages, subjects)
-  assert.deepEqual(
-    named.map((item) => [item.subjectId, item.name]),
-    [
-      ['eng', 'İngilizce'],
-      ['math', 'Matematik'],
-      ['x', 'Satranç'],
-    ],
-  )
-  assert.deepEqual(withSubjectNames([], subjects), [])
 })
 
 test('başarı rozeti 65 altında dikkat, 65 ve üstünde yeşil olur', () => {

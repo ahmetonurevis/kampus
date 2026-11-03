@@ -81,4 +81,9 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   // (routes/permission-forms.ts; DOM-ILT-036, DOM-ILT-037).
   'POST /api/v1/permission-forms',
   'POST /api/v1/permission-forms/{formId}/decisions',
+  // Personel daveti: yeniden denemede ikinci hesap, üyelik ya da parola bağlantısı açılmaz
+  // (routes/institution-members.ts; DOM-YTK-070).
+  'POST /api/v1/institution-members/invitations',
+  // Toplu personel aktarımı: yeniden denemede davetler ikinci kez açılmaz (IST-007).
+  'POST /api/v1/institution-members/imports',
 ]

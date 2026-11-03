@@ -16,6 +16,7 @@ import {
   asCoreVersion,
   listContainerVersions,
   listFileVersionIds,
+  listListeningContainerVersions,
   loadVersionPairs,
 } from '../db/resources.ts'
 import { loadVersionsAssignments } from '../db/skills.ts'
@@ -195,9 +196,11 @@ async function readsLinkedVersion(
  * Kişinin, dosyaya bağ açan sürümü sabitleyen görülebilir bir ataması var mı (DOM-YTK-028): öğrenci
  * kendisine, veli çocuklarına (kardeşler dahil) hedeflenen; öğretmen atadığı ya da kapsamındaki
  * sınıfa hedeflenen; yönetici kurumdaki atamayı görür (`visible`). Soru görseli, soruyu içeren quiz
- * veya alıştırma setinin atamasıyla da açılır. Kursiyerde görev içeriğinin kuralı aynen uygulanır
+ * veya alıştırma setinin atamasıyla; dinleme kaydı, sesi dinleme kaydı olarak bağlayan quiz veya
+ * alıştırma setinin atamasıyla da açılır (IST-045; hak sayımı ayrıca `services/listening-plays.ts`). Kursiyerde görev içeriğinin kuralı aynen uygulanır
  * (`learnerContentGate`: yayın geçmişi, kitap sahibi sınırı, telif incelemesi ve kaldırma, lisans
- * süresi dolmuşsa yalnız süren iş); quiz yolunda sorunun sürümü de bu kuraldan geçer.
+ * süresi dolmuşsa yalnız süren iş); quiz yolunda sorunun sürümü de bu kuraldan geçer. Telif
+ * askısındaki içeriğin dosyası süren işi olana da açılmaz (`'file'` yüzü; sabah kararları 36, 39, 47).
  */
 async function assignedLinkedVersion(
   ctx: ServiceContext,
@@ -210,15 +213,23 @@ async function assignedLinkedVersion(
     if (error instanceof ForbiddenError) return false
     throw error
   }
-  // Sabitlenen sürüm → kuraldan geçmesi gereken soru sürümleri. Yalnız soru quiz'e girer: soru
-  // bağlı değilse quiz sorgusu atlanır.
+  // Sabitlenen sürüm → kuraldan geçmesi gereken bağlı sürümler. Soru quiz'e madde olarak, ses
+  // dinleme kaydı olarak (`listeningVersionId`, IST-045) girer; bağlı tür yoksa sorgu atlanır.
   const pinned = new Map<string, VersionPair[]>(linked.map((pair) => [pair.version.id, []]))
   const questions = linked.filter(({ resource }) => resource.contentType === 'question')
-  const containers = await listContainerVersions(
-    ctx.db,
-    ctx.institutionId,
-    questions.map(({ version }) => version.id),
-  )
+  const recordings = linked.filter(({ resource }) => resource.contentType === 'audio')
+  const [containers, listeningContainers] = await Promise.all([
+    listContainerVersions(
+      ctx.db,
+      ctx.institutionId,
+      questions.map(({ version }) => version.id),
+    ),
+    listListeningContainerVersions(
+      ctx.db,
+      ctx.institutionId,
+      recordings.map(({ version }) => version.id),
+    ),
+  ])
   for (const { id, content } of containers)
     if (content.type === 'quiz' || content.type === 'exercise_set')
       pinned.set(
@@ -227,6 +238,12 @@ async function assignedLinkedVersion(
           content.items.some((item) => item.questionVersionId === version.id),
         ),
       )
+  for (const { id, content } of listeningContainers)
+    if (content.type === 'quiz' || content.type === 'exercise_set')
+      pinned.set(id, [
+        ...(pinned.get(id) ?? []),
+        ...recordings.filter(({ version }) => version.id === content.listeningVersionId),
+      ])
   // Bütün sabitlenmiş sürümlerin atamaları tek sorguda; görülmeyen atama erken düşer.
   const assignments = (
     await loadVersionsAssignments(ctx.db, ctx.institutionId, [...pinned.keys()])
@@ -250,6 +267,7 @@ async function assignedLinkedVersion(
         ...(pinned.get(assignment.resourceVersionId) ?? []),
       ],
       () => learnerHasWork(ctx, viewer, assignment),
+      'file',
     )
     if (gate === null) return true
   }

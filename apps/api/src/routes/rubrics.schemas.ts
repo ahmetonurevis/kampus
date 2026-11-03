@@ -30,6 +30,15 @@ export const rubricVersionParamsSchema = rubricParamsSchema.extend({
 
 export const rubricListQuerySchema = pageQuerySchema
   .extend({
+    q: z
+      .string()
+      .trim()
+      .min(2)
+      .max(100)
+      .optional()
+      .describe(
+        'Baş sürümün başlığında arama (IST-048). Türkçe harf ve büyük/küçük harf duyarsız, joker yok',
+      ),
     skill: skill.optional().describe('Baş sürümün becerisi'),
     kind: kind.optional().describe('Baş sürümün türü: analitik veya bütüncül'),
     status: status.optional().describe('Baş sürümün durumu'),

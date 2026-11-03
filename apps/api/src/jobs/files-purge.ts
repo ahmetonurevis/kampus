@@ -13,7 +13,9 @@ const MAX_ROUNDS = 20
  * 24 saatte bir kayda bağlanmayan dosyanın nesnesi silinir, satırı `deleted` kalır. Saatlik
  * çalışır (her saatin 17. dakikası, Europe/Istanbul): dosya en geç 25 saatte silinir;
  * işlenmeyi (tarama, dönüşüm) bekleyen `processing` dosya yüklemeden 7 gün sonra
- * (`PROCESSING_FILE_TTL_MS`; tarayıcı kesintisi bağlanmamış dosyayı taramadan önce sildirmez). Kurum başına
+ * (`PROCESSING_FILE_TTL_MS`; tarayıcı kesintisi bağlanmamış dosyayı taramadan önce sildirmez).
+ * `ready` dosyanın 24 saati `ready` anından sayılır (`ready_at`, OG-995): geç taranan dosya
+ * bağlanmaya fırsat bulmadan silinmez. Kurum başına
  * tur tur (`PURGE_BATCH_SIZE`) ilerler; dolu tur bir sonrakini başlatır. İdempotenttir: silinmiş
  * dosya taramaya girmez.
  *

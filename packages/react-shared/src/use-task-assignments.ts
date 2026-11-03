@@ -53,6 +53,23 @@ export const TASK_ASSIGNMENT_LICENSE_EXPIRED_MESSAGE =
   'Bu içeriğin lisans süresi dolduğu için atanamaz; başka bir içerik seçin.'
 
 /**
+ * Kursiyerin görev içeriği kapalı (422 `content_unavailable`; DOM-KYN-025, 051): kaynak kaldırıldı,
+ * telif bildirimiyle askıda ve süren iş yok ya da kitap sahibiyle sınırlı. Yenilemek sonucu
+ * değiştirmez; özet aynı durumda `blockedBy: 'content_unavailable'` döner.
+ */
+export const TASK_CONTENT_UNAVAILABLE_MESSAGE = 'Bu içerik şu an kullanıma kapalı.'
+
+/**
+ * Kursiyer yazmalarının (deneme, taslak, teslim) içerik kapısı metinleri: içerik kapalı ve lisansı
+ * dolmuş içerikte süren işi olmayan kursiyer (409 `resource_license_expired`, DOM-KYN-021).
+ */
+export const LEARNER_CONTENT_MESSAGES = {
+  content_unavailable: TASK_CONTENT_UNAVAILABLE_MESSAGE,
+  resource_license_expired:
+    'Bu içeriğin kullanım lisansının süresi doldu; yeni deneme veya teslim başlatılamaz.',
+} as const satisfies CommandMessages
+
+/**
  * Oluşturma ve değişikliğin ortak metinleri. `not_found` burada yoktur: oluşturmada 404 olmayan
  * hedef, içerik veya rubrik sürümüdür; sunucunun mesajı ve `issues` yolu kullanılır.
  */
@@ -64,6 +81,9 @@ export const TASK_ASSIGNMENT_MESSAGES = {
     'Bu içeriğin yalnız güncel yayındaki sürümü atanabilir; sayfayı yenileyin.',
   resource_license_expired: TASK_ASSIGNMENT_LICENSE_EXPIRED_MESSAGE,
   rubric_version_not_assignable: 'Yalnız yayındaki rubrik sürümü atanabilir.',
+  // IST-045, DOM-BEC-005: kaydı olmayan dinleme görevinde hak sınırlanmaz.
+  listening_plays_unavailable:
+    'Dinleme hakkı yalnız dinleme kaydına bağlı içerikte sınırlanabilir; "Sınırsız" seçin.',
 } as const satisfies CommandMessages
 
 /**

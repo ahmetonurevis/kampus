@@ -5,10 +5,12 @@ import { documentData } from '@kampus/school-core/lib/document-data.ts'
 import {
   paymentReceiptDocument,
   receiptNumberLabel,
-  refundStatementDocument,
   type ReceiptPayment,
+} from '../src/lib/pdf/templates/payment-receipt.ts'
+import {
+  refundStatementDocument,
   type RefundWithdrawal,
-} from '../src/lib/pdf/finance-templates.ts'
+} from '../src/lib/pdf/templates/refund-statement.ts'
 import { contractDocument } from '../src/lib/pdf/templates/contract.ts'
 import { allTexts, measurer } from './support/pdf-measurer.ts'
 

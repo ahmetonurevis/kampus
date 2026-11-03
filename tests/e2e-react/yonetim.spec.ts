@@ -91,27 +91,50 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     await expectNoHorizontalOverflow(page)
   })
 
-  test('arama sunucuda süzer ve URL parametresine yazılır', async ({ page }) => {
+  test('IST-028: arama sunucuda süzer, adrese yazılmaz; yenilemede arama silinir, sıralama kalır', async ({
+    page,
+  }) => {
     await page.goto(CLASSES_URL)
     await expect(bodyRows(page, CLASS_TABLE)).toHaveCount(8)
 
+    const header = tableOf(page, CLASS_TABLE).getByRole('columnheader', { name: /Kampüs/ })
+    await header.getByRole('button').click()
+    await expect(page).toHaveURL(/[?&]sirala=branch/)
     await page.getByLabel('Tabloda ara').fill('7-A')
-    await expect(page).toHaveURL(/[?&]q=7-A/)
     await expect(resultCount(page)).not.toContainText('/ 24 kayıt')
     const rows = bodyRows(page, CLASS_TABLE)
     await expect(rows.first()).toContainText('7-A')
     await expectEveryRow(rows, '7-A')
+    await expect(page).not.toHaveURL(/[?&]q=/)
 
-    // Yenileme durumu korur.
+    // Yenileme sıralamayı adresten kurar; arama yalnız bellekteydi, kaybolur (ADR 0009).
     await page.reload()
-    await expect(page.getByLabel('Tabloda ara')).toHaveValue('7-A')
-    await expect(rows.first()).toContainText('7-A')
+    await expect(header).toHaveAttribute('aria-sort', 'ascending')
+    await expect(page.getByLabel('Tabloda ara')).toHaveValue('')
+    await expect(resultCount(page)).toContainText('/ 24 kayıt')
 
     await page.getByLabel('Tabloda ara').fill('yok-boyle-bir-sinif')
     await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
     await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
     await expect(bodyRows(page, CLASS_TABLE)).toHaveCount(8)
     await expect(page).not.toHaveURL(/[?&]q=/)
+  })
+
+  test('IST-028: eski bağlantıdaki q bir kez okunur ve geçmişe girdi eklemeden adresten silinir', async ({
+    page,
+  }) => {
+    await page.goto(`${CLASSES_URL}?sayfa=2`)
+    await expect(resultCount(page)).toContainText('9–16 / 24 kayıt')
+    await page.goto(`${CLASSES_URL}?q=7-A`)
+    await expect(page.getByLabel('Tabloda ara')).toHaveValue('7-A')
+    await expect(page).not.toHaveURL(/[?&]q=/)
+    await expectEveryRow(bodyRows(page, CLASS_TABLE), '7-A')
+
+    // `replace` ile silindiği için geri, q'lu adrese değil önceki girdiye (2. sayfa) döner.
+    await page.goBack()
+    await expect(page).toHaveURL(/[?&]sayfa=2/)
+    await expect(page).not.toHaveURL(/[?&]q=/)
+    await expect(resultCount(page)).toContainText('9–16 / 24 kayıt')
   })
 
   test('boş sonuçta tek temizleme düğmesi çıkar; süzgeç yokken hiç çıkmaz', async ({ page }) => {
@@ -137,8 +160,8 @@ test.describe('yönetici: Kampüsler & Sınıflar', () => {
     // yalnız aramanın yanıtını ölçer (yükte ilk yanıt gecikirse iki istek üst üste binmez).
     await expect(resultCount(page)).toContainText('1–8 / 24 kayıt')
     await page.getByLabel('Tabloda ara').fill('kadikoy')
-    await expect(page).toHaveURL(/[?&]q=kadikoy/)
     await expect(resultCount(page)).toContainText('1–8 / 8 kayıt')
+    await expect(page).not.toHaveURL(/[?&]q=/)
     await expectEveryRow(bodyRows(page, CLASS_TABLE), KADIKOY)
 
     await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
@@ -396,8 +419,8 @@ test.describe('yönetici: Eğitim Kadrosu', () => {
     await page.goto(STAFF_URL)
     await expect(resultCount(page)).toContainText('1–8 / 48 kayıt')
     await page.getByLabel('Tabloda ara').fill('kadikoy')
-    await expect(page).toHaveURL(/[?&]q=kadikoy/)
     await expect(resultCount(page)).toContainText('1–8 / 16 kayıt')
+    await expect(page).not.toHaveURL(/[?&]q=/)
     await expectEveryRow(bodyRows(page, STAFF_TABLE), KADIKOY)
   })
 
@@ -432,7 +455,6 @@ test.describe('yönetici: Eğitim Kadrosu', () => {
     await page.goto(STAFF_URL)
     await expect(resultCount(page)).toContainText('1–8 / 48 kayıt')
     await page.getByLabel('Tabloda ara').fill('Selin Kaya')
-    await expect(page).toHaveURL(/[?&]q=Selin/)
     await expect(bodyRows(page, STAFF_TABLE).first()).toContainText('Selin Kaya')
 
     await page.getByLabel('Tabloda ara').fill('zzzz-yok')

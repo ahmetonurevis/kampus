@@ -1,46 +1,18 @@
 import type { Page } from '@playwright/test'
-import pg from 'pg'
 
-import { e2e } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
+import { markFilesReady, pdf } from './support/materials.ts'
 
 // Materyal dosyası (OG-250; DOM-KYN-006, 051): öğretmen Materyal Kütüphanesi'nden içerik havuzunda
 // materyal dosyası taslağı açar, PDF yükler, taslakta bir dosyayı çıkarır ve yayımlar; içerik
 // öğrenciyle paylaşılınca öğrenci "Paylaşılan dosyalar" sekmesinden dosyayı açar. Kurum `tenant()`
 // ile kurulur; paylaşım (bu ekranda arayüzü yok) API'den yapılır.
 
-const pdf = (name: string) => ({
-  name,
-  mimeType: 'application/pdf',
-  buffer: Buffer.from(
-    `%PDF-1.4\n% ${name}\n1 0 obj\n<<>>\nendobj\ntrailer\n<<>>\n%%EOF\n`,
-    'latin1',
-  ),
-})
 const MAIN = pdf('kesirler-calisma.pdf')
 const EXTRA = pdf('kesirler-ek.pdf')
 
 const toast = (page: Page, text: string) =>
   page.locator('[data-sonner-toast]').filter({ hasText: text })
-
-/**
- * E2E API'si tarayıcısız koşar (`FILE_SCANNER=off`, clamd yok): yüklenen dosya `pending` kalır;
- * test kendi kurumunun dosyalarını doğrudan `ready` yapar (taramadan geçmiş gibi;
- * `sorular.spec.ts` ile aynı).
- */
-async function markFilesReady(institutionId: string): Promise<void> {
-  const client = new pg.Client({ connectionString: e2e.databaseUrl })
-  await client.connect()
-  try {
-    const result = await client.query(
-      "update files set status = 'ready' where institution_id = $1 and status = 'pending'",
-      [institutionId],
-    )
-    expect(result.rowCount).toBeGreaterThan(0)
-  } finally {
-    await client.end()
-  }
-}
 
 interface HeadFiles {
   data: { resource: { id: string; rowVersion: number }; head: { files: { id: string }[] } }

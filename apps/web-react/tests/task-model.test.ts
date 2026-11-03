@@ -1,13 +1,21 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
+import { listReducer, initialListState } from '../src/lib/list-state.ts'
+import { applyListParams, listStateToParams } from '../src/lib/list-url.ts'
 import { rubricScoreInputSchema } from '@kampus/school-core/skills/rubric.ts'
 import {
   assignmentBody,
   assignmentFormSchema,
+  assignmentListening,
+  assignmentScopeNote,
+  ATTEMPT_LIST_PARAMS,
+  ATTEMPT_LIST_PREFIX,
   canChangeAssignment,
   defaultAssignment,
   defaultResubmissionLocal,
   formFieldFor,
+  hasListeningRecording,
+  learnerLabel,
   resubmissionDueError,
   scoreBody,
   scoreFormSchema,
@@ -19,7 +27,7 @@ import {
 } from '../src/pages/tasks/task-model.ts'
 
 const NOW = Date.parse('2026-11-01T09:00:00.000Z')
-const names = { className: (id: string) => `Sınıf ${id}`, studentName: (id: string) => id }
+const names = { className: (id: string) => `Sınıf ${id}` }
 
 const teacherForm = (extra: Partial<AssignmentFormValues> = {}): AssignmentFormValues => ({
   ...defaultAssignment,
@@ -28,6 +36,13 @@ const teacherForm = (extra: Partial<AssignmentFormValues> = {}): AssignmentFormV
   rubricVersionId: 'rv1',
   dueAt: '2026-11-20T18:00',
   ...extra,
+})
+
+describe('öğrenci adı satırdan gelir (OG-213; DOM-YTK-028)', () => {
+  test('OG-213: learnerLabel sunucunun adını gösterir, null için genel etiket', () => {
+    assert.equal(learnerLabel({ learnerName: 'Deniz Yılmaz' }), 'Deniz Yılmaz')
+    assert.equal(learnerLabel({ learnerName: null }), 'Öğrenci')
+  })
 })
 
 describe('görev atama formu (DOM-KYN-032, DOM-BEC-041, 042, 044)', () => {
@@ -100,6 +115,71 @@ describe('görev atama formu (DOM-KYN-032, DOM-BEC-041, 042, 044)', () => {
         JSON.stringify(extra),
       )
     }
+  })
+
+  test('IST-045, DOM-BEC-005: dinleme hakkı yalnız dinleme kaydına bağlı içerikte gönderilir', () => {
+    const values = (listeningPlays: AssignmentFormValues['listeningPlays']) =>
+      assignmentFormSchema.parse(
+        teacherForm({ taskType: 'quiz', rubricVersionId: '', listeningPlays }),
+      )
+    assert.equal(assignmentBody(values('1'), 'v', 'class', true).settings?.listeningPlays, 1)
+    assert.equal(assignmentBody(values('2'), 'v', 'class', true).settings?.listeningPlays, 2)
+    assert.equal(
+      assignmentBody(values('unlimited'), 'v', 'class', true).settings?.listeningPlays,
+      null,
+    )
+    // Kaydı olmayan içerikte hak gönderilmez (sunucu sınırsız saklar).
+    assert.equal(
+      'listeningPlays' in (assignmentBody(values('1'), 'v', 'class').settings ?? {}),
+      false,
+    )
+    assert.equal(defaultAssignment.listeningPlays, '2')
+    assert.equal(formFieldFor('settings.listeningPlays'), 'listeningPlays')
+  })
+
+  test('IST-045: dinleme kaydı bağı yalnız quiz ve alıştırma setinde sayılır', () => {
+    assert.equal(hasListeningRecording({ type: 'quiz', listeningVersionId: 'a1' }), true)
+    assert.equal(hasListeningRecording({ type: 'exercise_set', listeningVersionId: 'a1' }), true)
+    assert.equal(hasListeningRecording({ type: 'quiz', listeningVersionId: null }), false)
+    assert.equal(hasListeningRecording({ type: 'quiz' }), false)
+    assert.equal(hasListeningRecording({ type: 'audio', listeningVersionId: 'a1' }), false)
+    assert.equal(hasListeningRecording(null), false)
+    assert.equal(hasListeningRecording(undefined), false)
+  })
+
+  test('IST-045, DOM-BEC-005: içerik değişince yeni sürüm yüklenene kadar gönderim kilitlenir; hak alanı yalnız kayda bağlı sürümde açılır', () => {
+    const withRecording = { content: { type: 'quiz', listeningVersionId: 'a1' } }
+    const withoutRecording = { content: { type: 'quiz' } }
+    const state = (loaded: { content: Record<string, unknown> | null } | null, failed = false) =>
+      assignmentListening({ itemList: true, selected: true, loaded, failed })
+    assert.deepEqual(state(withRecording), { listening: true, pending: false })
+    // Kaynak değişti, yeni sürüm henüz okunmadı (önceki sürüm sayılmaz): kilitli, alan gizli.
+    assert.deepEqual(state(null), { listening: false, pending: true })
+    assert.deepEqual(state(withoutRecording), { listening: false, pending: false })
+    assert.deepEqual(state({ content: null }), { listening: false, pending: false })
+    // Sürüm okunamazsa kilit kalkar, hak gönderilmez (sunucu kendi varsayılanını uygular).
+    assert.deepEqual(state(null, true), { listening: false, pending: false })
+    // İçerik seçilmemiş ya da öğretmen puanlı görev: bağ okunmaz.
+    assert.deepEqual(
+      assignmentListening({ itemList: true, selected: false, loaded: null, failed: false }),
+      { listening: false, pending: false },
+    )
+    assert.deepEqual(
+      assignmentListening({ itemList: false, selected: true, loaded: null, failed: false }),
+      { listening: false, pending: false },
+    )
+  })
+
+  test('IST-045: kaynak değişip alan gizlense de hak seçimi form değerinde kalır ve kayda bağlı içerikte gönderilir', () => {
+    const values = assignmentFormSchema.parse({
+      ...teacherForm({ taskType: 'quiz', rubricVersionId: '' }),
+      listeningPlays: '1',
+    })
+    assert.equal(assignmentBody(values, 'v1', 'class', true).settings?.listeningPlays, 1)
+    assert.equal(
+      'listeningPlays' in (assignmentBody(values, 'v2', 'class', false).settings ?? {}),
+      false,
+    )
   })
 
   test('sunucu hata yolu form alanına çevrilir, bilinmeyen yol form düzeyi olur', () => {
@@ -236,5 +316,46 @@ describe('görev yetkisi ve hedef özeti (DOM-YTK-028)', () => {
     assert.equal(scoreState(version(null)).label, 'Puan bekliyor')
     assert.equal(scoreState(version({ settled: true, percent: 80 })).label, 'Puanlandı · %80')
     assert.equal(scoreState(version({ settled: false, percent: 80 })).label, 'Kesinleşmedi · %80')
+  })
+})
+
+describe('görev listesi kapsam notu (OG-993, DOM-YTK-028)', () => {
+  test('yönetici kurumun bütün sınıflarının görevlerini görür, öğretmen kendi kapsamını', () => {
+    assert.equal(assignmentScopeNote('yonetici'), 'Kurumdaki bütün sınıfların görevleri')
+    assert.equal(assignmentScopeNote('ogretmen'), 'Atadıklarınız ve sınıflarınızı hedefleyenler')
+  })
+
+  test('yönetici başkasının atadığı görevi de değiştirir, öğretmen yalnız kendisininkini', () => {
+    const item = { assignedByUserId: 'u-baska' }
+    assert.equal(canChangeAssignment(item, 'u-yonetici', 'yonetici'), true)
+    assert.equal(canChangeAssignment(item, 'u-ogretmen', 'ogretmen'), false)
+  })
+})
+
+describe('görev panelindeki deneme listesinin adresi (OG-994)', () => {
+  const base = initialListState(10)
+
+  test('sayfa dn-sayfa ile adrese yazılır ve temizlenecek parametre listesiyle eşleşir', () => {
+    const second = listReducer(base, { type: 'page', page: 2 })
+    const params = listStateToParams(second, ATTEMPT_LIST_PREFIX, new URLSearchParams('gorev=a1'))
+    assert.equal(params.get('dn-sayfa'), '2')
+    assert.equal(params.get('gorev'), 'a1')
+    assert.deepEqual(ATTEMPT_LIST_PARAMS, ['dn-sayfa'])
+    // Birinci sayfa varsayılandır; adreste görünmez.
+    const first = listStateToParams(base, ATTEMPT_LIST_PREFIX, params)
+    assert.equal(first.has('dn-sayfa'), false)
+  })
+
+  test('geri/ileri adresteki sayfayı listeye uygular; sayfa boyutu değişince sayfa başa döner', () => {
+    const restored = applyListParams(base, new URLSearchParams('dn-sayfa=3'), ATTEMPT_LIST_PREFIX)
+    assert.equal(restored.page, 3)
+    const resized = listReducer(restored, { type: 'pageSize', pageSize: 20 })
+    assert.equal(resized.page, 1)
+    assert.equal(resized.pageSize, 20)
+  })
+
+  test('veri azalınca geçersiz sayfada kalınmaz', () => {
+    const state = listReducer(base, { type: 'page', page: 5 })
+    assert.equal(listReducer(state, { type: 'clamp', pageCount: 2 }).page, 2)
   })
 })

@@ -146,6 +146,24 @@ describe('görev atama komutları', () => {
     assert.doesNotMatch(feedback.message ?? '', /yenile/i)
   })
 
+  test('IST-045, DOM-BEC-005: kaydı olmayan dinleme görevine seçilen hak Türkçe mesajla bildirilir', () => {
+    const error = new ApiError({
+      status: 422,
+      code: 'listening_plays_unavailable',
+      message: 'Sunucu metni',
+      issues: [
+        {
+          path: ['settings', 'listeningPlays'],
+          code: 'listening_plays_unavailable',
+          message: 'Sunucu metni',
+        },
+      ],
+    })
+    const feedback = commandFeedback(error, createTaskAssignmentCommand.messages)
+    assert.match(feedback.message ?? '', /dinleme kaydına bağlı içerikte/)
+    assert.match(feedback.message ?? '', /Sınırsız/)
+  })
+
   test('IST-034: oluşturmada 404 sunucunun mesajı ve issues yoluyla gösterilir; "Görev bulunamadı." yalnız değişiklikte', () => {
     const missingTarget = new ApiError({
       status: 404,

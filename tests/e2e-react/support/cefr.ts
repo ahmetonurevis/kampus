@@ -5,11 +5,13 @@ import { levelDecisions } from '../../../apps/api/src/db/schema/cefr.ts'
 import { languageGroupMembers } from '../../../apps/api/src/db/schema/language-groups.ts'
 import { expect } from '@playwright/test'
 
+import type { CefrLevel, PrimarySkill } from '../../../packages/school-core/src/content/taxonomy.ts'
+
 import type { ApiClient } from './api.ts'
 import { e2e } from './env.ts'
 
 /**
- * CEFR profili ekranları için test verisi (OG-054). Kur ve grup API'den açılır; kursiyer üyeliği
+ * CEFR profili ekranları için test verisi (OG-054, OG-079). Kur ve grup API'den açılır; kursiyer üyeliği
  * kayıt akışına (Onur'un alanı) ve seviye kararı tam tespit akışına (form, beş bölüm, bitirme)
  * bağlı olduğundan ikisi doğrudan veritabanına yazılır. Tespit akışının kuralları API testindedir
  * (`apps/api/test/cefr.test.ts`).
@@ -32,10 +34,18 @@ async function teacherMembershipId(admin: ApiClient, name: string): Promise<stri
   return member?.id ?? ''
 }
 
-/** Etkin B1 kuru ve öğretmenin planlı grubu; öğrenci gruba kursiyer olarak eklenir. */
+/**
+ * Etkin B1 kuru ve planlı grubu; öğrenci gruba kursiyer olarak eklenir. `teacherName: null`
+ * öğretmensiz grup açar (koordinatör kapsamı, OG-079).
+ */
 export async function seedTeacherGroup(
   admin: ApiClient,
-  input: { institutionId: string; teacherName: string; studentId: string; groupName: string },
+  input: {
+    institutionId: string
+    teacherName: string | null
+    studentId: string
+    groupName: string
+  },
 ): Promise<void> {
   const course = await admin.post(
     '/api/v1/courses',
@@ -63,7 +73,8 @@ export async function seedTeacherGroup(
       courseId,
       name: input.groupName,
       ageBand: 'adult',
-      teacherMembershipId: await teacherMembershipId(admin, input.teacherName),
+      teacherMembershipId:
+        input.teacherName === null ? null : await teacherMembershipId(admin, input.teacherName),
       delivery: 'in_person',
       room: 'Derslik 1',
       schedule: [
@@ -95,15 +106,58 @@ export async function seedTeacherGroup(
   }
 }
 
-/** Öğrencinin genel seviyesine gerekçeli bir düzeltme kararı yazar (`level_decisions`). */
+/** Öğretmene seviyenin akademik koordinatörlüğünü verir (DOM-YTK-027). */
+export async function assignCoordinator(
+  admin: ApiClient,
+  teacherName: string,
+  level: CefrLevel,
+): Promise<void> {
+  const result = await admin.post(
+    '/api/v1/coordinator-duties',
+    { membershipId: await teacherMembershipId(admin, teacherName), scopeId: level },
+    { 'idempotency-key': randomUUID() },
+  )
+  expect(result.status, JSON.stringify(result.body)).toBe(201)
+}
+
+/** Karar anı kopyasına konacak kanıt görevi (`evidence_snapshot.evidence`). */
+export interface SeedEvidence {
+  title: string
+  skill: PrimarySkill
+  percent: number
+  successful: boolean
+}
+
+/**
+ * Öğrenciye gerekçeli bir seviye kararı yazar (`level_decisions`). Varsayılan genel seviyeye
+ * bugünkü düzeltme kararıdır; `daysAgo` kararı geçmişe alır, `evidence` karar anı kopyasına
+ * kanıt görevi koyar (OG-079).
+ */
 export async function seedLevelDecision(input: {
   institutionId: string
   studentId: string
   decidedByUserId: string
-  level: 'B1'
+  level: CefrLevel
   rationale: string
+  skill?: PrimarySkill | null
+  /** Yerleştirme tespit oturumu ister (`level_decisions_placement_check`); burada yazılmaz. */
+  kind?: 'progression' | 'correction'
+  daysAgo?: number
+  evidence?: readonly SeedEvidence[]
 }): Promise<void> {
-  const now = new Date()
+  const now = new Date(Date.now() - (input.daysAgo ?? 0) * 24 * 60 * 60_000)
+  const evidence = (input.evidence ?? []).map((item) => ({
+    id: randomUUID(),
+    taskId: randomUUID(),
+    title: item.title,
+    source: 'task' as const,
+    skill: item.skill,
+    targetLevel: input.level,
+    performedAt: new Date(now.getTime() - 60 * 60_000).toISOString(),
+    successful: item.successful,
+    percent: item.percent,
+    items: null,
+  }))
   const { db, close } = connectPostgres(e2e.databaseUrl)
   try {
     await db.insert(levelDecisions).values({
@@ -111,9 +165,9 @@ export async function seedLevelDecision(input: {
       id: randomUUID(),
       learnerKind: 'student',
       learnerId: input.studentId,
-      kind: 'correction',
+      kind: input.kind ?? 'correction',
       placementSessionId: null,
-      skill: null,
+      skill: input.skill ?? null,
       level: input.level,
       rationale: input.rationale,
       decidedByUserId: input.decidedByUserId,
@@ -124,7 +178,7 @@ export async function seedLevelDecision(input: {
         computedAt: now.toISOString(),
         overall: { status: 'insufficient', missingSkills: [] },
         skills: [],
-        evidence: [],
+        evidence,
       },
     })
   } finally {

@@ -1,12 +1,17 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
+import { QueryClient } from '@tanstack/react-query'
+
 import { createKampusClient } from '@kampus/api-client/client.ts'
 import { ApiError } from '@kampus/api-client/errors.ts'
 
 import { fetchFileUrl } from '../src/files.ts'
+import { institutionKey } from '../src/query-keys.ts'
+import { TASK_ATTEMPTS_KEY } from '../src/use-task-attempts.ts'
 import {
   allowanceOf,
+  fetchListeningUrl,
   LISTENING_FAILED_MESSAGE,
   LISTENING_LINK_MARGIN_MS,
   LISTENING_MESSAGES,
@@ -91,6 +96,63 @@ describe('dinleme kaydı bağlantısı (IST-045)', () => {
         return true
       },
     )
+  })
+})
+
+describe('sayılan dinleme deneme ayrıntısını eskitir (DOM-BEC-005)', () => {
+  const detailKey = institutionKey('inst-1', TASK_ATTEMPTS_KEY, 'detail', grant.attemptId)
+  const otherKey = institutionKey('inst-1', TASK_ATTEMPTS_KEY, 'detail', 'baska-deneme')
+  function seeded() {
+    const queryClient = new QueryClient({ defaultOptions: { queries: { staleTime: Infinity } } })
+    queryClient.setQueryData(detailKey, { id: grant.attemptId })
+    queryClient.setQueryData(otherKey, { id: 'baska-deneme' })
+    return queryClient
+  }
+  const invalidated = (queryClient: QueryClient, key: readonly unknown[]) =>
+    queryClient.getQueryState(key)?.isInvalidated ?? false
+
+  test('IST-045: hak sayılınca yalnız o denemenin ayrıntısı eskir; sayfaya dönünce kalan hak güncel okunur', async () => {
+    const queryClient = seeded()
+    const { client, urls } = fakeClient(() =>
+      json(200, {
+        data: { url: 'https://cdn.test/a', expiresAt: '2026-11-03T10:05:00Z', listening: grant },
+      }),
+    )
+    const link = await fetchListeningUrl(client, queryClient, 'inst-1', 'file-1', grant.attemptId)
+    assert.equal(urls[0]?.searchParams.get('attemptId'), grant.attemptId)
+    assert.deepEqual(link.listening, grant)
+    assert.equal(invalidated(queryClient, detailKey), true)
+    assert.equal(invalidated(queryClient, otherKey), false)
+  })
+
+  test('IST-045: pencere içindeki yeniden bağlantı (sayılmayan) ve sınırsız hak sorguyu eskitmez; sonuç ekranı attemptId göndermez', async () => {
+    for (const listening of [{ ...grant, counted: false }, null]) {
+      const queryClient = seeded()
+      const { client, urls } = fakeClient(() =>
+        json(200, {
+          data: { url: 'https://cdn.test/a', expiresAt: '2026-11-03T10:05:00Z', listening },
+        }),
+      )
+      await fetchListeningUrl(client, queryClient, 'inst-1', 'file-1')
+      assert.equal(urls[0]?.searchParams.has('attemptId'), false)
+      assert.equal(invalidated(queryClient, detailKey), false)
+    }
+  })
+
+  test('IST-045 (Sabah kararı 56): süren sınırlı denemede kimliksiz istek 422 listening_attempt_running Türkçe metindir; sorgu eskimez', async () => {
+    const queryClient = seeded()
+    const { client } = fakeClient(() =>
+      json(422, { code: 'listening_attempt_running', message: 'Sunucu metni', requestId: 'r1' }),
+    )
+    await assert.rejects(
+      () => fetchListeningUrl(client, queryClient, 'inst-1', 'file-1'),
+      (error: unknown) => {
+        assert.equal(listeningErrorCode(error), 'listening_attempt_running')
+        assert.match(listeningErrorMessage(error), /o denemenin ekranından/)
+        return true
+      },
+    )
+    assert.equal(invalidated(queryClient, detailKey), false)
   })
 })
 

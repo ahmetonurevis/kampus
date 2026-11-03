@@ -1,5 +1,12 @@
+import type { QueryClient } from '@tanstack/react-query'
+
+import type { KampusClient } from '@kampus/api-client/client.ts'
 import { isApiError } from '@kampus/api-client/errors.ts'
 import type { components } from '@kampus/api-client/schema.d.ts'
+
+import { fetchFileUrl, type FileUrl } from './files.ts'
+import { institutionKey } from './query-keys.ts'
+import { TASK_ATTEMPTS_KEY } from './use-task-attempts.ts'
 
 /**
  * Dinleme etkinliğinin istemci kuralları (OG-052; IST-045, DOM-BEC-005). Hak sunucuda sayılır
@@ -34,6 +41,8 @@ export const LISTENING_MESSAGES = {
   listening_attempt_required: 'Kayıt, görev açıkken yalnız denemenin içinde dinlenebilir.',
   listening_attempt_mismatch: 'Bu dinleme kaydı bu göreve ait değil.',
   listening_attempt_closed: 'Deneme sona erdi; kayıt yalnız süren denemede dinlenebilir.',
+  listening_attempt_running:
+    'Bu kayıt süren bir denemenizde sınırlı; dinlemeyi o denemenin ekranından açın.',
   file_processing: 'Kayıt hazırlanıyor; biraz sonra yeniden deneyin.',
   not_found: 'Kayıt bulunamadı.',
 } as const
@@ -52,6 +61,31 @@ export function listeningErrorCode(error: unknown): ListeningErrorCode | null {
 export function listeningErrorMessage(error: unknown): string {
   const code = listeningErrorCode(error)
   return code === null ? LISTENING_FAILED_MESSAGE : LISTENING_MESSAGES[code]
+}
+
+/**
+ * Dinleme kaydının bağlantısını ister (`attemptId` yalnız öğrencinin süren denemesinde). Hak
+ * sayıldıysa denemenin ayrıntı sorgusu eskitilir: ekrandaki sayaç yanıttan güncellenir, sayfaya
+ * dönünce deneme ayrıntısı da kalan hakkı doğru gösterir. Tazeleme beklenmez; oynatıcı gecikmez.
+ */
+export async function fetchListeningUrl(
+  client: KampusClient,
+  queryClient: QueryClient,
+  institutionId: string | null,
+  fileId: string,
+  attemptId?: string,
+): Promise<FileUrl> {
+  const result = await fetchFileUrl(client, fileId, attemptId ? { attemptId } : {})
+  if (result.listening?.counted)
+    void queryClient.invalidateQueries({
+      queryKey: institutionKey(
+        institutionId,
+        TASK_ATTEMPTS_KEY,
+        'detail',
+        result.listening.attemptId,
+      ),
+    })
+  return result
 }
 
 /**

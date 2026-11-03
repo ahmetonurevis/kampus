@@ -17,6 +17,7 @@ import {
   type StoredFile,
 } from './files.ts'
 import { useKampusClient } from './kampus-context.ts'
+import { fetchListeningUrl } from './listening.ts'
 import { institutionKey } from './query-keys.ts'
 import { useActiveInstitutionId } from './use-active-institution.ts'
 
@@ -45,6 +46,18 @@ export function useFileInfos(fileIds: readonly string[]) {
 export function useFileUrlFetcher() {
   const client = useKampusClient()
   return (fileId: string, options?: FileUrlOptions) => fetchFileUrl(client, fileId, options)
+}
+
+/**
+ * Dinleme kaydının bağlantısını isteyen işlev (`fetchListeningUrl`): `attemptId` öğrencinin süren
+ * denemesidir; sayılan dinlemeden sonra denemenin ayrıntı sorgusu eskitilir (kalan hak).
+ */
+export function useListeningUrlFetcher() {
+  const client = useKampusClient()
+  const queryClient = useQueryClient()
+  const institutionId = useActiveInstitutionId()
+  return (fileId: string, attemptId?: string) =>
+    fetchListeningUrl(client, queryClient, institutionId, fileId, attemptId)
 }
 
 /**

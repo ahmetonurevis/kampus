@@ -13,6 +13,7 @@ import {
   answeredCount,
   attemptClock,
   attemptContentNote,
+  attemptResultHeading,
   attemptStatusBadge,
   autoProgress,
   blockedByMessage,
@@ -840,5 +841,14 @@ describe('personel deneme görünümü (OG-983; DOM-BEC-042, DOM-BEC-045)', () =
       TASK_CONTENT_UNAVAILABLE_MESSAGE,
     )
     assert.equal(attemptContentNote({ contentRemoved: false, contentUnavailable: null }), null)
+  })
+
+  test('DOM-KYN-051, DOM-BEC-045, OG-997: süren denemenin başlığı "sonuç" demez; teslim edilmiş ve süre dolmuş deneme "sonucu" der', () => {
+    assert.equal(
+      attemptResultHeading({ attemptNumber: 2, status: 'in_progress' }),
+      '2. deneme (sürüyor)',
+    )
+    for (const status of ['submitted', 'expired'] as const)
+      assert.equal(attemptResultHeading({ attemptNumber: 1, status }), '1. deneme sonucu')
   })
 })

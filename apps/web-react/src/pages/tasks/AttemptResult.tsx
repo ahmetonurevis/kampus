@@ -3,6 +3,7 @@ import { Icon } from '@/components/Icon.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import {
   attemptContentNote,
+  attemptResultHeading,
   describeKey,
   describeResponse,
   formatPoints,
@@ -38,7 +39,7 @@ export function AttemptResult({ attempt, title, audience = 'learner' }: Props) {
   const heading = (
     <div>
       <h3 id="sonuc-baslik" className="text-lg font-semibold">
-        {attempt.attemptNumber}. deneme sonucu
+        {attemptResultHeading(attempt)}
       </h3>
       <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{title}</p>
     </div>

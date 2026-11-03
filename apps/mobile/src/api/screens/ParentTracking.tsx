@@ -1,130 +1,26 @@
 import { useMemo, useState } from 'react'
-import { Pressable, View } from 'react-native'
+import { View } from 'react-native'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { useCollectionAll, useCollectionList } from '@kampus/react-shared/use-collection.ts'
-import type { CollectionRow } from '@kampus/react-shared/collections.ts'
-import {
-  Avatar,
-  Badge,
-  Button,
-  Empty,
-  Icon,
-  SearchField,
-  Sheet,
-  T,
-  useColors,
-} from '../../ui/components.tsx'
-import { EmptyResults, ListRow, Pagination, Screen } from '../../ui/SchoolLayout.tsx'
+import { Badge, Empty, SearchField, T } from '../../ui/components.tsx'
+import { EmptyResults, ListRow, Pagination, Screen, Tabs } from '../../ui/SchoolLayout.tsx'
 import { useApiSession } from '../auth.tsx'
 import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
 import { canOpenScreen } from '../pages.ts'
+import { parentTabs, resolveParentTab, type ParentTab } from '../parent-tracking.ts'
 import { gradeView } from '../presentation.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { resolveChild } from '../session-state.ts'
 import { useDebouncedValue } from '../use-debounced-value.ts'
 import { useListMemory, useSelectedChild } from '../view-memory.tsx'
+import { ParentAttendance } from './parent-attendance.tsx'
+import { childOptions, ChildPicker } from './parent-child-picker.tsx'
+import { ParentSchedule } from './parent-schedule.tsx'
+import { HomeworkList } from './homework-list.tsx'
 
 type StudentRecord = State['students'][number]
 type ClassRecord = State['classes'][number]
 type GradeRecord = State['grades'][number]
-
-type ChildOption = { id: string; name: string; className: string | undefined }
-
-function ChildPicker({
-  options,
-  value,
-  onChange,
-}: {
-  options: readonly ChildOption[]
-  value: string
-  onChange: (id: string) => void
-}) {
-  const c = useColors()
-  const [open, setOpen] = useState(false)
-  const selected = options.find((option) => option.id === value)
-  if (!selected) return null
-  return (
-    <>
-      <Pressable
-        accessibilityRole="button"
-        accessibilityLabel={`Çocuk değiştir: ${selected.name}`}
-        disabled={options.length < 2}
-        onPress={() => setOpen(true)}
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          gap: 12,
-          minHeight: 64,
-          padding: 14,
-          borderRadius: 12,
-          borderWidth: 1,
-          borderColor: c.border,
-          backgroundColor: c.surface,
-        }}
-      >
-        <Avatar name={selected.name} size={36} />
-        <View style={{ flex: 1, gap: 4 }}>
-          <T bold size={16}>
-            {selected.name}
-          </T>
-          <T muted size={13}>
-            {[selected.className, options.length > 1 ? 'Çocuk değiştir' : undefined]
-              .filter(Boolean)
-              .join(' · ')}
-          </T>
-        </View>
-        {options.length > 1 && <Icon name="ChevronDown" size={18} color={c.primary} />}
-      </Pressable>
-      {open && (
-        <Sheet
-          compact
-          visible
-          title="Çocuk seç"
-          onClose={() => setOpen(false)}
-          footer={<Button onPress={() => setOpen(false)}>Vazgeç</Button>}
-        >
-          <View accessibilityRole="radiogroup" accessibilityLabel="Çocuk" style={{ gap: 4 }}>
-            {options.map((option) => (
-              <Pressable
-                key={option.id}
-                accessibilityRole="radio"
-                accessibilityLabel={`${option.name} seç`}
-                accessibilityState={{ checked: option.id === value }}
-                aria-checked={option.id === value}
-                onPress={() => {
-                  onChange(option.id)
-                  setOpen(false)
-                }}
-                style={{
-                  flexDirection: 'row',
-                  alignItems: 'center',
-                  gap: 16,
-                  minHeight: 72,
-                  paddingBottom: 16,
-                  borderBottomWidth: 1,
-                  borderColor: c.border,
-                }}
-              >
-                <Avatar name={option.name} />
-                <View style={{ flex: 1, gap: 4 }}>
-                  <T bold size={17}>
-                    {option.name}
-                  </T>
-                  <T muted size={14}>
-                    {[option.className, option.id === value ? 'Seçili' : undefined]
-                      .filter(Boolean)
-                      .join(' · ')}
-                  </T>
-                </View>
-                <Icon name={option.id === value ? 'Check' : 'Circle'} color={c.primary} />
-              </Pressable>
-            ))}
-          </View>
-        </Sheet>
-      )}
-    </>
-  )
-}
 
 function GradeList({ childId }: { childId: string }) {
   // Arama ve sayfa çocuk bazında ayrı tutulur.
@@ -177,27 +73,19 @@ function GradeList({ childId }: { childId: string }) {
   )
 }
 
-function childOptions(
-  students: readonly CollectionRow<StudentRecord>[],
-  classes: readonly CollectionRow<ClassRecord>[],
-): ChildOption[] {
-  const classNames = new Map(classes.map((row) => [row.id, row.record.name]))
-  return students.map((row) => ({
-    id: row.id,
-    name: row.record.name,
-    className: row.record.classId ? classNames.get(row.record.classId) : undefined,
-  }))
-}
-
 /**
- * Veli: çocuk seçici ve seçili çocuğun notları (demo `akademik-takip` not listesi). Çocuklar
- * sunucunun veli kapsamından gelir (yalnız bağlı çocuklar); notlar `studentId` ile istenir,
- * sunucu yine yalnız bu velinin çocuklarının kayıtlarını döndürür.
+ * Veli: Akademik Takip (web `veli/akademik-takip` ile aynı sekmeler): seçili çocuğun notları,
+ * devamsızlığı, haftalık ders programı ve ödevleri. Çocuk seçici bir kez üstte durur, seçim
+ * ekranlar arasında korunur (`useSelectedChild`, yalnız bellekte). Çocuklar sunucunun veli
+ * kapsamından gelir (yalnız bağlı çocuklar); her sekme verisini `studentId`/`classId` ile ister,
+ * sunucu yine yalnız bu velinin çocuklarının kayıtlarını döndürür, istemci süzmez. Kapalı modülün
+ * sekmesi çizilmez.
  */
-export default function ParentGrades() {
+export default function ParentTracking() {
   const session = useApiSession()
-  const open = canOpenScreen(session, 'ParentGrades')
+  const open = canOpenScreen(session, 'ParentTracking')
   const [selected, setSelected] = useSelectedChild()
+  const [requestedTab, setTab] = useState<ParentTab>('notlar')
   const students = useCollectionAll<StudentRecord>('students', {}, { enabled: open })
   const classes = useCollectionAll<ClassRecord>('classes', {}, { enabled: open })
   const options = useMemo(
@@ -208,6 +96,9 @@ export default function ParentGrades() {
     options.map((option) => option.id),
     selected,
   )
+  const classId = students.data?.find((row) => row.id === childId)?.record.classId
+  const tabs = parentTabs(session.modules)
+  const tab = resolveParentTab(requestedTab, tabs)
 
   if (!open)
     return (
@@ -217,7 +108,7 @@ export default function ParentGrades() {
     )
   return (
     <Screen>
-      <T muted>Notlar, dersler ve değerlendirmeler tek bir yerde.</T>
+      <T muted>Notlar, devamsızlık, ders programı ve ödevler tek bir yerde.</T>
       {students.error ? (
         <QueryError error={students.error} onRetry={() => void students.refetch()} />
       ) : !students.data ? (
@@ -227,7 +118,26 @@ export default function ParentGrades() {
       ) : (
         <>
           <ChildPicker options={options} value={childId} onChange={setSelected} />
-          <GradeList key={childId} childId={childId} />
+          <Tabs value={tab} onChange={setTab} options={tabs} />
+          {tab === 'notlar' ? (
+            <GradeList key={childId} childId={childId} />
+          ) : tab === 'devamsizlik' ? (
+            <ParentAttendance key={childId} childId={childId} />
+          ) : !classId ? (
+            <Empty
+              title="Sınıf atanmamış"
+              text="Çocuğunuzun sınıfı atandığında program ve ödevler burada görünür."
+            />
+          ) : tab === 'program' ? (
+            <ParentSchedule key={childId} classId={classId} />
+          ) : (
+            <HomeworkList
+              key={childId}
+              student={{ id: childId, classId }}
+              listKey={`veli/akademik-takip/odevler/${childId}`}
+              audience="parent"
+            />
+          )}
         </>
       )}
     </Screen>

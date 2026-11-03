@@ -393,6 +393,13 @@
       "when": 1793733079397,
       "tag": "0055_invitation_guardian",
       "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793742157538,
+      "tag": "0056_protect_approved_contracts",
+      "breakpoints": true
     }
   ]
 }

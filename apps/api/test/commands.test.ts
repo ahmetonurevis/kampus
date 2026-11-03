@@ -40,6 +40,11 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Ayrılış ve iade (routes/withdrawals.ts; DOM-FIN-041).
   'POST /api/v1/students/{studentId}/withdraw',
   'POST /api/v1/withdrawals/{withdrawalId}/pay-refund',
+  // Sözleşme onayı ve ek protokol (routes/finance-contracts.ts; IST-092, DOM-FIN-010).
+  'POST /api/v1/finance/contracts/{contractId}/signatory',
+  'POST /api/v1/finance/contracts/{contractId}/approve',
+  'POST /api/v1/finance/contracts/{contractId}/amendments',
+  'POST /api/v1/finance/contracts/{contractId}/cancel-amendment',
 ]
 // Onur: kayıt ve finans sonu
 

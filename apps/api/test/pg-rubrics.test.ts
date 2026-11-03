@@ -114,13 +114,16 @@ describe('PostgreSQL 16: eşzamanlı rubrik yayımı', { skip: PG_SKIP }, () => 
       backend.open(rows[0]!.pid)
       return publish(tx)
     })
+    // Sonuç hemen yakalanır: ilk transaction kapanırken `second` reddedilir; dinleyici araya `await`
+    // girdikten sonra bağlanırsa Node bunu işlenmemiş ret sayıp testi düşürür.
+    const secondSettled = Promise.allSettled([second])
     try {
       await untilLockWait(await backend.opened)
     } finally {
       release.open()
       await first
     }
-    const [outcome] = await Promise.allSettled([second])
+    const [outcome] = await secondSettled
     assert.ok(outcome?.status === 'rejected', 'ikinci yayım kabul edildi')
     assert.ok(
       outcome.reason instanceof AppError &&

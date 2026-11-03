@@ -41,7 +41,15 @@ export const OGUZHAN_SCREENS = [
   {
     screen: 'TeacherClasses',
     getComponent: (): MenuScreen => require('./screens/TeacherClasses.tsx').default,
-    pages: [{ role: 'ogretmen', path: 'siniflarim' }],
+    // Telefonda sınıf listesine ek olarak not girişi ve düzeltmesi vardır (`screens/teacher-grades.tsx`);
+    // web'deki not listesi (okuma) telefonda yoktur.
+    pages: [
+      {
+        role: 'ogretmen',
+        path: 'siniflarim',
+        description: 'Sınıflarınızı görün, notları girin ve düzeltin.',
+      },
+    ],
   },
   {
     screen: 'ParentTracking',

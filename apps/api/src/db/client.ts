@@ -51,9 +51,17 @@ export type Database = PgDatabase<PgQueryResultHKT, Schema>
 /** drizzle-kit'in ürettiği migration klasörü (`apps/api/drizzle`). */
 export const MIGRATIONS_FOLDER = fileURLToPath(new URL('../../drizzle', import.meta.url))
 
-export function connectPostgres(databaseUrl: string) {
+export interface ConnectOptions {
+  /** Boştaki bir istemcinin bağlantısı koptuğunda (veritabanı yeniden başlar, yönetici keser) çağrılır. */
+  onPoolError?: (error: Error) => void
+}
+
+export function connectPostgres(databaseUrl: string, options: ConnectOptions = {}) {
   // Better Auth tabloları saat dilimsiz `timestamp` kullanır; oturum UTC'ye sabitlenir.
   const pool = new pg.Pool({ connectionString: databaseUrl, max: 10, options: '-c timezone=UTC' })
+  // Dinleyicisiz havuz, boştaki istemcinin kopmasını yakalanmamış istisna yapıp süreci düşürür;
+  // koparılan istemci havuzdan zaten atılır, sonraki sorgu yeni bağlantı açar.
+  pool.on('error', (error) => options.onPoolError?.(error))
   const db = drizzle({ client: pool, schema })
   return { db, close: () => pool.end() }
 }

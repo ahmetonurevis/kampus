@@ -54,6 +54,17 @@ describe('API modu sayfaları', () => {
     )
   })
 
+  test('OG-062 Sınıflarım tek ekrandır ve not girişini açıklamasında belirtir', () => {
+    const pages = apiPages({ role: 'ogretmen', modules: open }).filter(
+      (page) => page.screen === 'TeacherClasses',
+    )
+    // Not girişi ayrı menü sayfası değil, Sınıflarım ekranının sekmesidir (web ile aynı yer).
+    assert.equal(pages.length, 1)
+    assert.match(pages[0]?.description ?? '', /not/i)
+    assert.equal(canOpenScreen({ role: 'ogretmen', modules: closed }, 'TeacherClasses'), false)
+    assert.equal(canOpenScreen({ role: 'ogrenci', modules: open }, 'TeacherClasses'), false)
+  })
+
   test('duyurular beş rolde de vardır; yönetici ve ön büroda yalnız bu sayfa', () => {
     for (const role of ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'] as const)
       assert.ok(

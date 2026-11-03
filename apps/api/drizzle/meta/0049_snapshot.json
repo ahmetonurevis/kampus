@@ -1,5 +1,5 @@
 {
-  "id": "bd26e0cc-9d3e-437a-9078-8862550e637f",
+  "id": "f0107b04-fbe9-40e1-aa70-954c2d2afb35",
   "prevId": "8a0a972d-a1d2-4b51-bc9b-3ac508400336",
   "version": "7",
   "dialect": "postgresql",
@@ -3398,6 +3398,72 @@
       },
       "isRLSEnabled": false
     },
+    "public.finance_export_profiles": {
+      "name": "finance_export_profiles",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "profile": {
+          "name": "profile",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_export_profiles_institution_id_institutions_id_fk": {
+          "name": "finance_export_profiles_institution_id_institutions_id_fk",
+          "tableFrom": "finance_export_profiles",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
+      "isRLSEnabled": false
+    },
     "public.scholarship_awards": {
       "name": "scholarship_awards",
       "schema": "",
@@ -4815,265 +4881,6 @@
         "language_groups_cancel_check": {
           "name": "language_groups_cancel_check",
           "value": "(\"language_groups\".\"cancel_reason\" is null or char_length(\"language_groups\".\"cancel_reason\") between 1 and 500)\n        and (\"language_groups\".\"merged_into_group_id\" is null\n          or (\"language_groups\".\"state\" = 'cancelled' and \"language_groups\".\"merged_into_group_id\" <> \"language_groups\".\"id\"))"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.learning_outcomes": {
-      "name": "learning_outcomes",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "code": {
-          "name": "code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "subject_id": {
-          "name": "subject_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "grade_level": {
-          "name": "grade_level",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_by_user_id": {
-          "name": "created_by_user_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "learning_outcomes_subject_grade_idx": {
-          "name": "learning_outcomes_subject_grade_idx",
-          "columns": [
-            {
-              "expression": "institution_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "subject_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "grade_level",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {
-        "learning_outcomes_institution_id_institutions_id_fk": {
-          "name": "learning_outcomes_institution_id_institutions_id_fk",
-          "tableFrom": "learning_outcomes",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "learning_outcomes_pkey": {
-          "name": "learning_outcomes_pkey",
-          "columns": [
-            "institution_id",
-            "code"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "learning_outcomes_grade_level_check": {
-          "name": "learning_outcomes_grade_level_check",
-          "value": "\"learning_outcomes\".\"grade_level\" between 5 and 12"
-        },
-        "learning_outcomes_code_check": {
-          "name": "learning_outcomes_code_check",
-          "value": "char_length(\"learning_outcomes\".\"code\") between 1 and 40"
-        },
-        "learning_outcomes_name_check": {
-          "name": "learning_outcomes_name_check",
-          "value": "char_length(\"learning_outcomes\".\"name\") between 1 and 300"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.platform_learning_outcomes": {
-      "name": "platform_learning_outcomes",
-      "schema": "",
-      "columns": {
-        "code": {
-          "name": "code",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "program_version": {
-          "name": "program_version",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "subject_id": {
-          "name": "subject_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "grade_level": {
-          "name": "grade_level",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "name": {
-          "name": "name",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "position": {
-          "name": "position",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {
-        "platform_learning_outcomes_subject_grade_idx": {
-          "name": "platform_learning_outcomes_subject_grade_idx",
-          "columns": [
-            {
-              "expression": "subject_id",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "grade_level",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            },
-            {
-              "expression": "position",
-              "isExpression": false,
-              "asc": true,
-              "nulls": "last"
-            }
-          ],
-          "isUnique": false,
-          "concurrently": false,
-          "method": "btree",
-          "with": {}
-        }
-      },
-      "foreignKeys": {},
-      "compositePrimaryKeys": {
-        "platform_learning_outcomes_pkey": {
-          "name": "platform_learning_outcomes_pkey",
-          "columns": [
-            "code"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "platform_learning_outcomes_grade_level_check": {
-          "name": "platform_learning_outcomes_grade_level_check",
-          "value": "\"platform_learning_outcomes\".\"grade_level\" between 5 and 12"
-        },
-        "platform_learning_outcomes_code_check": {
-          "name": "platform_learning_outcomes_code_check",
-          "value": "char_length(\"platform_learning_outcomes\".\"code\") between 1 and 40"
         }
       },
       "isRLSEnabled": false

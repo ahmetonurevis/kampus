@@ -1,5 +1,5 @@
 {
-  "id": "f81b88d7-b775-4868-ae0b-73cff83ae439",
+  "id": "69f8a17a-6733-49ba-b7f7-40cec65985be",
   "prevId": "794adfee-1a19-4c7a-8916-677166933de3",
   "version": "7",
   "dialect": "postgresql",
@@ -3320,7 +3320,7 @@
       "checkConstraints": {
         "files_purpose_check": {
           "name": "files_purpose_check",
-          "value": "\"files\".\"purpose\" in ('submission', 'material', 'question_image', 'student_question_photo', 'listening_audio', 'speaking_recording', 'document')"
+          "value": "\"files\".\"purpose\" in ('submission', 'material', 'question_image', 'student_question_photo', 'listening_audio', 'speaking_recording', 'document', 'absence_document')"
         },
         "files_status_check": {
           "name": "files_status_check",
@@ -7563,134 +7563,6 @@
         "resources_share_scope_check": {
           "name": "resources_share_scope_check",
           "value": "\"resources\".\"share_scope\" in ('private', 'students', 'classes', 'department', 'institution')"
-        }
-      },
-      "isRLSEnabled": false
-    },
-    "public.attempt_item_checks": {
-      "name": "attempt_item_checks",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "attempt_id": {
-          "name": "attempt_id",
-          "type": "uuid",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "question_version_id": {
-          "name": "question_version_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "check_number": {
-          "name": "check_number",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "response": {
-          "name": "response",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "checked_at": {
-          "name": "checked_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "attempt_item_checks_institution_id_institutions_id_fk": {
-          "name": "attempt_item_checks_institution_id_institutions_id_fk",
-          "tableFrom": "attempt_item_checks",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        },
-        "attempt_item_checks_attempt_fkey": {
-          "name": "attempt_item_checks_attempt_fkey",
-          "tableFrom": "attempt_item_checks",
-          "tableTo": "task_attempts",
-          "columnsFrom": [
-            "institution_id",
-            "attempt_id"
-          ],
-          "columnsTo": [
-            "institution_id",
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "attempt_item_checks_pkey": {
-          "name": "attempt_item_checks_pkey",
-          "columns": [
-            "institution_id",
-            "attempt_id",
-            "question_version_id",
-            "check_number"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "attempt_item_checks_number_check": {
-          "name": "attempt_item_checks_number_check",
-          "value": "\"attempt_item_checks\".\"check_number\" between 1 and 2"
-        },
-        "attempt_item_checks_response_check": {
-          "name": "attempt_item_checks_response_check",
-          "value": "jsonb_typeof(\"attempt_item_checks\".\"response\") = 'object'"
-        },
-        "attempt_item_checks_version_check": {
-          "name": "attempt_item_checks_version_check",
-          "value": "\"attempt_item_checks\".\"version\" = 1 and \"attempt_item_checks\".\"archived_at\" is null"
         }
       },
       "isRLSEnabled": false

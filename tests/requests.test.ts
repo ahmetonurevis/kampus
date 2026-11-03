@@ -298,7 +298,7 @@ test('DOM-ILT-053: veli ileri tarihli izin bildirir; talep açılmaz, yoklama de
   const requests = state.requests.length
   const attendance = JSON.stringify(state.attendance)
   const notice = notifyAbsence(state, parent, absence(), id, now)
-  assert.equal(state.absences[0], notice)
+  assert.equal(state.absences.at(-1), notice)
   assert.deepEqual(
     {
       status: notice.status,
@@ -465,16 +465,19 @@ test('DOM-ILT-053: örtüşen bildirim, belge eki ve geçersiz aralık kaydı de
       notifyAbsence(
         state,
         parent,
-        absence({ startDate: '2026-10-20', endDate: '2026-10-20', files: ['rapor.pdf'] }),
+        absence({ startDate: '2026-10-20', endDate: '2026-10-20', fileIds: ['f-yok'] }),
         id,
         now,
       ),
-    isDomainError('absence_files_unsupported'),
+    isDomainError('absence_document_unavailable'),
   )
   for (const input of [
     absence({ startDate: '2026-10-12', endDate: '2026-10-11' }),
     absence({ startDate: '2026-02-30', endDate: '2026-03-01' }),
     absence({ reasonCategory: 'Tatil' }),
+    // Eski `files` alanı artık bilinmeyen alandır; aynı belge iki kez verilemez.
+    absence({ startDate: '2026-10-20', endDate: '2026-10-20', files: ['rapor.pdf'] }),
+    absence({ startDate: '2026-10-20', endDate: '2026-10-20', fileIds: ['f1', 'f1'] }),
   ])
     unchangedOnFailure(
       state,
@@ -486,7 +489,7 @@ test('DOM-ILT-053: örtüşen bildirim, belge eki ve geçersiz aralık kaydı de
   notifyAbsence(
     state,
     parent,
-    absence({ startDate: '2026-10-21', endDate: '2026-10-21', files: [] }),
+    absence({ startDate: '2026-10-21', endDate: '2026-10-21', fileIds: [] }),
     id,
     now,
   )

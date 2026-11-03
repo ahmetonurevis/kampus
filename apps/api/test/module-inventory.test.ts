@@ -52,6 +52,13 @@ const MODULELESS: Readonly<Record<string, string>> = {
   // Üyelik ve kadro çekirdek kayıtlardır (öğrenci, öğretmen, veli koleksiyonları her zaman açık).
   'GET /api/v1/memberships': 'çekirdek üyelik',
   'GET /api/v1/institution-members': 'çekirdek üyelik',
+  // Personel hesabı yönetimi kapatılamaz: kurumun yönetimsiz kalmaması için (DOM-YTK-070).
+  'GET /api/v1/institution-members/invitations': 'personel hesabı',
+  'POST /api/v1/institution-members/invitations': 'personel hesabı',
+  'POST /api/v1/institution-members/invitations/:invitationId/cancel': 'personel hesabı',
+  'POST /api/v1/institution-members/:membershipId/role': 'personel hesabı',
+  'POST /api/v1/institution-members/:membershipId/deactivate': 'personel hesabı',
+  'POST /api/v1/institution-members/:membershipId/reactivate': 'personel hesabı',
   // Zümre başkanı / koordinatör görevi personel yönetimidir; görevin kullanıldığı uç (son puan)
   // kendi modülünü ister (DOM-YTK-027).
   'GET /api/v1/coordinator-duties': 'personel görevi',
@@ -159,6 +166,9 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'POST /api/v1/grades': ['academic'],
   'PATCH /api/v1/grades/:gradeId': ['academic'],
   'POST /api/v1/absences': ['academic'],
+  'POST /api/v1/absences/:absenceId/documents': ['academic'],
+  'POST /api/v1/absences/:absenceId/approve': ['academic'],
+  'POST /api/v1/absences/:absenceId/reject': ['academic'],
   // Etüt.
   'POST /api/v1/tutor-sessions': ['tutoring'],
   'POST /api/v1/tutor-sessions/:sessionId/cancel': ['tutoring'],

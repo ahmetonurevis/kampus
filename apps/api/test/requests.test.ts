@@ -413,9 +413,15 @@ describe('talep ve izin/mazeret uçları', () => {
       'absence_notice_late',
     )
     assertError(await notify(cookie, past('2026-09-29', '2026-10-01')), 409, 'absence_overlap')
-    const files = await notify(cookie, { ...past('2026-10-20'), files: ['rapor.pdf'] })
-    assertError(files, 422, 'absence_files_unsupported')
-    assert.deepEqual(files.json().issues[0].path, ['files'])
+    // Belge yalnız yüklenmiş dosya kimliğiyle bağlanır (OG-044, ayrıntı absence-approval testi).
+    const files = await notify(cookie, { ...past('2026-10-20'), fileIds: ['f-yok'] })
+    assertError(files, 422, 'absence_document_unavailable')
+    assert.deepEqual(files.json().issues[0].path, ['fileIds'])
+    assertError(
+      await notify(cookie, { ...past('2026-10-20'), files: ['rapor.pdf'] }),
+      400,
+      'validation_failed',
+    )
     assertError(await notify(cookie, past('2026-10-21', '2026-10-20')), 400, 'validation_failed')
     assertError(await notify(cookie, { ...ABSENCE, studentId: 's25' }), 403, 'student_scope_denied')
     assertError(await notify(await frontOffice(a.id)), 403, 'forbidden')

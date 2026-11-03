@@ -116,6 +116,30 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'institution-members.test.ts',
     'başka kurumun üyeleri listede yok',
   ),
+  'GET /api/v1/institution-members/invitations': liste(
+    'staff-accounts.test.ts',
+    'başka kurumun daveti listede yok',
+  ),
+  'POST /api/v1/institution-members/invitations': govde(
+    'staff-accounts.test.ts',
+    'başka kurumun öğretmen kaydı 404',
+  ),
+  'POST /api/v1/institution-members/invitations/:invitationId/cancel': kayit(
+    'staff-accounts.test.ts',
+    'başka kurumun davetini iptal edemez',
+  ),
+  'POST /api/v1/institution-members/:membershipId/role': kayit(
+    'staff-accounts.test.ts',
+    '401, 403, başka kurum 404, 400 ve kayıt değişmez',
+  ),
+  'POST /api/v1/institution-members/:membershipId/deactivate': kayit(
+    'staff-accounts.test.ts',
+    '401, 403, başka kurum 404, kendi hesabı ve son yönetici 422',
+  ),
+  'POST /api/v1/institution-members/:membershipId/reactivate': kayit(
+    'staff-accounts.test.ts',
+    'geri alma başka kurumda 404',
+  ),
   'GET /api/v1/coordinator-duties': DUTY,
   'GET /api/v1/coordinator-duties/:dutyId': DUTY,
   'POST /api/v1/coordinator-duties': govde(
@@ -216,6 +240,18 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'PATCH /api/v1/requests/:requestId': kayit(
     'requests.test.ts',
     'başka kurumun talebi 404; o talep değişmez',
+  ),
+  'POST /api/v1/absences/:absenceId/documents': kayit(
+    'absence-approval.test.ts',
+    'veli belgeyi sonradan ekler; If-Match zorunlu, başka kurum 404',
+  ),
+  'POST /api/v1/absences/:absenceId/approve': kayit(
+    'absence-approval.test.ts',
+    'başka kurum 404 ve değişmez',
+  ),
+  'POST /api/v1/absences/:absenceId/reject': kayit(
+    'absence-approval.test.ts',
+    'başka kurum 404 ve değişmez',
   ),
   'GET /api/v1/notifications': kayit('notifications.test.ts', 'başka kurumun bildirimi 404'),
   'POST /api/v1/notifications/:notificationId/read': kayit(

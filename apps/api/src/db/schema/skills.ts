@@ -78,7 +78,7 @@ import { resources, resourceVersions } from './resources.ts'
  * - Tablolar yeni ve boştur; kısıtlar `not valid` adımına gerek olmadan tek adımda eklenir.
  *
  * - Dinleme hakkı `attempt_media_plays` satırlarıyla sayılır (migration 0030, OG-049).
- * - Alıştırmanın madde kontrolleri `attempt_item_checks` satırlarıdır (migration 0045, OG-085).
+ * - Alıştırmanın madde kontrolleri `attempt_item_checks` satırlarıdır (migration 0047, OG-085).
  * - Dosyalı ve sesli teslim sürümü dosya kimliklerini sırasıyla `submission_versions.file_ids`'te
  *   taşır (migration 0031, OG-048); dosya satırı aynı işlemde sürüme bağlanır
  *   (`files.attached_type = 'task_submission_version'`). İmhadan sonra kimlik kalır, dosya satırı

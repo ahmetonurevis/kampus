@@ -1,6 +1,7 @@
 import { APIError, createAuthMiddleware, getSessionFromCtx, isAPIError } from 'better-auth/api'
 import type { DBTransactionAdapter } from 'better-auth'
-import { asc, eq } from 'drizzle-orm'
+import { getOrgAdapter } from 'better-auth/plugins/organization'
+import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm'
 
 import type { Database } from '../db/client.ts'
 import { institutions, memberships, users } from '../db/schema/auth.ts'
@@ -29,12 +30,12 @@ const RESET_REQUEST_RESPONSE = {
 export const FORWARDED_IP_HEADER = 'x-kampus-client-ip'
 export const FORWARDED_REQUEST_ID_HEADER = 'x-request-id'
 
-/** Oturum açılırken etkin kurum: kullanıcının en eski üyeliği. */
+/** Oturum açılırken etkin kurum: kullanıcının en eski etkin (pasifleştirilmemiş) üyeliği. */
 export async function defaultInstitutionId(db: Database, userId: string): Promise<string | null> {
   const [first] = await db
     .select({ institutionId: memberships.institutionId })
     .from(memberships)
-    .where(eq(memberships.userId, userId))
+    .where(and(eq(memberships.userId, userId), isNull(memberships.deactivatedAt)))
     .orderBy(asc(memberships.createdAt), asc(memberships.id))
     .limit(1)
   return first?.institutionId ?? null
@@ -48,10 +49,16 @@ export async function defaultInstitutionIdFromAdapter(
   adapter: DBTransactionAdapter,
   userId: string,
 ): Promise<string | null> {
-  const rows = await adapter.findMany<{ id: string; organizationId: string; createdAt: Date }>({
+  const all = await adapter.findMany<{
+    id: string
+    organizationId: string
+    createdAt: Date
+    deactivatedAt?: Date | null
+  }>({
     model: 'member',
     where: [{ field: 'userId', value: userId }],
   })
+  const rows = all.filter((row) => !row.deactivatedAt)
   rows.sort(
     (a, b) =>
       new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime() ||
@@ -77,10 +84,61 @@ function stringField(body: unknown, key: string): string | null {
 
 const PASSWORD_PATHS = new Set(['/sign-up/email', '/reset-password', '/change-password'])
 
+/**
+ * Better Auth organization uçları üyeliğin pasifliğini bilmez. Pasifleştirilen üyelik (DOM-YTK-070)
+ * bu uçlarda üyelik yokmuş gibi reddedilir: kişi pasif olduğu kuruma geçemez, üyeliğini okuyamaz.
+ */
+const MEMBERSHIP_PATHS = new Set(['/organization/set-active', '/organization/get-active-member'])
+
+/** Uç hangi kurumun üyeliğine bakacak: `set-active` gövdeden (kimlik ya da kısa ad), öteki oturumdan. */
+async function requestedInstitutionId(
+  db: Database,
+  context: HookEndpointContext,
+  activeInstitutionId: string | null,
+): Promise<string | null> {
+  if (context.path !== '/organization/set-active') return activeInstitutionId
+  const body: unknown = context.body
+  // `organizationId: null` etkin kurumu kaldırır; üyelik gerekmez.
+  if (typeof body === 'object' && body !== null && Reflect.get(body, 'organizationId') === null)
+    return null
+  const id = stringField(body, 'organizationId')
+  if (id) return id
+  const slug = stringField(body, 'organizationSlug')
+  if (!slug) return activeInstitutionId
+  const [row] = await db
+    .select({ id: institutions.id })
+    .from(institutions)
+    .where(eq(institutions.slug, slug))
+    .limit(1)
+  return row?.id ?? null
+}
+
+async function isDeactivatedMember(
+  db: Database,
+  institutionId: string,
+  userId: string,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: memberships.id })
+    .from(memberships)
+    .where(
+      and(
+        eq(memberships.institutionId, institutionId),
+        eq(memberships.userId, userId),
+        isNotNull(memberships.deactivatedAt),
+      ),
+    )
+    .limit(1)
+  return row !== undefined
+}
+
 export const WEAK_PASSWORD_MESSAGE =
   'Bu parola çok yaygın veya kişisel bilgilerinize fazla benziyor. Başka bir parola seçin.'
 
-/** Parola politikası ve çıkış kaydı. Çıkıştan sonra oturum silindiği için sahibi önceden okunur. */
+/**
+ * Parola politikası, pasif üyeliğin kurum uçlarında reddi ve çıkış kaydı. Çıkıştan sonra oturum
+ * silindiği için sahibi önceden okunur.
+ */
 export function authBeforeHook(ctx: HookContext) {
   return createAuthMiddleware(async (context) => {
     if (PASSWORD_PATHS.has(context.path)) {
@@ -94,6 +152,23 @@ export function authBeforeHook(ctx: HookContext) {
         throw new APIError('BAD_REQUEST', {
           code: 'PASSWORD_TOO_COMMON',
           message: WEAK_PASSWORD_MESSAGE,
+        })
+      return
+    }
+    if (MEMBERSHIP_PATHS.has(context.path)) {
+      const session = await getSessionFromCtx(context).catch(() => null)
+      if (!session) return
+      const activeId: unknown = Reflect.get(session.session, 'activeOrganizationId')
+      const institutionId = await requestedInstitutionId(
+        ctx.db,
+        context,
+        typeof activeId === 'string' ? activeId : null,
+      )
+      if (institutionId && (await isDeactivatedMember(ctx.db, institutionId, session.user.id)))
+        // Better Auth'un üye olmayan kişiye verdiği hatanın aynısı (çevirisi `plugins/better-auth.ts`).
+        throw new APIError('FORBIDDEN', {
+          code: 'USER_IS_NOT_A_MEMBER_OF_THE_ORGANIZATION',
+          message: 'User is not a member of the organization',
         })
       return
     }
@@ -145,6 +220,51 @@ async function hookSession(context: HookEndpointContext) {
   return getSessionFromCtx(context).catch(() => null)
 }
 
+/**
+ * Personel daveti (DOM-YTK-070) ilk başarılı girişte kabul edilmiş sayılır: hesap ve üyelik
+ * davette açıldığı için kabul yalnız davetin "bekliyor" işaretini kaldırır. Yalnız kurumun açtığı
+ * hesapta: davetin açtığı üyelik (`membershipId`) bu kişinindir ve hâlâ vardır. Başka kurumdaki
+ * mevcut hesaba yazılmış davet (karar 73) girişle kabul edilmez, üyelik açılmaz; o davetin kabulü
+ * kişinin oturumuyla ayrı bir akıştır (TODO(staff-invite-accept), `services/staff-accounts.ts`).
+ * Yazma eklentinin bağdaştırıcısıyla.
+ */
+async function acceptStaffInvitations(
+  context: HookEndpointContext,
+  user: { id: string; email: string },
+): Promise<void> {
+  const adapter = context.context.adapter
+  const pending = await adapter.findMany<{
+    id: string
+    organizationId: string
+    membershipId?: string | null
+  }>({
+    model: 'invitation',
+    where: [
+      { field: 'email', value: user.email.toLowerCase() },
+      { field: 'status', value: 'pending' },
+    ],
+  })
+  if (pending.length === 0) return
+  const organization = getOrgAdapter(context.context)
+  for (const invitation of pending) {
+    if (!invitation.membershipId) continue
+    const member = await adapter.findOne<{ id: string }>({
+      model: 'member',
+      where: [
+        { field: 'id', value: invitation.membershipId },
+        { field: 'userId', value: user.id },
+        { field: 'organizationId', value: invitation.organizationId },
+      ],
+    })
+    if (member === null) continue
+    await organization.updateInvitation({
+      invitationId: invitation.id,
+      status: 'accepted',
+      fromStatus: 'pending',
+    })
+  }
+}
+
 /** Giriş başarısı/başarısızlığı, kurum değişimi ve parola değişimi. Parola ve belirteç yazılmaz. */
 export function authAfterHook(ctx: HookContext) {
   return createAuthMiddleware(async (context) => {
@@ -155,6 +275,7 @@ export function authAfterHook(ctx: HookContext) {
       case '/sign-in/email': {
         const created = context.context.newSession
         if (created && !failed) {
+          await acceptStaffInvitations(context, created.user)
           await recordAudit(ctx, {
             action: 'auth.login_succeeded',
             actorUserId: created.user.id,

@@ -222,7 +222,7 @@ describe('IST-124 mobil veli akademik takip', () => {
       assert.equal(parent.submissionTitle, 'Teslim açıklaması')
     }
     // Öğrencide yönlendirme sürer: açık ödev web'e, süresi dolan ödev kapalıya.
-    assert.equal(homeworkAudienceView('student', open, 'Bekliyor', now).hint, 'web')
+    assert.equal(homeworkAudienceView('student', open, 'Bekliyor', now).hint, 'submit')
     assert.equal(homeworkAudienceView('student', closed, 'Bekliyor', now).hint, 'closed')
     assert.equal(homeworkAudienceView('student', open, 'Bekliyor', now).submissionTitle, 'Teslimin')
     assert.notEqual(homeworkEmptyText('parent'), homeworkEmptyText('student'))

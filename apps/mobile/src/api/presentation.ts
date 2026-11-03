@@ -125,19 +125,19 @@ export function matchesSearch(fields: readonly string[], search: string): boolea
 }
 
 /**
- * Telefondaki teslim bilgisi: teslim yazma web'dedir. Ödev hâlâ teslim alıyorsa (son tarih
- * gelmedi ya da geç teslim kabul ediliyor) web'e yönlendirilir; kapalı ve geç teslime kapalı
- * ödevde süre doldu bilgisi verilir; değerlendirilmiş teslimde bilgi yoktur (değiştirilemez).
+ * Öğrencinin teslim durumu: ödev hâlâ teslim alıyorsa (son tarih gelmedi ya da geç teslim kabul
+ * ediliyor) teslim formu çıkar (`submit`); kapalı ve geç teslime kapalı ödevde süre doldu bilgisi
+ * verilir; değerlendirilmiş teslimde bilgi yoktur (değiştirilemez).
  * Karar core `isHomeworkClosed`/`acceptsLate` ile verilir; kesin ret yine sunucudadır.
  */
 export function submissionHint(
   homework: Pick<HomeworkListItem, 'dueDate' | 'allowLate'>,
   status: HomeworkStatus,
   now: Date,
-): 'web' | 'closed' | null {
+): 'submit' | 'closed' | null {
   if (status === 'Değerlendirildi') return null
   if (isHomeworkClosed(homework, now.toISOString()) && !acceptsLate(homework)) return 'closed'
-  return 'web'
+  return 'submit'
 }
 
 /** Teslim dosyası özeti: tek dosyada adı, birden çok dosyada sayısı. */

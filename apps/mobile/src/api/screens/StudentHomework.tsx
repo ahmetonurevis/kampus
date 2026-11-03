@@ -14,7 +14,7 @@ const LIST_KEY = 'ogrenci/odevler'
 /**
  * Öğrenci: ödevlerim (web `ogrenci/odevler` sınıf ödevleri bölümü). Öğrenci kaydı kapsamdan gelir
  * (öğrencide tek kayıt döner); ödevler öğrencinin sınıfından istenir, sunucu yine yalnız kendi
- * sınıfının ödevlerini döndürür (DOM-AKD-074). Durum ve puan salt okunur; teslim web'dedir.
+ * sınıfının ödevlerini döndürür (DOM-AKD-074). Durum ve puan salt okunur; teslim ayrıntı penceresindedir (`homework-submission.tsx`).
  */
 export default function StudentHomework() {
   const session = useApiSession()

@@ -298,8 +298,8 @@ describe('öğrenci notları ve ödevleri (IST-124)', () => {
     const now = new Date('2026-10-10T09:00:00.000Z')
     const past = '2026-10-01T09:00:00.000Z'
     const future = '2026-10-20T09:00:00.000Z'
-    assert.equal(submissionHint({ dueDate: future, allowLate: false }, 'Bekliyor', now), 'web')
-    assert.equal(submissionHint({ dueDate: past, allowLate: true }, 'Gecikmiş', now), 'web')
+    assert.equal(submissionHint({ dueDate: future, allowLate: false }, 'Bekliyor', now), 'submit')
+    assert.equal(submissionHint({ dueDate: past, allowLate: true }, 'Gecikmiş', now), 'submit')
     assert.equal(submissionHint({ dueDate: past, allowLate: false }, 'Gecikmiş', now), 'closed')
     // Teslim edilmiş ama puanlanmamış ödev kapalıysa yeniden teslim de yapılamaz.
     assert.equal(

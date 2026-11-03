@@ -11,3 +11,12 @@ Veli hesabı daveti (OG-1003; iş isteği #32; DOM-YTK-071).
 - Migration `0055_invitation_guardian`: `invitations.student_ids` (jsonb) ve `invitations.parent_id` (text); Better Auth `invitation.additionalFields`.
 - Personel davet listesi (`GET /institution-members/invitations`) yalnız personel rollerini listeler ve sayar; personel davet iptali veli davetini bulmaz (404): davetle açılan üyelik silinirse velayet bağı da silinirdi.
 - react-shared `useInviteGuardianAccount()` (`use-guardian-invitations.ts`); başarıda üye, davet ve veli bağı (`student-guardians`) sorguları geçersiz kılınır.
+
+Bekleyen veli davetleri ve süre (OG-1003 inceleme düzeltmesi; DOM-YTK-071).
+
+- `GET /api/v1/institution-members/guardian-invitations` (`listGuardianInvitations`): kurumun bekleyen veli davetleri, yeni önce, `page`/`pageSize`, `meta.total`; öğe `GuardianInvitation`. Yönetici ve ön büro (diğer roller 403). Süresi dolmuş ama hâlâ `pending` davet de listelenir.
+- `POST /api/v1/institution-members/guardian-invitations/{invitationId}/cancel` (`cancelGuardianInvitation`): yönetici ve ön büro, taze oturum, `Idempotency-Key` isteğe bağlı; 200 ve `GuardianInvitation` (`canceled`). Olmayan, başka kurumun ya da personel daveti 404; bekleyen olmayan davet 409 `invitation_not_pending`. Yalnız daveti kapatır: davetle açılmış hesap, üyelik, çocuk bağlantıları ve velayet bağının hesabı korunur (üyelik silinseydi `student_guardians.membership_id` zinciriyle velayet bağı da silinirdi). Denetim eylemi `guardian.invite_cancel` (yalnız `status`).
+- Veli ve personel davetlerinde `invitation_exists`, `guardian_link_exists` (veli kaydı), `teacher_invitation_pending` ve toplu aktarımdaki bekleyen e-posta denetimi süresi dolmuş daveti saymaz; böylece başka kurumda hesaplı e-posta ve veli kaydı süresiz kilitli kalmaz.
+- Veli davet ucu `routes/guardian-invitations.ts` dosyasına (`registerGuardianInvitationRoutes`, `PLATFORM_LATE_ROUTES` sonu) taşındı; yeni core yetkileri `guardian.invite_list` ve `guardian.invite_cancel`.
+- Migration yeniden üretildi: `0055_invitation_guardian` entegrasyondaki `0054_allow_feedback_audio` sonrasına alındı (günlük sırası 55).
+- react-shared `useGuardianInvitations(page)` ve `useCancelGuardianInvitation()`.

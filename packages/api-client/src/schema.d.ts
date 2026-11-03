@@ -12348,7 +12348,7 @@ export interface operations {
                 homeworkId?: string | string[];
                 /** @description `videoId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 videoId?: string | string[];
-                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla. `invoices`'ta durum saklanmaz, core `invoiceStatus` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: `Ödendi`, `Gecikmiş`, `Yaklaşan`; başka değer 400 */
+                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla. `invoices`'ta durum saklanmaz, core `invoiceStatus` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: `Ödendi`, `Gecikmiş`, `Yaklaşan`; başka değer 400. `announcements`ta durum okuyucuya göre türetilir (core `announcementStatusOf`: geri çekildi > okunmadı > güncellendi > yayında; DOM-ILT-003, -004): `Okunmadı`, `Güncellendi`, `Geri çekildi`, `Yayında`; başka değer 400. `meta.total` süzülmüş sayıdır */
                 status?: string | string[];
                 /** @description `stage` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 stage?: string | string[];
@@ -12485,7 +12485,7 @@ export interface operations {
                 homeworkId?: string | string[];
                 /** @description `videoId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 videoId?: string | string[];
-                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla. `invoices`'ta durum saklanmaz, core `invoiceStatus` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: `Ödendi`, `Gecikmiş`, `Yaklaşan`; başka değer 400 */
+                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla. `invoices`'ta durum saklanmaz, core `invoiceStatus` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: `Ödendi`, `Gecikmiş`, `Yaklaşan`; başka değer 400. `announcements`ta durum okuyucuya göre türetilir (core `announcementStatusOf`: geri çekildi > okunmadı > güncellendi > yayında; DOM-ILT-003, -004): `Okunmadı`, `Güncellendi`, `Geri çekildi`, `Yayında`; başka değer 400. `meta.total` süzülmüş sayıdır */
                 status?: string | string[];
                 /** @description `stage` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 stage?: string | string[];

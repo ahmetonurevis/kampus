@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { CEFR_LEVELS, GRADE_LEVEL_RANGE } from '@kampus/school-core/content/taxonomy.ts'
+import { ANNOUNCEMENT_STATUSES } from '@kampus/school-core/lib/communication.ts'
 
 import { INVOICE_STATUS_LABELS } from '../db/records.ts'
 import { READABLE_COLLECTIONS } from '../services/collection-access.ts'
@@ -34,7 +35,7 @@ const FILTER_DESCRIPTIONS: Partial<Record<(typeof FILTER_FIELDS)[number], string
   classId:
     '`classId` eşitlik filtresi; çoklu değer parametre tekrarıyla. Kaydında sınıf olmayan öğrenci koleksiyonlarında (`grades`, `invoices`, `absences`, `submissions`, `quizAttempts`, `mockResults`, `studentGoals`, `guidanceCases`, `studyTasks`, `appointments`, `requests`, `renewals`, `eventConsents`, `transportAssignments`, `clubMemberships`, `socialAchievements`) öğrencinin güncel sınıfıdır',
   level: `\`level\` eşitlik filtresi (düzey; IST-035); çoklu değer parametre tekrarıyla. Değer CEFR seviyesi (${CEFR_KEYS.map((key) => `\`${key}\``).join(', ')}) ya da \`N. Sınıf\` (${GRADE_LEVEL_RANGE.min}–${GRADE_LEVEL_RANGE.max}) olmalıdır; başka değer 400. Örnek: \`materials\` düzeyi \`7. Sınıf\``,
-  status: `\`status\` eşitlik filtresi; çoklu değer parametre tekrarıyla. \`invoices\`'ta durum saklanmaz, core \`invoiceStatus\` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: ${INVOICE_STATUS_LABELS.map((label) => `\`${label}\``).join(', ')}; başka değer 400`,
+  status: `\`status\` eşitlik filtresi; çoklu değer parametre tekrarıyla. \`invoices\`'ta durum saklanmaz, core \`invoiceStatus\` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: ${INVOICE_STATUS_LABELS.map((label) => `\`${label}\``).join(', ')}; başka değer 400. \`announcements\`ta durum okuyucuya göre türetilir (core \`announcementStatusOf\`: geri çekildi > okunmadı > güncellendi > yayında; DOM-ILT-003, -004): ${ANNOUNCEMENT_STATUSES.map((label) => `\`${label}\``).join(', ')}; başka değer 400. \`meta.total\` süzülmüş sayıdır`,
 }
 
 const filterValue = z

@@ -2,8 +2,10 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
 import {
+  ANNOUNCEMENT_STATUSES,
   CONVERSATION_ACCESS_MINUTES,
   DEFAULT_WORKING_CALENDAR,
+  announcementStatusOf,
   awaitingReply,
   businessMinutesBetween,
   conversationSummary,
@@ -1383,4 +1385,19 @@ test('Eski demo kaydındaki yazışma mesajları yüklenirken ayrı koleksiyona 
   )
   assert.deepEqual(rewritten.conversations, state.conversations)
   assert.deepEqual(rewritten.conversationMessages, state.conversationMessages)
+})
+
+test('DOM-ILT-003, DOM-ILT-004: duyuru durumu geri çekildi > okunmadı > güncellendi > yayında', () => {
+  assert.deepEqual(ANNOUNCEMENT_STATUSES, ['Okunmadı', 'Güncellendi', 'Geri çekildi', 'Yayında'])
+  const read = '2026-10-01T08:00:00.000Z'
+  const status = announcementStatusOf
+  assert.equal(status({ withdrawnAt: read, myReadAt: null, revisedAt: read }), 'Geri çekildi')
+  assert.equal(status({ myReadAt: null, revisedAt: read }), 'Okunmadı')
+  assert.equal(status({ myReadAt: read, revisedAt: read }), 'Güncellendi')
+  assert.equal(status({ myReadAt: read }), 'Yayında')
+  // Yayınlayan ve yönetici kaydında `myReadAt` yoktur: okunmadı olmaz.
+  assert.equal(status({ revisedAt: read }), 'Güncellendi')
+  assert.equal(status({}), 'Yayında')
+  // Boş metin geri çekme ve düzeltme sayılmaz.
+  assert.equal(status({ withdrawnAt: '', revisedAt: '' }), 'Yayında')
 })

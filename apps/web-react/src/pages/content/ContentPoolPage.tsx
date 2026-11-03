@@ -202,7 +202,8 @@ export function ContentPoolPage({ page }: { page: NavPage }) {
             İçerikler
           </h2>
           <p className="text-sm text-muted-foreground">
-            {total} kayıt · okuma parçası, çoktan seçmeli soru ve materyal dosyası
+            {total} kayıt · okuma parçası, çoktan seçmeli soru, materyal dosyası, quiz ve alıştırma
+            seti
           </p>
         </header>
         <ServerDataTable

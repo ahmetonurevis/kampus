@@ -1772,6 +1772,24 @@ export async function findSubmissionOfVersion(
   return row ? findSubmission(db, institutionId, row.submissionId) : null
 }
 
+/**
+ * Puanın sürüm kimliği (puana bağlı sesli geri bildirimin okuma kuralı; DOM-BEC-056). Başka
+ * kurumun veya olmayan puan `null`.
+ */
+export async function findScoreVersionId(
+  db: Database,
+  institutionId: string,
+  scoreId: string,
+): Promise<string | null> {
+  if (!UUID.test(scoreId)) return null
+  const [row] = await db
+    .select({ versionId: rubricScores.submissionVersionId })
+    .from(rubricScores)
+    .where(and(eq(rubricScores.institutionId, institutionId), eq(rubricScores.id, scoreId)))
+    .limit(1)
+  return row?.versionId ?? null
+}
+
 /** Teslim kaydı kimliğiyle (arşivli, başka kurumun veya olmayan kimlik `null`). */
 export async function findSubmission(
   db: Database,

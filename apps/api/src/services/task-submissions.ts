@@ -17,7 +17,11 @@ import {
   type RubricVersionData,
   type ScoreResolution,
 } from '@kampus/school-core/skills/rubric.ts'
-import { canAccessRecording, recordingPurgeHeld } from '@kampus/school-core/skills/recording.ts'
+import {
+  canAccessRecording,
+  canHearFeedbackAudio,
+  recordingPurgeHeld,
+} from '@kampus/school-core/skills/recording.ts'
 import {
   isClosed,
   submissionWindow,
@@ -38,8 +42,10 @@ import {
 } from '@kampus/school-core/skills/submission.ts'
 
 import type { Database } from '../db/client.ts'
+import { listAttachedFiles, type StoredFile } from '../db/files.ts'
 import {
   findAssignment,
+  findScoreVersionId,
   findRubricVersion,
   findSubmission,
   findSubmissionOfVersion,
@@ -354,8 +360,47 @@ function scoreBrief(summary: ReturnType<typeof scoreSummary>) {
   }
 }
 
-/** Puan ve geri bildirim: kriter bantları, ağırlıklar, kriter yorumları ve genel yorum. */
-function scoreFeedback(summary: ReturnType<typeof scoreSummary>) {
+/** Puan satırına bağlı sesli geri bildirimin bağlama türü (DOM-BEC-056; `files.attached_type`). */
+export const SCORE_ATTACHMENT = 'task_rubric_score'
+
+/** Puan kimliği → puana bağlı sesli geri bildirim dosyası (DOM-BEC-056). */
+type FeedbackAudios = ReadonlyMap<string, StoredFile>
+
+/**
+ * Teslimin puanlarına bağlı sesli geri bildirimler. Puan başına en çok bir dosya bağlanır
+ * (`attachFile` bağlı dosyayı yeniden bağlamaz); sürüm başına birkaç puan olduğundan sorgu sayısı
+ * küçüktür. Silinen dosya da döner (durumu `deleted` görünür).
+ */
+async function loadFeedbackAudios(
+  db: Database,
+  institutionId: string,
+  scores: readonly RubricScoreRow[],
+): Promise<FeedbackAudios> {
+  const rows = await Promise.all(
+    scores.map(async (score) => {
+      const [file] = await listAttachedFiles(db, institutionId, {
+        type: SCORE_ATTACHMENT,
+        id: score.id,
+        purpose: 'feedback_audio',
+      })
+      return file === undefined ? [] : ([[score.id, file]] as const)
+    }),
+  )
+  return new Map(rows.flat())
+}
+
+/** Sesli geri bildirimin yanıt görünümü: tür, boyut, süre ve durum (özgün ad dönmez). */
+function feedbackAudioView(row: StoredFile | undefined) {
+  if (row === undefined) return null
+  const { id, contentType, byteSize, durationMs, status } = versionFileView(row)
+  return { id, contentType, byteSize, durationMs, status }
+}
+
+/**
+ * Puan ve geri bildirim: kriter bantları, ağırlıklar, kriter yorumları, genel yorum ve sesli
+ * geri bildirim (DOM-BEC-056; puanla aynı görünürlükte).
+ */
+function scoreFeedback(summary: ReturnType<typeof scoreSummary>, audios: FeedbackAudios) {
   const brief = scoreBrief(summary)
   if (summary === null || brief === null) return null
   const comments = new Map(summary.row.criteria.map((c) => [c.criterionId, c.comment]))
@@ -366,7 +411,28 @@ function scoreFeedback(summary: ReturnType<typeof scoreSummary>) {
       comment: comments.get(criterion.criterionId) ?? null,
     })),
     overallComment: summary.row.overallComment,
+    feedbackAudio: feedbackAudioView(audios.get(summary.row.id)),
   }
+}
+
+/**
+ * Kişinin bu sürümde görebildiği puan kimlikleri: gösterilen puan (`shownScore`) ve personelde
+ * puanlama görünümündeki puanlar (`visibleScoresOf`, kör puanlama). Sesli geri bildirim yalnız bu
+ * puanlarınki açılır (DOM-BEC-056).
+ */
+function shownScoreIds(
+  viewer: Viewer,
+  ctx: ServiceContext,
+  assignment: StoredAssignment,
+  grading: Grading,
+  version: VersionRow,
+): Set<string> {
+  const ids = new Set<string>()
+  const shown = shownScore(viewer, ctx, assignment, grading, version)
+  if (shown !== null) ids.add(shown.row.id)
+  if (viewer.kind !== 'learner')
+    for (const row of visibleScoresOf(viewer, ctx, assignment, grading, version)) ids.add(row.id)
+  return ids
 }
 
 /** Teslimin durumu son sürümün kendi süresine göredir (yeniden teslim süresi dahil). */
@@ -605,6 +671,7 @@ export async function detailView(
     [work],
   )
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
+  const audios = await loadFeedbackAudios(db, ctx.institutionId, grading.scores)
   return {
     ...summaryView(viewer, ctx, book, assignment, work, learnerNames),
     versions: work.versions.map((version) => ({
@@ -616,8 +683,9 @@ export async function detailView(
       }),
       score: scoreFeedback(
         scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, assignment, grading, version)),
+        audios,
       ),
-      grading: gradingView(ctx, viewer, assignment, work, grading, version, book.rubrics),
+      grading: gradingView(ctx, viewer, assignment, work, grading, version, book.rubrics, audios),
       appealDeadline: appealDeadlineOf(ctx, viewer, assignment, grading, version),
       appeal: appealView(viewer, grading, version),
       resubmissionRequest: resubmissionRequestOf(work, version),
@@ -658,6 +726,7 @@ function gradingView(
   grading: Grading,
   version: VersionRow,
   rubrics: RubricsById,
+  audios: FeedbackAudios,
 ) {
   if (viewer.kind === 'learner') return null
   const resolution = resolutionOf(grading, version)
@@ -667,7 +736,7 @@ function gradingView(
     // Kişinin görebildiği puanlar rolleriyle (kör puanlama `visibleScoresOf`); koordinatör
     // uyuşmazlıkta iki puanı yan yana görür.
     raterScores: [...visibleScores].sort(byRaterRole).flatMap((row) => {
-      const feedback = scoreFeedback(scoreSummary(ctx, rubrics, { row, settled: false }))
+      const feedback = scoreFeedback(scoreSummary(ctx, rubrics, { row, settled: false }), audios)
       return feedback === null ? [] : [{ raterRole: row.raterRole, score: feedback }]
     }),
     // Son puanı bu kişi verebilir mi (DOM-BEC-024): uyuşmazlık var, kapsamındaki koordinatör ve
@@ -1331,6 +1400,44 @@ async function versionFilePurgeHeld(
     ),
   })
 }
+
+// --- Sesli geri bildirime erişim ----------------------------------------------------------------
+
+/**
+ * Puana bağlı sesli geri bildirim (DOM-BEC-056; core `canHearFeedbackAudio`): teslimi okuyabilen
+ * (`canReadVersionFile` ile aynı kapsam) ve bağlı olduğu puanı görebilen kişi dinler. Kursiyer ve
+ * veli yalnız geri bildirim açılınca, ikinci puanlayıcı ilk puanın sesini hiç (kör puanlama),
+ * ön büro hiçbir zaman. Kapsam dışı, başka kurumun ya da olmayan puan `false` (404).
+ */
+async function canReadScoreAudio(
+  tx: Database,
+  ctx: ServiceContext,
+  scoreId: string,
+  file: { purpose: string },
+): Promise<boolean> {
+  const versionId = await findScoreVersionId(tx, ctx.institutionId, scoreId)
+  if (versionId === null) return false
+  if (!(await canReadVersionFile(tx, ctx, versionId, file))) return false
+  const work = await findSubmissionOfVersion(tx, ctx.institutionId, versionId)
+  const version = work?.versions.find((row) => row.id === versionId)
+  const assignment =
+    work && (await findAssignment(tx, ctx.institutionId, work.submission.assignmentId))
+  if (!work || !version || !assignment) return false
+  const local = { ...ctx, db: tx }
+  const viewer = await viewerOf(local)
+  const grading =
+    (await loadGrading(tx, local, [work.submission.id])).bySubmission.get(work.submission.id) ??
+    NO_GRADING
+  return canHearFeedbackAudio({
+    role: ctx.actor.role,
+    scoreShown: shownScoreIds(viewer, ctx, assignment, grading, version).has(scoreId),
+  })
+}
+
+defineFileAttachment(SCORE_ATTACHMENT, {
+  purposes: ['feedback_audio'],
+  canRead: canReadScoreAudio,
+})
 
 defineFileAttachment(SUBMISSION_VERSION_ATTACHMENT, {
   purposes: ['submission', 'speaking_recording'],

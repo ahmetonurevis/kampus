@@ -311,6 +311,14 @@
 - **Kurum türü:** ikisi
 - **Kodda:** yok.
 
+### DOM-BEC-056 · Sesli geri bildirim
+
+- **Kural:** Öğretmen puanla birlikte isteğe bağlı kısa bir sesli geri bildirim bırakabilir; yazılı genel yorum yine zorunludur. Ses puana bağlıdır ve puanla aynı görünürlükte açılır: puanı veren hemen, kursiyer ve bağlı veli geri bildirim açılınca (`DOM-BEC-045`), yönetici ve teslimi okuyan öğretmen puanı gördüğünde; kör puanlamada ikinci puanlayıcı ilk puanın sesini duymaz (`DOM-BEC-024`). Ön büro, başka öğrenci, ilgisiz öğretmen ve başka kurum erişemez. Ses öğretmenindir: kayıt rızası istenmez ve 18 yaş kuralı (`DOM-BEC-053`) uygulanmaz. Dosya kısa ömürlü imzalı bağlantıyla sunulur, her açılış erişim günlüğüne yazılır; kurum dışına gönderilmez (`DOM-BEC-051`). Biçim, boyut ve süre core `FILE_PURPOSES.feedback_audio`'dan gelir (m4a, webm, mp3; 10 MB; 3 dakika).
+- **Gerekçe:** Konuşma becerisinde sözlü geri bildirim yazılıdan daha öğreticidir; puanı görmeyen kişiye ses de açılırsa puan sızar.
+- **Kaynak:** IST-052; ürün kararı (süre ve boyut sınırı).
+- **Kurum türü:** ikisi
+- **Kodda:** kısmen — core `content/taxonomy.ts` `FILE_PURPOSES.feedback_audio`, `skills/recording.ts` `feedbackAudioFileIdSchema`, `FEEDBACK_AUDIO_SECONDS`, `canHearFeedbackAudio` (`tests/skills-recording.test.ts`). API (OG-084, migration `0054`): yönetici ve öğretmen `feedback_audio` yükler (modül `learning`), ses `speaking_recording` gibi `media.transcode` ile M4A'ya çevrilip ölçülür; puan uçları (`scores`, `second-scores`, `final-scores`) `feedbackAudioFileId` alır ve dosyayı puanla aynı işlemde puan satırına bağlar (`task_rubric_score`; puanlayanın kendi, hazır, bağlanmamış dosyası, değilse 422 ve puan yazılmaz); yanıtta `TaskScore.feedbackAudio`. Okuma `GET /api/v1/files/:fileId/url` ile, `services/files.ts` bağlama kuralından (`task-submissions.ts` `canReadScoreAudio`: teslimi okuma kapsamı + bağlı puanın kişiye gösterilmesi) geçer (`apps/api/test/task-submission-files.test.ts`). Saklama süresi verilmedi: ses puan satırı kadar yaşar (`TODO(sesli-geri-bildirim-saklama)`).
+
 ## Okul ve dil okulu farkı
 
 ### DOM-BEC-060 · `school`: beceri görevi İngilizce dersinin parçasıdır

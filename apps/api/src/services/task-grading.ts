@@ -50,6 +50,7 @@ import {
   RuleViolationError,
 } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { attachFile } from './files.ts'
 import { listMembershipLinks } from './memberships.ts'
 import { notify } from './notify.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
@@ -66,6 +67,7 @@ import {
   sampleLocked,
   secondRatingFor,
   type Grading,
+  SCORE_ATTACHMENT,
 } from './task-submissions.ts'
 import { extendVersionRecordingRetention } from './task-submission-files.ts'
 import { auditWork, canReadLearner } from './task-work.ts'
@@ -281,6 +283,8 @@ export interface ScoreWriteInput {
   expectedVersion: number
   versionNumber: number
   score: RubricScoreInput
+  /** Sesli geri bildirim (DOM-BEC-056): puanlayanın yüklediği `feedback_audio` dosyası. */
+  feedbackAudioFileId?: string | null | undefined
 }
 
 /**
@@ -288,7 +292,10 @@ export interface ScoreWriteInput {
  * ilk puan; örneklemli görevde örneklem çekilmeden 409 `second_rating_sample_pending`. `second`:
  * ikinci puan; yalnız sürüm ikinci puanlama isteğinin kapsamındaysa (409
  * `second_rating_not_requested`) ve ilk puanı vermeyen kişiden (409 `rater_not_independent`).
- * Puanlayıcı ilk puanı görmez (`scoresVisibleToRater`). Puan değişmez satırdır.
+ * Puanlayıcı ilk puanı görmez (`scoresVisibleToRater`). Puan değişmez satırdır. Sesli geri
+ * bildirim (DOM-BEC-056) puanla aynı transaction'da puan satırına bağlanır (`attachFile`:
+ * puanlayanın kendi, hazır, bağlanmamış `feedback_audio` dosyası); bağlama reddedilirse puan da
+ * yazılmaz.
  */
 const SCORE_ACTIONS = {
   first: 'task_submission.score',
@@ -390,12 +397,24 @@ async function writeScore(
               holidays: APPEAL_HOLIDAYS,
             })
         }
-        await insertRubricScore(tx, ctx.institutionId, { id: randomUUID(), ...draft }, ctx.now)
+        const scoreId = randomUUID()
+        await insertRubricScore(tx, ctx.institutionId, { id: scoreId, ...draft }, ctx.now)
+        const audioFileId = input.feedbackAudioFileId ?? null
+        if (audioFileId !== null)
+          // TODO(sesli-geri-bildirim-saklama): DOM-BEC-056 saklama süresini vermiyor; ses puan
+          // satırı kadar yaşar, imha işi ona dokunmaz.
+          await attachFile(tx, ctx, {
+            fileId: audioFileId,
+            attachedType: SCORE_ATTACHMENT,
+            attachedId: scoreId,
+            dataSubjectId: null,
+          })
         await touchSubmission(tx, ctx.institutionId, work.submission, ctx.now)
         await auditWork(tx, ctx, action, { type: ENTITY, id: work.submission.id }, [
           'criteria',
           'overallComment',
           'scoredAt',
+          ...(audioFileId === null ? [] : ['feedbackAudio']),
         ])
         out.body = await readBack(tx, ctx, current, assignment, work.submission.id)
       },

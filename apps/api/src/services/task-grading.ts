@@ -50,7 +50,6 @@ import {
   RuleViolationError,
 } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
-import { attachFile } from './files.ts'
 import { listMembershipLinks } from './memberships.ts'
 import { notify } from './notify.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
@@ -67,9 +66,8 @@ import {
   sampleLocked,
   secondRatingFor,
   type Grading,
-  SCORE_ATTACHMENT,
 } from './task-submissions.ts'
-import { extendVersionRecordingRetention } from './task-submission-files.ts'
+import { attachFeedbackAudio, extendVersionRecordingRetention } from './task-submission-files.ts'
 import { auditWork, canReadLearner } from './task-work.ts'
 
 /**
@@ -293,7 +291,7 @@ export interface ScoreWriteInput {
  * ikinci puan; yalnız sürüm ikinci puanlama isteğinin kapsamındaysa (409
  * `second_rating_not_requested`) ve ilk puanı vermeyen kişiden (409 `rater_not_independent`).
  * Puanlayıcı ilk puanı görmez (`scoresVisibleToRater`). Puan değişmez satırdır. Sesli geri
- * bildirim (DOM-BEC-056) puanla aynı transaction'da puan satırına bağlanır (`attachFile`:
+ * bildirim (DOM-BEC-056) puanla aynı transaction'da puan satırına bağlanır (`attachFeedbackAudio`:
  * puanlayanın kendi, hazır, bağlanmamış `feedback_audio` dosyası); bağlama reddedilirse puan da
  * yazılmaz.
  */
@@ -400,15 +398,21 @@ async function writeScore(
         const scoreId = randomUUID()
         await insertRubricScore(tx, ctx.institutionId, { id: scoreId, ...draft }, ctx.now)
         const audioFileId = input.feedbackAudioFileId ?? null
-        if (audioFileId !== null)
-          // TODO(sesli-geri-bildirim-saklama): DOM-BEC-056 saklama süresini vermiyor; ses puan
-          // satırı kadar yaşar, imha işi ona dokunmaz.
-          await attachFile(tx, ctx, {
+        // Ses, kursiyerin konuşma kaydıyla aynı veri sahibine ve saklama kuralına bağlanır
+        // (DOM-BEC-056; Sabah kararı 91, sabah onayı bekler).
+        const audioVersion = work.versions.find((v) => v.id === draft.submissionVersionId)
+        if (audioFileId !== null) {
+          if (audioVersion === undefined) throw new Error('scored version was not loaded')
+          await attachFeedbackAudio(tx, ctx, {
             fileId: audioFileId,
-            attachedType: SCORE_ATTACHMENT,
-            attachedId: scoreId,
-            dataSubjectId: null,
+            scoreId,
+            assignment,
+            submission: work.submission,
+            version: audioVersion,
+            announcedAt: released ? draft.scoredAt : null,
+            holidays: APPEAL_HOLIDAYS,
           })
+        }
         await touchSubmission(tx, ctx.institutionId, work.submission, ctx.now)
         await auditWork(tx, ctx, action, { type: ENTITY, id: work.submission.id }, [
           'criteria',

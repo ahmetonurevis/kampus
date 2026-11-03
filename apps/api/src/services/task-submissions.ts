@@ -77,6 +77,7 @@ import {
   bodyFileIds,
   loadVersionFiles,
   recordingPeriodEndFor,
+  SCORE_ATTACHMENT,
   SUBMISSION_VERSION_ATTACHMENT,
   usableFiles,
   versionFileView,
@@ -360,16 +361,14 @@ function scoreBrief(summary: ReturnType<typeof scoreSummary>) {
   }
 }
 
-/** Puan satırına bağlı sesli geri bildirimin bağlama türü (DOM-BEC-056; `files.attached_type`). */
-export const SCORE_ATTACHMENT = 'task_rubric_score'
-
 /** Puan kimliği → puana bağlı sesli geri bildirim dosyası (DOM-BEC-056). */
 type FeedbackAudios = ReadonlyMap<string, StoredFile>
 
 /**
  * Teslimin puanlarına bağlı sesli geri bildirimler. Puan başına en çok bir dosya bağlanır
  * (`attachFile` bağlı dosyayı yeniden bağlamaz); sürüm başına birkaç puan olduğundan sorgu sayısı
- * küçüktür. Silinen dosya da döner (durumu `deleted` görünür).
+ * küçüktür. `listAttachedFiles` silinmiş ve reddedilmiş dosyayı dışarıda bırakır: imha edilen ses
+ * (saklama sonu, rıza geri çekme) yanıtta `null` görünür; dönen dosya `processing` ya da `ready`.
  */
 async function loadFeedbackAudios(
   db: Database,
@@ -1377,6 +1376,31 @@ async function versionFilePurgeHeld(
   file: { purpose: string; dataSubjectId: string | null },
 ): Promise<boolean> {
   if (file.purpose !== 'speaking_recording') return false
+  return versionPurgeHeld(tx, institutionId, versionId, file.dataSubjectId)
+}
+
+/**
+ * Puana bağlı sesli geri bildirimin imhası bekletilir mi (DOM-BEC-056): konuşma kaydıyla aynı
+ * saklama kuralı, yani bağlı olduğu puanın sürümü için `versionPurgeHeld`.
+ */
+async function scoreFilePurgeHeld(
+  tx: Database,
+  institutionId: string,
+  scoreId: string,
+  file: { dataSubjectId: string | null },
+): Promise<boolean> {
+  const versionId = await findScoreVersionId(tx, institutionId, scoreId)
+  return versionId === null
+    ? false
+    : versionPurgeHeld(tx, institutionId, versionId, file.dataSubjectId)
+}
+
+async function versionPurgeHeld(
+  tx: Database,
+  institutionId: string,
+  versionId: string,
+  dataSubjectId: string | null,
+): Promise<boolean> {
   const work = await findSubmissionOfVersion(tx, institutionId, versionId)
   const version = work?.versions.find((row) => row.id === versionId)
   if (!work || !version) return false
@@ -1384,7 +1408,7 @@ async function versionFilePurgeHeld(
     work.submission.id,
   )
   if (grading === undefined) return false
-  const subjectId = file.dataSubjectId ?? work.submission.learnerId
+  const subjectId = dataSubjectId ?? work.submission.learnerId
   const consents = await listConsentsOfSubject(tx, institutionId, {
     kind: 'student',
     id: subjectId,
@@ -1437,6 +1461,7 @@ async function canReadScoreAudio(
 defineFileAttachment(SCORE_ATTACHMENT, {
   purposes: ['feedback_audio'],
   canRead: canReadScoreAudio,
+  purgeHeld: scoreFilePurgeHeld,
 })
 
 defineFileAttachment(SUBMISSION_VERSION_ATTACHMENT, {

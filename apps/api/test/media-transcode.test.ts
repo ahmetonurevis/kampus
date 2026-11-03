@@ -403,7 +403,7 @@ describe('ses dönüştürme (media.transcode)', () => {
         tx,
         t.institution.id,
         {
-          purpose: 'listening_audio',
+          purposes: ['listening_audio'],
           dataSubjectId: 'yok',
           uploaderUserIds: [t.institution.admin.id],
         },
@@ -436,7 +436,7 @@ describe('ses dönüştürme (media.transcode)', () => {
           tx,
           t.institution.id,
           {
-            purpose: 'listening_audio',
+            purposes: ['listening_audio'],
             dataSubjectId: 'yok',
             uploaderUserIds: [t.institution.admin.id],
           },

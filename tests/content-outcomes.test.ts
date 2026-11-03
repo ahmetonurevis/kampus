@@ -97,8 +97,9 @@ describe('kazanım kataloğu yetkisi (DOM-KYN-011, DOM-YTK-027)', () => {
 })
 
 describe('kazanım seçimi (DOM-KYN-011)', () => {
-  const active = { archivedAt: null }
-  const archived = { archivedAt: '2026-10-01T00:00:00.000Z' }
+  type CatalogRow = { archivedAt: string | null }
+  const active: CatalogRow = { archivedAt: null }
+  const archived: CatalogRow = { archivedAt: '2026-10-01T00:00:00.000Z' }
   const platform = (outcomeId: string) => ({ outcomeSource: 'platform' as const, outcomeId })
   const own = (outcomeId: string) => ({ outcomeSource: 'institution' as const, outcomeId })
 

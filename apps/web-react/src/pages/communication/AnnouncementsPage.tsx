@@ -36,6 +36,8 @@ import {
   ANNOUNCEMENT_SORTABLE,
   ANNOUNCEMENT_UNREAD_QUERY,
   ANNOUNCEMENT_URL_FILTERS,
+  announcementSummary,
+  detailPanelState,
 } from './announcement-list.ts'
 import { AnnouncementFormModal } from './AnnouncementFormModal.tsx'
 import { AnnouncementPanel } from './AnnouncementPanel.tsx'
@@ -62,10 +64,9 @@ export function AnnouncementsPage({ page }: { page: NavPage }) {
   const { session } = useAuth()
   const list = useListState('duyurular', { pageSize: 10, urlFilters: ANNOUNCEMENT_URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
-  const announcements = useCollectionList<AnnouncementRecord>(
-    'announcements',
-    collectionQueryFromList(list.state, ANNOUNCEMENT_LIST, search),
-  )
+  const listQuery = collectionQueryFromList(list.state, ANNOUNCEMENT_LIST, search)
+  const announcements = useCollectionList<AnnouncementRecord>('announcements', listQuery)
+  const filtered = Boolean(listQuery.q) || Object.keys(listQuery.filters ?? {}).length > 0
   const unreadCount = useCollectionCounts('announcements', ANNOUNCEMENT_UNREAD_QUERY)
   const classes = useCoreAll('classes')
   const branches = useCoreAll('branches')
@@ -75,7 +76,10 @@ export function AnnouncementsPage({ page }: { page: NavPage }) {
 
   const rows = useMemo(() => announcements.data?.rows.map(announcementRow), [announcements.data])
   // Açık duyuru sayfada olmayabilir (adres, panodaki kart): kimlikle okunur.
-  const detail = useCollectionItem<AnnouncementRecord>('announcements', panel.selectedId || null)
+  // Listeden açılan satır başlangıç verisidir; hata olursa gizlenmez, panel hatayı gösterir.
+  const detail = useCollectionItem<AnnouncementRecord>('announcements', panel.selectedId || null, {
+    placeholder: announcements.data?.rows.find((row) => row.record.id === panel.selectedId),
+  })
   const selected = useMemo(
     () => (detail.data ? announcementRow(detail.data) : undefined),
     [detail.data],
@@ -179,7 +183,7 @@ export function AnnouncementsPage({ page }: { page: NavPage }) {
             Duyuru listesi
           </h2>
           <p className="text-sm text-muted-foreground">
-            {total} duyuru{unread > 0 ? ` · ${unread} okunmamış` : ''}
+            {announcementSummary({ total, unread, filtered })}
           </p>
         </header>
         <ServerDataTable
@@ -212,7 +216,13 @@ export function AnnouncementsPage({ page }: { page: NavPage }) {
       <AnnouncementPanel
         row={selected}
         announcementId={panel.selectedId}
-        listReady={!detail.isPending}
+        state={detailPanelState({
+          hasRow: selected !== undefined,
+          error: detail.error,
+          pending: detail.isPending,
+        })}
+        error={detail.error}
+        onRetry={() => void detail.refetch()}
         viewer={viewer}
         audience={selected ? describeTarget(selected.record.target, names) : ''}
         onClose={panel.close}

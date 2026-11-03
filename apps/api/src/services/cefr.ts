@@ -62,7 +62,9 @@ import { findRubricVersion } from '../db/skills.ts'
 import { LEARNER_COLLECTIONS } from '../db/schema/cefr.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { loadTaskEvidence, type EvidenceAudience } from './cefr-evidence.ts'
 import { getInstitution, listMembershipLinks } from './memberships.ts'
+import { viewerOf, visible } from './task-assignments.ts'
 import {
   mapOperationError,
   runCommand,
@@ -708,22 +710,34 @@ export function decidePlacement(
 // --- CEFR profili -------------------------------------------------------------------------
 
 /**
- * Öğrencinin "Tahmini seviye" önerisi (DOM-BEC-030): bitmiş tespit oturumlarının bölümlerinden.
- * Profil ve kur sonu kararının kopyası (`evidenceSnapshot`, DOM-DIL-070) aynı öneriyi kullanır.
+ * Öğrencinin "Tahmini seviye" önerisi (DOM-BEC-030, 031): değerlendirme görevlerinin sonuçları
+ * (`cefr-evidence.ts`, OG-247) ve bitmiş tespit oturumlarının bölümleri. Profil ve kur sonu
+ * kararının kopyası (`evidenceSnapshot`, DOM-DIL-070) personel görünümündeki aynı öneriyi kullanır;
+ * öğrenci ve veli görünümünde yalnız geri bildirimi açılmış puan kanıttır (DOM-BEC-045). `links`
+ * görev kanıtının atamasını ve puanlama türünü verir (ekran kanıt görevine bağlanır).
  */
-// TODO(cefr-gorev-kaniti): Görev kanıtları henüz yüklenmiyor (profil notu).
-export async function learnerSuggestion(db: Database, ctx: ServiceContext, studentId: string) {
+export async function learnerSuggestion(
+  db: Database,
+  ctx: ServiceContext,
+  studentId: string,
+  audience: EvidenceAudience = 'staff',
+) {
   const sessions = await listPlacementSessions(db, ctx.institutionId, {
     kind: 'student',
     id: studentId,
   })
-  const candidates = []
+  const tasks = await loadTaskEvidence(db, ctx, studentId, audience)
+  const candidates = [...tasks.candidates]
   for (const session of sessions) {
     if (session.completedAt === null) continue
     const form = await loadFormScoring(db, ctx, session.formVersionId)
     candidates.push(...placementEvidence(session, await sectionRowsOf(db, ctx, session, form)))
   }
-  return { sessions, suggestion: suggestCefrLevels({ candidates, now: ctx.now }) }
+  return {
+    sessions,
+    links: tasks.links,
+    suggestion: suggestCefrLevels({ candidates, now: ctx.now }),
+  }
 }
 
 /**
@@ -733,8 +747,6 @@ export async function learnerSuggestion(db: Database, ctx: ServiceContext, stude
  * göremediği ya da olmayan öğrenci 404 (varlık sızmaz). Öğrenci ve veli `learner` görünümünü alır
  * (kararın gerekçesi ve vereni yok), personel `staff` görünümünü.
  */
-// TODO(cefr-gorev-kaniti): Görev kanıtları (F4a sayılan deneme ve kesinleşmiş rubrik puanı)
-// henüz yüklenmiyor; öneri bitmiş tespit oturumlarının bölümlerinden çıkar.
 // TODO(cefr-aday-donusum): Profil yalnız öğrenci kimliğini okur; aday döneminde yapılan tespit ve
 // yerleştirme kararı aday kimliğinde kalır ve dönüşümden sonra burada görünmez
 // (docs/domain/beceri-gelisimi.md DOM-BEC-034 notu).
@@ -748,9 +760,30 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
     throw new NotFoundError()
 
   const learner = { kind: 'student' as const, id: studentId }
-  const { sessions, suggestion } = await learnerSuggestion(ctx.db, ctx, studentId)
-  const decisions = await listLevelDecisions(ctx.db, ctx.institutionId, learner)
+  const learnerView = ctx.actor.role === 'ogrenci' || ctx.actor.role === 'veli'
+  const {
+    sessions,
+    links: taskLinks,
+    suggestion,
+  } = await learnerSuggestion(ctx.db, ctx, studentId, learnerView ? 'learner' : 'staff')
+  const [decisions, viewer] = await Promise.all([
+    listLevelDecisions(ctx.db, ctx.institutionId, learner),
+    viewerOf(ctx),
+  ])
   const view = cefrProfileView({ institutionType: 'language_school', suggestion, decisions })
+  // Görev bağlantısı yalnız izleyicinin görev ucunda görebildiği atamaya çizilir (`linkable`):
+  // kapsam kuralı görev uçlarınınkiyle aynı fonksiyondur (`visible`). Öğretmen kursiyerin başka
+  // öğretmenden aldığı görevi, öğrenci eski grubunun görevini açamaz; kanıt yine sayılır.
+  const taskOf = (id: string) => {
+    const link = taskLinks.get(id)
+    return link === undefined
+      ? null
+      : {
+          assignmentId: link.assignmentId,
+          scoring: link.scoring,
+          linkable: visible(viewer, link.assignment),
+        }
+  }
   // Çizelge core `levelTimeline` ile: en yeniden eskiye, aynı becerinin önceki kararına göre
   // değişim (OG-079). Sıra `view.decisions.history` ile aynıdır.
   const timeline = levelTimeline(decisions)
@@ -764,6 +797,7 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
         id: e.id,
         title: e.title,
         source: e.source,
+        task: taskOf(e.id),
         skill: e.skill,
         targetLevel: e.targetLevel,
         performedAt: e.performedAt,
@@ -771,7 +805,6 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
         successful: e.successful,
         percent: e.percent,
       })),
-      excluded: view.estimate.excluded.map(({ id, title, reason }) => ({ id, title, reason })),
     },
     current: (view.decisions?.current ?? []).map(({ skill, decision }) => ({
       skill,
@@ -791,7 +824,10 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   // 35); alan kapsamı role özgü yanıt şemasıyla da kapanır.
   // Kanıt özeti de yalnız personeldedir (OG-079 güvenli taraf; Sabah kararı önerisi): öğrenci ve
   // veli çizelgede seviye, tür, an ve önceki seviyeyi görür.
-  if (ctx.actor.role === 'ogrenci' || ctx.actor.role === 'veli') {
+  // Kanıt sayılmayan sonuçlar (puanlanmamış, itirazlı, süresi dolmuş) yalnız personelde (OG-247):
+  // öğrenci ve veli açılmamış puanın varlığını bu listeden de çıkaramaz (DOM-BEC-045); kursiyer
+  // yanıt şemasında alan yoktur.
+  if (learnerView) {
     return {
       view: 'learner' as const,
       ...shared,
@@ -815,6 +851,15 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   return {
     view: 'staff' as const,
     ...shared,
+    estimate: {
+      ...shared.estimate,
+      excluded: view.estimate.excluded.map(({ id, title, reason }) => ({
+        id,
+        title,
+        reason,
+        task: taskOf(id),
+      })),
+    },
     timeline: timeline.map((d) => ({
       ...decisionView(d),
       decidedByName: names.get(d.decidedByUserId) ?? null,

@@ -14,6 +14,7 @@ import {
   submissionWindow,
   subskillBreakdown,
   type Answers,
+  type AttemptScore,
   type CompletedAttempt,
 } from '@kampus/school-core/skills/scoring.ts'
 import { transcriptShown } from '@kampus/school-core/skills/assignment.ts'
@@ -342,21 +343,27 @@ export function learnerAttemptProgress(
  * Kursiyerin bu atamadaki sayılan denemesi ve puanı (beceri ilerleme panosu, DOM-BEC-035,
  * DOM-BEC-042). Sayılan deneme yalnız değerlendirmede ve tamamlanmış denemeler arasından seçilir;
  * tamamlanmış denemenin toplam puanı kursiyer ve veliye de açıktır (core `learnerResultLevel`,
- * DOM-BEC-045). Puanlama bağlamı yoksa (kaldırılmış içerik) sonuç yoktur.
+ * DOM-BEC-045). Puanlama bağlamı yoksa (kaldırılmış içerik) sonuç yoktur. `score` CEFR önerisinin
+ * kanıtıdır (oran ve madde sayısı, DOM-BEC-031/032).
  */
 export function countedAttemptResult(
   assignment: StoredAssignment,
   context: ScoringContext,
   attempts: readonly StoredAttempt[],
   now: Date,
-): { attemptId: string; completedAt: string; percent: number } | null {
+): { attemptId: string; completedAt: string; percent: number; score: AttemptScore } | null {
   const counted = countedAttempt(
     assignment.attempts,
     completedOf(assignment, context, attempts, now.toISOString()),
   )
   return counted === null
     ? null
-    : { attemptId: counted.id, completedAt: counted.completedAt, percent: counted.score.percent }
+    : {
+        attemptId: counted.id,
+        completedAt: counted.completedAt,
+        percent: counted.score.percent,
+        score: counted.score,
+      }
 }
 
 /** Kursiyerin bu atamada süren denemesi var mı (içerik kapısının süren işi; Sabah kararı 47). */

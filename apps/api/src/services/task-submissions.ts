@@ -12,6 +12,7 @@ import {
   scoreResolution,
   scoresVisibleToRater,
   type AppealRow,
+  type RubricResult,
   type RubricScoreRow,
   type RubricVersionData,
   type ScoreResolution,
@@ -551,14 +552,14 @@ export function learnerSubmissionProgress(
  * Kesinleşmemiş (ikinci puan ya da koordinatör bekleyen, uyuşmazlıklı) puan girmez. Kursiyer ve
  * veliye yalnız geri bildirimi açılmış puan döner (DOM-BEC-045): daha yeni sürümün puanı açılmamışsa
  * önceki sürümün açılmış puanı gösterilir, bu yüzden yanıt yeni sürümün puanlanıp puanlanmadığını
- * belli etmez.
+ * belli etmez. `result` kriter bantlarıyla CEFR önerisinin kanıtıdır (DOM-BEC-031).
  */
 export function settledSubmissionResult(
   ctx: ServiceContext,
   viewer: Viewer,
   book: GradingBook,
   work: StoredSubmissionWork,
-): { versionId: string; submittedAt: string; percent: number } | null {
+): { versionId: string; submittedAt: string; percent: number; result: RubricResult } | null {
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
   for (const version of [...work.versions].reverse()) {
     const resolution =
@@ -571,8 +572,13 @@ export function settledSubmissionResult(
       ctx.log.warn({ event: 'task_submission.rubric_missing' })
       return null
     }
-    const { percent } = rubricScore(rubric, resolution.score.criteria)
-    return { versionId: version.id, submittedAt: version.submittedAt, percent }
+    const result = rubricScore(rubric, resolution.score.criteria)
+    return {
+      versionId: version.id,
+      submittedAt: version.submittedAt,
+      percent: result.percent,
+      result,
+    }
   }
   return null
 }

@@ -40,9 +40,11 @@ import { languageGroupMembers, languageGroups } from './language-groups.ts'
  *   değişmez; yalnız iptal alanları (`status`, `cancelled_by_user_id`, `cancelled_at`,
  *   `cancellation_reason`) ile `updated_at` ve `version` bir kez, geçerliden iptale yazılır
  *   (`kampus_certificate_guard()`, migration 0053, elle). İptal edilmiş belge hiç değişmez.
- * - Aynı karar için tek geçerli belge kısmi tekil indeksle korunur
- *   (`course_certificates_valid_decision_key`); iptal edilen belgenin yerine en çok bir belge
- *   düzenlenir (`course_certificates_replaces_key`).
+ * - Kur kaydı başına tek geçerli belge kısmi tekil indeksle korunur
+ *   (`course_certificates_valid_enrollment_key`, Sabah kararı 86): kararı düzeltilen kayda ikinci
+ *   geçerli belge düzenlenmez, düzeltme onayı da geçerli belge varken reddedilir (core
+ *   `certificate_cancel_first`). İptal edilen belgenin yerine en çok bir belge düzenlenir
+ *   (`course_certificates_replaces_key`).
  * - Belge kayda, gruba, kursiyere, kura ve karara bileşik yabancı anahtarla kilitlidir (kur sonu
  *   kararıyla aynı kilit); karar aynı kaydın kararıdır.
  * - **Kurumsuz indeks istisnası:** `course_certificates_verification_code_key` yalnız
@@ -187,9 +189,9 @@ export const courseCertificates = pgTable(
     uniqueIndex('course_certificates_number_key').on(table.institutionId, table.number),
     // Kurumsuz indeks istisnası (yukarıda): kimliksiz doğrulama kodu kurumlar arası tekildir.
     uniqueIndex('course_certificates_verification_code_key').on(table.verificationCode),
-    // Aynı karar için tek geçerli belge (core `certificate_already_issued`).
-    uniqueIndex('course_certificates_valid_decision_key')
-      .on(table.institutionId, table.decisionId)
+    // Kur kaydı başına tek geçerli belge (core `certificate_already_issued`, Sabah kararı 86).
+    uniqueIndex('course_certificates_valid_enrollment_key')
+      .on(table.institutionId, table.enrollmentId)
       .where(sql`${table.status} = 'valid'`),
     // İptal edilen belgenin yerine en çok bir belge (core `certificate_already_replaced`).
     uniqueIndex('course_certificates_replaces_key')

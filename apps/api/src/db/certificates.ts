@@ -91,7 +91,7 @@ export type CertificateWrite = CertificateDraft & {
 }
 
 /**
- * Belgeyi yazar. Aynı karar için ikinci geçerli belge (`course_certificates_valid_decision_key`) ve
+ * Belgeyi yazar. Aynı kayda ikinci geçerli belge (`course_certificates_valid_enrollment_key`) ve
  * aynı iptal edilmiş belgenin yerine ikinci belge 23505 ile; uyuşmaz kayıt, grup, kur ya da karar
  * 23503 ile reddedilir.
  */

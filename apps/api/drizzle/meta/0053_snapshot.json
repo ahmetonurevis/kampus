@@ -1,5 +1,5 @@
 {
-  "id": "7beac379-21da-4ca5-87bf-ecfbcb2df266",
+  "id": "0e93135d-a053-4e44-ba30-29b42a3360f5",
   "prevId": "d136225d-ef1c-4a2c-b6ee-d33cb84ad08c",
   "version": "7",
   "dialect": "postgresql",
@@ -3099,8 +3099,8 @@
           "method": "btree",
           "with": {}
         },
-        "course_certificates_valid_decision_key": {
-          "name": "course_certificates_valid_decision_key",
+        "course_certificates_valid_enrollment_key": {
+          "name": "course_certificates_valid_enrollment_key",
           "columns": [
             {
               "expression": "institution_id",
@@ -3109,7 +3109,7 @@
               "nulls": "last"
             },
             {
-              "expression": "decision_id",
+              "expression": "enrollment_id",
               "isExpression": false,
               "asc": true,
               "nulls": "last"

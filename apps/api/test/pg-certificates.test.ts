@@ -2,11 +2,16 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
+import {
+  CERTIFICATE_TITLE,
+  certificateLevelStatement,
+} from '@kampus/school-core/cefr/certificates.ts'
 import { CORE_SKILLS } from '@kampus/school-core/cefr/suggestion.ts'
 
 import type { App } from '../src/app.ts'
+import { insertCertificate } from '../src/db/certificates.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertLessonHourAttendances } from '../src/db/progression.ts'
 import { certificateCounters, courseCertificates } from '../src/db/schema/certificates.ts'
@@ -27,7 +32,8 @@ import { createPgDatabase, PG_SKIP } from './support/pg.ts'
  * Kurum başarı belgesi numarası gerçek PostgreSQL 16'da (OG-088; DOM-DIL-082): eşzamanlı
  * düzenlemeler kurum sayacını kilitli artırır; iki kursiyerin belgesi çakışmadan 1 ve 2 numarayı
  * alır, aynı karara eşzamanlı iki düzenlemeden biri 201, öteki 409 olur ve sayaç geri alınır.
- * PGlite tek bağlantılı olduğundan bu yarış yalnız burada sınanır.
+ * Kayıt başına tek geçerli belge (Sabah kararı 86) kurum kilidi dışındaki eşzamanlı yazmaya karşı
+ * kısmi tekil indeksle de korunur. PGlite tek bağlantılı olduğundan bu yarış yalnız burada sınanır.
  */
 describe('PostgreSQL 16: kurum başarı belgesi numarası', { skip: PG_SKIP }, () => {
   let db: Database
@@ -123,6 +129,7 @@ describe('PostgreSQL 16: kurum başarı belgesi numarası', { skip: PG_SKIP }, (
     const teacherCookie = await signInAs(app, teacher)
     const coordinatorCookie = await signInAs(app, coordinator)
     const decisionIds: string[] = []
+    const enrollments: { id: string; studentId: string }[] = []
     for (const studentId of learners) {
       const enrollmentId = randomUUID()
       await db.insert(languageGroupMembers).values({
@@ -133,6 +140,7 @@ describe('PostgreSQL 16: kurum başarı belgesi numarası', { skip: PG_SKIP }, (
         status: 'active',
         joinedAt: FIXED_NOW,
       })
+      enrollments.push({ id: enrollmentId, studentId })
       // Ders saati yoklamasının yazma ucu yok (OG-269): satırlar depoya doğrudan yazılır.
       await insertLessonHourAttendances(
         db,
@@ -191,7 +199,18 @@ describe('PostgreSQL 16: kurum başarı belgesi numarası', { skip: PG_SKIP }, (
         .where(eq(certificateCounters.institutionId, institution.id))
       return row?.lastSerial ?? 0
     }
-    return { admin, coordinatorCookie, decisionIds, rows, counter }
+    return {
+      institution,
+      admin,
+      teacherCookie,
+      coordinatorCookie,
+      course,
+      group,
+      enrollments,
+      decisionIds,
+      rows,
+      counter,
+    }
   }
 
   test('DOM-DIL-082: iki kursiyerin eşzamanlı düzenlemesi çakışmadan 1 ve 2 numarayı alır', async () => {
@@ -232,5 +251,106 @@ describe('PostgreSQL 16: kurum başarı belgesi numarası', { skip: PG_SKIP }, (
     assert.equal(rows.length, 1)
     assert.equal(rows[0]!.number, 'KB-2026-000001')
     assert.equal(await t.counter(), 1)
+  })
+
+  test('DOM-DIL-082 Sabah kararı 86: aynı kayda iki karardan eşzamanlı düzenlemede kilit dışındaki yazma kazanır, istek 409; tek geçerli belge, sayaç geri alınır', async () => {
+    const t = await passedLearners(['s-pg-4'])
+    const [d1] = t.decisionIds
+    const [enrollment] = t.enrollments
+    assert.ok(d1 && enrollment)
+    // D2: D1'in onaylı düzeltmesi (belge yokken onaylanır); kaydın geçerli kararı D2'dir.
+    const proposed = await data(
+      await post(
+        t.teacherCookie,
+        '/progression-decisions',
+        {
+          enrollmentId: enrollment.id,
+          outcome: 'passed',
+          rationale: 'Kur sonu puanı yeniden incelendi.',
+          correctsDecisionId: d1,
+        },
+        key(),
+      ),
+      201,
+    )
+    const d2 = await data(
+      await post(
+        t.coordinatorCookie,
+        `/progression-decisions/${proposed.id}/approve`,
+        {},
+        { ...key(), 'if-match': `"${proposed.rowVersion}"` },
+      ),
+      200,
+    )
+
+    // Kurum kilidini almayan yazma D1'den geçerli belgeyi açık transaction'da tutar; uçtan gelen
+    // D2 düzenlemesi core denetiminden geçer (belge henüz görünmez) ve kayıt başına tekil indekste
+    // bekler. Yazma onaylanınca istek 23505 → 409 `certificate_already_issued` alır.
+    let release = () => {}
+    const gate = new Promise<void>((resolve) => (release = resolve))
+    let inserted = () => {}
+    const holding = new Promise<void>((resolve) => (inserted = resolve))
+    const writer = db.transaction(async (tx) => {
+      await insertCertificate(tx, t.institution.id, {
+        enrollmentId: enrollment.id,
+        learnerId: enrollment.studentId,
+        courseId: t.course.id,
+        groupId: t.group.id,
+        decisionId: d1,
+        status: 'valid',
+        serial: 99,
+        number: 'KB-2026-000099',
+        verificationCode: 'ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ-ZZZZ',
+        content: {
+          schemaVersion: 1,
+          title: CERTIFICATE_TITLE,
+          institutionName: 'Test Dil Okulu',
+          learnerName: 'Test Kursiyer 1',
+          courseId: t.course.id,
+          courseName: 'Genel İngilizce B1.1',
+          level: 'B1',
+          levelStatement: certificateLevelStatement('B1'),
+          totalHours: 12,
+          attendance: { attendedHours: 12, totalHours: 12, permille: 1000 },
+          finalScore: 80,
+          skills: CORE_SKILLS.map((skill) => ({ skill, score: 80 })),
+          decisionId: d1,
+          approvedAt: FIXED_NOW.toISOString(),
+        },
+        replacesCertificateId: null,
+        issuedByUserId: t.institution.admin.id,
+        issuedAt: FIXED_NOW.toISOString(),
+        cancelledByUserId: null,
+        cancelledAt: null,
+        cancellationReason: null,
+      })
+      inserted()
+      await gate
+    })
+    await holding
+    const request = post(t.admin, '/course-certificates', { decisionId: d2.id }, key())
+    // İstek tekil indeksin satır kilidinde (`transactionid`) bekleyene dek sürer.
+    let waited = false
+    for (let attempt = 0; attempt < 200 && !waited; attempt += 1) {
+      const result = await db.execute(
+        sql`select count(*)::int as waiting from pg_stat_activity
+            where datname = current_database() and wait_event = 'transactionid'`,
+      )
+      const [row] = (result as unknown as { rows: { waiting: number }[] }).rows
+      waited = (row?.waiting ?? 0) > 0
+      if (!waited) await new Promise((resolve) => setTimeout(resolve, 25))
+    }
+    release()
+    await writer
+    const response = await request
+    assert.equal(waited, true, 'istek tekil indekste beklemedi')
+    assert.equal(response.statusCode, 409, response.body)
+    assert.equal(response.json().code, 'certificate_already_issued')
+    const rows = await t.rows()
+    assert.equal(rows.length, 1)
+    assert.equal(rows[0]!.decisionId, d1)
+    assert.equal(rows[0]!.status, 'valid')
+    // Reddedilen isteğin sıra artırımı transaction'la geri alındı.
+    assert.equal(await t.counter(), 0)
   })
 })

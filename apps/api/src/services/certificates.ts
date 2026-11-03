@@ -178,8 +178,8 @@ async function learnerName(db: Database, institutionId: string, studentId: strin
 
 /**
  * Kurum başarı belgesini düzenler (DOM-DIL-080, 081, 082; core `planCertificateIssue`): yalnız
- * kaydın geçerli onaylı `passed` kararıyla (aksi 422), karar başına tek geçerli belge (409
- * `certificate_already_issued`). Numara kurum sayacından, kod rastgele üretilir. Başarı 201.
+ * kaydın geçerli onaylı `passed` kararıyla (aksi 422), kur kaydı başına tek geçerli belge (409
+ * `certificate_already_issued`, Sabah kararı 86; kararın düzeltmesi belge varken onaylanmaz). Numara kurum sayacından, kod rastgele üretilir. Başarı 201.
  */
 export function issueCertificate(
   ctx: ServiceContext,

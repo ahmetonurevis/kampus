@@ -28,6 +28,7 @@ import {
   saveProgressionReview,
   type StoredProgressionDecision,
 } from '../db/cefr.ts'
+import { listEnrollmentCertificates } from '../db/certificates.ts'
 import type { Database } from '../db/client.ts'
 import { activeDutiesOf, findInstitutionMembership } from '../db/coordinator-duties.ts'
 import { loadCourses, type StoredCourse } from '../db/courses.ts'
@@ -379,7 +380,10 @@ export type ProgressionReviewBody = { action: 'approve' } | { action: 'reject'; 
  * seviyesinin akademik koordinatörü (403); kararı veren onaylayamaz (403
  * `progression_self_review`); sonuçlanmış karar 409 `progression_already_reviewed`. `If-Match`
  * kararın satır sürümüdür (tutmazsa 409, rol ve plan denetiminden sonra); eşzamanlı ikinci onay 409. Onaylı `passed`
- * kararında yanıt üst kur çıktısını (`next`, core `progressionNextStep`) taşır.
+ * kararında yanıt üst kur çıktısını (`next`, core `progressionNextStep`) taşır. Kaydın geçerli
+ * kurum başarı belgesi varken onay 422 `certificate_cancel_first`'tür (Sabah kararı 86): belgeler
+ * `runCommand`'ın kurum kilidi altında, aynı transaction'da okunur; belge düzenleme de aynı kilidi
+ * aldığından onay ile düzenleme arasında yarış kalmaz.
  */
 export function reviewProgressionDecision(
   ctx: ServiceContext,
@@ -401,7 +405,10 @@ export function reviewProgressionDecision(
         if (decision === null) throw new NotFoundError()
         const institutionType = await languageSchool(tx, ctx)
         const scope = await enrollmentContext(tx, ctx, decision.enrollmentId)
-        const evidence = await evidenceOf(tx, ctx, scope.stored.id)
+        const [evidence, certificates] = await Promise.all([
+          evidenceOf(tx, ctx, scope.stored.id),
+          listEnrollmentCertificates(tx, ctx.institutionId, scope.stored.id),
+        ])
         return {
           run: () => {
             const reviewed = planProgressionReview({
@@ -409,6 +416,7 @@ export function reviewProgressionDecision(
               enrollment: scope.enrollment,
               ...evidence,
               decision,
+              certificates,
               actor: scope.actor,
               input: { ...command.body, decisionId: decision.id },
               now: ctx.now,

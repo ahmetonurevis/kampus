@@ -92,7 +92,7 @@ ALTER TABLE "mebbis_certificate_records" ADD CONSTRAINT "mebbis_certificate_reco
 CREATE UNIQUE INDEX "course_certificates_serial_key" ON "course_certificates" USING btree ("institution_id","serial");--> statement-breakpoint
 CREATE UNIQUE INDEX "course_certificates_number_key" ON "course_certificates" USING btree ("institution_id","number");--> statement-breakpoint
 CREATE UNIQUE INDEX "course_certificates_verification_code_key" ON "course_certificates" USING btree ("verification_code");--> statement-breakpoint
-CREATE UNIQUE INDEX "course_certificates_valid_decision_key" ON "course_certificates" USING btree ("institution_id","decision_id") WHERE "course_certificates"."status" = 'valid';--> statement-breakpoint
+CREATE UNIQUE INDEX "course_certificates_valid_enrollment_key" ON "course_certificates" USING btree ("institution_id","enrollment_id") WHERE "course_certificates"."status" = 'valid';--> statement-breakpoint
 CREATE UNIQUE INDEX "course_certificates_replaces_key" ON "course_certificates" USING btree ("institution_id","replaces_certificate_id") WHERE "course_certificates"."replaces_certificate_id" is not null;--> statement-breakpoint
 CREATE INDEX "course_certificates_enrollment_idx" ON "course_certificates" USING btree ("institution_id","enrollment_id","group_id","learner_id");--> statement-breakpoint
 CREATE INDEX "course_certificates_decision_idx" ON "course_certificates" USING btree ("institution_id","enrollment_id","decision_id");--> statement-breakpoint

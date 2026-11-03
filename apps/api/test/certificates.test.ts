@@ -7,8 +7,12 @@ import { asc, eq } from 'drizzle-orm'
 import { CORE_SKILLS } from '@kampus/school-core/cefr/suggestion.ts'
 
 import type { App } from '../src/app.ts'
+import { findProgressionDecision, saveProgressionReview } from '../src/db/cefr.ts'
+import { findCertificate, insertCertificate } from '../src/db/certificates.ts'
 import type { Database } from '../src/db/client.ts'
+import { databaseErrorInfo } from '../src/errors.ts'
 import { insertLessonHourAttendances } from '../src/db/progression.ts'
+import { progressionDecisions } from '../src/db/schema/cefr.ts'
 import { courseCertificates, mebbisCertificateRecords } from '../src/db/schema/certificates.ts'
 import { coordinatorDuties } from '../src/db/schema/coordinator-duties.ts'
 import { languageGroupMembers } from '../src/db/schema/language-groups.ts'
@@ -289,6 +293,38 @@ describe('kurum başarı belgesi uçları', () => {
       key(),
     )
   const verify = (code: string) => call('GET', `/certificate-verifications/${code}`)
+  /** Grubun öğretmeni kaydın geçerli kararını `outcome` ile düzeltir; düzeltme onay bekler. */
+  const correct = async (t: Tenant, outcome: Outcome) =>
+    ok(
+      await call(
+        'POST',
+        '/progression-decisions',
+        t.cookies.teacher,
+        {
+          enrollmentId: t.enrollmentId,
+          outcome,
+          rationale: 'Kur sonu puanı yeniden incelendi.',
+          correctsDecisionId: t.decisionId,
+        },
+        key(),
+      ),
+      201,
+    )
+  const approve = (decision: { id: string; rowVersion: number }, cookie: string) =>
+    call(
+      'POST',
+      `/progression-decisions/${decision.id}/approve`,
+      cookie,
+      {},
+      { ...key(), 'if-match': `"${decision.rowVersion}"` },
+    )
+  const decisionStatus = async (id: string) => {
+    const [row] = await db
+      .select({ status: progressionDecisions.status, version: progressionDecisions.version })
+      .from(progressionDecisions)
+      .where(eq(progressionDecisions.id, id))
+    return row
+  }
 
   const snapshot = async (institutionId: string) => ({
     certificates: await db
@@ -619,6 +655,120 @@ describe('kurum başarı belgesi uçları', () => {
       (own.json().data as Json[]).map((item) => item.id),
       [second.id],
     )
+  })
+
+  test('DOM-DIL-070 DOM-DIL-082 Sabah kararı 86 geçerli belge varken düzeltme onayı 422 ve karar bekler; iptalden sonra tekrar kararı onaylanır, belge iptal kalır', async () => {
+    const t = await tenant()
+    const certificate = await ok(await issue(t), 201)
+    const correction = await correct(t, 'repeat')
+    const before = await snapshot(t.institution.id)
+    const blocked = await approve(correction, t.cookies.coordinator)
+    fails(blocked, 422, 'certificate_cancel_first')
+    assert.equal(blocked.json().message, 'Önce düzenlenmiş belge iptal edilmeli.')
+    assert.deepEqual(await decisionStatus(correction.id), {
+      status: 'pending',
+      version: correction.rowVersion,
+    })
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    assert.equal((await ok(await verify(certificate.verificationCode))).status, 'valid')
+
+    // Belge iptal edilince düzeltme onaylanır; eski belge doğrulamada iptal görünür.
+    await ok(
+      await cancel(certificate, t.cookies.admin, certificate.rowVersion, 'Karar düzeltilecek.'),
+    )
+    const approved = await ok(await approve(correction, t.cookies.coordinator))
+    assert.equal(approved.status, 'approved')
+    assert.equal(approved.outcome, 'repeat')
+    assert.equal((await ok(await verify(certificate.verificationCode))).status, 'cancelled')
+    // Tekrar kararıyla yeni belge yok; eski karar düzeltildi.
+    fails(
+      await issue(t, t.cookies.admin, {
+        decisionId: correction.id,
+        replacesCertificateId: certificate.id,
+      }),
+      422,
+      'certificate_not_eligible',
+    )
+    fails(await issue(t), 422, 'certificate_not_eligible')
+    assert.deepEqual(
+      (await snapshot(t.institution.id)).certificates.map((row) => row.status),
+      ['cancelled'],
+    )
+  })
+
+  test('DOM-DIL-070 DOM-DIL-082 Sabah kararı 86 düzeltme geçti ise yeni belge replacesCertificateId ile düzeltmeden düzenlenir; eski karardan düzenlenmez', async () => {
+    const t = await tenant()
+    const certificate = await ok(await issue(t), 201)
+    const correction = await correct(t, 'passed')
+    fails(await approve(correction, t.cookies.coordinator), 422, 'certificate_cancel_first')
+    await ok(await cancel(certificate, t.cookies.coordinator))
+    await ok(await approve(correction, t.cookies.coordinator))
+
+    const replacing = { decisionId: correction.id, replacesCertificateId: certificate.id }
+    fails(
+      await issue(t, t.cookies.admin, { ...replacing, decisionId: t.decisionId }),
+      422,
+      'certificate_decision_superseded',
+    )
+    const second = await ok(await issue(t, t.cookies.admin, replacing), 201)
+    assert.equal(second.decisionId, correction.id)
+    assert.equal(second.replacesCertificateId, certificate.id)
+    assert.equal(second.number, 'KB-2026-000002')
+    assert.equal((await ok(await verify(second.verificationCode))).status, 'valid')
+    assert.equal((await ok(await verify(certificate.verificationCode))).status, 'cancelled')
+  })
+
+  test('DOM-DIL-082 Sabah kararı 86 aynı kayda önceki karardan geçerli belge varken ikinci geçerli belge 409; veritabanı da reddeder', async () => {
+    const t = await tenant()
+    const certificate = await ok(await issue(t), 201)
+    const correction = await correct(t, 'passed')
+    // Kural öncesi durum: düzeltme, belge iptal edilmeden depoya doğrudan onaylanmış olsun.
+    const stored = await findProgressionDecision(db, t.institution.id, correction.id)
+    assert.ok(stored)
+    assert.ok(
+      await saveProgressionReview(
+        db,
+        t.institution.id,
+        correction.id,
+        stored.rowVersion,
+        {
+          status: 'approved',
+          reviewedByUserId: t.users.coordinator.id,
+          reviewedAt: FIXED_NOW.toISOString(),
+          rejectionReason: null,
+        },
+        FIXED_NOW,
+      ),
+    )
+    const before = await snapshot(t.institution.id)
+    fails(
+      await issue(t, t.cookies.admin, { decisionId: correction.id }),
+      409,
+      'certificate_already_issued',
+    )
+    assert.deepEqual(await snapshot(t.institution.id), before)
+
+    // Core denetimini atlayan yazma kayıt başına kısmi tekil indekse takılır.
+    const existing = await findCertificate(db, t.institution.id, certificate.id)
+    assert.ok(existing)
+    await assert.rejects(
+      insertCertificate(db, t.institution.id, {
+        ...existing,
+        decisionId: correction.id,
+        content: { ...existing.content, decisionId: correction.id },
+        serial: 99,
+        number: 'KB-2026-000099',
+        verificationCode: `ZZZZ${existing.verificationCode.slice(4)}`,
+      }),
+      (error: unknown) => {
+        assert.deepEqual(databaseErrorInfo(error), {
+          code: '23505',
+          constraint: 'course_certificates_valid_enrollment_key',
+        })
+        return true
+      },
+    )
+    assert.equal((await snapshot(t.institution.id)).certificates.length, 1)
   })
 
   test('DOM-DIL-080 MEBBİS listesi hak kazananı gösterir, işaret bir kez; ileri tarih 422, tekrar kararı listede yok', async () => {

@@ -277,10 +277,27 @@ describe('belge numarası, iptal ve yeniden düzenleme (DOM-DIL-082)', () => {
     }
   })
 
-  test('DOM-DIL-082 aynı karar için ikinci geçerli belge 409', () => {
+  test('DOM-DIL-082 Sabah kararı 86 kayıt başına tek geçerli belge: aynı ya da önceki karardan geçerli belge varsa 409', () => {
     assert.throws(
       () => issue({ certificates: [stored()] }),
       isDomainError('certificate_already_issued', 'conflict'),
+    )
+    // Kararı düzeltilen kayıt: önceki kararın (test-pd1) geçerli belgesi düzeltmenin (test-pd2)
+    // belgesini de engeller.
+    const d2 = decision({ id: 'test-pd2', correctsDecisionId: 'test-pd1' })
+    assert.throws(
+      () =>
+        issue({
+          decisions: [decision(), d2],
+          certificates: [stored()],
+          input: { decisionId: 'test-pd2' },
+        }),
+      isDomainError('certificate_already_issued', 'conflict'),
+    )
+    // Başka kaydın belgesi sayılmaz.
+    assert.equal(
+      issue({ certificates: [stored({ enrollmentId: 'test-enr-baska' })] }).status,
+      'valid',
     )
   })
 

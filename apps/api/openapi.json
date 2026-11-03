@@ -91553,7 +91553,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Koşullar güncel devam ve ölçmelerle yeniden hesaplanır; dayanak değiştiyse 409 `progression_basis_changed`. Onaylı `passed` kararında `next` üst kur çıktısıdır. Yalnız kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi; diğer öğretmen 403, yönetici 403). Kararı veren onaylayamaz (403 `progression_self_review`); sonuçlanmış karar 409 `progression_already_reviewed`. `If-Match` kararın satır sürümü (`rowVersion`; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Olmayan ya da başka kurumun kararı 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "description": "Koşullar güncel devam ve ölçmelerle yeniden hesaplanır; dayanak değiştiyse 409 `progression_basis_changed`. Kaydın geçerli kurum başarı belgesi varken onay 422 `certificate_cancel_first` (önce belge iptal edilir). Onaylı `passed` kararında `next` üst kur çıktısıdır. Yalnız kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi; diğer öğretmen 403, yönetici 403). Kararı veren onaylayamaz (403 `progression_self_review`); sonuçlanmış karar 409 `progression_already_reviewed`. `If-Match` kararın satır sürümü (`rowVersion`; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Olmayan ya da başka kurumun kararı 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
         "requestBody": {
           "required": true,
           "content": {
@@ -94006,7 +94006,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Kaydın geçerli onaylı `passed` kararıyla belge düzenler (DOM-DIL-081, 082); onay bekleyen, tekrar ya da devamsızlık kararı 422. İçerik düzenleme anının kopyasıdır. Numara kurum sayacından `KB-<yıl>-<sıra>`, doğrulama kodu rastgeledir. Karar başına tek geçerli belge (409 `certificate_already_issued`); hatalı belge iptal edilip `replacesCertificateId` ile yeniden düzenlenir. Yalnız kurum yöneticisi ya da kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi); diğer öğretmen 403. Başarı 201. `Idempotency-Key` zorunlu (yoksa 400 `idempotency_key_required`). Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "description": "Kaydın geçerli onaylı `passed` kararıyla belge düzenler (DOM-DIL-081, 082); onay bekleyen, tekrar ya da devamsızlık kararı 422. İçerik düzenleme anının kopyasıdır. Numara kurum sayacından `KB-<yıl>-<sıra>`, doğrulama kodu rastgeledir. Kur kaydı başına tek geçerli belge (409 `certificate_already_issued`, kararı düzeltilmiş kayıtta da); hatalı belge iptal edilip `replacesCertificateId` ile yeniden düzenlenir. Yalnız kurum yöneticisi ya da kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi); diğer öğretmen 403. Başarı 201. `Idempotency-Key` zorunlu (yoksa 400 `idempotency_key_required`). Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
         "requestBody": {
           "required": true,
           "content": {

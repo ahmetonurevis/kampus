@@ -369,10 +369,12 @@ function contentOf(subject: CertificateSubject, decision: ProgressionDecisionRec
  * numarayı ve doğrulama kodunu servis ekler.
  *
  * - `decisionId` kaydın geçerli kararı olmalı ve onaylı `passed` olmalıdır (422).
- * - Aynı karar için geçerli belge varsa 409 `certificate_already_issued` (veritabanında da kısmi
- *   tekil indeks).
  * - `replacesCertificateId` verilirse aynı kaydın iptal edilmiş ve henüz yerine belge
  *   düzenlenmemiş belgesi olmalıdır; aksi halde 422/409.
+ * - Kaydın (hangi karardan olursa olsun) geçerli belgesi varsa 409 `certificate_already_issued`
+ *   (Sabah kararı 86; veritabanında da kayıt başına kısmi tekil indeks). Kararı düzeltilen kayıtta
+ *   da tek geçerli belge olur: düzeltmenin onayı belge iptal edilmeden geçmez (core
+ *   `planProgressionReview`, 422 `certificate_cancel_first`).
  */
 export function planCertificateIssue(input: {
   institutionType: InstitutionType
@@ -413,13 +415,6 @@ export function planCertificateIssue(input: {
     })
   }
   const certificates = input.certificates.filter((c) => c.enrollmentId === input.enrollment.id)
-  if (certificates.some((c) => c.decisionId === effective.id && c.status === 'valid')) {
-    throw new DomainError(
-      'certificate_already_issued',
-      'Bu karar için geçerli bir belge var; hata varsa belge iptal edilip yeniden düzenlenir.',
-      { kind: 'conflict', path: ['decisionId'] },
-    )
-  }
   if (data.replacesCertificateId !== null) {
     const replaced = certificates.find((c) => c.id === data.replacesCertificateId)
     if (replaced === undefined) {
@@ -442,6 +437,13 @@ export function planCertificateIssue(input: {
         { kind: 'conflict', path: ['replacesCertificateId'] },
       )
     }
+  }
+  if (certificates.some((c) => c.status === 'valid')) {
+    throw new DomainError(
+      'certificate_already_issued',
+      'Bu kayıt için geçerli bir belge var; hata varsa belge iptal edilip yeniden düzenlenir.',
+      { kind: 'conflict', path: ['decisionId'] },
+    )
   }
   return {
     enrollmentId: input.enrollment.id,

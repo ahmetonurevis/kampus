@@ -106,7 +106,7 @@ export function registerCertificateRoutes(app: FastifyInstance) {
         operationId: 'issueCourseCertificate',
         tags: ['learning'],
         summary: 'Kurum başarı belgesi düzenle',
-        description: `Kaydın geçerli onaylı \`passed\` kararıyla belge düzenler (DOM-DIL-081, 082); onay bekleyen, tekrar ya da devamsızlık kararı 422. İçerik düzenleme anının kopyasıdır. Numara kurum sayacından \`KB-<yıl>-<sıra>\`, doğrulama kodu rastgeledir. Karar başına tek geçerli belge (409 \`certificate_already_issued\`); hatalı belge iptal edilip \`replacesCertificateId\` ile yeniden düzenlenir. ${ISSUER} Başarı 201. \`Idempotency-Key\` zorunlu (yoksa 400 \`idempotency_key_required\`). ${SCOPE}`,
+        description: `Kaydın geçerli onaylı \`passed\` kararıyla belge düzenler (DOM-DIL-081, 082); onay bekleyen, tekrar ya da devamsızlık kararı 422. İçerik düzenleme anının kopyasıdır. Numara kurum sayacından \`KB-<yıl>-<sıra>\`, doğrulama kodu rastgeledir. Kur kaydı başına tek geçerli belge (409 \`certificate_already_issued\`, kararı düzeltilmiş kayıtta da); hatalı belge iptal edilip \`replacesCertificateId\` ile yeniden düzenlenir. ${ISSUER} Başarı 201. \`Idempotency-Key\` zorunlu (yoksa 400 \`idempotency_key_required\`). ${SCOPE}`,
         body: issueCertificateBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         response: { 201: certificateResponseSchema, ...commandErrors },

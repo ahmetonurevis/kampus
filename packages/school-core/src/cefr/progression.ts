@@ -832,6 +832,11 @@ function canonical(value: unknown): string {
  * DOM-KYN-031 ile aynı ilke). Onay anında koşullar güncel verilerle yeniden hesaplanır; dayanak
  * (devam, ara ve kur sonu puanları, eşik) öneri anındakinden farklıysa onay reddedilir ve öğretmen
  * yeniden önerir (`progression_basis_changed`). Onaylı veya reddedilmiş karar değişmez.
+ *
+ * Kaydın geçerli kurum başarı belgesi varken karar onaylanmaz (422 `certificate_cancel_first`,
+ * Sabah kararı 86; DOM-DIL-082): belge onaylı `passed` kararına dayanır, bu yüzden bekleyen karar
+ * ancak o kararın düzeltmesidir ve onayı belgeyi dayanaksız bırakırdı. Önce belge iptal edilir;
+ * ret engellenmez. `certificates` kaydın belgeleridir (servis aynı kurum kilidi altında yükler).
  */
 export function planProgressionReview(input: {
   institutionType: InstitutionType
@@ -840,6 +845,8 @@ export function planProgressionReview(input: {
   attendance: readonly LessonHourAttendance[]
   assessments: readonly CourseAssessmentRow[]
   decision: ProgressionDecisionRecord
+  /** Kaydın kurum başarı belgeleri (core `cefr/certificates.ts` `CertificateRecord`). */
+  certificates: readonly { enrollmentId: string; status: 'valid' | 'cancelled' }[]
   actor: ProgressionActor
   input: unknown
   now: Instant
@@ -875,6 +882,16 @@ export function planProgressionReview(input: {
   const reviewed = { reviewedByUserId: input.actor.userId, reviewedAt: toIso(input.now) }
   if (data.action === 'reject') {
     return { ...decision, ...reviewed, status: 'rejected', rejectionReason: data.reason }
+  }
+  if (
+    input.certificates.some(
+      (certificate) =>
+        certificate.enrollmentId === input.enrollment.id && certificate.status === 'valid',
+    )
+  ) {
+    throw new DomainError('certificate_cancel_first', 'Önce düzenlenmiş belge iptal edilmeli.', {
+      path: ['decisionId'],
+    })
   }
   const evaluation = evaluateProgression(input)
   if (canonical(evaluation.basis) !== canonical(decision.basis)) {

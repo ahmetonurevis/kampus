@@ -175,9 +175,10 @@ export const UNIQUE_CONSTRAINTS = {
   course_certificates_serial_key: RETRY,
   course_certificates_number_key: RETRY,
   course_certificates_verification_code_key: RETRY,
-  course_certificates_valid_decision_key: rule(
+  // Kur kaydı başına tek geçerli belge (Sabah kararı 86).
+  course_certificates_valid_enrollment_key: rule(
     'certificate_already_issued',
-    'Bu karar için geçerli bir belge var; hata varsa belge iptal edilip yeniden düzenlenir.',
+    'Bu kayıt için geçerli bir belge var; hata varsa belge iptal edilip yeniden düzenlenir.',
   ),
   course_certificates_replaces_key: rule(
     'certificate_already_replaced',

@@ -15,6 +15,7 @@ import {
   weekStart,
   weekTitle,
 } from '../apps/mobile/src/api/parent-tracking.ts'
+import { homeworkAudienceView, homeworkEmptyText } from '../apps/mobile/src/api/presentation.ts'
 
 const names = {
   subjects: new Map([['mat', 'Matematik']]),
@@ -85,6 +86,9 @@ describe('IST-124 mobil veli akademik takip', () => {
     assert.equal(attendanceLabel('absent'), 'Gelmedi')
     assert.equal(attendanceLabel('late'), 'Geç geldi')
     assert.equal(attendanceLabel('x'), 'x')
+    // Nesne prototipindeki adlar durum sayılmaz, metin olduğu gibi döner.
+    assert.equal(attendanceLabel('toString'), 'toString')
+    assert.equal(isAttendanceStatus('constructor'), false)
     assert.equal(isAttendanceStatus('excused'), true)
     assert.equal(isAttendanceStatus(''), false)
   })
@@ -201,5 +205,26 @@ describe('IST-124 mobil veli akademik takip', () => {
     assert.equal(day?.lessons[0]?.subtitle, 'Yedek: Mert Aydın · Derslik 101')
     assert.equal(day?.lessons[1]?.subtitle, 'Yedek öğretmen atandı · Derslik 101')
     assert.doesNotMatch(JSON.stringify(day), /Selin/)
+  })
+
+  test('IST-124 ödev sekmesi etiketi web ile aynıdır', () => {
+    const tab = parentTabs({}).find((item) => item.value === 'odevler')
+    assert.equal(tab?.label, 'Ödev durumu')
+  })
+
+  test('DOM-AKD-074 velide teslim yönlendirmesi yok, başlık Teslim açıklaması', () => {
+    const now = new Date('2026-11-03T09:00:00.000Z')
+    const open = { dueDate: '2026-11-10T09:00:00.000Z', allowLate: false }
+    const closed = { dueDate: '2026-11-01T09:00:00.000Z', allowLate: false }
+    for (const homework of [open, closed]) {
+      const parent = homeworkAudienceView('parent', homework, 'Bekliyor', now)
+      assert.equal(parent.hint, null)
+      assert.equal(parent.submissionTitle, 'Teslim açıklaması')
+    }
+    // Öğrencide yönlendirme sürer: açık ödev web'e, süresi dolan ödev kapalıya.
+    assert.equal(homeworkAudienceView('student', open, 'Bekliyor', now).hint, 'web')
+    assert.equal(homeworkAudienceView('student', closed, 'Bekliyor', now).hint, 'closed')
+    assert.equal(homeworkAudienceView('student', open, 'Bekliyor', now).submissionTitle, 'Teslimin')
+    assert.notEqual(homeworkEmptyText('parent'), homeworkEmptyText('student'))
   })
 })

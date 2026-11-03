@@ -149,3 +149,29 @@ export function fileSummary(
   if (submission.fileName) return submission.fileName
   return submission.fileIds.length ? '1 dosya' : '—'
 }
+
+/** Öğrenci kendi ödevlerini, veli seçili çocuğun ödevlerini görür; ikisi de salt okunurdur. */
+export type HomeworkAudience = 'student' | 'parent'
+
+/**
+ * Ödev ekranının kitleye göre farkları: teslim yönlendirmesi yalnız öğrencidir (veli teslim
+ * yapamaz, yalnız durumu görür); teslim bölümü başlığı da kitleye göredir.
+ */
+export function homeworkAudienceView(
+  audience: HomeworkAudience,
+  homework: Pick<HomeworkListItem, 'dueDate' | 'allowLate'>,
+  status: HomeworkStatus,
+  now: Date,
+) {
+  const student = audience === 'student'
+  return {
+    hint: student ? submissionHint(homework, status, now) : null,
+    submissionTitle: student ? 'Teslimin' : 'Teslim açıklaması',
+  }
+}
+
+/** Ödev listesi boşken gösterilen metin. */
+export const homeworkEmptyText = (audience: HomeworkAudience) =>
+  audience === 'student'
+    ? 'Öğretmenlerin ödev verdiğinde burada görünür.'
+    : 'Öğretmenler ödev verdiğinde burada görünür.'

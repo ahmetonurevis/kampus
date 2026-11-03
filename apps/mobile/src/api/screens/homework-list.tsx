@@ -20,14 +20,13 @@ import {
   fileSummary,
   homeworkView,
   matchesSearch,
-  submissionHint,
+  homeworkAudienceView,
+  homeworkEmptyText,
+  type HomeworkAudience,
   type SubmissionFields,
 } from '../presentation.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { useListMemory } from '../view-memory.tsx'
-
-/** Öğrenci kendi ödevlerini, veli seçili çocuğun ödevlerini görür; ikisi de salt okunurdur. */
-export type HomeworkAudience = 'student' | 'parent'
 
 function Paragraph({ text, empty }: { text: string; empty: string }) {
   return <T size={15}>{text.trim() ? text : empty}</T>
@@ -56,9 +55,8 @@ function HomeworkSheet({
   )
   const now = new Date()
   const view = homework ? homeworkView(homework, homework.submissions, studentId, now) : undefined
-  // Teslim yönlendirmesi yalnız öğrencidir; veli teslim yapamaz, yalnız durumu görür.
-  const hint =
-    audience === 'student' && homework && view ? submissionHint(homework, view.status, now) : null
+  const text = homework && view ? homeworkAudienceView(audience, homework, view.status, now) : null
+  const hint = text?.hint ?? null
   return (
     <Sheet visible title={view?.title ?? 'Ödev ayrıntısı'} onClose={onClose}>
       {item.error ? (
@@ -96,7 +94,7 @@ function HomeworkSheet({
             </Section>
           )}
           {submission && (
-            <Section title={audience === 'student' ? 'Teslimin' : 'Teslim açıklaması'} panel>
+            <Section title={text?.submissionTitle ?? ''} panel>
               <Paragraph text={submission.note} empty="Açıklama yazılmadı." />
             </Section>
           )}
@@ -171,14 +169,7 @@ export function HomeworkList({
         state.search ? (
           <EmptyResults noun="ödev" onClear={() => setSearch('')} />
         ) : (
-          <Empty
-            title="Henüz ödev yok"
-            text={
-              audience === 'student'
-                ? 'Öğretmenlerin ödev verdiğinde burada görünür.'
-                : 'Öğretmenler ödev verdiğinde burada görünür.'
-            }
-          />
+          <Empty title="Henüz ödev yok" text={homeworkEmptyText(audience)} />
         )
       ) : (
         <View style={{ gap: 10 }} accessibilityRole="list">

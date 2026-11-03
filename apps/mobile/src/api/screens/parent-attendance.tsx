@@ -98,7 +98,7 @@ export function ParentAttendance({ childId }: { childId: string }) {
     sort: ['-date'],
     filters: { studentId: childId, ...(status ? { status } : {}) },
   })
-  const total = records.data?.total
+  const total = records.isPlaceholderData ? undefined : records.data?.total
   const index = clampPageIndex(state.index, total)
   if (index !== state.index) setIndex(index)
 
@@ -113,7 +113,8 @@ export function ParentAttendance({ childId }: { childId: string }) {
       )}
       {records.error ? (
         <QueryError error={records.error} onRetry={() => void records.refetch()} />
-      ) : !records.data ? (
+      ) : !records.data || records.isPlaceholderData ? (
+        // Süzgeç değişirken önceki sayfa (placeholder) başka durumun kayıtlarıdır; gösterilmez.
         <ListLoading label="Katılım geçmişi yükleniyor…" />
       ) : records.data.rows.length === 0 ? (
         status ? (

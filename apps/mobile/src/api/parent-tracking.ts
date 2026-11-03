@@ -21,7 +21,7 @@ const TABS: readonly TabEntry[] = [
   { value: 'notlar', label: 'Notlar', modules: ['academic'] },
   { value: 'devamsizlik', label: 'Devamsızlık', modules: ['academic'] },
   { value: 'program', label: 'Ders programı', modules: ['planning', 'academic'] },
-  { value: 'odevler', label: 'Ödevler', modules: ['learning'] },
+  { value: 'odevler', label: 'Ödev durumu', modules: ['learning'] },
 ]
 
 export const DEFAULT_PARENT_TAB: ParentTab = 'notlar'
@@ -55,11 +55,12 @@ const STATUS_LABELS = {
   excused: 'Mazeretli',
 } as const satisfies Record<AttendanceStatus, string>
 
-export const attendanceLabel = (status: string): string =>
-  status in STATUS_LABELS ? STATUS_LABELS[status as AttendanceStatus] : status
-
+/** Kendi alanı olmayan ad (`toString`, `constructor`) durum sayılmaz. */
 export const isAttendanceStatus = (value: string): value is AttendanceStatus =>
-  (ATTENDANCE_STATUSES as readonly string[]).includes(value)
+  Object.hasOwn(STATUS_LABELS, value)
+
+export const attendanceLabel = (status: string): string =>
+  isAttendanceStatus(status) ? STATUS_LABELS[status] : status
 
 export const NO_REASON = 'Kayıtlı mazeret yok'
 

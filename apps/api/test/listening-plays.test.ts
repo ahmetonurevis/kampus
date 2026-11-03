@@ -377,6 +377,24 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: limited.id, playNumber: 1 }])
   })
 
+  test('IST-045, DOM-BEC-005 (Sabah kararı 56, OG-998): sınırsız A ve sınırlı B aynı kaydı bağlar ve ikisi de sürer; kimliksiz istek 422 listening_attempt_running, sayım yazılmaz', async () => {
+    const t = await tenant()
+    const unlimited = await start(t, await assign(t, null))
+    const limited = await start(t, await assign(t, 2, await secondQuiz(t)))
+
+    // Sınırsız A'nın süren denemesi sınırlı B'nin sınırını atlatmaz.
+    fails(await url(t, t.cookies.student), 422, 'listening_attempt_running')
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    // A'nın kendi ekranı kimliği gönderir: sınırsızdır, sayılmadan açılır.
+    assert.equal(
+      (await ok(await url(t, t.cookies.student, t.fileId, unlimited.id))).listening,
+      null,
+    )
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    const detail = await ok(await call('GET', `/task-attempts/${limited.id}`, t.cookies.student))
+    assert.deepEqual(detail.listening.media, [{ fileId: t.fileId, used: 0, remaining: 2 }])
+  })
+
   test('IST-045, DOM-BEC-005 (Sabah kararı 56): aynı görevin ikinci denemesi sürerken ilk denemenin sonucundan kimliksiz istek 422 listening_attempt_running; sayım yazılmaz', async () => {
     const t = await tenant()
     const practice = await ok(

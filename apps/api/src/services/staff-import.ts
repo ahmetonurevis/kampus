@@ -28,6 +28,7 @@ import {
 } from './operation-runner.ts'
 import {
   loadActorAdmin,
+  holdingInvitation,
   pendingTeacherInvitations,
   writeStaffInvitation,
 } from './staff-accounts.ts'
@@ -60,6 +61,7 @@ function candidateEmails(rows: readonly StaffImportRow[]): string[] {
 async function loadImportContext(
   tx: Database,
   institutionId: string,
+  now: Date,
   emails: readonly string[],
 ): Promise<{ context: StaffImportContext; existingUsers: Map<string, string> }> {
   const list = [...emails]
@@ -76,13 +78,7 @@ async function loadImportContext(
       : tx
           .select({ email: invitations.email })
           .from(invitations)
-          .where(
-            and(
-              eq(invitations.institutionId, institutionId),
-              eq(invitations.status, 'pending'),
-              inArray(invitations.email, list),
-            ),
-          ),
+          .where(and(holdingInvitation(institutionId, now), inArray(invitations.email, list))),
     list.length === 0
       ? []
       : tx
@@ -100,7 +96,7 @@ async function loadImportContext(
           isNull(membershipLinks.archivedAt),
         ),
       ),
-    pendingTeacherInvitations(tx, institutionId),
+    pendingTeacherInvitations(tx, institutionId, now),
   ])
   const teachers: StaffImportTeacher[] = records
     .filter((record) => record.collection === 'teachers' && isActive(record))
@@ -174,7 +170,7 @@ export async function importStaffMembers(
     // altında yeniden yapar: arada açılan üyelik ya da davet orada reddedilir.
     const plan = await ctx.db.transaction(async (tx) => {
       await loadActorAdmin(tx, ctx)
-      const { context } = await loadImportContext(tx, ctx.institutionId, emails)
+      const { context } = await loadImportContext(tx, ctx.institutionId, ctx.now, emails)
       return planStaffImport(rows, context)
     })
     return {
@@ -196,7 +192,7 @@ export async function importStaffMembers(
       entity: { type: 'staff_import', id: 'new' },
       load: async (tx) => {
         await loadActorAdmin(tx, ctx)
-        const loaded = await loadImportContext(tx, ctx.institutionId, emails)
+        const loaded = await loadImportContext(tx, ctx.institutionId, ctx.now, emails)
         existingUsers = loaded.existingUsers
         return {
           run: () => {

@@ -553,6 +553,63 @@ describe('personel hesapları (DOM-YTK-070)', () => {
     })
   })
 
+  describe('süresi dolmuş bekleyen davet', () => {
+    test('DOM-YTK-070: süresi dolmuş bekleyen davet e-postayı ve öğretmen kaydını tutmaz (invitation_exists, teacher_invitation_pending)', async () => {
+      const { cookie } = await kurum()
+      const elsewhere = await createInstitution(app)
+      const account = await createMember(app, elsewhere.id, 'ogretmen')
+      // Başka kurumda hesaplı e-postada yalnız bekleyen davet yazılır (karar 73).
+      const first = await invite(cookie, {
+        email: account.email,
+        name: 'Süreli',
+        role: 'ogretmen',
+        teacherId: 't-b',
+      })
+      assert.equal(first.statusCode, 201, first.body)
+      const sameEmail = await invite(cookie, {
+        email: account.email,
+        name: 'Süreli',
+        role: 'onburo',
+      })
+      assert.equal(sameEmail.json().code, 'invitation_exists')
+      const sameTeacher = await invite(cookie, {
+        email: email(),
+        name: 'Başka',
+        role: 'ogretmen',
+        teacherId: 't-b',
+      })
+      assert.equal(sameTeacher.json().code, 'teacher_invitation_pending')
+
+      await db
+        .update(invitations)
+        .set({ expiresAt: new Date(FIXED_NOW.getTime() - 24 * 60 * 60 * 1000) })
+        .where(eq(invitations.id, first.json().data.id))
+      const freshTeacher = await invite(cookie, {
+        email: email(),
+        name: 'Başka',
+        role: 'ogretmen',
+        teacherId: 't-b',
+      })
+      assert.equal(freshTeacher.statusCode, 201, freshTeacher.body)
+      const freshEmail = await invite(cookie, {
+        email: account.email,
+        name: 'Süreli',
+        role: 'onburo',
+      })
+      assert.equal(freshEmail.statusCode, 201, freshEmail.body)
+      // Süresi dolmuş satır listede görünür ve iptal edilebilir.
+      const listed = await app.inject({
+        method: 'GET',
+        url: '/api/v1/institution-members/invitations',
+        headers: { origin: TEST_ORIGIN, cookie },
+      })
+      assert.ok(
+        listed.json().data.some((row: { id: string }) => row.id === first.json().data.id),
+        'süresi dolmuş davet listede',
+      )
+    })
+  })
+
   describe('POST /institution-members/invitations/:invitationId/cancel', () => {
     test('DOM-YTK-070: başka kurumun davetini iptal edemez; iptal üyeliği ve parolasız hesabı siler; ikinci iptal 409', async () => {
       const { institution, cookie } = await kurum()

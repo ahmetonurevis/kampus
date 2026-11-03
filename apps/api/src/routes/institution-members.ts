@@ -51,7 +51,8 @@ function send<T>(reply: FastifyReply, response: CommandResponse, schema: z.ZodTy
  * Ayarlar → Kullanıcı & Yetkiler (DOM-YTK-020, DOM-YTK-070). Yalnız yönetici; kurum oturumdan
  * gelir, sorguda kurum kimliği kabul edilmez. Okuma: üyeler ve bekleyen davetler. Yazma: personel
  * daveti ve iptali, rol değiştirme, pasifleştirme ve geri alma (`services/staff-accounts.ts`),
- * toplu personel aktarımı (`services/staff-import.ts`, IST-007).
+ * toplu personel aktarımı (`services/staff-import.ts`, IST-007). Veli hesabı daveti, listesi ve
+ * iptali yönetici ve ön büroya açıktır: `routes/guardian-invitations.ts` (DOM-YTK-071).
  */
 export function registerInstitutionMemberRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
@@ -115,7 +116,7 @@ export function registerInstitutionMemberRoutes(app: FastifyInstance) {
         operationId: 'inviteStaffMember',
         tags: ['institution'],
         summary: 'Personel davet et',
-        description: `Yönetici, öğretmen ya da ön büro hesabı açar (DOM-YTK-070, IST-007): kullanıcı (parolasız), üyelik ve isteğe bağlı öğretmen kaydı bağlantısı (\`teacherId\`, yalnız öğretmen rolünde) aynı işlemde yazılır; Better Auth daveti kişi ilk girişini yapana kadar \`pending\` kalır. Kişiye parola belirleme bağlantısı (parola sıfırlama akışı) yanıtı beklemeden gönderilir (kuyruk açıkken \`staff.password-link\` işi). E-posta başka kurumda hesaplıysa üyelik açılmaz ve ileti gitmez; yalnız bekleyen davet yazılır, öğretmen kaydı davette saklanır ve kabulde bağlanır. Yanıtın durum kodu ve alanları iki durumda aynıdır, ad yöneticinin girdiğidir: e-postanın başka kurumda hesabı olup olmadığı yanıttan anlaşılmaz. Kurumda kayıtlı e-posta 409 \`member_exists\`, bekleyen davet 409 \`invitation_exists\`, kurumda olmayan öğretmen kaydı 404, başka hesaba bağlı öğretmen kaydı 409 \`teacher_already_linked\`, kurumun bekleyen başka bir davetinin tuttuğu öğretmen kaydı 409 \`teacher_invitation_pending\`. Öğrenci ve veli hesapları kayıt aktarımıyla açılır (400). \`Idempotency-Key\` zorunlu; başarı 201 ve \`Location\`. ${WRITE_ACCESS}`,
+        description: `Yönetici, öğretmen ya da ön büro hesabı açar (DOM-YTK-070, IST-007): kullanıcı (parolasız), üyelik ve isteğe bağlı öğretmen kaydı bağlantısı (\`teacherId\`, yalnız öğretmen rolünde) aynı işlemde yazılır; Better Auth daveti kişi ilk girişini yapana kadar \`pending\` kalır. Kişiye parola belirleme bağlantısı (parola sıfırlama akışı) yanıtı beklemeden gönderilir (kuyruk açıkken \`staff.password-link\` işi). E-posta başka kurumda hesaplıysa üyelik açılmaz ve ileti gitmez; yalnız bekleyen davet yazılır, öğretmen kaydı davette saklanır ve kabulde bağlanır. Yanıtın durum kodu ve alanları iki durumda aynıdır, ad yöneticinin girdiğidir: e-postanın başka kurumda hesabı olup olmadığı yanıttan anlaşılmaz. Kurumda kayıtlı e-posta 409 \`member_exists\`, bekleyen davet 409 \`invitation_exists\`, kurumda olmayan öğretmen kaydı 404, başka hesaba bağlı öğretmen kaydı 409 \`teacher_already_linked\`, kurumun bekleyen başka bir davetinin tuttuğu öğretmen kaydı 409 \`teacher_invitation_pending\`. Öğrenci hesapları kayıt aktarımıyla açılır; \`veli\` rolü 400, veli hesabı \`POST /api/v1/institution-members/guardian-invitations\` (\`inviteGuardianAccount\`) ile açılır. \`Idempotency-Key\` zorunlu; başarı 201 ve \`Location\`. ${WRITE_ACCESS}`,
         body: staffInvitationInputSchema,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         response: { 201: staffInvitationResponseSchema, ...commandErrors },

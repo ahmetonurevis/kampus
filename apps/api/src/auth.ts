@@ -180,6 +180,13 @@ export const ORGANIZATION_OPTIONS = {
         // yoktur (üretilen kimlik şeması koleksiyon kolonu taşıyamaz); kayıtlar silinmez, arşivlenir.
         // Yalnız sunucu yazar.
         teacherId: { type: 'string', required: false, input: false },
+        // Veli hesabı daveti (DOM-YTK-071): seçilen öğrenciler (`records` `students` kimlikleri,
+        // JSON dizi) ve isteğe bağlı veli kaydı (`parents`). Öğretmen kaydı gibi iki durumda da
+        // davette saklanır: yeni hesapta çocuk bağlantısı ve velayet bağı davette de yazılır,
+        // başka kurumda hesabı olan e-postada (karar 73) yalnız burada durur ve kabulde bağlanır.
+        // Bekleyen davetin tuttuğu veli kaydı başka davete bağlanamaz. Yalnız sunucu yazar.
+        studentIds: { type: 'json', required: false, input: false },
+        parentId: { type: 'string', required: false, input: false },
       },
     },
     session: { fields: { activeOrganizationId: 'activeInstitutionId' } },

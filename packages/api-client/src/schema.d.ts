@@ -5484,6 +5484,17 @@ export interface components {
                     count: number;
                 }[];
             } | null;
+            /** @description Şikayet & Talepler durum dağılımı (`requests` `groupBy=status`); kampüs süzgecinden bağımsızdır (liste gibi). `communication` modülü kapalıysa `null` */
+            requests: {
+                /** @description Bütün talepler */
+                total: number;
+                /** @description `Yeni` durumundaki talep */
+                new: number;
+                /** @description `İnceleniyor` durumundaki talep */
+                inReview: number;
+                /** @description `Çözüldü` durumundaki talep */
+                resolved: number;
+            } | null;
         };
         DashboardTeacherInput: {
             /** @constant */
@@ -9200,6 +9211,17 @@ export interface components {
                     stage: string | null;
                     count: number;
                 }[];
+            } | null;
+            /** @description Şikayet & Talepler durum dağılımı (`requests` `groupBy=status`); kampüs süzgecinden bağımsızdır (liste gibi). `communication` modülü kapalıysa `null` */
+            requests: {
+                /** @description Bütün talepler */
+                total: number;
+                /** @description `Yeni` durumundaki talep */
+                new: number;
+                /** @description `İnceleniyor` durumundaki talep */
+                inReview: number;
+                /** @description `Çözüldü` durumundaki talep */
+                resolved: number;
             } | null;
         };
         DashboardTeacher: {

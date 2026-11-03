@@ -1420,13 +1420,57 @@
               }
             ],
             "description": "`crm` modülü kapalıysa `null`"
+          },
+          "requests": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Bütün talepler"
+                  },
+                  "new": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "`Yeni` durumundaki talep"
+                  },
+                  "inReview": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "`İnceleniyor` durumundaki talep"
+                  },
+                  "resolved": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "`Çözüldü` durumundaki talep"
+                  }
+                },
+                "required": [
+                  "total",
+                  "new",
+                  "inReview",
+                  "resolved"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Şikayet & Talepler durum dağılımı (`requests` `groupBy=status`); kampüs süzgecinden bağımsızdır (liste gibi). `communication` modülü kapalıysa `null`"
           }
         },
         "required": [
           "role",
           "today",
           "finance",
-          "prospects"
+          "prospects",
+          "requests"
         ]
       },
       "DashboardTeacherInput": {
@@ -16739,13 +16783,58 @@
               }
             ],
             "description": "`crm` modülü kapalıysa `null`"
+          },
+          "requests": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "total": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Bütün talepler"
+                  },
+                  "new": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "`Yeni` durumundaki talep"
+                  },
+                  "inReview": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "`İnceleniyor` durumundaki talep"
+                  },
+                  "resolved": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "`Çözüldü` durumundaki talep"
+                  }
+                },
+                "required": [
+                  "total",
+                  "new",
+                  "inReview",
+                  "resolved"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Şikayet & Talepler durum dağılımı (`requests` `groupBy=status`); kampüs süzgecinden bağımsızdır (liste gibi). `communication` modülü kapalıysa `null`"
           }
         },
         "required": [
           "role",
           "today",
           "finance",
-          "prospects"
+          "prospects",
+          "requests"
         ],
         "additionalProperties": false
       },

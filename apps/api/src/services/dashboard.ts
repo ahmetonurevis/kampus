@@ -1,4 +1,5 @@
 import { dayKey, INVOICE_STATUS_LABELS } from '@kampus/school-core/lib/format.ts'
+import { REQUEST_STATUSES } from '@kampus/school-core/lib/requests.ts'
 import type { Scope } from '@kampus/school-core/lib/scope.ts'
 
 import type { CollectionName } from '../db/collections.ts'
@@ -402,6 +403,24 @@ const invoiceList = (
     sort,
   }).then((result) => result.items.map(invoiceRow))
 
+const [REQUEST_NEW, REQUEST_IN_REVIEW, REQUEST_RESOLVED] = REQUEST_STATUSES
+
+export interface RequestCounts {
+  total: number
+  new: number
+  inReview: number
+  resolved: number
+}
+
+/** Talep durum dağılımı (`requests` `groupBy=status`); ön büro "Yeni talep" kartı. */
+const requestCounts = (ctx: ServiceContext): Promise<RequestCounts> =>
+  count(ctx, 'requests', { groupBy: 'status' }).then((counts) => ({
+    total: counts.total,
+    new: countOf(counts, REQUEST_NEW),
+    inReview: countOf(counts, REQUEST_IN_REVIEW),
+    resolved: countOf(counts, REQUEST_RESOLVED),
+  }))
+
 async function frontDeskDashboard(
   ctx: ServiceContext,
   scope: Scope,
@@ -409,7 +428,7 @@ async function frontDeskDashboard(
   branch: BranchScope | null,
 ) {
   const ofBranch = branch?.classFilter ?? {}
-  const [finance, prospects] = await Promise.all([
+  const [finance, prospects, requests] = await Promise.all([
     section(opens(scope, 'invoices'), async () => {
       const [invoices, paidToday, overdue, upcoming, recentPayments] = await Promise.all([
         invoicesByStatus(ctx, ofBranch),
@@ -438,8 +457,10 @@ async function frontDeskDashboard(
         })),
       }
     }),
+    // Şikayet & Talepler listesiyle aynı sayım: liste kampüs süzgeci taşımaz, bu bölüm de taşımaz.
+    section(opens(scope, 'requests'), () => requestCounts(ctx)),
   ])
-  return { role: 'onburo' as const, today, finance, prospects }
+  return { role: 'onburo' as const, today, finance, prospects, requests }
 }
 
 // --- Öğretmen --------------------------------------------------------------------------------

@@ -31,6 +31,7 @@ const EXTRA: Partial<Record<CollectionName, readonly Record<string, unknown>[]>>
   submissions: SEED.submissions.filter((item) => ['s1', 's2', 's3'].includes(item.studentId)),
   prospects: SEED.prospects.slice(0, 8),
   attendance: SEED.attendance.filter((item) => ['s1', 's2'].includes(item.studentId)).slice(0, 60),
+  requests: SEED.requests,
 }
 
 function extraRows() {
@@ -258,7 +259,13 @@ describe('Genel Bakış özeti', () => {
     const cookie = await memberCookie(id, 'onburo')
     const data = await dashboard(cookie)
     assert.equal(data.role, 'onburo')
-    assert.deepEqual(Object.keys(data).sort(), ['finance', 'prospects', 'role', 'today'])
+    assert.deepEqual(Object.keys(data).sort(), [
+      'finance',
+      'prospects',
+      'requests',
+      'role',
+      'today',
+    ])
 
     const invoices = await counts(cookie, 'invoices', 'groupBy=status&sum=amount')
     assert.deepEqual(data.finance.invoices, invoiceSummaryOf(invoices))
@@ -284,6 +291,27 @@ describe('Genel Bakış özeti', () => {
       data.prospects.stages,
       prospects.groups.map((group) => ({ stage: group.value, count: group.count })),
     )
+  })
+
+  test('IST-116: ön büro "Yeni talep" sayısı Şikayet & Talepler listesinin toplamıdır', async () => {
+    const { id } = await institution()
+    const cookie = await memberCookie(id, 'onburo')
+    const data = await dashboard(cookie)
+    const fresh = await listIds(cookie, 'requests', 'pageSize=20&status=Yeni')
+    const review = await listIds(cookie, 'requests', 'pageSize=20&status=İnceleniyor')
+    const resolved = await listIds(cookie, 'requests', 'pageSize=20&status=Çözüldü')
+    const all = await listIds(cookie, 'requests', 'pageSize=20')
+    assert.deepEqual(data.requests, {
+      total: all.total,
+      new: fresh.total,
+      inReview: review.total,
+      resolved: resolved.total,
+    })
+    assert.ok(data.requests.new > 0 && data.requests.inReview > 0, 'örnek veride iki durum var')
+    // Liste kampüs süzgeci taşımaz; kart da kampüs seçiminden bağımsızdır.
+    const branchId = SEED.branches[0]?.id ?? ''
+    const inBranch = await dashboard(cookie, `?branchId=${branchId}`)
+    assert.deepEqual(inBranch.requests, data.requests)
   })
 
   test('DOM-YTK-022: öğretmen yalnız kendi sınıflarını, derslerini ve ödevlerini sayar', async () => {
@@ -469,6 +497,7 @@ describe('Genel Bakış özeti', () => {
     const desk = await dashboard(await memberCookie(id, 'onburo'))
     assert.equal(desk.finance, null)
     assert.equal(desk.prospects, null)
+    assert.notEqual(desk.requests, null, 'iletişim açık: talep bölümü kalır')
 
     const teacher = await dashboard(
       await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }]),
@@ -495,6 +524,16 @@ describe('Genel Bakış özeti', () => {
     )
     assert.equal(parent.balance, null)
     assert.notEqual(parent.academic, null)
+  })
+
+  test('DOM-YTK-040: iletişim kapalıyken ön büro talep bölümü null, liste ucu 403', async () => {
+    const { id } = await institution({ enabledModules: { communication: false } })
+    const cookie = await memberCookie(id, 'onburo')
+    const desk = await dashboard(cookie)
+    assert.equal(desk.requests, null)
+    assert.notEqual(desk.finance, null)
+    const list = await get('/api/v1/collections/requests', cookie)
+    assert.equal(list.statusCode, 403)
   })
 
   test('başka kurumun kaydı özete girmez', async () => {

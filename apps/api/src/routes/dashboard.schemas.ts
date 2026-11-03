@@ -133,6 +133,17 @@ const frontDeskSchema = z
       })
       .nullable()
       .describe('`crm` modülü kapalıysa `null`'),
+    requests: z
+      .object({
+        total: count.describe('Bütün talepler'),
+        new: count.describe('`Yeni` durumundaki talep'),
+        inReview: count.describe('`İnceleniyor` durumundaki talep'),
+        resolved: count.describe('`Çözüldü` durumundaki talep'),
+      })
+      .nullable()
+      .describe(
+        'Şikayet & Talepler durum dağılımı (`requests` `groupBy=status`); kampüs süzgecinden bağımsızdır (liste gibi). `communication` modülü kapalıysa `null`',
+      ),
   })
   .meta({ id: 'DashboardFrontDesk' })
 

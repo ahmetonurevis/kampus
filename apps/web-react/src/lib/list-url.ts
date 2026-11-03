@@ -20,6 +20,8 @@ const keys = (prefix: string) => ({
 
 // TODO(liste-arama-url-finans): Onur'un finans e2e beklentileri ADR 0009'a uyunca (#24) kaldırılır.
 // Geçiş süresince bu yollardaki listeler arama metnini eskisi gibi URL'ye yazar ve yenilemede okur.
+// Ön büro tahsilat takibi (`/onburo/tahsilat-takip`) bilinçli olarak istisnada değildir: e2e onun
+// aramasını adreste beklemez, daha güvenli olan ADR 0009 davranışı orada da geçerlidir.
 const SEARCH_IN_URL_PATHS: ReadonlySet<string> = new Set(['/yonetici/finans'])
 
 /** Yol, arama metninin geçici olarak URL'de tutulduğu istisna listesinde mi (tam eşleşme). */
@@ -59,7 +61,7 @@ export function listStateFromParams(
 /**
  * Mevcut parametreleri koruyarak liste durumunu yazar; varsayılan değerler URL'den silinir. Arama
  * metni hiç yazılmaz ve eski bağlantıdan kalan `q` silinir (ADR 0009); yalnız `keepSearch`
- * (geçici finans istisnası, `keepsSearchInUrl`) verilirse yazılır.
+ * (geçici finans istisnası, `keepsSearchInUrl`) verilirse yazılır. Arama varken sayfa da yazılmaz.
  */
 export function listStateToParams(
   state: ListState,
@@ -72,8 +74,11 @@ export function listStateToParams(
   const next = new URLSearchParams(current)
   const set = (name: string, value: string | null) =>
     value === null ? next.delete(name) : next.set(name, value)
-  set(key.query, keepSearch && state.query.trim() ? state.query : null)
-  set(key.page, state.page > 1 ? String(state.page) : null)
+  const searching = state.query.trim() !== ''
+  set(key.query, keepSearch && searching ? state.query : null)
+  // Arama varken sayfa da yalnız bellektedir: yenilemede arama kaybolunca kullanıcı aramasız
+  // listenin N. sayfasına düşmesin (ADR 0009). İstisna yolunda arama da adreste olduğundan yazılır.
+  set(key.page, state.page > 1 && (keepSearch || !searching) ? String(state.page) : null)
   set(key.sort, state.sortKey || null)
   set(key.direction, state.sortKey && state.sortDirection === -1 ? 'azalan' : null)
   for (const [filter, name] of Object.entries(urlFilters))
@@ -161,7 +166,8 @@ export function applyListParams(
       filters,
       // İstisna yolunda URL aramanın kaynağıdır; URL'de yoksa arama boştur.
       query: keepSearch ? '' : state.query,
-      page: 1,
+      // Arama sürerken sayfa adrese yazılmadığından bellekteki sayfa korunur.
+      page: !keepSearch && state.query.trim() ? state.page : 1,
       sortKey: '',
       sortDirection: 1,
     },

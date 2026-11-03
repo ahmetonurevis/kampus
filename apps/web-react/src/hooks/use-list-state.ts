@@ -44,10 +44,11 @@ const NO_URL_FILTERS: UrlFilters = {}
 
 /**
  * Liste görünüm durumu: yol + `key` (liste + çocuk/sekme kapsamı) başına bellekte, sayfa/sıralama
- * ve `urlFilters` ayrıca URL'de tutulur. Arama metni yalnız bellektedir (ADR 0009, KVKK): geri/
- * ileri ve sayfa içi gezinmede bellekten döner, tam yenilemede kaybolur; eski bağlantıdaki `q` bir
- * kez okunur ve `replace` ile adresten silinir. Geri/ileri ile değişen URL yeniden okunur; kendi
- * `replace` yazımlarımız okunmaz. Kaydırma konumu her olayda render tetiklemesin diye ref'te izlenir.
+ * ve `urlFilters` ayrıca URL'de tutulur (arama sürerken sayfa hariç). Arama metni yalnız
+ * bellektedir (ADR 0009, KVKK): geri/ileri ve sayfa içi gezinmede bellekten döner, tam yenilemede
+ * kaybolur; eski bağlantıdaki `q` bir kez okunur ve `replace` ile adresten silinir. Geri/ileri ile
+ * değişen URL yeniden okunur; kendi `replace` yazımlarımız okunmaz. Kaydırma konumu her olayda
+ * render tetiklemesin diye ref'te izlenir.
  */
 export function useListState(
   key: string,

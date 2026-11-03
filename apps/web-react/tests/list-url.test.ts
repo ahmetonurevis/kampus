@@ -15,15 +15,20 @@ import {
 test('IST-028: sayfa ve sıralama URL’ye yazılıp geri okunur; arama metni URL’ye yazılmaz', () => {
   const state = {
     ...initialListState(),
-    query: 'Deniz Yılmaz',
     page: 3,
     sortKey: 'amount',
     sortDirection: -1 as const,
   }
-  const params = listStateToParams(state, '', new URLSearchParams('cocuk=ece'))
-  assert.equal(params.toString(), 'cocuk=ece&sayfa=3&sirala=amount&yon=azalan')
+  const params = listStateToParams(
+    { ...state, query: 'Deniz Yılmaz' },
+    '',
+    new URLSearchParams('cocuk=ece&sayfa=3'),
+  )
+  assert.equal(params.toString(), 'cocuk=ece&sirala=amount&yon=azalan', 'arama varken sayfa da yok')
   assert.equal(hasLegacySearch(params, ''), false)
-  const restored = listStateFromParams(params, '', { ...initialListState(), query: 'bellek' })
+  const plain = listStateToParams(state, '', new URLSearchParams('cocuk=ece'))
+  assert.equal(plain.toString(), 'cocuk=ece&sayfa=3&sirala=amount&yon=azalan')
+  const restored = listStateFromParams(plain, '', { ...initialListState(), query: 'bellek' })
   assert.deepEqual(
     [restored.query, restored.page, restored.sortKey, restored.sortDirection],
     ['bellek', 3, 'amount', -1],
@@ -38,7 +43,11 @@ test('IST-028: eski bağlantıdaki q bir kez okunur, ilk yazım onu adresten sil
   assert.equal(read.query, '0532 111 22 33', 'eski bağlantının araması kutuya gelir')
   assert.equal(read.page, 2)
   const written = listStateToParams(read, '', legacy)
-  assert.equal(written.toString(), 'sayfa=2&cocuk=ece', 'arama silinir, diğer parametreler kalır')
+  assert.equal(
+    written.toString(),
+    'cocuk=ece',
+    'arama ve arama içi sayfa silinir, diğer parametreler kalır',
+  )
   assert.equal(hasLegacySearch(written, ''), false)
   const prefixed = new URLSearchParams('odeme-q=Ay%C5%9Fe&q=diger')
   assert.equal(hasLegacySearch(prefixed, 'odeme-'), true)
@@ -160,12 +169,27 @@ test('IST-028: kişisel veri içeren arama hiçbir listede URL’ye yazılmaz; g
   }
   const params = listStateToParams(state, '', new URLSearchParams('q=eski'), {})
   assert.equal(params.has('q'), false, 'eski bağlantıdaki arama da temizlenir')
-  assert.equal(params.toString(), 'sayfa=2&sirala=name')
-  const back = applyListParams(state, new URLSearchParams('sayfa=2&sirala=name'), '', {})
-  assert.equal(back, state, 'URL’de q olmaması yazılan aramayı silmez')
+  assert.equal(params.toString(), 'sirala=name')
+  const back = applyListParams(state, new URLSearchParams('sirala=name'), '', {})
+  assert.equal(back, state, 'URL’de q ve sayfa olmaması yazılan aramayı ve sayfasını silmez')
   const earlier = applyListParams(state, new URLSearchParams(''), '', {})
-  assert.equal(earlier.query, '0532 111 22 33', 'önceki sayfaya dönüşte arama bellekten gelir')
-  assert.equal(earlier.page, 1)
+  assert.equal(earlier.query, '0532 111 22 33', 'önceki girdiye dönüşte arama bellekten gelir')
+  assert.equal(earlier.page, 2, 'arama içi sayfa da bellekten gelir')
+  assert.equal(earlier.sortKey, '')
+})
+
+test('IST-028: arama varken sayfa adrese yazılmaz; yenilemede aramasız listenin N. sayfasına düşülmez', () => {
+  const searching = { ...initialListState(), query: 'Ece', page: 3 }
+  const params = listStateToParams(
+    searching,
+    'odeme-',
+    new URLSearchParams('odeme-sayfa=3&sayfa=4'),
+  )
+  assert.equal(params.toString(), 'sayfa=4', 'yalnız kendi önekli sayfası silinir')
+  const reloaded = listStateFromParams(params, 'odeme-', initialListState())
+  assert.deepEqual([reloaded.query, reloaded.page], ['', 1])
+  const cleared = listStateToParams({ ...searching, query: '' }, 'odeme-', params)
+  assert.equal(cleared.toString(), 'sayfa=4&odeme-sayfa=3', 'arama silinince sayfa yeniden yazılır')
 })
 
 test('IST-028: geçici finans istisnasında arama URL’ye yazılır ve URL’den kurulur; diğer yollarda yazılmaz', () => {
@@ -195,7 +219,7 @@ test('IST-028: geçici finans istisnasında arama URL’ye yazılır ve URL’de
     {},
     keepsSearchInUrl('/yonetici/subeler'),
   )
-  assert.equal(other.toString(), 'sayfa=2')
+  assert.equal(other.toString(), '', 'istisna dışında arama ve arama içi sayfa yazılmaz')
 
   assert.equal(applyListParams(state, kept, '', {}, true), state, 'aynı URL aynı nesne')
   const back = applyListParams(state, new URLSearchParams('sayfa=2'), '', {}, true)

@@ -1,6 +1,6 @@
 import { average } from '../../packages/school-core/src/lib/format.ts'
 import { expect, test } from './support/fixtures.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 
 // Öğretmenin öğrenci profili (`/ogretmen/ogrenci/:id`, OG-205). Seed: Selin Kaya (t1) 7-A'nın
 // (c1) sınıf danışmanı ve rehberlik görevlisidir; Deniz Yılmaz (s1) 7-A öğrencisidir. 7-B (c9)
@@ -214,7 +214,7 @@ test.describe('öğretmen: öğrenci profili', () => {
       .click()
     await expect(page).toHaveURL(/[?&]sekme=notlar/)
     await page.getByLabel('Tabloda ara').fill('Matematik')
-    await expect(page.getByLabel('Tabloda ara')).toHaveValue('Matematik')
+    await expectEveryRow(page.getByRole('table').locator('tbody tr'), 'Matematik')
     await expect(page).not.toHaveURL(/[?&]not-q=/)
     const firstRecord = page.locator('button.record-link, a.record-link').first()
     await firstRecord.click()
@@ -231,7 +231,7 @@ test.describe('öğretmen: öğrenci profili', () => {
       page.getByRole('heading', { level: 2, name: 'Quiz sonuçları', exact: true }),
     ).toBeVisible()
     await page.getByLabel('Tabloda ara').first().fill('kazanım')
-    await expect(page.getByLabel('Tabloda ara').first()).toHaveValue('kazanım')
+    await expect(page.getByRole('row', { name: /Matematik · 7-A kazanım testi/ })).toBeVisible()
     await expect(page).not.toHaveURL(/[?&]quiz-q=/)
 
     await page.getByRole('link', { name: 'Listeye dön' }).click()

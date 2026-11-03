@@ -157,8 +157,43 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
   }
   const start = async (t: Tenant, assignmentId: string) =>
     ok(await call('POST', `/task-assignments/${assignmentId}/attempts`, t.cookies.student, {}), 201)
-  const url = (t: Tenant, cookie: string, fileId = t.fileId) =>
-    call('GET', `/files/${fileId}/url`, cookie)
+  const url = (t: Tenant, cookie: string, fileId = t.fileId, attemptId?: string) =>
+    call(
+      'GET',
+      `/files/${fileId}/url${attemptId === undefined ? '' : `?attemptId=${attemptId}`}`,
+      cookie,
+    )
+  const submit = async (t: Tenant, attempt: { id: string; rowVersion: number }) => {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/task-attempts/${attempt.id}/submit`,
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie: t.cookies.student,
+        'content-type': 'application/json',
+        'idempotency-key': randomUUID(),
+        'if-match': `"${attempt.rowVersion}"`,
+      },
+      payload: JSON.stringify({}),
+    })
+    assert.equal(response.statusCode, 200, response.body)
+  }
+  /** Aynı ses sürümünü dinleme kaydı olarak bağlayan ikinci quiz (değerlendirme). */
+  async function secondQuiz(
+    t: Tenant,
+    listeningVersionId: string | null = t.activity.audio.versionId,
+  ) {
+    const quiz = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      versions: [
+        {
+          status: 'published',
+          input: listeningQuiz(t.activity.questionVersionId, listeningVersionId),
+        },
+      ],
+    })
+    return quiz.versions[0]!.id
+  }
   const playsOf = async (institutionId: string) =>
     db
       .select({ attemptId: attemptMediaPlays.attemptId, playNumber: attemptMediaPlays.playNumber })
@@ -410,6 +445,113 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     // Kendi kurumunda sayım kendi denemesine düşer.
     const own = await ok(await url(other, other.cookies.student))
     assert.equal(own.listening.attemptId, otherAttempt.id)
+  })
+
+  test('IST-045, DOM-BEC-005 (Sabah kararı 54): attemptId verilince hak o denemeden düşer; aynı sesi bağlayan önceki alıştırma denemesi etkilenmez', async () => {
+    const t = await tenant()
+    // Alıştırma denemesi dünden açık; aynı sesi bağlayan değerlendirme bugün başlar.
+    const practice = await start(t, await assign(t, 2))
+    at(24 * 60 * 60_000)
+    const assessment = await start(t, await assign(t, 2, await secondQuiz(t)))
+
+    const first = await ok(await url(t, t.cookies.student, t.fileId, assessment.id))
+    assert.deepEqual(first.listening, {
+      attemptId: assessment.id,
+      limit: 2,
+      used: 1,
+      remaining: 1,
+      counted: true,
+    })
+    at(24 * 60 * 60_000 + WINDOW)
+    const second = await ok(await url(t, t.cookies.student, t.fileId, assessment.id))
+    assert.deepEqual([second.listening.used, second.listening.remaining], [2, 0])
+    at(24 * 60 * 60_000 + 2 * WINDOW)
+    fails(
+      await url(t, t.cookies.student, t.fileId, assessment.id),
+      422,
+      'listening_plays_exhausted',
+    )
+
+    const detail = (attemptId: string) =>
+      call('GET', `/task-attempts/${attemptId}`, t.cookies.student)
+    assert.deepEqual((await ok(await detail(assessment.id))).listening.media, [
+      { fileId: t.fileId, used: 2, remaining: 0 },
+    ])
+    assert.deepEqual((await ok(await detail(practice.id))).listening.media, [
+      { fileId: t.fileId, used: 0, remaining: 2 },
+    ])
+    // Kimlik verilmezse (geri uyumluluk) hak en erken başlayan süren denemeden düşer.
+    const legacy = await ok(await url(t, t.cookies.student))
+    assert.equal(legacy.listening.attemptId, practice.id)
+    const plays = await playsOf(t.institution.id)
+    const numbersOf = (attemptId: string) =>
+      plays.filter((play) => play.attemptId === attemptId).map((play) => play.playNumber)
+    assert.deepEqual(numbersOf(assessment.id), [1, 2])
+    assert.deepEqual(numbersOf(practice.id), [1])
+  })
+
+  test('IST-002, IST-045 (Sabah kararı 54): yabancı deneme 404, kaydı bağlamayan deneme 422 listening_attempt_mismatch, kapanmış deneme 422 listening_attempt_closed; sayım yazılmaz; personel ve velide attemptId sayılmaz', async () => {
+    const t = await tenant()
+    const own = await start(t, await assign(t, 2))
+    // Aynı sınıftaki başka öğrencinin denemesi.
+    await insertMissingRecords(
+      db,
+      t.institution.id,
+      [
+        {
+          collection: 'students',
+          id: 's-2',
+          data: { id: 's-2', name: 'Ece Yılmaz', classId: '9-A', isActive: true },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const classmate = await signInAs(
+      app,
+      await createMember(app, t.institution.id, 'ogrenci', [
+        { kind: 'student', recordId: 's-2' } as never,
+      ]),
+    )
+    const assessmentId = await assign(t, 2, await secondQuiz(t))
+    const foreign = await ok(
+      await call('POST', `/task-assignments/${assessmentId}/attempts`, classmate, {}),
+      201,
+    )
+    const other = await tenant()
+    const otherAttempt = await start(other, await assign(other))
+    for (const attemptId of [foreign.id, otherAttempt.id, randomUUID()])
+      fails(await url(t, t.cookies.student, t.fileId, attemptId), 404, 'not_found')
+    assert.equal(
+      (await call('GET', `/files/${t.fileId}/url?attemptId=yok`, t.cookies.student)).statusCode,
+      400,
+    )
+
+    // Kaydı bağlamayan görevin denemesi: bu dosya o denemenin dinleme kaydı değildir.
+    const silent = await start(t, await assign(t, null, await secondQuiz(t, null)))
+    const mismatch = fails(
+      await url(t, t.cookies.student, t.fileId, silent.id),
+      422,
+      'listening_attempt_mismatch',
+    )
+    assert.match(mismatch.message, /bu göreve ait değil/)
+
+    // Personel ve veli deneme kimliği gönderse de sayılmaz.
+    for (const cookie of [t.cookies.teacher, t.cookies.admin, t.cookies.parent])
+      assert.equal((await ok(await url(t, cookie, t.fileId, own.id))).listening, null)
+    assert.deepEqual(await playsOf(t.institution.id), [])
+
+    // Teslim edilen deneme kapanmıştır; teslim penceresi kapandıktan sonra da sayılmaz.
+    await submit(t, own)
+    const closed = fails(
+      await url(t, t.cookies.student, t.fileId, own.id),
+      422,
+      'listening_attempt_closed',
+    )
+    assert.match(closed.message, /deneme sona erdi/)
+    at(AFTER_DUE)
+    fails(await url(t, t.cookies.student, t.fileId, own.id), 422, 'listening_attempt_closed')
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    assert.deepEqual(await playsOf(other.institution.id), [])
   })
 
   test('DOM-BEC-005: yeniden bağlantı penceresi son sayılan dinlemenin bağlantı ömrüdür (saf karar)', () => {

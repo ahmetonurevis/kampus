@@ -23,6 +23,7 @@ import {
   filePurposeSchema,
   fileReadErrors,
   fileUrlErrors,
+  fileUrlQuerySchema,
   fileResponseSchema,
   fileUploadBodySchema,
   fileUrlResponseSchema,
@@ -135,13 +136,16 @@ export function registerFileRoutes(app: FastifyInstance, storage: DiskStorage) {
         operationId: 'getFileUrl',
         tags: ['files'],
         summary: 'İmzalı indirme bağlantısı',
-        description: `Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk, dinleme kaydında kayıt süresi + 60 sn (en az 5 dk; süre ölçülmemişse 16 dk). Tür ve \`Content-Disposition\` (belge \`attachment\`, görsel/ses/görüntü \`inline\`) imzaya dahildir. Dosya işlenirken 409 \`file_processing\`; taramada reddedilen dosyada yükleyen 422 \`file_rejected\` alır (başkası 404). Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına \`file.access\` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Dinleme hakkı (IST-045, DOM-BEC-005): öğrenci, hakkı sınırlı atamanın quiz/alıştırma setinin \`listeningVersionId\` ile bağladığı ses sürümünün \`listening_audio\` kaydını süren denemesinde istediğinde hak deneme × kayıt başına sayılır ve yanıtın \`listening\` alanında döner; hak bitince 422 \`listening_plays_exhausted\`, süren deneme yokken teslimi açık görevde 422 \`listening_attempt_required\`. Son sayımın bağlantısı geçerliyken yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner; aralık istekleri sayılmaz. Öğretmen, yönetici ve veli bağlantısı, sınırsız atamanın denemesi ve teslim kapandıktan sonraki bağlantı sayılmaz. ${READ_ACCESS}`,
+        description: `Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk, dinleme kaydında kayıt süresi + 60 sn (en az 5 dk; süre ölçülmemişse 16 dk). Tür ve \`Content-Disposition\` (belge \`attachment\`, görsel/ses/görüntü \`inline\`) imzaya dahildir. Dosya işlenirken 409 \`file_processing\`; taramada reddedilen dosyada yükleyen 422 \`file_rejected\` alır (başkası 404). Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına \`file.access\` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Dinleme hakkı (IST-045, DOM-BEC-005): öğrenci, hakkı sınırlı atamanın quiz/alıştırma setinin \`listeningVersionId\` ile bağladığı ses sürümünün \`listening_audio\` kaydını süren denemesinde istediğinde hak deneme × kayıt başına sayılır ve yanıtın \`listening\` alanında döner; hak bitince 422 \`listening_plays_exhausted\`. \`attemptId\` verilirse hak o denemeden düşer: öğrencinin kendi denemesi değilse 404, ataması bu kaydı bağlamıyorsa 422 \`listening_attempt_mismatch\`, deneme teslim edilmiş ya da süresi dolmuşsa 422 \`listening_attempt_closed\`; reddedilen istekte sayım yazılmaz. Verilmezse (geri uyumluluk) hak öğrencinin bu kaydı bağlayan sınırlı atamalardaki süren denemelerinin en erken başlayanından düşer; süren deneme yokken teslimi açık görevde 422 \`listening_attempt_required\`. Son sayımın bağlantısı geçerliyken yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner; aralık istekleri sayılmaz. Öğretmen, yönetici ve veli bağlantısı, sınırsız atamanın denemesi ve teslim kapandıktan sonraki bağlantı sayılmaz. ${READ_ACCESS}`,
         params: fileParamsSchema,
+        querystring: fileUrlQuerySchema,
         response: { 200: fileUrlResponseSchema, ...fileUrlErrors },
       },
     },
     async (request) => ({
-      data: await getFileUrl(contextOf(request), storage, request.params.fileId),
+      data: await getFileUrl(contextOf(request), storage, request.params.fileId, {
+        attemptId: request.query.attemptId,
+      }),
     }),
   )
 

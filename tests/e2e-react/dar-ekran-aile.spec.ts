@@ -54,7 +54,7 @@ const INTERACTIONS: Readonly<Record<string, Interaction>> = {
   'ogrenci/mesajlar': { kind: 'url', open: /Selin Kaya/, url: /yazisma=/ },
   'ogrenci/seviye-takibi': { kind: 'menu' },
   'ogrenci/izin-formlari': { kind: 'menu' },
-  // Öğrenci ödemeleri telefonda gösterilmez (CLAUDE.md); boş durum çizilir. Sayfa HESABIM
+  // Öğrenci ödemeleri telefonda gösterilmez (.claude/rules/tasarim.md); boş durum çizilir. Sayfa HESABIM
   // kategorisindedir: menüde değil avatar menüsündedir.
   'ogrenci/odemelerim': { kind: 'account' },
   'sinav-analizi': { kind: 'details' },

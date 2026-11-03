@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
-import { useSaveTaskDraft, type TaskDraft } from '@kampus/react-shared/use-task-submissions.ts'
 import { createDraftSaver } from './draft-autosave-model.ts'
+import { useSaveTaskDraft, type TaskDraft } from './use-task-submissions.ts'
 
 export type DraftSaveState = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -22,6 +22,7 @@ type Options = {
  * sorgusu tazelenince (başka pencerede kayıt): ekranda kaydedilmemiş değişiklik yoksa ekran sunucu
  * metnine geçer; varsa `conflict` açılır ve ilk teslim basışı kayıt atmadan uyarır.
  * Zamanlayıcı da modeldedir (`schedule`/`cancel`); bekleyen değişiklik unmount'ta kaydedilir.
+ * Web ve mobil ortaktır (IST-124); mobil uygulama arka plana geçerken `saveNow` çağırır.
  */
 export function useDraftAutosave({
   assignmentId,
@@ -93,6 +94,15 @@ export function useDraftAutosave({
     return () => saver.cancel()
   }, [body, enabled, conflict, saver])
 
+  /**
+   * Bekleyen değişikliği zamanlayıcıyı beklemeden kaydeder (unmount ile aynı kural): kayıt kapalıyken
+   * ya da çakışmada yazılmaz, kirli olmayan ve boş metin kaydedilmez. Bileşen kalkarken ve mobil
+   * uygulama arka plana geçerken çağrılır.
+   */
+  const saveNow = useCallback(() => {
+    void saver.saveIfPending(bodyRef.current, enabledRef.current)
+  }, [saver])
+
   useEffect(
     () => () => {
       // Seçilen davranış: kaldırılırken bekleyen değişiklik hemen kaydedilir (bildirim değil).
@@ -102,11 +112,9 @@ export function useDraftAutosave({
       // komutun toast'ıyla bildirilir. Çakışmada (başka pencerenin kaydı onaylanmadı) yazılmaz:
       // öğrenci görmeden başka pencerenin metninin üstüne yazmak veri kaybıdır.
       saver.cancel()
-      const text = bodyRef.current
-      if (!enabledRef.current || saver.hasConflict()) return
-      if (saver.isDirty(text) && text.trim() !== '') void saver.save(text)
+      saveNow()
     },
-    [saver],
+    [saver, saveNow],
   )
 
   /** Bekleyen kaydı hemen tamamlar; kaydedilen taslağın revizyonu ya da teslim edilemezse `null`. */
@@ -119,5 +127,5 @@ export function useDraftAutosave({
     [saver],
   )
 
-  return { state, savedAt, conflict, flush }
+  return { state, savedAt, conflict, flush, saveNow }
 }

@@ -1772,6 +1772,43 @@ export async function findSubmissionOfVersion(
   return row ? findSubmission(db, institutionId, row.submissionId) : null
 }
 
+/**
+ * Puanın sürüm kimliği (puana bağlı sesli geri bildirimin okuma kuralı; DOM-BEC-056). Başka
+ * kurumun veya olmayan puan `null`.
+ */
+export async function findScoreVersionId(
+  db: Database,
+  institutionId: string,
+  scoreId: string,
+): Promise<string | null> {
+  if (!UUID.test(scoreId)) return null
+  const [row] = await db
+    .select({ versionId: rubricScores.submissionVersionId })
+    .from(rubricScores)
+    .where(and(eq(rubricScores.institutionId, institutionId), eq(rubricScores.id, scoreId)))
+    .limit(1)
+  return row?.versionId ?? null
+}
+
+/** Sürümün puan satırlarının kimlikleri (puana bağlı sesli geri bildirimin saklama takvimi). */
+export async function listScoreIdsOfVersion(
+  db: Database,
+  institutionId: string,
+  versionId: string,
+): Promise<string[]> {
+  const rows = await db
+    .select({ id: rubricScores.id })
+    .from(rubricScores)
+    .where(
+      and(
+        eq(rubricScores.institutionId, institutionId),
+        eq(rubricScores.submissionVersionId, versionId),
+      ),
+    )
+    .orderBy(asc(rubricScores.id))
+  return rows.map((row) => row.id)
+}
+
 /** Teslim kaydı kimliğiyle (arşivli, başka kurumun veya olmayan kimlik `null`). */
 export async function findSubmission(
   db: Database,

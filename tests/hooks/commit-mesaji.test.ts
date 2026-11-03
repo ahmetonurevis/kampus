@@ -26,6 +26,7 @@ function errorsFor(raw: string): string {
 describe('geçerli mesajlar', () => {
   test('ID başlıkta ya da gövdede geçen olağan commit geçer', () => {
     assert.deepEqual(checkCommitMessage(message('Veli etüt listesini daralt (OG-012)')), [])
+    assert.deepEqual(checkCommitMessage(message('Ödeyici veliye finans kapsamı ver (OG-1002)')), [])
     assert.deepEqual(
       checkCommitMessage(message('Veli etüt listesini daralt', 'Neden ve etki.\nON-007', TRAILER)),
       [],
@@ -45,6 +46,7 @@ describe('geçerli mesajlar', () => {
       'Görev durumunu güncelle: OG-001, OG-002, OG-969 bitti',
       'Görev durumunu güncelle: OG-007 bitti, OG-970 ve OG-971 eklendi',
       'Görev durumunu güncelle: ON-014 engelli',
+      'Görev durumunu güncelle: OG-1000 ve OG-1001 eklendi',
     ]) {
       assert.deepEqual(checkCommitMessage(message(subject, TRAILER)), [], subject)
     }

@@ -21,7 +21,6 @@ import {
   TASK_KINDS,
 } from '@kampus/school-core/skills/scoring.ts'
 import { VERSION_LIMITS } from '@kampus/school-core/skills/submission.ts'
-import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 /**
@@ -32,16 +31,8 @@ import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 export const NONE: readonly never[] = []
 
-export const SUBMISSION_DATE_OPTIONS = {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-} as const satisfies Intl.DateTimeFormatOptions
-
-export const dateTimeLabel = (value: string | null | undefined) =>
-  value ? dateLabel(value, SUBMISSION_DATE_OPTIONS) : '—'
+// Görev tarih biçimi web ve mobil için ortaktır (`@kampus/react-shared/task-labels.ts`).
+export { dateTimeLabel, SUBMISSION_DATE_OPTIONS } from '@kampus/react-shared/task-labels.ts'
 
 // --- Görev türleri -------------------------------------------------------------------------
 

@@ -13,7 +13,7 @@ import {
   WORD_LIMIT_WARNING,
   wordDifference,
   wordLimitText,
-} from '../src/pages/tasks/writing-model.ts'
+} from '../src/writing-model.ts'
 
 describe('yazma editörü: canlı sözcük sayısı', () => {
   test('IST-047, DOM-BEC-046: sayaç sözcükleri sabit beklenen değerle sayar ve sınırla birlikte yazılır', () => {

@@ -39,6 +39,7 @@ import {
   submissionStale,
   TASK_APPEAL_MESSAGES,
   TASK_GRADING_INVALIDATES,
+  TASK_GRADING_MESSAGES,
   TASK_SUBMISSION_CHANGED_MESSAGE,
 } from '../src/use-task-grading.ts'
 import { TASK_DRAFT_KEY, TASK_SUBMISSIONS_KEY } from '../src/use-task-submissions.ts'
@@ -598,5 +599,26 @@ describe('uyuşmazlıkta son puan komutu', () => {
     assert.equal(url.pathname, '/api/v1/task-submissions/grading-queue')
     assert.equal(url.searchParams.get('awaiting'), 'resolution')
     assert.equal(url.searchParams.get('overdue'), 'true')
+  })
+
+  test('DOM-BEC-056: sesli geri bildirim puan gövdesinde `feedbackAudioFileId` ile gider; bağlama hataları Türkçe, teslimi tazelemez', async () => {
+    const { client, sent } = fakeClient()
+    const withAudio = { ...score, feedbackAudioFileId: '0d7d3c1e-8f3a-4c55-9d1b-6a4f1c2b9e10' }
+    await runRequest(() =>
+      scoreTaskSubmissionRequest(
+        client,
+        { submissionId: 'ts-1', version: 2, score: withAudio },
+        commandHeaders('key-feedback', 2),
+      ),
+    )
+    assert.deepEqual(sent[0]?.body, withAudio)
+    for (const code of ['file_unavailable', 'file_not_ready', 'file_purpose_mismatch'] as const) {
+      const error = new ApiError({ status: 422, code, message: 'Sunucu mesajı.' })
+      assert.equal(
+        commandFeedback(error, scoreTaskSubmissionCommand.messages).message,
+        TASK_GRADING_MESSAGES[code],
+      )
+      assert.equal(submissionStale(error), false)
+    }
   })
 })

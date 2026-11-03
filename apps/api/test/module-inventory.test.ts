@@ -58,6 +58,10 @@ const MODULELESS: Readonly<Record<string, string>> = {
   'GET /api/v1/institution-members/invitations': 'personel hesabı',
   'POST /api/v1/institution-members/invitations': 'personel hesabı',
   'POST /api/v1/institution-members/imports': 'personel hesabı',
+  // Veli hesabı daveti platform yeteneğidir (DOM-YTK-071): rıza ve kapsamın girdisi kapatılamaz.
+  'GET /api/v1/institution-members/guardian-invitations': 'veli hesabı',
+  'POST /api/v1/institution-members/guardian-invitations': 'veli hesabı',
+  'POST /api/v1/institution-members/guardian-invitations/:invitationId/cancel': 'veli hesabı',
   'POST /api/v1/institution-members/invitations/:invitationId/cancel': 'personel hesabı',
   'POST /api/v1/institution-members/:membershipId/role': 'personel hesabı',
   'POST /api/v1/institution-members/:membershipId/deactivate': 'personel hesabı',
@@ -245,6 +249,7 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'POST /api/v1/permission-forms': ['communication'],
   'PATCH /api/v1/permission-forms/:formId': ['communication'],
   'POST /api/v1/permission-forms/:formId/close': ['communication'],
+  'POST /api/v1/permission-forms/:formId/cancel': ['communication'],
   'DELETE /api/v1/permission-forms/:formId': ['communication'],
   'POST /api/v1/permission-forms/:formId/decisions': ['communication'],
   'GET /api/v1/resources': ['learning'],

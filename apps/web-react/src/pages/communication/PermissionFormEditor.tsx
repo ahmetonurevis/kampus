@@ -7,7 +7,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { Controller, useForm } from 'react-hook-form'
 import type { PermissionFormDetail } from '@kampus/react-shared/permission-forms.ts'
-import { hasDecisions, PERMISSION_TOPIC_LABELS } from '@kampus/react-shared/permission-forms.ts'
+import {
+  hasDecisions,
+  PERMISSION_TOPIC_LABELS,
+  permissionDropWarning,
+} from '@kampus/react-shared/permission-forms.ts'
+import { permissionDroppingChanges } from '@kampus/school-core/lib/permission-forms.ts'
 import {
   useCreatePermissionForm,
   usePermissionForm,
@@ -63,6 +68,11 @@ type Stale =
   /** `version`: çakışmanın gösterildiği kayıt sürümü; aynı sürümde yeniden kaydetmek onaydır. */
   | { kind: 'overlap'; overlaps: readonly PermissionOverlap[]; version: number }
   | { kind: 'closed' }
+  /**
+   * İzni düşüren değişiklik uyarısı (DOM-ILT-032): `version` kaydın uyarının gösterildiği sürümü;
+   * aynı sürümde yeniden kaydetmek onaydır.
+   */
+  | { kind: 'drop'; warning: string; version: number }
 
 function StaleNotice({ stale }: { stale: Stale | null }) {
   if (!stale) return null
@@ -70,6 +80,13 @@ function StaleNotice({ stale }: { stale: Stale | null }) {
     return (
       <div role="alert" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
         Form bu arada kapatıldı; kapatılmış form değiştirilemez. Girdiniz kaydedilmedi.
+      </div>
+    )
+  if (stale.kind === 'drop')
+    return (
+      <div role="alert" className="grid gap-1 rounded-card border bg-warning-soft p-4 text-sm">
+        <p className="font-medium">{stale.warning}</p>
+        <p>Onaylamak için Kaydet'e yeniden basın; vazgeçmek için paneli kapatın.</p>
       </div>
     )
   if (stale.kind === 'changed')
@@ -239,6 +256,11 @@ function PermissionFormEditor({
           title: values.title,
           description: values.description,
           deadline: values.deadline,
+          ...(values.eventDate ? { eventDate: values.eventDate } : {}),
+          ...(values.eventTime ? { eventTime: values.eventTime } : {}),
+          ...(values.location ? { location: values.location } : {}),
+          ...(values.transport ? { transport: values.transport } : {}),
+          ...(values.fee === undefined ? {} : { fee: values.fee }),
           ...(values.classIds?.length ? { classIds: values.classIds } : {}),
           ...(values.studentIds?.length ? { studentIds: values.studentIds } : {}),
         },
@@ -263,6 +285,16 @@ function PermissionFormEditor({
           type: 'manual',
           message: touched ? 'Form zaten bu değerlerde kayıtlı.' : 'Değişiklik yapmadınız.',
         })
+        return { status: 'busy' as const }
+      }
+      // Alınmış izni düşüren değişiklik yazmadan önce ekran onayı ister (DOM-ILT-032); sayı taze
+      // kayıttan (düşenler zaten sayılmaz). Aynı sürümde yeniden kaydetmek onaydır.
+      const warning = permissionDropWarning(
+        fresh.counts,
+        permissionDroppingChanges(fresh, plan.body),
+      )
+      if (warning !== null && !(shown?.kind === 'drop' && shown.version === fresh.version)) {
+        setStale({ kind: 'drop', warning, version: fresh.version })
         return { status: 'busy' as const }
       }
       // Hedefi başkası da değiştirdiyse önce iki değer gösterilir; ikinci kayıt onaydır.
@@ -399,6 +431,51 @@ function PermissionFormEditor({
             />
           )}
         </FormField>
+        <fieldset className="grid gap-4 rounded-card border p-4">
+          <legend className="px-1 text-sm font-medium">Etkinlik ayrıntısı</legend>
+          <p className="text-xs text-muted-foreground">
+            {editing
+              ? 'Gün, saat, yer, ulaşım ya da ücret değişirse alınmış izinler düşer ve velilerden yeniden izin istenir.'
+              : 'İsteğe bağlı. Veli bu ayrıntıya izin verir; sonradan değişirse izin yeniden istenir.'}
+          </p>
+          <div className="grid gap-4 sm:grid-cols-2">
+            <FormField id="izin-etkinlik-gunu" label="Etkinlik günü" error={errors.eventDate}>
+              {(control) => (
+                <Input {...control} {...form.register('eventDate')} type="date" disabled={busy} />
+              )}
+            </FormField>
+            <FormField id="izin-etkinlik-saati" label="Saat" error={errors.eventTime}>
+              {(control) => (
+                <Input {...control} {...form.register('eventTime')} type="time" disabled={busy} />
+              )}
+            </FormField>
+          </div>
+          <FormField id="izin-yer" label="Yer" error={errors.location}>
+            {(control) => (
+              <Input {...control} {...form.register('location')} maxLength={200} disabled={busy} />
+            )}
+          </FormField>
+          <FormField
+            id="izin-ulasim"
+            label="Ulaşım"
+            error={errors.transport}
+            description="Servis, veli getirir, yürüyerek gibi."
+          >
+            {(control) => (
+              <Input {...control} {...form.register('transport')} maxLength={200} disabled={busy} />
+            )}
+          </FormField>
+          <FormField
+            id="izin-ucret"
+            label="Ücret (₺)"
+            error={errors.fee}
+            description="Ücretsiz için 0 yazın; boş bırakılırsa belirtilmemiş sayılır."
+          >
+            {(control) => (
+              <Input {...control} {...form.register('fee')} inputMode="decimal" disabled={busy} />
+            )}
+          </FormField>
+        </fieldset>
         <Controller
           control={form.control}
           name="classIds"

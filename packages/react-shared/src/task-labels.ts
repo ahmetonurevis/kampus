@@ -1,4 +1,5 @@
 import type { components } from '@kampus/api-client/schema.d.ts'
+import { dateLabel } from '@kampus/school-core/lib/format.ts'
 
 /**
  * Beceri görevinin tür etiketleri (web ve mobil ortak): içerik türü adı ve konuşma görevi ayrımı.
@@ -28,3 +29,16 @@ export const isSpeakingTask = (assignment: SubmissionOf): boolean =>
 
 export const taskTypeLabel = (assignment: Pick<Learner, 'contentType'> & SubmissionOf): string =>
   isSpeakingTask(assignment) ? 'Konuşma görevi' : TASK_CONTENT_LABELS[assignment.contentType]
+
+/** Görev ekranlarındaki gün ve saat biçimi (Europe/Istanbul): "20 Eki 2026 23:59". */
+export const SUBMISSION_DATE_OPTIONS = {
+  day: 'numeric',
+  month: 'short',
+  year: 'numeric',
+  hour: '2-digit',
+  minute: '2-digit',
+} as const satisfies Intl.DateTimeFormatOptions
+
+/** Görev tarih/saat metni; değer yoksa `—`. */
+export const dateTimeLabel = (value: string | null | undefined) =>
+  value ? dateLabel(value, SUBMISSION_DATE_OPTIONS) : '—'

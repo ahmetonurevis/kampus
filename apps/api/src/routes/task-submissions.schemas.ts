@@ -9,6 +9,7 @@ import {
   RATER_ROLES,
   rubricScoreInputSchema,
 } from '@kampus/school-core/skills/rubric.ts'
+import { feedbackAudioFileIdSchema } from '@kampus/school-core/skills/recording.ts'
 import { SUBMISSION_TEXT_MAX } from '@kampus/school-core/skills/submission.ts'
 
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
@@ -100,6 +101,21 @@ const taskScoreBriefSchema = z
     'Son sürümün puan özeti; kursiyer ve veliye geri bildirim açılmadan `null` (DOM-BEC-045)',
   )
 
+const taskFeedbackAudioSchema = z
+  .object({
+    id,
+    contentType: z.string().describe('İçerikten tespit edilen tür (dönüşümden sonra M4A)'),
+    byteSize: z.number().int().min(0),
+    durationMs: z.number().int().min(0).nullable().describe('Sunucuda ölçülen süre'),
+    status: z
+      .enum(['processing', 'ready', 'deleted'])
+      .describe(
+        '`ready` ses `GET /api/v1/files/{fileId}/url` ile açılır (DOM-BEC-056). Silinmiş ya da reddedilmiş ses yanıtta yer almaz (`feedbackAudio` `null`); `deleted` şimdilik dönmez',
+      ),
+  })
+  .meta({ id: 'TaskFeedbackAudio' })
+  .describe('Öğretmenin sesli geri bildirimi (DOM-BEC-056); puanla aynı görünürlükte, yoksa `null`')
+
 const taskScoreSchema = z
   .object({
     ...scoreBriefShape,
@@ -114,6 +130,7 @@ const taskScoreSchema = z
       }),
     ),
     overallComment: z.string().describe('Öğretmenin genel geri bildirimi'),
+    feedbackAudio: taskFeedbackAudioSchema.nullable(),
   })
   .meta({ id: 'TaskScore' })
   .describe(
@@ -321,6 +338,11 @@ const taskDraftSchema = z
 export const taskScoreBodySchema = z.strictObject({
   versionNumber: z.number().int().min(1).describe('Puanlanan sürüm; yalnız son sürüm puanlanır'),
   ...rubricScoreInputSchema.shape,
+  feedbackAudioFileId: feedbackAudioFileIdSchema
+    .optional()
+    .describe(
+      'Sesli geri bildirim (DOM-BEC-056): puanlayanın `feedback_audio` amacıyla yüklediği hazır, bağlanmamış dosya; puanla aynı işlemde puana bağlanır',
+    ),
 })
 
 /** Yeniden teslim isteği gövdesi: core `resubmissionRequestSchema` (DOM-BEC-040), katı. */

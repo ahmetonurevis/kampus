@@ -1,3 +1,4 @@
+import { useId, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form'
 import {
@@ -13,6 +14,13 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
+import { FeedbackAudioField } from './FeedbackAudioRecorder.tsx'
+import {
+  NO_FEEDBACK_AUDIO,
+  PENDING_FEEDBACK_AUDIO,
+  feedbackAudioBody,
+  type FeedbackAudioValue,
+} from './feedback-audio-model.ts'
 import {
   aspectLabel,
   bandMeaningLabel,
@@ -46,7 +54,9 @@ const SCORE_FIELD = /^(criteria\.\d+\.(band|comment)|overallComment)$/
  * Rubrik puanı formu (DOM-BEC-020…023): her kritere bir bant (0–5) ve gerekirse yorum, genel
  * geri bildirim. Toplam ve yüzde sunucuda hesaplanır; istemci toplam göndermez. Hedefin altındaki
  * bantta (0–2) kriter yorumu zorunludur. 409'da (başka puan, yeni sürüm, sürüm çakışması) ekran
- * güncel teslimi yükler; uyarıyı pencere gösterir ve yazılan yorumlar korunur.
+ * güncel teslimi yükler; uyarıyı pencere gösterir ve yazılan yorumlar korunur. İsteğe bağlı
+ * sesli geri bildirim (DOM-BEC-056) hazır olunca gövdeye `feedbackAudioFileId` olarak eklenir;
+ * hazırlanırken puan kaydedilmez.
  */
 export function RubricScoreForm({
   submission,
@@ -72,15 +82,23 @@ export function RubricScoreForm({
     },
   })
   const watched = useWatch({ control: form.control, name: 'criteria' })
+  const [audio, setAudio] = useState<FeedbackAudioValue>(NO_FEEDBACK_AUDIO)
   const busy = score.isPending || form.formState.isSubmitting
+  const audioPending = audio.kind === 'pending'
   const version = submission.rowVersion
   const errors = form.formState.errors
+  // Aynı sayfada birden çok form (ilk ve son puan) açılabilir; kimlik formun örneğine özgüdür.
+  const audioPendingId = useId()
 
   const submit = form.handleSubmit(async (values) => {
-    if (version === null) return
+    if (version === null || audioPending) return
     onStaleChange(false)
     const outcome = await score.submit(
-      { submissionId: submission.id, version, score: scoreBody(values, versionNumber) },
+      {
+        submissionId: submission.id,
+        version,
+        score: { ...scoreBody(values, versionNumber), ...feedbackAudioBody(audio) },
+      },
       {
         silent: staleOn,
         setError: (name, error) =>
@@ -204,13 +222,24 @@ export function RubricScoreForm({
           />
         )}
       </FormField>
+      <FeedbackAudioField disabled={busy} onChange={setAudio} />
       <p className="text-sm text-muted-foreground">
         Toplam puan kayıtta sunucuda hesaplanır; puan kesinleşince geri bildirim öğrenciye ve
         velisine açılır.
       </p>
       <RootError message={errors.root?.server?.message} />
-      <div className="flex justify-end border-t pt-4">
-        <Button type="submit" disabled={busy || version === null} aria-busy={busy || undefined}>
+      <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-4">
+        {audioPending ? (
+          <p id={audioPendingId} className="text-sm text-muted-foreground">
+            {PENDING_FEEDBACK_AUDIO}
+          </p>
+        ) : null}
+        <Button
+          type="submit"
+          disabled={busy || version === null || audioPending}
+          aria-busy={busy || undefined}
+          aria-describedby={audioPending ? audioPendingId : undefined}
+        >
           <Icon name="Check" size={17} aria-hidden="true" />
           {kind === 'final' ? 'Son puanı kaydet' : 'Puanı kaydet'}
         </Button>

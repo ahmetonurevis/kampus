@@ -128,7 +128,7 @@ Bu modüllerin `records`'a sığıp sığmadığını belirleyen ihtiyaçlar (ve
 - **Kaynak ve sürümü tek satırda (`data.versions[]`):** yayımlanmış sürümün değişmezliği ve atamanın sürüme FK'sı kurulamaz; satır 256 KB sınırına yaklaşır. Elendi.
 - **Platform içeriği `institution_id is null` satırlarıyla aynı tabloda:** tek sorgu kolaylığı, ama her sorguda "kurumum veya boş" koşulunu doğru yazmaya bağlı bir kiracı istisnası açar ve bileşik FK'yı bozar. Elendi.
 - **Platform içeriği her kuruma kurulumda kopyalamak (bugünkü demo):** kiracı sınırı basit; ama düzeltmeler kurumlara ulaşmaz, havuz şişer ve "kurum özgün" oranı bozulur. Kullanıcının seçtiği öğe kopyalanır, toplu kopya yok.
-- **Hesaplanan puan ve öneriyi saklamak:** okuma hızlı, ama anahtar/rubrik düzeltmesinde eski değerlerin sessizce yanlış kalması CLAUDE.md "hesaplanan değer saklanmaz" kuralına aykırı. Gereken yerde yeniden üretilebilir görünüm kullanılır.
+- **Hesaplanan puan ve öneriyi saklamak:** okuma hızlı, ama anahtar/rubrik düzeltmesinde eski değerlerin sessizce yanlış kalması `.claude/rules/cekirdek.md` "hesaplanabilen değer saklanmaz" kuralına aykırı. Gereken yerde yeniden üretilebilir görünüm kullanılır.
 - **Ayrı içerik mikro hizmeti veya belge veritabanı:** ikinci veri deposu ve dağıtık transaction gerektirir; ADR 0001 tek PostgreSQL kararıyla çelişir. Elendi.
 
 ## Açık sorular (önerilen seçeneklerle kapandı)

@@ -8,6 +8,7 @@ import { runRequest } from '../src/api-result.ts'
 import { commandFeedback, commandHeaders } from '../src/commands.ts'
 import {
   archivePermissionFormRequest,
+  cancelPermissionFormRequest,
   closePermissionFormRequest,
   createPermissionFormRequest,
   decidePermissionBody,
@@ -22,6 +23,7 @@ import {
   PERMISSION_FORM_CHANGED_MESSAGE,
   PERMISSION_FORM_MESSAGES,
   PERMISSION_FORMS_INVALIDATES,
+  permissionDropWarning,
   permissionErrorField,
   permissionFormListKey,
   permissionFormListParams,
@@ -81,6 +83,7 @@ const form = (overrides: Record<string, unknown> = {}) => ({
   teacherId: null,
   status: 'open',
   closedAt: null,
+  cancelledAt: null,
   acceptingDecisions: true,
   createdAt: '2026-11-01T06:00:00.000Z',
   updatedAt: '2026-11-01T06:00:00.000Z',
@@ -123,14 +126,17 @@ describe('izin formu istekleri (IST-067)', () => {
     )
     await runRequest(() => closePermissionFormRequest(client, target, headers))
     await runRequest(() => archivePermissionFormRequest(client, target, headers))
+    await runRequest(() => cancelPermissionFormRequest(client, target, headers))
     assert.deepEqual(
       sent.map((item) => `${item.method} ${item.path}`),
       [
         `PATCH /api/v1/permission-forms/${FORM}`,
         `POST /api/v1/permission-forms/${FORM}/close`,
         `DELETE /api/v1/permission-forms/${FORM}`,
+        `POST /api/v1/permission-forms/${FORM}/cancel`,
       ],
     )
+    assert.equal(sent[3]?.body, undefined)
     assert.ok(sent.every((item) => item.headers.get('if-match') === '"3"'))
     assert.ok(sent.every((item) => item.headers.get('idempotency-key') === 'key-12345'))
     assert.deepEqual(sent[0]?.body, { title: 'Yeni' })
@@ -255,12 +261,42 @@ describe('karar verilebilirlik (DOM-ILT-038)', () => {
     assert.ok(late?.includes('Son gün geçti'))
   })
 
+  test('DOM-ILT-032: iptal edilmiş form kapanıştan ayrı söylenir', () => {
+    const cancelled = decisionBlockedReason(
+      form({
+        status: 'closed',
+        closedAt: '2026-11-02T06:00:00.000Z',
+        cancelledAt: '2026-11-02T06:00:00.000Z',
+        acceptingDecisions: false,
+      }),
+    )
+    assert.equal(cancelled, 'Etkinlik iptal edildi; izin istenmiyor.')
+  })
+
   test('DOM-ILT-038: karar kilidi sunucunun hasDecisions alanıdır, sayılardan çıkarılmaz', () => {
     // Velayeti kalkan velinin kararı sayılmaz ama kilitler: sayılar sıfırken alan doğrudur.
     assert.equal(hasDecisions({ hasDecisions: true }), true)
     assert.equal(hasDecisions({ hasDecisions: false }), false)
     // Alan yalnız formu yönetene döner; yoksa ekran kilit göstermez, sunucu yine reddeder.
     assert.equal(hasDecisions({}), false)
+  })
+})
+
+describe('izni düşüren değişiklik uyarısı (DOM-ILT-032)', () => {
+  test('DOM-ILT-032: değişen alanları ve düşecek karar sayısını söyler', () => {
+    assert.equal(
+      permissionDropWarning({ approved: 3, rejected: 0 }, ['eventDate', 'fee']),
+      'Bu değişiklik (gün, ücret) alınmış 3 izni düşürür; velilerden yeniden izin istenir.',
+    )
+    assert.equal(
+      permissionDropWarning({ approved: 2, rejected: 1 }, ['location']),
+      'Bu değişiklik (yer) alınmış 3 izni düşürür (2 onay, 1 ret); velilerden yeniden izin istenir.',
+    )
+  })
+
+  test('DOM-ILT-032: değişen ayrıntı ya da alınmış karar yoksa uyarı yok', () => {
+    assert.equal(permissionDropWarning({ approved: 3, rejected: 1 }, []), null)
+    assert.equal(permissionDropWarning({ approved: 0, rejected: 0 }, ['eventTime']), null)
   })
 })
 
@@ -271,6 +307,8 @@ describe('izin formu hata metinleri ve alanları (DOM-ILT-030, -036…038)', () 
     ['permission_form_has_decisions', 409, 'arşivlenemez'],
     ['permission_form_closed', 422, 'kapatılmış'],
     ['permission_form_not_owner', 403, 'açan öğretmen'],
+    ['permission_form_cancelled', 409, 'iptal edilmiş'],
+    ['permission_form_event_in_past', 422, 'Etkinlik günü geçmişte olamaz'],
     ['version_conflict', 409, PERMISSION_FORM_CHANGED_MESSAGE],
   ]
   for (const [code, status, expected] of formCases)
@@ -304,6 +342,12 @@ describe('izin formu hata metinleri ve alanları (DOM-ILT-030, -036…038)', () 
       'classIds',
     )
     assert.equal(permissionErrorField(error(422, 'student_inactive'), 'form'), 'studentIds')
+    // DOM-ILT-032: etkinlik ayrıntısı hataları kendi alanına düşer.
+    assert.equal(
+      permissionErrorField(error(422, 'permission_form_event_in_past'), 'form'),
+      'eventDate',
+    )
+    assert.equal(permissionErrorField(error(400, 'validation_failed', ['fee']), 'form'), 'fee')
     assert.equal(permissionErrorField(error(400, 'validation_failed', ['title']), 'form'), 'title')
     assert.equal(
       permissionErrorField(error(403, 'permission_form_scope_denied'), 'form'),
@@ -345,6 +389,7 @@ describe('izin formu hata metinleri ve alanları (DOM-ILT-030, -036…038)', () 
     assert.equal(permissionStale(error(409, 'version_conflict')), true)
     assert.equal(permissionStale(error(409, 'permission_form_closed')), true)
     assert.equal(permissionStale(error(409, 'permission_form_has_decisions')), true)
+    assert.equal(permissionStale(error(409, 'permission_form_cancelled')), true)
     assert.equal(permissionStale(error(422, 'permission_form_closed')), true)
     assert.equal(permissionStale(error(422, 'permission_form_deadline_passed')), true)
     assert.equal(permissionStale(error(422, 'permission_form_deadline_in_past')), false)

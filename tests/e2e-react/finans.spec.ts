@@ -932,6 +932,84 @@ test.describe('Finans: liste', () => {
     await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
   })
 
+  test('ON-036: hazır ödeme filtreleri durum süzgecidir; seçili çip işaretli, adres taşır', async ({
+    page,
+  }) => {
+    await page.goto(ADMIN_URL)
+    const presets = page.getByRole('group', { name: 'Hazır ödeme filtreleri' })
+    const chip = (name: string) => presets.getByRole('button', { name, exact: true })
+    await expect(chip('Tüm ödemeler')).toHaveAttribute('aria-pressed', 'true')
+
+    await chip('Yaklaşan taksitler').click()
+    await expect(page).toHaveURL(/[?&]durum=yaklasan/)
+    await expect(chip('Yaklaşan taksitler')).toHaveAttribute('aria-pressed', 'true')
+    await expect(chip('Tüm ödemeler')).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.getByLabel('Ödeme durumu')).toHaveValue('yaklasan')
+    await expectEveryRow(bodyRows(page), 'Yaklaşan')
+
+    await chip('Ödenenler').click()
+    await expect(page).toHaveURL(/[?&]durum=odendi/)
+    await expectEveryRow(bodyRows(page), 'Ödendi')
+    // Açılır seçimden değişen durum çipe yansır.
+    await page.getByLabel('Ödeme durumu').selectOption({ label: 'Yaklaşan' })
+    await expect(chip('Yaklaşan taksitler')).toHaveAttribute('aria-pressed', 'true')
+
+    await chip('Tüm ödemeler').click()
+    await expect(page).not.toHaveURL(/[?&]durum=/)
+    await expect(resultCount(page)).toContainText('/ 1920 kayıt')
+  })
+
+  test('ON-036: kampüs, sınıf ve tahsilat tarihi süzgeci sunucuda uygulanır; CSV aynı sonucu içerir', async ({
+    page,
+  }) => {
+    const requests: URLSearchParams[] = []
+    page.on('request', (request) => {
+      const url = new URL(request.url())
+      if (url.pathname === '/api/v1/collections/invoices') requests.push(url.searchParams)
+    })
+    await page.goto(ADMIN_URL)
+    await page.getByRole('button', { name: 'Filtreler', exact: true }).click()
+
+    // Seed: Beşiktaş Kampüsü (b2) sınıfları "-B" ile biter; taksitte kampüs yoktur, sınıfa çevrilir.
+    await page.getByLabel('Kampüs', { exact: true }).selectOption({ label: 'Beşiktaş Kampüsü' })
+    await expect(page).toHaveURL(/[?&]kampus=b2/)
+    await expectEveryRow(bodyRows(page).locator('.person-cell small'), '-B')
+    await expect
+      .poll(() => requests.some((params) => params.getAll('classId').length === 8))
+      .toBe(true)
+
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ label: '7-B' })
+    await expect(page).toHaveURL(/[?&]sinif=c9/)
+    await expectEveryRow(bodyRows(page).locator('.person-cell small'), '7-B', true)
+
+    // Tahsilat tarihi aralığı ödenmemiş taksiti dışarıda bırakır (paidAt günü).
+    await page.getByLabel('Tahsilat tarihi başlangıç').fill('2000-01-01')
+    await expectEveryRow(bodyRows(page), 'Ödendi')
+    await expect
+      .poll(() =>
+        requests.some(
+          (params) =>
+            params.get('dateField') === 'paidAt' && params.get('dateFrom') === '2000-01-01',
+        ),
+      )
+      .toBe(true)
+    const shown = Number(
+      ((await resultCount(page).textContent()) ?? '').match(/\/ (\d+) kayıt/)?.[1],
+    )
+    expect(shown).toBeGreaterThan(0)
+
+    const pending = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Raporu indir' }).click()
+    const csv = (await readCsv(await pending)).filter((row) => row.length > 1)
+    expect(csv).toHaveLength(1 + shown)
+    for (const row of csv.slice(1)) expect(row[5]).toBe('Ödendi')
+
+    // Kampüs ve sınıf adreste kalır; yenilemede süzgeç korunur.
+    await page.reload()
+    await expect(page).toHaveURL(/[?&]kampus=b2/)
+    await expectEveryRow(bodyRows(page).locator('.person-cell small'), '7-B', true)
+  })
+
   test('taksit detayı URLde açılır; geri kapatır, ileri açar', async ({ page }) => {
     await page.goto(ADMIN_URL)
     await page.getByLabel('Tabloda ara').fill('Deniz Yılmaz')

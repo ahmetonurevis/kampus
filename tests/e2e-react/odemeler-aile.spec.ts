@@ -90,6 +90,31 @@ test.describe('DOM-FIN-052 veli: Finans, Dekontlar ve Ödeme Yap', () => {
     await expect(detail.getByRole('button', { name: /tahsil|ödeme yap/i })).toHaveCount(0)
   })
 
+  test('ON-036: hazır ödeme filtreleri durum süzgecidir; dekontlarda çip yoktur', async ({
+    page,
+  }) => {
+    await page.goto('/veli/finans?cocuk=s1')
+    const plan = rowsOf(page, PLAN_TABLE)
+    await expect(plan).toHaveCount(8)
+    const presets = page.getByRole('group', { name: 'Hazır ödeme filtreleri' })
+    await presets.getByRole('button', { name: 'Ödenenler', exact: true }).click()
+    await expect(page).toHaveURL(/durum=odendi/)
+    await expect(plan).toHaveCount(3)
+    await expectEveryRow(plan, 'Ödendi')
+    await expect(presets.getByRole('button', { name: 'Ödenenler', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(page.getByLabel('Ödeme durumu', { exact: true })).toHaveValue('odendi')
+    await presets.getByRole('button', { name: 'Tüm ödemeler', exact: true }).click()
+    await expect(page).not.toHaveURL(/durum=/)
+    await expect(plan).toHaveCount(8)
+
+    await page.goto('/veli/dekontlar?cocuk=s1')
+    await expect(rowsOf(page, RECEIPT_TABLE)).toHaveCount(3)
+    await expect(page.getByRole('group', { name: 'Hazır ödeme filtreleri' })).toHaveCount(0)
+  })
+
   test('çevrim içi ödeme yoktur: düğme yok, okulla iletişim bilgisi ve API 403', async ({
     page,
     api,
@@ -198,6 +223,15 @@ test.describe('DOM-FIN-052 öğrenci: Ödemelerim', () => {
     await expect(page.getByRole('button', { name: /tahsil|ödeme yap/i })).toHaveCount(0)
     await expect(page.getByRole('main').getByRole('link', { name: /ödeme yap/i })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /dekontunu görüntüle/ })).toHaveCount(3)
+  })
+
+  test('ON-036: taksit ayrıntısı salt okunur takip notunu gösterir', async ({ page, loginAs }) => {
+    await loginAs('ogrenci')
+    await page.goto('/ogrenci/odemelerim')
+    await page.getByRole('button', { name: '1. taksit detayını aç' }).click()
+    const detail = page.getByRole('dialog', { name: 'Taksit detayı' })
+    await expect(detail).toContainText('Ödeme planını bu ekrandan takip edebilirsiniz.')
+    await expect(detail.getByRole('button', { name: /tahsil et/i })).toHaveCount(0)
   })
 
   test('390 px telefonda ödeme içeriği gösterilmez ve veri okunmaz', async ({ page, loginAs }) => {

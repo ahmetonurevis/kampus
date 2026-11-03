@@ -2,7 +2,6 @@
 // API satırları ve başvuru koleksiyonlarının eşlemeleri girer, tablo/CSV satırı ve özet çıkar.
 // Ortalama ve gün anahtarı school-core `format` işlevleriyle hesaplanır; hiçbiri saklanmaz.
 import { average, dateLabel } from '@kampus/school-core/lib/format.ts'
-import type { SubjectAverage } from '@kampus/school-core/lib/grades.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
 
 type Subject = CoreRecord<'subjects'>
@@ -89,20 +88,6 @@ export function gradeRow(item: CoreRow<'grades'>, lookups: AcademicLookups): Gra
 /** CSV hücreleri: ekrandaki metinle aynı (tarih Türkçe, puan "80/100"). */
 export function gradeCsvRow(row: GradeRow) {
   return { ...row, date: dateLabel(row.date, { year: 'numeric' }), score: scoreText(row.score) }
-}
-
-/**
- * Core `subjectAverages` sonucunda ders adını güncel ders kaydından gösterir (ders sonradan
- * yeniden adlandırıldıysa not kaydındaki eski ad yerine); eşlemede yoksa kaydın adı kalır.
- * Ad değişebildiği için sıra yeniden Türkçe ad sırasına konur.
- */
-export function withSubjectNames(
-  averages: readonly SubjectAverage[],
-  subjects: ReadonlyMap<string, Pick<Subject, 'name'>>,
-): SubjectAverage[] {
-  return averages
-    .map((item) => ({ ...item, name: subjects.get(item.subjectId)?.name ?? item.name }))
-    .sort((left, right) => left.name.localeCompare(right.name, 'tr'))
 }
 
 /** Genel ortalama: bütün notların ortalaması (ders ortalamalarının ortalaması değil). */

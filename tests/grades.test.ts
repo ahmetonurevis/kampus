@@ -9,6 +9,7 @@ import {
   recordGrade,
   subjectAverages,
   updateGrade,
+  withSubjectNames,
 } from '../packages/school-core/src/lib/grades.ts'
 import { isDomainError } from './support/domain-error.ts'
 
@@ -435,6 +436,27 @@ test('Not şemaları form/API gövdesi olarak kullanılabilir', () => {
   assert.deepEqual(issue.error?.issues[0]?.path, ['score'])
   assert.equal(issue.error?.issues[0]?.message, 'Puanı girin.')
   assert.equal(gradeUpdateSchema.safeParse({ score: 70, reason: 'Gerekçe' }).success, true)
+})
+
+test('withSubjectNames: ders adı güncel ders kaydından gelir; eşlemede yoksa notun adı kalır, sıra yenilenir', () => {
+  const subjects = new Map([
+    ['math', { name: 'Matematik' }],
+    ['eng', { name: 'İngilizce' }],
+  ])
+  const averages = subjectAverages([
+    { subjectId: 'math', subject: 'Mat.', score: 50 },
+    { subjectId: 'eng', subject: 'Eng', score: 70 },
+    { subjectId: 'x', subject: 'Satranç', score: 60 },
+  ])
+  assert.deepEqual(
+    withSubjectNames(averages, subjects).map((item) => [item.subjectId, item.name]),
+    [
+      ['eng', 'İngilizce'],
+      ['math', 'Matematik'],
+      ['x', 'Satranç'],
+    ],
+  )
+  assert.deepEqual(withSubjectNames([], subjects), [])
 })
 
 test('subjectAverages: boş liste boş döner', () => {

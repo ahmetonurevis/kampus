@@ -394,7 +394,7 @@ Zorunlu uçlar: ödeme/tahsilat kaydı, iade, taksit planı oluşturma, sözleş
 
 - OpenAPI'de zorunlu uçların başlığı `required: true`'dur (üretilen istemci tipi başlığı ister); çalışma zamanında şema başlığı isteğe bağlı tutar ki eksik anahtar Zod `validation_failed` yerine 400 `idempotency_key_required` dönsün. Belge dönüşümü işaretli başlığı zorunlu yapar (`requireMarkedHeaders`, `routes/commands.schemas.ts`).
 - İstemci `Idempotency-Key: <UUID>` başlığı gönderir. Anahtar kullanıcı eylemi başına bir kez üretilir; ağ hatasında **aynı anahtarla** yeniden denenir (mobilde anahtar taslakla birlikte saklanır).
-- Sunucu `idempotency_keys` tablosunda `(institution_id, user_id, key)` ile istek özetini (metot + yol + gövde SHA-256) ve yanıtı tutar; kayıt iş işlemiyle **aynı transaction'da** yazılır.
+- Sunucu `idempotency_keys` tablosunda `(institution_id, user_id, key)` ile istek özetini (metot + yol + gövde SHA-256) ve yanıtı tutar; kayıt iş işlemiyle **aynı transaction'da** yazılır. Gövdesi boş olup işlenen kaydı `If-Match` ile seçen uçta revizyon da özete girer (`idempotencyOf` `extra`; şimdilik yalnız `POST /task-assignments/:assignmentId/draft/submit`): aynı anahtarla başka revizyon 422 `idempotency_key_reused` alır, ilk yanıt oynatılmaz. Diğer uçların özeti değişmez.
 
 | Durum                                  | Yanıt                                                   |
 | -------------------------------------- | ------------------------------------------------------- |

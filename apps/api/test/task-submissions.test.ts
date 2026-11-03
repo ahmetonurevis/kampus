@@ -1453,6 +1453,31 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     fails(await submitDraft(assignmentId, t.cookies.student, 2), 409, 'draft_already_submitted')
   })
 
+  test('IST-047: taslaktan teslimde istek özeti If-Match revizyonunu da kapsar: aynı anahtarla başka revizyon 422 idempotency_key_reused, aynı revizyon tekrarı oynatılır; kayıt değişmez', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, {
+      submission: { submissionKind: 'text', maxVersions: 3, minWords: null, maxWords: null },
+    })
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    const headers = key()
+    await ok(await submitDraft(assignmentId, t.cookies.student, 1, headers), 201)
+    now = new Date(now.getTime() + MINUTE)
+    await ok(await saveDraft(assignmentId, t.cookies.student, `${DRAFT_TEXT} 2`, revision(1)))
+    const before = await snapshot(t.institution.id)
+    // Gövde ikisinde de `{}`: özet yalnız yöntem+yol+gövde olsaydı ilk 201 oynatılırdı.
+    fails(
+      await submitDraft(assignmentId, t.cookies.student, 2, headers),
+      422,
+      'idempotency_key_reused',
+    )
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    const replay = await submitDraft(assignmentId, t.cookies.student, 1, headers)
+    assert.equal(replay.statusCode, 201)
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    assert.equal((await ok(replay, 201)).versionCount, 1)
+    assert.deepEqual(await storedRows(t.institution.id), { submissions: 1, versions: 1, drafts: 1 })
+  })
+
   test('IST-047, DOM-BEC-040: metinle teslim taslağı tüketmez: teslim edilmemiş taslak revizyonu metin sürümünden sonra da teslim edilir, teslim edilmiş revizyon metin sürümünden sonra da 409', async () => {
     const t = await tenant()
     const assignmentId = await assign(t, {

@@ -19,7 +19,8 @@ import { LEARNER_CONTENT_MESSAGES, TASK_ASSIGNMENTS_KEY } from './use-task-assig
  * açılması sunucudadır; burada çağrı, önbellek tazeleme ve Türkçe hata metni vardır. Başlatma
  * `If-Match` kabul etmez; cevap kaydı ve teslim denemenin okunan `rowVersion`'ını ister, yoksa
  * istek atılmaz (`requireIfMatch`). Her yazma kullanıcı eylemi başına `Idempotency-Key` taşır
- * (başlatma ve teslimde sunucu zorunlu tutar).
+ * (başlatma ve teslimde sunucu zorunlu tutar). Alıştırmada madde kontrolü (IST-056, DOM-BEC-047)
+ * cevap kaydıyla aynı sürüm kuralını kullanır.
  */
 
 export const TASK_ATTEMPTS_KEY = 'task-attempts'
@@ -45,6 +46,9 @@ export type TaskAttemptPassage = NonNullable<TaskAttemptDetail['passage']>
 /** Alt beceri dökümünün satırı (DOM-BEC-006); madde sonuçlarıyla aynı anda açılır. */
 export type TaskAttemptSubskillScore = components['schemas']['TaskAttemptSubskillScore']
 export type TaskAttemptAnswers = JsonBody<'saveTaskAttemptAnswers'>['answers']
+/** Alıştırma maddesinin anında geri bildirimi (DOM-BEC-047): kalan hak, kilit, kilitlide anahtar. */
+export type TaskAttemptItemFeedback = components['schemas']['TaskAttemptItemFeedback']
+export type TaskAttemptItemCheck = JsonBody<'checkTaskAttemptItem'>
 
 /** Deneme bu arada başka pencerede değişti (`If-Match` tutmadı): güncel hâli yüklenir. */
 export const TASK_ATTEMPT_CHANGED_MESSAGE =
@@ -60,6 +64,8 @@ export const TASK_ATTEMPT_MESSAGES = {
   attempt_time_over: 'Süre doldu; son cevaplarınız kaydedilmedi.',
   submission_closed: 'Bu görevin teslim süresi doldu.',
   not_auto_scored: 'Bu görev deneme olarak çözülmez; teslim ekranını kullanın.',
+  item_check_locked: 'Bu sorunun kontrol hakkı bitti; cevap kilitlendi.',
+  instant_feedback_unavailable: 'Anında kontrol yalnız alıştırmada kullanılır.',
 } as const satisfies CommandMessages
 
 /**
@@ -150,6 +156,29 @@ export function submitTaskAttemptRequest(
   })
 }
 
+/** Madde kontrolünün girdisi; `version` denemenin okunan `rowVersion`'ıdır. */
+export interface TaskAttemptCheckInput extends TaskAttemptItemCheck {
+  attemptId: string
+  version: number
+}
+
+export function checkTaskAttemptItemRequest(
+  client: KampusClient,
+  { attemptId, questionVersionId, response }: TaskAttemptCheckInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/task-attempts/{attemptId}/checks', {
+    params: {
+      path: { attemptId },
+      header: {
+        'idempotency-key': headers['idempotency-key'],
+        'if-match': requireIfMatch(headers),
+      },
+    },
+    body: { questionVersionId, response },
+  })
+}
+
 interface CommandOptions {
   onSuccess?: () => void | Promise<void>
 }
@@ -180,6 +209,19 @@ export const submitTaskAttemptCommand = {
   exclusive: true,
 } as const
 
+/**
+ * Madde kontrolü yalnız denemeyi değiştirir (cevap ve geri bildirim); atama özeti teslimde tazelenir.
+ * Kilitli madde ve süre dolması 422'dir: deneme tazelenir, ekrandaki kalan hak eskimez.
+ */
+export const checkTaskAttemptItemCommand = {
+  request: checkTaskAttemptItemRequest,
+  version: (input: TaskAttemptCheckInput) => input.version,
+  invalidates: TASK_ATTEMPT_ANSWER_INVALIDATES,
+  refreshOn: attemptStale,
+  messages: TASK_ATTEMPT_MESSAGES,
+  exclusive: true,
+} as const
+
 /** Deneme başlatır (`POST /task-assignments/:id/attempts`, 201). */
 export function useStartTaskAttempt(options: CommandOptions = {}) {
   return useApiCommand({ ...startTaskAttemptCommand, ...withSuccess(options) })
@@ -193,4 +235,9 @@ export function useSaveTaskAttemptAnswers(options: CommandOptions = {}) {
 /** Denemeyi teslim eder (`POST /task-attempts/:id/submit`, `If-Match` zorunlu); puan sunucuda. */
 export function useSubmitTaskAttempt(options: CommandOptions = {}) {
   return useApiCommand({ ...submitTaskAttemptCommand, ...withSuccess(options) })
+}
+
+/** Alıştırma maddesini kontrol eder (`POST /task-attempts/:id/checks`, `If-Match` zorunlu). */
+export function useCheckTaskAttemptItem(options: CommandOptions = {}) {
+  return useApiCommand({ ...checkTaskAttemptItemCommand, ...withSuccess(options) })
 }

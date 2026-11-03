@@ -259,7 +259,7 @@
 - **Gerekçe:** Öğretmen aynı içeriği farklı sınıflara farklı ders günlerine göre verir; yarım kalan toplu atama sınıflar arasında tutarsızlık bırakır.
 - **Kaynak:** İşletme kuralı (20 sınırı: ürün kararı, tek ekranda yönetilebilir hedef sayısı).
 - **Kurum türü:** ikisi
-- **Kodda:** core `packages/school-core/src/skills/assignment.ts` (`assignmentBatchInputSchema`, `planAssignmentBatch`, `ASSIGNMENT_BATCH_MAX`); API `POST /api/v1/task-assignments/batches` (`apps/api/src/services/task-assignments.ts` `createTaskAssignmentBatch`; `Idempotency-Key` zorunlu); kanca `packages/react-shared/src/use-content-assignments.ts`; web içerik havuzu "Ata" paneli (`apps/web-react/src/pages/content/ContentAssignPanel.tsx`); testler `tests/skills-assignment.test.ts`, `apps/api/test/content-assignments.test.ts`.
+- **Kodda:** core `packages/school-core/src/skills/assignment.ts` (`assignmentBatchInputSchema`, `planAssignmentBatch`, `ASSIGNMENT_BATCH_MAX`); API `POST /api/v1/task-assignments/batches` (`apps/api/src/services/task-assignments.ts` `createTaskAssignmentBatch`; `Idempotency-Key` zorunlu); kanca `packages/react-shared/src/use-content-assignments.ts`; web içerik havuzu ayrıntısında "Ata" penceresi (`apps/web-react/src/pages/content/ContentAssignPanel.tsx`, form modeli `content-assign-model.ts`); testler `tests/skills-assignment.test.ts`, `apps/api/test/content-assignments.test.ts`, `apps/web-react/tests/content-assign-model.test.ts`, `tests/e2e-react/icerikten-atama.spec.ts`.
 
 ## Ses kaydı ve kişisel veri
 

@@ -5,8 +5,10 @@ import { collectionQueryFromList, sortableColumns } from '../src/lib/collection-
 import { initialListState } from '../src/lib/list-state.ts'
 import {
   ABSENCE_LIST,
+  ABSENCE_STATUS_FILTERS,
   absenceCsvRow,
   absenceRow,
+  absenceStatusLabel,
   dateRange,
   REQUEST_LIST,
   requestCsvRow,
@@ -58,7 +60,7 @@ test('dateRange: tek günlük bildirim tek tarih yazar', () => {
   assert.equal(dateRange('2026-11-02', '2026-11-04'), '2 Kas 2026 – 4 Kas 2026')
 })
 
-test('absenceRow: durumu olmayan telefon bildirimi "İletildi" sayılır, gönderim zamanı createdAt', () => {
+test('DOM-ILT-053: absenceRow onay durumu olmayan telefon bildirimi "Onay bekliyor" sayılır, gönderim zamanı createdAt', () => {
   const base = {
     id: 'a1',
     studentId: 's1',
@@ -68,11 +70,17 @@ test('absenceRow: durumu olmayan telefon bildirimi "İletildi" sayılır, gönde
     reason: 'Doktor kontrolü',
   }
   const phone = absenceRow(wrap({ ...base, createdAt: '2026-10-14T08:00:00.000Z' }))
-  assert.equal(phone.status, 'İletildi')
+  assert.equal(phone.status, 'Onay bekliyor')
+  assert.equal(phone.approval, 'pending')
   assert.equal(phone.sentAt, '2026-10-14T08:00:00.000Z')
   const web = absenceRow(
     wrap(
-      { ...base, status: 'Onaylandı', date: '2026-10-13T08:00:00.000Z' },
+      {
+        ...base,
+        status: 'Onaylandı',
+        approvalStatus: 'approved' as const,
+        date: '2026-10-13T08:00:00.000Z',
+      },
       { studentName: 'Deniz' },
     ),
   )
@@ -107,4 +115,76 @@ test('DOM-ILT-053: absenceRow gerekçe kategorisinin etiketini gösterir; eski k
   )
   assert.equal(legacy.category, 'Seyahat')
   assert.equal(legacy.reason, 'Aile ziyareti')
+})
+
+test('DOM-ILT-053, Sabah kararı 72: veli reddi "Onaylanmadı" görür, personel "Reddedildi"', () => {
+  const rejected = wrap({
+    id: 'a4',
+    studentId: 's1',
+    startDate: '2026-11-02',
+    endDate: '2026-11-02',
+    category: 'Sağlık nedeniyle',
+    status: 'Reddedildi',
+    approvalStatus: 'rejected' as const,
+    decidedAt: '2026-11-03T08:00:00.000Z',
+  })
+  const parent = absenceRow(rejected)
+  assert.equal(parent.status, 'Onaylanmadı')
+  assert.equal(parent.tone, 'red')
+  assert.equal(parent.decidedAt, '2026-11-03T08:00:00.000Z')
+  assert.equal(absenceRow(rejected, 'parent').status, 'Onaylanmadı')
+  assert.equal(absenceRow(rejected, 'staff').status, 'Reddedildi')
+  // Gerekçe kayıtta olmadığı gibi satırda da yoktur.
+  assert.equal('rejectReason' in parent, false)
+  assert.equal(absenceStatusLabel('pending', 'parent'), 'Onay bekliyor')
+  assert.equal(absenceStatusLabel('approved', 'parent'), 'Onaylandı')
+  assert.equal(absenceStatusLabel('approved', 'staff'), 'Onaylandı')
+})
+
+test('DOM-ILT-053: absenceRow özür belgesi kimliklerini, sınıfı ve okunan sürümü taşır', () => {
+  const row = absenceRow(
+    {
+      ...wrap(
+        {
+          id: 'a5',
+          studentId: 's1',
+          startDate: '2026-11-02',
+          endDate: '2026-11-02',
+          category: 'Sağlık',
+          fileIds: ['f1', 'f2'],
+        },
+        { studentName: 'Deniz' },
+      ),
+      version: 7,
+      joined: { studentName: 'Deniz', className: '7-A' },
+    },
+    'staff',
+  )
+  assert.deepEqual(row.fileIds, ['f1', 'f2'])
+  assert.equal(row.className, '7-A')
+  assert.equal(row.version, 7)
+  assert.equal(absenceCsvRow(row).documents, '2')
+  assert.deepEqual(
+    absenceRow(
+      wrap({
+        id: 'a6',
+        studentId: 's1',
+        startDate: '2026-11-02',
+        endDate: '2026-11-02',
+        category: 'x',
+      }),
+    ).fileIds,
+    [],
+  )
+})
+
+test('ABSENCE_STATUS_FILTERS: durum süzgeci kayıttaki status değerleriyle eşleşir', () => {
+  assert.deepEqual(
+    ABSENCE_STATUS_FILTERS.map((item) => [item.value, item.label]),
+    [
+      ['İletildi', 'Onay bekliyor'],
+      ['Onaylandı', 'Onaylandı'],
+      ['Reddedildi', 'Reddedildi'],
+    ],
+  )
 })

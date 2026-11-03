@@ -7,10 +7,15 @@ import { ApiError } from '@kampus/api-client/errors.ts'
 import { runRequest } from '../src/api-result.ts'
 import { commandFeedback, commandHeaders } from '../src/commands.ts'
 import {
+  cancelGuardianInvitationRequest,
+  GUARDIAN_INVITATION_CANCEL_MESSAGES,
   GUARDIAN_INVITATION_COMMAND_MESSAGES,
   GUARDIAN_INVITATION_INVALIDATES,
   GUARDIAN_INVITATIONS_KEY,
+  GUARDIAN_INVITATIONS_PAGE_SIZE,
+  guardianInvitationsKey,
   inviteGuardianRequest,
+  listGuardianInvitationsRequest,
   STUDENT_GUARDIANS_KEY_ROOT,
   studentGuardiansKey,
 } from '../src/guardian-invitations.ts'
@@ -22,6 +27,7 @@ import { STAFF_INVITATIONS_KEY } from '../src/staff-accounts.ts'
 interface Sent {
   method: string
   path: string
+  search: string
   headers: Headers
   body: unknown
 }
@@ -38,6 +44,7 @@ function fakeClient(reply: () => Response) {
       sent.push({
         method: request.method,
         path: new URL(request.url).pathname,
+        search: new URL(request.url).search,
         headers: request.headers,
         body: text ? JSON.parse(text) : undefined,
       })
@@ -132,5 +139,59 @@ describe('veli hesabı daveti isteği (DOM-YTK-071)', () => {
     assert.equal(STAFF_INVITATIONS_KEY[0], INSTITUTION_MEMBERS_KEY_ROOT)
     assert.equal(GUARDIAN_INVITATIONS_KEY[0], INSTITUTION_MEMBERS_KEY_ROOT)
     assert.deepEqual(studentGuardiansKey('s-1'), [STUDENT_GUARDIANS_KEY_ROOT, 's-1'])
+  })
+})
+
+describe('veli davet listesi ve iptali (DOM-YTK-071)', () => {
+  test('DOM-YTK-071: liste sayfa ve sayfa boyutuyla istenir; yanıt öğeleri korunur', async () => {
+    const page = { data: [invitation.data], meta: { page: 2, pageSize: 25, total: 26 } }
+    const { client, sent } = fakeClient(() => json(200, page))
+    const data = await runRequest(() => listGuardianInvitationsRequest(client, 2))
+    assert.deepEqual(data, page)
+    assert.equal(sent[0]?.method, 'GET')
+    assert.equal(sent[0]?.path, '/api/v1/institution-members/guardian-invitations')
+    assert.deepEqual(
+      [...new URLSearchParams(sent[0]?.search)].sort(),
+      [
+        ['page', '2'],
+        ['pageSize', String(GUARDIAN_INVITATIONS_PAGE_SIZE)],
+      ].sort(),
+    )
+  })
+
+  test('DOM-YTK-071: iptal davet kimliğini yola, Idempotency-Key başlığına yazar; gövde yoktur', async () => {
+    const canceled = { data: { ...invitation.data, status: 'canceled' } }
+    const { client, sent } = fakeClient(() => json(200, canceled))
+    const data = await runRequest(() =>
+      cancelGuardianInvitationRequest(
+        client,
+        { invitationId: 'inv-1' },
+        commandHeaders('key-iptal-1', undefined),
+      ),
+    )
+    assert.deepEqual(data, canceled)
+    assert.equal(sent[0]?.method, 'POST')
+    assert.equal(sent[0]?.path, '/api/v1/institution-members/guardian-invitations/inv-1/cancel')
+    assert.equal(sent[0]?.headers.get('idempotency-key'), 'key-iptal-1')
+    assert.equal(sent[0]?.body, undefined)
+  })
+
+  test('DOM-YTK-071: liste anahtarı davet kökünde ve sayfaya özeldir; iptal hataları Türkçe', () => {
+    const key = guardianInvitationsKey(3)
+    assert.equal(key[0], INSTITUTION_MEMBERS_KEY_ROOT)
+    assert.deepEqual(key.slice(0, 2), GUARDIAN_INVITATIONS_KEY)
+    assert.deepEqual(key[3], { page: 3, pageSize: GUARDIAN_INVITATIONS_PAGE_SIZE })
+    assert.notDeepEqual(guardianInvitationsKey(1), guardianInvitationsKey(2))
+    for (const [code, expected] of [
+      ['invitation_not_pending', 'artık beklemede değil'],
+      ['not_found', 'Davet bulunamadı'],
+    ] as const)
+      assert.ok(
+        commandFeedback(
+          new ApiError({ status: 409, code, message: 'technical' }),
+          GUARDIAN_INVITATION_CANCEL_MESSAGES,
+        ).message?.includes(expected),
+        code,
+      )
   })
 })

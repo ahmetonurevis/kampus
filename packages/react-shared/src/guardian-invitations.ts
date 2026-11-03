@@ -10,8 +10,8 @@ import type { CommandHeaders, CommandMessages } from './commands.ts'
 import { INSTITUTION_MEMBERS_KEY_ROOT } from './institution-lists.ts'
 
 /**
- * Veli hesabı daveti ucunun (`POST /institution-members/guardian-invitations`; DOM-YTK-071) saf
- * yardımcıları: istek kurucu, Türkçe hata metinleri ve tazelenecek sorgu önekleri. Kanca
+ * Veli hesabı daveti uçlarının (`POST|GET /institution-members/guardian-invitations`, iptal
+ * `…/:invitationId/cancel`; DOM-YTK-071) saf yardımcıları: istek kurucular, Türkçe hata metinleri ve tazelenecek sorgu önekleri. Kanca
  * `use-guardian-invitations.ts`'tedir; burası React olmadan sahte istemciyle sınanır. Uç taze
  * oturum ister; 403 `reauthentication_required` çağıranın parola penceresine gider.
  */
@@ -41,6 +41,48 @@ export const GUARDIAN_INVITATION_COMMAND_MESSAGES: CommandMessages = {
   ...GUARDIAN_INVITATION_MESSAGES,
   guardian_identity_mismatch: 'Veli kaydı başka bir veli hesabıyla eşleşmiş.',
   not_found: 'Öğrenci ya da veli kaydı bulunamadı. Liste güncellendi.',
+}
+
+/** Bekleyen davet listesi sayfa boyutu (ucun üst sınırı 100). */
+export const GUARDIAN_INVITATIONS_PAGE_SIZE = 25
+
+/** Bekleyen veli davetlerinin sayfa sorgusu anahtarı (`useInviteGuardianAccount` ile aynı kök). */
+export function guardianInvitationsKey(page: number) {
+  return [
+    ...GUARDIAN_INVITATIONS_KEY,
+    'pending',
+    { page, pageSize: GUARDIAN_INVITATIONS_PAGE_SIZE },
+  ] as const
+}
+
+/** İptal hataları: davet zaten kapanmış ya da başka kurumun/personel daveti. */
+export const GUARDIAN_INVITATION_CANCEL_MESSAGES: CommandMessages = {
+  invitation_not_pending: STAFF_ACCOUNT_MESSAGES.invitation_not_pending,
+  not_found: 'Davet bulunamadı. Liste güncellendi.',
+}
+
+export function listGuardianInvitationsRequest(
+  client: KampusClient,
+  page: number,
+  signal?: AbortSignal,
+) {
+  return client.GET('/api/v1/institution-members/guardian-invitations', {
+    params: { query: { page, pageSize: GUARDIAN_INVITATIONS_PAGE_SIZE } },
+    ...(signal === undefined ? {} : { signal }),
+  })
+}
+
+export function cancelGuardianInvitationRequest(
+  client: KampusClient,
+  input: { invitationId: string },
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/institution-members/guardian-invitations/{invitationId}/cancel', {
+    params: {
+      path: { invitationId: input.invitationId },
+      header: { 'idempotency-key': headers['idempotency-key'] },
+    },
+  })
 }
 
 export function inviteGuardianRequest(

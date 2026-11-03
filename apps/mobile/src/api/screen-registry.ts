@@ -67,13 +67,14 @@ export const OGUZHAN_SCREENS = [
   {
     screen: 'StudentHomework',
     getComponent: (): MenuScreen => require('./screens/StudentHomework.tsx').default,
-    // Öğrenci ödevi telefonda okur; teslim şimdilik web'dedir.
+    // İki sekme: sınıf ödevleri (okuma ve teslim) ve öğretmen puanlı görevler (yazma görevi
+    // telefonda yazılır ve teslim edilir; konuşma görevi yalnız listelenir).
     pages: [
       {
         role: 'ogrenci',
         path: 'odevler',
         title: 'Ödevlerim',
-        description: 'Ödevlerini, son tarihlerini ve değerlendirmelerini takip et.',
+        description: 'Ödevlerini ve yazma görevlerini takip et, teslim et.',
       },
     ],
   },

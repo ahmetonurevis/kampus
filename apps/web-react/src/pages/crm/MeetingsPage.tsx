@@ -1,33 +1,51 @@
 import { useMemo, useState } from 'react'
-import { Link } from 'react-router'
+import { Link, useSearchParams } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
 import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { LineTabs } from '@/components/LineTabs.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { OPEN_PROSPECT_STAGES } from '@kampus/school-core/lib/prospects.ts'
+import { addDays } from '../academic/academic-rows.ts'
+import { MeetingPlanPanel } from './MeetingPlanPanel.tsx'
+import { MeetingWeekView } from './MeetingWeekView.tsx'
 import {
   MEETING_DAY_FILTER,
   MEETING_KIND_FILTER,
+  MEETING_VIEWS,
   meetingEvents,
+  meetingView,
+  meetingWeek,
+  meetingWeekStart,
+  meetingWeekTitle,
   stageTone,
   type MeetingEvent,
+  type MeetingView,
 } from './prospect-rows.ts'
 
 const COLUMNS_MOBILE = ['timeRange', 'kindLabel', 'branch']
+const VIEW_PARAM = 'gorunum'
+const WEEK_PARAM = 'hafta'
+const PLAN_PARAM = 'planlama'
+const PLAN_MEETING = 'gorusme'
 
 /**
  * Tanışma Görüşmeleri (ön büro, Vue `Crm.vue` `deneme-dersi-takvimi`): açık adayların planlanmış
- * tanışma görüşmeleri ve (dil okulunda) deneme dersleri tek listede. Yaklaşanlar önce gelir;
- * tür ve görüşme günü (başlangıç/bitiş) süzgeci, arama ve sıralama tarayıcıdadır. Ad adayın
- * detayına bağlanır (`/onburo/aday/:id`). Aday sayısı pipeline ile sınırlıdır, bu yüzden açık
- * adaylar bir kez çekilir; sunucuda "görüşmesi olan aday" süzgeci yoktur.
+ * tanışma görüşmeleri ve (dil okulunda) deneme dersleri iki görünümde: liste (varsayılan) ve
+ * haftalık takvim (Vue `WeekCalendar`; `?gorunum=hafta`, hafta `?hafta=<pazartesi>`). Listede
+ * yaklaşanlar önce gelir; tür ve görüşme günü (başlangıç/bitiş) süzgeci, arama ve sıralama
+ * tarayıcıdadır. Ad adayın detayına bağlanır (`/onburo/aday/:id`). "Tanışma görüşmesi planla"
+ * sağ panelde aday seçtirir (`?planlama=gorusme`, DOM-KAY-033). Aday sayısı pipeline ile
+ * sınırlıdır, bu yüzden açık adaylar bir kez çekilir; sunucuda "görüşmesi olan aday" süzgeci yoktur.
  * TODO(api-prospect-meeting-filter): görüşme ve deneme dersi tarihi sunucuda süzülünce liste
  * sayfalı okunur (`trialLesson` tarihi `dateField` listesinde yok; iş isteği #13).
  */
@@ -40,6 +58,12 @@ export function MeetingsPage({ page }: { page: NavPage }) {
   const branches = useCoreAll('branches')
   const classes = useCoreAll('classes', {}, { enabled: type === 'language_school' })
   const [now] = useState(() => Date.now())
+  const [params, setParams] = useSearchParams()
+  const view = meetingView(params.get(VIEW_PARAM))
+  const today = dayKey(now)
+  const thisWeek = meetingWeekStart(null, today)
+  const start = meetingWeekStart(params.get(WEEK_PARAM), today)
+  const plan = useDetailPanel(PLAN_PARAM)
   const rows = useMemo(
     () =>
       meetingEvents(
@@ -103,10 +127,35 @@ export function MeetingsPage({ page }: { page: NavPage }) {
     [type],
   )
   const upcoming = rows.filter((row) => row.upcoming).length
+  const week = useMemo(() => meetingWeek(rows, start, today), [rows, start, today])
+
+  const setParam = (name: string, value: string | null) =>
+    setParams(
+      (current) => {
+        const next = new URLSearchParams(current)
+        if (value === null) next.delete(name)
+        else next.set(name, value)
+        return next
+      },
+      { preventScrollReset: true },
+    )
+  const changeView = (next: MeetingView) => {
+    setParam(VIEW_PARAM, next === 'liste' ? null : next)
+  }
+  const goToWeek = (key: string) => setParam(WEEK_PARAM, key === thisWeek ? null : key)
 
   return (
     <>
-      <PageHeading title={page.title} description={page.description} />
+      <PageHeading
+        title={page.title}
+        description={page.description}
+        actions={
+          <Button onClick={() => plan.open(PLAN_MEETING)} disabled={!prospects.data}>
+            <Icon name="CalendarDays" size={17} aria-hidden="true" />
+            Tanışma görüşmesi planla
+          </Button>
+        }
+      />
       <section
         aria-labelledby="gorusme-tablosu"
         className="panel overflow-hidden rounded-card border bg-surface"
@@ -119,6 +168,9 @@ export function MeetingsPage({ page }: { page: NavPage }) {
             {rows.length} kayıt · {upcoming} yaklaşan
           </p>
         </header>
+        <div className="px-6 max-[650px]:px-4">
+          <LineTabs label="Görünüm" value={view} options={MEETING_VIEWS} onChange={changeView} />
+        </div>
         {prospects.error ? (
           <div role="alert" className="p-6">
             <QueryError error={prospects.error} onRetry={() => void prospects.refetch()} />
@@ -127,6 +179,16 @@ export function MeetingsPage({ page }: { page: NavPage }) {
           <p role="status" className="p-6 text-sm text-muted-foreground">
             Görüşmeler yükleniyor…
           </p>
+        ) : view === 'hafta' ? (
+          <MeetingWeekView
+            role={role}
+            title={meetingWeekTitle(start)}
+            days={week}
+            atCurrent={start === thisWeek}
+            onPrevious={() => goToWeek(addDays(start, -7))}
+            onCurrent={() => goToWeek(thisWeek)}
+            onNext={() => goToWeek(addDays(start, 7))}
+          />
         ) : (
           <DataTable
             listKey="gorusmeler"
@@ -136,11 +198,17 @@ export function MeetingsPage({ page }: { page: NavPage }) {
             filters={filters}
             searchKeys={['name', 'branch', 'place']}
             caption="Planlanan görüşmeler"
-            empty="Planlanmış görüşme yok. Aday detayından tanışma görüşmesi planlayın."
+            empty="Planlanmış görüşme yok. “Tanışma görüşmesi planla” ile ya da aday detayından planlayın."
             emptyFiltered="Bu süzgece uyan görüşme yok."
           />
         )}
       </section>
+      <MeetingPlanPanel
+        open={plan.selectedId === PLAN_MEETING}
+        prospects={prospects.data ?? []}
+        canPickTeacher={role === 'yonetici'}
+        onClose={plan.close}
+      />
     </>
   )
 }

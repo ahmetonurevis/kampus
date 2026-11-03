@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
+import type { CollectionQuery } from '@kampus/react-shared/collections.ts'
 import {
   ALL_STAGES,
   CONTACT_LABELS,
@@ -196,7 +197,8 @@ test('ON-035, DOM-KAY-007: kayıt tarihi aralığı sunucuya createdAt günü ol
     },
   })
   // Tek uç açık aralıktır.
-  assert.deepEqual(withCreatedRange({}, { min: '', max: '2026-10-31' }).filters, {
+  const empty: Pick<CollectionQuery, 'filters'> = {}
+  assert.deepEqual(withCreatedRange(empty, { min: '', max: '2026-10-31' }).filters, {
     dateField: 'createdAt',
     dateTo: '2026-10-31',
   })

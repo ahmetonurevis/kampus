@@ -972,7 +972,7 @@ test.describe('Vue eşitliği: aday listesi (ON-035)', () => {
     const school = await tenant({ roles: ['onburo'], records: listRecords() })
     await loginAs(school.user('onburo'))
     await page.goto(LIST_URL)
-    const tabs = page.getByRole('group', { name: 'Aday aşaması' })
+    const tabs = page.getByRole('toolbar', { name: 'Aday aşaması' })
     const all = tabs.getByRole('button', { name: /^Tüm adaylar/ })
     const offered = tabs.getByRole('button', { name: /^Teklif verildi/ })
     await expect(all).toContainText('11')
@@ -1068,7 +1068,7 @@ test.describe('Vue eşitliği: Tanışma Görüşmeleri (ON-035)', () => {
     await loginAs(school.user('onburo'))
     await page.goto(MEETINGS_URL)
     await page
-      .getByRole('group', { name: 'Görünüm' })
+      .getByRole('toolbar', { name: 'Görünüm' })
       .getByRole('button', { name: 'Haftalık takvim' })
       .click()
     await expect(page).toHaveURL(/gorunum=hafta/)

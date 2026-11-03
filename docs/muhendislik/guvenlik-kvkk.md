@@ -161,6 +161,7 @@ form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
 - Loglanmaz: parola, belirteç, çerez, `Authorization`, istek/yanıt gövdesi, e-posta, telefon, T.C. kimlik no, adres, Ç ve Ö sınıfı alan değerleri, serbest metin (rehberlik notu, mesaj).
 - Loglanır: `reqId`, `institutionId`, `userId`, kayıt kimlikleri, rota, durum kodu, süre, hata kodu.
 - IP adresi uygulama logunda son okteti sıfırlanarak (`203.0.113.0`), denetim kaydında tuzlanmış özetle tutulur.
+- Adres çubuğu da log sayılır: liste arama metni (ad, telefon gibi serbest metin) web adresine yazılmaz, yalnız bellekte tutulur; filtre, sıralama ve sayfa adreste kalır, eski bağlantıdaki `q` bir kez okunup `replace` ile silinir ([ADR 0009](../adr/0009-liste-arama-metni-urlde-tutulmaz.md), IST-028). Ters vekil ve CDN erişim logları sorgu dizesini yazmaz; ayrıntısı API yayını ADR'sindedir.
 - Maskeleme pino `redact` ile merkezîdir ([kod-yazim.md](kod-yazim.md#6-loglama)); yeni hassas alan eklenince `redact` listesi aynı committe güncellenir ve testle doğrulanır.
 
 ## 14. Girdi, dosya ve çıktı güvenliği

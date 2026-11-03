@@ -1,4 +1,5 @@
 import { ANNOUNCEMENT_HIDDEN_FIELDS } from '../lib/communication-access.ts'
+import { isPayerNotificationKind } from '../lib/guardianship.ts'
 import { PARENT_CONTACT_FIELDS } from '../lib/parent-contact.ts'
 import type { CollectionName } from '../modules/collection-modules.ts'
 import type { Role } from '../modules/navigation.ts'
@@ -22,6 +23,7 @@ import {
   ownStudent,
   ownTeacher,
   parentMeeting,
+  payerStudent,
   PERSONAL,
   personal,
   quizAttemptReader,
@@ -157,10 +159,13 @@ export const PLATFORM_READ_RULES = {
   // Uygulama içi bildirim öğrenciye ait olaydır: öğrenci kendi `student`, veli bağlı çocuğunun
   // `parent` bildirimini görür; personelin bildirimi yoktur (lib/notifications.ts
   // `canSeeNotification`). Okundu işareti yalnız kendi kullanıcısınındır (DOM-ILT-073). API bu
-  // iki koleksiyonu genel okumaya açmaz; bildirim ucu aynı kuralı SQL'de uygular.
+  // iki koleksiyonu genel okumaya açmaz; bildirim ucu aynı kuralı SQL'de uygular. Ödeyici veli
+  // ödediği öğrencinin yalnız finans türü bildirimini görür (K-04, DOM-ILT-074).
   notifications: {
     ogrenci: (c, r) => ownStudent(c, r) && text(r, 'audience') === 'student',
-    veli: (c, r) => ownStudent(c, r) && text(r, 'audience') === 'parent',
+    veli: (c, r) =>
+      text(r, 'audience') === 'parent' &&
+      (ownStudent(c, r) || (payerStudent(c, r) && isPayerNotificationKind(text(r, 'kind')))),
   },
   notificationReads: {
     ogrenci: (c, r) => c.userId !== undefined && text(r, 'userId') === c.userId,

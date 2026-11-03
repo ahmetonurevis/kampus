@@ -14,6 +14,7 @@ import {
   type PaymentPlan,
   type PaymentSettingsInput,
 } from '@kampus/school-core/lib/payments.ts'
+import { financeStudentIds } from '@kampus/school-core/lib/scope.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
@@ -398,10 +399,14 @@ export function archiveBankAccountCommand(
   )
 }
 
-/** Personel kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür (DOM-FIN-052). */
+/**
+ * Personel kurumun tamamını, veli ve öğrenci yalnız finans kapsamındaki öğrencileri görür
+ * (DOM-FIN-052): veli velayetli çocuğunu ve velayeti olmasa da ödeyicisi olduğu öğrenciyi (K-04,
+ * DOM-ILT-074). Tahsilat ayrıntısı dekontun kaynağıdır; aynı kapsamla okunur.
+ */
 async function visibleStudents(ctx: ServiceContext): Promise<readonly string[] | null> {
   if (STAFF_ROLES.has(ctx.actor.role)) return null
-  return [...(await readScope(ctx)).studentIds]
+  return [...financeStudentIds(await readScope(ctx))]
 }
 
 export async function listPaymentsFor(

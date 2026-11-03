@@ -49,6 +49,7 @@ const invoice = (id: string, dueDate: Date | string, extra: Record<string, unkno
   ...extra,
 })
 const subjectOf = (row: Record<string, unknown>) => (row.subject as { id: string }).id
+const guardianTitle = `${STUDENT?.name.split(' ')[0] ?? ''} için taksit vadesi yaklaşıyor.`
 
 describe('vade ve gecikme taraması', () => {
   let db: Database
@@ -340,7 +341,7 @@ describe('vade ve gecikme taraması', () => {
     assert.equal((await run(a.id)).created, 2)
   })
 
-  test('DOM-ILT-074: iletişim kısıtlı veli bildirim görmez; ödeyici görür; ödeyici olmayan velayetli veli de görür (notify öğrenci bağından çözer)', async () => {
+  test('DOM-ILT-074: iletişim kısıtlı veli bildirim görmez; velayetli ödeyici tek bildirim görür; ödeyici olmayan velayetli veli de görür', async () => {
     const a = await institution([invoice('one', at(1))])
     const payer = await member(a.id, 'veli')
     const custodial = await member(a.id, 'veli')
@@ -352,19 +353,30 @@ describe('vade ve gecikme taraması', () => {
     })
 
     assert.equal((await run(a.id)).created, 1)
-    assert.equal((await seen(payer.cookie)).length, 1)
+    // Velayet ve ödeyici bağı aynı bildirimi açar; ikinci kopya yazılmaz ve listelenmez.
+    assert.deepEqual(await seen(payer.cookie), [
+      { kind: 'installment_due', subjectId: 'one', title: guardianTitle },
+    ])
     assert.deepEqual(await seen(restricted.cookie), [])
-    // Bugünkü davranış: ödeyici hedefi `TODO(finans-odeyici-hedefi)`.
     assert.equal((await seen(custodial.cookie)).length, 1)
   })
 
-  test('DOM-ILT-074 Açık soru 2: velayeti olmayan ödeyici veli finans bildirimini görmez (ödeyici olmak kapsam vermez)', async () => {
+  test('DOM-ILT-074 K-04: velayeti olmayan ödeyici veli finans bildirimini görür; iletişim kısıtlı veli görmez', async () => {
     const a = await institution([invoice('one', at(1))])
     const keeper = await member(a.id, 'veli')
     const payer = await member(a.id, 'veli')
+    const restricted = await member(a.id, 'veli')
     await setBond(a.adminCookie, payer.membershipId, { custody: 'none', isPayer: true })
+    // İletişim kısıtlı veli ödeyici olamaz (`guardian_restricted_payer`); kısıtlı veli hiç almaz.
+    await setBond(a.adminCookie, restricted.membershipId, {
+      custody: 'none',
+      contactRestricted: true,
+    })
     assert.equal((await run(a.id)).created, 1)
-    assert.deepEqual(await seen(payer.cookie), [])
+    assert.deepEqual(await seen(payer.cookie), [
+      { kind: 'installment_due', subjectId: 'one', title: guardianTitle },
+    ])
+    assert.deepEqual(await seen(restricted.cookie), [])
     assert.equal((await seen(keeper.cookie)).length, 1)
   })
 

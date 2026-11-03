@@ -86,7 +86,7 @@ export function registerPaymentRoutes(app: FastifyInstance) {
         tags: ['payments'],
         summary: 'Tahsilatları listele',
         description:
-          'Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer; `method` ödeme yöntemine göre süzer. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.',
+          'Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız finans kapsamındaki öğrencileri görür (veli velayetli çocuğunu ve velayeti olmasa da ödeyicisi olduğu öğrenciyi; K-04, DOM-ILT-074); iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer; `method` ödeme yöntemine göre süzer. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.',
         querystring: paymentListQuerySchema,
         response: { 200: paymentListResponseSchema, ...commandErrors },
       },

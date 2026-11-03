@@ -5,7 +5,7 @@ import type { ApiError } from '@kampus/api-client/errors.ts'
 import type { components, operations } from '@kampus/api-client/schema.d.ts'
 
 import { runRequest } from './api-result.ts'
-import type { CommandHeaders, CommandMessages } from './commands.ts'
+import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
 import { useKampusClient } from './kampus-context.ts'
 import { institutionKey } from './query-keys.ts'
 import { useActiveInstitutionId } from './use-active-institution.ts'
@@ -22,7 +22,9 @@ import { LEARNER_CONTENT_MESSAGES, TASK_ASSIGNMENTS_KEY } from './use-task-assig
  * vardır. Taslak kaydı `If-Match` olarak taslağın okunan `revision`'ını taşır; yalnız henüz taslak
  * yokken (`revision: null`) başlıksız gider, sunucu taslak varken başlıksız isteği 400 ile reddeder;
  * bu durumda taslak başka pencerede kaydedilmiştir: taslak yeniden çekilir (revizyon tazelenir).
- * Teslim `If-Match` kabul etmez ve `Idempotency-Key` zorunludur. Yazma otomatik puanlanmaz.
+ * Metinle teslim `If-Match` kabul etmez ve `Idempotency-Key` zorunludur. Taslaktan teslim
+ * (`POST …/draft/submit`) kaydedilmiş taslağın `revision`'ını `If-Match` ister; okunan revizyon
+ * yoksa istek atılmaz (`requireIfMatch`). Yazma otomatik puanlanmaz.
  */
 
 export const TASK_SUBMISSIONS_KEY = 'task-submissions'
@@ -31,6 +33,15 @@ export const TASK_DRAFT_KEY = 'task-drafts'
 export const TASK_SUBMISSION_INVALIDATES = [[TASK_SUBMISSIONS_KEY], [TASK_ASSIGNMENTS_KEY]] as const
 /** Otomatik taslak kaydı yalnız taslağı tazeler. */
 export const TASK_DRAFT_INVALIDATES = [[TASK_DRAFT_KEY]] as const
+/**
+ * Taslaktan teslim teslimleri, atama görünümünü ve taslağı tazeler: 409'da (taslak başka pencerede
+ * değişti ya da bu revizyon zaten teslim edildi) ekrandaki taslak da eskimiştir.
+ */
+export const TASK_DRAFT_SUBMIT_INVALIDATES = [
+  [TASK_SUBMISSIONS_KEY],
+  [TASK_ASSIGNMENTS_KEY],
+  [TASK_DRAFT_KEY],
+] as const
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -87,6 +98,25 @@ export const TASK_DRAFT_MESSAGES = {
   ...TASK_SUBMISSION_MESSAGES,
   if_match_required: TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE,
 } as const satisfies CommandMessages
+
+/**
+ * Taslağın bu revizyonu zaten teslim edildi (409 `draft_already_submitted`): çift gönderim ya da
+ * teslimden sonra metin değişmedi. Teslim kaybolmadı; yeni sürüm için metin düzenlenir.
+ */
+export const TASK_DRAFT_ALREADY_SUBMITTED_MESSAGE =
+  'Bu metin zaten teslim edildi. Yeni sürüm göndermek için metninizi düzenleyin.'
+
+/** Taslaktan teslimin mesajları: teslim mesajları ve taslağa özgü kodlar (IST-047). */
+export const TASK_DRAFT_SUBMIT_MESSAGES = {
+  ...TASK_SUBMISSION_MESSAGES,
+  not_found: 'Görev ya da kaydedilmiş taslak bulunamadı; sayfayı yenileyin.',
+  draft_already_submitted: TASK_DRAFT_ALREADY_SUBMITTED_MESSAGE,
+  draft_empty: 'Taslağınız boş; teslim etmek için metninizi yazın.',
+} as const satisfies CommandMessages
+
+/** Taslaktan teslimde 409 dışında ekrandaki taslağın eskidiği hatalar (boş ya da silinmiş taslak). */
+export const draftSubmitStale = (error: ApiError) =>
+  error.code === 'draft_empty' || (error.status === 404 && error.code === 'not_found')
 
 /** Taslak başka pencerede ilk kez kaydedildi: ekrandaki "taslak yok" bilgisi eskidi. */
 export const draftSavedElsewhere = (error: ApiError) =>
@@ -177,6 +207,33 @@ export function submitTaskSubmissionRequest(
   })
 }
 
+/** Taslaktan teslimin girdisi; `revision` kaydedilmiş taslağın okunan revizyonudur. */
+export interface SubmitTaskDraftInput {
+  assignmentId: string
+  revision: number | null
+}
+
+/**
+ * Teslim edilen metin `If-Match` revizyonundaki taslaktır; gövde boş nesnedir. Taslak yoksa
+ * (`revision: null`) istek atılmaz.
+ */
+export function submitTaskDraftRequest(
+  client: KampusClient,
+  { assignmentId }: SubmitTaskDraftInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/task-assignments/{assignmentId}/draft/submit', {
+    params: {
+      path: { assignmentId },
+      header: {
+        'idempotency-key': headers['idempotency-key'],
+        'if-match': requireIfMatch(headers),
+      },
+    },
+    body: {},
+  })
+}
+
 interface CommandOptions {
   onSuccess?: () => void | Promise<void>
 }
@@ -198,6 +255,15 @@ export const submitTaskSubmissionCommand = {
   exclusive: true,
 } as const
 
+export const submitTaskDraftCommand = {
+  request: submitTaskDraftRequest,
+  version: (input: SubmitTaskDraftInput) => input.revision,
+  invalidates: TASK_DRAFT_SUBMIT_INVALIDATES,
+  refreshOn: draftSubmitStale,
+  messages: TASK_DRAFT_SUBMIT_MESSAGES,
+  exclusive: true,
+} as const
+
 /**
  * Taslağı kaydeder (`PATCH /task-assignments/:id/draft`); 409 `draft_conflict` ve 400
  * `if_match_required`'da güncel taslak yüklenir.
@@ -209,4 +275,12 @@ export function useSaveTaskDraft(options: CommandOptions = {}) {
 /** Yeni teslim sürümü gönderir (`POST /task-assignments/:id/submissions`, 201). */
 export function useSubmitTaskSubmission(options: CommandOptions = {}) {
   return useApiCommand({ ...submitTaskSubmissionCommand, ...withSuccess(options) })
+}
+
+/**
+ * Kaydedilmiş taslağı yeni sürüm olarak teslim eder (`POST /task-assignments/:id/draft/submit`,
+ * 201; IST-047). 409 `draft_conflict` ve `draft_already_submitted`'da taslak ve teslim tazelenir.
+ */
+export function useSubmitTaskDraft(options: CommandOptions = {}) {
+  return useApiCommand({ ...submitTaskDraftCommand, ...withSuccess(options) })
 }

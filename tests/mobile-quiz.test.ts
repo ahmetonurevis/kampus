@@ -1,8 +1,18 @@
 import test, { describe } from 'node:test'
 import assert from 'node:assert/strict'
 import { ApiError } from '../packages/api-client/src/errors.ts'
-import type { QuizAttempt, QuizListItem } from '../packages/react-shared/src/quizzes.ts'
+import type { KampusClient } from '../packages/api-client/src/client.ts'
+import { runRequest } from '../packages/react-shared/src/api-result.ts'
+import { createCommandSession, runCommand } from '../packages/react-shared/src/commands.ts'
 import {
+  submitQuizBody,
+  submitQuizCommand,
+  type QuizAttempt,
+  type QuizListItem,
+  type QuizQuestion,
+} from '../packages/react-shared/src/quizzes.ts'
+import {
+  applyQuizStart,
   canSolve,
   confirmSubmitText,
   INITIAL_SOLVE,
@@ -11,7 +21,9 @@ import {
   needsLeaveConfirm,
   nextRetryWait,
   QUIZ_CLOSED_BADGE,
+  queryErrorView,
   quizAction,
+  quizBadgeTone,
   quizEmptyText,
   quizGroup,
   quizGroupCounts,
@@ -20,6 +32,8 @@ import {
   RESEND_HINT,
   RETRY_NOTICE,
   solveEndText,
+  solveEntry,
+  solveEntryFromStart,
   solveReducer,
   startDescription,
   submitButtonText,
@@ -470,5 +484,176 @@ describe('IST-124 mobil quiz süre ve metinler', () => {
     assert.equal(submitButtonText(INITIAL_SOLVE, true), 'Yeniden gönder')
     const sending = solveReducer(answered, { type: 'timeout' })
     assert.equal(submitButtonText(sending, false), 'Gönderiliyor…')
+  })
+})
+
+const QUESTIONS: QuizQuestion[] = [
+  { id: 's1', text: 'Soru 1', options: ['a', 'b', 'c', 'd'], topic: 'Üslü' },
+  { id: 's2', text: 'Soru 2', options: ['a', 'b', 'c', 'd'], topic: 'Üslü' },
+] as unknown as QuizQuestion[]
+
+/** Gönderim ucunu taklit eder: aynı anahtar ilk sonucu tekrarlar; yanıt kaybı sunucuya ulaşır. */
+function fakeSubmitServer(script: Array<'ok' | 'lost' | ApiError>) {
+  const seen = new Map<string, { score: number }>()
+  const keys: string[] = []
+  let processed = 0
+  const client = {
+    POST: async (_path: string, options: { params: { header: { 'idempotency-key': string } } }) => {
+      const key = options.params.header['idempotency-key']
+      keys.push(key)
+      const step = script.shift() ?? 'ok'
+      if (step instanceof ApiError) throw step
+      let result = seen.get(key)
+      if (!result) {
+        processed += 1
+        result = { score: 50 }
+        seen.set(key, result)
+      }
+      if (step === 'lost') throw networkError()
+      return { data: { data: result }, response: new Response(null, { status: 200 }) }
+    },
+  } as unknown as KampusClient
+  return {
+    keys,
+    processed: () => processed,
+    send: (session: ReturnType<typeof createCommandSession>, answers: Record<string, number>) => {
+      const variables = { quizId: 'q1', body: submitQuizBody(['s1', 's2'], answers) }
+      return runCommand(
+        session,
+        {
+          execute: (input, headers) =>
+            runRequest(() => submitQuizCommand.request(client, input, headers)),
+          refresh: async () => {},
+        },
+        variables,
+      )
+    },
+  }
+}
+
+describe('IST-124 mobil quiz gönderim komutu (Idempotency-Key)', () => {
+  test('IST-124 ağ/5xx hatasından sonra yeniden gönderim aynı anahtarı taşır', async () => {
+    const server = fakeSubmitServer([networkError(), apiError(503, 'unavailable'), 'ok'])
+    const session = createCommandSession()
+    assert.equal((await server.send(session, { s1: 1, s2: 3 })).status, 'failed')
+    assert.equal((await server.send(session, { s1: 1, s2: 3 })).status, 'failed')
+    assert.equal((await server.send(session, { s1: 1, s2: 3 })).status, 'success')
+    assert.equal(new Set(server.keys).size, 1)
+  })
+
+  test('IST-124 429 istek işlenmediği için yeni anahtar kullanılır; gövde değişince de', async () => {
+    const server = fakeSubmitServer([apiError(429, 'rate_limited'), 'ok', 'ok'])
+    const session = createCommandSession()
+    await server.send(session, { s1: 1 })
+    await server.send(session, { s1: 1 })
+    assert.notEqual(server.keys[0], server.keys[1])
+    // Başarıdan sonraki yeni eylem de yeni anahtardır.
+    await server.send(session, { s1: 1 })
+    assert.notEqual(server.keys[1], server.keys[2])
+  })
+
+  test('IST-124 ilk istek sunucuya ulaşıp yanıtı kaybolursa yeniden gönderim aynı sonucu alar', async () => {
+    const server = fakeSubmitServer(['lost', 'ok'])
+    const session = createCommandSession()
+    const first = await server.send(session, { s1: 1, s2: 3 })
+    assert.equal(first.status, 'failed')
+    const second = await server.send(session, { s1: 1, s2: 3 })
+    assert.equal(second.status, 'success')
+    assert.deepEqual(second.status === 'success' ? second.data : null, { data: { score: 50 } })
+    // Sunucu iki kez işlemedi: tek kayıt, tek anahtar.
+    assert.equal(server.processed(), 1)
+    assert.equal(server.keys[0], server.keys[1])
+  })
+
+  test('IST-124 çift dokunma tek istek atar', async () => {
+    const server = fakeSubmitServer(['ok'])
+    const session = createCommandSession()
+    const [a, b] = await Promise.all([
+      server.send(session, { s1: 1 }),
+      server.send(session, { s1: 1 }),
+    ])
+    assert.deepEqual([a.status, b.status].sort(), ['busy', 'success'])
+    assert.equal(server.keys.length, 1)
+  })
+})
+
+describe('IST-124 mobil quiz açılış kararı ve önbellek', () => {
+  const expiresAt = '2026-11-03T09:30:00.000Z'
+  const at = (iso: string) => Date.parse(iso)
+
+  test('IST-124 açılışta süre dolmuşsa çözme açılmaz, kendiliğinden gönderim olmaz', () => {
+    const running = attempt({ expiresAt })
+    // Ağ payı (60 sn) bitmemiş: sunucu hâlâ kabul edebilir ama ekran açılmaz.
+    const over = solveEntry(running, QUESTIONS, at('2026-11-03T09:30:20.000Z'), 0)
+    assert.equal(over.kind, 'expired')
+    // Süre dolmadan açılırsa çözülür; sayaç sürerken dolarsa durum makinesi gönderir.
+    const open = solveEntry(running, QUESTIONS, at('2026-11-03T09:10:00.000Z'), 0)
+    assert.equal(open.kind, 'solve')
+    // Cihaz saati ileriyse sunucu farkı hesaba katılır.
+    assert.equal(
+      solveEntry(running, QUESTIONS, at('2026-11-03T09:31:00.000Z'), -120_000).kind,
+      'solve',
+    )
+    assert.equal(solveEntry(attempt({ status: 'completed' }), QUESTIONS, 0, 0).kind, 'unavailable')
+    assert.equal(solveEntry(running, null, 0, 0).kind, 'unavailable')
+    assert.equal(solveEntry(undefined, QUESTIONS, 0, 0).kind, 'unavailable')
+  })
+
+  test('IST-124 başlatma yanıtından çözme girdisi sunucu saatine göre kurulur', () => {
+    const start = {
+      attempt: attempt({ expiresAt }),
+      questions: QUESTIONS,
+      serverNow: '2026-11-03T09:00:00.000Z',
+    }
+    const received = at('2026-11-03T09:40:00.000Z') // cihaz saati sunucudan 40 dk ileri
+    const entry = solveEntryFromStart(start, received)
+    assert.equal(entry.kind, 'solve')
+    if (entry.kind === 'solve') assert.equal(entry.input.clockOffsetMs, -40 * 60_000)
+  })
+
+  test('IST-124 çözmeden ayrılınca durum sıfırlanır', () => {
+    const typed = run([pick('s1', 1), { type: 'leave' }])
+    assert.equal(solveReducer(typed, { type: 'reset' }), INITIAL_SOLVE)
+  })
+
+  test('IST-124 başlatma yanıtı önbellekteki ayrıntıya işlenir', () => {
+    const cached: {
+      data: { id: string; attempts: QuizAttempt[]; questions: null; serverNow: string }
+    } = {
+      data: { id: 'q1', attempts: [], questions: null, serverNow: 'eski' },
+    }
+    const start = {
+      attempt: attempt(),
+      questions: QUESTIONS,
+      serverNow: '2026-11-03T09:00:00.000Z',
+    }
+    const next = applyQuizStart(cached, start)
+    assert.equal(next?.data.attempts?.length, 1)
+    assert.equal(next?.data.attempts?.[0]?.status, 'in_progress')
+    assert.equal(next?.data.questions, QUESTIONS)
+    assert.equal(next?.data.serverNow, start.serverNow)
+    // Aynı öğrencinin eski denemesi çoğalmaz; önbellek yoksa yazılacak bir şey yok.
+    assert.equal(applyQuizStart(next, start)?.data.attempts?.length, 1)
+    assert.equal(applyQuizStart(undefined, start), undefined)
+    // Başlatılmış quiz yeniden "başlat" olarak görünmez.
+    assert.equal(quizAction(quiz(), applyQuizStart(cached, start)?.data.attempts?.[0]), 'resume')
+  })
+})
+
+describe('IST-124 mobil quiz liste hatası ve rozet', () => {
+  test('IST-124 yenileme hatası veri varken satır içi kalır, tam ekran yalnız veri yokken', () => {
+    const error = apiError(0, 'network_error')
+    assert.equal(queryErrorView(undefined, true), 'none')
+    assert.equal(queryErrorView(undefined, false), 'none')
+    assert.equal(queryErrorView(error, true), 'inline')
+    assert.equal(queryErrorView(error, false), 'full')
+  })
+
+  test('IST-124 rozet rengi quizde belirlenir (ortak rozet metin tahminine bırakılmaz)', () => {
+    assert.equal(quizBadgeTone('Çözüldü'), 'green')
+    assert.equal(quizBadgeTone('Süresi doldu'), 'red')
+    assert.equal(quizBadgeTone(QUIZ_CLOSED_BADGE), 'red')
+    assert.equal(quizBadgeTone('Henüz çözülmedi'), 'amber')
+    assert.equal(quizBadgeTone('Devam ediyor'), 'primary')
   })
 })

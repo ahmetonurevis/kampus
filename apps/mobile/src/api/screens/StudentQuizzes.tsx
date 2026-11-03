@@ -13,6 +13,8 @@ import { ListLoading, QueryError } from '../QueryState.tsx'
 import {
   QUIZ_GROUP_OPTIONS,
   quizEmptyText,
+  queryErrorView,
+  quizBadgeTone,
   quizGroupCounts,
   quizRow,
   visibleQuizRows,
@@ -45,7 +47,10 @@ export default function StudentQuizzes() {
   return (
     <Screen>
       <T muted>Sınıfının quizlerini çöz, sonuçlarını gör.</T>
-      {students.error ? (
+      {students.error && students.data && (
+        <QueryError error={students.error} onRetry={() => void students.refetch()} />
+      )}
+      {queryErrorView(students.error, !!students.data) === 'full' && students.error ? (
         <QueryError error={students.error} onRetry={() => void students.refetch()} />
       ) : !students.data ? (
         <ListLoading label="Öğrenci bilgileri yükleniyor…" />
@@ -79,6 +84,8 @@ function QuizList({ student }: { student: { id: string; classId: string } }) {
   const page = visible?.slice(index * API_PAGE_SIZE, (index + 1) * API_PAGE_SIZE)
   // Düz `useQuery`: hata türü tek tutulsun diye `ApiError`'a çevrilir.
   const error = quizzes.error ? toApiError(quizzes.error) : undefined
+  // Yenileme hatası veri varken satır içi çıkar; liste ve açık quiz penceresi yerinde kalır.
+  const errorView = queryErrorView(error, !!quizzes.data)
   const tabs = QUIZ_GROUP_OPTIONS.map((option) => ({
     value: option.value,
     label:
@@ -90,7 +97,10 @@ function QuizList({ student }: { student: { id: string; classId: string } }) {
     <>
       <Tabs value={state.filter} onChange={setFilter} options={tabs} />
       <SearchField value={state.search} onChange={setSearch} placeholder="Quiz veya ders" />
-      {error ? (
+      {error && errorView === 'inline' && (
+        <QueryError error={error} onRetry={() => void quizzes.refetch()} />
+      )}
+      {error && errorView === 'full' ? (
         <QueryError error={error} onRetry={() => void quizzes.refetch()} />
       ) : !page ? (
         <ListLoading label="Quizler yükleniyor…" />
@@ -111,7 +121,7 @@ function QuizList({ student }: { student: { id: string; classId: string } }) {
               eyebrow={row.score ? `Puan ${row.score}` : undefined}
               label={`${row.title}, ${row.badge}. ${row.resumable ? 'Devam et' : row.startable ? 'Ayrıntıyı aç ve başlat' : 'Ayrıntıyı aç'}`}
               onPress={() => setSelectedId(row.id)}
-              badge={<Badge text={row.badge} />}
+              badge={<Badge text={row.badge} tone={quizBadgeTone(row.badge)} />}
             />
           ))}
         </View>

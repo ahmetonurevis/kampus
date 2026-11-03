@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import { useQueryClient } from '@tanstack/react-query'
 import { View } from 'react-native'
 import {
   attemptOf,
@@ -11,23 +12,33 @@ import {
   type QuizListItem,
   type QuizQuestion,
   type QuizResult,
+  type QuizStart,
+  quizItemKey,
 } from '@kampus/react-shared/quizzes.ts'
+import { useActiveInstitutionId } from '@kampus/react-shared/use-active-institution.ts'
+import { institutionKey } from '@kampus/react-shared/query-keys.ts'
 import { useQuiz, useStartQuiz } from '@kampus/react-shared/use-quizzes.ts'
 import { Badge, Button, Sheet, T } from '../../ui/components.tsx'
 import { DetailPair, Notice, Section } from '../../ui/SchoolLayout.tsx'
 import { dueText } from '../presentation.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import {
-  canSolve,
+  applyQuizStart,
   EXPIRED_ATTEMPT_TEXT,
+  isTimeOver,
+  OVERDUE_ATTEMPT_TEXT,
   QUIZ_CLOSED_BADGE,
   quizAction,
+  quizBadgeTone,
   quizGroup,
   REVIEW_LOCKED_TEXT,
   START_TEXTS,
+  solveEntry,
+  solveEntryFromStart,
   startDescription,
+  type SolveInput,
 } from '../student-quiz.ts'
-import { QuizSolve } from './quiz-solve.tsx'
+import { useQuizSolve } from './quiz-solve.tsx'
 
 /** Panelin quizden kullandığı alanlar (öğrenci ayrıntısı; cevap anahtarı yoktur). */
 type DetailFields = Pick<
@@ -50,33 +61,65 @@ export function QuizSheet({
   onClose: () => void
 }) {
   const item = useQuiz(quizId)
-  const [solving, setSolving] = useState(false)
+  const queryClient = useQueryClient()
+  const institutionId = useActiveInstitutionId()
+  const [input, setInput] = useState<SolveInput | null>(null)
+  // Açılışta süre dolmuş çıktı: çözme açılmaz, sunucu durumu tazelenip gösterilir.
+  const [overdue, setOverdue] = useState(false)
+  const solve = useQuizSolve({ quizId, input, onClose: () => setInput(null) })
   const quiz = item.data?.data
   const attempt = quiz ? attemptOf(quiz, studentId) : undefined
+  const clockOffsetMs = quizClockOffset(
+    quiz && 'serverNow' in quiz ? quiz.serverNow : null,
+    item.dataUpdatedAt,
+  )
 
-  if (solving && quiz && attempt && canSolve(attempt, quiz.questions) && quiz.questions)
-    return (
-      <QuizSolve
-        quizId={quizId}
-        title={quiz.title}
-        attempt={attempt}
-        questions={quiz.questions}
-        clockOffsetMs={quizClockOffset(
-          'serverNow' in quiz ? quiz.serverNow : null,
-          item.dataUpdatedAt,
-        )}
-        onClose={() => setSolving(false)}
-      />
+  function enter(entry: ReturnType<typeof solveEntry>) {
+    if (entry.kind === 'solve') return setInput(entry.input)
+    if (entry.kind === 'expired') setOverdue(true)
+    void item.refetch()
+  }
+  function openSolve() {
+    enter(solveEntry(attempt, quiz?.questions, Date.now(), clockOffsetMs))
+  }
+  // Başlatma yanıtı önbelleğe hemen yazılır: ekran tazelemeyi beklemez, tazeleme düşse de
+  // "Quizi başlat" yeniden görünmez.
+  function started(start: QuizStart) {
+    const receivedAt = Date.now()
+    queryClient.setQueryData(
+      institutionKey(institutionId, ...quizItemKey(quizId)),
+      (cached: typeof item.data) => applyQuizStart(cached, start),
     )
+    enter(solveEntryFromStart(start, receivedAt))
+  }
 
   return (
-    <Sheet visible title={quiz?.title ?? 'Quiz'} onClose={onClose}>
-      {item.error ? (
-        <QueryError error={item.error} onRetry={() => void item.refetch()} />
+    <Sheet
+      visible
+      title={quiz?.title ?? 'Quiz'}
+      onClose={solve ? solve.requestClose : onClose}
+      footer={solve?.footer}
+      pinFooter={!!solve}
+    >
+      {solve ? (
+        solve.content
       ) : !quiz ? (
-        <ListLoading label="Quiz yükleniyor…" />
+        item.error ? (
+          <QueryError error={item.error} onRetry={() => void item.refetch()} />
+        ) : (
+          <ListLoading label="Quiz yükleniyor…" />
+        )
       ) : (
-        <QuizDetail quiz={quiz} attempt={attempt} onSolve={() => setSolving(true)} />
+        <>
+          {item.error && <QueryError error={item.error} onRetry={() => void item.refetch()} />}
+          <QuizDetail
+            quiz={quiz}
+            attempt={attempt}
+            overdue={overdue || (!!attempt && isTimeOver(attempt, Date.now(), clockOffsetMs))}
+            onSolve={openSolve}
+            onStarted={started}
+          />
+        </>
       )}
     </Sheet>
   )
@@ -85,18 +128,22 @@ export function QuizSheet({
 function QuizDetail({
   quiz,
   attempt,
+  overdue,
   onSolve,
+  onStarted,
 }: {
   quiz: DetailFields
   attempt: QuizAttempt | undefined
+  overdue: boolean
   onSolve: () => void
+  onStarted: (start: QuizStart) => void
 }) {
   const phase = attemptPhase(attempt)
   const group = quizGroup(quiz, attempt)
   const badge = phase === 'none' && group === 'expired' ? QUIZ_CLOSED_BADGE : QUIZ_PHASE_TEXT[phase]
   return (
     <>
-      <Badge text={badge} />
+      <Badge text={badge} tone={quizBadgeTone(badge)} />
       <Section title="Bilgiler" panel>
         <View style={{ gap: 12 }}>
           <DetailPair label="Ders" value={quiz.subject} />
@@ -111,7 +158,13 @@ function QuizDetail({
       {attempt?.result ? (
         <ResultSection quiz={quiz} attempt={attempt} result={attempt.result} />
       ) : (
-        <ActionSection quiz={quiz} attempt={attempt} onSolve={onSolve} />
+        <ActionSection
+          quiz={quiz}
+          attempt={attempt}
+          overdue={overdue}
+          onSolve={onSolve}
+          onStarted={onStarted}
+        />
       )}
     </>
   )
@@ -121,13 +174,19 @@ function QuizDetail({
 function ActionSection({
   quiz,
   attempt,
+  overdue,
   onSolve,
+  onStarted,
 }: {
   quiz: DetailFields
   attempt: QuizAttempt | undefined
+  overdue: boolean
   onSolve: () => void
+  onStarted: (start: QuizStart) => void
 }) {
   const action = quizAction(quiz, attempt)
+  if (action === 'resume' && overdue)
+    return <Notice tone="amber" title="Süre doldu" text={OVERDUE_ATTEMPT_TEXT} />
   if (action === 'resume')
     return (
       <Section title="Quiz sürüyor" panel>
@@ -139,7 +198,7 @@ function ActionSection({
         </Button>
       </Section>
     )
-  if (action === 'start') return <StartSection quiz={quiz} onStarted={onSolve} />
+  if (action === 'start') return <StartSection quiz={quiz} onStarted={onStarted} />
   if (action === 'closed')
     return (
       <Notice
@@ -154,9 +213,15 @@ function ActionSection({
 /**
  * Quizi başlatır: önce onay sorulur (süre başlayınca durmaz). Düğme istek sürerken kilitlidir ve
  * komut kilidi çift dokunmayı tek isteğe indirir (`Idempotency-Key` komutta); hata pencerede,
- * Türkçe gösterilir. Soruların açılması başlatma yanıtıyla tazelenen ayrıntıdan gelir.
+ * Türkçe gösterilir. Başlatma yanıtı (deneme, sorular, `serverNow`) önbelleğe yazılır ve çözme oradan açılır.
  */
-function StartSection({ quiz, onStarted }: { quiz: DetailFields; onStarted: () => void }) {
+function StartSection({
+  quiz,
+  onStarted,
+}: {
+  quiz: DetailFields
+  onStarted: (start: QuizStart) => void
+}) {
   const start = useStartQuiz()
   const [confirming, setConfirming] = useState(false)
   const [failure, setFailure] = useState<string | null>(null)
@@ -171,7 +236,7 @@ function StartSection({ quiz, onStarted }: { quiz: DetailFields; onStarted: () =
       return
     }
     setConfirming(false)
-    onStarted()
+    onStarted(outcome.data.data)
   }
   return (
     <Section title="Quizi başlat" panel>

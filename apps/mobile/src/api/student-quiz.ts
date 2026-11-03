@@ -17,10 +17,13 @@ import {
   quizErrorMessage,
   quizGraceLeftMs,
   quizSecondsLeft,
+  quizClockOffset,
   quizSubmitRetryDelay,
   type AttemptPhase,
   type QuizAttempt,
   type QuizListItem,
+  type QuizQuestion,
+  type QuizStart,
 } from '@kampus/react-shared/quizzes.ts'
 import { dueText, matchesSearch } from './presentation.ts'
 
@@ -74,6 +77,14 @@ export type QuizRow = {
 }
 
 export const QUIZ_CLOSED_BADGE = 'Süresi geçti'
+
+/** Rozet rengi deneme durumundan gelir (ortak `Badge` metin tahminine bırakılmaz). */
+export function quizBadgeTone(badge: string): 'primary' | 'green' | 'amber' | 'red' {
+  if (badge === QUIZ_PHASE_TEXT.completed) return 'green'
+  if (badge === QUIZ_PHASE_TEXT.expired || badge === QUIZ_CLOSED_BADGE) return 'red'
+  if (badge === QUIZ_PHASE_TEXT.none) return 'amber'
+  return 'primary'
+}
 
 /** Satır yalnız okuyan öğrencinin denemesinden kurulur (sunucu zaten yalnız kendisininkini verir). */
 export function quizRow(item: QuizListItem, studentId: string): QuizRow {
@@ -204,6 +215,8 @@ export type SolveAction =
   | { type: 'confirm' }
   | { type: 'cancel' }
   | { type: 'leave' }
+  /** Çözme bitti ya da pencere çözmeden ayrıldı: sonraki çözme temiz başlar. */
+  | { type: 'reset' }
   /** Sayaç sıfırlandı: cevaplar kendiliğinden gönderilir. */
   | { type: 'timeout' }
   | { type: 'wake' }
@@ -233,7 +246,8 @@ const send = (state: SolveState, auto: boolean): SolveState => ({
 /**
  * Saf geçiş fonksiyonu. Çift dokunma ikinci gönderim yaratmaz: `sending`/`waiting` iken `press`,
  * `confirm` ve `timeout` değişiklik yapmaz; ekran yalnız `sending`e geçişte tek istek atar
- * (aynı gövde yeniden gönderilirse `Idempotency-Key` aynı kalır, `useApiCommand`).
+ * (belirsiz hatadan sonra aynı gövde yeniden gönderilirse `Idempotency-Key` aynı kalır, 429'da yeni
+ * anahtar kullanılır; `keepsIdempotencyKey`, `useApiCommand`).
  */
 export function solveReducer(state: SolveState, action: SolveAction): SolveState {
   switch (action.type) {
@@ -261,6 +275,8 @@ export function solveReducer(state: SolveState, action: SolveAction): SolveState
       if (action.timeOver || state.retryable) return send(state, action.timeOver)
       return { ...state, phase: 'confirming', error: null }
     }
+    case 'reset':
+      return INITIAL_SOLVE
     case 'confirm':
       return state.phase === 'confirming' ? send(state, false) : state
     case 'cancel':
@@ -371,6 +387,9 @@ export const REVIEW_LOCKED_TEXT =
 export const EXPIRED_ATTEMPT_TEXT =
   'Cevaplar süresinde gönderilmediği için deneme boş cevaplı sayıldı.'
 
+export const OVERDUE_ATTEMPT_TEXT =
+  'Bu quizin süresi doldu. Cevaplar süresinde gönderilmediği için deneme boş cevaplı sayılır; sonuç sunucuda hesaplanınca burada görünür.'
+
 /** Ayrıntı penceresinde sonuç yoksa ne yapılabileceği. */
 export type QuizAction = 'start' | 'resume' | 'closed' | 'pending'
 
@@ -394,4 +413,77 @@ export function canSolve(
   questions: readonly unknown[] | null | undefined,
 ): boolean {
   return attempt?.status === 'in_progress' && !!questions && questions.length > 0
+}
+
+// --- Pencere: çözmeye giriş ve önbellek ----------------------------------------------------
+
+/** Çözme ekranının girdisi: deneme, sabit sorular ve sunucu-cihaz saat farkı. */
+export type SolveInput = {
+  attempt: QuizAttempt
+  questions: readonly QuizQuestion[]
+  clockOffsetMs: number
+}
+
+/**
+ * Çözmeye giriş kararı. Süre açılışta zaten dolmuşsa ekran açılmaz ve boş cevaplar kendiliğinden
+ * gönderilmez (onaysız gönderim yok); `expired` sunucu durumunu (tazelenen ayrıntı) göstermek
+ * içindir. Çözülemeyen deneme (sorular yok, deneme sürmüyor) `unavailable`dır.
+ */
+export function solveEntry(
+  attempt: QuizAttempt | undefined,
+  questions: readonly QuizQuestion[] | null | undefined,
+  now: number,
+  clockOffsetMs: number,
+): { kind: 'solve'; input: SolveInput } | { kind: 'expired' } | { kind: 'unavailable' } {
+  if (!attempt || !canSolve(attempt, questions) || !questions) return { kind: 'unavailable' }
+  if (isTimeOver(attempt, now, clockOffsetMs)) return { kind: 'expired' }
+  return { kind: 'solve', input: { attempt, questions, clockOffsetMs } }
+}
+
+/** Önbellekteki tek quiz yanıtının biçimi (`GET /quizzes/:id`); yalnız öğrenci alanları kullanılır. */
+type CachedQuiz = { data: Record<string, unknown> & { attempts?: readonly QuizAttempt[] } }
+
+/**
+ * Başlatma yanıtını (`QuizStart`) önbellekteki ayrıntıya işler: deneme, sorular ve `serverNow`.
+ * Ekran tazelemeyi beklemez; tazeleme düşse de "Quizi başlat" yeniden görünmez. Önbellek yoksa
+ * `undefined` döner (yazılacak bir şey yok).
+ */
+export function applyQuizStart<T extends CachedQuiz>(
+  cached: T | undefined,
+  start: Pick<QuizStart, 'attempt' | 'questions' | 'serverNow'>,
+): T | undefined {
+  if (!cached) return undefined
+  const others = (cached.data.attempts ?? []).filter(
+    (item) => item.studentId !== start.attempt.studentId,
+  )
+  return {
+    ...cached,
+    data: {
+      ...cached.data,
+      attempts: [...others, start.attempt],
+      questions: start.questions,
+      serverNow: start.serverNow,
+    },
+  }
+}
+
+/** Başlatma yanıtından çözme girdisi (cihazda alındığı andan saat farkı). */
+export function solveEntryFromStart(start: QuizStart, receivedAt: number) {
+  return solveEntry(
+    start.attempt,
+    start.questions,
+    receivedAt,
+    quizClockOffset(start.serverNow, receivedAt),
+  )
+}
+
+// --- Liste ekranı: hata önceliği -----------------------------------------------------------
+
+/**
+ * Yenileme hatası veri varken yerinde (satır içi) gösterilir; liste ve açık pencere yerinde kalır.
+ * Tam ekran hata yalnız hiç veri yokken çıkar.
+ */
+export function queryErrorView(error: unknown, hasData: boolean): 'none' | 'inline' | 'full' {
+  if (!error) return 'none'
+  return hasData ? 'inline' : 'full'
 }

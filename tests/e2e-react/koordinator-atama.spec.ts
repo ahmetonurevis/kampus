@@ -307,20 +307,46 @@ test('IST-005, DOM-YTK-027: zümre başkanı öğretmenin branşı değişmez; h
   api,
   tenant,
 }) => {
-  const school = await tenant({ roles: ['ogretmen'] })
+  // Seed öğretmenlerinin hepsinin ders ataması var (branş zaten kilitli); bu yüzden ataması olmayan
+  // kendi öğretmen kaydı kurulur ve hesaba bağlanır.
+  const recordId = 't-og059'
+  const school = await tenant({
+    roles: ['ogretmen'],
+    teacherId: recordId,
+    records: [
+      {
+        collection: 'teachers',
+        data: {
+          id: recordId,
+          name: 'Zeynep Koordinatör',
+          email: 'zeynep.koordinator@kampus.example',
+          phone: '05551003040',
+          subjectId: 'math',
+          subject: 'Matematik',
+          branchId: 'b1',
+          attendanceRate: 100,
+          homeworkRate: 100,
+          isActive: true,
+          deletedAt: null,
+          guidanceCounselor: false,
+        },
+      },
+    ],
+  })
   const adminUser = school.user('yonetici')
   const admin = await api(adminUser)
   const teacher = school.user('ogretmen').name
   await assignViaApi(admin, await teacherMembershipId(admin, teacher), 'math')
   const subjectOf = async () => {
-    const result = await admin.get('/api/v1/teachers/t1')
+    const result = await admin.get('/api/v1/collections/teachers?pageSize=100')
     expect(result.status).toBe(200)
-    return (result.body as { data: { record: { subjectId: string } } }).data.record.subjectId
+    const rows = (result.body as { data: { id: string; record: { subjectId: string } }[] }).data
+    return rows.find((row) => row.id === recordId)?.record.subjectId
   }
+  const editUrl = `/yonetici/personel?ogretmen-form=${recordId}`
 
   const page = await loginAs(adminUser)
-  await page.goto('/yonetici/personel')
-  await page.getByRole('button', { name: `${teacher} düzenle` }).click()
+  await page.goto(editUrl)
   const panel = page.getByRole('dialog', { name: 'Öğretmeni düzenle' })
   await panel.getByLabel('Branş').selectOption({ label: 'Fizik' })
   await panel.getByRole('button', { name: 'Kaydet' }).click()
@@ -343,8 +369,7 @@ test('IST-005, DOM-YTK-027: zümre başkanı öğretmenin branşı değişmez; h
   expect(await dutyCount(admin)).toBe(0)
 
   // Görev yokken aynı değişiklik kaydedilir.
-  await page.goto('/yonetici/personel')
-  await page.getByRole('button', { name: `${teacher} düzenle` }).click()
+  await page.goto(editUrl)
   const again = page.getByRole('dialog', { name: 'Öğretmeni düzenle' })
   await again.getByLabel('Branş').selectOption({ label: 'Fizik' })
   await again.getByRole('button', { name: 'Kaydet' }).click()

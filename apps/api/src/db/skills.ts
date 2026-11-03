@@ -6,6 +6,7 @@ import {
   eq,
   exists,
   getTableColumns,
+  gte,
   inArray,
   isNull,
   max,
@@ -1217,15 +1218,60 @@ export async function loadAssignmentsAttempts(
   return rows.map(toAttempt)
 }
 
+/** `loadLearnerAttempts` süzgecinin alt sorgusu: atamanın yakın tarihli denemesi. */
+const recentAttempts = alias(taskAttempts, 'recent_attempts')
+
 /**
  * Kursiyerin bütün atamalardaki arşivlenmemiş denemeleri (beceri ilerleme panosu, DOM-BEC-035):
  * deneme okuması kayıt sahipliğine bakar, sınıf değiştiren öğrencinin eski denemeleri de gelir.
+ *
+ * `activeSince` verilirse yalnız tamamlanma anı bu andan önce olamayacak denemesi bulunan
+ * atamaların denemeleri gelir; böyle atamanın bütün denemeleri gelir, böylece sayılan deneme
+ * (ilk ya da en iyi) süzgeçsiz okumayla aynıdır (CEFR önerisi, `services/cefr-evidence.ts`).
+ * Deneme teslim anında, teslim edilmemişse süre (başlangıç + süre sınırı) ya da teslim penceresi
+ * (son teslim + geç kabul) dolunca tamamlanır (core `attemptState`); süre sınırı en çok 300 dakika
+ * olduğundan başlangıç anı süre sınırlı denemenin alt sınırıdır (çağıran payı bunu karşılar).
  */
 export async function loadLearnerAttempts(
   db: Database,
   institutionId: string,
   learnerId: string,
+  options: { activeSince?: Date } = {},
 ): Promise<StoredAttempt[]> {
+  const since = options.activeSince
+  const recent =
+    since === undefined
+      ? undefined
+      : inArray(
+          taskAttempts.assignmentId,
+          db
+            .select({ id: recentAttempts.assignmentId })
+            .from(recentAttempts)
+            .innerJoin(
+              taskAssignments,
+              and(
+                eq(taskAssignments.institutionId, recentAttempts.institutionId),
+                eq(taskAssignments.id, recentAttempts.assignmentId),
+              ),
+            )
+            .where(
+              and(
+                eq(recentAttempts.institutionId, institutionId),
+                eq(recentAttempts.learnerId, learnerId),
+                isNull(recentAttempts.archivedAt),
+                or(
+                  gte(recentAttempts.submittedAt, since),
+                  and(
+                    isNull(recentAttempts.submittedAt),
+                    or(
+                      gte(recentAttempts.startedAt, since),
+                      sql`${taskAssignments.dueAt} + make_interval(days => ${taskAssignments.lateAcceptanceDays}) >= ${since.toISOString()}::timestamptz`,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        )
   const rows = await db
     .select()
     .from(taskAttempts)
@@ -1234,6 +1280,7 @@ export async function loadLearnerAttempts(
         eq(taskAttempts.institutionId, institutionId),
         eq(taskAttempts.learnerId, learnerId),
         isNull(taskAttempts.archivedAt),
+        recent,
       ),
     )
     .orderBy(asc(taskAttempts.assignmentId), asc(taskAttempts.attemptNumber))
@@ -1800,12 +1847,18 @@ export async function loadSubmissionsAmong(
   return withVersions(db, institutionId, rows)
 }
 
-/** Kursiyerin bütün atamalardaki arşivlenmemiş teslimleri, sürümleriyle (DOM-BEC-035). */
+/**
+ * Kursiyerin bütün atamalardaki arşivlenmemiş teslimleri, sürümleriyle (DOM-BEC-035). `activeSince`
+ * verilirse yalnız bu andan sonra teslim edilmiş sürümü olan teslimler gelir, bütün sürümleriyle
+ * (CEFR önerisi, `services/cefr-evidence.ts`): eski sürümün puanı da en yeni sürümden eskidir.
+ */
 export async function loadLearnerSubmissions(
   db: Database,
   institutionId: string,
   learnerId: string,
+  options: { activeSince?: Date } = {},
 ): Promise<StoredSubmissionWork[]> {
+  const since = options.activeSince
   const rows = await db
     .select()
     .from(taskSubmissions)
@@ -1814,6 +1867,21 @@ export async function loadLearnerSubmissions(
         eq(taskSubmissions.institutionId, institutionId),
         eq(taskSubmissions.learnerId, learnerId),
         isNull(taskSubmissions.archivedAt),
+        since === undefined
+          ? undefined
+          : exists(
+              db
+                .select({ id: submissionVersions.id })
+                .from(submissionVersions)
+                .where(
+                  and(
+                    eq(submissionVersions.institutionId, taskSubmissions.institutionId),
+                    eq(submissionVersions.submissionId, taskSubmissions.id),
+                    isNull(submissionVersions.archivedAt),
+                    gte(submissionVersions.submittedAt, since),
+                  ),
+                ),
+            ),
       ),
     )
     .orderBy(asc(taskSubmissions.assignmentId))

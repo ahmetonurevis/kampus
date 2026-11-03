@@ -184,10 +184,13 @@ test.describe('DOM-FIN-052 veli: Finans, Dekontlar ve Ödeme Yap', () => {
       '1. taksit',
     )
     await expect(section.getByRole('button', { name: 'Filtreler' })).toHaveCount(0)
+    await section.getByRole('button', { name: 'Ekstreyi görüntüle' }).click()
+    const preview = page.getByRole('dialog', { name: 'Cari ekstre · Önizleme' })
+    await expect(preview.getByText('cari-ekstre-s1.pdf')).toBeVisible()
     const downloading = page.waitForEvent('download')
-    await section.getByRole('button', { name: 'Ekstreyi indir' }).click()
+    await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
     expect((await downloading).suggestedFilename()).toBe('cari-ekstre-s1.pdf')
-    await expect(page.getByText('PDF belgeniz indirildi.')).toBeVisible()
+    await page.keyboard.press('Escape')
     await expectNoHorizontalOverflow(page)
 
     await page.goto('/veli/dekontlar?cocuk=s1')

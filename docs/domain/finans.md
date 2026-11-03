@@ -160,7 +160,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Gerçek tahsilatta taksit tutarı ile ödeme tutarı her zaman eşleşmez; durum alanını elle tutmak tutarsızlık üretir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — API `POST /api/v1/payments` ayrı kayıt, kısmi ödeme ve mahsup yapar (`lib/payments.ts`, ADR 0006). Taksitin `paidAt` alanı geçiş önbelleğidir; liste durumu henüz `Kısmi` üretmez, kısmi tutar `GET /api/v1/payments` dağılımından okunur. Tahsilat kaydı aynı transaction'da `payment_received` bildirimi yazar (IST-106, `lib/finance-notifications.ts`): yalnız tahsilat kimliği, tutar, yöntem ve referans yok; alıcı kuralı `DOM-FIN-035`'teki gibidir; `Idempotency-Key` tekrarı yazmaz, işlem geri alınırsa bildirim de kalmaz, iptal bildirim üretmez. Çevrimdışı demo `payInvoice` ile tam ödeme işaretler.
+- **Kodda:** kısmen — API `POST /api/v1/payments` ayrı kayıt, kısmi ödeme ve mahsup yapar (`lib/payments.ts`, ADR 0006). Taksitin `paidAt` alanı geçiş önbelleğidir; liste durumu henüz `Kısmi` üretmez, kısmi tutar `GET /api/v1/payments` dağılımından okunur. Tahsilat kaydı aynı transaction'da `payment_received` bildirimi yazar (IST-106, `lib/finance-notifications.ts`): yalnız tahsilat kimliği, tutar, yöntem ve referans yok; alıcı kuralı `DOM-FIN-035`'teki gibidir; `Idempotency-Key` tekrarı yazmaz, işlem geri alınırsa bildirim de kalmaz, iptal bildirim üretmez. Çevrimdışı demo ayrı `lib/payments-demo.ts` `payInvoice` ile tam ödeme işaretler; API, React, `api-client` ve `react-shared` bu yola ulaşmaz (`tests/payments-demo.test.ts`, ON-037). Yol Vue silinince (OG-072) ve mobil yalnız API'ye geçince (OG-074) kalkar.
 
 ### DOM-FIN-031 · Mükerrer tahsilat engeli
 
@@ -176,7 +176,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat eğitim ücretinin bildirilmiş banka hesabına yatırılarak tahsilini ve MEBBİS'e işlenmesini ister.
 - **Kaynak:** ÖÖKY md. 55/3.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — API nakdi kurum ayarıyla denetler (`lib/payments.ts`, 422 `cash_payment_disabled`; `PATCH /api/v1/payment-settings`). Bildirilmiş hesaplar `/api/v1/bank-accounts` ile tutulur; hesap tanımlıysa nakit dışı tahsilat bir hesaba bağlanır (422 `bank_account_required`), hiç hesap tanımlanmadıysa tahsilat engellenmez. Senet (`Senet`, IST-106) banka kanalından geçmediği için hesaba bağlanmaz, referansı senet numarasıdır; burslu öğrenciden alınmaz (`scholarship_promissory_note`, DOM-FIN-025). MEBBİS işareti `POST /api/v1/payments/:paymentId/mebbis-record` ile elle tutulur; MEBBİS'e bağlantı yoktur. Çevrimdışı demo formu ayarı bilmez (`apps/web/src/views/Finance.vue`).
+- **Kodda:** kısmen — API nakdi kurum ayarıyla denetler (`lib/payments.ts`, 422 `cash_payment_disabled`; `PATCH /api/v1/payment-settings`). Bildirilmiş hesaplar `/api/v1/bank-accounts` ile tutulur; hesap tanımlıysa nakit dışı tahsilat bir hesaba bağlanır (422 `bank_account_required`), hiç hesap tanımlanmadıysa tahsilat engellenmez. Senet (`Senet`, IST-106) banka kanalından geçmediği için hesaba bağlanmaz, referansı senet numarasıdır; burslu öğrenciden alınmaz (`scholarship_promissory_note`, DOM-FIN-025). Senet alındığı anda tahsilat sayılır ve taksiti kapatır (kullanıcı kararı, 2026-11-03); senedin vadesi ve karşılıksız çıkması ayrıca izlenmez. MEBBİS işareti `POST /api/v1/payments/:paymentId/mebbis-record` ile elle tutulur; MEBBİS'e bağlantı yoktur. Çevrimdışı demo formu ayarı bilmez (`apps/web/src/views/Finance.vue`).
 
 ### DOM-FIN-033 · Tahsilat silinmez, ters kayıtla düzeltilir
 
@@ -254,7 +254,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Veliye verilen belge ile sistemdeki borç ayrışmamalıdır.
 - **Kaynak:** İşletme kuralı; ÖÖKY md. 53/1.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `packages/school-core/src/lib/document-data.ts` sözleşme ve plan belgesini aynı kayıttan üretir; sürüm yok. Taahhütname taahhüt cümlesi ve imza taşır (`templates/payment-plan.ts`); burslu öğrenciye sunulmaz (`hasScholarshipContract`, DOM-FIN-025), öğrenci rolüne açık değildir. Kısmi ödeme tutarı şablona `collectedCents` ile verilir; web bağlantısı #19'da beklemektedir.
+- **Kodda:** kısmen — `packages/school-core/src/lib/document-data.ts` sözleşme ve plan belgesini aynı kayıttan üretir; sürüm yok. Taahhütname taahhüt cümlesi ve imza taşır (`templates/payment-plan.ts`); burslu öğrenciye sunulmaz (`hasScholarshipContract`, DOM-FIN-025), öğrenci rolüne açık değildir. Tahsil edilen ve kalan tutar bakiye ucundan gelir, kısmi ödeme sayılır (`collectedCents`).
 
 ### DOM-FIN-052 · Finans yetki ve kapsamı
 
@@ -286,7 +286,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Veliye verilen ekstre taksit ve tahsilat kayıtlarıyla kuruşu kuruşuna tutmalıdır (IST-107).
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var (core ve API) — `lib/finance-statement.ts`, `GET /api/v1/finance/students/:studentId/statement`. Veli `/veli/finans` ve öğrenci `/ogrenci/odemelerim` ekranında hareketler ve PDF, kurum görevlisinde taksit panelinde PDF (`StudentStatementSection.tsx`, `templates/finance-statement.ts`). PDF önizlemesi #20'de beklemektedir, belge doğrudan iner.
+- **Kodda:** var (core ve API) — `lib/finance-statement.ts`, `GET /api/v1/finance/students/:studentId/statement`. Veli `/veli/finans` ve öğrenci `/ogrenci/odemelerim` ekranında hareketler ve PDF, kurum görevlisinde taksit panelinde PDF (`StudentStatementSection.tsx`, `templates/finance-statement.ts`). PDF önizlemede açılır; indirme ve yazdırma aynı PDF'yi kullanır (`PdfButton` `student-statement`).
 
 ## Mevcut kodla farklar
 

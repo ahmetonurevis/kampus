@@ -114,7 +114,14 @@ const attemptShape = {
   answers: answersSchema,
   result: resultSchema
     .nullable()
-    .describe('Süren denemede ve kursiyer görünümünde tamamlanmadan `null`'),
+    .describe(
+      'Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010)',
+    ),
+  contentRemoved: z
+    .boolean()
+    .describe(
+      'Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri ya da okuma parçası) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)',
+    ),
   rowVersion: z
     .number()
     .int()

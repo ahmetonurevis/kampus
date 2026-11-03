@@ -1,9 +1,10 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import type { LearnerTaskProgress } from '@kampus/react-shared/use-learner-task-progress.ts'
-import type {
-  TaskAssignmentLearner,
-  TaskAssignmentLearnerDetail,
+import {
+  TASK_CONTENT_UNAVAILABLE_MESSAGE,
+  type TaskAssignmentLearner,
+  type TaskAssignmentLearnerDetail,
 } from '@kampus/react-shared/use-task-assignments.ts'
 import type { TaskAttempt } from '@kampus/react-shared/use-task-attempts.ts'
 import type { TaskSubmission } from '@kampus/react-shared/use-task-submissions.ts'
@@ -11,6 +12,7 @@ import {
   acceptedText,
   answeredCount,
   attemptClock,
+  attemptContentNote,
   attemptStatusBadge,
   autoProgress,
   blockedByMessage,
@@ -30,6 +32,7 @@ import {
   splitGapStem,
   studentTaskRow,
   LAPSED_REASON,
+  TASK_CONTENT_REMOVED_MESSAGE,
   summaryProgress,
   writingProgress,
   type AttemptQuestion,
@@ -84,6 +87,7 @@ const attempt = (overrides: Partial<TaskAttempt> = {}): TaskAttempt => ({
   counted: true,
   answers: {},
   result: { earned: 3, possible: 4, percent: 75, items: null, subskills: null, answerKey: null },
+  contentRemoved: false,
   rowVersion: 3,
   ...overrides,
 })
@@ -819,5 +823,22 @@ describe('personel deneme görünümü (OG-983; DOM-BEC-042, DOM-BEC-045)', () =
     assert.equal(formatPoints(2), '2')
     assert.equal(formatPoints(1.5), '1,5')
     assert.equal(formatPoints(0.333), '0,33')
+  })
+
+  test('DOM-KYN-051, OG-997: kaldırılmış içerikte sonuç notu "Bu içerik kaldırıldı."; başka kapanışta genel not; açıkken not yok', () => {
+    assert.equal(
+      attemptContentNote({ contentRemoved: true, contentUnavailable: 'unavailable' }),
+      TASK_CONTENT_REMOVED_MESSAGE,
+    )
+    assert.equal(TASK_CONTENT_REMOVED_MESSAGE, 'Bu içerik kaldırıldı.')
+    assert.equal(
+      attemptContentNote({ contentRemoved: false, contentUnavailable: 'unavailable' }),
+      TASK_CONTENT_UNAVAILABLE_MESSAGE,
+    )
+    assert.equal(
+      attemptContentNote({ contentRemoved: false, contentUnavailable: 'license_expired' }),
+      TASK_CONTENT_UNAVAILABLE_MESSAGE,
+    )
+    assert.equal(attemptContentNote({ contentRemoved: false, contentUnavailable: null }), null)
   })
 })

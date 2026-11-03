@@ -741,3 +741,19 @@ export function attemptStatusBadge(
     return { label: 'Süre dolunca teslim', tone: 'gray' }
   return { label: 'Teslim edildi', tone: 'purple' }
 }
+
+/** Görevin içeriği kaldırıldı (DOM-KYN-051): geçmiş görevlerde bu not görünür. */
+export const TASK_CONTENT_REMOVED_MESSAGE = 'Bu içerik kaldırıldı.'
+
+/**
+ * Deneme sonucunda soru listesinin yerine çizilen not (DOM-KYN-025, 051): içerik kaldırıldıysa
+ * "Bu içerik kaldırıldı", başka nedenle kapalıysa (telif askısı, lisans, kitap sahibi) genel not;
+ * açıksa `null`. Kaldırmada anahtar silindiği için puan hesaplanamıyorsa (`result: null`) not tek
+ * başına görünür; kayıt ve deneme bilgisi kalır.
+ */
+export function attemptContentNote(
+  attempt: Pick<TaskAttemptDetail, 'contentRemoved' | 'contentUnavailable'>,
+): string | null {
+  if (attempt.contentRemoved) return TASK_CONTENT_REMOVED_MESSAGE
+  return attempt.contentUnavailable ? TASK_CONTENT_UNAVAILABLE_MESSAGE : null
+}

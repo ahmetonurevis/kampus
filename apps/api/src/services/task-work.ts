@@ -12,6 +12,7 @@ import {
   scoringItemsFor,
   type QuestionVersionRef,
 } from '@kampus/school-core/skills/assignment.ts'
+import { learnerTiming } from '@kampus/school-core/skills/extra-time.ts'
 import type { AttemptTiming, ScoringItem } from '@kampus/school-core/skills/scoring.ts'
 
 import type { Database } from '../db/client.ts'
@@ -136,17 +137,16 @@ export function ownLearner(viewer: Viewer): string {
 }
 
 /**
- * Denemenin süre bağlamı (DOM-BEC-043): süre atamada sabitlenmiştir (içeriğin süresi atamada
- * çözülür). Bireysel ek süre için tablo yok; `TODO(F4b3-ek-sure)` ile 0 dakikadır.
+ * Kursiyerin deneme süre bağlamı (DOM-BEC-043): süre atamada sabitlenmiştir (içeriğin süresi atamada
+ * çözülür); bireysel ek süre kursiyerin `task_extra_times` geçmişidir (`assignment.extraTimes`).
+ * Her denemenin ek süresi bu geçmişten hesaplanır (core `learnerTiming`, `attemptExtraMinutes`):
+ * süren deneme yeni ek süreyle uzar, biten deneme yeniden açılmaz.
  */
-// TODO(F4b3-ek-sure): Ek süre (`extraTimeSchema`, gerekçesi kayıt geçmişinde) tablosu ve öğretmen
-// ucu gelince kursiyerin ek süresi buradan okunur.
-export function timingOf(assignment: StoredAssignment): AttemptTiming {
-  return {
-    timeLimitMinutes: assignment.timeLimitMinutes,
-    extraMinutes: 0,
-    deadline: assignment.deadline,
-  }
+export function timingOf(assignment: StoredAssignment, learnerId: string): AttemptTiming {
+  return learnerTiming(
+    assignment,
+    assignment.extraTimes.filter((extra) => extra.learnerId === learnerId),
+  )
 }
 
 /** Puanlama maddeleri ve kursiyerin gördüğü soru sürümleri. */

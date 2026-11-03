@@ -69,6 +69,7 @@ const attempt = (overrides: Partial<TaskAttempt> = {}): TaskAttempt => ({
   startedAt: '2026-10-14T09:00:00.000Z',
   endsAt: null,
   remainingMs: null,
+  extraMinutes: 0,
   completedAt: '2026-10-14T09:10:00.000Z',
   autoSubmitted: false,
   late: false,

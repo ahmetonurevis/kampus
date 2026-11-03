@@ -231,6 +231,8 @@ export const UNIQUE_CONSTRAINTS = {
     'attempt_in_progress',
     'Süren bir denemeniz var; ona devam edin.',
   ),
+  // Bireysel ek süre kaydı (OG-248): aynı sıraya eşzamanlı yazma depoda 409 `version_conflict`.
+  task_extra_times_pkey: RETRY,
   attempt_media_plays_pkey: RETRY,
   attempt_media_plays_attempt_file_number_key: RETRY,
   attempt_item_checks_pkey: RETRY,

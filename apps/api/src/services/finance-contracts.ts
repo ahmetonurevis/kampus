@@ -1,0 +1,235 @@
+import {
+  amendContract,
+  amendContractSchema,
+  approveContract,
+  cancelContractAmendment,
+  setContractSignatory,
+} from '@kampus/school-core/lib/contract-approval.ts'
+import { requireAuthorized, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
+import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
+
+import type { CollectionName } from '../db/collections.ts'
+import { findFeeTariff } from '../db/fee-tariffs.ts'
+import { allocatedByInvoice } from '../db/payments.ts'
+import { findRecord } from '../db/records.ts'
+import { loadStudentGuardians } from '../db/student-guardians.ts'
+import { NotFoundError } from '../errors.ts'
+import type { ServiceContext } from '../plugins/authenticate.ts'
+import { commandBody } from './command-result.ts'
+import { environment, type CommandOptions } from './commands.ts'
+import {
+  runCommand,
+  type CommandResponse,
+  type LoadScope,
+  type OperationRun,
+} from './operation-runner.ts'
+
+/**
+ * Sözleşme onayı ve ek protokol servisi (IST-092; docs/domain/finans.md DOM-FIN-010, -012, -051).
+ * Kural core `lib/contract-approval.ts`'tedir. Sözleşme ve öğrencinin taksitleri tek işlemde,
+ * kurum kilidi altında yazılır; imza yetkilisi, ödeyici adı ve gerekçe loglanmaz, denetime yalnız
+ * alan adları düşer.
+ */
+
+const COLLECTION: CollectionName = 'contracts'
+type ContractAction = Extract<WriteAction, `contract.${string}`>
+
+/**
+ * Sözleşmenin öğrencisi: yükleme yalnız o öğrencinin sözleşme ve taksitleriyle sınırlanır. Öğrenci
+ * kimliği sözleşmede değişmediği için kurum kilidinden önce okunabilir. Yok ya da başka kurum 404.
+ */
+async function studentOfContract(ctx: ServiceContext, contractId: string): Promise<string> {
+  const record = await findRecord(ctx.db, ctx.institutionId, COLLECTION, contractId)
+  const studentId = record?.data.studentId
+  if (typeof studentId !== 'string') throw new NotFoundError()
+  return studentId
+}
+
+const ofStudent = (studentId: string): LoadScope => ({
+  match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
+})
+
+/** Yüklenen koleksiyonlardan sözleşme ve taksitleri öğrenciye daraltır (`contract.sign` taksit okumaz). */
+function loadScopeFor(action: ContractAction, studentId: string) {
+  const scope = ofStudent(studentId)
+  return action === 'contract.sign' ? { contracts: scope } : { contracts: scope, invoices: scope }
+}
+
+interface ContractCommand {
+  action: ContractAction
+  /** Denetim kaydının eylemi; verilmezse `action`. */
+  auditAction?: string
+  contractId: string
+  studentId: string
+  statusCode: number
+  options: CommandOptions
+  /** Kurum kilidi altında okunan girdilerle işlemi kurar. */
+  prepare: (
+    tx: Parameters<typeof environment>[0],
+    actor: Awaited<ReturnType<typeof environment>>['actor'],
+    institutionType: Awaited<ReturnType<typeof environment>>['institutionType'],
+  ) => Promise<OperationRun<{ id: string }>>
+}
+
+function execute(ctx: ServiceContext, command: ContractCommand): Promise<CommandResponse> {
+  const spec = OPERATION_COMMANDS[command.action]
+  const { contractId, options } = command
+  return runCommand(
+    ctx,
+    {
+      action: command.auditAction ?? command.action,
+      collections: spec.collections,
+      loadScope: loadScopeFor(command.action, command.studentId),
+      ...(options.expectedVersion === null
+        ? {}
+        : {
+            expectedVersions: [
+              { collection: COLLECTION, id: contractId, version: options.expectedVersion },
+            ],
+          }),
+      entity: (result: { id: string }) => ({ type: COLLECTION, id: result.id }),
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        return { scalars, run: await command.prepare(tx, actor, institutionType) }
+      },
+    },
+    (outcome) =>
+      commandBody(
+        { collection: COLLECTION, id: outcome.result.id },
+        outcome.changes,
+        command.statusCode,
+      ),
+    options.idempotency,
+  )
+}
+
+/** İmza yetkilisini (kurucu ya da temsilci) işler; onaya kadar düzeltilebilir. 200. */
+export async function setContractSignatoryCommand(
+  ctx: ServiceContext,
+  contractId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  const studentId = await studentOfContract(ctx, contractId)
+  return execute(ctx, {
+    action: 'contract.sign',
+    contractId,
+    studentId,
+    statusCode: 200,
+    options,
+    prepare:
+      async (_tx, actor, institutionType) =>
+      (state, { now }) => {
+        requireAuthorized(actor, 'contract.sign', {}, state, { now, institutionType })
+        return setContractSignatory(state, contractId, input, { userId: ctx.actor.userId, now })
+      },
+  })
+}
+
+/**
+ * Ödeyici onayını zamanıyla saklar, planı kopyalar; ek protokolde yeni plan taksitlere burada geçer
+ * (DOM-FIN-010, -051). 200.
+ */
+export async function approveContractCommand(
+  ctx: ServiceContext,
+  contractId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  const studentId = await studentOfContract(ctx, contractId)
+  return execute(ctx, {
+    action: 'contract.approve',
+    contractId,
+    studentId,
+    statusCode: 200,
+    options,
+    prepare: async (tx, actor, institutionType) => {
+      const [guardians, allocated] = await Promise.all([
+        loadStudentGuardians(tx, ctx.institutionId, studentId),
+        allocatedByInvoice(tx, ctx.institutionId, studentId),
+      ])
+      return (state, { now, makeId }) => {
+        requireAuthorized(actor, 'contract.approve', { studentId }, state, {
+          now,
+          institutionType,
+        })
+        return approveContract(state, contractId, input, {
+          role: ctx.actor.role,
+          userId: ctx.actor.userId,
+          membershipId: ctx.actor.membershipId,
+          guardians,
+          allocated,
+          now,
+          makeId,
+        })
+      }
+    },
+  })
+}
+
+/**
+ * Ek protokolü taslak olarak açar; önceki sürüm ve taksitler onaya kadar değişmez (DOM-FIN-010).
+ * Yanıtın konusu yeni sürümdür. 201.
+ */
+export async function amendContractCommand(
+  ctx: ServiceContext,
+  contractId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  const { discounts } = amendContractSchema.parse(input)
+  const source = await findRecord(ctx.db, ctx.institutionId, COLLECTION, contractId)
+  const studentId = source?.data.studentId
+  if (typeof studentId !== 'string') throw new NotFoundError()
+  const tariffId = source?.data.tariffId
+  return execute(ctx, {
+    action: 'contract.amend',
+    contractId,
+    studentId,
+    statusCode: 201,
+    options,
+    prepare: async (tx, actor, institutionType) => {
+      const [tariff, allocated] = await Promise.all([
+        discounts !== undefined && typeof tariffId === 'string'
+          ? findFeeTariff(tx, ctx.institutionId, tariffId)
+          : null,
+        allocatedByInvoice(tx, ctx.institutionId, studentId),
+      ])
+      return (state, { now, makeId }) => {
+        requireAuthorized(actor, 'contract.amend', {}, state, { now, institutionType })
+        return amendContract(state, contractId, input, {
+          tariff,
+          canApproveCapException: ctx.actor.role === 'yonetici',
+          allocated,
+          userId: ctx.actor.userId,
+          now,
+          makeId,
+        })
+      }
+    },
+  })
+}
+
+/** Onaylanmamış ek protokolü gerekçeyle kapatır. 200. */
+export async function cancelContractAmendmentCommand(
+  ctx: ServiceContext,
+  contractId: string,
+  input: unknown,
+  options: CommandOptions,
+): Promise<CommandResponse> {
+  const studentId = await studentOfContract(ctx, contractId)
+  return execute(ctx, {
+    action: 'contract.amend',
+    auditAction: 'contract.amendmentCancel',
+    contractId,
+    studentId,
+    statusCode: 200,
+    options,
+    prepare:
+      async (_tx, actor, institutionType) =>
+      (state, { now }) => {
+        requireAuthorized(actor, 'contract.amend', {}, state, { now, institutionType })
+        return cancelContractAmendment(state, contractId, input, { userId: ctx.actor.userId, now })
+      },
+  })
+}

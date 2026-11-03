@@ -33,6 +33,7 @@ import {
   studentStatement,
   type StudentStatement,
 } from '@kampus/school-core/lib/finance-statement.ts'
+import { financeStudentIds } from '@kampus/school-core/lib/scope.ts'
 
 import {
   allocatedForInvoices,
@@ -163,7 +164,8 @@ const balanceInvoice = z.object({
 
 /**
  * Öğrencinin bakiyesi (`GET /finance/students/:id/balance`). Kapsam core'dan gelir: yönetici ve ön
- * büro kurumun öğrencisini, veli velayetli ve kısıtsız bağlı çocuğunu, öğrenci kendisini okur
+ * büro kurumun öğrencisini, veli velayetli ve kısıtsız bağlı çocuğunu ve velayeti olmasa da
+ * ödeyicisi olduğu öğrenciyi (`financeStudentIds`; K-04, DOM-ILT-074), öğrenci kendisini okur
  * (DOM-FIN-052, DOM-ILT-070). Kapsam dışı, olmayan ya da başka kurumun öğrencisi aynı 404'tür.
  */
 export async function studentBalanceFor(
@@ -172,7 +174,7 @@ export async function studentBalanceFor(
 ): Promise<StudentBalance> {
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, 'invoices')
-  if (!scope.studentIds.has(studentId)) throw new NotFoundError()
+  if (!financeStudentIds(scope).has(studentId)) throw new NotFoundError()
   const rows = await loadRecords(ctx.db, ctx.institutionId, ['invoices'], {
     match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
   })
@@ -203,7 +205,7 @@ export async function studentStatementFor(
 ): Promise<StudentStatement> {
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, 'invoices')
-  if (!scope.studentIds.has(studentId)) throw new NotFoundError()
+  if (!financeStudentIds(scope).has(studentId)) throw new NotFoundError()
   const rows = await loadRecords(ctx.db, ctx.institutionId, ['invoices'], {
     match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
   })

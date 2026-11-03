@@ -1,5 +1,14 @@
-// Eğitim sözleşmesi ve Ek 1 ödeme planı.
-import { money } from '@kampus/school-core/lib/format.ts'
+// Eğitim sözleşmesi ve Ek 1 ödeme planı; imza yetkilisi, ödeyici onayı ve ek protokol sürümüyle
+// (IST-092; DOM-FIN-010, DOM-FIN-051).
+import {
+  CONTRACT_APPROVAL_METHOD_LABELS,
+  CONTRACT_STATUS_LABELS,
+  contractPlanLines,
+  contractStatus,
+  SIGNATORY_ROLE_LABELS,
+  type ContractPlanLine,
+} from '@kampus/school-core/lib/contract-status.ts'
+import { money, timeLabel } from '@kampus/school-core/lib/format.ts'
 import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
 import {
   FEE_DISCOUNT_KIND_LABELS,
@@ -14,16 +23,64 @@ const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...FEE_DISCOUNT_KIND
 const extraLabel = (kind: string) => LABELS[kind] ?? kind
 const discountLabel = (kind: string) => DISCOUNT_LABELS[kind] ?? kind
 
+type ContractData = DocumentDataMap['contract']
+type Contract = NonNullable<ContractData['contract']>
+
+/**
+ * Ek 1 satırları: onaylı sürümde onay anının kopyası, ek protokol taslağında önerilen plan
+ * (DOM-FIN-051); onaysız sözleşmede güncel taksitler. Kopyadaki taksit güncel planda yoksa (ek
+ * protokol ya da ayrılış) durum sütunu bunu söyler; tutar onaylanan tutardır.
+ */
+function planRows(contract: Contract, data: ContractData): (readonly string[])[] {
+  const lines = contractPlanLines(contract)
+  if (lines === null)
+    return data.invoices.map((item) => [
+      `${String(item.installment)}. taksit`,
+      date(item.dueDate),
+      money(item.amount),
+      item.status,
+    ])
+  const live = new Map<string, string>(data.invoices.map((item) => [item.id, item.status]))
+  const status = (line: ContractPlanLine) =>
+    line.invoiceId === null ? 'Öneri' : (live.get(line.invoiceId) ?? 'Güncel planda yok')
+  return lines.map((line) => [
+    line.feeKind && line.feeKind !== 'tuition'
+      ? extraLabel(line.feeKind)
+      : `${String(line.installment)}. taksit`,
+    date(line.dueDate),
+    money(line.amount),
+    status(line),
+  ])
+}
+
+/** Sözleşmenin tarafı: veli ya da 18 yaş ve üstü kursiyer (DOM-KAY-012). */
+function payerLabel(contract: Contract, data: ContractData): string {
+  if (contract.payer === 'student') return `Kursiyer · ${data.student.name}`
+  return `Veli · ${contract.approval?.payerName || data.parent?.name || 'Ad soyad'}`
+}
+
+/** İmza yetkilisi: kurucu ya da kurucu temsilcisi (ÖÖKY m.31/4); işlenmediyse boş imza yeri. */
+function signatoryLabel(contract: Contract): string {
+  const signatory = contract.signatory
+  return signatory
+    ? `${SIGNATORY_ROLE_LABELS[signatory.role]} · ${signatory.name}`
+    : 'Kurum yetkilisi · Ad soyad / İmza'
+}
+
 /** Eğitim sözleşmesi: sözleşme metni ve Ek 1 ödeme planı (taksit tablosu sayfalara bölünür). */
 export function contractDocument(
   measurer: TextMeasurer,
-  data: DocumentDataMap['contract'],
+  data: ContractData,
   options: TemplateOptions,
 ): PdfDocument {
   const { contract } = data
   if (!contract) throw new Error('Sözleşme kaydı bulunamadı.')
+  // Belge yalnız kendi sürümünü bilir; yerini ek protokole bıraktığını sürüm listesi gösterir.
+  const status = contractStatus(contract, [contract])
+  const revision = contract.revision ?? 1
+  const approval = contract.approval
   const doc = new DocumentLayout(measurer, {
-    label: 'EĞİTİM SÖZLEŞMESİ',
+    label: contract.amendsContractId ? 'EK PROTOKOL' : 'EĞİTİM SÖZLEŞMESİ',
     badge: 'SÖZLEŞME',
     institution: options.institution,
     generatedAt: options.generatedAt ?? new Date(),
@@ -31,7 +88,10 @@ export function contractDocument(
     footerNote:
       'Örnek sözleşme metnidir; kurumun imzalı sözleşmesi veya hukuki belge yerine geçmez.',
   })
-  doc.heading(contract.title, `Sözleşme tarihi: ${date(contract.date)}`)
+  doc.heading(
+    contract.title,
+    `Sözleşme tarihi: ${date(contract.date)} · Sürüm ${String(revision)} · ${CONTRACT_STATUS_LABELS[status]}`,
+  )
   doc.section('01 / Taraflar ve öğrenci bilgileri')
   doc.fields(studentFields(data))
   doc.paragraph(
@@ -39,6 +99,19 @@ export function contractDocument(
     9,
     COLORS.muted,
   )
+  if (contract.amendsContractId) {
+    // Ek protokol önceki sürümü değiştirmez; önceki sürümün belgesi ayrıca erişilebilir kalır.
+    doc.section('Ek protokol')
+    doc.fields([
+      ['Değiştirdiği sürüm', String(revision - 1)],
+      ['Gerekçe', contract.amendmentReason || '—'],
+    ])
+    doc.paragraph(
+      'Bu ek protokol önceki sürümün ödeme planını onaylandığı andan itibaren değiştirir. Önceki sürüm ve onayı değişmeden saklanır.',
+      9,
+      COLORS.muted,
+    )
+  }
   doc.section('02 / Eğitim hizmetinin kapsamı')
   doc.paragraph(
     'Bu örnek sözleşme; öğrencinin kayıtlı olduğu sınıftaki eğitim programını, ders materyallerini, ölçme ve değerlendirme çalışmalarını ve öğrenci / veli portalı erişimini kapsar.',
@@ -55,6 +128,10 @@ export function contractDocument(
         `${discountLabel(line.kind)} indirimi`,
         `-${money(line.amountCents)}`,
       ]),
+      // Burs indirim değildir, ayrı kalemdir (DOM-FIN-025); net bursla düşülmüş tutardır.
+      ...(contract.scholarship
+        ? [['Burs', `-${money(contract.scholarship.amountCents)}`] as [string, string]]
+        : []),
       ['Net öğrenim ücreti', money(contract.netCents ?? contract.amount)],
       ...(contract.extras ?? []).map((line): [string, string] => [
         extraLabel(line.kind),
@@ -63,39 +140,61 @@ export function contractDocument(
       ['Tarife sürümü', String(contract.tariffVersion ?? '—')],
       ['Ödeyici', contract.payer === 'student' ? 'Öğrenci' : 'Veli'],
     ])
+  const rows = planRows(contract, data)
   doc.paragraph(
-    `Toplam eğitim bedeli ${money(contract.amount)} olarak kaydedilmiştir. ${data.invoices.length} taksitlik güncel ödeme takvimi bu belgenin Ek 1 bölümünde yer alır.`,
+    rows.length === 0
+      ? `Toplam eğitim bedeli ${money(contract.amount)} olarak kaydedilmiştir; tam bursta öğrenim taksiti açılmaz.`
+      : `Toplam eğitim bedeli ${money(contract.amount)}; ${String(rows.length)} satırlık ödeme planı Ek 1'dedir.`,
+  )
+  // Bursluya burs belgeleri dışında maddi yükümlülük doğuran belge düzenlenmez (DOM-FIN-025).
+  if (contract.scholarship)
+    doc.paragraph(
+      'Burslu öğrenci için bu sözleşmeye bağlı senet veya taahhüt düzenlenmez.',
+      9,
+      COLORS.muted,
+    )
+  // Metin sayfası tek sayfada kalır: imza ve onay bilgisi kısa satırdır, ayrı bölüm açılmaz.
+  doc.paragraph(
+    `İmza yetkilisi: ${contract.signatory ? signatoryLabel(contract) : 'Bekleniyor'} · Ödeyici onayı: ${
+      approval
+        ? `${CONTRACT_APPROVAL_METHOD_LABELS[approval.method]} · ${date(approval.approvedAt)} ${timeLabel(approval.approvedAt)}`
+        : 'Bekleniyor'
+    }`,
+    9,
   )
   doc.paragraph(
-    'Bu metin kayıt sürecini tanıtan bir örnektir; imza veya ödeme yükümlülüğü oluşturmaz. Gerçek kayıt koşulları kurumun yürürlükteki sözleşmesiyle belirlenir.',
+    approval
+      ? 'Bu sürümün tutarı ve ödeme planı onaylanmıştır; değişiklik yalnız ek protokolle yapılır.'
+      : 'Bu metin kayıt sürecini tanıtan bir örnektir; onaylanana kadar imza veya ödeme yükümlülüğü oluşturmaz. Gerçek kayıt koşulları kurumun yürürlükteki sözleşmesiyle belirlenir.',
     9,
     COLORS.muted,
   )
-  doc.signatures(`Veli · ${data.parent?.name || 'Ad soyad'}`, 'Kurum yetkilisi · Ad soyad / İmza')
+  doc.signatures(payerLabel(contract, data), signatoryLabel(contract))
   doc.newPage()
   doc.heading('Ek 1 / Ödeme planı', `${data.student.name} · ${data.classroom?.name || ''}`)
-  doc.highlight('SÖZLEŞME EĞİTİM BEDELİ', money(contract.amount), `${data.invoices.length} taksit`)
-  doc.table(
-    INSTALLMENT_COLUMNS,
-    data.invoices.map((item) => [
-      `${item.installment}. taksit`,
-      date(item.dueDate),
-      money(item.amount),
-      item.status,
-    ]),
-    true,
+  doc.highlight(
+    'SÖZLEŞME EĞİTİM BEDELİ',
+    money(contract.amount),
+    rows.length === 0 ? 'Taksit yok' : `${String(rows.length)} taksit`,
   )
-  doc.fields([
-    ['Tahsil edilen', money(data.paid)],
-    ['Kalan bakiye', money(data.total - data.paid)],
-  ])
-  if (contract.amount !== data.total)
+  if (rows.length > 0) doc.table(INSTALLMENT_COLUMNS, rows, true)
+  else doc.paragraph('Bu sözleşmede ödeme planı satırı bulunmuyor.', 9)
+  const snapshot = contractPlanLines(contract) !== null
+  // Tahsilat ve bakiye güncel taksitlerden gelir; önerilen ve iptal edilen planda anlamı yoktur.
+  if (status !== 'cancelled' && contract.proposedPlan === undefined)
+    doc.fields([
+      ['Tahsil edilen', money(data.paid)],
+      ['Kalan bakiye', money(data.total - data.paid)],
+    ])
+  if (!snapshot && contract.amount !== data.total)
     doc.paragraph(
       `Güncel taksit toplamı: ${money(data.total)}. Sözleşme bedeli ile güncel plan arasında fark bulunmaktadır; okul muhasebesiyle kontrol edilmelidir.`,
       9,
     )
   doc.paragraph(
-    'Ödeme durumu, belgenin oluşturulduğu andaki kayıtları gösterir. Tamamlanan her tahsilat için ayrı bir dekont alınabilir.',
+    snapshot
+      ? 'Plan satırları onaylanan ya da önerilen sürümün kopyasıdır; durum sütunu belgenin oluşturulduğu andaki kayıtları gösterir.'
+      : 'Ödeme durumu, belgenin oluşturulduğu andaki kayıtları gösterir. Tamamlanan her tahsilat için ayrı bir dekont alınabilir.',
     9,
     COLORS.muted,
   )

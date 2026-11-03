@@ -48,6 +48,9 @@ import { STAFF_CONSENT_INFO } from '@/components/consent/consent-model.ts'
 import { useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
+import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
+import { GuardianInvitationsSection } from './GuardianInvitationsSection.tsx'
+import { enrollmentParentId } from './enrollment-guardian-account.ts'
 import {
   ENROLLMENT_CONSENT_NOTE,
   isAdultOnForm,
@@ -84,6 +87,8 @@ type Done = {
   contractId: string | null
   studentId: string | null
   adult: boolean
+  /** Veli hesabı açılacak veli kaydı (ON-290); kursiyerin kendisi seçildiyse yok. */
+  parentId: string | null
 }
 
 /**
@@ -136,6 +141,13 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
             </p>
           )}
           <div className="flex flex-wrap gap-3">
+            {done.studentId && done.parentId ? (
+              <GuardianAccountAction
+                studentId={done.studentId}
+                studentName={done.studentName}
+                parentId={done.parentId}
+              />
+            ) : null}
             {done.contractId ? (
               <PdfButton
                 type="contract"
@@ -170,6 +182,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
           onDone={setDone}
         />
       )}
+      <GuardianInvitationsSection />
     </>
   )
 }
@@ -353,6 +366,11 @@ function EnrollmentForm({
         contractId: contract?.id ?? null,
         studentId: outcome.data.data.entity?.id ?? null,
         adult: isAdultOnForm(data.birthDate),
+        parentId: enrollmentParentId(
+          data.guardianMode,
+          data.existingParentId,
+          outcome.data.data.records,
+        ),
       })
     }
   })

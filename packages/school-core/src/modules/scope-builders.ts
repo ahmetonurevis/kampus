@@ -16,6 +16,8 @@ export type Context = {
   teacher: ScopeSource['teachers'][number] | undefined
   counselor: boolean
   studentIds: ReadonlySet<string>
+  /** Velinin ödeyicisi olduğu öğrenciler (`payer`; K-04). Yalnız finans kuralı okur. */
+  payerStudentIds: ReadonlySet<string>
   classIds: ReadonlySet<string>
   homeroomIds: ReadonlySet<string>
   branchIds: ReadonlySet<string>
@@ -132,6 +134,16 @@ export const parentMeeting = (row: object) => {
 
 /** Öğrenci kendi, veli çocuğunun kaydını okur (DOM-YTK-024, DOM-YTK-025). */
 export const PERSONAL = { ogrenci: ownStudent, veli: ownStudent } as const
+
+/**
+ * Ödeyici velinin finans okuması (K-04, DOM-ILT-074): satırın öğrencisinin ödeyicisi. Yalnız
+ * finans koleksiyonlarında kullanılır; akademik ve iletişim kurallarında `ownStudent` kalır.
+ */
+export const payerStudent: Rule = (c, r) => member(c.payerStudentIds, text(r, 'studentId'))
+/** Velayetli veli ya da ödeyici veli (finans kuralı; K-04). */
+export const ownOrPayerStudent: Rule = (c, r) => ownStudent(c, r) || payerStudent(c, r)
+/** `PERSONAL`'ın finans karşılığı: öğrenci kendi, veli çocuğunun ya da ödediği öğrencinin kaydı. */
+export const FINANCE_PERSONAL = { ogrenci: ownStudent, veli: ownOrPayerStudent } as const
 export const ADMIN = { yonetici: all } as const
 export const ADMIN_FRONT_OFFICE = { yonetici: all, onburo: all } as const
 

@@ -135,7 +135,7 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
         tags: ['finance-exports'],
         summary: 'Öğrencinin bakiyesi',
         description:
-          'Öğrencinin toplam, ödenen, açık ve gecikmiş tutarı, gecikmiş taksit sayısı ve en yakın açık taksiti (DOM-FIN-052). Kısmi ödemede yalnız kalan kısım sayılır; `/finance/totals` ile aynı kural. Veli yalnız velayetli ve kısıtsız bağlı çocuğunu, öğrenci yalnız kendisini okur; kapsam dışı, olmayan ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.',
+          'Öğrencinin toplam, ödenen, açık ve gecikmiş tutarı, gecikmiş taksit sayısı ve en yakın açık taksiti (DOM-FIN-052). Kısmi ödemede yalnız kalan kısım sayılır; `/finance/totals` ile aynı kural. Veli yalnız velayetli ve kısıtsız bağlı çocuğunu ve velayeti olmasa da ödeyicisi olduğu öğrenciyi (K-04, DOM-ILT-074), öğrenci yalnız kendisini okur; kapsam dışı, olmayan ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.',
         params: z.object({ studentId: z.string().min(1).max(200).describe('Öğrenci kimliği') }),
         response: {
           200: dataResponse(
@@ -171,7 +171,7 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
         tags: ['finance-exports'],
         summary: 'Öğrencinin cari ekstresi',
         description:
-          'Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.',
+          'Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.',
         params: z.object({ studentId: z.string().min(1).max(200).describe('Öğrenci kimliği') }),
         response: {
           200: dataResponse(

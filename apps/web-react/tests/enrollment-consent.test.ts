@@ -2,7 +2,11 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import type { ConsentPurpose } from '@kampus/school-core/lib/consent-purposes.ts'
 import {
+  ACCOUNT_LINK_NOTE,
+  accountNote,
   ENROLLMENT_CONSENT_NOTE,
+  GUARDIAN_ACCOUNT_INVITED_NOTE,
+  GUARDIAN_ACCOUNT_MISSING_NOTE,
   GUARDIAN_GUIDANCE,
   NO_NOTICE_LABEL,
   SELF_GUIDANCE,
@@ -106,4 +110,14 @@ test('DOM-KAY-003, IST-016: aday aydınlatması sürüm ve günle, kaydı yoksa 
 test('IST-017: kontrol adımı bilgisi rızanın kaydı engellemediğini söyler', () => {
   assert.match(ENROLLMENT_CONSENT_NOTE, /kaydı engellemez/)
   assert.match(ENROLLMENT_CONSENT_NOTE, /veli ya da öğrenci kendi hesabından verir/)
+})
+
+test('ON-290, DOM-YTK-071: veli hesabı yokken açılması gerektiği, davet açılınca hesabın açıldığı yazılır', () => {
+  assert.equal(accountNote({ adult: false, invited: false }), GUARDIAN_ACCOUNT_MISSING_NOTE)
+  assert.match(GUARDIAN_ACCOUNT_MISSING_NOTE, /veli rıza veremez/)
+  assert.match(GUARDIAN_ACCOUNT_MISSING_NOTE, /Veli hesabı aç/)
+  assert.equal(accountNote({ adult: false, invited: true }), GUARDIAN_ACCOUNT_INVITED_NOTE)
+  assert.match(GUARDIAN_ACCOUNT_INVITED_NOTE, /Veli hesabı açıldı/)
+  // Yetişkin kursiyer rızayı kendi hesabıyla verir; veli daveti notu gösterilmez.
+  assert.equal(accountNote({ adult: true, invited: true }), ACCOUNT_LINK_NOTE)
 })

@@ -3,6 +3,7 @@ import { after, before, describe, test } from 'node:test'
 
 import { and, eq } from 'drizzle-orm'
 
+import { defaultFinanceExportProfile } from '@kampus/school-core/lib/finance-export-profile.ts'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 
 import type { App } from '../src/app.ts'
@@ -403,6 +404,64 @@ describe('muhasebe dışa aktarımı', () => {
       (await summary(a.cookie, query)).json().data.payments.totalCents,
       after_.collectedCents,
     )
+  })
+
+  // --- Aktarım profili (ON-024) -----
+
+  const setProfile = (cookie: string | null, body: unknown, version: number) =>
+    app.inject({
+      method: 'PATCH',
+      url: '/api/v1/finance/export-profile',
+      headers: {
+        origin: TEST_ORIGIN,
+        'content-type': 'application/json',
+        'if-match': `"${String(version)}"`,
+        ...key(),
+        ...(cookie === null ? {} : { cookie }),
+      },
+      payload: JSON.stringify(body),
+    })
+
+  test('ON-024: profil yalnız biçimi değiştirir, toplam aynı kalır; standart dosyaya dönülür', async () => {
+    const a = await institution()
+    assert.equal((await pay(a.cookie, 1_000_000, 'TR-PROFIL-1')).statusCode, 201)
+    const standard = await exportCsv(a.cookie, 'payments')
+    assert.equal(standard.statusCode, 200, standard.body)
+    const empty = (await get(a.cookie, '/api/v1/finance/export-profile')).json().data
+    assert.deepEqual(empty, { profile: null, version: 1 })
+
+    const profile = defaultFinanceExportProfile()
+    profile.dateFormat = 'tr'
+    profile.decimal = '.'
+    profile.columns.payments = [
+      { source: 'amount', header: 'Borç' },
+      { source: 'fixed', header: 'Hesap Kodu', value: '120.01' },
+    ]
+    const saved = await setProfile(a.cookie, { profile }, 1)
+    assert.equal(saved.statusCode, 200, saved.body)
+    assert.equal(saved.json().data.version, 2)
+    const custom = await exportCsv(a.cookie, 'payments')
+    assert.equal(custom.statusCode, 200, custom.body)
+    assert.ok(custom.body.includes('"Hesap Kodu"'))
+    assert.ok(custom.body.includes('10000.00;"120.01"'))
+    assert.equal((await setProfile(a.cookie, { profile }, 1)).statusCode, 409)
+
+    assert.equal((await setProfile(a.cookie, { profile: null }, 2)).statusCode, 200)
+    assert.equal((await exportCsv(a.cookie, 'payments')).body, standard.body)
+  })
+
+  test('ON-024: profil oturumsuz 401; ön büro 403; geçersiz gövde 400 ve yazılmaz; modül kapalı 403', async () => {
+    const a = await institution()
+    assertError(await get(null, '/api/v1/finance/export-profile'), 401)
+    const desk = await member(a.id, 'onburo')
+    assertError(await get(desk, '/api/v1/finance/export-profile'), 403, 'forbidden')
+    assertError(await setProfile(desk, { profile: null }, 1), 403, 'forbidden')
+    const invalid = defaultFinanceExportProfile()
+    invalid.columns.payments = []
+    assert.equal((await setProfile(a.cookie, { profile: invalid }, 1)).statusCode, 400)
+    assert.equal((await get(a.cookie, '/api/v1/finance/export-profile')).json().data.version, 1)
+    const closed = await institution({ enabledModules: { finance: false } })
+    assertError(await get(closed.cookie, '/api/v1/finance/export-profile'), 403)
   })
 
   // --- Öğrenci bakiyesi (DOM-FIN-052) ----------------------------------------------------------

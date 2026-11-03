@@ -286,6 +286,17 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     body: string,
     headers: Record<string, string> = {},
   ) => call('PATCH', `/task-assignments/${assignmentId}/draft`, cookie, { body }, headers)
+  const submitDraft = (
+    assignmentId: string,
+    cookie: string,
+    draftRevision: number | null,
+    headers: Record<string, string> = key(),
+    payload: unknown = {},
+  ) =>
+    call('POST', `/task-assignments/${assignmentId}/draft/submit`, cookie, payload, {
+      ...(draftRevision === null ? {} : revision(draftRevision)),
+      ...headers,
+    })
   const readDraft = (assignmentId: string, cookie: string) =>
     call('GET', `/task-assignments/${assignmentId}/draft`, cookie)
   const list = (assignmentId: string, cookie: string, extra = '') =>
@@ -1281,5 +1292,213 @@ describe('yazma görevi taslak ve teslim uçları', () => {
         changes: { fields: ['body', 'versionNumber', 'submittedAt'] },
       },
     ])
+  })
+
+  test('IST-047, DOM-BEC-040: taslaktan teslim: 401; öğrenci dışı 403; hedeflenmeyen öğrenci ve başka kurum 404; taslak yoksa 404; If-Match ya da anahtar yoksa ve gövde doluysa 400; eski revizyon 409, boş taslak 422; kayıt değişmez', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    fails(await submitDraft(assignmentId, '', 1), 401, 'unauthenticated')
+    for (const cookie of [
+      t.cookies.parent,
+      t.cookies.teacher,
+      t.cookies.admin,
+      t.cookies.frontDesk,
+    ])
+      fails(await submitDraft(assignmentId, cookie, 1), 403, 'forbidden')
+    fails(await submitDraft(assignmentId, t.cookies.otherStudent, 1), 404, 'not_found')
+    fails(await submitDraft(assignmentId, t.cookies.student, 1), 404, 'not_found')
+
+    await ok(await saveDraft(assignmentId, t.cookies.student, '   '))
+    fails(await submitDraft(assignmentId, t.cookies.student, 1), 422, 'draft_empty')
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT, revision(1)))
+    const before = await snapshot(t.institution.id)
+    fails(await submitDraft(assignmentId, t.cookies.student, null), 400, 'if_match_required')
+    fails(
+      await submitDraft(assignmentId, t.cookies.student, 2, {}),
+      400,
+      'idempotency_key_required',
+    )
+    fails(
+      await submitDraft(assignmentId, t.cookies.student, 2, key(), { body: 'başka metin' }),
+      400,
+      'validation_failed',
+    )
+    fails(await submitDraft(assignmentId, t.cookies.student, 1), 409, 'draft_conflict')
+    fails(await submitDraft(assignmentId, await foreignStudent(), 2), 404, 'not_found')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    assert.deepEqual(await storedRows(t.institution.id), { submissions: 0, versions: 0, drafts: 1 })
+
+    const closed = await createInstitution(app, { enabledModules: { learning: false } })
+    fails(
+      await submitDraft(
+        '00000000-0000-4000-8000-000000000001',
+        await signInAs(app, closed.admin),
+        1,
+      ),
+      403,
+      'module_disabled',
+    )
+
+    // Otomatik puanlı görevde taslak tutulmaz; taslaktan teslim de yok (404).
+    fails(await submitDraft(await assignQuestion(t), t.cookies.student, 1), 404, 'not_found')
+  })
+
+  test('IST-047, DOM-BEC-040: kaydedilen taslak değişmez sürüm olur, taslak kalır; aynı anahtar tekrarı yeni sürüm açmaz; değişmemiş taslağın ikinci teslimi 409 draft_already_submitted; düzenlenen taslak yeni sürümdür; denetimde metin yok', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, {
+      submission: { submissionKind: 'text', maxVersions: 2, minWords: 10, maxWords: null },
+    })
+    const from = logs.length
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    const headers = key()
+    const response = await submitDraft(assignmentId, t.cookies.student, 1, headers)
+    const created = await ok(response, 201)
+    assert.equal(response.headers.location, `/api/v1/task-submissions/${created.id}`)
+    assert.equal(created.versionCount, 1)
+    assert.equal(created.versions[0].body, DRAFT_TEXT)
+    assert.equal(created.versions[0].resubmissionRequest, null)
+    // Sözcük sınırı dışı metin uyarıyla kabul edilir (DOM-BEC-046).
+    assert.equal(created.versions[0].wordCount.status, 'below')
+
+    const replay = await submitDraft(assignmentId, t.cookies.student, 1, headers)
+    assert.equal(replay.statusCode, 201)
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    fails(await submitDraft(assignmentId, t.cookies.student, 1), 409, 'draft_already_submitted')
+    assert.deepEqual(await storedRows(t.institution.id), { submissions: 1, versions: 1, drafts: 1 })
+    const draft = await ok(await readDraft(assignmentId, t.cookies.student))
+    assert.equal(draft.body, DRAFT_TEXT)
+
+    now = new Date(now.getTime() + MINUTE)
+    await ok(await saveDraft(assignmentId, t.cookies.student, `${DRAFT_TEXT} more`, revision(1)))
+    const second = await ok(await submitDraft(assignmentId, t.cookies.student, 2), 201)
+    assert.deepEqual(
+      second.versions.map((v: Json) => [v.number, v.body]),
+      [
+        [1, DRAFT_TEXT],
+        [2, `${DRAFT_TEXT} more`],
+      ],
+    )
+    // Sürüm sınırı metin teslimiyle aynıdır.
+    now = new Date(now.getTime() + MINUTE)
+    await ok(await saveDraft(assignmentId, t.cookies.student, 'third', revision(2)))
+    fails(await submitDraft(assignmentId, t.cookies.student, 3), 422, 'version_limit_reached')
+    assert.deepEqual(await storedRows(t.institution.id), { submissions: 1, versions: 2, drafts: 1 })
+
+    const written = logs.slice(from).join('\n')
+    assert.ok(written.includes('task_submission.submit_draft'), 'işlem logu yok')
+    for (const text of ['s-1', 'GIZLI-TASLAK'])
+      assert.ok(!written.includes(text), `${text} loglandı`)
+    const audits = await db
+      .select({ action: auditLog.action, changes: auditLog.changes })
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.institutionId, t.institution.id),
+          eq(auditLog.entityType, 'task_submission'),
+        ),
+      )
+    assert.deepEqual(
+      audits.map((row) => row.action),
+      ['task_submission.submit_draft', 'task_submission.submit_draft'],
+    )
+    assert.deepEqual(audits[0]!.changes, {
+      fields: ['body', 'versionNumber', 'submittedAt', 'draftRevision'],
+    })
+  })
+
+  test('IST-047, DOM-BEC-044: taslaktan teslim pencereye bağlıdır: geç kabulde sürüm late, geç kabul bitince 422 submission_closed; kayıt değişmez', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, { deadline: { dueAt: DUE, lateAcceptanceDays: 1 } })
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    now = new Date(new Date(DUE).getTime() + 60 * MINUTE)
+    const late = await ok(await submitDraft(assignmentId, t.cookies.student, 1), 201)
+    assert.equal(late.status, 'late')
+    assert.equal(late.versions[0].late, true)
+
+    // Geç kabul süresinde düzenlenen taslak, süre bitince teslim edilemez.
+    now = new Date(now.getTime() + MINUTE)
+    await ok(await saveDraft(assignmentId, t.cookies.student, `${DRAFT_TEXT} 2`, revision(1)))
+    now = new Date(new Date(DUE).getTime() + 3 * 24 * 60 * MINUTE)
+    const before = await snapshot(t.institution.id)
+    fails(await submitDraft(assignmentId, t.cookies.student, 2), 422, 'submission_closed')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+  })
+
+  test('IST-047, DOM-BEC-040: teslim edilmişlik revizyonla ölçülür: teslimden önce başlayıp sonra yazılan otomatik kayıt (savedAt < submittedAt) yeni revizyondur ve teslim edilir', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, {
+      submission: { submissionKind: 'text', maxVersions: 3, minWords: null, maxWords: null },
+    })
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    const started = now
+    // Teslim kurum kilidini önce alır: v1 = revizyon 1, submittedAt = T1.
+    now = new Date(started.getTime() + MINUTE)
+    await ok(await submitDraft(assignmentId, t.cookies.student, 1), 201)
+    // Otomatik kayıt istek başındaki saatle (T0 < T1) sonra yazılır; If-Match 1 tutar.
+    now = new Date(started.getTime() + MINUTE / 2)
+    const saved = await ok(
+      await saveDraft(assignmentId, t.cookies.student, `${DRAFT_TEXT} son tuşlar`, revision(1)),
+    )
+    assert.equal(saved.revision, 2)
+    assert.ok(Date.parse(saved.savedAt) < started.getTime() + MINUTE)
+    now = new Date(started.getTime() + 2 * MINUTE)
+    const second = await ok(await submitDraft(assignmentId, t.cookies.student, 2), 201)
+    assert.deepEqual(
+      second.versions.map((v: Json) => [v.number, v.body]),
+      [
+        [1, DRAFT_TEXT],
+        [2, `${DRAFT_TEXT} son tuşlar`],
+      ],
+    )
+    fails(await submitDraft(assignmentId, t.cookies.student, 2), 409, 'draft_already_submitted')
+  })
+
+  test('IST-047: taslaktan teslimde istek özeti If-Match revizyonunu da kapsar: aynı anahtarla başka revizyon 422 idempotency_key_reused, aynı revizyon tekrarı oynatılır; kayıt değişmez', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, {
+      submission: { submissionKind: 'text', maxVersions: 3, minWords: null, maxWords: null },
+    })
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    const headers = key()
+    await ok(await submitDraft(assignmentId, t.cookies.student, 1, headers), 201)
+    now = new Date(now.getTime() + MINUTE)
+    await ok(await saveDraft(assignmentId, t.cookies.student, `${DRAFT_TEXT} 2`, revision(1)))
+    const before = await snapshot(t.institution.id)
+    // Gövde ikisinde de `{}`: özet yalnız yöntem+yol+gövde olsaydı ilk 201 oynatılırdı.
+    fails(
+      await submitDraft(assignmentId, t.cookies.student, 2, headers),
+      422,
+      'idempotency_key_reused',
+    )
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    const replay = await submitDraft(assignmentId, t.cookies.student, 1, headers)
+    assert.equal(replay.statusCode, 201)
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    assert.equal((await ok(replay, 201)).versionCount, 1)
+    assert.deepEqual(await storedRows(t.institution.id), { submissions: 1, versions: 1, drafts: 1 })
+  })
+
+  test('IST-047, DOM-BEC-040: metinle teslim taslağı tüketmez: teslim edilmemiş taslak revizyonu metin sürümünden sonra da teslim edilir, teslim edilmiş revizyon metin sürümünden sonra da 409', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, {
+      submission: { submissionKind: 'text', maxVersions: 3, minWords: null, maxWords: null },
+    })
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    now = new Date(now.getTime() + MINUTE)
+    await ok(await submit(assignmentId, t.cookies.student), 201)
+    now = new Date(now.getTime() + MINUTE)
+    const fromDraft = await ok(await submitDraft(assignmentId, t.cookies.student, 1), 201)
+    assert.deepEqual(
+      fromDraft.versions.map((v: Json) => [v.number, v.body]),
+      [
+        [1, SECRET_TEXT],
+        [2, DRAFT_TEXT],
+      ],
+    )
+    now = new Date(now.getTime() + MINUTE)
+    await ok(await submit(assignmentId, t.cookies.student), 201)
+    const before = await snapshot(t.institution.id)
+    fails(await submitDraft(assignmentId, t.cookies.student, 1), 409, 'draft_already_submitted')
+    assert.deepEqual(await snapshot(t.institution.id), before)
   })
 })

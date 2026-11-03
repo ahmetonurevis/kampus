@@ -3652,6 +3652,26 @@ export interface paths {
         patch: operations["saveTaskDraft"];
         trace?: never;
     };
+    "/api/v1/task-assignments/{assignmentId}/draft/submit": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Taslağı teslim et
+         * @description Kaydedilmiş yazma taslağını yeni değişmez teslim sürümü yapar (IST-047; DOM-BEC-040, 044, 046). Teslim edilen metin `If-Match` ile verilen taslak revizyonudur; böylece kursiyerin son gördüğü metin teslim edilir. Sıra: kapsam dışı atama 404 → taslak yoksa 404 `not_found` → eski revizyon 409 `draft_conflict` → bu revizyon taslaktan zaten teslim edildiyse 409 `draft_already_submitted` (zamanla değil revizyonla ölçülür: teslimden sonra yazılan otomatik kayıt yeni revizyondur; metinle teslim taslağı tüketmez) → yazma dışı görev 422 `draft_not_supported` → boş taslak 422 `draft_empty` → içerik kuralı (metin teslimiyle aynı) → core `planSubmissionVersion`: sürüm sınırı 422 `version_limit_reached`, puanlanmış teslimde öğretmen yeniden teslim istemeden 409 `resubmission_not_requested` (geri bildirim açılmadan genel 409 `submission_locked`), teslim kapandıysa 422 `submission_closed`; yeniden teslim istendiyse pencere isteğin son tarihidir (geç kabulsüz), geç kabuldeki sürüm `late`. Taslak silinmez. Gövde boş nesnedir. `If-Match` (taslağın `revision`'ı) ve `Idempotency-Key` zorunlu; istek özeti `If-Match` revizyonunu da kapsar (aynı anahtarla başka revizyon 422 `idempotency_key_reused`). Başarı 201 ve teslim kaydının `Location`'ı. Denetime `task_submission.submit_draft` alan adlarıyla yazılır; metin loglanmaz. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["submitTaskDraft"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/task-assignments/{assignmentId}/submissions": {
         parameters: {
             query?: never;
@@ -7423,7 +7443,7 @@ export interface components {
             } | null;
             /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
             rowVersion: number | null;
-            /** @description Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez */
+            /** @description Değişmez sürümler, eskiden yeniye (DOM-BEC-040); her sürüm kendi geç bayrağı, geri bildirimi ve yeniden teslim turuyla. Taslak hiç dönmez */
             versions: {
                 /** Format: uuid */
                 id: string;
@@ -7443,6 +7463,13 @@ export interface components {
                 /** @description İtirazın son anı (core `appealDeadline`: duyurudan sonra 5 iş günü, Europe/Istanbul gün sonu); yalnız değerlendirme türünde ve sonuç duyurulduysa, kursiyer ve veliye duyurudan önce `null` */
                 appealDeadline: string | null;
                 appeal: components["schemas"]["TaskAppealInput"] | null;
+                /** @description Bu sürüm için istenen yeniden teslim turu ve kendi son tarihi (DOM-BEC-040, IST-047); bir sonraki sürüm bu tarihe (geç kabulsüz) bağlıdır. Yeniden teslim geçmişi sürüm başına okunur; istenmediyse `null` */
+                resubmissionRequest: {
+                    /** Format: date-time */
+                    dueAt: string;
+                    /** Format: date-time */
+                    requestedAt: string;
+                } | null;
             }[];
             /** @description Yeni sürüm hakkı (core `versionAllowance`) */
             allowance: {
@@ -11139,7 +11166,7 @@ export interface components {
             } | null;
             /** @description Teslim kaydının satır sürümü; puanlama ve yeniden teslim isteğinde `If-Match`. Puan ve istek sürümü artırdığı için kursiyer ve veliye `null` (DOM-BEC-045) */
             rowVersion: number | null;
-            /** @description Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez */
+            /** @description Değişmez sürümler, eskiden yeniye (DOM-BEC-040); her sürüm kendi geç bayrağı, geri bildirimi ve yeniden teslim turuyla. Taslak hiç dönmez */
             versions: {
                 /** Format: uuid */
                 id: string;
@@ -11159,6 +11186,13 @@ export interface components {
                 /** @description İtirazın son anı (core `appealDeadline`: duyurudan sonra 5 iş günü, Europe/Istanbul gün sonu); yalnız değerlendirme türünde ve sonuç duyurulduysa, kursiyer ve veliye duyurudan önce `null` */
                 appealDeadline: string | null;
                 appeal: components["schemas"]["TaskAppeal"] | null;
+                /** @description Bu sürüm için istenen yeniden teslim turu ve kendi son tarihi (DOM-BEC-040, IST-047); bir sonraki sürüm bu tarihe (geç kabulsüz) bağlıdır. Yeniden teslim geçmişi sürüm başına okunur; istenmediyse `null` */
+                resubmissionRequest: {
+                    /** Format: date-time */
+                    dueAt: string;
+                    /** Format: date-time */
+                    requestedAt: string;
+                } | null;
             }[];
             /** @description Yeni sürüm hakkı (core `versionAllowance`) */
             allowance: {
@@ -35189,6 +35223,112 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["TaskDraft"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    submitTaskDraft: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskSubmissionDetail"];
                     };
                 };
             };

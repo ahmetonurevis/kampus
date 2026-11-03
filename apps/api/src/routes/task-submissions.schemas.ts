@@ -64,6 +64,9 @@ export const taskDraftBodySchema = z.strictObject({
   body: text.describe('Taslak metni; boş olabilir'),
 })
 
+/** Taslaktan teslim gövdesi: boş ve katı; metin kaydedilmiş taslaktır (IST-047). */
+export const taskDraftSubmitBodySchema = z.strictObject({})
+
 const wordCountSchema = z
   .object({
     count: z.number().int().min(0),
@@ -266,9 +269,17 @@ const taskSubmissionDetailSchema = z
               'İtirazın son anı (core `appealDeadline`: duyurudan sonra 5 iş günü, Europe/Istanbul gün sonu); yalnız değerlendirme türünde ve sonuç duyurulduysa, kursiyer ve veliye duyurudan önce `null`',
             ),
           appeal: taskAppealSchema.nullable(),
+          resubmissionRequest: z
+            .object({ dueAt: instant, requestedAt: instant })
+            .nullable()
+            .describe(
+              'Bu sürüm için istenen yeniden teslim turu ve kendi son tarihi (DOM-BEC-040, IST-047); bir sonraki sürüm bu tarihe (geç kabulsüz) bağlıdır. Yeniden teslim geçmişi sürüm başına okunur; istenmediyse `null`',
+            ),
         }),
       )
-      .describe('Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez'),
+      .describe(
+        'Değişmez sürümler, eskiden yeniye (DOM-BEC-040); her sürüm kendi geç bayrağı, geri bildirimi ve yeniden teslim turuyla. Taslak hiç dönmez',
+      ),
     allowance: z
       .object({
         limit: z.number().int().min(1),

@@ -21,6 +21,7 @@ import {
   getTaskSubmission,
   listTaskSubmissions,
   saveTaskDraft,
+  submitTaskDraft,
   submitTaskSubmission,
 } from '../services/task-submissions.ts'
 import { idempotencyOf, ifMatchVersion } from './command-support.ts'
@@ -33,6 +34,7 @@ import {
   taskDraftBodySchema,
   taskDraftReadResponseSchema,
   taskDraftResponseSchema,
+  taskDraftSubmitBodySchema,
   taskSubmissionAssignmentParamsSchema,
   taskSubmissionBodySchema,
   taskSubmissionDetailResponseSchema,
@@ -206,6 +208,38 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         idempotencyOf(request, false),
       )
       return sendWith(reply, result, (body) => taskDraftResponseSchema.parse(body))
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-assignments/:assignmentId/draft/submit',
+    {
+      preValidation: [...write, requireIfMatch()],
+      schema: {
+        operationId: 'submitTaskDraft',
+        tags: ['task-submissions'],
+        summary: 'Taslağı teslim et',
+        description: `Kaydedilmiş yazma taslağını yeni değişmez teslim sürümü yapar (IST-047; DOM-BEC-040, 044, 046). Teslim edilen metin \`If-Match\` ile verilen taslak revizyonudur; böylece kursiyerin son gördüğü metin teslim edilir. Sıra: kapsam dışı atama 404 → taslak yoksa 404 \`not_found\` → eski revizyon 409 \`draft_conflict\` → bu revizyon taslaktan zaten teslim edildiyse 409 \`draft_already_submitted\` (zamanla değil revizyonla ölçülür: teslimden sonra yazılan otomatik kayıt yeni revizyondur; metinle teslim taslağı tüketmez) → yazma dışı görev 422 \`draft_not_supported\` → boş taslak 422 \`draft_empty\` → içerik kuralı (metin teslimiyle aynı) → core \`planSubmissionVersion\`: sürüm sınırı 422 \`version_limit_reached\`, puanlanmış teslimde öğretmen yeniden teslim istemeden 409 \`resubmission_not_requested\` (geri bildirim açılmadan genel 409 \`submission_locked\`), teslim kapandıysa 422 \`submission_closed\`; yeniden teslim istendiyse pencere isteğin son tarihidir (geç kabulsüz), geç kabuldeki sürüm \`late\`. Taslak silinmez. Gövde boş nesnedir. \`If-Match\` (taslağın \`revision\`'ı) ve \`Idempotency-Key\` zorunlu; istek özeti \`If-Match\` revizyonunu da kapsar (aynı anahtarla başka revizyon 422 \`idempotency_key_reused\`). Başarı 201 ve teslim kaydının \`Location\`'ı. Denetime \`task_submission.submit_draft\` alan adlarıyla yazılır; metin loglanmaz. ${WRITE_ACCESS}`,
+        params: taskSubmissionAssignmentParamsSchema,
+        body: taskDraftSubmitBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        response: { 201: taskSubmissionDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const expectedRevision = requiredVersion(request)
+      // Gövde boş: teslim edilen metni `If-Match` seçer; aynı anahtarla başka revizyon 422
+      // `idempotency_key_reused` alsın diye revizyon istek özetine girer.
+      const result = await submitTaskDraft(
+        contextOf(request),
+        { assignmentId: request.params.assignmentId, expectedRevision },
+        idempotencyOf(request, true, { ifMatch: expectedRevision }),
+      )
+      const body = sendWith(reply, result, (value) =>
+        taskSubmissionDetailResponseSchema.parse(value),
+      )
+      reply.header('location', `/api/v1/task-submissions/${body.data.id}`)
+      return body
     },
   )
 

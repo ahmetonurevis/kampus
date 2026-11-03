@@ -15,7 +15,11 @@ import {
 } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
-import type { AssignmentTarget, FixedAssignment } from '@kampus/school-core/skills/assignment.ts'
+import type {
+  AssignmentTarget,
+  FixedAssignment,
+  ResubmissionRound,
+} from '@kampus/school-core/skills/assignment.ts'
 import {
   DISAGREEMENT_BAND_GAP,
   GRADING_DAYS,
@@ -1467,13 +1471,18 @@ export async function submitAttempt(
 
 // --- Teslim -------------------------------------------------------------------------------
 
-/** Teslim kaydı: core `ResubmittableSubmission`; yeniden teslim alanları son istekten okunur. */
+/**
+ * Teslim kaydı: core `ResubmittableSubmission`; yeniden teslim alanları son istekten okunur.
+ * `resubmissionRounds` bütün turlardır (sürüm sırasıyla): core `deadlineForVersion` her sürümü
+ * kendi turunun son tarihiyle okur (DOM-BEC-040, IST-047).
+ */
 export type StoredSubmission = {
   id: string
   assignmentId: string
   learnerId: string
   resubmissionRequestedForVersion: number | null
   resubmissionDueAt: string | null
+  resubmissionRounds: ResubmissionRound[]
   rowVersion: number
 }
 
@@ -1516,6 +1525,8 @@ export async function insertSubmissionVersion(
   submissionId: string,
   version: VersionRow,
   now: Date,
+  /** Taslaktan teslimde teslim edilen taslak revizyonu (IST-047); diğer teslimlerde `null`. */
+  draftRevision: number | null = null,
 ): Promise<unknown> {
   return constraintAs(
     tx.insert(submissionVersions).values({
@@ -1526,6 +1537,7 @@ export async function insertSubmissionVersion(
       submittedAt: new Date(version.submittedAt),
       body: version.body,
       fileIds: [...version.fileIds],
+      draftRevision,
       createdAt: now,
       updatedAt: now,
     }),
@@ -1536,6 +1548,29 @@ export async function insertSubmissionVersion(
       ),
     },
   )
+}
+
+/**
+ * Kursiyerin taslağından teslim edilmiş en yüksek revizyon (IST-047); taslaktan hiç teslim yoksa
+ * `null`. Taslak satırı kursiyer × atama başına tektir ve revizyonu yalnız artar; bu yüzden taslağın
+ * revizyonu bundan büyük değilse o metin zaten teslim edilmiştir. Metin, dosya ve ses teslimi
+ * taslağı tüketmez.
+ */
+export async function lastSubmittedDraftRevision(
+  db: Database,
+  institutionId: string,
+  submissionId: string,
+): Promise<number | null> {
+  const [row] = await db
+    .select({ revision: max(submissionVersions.draftRevision) })
+    .from(submissionVersions)
+    .where(
+      and(
+        eq(submissionVersions.institutionId, institutionId),
+        eq(submissionVersions.submissionId, submissionId),
+      ),
+    )
+  return row?.revision ?? null
 }
 
 /** Yeniden teslim isteği (`planResubmissionRequest`); aynı sürüm için ikinci istek 409. */
@@ -1621,6 +1656,10 @@ async function withVersions(
         learnerId: row.learnerId,
         resubmissionRequestedForVersion: latest?.versionNumber ?? null,
         resubmissionDueAt: latest?.dueAt ?? null,
+        resubmissionRounds: resubmissions.map(({ versionNumber, dueAt }) => ({
+          versionNumber,
+          dueAt,
+        })),
         rowVersion: row.version,
       },
       versions: versions
@@ -1930,11 +1969,12 @@ export async function listAwaitingScore(
       : coordinated === undefined
         ? scopeFilter
         : or(scopeFilter, and(coordinated, disputed))
-  // Core `deadlineForVersion`: yeniden teslim istenen sürümden sonrakiler isteğin son tarihine bağlı.
-  const resubmissionDue = sql`(select case when rr.version_number < ${latestNumber}
-      then rr.due_at end from ${resubmissionRequests} rr
+  // Core `deadlineForVersion`: son sürüm kendisinden önceki en son isteğin son tarihine bağlıdır;
+  // son sürüm için sonradan açılan istek onun süresini değiştirmez (her tur kendi tarihiyle).
+  const resubmissionDue = sql`(select rr.due_at from ${resubmissionRequests} rr
     where rr.institution_id = ${s.institutionId} and rr.submission_id = ${s.id}
-      and rr.archived_at is null order by rr.version_number desc limit 1)`
+      and rr.archived_at is null and rr.version_number < ${latestNumber}
+    order by rr.version_number desc limit 1)`
   // Servis `gradingDeadlineOf`: örneklemli görevde (oran > 0 ve son tarih var) süre örneklem
   // anından başlar, örneklem seçilmeden süre yoktur (`null`, gecikmiş sayılmaz). `greatest` NULL'u
   // atladığı için örneklem bekleyen durum ayrıca `case` ile `null` yapılır.

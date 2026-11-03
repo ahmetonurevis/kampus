@@ -10,6 +10,23 @@ import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 export type ItemFeedback = TaskAttemptItemFeedback
 
+/** Son kontrol yanıtının geri bildirimi ve onu üreten denemenin satır sürümü. */
+export type CheckedFeedback = { rowVersion: number; feedback: readonly ItemFeedback[] | null }
+
+/**
+ * Ekranda gösterilecek geri bildirim. Kontrol yanıtı, tazelenen deneme ayrıntısı gelene kadar
+ * doğrudur; ayrıntı aynı ya da daha yeni sürümdeyse (sorgu yenilendi, başka sekme kontrol etti)
+ * sunucudaki `feedback` kazanır ve yerel durum eskimiş sayılır.
+ */
+export function shownFeedback(
+  attempt: { rowVersion: number; feedback: readonly ItemFeedback[] | null },
+  checked: CheckedFeedback | null,
+): readonly ItemFeedback[] | null {
+  return checked !== null && checked.rowVersion > attempt.rowVersion
+    ? (checked.feedback ?? attempt.feedback)
+    : attempt.feedback
+}
+
 export function feedbackFor(
   feedback: readonly ItemFeedback[] | null,
   questionVersionId: string,

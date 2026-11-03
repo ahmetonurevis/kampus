@@ -215,6 +215,16 @@ describe('alıştırma madde kontrolü komutu', () => {
       'Anında kontrol yalnız alıştırmada kullanılır.',
     )
     assert.equal(feedback('version_conflict', 409), TASK_ATTEMPT_CHANGED_MESSAGE)
+    // Eşzamanlı ikinci kontrol: teknik ayrıntı yok, 409 olduğu için deneme tazelenir.
+    const conflict = commandFeedback(
+      new ApiError({ status: 409, code: 'item_check_conflict', message: 'Sunucu mesajı.' }),
+      checkTaskAttemptItemCommand.messages,
+    )
+    assert.equal(
+      conflict.message,
+      'Bu soru başka bir sekmede kontrol edildi. Sayfa yenilendi, tekrar deneyin.',
+    )
+    assert.equal(conflict.refresh, true)
     assert.equal(
       checkTaskAttemptItemCommand.refreshOn(new ApiError({ status: 422, code: 'x', message: '' })),
       true,

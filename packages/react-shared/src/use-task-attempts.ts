@@ -66,6 +66,7 @@ export const TASK_ATTEMPT_MESSAGES = {
   not_auto_scored: 'Bu görev deneme olarak çözülmez; teslim ekranını kullanın.',
   item_check_locked: 'Bu sorunun kontrol hakkı bitti; cevap kilitlendi.',
   instant_feedback_unavailable: 'Anında kontrol yalnız alıştırmada kullanılır.',
+  item_check_conflict: 'Bu soru başka bir sekmede kontrol edildi. Sayfa yenilendi, tekrar deneyin.',
 } as const satisfies CommandMessages
 
 /**

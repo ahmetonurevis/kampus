@@ -3,6 +3,7 @@ import { describe, test } from 'node:test'
 import {
   checkView,
   feedbackFor,
+  shownFeedback,
   type ItemFeedback,
 } from '../src/pages/tasks/practice-check-model.ts'
 
@@ -21,6 +22,21 @@ const entry = (overrides: Partial<ItemFeedback> = {}): ItemFeedback => ({
 })
 
 describe('alıştırma madde kontrolü', () => {
+  test('DOM-BEC-047: yerel kontrol yanıtı yalnız ayrıntıdan yeniyse görünür; sorgu yenilenince ya da başka sekme kontrol edince sunucudaki feedback kazanır', () => {
+    const local = [entry({ used: 2, remaining: 0, locked: true })]
+    const server = [entry({ used: 1, remaining: 1 })]
+    const checked = { rowVersion: 5, feedback: local }
+    // Yanıt geldi, ayrıntı henüz eski sürümde: yerel yanıt görünür.
+    assert.equal(shownFeedback({ rowVersion: 4, feedback: server }, checked), local)
+    // Ayrıntı aynı sürüme yetişti: sunucudaki görünür.
+    assert.equal(shownFeedback({ rowVersion: 5, feedback: server }, checked), server)
+    // Başka sekme araya girdi (daha yeni sürüm): yerel durum eskimiştir.
+    assert.equal(shownFeedback({ rowVersion: 7, feedback: server }, checked), server)
+    // Yerel yanıt yoksa ayrıntı; değerlendirmede null kalır.
+    assert.equal(shownFeedback({ rowVersion: 1, feedback: server }, null), server)
+    assert.equal(shownFeedback({ rowVersion: 1, feedback: null }, null), null)
+  })
+
   test('DOM-BEC-047: değerlendirmede ve velide geri bildirim yok; madde yoksa null', () => {
     assert.equal(feedbackFor(null, 'qv-1'), null)
     assert.equal(feedbackFor([entry()], 'qv-2'), null)

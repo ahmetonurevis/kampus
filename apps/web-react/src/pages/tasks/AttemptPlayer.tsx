@@ -13,7 +13,12 @@ import { Button } from '@/components/ui/button'
 import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
 import { ListeningRecording } from './ListeningRecording.tsx'
-import { checkView, feedbackFor, type ItemFeedback } from './practice-check-model.ts'
+import {
+  checkView,
+  feedbackFor,
+  shownFeedback,
+  type CheckedFeedback,
+} from './practice-check-model.ts'
 import { QuestionInput } from './QuestionInput.tsx'
 import { ReadingPassage } from './ReadingPassage.tsx'
 import { answeredCount, attemptClock, describeKey, isAnswered } from './student-task-model.ts'
@@ -65,9 +70,9 @@ export function AttemptPlayer({
   const check = useCheckTaskAttemptItem()
   const [index, setIndex] = useState(0)
   const [confirming, setConfirming] = useState(false)
-  // Son kontrol yanıtının geri bildirimi; tazelenen ayrıntı gelene kadar ekranın doğrusudur.
-  const [checked, setChecked] = useState<readonly ItemFeedback[] | null>(null)
-  const feedback = checked ?? attempt.feedback
+  // Son kontrol yanıtı; yalnız tazelenen ayrıntı gelene kadar ekranın doğrusudur (sürüm karşılaştırılır).
+  const [checked, setChecked] = useState<CheckedFeedback | null>(null)
+  const feedback = shownFeedback(attempt, checked)
 
   const questions = attempt.questions
   const question = questions[index]
@@ -120,7 +125,10 @@ export function AttemptPlayer({
     })
     if (outcome.status === 'success') {
       answers.adoptVersion(outcome.data.data.rowVersion)
-      setChecked(outcome.data.data.feedback)
+      setChecked({
+        rowVersion: outcome.data.data.rowVersion,
+        feedback: outcome.data.data.feedback,
+      })
     } else setChecked(null)
   }
 

@@ -33,7 +33,8 @@ export function linkFor(ctx: StudentContext, data: Summary) {
 /**
  * Öğrenci ve veli Genel Bakışı (Vue `Dashboard.vue` öğrenci/veli): not ortalaması, devamsızlık,
  * ödev teslimi; yaklaşan ödevler, ders ortalamaları ve son notlar. Velide özet seçili çocuğa
- * göredir. Öğrencinin özetinde ödeme alanı yoktur; veli bakiyesi `HandoverFinanceCards.tsx`'tedir.
+ * göredir. Öğrencinin özetinde ödeme alanı yoktur; veli bakiyesi
+ * `pages/finance/FinanceDashboardCards.tsx` dosyasındadır (Onur).
  * Sayfa özet gelmeden kartları çizmez, bu yüzden `data` her zaman doludur.
  */
 function OverallAverageCard({ ctx }: { ctx: StudentContext }) {

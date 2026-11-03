@@ -12,10 +12,11 @@ import { schoolModules } from '../modules/school-workflows.ts'
 import {
   ADMIN_FRONT_OFFICE,
   all,
+  FINANCE_PERSONAL,
   member,
   NONE,
+  ownOrPayerStudent,
   ownStudent,
-  PERSONAL,
   text,
   texts,
   value,
@@ -230,8 +231,10 @@ const ONUR_HIDDEN_FIELDS: FieldRules = {
 }
 
 export const ONUR_READ_RULES = {
-  invoices: { ...ADMIN_FRONT_OFFICE, ...PERSONAL },
-  contracts: { ...ADMIN_FRONT_OFFICE, veli: ownStudent },
+  // Finans koleksiyonlarında veli velayetli çocuğunun ve ödeyicisi olduğu öğrencinin kaydını okur
+  // (K-04, DOM-FIN-052, DOM-ILT-074); kayıt (yenileme, kayıt geçmişi) velayet kapsamında kalır.
+  invoices: { ...ADMIN_FRONT_OFFICE, ...FINANCE_PERSONAL },
+  contracts: { ...ADMIN_FRONT_OFFICE, veli: ownOrPayerStudent },
   // Öğretmen yalnız kendi gruplarındaki deneme dersine katılan adayı okur (DOM-DIL-031); iletişim,
   // veli, not, rıza ve satış bilgisi `ONUR_HIDDEN_FIELDS` ile ayıklanır.
   prospects: { ...ADMIN_FRONT_OFFICE, ogretmen: ownTrialClass },

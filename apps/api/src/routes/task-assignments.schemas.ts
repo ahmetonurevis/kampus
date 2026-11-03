@@ -1,7 +1,11 @@
 import { z } from 'zod'
 
 import { CONTENT_TYPES, enumKeys, SUBMISSION_KINDS } from '@kampus/school-core/content/taxonomy.ts'
-import { assignmentInputSchema, TARGET_KINDS } from '@kampus/school-core/skills/assignment.ts'
+import {
+  assignmentInputSchema,
+  assignmentSettingsSchema,
+  TARGET_KINDS,
+} from '@kampus/school-core/skills/assignment.ts'
 import {
   attemptRulesSchema,
   deadlineSchema,
@@ -42,7 +46,17 @@ export const taskAssignmentListQuerySchema = pageQuerySchema
  * (IST-045). Kaydı olmayan dinleme görevinde gönderilmeyen hak sınırsız (`null`) saklanır, dolu
  * hak (1 veya 2) serviste 422 `listening_plays_unavailable` alır (ADR 0004 karar 6 uygulama notu).
  */
-export const taskAssignmentBodySchema = assignmentInputSchema
+export const taskAssignmentBodySchema = assignmentInputSchema.extend({
+  // Yalnız OpenAPI açıklaması eklenir; doğrulama core'unkiyle aynıdır (`safeExtend` core'un
+  // `superRefine`'ını korur).
+  settings: assignmentSettingsSchema
+    .safeExtend({
+      listeningPlays: assignmentSettingsSchema.shape.listeningPlays.describe(
+        'Dinleme hakkı (DOM-BEC-005, IST-045): 1, 2 veya `null` (sınırsız). Gönderilmezse kayda bağlı etkinlikte (quiz/alıştırma seti `listeningVersionId` → `listening_audio` dosyalı ses sürümü) 2, kaydı olmayanda sınırsız; kaydı olmayanda 1 veya 2 422 `listening_plays_unavailable`.',
+      ),
+    })
+    .prefault({}),
+})
 
 /**
  * Değişiklik: yalnız `deadline` (son teslim ve geç kabul) uzatılır. Bilinmeyen alanlar core'a

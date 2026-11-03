@@ -57,5 +57,7 @@ export function useListMemory(key: string) {
     /** Arama ve süzgeci birlikte temizler (iki ayrı güncelleme birbirini ezmesin). */
     clear: () => update(EMPTY_LIST_STATE),
     setIndex: (index: number) => update({ ...current, index }),
+    /** Durumu tek güncellemeyle değiştirir (ör. aralığı koruyan süzgeç temizleme). */
+    replace: update,
   }
 }

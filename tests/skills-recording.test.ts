@@ -10,6 +10,7 @@ import {
   type DayRange,
   type RecordingReader,
 } from '../packages/school-core/src/skills/recording.ts'
+import { deadlineForVersion } from '../packages/school-core/src/skills/assignment.ts'
 
 const now = '2026-11-04T09:00:00.000Z'
 const reader = (input: Partial<RecordingReader> = {}): RecordingReader => ({
@@ -240,5 +241,38 @@ describe('ses kaydının saklama süresi (DOM-BEC-052)', () => {
         }),
       RangeError,
     )
+  })
+
+  test('DOM-BEC-052, DOM-BEC-040: çok turlu ses görevinde sürümün saklama hesabı kendi turunun son tarihini kullanır; sonraki istek bağlanırken hesaplananı değiştirmez, eski (yalnız son istek) hesap yalnız kısaltırdı', () => {
+    const assignmentDeadline = { dueAt: '2026-09-10T20:59:00.000Z', lateAcceptanceDays: 0 }
+    const firstRound = { versionNumber: 1, dueAt: '2026-10-20T20:59:00.000Z' }
+    const secondRound = { versionNumber: 2, dueAt: '2026-11-30T20:59:00.000Z' }
+    // v2 ilk turda gönderildi; dönem sonu erken: saklamayı puanlama süresinden türeyen itiraz belirler.
+    const v2 = { submittedAt: '2026-10-15T09:00:00.000Z' }
+    const retention = (deadline: { dueAt: string | null }) =>
+      recordingRetentionUntil({ periodEndDate: '2026-09-30', deadline, ...v2 })
+    const submission = (rounds: { versionNumber: number; dueAt: string }[]) => ({
+      resubmissionRequestedForVersion: rounds.at(-1)?.versionNumber ?? null,
+      resubmissionDueAt: rounds.at(-1)?.dueAt ?? null,
+      resubmissionRounds: rounds,
+    })
+    // Bağlanırken (attachVersionFiles) yalnız ilk tur vardır.
+    const attached = retention(deadlineForVersion(assignmentDeadline, submission([firstRound]), 2))
+    // İtiraz kararı sonra, v2 için ikinci istek açıkken (extendVersionRecordingRetention).
+    const later = retention(
+      deadlineForVersion(assignmentDeadline, submission([firstRound, secondRound]), 2),
+    )
+    assert.equal(later, attached)
+    // Eski hesap (yalnız son istek bilinir) v2'yi atamanın tarihiyle okurdu: daha erken sonuç.
+    const latestOnly = retention(
+      deadlineForVersion(
+        assignmentDeadline,
+        { ...submission([firstRound, secondRound]), resubmissionRounds: undefined },
+        2,
+      ),
+    )
+    assert.ok(Date.parse(latestOnly) < Date.parse(attached))
+    // Saklama yalnız ileri alındığı için eski hesap bağlanırken yazılanı zaten kısaltamazdı.
+    assert.equal(extendedRecordingRetention({ current: attached, computed: latestOnly, now }), null)
   })
 })

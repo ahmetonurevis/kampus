@@ -87,6 +87,7 @@ export type PlatformWriteTargets = {
     targets?: { classIds: readonly string[]; studentIds: readonly string[] }
   }
   'permissionForm.close': { form: PermissionFormParties | undefined }
+  'permissionForm.cancel': { form: PermissionFormParties | undefined }
   'permissionForm.archive': { form: PermissionFormParties | undefined }
   'permissionForm.decide': {
     studentId: string
@@ -118,6 +119,13 @@ export type PlatformWriteTargets = {
   // `guardianLinksView`'dadır (veli yalnız kendi bağını, kısıt alanı olmadan görür).
   'guardian.read': Record<string, never>
   'guardian.manage': Record<string, never>
+  // Veli hesabı daveti (DOM-YTK-071): öğrenci ve veli kaydı gövdeden gelir, kurumda varlığı ve
+  // bağ kuralı işlemdedir (`lib/guardian-invitations.ts`).
+  'guardian.invite': Record<string, never>
+  // Bekleyen veli davetlerinin listesi ve iptali (DOM-YTK-071): davetin kurumda varlığı ve
+  // bekleyen olması işlemdedir.
+  'guardian.invite_list': Record<string, never>
+  'guardian.invite_cancel': Record<string, never>
   // Dil okulu kur programı (DOM-DIL-005…007): kural `lib/courses.ts`. Koordinatörün seviye kapsamı
   // (`assertCourseManager`) ve öğrenci/veli görünümü (`courseView`) orada çözülür.
   'course.read': Record<string, never>
@@ -209,6 +217,7 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   'permissionForm.create': ['yonetici', 'ogretmen'],
   'permissionForm.update': ['yonetici', 'ogretmen'],
   'permissionForm.close': ['yonetici', 'ogretmen'],
+  'permissionForm.cancel': ['yonetici', 'ogretmen'],
   'permissionForm.archive': ['yonetici', 'ogretmen'],
   'permissionForm.decide': ['veli', 'ogrenci'],
   // İzleme ilerlemesini öğrenci kendisi için yazar; veli ve personel yazmaz, salt okur
@@ -238,6 +247,11 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   // (DOM-ILT-071); veli yalnız kendi bağını okur (DOM-ILT-073).
   'guardian.read': ['yonetici', 'onburo', 'veli'],
   'guardian.manage': ['yonetici', 'onburo'],
+  // Veli hesabını kesin kayıttan sonra yönetici ya da ön büro davet eder (DOM-YTK-071).
+  'guardian.invite': ['yonetici', 'onburo'],
+  // Daveti açan roller bekleyen davetleri görür ve iptal eder (DOM-YTK-071).
+  'guardian.invite_list': ['yonetici', 'onburo'],
+  'guardian.invite_cancel': ['yonetici', 'onburo'],
   // Kur kataloğunu beş rol okur (öğrenci ve veli yalnız etkin kurları, daraltılmış). Kuru yönetici
   // ve seviyenin akademik koordinatörü (öğretmen + görev, DOM-YTK-027) yönetir; e-Özel kaydını
   // yalnız yönetici işaretler (DOM-DIL-005, -006; IST-076).

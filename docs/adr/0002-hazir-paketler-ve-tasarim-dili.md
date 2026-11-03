@@ -45,7 +45,7 @@ Platform geçişinde (ADR 0001) web, API ve mobil sıfırdan kuruluyor. Kullanı
 
 - Elle yazılacak güvenlik kodu azalır (parola özeti, belirteç rotasyonu, hız sınırı Better Auth'ta). Karşılığında Better Auth sürüm güncellemeleri izlenir; şeması drizzle-kit migration'larına dahil edilir.
 - Vue bileşenleri davranış referansı olmaya devam eder (liste durumu, odak, iç içe pencere, e2e erişilebilir adları); uygulama shadcn/Radix + TanStack ile yapılır.
-- `CLAUDE.md` tasarım kuralı ve `.claude/rules/web.md` bu karara göre güncellenir.
+- `CLAUDE.md`, `.claude/rules/tasarim.md` ve `.claude/rules/web.md` bu karara göre güncellenir.
 
 ## Değerlendirilen alternatifler
 

@@ -28,6 +28,7 @@ const teacher = {
   classes: { active: 3 },
   academic: null,
   learning: null,
+  questions: null,
 } satisfies Dashboard
 
 /** İstekleri kaydeden sahte istemci; yanıtı verilen işlev üretir. */

@@ -3,6 +3,7 @@ import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useKampusClient } from './kampus-context.ts'
 import {
   archivePermissionFormCommand,
+  cancelPermissionFormCommand,
   closePermissionFormCommand,
   createPermissionFormCommand,
   decidePermissionCommand,
@@ -81,6 +82,11 @@ export function useUpdatePermissionForm(options: CommandOptions = {}) {
 /** Formu kapatır (`POST /permission-forms/:id/close`, `If-Match`); kararlar korunur. */
 export function useClosePermissionForm(options: CommandOptions = {}) {
   return useApiCommand({ ...closePermissionFormCommand, ...withSuccess(options) })
+}
+
+/** Etkinliği iptal eder (`POST /permission-forms/:id/cancel`, `If-Match`; DOM-ILT-032). */
+export function useCancelPermissionForm(options: CommandOptions = {}) {
+  return useApiCommand({ ...cancelPermissionFormCommand, ...withSuccess(options) })
 }
 
 /** Kararsız formu arşivler (`DELETE /permission-forms/:id`, `If-Match`). */

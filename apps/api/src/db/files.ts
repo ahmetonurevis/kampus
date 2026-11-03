@@ -443,7 +443,9 @@ export function markFileDeleted(
 
 /**
  * Rızaya dayalı dosyaların imha işareti (ADR 0003 karar 9, 13; DOM-YTK-059): veri sahibinin bu
- * amaçtaki silinmemiş dosyalarının saklama sonu `now`'a çekilir; daha erken saklama sonu korunur.
+ * amaçlardaki silinmemiş dosyalarının saklama sonu `now`'a çekilir; daha erken saklama sonu
+ * korunur. Konuşma kaydıyla aynı veri sahibine bağlı sesli geri bildirim (`feedback_audio`,
+ * DOM-BEC-056) aynı taramaya girer.
  * Henüz bağlanmamış dosyada veri sahibi yazılı değildir: veri sahibinin hesaplarının
  * (`uploaderUserIds`) yüklediği bağlanmamış dosyalar da işaretlenir. Nesneyi imha işi siler.
  * İşaretlenen dosyaların kimliklerini döndürür.
@@ -452,7 +454,7 @@ export async function scheduleSubjectFilesPurge(
   tx: Database,
   institutionId: string,
   subject: {
-    purpose: StoredFile['purpose']
+    purposes: readonly StoredFile['purpose'][]
     dataSubjectId: string
     uploaderUserIds: readonly string[]
   },
@@ -465,7 +467,7 @@ export async function scheduleSubjectFilesPurge(
     .where(
       and(
         eq(files.institutionId, institutionId),
-        eq(files.purpose, subject.purpose),
+        inArray(files.purpose, [...subject.purposes]),
         subject.uploaderUserIds.length === 0
           ? owned
           : or(

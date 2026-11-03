@@ -5,9 +5,7 @@ import { isApiError } from '@kampus/api-client/errors.ts'
 import {
   ACCOUNT_SECURITY_MESSAGES,
   changePasswordSchema,
-  sessionDeviceLabel,
   type ChangePasswordInput,
-  type SessionListItem,
 } from '@kampus/react-shared/account-security.ts'
 import { isReauthenticationRequired } from '@kampus/react-shared/reauthentication.ts'
 import {
@@ -19,31 +17,32 @@ import {
 import { useReauthRetry } from '@/auth/use-reauth-retry.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
-import { Modal } from '@/components/Modal.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { PasswordInput } from '@/components/PasswordInput.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Label } from '@/components/ui/label'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
-import { authClient, refreshAuthSession } from '@/lib/kampus-clients.ts'
+import { accountSecurityClient, refreshAuthSession } from '@/lib/kampus-clients.ts'
 import { SECURITY_DESCRIPTION, SECURITY_TITLE } from '@/lib/account-pages.ts'
 import { notify } from '@/lib/notify.ts'
-
-const DATE_TIME = new Intl.DateTimeFormat('tr-TR', {
-  timeZone: 'Europe/Istanbul',
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-})
-
-function formatDateTime(iso: string): string {
-  const date = new Date(iso)
-  return Number.isNaN(date.getTime()) ? '' : DATE_TIME.format(date)
-}
+import {
+  revokeOthersConfirm,
+  revokeSessionConfirm,
+  sessionRows,
+  type SessionRow,
+} from './session-rows.ts'
 
 function errorMessage(error: unknown): string {
   return isApiError(error) ? error.message : ACCOUNT_SECURITY_MESSAGES.unavailable
@@ -64,7 +63,7 @@ export function SecurityPage() {
 }
 
 function ChangePasswordSection() {
-  const change = useChangePassword(authClient)
+  const change = useChangePassword(accountSecurityClient)
   const {
     register,
     control,
@@ -181,14 +180,15 @@ function ChangePasswordSection() {
 }
 
 function SessionsSection() {
-  const sessions = useSessionList(authClient)
-  const revoke = useRevokeSession(authClient)
-  const revokeOthers = useRevokeOtherSessions(authClient)
+  const sessions = useSessionList(accountSecurityClient)
+  const revoke = useRevokeSession(accountSecurityClient)
+  const revokeOthers = useRevokeOtherSessions(accountSecurityClient)
   const { run, reauthModal } = useReauthRetry()
-  const [confirmOthers, setConfirmOthers] = useState(false)
-  const list = sessions.data ?? []
-  const others = list.filter((item) => !item.current)
+  const [confirm, setConfirm] = useState<PendingConfirm | null>(null)
+  const rows = sessionRows(sessions.data ?? [])
+  const others = rows.filter((row) => !row.current)
   const needsReauth = isReauthenticationRequired(sessions.error)
+  const busy = revoke.isPending || revokeOthers.isPending
 
   async function verifyAndReload() {
     // Parola doğrulanınca yeni (taze) oturum açılır ve liste yeniden istenir.
@@ -199,38 +199,49 @@ function SessionsSection() {
     })
   }
 
-  function revokeOne(item: SessionListItem) {
-    revoke
-      .mutateAsync(item.token)
-      .then(() => notify.success(ACCOUNT_SECURITY_MESSAGES.sessionRevoked))
-      .catch((error: unknown) => notify.error(errorMessage(error), error))
+  async function confirmRevoke(pending: PendingConfirm) {
+    // Kapatma da taze oturum ister: eskiyse parola penceresi açılır, doğrulanınca tekrarlanır.
+    try {
+      const outcome = await run(() =>
+        pending.kind === 'one' ? revoke.mutateAsync(pending.row.id) : revokeOthers.mutateAsync(),
+      )
+      setConfirm(null)
+      if (outcome.status === 'cancelled') return
+      notify.success(
+        pending.kind === 'one'
+          ? ACCOUNT_SECURITY_MESSAGES.sessionRevoked
+          : ACCOUNT_SECURITY_MESSAGES.otherSessionsRevoked,
+      )
+    } catch (error) {
+      notify.error(errorMessage(error), error)
+    }
   }
 
-  function revokeAllOthers() {
-    revokeOthers
-      .mutateAsync()
-      .then(() => {
-        setConfirmOthers(false)
-        notify.success(ACCOUNT_SECURITY_MESSAGES.otherSessionsRevoked)
-      })
-      .catch((error: unknown) => notify.error(errorMessage(error), error))
-  }
+  const copy = confirm
+    ? confirm.kind === 'one'
+      ? revokeSessionConfirm(confirm.row)
+      : revokeOthersConfirm(others.length)
+    : null
 
   return (
     <section aria-labelledby="oturum-baslik" className="panel rounded-card border bg-surface p-6">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h2 id="oturum-baslik" className="text-lg font-semibold">
-            Açık oturumlar
+            Oturumlarım
           </h2>
           <p className="mt-1 text-sm text-muted-foreground">
-            Hesabınızın açık olduğu cihazlar. Tanımadığınız bir oturumu sonlandırın ve parolanızı
+            Hesabınızın açık olduğu cihazlar. Tanımadığınız bir oturumu kapatın ve parolanızı
             değiştirin.
           </p>
         </div>
         {others.length > 0 ? (
-          <Button variant="secondary" onClick={() => setConfirmOthers(true)}>
-            Diğer cihazlardan çık
+          <Button
+            variant="secondary"
+            disabled={busy}
+            onClick={() => setConfirm({ kind: 'others' })}
+          >
+            Diğer tüm oturumları kapat
           </Button>
         ) : null}
       </div>
@@ -265,34 +276,31 @@ function SessionsSection() {
             </Button>
           </div>
         ) : (
-          <ul aria-label="Açık oturumlar" className="divide-y rounded-2xl border">
-            {list.map((item) => (
+          <ul aria-label="Oturumlarım" className="divide-y rounded-2xl border">
+            {rows.map((row) => (
               <li
-                key={item.id}
+                key={row.id}
                 className="flex flex-wrap items-center justify-between gap-3 px-4 py-3"
               >
                 <div className="flex min-w-0 items-center gap-3">
                   <Icon name="Smartphone" size={20} className="shrink-0 text-muted-foreground" />
                   <div className="min-w-0">
                     <p className="flex flex-wrap items-center gap-2 text-sm font-medium">
-                      {sessionDeviceLabel(item)}
-                      {item.current ? <StatusBadge text="Bu cihaz" tone="purple" /> : null}
+                      {row.device}
+                      {row.current ? <StatusBadge text="Bu oturum" tone="purple" /> : null}
                     </p>
-                    <p className="text-xs text-muted-foreground">
-                      Son etkinlik {formatDateTime(item.updatedAt)} · Açılış{' '}
-                      {formatDateTime(item.createdAt)}
-                    </p>
+                    <p className="text-xs text-muted-foreground">{row.detail}</p>
                   </div>
                 </div>
-                {item.current ? null : (
+                {row.current ? null : (
                   <Button
                     variant="secondary"
                     size="sm"
-                    disabled={revoke.isPending}
-                    aria-label={`Oturumu sonlandır: ${sessionDeviceLabel(item)}, son etkinlik ${formatDateTime(item.updatedAt)}`}
-                    onClick={() => revokeOne(item)}
+                    disabled={busy}
+                    aria-label={row.revokeLabel}
+                    onClick={() => setConfirm({ kind: 'one', row })}
                   >
-                    Sonlandır
+                    Bu oturumu kapat
                   </Button>
                 )}
               </li>
@@ -301,29 +309,36 @@ function SessionsSection() {
         )}
       </div>
 
-      <Modal
-        open={confirmOthers}
-        onOpenChange={setConfirmOthers}
-        title="Diğer cihazlardan çıkılsın mı?"
-        description="Bu cihaz dışındaki bütün oturumlar kapanır; o cihazlarda yeniden giriş gerekir."
-        footer={
-          <>
-            <Button
-              variant="secondary"
-              onClick={() => setConfirmOthers(false)}
-              disabled={revokeOthers.isPending}
-            >
-              Vazgeç
-            </Button>
-            <Button onClick={revokeAllOthers} disabled={revokeOthers.isPending}>
-              Diğer cihazlardan çık
-            </Button>
-          </>
-        }
+      <AlertDialog
+        open={copy !== null}
+        onOpenChange={(next) => (busy || next ? undefined : setConfirm(null))}
       >
-        <p className="text-sm">Açık oturum sayısı: {others.length}</p>
-      </Modal>
+        {copy && confirm ? (
+          <AlertDialogContent>
+            <AlertDialogHeader>
+              <AlertDialogTitle>{copy.title}</AlertDialogTitle>
+              <AlertDialogDescription>{copy.description}</AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+              <AlertDialogCancel disabled={busy}>Vazgeç</AlertDialogCancel>
+              <AlertDialogAction
+                disabled={busy}
+                aria-busy={busy || undefined}
+                onClick={(event) => {
+                  // Pencere işlem bitene kadar açık kalır; kapanış sonuca göre yapılır.
+                  event.preventDefault()
+                  void confirmRevoke(confirm)
+                }}
+              >
+                {copy.action}
+              </AlertDialogAction>
+            </AlertDialogFooter>
+          </AlertDialogContent>
+        ) : null}
+      </AlertDialog>
       {reauthModal}
     </section>
   )
 }
+
+type PendingConfirm = { kind: 'one'; row: SessionRow } | { kind: 'others' }

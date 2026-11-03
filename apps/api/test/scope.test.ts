@@ -340,7 +340,12 @@ describe('kimlik ve kurum kapsamı', () => {
 
   test('açık uçlar dışındaki her belgelenmiş rota kimliksiz 401 döner', async () => {
     // İmzalı indirme (ADR 0003 karar 6): yetki oturumda değil, HMAC imzasındadır (test/files.test.ts).
-    const open = new Set(['GET /api/v1/health', 'GET /api/v1/files/download'])
+    // Belge doğrulama (Sabah kararı 85): kimliksiz ve modülsüz; yalnız baş harf ve kur döner.
+    const open = new Set([
+      'GET /api/v1/health',
+      'GET /api/v1/files/download',
+      'GET /api/v1/certificate-verifications/{code}',
+    ])
     const document = app.swagger() as { paths?: Record<string, Record<string, unknown>> }
     const routes = Object.entries(document.paths ?? {}).flatMap(([path, methods]) =>
       Object.keys(methods).map((method) => `${method.toUpperCase()} ${path}`),

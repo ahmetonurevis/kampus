@@ -172,10 +172,54 @@ export function itemFor(
 }
 
 /**
- * Brüt, indirim kalemleri, net ve ek hizmetler. İndirim ilan ücreti üzerinden hesaplanır,
- * zincirlenmez (DOM-FIN-020). Personel çocuğu tavanın tek istisnasıdır ve yönetici onayı ister
- * (DOM-FIN-021).
+ * İndirim kalemleri ilan ücreti üzerinden hesaplanır, zincirlenmez (DOM-FIN-020). Personel çocuğu
+ * tavanın tek istisnasıdır ve yönetici onayı ister (DOM-FIN-021). Kesin kayıt ve ek protokol ortak
+ * kullanır.
  */
+export function discountLines(
+  rules: readonly FeeDiscount[],
+  grossCents: number,
+  kinds: readonly FeeDiscountKind[],
+  options: { canApproveCapException: boolean },
+): DiscountLine[] {
+  if (new Set(kinds).size !== kinds.length)
+    throw new DomainError('discount_duplicate', 'Aynı indirim iki kez seçilemez.', {
+      path: ['discounts'],
+    })
+  const lines = kinds.map((kind): DiscountLine => {
+    const rule = rules.find((item) => item.kind === kind)
+    if (!rule)
+      throw new DomainError('discount_not_in_tariff', 'Bu indirim tarifede ilan edilmemiş.', {
+        path: ['discounts'],
+      })
+    const amountCents =
+      rule.amountCents ?? Math.floor((grossCents * (rule.percentBasisPoints ?? 0)) / BASIS)
+    return { kind, amountCents }
+  })
+  const exempt = kinds.includes('staff_child')
+  if (exempt && !options.canApproveCapException)
+    throw new DomainError(
+      'discount_approval_required',
+      'Personel çocuğu indirimini yalnız yönetici onaylar.',
+      { path: ['discounts'] },
+    )
+  const total = lines.reduce((sum, line) => sum + line.amountCents, 0)
+  if (!exempt && total * BASIS > grossCents * DISCOUNT_CAP_BASIS_POINTS)
+    throw new DomainError(
+      'discount_cap_exceeded',
+      "Toplam indirim ilan ücretinin %50'sini aşamaz.",
+      {
+        path: ['discounts'],
+      },
+    )
+  if (total >= grossCents)
+    throw new DomainError('discount_exceeds_gross', 'İndirim öğrenim ücretini karşılayamaz.', {
+      path: ['discounts'],
+    })
+  return lines
+}
+
+/** Brüt, indirim kalemleri (`discountLines`), net ve ek hizmetler. */
 export function priceEnrollment(
   tariff: EnrollmentTariff,
   request: {
@@ -202,40 +246,10 @@ export function priceEnrollment(
       path: ['lessonHours'],
     })
   }
-  if (new Set(request.discounts).size !== request.discounts.length)
-    throw new DomainError('discount_duplicate', 'Aynı indirim iki kez seçilemez.', {
-      path: ['discounts'],
-    })
-  const discounts = request.discounts.map((kind): DiscountLine => {
-    const rule = tariff.discounts.find((item) => item.kind === kind)
-    if (!rule)
-      throw new DomainError('discount_not_in_tariff', 'Bu indirim tarifede ilan edilmemiş.', {
-        path: ['discounts'],
-      })
-    const amountCents =
-      rule.amountCents ?? Math.floor((grossCents * (rule.percentBasisPoints ?? 0)) / BASIS)
-    return { kind, amountCents }
+  const discounts = discountLines(tariff.discounts, grossCents, request.discounts, {
+    canApproveCapException: request.canApproveCapException,
   })
-  const exempt = request.discounts.includes('staff_child')
-  if (exempt && !request.canApproveCapException)
-    throw new DomainError(
-      'discount_approval_required',
-      'Personel çocuğu indirimini yalnız yönetici onaylar.',
-      { path: ['discounts'] },
-    )
   const total = discounts.reduce((sum, line) => sum + line.amountCents, 0)
-  if (!exempt && total * BASIS > grossCents * DISCOUNT_CAP_BASIS_POINTS)
-    throw new DomainError(
-      'discount_cap_exceeded',
-      "Toplam indirim ilan ücretinin %50'sini aşamaz.",
-      {
-        path: ['discounts'],
-      },
-    )
-  if (total >= grossCents)
-    throw new DomainError('discount_exceeds_gross', 'İndirim öğrenim ücretini karşılayamaz.', {
-      path: ['discounts'],
-    })
   if (new Set(request.extras).size !== request.extras.length)
     throw new DomainError('extra_duplicate', 'Aynı ek hizmet iki kez seçilemez.', {
       path: ['extras'],
@@ -874,6 +888,14 @@ export function enrollProspect(
   )
 }
 
+/** Vade ayın aynı günüdür; o gün yoksa ayın son günü alınır (DOM-FIN-011). */
+export function installmentDueDate(start: Date, index: number): Date {
+  const year = start.getUTCFullYear()
+  const month = start.getUTCMonth() + index
+  const lastDay = new Date(Date.UTC(year, month + 1, 0)).getUTCDate()
+  return new Date(Date.UTC(year, month, Math.min(start.getUTCDate(), lastDay), 9))
+}
+
 /**
  * Kesin kayıt: açık aşamadaki adayı öğrenci, veli, taksit ve sözleşmeyle birlikte kayda alır
  * (DOM-KAY-001, DOM-KAY-011, DOM-KAY-035). Sözleşme yalnız kendi taksitlerini listeler
@@ -933,17 +955,7 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
   if (Number.isNaN(+start) || dayKey(start) !== data.startDate)
     throw new DomainError('invalid_payment_date', 'Geçerli bir ödeme tarihi girin.')
   const invoices = amounts.map((amount, i) => {
-    const lastDay = new Date(
-      Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + i + 1, 0),
-    ).getUTCDate()
-    const due = new Date(
-      Date.UTC(
-        start.getUTCFullYear(),
-        start.getUTCMonth() + i,
-        Math.min(start.getUTCDate(), lastDay),
-        9,
-      ),
-    )
+    const due = installmentDueDate(start, i)
     return {
       id: makeId('inv'),
       studentId: student.id,

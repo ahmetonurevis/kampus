@@ -7,6 +7,7 @@ import {
 } from '../lib/notification-type.ts'
 import { PLATFORM_NOTIFICATION_TYPES } from '../platform/notification-types.ts'
 // Onur: kayıt ve finans (içe aktarma)
+import { FINANCE_NOTIFICATION_TYPES } from '../lib/finance-notifications.ts'
 // Onur: kayıt ve finans (içe aktarma) sonu
 
 /**
@@ -39,6 +40,7 @@ export const ONUR_NOTIFICATION_TYPES = {
       parent: '{öğrenci} için kesin kayıt tamamlandı.',
     },
   }),
+  ...FINANCE_NOTIFICATION_TYPES,
 } as const
 // Onur: kayıt ve finans sonu
 

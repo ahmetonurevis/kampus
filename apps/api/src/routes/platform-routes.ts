@@ -41,6 +41,10 @@ import { registerVideoProgressRoutes } from './video-progress.ts'
 import { registerCefrRoutes } from './cefr.ts'
 import { registerSkillProgressRoutes } from './skill-progress.ts'
 import { registerPracticeGradebookRoutes } from './practice-gradebook.ts'
+import { registerLearningOutcomeRoutes } from './learning-outcomes.ts'
+import { registerProgressionRoutes } from './progression.ts'
+import { registerCertificateRoutes } from './certificates.ts'
+import { registerGuardianInvitationRoutes } from './guardian-invitations.ts'
 
 /**
  * Platform rota kayıtları: Onur'un kayıt ve finans uçları dışındaki her uç. Kayıt `app.ts`
@@ -96,6 +100,10 @@ export const PLATFORM_LATE_ROUTES = [
   registerCefrRoutes,
   registerSkillProgressRoutes,
   registerPracticeGradebookRoutes,
+  registerLearningOutcomeRoutes,
+  registerProgressionRoutes,
+  registerCertificateRoutes,
+  registerGuardianInvitationRoutes,
 ] as const satisfies readonly RouteRegistrar[]
 
 /** Onur bloğundan önceki platform uçlarını kaydeder. */

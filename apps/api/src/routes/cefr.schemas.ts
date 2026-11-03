@@ -219,32 +219,58 @@ const learnerDecisionSchema = decisionSchema
   .omit({ rationale: true, decidedByUserId: true })
   .extend(changeShape)
 
+/**
+ * Görev kanıtının ataması ve puanlama türü (OG-247): ekran kanıt görevine bununla bağlanır
+ * (otomatik puanlı görevde deneme, öğretmen puanlıda teslim). Seviye tespiti bölümünde `null`.
+ */
+const evidenceTask = z
+  .object({
+    assignmentId: z.string(),
+    scoring: z.enum(['auto', 'rubric']),
+    linkable: z
+      .boolean()
+      .describe('İzleyici atamayı görev uçlarında görebiliyor mu; değilse bağlantı çizilmez'),
+  })
+  .nullable()
+  .describe('Görev kanıtının ataması; seviye tespiti bölümünde boş')
+
+/**
+ * "Tahmini seviye" ve kanıtları. Kanıt sayılmayan sonuçlar (`excluded`) yalnız personel
+ * görünümündedir (OG-247, DOM-BEC-045): öğrenci ve veli açılmamış puanın varlığını bu listeden de
+ * çıkaramaz.
+ */
+const estimateSchema = suggestionSchema.extend({
+  label: z.string().describe('"Tahmini seviye": öneri karar değildir (DOM-BEC-034)'),
+  evidence: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      source: z.enum(enumKeys(EVIDENCE_SOURCES)),
+      task: evidenceTask,
+      skill,
+      targetLevel: level,
+      performedAt: instant,
+      expiresAt: instant,
+      successful: z.boolean(),
+      percent: z.number().int(),
+    }),
+  ),
+})
+
+const staffEstimateSchema = estimateSchema.extend({
+  excluded: z.array(
+    z.object({
+      id: z.string(),
+      title: z.string(),
+      reason: z.enum(enumKeys(EXCLUSION_REASONS)),
+      task: evidenceTask,
+    }),
+  ),
+})
+
 const profileShape = {
   studentId: z.string(),
   title: z.string(),
-  estimate: suggestionSchema.extend({
-    label: z.string().describe('"Tahmini seviye": öneri karar değildir (DOM-BEC-034)'),
-    evidence: z.array(
-      z.object({
-        id: z.string(),
-        title: z.string(),
-        source: z.enum(enumKeys(EVIDENCE_SOURCES)),
-        skill,
-        targetLevel: level,
-        performedAt: instant,
-        expiresAt: instant,
-        successful: z.boolean(),
-        percent: z.number().int(),
-      }),
-    ),
-    excluded: z.array(
-      z.object({
-        id: z.string(),
-        title: z.string(),
-        reason: z.enum(enumKeys(EXCLUSION_REASONS)),
-      }),
-    ),
-  }),
   current: z
     .array(
       z.object({
@@ -270,6 +296,7 @@ const staffProfileSchema = z
   .object({
     view: z.literal('staff').describe('Yönetici ve öğretmen görünümü'),
     ...profileShape,
+    estimate: staffEstimateSchema,
     timeline: z
       .array(staffTimelineSchema)
       .describe('Kararların zaman çizelgesi, en yeniden eskiye'),
@@ -280,8 +307,11 @@ const learnerProfileSchema = z
   .object({
     view: z
       .literal('learner')
-      .describe('Öğrenci ve veli görünümü: kararın gerekçesi, vereni ve kanıtı yoktur'),
+      .describe(
+        'Öğrenci ve veli görünümü: kararın gerekçesi, vereni ve kanıtı ile kanıt sayılmayan sonuçlar yoktur',
+      ),
     ...profileShape,
+    estimate: estimateSchema,
     timeline: z
       .array(learnerDecisionSchema)
       .describe('Kararların zaman çizelgesi, en yeniden eskiye'),

@@ -71,6 +71,11 @@ export const roles = {
  * `/parola-sifirla#token=…` sayfasına gider (`services/password-reset.ts`), belirteç orada
  * `POST /reset-password` ile tüketilir. Yönlendirme ucu `callbackURL` alır; açmak gereksiz bir
  * yönlendirme yüzeyi ve belirtecin API erişim loglarına düşmesi demektir.
+ *
+ * Oturum uçları (IST-025): `/list-sessions` daraltılmış satır döndürür, oturum belirteci istemciye
+ * gitmez (`lib/session-device.ts`); `/revoke-session` gövdesi `{ sessionId }`'dir, belirteç
+ * sunucuda kullanıcının kendi oturumlarından çözülür. Listeleme ve kapatma taze oturum ister
+ * (`services/auth-hooks.ts`).
  */
 export const OPEN_AUTH_PATHS: ReadonlySet<string> = new Set([
   '/sign-in/email',
@@ -102,6 +107,15 @@ export function trustedOrigins(config: Config): string[] {
 
 /** Hassas işlemlerde oturumun en çok yaşı (guvenlik-kvkk.md). */
 export const SESSION_FRESH_AGE_SECONDS = 15 * 60
+
+/**
+ * Hesap başına giriş sınırı (IST-025, guvenlik-kvkk.md §4). Better Auth `rateLimit` anahtarı yalnız
+ * IP + yoldur; farklı IP'lerden tek hesaba deneme bu sınırla yavaşlar. Sayaç `@fastify/rate-limit`'tedir
+ * (`plugins/better-auth.ts`) ve Better Auth'a gitmeden artar: her deneme sayılır, başarılı giriş
+ * sayacı sıfırlamaz. Anahtar e-postanın özetidir, hesap olsun olmasın aynı işler (kilit hesabın
+ * varlığını belli etmez). Kalıcı kilit yoktur: pencere dolunca deneme yeniden açılır.
+ */
+export const SIGN_IN_ATTEMPT_LIMIT = { max: 10, windowSeconds: 15 * 60 } as const
 const DAY = 60 * 60 * 24
 
 export interface AuthOptions {
@@ -166,6 +180,13 @@ export const ORGANIZATION_OPTIONS = {
         // yoktur (üretilen kimlik şeması koleksiyon kolonu taşıyamaz); kayıtlar silinmez, arşivlenir.
         // Yalnız sunucu yazar.
         teacherId: { type: 'string', required: false, input: false },
+        // Veli hesabı daveti (DOM-YTK-071): seçilen öğrenciler (`records` `students` kimlikleri,
+        // JSON dizi) ve isteğe bağlı veli kaydı (`parents`). Öğretmen kaydı gibi iki durumda da
+        // davette saklanır: yeni hesapta çocuk bağlantısı ve velayet bağı davette de yazılır,
+        // başka kurumda hesabı olan e-postada (karar 73) yalnız burada durur ve kabulde bağlanır.
+        // Bekleyen davetin tuttuğu veli kaydı başka davete bağlanamaz. Yalnız sunucu yazar.
+        studentIds: { type: 'json', required: false, input: false },
+        parentId: { type: 'string', required: false, input: false },
       },
     },
     session: { fields: { activeOrganizationId: 'activeInstitutionId' } },

@@ -1,3 +1,4 @@
+import type { ContractLifecycle } from '../lib/contract-status.ts'
 import type { ContractTerms } from '../lib/domain.ts'
 import { subjects } from './curriculum.ts'
 import { createSchoolWorkflows } from './school-workflows.ts'
@@ -333,7 +334,8 @@ type OnurStatePatches = {
     classId?: string
     academicYear?: number
     invoiceIds?: string[]
-  } & Partial<ContractTerms>)[]
+  } & Partial<ContractTerms> &
+    ContractLifecycle)[]
   // Aday işlemlerinin alanları ve notu yazan kişi; örnek veri ve eski kayıtlar taşımaz
   // (lib/prospects.ts).
   prospects: (Patch<

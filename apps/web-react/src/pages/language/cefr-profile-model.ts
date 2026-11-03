@@ -1,5 +1,10 @@
 import { PLACEMENT_MODES } from '@kampus/school-core/cefr/placement.ts'
-import { LEVEL_DECISION_KINDS, SUGGESTION_CONTEXTS } from '@kampus/school-core/cefr/suggestion.ts'
+import {
+  EVIDENCE_SOURCES,
+  EXCLUSION_REASONS,
+  LEVEL_DECISION_KINDS,
+  SUGGESTION_CONTEXTS,
+} from '@kampus/school-core/cefr/suggestion.ts'
 import {
   LEVEL_CHANGES,
   levelSeries,
@@ -16,15 +21,18 @@ import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import {
   isStaffProfile,
   type CefrProfile,
+  type CefrProfileStaff,
   type CefrStaffTimelineEntry,
 } from '@kampus/react-shared/cefr.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
+import { taskResultHref, type ProgressAudience } from '../academic/skill-progress-model.ts'
 
 /**
  * CEFR profilinin sunumu (OG-054, OG-079; IST-060; DOM-DIL-010…012, DOM-BEC-034). Seviye, öneri,
  * geçerlilik ve çizelgedeki değişim sunucuda hesaplanır; burada yalnız etiket, süzgeç ve sıralama
  * vardır. Gerekçe, kararı veren ve kanıt özeti yalnız `staff` görünümünde gelir; öğrenci ve veli
- * görünümünde satırda bu alanlar hiç yoktur.
+ * görünümünde satırda bu alanlar hiç yoktur. "Tahmini seviye"nin kanıtları görevine bağlanır
+ * (OG-247; DOM-BEC-031…034); dışarıda kalan sonuçlar yalnız personel ekranında listelenir.
  */
 
 const DATE_OPTIONS = { day: 'numeric', month: 'long', year: 'numeric' } as const
@@ -72,7 +80,25 @@ export function estimateSummary(estimate: CefrProfile['estimate']): {
   }
 }
 
-/** Beceri bazında tahmini seviye; eksik kanıt sayısı metinle söylenir. */
+type SkillEstimate = CefrProfile['estimate']['skills'][number]
+
+/**
+ * Yetersiz kanıtın Türkçe nedeni (DOM-BEC-032): eksik kanıt ve okuma/dinlemede eksik madde sayısı.
+ * Sayı sunucuda core `suggestSkillLevel` ile her yeni kanıt başarılı ve yeni günde varsayılarak
+ * hesaplanır; ikisi de sıfırsa eşik başarı payından ya da gün koşulundan kalmıştır.
+ */
+export function insufficientReason(row: SkillEstimate): string {
+  const parts = [
+    ...(row.missingEvidence > 0 ? [`${row.missingEvidence} kanıt`] : []),
+    ...(row.missingItems > 0 ? [`${row.missingItems} madde`] : []),
+  ]
+  if (parts.length) return `${parts.join(' ve ')} daha gerekir`
+  return row.evidenceIds.length
+    ? 'Başarılı kanıt payı ya da farklı gün koşulu sağlanmadı'
+    : 'Geçerli kanıt yok'
+}
+
+/** Beceri bazında tahmini seviye; yetersiz kanıtın nedeni metinle söylenir. */
 export function estimateSkillRows(estimate: CefrProfile['estimate']): LevelRow[] {
   return [...estimate.skills]
     .sort((left, right) => skillOrder(left.skill) - skillOrder(right.skill))
@@ -81,12 +107,108 @@ export function estimateSkillRows(estimate: CefrProfile['estimate']): LevelRow[]
       label: row.label,
       level: row.status === 'suggested' && row.level ? row.level : 'Kanıt yetersiz',
       note:
-        row.status === 'suggested'
-          ? `${row.evidenceIds.length} kanıt`
-          : row.missingEvidence > 0
-            ? `${row.missingEvidence} kanıt daha gerekir`
-            : 'Kanıt yetersiz',
+        row.status === 'suggested' ? `${row.evidenceIds.length} kanıt` : insufficientReason(row),
     }))
+}
+
+/**
+ * Kanıt görevinin bağlantısını kuran görünüm (OG-247): personel görev listesinin ayrıntı panelini,
+ * öğrenci kendi çalışma alanını, veli takip sekmesini açar. Görev modülü (`learning`) kapalıysa
+ * çağıran `null` verir ve bağlantı çizilmez.
+ */
+export type EvidenceAudience = { kind: 'staff'; role: 'yonetici' | 'ogretmen' } | ProgressAudience
+
+type EvidenceTask = NonNullable<CefrProfile['estimate']['evidence'][number]['task']>
+
+/** Kanıt görevine giden adres; seviye tespiti bölümünün görevi yoktur. */
+export function evidenceHref(task: EvidenceTask, audience: EvidenceAudience): string {
+  if (audience.kind !== 'staff')
+    return taskResultHref(task.assignmentId, task.scoring === 'auto', audience)
+  const params = new URLSearchParams()
+  if (audience.role === 'ogretmen') params.set('sekme', 'gorevler')
+  params.set('gorev', task.assignmentId)
+  return `/${audience.role}/odevler?${params.toString()}`
+}
+
+/**
+ * Kanıt satırının bağlantısı: görev modülü açık ve izleyici atamayı görev uçlarında görebiliyorsa
+ * (`task.linkable`, sunucu görev kapsamıyla hesaplar). Öğretmenin göremediği atamaya (başka
+ * öğretmenin grubu) ya da öğrencinin eski grubunun görevine bağlantı çizilmez; açılan sayfa
+ * görevi bulamazdı.
+ */
+function taskLink(task: EvidenceTask | null, audience: EvidenceAudience | null): string | null {
+  return task?.linkable && audience ? evidenceHref(task, audience) : null
+}
+
+export interface EvidenceItemRow {
+  key: string
+  title: string
+  /** Beceri, hedef seviye, puan ve başarı. */
+  note: string
+  date: string
+  dateTime: string
+  /** Geçerliliğin bittiği gün (DOM-BEC-031: görev 120, tespit 90 gün). */
+  until: string
+  successful: boolean
+  href: string | null
+  linkLabel: string
+}
+
+const untitled = (title: string) => title || 'Adsız görev'
+
+/**
+ * Önerinin dayandığı kanıtlar (DOM-BEC-034): en yeni üstte. Her görev kanıtı görevine bağlanır;
+ * tespit bölümü bağlantısızdır.
+ */
+export function estimateEvidenceRows(
+  estimate: CefrProfile['estimate'],
+  audience: EvidenceAudience | null,
+): EvidenceItemRow[] {
+  return [...estimate.evidence]
+    .sort((left, right) => right.performedAt.localeCompare(left.performedAt))
+    .map((item) => {
+      const title = untitled(item.title)
+      const date = dateLabel(item.performedAt, DATE_OPTIONS)
+      return {
+        key: item.id,
+        title,
+        note: [
+          `${SKILLS[item.skill].label} · hedef ${item.targetLevel}`,
+          `%${item.percent}`,
+          item.successful ? 'başarılı' : 'başarısız',
+          ...(item.source === 'placement' ? [EVIDENCE_SOURCES.placement.label] : []),
+        ].join(' · '),
+        date,
+        dateTime: item.performedAt,
+        until: `${dateLabel(item.expiresAt, DATE_OPTIONS)} tarihine kadar geçerli`,
+        successful: item.successful,
+        href: taskLink(item.task, audience),
+        linkLabel: `${title}, ${date} sonucunu aç`,
+      }
+    })
+}
+
+export interface ExcludedRow {
+  key: string
+  title: string
+  reason: string
+  href: string | null
+}
+
+/**
+ * Kanıt sayılmayan sonuçlar ve nedenleri (DOM-BEC-031). Yalnız personel yanıtında bulunur
+ * (DOM-BEC-045: öğrenci ve veli açılmamış puanın varlığını bu listeden çıkaramaz).
+ */
+export function excludedEvidenceRows(
+  estimate: CefrProfileStaff['estimate'],
+  audience: EvidenceAudience | null,
+): ExcludedRow[] {
+  return estimate.excluded.map((item) => ({
+    key: item.id,
+    title: untitled(item.title),
+    reason: EXCLUSION_REASONS[item.reason].label,
+    href: taskLink(item.task, audience),
+  }))
 }
 
 /** Tespit geçerliliğinin etiketi ve rengi (DOM-DIL-012); seviye tespiti ekranı da kullanır. */

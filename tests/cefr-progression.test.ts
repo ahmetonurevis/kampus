@@ -19,6 +19,7 @@ import {
   planProgressionDecision,
   planProgressionReview,
   progressionBasisSchema,
+  progressionNextStep,
   progressionSettingsSchema,
   type CourseAssessmentRow,
   type CourseEnrollment,
@@ -120,6 +121,7 @@ const review = (over: Partial<Parameters<typeof planProgressionReview>[0]> = {})
     attendance: hours(36, 4),
     assessments: fullAssessments(),
     decision: record(),
+    certificates: [],
     actor: coordinator,
     input: { action: 'approve', decisionId: 'test-pd1' },
     now: '2026-11-05T09:00:00.000Z',
@@ -882,5 +884,97 @@ describe('onay ve düzeltme (DOM-DIL-070)', () => {
     // Onaylanmamış düzeltme öncekinin yerine geçmez.
     const pendingFix = record({ ...correction, id: 'test-pd3' })
     assert.equal(effectiveProgressionDecision([d1, pendingFix])?.id, 'test-pd1')
+  })
+
+  test('DOM-DIL-070 DOM-DIL-082 kaydın geçerli belgesi varken düzeltme onaylanmaz; ret ve iptal edilmiş belge engellemez', () => {
+    const correction = record({ id: 'test-pd2', correctsDecisionId: 'test-pd1' })
+    const input = { action: 'approve', decisionId: 'test-pd2' } as const
+    const valid = { enrollmentId: 'test-enr1', status: 'valid' } as const
+    assert.throws(
+      () => review({ decision: correction, input, certificates: [valid] }),
+      (error: Error & { code?: string; kind?: string }) =>
+        error.code === 'certificate_cancel_first' &&
+        error.kind === 'rule' &&
+        error.message === 'Önce düzenlenmiş belge iptal edilmeli.',
+    )
+    // Ret belgeyi dayanaksız bırakmaz; engellenmez.
+    assert.equal(
+      review({
+        decision: correction,
+        input: { action: 'reject', decisionId: 'test-pd2', reason: 'Düzeltmeye gerek yok.' },
+        certificates: [valid],
+      }).status,
+      'rejected',
+    )
+    // İptal edilmiş belge ya da başka kaydın belgesi onayı engellemez.
+    for (const certificates of [
+      [{ ...valid, status: 'cancelled' as const }],
+      [{ ...valid, enrollmentId: 'test-enr-baska' }],
+    ])
+      assert.equal(review({ decision: correction, input, certificates }).status, 'approved')
+  })
+})
+
+describe('karardan sonraki adım (DOM-DIL-070, DOM-DIL-007; IST-062)', () => {
+  const course = { id: 'test-course-b1-1', level: 'B1' as const, nextCourseId: null }
+
+  test('DOM-DIL-070 IST-062 onaylı geçti kararı sonraki seviyeyi ve karar kimliğini taşır', () => {
+    const approved = record({ status: 'approved' })
+    assert.deepEqual(progressionNextStep({ decisions: [approved], course }), {
+      decisionId: 'test-pd1',
+      enrollmentId: 'test-enr1',
+      learnerId: 'test-st1',
+      fromCourseId: 'test-course-b1-1',
+      fromLevel: 'B1',
+      nextCourseId: null,
+      nextLevel: 'B1+',
+    })
+    // DOM-DIL-007: zincirli kurda sonraki kur ve onun seviyesi (aynı seviye olabilir).
+    const chained = progressionNextStep({
+      decisions: [approved],
+      course: { ...course, nextCourseId: 'test-course-b1-2' },
+      nextCourse: { id: 'test-course-b1-2', level: 'B1' },
+    })
+    assert.equal(chained?.nextCourseId, 'test-course-b1-2')
+    assert.equal(chained?.nextLevel, 'B1')
+    // Sonraki kur okunamadıysa seviye uydurulmaz.
+    const unread = progressionNextStep({
+      decisions: [approved],
+      course: { ...course, nextCourseId: 'test-course-b1-2' },
+    })
+    assert.equal(unread?.nextLevel, null)
+    // En üst seviyede bir üst seviye yoktur.
+    assert.equal(
+      progressionNextStep({ decisions: [approved], course: { ...course, level: 'C2' } })?.nextLevel,
+      null,
+    )
+  })
+
+  test('DOM-DIL-070 bekleyen, reddedilen, tekrar ve düzeltilmiş geçti kararı üst kur açmaz', () => {
+    assert.equal(progressionNextStep({ decisions: [record()], course }), null)
+    assert.equal(progressionNextStep({ decisions: [record({ status: 'rejected' })], course }), null)
+    assert.equal(
+      progressionNextStep({
+        decisions: [record({ status: 'approved', outcome: 'repeat' })],
+        course,
+      }),
+      null,
+    )
+    const passed = record({ status: 'approved' })
+    const fix = record({
+      id: 'test-pd2',
+      status: 'approved',
+      outcome: 'repeat',
+      correctsDecisionId: 'test-pd1',
+    })
+    assert.equal(progressionNextStep({ decisions: [passed, fix], course }), null)
+    assert.throws(
+      () =>
+        progressionNextStep({
+          decisions: [passed],
+          course: { ...course, id: 'test-course-other' },
+        }),
+      isDomainError('progression_course_mismatch'),
+    )
   })
 })

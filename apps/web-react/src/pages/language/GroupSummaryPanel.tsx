@@ -119,7 +119,9 @@ export function GroupSummaryPanel({ groupId, names, onClose, onEdit, onCancel, o
           names={names}
           membershipId={access.membershipId}
           showWaitlist={canReadWaitlist(access.role)}
-          showProfiles={access.role === 'yonetici' || access.role === 'ogretmen'}
+          profileRole={
+            access.role === 'yonetici' || access.role === 'ogretmen' ? access.role : null
+          }
         />
       )}
     </SidePanel>
@@ -133,20 +135,21 @@ function GroupSummary({
   names,
   membershipId,
   showWaitlist,
-  showProfiles,
+  profileRole,
 }: {
   group: LanguageGroup
   names: TeacherNames | null
   membershipId: string | undefined
   showWaitlist: boolean
-  showProfiles: boolean
+  /** Seviye profili sekmesi yalnız yönetici ve öğretmende; kanıt bağlantısı role göre kurulur. */
+  profileRole: 'yonetici' | 'ogretmen' | null
 }) {
   const row = groupRow(group, names, membershipId)
   const members = group.members ?? []
   const [tab, setTab] = useState<SummaryTab>('ozet')
   const [profileStudentId, setProfileStudentId] = useState('')
   const waitlistOpen = showWaitlist && tab === 'bekleme'
-  const profilesVisible = showProfiles && members.length > 0
+  const profilesVisible = profileRole !== null && members.length > 0
   const profileOpen = profilesVisible && tab === 'seviye'
   const selectedStudentId = profileStudentId || (members[0]?.studentId ?? '')
   const tabs = [
@@ -191,7 +194,13 @@ function GroupSummary({
               ))}
             </NativeSelect>
           </label>
-          <CefrProfileSummary key={selectedStudentId} studentId={selectedStudentId} />
+          {profileRole ? (
+            <CefrProfileSummary
+              key={selectedStudentId}
+              studentId={selectedStudentId}
+              role={profileRole}
+            />
+          ) : null}
         </>
       ) : (
         <>

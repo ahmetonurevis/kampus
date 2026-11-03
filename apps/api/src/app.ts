@@ -29,6 +29,7 @@ import { registerPlatformLateRoutes, registerPlatformRoutes } from './routes/pla
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 // Onur: kayıt ve finans
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
+import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
@@ -99,6 +100,15 @@ export const REDACTED_PATHS = [
   '*.targetSchool',
   'reversalReason',
   '*.reversalReason',
+  // kvkk: K — sözleşmenin imza yetkilisi ve ödeyici adı; ek protokol gerekçesi serbest metindir.
+  'signatory',
+  '*.signatory',
+  'payerName',
+  '*.payerName',
+  'amendmentReason',
+  '*.amendmentReason',
+  'cancelReason',
+  '*.cancelReason',
   // pino `*.x` yalnız ikinci düzeyi yakalar; üst düzey alan ayrıca yazılır. Daha derin yol
   // (ör. `a.b.note`) desenle yakalanmaz: kayıt verisi ve gövde loga hiç verilmez.
   // kvkk: Ç — izin/mazeret gerekçe kategorisi (DOM-ILT-053).
@@ -140,6 +150,14 @@ export const REDACTED_PATHS = [
   // kvkk: K — toplu personel aktarımının CSV içeriği: ad ve e-posta satırları (IST-007).
   'csv',
   '*.csv',
+  // kvkk: K — kurum başarı belgesinin doğrulama kodu, iptal gerekçesi ve MEBBİS belge numarası
+  // (DOM-DIL-080, DOM-DIL-082); kod kimliksiz doğrulama yolunda da gizlenir (`req` aşağıda).
+  'verificationCode',
+  '*.verificationCode',
+  'cancellationReason',
+  '*.cancellationReason',
+  'certificateNumber',
+  '*.certificateNumber',
   '*.cookie',
   '*.authorization',
 ]
@@ -155,6 +173,13 @@ export function maskIp(ip: string | undefined): string | undefined {
   return groups.length > 4 ? `${groups.slice(0, 4).join(':')}::` : ip
 }
 
+/** Kimliksiz doğrulama yolundaki belge kodu loglanmaz (DOM-DIL-082). */
+const CERTIFICATE_VERIFICATION_PATH = /^(\/api\/v1\/certificate-verifications\/)[^/]+/
+
+function maskCertificateCode(url: string): string {
+  return url.replace(CERTIFICATE_VERIFICATION_PATH, '$1[gizli]')
+}
+
 function loggerOptions(config: Config, stream?: NodeJS.WritableStream) {
   return {
     level: config.LOG_LEVEL,
@@ -164,7 +189,7 @@ function loggerOptions(config: Config, stream?: NodeJS.WritableStream) {
       req(request: FastifyRequest) {
         return {
           method: request.method,
-          url: request.url.split('?')[0],
+          url: maskCertificateCode(request.url.split('?')[0] ?? ''),
           remoteAddress: maskIp(request.ip),
         }
       },
@@ -333,6 +358,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerPlatformRoutes(app)
   // Onur: kayıt ve finans
   registerFeeTariffRoutes(app)
+  registerFinanceContractRoutes(app)
   registerFinanceExportRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)

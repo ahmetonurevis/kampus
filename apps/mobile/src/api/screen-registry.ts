@@ -67,13 +67,14 @@ export const OGUZHAN_SCREENS = [
   {
     screen: 'StudentHomework',
     getComponent: (): MenuScreen => require('./screens/StudentHomework.tsx').default,
-    // Öğrenci ödevi telefonda okur; teslim şimdilik web'dedir.
+    // İki sekme: sınıf ödevleri (okuma ve teslim) ve öğretmen puanlı görevler (yazma görevi
+    // telefonda yazılır ve teslim edilir; konuşma görevi yalnız listelenir).
     pages: [
       {
         role: 'ogrenci',
         path: 'odevler',
         title: 'Ödevlerim',
-        description: 'Ödevlerini, son tarihlerini ve değerlendirmelerini takip et.',
+        description: 'Ödevlerini ve yazma görevlerini takip et, teslim et.',
       },
     ],
   },
@@ -143,6 +144,32 @@ export const OGUZHAN_SCREENS = [
         role: 'ogrenci',
         path: 'soru-coz',
         description: 'Sınıf quizlerini çöz, sonuçlarını gör.',
+      },
+    ],
+  },
+  {
+    screen: 'StudentQuestions',
+    getComponent: (): MenuScreen => require('./screens/StudentQuestions.tsx').default,
+    // Telefonda soru sorma, yanıtı okuma ve yanıtlanmamış soruyu geri çekme vardır; soru
+    // fotoğrafı (DOM-ILT-094) web'dedir.
+    pages: [
+      {
+        role: 'ogrenci',
+        path: 'soru-sor',
+        description: 'Ders öğretmenine soru sor, yanıtı oku.',
+      },
+    ],
+  },
+  {
+    screen: 'StudentAppointments',
+    getComponent: (): MenuScreen => require('./screens/StudentAppointments.tsx').default,
+    // Telefonda öğrenci randevu talep eder, bekleyen talebi geri çeker ve onaylı randevuyu iptal
+    // eder; öğretmen ve veli tarafı ayrı adımlardır.
+    pages: [
+      {
+        role: 'ogrenci',
+        path: 'randevu-talep',
+        description: 'Öğretmenlerinin müsait saatlerinden randevu al.',
       },
     ],
   },

@@ -103,6 +103,19 @@ export interface TenantOptions {
   birthDates?: Readonly<Record<string, string>>
   /** Bu eğitim yıllarına yayımlanmış tarife konur (yenileme ve kesin kayıt önkoşulu). */
   tariffYears?: readonly ('current' | 'next')[]
+  /**
+   * Rol başına tek hesabın yetmediği durumlar için ek personel (ör. kararı onaylayan ikinci
+   * öğretmen, akademik koordinatör). `key` e-postanın parçasıdır; hesap `tenant.staff(key)` ile alınır.
+   */
+  staff?: readonly StaffAccount[]
+}
+
+export interface StaffAccount {
+  key: string
+  role: 'ogretmen' | 'onburo'
+  name: string
+  /** Öğretmen hesabının bağlandığı öğretmen kaydı (isteğe bağlı). */
+  teacherId?: string
 }
 
 export interface TenantUser {
@@ -114,6 +127,8 @@ export interface Tenant {
   institutionId: string
   /** Rol → o kurumun hesabı; `loginAs(tenant.user('ogretmen'))` kendi oturumunu açar. */
   user: (role: RoleKey) => TenantUser
+  /** Ek personel hesabı (`TenantOptions.staff`). */
+  staff: (key: string) => TenantUser
 }
 
 export interface TenantFactory {
@@ -247,6 +262,30 @@ export function createTenantFactory(): TenantFactory {
       await ensureMembershipLinks(db, institutionId, id, linksOf(role, options))
     }
 
+    const staff = new Map<string, TenantUser>()
+    for (const extra of options.staff ?? []) {
+      if (!/^[a-z0-9-]+$/.test(extra.key) || staff.has(extra.key))
+        throw new Error(`Geçersiz ya da yinelenen personel anahtarı: ${extra.key}`)
+      const email = `e2e-${suffix}.${extra.key}@kampus.example`
+      const { id: userId } = await ensureUser(auth, {
+        name: extra.name,
+        email,
+        password: e2e.password,
+      })
+      const { id } = await ensureMember(auth, db, {
+        institutionId,
+        userId,
+        role: ACCOUNT_ROLES[extra.role],
+      })
+      await ensureMembershipLinks(
+        db,
+        institutionId,
+        id,
+        extra.teacherId ? [{ kind: 'teacher', recordId: extra.teacherId }] : [],
+      )
+      staff.set(extra.key, { email, name: extra.name })
+    }
+
     await insertMissingRecords(db, institutionId, tenantRecords(options, now), now)
     for (const [studentId, birthDate] of Object.entries(options.birthDates ?? {}))
       await db.insert(studentIdentities).values({
@@ -262,6 +301,11 @@ export function createTenantFactory(): TenantFactory {
       user: (role) => {
         const user = users[role]
         if (!user) throw new Error(`Kurumda ${role} hesabı yok (TenantOptions.roles).`)
+        return user
+      },
+      staff: (key) => {
+        const user = staff.get(key)
+        if (!user) throw new Error(`Kurumda ${key} personel hesabı yok (TenantOptions.staff).`)
         return user
       },
     }

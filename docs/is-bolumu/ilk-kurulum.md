@@ -59,7 +59,7 @@ pnpm test
 
 Yeni klasörde ilk açılan oturum sırayla şunları yapar:
 
-1. Kuralları okur: `CLAUDE.md` "İki geliştiriciyle çalışma", `.claude/rules/ortak-calisma.md`, `docs/muhendislik/git-ve-surum.md` §7, bu dosya ve [README](README.md) (kümeler, sözleşmeler, bağımlılıklar).
+1. Kuralları okur: `.claude/rules/ortak-calisma.md` (zorunlu özetin tek kaynağı), `docs/muhendislik/git-ve-surum.md` §7, bu dosya ve [README](README.md) (kümeler, sözleşmeler, bağımlılıklar).
 2. Kendi görev tablosunu ve karşı tarafınkini okur (oturum hook'u özetini gösterir): `git show origin/feature/platform-gecisi:docs/is-bolumu/<sahip>.md`.
 3. Açık iş isteklerine bakar: `gh issue list -R ahmetonurevis/kampus --state open --label sahip:<sahip>`.
 4. `is-baslat` ile ilk görevi alır: satır `çalışılıyor` olur, entegrasyon dalında küçük bir commit'le gönderilir, sonra dal açılır.

@@ -6,6 +6,7 @@
 import { buildDashboardCards, type DashboardCard } from './dashboard-cards-model.ts'
 import { ADMIN_CARDS } from './AdminCards.tsx'
 import { ADMIN_TREND_CARDS } from './AdminTrendCards.tsx'
+import { FRONT_DESK_CARDS } from './FrontDeskCards.tsx'
 import { SLA_CARDS } from './AdminSlaCard.tsx'
 import { GRADE_TREND_CARDS } from './GradeTrendCards.tsx'
 import { LEARNER_CARDS } from './LearnerCards.tsx'
@@ -23,6 +24,7 @@ const OGUZHAN_CARDS: readonly DashboardCard[] = [
   ...ADMIN_CARDS,
   ...ADMIN_TREND_CARDS,
   ...SLA_CARDS,
+  ...FRONT_DESK_CARDS,
   ...TEACHER_CARDS,
   ...STUDENT_CARDS,
   ...LEARNER_CARDS,

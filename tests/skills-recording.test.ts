@@ -1,8 +1,11 @@
 import test, { describe } from 'node:test'
 import assert from 'node:assert/strict'
 import {
+  FEEDBACK_AUDIO_SECONDS,
   RECORDING_RETENTION_MONTHS,
   canAccessRecording,
+  canHearFeedbackAudio,
+  feedbackAudioFileIdSchema,
   extendedRecordingRetention,
   recordingPeriodEnd,
   recordingPurgeHeld,
@@ -10,6 +13,8 @@ import {
   type DayRange,
   type RecordingReader,
 } from '../packages/school-core/src/skills/recording.ts'
+import { deadlineForVersion } from '../packages/school-core/src/skills/assignment.ts'
+import { FILE_PURPOSES, assertFileAllowed } from '../packages/school-core/src/content/taxonomy.ts'
 
 const now = '2026-11-04T09:00:00.000Z'
 const reader = (input: Partial<RecordingReader> = {}): RecordingReader => ({
@@ -240,5 +245,90 @@ describe('ses kaydının saklama süresi (DOM-BEC-052)', () => {
         }),
       RangeError,
     )
+  })
+
+  test('DOM-BEC-052, DOM-BEC-040: çok turlu ses görevinde sürümün saklama hesabı kendi turunun son tarihini kullanır; sonraki istek bağlanırken hesaplananı değiştirmez, eski (yalnız son istek) hesap yalnız kısaltırdı', () => {
+    const assignmentDeadline = { dueAt: '2026-09-10T20:59:00.000Z', lateAcceptanceDays: 0 }
+    const firstRound = { versionNumber: 1, dueAt: '2026-10-20T20:59:00.000Z' }
+    const secondRound = { versionNumber: 2, dueAt: '2026-11-30T20:59:00.000Z' }
+    // v2 ilk turda gönderildi; dönem sonu erken: saklamayı puanlama süresinden türeyen itiraz belirler.
+    const v2 = { submittedAt: '2026-10-15T09:00:00.000Z' }
+    const retention = (deadline: { dueAt: string | null }) =>
+      recordingRetentionUntil({ periodEndDate: '2026-09-30', deadline, ...v2 })
+    const submission = (rounds: { versionNumber: number; dueAt: string }[]) => ({
+      resubmissionRequestedForVersion: rounds.at(-1)?.versionNumber ?? null,
+      resubmissionDueAt: rounds.at(-1)?.dueAt ?? null,
+      resubmissionRounds: rounds,
+    })
+    // Bağlanırken (attachVersionFiles) yalnız ilk tur vardır.
+    const attached = retention(deadlineForVersion(assignmentDeadline, submission([firstRound]), 2))
+    // İtiraz kararı sonra, v2 için ikinci istek açıkken (extendVersionRecordingRetention).
+    const later = retention(
+      deadlineForVersion(assignmentDeadline, submission([firstRound, secondRound]), 2),
+    )
+    assert.equal(later, attached)
+    // Eski hesap (yalnız son istek bilinir) v2'yi atamanın tarihiyle okurdu: daha erken sonuç.
+    const latestOnly = retention(
+      deadlineForVersion(
+        assignmentDeadline,
+        { ...submission([firstRound, secondRound]), resubmissionRounds: undefined },
+        2,
+      ),
+    )
+    assert.ok(Date.parse(latestOnly) < Date.parse(attached))
+    // Saklama yalnız ileri alındığı için eski hesap bağlanırken yazılanı zaten kısaltamazdı.
+    assert.equal(extendedRecordingRetention({ current: attached, computed: latestOnly, now }), null)
+  })
+})
+
+describe('sesli geri bildirim (DOM-BEC-056)', () => {
+  test('DOM-BEC-056: puanı gören dinler, görmeyen dinlemez; ön büro hiç dinlemez', () => {
+    for (const role of ['ogrenci', 'veli', 'ogretmen', 'yonetici'] as const) {
+      assert.equal(canHearFeedbackAudio({ role, scoreShown: true }), true, role)
+      assert.equal(canHearFeedbackAudio({ role, scoreShown: false }), false, role)
+    }
+    assert.equal(canHearFeedbackAudio({ role: 'onburo', scoreShown: true }), false)
+  })
+
+  test('DOM-BEC-056: amaç m4a, webm ve mp3 kabul eder; 10 MB ve 3 dakika sınırı; rıza istemez', () => {
+    const rule = FILE_PURPOSES.feedback_audio
+    assert.equal(FEEDBACK_AUDIO_SECONDS, 180)
+    assert.equal(rule.maxBytes, 10 * 1024 * 1024)
+    assert.equal('requiresConsent' in rule, false)
+    for (const contentType of ['audio/mp4', 'audio/webm', 'audio/mpeg'])
+      assert.doesNotThrow(() =>
+        assertFileAllowed('feedback_audio', { contentType, byteSize: 1000, durationSeconds: 60 }),
+      )
+    assert.throws(
+      () => assertFileAllowed('feedback_audio', { contentType: 'audio/wav', byteSize: 1000 }),
+      { code: 'file_type_not_allowed' },
+    )
+    assert.throws(
+      () =>
+        assertFileAllowed('feedback_audio', {
+          contentType: 'audio/mp4',
+          byteSize: 10 * 1024 * 1024 + 1,
+        }),
+      { code: 'file_too_large' },
+    )
+    assert.throws(
+      () =>
+        assertFileAllowed('feedback_audio', {
+          contentType: 'audio/mp4',
+          byteSize: 1000,
+          durationSeconds: 181,
+        }),
+      { code: 'file_too_long' },
+    )
+  })
+
+  test('DOM-BEC-056: gövde alanı isteğe bağlıdır; yoksa null, geçersiz kimlik reddedilir', () => {
+    assert.equal(feedbackAudioFileIdSchema.parse(undefined), null)
+    assert.equal(feedbackAudioFileIdSchema.parse(null), null)
+    const id = '6f1c2d3e-4b5a-4c6d-8e7f-90a1b2c3d4e5'
+    assert.equal(feedbackAudioFileIdSchema.parse(id), id)
+    const failed = feedbackAudioFileIdSchema.safeParse('ses.m4a')
+    assert.equal(failed.success, false)
+    assert.equal(failed.error?.issues[0]?.message, 'Sesli geri bildirim dosyası geçersiz.')
   })
 })

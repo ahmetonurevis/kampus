@@ -6,9 +6,12 @@ import {
   GUARDIAN_REQUIRED_FORM_MESSAGE,
   type EnrollmentFormValues,
 } from '@kampus/school-core/lib/enrollment.ts'
+import { navigation } from '@kampus/school-core/modules/full-navigation.ts'
 import {
+  enrollmentFieldForCode,
   enrollmentServerError,
   guardianModeFor,
+  paymentPlanHref,
   prospectChangeValues,
 } from '../src/pages/crm/enrollment-form.ts'
 
@@ -114,4 +117,48 @@ test('DOM-KAY-012: sunucunun veli hataları "Veli ve ödeyici" alanına Türkçe
     enrollmentServerError('discounts', { type: 'sibling_required', message: 'Kardeş yok.' }),
     { field: 'root.server', step: null, type: 'sibling_required', message: 'Kardeş yok.' },
   )
+})
+
+test('ON-035, DOM-KAY-035: kesin kayıttan sonra ödeme planı bağlantısı rolün taksit listesine gider', () => {
+  assert.equal(paymentPlanHref('onburo'), '/onburo/tahsilat-takip')
+  // Yöneticide Tahsilat Takibi yoktur; taksitler Finans & Tahsilat sayfasındadır.
+  assert.equal(paymentPlanHref('yonetici'), '/yonetici/finans')
+  for (const role of ['onburo', 'yonetici'] as const) {
+    const path = paymentPlanHref(role)?.split('/').at(-1)
+    const page = navigation[role].find((item) => item.path === path)
+    assert.equal(page?.module, 'finance', `${role} menüsünde ${String(path)} finans sayfası`)
+  }
+  assert.equal(paymentPlanHref('ogretmen'), null)
+  assert.equal(paymentPlanHref(undefined), null)
+})
+
+test('DOM-KAY-010, class_campus_mismatch: sınıf hataları sınıf alanına ve ilk adıma döner', () => {
+  // `class_campus_mismatch` yollu gelir (`classId`); `class_capacity_full` yolsuzdur, koduyla bağlanır.
+  assert.deepEqual(
+    enrollmentServerError('classId', {
+      type: 'class_campus_mismatch',
+      message: 'Seçilen sınıf adayın kampüsünde değil.',
+    }),
+    {
+      field: 'classId',
+      step: 0,
+      type: 'class_campus_mismatch',
+      message: 'Seçilen sınıf adayın kampüsünde değil.',
+    },
+  )
+  assert.equal(enrollmentFieldForCode('class_capacity_full'), 'classId')
+  assert.deepEqual(
+    enrollmentServerError(enrollmentFieldForCode('class_capacity_full') ?? '', {
+      type: 'class_capacity_full',
+      message: 'Seçilen sınıfın kontenjanı dolu.',
+    }),
+    {
+      field: 'classId',
+      step: 0,
+      type: 'class_capacity_full',
+      message: 'Seçilen sınıfın kontenjanı dolu.',
+    },
+  )
+  // Başka kodlar alana bağlanmaz; toast'ta kalır.
+  assert.equal(enrollmentFieldForCode('tariff_changed'), undefined)
 })

@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
+import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { createSeed } from '@kampus/school-core/data/seed.ts'
 import type { AnnouncementRecord } from '@kampus/react-shared/announcement-model.ts'
 import {
   CollectionTooLargeError,
@@ -19,7 +19,10 @@ import {
   newsItems,
 } from '../src/pages/dashboard/dashboard-news-model.ts'
 import { queryErrorMessage } from '../src/components/query-error-message.ts'
-import { openQuestions } from '../src/pages/dashboard/dashboard-teacher-model.ts'
+import {
+  openQuestionsNote,
+  type OpenQuestions,
+} from '../src/pages/dashboard/dashboard-teacher-model.ts'
 
 // Genel Bakış "Kampüsten haberler", "Yanıt bekleyen sorular" ve not ortalaması eğilimi (OG-226):
 // haber seçimi, aylık ortalama kovaları, az veri ve soru sayacı.
@@ -176,52 +179,21 @@ test('eğilim: metin özeti ilk, son, değişim ve en yüksek ayı söyler', () 
   )
 })
 
-const seed = createSeed(NOW)
-const base = seed.questions[0]
-if (!base) throw new Error('örnek veride soru bekleniyor')
-const question = (id: string, createdAt: string, extra: Record<string, unknown> = {}) =>
-  wrap({ ...base, id, createdAt, answeredAt: null, answer: '', ...extra })
-
-test('soru sayacı: yalnız yanıtsız ve geri çekilmemiş soru sayılır (DOM-ILT-093)', () => {
-  const result = openQuestions(
-    [
-      question('q1', '2026-10-15T08:00:00.000Z'),
-      question('q2', '2026-10-15T07:00:00.000Z', {
-        answeredAt: '2026-10-15T08:30:00.000Z',
-        answer: 'Yanıt',
-      }),
-      question('q3', '2026-10-15T06:00:00.000Z', { withdrawnAt: '2026-10-15T06:30:00.000Z' }),
-      question('q4', '2026-10-15T05:00:00.000Z'),
-    ],
-    NOW.toISOString(),
-  )
-  assert.equal(result.total, 2)
-  assert.deepEqual(
-    result.items.map((row) => row.id),
-    ['q4', 'q1'],
-  )
+test('soru sayacı: not sunucunun süre aşımı sayısını söyler, sıfırda sakin metin (DOM-ILT-013)', () => {
+  const items: OpenQuestions['items'] = []
+  assert.equal(openQuestionsNote({ total: 4, overdue: 2, items }), '2 sorunun yanıt süresi aşıldı')
+  assert.equal(openQuestionsNote({ total: 4, overdue: 0, items }), 'Yanıt süresi aşılan soru yok')
+  assert.equal(openQuestionsNote(null), 'Yanıt süresi aşılan soru yok')
 })
 
-test('soru sayacı: liste en eski üç soruyla sınırlıdır, sayı sınırlanmaz', () => {
-  const rows = [1, 2, 3, 4, 5].map((n) => question(`q${n}`, `2026-10-15T0${n}:00:00.000Z`))
-  const result = openQuestions(rows, NOW.toISOString())
-  assert.equal(result.total, 5)
-  assert.deepEqual(
-    result.items.map((row) => row.id),
-    ['q1', 'q2', 'q3'],
+test('IST-116: soru kartları özetin questions bölümünü okur, soru kayıtlarını çekmez', () => {
+  const source = readFileSync(
+    new URL('../src/pages/dashboard/TeacherQuestionCards.tsx', import.meta.url),
+    'utf8',
   )
-})
-
-test('soru sayacı: süresi aşılan soru ayrı sayılır, kuyruk boşsa sıfır döner (DOM-ILT-013)', () => {
-  const later = new Date('2026-10-20T09:00:00.000Z').toISOString()
-  const result = openQuestions([question('q1', '2026-10-15T08:00:00.000Z')], later)
-  assert.equal(result.total, 1)
-  assert.equal(result.overdue, 1)
-  assert.equal(
-    openQuestions([question('q1', '2026-10-15T08:00:00.000Z')], NOW.toISOString()).overdue,
-    0,
-  )
-  assert.deepEqual(openQuestions([], NOW.toISOString()), { total: 0, overdue: 0, items: [] })
+  assert.doesNotMatch(source, /useCoreAll|TODO\(api-question-status-filter\)/)
+  assert.equal(source.match(/section: \(data\) => data\.questions/g)?.length, 2)
+  assert.match(source, /module: 'learning'/)
 })
 
 test('eğilim: önceki çocuğun sayımı (placeholder) yeni çocuğun başlığı altında gösterilmez', () => {

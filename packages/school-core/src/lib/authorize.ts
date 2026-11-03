@@ -48,6 +48,10 @@ type OnurWriteTargets = {
   'tariff.manage': Record<string, never>
   // Burs programı ve MEBBİS işareti (DOM-FIN-025).
   'scholarship.manage': Record<string, never>
+  // Sözleşme onayı (IST-092): veli yalnız bağlı çocuğunda; ödeyici kuralı `lib/contract-approval.ts`.
+  'contract.sign': Record<string, never>
+  'contract.approve': { studentId: string }
+  'contract.amend': Record<string, never>
   'student.withdraw': Record<string, never>
   'invoice.payOnline': { studentId: string }
   // Aday/CRM (`lib/prospects.ts`): kurum kapsamlıdır, hedef kaydı yetkiyi değiştirmez.
@@ -110,6 +114,11 @@ export const ONUR_WRITE_ACTION_ROLES = {
   'tariff.manage': ['yonetici'],
   // Burs onayı yöneticidedir (DOM-FIN-052).
   'scholarship.manage': ['yonetici'],
+  // İmza yetkilisini (kurucu/temsilci) kurumu bağlayan yönetici işler; ön büro sözleşme hazırlar ve
+  // ıslak imzayı işler, veli ödeyiciyse kendisi onaylar (DOM-FIN-052, IST-092).
+  'contract.sign': ['yonetici'],
+  'contract.approve': ['yonetici', 'onburo', 'veli'],
+  'contract.amend': ['yonetici', 'onburo'],
   // Ayrılış onayı ve iade yöneticidedir (DOM-FIN-052, IST-110).
   'student.withdraw': ['yonetici'],
   // Çevrim içi ödeme: veli yalnız bağlı çocuğunun taksiti için başlatır (DOM-FIN-052, DOM-YTK-025).
@@ -277,7 +286,14 @@ function decide(
     case 'tariff.manage':
     case 'scholarship.manage':
     case 'student.withdraw':
+    case 'contract.sign':
+    case 'contract.amend':
       return ALLOWED
+    case 'contract.approve':
+      // Kapsam dışı öğrencinin sözleşmesi yok sayılır; varlığı sızmaz (DOM-YTK-025, DOM-FIN-052).
+      return actor.role !== 'veli' || scope.studentIds.has(request.target.studentId)
+        ? ALLOWED
+        : deny('contract_not_found', 'Sözleşme bulunamadı.', 'DOM-YTK-025', 'not_found')
     case 'invoice.payOnline': {
       // Veli yalnız bağlı çocuğunun taksiti için ödeme başlatır (DOM-YTK-025, DOM-FIN-052).
       return scope.studentIds.has(request.target.studentId)
@@ -488,6 +504,7 @@ function decide(
           )
     case 'permissionForm.update':
     case 'permissionForm.close':
+    case 'permissionForm.cancel':
     case 'permissionForm.archive': {
       // Formun öğretmeni ya da yönetici (DOM-ILT-038). Formu gören başka öğretmen 403 alır;
       // görmeyen için ret 404'tür, formun varlığı sızdırılmaz.
@@ -559,9 +576,13 @@ function decide(
     case 'academicYear.manage':
       return ALLOWED
     // Veli bağı: öğrencinin varlığı ve velinin kendi bağı serviste denetlenir (kapsam dışı 404);
-    // okuma alanları `lib/guardianship.ts` `guardianLinksView`'da daralır (DOM-ILT-073).
+    // okuma alanları `lib/guardianship.ts` `guardianLinksView`'da daralır (DOM-ILT-073). Veli
+    // davetinde öğrenci ve veli kaydının varlığı ve bağ kuralı işlemdedir (DOM-YTK-071).
     case 'guardian.read':
     case 'guardian.manage':
+    case 'guardian.invite':
+    case 'guardian.invite_list':
+    case 'guardian.invite_cancel':
       return ALLOWED
     // Kur kurum geneli katalogdur; koordinatörün seviye kapsamı `lib/courses.ts`
     // `assertCourseManager`'da, öğrenci/veli daraltması `courseView`'dadır (DOM-DIL-005).

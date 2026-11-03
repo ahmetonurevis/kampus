@@ -6,6 +6,7 @@ import {
 import {
   CONFLICTS,
   SCOPE,
+  SESSION,
   spec,
   workflow,
   type CommandSpec,
@@ -68,6 +69,11 @@ export const ONUR_OPERATION_COMMANDS = {
   'payment.reverse': spec('finance', [...SCOPE, 'invoices']),
   'tariff.manage': spec('finance', [...SCOPE]),
   'scholarship.manage': spec('finance', [...SCOPE]),
+  // Sözleşme onayı ve ek protokol (`lib/contract-approval.ts`, IST-092). Onay ödeyicinin adını okur ve
+  // ek protokolün planını taksitlere geçirir; ek protokol planlanmış yenilemeyi denetler.
+  'contract.sign': spec('finance', [...SCOPE, 'contracts']),
+  'contract.approve': spec('finance', [...SESSION, 'contracts', 'invoices']),
+  'contract.amend': spec('finance', [...SCOPE, 'contracts', 'invoices', 'renewals']),
   'student.withdraw': spec('finance', [
     ...SCOPE,
     'parents',

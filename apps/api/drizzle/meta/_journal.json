@@ -355,8 +355,57 @@
     {
       "idx": 50,
       "version": "7",
-      "when": 1793703590071,
-      "tag": "0050_create_price_index_rates",
+      "when": 1793703307627,
+      "tag": "0050_learning_outcomes",
+      "breakpoints": true
+    },
+    {
+      "idx": 51,
+      "version": "7",
+      "when": 1793706786426,
+      "tag": "0051_add_submission_version_draft_revision",
+      "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1793708732672,
+      "tag": "0052_create_course_assessments",
+      "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793714104585,
+      "tag": "0053_create_course_certificates",
+      "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793727490950,
+      "tag": "0054_allow_feedback_audio",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793733079397,
+      "tag": "0055_invitation_guardian",
+      "breakpoints": true
+    },
+    {
+      "idx": 56,
+      "version": "7",
+      "when": 1793742157538,
+      "tag": "0056_protect_approved_contracts",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1793742877335,
+      "tag": "0057_create_price_index_rates",
       "breakpoints": true
     }
   ]

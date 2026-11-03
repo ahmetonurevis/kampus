@@ -27,7 +27,9 @@ import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import {
+  decisionDropped,
   decisionFormSchema,
+  eventFacts,
   myDecision,
   myDecisionText,
   PERMISSION_NOTE_MAX_LENGTH,
@@ -68,6 +70,7 @@ export function PermissionDecisionCard({ item, studentId, audience }: Props) {
   const entry = studentEntry(item, studentId)
   const canDecide = entry?.canDecide === true
   const mine = myDecision(entry)
+  const dropped = decisionDropped(entry)
   const blocked = decisionBlockedReason(item)
   const busy = decide.isPending || form.formState.isSubmitting
   const decided = mine !== undefined
@@ -108,6 +111,16 @@ export function PermissionDecisionCard({ item, studentId, audience }: Props) {
         <StatusBadge text={state} tone={permissionFormTone(state)} />
       </header>
       <p className="text-sm [overflow-wrap:anywhere] whitespace-pre-line">{item.description}</p>
+      {eventFacts(item).length ? (
+        <dl aria-label="Etkinlik ayrıntısı" className="grid gap-1 text-sm">
+          {eventFacts(item).map(([label, value]) => (
+            <div key={label} className="flex flex-wrap gap-x-2">
+              <dt className="text-muted-foreground">{label}</dt>
+              <dd className="font-medium [overflow-wrap:anywhere]">{value}</dd>
+            </div>
+          ))}
+        </dl>
+      ) : null}
       {entry === undefined ? (
         <p className="text-sm text-muted-foreground">Bu form bu öğrenci için istenmiyor.</p>
       ) : (
@@ -115,10 +128,21 @@ export function PermissionDecisionCard({ item, studentId, audience }: Props) {
           <div className="flex flex-wrap items-center gap-2 text-sm">
             <span className="text-muted-foreground">İzin durumu</span>
             <StatusBadge
-              text={permissionStatusText(entry.status)}
+              text={dropped ? 'Yeniden izin bekleniyor' : permissionStatusText(entry.status)}
               tone={permissionStatusTone(entry.status)}
             />
           </div>
+          {dropped && item.cancelledAt === null ? (
+            <p role="status" className="text-sm font-medium text-warning">
+              Etkinlik değişti; daha önce verdiğiniz karar geçerli değil. Lütfen ayrıntıları okuyup
+              izninizi yeniden verin.
+            </p>
+          ) : null}
+          {item.cancelledAt !== null ? (
+            <p role="status" className="text-sm font-medium text-warning">
+              Etkinlik iptal edildi.
+            </p>
+          ) : null}
           {!canDecide ? (
             <p className="text-sm text-muted-foreground">
               {audience === 'student'

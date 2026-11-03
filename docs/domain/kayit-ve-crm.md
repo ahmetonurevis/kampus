@@ -1,6 +1,6 @@
 # Kayıt ve CRM
 
-Aday (lead) yakalamadan kesin kayda, yenilemeye ve ayrılışa kadar öğrenci/kursiyer yaşam döngüsü. Finansal sonuçlar [finans.md](finans.md), dil okuluna özgü seviye tespiti ve paketler [dil-okulu.md](dil-okulu.md) içindedir.
+Aday (lead) yakalamadan kesin kayda, yenilemeye ve ayrılışa kadar öğrenci/kursiyer yaşam döngüsü. Finansal sonuçlar [finans.md](finans.md), dil okuluna özgü seviye tespiti ve paketler [dil-okulu.md](dil-okulu.md) içindedir. **Doğrulanmalı** maddelerin hukukçu (H-) ve mali müşavir (M-) soruları ile kullanıcı kararları [finance-dogrulanacak-sorular.md](finance-dogrulanacak-sorular.md) içindedir.
 
 ## Aday yaşam döngüsü
 
@@ -34,7 +34,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 - **Kural:** Adaya kampanya, indirim, bursluluk sınavı duyurusu gibi tanıtım amaçlı SMS/e-posta/arama yalnız ticari elektronik ileti onayı varsa gönderilir; onay kanal bazında (SMS, e-posta, arama) ve ret hakkıyla saklanır. Randevu teyidi, sözleşme ve tahsilat bilgilendirmesi gibi hizmet iletileri onaya bağlı değildir.
 - **Gerekçe:** Onaysız ticari ileti idari para cezası doğurur; İYS kaydı gerekir.
-- **Kaynak:** 6563 sayılı Kanun md. 6 ve İYS düzenlemeleri — **doğrulanmalı** (eşik ve İYS kapsamı).
+- **Kaynak:** 6563 sayılı Kanun md. 6 ve İYS düzenlemeleri — **doğrulanmalı** (H-21; eşik ve İYS kapsamı).
 - **Kurum türü:** ikisi
 - **Kodda:** kısmen — onay kanal bazında, varsayılan onaysız ve anıyla saklanır (`marketingConsent`, `packages/school-core/src/lib/prospects.ts`). Ön büro ve yönetici adayın talebiyle onayı verir ya da anında geri alır (`setProspectMarketingConsent`, yetki `prospect.consent`; aşamadan bağımsızdır, vazgeçen ve kayıtlı adayda da yapılır); her değişiklik kalıcı olay olarak `marketingConsentHistory`'ye yazılır, aynı karar 409 `marketing_consent_unchanged`, e-postasız adayda e-posta onayı 422 `consent_contact_missing`. API `POST /api/v1/prospects/:prospectId/marketing-consent` (`If-Match` zorunlu), web aday detayında "Ticari ileti onayı" paneli. Gönderimde denetim için `hasMarketingConsent(prospect, kanal)` hazırdır, ama tanıtım iletisi gönderen işlem henüz yoktur. İYS bildirimi OG-108'dedir (dış servis); aday için platformda aydınlatma kitlesi ve rıza öznesi yoktur (iş isteği #14).
 
@@ -66,7 +66,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 - **Kural:** `Vazgeçti` aşamasındaki veya 12 ay temas görmeyen aday kayıtları, pazarlama onayı yoksa en geç bir sonraki periyodik imha döneminde anonimleştirilir; dönüşüm istatistiği için yalnız kaynak, aşama ve tarih kalır.
 - **Gerekçe:** Kişisel veri işleme amacı ortadan kalkınca silinir/anonimleştirilir.
-- **Kaynak:** KVKK md. 7; Kişisel Verilerin Silinmesi, Yok Edilmesi veya Anonim Hâle Getirilmesi Hakkında Yönetmelik (periyodik imha süresi en fazla 6 ay) — **doğrulanmalı**. 12 ay işletme kuralıdır.
+- **Kaynak:** KVKK md. 7; Kişisel Verilerin Silinmesi, Yok Edilmesi veya Anonim Hâle Getirilmesi Hakkında Yönetmelik (periyodik imha süresi en fazla 6 ay) — **doğrulanmalı** (H-22). 12 ay işletme kuralıdır.
 - **Kurum türü:** ikisi
 - **Kodda:** yok.
 
@@ -74,7 +74,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 - **Kural:** Aday ad, kampüs, ilgi (hedef düzey/seviye, program), kaynak (`DOM-KAY-007`), telefon ve gösterilen aydınlatma metninin sürümüyle açılır; e-posta isteğe bağlıdır. T.C. kimlik no, doğum tarihi, adres, okul notu gibi veriler aday aşamasında alınmaz; kesin kayıtta istenir (`DOM-KAY-012`). 18 yaş altı adayda telefon ve e-posta velinindir ve veli adı zorunludur; yetişkin adayda veli verisi saklanmaz. `school` adayı her zaman 18 yaş altı sayılır; `language_school`'da adayın 18 yaş altı olup olmadığı açıkça seçilir, seçimi olmayan eski kayıt 18 yaş altı sayılır. Ticari ileti onayı (`DOM-KAY-004`) kanal bazında, varsayılan "onay yok" olarak kaydedilir; e-postası olmayan adaya e-posta onayı yazılmaz.
 - **Gerekçe:** Aday satış hunisindedir; amaçla sınırlı ve ölçülü veri dışında veri işlemek gereksiz risk doğurur. Veli kuralı yaş bilinmeden uygulanamayacağı için bilinmeyen yaş en korumalı biçimde yorumlanır.
-- **Kaynak:** KVKK md. 4/2-ç (amaçla bağlantılı, sınırlı ve ölçülü işleme), md. 10 (aydınlatma); 6563 sayılı Kanun md. 6 — **doğrulanmalı** (bkz. `DOM-KAY-004`).
+- **Kaynak:** KVKK md. 4/2-ç (amaçla bağlantılı, sınırlı ve ölçülü işleme), md. 10 (aydınlatma); 6563 sayılı Kanun md. 6 — **doğrulanmalı** (H-21; bkz. `DOM-KAY-004`).
 - **Kurum türü:** ikisi
 - **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`createProspectSchema`, `createProspect`); API `POST /api/v1/prospects` (gövde katı: kimlik no, doğum tarihi, adres 400; `Idempotency-Key` zorunlu).
 
@@ -101,8 +101,9 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Kural:** Kesin kayıtta öğrenci T.C. kimlik no (veya yabancı uyruklu kimlik no) ve doğum tarihi zorunludur. Veli kuralı kurum türüne göredir (kullanıcı kararı, 2 Kasım 2026):
   - **`school` (ortaokul ve lise):** en az bir veli (yakınlık derecesi, telefon) her yaşta zorunludur; öğrenci 18 yaşını doldurmuş olsa da. Doğum tarihinden hesaplanan 18 yaş veli zorunluluğunu kaldırmaz ve bu türde "veli alınmaz" reddi (`guardian_not_applicable`) yoktur. Adaydaki iletişim bilgileri velinin kaydında kalır, öğrenciye yazılmaz; öğrencinin kendi iletişimi istenirse ayrıca ve isteğe bağlı alınır. Ödeyici veli olabilir; öğrenci kardeşin mevcut velisine bağlanabilir (`DOM-KAY-013`).
   - **Kurs türleri (`language_school`; ileride üniversiteye hazırlık, KPSS akademisi gibi kurslar):** 18 yaş ve üstü yetişkin sayılır; veli gerekmez, sözleşme tarafı, ödeyici ve iletişim kursiyerin kendisidir. 18 yaş altında okuldaki veli kuralı uygulanır.
+  - **Veli hesabı:** Veli hesabını personel açar; veli kaydı girilir ve hesabın göreceği öğrenci seçilir (kullanıcı kararı, 2026-11-03). Kesin kayıttan hesap açma henüz yok (ON-290).
 - **Gerekçe:** e-Okul/e-Özel kaydı ve sözleşmenin geçerliliği için yasal temsilci gerekir; reşit olmayanın sözleşmesini yasal temsilcisi yapar.
-- **Kaynak:** 4721 sayılı Türk Medeni Kanunu (ergin olmayanın temsili) — **doğrulanmalı**; ÖÖKY md. 53/1 (Bakanlıkça belirlenen tip sözleşme).
+- **Kaynak:** 4721 sayılı Türk Medeni Kanunu (ergin olmayanın temsili) — **doğrulanmalı** (H-10); ÖÖKY md. 53/1 (Bakanlıkça belirlenen tip sözleşme; güncel metin **doğrulanmalı**, H-07).
 - **Kurum türü:** ikisi
 - **Kodda:** var (API) — `lib/enrollment.ts`, `POST /api/v1/prospects/:prospectId/enroll`; kimlik `student_identities` tablosunda, `GET /api/v1/students/:studentId/identity` maskeli döner. Yakınlık `GUARDIAN_RELATIONSHIPS`'tir (`mother`, `father`, `legal_guardian` (vasi), `other`); ödeyici değeri (`payer: 'guardian' | 'student'`) ayrı alandır. 18 yaş doğum tarihinden, işlem anının Europe/Istanbul gününe göre hesaplanır (`lib/age.ts`, CEFR bildirimiyle ortak). Veli zorunluluğu `guardianRequired(institutionType, birthDate, now)`'dır: okulda her yaşta, kursta (`isCourse`: `school` dışındaki her tür) 18 yaş altında. Veli zorunluyken `guardian: null` 422 `guardian_required`; kursta yetişkin kursiyer ödeyicidir (`guardian: null`), veli verilirse 422 `guardian_not_applicable` (okulda dönmez); kurs adayının yaş grubu seçimi (`minor`) doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (okulda denetlenmez). Öğrencinin kendi iletişimi isteğe bağlı `studentContact` (`phone`, `email`) ile alınır ve yalnız öğrenciye yazılır. Veli varsa kesin kayıt veli–öğrenci bağını aynı işlemde `student_guardians`'a yazar (`enrollProspectWithTariff` `guardianBond`, API `enrollProspectCommand`; kural `planGuardianLink`): veli kaydına bağlı (hesapsız), yakınlık formdaki ya da mevcut velinin kayıtlı değeri (tanınmıyorsa `other`), velayet `full`, sözleşmenin ödeyicisi veli olduğu için `isPayer: true`, iletişim kısıtı ve teslim yetkisi kapalı; yetişkin kursiyerin kendisi veli değildir, bağ yazılmaz. Her bağ `guardian.link` olarak denetim kaydına alan adlarıyla yazılır. Öğrenci başına tek veli yazılır: ikinci (ayrı) veli kayıttan sonra `POST /api/v1/students/:studentId/guardians` ile eklenir; formda ikinci veli ve ödeyici seçimi yoktur. Veli hesabının yeni çocuğu görmesi (hesap bağı ve `membership_links`) ayrı iştir (ON-128). Web formu aynı kuralı `enrollmentFormSchema` içinde uygular (`allowedGuardianModes`): "Kursiyerin kendisi" yalnız kursta ve 18 yaş ve üstünde sunulur, doğum tarihi değişince veli seçimi buna uyar; yetişkin kursiyerin telefonu ve e-postası isteğe bağlı alanlardır (`studentContact`). Sunucunun `guardian_required` ve `guardian_not_applicable` reddi formda "Veli ve ödeyici" alanına bağlanır. Çevrimdışı demo `enrollProspect` eski davranıştadır.
 
@@ -112,7 +113,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Kardeş indirimi, tek veli hesabı ve tek bildirim akışı aile bağına dayanır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API) — `GET /api/v1/prospects/:prospectId/guardian-matches` önerir, `guardian.existingParentId` bağlar. Eşleşme yalnız telefonladır: velinin, öğrencisinin ya da öğrencisine dönüşmüş kardeş adayın telefonu (18 yaş altı öğrencinin telefonu boş kaldığı için, DOM-KAY-003). Yetişkin kursiyerin kendi kaydı için açılan satır `relationship: 'self'` taşır ve veli değildir; bu satır ve alan eklenmeden önce açılmış yer tutucu (telefonsuz, e-postasız, bütün adayları `minor: false`) öneriye girmez, `existingParentId` ile seçilirse 422 `parent_not_guardian` (`path: ['guardian']`) döner ve kayıt yazılmaz (`isNotGuardian`). Veli hesabının (üyelik bağlantısı) mevcut veliye bağlanan yeni çocuğu görmesi ayrı iştir (takip). Çevrimdışı demo her kayıtta yeni veli açar.
+- **Kodda:** var (API) — `GET /api/v1/prospects/:prospectId/guardian-matches` önerir, `guardian.existingParentId` bağlar. Eşleşme yalnız telefonladır: velinin, öğrencisinin ya da öğrencisine dönüşmüş kardeş adayın telefonu (18 yaş altı öğrencinin telefonu boş kaldığı için, DOM-KAY-003). Yetişkin kursiyerin kendi kaydı için açılan satır `relationship: 'self'` taşır ve veli değildir; bu satır ve alan eklenmeden önce açılmış yer tutucu (telefonsuz, e-postasız, bütün adayları `minor: false`) öneriye girmez, `existingParentId` ile seçilirse 422 `parent_not_guardian` (`path: ['guardian']`) döner ve kayıt yazılmaz (`isNotGuardian`). Veli hesabının (üyelik bağlantısı) mevcut veliye bağlanan yeni çocuğu görmesi ayrı iştir (ON-128); hesabı personel açar ve öğrenciyi seçer (kullanıcı kararı, 2026-11-03; ON-290). Çevrimdışı demo her kayıtta yeni veli açar.
 
 ### DOM-KAY-014 · Düzeye uygun sınıf
 
@@ -176,7 +177,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 - **Kural:** Ders yılı sonunda ödenmemiş öğrenim ücreti borcu olan öğrencinin yenilemesi yöneticinin açık onayı olmadan planlanamaz. Borç, akademik kayıtlara (karne, not, belge) erişimi engellemek için kullanılmaz.
 - **Gerekçe:** Mevzuat yenilememe hakkı verir; belge/karne alıkoyma hakkı vermez.
-- **Kaynak:** ÖÖKY md. 55/2 (yenilememe ve resmî okula nakil); karne/belge alıkoyma yasağı işletme yorumu — **doğrulanmalı**.
+- **Kaynak:** ÖÖKY md. 55/2 (yenilememe ve resmî okula nakil); karne/belge alıkoyma yasağı işletme yorumu — **doğrulanmalı** (H-23).
 - **Kurum türü:** `school`
 - **Kodda:** yok — yenileme borç denetimi yapmaz.
 
@@ -228,7 +229,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 - **Kural:** Adayı kesin kayda (öğrenci, veli, taksit planı, sözleşme) yalnız yönetici ve ön büro dönüştürür; işlem `crm` ve taksit ile sözleşme yazdığı için `finance` modülüne bağlıdır, ikisinden biri kapalıyken reddedilir. Yalnız açık aşamadaki (`Yeni aday`, `İletişime geçildi`, `Görüşme planlandı`, `Teklif verildi`) aday kayda alınır; `Vazgeçti` aday önce `İletişime geçildi` ile yeniden açılır (`DOM-KAY-030`), kayıtlı aday ikinci kez alınmaz (`DOM-KAY-011`), tanınmayan eski aşama reddedilir.
 - **Gerekçe:** Kesin kayıt borç ve sözleşme doğurur; vazgeçen adayın doğrudan kaydı yeniden açılıştaki tekillik denetimini (`DOM-KAY-002`) atlatır.
-- **Kaynak:** İşletme kuralı; yetki matrisi (`docs/domain/yetki-ve-kapsam.md`).
+- **Kaynak:** İşletme kuralı; yetki matrisi (`docs/domain/yetki-ve-kapsam.md`). Kâğıt (ıslak imzalı) rızanın personelce sisteme girilmesi **doğrulanmalı** (H-20).
 - **Kurum türü:** ikisi
 - **Kodda:** var (core) — `packages/school-core/src/lib/enrollment.ts` (`enrollProspect` açık aday şartı, 409 `prospect_closed`), yetki eylemi `prospect.enroll` (`packages/school-core/src/lib/authorize.ts`, `modules/commands.ts`). API `POST /api/v1/prospects/:prospectId/enroll` önce `requireAuthorized` çağırır, sonra core `enrollProspectWithTariff`'ı çalıştırır (`Idempotency-Key` ve `If-Match` zorunlu); `crm` veya `finance` modülü kapalıyken 403 `module_disabled` (kesin kayıt taksit ve sözleşme yazar), öteki roller 403, kapalı aday 409. Çevrimdışı demo çağıranları (`apps/web/src/views/Crm.vue`, `apps/mobile/src/model/operations.ts`) yetki denetlemez (`TODO(crm-enroll)`). Kesin kayıt rıza yazmaz ve rızayı beklemez (`DOM-YTK-057`, `DOM-YTK-061`): web `apps/web-react/src/pages/crm/EnrollmentConsentNotice.tsx` kayıttan sonra personele beklenen rızaları `GET /api/v1/consents/status` ile bildirir (ON-025). Yanıttaki `grantor` öğrenci kaydının doğum tarihinden hesaplandığı, kesin kayıt ise doğum tarihini yalnız `student_identities`'e yazdığı için yeni yetişkin öğrencide sunucu `guardian` döner; ekran kişiyi formdaki doğum tarihiyle düzeltir, sunucunun rıza kararı düzeltilene kadar bu öğrenci rıza veremez.
 

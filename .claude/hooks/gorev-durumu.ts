@@ -41,7 +41,8 @@ export interface Party {
 }
 
 export const INTEGRATION_REF = 'origin/feature/platform-gecisi'
-const TASK_ID = /^[A-Z]{2}-\d{3}$/
+// Numaralar üç hanelidir; 999 dolunca sıra dört haneyle sürer (OG-1000).
+const TASK_ID = /^[A-Z]{2}-\d{3,4}$/
 const NEXT_LIMIT = 5
 const TITLE_LIMIT = 110
 

@@ -12,10 +12,14 @@ import { FILE_PURPOSES, MIME, type FilePurpose } from '@kampus/school-core/conte
  * denenir). Süreç çıktısı (stderr) yalnız sessizlik ölçümü için okunur, loglanmaz.
  */
 
-/** Dönüşümden geçen amaçlar ve hedef bit hızı: konuşma ~64 kbps, dinleme ~96 kbps. */
+/**
+ * Dönüşümden geçen amaçlar ve hedef bit hızı: konuşma ve sesli geri bildirim (DOM-BEC-056)
+ * ~64 kbps, dinleme ~96 kbps.
+ */
 export const AUDIO_TRANSCODE_PROFILES = {
   speaking_recording: { bitrateKbps: 64 },
   listening_audio: { bitrateKbps: 96 },
+  feedback_audio: { bitrateKbps: 64 },
 } as const satisfies Partial<Record<FilePurpose, { bitrateKbps: number }>>
 export type TranscodedPurpose = keyof typeof AUDIO_TRANSCODE_PROFILES
 

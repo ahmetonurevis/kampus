@@ -6,10 +6,13 @@ import { btree_gin } from '@electric-sql/pglite/contrib/btree_gin'
 import { drizzle } from 'drizzle-orm/pglite'
 import { migrate } from 'drizzle-orm/pglite/migrator'
 
+import { samplePlatformOutcomes } from '@kampus/school-core/content/outcomes.ts'
+
 import { buildApp, type App, type BuildAppOptions, type Clock } from '../../src/app.ts'
 import type { InstitutionType, Role } from '../../src/auth.ts'
 import { parseConfig, type Config } from '../../src/config.ts'
 import { MIGRATIONS_FOLDER, schema, type Database } from '../../src/db/client.ts'
+import { syncPlatformOutcomes } from '../../src/db/learning-outcomes.ts'
 import type { Mailer } from '../../src/services/mailer.ts'
 import type { DiskStorage } from '../../src/storage/disk.ts'
 import {
@@ -71,6 +74,9 @@ export async function createTestDatabase(): Promise<{ db: Database; close: () =>
   const client = newPGlite()
   const db = drizzle({ client, schema })
   await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
+  // Platform kazanım kataloğu üretimde bakım betiğiyle yüklüdür (DOM-KYN-011; ADR 0004 karar 9):
+  // testler de örnek kataloğu hazır bulur. Kurumdan bağımsızdır, şablon dökümüne girer.
+  await syncPlatformOutcomes(db, samplePlatformOutcomes(), FIXED_NOW)
   // Döküm hiçbir test verisi yazılmadan, migrate'in hemen arkasında alınır.
   if (databasesCreated > 1) migratedTemplate = Promise.resolve(await client.dumpDataDir('none'))
   return { db, close: () => client.close() }

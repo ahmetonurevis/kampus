@@ -156,6 +156,28 @@ test.describe('Genel Bakış: sayaçlar API sayımıyla eşleşir', () => {
     }
   })
 
+  test('IST-116: ön büro "Yeni talep" sayısı Şikayet & Talepler ?durum=Yeni toplamıdır', async ({
+    page,
+    loginAs,
+    api,
+  }) => {
+    const desk = await api('onburo')
+    const list = await desk.get(
+      `/api/v1/collections/requests?pageSize=1&status=${encodeURIComponent('Yeni')}`,
+    )
+    expect(list.status).toBe(200)
+    const total = (list.body as { meta: { total: number } }).meta.total
+    expect(total, 'örnek veride yeni talep var').toBeGreaterThan(0)
+
+    await loginAs('onburo')
+    await openDashboard(page, 'onburo')
+    await expect.poll(() => cardValue(page, 'Yeni talep').innerText()).toBe(tr(total))
+    await card(page, 'Yeni talep').getByRole('link', { name: 'Yeni talep' }).click()
+    await expect(page).toHaveURL(/\/onburo\/talepler\?durum=Yeni$/)
+    await expect(page.getByLabel('Talep durumu')).toHaveValue('Yeni')
+    await expect(page.locator('.result-count')).toContainText(`/ ${total} kayıt`)
+  })
+
   test('öğretmen: öğrenci, sınıf ve bugün gelmeyen sayısı kendi kapsamındadır', async ({
     page,
     loginAs,
@@ -839,6 +861,11 @@ test.describe('Genel Bakış: haberler, yanıt bekleyen sorular ve not eğilimi'
       (row) => !row.record.answeredAt && !row.record.withdrawnAt,
     )
     expect(open.length, 'Selin Kaya yanıt bekleyen soruya sahip').toBeGreaterThan(0)
+    // Kart sayısı sunucunun durum süzgeçli liste toplamıdır (IST-116).
+    const pending = await teacher.get(
+      '/api/v1/collections/questions?pageSize=1&answered=false&withdrawn=false',
+    )
+    expect((pending.body as { meta: { total: number } }).meta.total).toBe(open.length)
     await loginAs('ogretmen')
     await openDashboard(page, 'ogretmen')
     await expectCardsLoaded(page)
@@ -856,27 +883,19 @@ test.describe('Genel Bakış: haberler, yanıt bekleyen sorular ve not eğilimi'
     await expect(page.getByRole('dialog')).toBeVisible()
   })
 
-  test('öğretmen: soru listesi sayfa sınırını aşarsa kartlar sakin hata metni gösterir', async ({
+  test('öğretmen: soru kartları özetten gelir, soru kayıtları ayrıca çekilmez', async ({
     page,
     loginAs,
   }) => {
-    // İlk gerçek sayfa her sayfa isteğinde döner ve toplam çok büyük bildirilir (gerçek ikinci sayfa
-    // boş gelir ve okumayı erken bitirirdi): tüm sayfaları çeken okuma sayfa sınırına çarpar.
-    let first: { data: unknown[]; meta: Record<string, unknown> } | null = null
-    await page.route(/\/collections\/questions\?/, async (route) => {
-      first ??= (await (await route.fetch()).json()) as NonNullable<typeof first>
-      await route.fulfill({
-        status: 200,
-        json: { ...first, meta: { ...first.meta, total: 1_000_000 } },
-      })
+    const requests: string[] = []
+    page.on('request', (request) => {
+      if (/\/collections\/questions/.test(request.url())) requests.push(request.url())
     })
     await loginAs('ogretmen')
     await openDashboard(page, 'ogretmen')
-    const list = region(page, 'Yanıt bekleyen sorular')
-    await expect(list).toContainText('Kayıt sayısı çok fazla')
-    await expect(list.getByRole('button', { name: 'Yeniden dene' })).toHaveCount(0)
-    await expect(list).not.toContainText(/CollectionTooLarge|Error/)
-    await expect(card(page, 'Yanıt bekleyen soru')).toContainText('Kayıt sayısı çok fazla')
+    await expectCardsLoaded(page)
+    await expect(region(page, 'Yanıt bekleyen sorular').getByRole('listitem').first()).toBeVisible()
+    expect(requests).toEqual([])
   })
 
   test('öğrenci ve veli: not ortalaması eğilimi aylık ortalamalardan gelir, çocuğa göre değişir', async ({

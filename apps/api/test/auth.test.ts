@@ -90,6 +90,80 @@ describe('Better Auth e-posta/parola girişi', () => {
     )
   })
 
+  test('IST-025: farklı IP’lerden 10 hatalı denemeden sonra hesap geçici kilitlenir, doğru parola da 429', async () => {
+    const institution = await createInstitution(app)
+    const teacher = await createMember(app, institution.id, 'ogretmen')
+    const statuses: number[] = []
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      const response = await signIn(app, teacher.email, 'Yanlis-Parola-123!')
+      statuses.push(response.statusCode)
+      assert.equal(response.json().message, 'E-posta veya parola hatalı.')
+    }
+    assert.deepEqual(statuses, Array(10).fill(401))
+    const locked = await signIn(app, ` ${teacher.email.toUpperCase()} `, teacher.password)
+    assert.equal(locked.statusCode, 429)
+    assert.equal(locked.cookies.length, 0)
+    assert.ok(Number(locked.headers['retry-after']) > 0)
+    assert.equal(locked.json().code, 'RATE_LIMITED')
+    // Başka hesap etkilenmez.
+    assert.equal(
+      (await signIn(app, institution.admin.email, institution.admin.password)).statusCode,
+      200,
+    )
+  })
+
+  test('IST-025: eşzamanlı denemelerden en çok kalan hak kadarı Better Auth’a ulaşır; başarılı giriş de sayılır', async () => {
+    const institution = await createInstitution(app)
+    const teacher = await createMember(app, institution.id, 'ogretmen')
+    // Başarılı giriş sayacı sıfırlamaz, kendisi de bir deneme sayılır.
+    assert.equal((await signIn(app, teacher.email, teacher.password)).statusCode, 200)
+    for (let attempt = 0; attempt < 6; attempt += 1)
+      assert.equal((await signIn(app, teacher.email, 'Yanlis-Parola-123!')).statusCode, 401)
+    // Kalan hak 3; parola özeti hesaplanırken gelen istekler de sayaca önceden yazılır.
+    const responses = await Promise.all(
+      Array.from({ length: 12 }, () => signIn(app, teacher.email, 'Yanlis-Parola-123!')),
+    )
+    const statuses = responses.map((response) => response.statusCode).sort()
+    assert.deepEqual(statuses, [...Array(3).fill(401), ...Array(9).fill(429)])
+    const failures = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.actorUserId, teacher.id))
+      .then((rows) => rows.filter((row) => row.action === 'auth.login_failed'))
+    assert.equal(failures.length, 9)
+    assert.equal((await signIn(app, teacher.email, teacher.password)).statusCode, 429)
+  })
+
+  test('IST-025: kilit hesabın varlığını belli etmez; yanıt IP sınırıyla aynıdır', async () => {
+    const institution = await createInstitution(app)
+    const student = await createMember(app, institution.id, 'ogrenci')
+    const unknown = 'kilit-yok-boyle-biri@kampus.example'
+    for (let attempt = 0; attempt < 10; attempt += 1) {
+      await signIn(app, student.email, 'Yanlis-Parola-123!')
+      await signIn(app, unknown, 'Yanlis-Parola-123!')
+    }
+    const existing = await signIn(app, student.email, 'Yanlis-Parola-123!')
+    const missing = await signIn(app, unknown, 'Yanlis-Parola-123!')
+    assert.equal(existing.statusCode, 429)
+    assert.equal(missing.statusCode, 429)
+    assert.equal(missing.body, existing.body)
+    // Better Auth IP sınırıyla aynı gövde ve başlık adları.
+    const ip = nextIp()
+    let ipLimited
+    for (let attempt = 0; attempt < 6; attempt += 1)
+      ipLimited = await signIn(app, `ip-${attempt}@kampus.example`, 'Yanlis-Parola-123!', ip)
+    assert.equal(ipLimited?.statusCode, 429)
+    assert.equal(existing.body, ipLimited?.body)
+    const headerNames = (response: typeof existing) =>
+      Object.keys(response.headers)
+        .filter((name) => !['date', 'x-request-id', 'content-length'].includes(name))
+        .sort()
+    assert.deepEqual(headerNames(existing), headerNames(ipLimited ?? existing))
+    // Kilitli denemeler denetimde yeni başarısız giriş satırı açmaz (Better Auth'a ulaşmaz).
+    const failures = await db.select().from(auditLog).where(eq(auditLog.actorUserId, student.id))
+    assert.equal(failures.length, 10)
+  })
+
   test('loglar parola, e-posta, çerez ve tam IP içermez', async () => {
     const logs: string[] = []
     const logged = await buildTestApp(db, { logs })
@@ -310,7 +384,6 @@ describe('parola değişimi ve oturum yönetimi (IST-003)', () => {
         'device',
         'expiresAt',
         'id',
-        'token',
         'updatedAt',
       ])
     assert.deepEqual(
@@ -322,6 +395,13 @@ describe('parola değişimi ve oturum yönetimi (IST-003)', () => {
     )
     for (const raw of [ip, 'Mozilla', 'AppleWebKit', user.id])
       assert.equal(response.body.includes(raw), false, raw)
+    // IST-025: oturum belirteci (çerezin özü) hiçbir satırda istemciye gitmez.
+    const tokens = await db
+      .select({ token: sessions.token })
+      .from(sessions)
+      .where(eq(sessions.userId, user.id))
+    assert.equal(tokens.length, 2)
+    for (const { token } of tokens) assert.equal(response.body.includes(token), false)
   })
 
   test('IST-003: tek oturum ve diğer bütün oturumlar sonlandırılır; başkasının oturumu etkilenmez', async () => {
@@ -333,23 +413,36 @@ describe('parola değişimi ve oturum yönetimi (IST-003)', () => {
     const tablet = await signInWithAgent(user, SAFARI_IPHONE)
     const strangerCookie = await signInWithAgent(stranger, CHROME_MAC)
     const [strangerSession] = await db
-      .select({ token: sessions.token })
+      .select({ id: sessions.id, token: sessions.token })
       .from(sessions)
       .where(eq(sessions.userId, stranger.id))
     assert.ok(strangerSession)
 
-    const list: { token: string; current: boolean }[] = (
+    const list: { id: string; current: boolean }[] = (
       await call('GET', '/list-sessions', here)
     ).json()
-    const phoneToken = list.find((item) => !item.current)?.token
-    assert.ok(phoneToken)
-    const revoked = await call('POST', '/revoke-session', here, { token: phoneToken })
+    const phoneId = list.find((item) => !item.current)?.id
+    assert.ok(phoneId)
+    const revoked = await call('POST', '/revoke-session', here, { sessionId: phoneId })
     assert.equal(revoked.statusCode, 200)
     const remaining = [await sessionUser(phone), await sessionUser(tablet)].filter(Boolean)
     assert.equal(remaining.length, 1)
 
-    // Başkasının belirteci verilse de onun oturumu kapanmaz.
-    await call('POST', '/revoke-session', here, { token: strangerSession.token })
+    // IST-025: başkasının oturum kimliği ya da belirteci verilse de onun oturumu kapanmaz; yanıt
+    // kendi oturumundaki gibidir (kimliğin varlığı belli olmaz).
+    const foreign = await call('POST', '/revoke-session', here, { sessionId: strangerSession.id })
+    assert.equal(foreign.statusCode, 200)
+    assert.deepEqual(foreign.json(), revoked.json())
+    const unknown = await call('POST', '/revoke-session', here, { sessionId: 'olmayan-oturum' })
+    assert.deepEqual(unknown.json(), revoked.json())
+    // Ham belirteç kabul edilmez: kimlik zorunlu, `token` yok sayılır.
+    const rawToken = await call('POST', '/revoke-session', here, { token: strangerSession.token })
+    assert.equal(rawToken.statusCode, 400)
+    const both = await call('POST', '/revoke-session', here, {
+      sessionId: 'olmayan-oturum',
+      token: strangerSession.token,
+    })
+    assert.equal(both.statusCode, 200)
     assert.equal(await sessionUser(strangerCookie), stranger.id)
 
     const others = await call('POST', '/revoke-other-sessions', here)
@@ -359,10 +452,18 @@ describe('parola değişimi ve oturum yönetimi (IST-003)', () => {
     assert.equal(await sessionUser(here), user.id)
   })
 
-  test('IST-003: oturum listesi taze oturum ister; oturumsuz istek 401', async () => {
+  test('IST-003, IST-025: oturum listesi ve kapatma taze oturum ister; oturumsuz istek 401', async () => {
     const institution = await createInstitution(app)
     const user = await createMember(app, institution.id, 'ogretmen')
     const cookie = await signInWithAgent(user, CHROME_MAC)
+    const phone = await signInWithAgent(user, SAFARI_IPHONE)
+    const phoneSession = (
+      await db
+        .select({ id: sessions.id, userAgent: sessions.userAgent })
+        .from(sessions)
+        .where(eq(sessions.userId, user.id))
+    ).find((row) => row.userAgent === SAFARI_IPHONE)
+    assert.ok(phoneSession)
     await db
       .update(sessions)
       .set({ createdAt: new Date(Date.now() - 20 * 60 * 1000) })
@@ -370,8 +471,25 @@ describe('parola değişimi ve oturum yönetimi (IST-003)', () => {
     const stale = await call('GET', '/list-sessions', cookie)
     assert.equal(stale.statusCode, 403)
     assert.equal(stale.json().code, 'SESSION_NOT_FRESH')
+    assert.equal(stale.json().message, 'Bu işlem için yeniden giriş yapın.')
+    for (const [path, payload] of [
+      ['/revoke-session', { sessionId: phoneSession.id }],
+      ['/revoke-other-sessions', {}],
+      ['/revoke-sessions', {}],
+    ] as const) {
+      const response = await call('POST', path, cookie, payload)
+      assert.equal(response.statusCode, 403, path)
+      assert.equal(response.json().code, 'SESSION_NOT_FRESH', path)
+    }
+    // Eski oturumla hiçbir oturum kapanmadı.
+    assert.equal(await sessionUser(phone), user.id)
+    assert.equal(await sessionUser(cookie), user.id)
     assert.equal((await call('GET', '/list-sessions', '')).statusCode, 401)
     assert.equal((await call('POST', '/revoke-other-sessions', '')).statusCode, 401)
+    assert.equal(
+      (await call('POST', '/revoke-session', '', { sessionId: phoneSession.id })).statusCode,
+      401,
+    )
   })
 
   test('IST-003: cihaz özeti kaba ve tanınmazsa boştur', () => {

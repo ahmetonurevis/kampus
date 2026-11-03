@@ -15,6 +15,9 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
     .filter(([, route]) => route.idempotency === 'required')
     .map(([command]) => `POST /api/v1/assessment/${command}`),
   'POST /api/v1/grades',
+  // Kazanım kataloğu: kurum kazanımı ekleme ve arşiv (routes/learning-outcomes.ts; DOM-KYN-011).
+  'POST /api/v1/learning-outcomes',
+  'POST /api/v1/learning-outcomes/{code}/archive',
   // Ders planlama: yeniden denemede ikinci ders açılmaz (routes/lessons.ts; DOM-YTK-069).
   'POST /api/v1/lessons',
   // İletişim (routes/communication.ts): oluşturma ve mesaj gönderimi.
@@ -36,10 +39,13 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   'POST /api/v1/classes',
   // Görev atama: sınıfa toplu dağıtım (routes/task-assignments.ts; IST-034).
   'POST /api/v1/task-assignments',
+  // İçeriği birden çok hedefe ayrı son tarihle atama (DOM-BEC-049, IST-034).
+  'POST /api/v1/task-assignments/batches',
   // Görev denemesi başlatma ve teslimi (routes/task-attempts.ts; DOM-BEC-042, 043).
   'POST /api/v1/task-assignments/{assignmentId}/attempts',
   'POST /api/v1/task-attempts/{attemptId}/submit',
   // Yazma görevi teslimi: yeni değişmez sürüm (routes/task-submissions.ts; DOM-BEC-040).
+  'POST /api/v1/task-assignments/{assignmentId}/draft/submit',
   'POST /api/v1/task-assignments/{assignmentId}/submissions',
   // Öğretmen puanı ve yeniden teslim isteği (routes/task-submissions.ts; DOM-BEC-021, 040).
   'POST /api/v1/task-submissions/{submissionId}/scores',
@@ -86,4 +92,10 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   'POST /api/v1/institution-members/invitations',
   // Toplu personel aktarımı: yeniden denemede davetler ikinci kez açılmaz (IST-007).
   'POST /api/v1/institution-members/imports',
+  // Veli hesabı daveti: yeniden denemede ikinci hesap, bağ ya da parola bağlantısı açılmaz
+  // (routes/institution-members.ts; DOM-YTK-071).
+  'POST /api/v1/institution-members/guardian-invitations',
+  // Kurum başarı belgesi düzenleme: yeniden denemede ikinci numara ve belge açılmaz
+  // (routes/certificates.ts; DOM-DIL-082).
+  'POST /api/v1/course-certificates',
 ]

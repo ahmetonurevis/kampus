@@ -14,7 +14,7 @@ import { FormField } from '@/components/FormField.tsx'
 import { PasswordInput } from '@/components/PasswordInput.tsx'
 import { Button } from '@/components/ui/button'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
-import { authClient } from '@/lib/kampus-clients.ts'
+import { accountSecurityClient } from '@/lib/kampus-clients.ts'
 import { notify } from '@/lib/notify.ts'
 import { AuthCard } from './AuthCard.tsx'
 
@@ -29,7 +29,7 @@ export function ResetPasswordPage() {
   // paylaşımında görünmesin. Sayfa yenilenirse bağlantı e-postadan yeniden açılır.
   const [token] = useState(() => new URLSearchParams(hash.replace(/^#/, '')).get('token'))
   const [tokenInvalid, setTokenInvalid] = useState(false)
-  const reset = useResetPassword(authClient)
+  const reset = useResetPassword(accountSecurityClient)
   const navigate = useNavigate()
   const tokenInAddress = hash !== ''
   useEffect(() => {

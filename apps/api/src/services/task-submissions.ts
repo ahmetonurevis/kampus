@@ -12,11 +12,16 @@ import {
   scoreResolution,
   scoresVisibleToRater,
   type AppealRow,
+  type RubricResult,
   type RubricScoreRow,
   type RubricVersionData,
   type ScoreResolution,
 } from '@kampus/school-core/skills/rubric.ts'
-import { canAccessRecording, recordingPurgeHeld } from '@kampus/school-core/skills/recording.ts'
+import {
+  canAccessRecording,
+  canHearFeedbackAudio,
+  recordingPurgeHeld,
+} from '@kampus/school-core/skills/recording.ts'
 import {
   isClosed,
   submissionWindow,
@@ -37,13 +42,16 @@ import {
 } from '@kampus/school-core/skills/submission.ts'
 
 import type { Database } from '../db/client.ts'
+import { listAttachedFiles, type StoredFile } from '../db/files.ts'
 import {
   findAssignment,
+  findScoreVersionId,
   findRubricVersion,
   findSubmission,
   findSubmissionOfVersion,
   insertSubmission,
   insertSubmissionVersion,
+  lastSubmittedDraftRevision,
   listSubmissions,
   loadAppealsBySubmission,
   loadDraft,
@@ -55,11 +63,10 @@ import {
   type StoredSubmissionWork,
 } from '../db/skills.ts'
 import { listConsentsOfSubject } from '../db/privacy.ts'
-import { findRecord } from '../db/records.ts'
 import { AppError, MESSAGES, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { loadLearnerNames } from './task-learner-names.ts'
-import { actorStudentConsent } from './consents.ts'
+import { actorStudentConsent, consentStudentOf } from './consents.ts'
 import { defineFileAttachment } from './file-registry.ts'
 import { listMembershipLinks } from './memberships.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
@@ -70,6 +77,7 @@ import {
   bodyFileIds,
   loadVersionFiles,
   recordingPeriodEndFor,
+  SCORE_ATTACHMENT,
   SUBMISSION_VERSION_ATTACHMENT,
   usableFiles,
   versionFileView,
@@ -353,8 +361,45 @@ function scoreBrief(summary: ReturnType<typeof scoreSummary>) {
   }
 }
 
-/** Puan ve geri bildirim: kriter bantları, ağırlıklar, kriter yorumları ve genel yorum. */
-function scoreFeedback(summary: ReturnType<typeof scoreSummary>) {
+/** Puan kimliği → puana bağlı sesli geri bildirim dosyası (DOM-BEC-056). */
+type FeedbackAudios = ReadonlyMap<string, StoredFile>
+
+/**
+ * Teslimin puanlarına bağlı sesli geri bildirimler. Puan başına en çok bir dosya bağlanır
+ * (`attachFile` bağlı dosyayı yeniden bağlamaz); sürüm başına birkaç puan olduğundan sorgu sayısı
+ * küçüktür. `listAttachedFiles` silinmiş ve reddedilmiş dosyayı dışarıda bırakır: imha edilen ses
+ * (saklama sonu, rıza geri çekme) yanıtta `null` görünür; dönen dosya `processing` ya da `ready`.
+ */
+async function loadFeedbackAudios(
+  db: Database,
+  institutionId: string,
+  scores: readonly RubricScoreRow[],
+): Promise<FeedbackAudios> {
+  const rows = await Promise.all(
+    scores.map(async (score) => {
+      const [file] = await listAttachedFiles(db, institutionId, {
+        type: SCORE_ATTACHMENT,
+        id: score.id,
+        purpose: 'feedback_audio',
+      })
+      return file === undefined ? [] : ([[score.id, file]] as const)
+    }),
+  )
+  return new Map(rows.flat())
+}
+
+/** Sesli geri bildirimin yanıt görünümü: tür, boyut, süre ve durum (özgün ad dönmez). */
+function feedbackAudioView(row: StoredFile | undefined) {
+  if (row === undefined) return null
+  const { id, contentType, byteSize, durationMs, status } = versionFileView(row)
+  return { id, contentType, byteSize, durationMs, status }
+}
+
+/**
+ * Puan ve geri bildirim: kriter bantları, ağırlıklar, kriter yorumları, genel yorum ve sesli
+ * geri bildirim (DOM-BEC-056; puanla aynı görünürlükte).
+ */
+function scoreFeedback(summary: ReturnType<typeof scoreSummary>, audios: FeedbackAudios) {
   const brief = scoreBrief(summary)
   if (summary === null || brief === null) return null
   const comments = new Map(summary.row.criteria.map((c) => [c.criterionId, c.comment]))
@@ -365,7 +410,28 @@ function scoreFeedback(summary: ReturnType<typeof scoreSummary>) {
       comment: comments.get(criterion.criterionId) ?? null,
     })),
     overallComment: summary.row.overallComment,
+    feedbackAudio: feedbackAudioView(audios.get(summary.row.id)),
   }
+}
+
+/**
+ * Kişinin bu sürümde görebildiği puan kimlikleri: gösterilen puan (`shownScore`) ve personelde
+ * puanlama görünümündeki puanlar (`visibleScoresOf`, kör puanlama). Sesli geri bildirim yalnız bu
+ * puanlarınki açılır (DOM-BEC-056).
+ */
+function shownScoreIds(
+  viewer: Viewer,
+  ctx: ServiceContext,
+  assignment: StoredAssignment,
+  grading: Grading,
+  version: VersionRow,
+): Set<string> {
+  const ids = new Set<string>()
+  const shown = shownScore(viewer, ctx, assignment, grading, version)
+  if (shown !== null) ids.add(shown.row.id)
+  if (viewer.kind !== 'learner')
+    for (const row of visibleScoresOf(viewer, ctx, assignment, grading, version)) ids.add(row.id)
+  return ids
 }
 
 /** Teslimin durumu son sürümün kendi süresine göredir (yeniden teslim süresi dahil). */
@@ -421,6 +487,16 @@ function summaryView(
 function resubmissionOf(work: StoredSubmissionWork) {
   const latest = work.resubmissions.at(-1)
   return latest === undefined ? null : { versionNumber: latest.versionNumber, dueAt: latest.dueAt }
+}
+
+/**
+ * Sürüm için istenen yeniden teslim turu (DOM-BEC-040, IST-047): yeniden teslim geçmişi sürüm
+ * başına okunur, her tur kendi son tarihiyle. İstek kesinleşmiş puandan sonra açıldığı için
+ * kursiyere ve veliye gösterilmesi puanı erken sızdırmaz (`resubmissionOf`); isteyen kişi dönmez.
+ */
+function resubmissionRequestOf(work: StoredSubmissionWork, version: VersionRow) {
+  const round = work.resubmissions.find((row) => row.versionNumber === version.number)
+  return round === undefined ? null : { dueAt: round.dueAt, requestedAt: round.requestedAt }
 }
 
 /**
@@ -541,14 +617,14 @@ export function learnerSubmissionProgress(
  * Kesinleşmemiş (ikinci puan ya da koordinatör bekleyen, uyuşmazlıklı) puan girmez. Kursiyer ve
  * veliye yalnız geri bildirimi açılmış puan döner (DOM-BEC-045): daha yeni sürümün puanı açılmamışsa
  * önceki sürümün açılmış puanı gösterilir, bu yüzden yanıt yeni sürümün puanlanıp puanlanmadığını
- * belli etmez.
+ * belli etmez. `result` kriter bantlarıyla CEFR önerisinin kanıtıdır (DOM-BEC-031).
  */
 export function settledSubmissionResult(
   ctx: ServiceContext,
   viewer: Viewer,
   book: GradingBook,
   work: StoredSubmissionWork,
-): { versionId: string; submittedAt: string; percent: number } | null {
+): { versionId: string; submittedAt: string; percent: number; result: RubricResult } | null {
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
   for (const version of [...work.versions].reverse()) {
     const resolution =
@@ -561,8 +637,13 @@ export function settledSubmissionResult(
       ctx.log.warn({ event: 'task_submission.rubric_missing' })
       return null
     }
-    const { percent } = rubricScore(rubric, resolution.score.criteria)
-    return { versionId: version.id, submittedAt: version.submittedAt, percent }
+    const result = rubricScore(rubric, resolution.score.criteria)
+    return {
+      versionId: version.id,
+      submittedAt: version.submittedAt,
+      percent: result.percent,
+      result,
+    }
   }
   return null
 }
@@ -589,6 +670,7 @@ export async function detailView(
     [work],
   )
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
+  const audios = await loadFeedbackAudios(db, ctx.institutionId, grading.scores)
   return {
     ...summaryView(viewer, ctx, book, assignment, work, learnerNames),
     versions: work.versions.map((version) => ({
@@ -600,10 +682,12 @@ export async function detailView(
       }),
       score: scoreFeedback(
         scoreSummary(ctx, book.rubrics, shownScore(viewer, ctx, assignment, grading, version)),
+        audios,
       ),
-      grading: gradingView(ctx, viewer, assignment, work, grading, version, book.rubrics),
+      grading: gradingView(ctx, viewer, assignment, work, grading, version, book.rubrics, audios),
       appealDeadline: appealDeadlineOf(ctx, viewer, assignment, grading, version),
       appeal: appealView(viewer, grading, version),
+      resubmissionRequest: resubmissionRequestOf(work, version),
     })),
     allowance: allowanceOf(ctx, viewer, assignment, work, grading),
   }
@@ -641,6 +725,7 @@ function gradingView(
   grading: Grading,
   version: VersionRow,
   rubrics: RubricsById,
+  audios: FeedbackAudios,
 ) {
   if (viewer.kind === 'learner') return null
   const resolution = resolutionOf(grading, version)
@@ -650,7 +735,7 @@ function gradingView(
     // Kişinin görebildiği puanlar rolleriyle (kör puanlama `visibleScoresOf`); koordinatör
     // uyuşmazlıkta iki puanı yan yana görür.
     raterScores: [...visibleScores].sort(byRaterRole).flatMap((row) => {
-      const feedback = scoreFeedback(scoreSummary(ctx, rubrics, { row, settled: false }))
+      const feedback = scoreFeedback(scoreSummary(ctx, rubrics, { row, settled: false }), audios)
       return feedback === null ? [] : [{ raterRole: row.raterRole, score: feedback }]
     }),
     // Son puanı bu kişi verebilir mi (DOM-BEC-024): uyuşmazlık var, kapsamındaki koordinatör ve
@@ -940,6 +1025,14 @@ export async function saveTaskDraft(
           )
         await assertWritingOpen(tx, ctx, assignment, learnerId, current)
         const settings = settingsOf(assignment)
+        // Taslak sıradaki sürümün taslağıdır ve onun süresine bağlıdır: yeniden teslim istendiyse
+        // isteğin son tarihi, atamanınki geçmiş olsa da (DOM-BEC-040, IST-047).
+        const work = await loadSubmission(tx, ctx.institutionId, assignment.id, learnerId)
+        const deadline = deadlineForVersion(
+          assignment.deadline,
+          work?.submission ?? null,
+          (work?.versions.at(-1)?.number ?? 0) + 1,
+        )
         return {
           run: (_state, tools) => {
             if (settings === null)
@@ -948,7 +1041,7 @@ export async function saveTaskDraft(
               assignment,
               draft: planDraftSave({
                 settings,
-                deadline: assignment.deadline,
+                deadline,
                 draft: current,
                 learnerId,
                 input: { body: input.body, expectedRevision },
@@ -993,10 +1086,88 @@ export type SubmissionVersionBody =
  * kayda bağlıysa 409 `file_already_attached`); konuşma kaydının saklama sonu bağlanırken yazılır
  * (DOM-BEC-052). Herhangi bir ret hiçbir satırı değiştirmez.
  */
-export async function submitTaskSubmission(
+export function submitTaskSubmission(
   ctx: ServiceContext,
   assignmentId: string,
   body: SubmissionVersionBody,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  return submitVersion(ctx, assignmentId, { kind: 'body', body }, idempotency)
+}
+
+export interface DraftSubmitInput {
+  assignmentId: string
+  /** `If-Match`: kursiyerin son gördüğü taslak revizyonu (zorunlu). */
+  expectedRevision: number
+}
+
+/**
+ * Taslaktan teslim (IST-047; DOM-BEC-040, 046): kaydedilmiş taslağın metni yeni değişmez sürüm
+ * olur; teslim edilen metin kursiyerin son gördüğü revizyondur. Sıra: kapsam 404 → taslak yoksa
+ * 404 → eski revizyon 409 `draft_conflict` → bu revizyon (ya da sonrası) taslaktan zaten teslim
+ * edildiyse 409 `draft_already_submitted` (sürümün `draft_revision`'ı; metinle teslim taslağı
+ * tüketmez) → yazma dışı görev 422
+ * `draft_not_supported` → boş taslak 422 `draft_empty` → içerik kuralı → `planSubmissionVersion`
+ * (sürüm sınırı, yeniden teslim, son tarih ve geç kabul metin teslimiyle aynı). Taslak silinmez:
+ * yeniden teslim istenirse kursiyer kaldığı metinden devam eder.
+ */
+export function submitTaskDraft(
+  ctx: ServiceContext,
+  input: DraftSubmitInput,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  return submitVersion(
+    ctx,
+    input.assignmentId,
+    { kind: 'draft', expectedRevision: input.expectedRevision },
+    idempotency,
+  )
+}
+
+type VersionSource =
+  { kind: 'body'; body: SubmissionVersionBody } | { kind: 'draft'; expectedRevision: number }
+
+/** Taslağı teslim edilecek metne çevirir; taslak denetimleri içerik kuralından öncedir. */
+async function draftSubmission(
+  tx: Database,
+  ctx: ServiceContext,
+  assignment: StoredAssignment,
+  learnerId: string,
+  expectedRevision: number,
+): Promise<{ draft: DraftRow; body: SubmissionVersionBody }> {
+  const draft = await loadDraft(tx, ctx.institutionId, assignment.id, learnerId)
+  if (draft === null) throw new NotFoundError()
+  if (draft.revision !== expectedRevision)
+    throw new AppError(
+      409,
+      'draft_conflict',
+      'Taslak başka bir pencerede değişti; sayfayı yenileyip devam edin.',
+    )
+  // Zamanla değil revizyonla (IST-047): otomatik kayıt istek başındaki saati yazar; teslimden önce
+  // başlayıp sonra yazılan revizyonun `savedAt`'i son sürümden eski olabilir ama metni yenidir.
+  // Metinle (taslaksız) teslim taslağı tüketmez.
+  const work = await loadSubmission(tx, ctx.institutionId, assignment.id, learnerId)
+  const submitted =
+    work === null
+      ? null
+      : await lastSubmittedDraftRevision(tx, ctx.institutionId, work.submission.id)
+  if (submitted !== null && draft.revision <= submitted)
+    throw new AppError(
+      409,
+      'draft_already_submitted',
+      'Taslak son teslimden sonra değişmedi; yeni sürüm için metni düzenleyin.',
+    )
+  if (settingsOf(assignment)?.submissionKind !== 'text')
+    throw new RuleViolationError('draft_not_supported', 'Taslak yalnız yazma görevinde tutulur.')
+  if (draft.body.trim() === '')
+    throw new RuleViolationError('draft_empty', 'Taslak boş; teslim için metni yazın.')
+  return { draft, body: { submissionKind: 'text', body: draft.body } }
+}
+
+async function submitVersion(
+  ctx: ServiceContext,
+  assignmentId: string,
+  source: VersionSource,
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   const viewer = await viewerOf(ctx)
@@ -1012,18 +1183,23 @@ export async function submitTaskSubmission(
   return runCommand<Submit>(
     ctx,
     {
-      action: 'task_submission.submit',
+      action: source.kind === 'draft' ? 'task_submission.submit_draft' : 'task_submission.submit',
       collections: [],
       entity: { type: ENTITY, id: assignmentId },
       load: async (tx) => {
         const { assignment, learnerId } = await writableAssignment(tx, ctx, viewer, assignmentId)
+        // Taslak okunduysa içerik kuralı onu yeniden okumaz (`undefined`: gerekirse okunur).
+        const { body, draft } =
+          source.kind === 'draft'
+            ? await draftSubmission(tx, ctx, assignment, learnerId, source.expectedRevision)
+            : { body: source.body, draft: undefined }
         const settings = settingsOf(assignment)
         if (settings === null)
           throw new RuleViolationError(
             'submission_not_expected',
             'Bu görev teslim beklemiyor; deneme olarak çözülür.',
           )
-        await assertWritingOpen(tx, ctx, assignment, learnerId, undefined)
+        await assertWritingOpen(tx, ctx, assignment, learnerId, draft)
         const files = await usableFiles(tx, ctx, bodyFileIds(body))
         const audio = settings.submissionKind === 'audio' && body.submissionKind === 'audio'
         // Rıza ve dönem sonu yalnız sesli teslimde okunur (DOM-BEC-050, 052).
@@ -1104,7 +1280,14 @@ export async function submitTaskSubmission(
         // Yeniden teslim isteği yeni sürümle kendiliğinden kapanır: istek son sürümden eski kalır
         // (core `versionAllowance`); ayrıca satır güncellenmez.
         const version = { id: randomUUID(), ...plan.version }
-        await insertSubmissionVersion(tx, ctx.institutionId, submissionId, version, ctx.now)
+        await insertSubmissionVersion(
+          tx,
+          ctx.institutionId,
+          submissionId,
+          version,
+          ctx.now,
+          source.kind === 'draft' ? source.expectedRevision : null,
+        )
         await attachVersionFiles(tx, ctx, {
           assignment,
           submission: work?.submission ?? null,
@@ -1112,11 +1295,18 @@ export async function submitTaskSubmission(
           learnerId,
           recording,
         })
-        await auditWork(tx, ctx, 'task_submission.submit', { type: ENTITY, id: submissionId }, [
-          version.fileIds.length > 0 ? 'fileIds' : 'body',
-          'versionNumber',
-          'submittedAt',
-        ])
+        await auditWork(
+          tx,
+          ctx,
+          source.kind === 'draft' ? 'task_submission.submit_draft' : 'task_submission.submit',
+          { type: ENTITY, id: submissionId },
+          [
+            version.fileIds.length > 0 ? 'fileIds' : 'body',
+            'versionNumber',
+            'submittedAt',
+            ...(source.kind === 'draft' ? ['draftRevision'] : []),
+          ],
+        )
         const saved = await findSubmission(tx, ctx.institutionId, submissionId)
         if (!saved) throw new Error('task submission disappeared after write')
         out.body = { data: await detailView(tx, ctx, viewer, assignment, saved) }
@@ -1159,14 +1349,14 @@ async function canReadVersionFile(
   }
   if (!readable) return false
   if (file.purpose !== 'speaking_recording') return true
-  const student = await findRecord(tx, ctx.institutionId, 'students', learnerId)
-  const birthDate = student?.data.birthDate
+  // Yaş kimlik tablosundan (kesin kayıt doğum tarihini öğrenci kaydına yazmaz, #26).
+  const student = await consentStudentOf(tx, ctx.institutionId, learnerId)
   return canAccessRecording(
     {
       role: ctx.actor.role,
       ownsLearner: viewer.kind === 'learner',
       readsSubmission: viewer.kind !== 'learner',
-      learnerBirthDate: typeof birthDate === 'string' ? birthDate : null,
+      learnerBirthDate: student?.birthDate ?? null,
     },
     ctx.now,
   )
@@ -1186,6 +1376,31 @@ async function versionFilePurgeHeld(
   file: { purpose: string; dataSubjectId: string | null },
 ): Promise<boolean> {
   if (file.purpose !== 'speaking_recording') return false
+  return versionPurgeHeld(tx, institutionId, versionId, file.dataSubjectId)
+}
+
+/**
+ * Puana bağlı sesli geri bildirimin imhası bekletilir mi (DOM-BEC-056): konuşma kaydıyla aynı
+ * saklama kuralı, yani bağlı olduğu puanın sürümü için `versionPurgeHeld`.
+ */
+async function scoreFilePurgeHeld(
+  tx: Database,
+  institutionId: string,
+  scoreId: string,
+  file: { dataSubjectId: string | null },
+): Promise<boolean> {
+  const versionId = await findScoreVersionId(tx, institutionId, scoreId)
+  return versionId === null
+    ? false
+    : versionPurgeHeld(tx, institutionId, versionId, file.dataSubjectId)
+}
+
+async function versionPurgeHeld(
+  tx: Database,
+  institutionId: string,
+  versionId: string,
+  dataSubjectId: string | null,
+): Promise<boolean> {
   const work = await findSubmissionOfVersion(tx, institutionId, versionId)
   const version = work?.versions.find((row) => row.id === versionId)
   if (!work || !version) return false
@@ -1193,7 +1408,7 @@ async function versionFilePurgeHeld(
     work.submission.id,
   )
   if (grading === undefined) return false
-  const subjectId = file.dataSubjectId ?? work.submission.learnerId
+  const subjectId = dataSubjectId ?? work.submission.learnerId
   const consents = await listConsentsOfSubject(tx, institutionId, {
     kind: 'student',
     id: subjectId,
@@ -1209,6 +1424,45 @@ async function versionFilePurgeHeld(
     ),
   })
 }
+
+// --- Sesli geri bildirime erişim ----------------------------------------------------------------
+
+/**
+ * Puana bağlı sesli geri bildirim (DOM-BEC-056; core `canHearFeedbackAudio`): teslimi okuyabilen
+ * (`canReadVersionFile` ile aynı kapsam) ve bağlı olduğu puanı görebilen kişi dinler. Kursiyer ve
+ * veli yalnız geri bildirim açılınca, ikinci puanlayıcı ilk puanın sesini hiç (kör puanlama),
+ * ön büro hiçbir zaman. Kapsam dışı, başka kurumun ya da olmayan puan `false` (404).
+ */
+async function canReadScoreAudio(
+  tx: Database,
+  ctx: ServiceContext,
+  scoreId: string,
+  file: { purpose: string },
+): Promise<boolean> {
+  const versionId = await findScoreVersionId(tx, ctx.institutionId, scoreId)
+  if (versionId === null) return false
+  if (!(await canReadVersionFile(tx, ctx, versionId, file))) return false
+  const work = await findSubmissionOfVersion(tx, ctx.institutionId, versionId)
+  const version = work?.versions.find((row) => row.id === versionId)
+  const assignment =
+    work && (await findAssignment(tx, ctx.institutionId, work.submission.assignmentId))
+  if (!work || !version || !assignment) return false
+  const local = { ...ctx, db: tx }
+  const viewer = await viewerOf(local)
+  const grading =
+    (await loadGrading(tx, local, [work.submission.id])).bySubmission.get(work.submission.id) ??
+    NO_GRADING
+  return canHearFeedbackAudio({
+    role: ctx.actor.role,
+    scoreShown: shownScoreIds(viewer, ctx, assignment, grading, version).has(scoreId),
+  })
+}
+
+defineFileAttachment(SCORE_ATTACHMENT, {
+  purposes: ['feedback_audio'],
+  canRead: canReadScoreAudio,
+  purgeHeld: scoreFilePurgeHeld,
+})
 
 defineFileAttachment(SUBMISSION_VERSION_ATTACHMENT, {
   purposes: ['submission', 'speaking_recording'],

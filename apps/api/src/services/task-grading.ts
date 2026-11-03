@@ -67,7 +67,7 @@ import {
   secondRatingFor,
   type Grading,
 } from './task-submissions.ts'
-import { extendVersionRecordingRetention } from './task-submission-files.ts'
+import { attachFeedbackAudio, extendVersionRecordingRetention } from './task-submission-files.ts'
 import { auditWork, canReadLearner } from './task-work.ts'
 
 /**
@@ -281,6 +281,8 @@ export interface ScoreWriteInput {
   expectedVersion: number
   versionNumber: number
   score: RubricScoreInput
+  /** Sesli geri bildirim (DOM-BEC-056): puanlayanın yüklediği `feedback_audio` dosyası. */
+  feedbackAudioFileId?: string | null | undefined
 }
 
 /**
@@ -288,7 +290,10 @@ export interface ScoreWriteInput {
  * ilk puan; örneklemli görevde örneklem çekilmeden 409 `second_rating_sample_pending`. `second`:
  * ikinci puan; yalnız sürüm ikinci puanlama isteğinin kapsamındaysa (409
  * `second_rating_not_requested`) ve ilk puanı vermeyen kişiden (409 `rater_not_independent`).
- * Puanlayıcı ilk puanı görmez (`scoresVisibleToRater`). Puan değişmez satırdır.
+ * Puanlayıcı ilk puanı görmez (`scoresVisibleToRater`). Puan değişmez satırdır. Sesli geri
+ * bildirim (DOM-BEC-056) puanla aynı transaction'da puan satırına bağlanır (`attachFeedbackAudio`:
+ * puanlayanın kendi, hazır, bağlanmamış `feedback_audio` dosyası); bağlama reddedilirse puan da
+ * yazılmaz.
  */
 const SCORE_ACTIONS = {
   first: 'task_submission.score',
@@ -390,12 +395,30 @@ async function writeScore(
               holidays: APPEAL_HOLIDAYS,
             })
         }
-        await insertRubricScore(tx, ctx.institutionId, { id: randomUUID(), ...draft }, ctx.now)
+        const scoreId = randomUUID()
+        await insertRubricScore(tx, ctx.institutionId, { id: scoreId, ...draft }, ctx.now)
+        const audioFileId = input.feedbackAudioFileId ?? null
+        // Ses, kursiyerin konuşma kaydıyla aynı veri sahibine ve saklama kuralına bağlanır
+        // (DOM-BEC-056; Sabah kararı 91, sabah onayı bekler).
+        const audioVersion = work.versions.find((v) => v.id === draft.submissionVersionId)
+        if (audioFileId !== null) {
+          if (audioVersion === undefined) throw new Error('scored version was not loaded')
+          await attachFeedbackAudio(tx, ctx, {
+            fileId: audioFileId,
+            scoreId,
+            assignment,
+            submission: work.submission,
+            version: audioVersion,
+            announcedAt: released ? draft.scoredAt : null,
+            holidays: APPEAL_HOLIDAYS,
+          })
+        }
         await touchSubmission(tx, ctx.institutionId, work.submission, ctx.now)
         await auditWork(tx, ctx, action, { type: ENTITY, id: work.submission.id }, [
           'criteria',
           'overallComment',
           'scoredAt',
+          ...(audioFileId === null ? [] : ['feedbackAudio']),
         ])
         out.body = await readBack(tx, ctx, current, assignment, work.submission.id)
       },

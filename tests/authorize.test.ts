@@ -82,6 +82,7 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'permissionForm.create': ['yonetici', 'ogretmen'],
     'permissionForm.update': ['yonetici', 'ogretmen'],
     'permissionForm.close': ['yonetici', 'ogretmen'],
+    'permissionForm.cancel': ['yonetici', 'ogretmen'],
     'permissionForm.archive': ['yonetici', 'ogretmen'],
     'permissionForm.decide': ['veli', 'ogrenci'],
     'prospect.create': ['yonetici', 'onburo'],
@@ -107,6 +108,9 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'academicYear.manage': ['yonetici'],
     'guardian.read': ['yonetici', 'onburo', 'veli'],
     'guardian.manage': ['yonetici', 'onburo'],
+    'guardian.invite': ['yonetici', 'onburo'],
+    'guardian.invite_list': ['yonetici', 'onburo'],
+    'guardian.invite_cancel': ['yonetici', 'onburo'],
     'course.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
     'course.manage': ['yonetici', 'ogretmen'],
     'course.eozel': ['yonetici'],
@@ -118,6 +122,10 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'quiz.archive': ['yonetici', 'ogretmen'],
     'quiz.start': ['ogrenci'],
     'quiz.submit': ['ogrenci'],
+    // Onur: sözleşme onayı (ON-028, #28).
+    'contract.sign': ['yonetici'],
+    'contract.approve': ['yonetici', 'onburo', 'veli'],
+    'contract.amend': ['yonetici', 'onburo'],
   })
   // Sıra anlamsızdır: komut tablosu iki kaynaktan birleşir (platform ve Onur bloğu).
   assert.deepEqual(Object.keys(WRITE_ACTION_ROLES).sort(), [...WRITE_ACTIONS].sort())

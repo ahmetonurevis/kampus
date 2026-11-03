@@ -26,7 +26,7 @@ import { WRITE_ACTIONS, requireAuthorized } from '../packages/school-core/src/li
 import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
 import { runAssessment } from '../packages/school-core/src/lib/assessment-automation.ts'
 import { recordAttendance } from '../packages/school-core/src/lib/domain.ts'
-import { payInvoice } from '../packages/school-core/src/lib/payments.ts'
+import { payInvoice } from '../packages/school-core/src/lib/payments-demo.ts'
 import { enrollProspect } from '../packages/school-core/src/lib/enrollment.ts'
 import { recordGrade, updateGrade } from '../packages/school-core/src/lib/grades.ts'
 import {
@@ -73,6 +73,7 @@ import {
 } from '../packages/school-core/src/lib/homework.ts'
 import {
   archivePermissionForm,
+  cancelPermissionForm,
   closePermissionForm,
   createPermissionForm,
   decidePermission,
@@ -748,6 +749,7 @@ test('İzin formu işlemleri yalnız komut tablosundaki koleksiyonlarla çalış
     now,
   )
   closePermissionForm(operation(state, 'permissionForm.close'), teacher, form.id, now)
+  cancelPermissionForm(operation(state, 'permissionForm.cancel'), teacher, form.id, now)
   archivePermissionForm(operation(state, 'permissionForm.archive'), teacher, spare.id)
 })
 

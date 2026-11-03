@@ -6,6 +6,8 @@ import { defineConfig } from '@playwright/test'
 import { e2e } from './tests/e2e-react/support/env.ts'
 
 const ci = !!process.env.CI
+/** Dar ekran (telefon) taraması yalnız kendi projesinde koşar (OG-098, IST-127). */
+const NARROW_SPECS = '**/dar-ekran-*.spec.ts'
 
 export default defineConfig({
   testDir: './tests/e2e-react',
@@ -28,4 +30,13 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
   },
+  projects: [
+    // Mevcut testler masaüstünde (1440×1000) koşar; dar ekran spec'leri buraya girmez.
+    { name: 'masaustu', testIgnore: NARROW_SPECS },
+    {
+      name: 'dar-ekran',
+      testMatch: NARROW_SPECS,
+      use: { viewport: { width: 360, height: 740 } },
+    },
+  ],
 })

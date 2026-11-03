@@ -48,6 +48,36 @@ async function renewalYear(client: ApiClient) {
   return year + 1
 }
 
+/** Yılın öğrenim ücreti tarifesini API'den açar ve yayımlar (tutar kuruş). */
+async function publishTariff(client: ApiClient, academicYear: number, amountCents: number) {
+  const draft = await client.post(
+    '/api/v1/fee-tariffs',
+    {
+      academicYear,
+      items: [
+        {
+          kind: 'tuition',
+          level: null,
+          amountCents,
+          unit: 'year',
+          vatBasisPoints: 1000,
+          vatEffectiveDate: `${String(academicYear - 1)}-01-01`,
+          announcedAmountCents: amountCents,
+        },
+      ],
+    },
+    { 'idempotency-key': randomUUID() },
+  )
+  expect(draft.status, JSON.stringify(draft.body)).toBe(201)
+  const { id, version } = (draft.body as { data: { id: string; version: number } }).data
+  const published = await client.post(
+    `/api/v1/fee-tariffs/${id}/publish`,
+    { announcedDate: nextDay(-1), mebbisRecordedDate: null },
+    { 'idempotency-key': randomUUID(), 'if-match': `"${String(version)}"` },
+  )
+  expect(published.status, JSON.stringify(published.body)).toBe(200)
+}
+
 test.describe('kayıt yenileme', () => {
   test('yönetici artış tavanı oranını girer, ücret özetini görür ve yenilemeyi planlar; sınıf değişmez', async ({
     loginAs,
@@ -114,6 +144,55 @@ test.describe('kayıt yenileme', () => {
     await expect(detail.getByText(/^1\. taksit/)).toBeVisible()
     await expect(detail.getByText(/^Artış tavanı: /)).toBeVisible()
     await expect(detail.getByRole('button', { name: 'Dönem geçişini uygula' })).toBeVisible()
+  })
+
+  test('DOM-FIN-002, renewal_above_tariff: ilan edilen ücreti aşan bedel reddedilir; ileti görünür, yenileme yazılmaz', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s3'],
+      collections: ['renewals'],
+      tariffYears: ['current'],
+    })
+    const client = await api(school.user('yonetici'))
+    // Gelecek yılın ilanı 25.000 ₺; form 30.000 ₺ ile gönderilir. Tavan oranı girilmeden ücret
+    // hesaplanmaz (DOM-FIN-005), bu yüzden yılın ÜFE/TÜFE oranı API'den eklenir.
+    const year = await renewalYear(client)
+    await publishTariff(client, year, 2_500_000)
+    const rates = await client.post(
+      `${RENEWALS}/price-indexes`,
+      {
+        academicYear: year,
+        ppiBasisPoints: 4_000,
+        cpiBasisPoints: 3_000,
+        source: 'TÜİK bülteni (test)',
+        bulletinDate: nextDay(-30),
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(rates.status, JSON.stringify(rates.body)).toBe(201)
+    const before = await renewalOf(client, 's3')
+
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/kayit-yenileme')
+    await page.getByRole('button', { name: 'Kayıt yenile' }).click()
+    const form = page.getByRole('dialog', { name: 'Kayıt yenile' })
+    await form.getByLabel('Öğrenci', { exact: true }).selectOption({ label: 'Zeynep Demir · 6-A' })
+    await form.getByLabel('Yeni sınıf').selectOption({ label: '7-A · Kadıköy Kampüsü' })
+    await form.getByLabel('Öğrenim ücreti (₺)').fill('30000')
+    await form.getByLabel('Taksit sayısı').fill('6')
+    await form.getByLabel('İlk taksit tarihi').fill(nextDay(30))
+    await form.getByRole('button', { name: 'Kontrol et' }).click()
+
+    // Ret ücret önizlemesinde gelir; onay düğmesi çıkmaz.
+    await expect(form.getByText('Eğitim bedeli ilan edilen ücreti aşamaz.')).toBeVisible()
+    await expect(form.getByRole('button', { name: 'Onayla ve kaydet' })).toHaveCount(0)
+    // Form düzeltme için açık kalır; kayıt değişmez.
+    await expect(form.getByLabel('Öğrenim ücreti (₺)')).toHaveValue('30000')
+    expect(await renewalOf(client, 's3')).toEqual(before)
   })
 
   test('dönem geçişi ayrı işlemle uygulanır ve sınıfı değiştirir', async ({

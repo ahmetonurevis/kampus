@@ -21,7 +21,6 @@ import {
   TASK_KINDS,
 } from '@kampus/school-core/skills/scoring.ts'
 import { VERSION_LIMITS } from '@kampus/school-core/skills/submission.ts'
-import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 /**
@@ -32,16 +31,8 @@ import type { BadgeTone } from '@/lib/badge-tone.ts'
 
 export const NONE: readonly never[] = []
 
-export const SUBMISSION_DATE_OPTIONS = {
-  day: 'numeric',
-  month: 'short',
-  year: 'numeric',
-  hour: '2-digit',
-  minute: '2-digit',
-} as const satisfies Intl.DateTimeFormatOptions
-
-export const dateTimeLabel = (value: string | null | undefined) =>
-  value ? dateLabel(value, SUBMISSION_DATE_OPTIONS) : '—'
+// Görev tarih biçimi web ve mobil için ortaktır (`@kampus/react-shared/task-labels.ts`).
+export { dateTimeLabel, SUBMISSION_DATE_OPTIONS } from '@kampus/react-shared/task-labels.ts'
 
 // --- Görev türleri -------------------------------------------------------------------------
 
@@ -353,24 +344,47 @@ export const assignmentFormSchema = z
   .superRefine((value, context) => {
     const issue = (path: string, message: string) =>
       context.addIssue({ code: 'custom', path: [path], message })
-    const teacher = isTeacherScored(value.taskType)
-    if (value.dueAt.trim() === '') {
-      if (value.kind === 'evaluation') issue('dueAt', 'Değerlendirme görevine son teslim girin.')
-    } else if (istanbulLocalToUtc(value.dueAt) === null) {
-      issue('dueAt', 'Geçerli bir tarih ve saat girin.')
-    }
-    if (teacher && value.rubricVersionId === '') issue('rubricVersionId', 'Bir rubrik seçin.')
-    if (value.kind === 'evaluation' && !teacher && value.countPolicy === 'highest') {
-      if (value.maxAttempts <= 1) {
-        issue('countPolicy', '"En yüksek puan" için deneme hakkı 1\'den büyük olmalı.')
-      }
-    }
-    const min = value.minWords === '' ? null : Number(value.minWords)
-    const max = value.maxWords === '' ? null : Number(value.maxWords)
-    if (min !== null && max !== null && min > max) {
-      issue('maxWords', 'Alt sınır üst sınırdan büyük olamaz.')
-    }
+    const due = dueAtIssue(value.dueAt, value.kind)
+    if (due !== null) issue('dueAt', due)
+    checkAssignmentSettings(value, issue)
   })
+
+/** Son teslim alanının istemci denetimi: değerlendirmede zorunlu, girildiyse geçerli an. */
+export function dueAtIssue(local: string, kind: 'evaluation' | 'practice'): string | null {
+  if (local.trim() === '')
+    return kind === 'evaluation' ? 'Değerlendirme görevine son teslim girin.' : null
+  return istanbulLocalToUtc(local) === null ? 'Geçerli bir tarih ve saat girin.' : null
+}
+
+/**
+ * Görev ayarlarının istemci denetimi (rubrik, sayım politikası, sözcük sınırı); tek atama ve
+ * içerikten toplu atama formu (OG-089) aynı denetimi kullanır. Son söz sunucudadır.
+ */
+export function checkAssignmentSettings(
+  value: {
+    taskType: TaskType
+    kind: 'evaluation' | 'practice'
+    rubricVersionId: string
+    countPolicy: 'first' | 'highest'
+    maxAttempts: number
+    minWords: string
+    maxWords: string
+  },
+  issue: (path: string, message: string) => void,
+) {
+  const teacher = isTeacherScored(value.taskType)
+  if (teacher && value.rubricVersionId === '') issue('rubricVersionId', 'Bir rubrik seçin.')
+  if (value.kind === 'evaluation' && !teacher && value.countPolicy === 'highest') {
+    if (value.maxAttempts <= 1) {
+      issue('countPolicy', '"En yüksek puan" için deneme hakkı 1\'den büyük olmalı.')
+    }
+  }
+  const min = value.minWords === '' ? null : Number(value.minWords)
+  const max = value.maxWords === '' ? null : Number(value.maxWords)
+  if (min !== null && max !== null && min > max) {
+    issue('maxWords', 'Alt sınır üst sınırdan büyük olamaz.')
+  }
+}
 export type AssignmentFormValues = z.input<typeof assignmentFormSchema>
 export type AssignmentFormOutput = z.output<typeof assignmentFormSchema>
 

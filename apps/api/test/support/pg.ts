@@ -3,8 +3,11 @@ import { randomBytes } from 'node:crypto'
 import { migrate } from 'drizzle-orm/node-postgres/migrator'
 import pg from 'pg'
 
+import { samplePlatformOutcomes } from '@kampus/school-core/content/outcomes.ts'
+
 import { loadTestPgUrl } from '../../src/config.ts'
 import { connectPostgres, MIGRATIONS_FOLDER, type Database } from '../../src/db/client.ts'
+import { syncPlatformOutcomes } from '../../src/db/learning-outcomes.ts'
 
 /**
  * `test:pg` takımı: gerçek PostgreSQL 16 (`TEST_PG_URL`). PGlite tek bağlantılı olduğundan
@@ -89,6 +92,8 @@ export async function createPgDatabase(): Promise<PgDatabase> {
   const { db, close: closePool } = connectPostgres(url)
   try {
     await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
+    // Platform kazanım kataloğu bakım betiğiyle yüklüdür (DOM-KYN-011; `support/app.ts` ile aynı).
+    await syncPlatformOutcomes(db, samplePlatformOutcomes(), new Date('2026-10-06T09:00:00.000Z'))
   } catch (error) {
     await closePool()
     await dropDatabase(name)

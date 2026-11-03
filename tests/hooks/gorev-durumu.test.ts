@@ -99,11 +99,16 @@ describe('parseTasks', () => {
         '| OG-003 | Eksik sütun | bekliyor |',
         'OG-004 | Çizgisiz satır | bekliyor | | |',
         '| OG-005 | Geçerli | `engelli` | | ON-014 bekleniyor |',
+        '| OG-1000 | Dört haneli kimlik | bekliyor | | |',
+        '| OG-10000 | Beş haneli kimlik | bekliyor | | |',
       ]),
     )
     assert.deepEqual(
       tasks.map((item) => [item.id, item.status, item.note]),
-      [['OG-005', 'engelli', 'ON-014 bekleniyor']],
+      [
+        ['OG-005', 'engelli', 'ON-014 bekleniyor'],
+        ['OG-1000', 'bekliyor', ''],
+      ],
     )
   })
 

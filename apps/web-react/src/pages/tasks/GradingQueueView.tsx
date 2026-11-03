@@ -10,8 +10,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { SubmissionGradingModal } from './SubmissionGradingModal.tsx'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
-import { dateTimeLabel, isStaffAssignment, submissionStatus } from './task-model.ts'
-import { useTaskLookups } from './use-task-lookups.ts'
+import { dateTimeLabel, isStaffAssignment, learnerLabel, submissionStatus } from './task-model.ts'
 
 const URL_FILTERS = { assignmentId: 'atama' }
 const NO_SORT: readonly string[] = []
@@ -44,7 +43,6 @@ export function GradingQueueView() {
     ...(assignmentId ? { assignmentId } : {}),
   })
   const assignments = useTaskAssignments({ page: 1, pageSize: 100 })
-  const { names } = useTaskLookups()
   const titles = useMemo(
     () =>
       new Map(
@@ -65,7 +63,7 @@ export function GradingQueueView() {
           : submissionStatus(item.status)
         return {
           id: item.id,
-          learner: names.studentName(item.learnerId),
+          learner: learnerLabel(item),
           assignment: titles.get(item.assignmentId)?.title ?? item.assignmentTitle ?? 'Görev',
           status: status.label,
           statusTone: status.tone,
@@ -74,7 +72,7 @@ export function GradingQueueView() {
           words: item.latestVersion?.wordCount ? String(item.latestVersion.wordCount.count) : '—',
         }
       }),
-    [queue.data, names, titles],
+    [queue.data, titles],
   )
 
   const columns = useMemo<DataColumn<QueueRow>[]>(

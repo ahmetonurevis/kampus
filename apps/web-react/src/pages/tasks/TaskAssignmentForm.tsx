@@ -62,7 +62,7 @@ function AssignmentEditor({ onClose, onCreated }: Omit<Props, 'open'>) {
   const languageSchool = session?.institution.type === 'language_school'
   const groupKind = languageSchool ? 'group' : 'class'
   const create = useCreateTaskAssignment()
-  const { classOptions, classes } = useTaskLookups({ students: false })
+  const { classOptions, classes } = useTaskLookups()
   const form = useForm<AssignmentFormValues, unknown, AssignmentFormOutput>({
     resolver: zodResolver(assignmentFormSchema) as unknown as Resolver<
       AssignmentFormValues,

@@ -130,8 +130,9 @@ export function TaskQuestionInput({ question, response, onChange, disabled = fal
         <View style={{ gap: 12 }}>
           <Stem text={body.stem} />
           {body.prompts.map((prompt) => (
-            <View key={prompt.id} pointerEvents={disabled ? 'none' : 'auto'}>
+            <View key={prompt.id}>
               <Select
+                disabled={disabled}
                 label={prompt.text}
                 value={pairs.find((pair) => pair.promptId === prompt.id)?.choiceId}
                 options={options}
@@ -158,8 +159,9 @@ export function TaskQuestionInput({ question, response, onChange, disabled = fal
             const value = gaps.find((item) => item.gapId === gap.id)?.value ?? ''
             const label = `${index + 1}. boşluk`
             return options.length > 0 ? (
-              <View key={gap.id} pointerEvents={disabled ? 'none' : 'auto'}>
+              <View key={gap.id}>
                 <Select
+                  disabled={disabled}
                   label={label}
                   value={value}
                   options={options.map((option) => ({ value: option, label: option }))}

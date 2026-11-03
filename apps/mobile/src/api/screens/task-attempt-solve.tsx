@@ -1,4 +1,11 @@
-import { useEffect, useReducer, useRef, useState, type MutableRefObject } from 'react'
+import {
+  useEffect,
+  useLayoutEffect,
+  useReducer,
+  useRef,
+  useState,
+  type MutableRefObject,
+} from 'react'
 import { Pressable, ScrollView, View } from 'react-native'
 import { attemptClock } from '@kampus/react-shared/attempt-model.ts'
 import type { TaskAssignmentLearner } from '@kampus/react-shared/use-task-assignments.ts'
@@ -11,6 +18,7 @@ import { Button, T, useColors } from '../../ui/components.tsx'
 import { Notice } from '../../ui/SchoolLayout.tsx'
 import { useNow } from '../../ui/use-now.ts'
 import {
+  clockSpokenLabel,
   EXPIRED_REFRESH_MS,
   INITIAL_SOLVE,
   LEAVE_TEXTS,
@@ -83,7 +91,9 @@ export function TaskAttemptSolve({
   })
 
   const latest = useRef({ deadline, refresh: onRefresh })
-  latest.current = { deadline, refresh: onRefresh }
+  useLayoutEffect(() => {
+    latest.current = { deadline, refresh: onRefresh }
+  })
 
   // Süre dolunca cevaplar bir kez kendiliğinden gönderilir (sunucu kayıtlı cevaplarla teslim eder).
   useEffect(() => {
@@ -204,7 +214,7 @@ export function TaskAttemptSolve({
         <View
           accessible
           accessibilityRole="timer"
-          accessibilityLabel={clock.text}
+          accessibilityLabel={timed ? clockSpokenLabel(remaining, clock.text) : clock.text}
           style={{
             alignSelf: 'flex-start',
             minHeight: 36,

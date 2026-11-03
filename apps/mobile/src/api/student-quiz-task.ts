@@ -23,7 +23,6 @@ import {
 import type { TaskTone } from '@kampus/react-shared/student-task-model.ts'
 import type { TaskAssignmentLearner } from '@kampus/react-shared/use-task-assignments.ts'
 import {
-  attemptStale,
   TASK_ATTEMPT_MESSAGES,
   type TaskAttemptAnswers,
   type TaskAttemptDetail,
@@ -255,6 +254,11 @@ export type SolveState = {
   keepsKey: boolean
   /** Süre dolduğu için kendiliğinden gönderim başladı; yalnız bir kez denenir. */
   autoSent: boolean
+  /**
+   * Sunucu gönderimi kesin olarak reddetti (ör. 422 `content_unavailable`): süre dolsa da
+   * sonucu yenileme döngüsü başlamaz; deneme sunucuda teslim edilmeyecektir.
+   */
+  rejected: boolean
 }
 
 export const INITIAL_SOLVE: SolveState = {
@@ -263,6 +267,7 @@ export const INITIAL_SOLVE: SolveState = {
   resend: false,
   keepsKey: false,
   autoSent: false,
+  rejected: false,
 }
 
 export const LEAVE_TEXTS = {
@@ -316,9 +321,18 @@ const send = (state: SolveState, auto: boolean): SolveState => ({
   autoSent: state.autoSent || auto,
 })
 
-/** Kural hatası (422: süre doldu, teslim kapandı) ve zaten teslim (409): deneme sunucuda bitti. */
-const attemptEnded = (error: ApiError) =>
-  attemptStale(error) || error.code === 'attempt_already_submitted'
+/**
+ * Deneme sunucuda bitti: zaten teslim (409 `attempt_already_submitted`) ya da süre doldu (422
+ * `attempt_time_over`; teslim ucu süre dolunca 422 vermez, kayıtlı cevaplarla kendisi teslim
+ * eder, kod cevap kaydı ve madde kontrolünden gelir). Diğer 422'ler (`content_unavailable`,
+ * `answer_invalid`…) denemeyi bitirmez: kendi mesajıyla hata gösterilir, sonuç yenilenmez.
+ */
+export const attemptEnded = (error: ApiError) =>
+  error.code === 'attempt_already_submitted' || error.code === 'attempt_time_over'
+
+/** Sunucu isteği kesin reddetti: 4xx (zaman aşımı ve 429 hariç); tekrar denemek aynı sonucu verir. */
+const isDefiniteRejection = (error: ApiError) =>
+  error.status >= 400 && error.status < 500 && error.status !== 408 && error.status !== 429
 
 /**
  * Saf geçiş fonksiyonu. Çift dokunma ikinci gönderim yaratmaz: `sending` iken `press`, `confirm`
@@ -332,7 +346,7 @@ export function solveReducer(state: SolveState, action: SolveAction): SolveState
       if (state.phase !== 'answering') return state
       return state.error === null && !state.resend
         ? state
-        : { ...state, error: null, resend: false, keepsKey: false }
+        : { ...state, error: null, resend: false, keepsKey: false, rejected: false }
     case 'press': {
       if (state.phase !== 'answering') return state
       if (action.timeOver || state.resend) return send(state, action.timeOver)
@@ -363,6 +377,7 @@ export function solveReducer(state: SolveState, action: SolveAction): SolveState
           error: NOT_SAVED_TEXT,
           resend: true,
           keepsKey: false,
+          rejected: false,
         }
       const error = failure.error
       if (error && attemptEnded(error))
@@ -377,6 +392,7 @@ export function solveReducer(state: SolveState, action: SolveAction): SolveState
           keepsKey: false,
         }
       const keepsKey = error !== null && keepsIdempotencyKey(error)
+      const rejected = error !== null && isDefiniteRejection(error)
       const message =
         error === null
           ? ''
@@ -389,6 +405,7 @@ export function solveReducer(state: SolveState, action: SolveAction): SolveState
         error: message + (keepsKey ? RESEND_HINT : ''),
         resend: true,
         keepsKey,
+        rejected,
       }
     }
     default: {
@@ -396,6 +413,16 @@ export function solveReducer(state: SolveState, action: SolveAction): SolveState
       return unreachable
     }
   }
+}
+
+/**
+ * Sayaç için ekran okuyucu etiketi: görünen yazı her saniye değişir, etiket dakikada bir
+ * (kalan süre dakikaya yukarı yuvarlanır); son dakikada saniye saniye. Süre bitince `fallback`.
+ */
+export function clockSpokenLabel(remainingMs: number | null, fallback: string): string {
+  if (remainingMs === null || remainingMs <= 0) return fallback
+  if (remainingMs <= 60_000) return `Kalan süre ${Math.ceil(remainingMs / 1000)} saniye`
+  return `Kalan süre ${Math.ceil(remainingMs / 60_000)} dakika`
 }
 
 /** Düğmenin yazısı: gönderim sürerken "Gönderiliyor…", hata sonrası ve süre bitince "Yeniden gönder". */
@@ -484,7 +511,9 @@ export function resultAction(result: SubmitResult): SolveAction | null {
  */
 export const shouldRefreshExpired = (state: SolveState, timeOver: boolean) =>
   timeOver &&
-  (state.phase === 'ended' || state.phase === 'answering' || state.phase === 'submitted')
+  (state.phase === 'ended' ||
+    state.phase === 'submitted' ||
+    (state.phase === 'answering' && !state.rejected))
 
 // --- Cevap girdisi (6 soru türü) -----------------------------------------------------------
 

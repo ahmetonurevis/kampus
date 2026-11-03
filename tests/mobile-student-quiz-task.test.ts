@@ -2,6 +2,7 @@ import test, { describe } from 'node:test'
 import assert from 'node:assert/strict'
 import { ApiError } from '../packages/api-client/src/errors.ts'
 import { createCommandSession, runCommand } from '../packages/react-shared/src/commands.ts'
+import { TASK_ATTEMPT_MESSAGES } from '../packages/react-shared/src/use-task-attempts.ts'
 import type { TaskAssignmentLearner } from '../packages/react-shared/src/use-task-assignments.ts'
 import type {
   TaskAttemptAnswers,
@@ -32,6 +33,8 @@ import {
   resultAction,
   setGapValue,
   shouldRefreshExpired,
+  attemptEnded,
+  clockSpokenLabel,
   shownOrder,
   solveGate,
   solveReducer,
@@ -344,6 +347,17 @@ describe('OG-061: süre sunucu saatindedir (DOM-BEC-043)', () => {
     assert.equal(isTimeOver(remainingFrom(deadline, 2_000_000)), true)
   })
 
+  test('sayaç etiketi dakikada bir değişir, son dakikada saniye saniye okunur', () => {
+    assert.equal(clockSpokenLabel(600_000, 'x'), 'Kalan süre 10 dakika')
+    assert.equal(clockSpokenLabel(599_001, 'x'), 'Kalan süre 10 dakika')
+    assert.equal(clockSpokenLabel(540_000, 'x'), 'Kalan süre 9 dakika')
+    assert.equal(clockSpokenLabel(60_001, 'x'), 'Kalan süre 2 dakika')
+    assert.equal(clockSpokenLabel(60_000, 'x'), 'Kalan süre 60 saniye')
+    assert.equal(clockSpokenLabel(1_500, 'x'), 'Kalan süre 2 saniye')
+    assert.equal(clockSpokenLabel(0, 'Süre doldu'), 'Süre doldu')
+    assert.equal(clockSpokenLabel(null, 'Süre doldu'), 'Süre doldu')
+  })
+
   test('süre sınırı ve teslim penceresi yoksa sayaç yoktur, süre dolmaz', () => {
     assert.equal(deadlineAt(1_000_000, null), null)
     assert.equal(remainingFrom(null, 5), null)
@@ -470,7 +484,7 @@ describe('OG-061: çözme durum makinesi (DOM-BEC-043)', () => {
     assert.equal(state.keepsKey, false)
   })
 
-  test('422 (süre doldu, teslim kapandı) ve 409 zaten teslim: deneme bitti sayılır, sonuç yenilenir', () => {
+  test('422 attempt_time_over ve 409 zaten teslim: deneme bitti sayılır, sonuç yenilenir', () => {
     const sending = run(INITIAL_SOLVE, { type: 'timeout' })
     const over = solveReducer(sending, {
       type: 'failed',
@@ -485,6 +499,33 @@ describe('OG-061: çözme durum makinesi (DOM-BEC-043)', () => {
     })
     assert.equal(already.phase, 'ended')
     assert.equal(already.error, ALREADY_SUBMITTED_TEXT)
+  })
+
+  test('422 content_unavailable denemeyi bitirmez: kendi mesajıyla hata, yenileme döngüsü yok (DOM-KYN-021)', () => {
+    const sending = run(INITIAL_SOLVE, { type: 'timeout' })
+    for (const code of ['content_unavailable', 'answer_invalid', 'submission_closed']) {
+      assert.equal(attemptEnded(apiError(422, code)), false, code)
+    }
+    const state = solveReducer(sending, {
+      type: 'failed',
+      failure: { kind: 'request', error: apiError(422, 'content_unavailable') },
+    })
+    assert.equal(state.phase, 'answering')
+    assert.equal(state.error, TASK_ATTEMPT_MESSAGES.content_unavailable)
+    assert.equal(state.resend, true)
+    assert.equal(state.rejected, true)
+    assert.equal(isSolveLocked(state), false)
+    // Süre dolmuş olsa da kesin reddedilen gönderimde sonuç yenileme döngüsü başlamaz.
+    assert.equal(shouldRefreshExpired(state, true), false)
+    // Ağ hatasında ise sunucu kendiliğinden teslim etmiş olabilir: yenilenir.
+    const network = solveReducer(sending, {
+      type: 'failed',
+      failure: { kind: 'request', error: networkError() },
+    })
+    assert.equal(network.rejected, false)
+    assert.equal(shouldRefreshExpired(network, true), true)
+    // Cevap değişince kesin red eskir.
+    assert.equal(solveReducer(state, { type: 'edit' }).rejected, false)
   })
 
   test('çıkış: cevaplı denemede onay sorulur, cevapsızda sorulmaz; gönderim sonrası onay yok', () => {

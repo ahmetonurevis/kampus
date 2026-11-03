@@ -129,8 +129,9 @@ function Actions({
       const next = actionFailure(outcome.error, collector.fields)
       setReasonError(next.errors.reason)
       setFailure(next)
-      // Belirsiz hatada (ağ, 5xx) onay açık kalır ki aynı işlem yeniden denenebilsin.
-      if (!next.retryable) setMode(null)
+      // Belirsiz hatada (ağ, 5xx) onay açık kalır ki aynı işlem yeniden denenebilsin; gerekçe
+      // alanına bağlı ret de açık kalır, yoksa alan hatası pencereyle birlikte gizlenirdi.
+      if (!next.retryable && next.errors.reason === undefined) setMode(null)
       return
     }
     notify(ACTION_TEXTS[action].done)

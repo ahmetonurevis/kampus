@@ -4,6 +4,7 @@ import {
   listeningPhase,
   RECORDING_CLOSED_NOTE,
   reviewRefusal,
+  reviewRetryable,
   transcriptVisible,
   type ListeningPhaseInput,
 } from '../src/pages/tasks/listening-model.ts'
@@ -22,6 +23,7 @@ const input = (overrides: Partial<ListeningPhaseInput> = {}): ListeningPhaseInpu
   link: null,
   exhausted: false,
   refusal: null,
+  retryable: false,
   audioPlaying: false,
   now: NOW,
   ...overrides,
@@ -112,7 +114,36 @@ describe('dinleme bölümü: sonuç ekranı', () => {
     assert.deepEqual(listeningPhase(input({ mode: 'review', refusal: RECORDING_CLOSED_NOTE })), {
       kind: 'unavailable',
       message: RECORDING_CLOSED_NOTE,
+      retry: false,
     })
+  })
+
+  test('IST-045, DOM-BEC-005 (OG-998): süren sınırlı deneme yüzünden reddedilen kayıt notun altında yeniden denenir', () => {
+    const running = 'Bu kayıt süren bir denemenizde sınırlı; dinlemeyi o denemenin ekranından açın.'
+    assert.deepEqual(
+      listeningPhase(input({ mode: 'review', allowance: null, refusal: running, retryable: true })),
+      { kind: 'unavailable', message: running, retry: true },
+    )
+    // Yeniden deneme bağlantı getirince oynatıcı açılır.
+    assert.deepEqual(
+      listeningPhase(
+        input({ mode: 'review', allowance: null, refusal: null, retryable: false, link: LIVE }),
+      ),
+      { kind: 'playing', url: LIVE.url },
+    )
+  })
+
+  test('IST-045 (OG-998): yalnız listening_attempt_running geçici rettir', () => {
+    assert.equal(reviewRetryable('listening_attempt_running'), true)
+    for (const code of [
+      'listening_attempt_required',
+      'listening_attempt_closed',
+      'listening_attempt_mismatch',
+      'listening_plays_exhausted',
+      'not_found',
+      null,
+    ] as const)
+      assert.equal(reviewRetryable(code), false, String(code))
   })
 
   test('DOM-BEC-005: personel ve veli kaydı her zaman dinler', () => {

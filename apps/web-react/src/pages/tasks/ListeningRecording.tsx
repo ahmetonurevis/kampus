@@ -21,6 +21,7 @@ import { cn } from '@/lib/utils'
 import {
   listeningPhase,
   reviewRefusal,
+  reviewRetryable,
   transcriptVisible,
   type ListeningLink,
   type ListeningMode,
@@ -73,7 +74,7 @@ export function ListeningRecording({
   const [link, setLink] = useState<ListeningLink | null>(null)
   const [grant, setGrant] = useState<ListeningAllowance | null>(null)
   const [exhausted, setExhausted] = useState(false)
-  const [refused, setRefused] = useState<string | null>(null)
+  const [refused, setRefused] = useState<{ message: string; retry: boolean } | null>(null)
   const [pending, setPending] = useState(false)
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
   const [playError, setPlayError] = useState(false)
@@ -88,8 +89,18 @@ export function ListeningRecording({
   const allowance =
     mode === 'attempt' ? (grant ?? listeningAllowance(listening, recording.fileId)) : null
   const refusal =
-    mode === 'review' ? (refused ?? reviewRefusal(audience, recording, listening)) : null
-  const phase = listeningPhase({ mode, allowance, link, exhausted, refusal, audioPlaying, now })
+    mode === 'review' ? (refused?.message ?? reviewRefusal(audience, recording, listening)) : null
+  const retryable = refused?.retry ?? false
+  const phase = listeningPhase({
+    mode,
+    allowance,
+    link,
+    exhausted,
+    refusal,
+    retryable,
+    audioPlaying,
+    now,
+  })
   const playingUrl = phase.kind === 'playing' ? phase.url : null
 
   // Yeni bağlantı gelince oynatma başlatılır; tarayıcı izin vermezse oynatıcı düğmesi kalır.
@@ -123,7 +134,7 @@ export function ListeningRecording({
         return
       }
       if (mode === 'review' && code !== null && code !== 'file_processing') {
-        setRefused(listeningErrorMessage(error))
+        setRefused({ message: listeningErrorMessage(error), retry: reviewRetryable(code) })
         return
       }
       notify.error(listeningErrorMessage(error), error)
@@ -230,9 +241,24 @@ export function ListeningRecording({
           Dinleme hakkınız doldu; kayıt bu denemede yeniden açılmaz.
         </p>
       ) : phase.kind === 'unavailable' ? (
-        <p role="status" className="text-sm text-muted-foreground">
-          {phase.message}
-        </p>
+        <div className="grid gap-2">
+          <p role="status" className="text-sm text-muted-foreground">
+            {phase.message}
+          </p>
+          {phase.retry ? (
+            <Button
+              type="button"
+              variant="secondary"
+              className="justify-self-start"
+              disabled={pending}
+              aria-busy={pending || undefined}
+              onClick={() => void listen()}
+            >
+              <Icon name="RotateCcw" size={16} aria-hidden="true" />
+              Yeniden dene
+            </Button>
+          ) : null}
+        </div>
       ) : (
         <div className="grid gap-2">
           {phase.kind === 'resume' ? (

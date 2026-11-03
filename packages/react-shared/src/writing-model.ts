@@ -1,6 +1,6 @@
-import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 import { wordCountCheck } from '@kampus/school-core/skills/submission.ts'
-import { dateTimeLabel } from './task-model.ts'
+import { dateTimeLabel } from './task-labels.ts'
+import type { TaskSubmissionDetail } from './use-task-submissions.ts'
 
 /**
  * Yazma görevinin saf sunum kuralları (IST-047; DOM-BEC-040, 044, 046): editörün canlı sözcük

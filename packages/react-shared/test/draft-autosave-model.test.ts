@@ -5,7 +5,7 @@ import {
   DRAFT_DELAY_MS,
   type DraftSaverOptions,
   type SaveResult,
-} from '../src/pages/tasks/draft-autosave-model.ts'
+} from '../src/draft-autosave-model.ts'
 
 type Call = { revision: number | null; body: string }
 

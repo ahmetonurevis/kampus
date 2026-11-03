@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
+import { createDraftSaver } from '@kampus/react-shared/draft-autosave-model.ts'
 import { useSaveTaskDraft, type TaskDraft } from '@kampus/react-shared/use-task-submissions.ts'
-import { createDraftSaver } from './draft-autosave-model.ts'
 
 export type DraftSaveState = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -18,7 +18,7 @@ type Options = {
 
 /**
  * Yazma taslağının otomatik kaydı (IST-047): metin değişince kısa süre sonra kaydedilir. Mantık
- * `draft-autosave-model.ts`'tedir (sıralı kayıt, revizyon doğrulamalı kısayol, çakışma). Taslak
+ * `@kampus/react-shared/draft-autosave-model.ts`'tedir (sıralı kayıt, revizyon doğrulamalı kısayol, çakışma). Taslak
  * sorgusu tazelenince (başka pencerede kayıt): ekranda kaydedilmemiş değişiklik yoksa ekran sunucu
  * metnine geçer; varsa `conflict` açılır ve ilk teslim basışı kayıt atmadan uyarır.
  * Zamanlayıcı da modeldedir (`schedule`/`cancel`); bekleyen değişiklik unmount'ta kaydedilir.

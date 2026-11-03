@@ -6,6 +6,7 @@ import {
 } from '@kampus/react-shared/use-task-submissions.ts'
 import { useRubricVersion, type RubricVersion } from '@kampus/react-shared/use-rubrics.ts'
 import type { TaskScore } from '@kampus/react-shared/use-task-grading.ts'
+import { resubmissionRoundText } from '@kampus/react-shared/writing-model.ts'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -28,7 +29,6 @@ import {
   submissionStatus,
 } from './task-model.ts'
 import { VersionComparison } from './VersionComparison.tsx'
-import { resubmissionRoundText } from './writing-model.ts'
 
 type Props = {
   /** `''` kapalı; aksi hâlde puanlanan teslimin kimliği. */

@@ -52,8 +52,8 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
   // Öğrenci ve veli için iletişimde yalnız izin formu API'ye özgüdür (IST-067); duyuru ve mesaj
   // temel menüde. Velinin Materyaller sayfası da API'ye özgüdür (OG-982).
   const apiOnly: Record<'ogrenci' | 'veli', string[]> = {
-    ogrenci: ['izin-formlari'],
-    veli: ['materyaller', 'izin-formlari'],
+    ogrenci: ['basari-belgeleri', 'izin-formlari'],
+    veli: ['materyaller', 'basari-belgeleri', 'izin-formlari'],
   }
   for (const role of ['ogrenci', 'veli'] as const)
     assert.deepEqual(
@@ -68,6 +68,7 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
       'kurlar',
       'gruplar',
       'seviye-tespiti',
+      'basari-belgeleri',
       'icerik-havuzu',
       'rubrik-kutuphanesi',
       'duyurular',
@@ -143,7 +144,8 @@ test('Kur ve grup sayfaları yalnız dil okulunda, personelde ve kategorisinin s
     assert.ok(
       navigation[role].every(
         (p) =>
-          ['kurlar', 'gruplar', 'seviye-tespiti'].includes(p.path) || pageAvailableFor(p, 'school'),
+          ['kurlar', 'gruplar', 'seviye-tespiti', 'basari-belgeleri'].includes(p.path) ||
+          pageAvailableFor(p, 'school'),
       ),
       role,
     )
@@ -179,6 +181,37 @@ test('OG-078 IST-058: Seviye Tespiti yalnız dil okulunda, yönetici ve öğretm
   }
 })
 
+test('OG-088 IST-081 DOM-DIL-081: Başarı Belgeleri yalnız dil okulunda, academic modülüne bağlı; ön büroda yok', () => {
+  const expected: Record<Role, readonly [string, string] | null> = {
+    yonetici: ['YÖNETİM', 'Başarı Belgeleri'],
+    onburo: null,
+    ogretmen: ['AKADEMİK', 'Başarı Belgeleri'],
+    ogrenci: ['GELİŞİMİM', 'Başarı Belgelerim'],
+    veli: ['AKADEMİK', 'Başarı Belgeleri'],
+  }
+  for (const role of roleKeys) {
+    const pages = navigation[role]
+    const page = pages.find((p) => p.path === 'basari-belgeleri')
+    const want = expected[role]
+    if (want === null) {
+      assert.equal(page, undefined, role)
+      continue
+    }
+    assert.ok(page, role)
+    assert.deepEqual([page.group, page.title], want, role)
+    assert.equal(page.module, 'academic')
+    assert.equal(page.apiOnly, true)
+    assert.equal(pageAvailableFor(page, 'school'), false)
+    assert.equal(pageAvailableFor(page, 'language_school'), true)
+    // Kategorisinin son sayfasıdır.
+    assert.equal(pages.map((p) => p.group).lastIndexOf(want[0]), pages.indexOf(page), role)
+    assert.equal(
+      demoNavigation[role].some((p: { path: string }) => p.path === 'basari-belgeleri'),
+      false,
+    )
+  }
+})
+
 test('Veli Materyaller sayfası learning modülüne bağlı, AKADEMİK kategorisinin sonunda; Vue demosunda yok (OG-982, DOM-KYN-041)', () => {
   const pages = navigation.veli
   const page = pages.find((p) => p.path === 'materyaller')
@@ -188,8 +221,9 @@ test('Veli Materyaller sayfası learning modülüne bağlı, AKADEMİK kategoris
   assert.equal(page.group, 'AKADEMİK')
   assert.equal(page.apiOnly, true)
   assert.equal(page.institutionTypes, undefined)
-  const groups = pages.map((p) => p.group)
-  assert.equal(groups.lastIndexOf('AKADEMİK'), pages.indexOf(page))
+  // Okul kurumunda kategorinin sonundadır; dil okulunda ardından yalnız başarı belgeleri gelir.
+  const school = pages.filter((p) => pageAvailableFor(p, 'school'))
+  assert.equal(school.map((p) => p.group).lastIndexOf('AKADEMİK'), school.indexOf(page))
   assert.equal(
     demoNavigation.veli.some((p: { path: string }) => p.path === 'materyaller'),
     false,

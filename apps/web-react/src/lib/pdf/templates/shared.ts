@@ -11,6 +11,7 @@ export type PdfDocumentType =
   | 'payment-receipt'
   | 'refund-statement'
   | 'student-statement'
+  | 'course-certificate'
 
 export type TemplateOptions = {
   institution: string
@@ -28,6 +29,7 @@ export const DOCUMENT_TITLES = {
   'payment-receipt': 'Tahsilat dekontu',
   'refund-statement': 'İade hesap kırılımı',
   'student-statement': 'Cari ekstre',
+  'course-certificate': 'Kurum başarı belgesi',
 } as const satisfies Record<PdfDocumentType, string>
 
 const FILE_PREFIXES = {
@@ -40,6 +42,7 @@ const FILE_PREFIXES = {
   'payment-receipt': 'dekont',
   'refund-statement': 'iade-kirilimi',
   'student-statement': 'cari-ekstre',
+  'course-certificate': 'basari-belgesi',
 } as const satisfies Record<PdfDocumentType, string>
 
 /** İndirilen dosya adı: kayıt kimliği güvenli karakterlere indirilir, `.pdf` ile biter. */

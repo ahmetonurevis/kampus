@@ -47,6 +47,9 @@ const GroupsPage = lazy(async () => ({
 const PlacementPage = lazy(async () => ({
   default: (await import('../language/PlacementPage.tsx')).PlacementPage,
 }))
+const CertificatesPage = lazy(async () => ({
+  default: (await import('../language/CertificatesPage.tsx')).CertificatesPage,
+}))
 const AttendanceCorrectionPage = lazy(async () => ({
   default: (await import('../academic/AttendanceCorrectionPage.tsx')).AttendanceCorrectionPage,
 }))
@@ -186,6 +189,11 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
     case 'yonetici/seviye-tespiti':
     case 'ogretmen/seviye-tespiti':
       return <PlacementPage page={page} />
+    case 'yonetici/basari-belgeleri':
+    case 'ogretmen/basari-belgeleri':
+    case 'ogrenci/basari-belgeleri':
+    case 'veli/basari-belgeleri':
+      return <CertificatesPage page={page} />
     case 'yonetici/yoklama-duzeltme':
       return <AttendanceCorrectionPage page={page} />
     case 'yonetici/koordinator-gorevleri':

@@ -34,10 +34,11 @@ const open = { academic: true }
 const closed = { academic: false }
 
 describe('API modu sayfaları', () => {
-  test('öğretmen Sınıflarım, veli Akademik Takip ekranını görür', () => {
+  test('öğretmen Yoklama ve Sınıflarım, veli Akademik Takip ekranını görür', () => {
     assert.deepEqual(
       apiPages({ role: 'ogretmen', modules: open }).map((page) => [page.title, page.screen]),
       [
+        ['Yoklama', 'TeacherAttendance'],
         ['Sınıflarım', 'TeacherClasses'],
         ['Duyurular', 'Announcements'],
         ['Mesajlar', 'Messages'],
@@ -99,6 +100,10 @@ describe('API modu sayfaları', () => {
     )
     assert.equal(canOpenScreen({ role: 'ogretmen', modules: open }, 'TeacherClasses'), true)
     assert.equal(canOpenScreen({ role: 'ogretmen', modules: closed }, 'TeacherClasses'), false)
+    // IST-124 yoklama ekranı `academic` modülündedir; kapalıysa kart ve doğrudan erişim kapanır.
+    assert.equal(canOpenScreen({ role: 'ogretmen', modules: open }, 'TeacherAttendance'), true)
+    assert.equal(canOpenScreen({ role: 'ogretmen', modules: closed }, 'TeacherAttendance'), false)
+    assert.equal(canOpenScreen({ role: 'ogrenci', modules: open }, 'TeacherAttendance'), false)
     // Başka rolün ekranı açılmaz.
     assert.equal(canOpenScreen({ role: 'ogretmen', modules: open }, 'ParentGrades'), false)
   })

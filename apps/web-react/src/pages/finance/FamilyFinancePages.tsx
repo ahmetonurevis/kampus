@@ -1,5 +1,6 @@
 import { use, type ReactNode } from 'react'
 import { Link } from 'react-router'
+import { CONTRACT_STATUS_LABELS, contractStatus } from '@kampus/school-core/lib/contract-status.ts'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { hasScholarshipContract } from '@kampus/school-core/lib/payments.ts'
 import { useAuth } from '@/auth/use-auth.ts'
@@ -197,16 +198,21 @@ function Contracts({ childId }: { childId: string }) {
         Sözleşmeler yükleniyor…
       </p>
     )
+  const all = contracts.data.map(({ record }) => record)
+  // İptal edilen ek protokol hiçbir sonuç doğurmamıştır; eski sürümler durumuyla listede kalır
+  // (DOM-FIN-051, IST-092).
+  const shown = all.filter((contract) => contract.cancelledAt === undefined)
   return (
     <ul aria-label="Belgeler" className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
-      {contracts.data.map(({ record: contract }) => (
+      {shown.map((contract) => (
         <li
           key={contract.id}
           className="panel document-card grid content-start gap-2 rounded-card border bg-surface p-6"
         >
           <h2 className="text-lg font-semibold">{contract.title}</h2>
           <p className="text-sm text-muted-foreground">
-            {dateLabel(contract.date, { year: 'numeric' })}
+            {dateLabel(contract.date, { year: 'numeric' })} ·{' '}
+            {CONTRACT_STATUS_LABELS[contractStatus(contract, all)]}
           </p>
           <p className="text-sm">
             Eğitim bedeli: <strong>{money(contract.amount)}</strong>
@@ -221,10 +227,7 @@ function Contracts({ childId }: { childId: string }) {
           </div>
         </li>
       ))}
-      {hasScholarshipContract(
-        contracts.data.map(({ record }) => record),
-        childId,
-      ) ? null : (
+      {hasScholarshipContract(all, childId) ? null : (
         <li className="panel document-card grid content-start gap-2 rounded-card border bg-surface p-6">
           <h2 className="text-lg font-semibold">Taksit taahhütnamesi</h2>
           <p className="text-sm text-muted-foreground">Öğrencinin güncel ödeme planı belgesi.</p>

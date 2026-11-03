@@ -131,6 +131,30 @@ test('DOM-ILT-023: finans bildirim verisi yalnız kimlik alır; başlıkta tutar
   )
 })
 
+test('IST-106, IST-110: tahsilat ve iade bildirimi yalnız kendi kimliğini taşır; tutar, referans ve IBAN reddedilir', () => {
+  assert.deepEqual(notificationSubject('payment_received', { paymentId: 'pay-1' }).subject, {
+    type: 'payments',
+    id: 'pay-1',
+  })
+  assert.deepEqual(notificationSubject('refund_paid', { withdrawalId: 'wd-1' }).subject, {
+    type: 'student_withdrawals',
+    id: 'wd-1',
+  })
+  assert.throws(() =>
+    notificationSubject('payment_received', { paymentId: 'pay-1', reference: 'R1' }),
+  )
+  assert.throws(() => notificationSubject('payment_received', { paymentId: 'pay-1', amount: 1 }))
+  assert.throws(() => notificationSubject('refund_paid', { withdrawalId: 'wd-1', iban: 'TR33' }))
+  assert.equal(
+    notificationTitle({ kind: 'payment_received', audience: 'parent' }, 'Deniz Yılmaz'),
+    'Deniz için ödeme alındı.',
+  )
+  assert.equal(
+    notificationTitle({ kind: 'refund_paid', audience: 'student' }, 'Deniz'),
+    'İaden ödendi.',
+  )
+})
+
 test('DOM-FIN-052: 18 yaş altında veliye, yetişkin kursiyerde kendisine; finans ve iletişim modülü açıkken üretilir', () => {
   assert.deepEqual(notificationAudiences('installment_due', true), ['parent'])
   assert.deepEqual(notificationAudiences('installment_due', false), ['student'])

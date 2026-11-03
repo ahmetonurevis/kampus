@@ -6,4 +6,5 @@ Finans bildirimleri (`docs/domain/finans.md` DOM-FIN-034, DOM-FIN-035; `docs/dom
 
 - Yeni `lib/finance-notifications.ts`: `installment_due` ve `installment_overdue` hizmet bildirimi türleri eklendi (ON-026, IST-109): konu `payment`, `finance` modülü, 18 yaş altında veli, yetişkin kursiyerde kendisi; veri yalnız `invoiceId`, başlıkta tutar ve vade yok.
 - Yeni `lib/installment-reminders.ts`: `installmentReminders` vadeye 3 gün kala ve vade günü `installment_due`, vade geçince `installment_overdue` kararı verir. Tam ödenmiş taksit hatırlatılmaz, kısmi ödenmiş taksit açık sayılır; gün Europe/Istanbul takvimindendir. Biçimi bozuk taksit atlanır ve sayılır.
+- `payment_received` (veri `paymentId`) ve `refund_paid` (veri `withdrawalId`) hizmet bildirimi türleri eklendi (ON-027, IST-106, IST-110): tutar, referans ve IBAN şemaya ve başlığa girmez.
 - `openAmount` yalnız `id`, `amount` ve `paidAt` alanlarını isteyecek biçimde daraltıldı.

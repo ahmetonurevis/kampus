@@ -4147,7 +4147,9 @@
               "absence_corrected",
               "enrollment_completed",
               "installment_due",
-              "installment_overdue"
+              "installment_overdue",
+              "payment_received",
+              "refund_paid"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -17522,7 +17524,9 @@
               "absence_corrected",
               "enrollment_completed",
               "installment_due",
-              "installment_overdue"
+              "installment_overdue",
+              "payment_received",
+              "refund_paid"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },

@@ -5808,7 +5808,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "enrollment_completed" | "installment_due" | "installment_overdue";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -9076,7 +9076,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "enrollment_completed" | "installment_due" | "installment_overdue";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}

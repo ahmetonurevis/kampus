@@ -43,4 +43,26 @@ export const FINANCE_NOTIFICATION_TYPES = {
       parent: '{öğrenci} için taksit vadesi geçti.',
     },
   }),
+  /** Tahsilat kaydedildi (IST-106, DOM-FIN-030). Tutar, yöntem ve referans bildirimde yoktur. */
+  payment_received: defineNotificationType({
+    ...PAYMENT_NOTICE,
+    subjectType: 'payments',
+    data: z.strictObject({ paymentId: notificationId }),
+    subjectId: (data) => data.paymentId,
+    titles: {
+      student: 'Ödemen alındı.',
+      parent: '{öğrenci} için ödeme alındı.',
+    },
+  }),
+  /** İade ödendi (IST-110, DOM-FIN-041). Tutar, IBAN ve hesap sahibi bildirimde yoktur. */
+  refund_paid: defineNotificationType({
+    ...PAYMENT_NOTICE,
+    subjectType: 'student_withdrawals',
+    data: z.strictObject({ withdrawalId: notificationId }),
+    subjectId: (data) => data.withdrawalId,
+    titles: {
+      student: 'İaden ödendi.',
+      parent: '{öğrenci} için iade ödendi.',
+    },
+  }),
 } as const

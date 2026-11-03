@@ -991,3 +991,127 @@ test.describe('Finans: liste', () => {
     await expectNoHorizontalOverflow(page)
   })
 })
+
+// ON-038: tahsilat ve tarife retlerinin ekrandaki yeri. Kural core ve API testlerindedir; burada
+// iletinin hangi alanda göründüğü ve kaydın yazılmadığı kanıtlanır. Her test kendi kurumunu kurar.
+test.describe('Finans: sunucu retleri', () => {
+  test('DOM-FIN-025: burslu öğrenciden senet alınmaz; ileti Ödeme yöntemi alanında, taksit açık kalır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: [],
+      students: ['s20'],
+      records: [
+        {
+          collection: 'contracts',
+          data: {
+            id: 'e2e-burs-sozlesme',
+            studentId: 's20',
+            date: new Date().toISOString(),
+            amount: 1_000_000,
+            title: 'Özel okul eğitim sözleşmesi',
+            scholarship: { programId: 'e2e-burs', amountCents: 500_000 },
+          },
+        },
+      ],
+    })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?tahsilat=inv-s20-5`)
+    const dialog = paymentDialog(page)
+    const method = dialog.getByLabel('Ödeme yöntemi')
+    await method.selectOption('Senet')
+    await dialog.getByLabel('Senet numarası').fill(`E2E-SENET-${randomUUID()}`)
+    await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
+
+    await expect(dialog.getByText('Burslu öğrenciden senet alınamaz.')).toBeVisible()
+    await expect(method).toHaveAttribute('aria-invalid', 'true')
+    await expect(dialog).toBeVisible()
+    expect((await invoice(client, 'inv-s20-5')).paidAt).toBeNull()
+  })
+
+  test('DOM-FIN-032: form açıkken nakit kapatılırsa ileti Ödeme yöntemi alanında, tahsilat yazılmaz', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s21'] })
+    await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
+    await setCashPayments(client, true)
+    await page.goto(`${ADMIN_URL}?tahsilat=inv-s21-5`)
+    const dialog = paymentDialog(page)
+    const method = dialog.getByLabel('Ödeme yöntemi')
+    await method.selectOption('Nakit')
+
+    // Başka bir yönetici nakdi kapattı; açık formdaki seçenek eski ayarı gösteriyor.
+    await setCashPayments(client, false)
+    await dialog.getByRole('button', { name: 'Tahsilatı kaydet' }).click()
+
+    await expect(dialog.getByText('Bu kurumda nakit tahsilat kapalıdır.')).toBeVisible()
+    await expect(method).toHaveAttribute('aria-invalid', 'true')
+    expect((await invoice(client, 'inv-s21-5')).paidAt).toBeNull()
+  })
+
+  test('DOM-FIN-002: MEBBİS onaylı tutarı aşan taslak yayımlanmaz; ileti görünür, tarife taslak kalır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s19'] })
+    const client = await api(school.user('yonetici'))
+    const academicYear = new Date().getFullYear()
+    const draft = await client.post(
+      '/api/v1/fee-tariffs',
+      {
+        academicYear,
+        items: [
+          {
+            kind: 'tuition',
+            level: null,
+            amountCents: 30_000_000,
+            unit: 'year',
+            vatBasisPoints: 1000,
+            vatEffectiveDate: `${String(academicYear)}-01-01`,
+            announcedAmountCents: 29_999_999,
+          },
+        ],
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(draft.status, JSON.stringify(draft.body)).toBe(201)
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=tarife`)
+    const table = page.getByRole('table', { name: 'Ücret tarifeleri' })
+    await expect(table).toContainText('Taslak')
+    await page.getByRole('button', { name: /tarifesini yayımla/ }).click()
+    const publish = page.getByRole('dialog', { name: 'Tarifeyi yayımla' })
+    await publish.getByRole('button', { name: 'Tarifeyi yayımla' }).click()
+
+    await expect(page.getByText('Ücret, MEBBİS onaylı tutarı aşamaz.')).toBeVisible()
+    await expect(publish).toBeVisible()
+    await expect(page.getByText('Tarife yayımlandı.')).toHaveCount(0)
+    await publish.getByRole('button', { name: 'Vazgeç' }).click()
+    await expect(table).toContainText('Taslak')
+    await expect(table).not.toContainText('Yayında')
+  })
+})
+
+/** Nakit tahsilat ayarını API'den değiştirir (başka bir yöneticinin işlemi). */
+async function setCashPayments(client: ApiClient, enabled: boolean) {
+  const current = await client.get('/api/v1/payment-settings')
+  expect(current.status).toBe(200)
+  const { version } = (current.body as { data: { version: number } }).data
+  const result = await client.context.patch('/api/v1/payment-settings', {
+    data: { cashPaymentsEnabled: enabled },
+    headers: { 'if-match': `"${String(version)}"`, 'idempotency-key': randomUUID() },
+    failOnStatusCode: false,
+  })
+  expect(result.status(), await result.text()).toBe(200)
+}

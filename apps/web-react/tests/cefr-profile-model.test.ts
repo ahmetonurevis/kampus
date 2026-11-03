@@ -1,6 +1,10 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { CefrProfile, CefrStaffTimelineEntry } from '@kampus/react-shared/cefr.ts'
+import type {
+  CefrProfile,
+  CefrProfileStaff,
+  CefrStaffTimelineEntry,
+} from '@kampus/react-shared/cefr.ts'
 import {
   currentLevelRows,
   estimateEvidenceRows,
@@ -55,7 +59,6 @@ const base: CefrProfile = {
     ],
     label: 'Tahmini seviye',
     evidence: [],
-    excluded: [],
   },
   current: [
     {
@@ -213,9 +216,10 @@ const decision = (
   },
 })
 
-const staff: CefrProfile = {
+const staff: CefrProfileStaff = {
   ...base,
   view: 'staff',
+  estimate: { ...base.estimate, excluded: [] },
   timeline: [
     decision('d4', 'speaking', 'B1', '2026-11-01T09:00:00.000Z', 'A2', 'up'),
     decision('d3', null, 'A2', '2026-10-15T09:00:00.000Z', 'B1', 'down'),
@@ -307,7 +311,7 @@ test('IST-060: mini grafik yalnız seçili becerinin gerçek kararlarından; "T�
 })
 
 test('IST-060: kararlar tek becerideyse süzgeç çıkmaz, grafik "Tümü"nde o beceriyle çizilir', () => {
-  const single: CefrProfile = {
+  const single: CefrProfileStaff = {
     ...staff,
     timeline: staff.timeline.filter((row) => row.skill === 'speaking'),
   }
@@ -333,14 +337,14 @@ test('IST-060: süzgeç yeni kursiyerin seçeneklerinde yoksa "Tümü"ne döner'
 // OG-247 (DOM-BEC-031…034): tahmini seviyenin kanıt görevleri, bağlantıları ve yetersiz kanıt nedeni.
 
 const ASSIGNMENT_ID = '00000000-0000-4000-8000-0000a0000001'
-const withEvidence: CefrProfile['estimate'] = {
+const withEvidence: CefrProfileStaff['estimate'] = {
   ...base.estimate,
   evidence: [
     {
       id: 'attempt-1',
       title: 'Okuma değerlendirmesi',
       source: 'task',
-      task: { assignmentId: ASSIGNMENT_ID, scoring: 'auto' },
+      task: { assignmentId: ASSIGNMENT_ID, scoring: 'auto', linkable: true },
       skill: 'reading',
       targetLevel: 'B1',
       performedAt: '2026-10-01T09:00:00.000Z',
@@ -366,7 +370,7 @@ const withEvidence: CefrProfile['estimate'] = {
       id: 'version-1',
       title: '',
       reason: 'unscored',
-      task: { assignmentId: ASSIGNMENT_ID, scoring: 'rubric' },
+      task: { assignmentId: ASSIGNMENT_ID, scoring: 'rubric', linkable: true },
     },
   ],
 }
@@ -392,8 +396,8 @@ test('DOM-BEC-034 OG-247: kanıtlar en yeniden eskiye; görev kanıtı görevine
 })
 
 test('OG-247: kanıt görevinin adresi role göre kurulur', () => {
-  const auto = { assignmentId: ASSIGNMENT_ID, scoring: 'auto' } as const
-  const rubric = { assignmentId: ASSIGNMENT_ID, scoring: 'rubric' } as const
+  const auto = { assignmentId: ASSIGNMENT_ID, scoring: 'auto', linkable: true } as const
+  const rubric = { assignmentId: ASSIGNMENT_ID, scoring: 'rubric', linkable: true } as const
   assert.equal(
     evidenceHref(auto, { kind: 'staff', role: 'yonetici' }),
     `/yonetici/odevler?gorev=${ASSIGNMENT_ID}`,
@@ -406,6 +410,36 @@ test('OG-247: kanıt görevinin adresi role göre kurulur', () => {
   assert.equal(
     evidenceHref(auto, { kind: 'parent', childId: 'student-1' }),
     `/veli/akademik-takip?cocuk=student-1&sekme=gorevler&gorev=${ASSIGNMENT_ID}`,
+  )
+})
+
+test('DOM-BEC-034 OG-247: izleyicinin göremediği atamaya bağlantı çizilmez; kanıt yine listelenir', () => {
+  const hidden = (estimate: CefrProfileStaff['estimate']): CefrProfileStaff['estimate'] => ({
+    ...estimate,
+    evidence: estimate.evidence.map((item) =>
+      item.task ? { ...item, task: { ...item.task, linkable: false } } : item,
+    ),
+    excluded: estimate.excluded.map((item) =>
+      item.task ? { ...item, task: { ...item.task, linkable: false } } : item,
+    ),
+  })
+  const teacher = { kind: 'staff', role: 'ogretmen' } as const
+  const rows = estimateEvidenceRows(hidden(withEvidence), teacher)
+  assert.deepEqual(
+    rows.map((row) => [row.key, row.href]),
+    [
+      ['section-1', null],
+      ['attempt-1', null],
+    ],
+  )
+  assert.deepEqual(
+    excludedEvidenceRows(hidden(withEvidence), teacher).map((row) => [row.key, row.href]),
+    [['version-1', null]],
+  )
+  assert.ok(
+    estimateEvidenceRows(hidden(withEvidence), { kind: 'student' }).every(
+      (row) => row.href === null,
+    ),
   )
 })
 

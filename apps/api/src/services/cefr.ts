@@ -64,6 +64,7 @@ import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { loadTaskEvidence, type EvidenceAudience } from './cefr-evidence.ts'
 import { getInstitution, listMembershipLinks } from './memberships.ts'
+import { viewerOf, visible } from './task-assignments.ts'
 import {
   mapOperationError,
   runCommand,
@@ -765,8 +766,24 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
     links: taskLinks,
     suggestion,
   } = await learnerSuggestion(ctx.db, ctx, studentId, learnerView ? 'learner' : 'staff')
-  const decisions = await listLevelDecisions(ctx.db, ctx.institutionId, learner)
+  const [decisions, viewer] = await Promise.all([
+    listLevelDecisions(ctx.db, ctx.institutionId, learner),
+    viewerOf(ctx),
+  ])
   const view = cefrProfileView({ institutionType: 'language_school', suggestion, decisions })
+  // Görev bağlantısı yalnız izleyicinin görev ucunda görebildiği atamaya çizilir (`linkable`):
+  // kapsam kuralı görev uçlarınınkiyle aynı fonksiyondur (`visible`). Öğretmen kursiyerin başka
+  // öğretmenden aldığı görevi, öğrenci eski grubunun görevini açamaz; kanıt yine sayılır.
+  const taskOf = (id: string) => {
+    const link = taskLinks.get(id)
+    return link === undefined
+      ? null
+      : {
+          assignmentId: link.assignmentId,
+          scoring: link.scoring,
+          linkable: visible(viewer, link.assignment),
+        }
+  }
   // Çizelge core `levelTimeline` ile: en yeniden eskiye, aynı becerinin önceki kararına göre
   // değişim (OG-079). Sıra `view.decisions.history` ile aynıdır.
   const timeline = levelTimeline(decisions)
@@ -780,19 +797,13 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
         id: e.id,
         title: e.title,
         source: e.source,
-        task: taskLinks.get(e.id) ?? null,
+        task: taskOf(e.id),
         skill: e.skill,
         targetLevel: e.targetLevel,
         performedAt: e.performedAt,
         expiresAt: e.expiresAt,
         successful: e.successful,
         percent: e.percent,
-      })),
-      excluded: view.estimate.excluded.map(({ id, title, reason }) => ({
-        id,
-        title,
-        reason,
-        task: taskLinks.get(id) ?? null,
       })),
     },
     current: (view.decisions?.current ?? []).map(({ skill, decision }) => ({
@@ -813,6 +824,9 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   // 35); alan kapsamı role özgü yanıt şemasıyla da kapanır.
   // Kanıt özeti de yalnız personeldedir (OG-079 güvenli taraf; Sabah kararı önerisi): öğrenci ve
   // veli çizelgede seviye, tür, an ve önceki seviyeyi görür.
+  // Kanıt sayılmayan sonuçlar (puanlanmamış, itirazlı, süresi dolmuş) yalnız personelde (OG-247):
+  // öğrenci ve veli açılmamış puanın varlığını bu listeden de çıkaramaz (DOM-BEC-045); kursiyer
+  // yanıt şemasında alan yoktur.
   if (learnerView) {
     return {
       view: 'learner' as const,
@@ -837,6 +851,15 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   return {
     view: 'staff' as const,
     ...shared,
+    estimate: {
+      ...shared.estimate,
+      excluded: view.estimate.excluded.map(({ id, title, reason }) => ({
+        id,
+        title,
+        reason,
+        task: taskOf(id),
+      })),
+    },
     timeline: timeline.map((d) => ({
       ...decisionView(d),
       decidedByName: names.get(d.decidedByUserId) ?? null,

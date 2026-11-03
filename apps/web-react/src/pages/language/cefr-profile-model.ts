@@ -21,6 +21,7 @@ import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import {
   isStaffProfile,
   type CefrProfile,
+  type CefrProfileStaff,
   type CefrStaffTimelineEntry,
 } from '@kampus/react-shared/cefr.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
@@ -129,6 +130,16 @@ export function evidenceHref(task: EvidenceTask, audience: EvidenceAudience): st
   return `/${audience.role}/odevler?${params.toString()}`
 }
 
+/**
+ * Kanıt satırının bağlantısı: görev modülü açık ve izleyici atamayı görev uçlarında görebiliyorsa
+ * (`task.linkable`, sunucu görev kapsamıyla hesaplar). Öğretmenin göremediği atamaya (başka
+ * öğretmenin grubu) ya da öğrencinin eski grubunun görevine bağlantı çizilmez; açılan sayfa
+ * görevi bulamazdı.
+ */
+function taskLink(task: EvidenceTask | null, audience: EvidenceAudience | null): string | null {
+  return task?.linkable && audience ? evidenceHref(task, audience) : null
+}
+
 export interface EvidenceItemRow {
   key: string
   title: string
@@ -171,7 +182,7 @@ export function estimateEvidenceRows(
         dateTime: item.performedAt,
         until: `${dateLabel(item.expiresAt, DATE_OPTIONS)} tarihine kadar geçerli`,
         successful: item.successful,
-        href: item.task && audience ? evidenceHref(item.task, audience) : null,
+        href: taskLink(item.task, audience),
         linkLabel: `${title}, ${date} sonucunu aç`,
       }
     })
@@ -184,16 +195,19 @@ export interface ExcludedRow {
   href: string | null
 }
 
-/** Kanıt sayılmayan sonuçlar ve nedenleri (DOM-BEC-031); yalnız personel ekranında gösterilir. */
+/**
+ * Kanıt sayılmayan sonuçlar ve nedenleri (DOM-BEC-031). Yalnız personel yanıtında bulunur
+ * (DOM-BEC-045: öğrenci ve veli açılmamış puanın varlığını bu listeden çıkaramaz).
+ */
 export function excludedEvidenceRows(
-  estimate: CefrProfile['estimate'],
+  estimate: CefrProfileStaff['estimate'],
   audience: EvidenceAudience | null,
 ): ExcludedRow[] {
   return estimate.excluded.map((item) => ({
     key: item.id,
     title: untitled(item.title),
     reason: EXCLUSION_REASONS[item.reason].label,
-    href: item.task && audience ? evidenceHref(item.task, audience) : null,
+    href: taskLink(item.task, audience),
   }))
 }
 

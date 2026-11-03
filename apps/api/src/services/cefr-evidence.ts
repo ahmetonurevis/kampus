@@ -1,9 +1,13 @@
-import type { EvidenceCandidate } from '@kampus/school-core/cefr/suggestion.ts'
+import {
+  EVIDENCE_WINDOW_DAYS,
+  type EvidenceCandidate,
+} from '@kampus/school-core/cefr/suggestion.ts'
 
 import {
   loadAssignmentsByIds,
   loadLearnerAttempts,
   loadLearnerSubmissions,
+  type StoredAssignment,
   type StoredAttempt,
 } from '../db/skills.ts'
 import type { Database } from '../db/client.ts'
@@ -29,12 +33,33 @@ import { loadWorkPairs } from './task-work.ts'
  *
  * Alıştırma hiç aday olmaz (yalnız değerlendirme kanıttır, DOM-BEC-031): sınırsız tekrar edilen
  * alıştırmalar dışarıda kalan listesini doldurmasın diye servis eler. İptal edilen (arşivlenen)
- * atama ve kaldırılmış içerik (puanlama bağlamı kurulamaz) kanıt değildir.
+ * atama ve kaldırılmış içerik (otomatikte puanlama bağlamı kurulamaz; öğretmen puanlıda da
+ * görev artık gösterilemez, DOM-KYN-051) kanıt değildir.
  */
 export type EvidenceAudience = 'staff' | 'learner'
 
-/** Kanıt adayının kaynağı; ekran kanıt görevine bununla bağlanır. */
-export type TaskEvidenceLink = { assignmentId: string; scoring: 'auto' | 'rubric' }
+/** Kanıt adayının kaynağı; ekran kanıt görevine bununla bağlanır (bağlantı izni `visible` ile). */
+export type TaskEvidenceLink = {
+  assignmentId: string
+  scoring: 'auto' | 'rubric'
+  assignment: StoredAssignment
+}
+
+const DAY = 24 * 60 * 60_000
+
+/**
+ * Okuma penceresi, gün: en uzun kanıt penceresi (core `EVIDENCE_WINDOW_DAYS`) ve 30 gün pay.
+ * Denemeler ve teslimler tüm geçmişten okunursa süresi dolan sonuçlar "Geçerlilik süresi doldu"
+ * nedeniyle dışarıda kalanlara sınırsız birikir; bu yüzden okuma sorgu düzeyinde sınırlanır
+ * (`activeSince`). Atama bütünüyle elenir, deneme ya da sürüm tek tek değil: sayılan deneme ve
+ * kesinleşmiş sürüm süzgeçsiz okumayla aynı kalır. Elenen atamanın sonucu en geç pay kadar önce
+ * süresi dolmuş olurdu, yani öneriyi değiştirmez. Pay iki işe yarar: süre sınırlı denemenin
+ * tamamlanma anı başlangıcından en çok 300 dakika sonradır (sorgu başlangıç anına bakar) ve yeni
+ * düşen kanıt bir ay "süresi doldu" nedeniyle görünür kalır, öğretmen önerinin neden değiştiğini
+ * görür. Pencere dışındaki puanlanmamış ya da itirazlı sonuç da artık kanıt olamayacağı için
+ * listelenmez.
+ */
+export const EVIDENCE_READ_DAYS = Math.max(...Object.values(EVIDENCE_WINDOW_DAYS)) + 30
 
 export async function loadTaskEvidence(
   db: Database,
@@ -42,9 +67,10 @@ export async function loadTaskEvidence(
   studentId: string,
   audience: EvidenceAudience,
 ): Promise<{ candidates: EvidenceCandidate[]; links: Map<string, TaskEvidenceLink> }> {
+  const activeSince = new Date(ctx.now.getTime() - EVIDENCE_READ_DAYS * DAY)
   const [attempts, submissions] = await Promise.all([
-    loadLearnerAttempts(db, ctx.institutionId, studentId),
-    loadLearnerSubmissions(db, ctx.institutionId, studentId),
+    loadLearnerAttempts(db, ctx.institutionId, studentId, { activeSince }),
+    loadLearnerSubmissions(db, ctx.institutionId, studentId, { activeSince }),
   ])
   const assignments = (
     await loadAssignmentsByIds(db, ctx.institutionId, [
@@ -78,10 +104,13 @@ export async function loadTaskEvidence(
   const candidates: EvidenceCandidate[] = []
   const links = new Map<string, TaskEvidenceLink>()
   for (const assignment of assignments) {
-    const tags = pairs.get(assignment.resourceVersionId)?.version?.tags
+    // Kaldırılmış (ya da okunamayan) içerik iki puanlama türünde de kanıt değildir (DOM-KYN-051).
+    const version = pairs.get(assignment.resourceVersionId)?.version
+    if (version === undefined || version.removedAt !== null) continue
+    const tags = version.tags
     const base = {
       taskId: assignment.id,
-      title: pairs.get(assignment.resourceVersionId)?.version?.title ?? '',
+      title: version.title,
       source: 'task' as const,
       kind: assignment.kind,
       preliminary: false,
@@ -116,7 +145,7 @@ export async function loadTaskEvidence(
         appealPending: false,
         result: { mode: 'auto', score: counted.score },
       })
-      links.set(counted.attemptId, { assignmentId: assignment.id, scoring: 'auto' })
+      links.set(counted.attemptId, { assignmentId: assignment.id, scoring: 'auto', assignment })
       continue
     }
     const work = workOf.get(assignment.id)
@@ -134,7 +163,7 @@ export async function loadTaskEvidence(
       ),
       result: settled === null ? null : { mode: 'rubric', score: settled.result },
     })
-    links.set(id, { assignmentId: assignment.id, scoring: 'rubric' })
+    links.set(id, { assignmentId: assignment.id, scoring: 'rubric', assignment })
   }
   return { candidates, links }
 }

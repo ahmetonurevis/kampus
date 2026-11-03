@@ -146,7 +146,6 @@ function EstimateBlock({
   const summary = estimateSummary(profile.estimate)
   const skills = estimateSkillRows(profile.estimate)
   const evidence = estimateEvidenceRows(profile.estimate, audience)
-  const staff = audience?.kind === 'staff' || isStaffProfile(profile)
   return (
     <div className="grid min-w-0 gap-3">
       <p className="grid rounded-xl border px-3.5 py-2.5 text-sm">
@@ -159,7 +158,9 @@ function EstimateBlock({
         <p className="text-xs font-semibold text-muted-foreground">Kanıt görevleri</p>
         <EstimateEvidence rows={evidence} />
       </div>
-      {staff ? <ExcludedEvidence rows={excludedEvidenceRows(profile.estimate, audience)} /> : null}
+      {isStaffProfile(profile) ? (
+        <ExcludedEvidence rows={excludedEvidenceRows(profile.estimate, audience)} />
+      ) : null}
     </div>
   )
 }

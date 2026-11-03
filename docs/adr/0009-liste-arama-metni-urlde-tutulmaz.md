@@ -1,6 +1,6 @@
 # ADR 0009 · Liste arama metni adreste (URL) tutulmaz
 
-- Durum: Önerildi — Sabah kararı 76, kullanıcı ve Onur onayı bekler
+- Durum: Kabul edildi — Sabah kararı 76 ile uygulandı; kullanıcı ve Onur gözden geçirmesi bekleniyor
 - Daralttığı: liste durumu kuralı (CLAUDE.md "Kalıcı tasarım ve davranış kuralları": arama/filtre/sıralama/sayfa liste başına korunur)
 - İster: IST-028 · Görev: OG-066
 - Karar veren: Oğuzhan Demirci (öneri; KVKK açısından güvenli ve geri alınabilir seçenek)
@@ -21,10 +21,11 @@ API uygulama logu sorgu dizesini zaten atar (`apps/api/src/app.ts` `req` serile�
 ## Karar
 
 1. **Serbest arama metni hiçbir listede adrese yazılmaz.** `listStateToParams` arama parametresini (`<önek>q`) her zaman siler; ekran başına açma/kapama seçeneği yoktur (`searchInUrl` kaldırıldı; Onur'un alanındaki çağrı derlensin diye tipte `@deprecated` olarak durur ve yok sayılır).
-2. **Filtre, sıralama ve sayfa adreste kalır.** Bunlar kayıt kimliği ya da sabit seçenek değeridir (kampüs kimliği, durum, sütun adı), serbest kişisel metin taşımaz; paylaşılan bağlantı ve yenileme onları korumaya devam eder.
-3. **Arama metni liste ve çocuk/sekme kapsamı başına yalnız bellekte tutulur** (`view-memory`, anahtar `list:<yol>:<kapsam>:<liste>`). Sayfa içi gezinme, detay sayfasına gidip dönme ve geri/ileri aramayı bellekten geri getirir. Tam yenilemede ve yeni sekmede arama kaybolur; bu kabul edilen bedeldir.
-4. **Eski bağlantı uyumu:** adreste `q` gelirse (eski yer imi, paylaşılmış bağlantı) liste onu bir kez okur ve arama kutusuna koyar; ardından ilk adres yazımı `replace` ile parametreyi siler. Geçmişe yeni girdi eklenmez, geri düğmesi `q`'lu adrese dönmez (dönerse yine okunup silinir).
-5. **Depo:** arama metni `localStorage`, `sessionStorage` ve `history.state`'e yazılmaz.
+2. **Filtre, sıralama ve sayfa adreste kalır.** Bunlar kayıt kimliği ya da sabit seçenek değeridir (kampüs kimliği, durum, sütun adı), serbest kişisel metin taşımaz; paylaşılan bağlantı ve yenileme onları korumaya devam eder (arama sürerken sayfa hariç, karar 4).
+3. **Arama metni liste ve çocuk/sekme kapsamı başına yalnız bellekte tutulur** (`view-memory`, anahtar `list:<yol>:<kapsam>:<liste>`). Sayfa içi gezinme, detay sayfasına gidip dönme ve geri/ileri aramayı bellekten geri getirir; sidebar bağlantısı gibi `q`'suz bir bağlantıyla aynı sayfaya gidildiğinde de bellekteki arama korunur. Tam yenilemede ve yeni sekmede arama kaybolur; bu kabul edilen bedeldir.
+4. **Arama sürerken sayfa da adrese yazılmaz.** Arama boş değilken `sayfa` (ve önekli karşılığı) yalnız bellektedir; yenilemede arama kaybolunca kullanıcı aramasız listenin N. sayfasına düşmez, ilk sayfadan başlar. Arama silinince sayfa yeniden adrese yazılır.
+5. **Eski bağlantı uyumu:** adreste `q` gelirse (eski yer imi, paylaşılmış bağlantı) liste onu bir kez okur ve arama kutusuna koyar; ardından ilk adres yazımı `replace` ile parametreyi siler. Geçmişe yeni girdi eklenmez, geri düğmesi `q`'lu adrese dönmez (dönerse yine okunup silinir).
+6. **Depo:** arama metni `localStorage`, `sessionStorage` ve `history.state`'e yazılmaz.
 
 ## Sonuçlar
 
@@ -33,7 +34,7 @@ API uygulama logu sorgu dizesini zaten atar (`apps/api/src/app.ts` `req` serile�
 - Kullanıcı yenilemede aramasını yeniden yazar; arama sonucu bağlantıyla paylaşılamaz (filtrelerle paylaşılabilir).
 - E2E senaryoları adreste `q=` beklemez; arama sonucunu satır ve sonuç sayısıyla doğrular. Yenilemede aramanın korunduğunu bekleyen senaryolar "yenilemede arama silinir, filtre/sayfa kalır" olarak değişir.
 - Bu ADR yalnız web sayfa adresini kapsar. Sunucu sayfalı listeler arama metnini API'ye sorgu parametresiyle gönderir (`GET /api/v1/…?q=`); API uygulama logu sorgu dizesini yazmaz. **API yayını ADR'si** ters vekil ve CDN erişim loglarının da sorgu dizesini yazmamasını (ör. nginx `log_format`'ta `$request` yerine `$uri`) karar olarak içermelidir.
-- Geçiş istisnası: finans listesi (`/yonetici/finans`) Onur'un finans e2e beklentileri bu karara uyana kadar aramayı eskisi gibi adreste tutar (`list-url.ts` `keepsSearchInUrl`, `TODO(liste-arama-url-finans)`); istisna #24 kapanınca kaldırılır.
+- Geçiş istisnası: finans listesi (`/yonetici/finans`) Onur'un finans e2e beklentileri bu karara uyana kadar aramayı eskisi gibi adreste tutar (`list-url.ts` `keepsSearchInUrl`, `TODO(liste-arama-url-finans)`); istisna #24 kapanınca kaldırılır. Bu yolda arama ve arama içi sayfa eskisi gibi adrese yazılır. Ön büro tahsilat takibi (`/onburo/tahsilat-takip`) bilinçli olarak istisnada değildir: e2e onun aramasını adreste beklemez, daha güvenli davranış orada da geçerlidir.
 - Geri alınabilir: karar `list-url.ts` içinde tek noktadadır; ürün kararı değişirse arama yeniden adrese yazılabilir.
 
 ## Değerlendirilen alternatifler

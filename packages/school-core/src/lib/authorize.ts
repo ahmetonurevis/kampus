@@ -488,6 +488,7 @@ function decide(
           )
     case 'permissionForm.update':
     case 'permissionForm.close':
+    case 'permissionForm.cancel':
     case 'permissionForm.archive': {
       // Formun öğretmeni ya da yönetici (DOM-ILT-038). Formu gören başka öğretmen 403 alır;
       // görmeyen için ret 404'tür, formun varlığı sızdırılmaz.

@@ -87,6 +87,7 @@ export type PlatformWriteTargets = {
     targets?: { classIds: readonly string[]; studentIds: readonly string[] }
   }
   'permissionForm.close': { form: PermissionFormParties | undefined }
+  'permissionForm.cancel': { form: PermissionFormParties | undefined }
   'permissionForm.archive': { form: PermissionFormParties | undefined }
   'permissionForm.decide': {
     studentId: string
@@ -209,6 +210,7 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   'permissionForm.create': ['yonetici', 'ogretmen'],
   'permissionForm.update': ['yonetici', 'ogretmen'],
   'permissionForm.close': ['yonetici', 'ogretmen'],
+  'permissionForm.cancel': ['yonetici', 'ogretmen'],
   'permissionForm.archive': ['yonetici', 'ogretmen'],
   'permissionForm.decide': ['veli', 'ogrenci'],
   // İzleme ilerlemesini öğrenci kendisi için yazar; veli ve personel yazmaz, salt okur

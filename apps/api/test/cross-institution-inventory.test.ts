@@ -588,6 +588,10 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'POST /api/v1/permission-forms': govde('permission-forms.test.ts', 'gövdedeki institutionId 400'),
   'PATCH /api/v1/permission-forms/:formId': PERMISSION_FORM,
   'POST /api/v1/permission-forms/:formId/close': PERMISSION_FORM,
+  'POST /api/v1/permission-forms/:formId/cancel': kayit(
+    'permission-form-changes.test.ts',
+    'başka kurumun formu 404 ve hiçbir kayıt değişmez',
+  ),
   'DELETE /api/v1/permission-forms/:formId': PERMISSION_FORM,
   'POST /api/v1/permission-forms/:formId/decisions': PERMISSION_FORM,
 

@@ -73,6 +73,7 @@ import {
 } from '../packages/school-core/src/lib/homework.ts'
 import {
   archivePermissionForm,
+  cancelPermissionForm,
   closePermissionForm,
   createPermissionForm,
   decidePermission,
@@ -748,6 +749,7 @@ test('İzin formu işlemleri yalnız komut tablosundaki koleksiyonlarla çalış
     now,
   )
   closePermissionForm(operation(state, 'permissionForm.close'), teacher, form.id, now)
+  cancelPermissionForm(operation(state, 'permissionForm.cancel'), teacher, form.id, now)
   archivePermissionForm(operation(state, 'permissionForm.archive'), teacher, spare.id)
 })
 

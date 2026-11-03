@@ -84,6 +84,45 @@ export const PLATFORM_NOTIFICATION_TYPES = {
     },
   }),
   /**
+   * Etkinlik ayrıntısı (gün, saat, yer, ulaşım, ücret) değişti, verilen izin düştü (DOM-ILT-032):
+   * izni ya da reddi düşen öğrenci için kararı veren tarafa (18 yaş altında veli, yetişkinde
+   * kendisi) yeniden karar istenir. Zorunludur (DOM-ILT-020 "onay son tarihi"). Neyin değiştiği
+   * ve yeni ayrıntı bildirimde yoktur, form ayrıntısında okunur (DOM-ILT-023).
+   */
+  permission_form_reconsent: defineNotificationType({
+    topic: 'consent',
+    category: 'service',
+    mandatory: true,
+    module: 'communication',
+    audiences: { minor: ['parent'], adult: ['student'] },
+    subjectType: 'permission_form',
+    data: z.strictObject({ formId: notificationId }),
+    subjectId: (data) => data.formId,
+    titles: {
+      student: 'Etkinlik değişti, izninin yeniden verilmesi gerekiyor.',
+      parent: '{öğrenci} için etkinlik değişti, izin yeniden istenir.',
+    },
+  }),
+  /**
+   * Etkinlik iptal edildi (DOM-ILT-032): izin vermiş ve karar bekleyen öğrencinin kararı veren
+   * tarafına gider; etkinliği reddedene gitmez. Zorunludur (DOM-ILT-020). Neden ve ayrıntı
+   * bildirimde yoktur (DOM-ILT-023).
+   */
+  permission_form_cancelled: defineNotificationType({
+    topic: 'consent',
+    category: 'service',
+    mandatory: true,
+    module: 'communication',
+    audiences: { minor: ['parent'], adult: ['student'] },
+    subjectType: 'permission_form',
+    data: z.strictObject({ formId: notificationId }),
+    subjectId: (data) => data.formId,
+    titles: {
+      student: 'İzin istenen etkinlik iptal edildi.',
+      parent: '{öğrenci} için izin istenen etkinlik iptal edildi.',
+    },
+  }),
+  /**
    * Son gün yaklaşırken karar bekleyen öğrenci için hatırlatma (DOM-ILT-039; `permissionReminders`
    * saf hesaptır, API'nin `permission-forms.remind` işi her sabah yazar). Zorunludur (DOM-ILT-020).
    */

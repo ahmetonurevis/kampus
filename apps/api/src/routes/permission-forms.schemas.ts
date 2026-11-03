@@ -63,6 +63,25 @@ export const permissionFormSchema = z
       .date()
       .describe('Son gün (Europe/Istanbul, `YYYY-MM-DD`; o günün sonuna kadar)'),
     deadlineEndsAt: instant.describe('Son günün bittiği an, ISO 8601 UTC'),
+    eventDate: z.iso
+      .date()
+      .nullable()
+      .describe('Etkinlik günü (Europe/Istanbul, `YYYY-MM-DD`); belirtilmemişse `null`'),
+    eventTime: z.string().nullable().describe('Etkinlik saati (`SS:DD`); belirtilmemişse `null`'),
+    location: z.string().nullable().describe('Etkinlik yeri; belirtilmemişse `null`'),
+    transport: z.string().nullable().describe('Ulaşım biçimi; belirtilmemişse `null`'),
+    fee: z
+      .number()
+      .int()
+      .nullable()
+      .describe('Katılım ücreti, tamsayı kuruş; belirtilmemişse `null`'),
+    detailsRevision: z
+      .number()
+      .int()
+      .min(0)
+      .describe(
+        'Etkinlik ayrıntısı sürümü: gün, saat, yer, ulaşım ya da ücret her değiştiğinde bir artar ve o ana kadar verilen kararlar düşer (DOM-ILT-032)',
+      ),
     classIds: z
       .array(z.string())
       .optional()
@@ -93,6 +112,9 @@ export const permissionFormSchema = z
       .enum(PERMISSION_FORM_STATUSES)
       .describe('Türetilir: kapatılmış ya da son günü geçmişse `closed`'),
     closedAt: instant.nullable(),
+    cancelledAt: instant
+      .nullable()
+      .describe('Etkinliğin iptal edildiği an (iptal formu da kapatır); iptal değilse `null`'),
     acceptingDecisions: z.boolean().describe('Form karar alıyor mu (açık ve son gün geçmemiş)'),
     createdAt: instant,
     updatedAt: instant.describe('Kaydın son değiştiği an'),
@@ -125,6 +147,11 @@ export const permissionDecisionSchema = z
       .enum(['guardian', 'self'])
       .describe('`guardian` 18 yaş altında veli, `self` 18 yaşını doldurmuş öğrenci'),
     decidedAt: instant,
+    current: z
+      .boolean()
+      .describe(
+        '`false`: etkinlik ayrıntısı bu karardan sonra değişti ve karar düştü; satır ispat olarak kalır, durumu etkilemez (DOM-ILT-032)',
+      ),
     mine: z.boolean().describe('Kararı okuyan kişi mi verdi'),
     // kvkk: K — yalnız yöneticiye döner.
     decidedByUserId: z.string().nullable().describe('Kararı veren kullanıcı; yalnız yöneticiye'),

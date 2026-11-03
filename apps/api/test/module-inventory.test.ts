@@ -245,6 +245,7 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'POST /api/v1/permission-forms': ['communication'],
   'PATCH /api/v1/permission-forms/:formId': ['communication'],
   'POST /api/v1/permission-forms/:formId/close': ['communication'],
+  'POST /api/v1/permission-forms/:formId/cancel': ['communication'],
   'DELETE /api/v1/permission-forms/:formId': ['communication'],
   'POST /api/v1/permission-forms/:formId/decisions': ['communication'],
   'GET /api/v1/resources': ['learning'],

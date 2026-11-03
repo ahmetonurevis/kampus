@@ -322,6 +322,76 @@ describe('dinleme etkinliği', () => {
     assert.notEqual(submitted.version.status, 'draft')
   })
 
+  test('IST-045, DOM-BEC-005 (OG-998): dinleme kaydı seçicisi filterOn=current ile yayındaki sürüme göre süzer ve satırı o sürümden verir; döküm var/yok listede; varsayılan baş sürüm davranışı değişmez', async () => {
+    const t = await tenant()
+    const audio = (
+      title: string,
+      primarySkill: 'listening' | 'reading',
+      transcript: string | null,
+    ) => ({
+      ...listeningAudio(randomUUID(), transcript),
+      title,
+      tags: { ...LISTENING_TAGS, primarySkill },
+    })
+    const seed = (versions: { status: 'published' | 'draft'; input: ReturnType<typeof audio> }[]) =>
+      seedResource(db, t.institution.id, { ownerUserId: t.teacherId, versions })
+    // Yayındaki v1 dinleme, taslak v2 okuma becerili: seçicide görünmeli, v1 bağlanır.
+    const published = await seed([
+      { status: 'published', input: audio('Yayında dinleme', 'listening', LISTENING_TRANSCRIPT) },
+      { status: 'draft', input: audio('Taslak okuma', 'reading', LISTENING_TRANSCRIPT) },
+    ])
+    // Yayındaki v1 okuma, taslak v2 dinleme becerili: seçicide görünmemeli.
+    const draftOnly = await seed([
+      { status: 'published', input: audio('Yayında okuma', 'reading', LISTENING_TRANSCRIPT) },
+      { status: 'draft', input: audio('Taslak dinleme', 'listening', LISTENING_TRANSCRIPT) },
+    ])
+    const unpublished = await seed([
+      { status: 'draft', input: audio('Hiç yayımlanmamış', 'listening', LISTENING_TRANSCRIPT) },
+    ])
+    const noTranscript = await seed([
+      { status: 'published', input: audio('Dökümsüz', 'listening', null) },
+    ])
+    const list = async (query: string, cookie = t.cookies.teacher) =>
+      (await ok(await call('GET', `/resources?${query}`, cookie))) as Json[]
+    const picker = 'contentType=audio&primarySkill=listening&sort=title&filterOn=current'
+
+    const rows = await list(picker)
+    const byId = new Map(rows.map((row) => [row.id, row]))
+    assert.equal(byId.get(published.resource.id)?.version.id, published.versions[0]!.id)
+    assert.equal(byId.get(published.resource.id)?.version.title, 'Yayında dinleme')
+    assert.equal(byId.get(published.resource.id)?.hasTranscript, true)
+    assert.equal(byId.get(noTranscript.resource.id)?.hasTranscript, false)
+    assert.equal(byId.get(t.activity.audio.resourceId)?.hasTranscript, true)
+    assert.equal(byId.has(draftOnly.resource.id), false)
+    assert.equal(byId.has(unpublished.resource.id), false)
+    for (const row of rows) assert.equal(row.version.id, row.currentVersionId)
+    // Döküm metni listede yoktur.
+    assert.ok(!JSON.stringify(rows).includes(LISTENING_TRANSCRIPT))
+
+    // Varsayılan (`head`) değişmez: süzgeç ve satır baş sürümdendir.
+    for (const query of [
+      'contentType=audio&primarySkill=listening',
+      `${picker.replace('current', 'head')}`,
+    ]) {
+      const head = new Map((await list(query)).map((row) => [row.id, row]))
+      assert.equal(head.has(published.resource.id), false, query)
+      assert.equal(head.get(draftOnly.resource.id)?.version.id, draftOnly.versions[1]!.id, query)
+      assert.equal(head.has(unpublished.resource.id), true, query)
+    }
+    // Ses olmayan satırda döküm bilgisi `null`.
+    const questions = await list('contentType=question')
+    assert.ok(questions.length > 0)
+    for (const row of questions) assert.equal(row.hasTranscript, null)
+
+    // Öğrencide satır zaten yayındaki sürümdür; parametre kabul edilir, bilinmeyen değer 400.
+    assert.equal((await call('GET', `/resources?${picker}`, t.cookies.student)).statusCode, 200)
+    fails(
+      await call('GET', '/resources?filterOn=draft', t.cookies.teacher),
+      400,
+      'validation_failed',
+    )
+  })
+
   test('IST-045, DOM-BEC-005, OG-984: ayrıntıdaki yayım sorunları bağlı dinleme kaydını okur; dökümlü yayındaki kayıt sorun değildir, dökümsüz kayıt listening_transcript_required', async () => {
     const t = await tenant()
     const issuesOf = async (listeningVersionId: string) => {

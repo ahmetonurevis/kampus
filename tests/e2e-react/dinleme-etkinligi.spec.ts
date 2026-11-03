@@ -330,5 +330,25 @@ test.describe('dinleme etkinliği', () => {
     // B'nin hakkı yanmadı.
     const detail = await expectOk(await student.get(`/api/v1/task-attempts/${running.id}`), 200)
     expect((detail.listening as Listening).media[0]).toMatchObject({ used: 0, remaining: 2 })
+
+    // Geçici ret notun altında "Yeniden dene" bırakır (OG-998). B teslim edilince yeniden deneme
+    // sunucuya yeniden sorar; sınırlı görev hâlâ açık olduğundan kalıcı ret gelir, düğme kalkar.
+    const retry = result.getByRole('button', { name: 'Yeniden dene' })
+    await expect(retry).toBeVisible()
+    await expectOk(
+      await student.post(
+        `/api/v1/task-attempts/${running.id}/submit`,
+        {},
+        { 'idempotency-key': randomUUID(), 'if-match': `"${running.rowVersion}"` },
+      ),
+      200,
+    )
+    const again = fileUrlResponse(page)
+    await retry.click()
+    expect((await again).status()).toBe(422)
+    await expect(
+      result.getByText('Kayıt, görev açıkken yalnız denemenin içinde dinlenebilir.'),
+    ).toBeVisible()
+    await expect(retry).toHaveCount(0)
   })
 })

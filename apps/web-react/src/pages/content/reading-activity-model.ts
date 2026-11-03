@@ -93,6 +93,11 @@ export type PickerSelection = {
 export type PickerRow = LinkedSummary & {
   /** Seçilemezse nedeni (yayımlanmamış içerik, listede zaten var). */
   disabledReason: string | null
+  /**
+   * Ses satırında bağlanacak sürümün döküm durumu ("Döküm var"/"Döküm yok"; DOM-BEC-005): dökümsüz
+   * kayıt seçmeden görülür. Satır yayındaki sürüm değilse ya da ses değilse `null`.
+   */
+  transcript: string | null
 }
 
 type Item = StaffResourceListItem | LearnerResourceListItem
@@ -141,6 +146,7 @@ export function pickerRow(item: StaffResourceListItem, selected: PickerSelection
     resourceId: item.id,
     title: item.version.title,
     ...publishedView(item),
+    transcript: transcriptLabel(item),
     disabledReason:
       item.currentVersionId === null
         ? 'Yayında değil'
@@ -150,17 +156,24 @@ export function pickerRow(item: StaffResourceListItem, selected: PickerSelection
   }
 }
 
+/** Satırın döküm durumu yalnız satır bağlanacak yayındaki sürümse anlamlıdır. */
+function transcriptLabel(item: StaffResourceListItem): string | null {
+  if (typeof item.hasTranscript !== 'boolean' || item.currentVersionId !== item.version.id)
+    return null
+  return item.hasTranscript ? TRANSCRIPT_LABEL.yes : TRANSCRIPT_LABEL.no
+}
+
 export const pickerRows = (items: readonly Item[], selected: PickerSelection): PickerRow[] =>
   items.filter(isStaffItem).map((item) => pickerRow(item, selected))
 
 /**
  * Seçicinin liste sorgusu: tür sabit, başlığa göre sıralı, kısa sayfa. Kısa arama (<2) gönderilmez;
  * dil okulunda CEFR, okulda sınıf düzeyi süzgeci kullanılır. Dinleme kaydında birincil beceri
- * dinlemedir (DOM-BEC-005); dökümü listede görünmez, seçilen kaydın sürümünden okunur.
- * TODO(dinleme-secici-surum): liste süzgeçleri (beceri, CEFR, sınıf) baş sürüme uygulanır, bağ ise
- * yayındaki sürüme kurulur. Baş sürümü dinleme becerili olup yayındaki sürümü olmayan kayıt seçilir
- * ama formda `recordingIssue` yakalar; yayındaki sürümü dinleme becerili, baş sürümü (yeni taslak)
- * başka becerili kayıt seçicide hiç görünmez. Liste ucu yayındaki sürüme göre süzene kadar sürer.
+ * dinlemedir (DOM-BEC-005) ve liste yayındaki sürüme göre süzülür (`filterOn: 'current'`, OG-998):
+ * bağ yayındaki sürüme kurulur; baş sürümle süzülseydi yayındaki sürümü dinleme becerili, taslağı
+ * başka becerili kayıt görünmez, hiç yayımlanmamış kayıt görünürdü. Satır yayındaki sürümdür;
+ * döküm var/yok satırda (`hasTranscript`), metni seçilen kaydın sürümünden okunur. Parça ve soruda
+ * süzgeç baş sürümdedir; yayımlanmamış satır "Yayında değil" diye kapalı görünür.
  */
 export function pickerQuery(input: {
   kind: LinkedKind
@@ -177,7 +190,7 @@ export function pickerQuery(input: {
     pageSize: PICKER_PAGE_SIZE,
     contentType: input.kind,
     sort: 'title',
-    ...(primarySkill ? { primarySkill } : {}),
+    ...(primarySkill ? { primarySkill, filterOn: 'current' as const } : {}),
     ...(q.length >= 2 ? { q } : {}),
     ...(input.cefrLevel !== ''
       ? { cefrLevel: input.cefrLevel as ResourceListQuery['cefrLevel'] }
@@ -361,9 +374,9 @@ export function recordingLine(facts: RecordingFacts): string {
 /**
  * Seçili kaydın formda görünen hatası (IST-045, DOM-BEC-005): bağlanan sürüm core `listeningIssue`
  * sırasıyla denetlenir (ses mi, birincil becerisi dinleme mi, yayında mı, dökümü var mı) ve
- * sunucuyla aynı Türkçe ileti hemen alanın altına yazılır. Seçici süzgeci baş sürüme uygulandığından
- * (yayındaki v1 okuma, taslak v2 dinleme becerili) seçilen kaydın bağlanan sürümü de burada
- * denetlenir. Taslak yine kaydedilir; onaya gönderimi sunucu aynı kodla reddeder.
+ * sunucuyla aynı Türkçe ileti hemen alanın altına yazılır. Seçici yayındaki sürümle süzse de kayıtlı
+ * bağın sürümü sonradan değişmiş (arşiv, kaldırma) ya da dökümsüz olabilir; bağlanan sürüm yine
+ * burada denetlenir. Taslak yine kaydedilir; onaya gönderimi sunucu aynı kodla reddeder.
  */
 export function recordingIssue(facts: RecordingFacts | null): string | null {
   if (!facts) return null

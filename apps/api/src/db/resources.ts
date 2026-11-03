@@ -528,6 +528,9 @@ export async function listVisibleVersionIds(
 
 export const RESOURCE_SORTS = ['-updatedAt', 'updatedAt', 'title', '-title'] as const
 export type ResourceSort = (typeof RESOURCE_SORTS)[number]
+/** Personel satırının sürümü: okunabilir baş sürüm ya da güncel yayındaki sürüm. */
+export const RESOURCE_LIST_VERSIONS = ['head', 'current'] as const
+export type ResourceListVersion = (typeof RESOURCE_LIST_VERSIONS)[number]
 
 export interface ResourceListQuery {
   page: number
@@ -545,6 +548,12 @@ export interface ResourceListQuery {
   gradeLevel?: number | undefined
   status?: ResourceStatus | undefined
   ownerUserId?: string | undefined
+  /**
+   * Personel satırının sürümü ve süzgeçlerin uygulandığı sürüm; verilmezse `head`. `current`
+   * bağı yayındaki sürüme kuran seçici içindir (OG-998): baş sürümle süzülseydi yayındaki sürümü
+   * dinleme becerili, taslağı başka becerili kayıt seçicide görünmezdi.
+   */
+  filterOn?: ResourceListVersion | undefined
   sort: ResourceSort
 }
 
@@ -596,7 +605,8 @@ function listOrder(sort: ResourceSort, v: VersionsTable): SQL[] {
  * Kişinin kütüphane listesi. Personel satırı kaynağın okunabilir "baş" sürümüdür: arşivli
  * olmayanlar önce, en yüksek sürüm numarası (`resource_versions_resource_number_key` ile kaynak
  * başına tek indeks erişimi). Öğrenci ve velide yalnız güncel yayındaki sürüm. Süzgeçler baş
- * sürüme uygulanır; sayım aynı koşulla ayrı sorgudur.
+ * sürüme uygulanır; sayım aynı koşulla ayrı sorgudur. `filterOn: 'current'` personel satırını da
+ * güncel yayındaki sürüme alır (öğrenci ve velideki birleşimin aynısı).
  */
 export async function listVisibleResources(
   db: Database,
@@ -608,7 +618,7 @@ export async function listVisibleResources(
 ): Promise<{ rows: ResourceListRow[]; total: number }> {
   const v = resourceVersions
   let join: SQL
-  if (viewer.kind === 'staff') {
+  if (viewer.kind === 'staff' && query.filterOn !== 'current') {
     // Ham `sql` içinde takma ad tablo yalnız adıyla yazılır; kaynak tablo açıkça verilir.
     const head = headVersions
     join = sql`${v.id} = (select ${head.id} from ${resourceVersions} as ${sql.identifier('head')}

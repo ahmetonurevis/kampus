@@ -52,8 +52,10 @@ import { timingOf } from './task-work.ts'
  * - Deneme kimliği verilmezse hak hiç sayılmaz, `attempt_media_plays` yazılmaz (Sabah kararı 56):
  *   istek hangi denemeden geldiğini söylemez; sonuç ekranından ya da başka bir görevden yapılan
  *   dinleme süren başka bir denemenin hakkını yakmamalı. Öğrencinin bu kaydı bağlayan sınırlı
- *   atamada süren denemesi varsa bağlantı da verilmez (422 `listening_attempt_running`): sayılmadan
- *   vermek sınırı atlatmaya kapı açardı; dinleme o denemenin ekranından açılır. Yalnız sınırsız
+ *   atamada süren denemesi varsa bağlantı da verilmez (422 `listening_attempt_running`):
+ *   sayılmadan vermek sınırı atlatmaya kapı açardı; dinleme o denemenin ekranından açılır. Yalnız
+ *   görünen atamaların denemeleri karara katılır (OG-998): sınıf değiştiren öğrencinin eski
+ *   atamadaki denemesi kimlikle 404 alır, kimliksiz isteği de kilitlememeli. Yalnız sınırsız
  *   atamanın süren denemesi varsa bağlantı sayılmadan verilir. Süren deneme hiç yokken sınırlı
  *   atama kursiyere açık ve teslim penceresi kapanmamışsa bağlantı verilmez (422
  *   `listening_attempt_required`): deneme dışından sınırsız dinleme hakkı anlamsız kılardı. Teslim
@@ -207,9 +209,15 @@ export async function grantListeningPlay(
   if (learnerId === null) return null
   const byId = new Map(assignments.map((assignment) => [assignment.id, assignment]))
   const attempts = await loadAttemptsAmong(tx, ctx.institutionId, [...byId.keys()], [learnerId])
+  // Görünmeyen atamanın denemesi karara katılmaz (OG-998): o denemeye kimlikli istek 404 alır;
+  // katılsaydı kayıt hiçbir yoldan açılamazdı.
   const runningAssignments = attempts.flatMap((attempt) => {
     const assignment = byId.get(attempt.assignmentId)
-    return assignment !== undefined && running(assignment, attempt, ctx.now) ? [assignment] : []
+    return assignment !== undefined &&
+      visible(viewer, assignment) &&
+      running(assignment, attempt, ctx.now)
+      ? [assignment]
+      : []
   })
   // Sayım yazılmadığı için kilit gerekmez; eşzamanlı teslimde en kötü durumda istek reddedilir.
   if (runningAssignments.some((assignment) => assignment.listeningPlays !== null))

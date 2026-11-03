@@ -30,7 +30,7 @@ import {
   SUBSKILLS,
 } from '@kampus/school-core/content/taxonomy.ts'
 
-import { RESOURCE_SORTS } from '../db/resources.ts'
+import { RESOURCE_LIST_VERSIONS, RESOURCE_SORTS } from '../db/resources.ts'
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
 import { filePurposeSchema } from './files.schemas.ts'
 
@@ -95,6 +95,12 @@ export const resourceListQuerySchema = pageQuerySchema
       .optional()
       .describe(
         'Yalnız öğrenci ve velide: bu öğrencinin gördüğü kaynaklar (DOM-KYN-041). Velide seçili çocuk (velayetli ve kısıtsız bağlı); öğrencide yalnız kendi kaydı. Kapsam dışı öğrenci 404; personelde 400 `learner_only_filter`',
+      ),
+    filterOn: z
+      .enum(RESOURCE_LIST_VERSIONS)
+      .default('head')
+      .describe(
+        'Personel satırının sürümü ve süzgeçlerin uygulandığı sürüm: `head` okunabilir baş sürüm, `current` güncel yayındaki sürüm (hiç yayımlanmamış kaynak listelenmez). Bağ yayındaki sürüme kurulan seçicide kullanılır (dinleme kaydı, DOM-BEC-005). Öğrenci ve velide satır zaten yayındaki sürümdür, etkisizdir',
       ),
     sort: z
       .enum(RESOURCE_SORTS)
@@ -268,7 +274,15 @@ const staffListItemSchema = z
   .object({
     view: z.literal('staff'),
     ...resourceSummaryShape,
-    version: versionSummarySchema.describe('Okunabilir baş sürüm'),
+    version: versionSummarySchema.describe(
+      'Okunabilir baş sürüm; `filterOn=current` ile güncel yayındaki sürüm',
+    ),
+    hasTranscript: z
+      .boolean()
+      .nullable()
+      .describe(
+        'Satır sürümü ses içeriğiyse dökümü var mı (dinleme kaydı yayım koşulu, DOM-BEC-005); ses değilse ya da içerik kaldırıldıysa `null`. Döküm metni listede yoktur',
+      ),
   })
   .meta({ id: 'StaffResourceListItem' })
 

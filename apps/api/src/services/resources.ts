@@ -286,7 +286,14 @@ export async function listResources(ctx: ServiceContext, input: ResourceListInpu
     ctx.log.warn({ event: 'resource.visibility_mismatch', dropped: page.rows.length - rows.length })
   const items = rows.map(({ resource, version }) =>
     viewer.kind === 'staff'
-      ? { view: 'staff' as const, ...resourceSummary(resource), version: versionSummary(version) }
+      ? {
+          view: 'staff' as const,
+          ...resourceSummary(resource),
+          version: versionSummary(version),
+          // Dinleme kaydı seçicisi dökümsüz kaydı seçmeden gösterir (DOM-BEC-005); metin gitmez.
+          hasTranscript:
+            version.content?.type === 'audio' ? version.content.transcript !== null : null,
+        }
       : {
           view: 'learner' as const,
           id: resource.id,

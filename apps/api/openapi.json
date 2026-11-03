@@ -4007,8 +4007,15 @@
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           },
           "version": {
-            "description": "Okunabilir baş sürüm",
+            "description": "Okunabilir baş sürüm; `filterOn=current` ile güncel yayındaki sürüm",
             "$ref": "#/components/schemas/ResourceVersionSummaryInput"
+          },
+          "hasTranscript": {
+            "description": "Satır sürümü ses içeriğiyse dökümü var mı (dinleme kaydı yayım koşulu, DOM-BEC-005); ses değilse ya da içerik kaldırıldıysa `null`. Döküm metni listede yoktur",
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "required": [
@@ -4021,7 +4028,8 @@
           "derivedFromVersionId",
           "createdAt",
           "updatedAt",
-          "version"
+          "version",
+          "hasTranscript"
         ]
       },
       "LearnerResourceListItemInput": {
@@ -17667,8 +17675,15 @@
             "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
           },
           "version": {
-            "description": "Okunabilir baş sürüm",
+            "description": "Okunabilir baş sürüm; `filterOn=current` ile güncel yayındaki sürüm",
             "$ref": "#/components/schemas/ResourceVersionSummary"
+          },
+          "hasTranscript": {
+            "description": "Satır sürümü ses içeriğiyse dökümü var mı (dinleme kaydı yayım koşulu, DOM-BEC-005); ses değilse ya da içerik kaldırıldıysa `null`. Döküm metni listede yoktur",
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         },
         "required": [
@@ -17681,7 +17696,8 @@
           "derivedFromVersionId",
           "createdAt",
           "updatedAt",
-          "version"
+          "version",
+          "hasTranscript"
         ],
         "additionalProperties": false
       },
@@ -56836,7 +56852,7 @@
         "tags": [
           "resources"
         ],
-        "description": "Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve `view: 'staff'` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü `view: 'learner'` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Baş sürümü arşivli veya kaldırılmış kaynak varsayılan olarak listede ve aramada yoktur; yalnız `status=archived` / `status=removed` ile gelir (DOM-KYN-051). Velide `studentId` görünümü seçili çocuğa daraltır (veli materyal sayfası; bağlı olmayan çocuk 404). Normalleşince terim kalmayan `q` (ör. `!!!`) boş sonuç döner. Süzgeçler baş sürüme uygulanır; bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve `view: 'staff'` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü `view: 'learner'` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Baş sürümü arşivli veya kaldırılmış kaynak varsayılan olarak listede ve aramada yoktur; yalnız `status=archived` / `status=removed` ile gelir (DOM-KYN-051). Velide `studentId` görünümü seçili çocuğa daraltır (veli materyal sayfası; bağlı olmayan çocuk 404). Normalleşince terim kalmayan `q` (ör. `!!!`) boş sonuç döner. Süzgeçler baş sürüme uygulanır; `filterOn=current` personel satırını ve süzgeçleri güncel yayındaki sürüme alır (bağı yayındaki sürüme kuran seçici). Ses satırı döküm var/yok bilgisini (`hasTranscript`) taşır, metni taşımaz. Bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {
@@ -57014,6 +57030,20 @@
             "name": "studentId",
             "required": false,
             "description": "Yalnız öğrenci ve velide: bu öğrencinin gördüğü kaynaklar (DOM-KYN-041). Velide seçili çocuk (velayetli ve kısıtsız bağlı); öğrencide yalnız kendi kaydı. Kapsam dışı öğrenci 404; personelde 400 `learner_only_filter`"
+          },
+          {
+            "schema": {
+              "default": "head",
+              "type": "string",
+              "enum": [
+                "head",
+                "current"
+              ]
+            },
+            "in": "query",
+            "name": "filterOn",
+            "required": false,
+            "description": "Personel satırının sürümü ve süzgeçlerin uygulandığı sürüm: `head` okunabilir baş sürüm, `current` güncel yayındaki sürüm (hiç yayımlanmamış kaynak listelenmez). Bağ yayındaki sürüme kurulan seçicide kullanılır (dinleme kaydı, DOM-BEC-005). Öğrenci ve velide satır zaten yayındaki sürümdür, etkisizdir"
           },
           {
             "schema": {

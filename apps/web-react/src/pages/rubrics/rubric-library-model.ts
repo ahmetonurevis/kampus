@@ -118,7 +118,11 @@ export function rubricRow(item: RubricListItem): RubricRow {
 const isOneOf = <T extends string>(values: readonly T[], value: unknown): value is T =>
   typeof value === 'string' && (values as readonly string[]).includes(value)
 
-/** Liste durumundan sunucu sorgusu: süzgeçler beyaz listede, arama en az 2 karakter. */
+/** API başlık araması üst sınırı (`rubricListQuerySchema`). */
+const SEARCH_MAX = 100
+
+/** Liste durumundan sunucu sorgusu: süzgeçler beyaz listede, arama 2–100 karakter. */
+
 export function rubricListQuery(input: {
   page: number
   pageSize: number
@@ -127,7 +131,7 @@ export function rubricListQuery(input: {
   userId: string
 }): RubricListQuery {
   const { filters } = input
-  const q = input.q.trim()
+  const q = input.q.trim().slice(0, SEARCH_MAX).trimEnd()
   const skill = filters.skill
   const kind = filters.kind
   const status = filters.status
@@ -442,6 +446,15 @@ export type RubricFormIssue = { field: string; message: string }
 export type RubricFormResult =
   { ok: true; body: RubricBody } | { ok: false; issues: RubricFormIssue[] }
 
+type RubricAspect = RubricBody['criteria'][number]['aspect']
+
+function narrowAspect(aspect: string): RubricAspect {
+  const known =
+    aspect === HOLISTIC_ASPECT || Object.values(RUBRIC_ASPECTS).some((aspects) => aspect in aspects)
+  if (!known) throw new Error(`Bilinmeyen niteliksel yön: ${aspect}`)
+  return aspect as RubricAspect
+}
+
 /**
  * Formu core kurallarıyla doğrular (şema + kurum türü). Aynı alana düşen ilk hata kalır; alan
  * yolları `formFieldFor` ile formdadır. Gövde core çıktısıdır (bantlar sıralı, ağırlık tamsayı).
@@ -469,8 +482,16 @@ export function validateRubricForm(
       issues: [{ field: formFieldFor(error.path ?? []), message: error.message }],
     }
   }
-  // Core çıktısında niteliksel yön `string`'dir; şema yönü zaten sözlükten doğruladı.
-  return { ok: true, body: parsed.data as RubricBody }
+  // Core çıktısında niteliksel yön `string`'dir; şema yönü zaten sözlükten doğruladı. Tek yerde
+  // daraltılır; sözlükte olmayan yön gelirse derleme değil çalışma hatası verir.
+  const body = {
+    ...parsed.data,
+    criteria: parsed.data.criteria.map((criterion) => ({
+      ...criterion,
+      aspect: narrowAspect(criterion.aspect),
+    })),
+  } satisfies RubricBody
+  return { ok: true, body }
 }
 
 // --- Form penceresi adresi -----------------------------------------------------------------

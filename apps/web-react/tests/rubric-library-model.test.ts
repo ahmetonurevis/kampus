@@ -123,6 +123,8 @@ test('IST-048: liste sorgusu süzgeçleri beyaz listeden alır, arama en az 2 ka
     rubricListQuery({ ...base, q: 'y', filters: { skill: 'reading', kind: 'x', mine: '' } }),
     { page: 2, pageSize: 25 },
   )
+  // Sunucu en çok 100 karakter kabul eder (aşınca 400); sorgu metni kesilir.
+  assert.equal(rubricListQuery({ ...base, q: 'a'.repeat(150), filters: {} }).q?.length, 100)
 })
 
 test('DOM-BEC-021: ağırlık payı yüzde olarak gösterilir; geçersiz ağırlık sıfır sayılır', () => {

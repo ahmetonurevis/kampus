@@ -564,4 +564,55 @@ describe('rubrik uçları', () => {
     fails(await call('GET', '/rubrics/yok', t.cookies.teacher), 400, 'validation_failed')
     fails(await call('GET', `/rubrics/${randomUUID()}`, t.cookies.teacher), 404, 'not_found')
   })
+
+  test('IST-048: başlık araması toplamı sayfadan bağımsız verir, başka kurumu sızdırmaz, jokeri düz yazı sayar ve yalnız baş sürüme bakar', async () => {
+    const t = await tenant()
+    const other = await tenant()
+    const first = await create(t.cookies.teacher, body('Ortak başlıklı rubrik'))
+    const second = await create(t.cookies.teacher, body('Ortak başlıklı ikinci rubrik'))
+    await create(other.cookies.teacher, body('Ortak başlıklı rubrik'))
+    const percent = await create(t.cookies.teacher, body('50%_ puanlı rubrik'))
+    const renamed = await create(t.cookies.teacher, body('Eski adlı rubrik'))
+    await ok(await command(`${versionUrl(renamed)}/publish`, t.cookies.teacher, 1))
+    await ok(
+      await post(
+        `/rubrics/${renamed.rubric.id}/versions`,
+        t.cookies.teacher,
+        body('Yeni adlı rubrik'),
+      ),
+      201,
+    )
+
+    // Sayfa küçükken de toplam eşleşen tüm rubrikleri sayar.
+    const paged = await call(
+      'GET',
+      '/rubrics?q=ortak%20ba%C5%9Fl%C4%B1kl%C4%B1&pageSize=1',
+      t.cookies.teacher,
+    )
+    assert.equal(paged.statusCode, 200, paged.body)
+    assert.deepEqual(paged.json().meta, { page: 1, pageSize: 1, total: 2 })
+    assert.equal(paged.json().data.length, 1)
+    // Başka kurumun aynı başlıklı rubriği çıkmaz.
+    const scoped = await ok(await call('GET', '/rubrics?q=ortak', t.cookies.teacher))
+    assert.deepEqual(
+      new Set(scoped.map((item: Json) => item.rubric.id)),
+      new Set([first.rubric.id, second.rubric.id]),
+    )
+    // % ve _ joker değil düz karakterdir.
+    const wildcard = await ok(await call('GET', '/rubrics?q=%25_', t.cookies.teacher))
+    assert.deepEqual(
+      wildcard.map((item: Json) => item.rubric.id),
+      [percent.rubric.id],
+    )
+    // Eski sürümün başlığı eşleşmez; yalnız baş sürüm.
+    assert.deepEqual(
+      await ok(await call('GET', '/rubrics?q=eski%20adl%C4%B1', t.cookies.teacher)),
+      [],
+    )
+    const head = await ok(await call('GET', '/rubrics?q=yeni%20adl%C4%B1', t.cookies.teacher))
+    assert.deepEqual(
+      head.map((item: Json) => item.rubric.id),
+      [renamed.rubric.id],
+    )
+  })
 })

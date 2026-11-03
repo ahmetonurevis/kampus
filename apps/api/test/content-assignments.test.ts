@@ -10,7 +10,14 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
-import { taskAssignments, taskAssignmentTargets } from '../src/db/schema/skills.ts'
+import {
+  rubrics,
+  rubricVersions,
+  taskAssignments,
+  taskAssignmentTargets,
+} from '../src/db/schema/skills.ts'
+import type { ServiceContext } from '../src/plugins/authenticate.ts'
+import { getContentAssignmentResults } from '../src/services/content-results.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -21,6 +28,7 @@ import {
   TEST_ORIGIN,
 } from './support/app.ts'
 import { seedResource } from './support/resources-sample.ts'
+import { sampleRubricData } from './support/skills-sample.ts'
 
 /**
  * İçerikten toplu atama ve içeriğe bağlı sonuç özeti uçları (OG-089; IST-034; DOM-BEC-049,
@@ -141,6 +149,8 @@ describe('içerikten toplu atama ve sonuç özeti uçları', () => {
     const seed = async (input: Partial<ResourceVersionInput>) => {
       const { resource, versions } = await seedResource(db, institution.id, {
         ownerUserId: teacher.id,
+        // Kurum paylaşımı: ders vermeyen öğretmen de okur; özel içerik ayrı denenir (`hidden`).
+        shareScope: 'institution',
         versions: [{ status: 'published', input }],
       })
       return { resourceId: resource.id, versionId: versions[0]!.id }
@@ -159,7 +169,51 @@ describe('içerikten toplu atama ve sonuç özeti uçları', () => {
       license: { kind: 'institution_original' },
       tags: tags as ResourceVersionInput['tags'],
     })
-    return { institution, cookies, quiz, items: [first.versionId, second.versionId] as const }
+    const homework = await seed({
+      title: 'Hafta sonu yazısı',
+      content: {
+        type: 'homework_template',
+        instructions: 'Hafta sonunu anlatan kısa bir metin yaz.',
+        submissionKinds: ['text'],
+        criteria: 'Zaman ifadeleri ve paragraf düzeni.',
+        rubricId: null,
+      },
+      license: { kind: 'institution_original' },
+      tags: { ...tags, primarySkill: 'writing' } as ResourceVersionInput['tags'],
+    })
+    const rubricId = randomUUID()
+    const rubricVersionId = randomUUID()
+    const at = { createdAt: FIXED_NOW, updatedAt: FIXED_NOW }
+    await db
+      .insert(rubrics)
+      .values({ institutionId: institution.id, id: rubricId, ownerUserId: teacher.id, ...at })
+    await db.insert(rubricVersions).values({
+      institutionId: institution.id,
+      id: rubricVersionId,
+      rubricId,
+      versionNumber: 1,
+      status: 'published',
+      ...sampleRubricData(),
+      publishedAt: FIXED_NOW,
+      ...at,
+    })
+    // Yalnız sahibinin gördüğü özel taslak (ders vermeyen öğretmen okuyamaz).
+    const hidden = (
+      await seedResource(db, institution.id, {
+        ownerUserId: teacher.id,
+        shareScope: 'private',
+        versions: [{ status: 'draft', input: question('Gizli soru?', 'a') }],
+      })
+    ).resource.id
+    return {
+      institution,
+      cookies,
+      quiz,
+      homework,
+      rubricVersionId,
+      hidden,
+      items: [first.versionId, second.versionId] as const,
+    }
   }
   type Tenant = Awaited<ReturnType<typeof tenant>>
 
@@ -397,5 +451,109 @@ describe('içerikten toplu atama ve sonuç özeti uçları', () => {
     const other = await ok(await results(t.quiz.resourceId, t.cookies.otherTeacher))
     assert.deepEqual(byTarget(other), { '9-C': [1, 0, null] })
     assert.deepEqual(other.totals, { learners: 1, completed: 0, scored: 0, averagePercent: null })
+  })
+
+  test('DOM-BEC-036: öğretmenin okuyamadığı özel taslak içerikte özet 404 (boş liste değil); sahibi ve yönetici görür', async () => {
+    const t = await tenant()
+    fails(await results(t.hidden, t.cookies.otherTeacher), 404, 'not_found')
+    const owner = await ok(await results(t.hidden, t.cookies.teacher))
+    assert.deepEqual(owner.assignments, [])
+  })
+
+  test('DOM-BEC-036: atama sınırı aşılınca truncated olur ve üst toplam yalnız okunan atamayı kapsar', async () => {
+    const t = await tenant()
+    await ok(
+      await batch(t.cookies.admin, { items: [item(t, '9-A'), item(t, '9-B', LATER_DUE)] }),
+      201,
+    )
+    const ctx: ServiceContext = {
+      db,
+      institutionId: t.institution.id,
+      actor: {
+        userId: t.institution.admin.id,
+        role: 'yonetici',
+        membershipId: t.institution.adminMembershipId,
+      },
+      now: FIXED_NOW,
+      log: app.log,
+    }
+    const all = await getContentAssignmentResults(ctx, t.quiz.resourceId)
+    assert.equal(all.truncated, false)
+    assert.equal(all.assignments.length, 2)
+    const cut = await getContentAssignmentResults(ctx, t.quiz.resourceId, 1)
+    assert.equal(cut.truncated, true)
+    assert.equal(cut.assignments.length, 1)
+    assert.deepEqual(cut.totals, cut.assignments[0]?.totals)
+  })
+
+  test('DOM-BEC-036, DOM-BEC-021: öğretmen puanlı atamada teslim tamamlandı sayılır, puan kesinleşince ortalamaya girer; öğrenci hedefi adıyla gelir, kapsam dışı öğretmen göremez', async () => {
+    const t = await tenant()
+    const created = (await ok(
+      await batch(t.cookies.admin, {
+        items: [
+          {
+            resourceVersionId: t.homework.versionId,
+            settings: {
+              deadline: { dueAt: DUE },
+              submission: { submissionKind: 'text', maxVersions: 1 },
+              rubricVersionId: t.rubricVersionId,
+            },
+            targets: [{ kind: 'student', id: 's-1' }],
+          },
+        ],
+      }),
+      201,
+    )) as Json[]
+    const assignmentId = created[0]!.id as string
+    const only = (data: Json) => (data.assignments as Json[])[0]!.targets[0] as Json
+    const tally = (target: Json) => [
+      target.learners,
+      target.completed,
+      target.scored,
+      target.averagePercent,
+    ]
+
+    assert.deepEqual(
+      tally(only(await ok(await results(t.homework.resourceId, t.cookies.teacher)))),
+      [1, 0, 0, null],
+    )
+    const submission = await ok(
+      await call(
+        'POST',
+        `/task-assignments/${assignmentId}/submissions`,
+        t.cookies.student,
+        { submissionKind: 'text', body: 'My weekend was very nice.' },
+        key(),
+      ),
+      201,
+    )
+    const submitted = only(await ok(await results(t.homework.resourceId, t.cookies.teacher)))
+    assert.deepEqual(tally(submitted), [1, 1, 0, null])
+    assert.equal(submitted.name, 'Deniz Yılmaz')
+
+    await ok(
+      await call(
+        'POST',
+        `/task-submissions/${submission.id}/scores`,
+        t.cookies.teacher,
+        {
+          versionNumber: 1,
+          criteria: [
+            { criterionId: 'task', band: 4, comment: null },
+            { criterionId: 'grammar', band: 2, comment: 'Zaman uyumuna dikkat.' },
+          ],
+          overallComment: 'İyi.',
+        },
+        { ...key(), ...match(1) },
+      ),
+      201,
+    )
+    const scored = await ok(await results(t.homework.resourceId, t.cookies.admin))
+    assert.deepEqual(tally(only(scored)), [1, 1, 1, 60])
+    assert.equal(only(scored).name, 'Deniz Yılmaz')
+    assert.deepEqual(scored.totals, { learners: 1, completed: 1, scored: 1, averagePercent: 60 })
+    // Ders vermediği sınıfın öğrencisini görmeyen öğretmen hedefi de adı da görmez.
+    const other = await ok(await results(t.homework.resourceId, t.cookies.otherTeacher))
+    assert.deepEqual(other.assignments, [])
   })
 })

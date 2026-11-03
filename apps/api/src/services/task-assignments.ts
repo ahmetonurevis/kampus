@@ -769,7 +769,10 @@ export async function createTaskAssignmentBatch(
 function inBatchIssues(error: unknown, index: number): unknown {
   if (!(error instanceof AppError) || error.issues === undefined) return error
   return new AppError(error.statusCode, error.code, error.message, {
-    issues: error.issues.map((issue) => ({ ...issue, path: ['items', index, ...issue.path] })),
+    issues: error.issues.map((issue) => ({
+      ...issue,
+      path: ['items', String(index), ...issue.path],
+    })),
     cause: error,
   })
 }

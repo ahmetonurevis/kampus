@@ -5,7 +5,6 @@ import {
 } from '@kampus/school-core/skills/content-results.ts'
 import { practiceShownAttempt } from '@kampus/school-core/skills/practice.ts'
 
-import { findResource } from '../db/resources.ts'
 import {
   loadAssignmentsAttempts,
   loadSubmissionsAmong,
@@ -16,8 +15,10 @@ import {
 import { ForbiddenError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { readSource } from './read-scope.ts'
+import { loadReadable } from './resources.ts'
 import { loadTaskAssignmentPage, staffAssignmentView } from './task-assignments.ts'
 import { attemptScoring, completedOf, countedAttemptResult } from './task-attempts.ts'
+import { loadLearnerNames } from './task-learner-names.ts'
 import { loadGrading, settledSubmissionResult } from './task-submissions.ts'
 import { loadWorkPairs } from './task-work.ts'
 
@@ -32,8 +33,11 @@ import { loadWorkPairs } from './task-work.ts'
  * Kapsam (DOM-YTK-028): yalnız personel (yönetici ve öğretmen; öğrenci ve veli 403). Atamalar atama
  * listesinin rol kapsamıyla gelir; atayan olmayan öğretmen yalnız kendi kapsamındaki hedefleri
  * (ders verdiği ya da rehberi olduğu sınıf ve öğrencileri) görür. Sınıf hedefinin kursiyerleri
- * sınıfın güncel öğrencileridir. Olmayan ya da başka kurumun içeriği 404. En yeni
- * `RESULTS_ASSIGNMENT_LIMIT` atama okunur; fazlası `truncated`. Kişisel veri ve başlık loglanmaz.
+ * sınıfın güncel öğrencileridir. Olmayan, başka kurumun ya da kişinin içerik havuzunda okuyamadığı
+ * (özel, taslak) içerik 404 (içerik ayrıntısıyla aynı kural, `loadReadable`). En yeni
+ * `limit` (varsayılan `RESULTS_ASSIGNMENT_LIMIT`) atama okunur; fazlası `truncated` olur ve üst
+ * toplam yalnız okunan atamaları kapsar. Öğrenci hedefinin adı yalnız kişinin okuyabildiği
+ * öğrenciler için gelir (`loadLearnerNames`). Kişisel veri ve başlık loglanmaz.
  */
 
 export const RESULTS_ASSIGNMENT_LIMIT = 100
@@ -49,12 +53,16 @@ function attemptsByKey(attempts: readonly StoredAttempt[]) {
   return byKey
 }
 
-export async function getContentAssignmentResults(ctx: ServiceContext, resourceId: string) {
-  const resource = await findResource(ctx.db, ctx.institutionId, resourceId)
-  if (!resource) throw new NotFoundError()
+export async function getContentAssignmentResults(
+  ctx: ServiceContext,
+  resourceId: string,
+  limit = RESULTS_ASSIGNMENT_LIMIT,
+) {
+  const { readable } = await loadReadable(ctx, resourceId)
+  if (readable.length === 0) throw new NotFoundError()
   const { viewer, rows, refs, total } = await loadTaskAssignmentPage(ctx, {
     page: 1,
-    pageSize: RESULTS_ASSIGNMENT_LIMIT,
+    pageSize: limit,
     resourceId,
   })
   if (viewer.kind === 'learner') throw new ForbiddenError()
@@ -144,13 +152,23 @@ export async function getContentAssignmentResults(ctx: ServiceContext, resourceI
     return { learnerId, completed: completed.length > 0, percent }
   }
 
+  const studentTargets = shown.flatMap(({ view }) =>
+    view.targets.filter((t) => t.kind === 'student').map((t) => t.id),
+  )
+  const names = await loadLearnerNames(ctx, viewer, studentTargets)
+
   const all: LearnerOutcome[] = []
   const assignments = shown.map(({ assignment, view }) => {
     const outcomes: LearnerOutcome[] = []
     const targets = view.targets.map((target) => {
       const rows = learnersOf(target).map((learnerId) => outcomeOf(assignment, learnerId))
       outcomes.push(...rows)
-      return { kind: target.kind, id: target.id, ...tallyOutcomes(rows) }
+      return {
+        kind: target.kind,
+        id: target.id,
+        name: target.kind === 'student' ? (names.get(target.id) ?? null) : null,
+        ...tallyOutcomes(rows),
+      }
     })
     // Bütün içerik toplamında aynı kursiyer farklı atamalarda ayrı sonuçtur.
     all.push(...outcomes.map((row) => ({ ...row, learnerId: `${assignment.id}:${row.learnerId}` })))
@@ -170,6 +188,6 @@ export async function getContentAssignmentResults(ctx: ServiceContext, resourceI
     computedAt: now,
     assignments,
     totals: tallyOutcomes(all),
-    truncated: total > RESULTS_ASSIGNMENT_LIMIT,
+    truncated: total > limit,
   }
 }

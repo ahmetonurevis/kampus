@@ -49,7 +49,15 @@ export function ContentAssignmentResults({ resourceId }: { resourceId: string })
         </p>
       ) : (
         <>
-          <p className="text-sm text-muted-foreground">{resultTotalsLabel(data)}</p>
+          <p className="text-sm text-muted-foreground">
+            {resultTotalsLabel(data)}
+            {data.truncated ? (
+              <span role="status">
+                {' '}
+                · Yalnız en yeni 100 atama gösteriliyor; toplam yalnız bunları kapsar.
+              </span>
+            ) : null}
+          </p>
           <DataTable
             listKey={`icerik-sonuc-${resourceId}`}
             urlPrefix={RESULT_LIST_PREFIX}
@@ -61,11 +69,6 @@ export function ContentAssignmentResults({ resourceId }: { resourceId: string })
             caption="İçeriğin atama sonuçları"
             empty="Görebileceğiniz bir hedef yok."
           />
-          {data.truncated ? (
-            <p role="status" className="text-sm text-muted-foreground">
-              Yalnız en yeni 100 atama gösteriliyor.
-            </p>
-          ) : null}
         </>
       )}
     </section>

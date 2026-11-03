@@ -226,7 +226,7 @@ export interface ResultRow extends Record<string, unknown> {
 type ResultAssignment = ContentAssignmentResults['assignments'][number]
 
 function targetLabel(target: ResultAssignment['targets'][number], names: TargetNames): string {
-  return target.kind === 'student' ? LEARNER_FALLBACK : names.className(target.id)
+  return target.kind === 'student' ? (target.name ?? LEARNER_FALLBACK) : names.className(target.id)
 }
 
 /** Tamamlayan / kursiyer ("3/24"). */

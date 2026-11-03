@@ -56,9 +56,12 @@ export function useCreateTaskAssignmentBatch() {
   return useApiCommand(createTaskAssignmentBatchCommand)
 }
 
+/** Bütün içeriklerin özetlerinin ortak öneki; puanlama ve teslim komutları bunu tazeler. */
+export const CONTENT_RESULTS_PREFIX = [TASK_ASSIGNMENTS_KEY, 'content-results'] as const
+
 /** Özetin sorgu anahtarı; atamalar anahtarının altındadır. */
 export const contentResultsKey = (resourceId: string) =>
-  [TASK_ASSIGNMENTS_KEY, 'content-results', resourceId] as const
+  [...CONTENT_RESULTS_PREFIX, resourceId] as const
 
 export function fetchContentAssignmentResults(
   client: KampusClient,

@@ -15,6 +15,9 @@ import {
   type TaskAssignmentBatchBody,
 } from '../src/use-content-assignments.ts'
 import { TASK_ASSIGNMENT_INVALIDATES, TASK_ASSIGNMENTS_KEY } from '../src/use-task-assignments.ts'
+import { TASK_ATTEMPT_INVALIDATES } from '../src/use-task-attempts.ts'
+import { TASK_GRADING_INVALIDATES } from '../src/use-task-grading.ts'
+import { TASK_SUBMISSION_INVALIDATES } from '../src/use-task-submissions.ts'
 
 // OG-089 (IST-034; DOM-BEC-049, DOM-BEC-036): toplu atama isteği ve içeriğe bağlı sonuç özeti.
 
@@ -67,6 +70,19 @@ const body: TaskAssignmentBatchBody = {
 }
 
 describe('içerikten toplu atama kancaları', () => {
+  test('DOM-BEC-036: puanlama, kesin puan, teslim ve deneme sonuç özetini tazeler', () => {
+    const covers = (lists: readonly (readonly (readonly string[])[])[]) =>
+      lists.every((list) =>
+        list.some((key) => {
+          const target = contentResultsKey(RESOURCE_ID)
+          return key.every((part, index) => target[index] === part)
+        }),
+      )
+    assert.ok(
+      covers([TASK_GRADING_INVALIDATES, TASK_SUBMISSION_INVALIDATES, TASK_ATTEMPT_INVALIDATES]),
+    )
+  })
+
   test('DOM-BEC-049: toplu atama tek POST, Idempotency-Key taşır, If-Match taşımaz', async () => {
     const { client, sent } = fakeClient(() => json(201, { data: [] }))
     await runRequest(() =>

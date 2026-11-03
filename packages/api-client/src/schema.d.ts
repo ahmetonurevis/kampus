@@ -3493,7 +3493,7 @@ export interface paths {
         };
         /**
          * İçeriğe bağlı sonuç özeti
-         * @description İçeriğin atamalarında hedef başına kursiyer, tamamlayan ve puan ortalaması (DOM-BEC-036, IST-034); her okumada hesaplanır, saklanmaz. Puan deneme ve teslim uçlarının kuralıyla çıkar: değerlendirmede sayılan deneme, alıştırmada son tamamlanan deneme, öğretmen puanlıda kesinleşmiş puan. Roller: `yonetici` bütün atamalar; `ogretmen` atama listesinin kapsamı (DOM-YTK-028), atayan değilse yalnız kendi kapsamındaki hedefler; öğrenci, veli ve ön büro 403. Olmayan ya da başka kurumun içeriği 404. En yeni 100 atama okunur (`truncated`). Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description İçeriğin atamalarında hedef başına kursiyer, tamamlayan ve puan ortalaması (DOM-BEC-036, IST-034); her okumada hesaplanır, saklanmaz. Puan deneme ve teslim uçlarının kuralıyla çıkar: değerlendirmede sayılan deneme, alıştırmada son tamamlanan deneme, öğretmen puanlıda kesinleşmiş puan. Roller: `yonetici` bütün atamalar; `ogretmen` atama listesinin kapsamı (DOM-YTK-028), atayan değilse yalnız kendi kapsamındaki hedefler; öğrenci, veli ve ön büro 403. Olmayan, başka kurumun ya da içerik havuzunda okuyamadığınız (özel, taslak) içerik 404. En yeni 100 atama okunur (`truncated`; üst toplam yalnız okunanları kapsar). Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         get: operations["getContentAssignmentResults"];
         put?: never;
@@ -7099,6 +7099,8 @@ export interface components {
                     /** @enum {string} */
                     kind: "class" | "group" | "student";
                     id: string;
+                    /** @description Öğrenci hedefinin adı; kişinin okuyamadığı öğrencide ve sınıfta `null` */
+                    name: string | null;
                     /** @description Hedefteki kursiyer sayısı */
                     learners: number;
                     /** @description Tamamlanmış denemesi ya da gönderilmiş teslimi olan kursiyer */
@@ -7110,7 +7112,7 @@ export interface components {
                 }[];
                 totals: components["schemas"]["ContentResultTallyInput"];
             }[];
-            /** @description Bütün atamaların atama-kursiyer çiftleri üzerinden toplamı */
+            /** @description Yanıttaki atamaların atama-kursiyer çiftleri üzerinden toplamı (`truncated` iken yalnız en yeni 100 atama) */
             totals: components["schemas"]["ContentResultTallyInput"];
             /** @description En yeni 100 atamadan fazlası var */
             truncated: boolean;
@@ -10904,6 +10906,8 @@ export interface components {
                     /** @enum {string} */
                     kind: "class" | "group" | "student";
                     id: string;
+                    /** @description Öğrenci hedefinin adı; kişinin okuyamadığı öğrencide ve sınıfta `null` */
+                    name: string | null;
                     /** @description Hedefteki kursiyer sayısı */
                     learners: number;
                     /** @description Tamamlanmış denemesi ya da gönderilmiş teslimi olan kursiyer */
@@ -10915,7 +10919,7 @@ export interface components {
                 }[];
                 totals: components["schemas"]["ContentResultTally"];
             }[];
-            /** @description Bütün atamaların atama-kursiyer çiftleri üzerinden toplamı */
+            /** @description Yanıttaki atamaların atama-kursiyer çiftleri üzerinden toplamı (`truncated` iken yalnız en yeni 100 atama) */
             totals: components["schemas"]["ContentResultTally"];
             /** @description En yeni 100 atamadan fazlası var */
             truncated: boolean;

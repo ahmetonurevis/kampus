@@ -214,8 +214,24 @@ describe('içeriğe bağlı sonuç özeti (DOM-BEC-036)', () => {
         deadline: { dueAt: '2026-11-20T15:00:00.000Z', lateAcceptanceDays: 0 },
         createdAt: '2026-11-03T08:00:00.000Z',
         targets: [
-          { kind: 'class', id: '9-A', learners: 24, completed: 3, scored: 2, averagePercent: 72.5 },
-          { kind: 'student', id: 's1', learners: 1, completed: 0, scored: 0, averagePercent: null },
+          {
+            kind: 'class',
+            id: '9-A',
+            name: null,
+            learners: 24,
+            completed: 3,
+            scored: 2,
+            averagePercent: 72.5,
+          },
+          {
+            kind: 'student',
+            id: 's1',
+            name: 'Deniz Yılmaz',
+            learners: 1,
+            completed: 0,
+            scored: 0,
+            averagePercent: null,
+          },
         ],
         totals: { learners: 25, completed: 3, scored: 2, averagePercent: 72.5 },
       },
@@ -231,7 +247,11 @@ describe('içeriğe bağlı sonuç özeti (DOM-BEC-036)', () => {
     assert.equal(rows[0]?.average, '%72,5')
     assert.equal(rows[0]?.kind, 'Değerlendirme')
     assert.match(rows[0]?.dueAt ?? '', /20 Kas 2026/)
-    assert.equal(rows[1]?.target, 'Öğrenci')
+    assert.equal(rows[1]?.target, 'Deniz Yılmaz')
+    // Ad gelmediğinde (öğretmenin okuyamadığı öğrenci) genel etiket.
+    const unnamed = structuredClone(results)
+    unnamed.assignments[0]!.targets[1]!.name = null
+    assert.equal(resultRows(unnamed, names)[1]?.target, 'Öğrenci')
     assert.equal(rows[1]?.average, '—')
   })
 

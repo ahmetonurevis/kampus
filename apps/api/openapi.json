@@ -7247,6 +7247,13 @@
                       "id": {
                         "type": "string"
                       },
+                      "name": {
+                        "description": "Öğrenci hedefinin adı; kişinin okuyamadığı öğrencide ve sınıfta `null`",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "learners": {
                         "type": "integer",
                         "minimum": 0,
@@ -7276,6 +7283,7 @@
                     "required": [
                       "kind",
                       "id",
+                      "name",
                       "learners",
                       "completed",
                       "scored",
@@ -7300,7 +7308,7 @@
             }
           },
           "totals": {
-            "description": "Bütün atamaların atama-kursiyer çiftleri üzerinden toplamı",
+            "description": "Yanıttaki atamaların atama-kursiyer çiftleri üzerinden toplamı (`truncated` iken yalnız en yeni 100 atama)",
             "$ref": "#/components/schemas/ContentResultTallyInput"
           },
           "truncated": {
@@ -23080,6 +23088,13 @@
                       "id": {
                         "type": "string"
                       },
+                      "name": {
+                        "description": "Öğrenci hedefinin adı; kişinin okuyamadığı öğrencide ve sınıfta `null`",
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
                       "learners": {
                         "type": "integer",
                         "minimum": 0,
@@ -23109,6 +23124,7 @@
                     "required": [
                       "kind",
                       "id",
+                      "name",
                       "learners",
                       "completed",
                       "scored",
@@ -23135,7 +23151,7 @@
             }
           },
           "totals": {
-            "description": "Bütün atamaların atama-kursiyer çiftleri üzerinden toplamı",
+            "description": "Yanıttaki atamaların atama-kursiyer çiftleri üzerinden toplamı (`truncated` iken yalnız en yeni 100 atama)",
             "$ref": "#/components/schemas/ContentResultTally"
           },
           "truncated": {
@@ -72360,7 +72376,7 @@
         "tags": [
           "task-assignments"
         ],
-        "description": "İçeriğin atamalarında hedef başına kursiyer, tamamlayan ve puan ortalaması (DOM-BEC-036, IST-034); her okumada hesaplanır, saklanmaz. Puan deneme ve teslim uçlarının kuralıyla çıkar: değerlendirmede sayılan deneme, alıştırmada son tamamlanan deneme, öğretmen puanlıda kesinleşmiş puan. Roller: `yonetici` bütün atamalar; `ogretmen` atama listesinin kapsamı (DOM-YTK-028), atayan değilse yalnız kendi kapsamındaki hedefler; öğrenci, veli ve ön büro 403. Olmayan ya da başka kurumun içeriği 404. En yeni 100 atama okunur (`truncated`). Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "İçeriğin atamalarında hedef başına kursiyer, tamamlayan ve puan ortalaması (DOM-BEC-036, IST-034); her okumada hesaplanır, saklanmaz. Puan deneme ve teslim uçlarının kuralıyla çıkar: değerlendirmede sayılan deneme, alıştırmada son tamamlanan deneme, öğretmen puanlıda kesinleşmiş puan. Roller: `yonetici` bütün atamalar; `ogretmen` atama listesinin kapsamı (DOM-YTK-028), atayan değilse yalnız kendi kapsamındaki hedefler; öğrenci, veli ve ön büro 403. Olmayan, başka kurumun ya da içerik havuzunda okuyamadığınız (özel, taslak) içerik 404. En yeni 100 atama okunur (`truncated`; üst toplam yalnız okunanları kapsar). Modül `learning`; kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {

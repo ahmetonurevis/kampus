@@ -319,12 +319,22 @@ const contentResultsSchema = z
         deadline: deadlineSchema,
         createdAt: instant,
         targets: z.array(
-          z.object({ kind: z.enum(enumKeys(TARGET_KINDS)), id: z.string(), ...resultTallyShape }),
+          z.object({
+            kind: z.enum(enumKeys(TARGET_KINDS)),
+            id: z.string(),
+            name: z
+              .string()
+              .nullable()
+              .describe('Öğrenci hedefinin adı; kişinin okuyamadığı öğrencide ve sınıfta `null`'),
+            ...resultTallyShape,
+          }),
         ),
         totals: resultTally,
       }),
     ),
-    totals: resultTally.describe('Bütün atamaların atama-kursiyer çiftleri üzerinden toplamı'),
+    totals: resultTally.describe(
+      'Yanıttaki atamaların atama-kursiyer çiftleri üzerinden toplamı (`truncated` iken yalnız en yeni 100 atama)',
+    ),
     truncated: z.boolean().describe('En yeni 100 atamadan fazlası var'),
   })
   .meta({ id: 'ContentAssignmentResults' })

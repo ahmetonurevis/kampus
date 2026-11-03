@@ -150,6 +150,13 @@ function AssignEditor({ onClose, resourceId, versionId, title, taskType }: Omit<
     })
   }
 
+  /** Satır kalkınca odak kaybolmasın: bir önceki satırın ilk alanına (ilk satır kalktıysa yeni ilkine) gider. */
+  function removeRow(index: number) {
+    rows.remove(index)
+    const next = Math.max(index - 1, 0)
+    window.setTimeout(() => form.setFocus(`rows.${next}.kind`), 0)
+  }
+
   const rowsMessage = errors.rows?.message ?? errors.rows?.root?.message
   return (
     <form
@@ -252,7 +259,7 @@ function AssignEditor({ onClose, resourceId, versionId, title, taskType }: Omit<
                   size="icon"
                   className="sm:mt-7"
                   aria-label={`${number}. hedefi kaldır`}
-                  onClick={() => rows.remove(index)}
+                  onClick={() => removeRow(index)}
                   disabled={busy || rows.fields.length === 1}
                 >
                   <Icon name="Trash2" size={16} aria-hidden="true" />

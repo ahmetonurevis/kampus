@@ -5628,6 +5628,54 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/task-assignments/{assignmentId}/extra-times": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kursiyerlerin bireysel ek süresi
+         * @description Atamanın kursiyerleri (güncel hedefler ve ek süre kaydı olanlar), güncel ek süreleri, sürümleri ve gerekçeli kayıt geçmişi (DOM-BEC-043). Roller: `yonetici` her atamada; `ogretmen` gördüğü atamada okur (atayan değilse yalnız kendi kapsamındaki kursiyerler), yalnız kendi atamasında yazar (atayan olmayan öğretmen 403 `forbidden`); öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan, arşivli, kapsam dışı ya da başka kurumun ataması 404.
+         */
+        get: operations["listTaskExtraTimes"];
+        put?: never;
+        /**
+         * Kursiyere ek süre ver
+         * @description Kursiyere bu atamada ek süre tanımlar. Ek süresi olan kursiyere ikinci verme 409 `extra_time_exists` (değiştirme `PATCH`). Yalnız süreli görevde (422 `extra_time_untimed`), teslim penceresi açıkken (422 `submission_closed`), 1–300 dakika ve görevin süresini aşmadan (422 `extra_time_too_long`); süren denemeyi şimdiden önce bitirecek kısaltma 422 `extra_time_below_elapsed`. Kursiyer atamanın güncel hedefinde değilse 404. Süren deneme yeni ek süreyle uzar, biten deneme yeniden açılmaz (DOM-BEC-043). Kayıt değişmez, her değişiklik yeni kayıttır; denetime yalnız alan adları yazılır. `Idempotency-Key` isteğe bağlı. Başarı 201. Roller: `yonetici` her atamada; `ogretmen` gördüğü atamada okur (atayan değilse yalnız kendi kapsamındaki kursiyerler), yalnız kendi atamasında yazar (atayan olmayan öğretmen 403 `forbidden`); öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan, arşivli, kapsam dışı ya da başka kurumun ataması 404.
+         */
+        post: operations["grantTaskExtraTime"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-assignments/{assignmentId}/extra-times/{learnerId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /**
+         * Kursiyerin ek süresini kaldır
+         * @description Ek süreyi kaldırır (geçmişte kalan yeni kayıt, `minutes: 0`); ek süresi yoksa 404. `If-Match` zorunlu: ek sürenin `version`'ı (tutmazsa 409 `version_conflict`). Yalnız süreli görevde (422 `extra_time_untimed`), teslim penceresi açıkken (422 `submission_closed`), 1–300 dakika ve görevin süresini aşmadan (422 `extra_time_too_long`); süren denemeyi şimdiden önce bitirecek kısaltma 422 `extra_time_below_elapsed`. Kursiyer atamanın güncel hedefinde değilse 404. Süren deneme yeni ek süreyle uzar, biten deneme yeniden açılmaz (DOM-BEC-043). Kayıt değişmez, her değişiklik yeni kayıttır; denetime yalnız alan adları yazılır. Yanıt kursiyerin güncel satırıdır (`current: null`). Roller: `yonetici` her atamada; `ogretmen` gördüğü atamada okur (atayan değilse yalnız kendi kapsamındaki kursiyerler), yalnız kendi atamasında yazar (atayan olmayan öğretmen 403 `forbidden`); öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan, arşivli, kapsam dışı ya da başka kurumun ataması 404.
+         */
+        delete: operations["removeTaskExtraTime"];
+        options?: never;
+        head?: never;
+        /**
+         * Kursiyerin ek süresini değiştir
+         * @description Güncel ek süreyi yeni süre ve gerekçeyle değiştirir; ek süresi yoksa 404. `If-Match` zorunlu: ek sürenin `version`'ı (tutmazsa 409 `version_conflict`). Yalnız süreli görevde (422 `extra_time_untimed`), teslim penceresi açıkken (422 `submission_closed`), 1–300 dakika ve görevin süresini aşmadan (422 `extra_time_too_long`); süren denemeyi şimdiden önce bitirecek kısaltma 422 `extra_time_below_elapsed`. Kursiyer atamanın güncel hedefinde değilse 404. Süren deneme yeni ek süreyle uzar, biten deneme yeniden açılmaz (DOM-BEC-043). Kayıt değişmez, her değişiklik yeni kayıttır; denetime yalnız alan adları yazılır. Roller: `yonetici` her atamada; `ogretmen` gördüğü atamada okur (atayan değilse yalnız kendi kapsamındaki kursiyerler), yalnız kendi atamasında yazar (atayan olmayan öğretmen 403 `forbidden`); öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan, arşivli, kapsam dışı ya da başka kurumun ataması 404.
+         */
+        patch: operations["changeTaskExtraTime"];
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -7680,9 +7728,11 @@ export interface components {
             status: "in_progress" | "submitted" | "expired";
             /** Format: date-time */
             startedAt: string;
-            /** @description Süre ve teslim kapanışından erken olanı; yoksa `null` */
+            /** @description Süre (bireysel ek süre dahil) ve teslim kapanışından erken olanı; yoksa `null` (DOM-BEC-043) */
             endsAt: string | null;
             remainingMs: number | null;
+            /** @description Bu denemeye uygulanan bireysel ek süre, dakika (DOM-BEC-043); kayıt geçmişinden hesaplanır, süresiz görevde 0. Gerekçe hiçbir deneme görünümünde yoktur */
+            extraMinutes: number;
             completedAt: string | null;
             /** @description Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı */
             autoSubmitted: boolean;
@@ -7748,9 +7798,11 @@ export interface components {
             status: "in_progress" | "submitted" | "expired";
             /** Format: date-time */
             startedAt: string;
-            /** @description Süre ve teslim kapanışından erken olanı; yoksa `null` */
+            /** @description Süre (bireysel ek süre dahil) ve teslim kapanışından erken olanı; yoksa `null` (DOM-BEC-043) */
             endsAt: string | null;
             remainingMs: number | null;
+            /** @description Bu denemeye uygulanan bireysel ek süre, dakika (DOM-BEC-043); kayıt geçmişinden hesaplanır, süresiz görevde 0. Gerekçe hiçbir deneme görünümünde yoktur */
+            extraMinutes: number;
             completedAt: string | null;
             /** @description Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı */
             autoSubmitted: boolean;
@@ -9621,6 +9673,47 @@ export interface components {
             archivedAt: string | null;
             /** @description Satır sürümü; arşivde `If-Match` (yalnız kurum kazanımında anlamlı) */
             rowVersion: number;
+        };
+        TaskExtraTimeHistoryEntryInput: {
+            /** @description Kayıt sırası; son kaydınki ek sürenin sürümüdür */
+            sequence: number;
+            /** @description Ek süre, dakika; 0 kaldırmadır */
+            minutes: number;
+            /** @description Gerekçe; kaldırmada `null`. Yalnız yazma yetkisi olana (atayan öğretmen, yönetici) döner; yalnız okuyan öğretmende alan yoktur (kvkk: Ç) */
+            reason?: ("accommodation" | "technical_issue" | "other") | null;
+            /** Format: date-time */
+            grantedAt: string;
+            grantedByUserId: string;
+        };
+        TaskExtraTimeLearnerInput: {
+            learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler */
+            learnerName: string | null;
+            /** @description Güncel ek süre; hiç verilmediyse ya da kaldırıldıysa `null` */
+            current: {
+                minutes: number;
+                /**
+                 * @description Yalnız yazma yetkisi olana döner; yalnız okuyan öğretmende alan yoktur
+                 * @enum {string}
+                 */
+                reason?: "accommodation" | "technical_issue" | "other";
+                /** Format: date-time */
+                grantedAt: string;
+                grantedByUserId: string;
+            } | null;
+            /** @description Ek sürenin sürümü (`If-Match`): son kaydın sırası, kayıt yoksa 0 */
+            version: number;
+            /** @description Kayıt geçmişi, yeniden eskiye (DOM-BEC-043: gerekçesiyle görünür) */
+            history: components["schemas"]["TaskExtraTimeHistoryEntryInput"][];
+        };
+        TaskExtraTimeListInput: {
+            /** Format: uuid */
+            assignmentId: string;
+            /** @description Atamanın süresi; `null` süresiz (ek süre tanımlanamaz) */
+            timeLimitMinutes: number | null;
+            /** @description Kişi ek süre verebilir mi (atayan öğretmen veya yönetici) */
+            canManage: boolean;
+            learners: components["schemas"]["TaskExtraTimeLearnerInput"][];
         };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
@@ -11590,9 +11683,11 @@ export interface components {
             status: "in_progress" | "submitted" | "expired";
             /** Format: date-time */
             startedAt: string;
-            /** @description Süre ve teslim kapanışından erken olanı; yoksa `null` */
+            /** @description Süre (bireysel ek süre dahil) ve teslim kapanışından erken olanı; yoksa `null` (DOM-BEC-043) */
             endsAt: string | null;
             remainingMs: number | null;
+            /** @description Bu denemeye uygulanan bireysel ek süre, dakika (DOM-BEC-043); kayıt geçmişinden hesaplanır, süresiz görevde 0. Gerekçe hiçbir deneme görünümünde yoktur */
+            extraMinutes: number;
             completedAt: string | null;
             /** @description Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı */
             autoSubmitted: boolean;
@@ -11658,9 +11753,11 @@ export interface components {
             status: "in_progress" | "submitted" | "expired";
             /** Format: date-time */
             startedAt: string;
-            /** @description Süre ve teslim kapanışından erken olanı; yoksa `null` */
+            /** @description Süre (bireysel ek süre dahil) ve teslim kapanışından erken olanı; yoksa `null` (DOM-BEC-043) */
             endsAt: string | null;
             remainingMs: number | null;
+            /** @description Bu denemeye uygulanan bireysel ek süre, dakika (DOM-BEC-043); kayıt geçmişinden hesaplanır, süresiz görevde 0. Gerekçe hiçbir deneme görünümünde yoktur */
+            extraMinutes: number;
             completedAt: string | null;
             /** @description Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı */
             autoSubmitted: boolean;
@@ -13529,6 +13626,47 @@ export interface components {
             archivedAt: string | null;
             /** @description Satır sürümü; arşivde `If-Match` (yalnız kurum kazanımında anlamlı) */
             rowVersion: number;
+        };
+        TaskExtraTimeHistoryEntry: {
+            /** @description Kayıt sırası; son kaydınki ek sürenin sürümüdür */
+            sequence: number;
+            /** @description Ek süre, dakika; 0 kaldırmadır */
+            minutes: number;
+            /** @description Gerekçe; kaldırmada `null`. Yalnız yazma yetkisi olana (atayan öğretmen, yönetici) döner; yalnız okuyan öğretmende alan yoktur (kvkk: Ç) */
+            reason?: ("accommodation" | "technical_issue" | "other") | null;
+            /** Format: date-time */
+            grantedAt: string;
+            grantedByUserId: string;
+        };
+        TaskExtraTimeLearner: {
+            learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler */
+            learnerName: string | null;
+            /** @description Güncel ek süre; hiç verilmediyse ya da kaldırıldıysa `null` */
+            current: {
+                minutes: number;
+                /**
+                 * @description Yalnız yazma yetkisi olana döner; yalnız okuyan öğretmende alan yoktur
+                 * @enum {string}
+                 */
+                reason?: "accommodation" | "technical_issue" | "other";
+                /** Format: date-time */
+                grantedAt: string;
+                grantedByUserId: string;
+            } | null;
+            /** @description Ek sürenin sürümü (`If-Match`): son kaydın sırası, kayıt yoksa 0 */
+            version: number;
+            /** @description Kayıt geçmişi, yeniden eskiye (DOM-BEC-043: gerekçesiyle görünür) */
+            history: components["schemas"]["TaskExtraTimeHistoryEntry"][];
+        };
+        TaskExtraTimeList: {
+            /** Format: uuid */
+            assignmentId: string;
+            /** @description Atamanın süresi; `null` süresiz (ek süre tanımlanamaz) */
+            timeLimitMinutes: number | null;
+            /** @description Kişi ek süre verebilir mi (atayan öğretmen veya yönetici) */
+            canManage: boolean;
+            learners: components["schemas"]["TaskExtraTimeLearner"][];
         };
     };
     responses: never;
@@ -50051,6 +50189,410 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["GuardianInvitation"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTaskExtraTimes: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskExtraTimeList"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    grantTaskExtraTime: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    minutes: number;
+                    /** @enum {string} */
+                    reason: "accommodation" | "technical_issue" | "other";
+                    learnerId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskExtraTimeLearner"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    removeTaskExtraTime: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+                /** @description Kursiyerin (öğrenci) kimliği */
+                learnerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskExtraTimeLearner"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    changeTaskExtraTime: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Atama kimliği */
+                assignmentId: string;
+                /** @description Kursiyerin (öğrenci) kimliği */
+                learnerId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    minutes: number;
+                    /** @enum {string} */
+                    reason: "accommodation" | "technical_issue" | "other";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskExtraTimeLearner"];
                     };
                 };
             };

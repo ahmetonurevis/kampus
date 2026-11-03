@@ -88,6 +88,9 @@ const RESOURCE_WRITE = kayit(
 )
 const RUBRIC = kayit('rubrics.test.ts', 'başka kurumun rubriği okuma ve yazmada 404')
 const ASSIGNMENT = kayit('task-assignments.test.ts', 'kurumlar arası: B kurumunun atamasına')
+const EXTRA_TIME = kayit('task-extra-times.test.ts', 'atamayı görmeyen öğretmen ve başka kurum 404')
+const EXTRA_TIME_COMMAND = (marker: string) =>
+  kayit('task-extra-times.test.ts', 'atamayı görmeyen öğretmen ve başka kurum 404', marker)
 const GRADING = kayit('task-grading.test.ts', 'atamayı görmeyen öğretmen ve başka kurum 404')
 const tutoring = (marker: string) =>
   kayit('assessment.test.ts', 'başka kurumun uygunluğu ve etüdü 404, B değişmez', marker)
@@ -397,6 +400,12 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'task-attempts.test.ts',
     'hedeflenmeyen öğrenci ve başka kurum 404',
   ),
+  'GET /api/v1/task-assignments/:assignmentId/extra-times': EXTRA_TIME,
+  'POST /api/v1/task-assignments/:assignmentId/extra-times': EXTRA_TIME,
+  'PATCH /api/v1/task-assignments/:assignmentId/extra-times/:learnerId':
+    EXTRA_TIME_COMMAND('change('),
+  'DELETE /api/v1/task-assignments/:assignmentId/extra-times/:learnerId':
+    EXTRA_TIME_COMMAND('remove('),
   'GET /api/v1/task-submissions/grading-queue': GRADING,
   'POST /api/v1/task-submissions/:submissionId/scores': GRADING,
   'POST /api/v1/task-submissions/:submissionId/resubmission-requests': GRADING,

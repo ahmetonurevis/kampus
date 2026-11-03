@@ -148,7 +148,8 @@ export type ListeningGrant = {
 }
 
 const running = (assignment: StoredAssignment, attempt: StoredAttempt, now: Date) =>
-  attemptState(attempt, timingOf(assignment), now.toISOString()).status === 'in_progress'
+  attemptState(attempt, timingOf(assignment, attempt.learnerId), now.toISOString()).status ===
+  'in_progress'
 
 /** Öğrencinin kendi kursiyer kimliği; öğrenci bağlantısı yoksa `null` (sayılacak deneme yok). */
 function learnerOf(viewer: Viewer): string | null {
@@ -255,7 +256,7 @@ async function grantForAttempt(
     learnerId === null ? null : await findAttempt(tx, ctx.institutionId, attemptId, { lock: true })
   const assignment =
     attempt && attempt.learnerId === learnerId
-      ? await findAssignment(tx, ctx.institutionId, attempt.assignmentId)
+      ? await findAssignment(tx, ctx.institutionId, attempt.assignmentId, [attempt.learnerId])
       : null
   if (!attempt || !assignment || !visible(viewer, assignment)) throw new NotFoundError()
   const assignments = await recordingAssignments(tx, ctx, file)

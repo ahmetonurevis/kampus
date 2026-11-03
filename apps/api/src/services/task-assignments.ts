@@ -133,6 +133,14 @@ export type Viewer =
       classOf: ReadonlyMap<string, string>
     }
 
+/**
+ * Öğrenci ve veli yolunda ek süre kaydı yüklenecek kursiyerler (kendisi ya da çocukları); personelde
+ * `undefined` (atamanın bütün kayıtları, ek süre ekranı için).
+ */
+export function ownExtraTimeLearners(viewer: Viewer): readonly string[] | undefined {
+  return viewer.kind === 'learner' ? [...viewer.classOf.keys()] : undefined
+}
+
 export async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
   const { role, userId } = ctx.actor
   switch (role) {

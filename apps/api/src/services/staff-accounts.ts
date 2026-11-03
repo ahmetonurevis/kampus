@@ -23,6 +23,7 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { authTransaction } from './auth-transaction.ts'
 import { getInstitutionMember } from './institution-members.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
+import type { StaffLinkJobData, StaffLinkScheduler } from './staff-password-links.ts'
 import { auditWork } from './task-work.ts'
 
 /**
@@ -246,8 +247,13 @@ export async function writeStaffInvitation(
   ctx: ServiceContext,
   bound: BoundAuth,
   inviter: Inviter,
-  write: { input: StaffInvitationInput; existingUserId: string | null; action: string },
-): Promise<{ invitationId: string; createdAccount: boolean }> {
+  write: {
+    input: StaffInvitationInput
+    existingUserId: string | null
+    action: string
+    links: StaffLinkScheduler
+  },
+): Promise<StaffLinkJobData> {
   const { input, existingUserId } = write
   let membershipId: string | null = null
   if (existingUserId === null) {
@@ -287,20 +293,18 @@ export async function writeStaffInvitation(
     'role',
     ...(input.teacherId === undefined ? [] : ['teacherId']),
   ])
-  return { invitationId: invitation.id, createdAccount: existingUserId === null }
-}
-
-/** Davetin sonucu: yanıt ve parola bağlantısının gönderilip gönderilmeyeceği (yalnız yeni hesap). */
-export interface StaffInvitationOutcome {
-  response: CommandResponse
-  sendPasswordLink: boolean
+  // Bağlantı işi her davette aynı yoldan kurulur; yeni hesap ayrımı gönderimde yapılır (karar 73).
+  const link = { institutionId: ctx.institutionId, invitationId: invitation.id }
+  await write.links.enqueue(tx, link)
+  return link
 }
 
 /**
  * Personel daveti (DOM-YTK-070). Kurumda kayıtlı e-posta 409 `member_exists`, bekleyen davet 409
  * `invitation_exists`; öğretmen kaydı kurumda yoksa 404, başka hesaba bağlıysa 409
  * `teacher_already_linked`, kurumun bekleyen başka bir davetinde tutuluyorsa 409
- * `teacher_invitation_pending`. Başarı 201; parola bağlantısı işlemden sonra yalnız yeni hesaba gider.
+ * `teacher_invitation_pending`. Başarı 201; parola bağlantısı yanıtı beklemeden yalnız yeni hesaba
+ * gider (`services/staff-password-links.ts`; tekrarlanan yanıtta gitmez).
  *
  * E-posta başka kurumda hesaplıysa (karar 73) üyelik açılmaz, parola bağlantısı gitmez; yalnız
  * bekleyen davet (girilen adla ve öğretmen kaydıyla) yazılır. Yanıtın durum kodu, alanları ve
@@ -314,12 +318,13 @@ export interface StaffInvitationOutcome {
 export async function inviteStaffMember(
   ctx: ServiceContext,
   auth: Auth,
+  links: StaffLinkScheduler,
   input: StaffInvitationInput,
   idempotency: IdempotencyRequest | null,
-): Promise<StaffInvitationOutcome> {
+): Promise<CommandResponse> {
   const out: { body?: unknown } = {}
   let existingUserId: string | null = null
-  let createdAccount = false
+  const written: StaffLinkJobData[] = []
   const response = await runCommand<void>(
     ctx,
     {
@@ -380,13 +385,14 @@ export async function inviteStaffMember(
         const bound = await authTransaction(auth, tx)
         const inviter = await bound.internalAdapter.findUserById(ctx.actor.userId)
         if (inviter === null) throw new Error('inviter not found')
-        const written = await writeStaffInvitation(tx, ctx, bound, inviter, {
+        const link = await writeStaffInvitation(tx, ctx, bound, inviter, {
           input,
           existingUserId,
           action: 'staff.invite',
+          links,
         })
-        createdAccount = written.createdAccount
-        const row = await findInvitation(tx, ctx.institutionId, written.invitationId)
+        written.push(link)
+        const row = await findInvitation(tx, ctx.institutionId, link.invitationId)
         const view = row ? toInvitationView(row) : null
         if (view === null) throw new Error('invitation disappeared after write')
         out.body = { data: view }
@@ -395,25 +401,8 @@ export async function inviteStaffMember(
     respondWith(out, 201),
     idempotency,
   )
-  return { response, sendPasswordLink: !response.replayed && createdAccount }
-}
-
-/**
- * Davet sonrası parola belirleme bağlantısı: mevcut sıfırlama akışı (`request-password-reset`,
- * `services/password-reset.ts`) kullanılır; belirteç, soğuma, saatlik sınır ve denetim kaydı
- * oradadır. Gönderim davetin sonucunu değiştirmez: hata loglanır (e-posta yazılmaz), yönetici
- * daveti iptal edip yeniden gönderebilir ya da kişi "Parolamı unuttum" ile bağlantı ister.
- */
-export async function sendStaffPasswordLink(
-  ctx: Pick<ServiceContext, 'log'>,
-  auth: Auth,
-  email: string,
-): Promise<void> {
-  try {
-    await auth.api.requestPasswordReset({ body: { email } })
-  } catch (error) {
-    ctx.log.warn({ event: 'staff.invite_link_failed', err: error })
-  }
+  if (!response.replayed) links.afterCommit(written)
+  return response
 }
 
 /**

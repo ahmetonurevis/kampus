@@ -31,24 +31,19 @@ import {
   pendingTeacherInvitations,
   writeStaffInvitation,
 } from './staff-accounts.ts'
+import type { StaffLinkJobData, StaffLinkScheduler } from './staff-password-links.ts'
 
 /**
  * Toplu personel aktarımı (IST-007, DOM-YTK-070). CSV core `lib/staff-import.ts` ile ayrıştırılır
  * ve satır satır doğrulanır; kurum durumu (üyeler, bekleyen davetler, öğretmen kayıtları,
  * kampüsler) kurum kilidi altında okunur. Herhangi bir satır hatalıysa hiçbir şey yazılmaz (422
  * `staff_import_invalid`, `issues` satır numarasıyla). Hata yoksa her satır tek davetle aynı
- * yazımı (`writeStaffInvitation`) tek transaction'da yapar; parola bağlantıları işlemden sonra
- * gider. Önizleme (`dryRun`) aynı doğrulamayı yazmadan yapar. Satır içeriği loglanmaz ve
+ * yazımı (`writeStaffInvitation`) tek transaction'da yapar; parola bağlantıları yanıtı
+ * beklemeden gider (`services/staff-password-links.ts`). Önizleme (`dryRun`) aynı doğrulamayı yazmadan yapar. Satır içeriği loglanmaz ve
  * denetime yazılmaz (yalnız davet başına alan adları).
  */
 
 const IMPORT_ACTION = 'staff.import'
-
-export interface StaffImportOutcome {
-  response: CommandResponse
-  /** Parola belirleme bağlantısı gidecek yeni hesapların e-postaları (tekrarlanan yanıtta boş). */
-  passwordLinkEmails: string[]
-}
 
 function text(data: Record<string, unknown>, key: string): string {
   const value = data[key]
@@ -167,9 +162,10 @@ function result(
 export async function importStaffMembers(
   ctx: ServiceContext,
   auth: Auth,
+  links: StaffLinkScheduler,
   input: Required<StaffImportInput>,
   idempotency: IdempotencyRequest | null,
-): Promise<StaffImportOutcome> {
+): Promise<CommandResponse> {
   const rows = parseRows(input.csv)
   const emails = candidateEmails(rows)
 
@@ -182,17 +178,14 @@ export async function importStaffMembers(
       return planStaffImport(rows, context)
     })
     return {
-      response: {
-        statusCode: 200,
-        body: result(true, rows.length, plan.invitations.length, plan.issues),
-        replayed: false,
-      },
-      passwordLinkEmails: [],
+      statusCode: 200,
+      body: result(true, rows.length, plan.invitations.length, plan.issues),
+      replayed: false,
     }
   }
 
   const out: { body?: unknown } = {}
-  const created: string[] = []
+  const written: StaffLinkJobData[] = []
   let existingUsers = new Map<string, string>()
   const response = await runCommand(
     ctx,
@@ -226,12 +219,14 @@ export async function importStaffMembers(
         // `line` yalnız hata iletisi içindir; Better Auth'a yalnız davet alanları gider.
         for (const { line, ...invitation } of planned) {
           void line
-          const written = await writeStaffInvitation(tx, ctx, bound, inviter, {
-            input: invitation,
-            existingUserId: existingUsers.get(invitation.email) ?? null,
-            action: IMPORT_ACTION,
-          })
-          if (written.createdAccount) created.push(invitation.email)
+          written.push(
+            await writeStaffInvitation(tx, ctx, bound, inviter, {
+              input: invitation,
+              existingUserId: existingUsers.get(invitation.email) ?? null,
+              action: IMPORT_ACTION,
+              links,
+            }),
+          )
         }
         out.body = result(false, rows.length, planned.length, [])
       },
@@ -242,5 +237,6 @@ export async function importStaffMembers(
     },
     idempotency,
   )
-  return { response, passwordLinkEmails: response.replayed ? [] : created }
+  if (!response.replayed) links.afterCommit(written)
+  return response
 }

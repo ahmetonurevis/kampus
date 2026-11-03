@@ -49,13 +49,15 @@ describe('toplu personel aktarımı (IST-007, DOM-YTK-070)', () => {
     await close()
   })
 
-  function upload(
+  // Parola bağlantıları yanıttan sonra arka planda gider; ileti denetiminden önce beklenir.
+  async function upload(
     cookie: string | undefined,
     payload: object,
     options: { key?: string | null; target?: App } = {},
   ) {
     const key = options.key === undefined ? randomUUID() : options.key
-    return (options.target ?? app).inject({
+    const target = options.target ?? app
+    const response = await target.inject({
       method: 'POST',
       url: '/api/v1/institution-members/imports',
       headers: {
@@ -66,6 +68,8 @@ describe('toplu personel aktarımı (IST-007, DOM-YTK-070)', () => {
       },
       payload,
     })
+    await target.staffLinks.inline.idle()
+    return response
   }
 
   async function kurum(): Promise<{ institution: TestInstitution; cookie: string }> {

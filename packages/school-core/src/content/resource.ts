@@ -1685,9 +1685,10 @@ const byText = (value: string) => value
  * Soru gövdesini öğrenciye göstermek için karıştırır. Sıralama öğeleri doğru sırada, eşleştirme
  * seçenekleri öncül sırasıyla hizalı görünmez; bu iki türde eşitlik cevabı ele verir. Çoktan
  * seçmeli seçenekler ve kapalı boşluk listesi tekdüze karışır: özgün sırayı yasaklamak doğru
- * seçeneğin özgün konumunda görünme olasılığını düşürür, bu da ayrı bir ipucudur.
+ * seçeneğin özgün konumunda görünme olasılığını düşürür, bu da ayrı bir ipucudur. Yazarın soru
+ * önizlemesi (IST-033) öğrencinin göreceği diziyi de bu fonksiyonla kurar.
  */
-function shuffleQuestion(
+export function shuffleQuestion(
   question: QuestionBody,
   key: AnswerKey | null,
   random: RandomSource,

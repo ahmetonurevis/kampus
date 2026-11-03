@@ -164,17 +164,22 @@ describe('Taslak formu şeması (DOM-KYN-020, 002)', () => {
     assert.equal(draftFormSchema.safeParse({ ...base, answerKey: null }).success, false)
   })
 
-  test('çoktan seçmeli dışı soru türü reddedilir', () => {
+  test('IST-033: doğru/yanlış sorusu da kaydedilir; cevap anahtarı türden kurulur', () => {
     const result = draftFormSchema.safeParse({
       title: 'Soru',
       content: {
         type: 'question',
         question: { questionType: 'true_false', stem: 'Doğru mu?', allowNotGiven: false },
       },
-      answerKey: { questionType: 'true_false', answer: 'true', explanation: 'Çünkü.' },
+      answerKey: { answer: 'false', explanation: 'Çünkü.' },
       license: { kind: 'institution_original' },
     })
-    assert.equal(result.success, false)
+    assert.equal(result.success, true)
+    assert.deepEqual(result.data?.answerKey, {
+      questionType: 'true_false',
+      answer: 'false',
+      explanation: 'Çünkü.',
+    })
   })
 
   test('DOM-KYN-024: açık lisans kaynak gösterimi ister değil ama tür ve lisans doğrulanır', () => {
@@ -321,7 +326,7 @@ describe('Önizleme, seçenek kimlikleri ve ret gerekçesi', () => {
     assert.deepEqual(previewFromHead(head()), { kind: 'reading', body: 'Bir metin.' })
     const preview = previewFromHead(questionHead())
     assert.equal(
-      preview.kind === 'question' && preview.options.filter((o) => o.correct)[0]?.id,
+      preview.kind === 'question' && preview.summary.lines.filter((o) => o.correct)[0]?.key,
       'c',
     )
     assert.equal(previewFromHead(head({ content: null, status: 'removed' })).kind, 'removed')

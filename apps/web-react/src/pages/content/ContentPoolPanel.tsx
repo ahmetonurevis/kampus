@@ -467,31 +467,42 @@ function Preview({ preview, english }: { preview: ContentPreview; english: boole
         </p>
       </section>
     )
+  const { summary } = preview
   return (
     <section
       aria-label="İçerik önizlemesi"
       className="grid gap-3 rounded-card border bg-surface p-4"
     >
+      <p className="text-xs font-medium text-muted-foreground">{summary.typeLabel}</p>
       <p lang={lang} className="text-sm font-medium [overflow-wrap:anywhere] whitespace-pre-wrap">
-        {preview.stem}
+        {summary.stem}
       </p>
-      <ul className="grid gap-1.5 text-sm">
-        {preview.options.map((option) => (
-          <li
-            key={option.id}
-            lang={lang}
-            className="flex items-start gap-2 rounded-xl border px-3 py-1.5 [overflow-wrap:anywhere]"
-          >
-            <span className="font-medium uppercase">{option.id}.</span>
-            <span className="flex-1">{option.text}</span>
-            {option.correct ? <StatusBadge text="Doğru cevap" tone="green" /> : null}
-          </li>
-        ))}
-      </ul>
-      {preview.explanation ? (
+      {summary.lines.length > 0 ? (
+        <ul className="grid gap-1.5 text-sm">
+          {summary.lines.map((line) => (
+            <li
+              key={line.key}
+              className="flex items-start gap-2 rounded-xl border px-3 py-1.5 [overflow-wrap:anywhere]"
+            >
+              <span className="font-medium">{line.marker}</span>
+              <span lang={lang} className="flex-1">
+                {line.text}
+              </span>
+              {line.correct ? <StatusBadge text="Doğru cevap" tone="green" /> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {summary.answer ? (
+        <p className="text-sm [overflow-wrap:anywhere]">
+          <strong className="font-medium">Doğru cevap: </strong>
+          <span lang={lang}>{summary.answer}</span>
+        </p>
+      ) : null}
+      {summary.explanation ? (
         <p lang={lang} className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
           <strong className="font-medium">Çözüm: </strong>
-          {preview.explanation}
+          {summary.explanation}
         </p>
       ) : null}
     </section>

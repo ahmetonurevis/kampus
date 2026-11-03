@@ -711,27 +711,46 @@ export function planResubmissionRequest(input: {
   return { resubmissionRequestedForVersion: latest.number, resubmissionDueAt: toIso(due) }
 }
 
+/** Bir yeniden teslim turu: istenen (puanlanan) sürüm ve turun kendi son tarihi (DOM-BEC-040). */
+export type ResubmissionRound = { versionNumber: number; dueAt: string }
+
 /**
- * Sürümün tabi olduğu son teslim (DOM-BEC-040, 044): yeniden teslim istenen sürümden sonraki
- * sürümler isteğin kendi son tarihine (geç kabulsüz), diğerleri atamanınkine bağlıdır. Yeni sürüm
- * için `versionNumber` son sürümün bir fazlasıdır. `planSubmissionVersion` ve `versionIsLate` bunu alır.
+ * Sürümün tabi olduğu son teslim (DOM-BEC-040, 044; IST-047): yeniden teslim istenen sürümden
+ * sonraki sürüm, kendisinden önceki en son isteğin son tarihine (geç kabulsüz), istek yoksa
+ * atamanınkine bağlıdır. Her tur kendi tarihiyle okunur: v1 için istenip v2 gönderildikten sonra
+ * v2 için yeni istek gelse de v2 ilk turun tarihine bağlı kalır (geç bayrağı sonradan değişmez).
+ * `resubmissionRounds` verilmezse yalnız son istek bilinir ve önceki turların sürümleri atamanın
+ * son tarihiyle okunur. Yeni sürüm için `versionNumber` son sürümün bir fazlasıdır.
+ * `planSubmissionVersion`, `planDraftSave` ve `versionIsLate` bunu alır.
  */
-// TODO(beceri-yeniden-teslim-gecmisi): Satırda yalnız son istek tutulduğu için önceki turların
-// sürümleri atama son tarihiyle okunur; istek geçmişi ayrı satır olunca (F4b) her tur kendi
-// tarihiyle okunur.
 export function deadlineForVersion(
   assignmentDeadline: Deadline,
-  submission: Pick<
-    ResubmittableSubmission,
-    'resubmissionRequestedForVersion' | 'resubmissionDueAt'
-  > | null,
+  submission:
+    | (Pick<ResubmittableSubmission, 'resubmissionRequestedForVersion' | 'resubmissionDueAt'> & {
+        resubmissionRounds?: readonly ResubmissionRound[]
+      })
+    | null,
   versionNumber: number,
 ): Deadline {
-  const requested = submission?.resubmissionRequestedForVersion ?? null
-  if (requested === null || submission?.resubmissionDueAt == null || versionNumber <= requested) {
-    return assignmentDeadline
-  }
-  return { dueAt: submission.resubmissionDueAt, lateAcceptanceDays: 0 }
+  const rounds: readonly ResubmissionRound[] =
+    submission?.resubmissionRounds ??
+    (submission?.resubmissionRequestedForVersion != null && submission.resubmissionDueAt != null
+      ? [
+          {
+            versionNumber: submission.resubmissionRequestedForVersion,
+            dueAt: submission.resubmissionDueAt,
+          },
+        ]
+      : [])
+  const governing = rounds.reduce<ResubmissionRound | null>(
+    (best, round) =>
+      round.versionNumber < versionNumber &&
+      (best === null || round.versionNumber > best.versionNumber)
+        ? round
+        : best,
+    null,
+  )
+  return governing === null ? assignmentDeadline : { dueAt: governing.dueAt, lateAcceptanceDays: 0 }
 }
 
 // --- Puanlama maddeleri -------------------------------------------------------------------

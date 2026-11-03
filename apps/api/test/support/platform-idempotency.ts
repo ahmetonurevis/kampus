@@ -40,6 +40,7 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   'POST /api/v1/task-assignments/{assignmentId}/attempts',
   'POST /api/v1/task-attempts/{attemptId}/submit',
   // Yazma görevi teslimi: yeni değişmez sürüm (routes/task-submissions.ts; DOM-BEC-040).
+  'POST /api/v1/task-assignments/{assignmentId}/draft/submit',
   'POST /api/v1/task-assignments/{assignmentId}/submissions',
   // Öğretmen puanı ve yeniden teslim isteği (routes/task-submissions.ts; DOM-BEC-021, 040).
   'POST /api/v1/task-submissions/{submissionId}/scores',

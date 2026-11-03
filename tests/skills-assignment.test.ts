@@ -890,6 +890,38 @@ describe('yeniden teslim isteği (DOM-BEC-040)', () => {
     assert.equal(versionIsLate({ submittedAt: plusMs(now, 2 * DAY + 1) }, next), true)
     assert.equal(submissionWindow(next).closesAt, plusMs(now, 2 * DAY))
   })
+
+  test('DOM-BEC-040, IST-047 yeniden teslim geçmişinde her sürüm kendisinden önceki en son turun tarihine bağlıdır', () => {
+    const assignmentDeadline = { dueAt: plusMs(now, -10 * DAY), lateAcceptanceDays: 2 }
+    const first = { versionNumber: 1, dueAt: plusMs(now, -5 * DAY) }
+    const second = { versionNumber: 2, dueAt: plusMs(now, 3 * DAY) }
+    const withHistory = {
+      ...submission,
+      resubmissionRequestedForVersion: 2,
+      resubmissionDueAt: second.dueAt,
+      // Sıra önemsiz: tur sürüm numarasıyla seçilir.
+      resubmissionRounds: [second, first],
+    }
+    assert.equal(deadlineForVersion(assignmentDeadline, withHistory, 1), assignmentDeadline)
+    assert.deepEqual(deadlineForVersion(assignmentDeadline, withHistory, 2), {
+      dueAt: first.dueAt,
+      lateAcceptanceDays: 0,
+    })
+    assert.deepEqual(deadlineForVersion(assignmentDeadline, withHistory, 3), {
+      dueAt: second.dueAt,
+      lateAcceptanceDays: 0,
+    })
+    // İlk tur içinde gönderilen v2, ikinci istek geldikten sonra da geç sayılmaz.
+    const v2 = { submittedAt: plusMs(now, -6 * DAY) }
+    assert.equal(versionIsLate(v2, deadlineForVersion(assignmentDeadline, withHistory, 2)), false)
+    // Geçmiş verilmezse yalnız son istek bilinir: v2 atamanın tarihiyle okunur (eski davranış).
+    const latestOnly = { ...withHistory, resubmissionRounds: undefined }
+    assert.equal(deadlineForVersion(assignmentDeadline, latestOnly, 2), assignmentDeadline)
+    assert.deepEqual(
+      deadlineForVersion(assignmentDeadline, { ...submission, resubmissionRounds: [] }, 3),
+      assignmentDeadline,
+    )
+  })
 })
 
 describe('puanlama maddeleri ve yeniden puanlama (DOM-BEC-010, 011, DOM-KYN-033)', () => {

@@ -424,6 +424,16 @@ function resubmissionOf(work: StoredSubmissionWork) {
 }
 
 /**
+ * Sürüm için istenen yeniden teslim turu (DOM-BEC-040, IST-047): yeniden teslim geçmişi sürüm
+ * başına okunur, her tur kendi son tarihiyle. İstek kesinleşmiş puandan sonra açıldığı için
+ * kursiyere ve veliye gösterilmesi puanı erken sızdırmaz (`resubmissionOf`); isteyen kişi dönmez.
+ */
+function resubmissionRequestOf(work: StoredSubmissionWork, version: VersionRow) {
+  const round = work.resubmissions.find((row) => row.versionNumber === version.number)
+  return round === undefined ? null : { dueAt: round.dueAt, requestedAt: round.requestedAt }
+}
+
+/**
  * Sürümün öğretmen geri bildirimi kursiyere açık mı (DOM-BEC-045; core `scoreResolution`,
  * `teacherFeedbackReleased`): puan kesinleşmiş (ikinci puan veya koordinatör beklenmiyor,
  * uyuşmazlık yok) ve kesinleşme anı geçmiş. Sonuç duyurusu bu andır (itiraz süresi; DOM-BEC-025).
@@ -604,6 +614,7 @@ export async function detailView(
       grading: gradingView(ctx, viewer, assignment, work, grading, version, book.rubrics),
       appealDeadline: appealDeadlineOf(ctx, viewer, assignment, grading, version),
       appeal: appealView(viewer, grading, version),
+      resubmissionRequest: resubmissionRequestOf(work, version),
     })),
     allowance: allowanceOf(ctx, viewer, assignment, work, grading),
   }
@@ -940,6 +951,14 @@ export async function saveTaskDraft(
           )
         await assertWritingOpen(tx, ctx, assignment, learnerId, current)
         const settings = settingsOf(assignment)
+        // Taslak sıradaki sürümün taslağıdır ve onun süresine bağlıdır: yeniden teslim istendiyse
+        // isteğin son tarihi, atamanınki geçmiş olsa da (DOM-BEC-040, IST-047).
+        const work = await loadSubmission(tx, ctx.institutionId, assignment.id, learnerId)
+        const deadline = deadlineForVersion(
+          assignment.deadline,
+          work?.submission ?? null,
+          (work?.versions.at(-1)?.number ?? 0) + 1,
+        )
         return {
           run: (_state, tools) => {
             if (settings === null)
@@ -948,7 +967,7 @@ export async function saveTaskDraft(
               assignment,
               draft: planDraftSave({
                 settings,
-                deadline: assignment.deadline,
+                deadline,
                 draft: current,
                 learnerId,
                 input: { body: input.body, expectedRevision },
@@ -993,10 +1012,82 @@ export type SubmissionVersionBody =
  * kayda bağlıysa 409 `file_already_attached`); konuşma kaydının saklama sonu bağlanırken yazılır
  * (DOM-BEC-052). Herhangi bir ret hiçbir satırı değiştirmez.
  */
-export async function submitTaskSubmission(
+export function submitTaskSubmission(
   ctx: ServiceContext,
   assignmentId: string,
   body: SubmissionVersionBody,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  return submitVersion(ctx, assignmentId, { kind: 'body', body }, idempotency)
+}
+
+export interface DraftSubmitInput {
+  assignmentId: string
+  /** `If-Match`: kursiyerin son gördüğü taslak revizyonu (zorunlu). */
+  expectedRevision: number
+}
+
+/**
+ * Taslaktan teslim (IST-047; DOM-BEC-040, 046): kaydedilmiş taslağın metni yeni değişmez sürüm
+ * olur; teslim edilen metin kursiyerin son gördüğü revizyondur. Sıra: kapsam 404 → taslak yoksa
+ * 404 → eski revizyon 409 `draft_conflict` → taslak son sürümden sonra değişmediyse 409
+ * `draft_already_submitted` (aynı taslağın ikinci kez teslimi) → yazma dışı görev 422
+ * `draft_not_supported` → boş taslak 422 `draft_empty` → içerik kuralı → `planSubmissionVersion`
+ * (sürüm sınırı, yeniden teslim, son tarih ve geç kabul metin teslimiyle aynı). Taslak silinmez:
+ * yeniden teslim istenirse kursiyer kaldığı metinden devam eder.
+ */
+export function submitTaskDraft(
+  ctx: ServiceContext,
+  input: DraftSubmitInput,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  return submitVersion(
+    ctx,
+    input.assignmentId,
+    { kind: 'draft', expectedRevision: input.expectedRevision },
+    idempotency,
+  )
+}
+
+type VersionSource =
+  { kind: 'body'; body: SubmissionVersionBody } | { kind: 'draft'; expectedRevision: number }
+
+/** Taslağı teslim edilecek metne çevirir; taslak denetimleri içerik kuralından öncedir. */
+async function draftSubmission(
+  tx: Database,
+  ctx: ServiceContext,
+  assignment: StoredAssignment,
+  learnerId: string,
+  expectedRevision: number,
+): Promise<{ draft: DraftRow; body: SubmissionVersionBody }> {
+  const draft = await loadDraft(tx, ctx.institutionId, assignment.id, learnerId)
+  if (draft === null) throw new NotFoundError()
+  if (draft.revision !== expectedRevision)
+    throw new AppError(
+      409,
+      'draft_conflict',
+      'Taslak başka bir pencerede değişti; sayfayı yenileyip devam edin.',
+    )
+  const latest = (
+    await loadSubmission(tx, ctx.institutionId, assignment.id, learnerId)
+  )?.versions.at(-1)
+  if (latest !== undefined && Date.parse(draft.savedAt) <= Date.parse(latest.submittedAt))
+    throw new AppError(
+      409,
+      'draft_already_submitted',
+      'Taslak son teslimden sonra değişmedi; yeni sürüm için metni düzenleyin.',
+    )
+  if (settingsOf(assignment)?.submissionKind !== 'text')
+    throw new RuleViolationError('draft_not_supported', 'Taslak yalnız yazma görevinde tutulur.')
+  if (draft.body.trim() === '')
+    throw new RuleViolationError('draft_empty', 'Taslak boş; teslim için metni yazın.')
+  return { draft, body: { submissionKind: 'text', body: draft.body } }
+}
+
+async function submitVersion(
+  ctx: ServiceContext,
+  assignmentId: string,
+  source: VersionSource,
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   const viewer = await viewerOf(ctx)
@@ -1012,18 +1103,23 @@ export async function submitTaskSubmission(
   return runCommand<Submit>(
     ctx,
     {
-      action: 'task_submission.submit',
+      action: source.kind === 'draft' ? 'task_submission.submit_draft' : 'task_submission.submit',
       collections: [],
       entity: { type: ENTITY, id: assignmentId },
       load: async (tx) => {
         const { assignment, learnerId } = await writableAssignment(tx, ctx, viewer, assignmentId)
+        // Taslak okunduysa içerik kuralı onu yeniden okumaz (`undefined`: gerekirse okunur).
+        const { body, draft } =
+          source.kind === 'draft'
+            ? await draftSubmission(tx, ctx, assignment, learnerId, source.expectedRevision)
+            : { body: source.body, draft: undefined }
         const settings = settingsOf(assignment)
         if (settings === null)
           throw new RuleViolationError(
             'submission_not_expected',
             'Bu görev teslim beklemiyor; deneme olarak çözülür.',
           )
-        await assertWritingOpen(tx, ctx, assignment, learnerId, undefined)
+        await assertWritingOpen(tx, ctx, assignment, learnerId, draft)
         const files = await usableFiles(tx, ctx, bodyFileIds(body))
         const audio = settings.submissionKind === 'audio' && body.submissionKind === 'audio'
         // Rıza ve dönem sonu yalnız sesli teslimde okunur (DOM-BEC-050, 052).
@@ -1112,11 +1208,18 @@ export async function submitTaskSubmission(
           learnerId,
           recording,
         })
-        await auditWork(tx, ctx, 'task_submission.submit', { type: ENTITY, id: submissionId }, [
-          version.fileIds.length > 0 ? 'fileIds' : 'body',
-          'versionNumber',
-          'submittedAt',
-        ])
+        await auditWork(
+          tx,
+          ctx,
+          source.kind === 'draft' ? 'task_submission.submit_draft' : 'task_submission.submit',
+          { type: ENTITY, id: submissionId },
+          [
+            version.fileIds.length > 0 ? 'fileIds' : 'body',
+            'versionNumber',
+            'submittedAt',
+            ...(source.kind === 'draft' ? ['draftRevision'] : []),
+          ],
+        )
         const saved = await findSubmission(tx, ctx.institutionId, submissionId)
         if (!saved) throw new Error('task submission disappeared after write')
         out.body = { data: await detailView(tx, ctx, viewer, assignment, saved) }

@@ -639,6 +639,7 @@ const LEARNING: Readonly<Record<string, Proof>> = Object.fromEntries([
   learning('kayıt', 'GET /api/v1/task-submissions/:submissionId'),
   learning('kayıt', 'GET /api/v1/task-assignments/:assignmentId/draft'),
   learning('kayıt', 'PATCH /api/v1/task-assignments/:assignmentId/draft'),
+  learning('kayıt', 'POST /api/v1/task-assignments/:assignmentId/draft/submit'),
   learning('kayıt', 'POST /api/v1/task-assignments/:assignmentId/submissions'),
   learning('kayıt', 'POST /api/v1/task-submissions/:submissionId/second-scores'),
   learning('kayıt', 'POST /api/v1/task-submissions/:submissionId/final-scores'),

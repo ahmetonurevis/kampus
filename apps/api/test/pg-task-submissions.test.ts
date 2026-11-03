@@ -249,6 +249,33 @@ describe('PostgreSQL 16: eşzamanlı yazma taslağı, teslimi ve puanı', { skip
     }
   })
 
+  test('IST-047, DOM-BEC-040: aynı taslağın eşzamanlı iki teslimi (farklı anahtar): biri 201, diğeri 409 draft_already_submitted; tek sürüm, metni taslak', async () => {
+    const { institution, student, assignmentId } = await setup({
+      submission: { submissionKind: 'text', maxVersions: 3 },
+    })
+    const saved = await call('PATCH', `/task-assignments/${assignmentId}/draft`, student, {
+      body: 'Taslak metni.',
+    })
+    assert.equal(saved.statusCode, 200, saved.body)
+    const send = () =>
+      call(
+        'POST',
+        `/task-assignments/${assignmentId}/draft/submit`,
+        student,
+        {},
+        { 'if-match': '"1"', ...key() },
+      )
+    const responses = await Promise.all([send(), send()])
+    assert.deepEqual(responses.map((r) => r.statusCode).sort(), [201, 409])
+    const loser = responses.find((r) => r.statusCode === 409)
+    assert.equal(loser?.json().code, 'draft_already_submitted', loser?.body)
+    const versions = await db
+      .select({ body: submissionVersions.body })
+      .from(submissionVersions)
+      .where(eq(submissionVersions.institutionId, institution.id))
+    assert.deepEqual(versions, [{ body: 'Taslak metni.' }])
+  })
+
   test('DOM-BEC-021: aynı teslim sürümüne eşzamanlı iki puan: biri 201, diğeri 409; tek puan satırı', async () => {
     const { institution, student, admin, assignmentId } = await setup()
     const submitted = await call(

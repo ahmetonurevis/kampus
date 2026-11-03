@@ -9607,6 +9607,33 @@
                       "type": "null"
                     }
                   ]
+                },
+                "resubmissionRequest": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "dueAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "requestedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "dueAt",
+                        "requestedAt"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Bu sürüm için istenen yeniden teslim turu ve kendi son tarihi (DOM-BEC-040, IST-047); bir sonraki sürüm bu tarihe (geç kabulsüz) bağlıdır. Yeniden teslim geçmişi sürüm başına okunur; istenmediyse `null`"
                 }
               },
               "required": [
@@ -9620,10 +9647,11 @@
                 "score",
                 "grading",
                 "appealDeadline",
-                "appeal"
+                "appeal",
+                "resubmissionRequest"
               ]
             },
-            "description": "Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez"
+            "description": "Değişmez sürümler, eskiden yeniye (DOM-BEC-040); her sürüm kendi geç bayrağı, geri bildirimi ve yeniden teslim turuyla. Taslak hiç dönmez"
           },
           "allowance": {
             "anyOf": [
@@ -25065,6 +25093,34 @@
                       "type": "null"
                     }
                   ]
+                },
+                "resubmissionRequest": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "dueAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "requestedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        }
+                      },
+                      "required": [
+                        "dueAt",
+                        "requestedAt"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Bu sürüm için istenen yeniden teslim turu ve kendi son tarihi (DOM-BEC-040, IST-047); bir sonraki sürüm bu tarihe (geç kabulsüz) bağlıdır. Yeniden teslim geçmişi sürüm başına okunur; istenmediyse `null`"
                 }
               },
               "required": [
@@ -25078,11 +25134,12 @@
                 "score",
                 "grading",
                 "appealDeadline",
-                "appeal"
+                "appeal",
+                "resubmissionRequest"
               ],
               "additionalProperties": false
             },
-            "description": "Değişmez sürümler, eskiden yeniye (DOM-BEC-040); taslak hiç dönmez"
+            "description": "Değişmez sürümler, eskiden yeniye (DOM-BEC-040); her sürüm kendi geç bayrağı, geri bildirimi ve yeniden teslim turuyla. Taslak hiç dönmez"
           },
           "allowance": {
             "anyOf": [
@@ -73062,6 +73119,162 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/TaskDraft"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-assignments/{assignmentId}/draft/submit": {
+      "post": {
+        "operationId": "submitTaskDraft",
+        "summary": "Taslağı teslim et",
+        "tags": [
+          "task-submissions"
+        ],
+        "description": "Kaydedilmiş yazma taslağını yeni değişmez teslim sürümü yapar (IST-047; DOM-BEC-040, 044, 046). Teslim edilen metin `If-Match` ile verilen taslak revizyonudur; böylece kursiyerin son gördüğü metin teslim edilir. Sıra: kapsam dışı atama 404 → taslak yoksa 404 `not_found` → eski revizyon 409 `draft_conflict` → taslak son sürümden sonra değişmediyse 409 `draft_already_submitted` → yazma dışı görev 422 `draft_not_supported` → boş taslak 422 `draft_empty` → içerik kuralı (metin teslimiyle aynı) → core `planSubmissionVersion`: sürüm sınırı 422 `version_limit_reached`, puanlanmış teslimde öğretmen yeniden teslim istemeden 409 `resubmission_not_requested` (geri bildirim açılmadan genel 409 `submission_locked`), teslim kapandıysa 422 `submission_closed`; yeniden teslim istendiyse pencere isteğin son tarihidir (geç kabulsüz), geç kabuldeki sürüm `late`. Taslak silinmez. Gövde boş nesnedir. `If-Match` (taslağın `revision`'ı) ve `Idempotency-Key` zorunlu. Başarı 201 ve teslim kaydının `Location`'ı. Denetime `task_submission.submit_draft` alan adlarıyla yazılır; metin loglanmaz. Roller: yalnız `ogrenci` (kendi taslağı ve teslimi, atama onu şu an hedefliyorsa; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm → kural. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true,
+            "description": "Atama kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskSubmissionDetail"
                     }
                   },
                   "required": [

@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
+import { useRouteDiscardGuard } from '@/hooks/use-route-discard-guard.tsx'
 import { notify } from '@/lib/notify.ts'
 import {
   ConflictNotice,
@@ -226,6 +227,7 @@ function RubricEditor({
   const kind = useWatch({ control: form.control, name: 'kind' })
   const skill = useWatch({ control: form.control, name: 'skill' })
   const watched = useWatch({ control: form.control, name: 'criteria' })
+  const guard = useRouteDiscardGuard(form.formState.isDirty)
   const conflict = useEditConflict<RubricFormValues>({
     initialVersion: mode.kind === 'edit' ? mode.draft.rowVersion : 0,
     reload: async () => (reload ? reload() : null),
@@ -276,6 +278,7 @@ function RubricEditor({
       const outcome = await create.submit(result.body, { setError: setServerError })
       if (outcome.status !== 'success') return
       notify.success('Rubrik taslağı kaydedildi.')
+      guard.leave()
       onSaved(outcome.data.data.rubric.id)
       return
     }
@@ -286,6 +289,7 @@ function RubricEditor({
       )
       if (outcome.status !== 'success') return
       notify.success(`v${outcome.data.data.version.versionNumber} taslağı açıldı.`)
+      guard.leave()
       onClose()
       return
     }
@@ -300,6 +304,7 @@ function RubricEditor({
     )
     if (outcome.status === 'success') {
       notify.success('Taslak güncellendi.')
+      guard.leave()
       onClose()
     } else if (outcome.status === 'failed' && isVersionConflict(outcome.error)) {
       conflict.markConflict()
@@ -307,141 +312,148 @@ function RubricEditor({
   })
 
   return (
-    <form
-      noValidate
-      aria-label={TITLES[mode.kind]}
-      onSubmit={(event) => void submit(event)}
-      className="grid gap-6"
-    >
-      {conflict.conflicted ? (
-        <ConflictNotice
-          onReload={() => void conflict.reloadRecord()}
-          reloading={conflict.reloading}
-        />
-      ) : null}
-      {mode.kind === 'version' ? (
-        <p className="text-sm text-muted-foreground">
-          v{mode.base.versionNumber} içeriğiyle başlar. Yeni sürüm taslak olarak kaydedilir;
-          yayımlanınca yeni görevlerde kullanılır, eski görevler kendi sürümleriyle puanlanır.
-        </p>
-      ) : null}
-      <FormField id="rubrik-baslik" label="Başlık" error={errorAt('title')}>
-        {(control) => (
-          <Input {...control} {...form.register('title')} maxLength={200} disabled={busy} />
-        )}
-      </FormField>
-      <div className="grid gap-5 sm:grid-cols-2">
-        <FormField
-          id="rubrik-tur"
-          label="Rubrik türü"
-          error={errorAt('kind')}
-          description={
-            holistic
-              ? 'Bütüncül rubrik tek genel ölçekle puanlar.'
-              : 'Analitik rubrik her kriteri ayrı puanlar.'
-          }
-        >
-          {(control) => (
-            <NativeSelect
-              {...control}
-              value={kind}
-              onChange={(event) => {
-                const chosen = KIND_OPTIONS.find((item) => item.value === event.target.value)
-                if (chosen) changeKind(chosen.value)
-              }}
-              className="w-full"
-              disabled={busy}
-            >
-              {KIND_OPTIONS.map((item) => (
-                <NativeSelectOption key={item.value} value={item.value}>
-                  {item.label}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          )}
-        </FormField>
-        <FormField id="rubrik-beceri" label="Beceri" error={errorAt('skill')}>
-          {(control) => (
-            <NativeSelect
-              {...control}
-              value={skill}
-              onChange={(event) => {
-                const chosen = SKILL_OPTIONS.find((item) => item.value === event.target.value)
-                if (chosen) changeSkill(chosen.value)
-              }}
-              className="w-full"
-              disabled={busy}
-            >
-              {SKILL_OPTIONS.map((item) => (
-                <NativeSelectOption key={item.value} value={item.value}>
-                  {item.label}
-                </NativeSelectOption>
-              ))}
-            </NativeSelect>
-          )}
-        </FormField>
-      </div>
-
-      <section aria-labelledby="rubrik-form-kriterler" className="grid gap-4">
-        <div className="grid gap-1">
-          <h3 id="rubrik-form-kriterler" className="text-base font-semibold">
-            Kriterler
-          </h3>
-          <p className="text-sm text-muted-foreground">
-            Ağırlık toplamı {weightTotal}. Puan, kriter bantlarının ağırlıklı toplamından
-            hesaplanır; her kriterin altı bandı (0–5) tanımlanır, 3 hedef seviyedir.
-            {languageSchool ? ' Dil okulunda bantlar CEFR tanımlayıcısına bağlanır.' : ''}
-          </p>
-        </div>
-        {criteria.fields.map((field, index) => (
-          <CriterionFields
-            key={field.id}
-            form={form}
-            index={index}
-            skill={skill}
-            kind={kind}
-            share={shares[index] ?? 0}
-            overridden={watched[index]?.bandAlignments != null}
-            alignmentKind={watched[index]?.alignment.kind ?? 'cefr'}
-            languageSchool={languageSchool}
-            busy={busy}
-            errorAt={errorAt}
-            removable={!holistic && criteria.fields.length > 2}
-            onRemove={() => criteria.remove(index)}
+    <>
+      <form
+        noValidate
+        aria-label={TITLES[mode.kind]}
+        onSubmit={(event) => void submit(event)}
+        className="grid gap-6"
+      >
+        {conflict.conflicted ? (
+          <ConflictNotice
+            onReload={() => void conflict.reloadRecord()}
+            reloading={conflict.reloading}
           />
-        ))}
-        <RootError message={errorAt('criteria.root')?.message ?? errorAt('criteria')?.message} />
-        {holistic ? null : (
-          <div className="flex flex-wrap items-center gap-3">
-            <Button
-              type="button"
-              variant="secondary"
-              onClick={addCriterion}
-              disabled={busy || !canAdd}
-            >
-              <Icon name="Plus" size={16} aria-hidden="true" />
-              Kriter ekle
-            </Button>
-            {canAdd ? null : (
-              <p className="text-sm text-muted-foreground">
-                Bu becerinin bütün niteliksel yönleri eklendi.
-              </p>
+        ) : null}
+        {mode.kind === 'version' ? (
+          <p className="text-sm text-muted-foreground">
+            v{mode.base.versionNumber} içeriğiyle başlar. Yeni sürüm taslak olarak kaydedilir;
+            yayımlanınca yeni görevlerde kullanılır, eski görevler kendi sürümleriyle puanlanır.
+          </p>
+        ) : null}
+        <FormField id="rubrik-baslik" label="Başlık" error={errorAt('title')}>
+          {(control) => (
+            <Input {...control} {...form.register('title')} maxLength={200} disabled={busy} />
+          )}
+        </FormField>
+        <div className="grid gap-5 sm:grid-cols-2">
+          <FormField
+            id="rubrik-tur"
+            label="Rubrik türü"
+            error={errorAt('kind')}
+            description={
+              holistic
+                ? 'Bütüncül rubrik tek genel ölçekle puanlar.'
+                : 'Analitik rubrik her kriteri ayrı puanlar.'
+            }
+          >
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={kind}
+                onChange={(event) => {
+                  const chosen = KIND_OPTIONS.find((item) => item.value === event.target.value)
+                  if (chosen) changeKind(chosen.value)
+                }}
+                className="w-full"
+                disabled={busy}
+              >
+                {KIND_OPTIONS.map((item) => (
+                  <NativeSelectOption key={item.value} value={item.value}>
+                    {item.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
             )}
-          </div>
-        )}
-      </section>
+          </FormField>
+          <FormField id="rubrik-beceri" label="Beceri" error={errorAt('skill')}>
+            {(control) => (
+              <NativeSelect
+                {...control}
+                value={skill}
+                onChange={(event) => {
+                  const chosen = SKILL_OPTIONS.find((item) => item.value === event.target.value)
+                  if (chosen) changeSkill(chosen.value)
+                }}
+                className="w-full"
+                disabled={busy}
+              >
+                {SKILL_OPTIONS.map((item) => (
+                  <NativeSelectOption key={item.value} value={item.value}>
+                    {item.label}
+                  </NativeSelectOption>
+                ))}
+              </NativeSelect>
+            )}
+          </FormField>
+        </div>
 
-      <RootError message={form.formState.errors.root?.server?.message} />
-      <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
-        <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
-          Vazgeç
-        </Button>
-        <Button type="submit" disabled={busy || conflict.conflicted} aria-busy={busy || undefined}>
-          <Icon name="Check" size={17} aria-hidden="true" />
-          {mode.kind === 'edit' ? 'Değişiklikleri kaydet' : 'Taslağı kaydet'}
-        </Button>
-      </div>
-    </form>
+        <section aria-labelledby="rubrik-form-kriterler" className="grid gap-4">
+          <div className="grid gap-1">
+            <h3 id="rubrik-form-kriterler" className="text-base font-semibold">
+              Kriterler
+            </h3>
+            <p className="text-sm text-muted-foreground">
+              Ağırlık toplamı {weightTotal}. Puan, kriter bantlarının ağırlıklı toplamından
+              hesaplanır; her kriterin altı bandı (0–5) tanımlanır, 3 hedef seviyedir.
+              {languageSchool ? ' Dil okulunda bantlar CEFR tanımlayıcısına bağlanır.' : ''}
+            </p>
+          </div>
+          {criteria.fields.map((field, index) => (
+            <CriterionFields
+              key={field.id}
+              form={form}
+              index={index}
+              skill={skill}
+              kind={kind}
+              share={shares[index] ?? 0}
+              overridden={watched[index]?.bandAlignments != null}
+              alignmentKind={watched[index]?.alignment.kind ?? 'cefr'}
+              languageSchool={languageSchool}
+              busy={busy}
+              errorAt={errorAt}
+              removable={!holistic && criteria.fields.length > 2}
+              onRemove={() => criteria.remove(index)}
+            />
+          ))}
+          <RootError message={errorAt('criteria.root')?.message ?? errorAt('criteria')?.message} />
+          {holistic ? null : (
+            <div className="flex flex-wrap items-center gap-3">
+              <Button
+                type="button"
+                variant="secondary"
+                onClick={addCriterion}
+                disabled={busy || !canAdd}
+              >
+                <Icon name="Plus" size={16} aria-hidden="true" />
+                Kriter ekle
+              </Button>
+              {canAdd ? null : (
+                <p className="text-sm text-muted-foreground">
+                  Bu becerinin bütün niteliksel yönleri eklendi.
+                </p>
+              )}
+            </div>
+          )}
+        </section>
+
+        <RootError message={form.formState.errors.root?.server?.message} />
+        <div className="flex flex-wrap justify-end gap-2 border-t pt-4">
+          <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
+            Vazgeç
+          </Button>
+          <Button
+            type="submit"
+            disabled={busy || conflict.conflicted}
+            aria-busy={busy || undefined}
+          >
+            <Icon name="Check" size={17} aria-hidden="true" />
+            {mode.kind === 'edit' ? 'Değişiklikleri kaydet' : 'Taslağı kaydet'}
+          </Button>
+        </div>
+      </form>
+      {guard.dialog}
+    </>
   )
 }
 

@@ -77,6 +77,7 @@ const attempt = (overrides: Partial<TaskAttempt> = {}): TaskAttempt => ({
   id: 'at-1',
   assignmentId: 'as-1',
   learnerId: 's-1',
+  learnerName: null,
   attemptNumber: 1,
   status: 'submitted',
   startedAt: '2026-10-14T09:00:00.000Z',
@@ -97,6 +98,7 @@ const submission = (overrides: Partial<TaskSubmission> = {}): TaskSubmission => 
   id: 'sub-1',
   assignmentId: 'as-1',
   learnerId: 's-1',
+  learnerName: null,
   status: 'submitted',
   versionCount: 1,
   latestVersion: {

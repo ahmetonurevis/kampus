@@ -463,6 +463,70 @@ describe('yazma görevi taslak ve teslim uçları', () => {
       fails(response, 403, 'module_disabled')
   })
 
+  test('OG-213, DOM-YTK-028: teslim listesi ve ayrıntısı öğrenci adını yönetici ve kendi öğrencisi için öğretmene taşır; kapsam dışı öğrenci, öğrenci ve veli null alır; atamayı görmeyen öğretmen ve başka kurum 404', async () => {
+    const t = await tenant()
+    const assignmentId = await assignBoth(t, t.homeworkId)
+    const created = await ok(await submit(assignmentId, t.cookies.student), 201)
+    const canSubmitted = await ok(await submit(assignmentId, t.cookies.otherStudent), 201)
+
+    for (const cookie of [t.cookies.admin, t.cookies.teacher]) {
+      const rows = (await ok(await list(assignmentId, cookie))) as Json[]
+      const mine = rows.find((row) => row.id === created.id)
+      assert.equal(mine?.learnerName, 'Deniz Yılmaz')
+      assert.equal((await ok(await detail(created.id, cookie))).learnerName, 'Deniz Yılmaz')
+    }
+    // Atamayı gören 9-A öğretmeni 9-B'deki Can'ın teslimini okur ama adı gelmez (DOM-YTK-028:
+    // başkasının öğrencisinin adı istemciye girmez); kendi öğrencisi Deniz'in adı gelir.
+    const teacherRows = (await ok(await list(assignmentId, t.cookies.teacher))) as Json[]
+    assert.equal(teacherRows.find((row) => row.id === canSubmitted.id)?.learnerName, null)
+    assert.equal((await ok(await detail(canSubmitted.id, t.cookies.teacher))).learnerName, null)
+    assert.ok(!JSON.stringify(teacherRows).includes('Can'))
+    // Atamayı görmeyen 9-B öğretmeni teslimi hiç okuyamaz.
+    const only9a = await assign(t, {}, t.otherHomeworkId)
+    const lonely = await ok(await submit(only9a, t.cookies.student), 201)
+    fails(await list(only9a, t.cookies.otherTeacher), 404, 'not_found')
+    fails(await detail(lonely.id, t.cookies.otherTeacher), 404, 'not_found')
+    // Yönetici kurumdaki her öğrencinin adını görür.
+    const adminRows = (await ok(await list(assignmentId, t.cookies.admin))) as Json[]
+    assert.equal(adminRows.find((row) => row.id === canSubmitted.id)?.learnerName, 'Can Arslan')
+
+    // Öğrenci ve veli kendi/çocuğunun teslimini okur; ad gelmez (başkasının adı girmez).
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const rows = (await ok(await list(assignmentId, cookie))) as Json[]
+      assert.ok(rows.length > 0)
+      assert.ok(rows.every((row) => row.learnerName === null))
+      assert.equal((await ok(await detail(created.id, cookie))).learnerName, null)
+    }
+    assert.ok(
+      !JSON.stringify(await ok(await list(assignmentId, t.cookies.student))).includes('Deniz'),
+    )
+
+    // Başka kurumun yöneticisi ne teslimi ne adı görür.
+    const otherAdmin = await signInAs(app, (await createInstitution(app)).admin)
+    fails(await list(assignmentId, otherAdmin), 404, 'not_found')
+    fails(await detail(created.id, otherAdmin), 404, 'not_found')
+  })
+
+  test('OG-213, DOM-YTK-028: arşivli öğrencinin adı yönetici listesinde gelir; kaydı olmayan öğrencide ad null olur, liste ve ayrıntı bozulmaz', async () => {
+    const t = await tenant()
+    const assignmentId = await assignBoth(t, t.homeworkId)
+    const deniz = await ok(await submit(assignmentId, t.cookies.student), 201)
+    const can = await ok(await submit(assignmentId, t.cookies.otherStudent), 201)
+    const student = (id: string) =>
+      and(
+        eq(records.institutionId, t.institution.id),
+        eq(records.collection, 'students'),
+        eq(records.id, id),
+      )
+    await db.update(records).set({ archivedAt: FIXED_NOW }).where(student('s-1'))
+    await db.delete(records).where(student('s-3'))
+    const rows = (await ok(await list(assignmentId, t.cookies.admin))) as Json[]
+    assert.equal(rows.find((row) => row.id === deniz.id)?.learnerName, 'Deniz Yılmaz')
+    assert.equal(rows.find((row) => row.id === can.id)?.learnerName, null)
+    assert.equal((await ok(await detail(deniz.id, t.cookies.admin))).learnerName, 'Deniz Yılmaz')
+    assert.equal((await ok(await detail(can.id, t.cookies.admin))).learnerName, null)
+  })
+
   test('IST-047: taslak ilk kayıtta If-Match istemez; taslak varken başlıksız 400 if_match_required, eski revizyon 409 draft_conflict; yalnız öğrenci görür, teslim okumasında dönmez', async () => {
     const t = await tenant()
     const assignmentId = await assign(t, {

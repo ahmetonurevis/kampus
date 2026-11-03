@@ -30,6 +30,7 @@ import {
   deadlineFormSchema,
   instantToLocal,
   isStaffAssignment,
+  learnerLabel,
   scoreState,
   submissionStatus,
   targetsLabel,
@@ -214,7 +215,6 @@ function SubmissionList({
   onGrade: (submissionId: string) => void
 }) {
   const submissions = useTaskSubmissions({ assignmentId, page: 1, pageSize: 100 })
-  const { names } = useTaskLookups()
   return (
     <SummarySection title="Teslimler">
       {submissions.error ? (
@@ -230,7 +230,7 @@ function SubmissionList({
           {submissions.data.data.map((submission) => {
             const status = submissionStatus(submission.status)
             const score = scoreState(submission)
-            const learner = names.studentName(submission.learnerId)
+            const learner = learnerLabel(submission)
             return (
               <li
                 key={submission.id}
@@ -287,7 +287,6 @@ function AttemptList({
   })
   const paging = { page: list.state.page, pageSize: list.state.pageSize }
   const attempts = useTaskAttempts({ assignmentId, ...paging })
-  const { names } = useTaskLookups()
   const total = attempts.data?.meta.total ?? 0
   const pages = pageCount(total, paging.pageSize)
   if (total > 0 && paging.page > pages) list.dispatch({ type: 'clamp', pageCount: pages })
@@ -306,7 +305,7 @@ function AttemptList({
           <ul aria-label="Denemeler" className="grid gap-2">
             {attempts.data.data.map((attempt) => {
               const status = attemptStatusBadge(attempt)
-              const learner = names.studentName(attempt.learnerId)
+              const learner = learnerLabel(attempt)
               const label = `${learner}, ${attempt.attemptNumber}. deneme`
               return (
                 <li

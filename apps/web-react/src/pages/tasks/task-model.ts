@@ -77,7 +77,17 @@ export const ATTEMPT_LIST_PARAMS: readonly string[] = [`${ATTEMPT_LIST_PREFIX}sa
 
 export interface TargetNames {
   className: (id: string) => string
-  studentName: (id: string) => string
+}
+
+/** Genel öğrenci etiketi: ad satırda gelmediğinde (sunucu `null` döner) gösterilir. */
+export const LEARNER_FALLBACK = 'Öğrenci'
+
+/**
+ * Teslim/deneme satırının öğrenci adı. Ad sunucudan satırla gelir (`learnerName`, OG-213); yalnız
+ * satırı okuyan personele dolu, diğerlerinde `null` olur ve genel etiket gösterilir.
+ */
+export function learnerLabel(row: { learnerName: string | null }): string {
+  return row.learnerName ?? LEARNER_FALLBACK
 }
 
 export interface AssignmentRow extends Record<string, unknown> {

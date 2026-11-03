@@ -35,6 +35,7 @@ import { ConflictError, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { attemptContentGate, contentRemoved } from './learner-content.ts'
 import { listeningSummary } from './listening-plays.ts'
+import { loadLearnerNames } from './task-learner-names.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
@@ -140,6 +141,7 @@ function attemptView(
   attempt: StoredAttempt,
   learnerAttempts: readonly StoredAttempt[],
   now: string,
+  learnerName: string | null,
 ) {
   const { context } = scoring
   const timing = timingOf(assignment)
@@ -174,6 +176,7 @@ function attemptView(
     id: attempt.id,
     assignmentId: attempt.assignmentId,
     learnerId: attempt.learnerId,
+    learnerName,
     attemptNumber: attempt.attemptNumber,
     status: state.status,
     startedAt: attempt.startedAt,
@@ -330,12 +333,11 @@ async function detailView(
   const pairs = await loadWorkPairs(db, ctx.institutionId, [assignment])
   const scoring = attemptScoring(assignment, pairs)
   const { context } = scoring
-  const learnerAttempts = await loadAttempts(
-    db,
-    ctx.institutionId,
-    assignment.id,
-    attempt.learnerId,
-  )
+  const [learnerAttempts, names] = await Promise.all([
+    loadAttempts(db, ctx.institutionId, assignment.id, attempt.learnerId),
+    loadLearnerNames({ ...ctx, db }, viewer, [attempt.learnerId]),
+  ])
+  const learnerName = names.get(attempt.learnerId) ?? null
   const now = ctx.now.toISOString()
   const running = hasRunning(assignment, learnerAttempts, now)
   const contentUnavailable = await attemptContentGate(
@@ -348,7 +350,10 @@ async function detailView(
   // Kaldırılmış içerikte kapı her bakana kapalıdır; bağlamın olmaması da aynı yüzü kapatır.
   const open = contentUnavailable === null && context !== null
   return {
-    ...withoutKey(attemptView(viewer, assignment, scoring, attempt, learnerAttempts, now), open),
+    ...withoutKey(
+      attemptView(viewer, assignment, scoring, attempt, learnerAttempts, now, learnerName),
+      open,
+    ),
     questions: open ? questionsFor(context, attempt.id) : [],
     passage: open ? passageFor(context) : null,
     // Döküm personelde hep, kursiyer ve velide görev kapanınca ya da alıştırmada açık ayarla
@@ -422,6 +427,11 @@ export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptLi
     rows.map((row) => row.learnerId),
   )
   const now = ctx.now.toISOString()
+  const learnerNames = await loadLearnerNames(
+    ctx,
+    viewer,
+    rows.map((row) => row.learnerId),
+  )
   const ownOf = (learnerId: string) => all.filter((other) => other.learnerId === learnerId)
   // Anahtar ayrıntıdaki kapıyla gizlenir (`attemptContentGate`): personelde atama başına bir,
   // öğrenci ve velide kursiyer başına bir sınama (kendisi ya da çocukları).
@@ -442,7 +452,15 @@ export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptLi
     total,
     items: rows.map((row) =>
       withoutKey(
-        attemptView(viewer, assignment, scoring, row, ownOf(row.learnerId), now),
+        attemptView(
+          viewer,
+          assignment,
+          scoring,
+          row,
+          ownOf(row.learnerId),
+          now,
+          learnerNames.get(row.learnerId) ?? null,
+        ),
         gates.get(viewer.kind === 'learner' ? row.learnerId : '') ?? false,
       ),
     ),

@@ -9,8 +9,7 @@ import { AttemptResult } from './AttemptResult.tsx'
 import { ListeningRecording } from './ListeningRecording.tsx'
 import { ReadingPassage } from './ReadingPassage.tsx'
 import { attemptStatusBadge, isNotFoundError } from './student-task-model.ts'
-import { dateTimeLabel } from './task-model.ts'
-import { useTaskLookups } from './use-task-lookups.ts'
+import { dateTimeLabel, learnerLabel } from './task-model.ts'
 
 /** Deneme ayrıntısının adres parametresi (`?deneme=<deneme kimliği>`). */
 export const ATTEMPT_PARAM = 'deneme'
@@ -46,7 +45,6 @@ function ReviewBody({ attemptId }: { attemptId: string }) {
   const detail = useTaskAttempt(attemptId)
   const attempt = detail.data?.data
   const assignmentQuery = useTaskAssignment(attempt?.assignmentId ?? '')
-  const { names } = useTaskLookups()
 
   if (isNotFoundError(detail.error))
     return (
@@ -63,7 +61,7 @@ function ReviewBody({ attemptId }: { attemptId: string }) {
       </p>
     )
 
-  const learner = names.studentName(attempt.learnerId)
+  const learner = learnerLabel(attempt)
   const title = assignmentQuery.data?.data.title ?? ''
   const status = attemptStatusBadge(attempt)
   return (

@@ -15,6 +15,7 @@ import {
   defaultResubmissionLocal,
   formFieldFor,
   hasListeningRecording,
+  learnerLabel,
   resubmissionDueError,
   scoreBody,
   scoreFormSchema,
@@ -26,7 +27,7 @@ import {
 } from '../src/pages/tasks/task-model.ts'
 
 const NOW = Date.parse('2026-11-01T09:00:00.000Z')
-const names = { className: (id: string) => `Sınıf ${id}`, studentName: (id: string) => id }
+const names = { className: (id: string) => `Sınıf ${id}` }
 
 const teacherForm = (extra: Partial<AssignmentFormValues> = {}): AssignmentFormValues => ({
   ...defaultAssignment,
@@ -35,6 +36,13 @@ const teacherForm = (extra: Partial<AssignmentFormValues> = {}): AssignmentFormV
   rubricVersionId: 'rv1',
   dueAt: '2026-11-20T18:00',
   ...extra,
+})
+
+describe('öğrenci adı satırdan gelir (OG-213; DOM-YTK-028)', () => {
+  test('OG-213: learnerLabel sunucunun adını gösterir, null için genel etiket', () => {
+    assert.equal(learnerLabel({ learnerName: 'Deniz Yılmaz' }), 'Deniz Yılmaz')
+    assert.equal(learnerLabel({ learnerName: null }), 'Öğrenci')
+  })
 })
 
 describe('görev atama formu (DOM-KYN-032, DOM-BEC-041, 042, 044)', () => {

@@ -100,6 +100,12 @@ const attemptShape = {
   id,
   assignmentId: id,
   learnerId: z.string(),
+  learnerName: z
+    .string()
+    .nullable()
+    .describe(
+      'Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213)',
+    ),
   attemptNumber: z.number().int().min(1),
   status: z
     .enum(['in_progress', 'submitted', 'expired'])

@@ -58,6 +58,7 @@ import { listConsentsOfSubject } from '../db/privacy.ts'
 import { findRecord } from '../db/records.ts'
 import { AppError, MESSAGES, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { loadLearnerNames } from './task-learner-names.ts'
 import { actorStudentConsent } from './consents.ts'
 import { defineFileAttachment } from './file-registry.ts'
 import { listMembershipLinks } from './memberships.ts'
@@ -379,6 +380,7 @@ function summaryView(
   book: GradingBook,
   assignment: StoredAssignment,
   work: StoredSubmissionWork,
+  learnerNames: ReadonlyMap<string, string>,
 ) {
   const latest = work.versions.at(-1)
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
@@ -386,6 +388,7 @@ function summaryView(
     id: work.submission.id,
     assignmentId: work.submission.assignmentId,
     learnerId: work.submission.learnerId,
+    learnerName: learnerNames.get(work.submission.learnerId) ?? null,
     status: statusOf(assignment, work, ctx.now),
     versionCount: work.versions.length,
     latestVersion:
@@ -541,9 +544,17 @@ export async function detailView(
     loadGrading(db, ctx, [work.submission.id]),
     loadVersionFiles(db, ctx.institutionId, work.versions),
   ])
+  const learnerNames = await namesOf(
+    db,
+    ctx,
+    viewer,
+    book,
+    new Map([[assignment.id, assignment]]),
+    [work],
+  )
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
   return {
-    ...summaryView(viewer, ctx, book, assignment, work),
+    ...summaryView(viewer, ctx, book, assignment, work, learnerNames),
     versions: work.versions.map((version) => ({
       ...versionView(assignment, work, version),
       body: version.body,
@@ -662,6 +673,33 @@ function appealView(viewer: Viewer, grading: Grading, version: VersionRow) {
 }
 
 /**
+ * Satırların öğrenci adları (OG-213): öğretmende kapsamındaki öğrenciler; koordinatörde ayrıca
+ * uyuşmazlıklı ve okuduğu teslimlerin öğrencisi (`coordinatorReaches`, DOM-YTK-027).
+ */
+async function namesOf(
+  db: Database,
+  ctx: ServiceContext,
+  viewer: Viewer,
+  book: GradingBook,
+  assignments: ReadonlyMap<string, StoredAssignment>,
+  rows: readonly StoredSubmissionWork[],
+) {
+  const coordinated = new Set<string>()
+  for (const work of rows) {
+    const assignment = assignments.get(work.submission.assignmentId)
+    const grading = book.bySubmission.get(work.submission.id)
+    if (assignment && grading && coordinatorReaches(viewer, assignment, work, grading))
+      coordinated.add(work.submission.learnerId)
+  }
+  return loadLearnerNames(
+    { ...ctx, db },
+    viewer,
+    rows.map((work) => work.submission.learnerId),
+    coordinated,
+  )
+}
+
+/**
  * Teslim özetleri (liste ve puanlama kuyruğu): puanlar tek seferde yüklenir. Her satırın ataması
  * `assignments`'ta olmalıdır.
  */
@@ -677,10 +715,11 @@ export async function listSummaries(
     ctx,
     rows.map((work) => work.submission.id),
   )
+  const learnerNames = await namesOf(db, ctx, viewer, book, assignments, rows)
   return rows.map((work) => {
     const assignment = assignments.get(work.submission.assignmentId)
     if (assignment === undefined) throw new Error('submission summary without its assignment')
-    return summaryView(viewer, ctx, book, assignment, work)
+    return summaryView(viewer, ctx, book, assignment, work, learnerNames)
   })
 }
 

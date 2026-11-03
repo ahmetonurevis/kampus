@@ -46,7 +46,7 @@ export function TaskAssignmentsView() {
     pageSize: list.state.pageSize,
     ...(kind ? { kind: kind as 'evaluation' | 'practice' } : {}),
   })
-  const { names } = useTaskLookups({ students: false })
+  const { names } = useTaskLookups()
   const rows = useMemo<AssignmentRow[] | undefined>(
     () =>
       assignments.data?.data

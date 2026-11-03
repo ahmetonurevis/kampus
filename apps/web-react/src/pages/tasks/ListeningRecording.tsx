@@ -73,6 +73,7 @@ export function ListeningRecording({
   const [refused, setRefused] = useState<string | null>(null)
   const [pending, setPending] = useState(false)
   const [autoplayBlocked, setAutoplayBlocked] = useState(false)
+  const [playError, setPlayError] = useState(false)
   const now = useNow(link !== null, 5_000)
   const captions = useCaptionsSource(recording.captionsVtt)
   const [transcriptOpen, setTranscriptOpen] = useState(false)
@@ -106,6 +107,7 @@ export function ListeningRecording({
       )
       if (result.listening) setGrant(allowanceOf(result.listening))
       setRefused(null)
+      setPlayError(false)
       setLink({ url: result.url, expiresAt: result.expiresAt })
     } catch (error) {
       const code = listeningErrorCode(error)
@@ -123,10 +125,14 @@ export function ListeningRecording({
     }
   }
 
+  /**
+   * Oynatıcı koparsa bağlantı geçerliyken aynı adresle, kaldığı yerden yeniden bağlanır; yeni
+   * bağlantı istenmez. Sınır aşılırsa sakin not çıkar, oynatıcı bağlantının ömrü boyunca kalır.
+   */
   function reconnect(event: SyntheticEvent<HTMLAudioElement>) {
     const audio = event.currentTarget
     if (!linkUsable(link, Date.now()) || reconnects.current >= RECONNECT_LIMIT) {
-      setLink(null)
+      setPlayError(true)
       return
     }
     reconnects.current += 1
@@ -180,7 +186,11 @@ export function ListeningRecording({
               <track ref={captions} kind="captions" srcLang="en" label="İngilizce" default />
             ) : null}
           </audio>
-          {autoplayBlocked ? (
+          {playError ? (
+            <p role="status" className="text-xs text-muted-foreground">
+              Kayıt oynatılamadı. Bağlantınızı kontrol edip oynatıcıdan yeniden deneyin.
+            </p>
+          ) : autoplayBlocked ? (
             <p className="text-xs text-muted-foreground">
               Kaydı başlatmak için oynatıcıdaki oynat düğmesine basın.
             </p>

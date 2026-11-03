@@ -1131,3 +1131,79 @@ test.describe('Vue eşitliği: Tanışma Görüşmeleri (ON-035)', () => {
     await expect(rows.first()).toContainText('15:00 – 15:30')
   })
 })
+
+test.describe('Vue eşitliği: ön büro panosu aday sayaçları (ON-035)', () => {
+  test('ON-035, DOM-KAY-033: "Bugünkü tanışma görüşmesi" açık adayların bugünkü görüşmelerini, "Toplam kesin kayıt" kayıt olanları sayar', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    // İstanbul günü; 09:00Z o gün 12:00'dir (görüşme geçmiş olabilir, yine bugündür).
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(
+      new Date(),
+    )
+    const todayAt = `${today}T09:00:00.000Z`
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-pr-bugun-1',
+          name: 'Bugün Bir',
+          phone: '05550300101',
+          stage: 'Görüşme planlandı',
+          trialAt: todayAt,
+          meeting: meetingOf(todayAt),
+        }),
+        prospect({
+          id: 'e2e-pr-bugun-2',
+          name: 'Bugün İki',
+          phone: '05550300102',
+          stage: 'Görüşme planlandı',
+          trialAt: todayAt,
+          meeting: meetingOf(todayAt, 'Oda 5'),
+        }),
+        prospect({
+          id: 'e2e-pr-bugun-x',
+          name: 'Bugün Vazgeçen',
+          phone: '05550300103',
+          stage: 'Vazgeçti',
+          trialAt: todayAt,
+          meeting: meetingOf(todayAt, 'Oda 6'),
+        }),
+        prospect({
+          id: 'e2e-pr-ileri',
+          name: 'İleri Aday',
+          phone: '05550300104',
+          stage: 'Görüşme planlandı',
+          trialAt: at(3, 10),
+          meeting: meetingOf(at(3, 10)),
+        }),
+        prospect({
+          id: 'e2e-pr-kayitli',
+          name: 'Kayıtlı Aday',
+          phone: '05550300105',
+          stage: 'Kayıt oldu',
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/dashboard')
+    const card = (name: string) => page.getByRole('article', { name, exact: true })
+    await expect
+      .poll(() => card('Bugünkü tanışma görüşmesi').locator('.stat-value').innerText())
+      .toBe('2')
+    await expect.poll(() => card('Toplam kesin kayıt').locator('.stat-value').innerText()).toBe('1')
+    await expect(card('Toplam kesin kayıt')).toContainText('5 adaydan %20 kesin kayıt')
+
+    await card('Bugünkü tanışma görüşmesi').getByRole('link').click()
+    await expect(page).toHaveURL(/\/onburo\/deneme-dersi-takvimi\?gorunum=hafta/)
+    const calendar = page.getByRole('list', { name: 'Haftalık görüşme takvimi' })
+    await expect(calendar).toContainText('Bugün Bir')
+    await expect(calendar).not.toContainText('Bugün Vazgeçen')
+
+    await page.goto('/onburo/dashboard')
+    await card('Toplam kesin kayıt').getByRole('link').click()
+    await expect(page).toHaveURL(/\/onburo\/adaylar\?asama=/)
+    await expect(resultCount(page)).toContainText('1–1 / 1 kayıt')
+  })
+})

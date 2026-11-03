@@ -18,3 +18,20 @@ export function overdueTrendPoints(
 export function overdueStudentsNote(students: number): string {
   return students > 0 ? `${number(students)} öğrencide gecikmiş borç` : 'Gecikmiş borç bulunmuyor'
 }
+
+/**
+ * Tahsilat oranı (Vue `Dashboard.vue` yönetici "Tahsilat oranı" kartı): ödenmiş taksit tutarının
+ * ödeme planı toplamına oranı, yüzde ve yuvarlanmış. Özet seçili kampüse daralır; "Taksit durumu"
+ * kartındaki "Ödendi" payıyla aynı sayıdır. Ödeme planı yoksa oran yoktur (`null`).
+ */
+export function collectionRate(summary: {
+  amount: number
+  paid: { amount: number }
+}): number | null {
+  if (summary.amount <= 0) return null
+  return Math.round((summary.paid.amount / summary.amount) * 100)
+}
+
+/** Kartın değeri: `%62`; oran yoksa tire. */
+export const collectionRateLabel = (rate: number | null) =>
+  rate === null ? '—' : `%${String(rate)}`

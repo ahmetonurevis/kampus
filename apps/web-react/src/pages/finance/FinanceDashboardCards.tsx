@@ -25,7 +25,12 @@ import {
   outstandingAmount,
   type InvoiceRow,
 } from '../dashboard/dashboard-model.ts'
-import { overdueStudentsNote, overdueTrendPoints } from './finance-dashboard-model.ts'
+import {
+  collectionRate,
+  collectionRateLabel,
+  overdueStudentsNote,
+  overdueTrendPoints,
+} from './finance-dashboard-model.ts'
 
 const SLICE_TONE = { gecikmis: 'warning', yaklasan: 'primary', odendi: 'success' } as const
 const FRONT_DESK_PATH = 'tahsilat-takip'
@@ -67,6 +72,28 @@ function OverdueAmountCard({ ctx }: { ctx: DashboardCardContext<DashboardOf<'yon
 
 export const FINANCE_CARDS = [
   // --- Yönetici ---
+  defineCard({
+    id: 'yonetici.tahsilat-orani',
+    roles: ['yonetici'],
+    module: 'finance',
+    section: (data) => data.finance,
+    area: 'stat',
+    order: 35,
+    component: ({ ctx }) => {
+      const invoices = ctx.data?.finance?.invoices
+      const rate = invoices ? collectionRate(invoices) : null
+      return (
+        <StatCard
+          label="Tahsilat oranı"
+          icon="ChartNoAxesCombined"
+          value={collectionRateLabel(rate)}
+          note={rate === null ? 'Henüz ödeme planı yok' : 'Tüm ödeme planına göre'}
+          href={dashboardHref(ctx.role, 'finans', { durum: 'odendi' })}
+          state={ctx.state}
+        />
+      )
+    },
+  }),
   defineCard({
     id: 'yonetici.bugunku-tahsilat',
     roles: ['yonetici'],

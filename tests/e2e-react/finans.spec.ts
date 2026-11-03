@@ -788,6 +788,57 @@ test.describe('Finans: liste', () => {
     await expect(card).toHaveCount(0)
   })
 
+  test('ON-036: pano "Tahsilat oranı" ödenen tutarın ödeme planına oranıdır, kampüse daralır', async ({
+    page,
+    api,
+  }) => {
+    const client = await api('yonetici')
+    /** Sunucu sayımından beklenen oran: ödenmiş taksit tutarı / ödeme planı toplamı. */
+    async function expectedRate(query = ''): Promise<string> {
+      const result = await client.get(
+        `/api/v1/collections/invoices/counts?groupBy=status&sum=amount${query}`,
+      )
+      expect(result.status).toBe(200)
+      const body = result.body as {
+        data: { value: string | null; sum?: number }[]
+        meta: { sum?: number }
+      }
+      const total = body.meta.sum ?? 0
+      const paid = body.data.find((group) => group.value === 'Ödendi')?.sum ?? 0
+      return total > 0 ? `%${String(Math.round((paid / total) * 100))}` : '—'
+    }
+    const value = () =>
+      page
+        .getByRole('article', { name: 'Tahsilat oranı', exact: true })
+        .locator('.stat-value')
+        .innerText()
+
+    await page.goto('/yonetici/dashboard')
+    const card = page.getByRole('article', { name: 'Tahsilat oranı', exact: true })
+    await expect(card).toContainText('Tüm ödeme planına göre')
+    await expect
+      .poll(async () => {
+        const [shown, expected] = [await value(), await expectedRate()]
+        return shown === expected ? 'eşit' : `${shown} != ${expected}`
+      })
+      .toBe('eşit')
+
+    // Kampüs seçilince oran o kampüsün sınıflarındaki taksitlerden hesaplanır.
+    const classes = await client.get('/api/v1/collections/classes?pageSize=100&branchId=b2')
+    const ids = (classes.body as { data: { id: string }[] }).data.map((row) => row.id)
+    await page.goto('/yonetici/dashboard?sube=b2')
+    await expect
+      .poll(async () => {
+        const expected = await expectedRate(ids.map((id) => `&classId=${id}`).join(''))
+        const shown = await value()
+        return shown === expected ? 'eşit' : `${shown} != ${expected}`
+      })
+      .toBe('eşit')
+
+    await card.getByRole('link', { name: 'Tahsilat oranı' }).click()
+    await expect(page).toHaveURL(/\/yonetici\/finans\?durum=odendi/)
+  })
+
   test('durum filtresi sunucuda sayfalanır; ikinci sayfa aynı durumu verir', async ({ page }) => {
     const requests: string[] = []
     page.on('request', (request) => {

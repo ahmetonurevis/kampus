@@ -6,6 +6,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { SummaryMetrics } from '../management/SummaryParts.tsx'
 import { AttemptResult } from './AttemptResult.tsx'
+import { ListeningRecording } from './ListeningRecording.tsx'
 import { ReadingPassage } from './ReadingPassage.tsx'
 import { attemptStatusBadge, isNotFoundError } from './student-task-model.ts'
 import { dateTimeLabel } from './task-model.ts'
@@ -25,6 +26,7 @@ type Props = {
  * adreste `?deneme=`. Okuma parçası, öğrencinin cevapları, madde sonuçları ve alt beceri dökümü
  * kursiyerin sonuç ekranıyla aynı bileşenlerdir (`ReadingPassage`, `AttemptResult`,
  * `SubskillBreakdown`); yalnız sunucunun açtığı alanlar çizilir. Süren denemede sonuç yoktur.
+ * Dinleme kaydı (IST-045, DOM-BEC-005) personele her zaman dökümüyle açılır; bağlantısı sayılmaz.
  * Kapsam dışı, olmayan ya da başka kurumun denemesi 404 verir ve "Deneme bulunamadı" görünür.
  */
 export function AttemptReviewModal({ attemptId, onClose }: Props) {
@@ -78,6 +80,14 @@ function ReviewBody({ attemptId }: { attemptId: string }) {
         ]}
       />
       {attempt.passage ? <ReadingPassage passage={attempt.passage} /> : null}
+      {attempt.listeningRecording && !attempt.contentRemoved ? (
+        <ListeningRecording
+          recording={attempt.listeningRecording}
+          listening={attempt.listening}
+          mode="review"
+          audience="staff"
+        />
+      ) : null}
       {attempt.status === 'in_progress' ? (
         <p role="status" className="text-sm text-muted-foreground">
           Deneme sürüyor; cevaplar ve sonuç teslimden sonra görünür.

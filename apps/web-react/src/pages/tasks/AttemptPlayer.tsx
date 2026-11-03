@@ -11,6 +11,7 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
+import { ListeningRecording } from './ListeningRecording.tsx'
 import { QuestionInput } from './QuestionInput.tsx'
 import { ReadingPassage } from './ReadingPassage.tsx'
 import { answeredCount, attemptClock, isAnswered } from './student-task-model.ts'
@@ -42,7 +43,8 @@ const SAVE_TEXT: Record<SaveState, string> = {
  * süre sunucu saatinden gelir. Çözüm sırasında doğru cevap ya da puan yoktur; teslimden sonra
  * sonuç ekranı sunucunun açtığı kadarını gösterir. Okuma-anlama etkinliğinde (IST-042) metin
  * geniş ekranda soruların solunda kendi içinde kayar, dar ekranda üstte durur; soru başında alt
- * beceri etiketi (DOM-BEC-006) yazılır.
+ * beceri etiketi (DOM-BEC-006) yazılır. Dinleme etkinliğinde (IST-045, DOM-BEC-005) kayıt
+ * soruların üstündedir; bağlantı bu denemenin kimliğiyle istenir ve hak burada sayılır.
  */
 export function AttemptPlayer({
   title,
@@ -255,14 +257,27 @@ export function AttemptPlayer({
       </Modal>
     </section>
   )
-  if (!attempt.passage) return player
-  return (
+  const body = attempt.passage ? (
     <div className="grid items-start gap-5 lg:grid-cols-2">
       <ReadingPassage
         passage={attempt.passage}
         className="min-w-0 lg:sticky lg:top-(--topbar-clearance) lg:max-h-[calc(100dvh-var(--topbar-clearance)-16px)] lg:overflow-y-auto"
       />
       {player}
+    </div>
+  ) : (
+    player
+  )
+  if (!attempt.listeningRecording) return body
+  return (
+    <div className="grid gap-5">
+      <ListeningRecording
+        recording={attempt.listeningRecording}
+        listening={attempt.listening}
+        mode="attempt"
+        attemptId={attempt.id}
+      />
+      {body}
     </div>
   )
 }

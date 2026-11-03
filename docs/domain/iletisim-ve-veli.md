@@ -286,7 +286,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 
 - **Kural:** Haftalık bülten her çocuk için ayrı üretilir ve yalnız o çocuğun kapsamındaki gerçek kayıtlardan oluşur: haftanın devamsızlığı, yeni notlar ve geri bildirimler, teslim edilmemiş/geciken ödevler, yaklaşan sınav, etkinlik ve izin son tarihleri, etüt randevuları, ödeme vadesi (yalnız finans modülü açıksa ve veli ödeyiciyse). Kapalı modülün bölümü bültende yer almaz. Kaydı olmayan bölüm "Bu hafta kayıt yok" yazar; uydurma özet, sınıf sıralaması ve başka öğrenciyle karşılaştırma yoktur. Rehberlik iç notu ve sağlık bilgisi bültene girmez.
 - **Gerekçe:** Bülten güven aracıdır; veriye dayanmayan cümle ve sıralama hem yanıltır hem kişisel veri sızdırır.
-- **Kaynak:** İşletme kuralı; CLAUDE.md "mini grafikler yalnız gerçek kayıtlardan türetilir".
+- **Kaynak:** İşletme kuralı; `.claude/rules/tasarim.md` "mini grafikler yalnız gerçek kayıtlardan türetilir".
 - **Kurum türü:** ikisi (yetişkin kursiyer bülteni kendisine gider)
 - **Kodda:** yok.
 
@@ -421,7 +421,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 
 - **Kural:** Talep öğretmenin bir uygunluk saati seçilerek açılır; randevunun başlangıcı ve süresi o saatten alınır. Saat gelecekte olmalıdır. Öğretmenin veya öğrencinin o aralıkta iptal edilmemiş dersi, başka etüdü, `Bekliyor` ya da `Onaylandı` durumunda başka randevusu veya öğrencinin kampüsünde okul etkinliği varsa talep reddedilir. Aynı saati iki talep aynı anda isterse yalnız biri yazılır. Çakışan randevuyu talep eden (veya onaylayan öğretmen) göremiyorsa ret iletisi genel kalır ("Bu saat uygun değil."); görebildiği randevuda neyin çakıştığı söylenir (`DOM-ILT-073`, `DOM-ILT-103`). Bekleyen veya onaylı randevusu olan uygunluk saati kaldırılamaz; önce talep reddedilir ya da geri çekilir veya randevu iptal edilir.
 - **Gerekçe:** Öğretmen yalnız ayırdığı zamanda görüşür; çakışan iki görüşme veya derse denk gelen randevu yerine getirilemez.
-- **Kaynak:** İşletme kuralı; CLAUDE.md "Etütler öğretmen uygunluk saatlerini kullanır".
+- **Kaynak:** İşletme kuralı; `.claude/rules/okul-is-akislari.md` "Etütler öğretmen uygunluk saatlerini kullanır".
 - **Kurum türü:** ikisi
 - **Kodda:** kısmen — core `bookAppointment` (`lib/tutor-conflicts.ts` `tutorConflict` ile tam denetim; görünmeyen randevu `canSeeAppointment` ile `HIDDEN_CONFLICT_MESSAGE` döner, talepte ve onayda); saat kaldırma `lib/assessment-automation.ts` `slot-remove` (409 `availability_has_appointments`; saati bilinmeyen eski randevu aynı öğretmenin aralığındaysa sayılır); `tutoring` modülü kapalı, `communication` açıkken uygunluk saati eklenemez ve kaldırılamaz ama var olan saatlerden talep açılır: ürün kararı bekliyor (`TODO(randevu-modul)`); API talepte yalnız seçilen uygunluk saatini yükler, kurum kilidi eşzamanlı iki talepten yalnız birini yazar (`apps/api/test/pg-concurrency.test.ts`). Vue demosu talepte ders ve etkinlik çakışmasını denetlemez (`apps/web/src/views/Communication.vue:122-137`).
 
@@ -445,7 +445,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 
 - **Kural:** Yalnız `Bekliyor` ve `Onaylandı` randevular öğretmenin ve öğrencinin zamanını tutar; reddedilen, geri çekilen ve iptal edilen randevu çakışma denetimine girmez ve aynı saat yeniden talep edilebilir. Günlük programlarda yalnız onaylanmış randevu görünür; iptal edilen randevu görünmez.
 - **Gerekçe:** Gerçekleşmeyecek görüşme takvimi işgal etmemeli; programda görünen her randevu yapılacak bir görüşmedir.
-- **Kaynak:** İşletme kuralı; CLAUDE.md "İptal dersleri günlük programlarda görünmez".
+- **Kaynak:** İşletme kuralı; `.claude/rules/okul-is-akislari.md` "İptal dersleri günlük programlarda görünmez".
 - **Kurum türü:** ikisi
 - **Kodda:** kısmen — core `appointmentHoldsTime`, `scheduledAppointments` (`lib/appointment-status.ts`); `tutorConflict` ve sınıf/öğretmen/program çakışmaları bunu kullanır. React W20 ekranı "Yaklaşan randevular" bölümünde yalnız `scheduledAppointments` kullanır; bekleyen talep, red, geri çekme ve iptal programda görünmez (`TODO(randevu-w20)` kapandı). Vue ve telefon demosu yalnız `Reddedildi` durumunu dışlar.
 

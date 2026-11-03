@@ -41,7 +41,7 @@ Rol dağılımı: yönetici 13 (12 eşit, 1 kısmi), ön büro 1 (kısmi), öğr
 
 Bir Vue davranışı ancak şu gerekçelerden biriyle `bilerek kaldırıldı` sayılır; başka her eksik `kısmi` ya da `yok`tur:
 
-- **Kural yasağı:** CLAUDE.md hızlı erişim bölümünü, navbar hızlı aramasını ve mobil alt navigasyonu yasaklar. Vue demosunda bunlar zaten kaldırılmış; React'te de yoktur (satır açılmadı).
+- **Kural yasağı:** `.claude/rules/tasarim.md` hızlı erişim bölümünü, navbar hızlı aramasını ve mobil alt navigasyonu yasaklar. Vue demosunda bunlar zaten kaldırılmış; React'te de yoktur (satır açılmadı).
 - **Demo kalıcılığı:** `stores/demo.js` ve demo kalıcılığına bağlı işlemler (demo verilerini sıfırlama, rol değiştirme, demo rehberi, "İnteraktif demo" rozeti) gerçek oturum ve API ile anlamını yitirir; kalan kod OG-073'te silinir.
 - **Gerçek kimlik doğrulama:** Vue'nun rol kartlı girişi yerine React'te parola, parola sıfırlama ve oturum yönetimi vardır. Geliştirmedeki "Kolay giriş" penceresi (`pages/dev/EasyLogin.tsx`) yalnız geliştirme aracıdır, üretimde yoktur.
 - **Alan kuralı:** Veriye dayanmayan ya da kurala aykırı davranış taşınmaz. Örnek: Vue'nun not ortalamasından ürettiği şablon "öğretmen görüşü" metni, velinin serbest metinli mazeret açıklaması (DOM-ILT-053), öğretmenin geçmiş günün yoklamasını yeniden alması (DOM-AKD-035, yönetici düzeltir). Bu satırlar başka eksik yoksa `eşit` sayılır, gerekçe "Eksik davranış" sütununda yazar.

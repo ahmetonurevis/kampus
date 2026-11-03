@@ -29,6 +29,7 @@ import {
   type InvoiceRow,
 } from './finance-rows.ts'
 import { FamilyPaymentsHistory } from './FamilyPaymentsHistory.tsx'
+import { InvoicePresets } from './InvoicePresets.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 
 const URL_FILTERS = { status: 'durum' }
@@ -48,8 +49,8 @@ type Props = {
 
 /**
  * Taksit listesi (veli `finans`/`dekontlar`, öğrenci `odemelerim`; Vue `Finance.vue` veli/öğrenci
- * görünümü): seçili çocuğun (öğrencide kendi) taksitleri sunucu sayfalı; durum filtresi, vade/tutar
- * sıralaması ve arama sunucuda uygulanır. Kalan tutar kayıtlardan hesaplanır. Ödenmiş taksitte
+ * görünümü): seçili çocuğun (öğrencide kendi) taksitleri sunucu sayfalı; durum filtresi (dekontlar
+ * dışında hazır çiplerle de), vade/tutar sıralaması ve arama sunucuda uygulanır. Kalan tutar kayıtlardan hesaplanır. Ödenmiş taksitte
  * dekont açılır; çevrim içi ödeme yoktur (`invoice.pay` yalnız yönetici ve ön büro), ödeme okulun
  * tahsilat birimince kaydedilir. Kapsamı sunucu uygular: başka öğrencinin taksidi 404 verir.
  */
@@ -205,6 +206,9 @@ export function FamilyInvoicesView({ audience, studentId, receiptsOnly = false, 
             ) : undefined
           }
           onRowClick={(row) => openInvoice(row.id)}
+          presets={
+            receiptsOnly ? undefined : <InvoicePresets value={statusKey} onChange={setStatus} />
+          }
           externalActive={statusKey !== ''}
           externalLabel={statusKey ? `Ödeme durumu: ${INVOICE_STATUS_LABELS[statusKey]}` : ''}
           onReset={() => setStatus(ALL)}

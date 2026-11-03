@@ -10,8 +10,14 @@ import {
   type InvoiceStatus,
   type InvoiceStatusKey,
 } from '@kampus/school-core/lib/format.ts'
-import type { CollectionCounts, CollectionQuery } from '@kampus/react-shared/collections.ts'
+import type {
+  CollectionCounts,
+  CollectionFilters,
+  CollectionQuery,
+} from '@kampus/react-shared/collections.ts'
 import type { CoreRow } from '@/hooks/use-core-collection.ts'
+import type { FilterField, FilterValue, FilterValues } from '@/lib/list-query.ts'
+import { isDayKey } from '../academic/academic-rows.ts'
 import {
   collectionQueryFromList,
   exportQueryFromList,
@@ -92,23 +98,140 @@ export function invoiceRow(item: CoreRow<'invoices'>, today: string): InvoiceRow
 }
 
 /**
- * Sunucu sorgusu (sayfa dahil). Arama (`q`: öğrenci adı, okul numarası, sınıf adı), durum
- * (`status`, core durum etiketi), sıralama ve sayfa sunucuda uygulanır; `search` gecikmeli arama
- * metnidir.
+ * Hazır ödeme filtreleri (Vue `Finance.vue` "Hazır ödeme filtreleri" çipleri): durum süzgecinin
+ * kısayoludur, aynı `?durum=` anahtarını yazar. Boş değer "Tüm ödemeler"dir.
  */
-export function invoiceListQuery(state: ListState, search: string): CollectionQuery {
-  return withStatus(collectionQueryFromList(state, INVOICE_LIST, search), state)
+export const INVOICE_PRESETS = [
+  { value: '', label: 'Tüm ödemeler' },
+  { value: 'gecikmis', label: 'Geciken ödemeler' },
+  { value: 'yaklasan', label: 'Yaklaşan taksitler' },
+  { value: 'odendi', label: 'Ödenenler' },
+] as const satisfies readonly { value: InvoiceStatusKey | ''; label: string }[]
+
+/** Kampüs süzgecinin çevrildiği sınıf: taksit kaydında kampüs yoktur, öğrencinin sınıfı vardır. */
+export type InvoiceClassRef = { id: string; name: string; branchId: string }
+export type InvoiceBranchRef = { id: string; name: string }
+
+/** Hiçbir sınıfla eşleşmeyen kimlik: sınıfı olmayan kampüs ya da kampüs dışı sınıf boş liste verir. */
+export const NO_CLASS = '__kampusta-sinif-yok__'
+/** Koleksiyon ucunun bir süzgeçte kabul ettiği en çok değer (`collections.schemas.ts`). */
+export const MAX_FILTER_VALUES = 20
+
+export const CLASS_FILTER_TOO_MANY =
+  'Bu kampüsteki sınıf sayısı tek süzgeç için fazla; listeyi daraltmak için sınıf seçin.'
+
+/** Tahsilat tarihi aralığı (Vue "Tahsilat tarihi" süzgeci); sunucuda `dateField=paidAt` ile süzülür. */
+export const PAID_AT_FILTER: FilterField = { key: 'paidAt', label: 'Tahsilat tarihi', type: 'date' }
+
+/**
+ * Kurum taksit listesinin süzgeç paneli (Vue `Finance.vue`: Kampüs, Sınıf, Tahsilat tarihi).
+ * Kampüs seçiliyse sınıf seçenekleri o kampüsünkilerdir; seçilmemişse sınıf adı kampüs adıyla
+ * yazılır (farklı kampüslerde aynı ad olabilir). Ödeme yöntemi tahsilatındır, Tahsilat geçmişi
+ * sekmesinde süzülür.
+ */
+export function invoiceFilterFields(
+  branches: readonly InvoiceBranchRef[],
+  classes: readonly InvoiceClassRef[],
+  branchId: string,
+): FilterField[] {
+  const branchName = new Map(branches.map((branch) => [branch.id, branch.name]))
+  return [
+    {
+      key: 'branchId',
+      label: 'Kampüs',
+      options: branches.map((branch) => ({ value: branch.id, label: branch.name })),
+    },
+    {
+      key: 'classId',
+      label: 'Sınıf',
+      options: classes
+        .filter((item) => !branchId || item.branchId === branchId)
+        .map((item) => ({
+          value: item.id,
+          label:
+            branchId || !branchName.has(item.branchId)
+              ? item.name
+              : `${item.name} · ${branchName.get(item.branchId) ?? ''}`,
+        })),
+    },
+    PAID_AT_FILTER,
+  ]
 }
 
-/** CSV için sayfasız sorgu: aynı arama, durum ve sıralama. */
-export function invoiceExportQuery(state: ListState, search: string) {
-  return withStatus(exportQueryFromList(state, INVOICE_LIST, search), state)
+const textFilter = (value: FilterValue) => (typeof value === 'string' ? value : '')
+
+export type InvoiceClassScope =
+  { kind: 'all' } | { kind: 'classes'; classIds: string[] } | { kind: 'too_many' }
+
+/**
+ * Kampüs ve sınıf süzgecinin sunucu karşılığı: `classId` (taksitte öğrencinin güncel sınıfı).
+ * Sınıf seçiliyse yalnız o sınıf; kampüs de seçili ve sınıf o kampüsün değilse sonuç boştur.
+ * Yalnız kampüs seçiliyse kampüsün sınıfları; sınıfsız kampüs boştur. Uç bir süzgeçte en çok
+ * `MAX_FILTER_VALUES` değer alır: daha çok sınıflı kampüs gönderilmez (`too_many`, uyarı çıkar).
+ */
+export function invoiceClassScope(
+  filters: FilterValues,
+  classes: readonly InvoiceClassRef[],
+): InvoiceClassScope {
+  const branchId = textFilter(filters.branchId)
+  const classId = textFilter(filters.classId)
+  if (classId) {
+    const chosen = classes.find((item) => item.id === classId)
+    const outside = branchId !== '' && chosen !== undefined && chosen.branchId !== branchId
+    return { kind: 'classes', classIds: [outside ? NO_CLASS : classId] }
+  }
+  if (!branchId) return { kind: 'all' }
+  const ids = classes.filter((item) => item.branchId === branchId).map((item) => item.id)
+  if (ids.length > MAX_FILTER_VALUES) return { kind: 'too_many' }
+  return { kind: 'classes', classIds: ids.length > 0 ? ids : [NO_CLASS] }
 }
 
-function withStatus<T extends Pick<CollectionQuery, 'filters'>>(query: T, state: ListState): T {
+/**
+ * Tahsilat tarihi aralığı (`dateField=paidAt`, `dateFrom`/`dateTo`; Europe/Istanbul günü, uçlar
+ * dahil). Tek uç açık aralıktır; biçimsiz uç ve ters aralık gönderilmez (hata alanın altında).
+ */
+export function paidAtRange(value: FilterValue): CollectionFilters {
+  if (typeof value !== 'object' || value === null) return {}
+  const from = isDayKey(value.min) ? value.min : ''
+  const to = isDayKey(value.max) ? value.max : ''
+  if ((!from && !to) || (from && to && to < from)) return {}
+  return { dateField: 'paidAt', ...(from ? { dateFrom: from } : {}), ...(to ? { dateTo: to } : {}) }
+}
+
+/**
+ * Sunucu sorgusu (sayfa dahil). Arama (`q`: öğrenci adı, okul numarası, sınıf adı), durum
+ * (`status`, core durum etiketi), kampüs/sınıf (`classId`), tahsilat tarihi aralığı, sıralama ve
+ * sayfa sunucuda uygulanır; `search` gecikmeli arama metnidir. `classes` kampüs süzgecini sınıf
+ * listesine çevirir; veli/öğrenci görünümünde süzgeç yoktur, boş kalır.
+ */
+export function invoiceListQuery(
+  state: ListState,
+  search: string,
+  classes: readonly InvoiceClassRef[] = [],
+): CollectionQuery {
+  return withInvoiceFilters(collectionQueryFromList(state, INVOICE_LIST, search), state, classes)
+}
+
+/** CSV için sayfasız sorgu: aynı arama, süzgeçler ve sıralama. */
+export function invoiceExportQuery(
+  state: ListState,
+  search: string,
+  classes: readonly InvoiceClassRef[] = [],
+) {
+  return withInvoiceFilters(exportQueryFromList(state, INVOICE_LIST, search), state, classes)
+}
+
+function withInvoiceFilters<T extends Pick<CollectionQuery, 'filters'>>(
+  query: T,
+  state: ListState,
+  classes: readonly InvoiceClassRef[],
+): T {
+  const filters: CollectionFilters = { ...query.filters, ...paidAtRange(state.filters.paidAt) }
   const status = state.filters.status
-  if (!isInvoiceStatusKey(status)) return query
-  return { ...query, filters: { ...query.filters, status: INVOICE_STATUS_LABELS[status] } }
+  if (isInvoiceStatusKey(status)) filters.status = INVOICE_STATUS_LABELS[status]
+  const scope = invoiceClassScope(state.filters, classes)
+  if (scope.kind === 'classes') filters.classId = scope.classIds
+  return Object.keys(filters).length > 0 ? { ...query, filters } : query
 }
 
 export type InvoiceTotals = {

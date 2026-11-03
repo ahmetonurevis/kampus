@@ -9,7 +9,7 @@ import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
 // ödenmiş taksitte dekont açar, çevrim içi ödeme yapamaz; öğrenci masaüstünde kendi taksitlerini
 // salt okunur görür, telefonda görmez. Seed: her öğrenci 8 taksit; Deniz (s1) 24.500 TL ve 3
 // ödenmiş, Ece (s2) 27.000 TL ve 4 ödenmiş taksit taşır. Paylaşılan oturumlar salt okunurdur;
-// hiçbir test kayıt yazmaz.
+// seed kurumuna hiçbir test kayıt yazmaz (ödeme yazan test kendi kurumunu kurar).
 
 const NOT_FOUND = /Kayıt bulunamadı/
 const COLLECTIONS = '/api/v1/collections'
@@ -88,6 +88,31 @@ test.describe('DOM-FIN-052 veli: Finans, Dekontlar ve Ödeme Yap', () => {
     await expect(detail.getByRole('button', { name: 'Dekontu görüntüle' })).toBeVisible()
     // Ödeme düğmesi yoktur (invoice.pay yalnız yönetici ve ön büro).
     await expect(detail.getByRole('button', { name: /tahsil|ödeme yap/i })).toHaveCount(0)
+  })
+
+  test('ON-036: hazır ödeme filtreleri durum süzgecidir; dekontlarda çip yoktur', async ({
+    page,
+  }) => {
+    await page.goto('/veli/finans?cocuk=s1')
+    const plan = rowsOf(page, PLAN_TABLE)
+    await expect(plan).toHaveCount(8)
+    const presets = page.getByRole('group', { name: 'Hazır ödeme filtreleri' })
+    await presets.getByRole('button', { name: 'Ödenenler', exact: true }).click()
+    await expect(page).toHaveURL(/durum=odendi/)
+    await expect(plan).toHaveCount(3)
+    await expectEveryRow(plan, 'Ödendi')
+    await expect(presets.getByRole('button', { name: 'Ödenenler', exact: true })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
+    await expect(page.getByLabel('Ödeme durumu', { exact: true })).toHaveValue('odendi')
+    await presets.getByRole('button', { name: 'Tüm ödemeler', exact: true }).click()
+    await expect(page).not.toHaveURL(/durum=/)
+    await expect(plan).toHaveCount(8)
+
+    await page.goto('/veli/dekontlar?cocuk=s1')
+    await expect(rowsOf(page, RECEIPT_TABLE)).toHaveCount(3)
+    await expect(page.getByRole('group', { name: 'Hazır ödeme filtreleri' })).toHaveCount(0)
   })
 
   test('çevrim içi ödeme yoktur: düğme yok, okulla iletişim bilgisi ve API 403', async ({
@@ -203,6 +228,15 @@ test.describe('DOM-FIN-052 öğrenci: Ödemelerim', () => {
     await expect(page.getByRole('button', { name: /dekontunu görüntüle/ })).toHaveCount(3)
   })
 
+  test('ON-036: taksit ayrıntısı salt okunur takip notunu gösterir', async ({ page, loginAs }) => {
+    await loginAs('ogrenci')
+    await page.goto('/ogrenci/odemelerim')
+    await page.getByRole('button', { name: '1. taksit detayını aç' }).click()
+    const detail = page.getByRole('dialog', { name: 'Taksit detayı' })
+    await expect(detail).toContainText('Ödeme planını bu ekrandan takip edebilirsiniz.')
+    await expect(detail.getByRole('button', { name: /tahsil et/i })).toHaveCount(0)
+  })
+
   test('390 px telefonda ödeme içeriği gösterilmez ve veri okunmaz', async ({ page, loginAs }) => {
     await loginAs('ogrenci')
     const reads: string[] = []
@@ -220,5 +254,51 @@ test.describe('DOM-FIN-052 öğrenci: Ödemelerim', () => {
     await expect(page.getByText('24.500,00')).toHaveCount(0)
     await expectNoHorizontalOverflow(page)
     expect(reads).toEqual([])
+  })
+})
+
+test.describe('ON-036 veli: bütün taksitler ödenmişken', () => {
+  test('Ödeme Yap sırada taksit olmadığını söyler; hazır "Ödenenler" bütün taksitleri verir', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['veli'], childIds: ['s1'] })
+    const admin = await api(school.user('yonetici'))
+    // Seed: Deniz'in (s1) ilk üç taksiti ödenmiş; kalan beşi okulda tahsil edilir.
+    for (const installment of [3, 4, 5, 6, 7]) {
+      const id = `inv-s1-${String(installment)}`
+      const read = await admin.get(`/api/v1/collections/invoices/${id}`)
+      expect(read.status, id).toBe(200)
+      const record = (read.body as { data: { record: { amount: number } } }).data.record
+      const response = await admin.context.fetch('/api/v1/payments', {
+        method: 'POST',
+        data: {
+          studentId: 's1',
+          invoiceId: id,
+          amountCents: record.amount,
+          method: 'Banka havalesi',
+          reference: `E2E-${randomUUID()}`,
+        },
+        headers: { 'idempotency-key': randomUUID() },
+        failOnStatusCode: false,
+      })
+      expect(response.status(), `${id} tahsilatı`).toBe(201)
+    }
+
+    await loginAs(school.user('veli'))
+    await page.goto('/veli/odeme-yap?cocuk=s1')
+    await expect(page.getByRole('heading', { name: 'Ödemeler okulda kaydedilir' })).toBeVisible()
+    await expect(page.getByText('Ödenmemiş taksit bulunmuyor.')).toBeVisible()
+    await expect(page.getByLabel('Sıradaki taksit', { exact: true })).toHaveCount(0)
+
+    await page.goto('/veli/finans?cocuk=s1')
+    const presets = page.getByRole('group', { name: 'Hazır ödeme filtreleri' })
+    await presets.getByRole('button', { name: 'Ödenenler', exact: true }).click()
+    await expect(rowsOf(page, PLAN_TABLE)).toHaveCount(8)
+    await expectEveryRow(rowsOf(page, PLAN_TABLE), 'Ödendi')
+    await presets.getByRole('button', { name: 'Geciken ödemeler', exact: true }).click()
+    await expect(page.getByText(/eşleşen kayıt bulunamadı/)).toBeVisible()
   })
 })

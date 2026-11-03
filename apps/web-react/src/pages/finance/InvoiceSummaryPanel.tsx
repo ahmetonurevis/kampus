@@ -33,6 +33,7 @@ export function InvoiceSummaryPanel({ invoiceId, onClose, actions }: Props) {
 }
 
 function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
+  const { session } = useAuth()
   const item = useCoreItem('invoices', invoiceId)
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
@@ -80,6 +81,11 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
         <PaymentPlanButton studentId={row.studentId} />
         <StudentStatementDownload studentId={row.studentId} />
       </div>
+      {session?.role === 'ogrenci' ? (
+        <p className="mt-4 text-sm text-muted-foreground">
+          Ödeme planını bu ekrandan takip edebilirsiniz.
+        </p>
+      ) : null}
     </>
   )
 }

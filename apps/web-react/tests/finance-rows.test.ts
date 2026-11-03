@@ -7,10 +7,16 @@ import {
   familyInvoiceExportQuery,
   familyInvoiceListQuery,
   familyTotalsQuery,
+  INVOICE_PRESETS,
   INVOICE_STATUS_OPTIONS,
+  invoiceClassScope,
   invoiceCsvRow,
   invoiceExportQuery,
+  invoiceFilterFields,
   invoiceListQuery,
+  MAX_FILTER_VALUES,
+  NO_CLASS,
+  paidAtRange,
   invoiceRow,
   invoiceTotals,
   isInvoiceStatusKey,
@@ -216,4 +222,116 @@ test('kalan tutar ödenmemişte taksit tutarı, ödenmişte sıfırdır; CSV oku
   assert.equal(csv.installment, '5. taksit')
   assert.equal(csv.remaining, csv.amount)
   assert.equal(familyInvoiceCsvRow(paid!).remaining, '0,00 ₺')
+})
+
+// --- ON-036: Vue Finance.vue eşitliği (hazır filtreler, kampüs/sınıf, tahsilat tarihi) ---------
+
+const CLASS_REFS = createSeed(NOW).classes.map((item) => ({
+  id: item.id,
+  name: item.name,
+  branchId: item.branchId,
+}))
+const BRANCH_REFS = createSeed(NOW).branches.map((item) => ({ id: item.id, name: item.name }))
+
+test('ON-036: hazır ödeme filtreleri Vue çipleridir ve durum anahtarına eşlenir', () => {
+  assert.deepEqual(
+    INVOICE_PRESETS.map((preset) => preset.label),
+    ['Tüm ödemeler', 'Geciken ödemeler', 'Yaklaşan taksitler', 'Ödenenler'],
+  )
+  for (const preset of INVOICE_PRESETS) {
+    if (preset.value === '') continue
+    assert.ok(isInvoiceStatusKey(preset.value), preset.value)
+  }
+  const overdue = invoiceListQuery(state({ filters: { status: INVOICE_PRESETS[1].value } }), '')
+  assert.deepEqual(overdue.filters, { status: 'Gecikmiş' })
+})
+
+test('ON-036: süzgeç paneli kampüs, sınıf ve tahsilat tarihidir; sınıf seçenekleri kampüse daralır', () => {
+  const all = invoiceFilterFields(BRANCH_REFS, CLASS_REFS, '')
+  assert.deepEqual(
+    all.map((field) => [field.key, field.label, field.type ?? 'select']),
+    [
+      ['branchId', 'Kampüs', 'select'],
+      ['classId', 'Sınıf', 'select'],
+      ['paidAt', 'Tahsilat tarihi', 'date'],
+    ],
+  )
+  assert.equal(all[0]?.options?.length, 3)
+  assert.equal(all[1]?.options?.length, 24)
+  // Kampüs seçilmemişken farklı kampüslerin aynı adlı sınıfları ayırt edilir.
+  assert.equal(all[1]?.options?.[0]?.label, '7-A · Kadıköy Kampüsü')
+
+  const b2 = invoiceFilterFields(BRANCH_REFS, CLASS_REFS, 'b2')
+  assert.equal(b2[1]?.options?.length, 8)
+  assert.ok(b2[1]?.options?.every((option) => String(option.label).endsWith('-B')))
+})
+
+test('ON-036: kampüs süzgeci kampüsün sınıflarına, sınıf süzgeci tek sınıfa çevrilir', () => {
+  assert.deepEqual(invoiceClassScope({}, CLASS_REFS), { kind: 'all' })
+  const b1 = invoiceClassScope({ branchId: 'b1' }, CLASS_REFS)
+  assert.deepEqual(b1, {
+    kind: 'classes',
+    classIds: ['c1', 'c2', 'c3', 'c4', 'c5', 'c6', 'c7', 'c8'],
+  })
+  assert.deepEqual(invoiceClassScope({ classId: 'c9' }, CLASS_REFS), {
+    kind: 'classes',
+    classIds: ['c9'],
+  })
+  assert.deepEqual(invoiceClassScope({ branchId: 'b2', classId: 'c9' }, CLASS_REFS), {
+    kind: 'classes',
+    classIds: ['c9'],
+  })
+  // Kampüs dışı sınıf ve sınıfı olmayan kampüs boş sonuç verir; süzgeç yok sayılmaz.
+  assert.deepEqual(invoiceClassScope({ branchId: 'b1', classId: 'c9' }, CLASS_REFS), {
+    kind: 'classes',
+    classIds: [NO_CLASS],
+  })
+  assert.deepEqual(invoiceClassScope({ branchId: 'b-yok' }, CLASS_REFS), {
+    kind: 'classes',
+    classIds: [NO_CLASS],
+  })
+  // Uç tek süzgeçte en çok 20 değer alır: daha çok sınıflı kampüs gönderilmez.
+  const many = Array.from({ length: MAX_FILTER_VALUES + 1 }, (_, index) => ({
+    id: `test-c${String(index)}`,
+    name: `Sınıf ${String(index)}`,
+    branchId: 'test-b',
+  }))
+  assert.deepEqual(invoiceClassScope({ branchId: 'test-b' }, many), { kind: 'too_many' })
+  const query = invoiceListQuery(state({ filters: { branchId: 'test-b' } }), '', many)
+  assert.equal(query.filters, undefined)
+})
+
+test('ON-036: tahsilat tarihi aralığı paidAt günüyle gider; ters ve biçimsiz aralık gönderilmez', () => {
+  assert.deepEqual(paidAtRange({ min: '2026-09-01', max: '2026-09-30' }), {
+    dateField: 'paidAt',
+    dateFrom: '2026-09-01',
+    dateTo: '2026-09-30',
+  })
+  assert.deepEqual(paidAtRange({ min: '2026-09-01' }), {
+    dateField: 'paidAt',
+    dateFrom: '2026-09-01',
+  })
+  assert.deepEqual(paidAtRange({ max: '2026-09-30' }), {
+    dateField: 'paidAt',
+    dateTo: '2026-09-30',
+  })
+  assert.deepEqual(paidAtRange({ min: '2026-09-30', max: '2026-09-01' }), {})
+  assert.deepEqual(paidAtRange({ min: '30.09.2026' }), {})
+  assert.deepEqual(paidAtRange('2026-09-01'), {})
+  assert.deepEqual(paidAtRange(undefined), {})
+})
+
+test('ON-036: liste ve CSV sorgusu durum, sınıf ve tahsilat tarihini birlikte taşır', () => {
+  const listState = state({
+    filters: { status: 'odendi', branchId: 'b1', classId: 'c1', paidAt: { min: '2026-09-01' } },
+  })
+  const expected = {
+    status: 'Ödendi',
+    classId: ['c1'],
+    dateField: 'paidAt',
+    dateFrom: '2026-09-01',
+  }
+  assert.deepEqual(invoiceListQuery(listState, '', CLASS_REFS).filters, expected)
+  assert.deepEqual(invoiceExportQuery(listState, '', CLASS_REFS).filters, expected)
+  assert.equal(invoiceExportQuery(listState, '', CLASS_REFS).sort?.[0], 'dueDate')
 })

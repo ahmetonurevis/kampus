@@ -2,7 +2,12 @@ import { zodResolver } from '@hookform/resolvers/zod'
 import { useMemo, useState } from 'react'
 import { useForm } from 'react-hook-form'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
-import { reversePaymentSchema } from '@kampus/school-core/lib/payments.ts'
+import {
+  PAYMENT_METHOD_LABELS,
+  PAYMENT_METHODS,
+  reversePaymentSchema,
+  type PaymentMethod,
+} from '@kampus/school-core/lib/payments.ts'
 import {
   usePaymentList,
   useReversePayment,
@@ -41,22 +46,31 @@ type PaymentRow = {
 const NO_SORT: readonly string[] = []
 const MOBILE_COLUMNS = ['paidAt', 'studentName', 'amountCents', 'status']
 const FORM_ID = 'tahsilat-iptal-formu'
+const ALL = 'all'
+
+function isPaymentMethod(value: unknown): value is PaymentMethod {
+  return typeof value === 'string' && (PAYMENT_METHODS as readonly string[]).includes(value)
+}
 
 /**
  * Tahsilat geçmişi ve iptal (ADR 0006; DOM-FIN-030, -033, -050). Her ödeme ayrı satırdır; arama
- * öğrenci adı ve işlem referansında sunucuda yapılır. İptal yalnız yöneticide ve gerekçelidir;
- * iptal edilen satır silinmez, "İptal edildi" olarak kalır.
+ * öğrenci adı ve işlem referansında, ödeme yöntemi ve MEBBİS süzgeci sunucuda yapılır (Vue
+ * `Finance.vue` "Ödeme yöntemi" süzgecinin karşılığı: kısmi ödemede taksitin tek yöntemi yoktur,
+ * yöntem tahsilatındır). İptal yalnız yöneticide ve gerekçelidir; iptal edilen satır silinmez,
+ * "İptal edildi" olarak kalır.
  */
 export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
   const setMebbis = useSetPaymentMebbis()
   const list = useListState('tahsilatlar')
   const search = useDebouncedValue(list.state.query)
   const mebbisPending = list.state.filters.mebbis === 'pending'
+  const method = isPaymentMethod(list.state.filters.method) ? list.state.filters.method : null
   const payments = usePaymentList({
     page: list.state.page,
     pageSize: list.state.pageSize,
     ...(search.trim().length >= 2 ? { q: search.trim() } : {}),
     ...(mebbisPending ? { mebbis: 'pending' as const } : {}),
+    ...(method ? { method } : {}),
   })
   const [reversing, setReversing] = useState<PaymentRow | null>(null)
 
@@ -173,22 +187,44 @@ export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
           Tahsilat geçmişi
         </h2>
         <p className="text-sm text-muted-foreground">{total} kayıt · En yeni ödeme önce</p>
-        <label className="mt-3 grid max-w-xs gap-1 text-sm font-medium">
-          MEBBİS durumu
-          <NativeSelect
-            value={mebbisPending ? 'pending' : 'all'}
-            onChange={(event) =>
-              list.dispatch({
-                type: 'filter',
-                key: 'mebbis',
-                value: event.target.value === 'pending' ? 'pending' : '',
-              })
-            }
-          >
-            <NativeSelectOption value="all">Tümü</NativeSelectOption>
-            <NativeSelectOption value="pending">İşlenmemiş</NativeSelectOption>
-          </NativeSelect>
-        </label>
+        <div className="mt-3 flex flex-wrap gap-4">
+          <label className="grid w-full max-w-xs gap-1 text-sm font-medium">
+            Ödeme yöntemi
+            <NativeSelect
+              value={method ?? ALL}
+              onChange={(event) =>
+                list.dispatch({
+                  type: 'filter',
+                  key: 'method',
+                  value: isPaymentMethod(event.target.value) ? event.target.value : '',
+                })
+              }
+            >
+              <NativeSelectOption value={ALL}>Tüm yöntemler</NativeSelectOption>
+              {PAYMENT_METHODS.map((value) => (
+                <NativeSelectOption key={value} value={value}>
+                  {PAYMENT_METHOD_LABELS[value]}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </label>
+          <label className="grid w-full max-w-xs gap-1 text-sm font-medium">
+            MEBBİS durumu
+            <NativeSelect
+              value={mebbisPending ? 'pending' : ALL}
+              onChange={(event) =>
+                list.dispatch({
+                  type: 'filter',
+                  key: 'mebbis',
+                  value: event.target.value === 'pending' ? 'pending' : '',
+                })
+              }
+            >
+              <NativeSelectOption value={ALL}>Tümü</NativeSelectOption>
+              <NativeSelectOption value="pending">İşlenmemiş</NativeSelectOption>
+            </NativeSelect>
+          </label>
+        </div>
       </header>
       <ServerDataTable
         list={list}

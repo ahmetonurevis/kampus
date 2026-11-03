@@ -2421,7 +2421,7 @@ export interface paths {
         };
         /**
          * Tahsilatları listele
-         * @description Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.
+         * @description Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız kapsamındaki öğrencileri görür; iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer; `method` ödeme yöntemine göre süzer. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.
          */
         get: operations["listPayments"];
         put?: never;
@@ -27278,6 +27278,8 @@ export interface operations {
                 q?: string;
                 /** @description Yalnız MEBBİS'e işlenmemiş geçerli tahsilatlar (personel) */
                 mebbis?: "pending";
+                /** @description Yalnız bu ödeme yöntemiyle alınanlar */
+                method?: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
             };
             header?: never;
             path?: never;

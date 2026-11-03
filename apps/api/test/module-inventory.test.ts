@@ -47,6 +47,8 @@ const MODULELESS: Readonly<Record<string, string>> = {
   'GET /api/v1/auth/*': 'kimlik',
   'POST /api/v1/auth/*': 'kimlik',
   'GET /api/v1/health': 'sağlık denetimi, oturumsuz',
+  // Sabah kararı 85: düzenlenmiş belge, modül kapansa da üçüncü kişiye doğrulanabilir (DOM-DIL-082).
+  'GET /api/v1/certificate-verifications/:code': 'belge doğrulama, oturumsuz (Sabah kararı 85)',
   // Oturum, rol ve etkin modül haritası; istemci menüyü ve route korumasını bundan kurar.
   'GET /api/v1/me': 'oturum',
   // Üyelik ve kadro çekirdek kayıtlardır (öğrenci, öğretmen, veli koleksiyonları her zaman açık).
@@ -262,6 +264,23 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'POST /api/v1/resources/:resourceId/remove': ['learning'],
   'POST /api/v1/resources/:resourceId/share': ['learning'],
   'POST /api/v1/resources/:resourceId/copy': ['learning'],
+  'GET /api/v1/learning-outcomes': ['learning'],
+  'POST /api/v1/learning-outcomes': ['learning'],
+  'POST /api/v1/learning-outcomes/:code/archive': ['learning'],
+  // Kur sonu değerlendirme ve geçiş kararı (OG-086; IST-062): yalnız dil okulunda, okulda 404.
+  'POST /api/v1/course-assessments': ['academic'],
+  'POST /api/v1/progression-decisions': ['academic'],
+  'POST /api/v1/progression-decisions/:decisionId/approve': ['academic'],
+  'POST /api/v1/progression-decisions/:decisionId/reject': ['academic'],
+  'GET /api/v1/groups/:groupId/progression': ['academic'],
+  'GET /api/v1/students/:studentId/progression-decisions': ['academic'],
+  // Kurum başarı belgesi ve MEBBİS izi (OG-088; IST-081): yalnız dil okulunda, okulda 404.
+  'POST /api/v1/course-certificates': ['academic'],
+  'POST /api/v1/course-certificates/:certificateId/cancel': ['academic'],
+  'GET /api/v1/course-certificates': ['academic'],
+  'GET /api/v1/course-certificates/:certificateId': ['academic'],
+  'GET /api/v1/groups/:groupId/mebbis-certificates': ['academic'],
+  'POST /api/v1/progression-decisions/:decisionId/mebbis-record': ['academic'],
   'GET /api/v1/rubrics': ['learning'],
   'GET /api/v1/rubrics/:rubricId': ['learning'],
   'GET /api/v1/rubric-versions/:versionId': ['learning'],
@@ -274,6 +293,8 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'GET /api/v1/task-assignments/:assignmentId': ['learning'],
   'POST /api/v1/task-assignments': ['learning'],
   'PATCH /api/v1/task-assignments/:assignmentId': ['learning'],
+  'POST /api/v1/task-assignments/batches': ['learning'],
+  'GET /api/v1/resources/:resourceId/assignment-results': ['learning'],
   'GET /api/v1/task-attempts': ['learning'],
   'GET /api/v1/task-attempts/:attemptId': ['learning'],
   'POST /api/v1/task-assignments/:assignmentId/attempts': ['learning'],
@@ -287,6 +308,7 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'GET /api/v1/task-submissions/:submissionId': ['learning'],
   'GET /api/v1/task-assignments/:assignmentId/draft': ['learning'],
   'PATCH /api/v1/task-assignments/:assignmentId/draft': ['learning'],
+  'POST /api/v1/task-assignments/:assignmentId/draft/submit': ['learning'],
   'POST /api/v1/task-assignments/:assignmentId/submissions': ['learning'],
   'POST /api/v1/task-submissions/:submissionId/scores': ['learning'],
   'POST /api/v1/task-submissions/:submissionId/resubmission-requests': ['learning'],
@@ -316,14 +338,14 @@ const WORKFLOW_MODULES: Readonly<Record<string, Expected>> = Object.fromEntries(
 
 /**
  * Onur'un kayıt ve finans uçları (`app.ts` Onur bloğu): yol öneki alan haritasıyla aynıdır. Bu
- * uçlar tek tek listelenmez (Onur bu dosyayı düzenlemez); her biri `crm` ya da `finance`
- * modülüne bağlı olmalıdır. Modülsüz kayıt/finans ucu gerekirse Oğuzhan'a iş isteğiyle eklenir.
+ * uçlar tek tek listelenmez (Onur bu dosyayı düzenlemez); her biri `crm`, `finance` ya da
+ * `renewal` (kayıt yenileme, ON-030) modülüne bağlı olmalıdır. Modülsüz kayıt/finans ucu gerekirse Oğuzhan'a iş isteğiyle eklenir.
  */
 const ONUR_PATHS = [
   /^\/api\/v1\/(fee-tariffs|finance|payments|payment-settings|bank-accounts|withdrawals|prospects)(\/|$)/,
   /^\/api\/v1\/students\/:studentId\/(withdraw|withdrawal-quote|identity)$/,
 ]
-const ONUR_MODULES = new Set(['crm', 'finance'])
+const ONUR_MODULES = new Set(['crm', 'finance', 'renewal'])
 const isOnurRoute = (url: string) => ONUR_PATHS.some((pattern) => pattern.test(url))
 
 /**

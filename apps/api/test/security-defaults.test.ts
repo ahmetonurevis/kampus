@@ -314,4 +314,56 @@ describe('üretim güvenlik varsayılanları', () => {
       await app.close()
     }
   })
+
+  test('DOM-DIL-080 DOM-DIL-082: belge doğrulama kodu, iptal gerekçesi ve MEBBİS numarası loglanmaz; doğrulama yolundaki kod maskelenir', async () => {
+    const logs: string[] = []
+    const texts = {
+      pathCode: 'K7QM-4XPA-9TRV-2HDN-6BWC-8FJY-3EGS',
+      verificationCode: 'A1B2-C3D4-E5F6-G7H8-J9K0-M1N2-P3Q4',
+      nestedCode: 'R5S6-T7V8-W9X0-Y1Z2-A3B4-C5D6-E7F8',
+      cancellationReason: 'Gizli belge iptal gerekçesi.',
+      nestedReason: 'Kayıttaki gizli iptal gerekçesi.',
+      certificateNumber: 'MEB-GIZLI-0042',
+      nestedNumber: 'MEB-GIZLI-0043',
+    }
+    const app = await buildTestApp(db, { logs })
+    try {
+      const response = await app.inject({
+        method: 'GET',
+        url: `/api/v1/certificate-verifications/${texts.pathCode}?kaynak=qr`,
+      })
+      assert.equal(response.statusCode, 404, response.body)
+      app.log.info(
+        {
+          verificationCode: texts.verificationCode,
+          cancellationReason: texts.cancellationReason,
+          certificateNumber: texts.certificateNumber,
+        },
+        'belge',
+      )
+      app.log.info(
+        {
+          certificate: {
+            verificationCode: texts.nestedCode,
+            cancellationReason: texts.nestedReason,
+            certificateNumber: texts.nestedNumber,
+          },
+        },
+        'belge kaydı',
+      )
+      const lines = logs.join('').split('\n').filter(Boolean)
+      for (const message of ['belge', 'belge kaydı'])
+        assert.ok(
+          lines.some((line) => line.includes(`"msg":"${message}"`)),
+          `log satırı yok: ${message}`,
+        )
+      const text = lines.join('\n')
+      for (const [field, value] of Object.entries(texts))
+        assert.equal(text.includes(value), false, `logda: ${field}`)
+      assert.ok(text.includes('/api/v1/certificate-verifications/[gizli]'), 'maskeli yol yok')
+      assert.equal(text.includes('kaynak=qr'), false, 'sorgu dizesi logda')
+    } finally {
+      await app.close()
+    }
+  })
 })

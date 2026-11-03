@@ -146,6 +146,32 @@ export const OGUZHAN_SCREENS = [
       },
     ],
   },
+  {
+    screen: 'StudentQuestions',
+    getComponent: (): MenuScreen => require('./screens/StudentQuestions.tsx').default,
+    // Telefonda soru sorma, yanıtı okuma ve yanıtlanmamış soruyu geri çekme vardır; soru
+    // fotoğrafı (DOM-ILT-094) web'dedir.
+    pages: [
+      {
+        role: 'ogrenci',
+        path: 'soru-sor',
+        description: 'Ders öğretmenine soru sor, yanıtı oku.',
+      },
+    ],
+  },
+  {
+    screen: 'StudentAppointments',
+    getComponent: (): MenuScreen => require('./screens/StudentAppointments.tsx').default,
+    // Telefonda öğrenci randevu talep eder, bekleyen talebi geri çeker ve onaylı randevuyu iptal
+    // eder; öğretmen ve veli tarafı ayrı adımlardır.
+    pages: [
+      {
+        role: 'ogrenci',
+        path: 'randevu-talep',
+        description: 'Öğretmenlerinin müsait saatlerinden randevu al.',
+      },
+    ],
+  },
 ] as const satisfies readonly ScreenEntry[]
 // Oğuzhan: platform, akademik ve iletişim sonu
 

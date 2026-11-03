@@ -51,6 +51,7 @@ import {
   assertWorkOpen,
   auditWork,
   canReadLearner,
+  inAttemptOrder,
   learnerFilter,
   listeningFor,
   loadWorkPairs,
@@ -192,6 +193,13 @@ function attemptView(
   const parentPractice = hidesPracticeResult(viewer, assignment)
   const items = level === 'none' || parentPractice ? null : (context?.items ?? null)
   const score = items === null ? null : scoreAttempt(items, attempt.answers)
+  // Kursiyer ve veli madde sonuçlarını soru listesiyle aynı sırada görür (quiz `shuffleItems`);
+  // personel yazarın sırasında inceler. Puan her zaman yazarın sırasında ve madde kimliğiyle
+  // hesaplanır, yalnız liste sırası değişir.
+  const shown = <T extends { questionVersionId: string }>(list: readonly T[]): T[] =>
+    viewer.kind === 'learner' && context !== null
+      ? inAttemptOrder(list, context, attempt.id)
+      : [...list]
   return {
     id: attempt.id,
     assignmentId: attempt.assignmentId,
@@ -214,16 +222,18 @@ function attemptView(
             earned: score.earned,
             possible: score.possible,
             percent: score.percent,
-            items: level === 'score' ? null : score.items,
+            items: level === 'score' ? null : shown(score.items),
             // Alt beceri dökümü madde sonuçlarıyla aynı anda açılır: tek maddeli alt beceri
             // maddenin doğruluğunu verir (DOM-BEC-006, DOM-BEC-045).
             subskills: level === 'score' ? null : subskillBreakdown(items, score),
             answerKey:
               level === 'full'
-                ? items.map((item) => ({
-                    questionVersionId: item.questionVersionId,
-                    answerKey: item.answerKey,
-                  }))
+                ? shown(
+                    items.map((item) => ({
+                      questionVersionId: item.questionVersionId,
+                      answerKey: item.answerKey,
+                    })),
+                  )
                 : null,
           },
     // Anında geri bildirim (DOM-BEC-047): alıştırmada kontrol edilen maddeler; anahtar yalnız kilitli
@@ -231,7 +241,7 @@ function attemptView(
     feedback:
       assignment.kind !== 'practice' || parentPractice || context === null
         ? null
-        : itemFeedback(context.items, checks),
+        : shown(itemFeedback(context.items, checks)),
     contentRemoved: scoring.removed,
     rowVersion: attempt.rowVersion,
   }
@@ -417,7 +427,10 @@ async function detailView(
       ),
       open,
     ),
-    questions: open ? questionsFor(context, attempt.id) : [],
+    // Kursiyer ve veli denemenin sırasını görür (`shuffleItems`); personel yazarın sırasını.
+    questions: open
+      ? questionsFor(context, attempt.id, { authorOrder: viewer.kind !== 'learner' })
+      : [],
     passage: open ? passageFor(context) : null,
     // Döküm personelde hep, kursiyer ve velide görev kapanınca ya da alıştırmada açık ayarla
     // (DOM-BEC-005); kayıt da sorular gibi içerik kapısından geçer.

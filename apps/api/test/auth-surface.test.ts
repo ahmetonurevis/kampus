@@ -150,4 +150,59 @@ describe('Better Auth uç yüzeyi', () => {
     assert.equal(member.statusCode, 200)
     assert.equal(member.json().userId, student.id)
   })
+
+  test('IST-025: oturum listesi ve kapatma uçları açık; yalnız kendi oturumları, belirteç dönmez', async () => {
+    const institution = await createInstitution(app)
+    const student = await createMember(app, institution.id, 'ogrenci')
+    const here = await signInAs(app, student)
+    const other = await signInAs(app, student)
+    const stranger = await signInAs(app, institution.admin)
+    const post = (path: string, cookie: string, payload: object) =>
+      app.inject({
+        method: 'POST',
+        url: `${AUTH_BASE_PATH}${path}`,
+        headers: { origin: TEST_ORIGIN, cookie, 'content-type': 'application/json' },
+        payload,
+      })
+
+    const listed = await call('GET', `${AUTH_BASE_PATH}/list-sessions`, here)
+    assert.equal(listed.statusCode, 200)
+    const rows: { id: string; current: boolean }[] = listed.json()
+    assert.equal(rows.length, 2)
+    assert.equal(listed.body.includes('token'), false)
+    for (const cookie of [here, other, stranger]) {
+      const token = /kampus\.session_token=([^.;]+)/.exec(cookie)?.[1]
+      assert.ok(token)
+      assert.equal(listed.body.includes(token), false)
+    }
+    const adminRows: { id: string }[] = (
+      await call('GET', `${AUTH_BASE_PATH}/list-sessions`, stranger)
+    ).json()
+    assert.equal(
+      adminRows.some((row) => rows.some((own) => own.id === row.id)),
+      false,
+    )
+
+    // Başkasının oturum kimliği kapatılamaz; kendi öteki oturumu kapanır.
+    const [adminSession] = adminRows
+    assert.ok(adminSession)
+    assert.equal(
+      (await post('/revoke-session', here, { sessionId: adminSession.id })).statusCode,
+      200,
+    )
+    assert.equal(
+      (await call('GET', `${AUTH_BASE_PATH}/get-session`, stranger)).json()?.user?.id,
+      institution.admin.id,
+    )
+    const otherId = rows.find((row) => !row.current)?.id
+    assert.ok(otherId)
+    assert.equal((await post('/revoke-session', here, { sessionId: otherId })).statusCode, 200)
+    assert.equal((await call('GET', `${AUTH_BASE_PATH}/get-session`, other)).json(), null)
+
+    assert.equal((await post('/revoke-other-sessions', here, {})).statusCode, 200)
+    assert.equal(
+      (await call('GET', `${AUTH_BASE_PATH}/get-session`, here)).json()?.user?.id,
+      student.id,
+    )
+  })
 })

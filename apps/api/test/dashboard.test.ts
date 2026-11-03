@@ -31,6 +31,8 @@ const EXTRA: Partial<Record<CollectionName, readonly Record<string, unknown>[]>>
   submissions: SEED.submissions.filter((item) => ['s1', 's2', 's3'].includes(item.studentId)),
   prospects: SEED.prospects.slice(0, 8),
   attendance: SEED.attendance.filter((item) => ['s1', 's2'].includes(item.studentId)).slice(0, 60),
+  requests: SEED.requests,
+  questions: SEED.questions,
 }
 
 function extraRows() {
@@ -258,7 +260,13 @@ describe('Genel Bakış özeti', () => {
     const cookie = await memberCookie(id, 'onburo')
     const data = await dashboard(cookie)
     assert.equal(data.role, 'onburo')
-    assert.deepEqual(Object.keys(data).sort(), ['finance', 'prospects', 'role', 'today'])
+    assert.deepEqual(Object.keys(data).sort(), [
+      'finance',
+      'prospects',
+      'requests',
+      'role',
+      'today',
+    ])
 
     const invoices = await counts(cookie, 'invoices', 'groupBy=status&sum=amount')
     assert.deepEqual(data.finance.invoices, invoiceSummaryOf(invoices))
@@ -284,6 +292,27 @@ describe('Genel Bakış özeti', () => {
       data.prospects.stages,
       prospects.groups.map((group) => ({ stage: group.value, count: group.count })),
     )
+  })
+
+  test('IST-116: ön büro "Yeni talep" sayısı Şikayet & Talepler listesinin toplamıdır', async () => {
+    const { id } = await institution()
+    const cookie = await memberCookie(id, 'onburo')
+    const data = await dashboard(cookie)
+    const fresh = await listIds(cookie, 'requests', 'pageSize=20&status=Yeni')
+    const review = await listIds(cookie, 'requests', 'pageSize=20&status=İnceleniyor')
+    const resolved = await listIds(cookie, 'requests', 'pageSize=20&status=Çözüldü')
+    const all = await listIds(cookie, 'requests', 'pageSize=20')
+    assert.deepEqual(data.requests, {
+      total: all.total,
+      new: fresh.total,
+      inReview: review.total,
+      resolved: resolved.total,
+    })
+    assert.ok(data.requests.new > 0 && data.requests.inReview > 0, 'örnek veride iki durum var')
+    // Liste kampüs süzgeci taşımaz; kart da kampüs seçiminden bağımsızdır.
+    const branchId = SEED.branches[0]?.id ?? ''
+    const inBranch = await dashboard(cookie, `?branchId=${branchId}`)
+    assert.deepEqual(inBranch.requests, data.requests)
   })
 
   test('DOM-YTK-022: öğretmen yalnız kendi sınıflarını, derslerini ve ödevlerini sayar', async () => {
@@ -355,6 +384,84 @@ describe('Genel Bakış özeti', () => {
         assert.equal(item.expected, countOf(byClass, classId), item.id)
       }
     }
+  })
+
+  test('IST-116, DOM-ILT-093: öğretmenin yanıt bekleyen soru sayısı soru listesinin toplamıdır', async () => {
+    const { id } = await institution()
+    const cookie = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+    const data = await dashboard(cookie)
+    const pending = await listIds(
+      cookie,
+      'questions',
+      'pageSize=100&answered=false&withdrawn=false',
+    )
+    const own = SEED.questions.filter((q) => q.teacherId === 't1' && !q.answeredAt)
+    assert.ok(own.length > 0, 'örnek veride t1 için bekleyen soru var')
+    assert.equal(data.questions.total, pending.total)
+    assert.equal(data.questions.total, own.length)
+    const oldest = own
+      .toSorted((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+      .slice(0, 3)
+      .map((q) => q.id)
+    assert.deepEqual(
+      data.questions.items.map((item: { id: string }) => item.id),
+      oldest,
+    )
+    // Süre aşımı iş takvimiyle hesaplanır; aşılanlar toplamın içindedir ve satırda işaretlidir.
+    assert.ok(data.questions.overdue <= data.questions.total)
+    for (const item of data.questions.items) assert.equal(typeof item.overdue, 'boolean')
+    // Başka öğretmenin sorusu sayılmaz.
+    const other = await dashboard(
+      await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }]),
+    )
+    const t2 = SEED.questions.filter((q) => q.teacherId === 't2' && !q.answeredAt).length
+    assert.equal(other.questions.total, t2)
+  })
+
+  test('DOM-ILT-091: geri çekilen soru öğretmenin panosunda sayılmaz', async () => {
+    const { id } = await institution()
+    const cookie = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+    const before = await dashboard(cookie)
+    await insertMissingRecords(
+      db,
+      id,
+      [
+        {
+          collection: 'questions',
+          id: 'test-geri-cekilen',
+          data: {
+            ...SEED.questions[0],
+            id: 'test-geri-cekilen',
+            teacherId: 't1',
+            createdAt: '2026-10-01T08:00:00.000Z',
+            answeredAt: null,
+            withdrawnAt: '2026-10-02T08:00:00.000Z',
+          },
+        },
+      ],
+      new Date(FIXED_NOW.getTime() + 60_000),
+    )
+    const after = await dashboard(cookie)
+    assert.equal(after.questions.total, before.questions.total)
+    assert.doesNotMatch(JSON.stringify(after.questions), /test-geri-cekilen/)
+  })
+
+  test('IST-116: bekleyen soru sayısı okuma sınırını aşarsa sessizce eksik sayılmaz', async () => {
+    const { id } = await institution()
+    const cookie = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+    const rows = Array.from({ length: 5001 }, (_, index) => ({
+      collection: 'questions' as const,
+      id: `test-toplu-${index}`,
+      data: {
+        ...SEED.questions[0],
+        id: `test-toplu-${index}`,
+        teacherId: 't1',
+        answeredAt: null,
+      },
+    }))
+    await insertMissingRecords(db, id, rows, new Date(FIXED_NOW.getTime() + 60_000))
+    const response = await get('/api/v1/dashboard', cookie)
+    assert.equal(response.statusCode, 500)
   })
 
   test('öğrenci: yalnız kendi özeti, ödeme alanı yok; başka öğrenci 404', async () => {
@@ -469,12 +576,14 @@ describe('Genel Bakış özeti', () => {
     const desk = await dashboard(await memberCookie(id, 'onburo'))
     assert.equal(desk.finance, null)
     assert.equal(desk.prospects, null)
+    assert.notEqual(desk.requests, null, 'iletişim açık: talep bölümü kalır')
 
     const teacher = await dashboard(
       await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }]),
     )
     assert.equal(teacher.academic, null)
     assert.equal(teacher.learning, null)
+    assert.equal(teacher.questions, null)
     assert.ok(teacher.students.active > 0)
 
     const parent = await dashboard(
@@ -495,6 +604,16 @@ describe('Genel Bakış özeti', () => {
     )
     assert.equal(parent.balance, null)
     assert.notEqual(parent.academic, null)
+  })
+
+  test('DOM-YTK-040: iletişim kapalıyken ön büro talep bölümü null, liste ucu 403', async () => {
+    const { id } = await institution({ enabledModules: { communication: false } })
+    const cookie = await memberCookie(id, 'onburo')
+    const desk = await dashboard(cookie)
+    assert.equal(desk.requests, null)
+    assert.notEqual(desk.finance, null)
+    const list = await get('/api/v1/collections/requests', cookie)
+    assert.equal(list.statusCode, 403)
   })
 
   test('başka kurumun kaydı özete girmez', async () => {
@@ -518,8 +637,39 @@ describe('Genel Bakış özeti', () => {
       ],
       new Date(FIXED_NOW.getTime() + 60_000),
     )
+    // B kurumunda yeni talep ve yanıtsız soru: A'nın ön büro ve öğretmen sayıları değişmez.
+    await insertMissingRecords(
+      db,
+      b.id,
+      [
+        {
+          collection: 'requests',
+          id: 'test-b-talep',
+          data: { ...SEED.requests[0], id: 'test-b-talep', status: 'Yeni' },
+        },
+        {
+          collection: 'questions',
+          id: 'test-b-soru',
+          data: { ...SEED.questions[0], id: 'test-b-soru', teacherId: 't1', answeredAt: null },
+        },
+      ],
+      new Date(FIXED_NOW.getTime() + 120_000),
+    )
+    const deskA = await memberCookie(a.id, 'onburo')
+    const teacherA = await memberCookie(a.id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+    const deskBefore = await dashboard(deskA)
+    const teacherBefore = await dashboard(teacherA)
     const after = await dashboard(a.adminCookie)
     assert.deepEqual(after, before)
+    assert.equal(
+      (await dashboard(await memberCookie(b.id, 'onburo'))).requests.new,
+      deskBefore.requests.new + 1,
+    )
+    assert.equal(
+      (await dashboard(await memberCookie(b.id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])))
+        .questions.total,
+      teacherBefore.questions.total + 1,
+    )
     const inB = await dashboard(b.adminCookie)
     assert.equal(inB.students.active, before.students.active + 1)
     assert.equal(inB.finance.invoices.total, before.finance.invoices.total + 1)

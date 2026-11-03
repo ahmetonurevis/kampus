@@ -92,6 +92,13 @@ export const UNIQUE_CONSTRAINTS = {
     'Bu görev öğretmene zaten verilmiş.',
   ),
 
+  // --- Kazanım kataloğu (DOM-KYN-011, migration 0050) ----------------------------------------
+  platform_learning_outcomes_pkey: RETRY,
+  learning_outcomes_pkey: rule(
+    'learning_outcome_code_taken',
+    'Bu kazanım kodu kurumda ya da öğretim programında zaten kullanılıyor.',
+  ),
+
   // --- KVKK aydınlatma ve rıza (DOM-YTK-056…062) --------------------------------------------
   privacy_notices_pkey: RETRY,
   // Metin sürüm numarası en büyük + 1'dir: çakışma eşzamanlı yayımdır.
@@ -148,6 +155,39 @@ export const UNIQUE_CONSTRAINTS = {
   progression_decisions_pending_key: rule(
     'progression_pending',
     'Bu kayıt için onay bekleyen bir karar var.',
+  ),
+  // Kur içi ölçme ve ders saati yoklaması (OG-086, migration 0052).
+  course_assessments_pkey: RETRY,
+  course_assessments_enrollment_point_key: rule(
+    'assessment_already_recorded',
+    'Bu ölçme noktası bu kayıt için girildi.',
+  ),
+  lesson_hour_attendances_pkey: RETRY,
+  lesson_hour_attendances_enrollment_hour_key: rule(
+    'attendance_duplicate',
+    'Bu ders saatinin yoklaması zaten alındı.',
+  ),
+  // Kurum başarı belgesi ve MEBBİS izi (OG-088, migration 0053). Sıra numarası, belge numarası
+  // ve doğrulama kodu kurum sayacından ve rastgele üretilir; yarış yeniden denemeyle düzelir.
+  certificate_counters_pkey: RETRY,
+  course_certificates_pkey: RETRY,
+  course_certificates_enrollment_id_key: RETRY,
+  course_certificates_serial_key: RETRY,
+  course_certificates_number_key: RETRY,
+  course_certificates_verification_code_key: RETRY,
+  // Kur kaydı başına tek geçerli belge (Sabah kararı 86).
+  course_certificates_valid_enrollment_key: rule(
+    'certificate_already_issued',
+    'Bu kayıt için geçerli bir belge var; hata varsa belge iptal edilip yeniden düzenlenir.',
+  ),
+  course_certificates_replaces_key: rule(
+    'certificate_already_replaced',
+    'Bu belgenin yerine yeni belge zaten düzenlendi.',
+  ),
+  mebbis_certificate_records_pkey: RETRY,
+  mebbis_certificate_records_decision_key: rule(
+    'mebbis_already_recorded',
+    'Bu kursiyerin MEBBİS belgesi zaten işaretlendi.',
   ),
 
   // --- İçerik havuzu --------------------------------------------------------------------------

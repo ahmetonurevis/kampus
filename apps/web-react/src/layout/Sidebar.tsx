@@ -76,7 +76,11 @@ export function SidebarContent({ session, onNavigate, onSignOut }: SidebarConten
         </div>
       </div>
 
-      <nav aria-label="Menü" className="side-nav min-h-0 flex-1 overflow-y-auto px-3.5">
+      {/* Yatay telefonda yalnız menü değil bütün çekmece kayar; marka ve kullanıcı alanı menüye yer bırakır. */}
+      <nav
+        aria-label="Menü"
+        className="side-nav min-h-0 flex-1 overflow-y-auto px-3.5 short:flex-none short:overflow-visible"
+      >
         {groups.map((group) => {
           const open = isGroupExpanded(
             expanded,

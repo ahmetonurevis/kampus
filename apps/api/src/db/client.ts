@@ -8,12 +8,14 @@ import * as academicYearsSchema from './schema/academic-years.ts'
 import * as auditLogSchema from './schema/audit-log.ts'
 import * as authSchema from './schema/auth.ts'
 import * as cefrSchema from './schema/cefr.ts'
+import * as certificatesSchema from './schema/certificates.ts'
 import * as coordinatorDutiesSchema from './schema/coordinator-duties.ts'
 import * as coursesSchema from './schema/courses.ts'
 import * as filesSchema from './schema/files.ts'
 import * as idempotencyKeysSchema from './schema/idempotency-keys.ts'
 import * as institutionSettingsSchema from './schema/institution-settings.ts'
 import * as languageGroupsSchema from './schema/language-groups.ts'
+import * as learningOutcomesSchema from './schema/learning-outcomes.ts'
 import * as membershipLinksSchema from './schema/membership-links.ts'
 import * as privacySchema from './schema/privacy.ts'
 import * as recordsSchema from './schema/records.ts'
@@ -30,6 +32,7 @@ export const schema = {
   ...recordsSchema,
   ...idempotencyKeysSchema,
   ...resourcesSchema,
+  ...learningOutcomesSchema,
   ...skillsSchema,
   ...filesSchema,
   ...privacySchema,
@@ -38,6 +41,7 @@ export const schema = {
   ...coursesSchema,
   ...languageGroupsSchema,
   ...cefrSchema,
+  ...certificatesSchema,
 }
 export type Schema = typeof schema
 

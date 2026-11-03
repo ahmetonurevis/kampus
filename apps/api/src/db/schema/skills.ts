@@ -584,6 +584,10 @@ export const submissionVersions = pgTable(
       .array()
       .notNull()
       .default(sql`'{}'::uuid[]`),
+    // Taslaktan teslimde teslim edilen taslak revizyonu (IST-047); metin, dosya ve ses teslimi
+    // `null`. "Taslak zaten teslim edildi" zamanla değil bununla ölçülür: otomatik kayıt istek
+    // başındaki saati yazdığı için teslimden sonra yazılan revizyonun `saved_at`'i eski olabilir.
+    draftRevision: integer('draft_revision'),
     ...required(),
   },
   (table) => [
@@ -603,6 +607,10 @@ export const submissionVersions = pgTable(
       sql`cardinality(${table.fileIds}) <= ${sql.raw(String(FILE_PURPOSES.submission.maxFiles))}`,
     ),
     check('submission_versions_version_check', firstVersion(table)),
+    check(
+      'submission_versions_draft_revision_check',
+      sql`${table.draftRevision} is null or (${table.draftRevision} >= 1 and ${table.body} is not null)`,
+    ),
     // Sürüm numarası teslimde tekildir; teslim yabancı anahtarının indeksidir. Kısıt (indeks değil):
     // yeniden teslim isteğinin bileşik yabancı anahtarı ona bağlanır ve migration'da tabloyla
     // birlikte, yabancı anahtarlardan önce oluşur.

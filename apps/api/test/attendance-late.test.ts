@@ -128,8 +128,13 @@ describe('DOM-AKD-036: yoklamada geç gelme dakikası', () => {
     for (const bad of [0, -3, 2.5, '10', null])
       assertError(await send({ [first.id]: bad }), 400, 'validation_failed')
     // c1'in ders süresi 40 dakikadır (örnek program).
-    assertError(await send({ [first.id]: 41 }), 422, 'late_minutes_out_of_range')
-    assertError(await send({ [second.id]: 5 }), 422, 'late_minutes_without_late')
+    const outOfRange = await send({ [first.id]: 41 })
+    assertError(outOfRange, 422, 'late_minutes_out_of_range')
+    // Mobil istemci dakika iletisini bu yola göre öğrencinin alanına eşler (`lateMinutesIssueErrors`).
+    assert.deepEqual(outOfRange.json().issues?.[0]?.path, ['lateMinutes', first.id])
+    const withoutLate = await send({ [second.id]: 5 })
+    assertError(withoutLate, 422, 'late_minutes_without_late')
+    assert.deepEqual(withoutLate.json().issues?.[0]?.path, ['lateMinutes', second.id])
     assertError(await send({ yabanci: 5 }), 422, 'late_minutes_without_late')
     assert.equal(await count(a.id, 'attendance'), 0)
     assert.equal(await version(a.id, 'classes', 'c1'), classVersion)

@@ -116,6 +116,18 @@ const readQueryShape = {
     .describe(
       'Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400',
     ),
+  answered: z
+    .enum(['true', 'false'])
+    .optional()
+    .describe(
+      'Yalnız `questions`: `true` yanıtlanmış sorular (`answeredAt` dolu), `false` yanıtlanmamışlar. Yanıt bekleyen soru `answered=false&withdrawn=false`dır (durum saklanmaz). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400',
+    ),
+  withdrawn: z
+    .enum(['true', 'false'])
+    .optional()
+    .describe(
+      'Yalnız `questions`: `true` geri çekilen sorular (`withdrawnAt` dolu), `false` geri çekilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400',
+    ),
   dateField: z
     .enum(DATE_FIELD_NAMES)
     .optional()

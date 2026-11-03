@@ -10,6 +10,7 @@ import { useKampusClient } from './kampus-context.ts'
 import { institutionKey } from './query-keys.ts'
 import { useActiveInstitutionId } from './use-active-institution.ts'
 import { useApiCommand } from './use-api-command.ts'
+import { CONTENT_RESULTS_PREFIX } from './use-content-assignments.ts'
 import { TASK_ASSIGNMENTS_KEY } from './use-task-assignments.ts'
 import { TASK_SUBMISSIONS_KEY } from './use-task-submissions.ts'
 
@@ -30,8 +31,11 @@ import { TASK_SUBMISSIONS_KEY } from './use-task-submissions.ts'
  * kuyrukta `awaiting: 'resolution'` süzgeci. Kapsam ve puanlayıcı bağımsızlığı sunucudadır.
  */
 
-/** Puan ve istek teslimi, listeyi ve kuyruğu değiştirir. */
-export const TASK_GRADING_INVALIDATES = [[TASK_SUBMISSIONS_KEY]] as const
+/**
+ * Puan ve istek teslimi, listeyi ve kuyruğu değiştirir; içeriğe bağlı sonuç özeti de (puan
+ * ortalaması) puana bağlıdır.
+ */
+export const TASK_GRADING_INVALIDATES = [[TASK_SUBMISSIONS_KEY], CONTENT_RESULTS_PREFIX] as const
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {

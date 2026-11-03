@@ -1723,6 +1723,22 @@ export function shuffleQuestion(
   }
 }
 
+/**
+ * Quiz ve alıştırma setinin madde sırası (`shuffleItems`): ayar kapalıysa yazarın sırası olduğu
+ * gibi kalır (`random` hiç çağrılmaz); açıksa maddeler `questionVersionId`'ye göre dizilip
+ * karıştırılır, yani yazarın sırası sonuca sızmaz. Servis `seededRandom(denemeKimliği + ':items')`
+ * verir: aynı denemede sıra sabit kalır, denemeler arasında değişebilir. Cevap, puan ve sonuç
+ * `questionVersionId` ile eşlenir; sıra yalnız gösterimdir.
+ */
+export function shuffleItemOrder<T extends { questionVersionId: string }>(
+  items: readonly T[],
+  shuffle: boolean,
+  random: RandomSource,
+): T[] {
+  if (!shuffle) return [...items]
+  return shuffled(items, (item) => item.questionVersionId, random)
+}
+
 export type LearnerViewOptions = {
   /**
    * Seçenek ve öğe karıştırmasının rastgelelik kaynağı (zorunlu: core saf kalır). Servis

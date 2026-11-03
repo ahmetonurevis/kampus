@@ -15,6 +15,7 @@ import {
   emptyListView,
   listNarrowed,
   mobileColumnSplit,
+  TABLE_CARD_QUERY,
   tableFields,
   tableSearchKeys,
   type ListColumn,
@@ -90,7 +91,6 @@ type ServerDataTableProps<T extends Row> = TableOptions<T> & {
 }
 
 const features = tableFeatures({})
-const MOBILE = '(max-width: 650px)'
 const NO_FILTERS: readonly FilterField[] = []
 const NO_KEYS: readonly string[] = []
 const NO_ROWS: readonly never[] = []
@@ -111,7 +111,8 @@ function renderColumnCell<T extends Row>(column: DataColumn<T> | undefined, row:
 /**
  * Kayıt tablosu (Vue `DataTable.vue`). Satır/sütun modeli TanStack Table'dan; arama, filtre,
  * Türkçe sıralama ve sayfa `useListState` + `list-view` ile (CSV aynı sonucu kullanır).
- * Masaüstünde başlık ve işlem sütunu sabit, ≤ 650 px'te kart + "Diğer bilgiler".
+ * Masaüstünde başlık ve işlem sütunu sabit; dikey (≤ 650 px) ve yatay telefonda kart + "Diğer
+ * bilgiler" (`TABLE_CARD_QUERY`).
  */
 export function DataTable<T extends Row>({
   listKey,
@@ -227,7 +228,7 @@ function TableView<T extends Row>({
   fetching = false,
   error,
 }: TableViewProps<T>) {
-  const mobile = useMediaQuery(MOBILE)
+  const mobile = useMediaQuery(TABLE_CARD_QUERY)
   const { state, dispatch, attachScrollRegion, onScroll } = list
   const hasQuery = listNarrowed(state, externalActive)
   // Araç çubuğu temizleme düğmesi: masaüstünde çubuk varsa, mobilde arama alanı varsa çizilir.

@@ -153,7 +153,8 @@ function isInvoiceStatus(value: string): value is InvoiceStatusLabel {
 }
 
 /**
- * Durum süzgeçleri (`cancelled=true|false`, `graded=true|false`): alanın dolu olup olmadığı.
+ * Durum süzgeçleri (`cancelled`, `graded`, `answered`, `withdrawn`; `true|false`): alanın dolu
+ * olup olmadığı.
  * Her süzgeç tek koleksiyona bağlıdır; başka koleksiyonda 400. Kural core'la aynıdır: iptal
  * `cancelledAt` doğruluk değeridir (`!lesson.cancelledAt`), notlanma `score` boş olmamasıdır
  * (`score == null` notlanmamış; `0` puandır).
@@ -166,6 +167,10 @@ export const STATE_FILTERS = {
     where: 'ders programında',
   },
   graded: { collection: 'submissions', field: 'score', rule: 'nonNull', where: 'teslimlerde' },
+  // Soru durumu saklanmaz (core `questionStatus`): yanıt bekleyen soru `answered=false` ve
+  // `withdrawn=false` birlikte verilerek süzülür (DOM-ILT-091, DOM-ILT-093).
+  answered: { collection: 'questions', field: 'answeredAt', rule: 'truthy', where: 'sorularda' },
+  withdrawn: { collection: 'questions', field: 'withdrawnAt', rule: 'truthy', where: 'sorularda' },
 } as const satisfies Record<
   string,
   { collection: CollectionName; field: string; rule: 'truthy' | 'nonNull'; where: string }

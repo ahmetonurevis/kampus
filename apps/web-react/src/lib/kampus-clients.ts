@@ -4,8 +4,23 @@ import { createAuthClient } from 'better-auth/react'
 import { kampusAuthClientOptions } from '@kampus/api-client/auth.ts'
 import { createKampusClient } from '@kampus/api-client/client.ts'
 import { createKampusQueryClient } from '@kampus/react-shared/query-client.ts'
+import type { AccountSecurityClient } from '@kampus/react-shared/use-account-security.ts'
 
 export const authClient = createAuthClient(kampusAuthClientOptions(window.location.origin))
+
+/**
+ * Hesap güvenliği kancalarının istemcisi (IST-003, IST-025). Better Auth istemcisinin
+ * `revokeSession`'ı belirteç ister; API belirteci istemciye vermediği için tek oturum kimliğiyle
+ * (`{ sessionId }`) kapatılır, belirteci sunucu kullanıcının kendi oturumlarından çözer.
+ */
+export const accountSecurityClient: AccountSecurityClient = {
+  requestPasswordReset: (input) => authClient.requestPasswordReset(input),
+  resetPassword: (input) => authClient.resetPassword(input),
+  changePassword: (input) => authClient.changePassword(input),
+  listSessions: () => authClient.listSessions(),
+  revokeSession: (input) => authClient.$fetch('/revoke-session', { method: 'POST', body: input }),
+  revokeOtherSessions: () => authClient.revokeOtherSessions(),
+}
 
 export const apiClient = createKampusClient({ baseUrl: '', credentials: 'same-origin' })
 

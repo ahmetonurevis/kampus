@@ -25,7 +25,7 @@ import { seedResource } from './support/resources-sample.ts'
  * kaldırma, paylaşım ve kopya (DOM-KYN-001, 021, 025, 030, 031, 032, 040, 050, 051).
  */
 
-const outcomes = [{ outcomeId: 'M.9.1.1', outcomeSource: 'platform' as const }]
+const outcomes = [{ outcomeId: 'MAT.9.1.1', outcomeSource: 'platform' as const }]
 /** Okul türünde yayım koşullarını karşılayan metin (ders, düzey, kazanım, lisans). */
 const publishable = (title = 'Kesirlerle okuma') => ({
   title,

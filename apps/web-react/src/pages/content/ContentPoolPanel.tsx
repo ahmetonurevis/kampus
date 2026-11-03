@@ -29,7 +29,10 @@ import { Textarea } from '@/components/ui/textarea'
 import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
 import { ConflictNotice, isVersionConflict } from '../management/FormParts.tsx'
+import { ContentAssignmentResults } from './ContentAssignmentResults.tsx'
+import { ContentAssignPanel } from './ContentAssignPanel.tsx'
 import { ContentResourceActions } from './ContentResourceActions.tsx'
+import { canAssignContent, canSeeContentResults, contentTaskType } from './content-assign-model.ts'
 import { ResourceFileList } from './ResourceFileList.tsx'
 import {
   draftFromHead,
@@ -150,6 +153,7 @@ function PanelBody({
   const [reloading, setReloading] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  const [assigning, setAssigning] = useState(false)
   // Kaynak eylemlerinden biri (kopya, bildirim, kaldırma) sürerken durum geçişleri de kilitli.
   const [commandPending, setCommandPending] = useState(false)
   const { head, resource } = detail
@@ -168,6 +172,16 @@ function PanelBody({
   const editable = canEditDraft(head, actor.userId) && draftFromHead(head) !== null
   const newVersion = canOpenNewVersion({ detail, actor, institutionType })
   const busy = transition.isPending || openVersion.isPending || commandPending
+  // İçerikten atama (IST-034, DOM-BEC-049): yalnız güncel yayındaki sürüm atanır.
+  const taskType = contentTaskType(resource.contentType)
+  const currentVersion = detail.versions.find((v) => v.id === resource.currentVersionId)
+  const assignable = canAssignContent({
+    role: actor.role,
+    contentType: resource.contentType,
+    currentVersionId: resource.currentVersionId,
+    currentStatus: currentVersion?.status ?? null,
+  })
+  const showResults = taskType !== null && canSeeContentResults(actor.role)
 
   async function run(action: ActionKind, reason?: string) {
     const outcome = await transition.submit(
@@ -294,6 +308,8 @@ function PanelBody({
         </ol>
       </section>
 
+      {showResults ? <ContentAssignmentResults resourceId={resource.id} /> : null}
+
       <div
         className="flex flex-wrap gap-2 border-t pt-4"
         role="group"
@@ -313,6 +329,12 @@ function PanelBody({
             }
           />
         ))}
+        {assignable ? (
+          <Button onClick={() => setAssigning(true)} disabled={busy}>
+            <Icon name="ClipboardCheck" size={16} aria-hidden="true" />
+            Ata
+          </Button>
+        ) : null}
         {editable ? (
           <Button variant="outline" onClick={() => onEdit(resource.id)} disabled={busy}>
             <Icon name="Pencil" size={16} aria-hidden="true" />
@@ -335,10 +357,20 @@ function PanelBody({
           onPendingChange={setCommandPending}
         />
       </div>
-      {actions.length === 0 && !editable && !newVersion && !hasCommands ? (
+      {actions.length === 0 && !editable && !newVersion && !hasCommands && !assignable ? (
         <p className="text-sm text-muted-foreground">Bu içerik için yapılabilecek işlem yok.</p>
       ) : null}
 
+      {assignable && taskType !== null && resource.currentVersionId !== null ? (
+        <ContentAssignPanel
+          open={assigning}
+          onClose={() => setAssigning(false)}
+          resourceId={resource.id}
+          versionId={resource.currentVersionId}
+          title={currentVersion?.title ?? head.title}
+          taskType={taskType}
+        />
+      ) : null}
       <RejectModal
         open={rejecting}
         onOpenChange={setRejecting}

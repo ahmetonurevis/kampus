@@ -1,4 +1,6 @@
 import { dayKey, INVOICE_STATUS_LABELS } from '@kampus/school-core/lib/format.ts'
+import { questionResponse } from '@kampus/school-core/lib/questions.ts'
+import { REQUEST_STATUSES } from '@kampus/school-core/lib/requests.ts'
 import type { Scope } from '@kampus/school-core/lib/scope.ts'
 
 import type { CollectionName } from '../db/collections.ts'
@@ -402,6 +404,24 @@ const invoiceList = (
     sort,
   }).then((result) => result.items.map(invoiceRow))
 
+const [REQUEST_NEW, REQUEST_IN_REVIEW, REQUEST_RESOLVED] = REQUEST_STATUSES
+
+export interface RequestCounts {
+  total: number
+  new: number
+  inReview: number
+  resolved: number
+}
+
+/** Talep durum dağılımı (`requests` `groupBy=status`); ön büro "Yeni talep" kartı. */
+const requestCounts = (ctx: ServiceContext): Promise<RequestCounts> =>
+  count(ctx, 'requests', { groupBy: 'status' }).then((counts) => ({
+    total: counts.total,
+    new: countOf(counts, REQUEST_NEW),
+    inReview: countOf(counts, REQUEST_IN_REVIEW),
+    resolved: countOf(counts, REQUEST_RESOLVED),
+  }))
+
 async function frontDeskDashboard(
   ctx: ServiceContext,
   scope: Scope,
@@ -409,7 +429,7 @@ async function frontDeskDashboard(
   branch: BranchScope | null,
 ) {
   const ofBranch = branch?.classFilter ?? {}
-  const [finance, prospects] = await Promise.all([
+  const [finance, prospects, requests] = await Promise.all([
     section(opens(scope, 'invoices'), async () => {
       const [invoices, paidToday, overdue, upcoming, recentPayments] = await Promise.all([
         invoicesByStatus(ctx, ofBranch),
@@ -438,11 +458,77 @@ async function frontDeskDashboard(
         })),
       }
     }),
+    // Şikayet & Talepler listesiyle aynı sayım: liste kampüs süzgeci taşımaz, bu bölüm de taşımaz.
+    section(opens(scope, 'requests'), () => requestCounts(ctx)),
   ])
-  return { role: 'onburo' as const, today, finance, prospects }
+  return { role: 'onburo' as const, today, finance, prospects, requests }
 }
 
 // --- Öğretmen --------------------------------------------------------------------------------
+
+/** Öğretmen kartında listelenen en eski yanıt bekleyen soru sayısı (Vue ilk üç soruyu gösterir). */
+const QUESTION_LIST = 3
+
+export interface OpenQuestions {
+  total: number
+  overdue: number
+  items: {
+    id: string
+    title: string
+    createdAt: string
+    studentName?: string | undefined
+    className?: string | undefined
+    overdue: boolean
+  }[]
+}
+
+/** Zamana göre artan sıra; geçersiz ya da boş tarih (NaN) en sona gider. */
+function byTime(a: string, b: string): number {
+  const x = Date.parse(a)
+  const y = Date.parse(b)
+  if (Number.isNaN(x) || Number.isNaN(y)) return Number.isNaN(x) ? (Number.isNaN(y) ? 0 : 1) : -1
+  return x - y
+}
+
+/**
+ * Yanıt bekleyen sorular (`questions?answered=false&withdrawn=false`; kapsam öğretmene atanan
+ * sorular, DOM-ILT-093). Yanıt süresi saklanmaz: core `questionResponse` isteğin anıyla (`ctx.now`)
+ * iş takvimine göre hesaplar. Sıra Soru Kuyruğu'yla aynıdır: en eski soru önce.
+ */
+async function openQuestions(ctx: ServiceContext): Promise<OpenQuestions> {
+  const states = { answered: false, withdrawn: false }
+  // Toplam, Soru Kuyruğu listesinin kullandığı sayımdır (aynı kapsam ve süzgeç).
+  const [counted, read] = await Promise.all([
+    count(ctx, 'questions', { groupBy: 'teacherId', states }),
+    list(ctx, 'questions', { pageSize: ALL_ROWS, states }),
+  ])
+  // Süre aşımı satır satır hesaplanır; okuma sınırı aşılırsa sayı sessizce eksik kalmasın.
+  if (counted.total > read.items.length)
+    throw new Error(
+      `Yanıt bekleyen soru sayısı okuma sınırını aşıyor (${counted.total} > ${ALL_ROWS}).`,
+    )
+  const pending = read.items
+  const now = ctx.now.toISOString()
+  const rows = pending
+    .map((item) => {
+      const createdAt = text(item.record.createdAt) ?? ''
+      const { overdue } = questionResponse({ createdAt, answeredAt: null }, now)
+      return {
+        id: item.id,
+        title: text(item.record.title) ?? '',
+        createdAt,
+        studentName: item.joined?.studentName,
+        className: item.joined?.className,
+        overdue,
+      }
+    })
+    .toSorted((a, b) => byTime(a.createdAt, b.createdAt))
+  return {
+    total: counted.total,
+    overdue: rows.filter((row) => row.overdue).length,
+    items: rows.slice(0, QUESTION_LIST),
+  }
+}
 
 async function teacherDashboard(ctx: ServiceContext, scope: Scope, today: string) {
   // Öğretmenin kendi kaydı (kapsam yalnız onu döndürür): ders ve ödev süzgecinin kimliği.
@@ -454,7 +540,7 @@ async function teacherDashboard(ctx: ServiceContext, scope: Scope, today: string
   ])
   const teacherId = self.items[0]?.id ?? ''
   const own = teacherId ? { teacherId: [teacherId] } : null
-  const [academic, learning] = await Promise.all([
+  const [academic, learning, questions] = await Promise.all([
     section(opens(scope, 'attendance', 'schedule'), async () => {
       const todayRange = { dateFrom: today, dateTo: today }
       const [attendanceToday, lessons, cancelled, recentAbsences] = await Promise.all([
@@ -540,6 +626,7 @@ async function teacherDashboard(ctx: ServiceContext, scope: Scope, today: string
         }),
       }
     }),
+    section(opens(scope, 'questions'), () => openQuestions(ctx)),
   ])
   return {
     role: 'ogretmen' as const,
@@ -548,6 +635,7 @@ async function teacherDashboard(ctx: ServiceContext, scope: Scope, today: string
     classes: { active: countOf(classes, true) },
     academic,
     learning,
+    questions,
   }
 }
 

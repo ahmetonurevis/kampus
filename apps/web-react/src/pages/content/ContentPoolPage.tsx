@@ -21,6 +21,7 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import type { FilterField } from '@/lib/list-query.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { RESULT_LIST_PARAMS } from './content-assign-model.ts'
 import { NEW_CONTENT } from './content-form-targets.ts'
 import { ContentDraftForm } from './ContentDraftForm.tsx'
 import { ContentPoolPanel } from './ContentPoolPanel.tsx'
@@ -89,7 +90,8 @@ export function ContentPoolPage({ page }: { page: NavPage }) {
     [resources.data, subjectNames],
   )
 
-  const panel = useDetailPanel('icerik')
+  // Sonuç özetinin sayfa/sıralama parametreleri panel kapanınca silinir (OG-089).
+  const panel = useDetailPanel('icerik', RESULT_LIST_PARAMS)
   const form = useDetailPanel('icerik-form')
   const openPanel = panel.open
   const navigate = useNavigate()

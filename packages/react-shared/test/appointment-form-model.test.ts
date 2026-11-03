@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { BookableSlot } from '@kampus/react-shared/appointment-slots.ts'
+import type { BookableSlot } from '../src/appointment-slots.ts'
 import {
   APPOINTMENT_TYPES_BY_ROLE,
   bookAppointmentSchema,
@@ -15,7 +15,7 @@ import {
   selectableSlot,
   slotTime,
   transitionBody,
-} from '../src/pages/communication/appointment-forms.ts'
+} from '../src/appointment-form-model.ts'
 
 const slot = (over: Partial<BookableSlot> & Pick<BookableSlot, 'slotId'>): BookableSlot => ({
   teacherId: 't1',

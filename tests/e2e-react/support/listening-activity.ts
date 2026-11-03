@@ -49,7 +49,7 @@ const TAGS = {
   gradeLevels: [7],
   primarySkill: 'listening',
   cefrLevel: 'A2',
-  outcomes: [{ outcomeId: 'DIN.7.1', outcomeSource: 'institution' }],
+  outcomes: [{ outcomeId: 'ENG.7.2.1', outcomeSource: 'platform' }],
 }
 const LICENSE = { kind: 'institution_original' }
 

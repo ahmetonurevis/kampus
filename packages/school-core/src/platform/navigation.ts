@@ -252,11 +252,26 @@ const groupsPage = (group: string, description: string) =>
 const placementPage = (group: string, description: string) =>
   languageSchoolPage('seviye-tespiti', 'Seviye Tespiti', 'ListChecks', description, group)
 
+// Kurum başarı belgeleri (OG-088; IST-081, DOM-DIL-080…082): uçlar `academic` modülündedir, menü
+// de modüle bağlıdır (kapalıysa sayfa ve uçlar kapanır). Personel düzenler, iptal eder ve MEBBİS
+// izini işaretler (yazma yönetici ve seviyenin akademik koordinatörü; diğer öğretmen okur). Öğrenci
+// ve 18 yaş altı kursiyerin velisi yalnız geçerli belgeyi görür; ön büro uçlarda 403 aldığından
+// menüde yoktur.
+const certificatesPage = (group: string, title: string, description: string): NavigationPage => ({
+  ...languageSchoolPage('basari-belgeleri', title, 'ShieldCheck', description, group),
+  module: 'academic',
+})
+
 export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> = {
   yonetici: [
     coursesPage('YÖNETİM', 'Kur programını tanımlayın, etkinleştirin ve e-Özel kaydını izleyin.'),
     groupsPage('YÖNETİM', 'Kurlardan grup açın; öğretmen, derslik ve takvimi planlayın.'),
     placementPage('YÖNETİM', 'Seviye tespiti açın, bölümleri puanlayın ve yerleştirin.'),
+    certificatesPage(
+      'YÖNETİM',
+      'Başarı Belgeleri',
+      'Kur sonunda geçen kursiyerlere kurum başarı belgesi düzenleyin, MEBBİS izini tutun.',
+    ),
   ],
   onburo: [
     coursesPage('KAYIT & SATIŞ', 'Etkin kurları ve kapasitelerini inceleyin.'),
@@ -266,7 +281,24 @@ export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> 
     coursesPage('AKADEMİK', 'Koordinatörü olduğunuz seviyelerin kurlarını yönetin.'),
     groupsPage('AKADEMİK', 'Gruplarınızın takvimini ve doluluğunu izleyin.'),
     placementPage('AKADEMİK', 'Kursiyer ve adayların seviye tespitini yürütün.'),
+    certificatesPage(
+      'AKADEMİK',
+      'Başarı Belgeleri',
+      'Gruplarınızın kurum başarı belgelerini ve MEBBİS listesini izleyin.',
+    ),
   ],
-  ogrenci: [],
-  veli: [],
+  ogrenci: [
+    certificatesPage(
+      'GELİŞİMİM',
+      'Başarı Belgelerim',
+      'Tamamladığınız kurların kurum başarı belgelerini görün ve indirin.',
+    ),
+  ],
+  veli: [
+    certificatesPage(
+      'AKADEMİK',
+      'Başarı Belgeleri',
+      'Çocuğunuzun tamamladığı kurların kurum başarı belgelerini görün ve indirin.',
+    ),
+  ],
 }

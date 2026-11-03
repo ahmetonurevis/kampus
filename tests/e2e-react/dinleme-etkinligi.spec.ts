@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { expect, test } from './support/fixtures.ts'
 import {
+  assignListening,
   expectOk,
   fileUrlResponse,
   hasFfmpeg,
@@ -13,6 +14,9 @@ import {
   TEACHES_ENGLISH,
   TRANSCRIPT,
   publishListeningQuiz,
+  publishQuestion,
+  publishQuiz,
+  publishRecording,
   type Json,
 } from './support/listening-activity.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
@@ -29,6 +33,8 @@ test.beforeEach(() => {
   if (!hasFfmpeg && process.env.CI)
     throw new Error('CI ortamında ffmpeg/ffprobe kurulu olmalı (checks.yml e2e-react işi).')
 })
+
+const PLAIN_QUIZ_TITLE = 'Kayıtsız okuma sınavı'
 
 type Listening = { limit: number; media: { fileId: string; used: number; remaining: number }[] }
 
@@ -184,6 +190,11 @@ test.describe('dinleme etkinliği', () => {
     await expect(audio).toHaveAttribute('src', /.+/)
     // Altyazı Blob adresiyle bağlanır.
     await expect(audio.locator('track[kind="captions"]')).toHaveAttribute('src', /^blob:/)
+    // <audio> altyazıyı çizmez: döküm açıkken etkin satır oynatıcının altında okunur.
+    await expect(recording.getByRole('status', { name: 'Altyazı' })).toHaveAttribute(
+      'aria-live',
+      'polite',
+    )
 
     // Öğretmenin dinlemesi öğrencinin hakkından düşmez.
     const detail = await expectOk(await student.get(`/api/v1/task-attempts/${started.id}`), 200)
@@ -203,6 +214,8 @@ test.describe('dinleme etkinliği', () => {
     })
     const teacher = await api(school.user('ogretmen'))
     await publishListeningQuiz(teacher)
+    // Kaydı olmayan quiz: dinleme hakkı sayılmaz, alan gösterilmez.
+    await publishQuiz(teacher, PLAIN_QUIZ_TITLE, await publishQuestion(teacher), null)
 
     await loginAs(school.user('ogretmen'))
     await page.goto('/ogretmen/odevler?sekme=gorevler')
@@ -210,10 +223,22 @@ test.describe('dinleme etkinliği', () => {
     const dialog = page.getByRole('dialog', { name: 'Yeni görev ata' })
     await expect(dialog.getByLabel('Dinleme hakkı')).toHaveCount(0)
     await dialog.getByLabel('Görev türü').selectOption('quiz')
-    await dialog.getByLabel('İçerik', { exact: true }).selectOption({ label: QUIZ_TITLE })
+    const content = dialog.getByLabel('İçerik', { exact: true })
     const plays = dialog.getByLabel('Dinleme hakkı')
+    const assignButton = dialog.getByRole('button', { name: 'Görevi ata' })
+    await content.selectOption({ label: PLAIN_QUIZ_TITLE })
+    await expect(assignButton).toBeEnabled()
+    await expect(plays).toHaveCount(0)
+
+    // Kaynak değişince alan yeni içeriğe göre güncellenir; seçim içerik değişse de korunur.
+    await content.selectOption({ label: QUIZ_TITLE })
     await expect(plays).toHaveValue('2')
     await plays.selectOption('1')
+    await content.selectOption({ label: PLAIN_QUIZ_TITLE })
+    await expect(plays).toHaveCount(0)
+    await expect(assignButton).toBeEnabled()
+    await content.selectOption({ label: QUIZ_TITLE })
+    await expect(plays).toHaveValue('1')
     await dialog.getByLabel('7-A', { exact: true }).check()
     await dialog.getByLabel('Son teslim', { exact: true }).fill('2099-01-15T18:00')
     await dialog.getByRole('button', { name: 'Görevi ata' }).click()
@@ -229,5 +254,81 @@ test.describe('dinleme etkinliği', () => {
       (item) => item.title === QUIZ_TITLE,
     )
     expect(saved?.listeningPlays).toBe(1)
+  })
+
+  test('IST-045, DOM-BEC-005 (Sabah kararı 56): sınırsız görevin sonucundan dinleme, aynı kaydı bağlayan sınırlı görevin süren denemesinde reddedilir; hak yanmaz', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await tenant({
+      classes: ['c1'],
+      roles: ['ogretmen', 'ogrenci'],
+      records: TEACHES_ENGLISH,
+    })
+    const teacher = await api(school.user('ogretmen'))
+    const student = await api(school.user('ogrenci'))
+    const recordingVersionId = await publishRecording(teacher)
+    const questionVersionId = await publishQuestion(teacher)
+    const unlimitedQuiz = await publishQuiz(
+      teacher,
+      QUIZ_TITLE,
+      questionVersionId,
+      recordingVersionId,
+    )
+    const limitedQuiz = await publishQuiz(
+      teacher,
+      'Tom tekrar sınavı',
+      questionVersionId,
+      recordingVersionId,
+    )
+    const unlimited = await assignListening(teacher, unlimitedQuiz, null)
+    const limited = await assignListening(teacher, limitedQuiz, 2)
+
+    // A (sınırsız) teslim edildi; B (sınırlı) sürüyor.
+    const finished = await expectOk(
+      await student.post(
+        `/api/v1/task-assignments/${unlimited}/attempts`,
+        {},
+        { 'idempotency-key': randomUUID() },
+      ),
+    )
+    await expectOk(
+      await student.post(
+        `/api/v1/task-attempts/${finished.id}/submit`,
+        {},
+        { 'idempotency-key': randomUUID(), 'if-match': `"${finished.rowVersion}"` },
+      ),
+      200,
+    )
+    const running = await expectOk(
+      await student.post(
+        `/api/v1/task-assignments/${limited}/attempts`,
+        {},
+        { 'idempotency-key': randomUUID() },
+      ),
+    )
+
+    await page.setViewportSize({ width: 1280, height: 900 })
+    await loginAs(school.user('ogrenci'))
+    await page.goto(`/ogrenci/soru-coz?coz=${unlimited}`)
+    await expect(page.getByRole('heading', { name: '1. deneme sonucu' })).toBeVisible()
+    const result = recordingOf(page)
+    const refused = fileUrlResponse(page)
+    await result.getByRole('button', { name: 'Kaydı dinle' }).click()
+    const response = await refused
+    expect(response.url()).not.toContain('attemptId=')
+    expect(response.status()).toBe(422)
+    await expect(
+      result.getByText(
+        'Bu kayıt süren bir denemenizde sınırlı; dinlemeyi o denemenin ekranından açın.',
+      ),
+    ).toBeVisible()
+    await expect(result.locator('audio')).toHaveCount(0)
+
+    // B'nin hakkı yanmadı.
+    const detail = await expectOk(await student.get(`/api/v1/task-attempts/${running.id}`), 200)
+    expect((detail.listening as Listening).media[0]).toMatchObject({ used: 0, remaining: 2 })
   })
 })

@@ -204,14 +204,15 @@ export function ListeningRecording({
             ) : null}
           </audio>
           {showCaptions ? (
-            <p
+            <div
+              role="status"
               aria-live="polite"
               aria-label="Altyazı"
               lang="en"
               className="min-h-10 rounded-md border bg-muted px-3 py-2 text-sm leading-relaxed whitespace-pre-line [overflow-wrap:anywhere]"
             >
               {cue}
-            </p>
+            </div>
           ) : null}
           {playError ? (
             <p role="status" className="text-xs text-muted-foreground">

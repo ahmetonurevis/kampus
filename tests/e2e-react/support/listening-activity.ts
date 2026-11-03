@@ -123,10 +123,10 @@ async function publish(author: ApiClient, body: Json): Promise<string> {
   return (published.version as Json).id as string
 }
 
-/** Dökümlü, altyazılı ses kaydı, dinleme sorusu ve kayda bağlı quiz; quiz sürümü döner. */
-export async function publishListeningQuiz(teacher: ApiClient): Promise<string> {
+/** Dökümlü, altyazılı ses kaydı; ses sürümü döner. */
+export async function publishRecording(teacher: ApiClient): Promise<string> {
   const fileId = await uploadListeningAudio(teacher)
-  const listeningVersionId = await publish(teacher, {
+  return publish(teacher, {
     title: RECORDING_TITLE,
     content: { type: 'audio', fileId, transcript: TRANSCRIPT, captionsVtt: CAPTIONS },
     fileIds: [fileId],
@@ -136,7 +136,11 @@ export async function publishListeningQuiz(teacher: ApiClient): Promise<string> 
     ],
     tags: TAGS,
   })
-  const questionVersionId = await publish(teacher, {
+}
+
+/** Dinleme sorusu (çoktan seçmeli); soru sürümü döner. */
+export async function publishQuestion(teacher: ApiClient): Promise<string> {
+  return publish(teacher, {
     title: `Soru: ${QUESTION.stem}`,
     content: {
       type: 'question',
@@ -154,12 +158,32 @@ export async function publishListeningQuiz(teacher: ApiClient): Promise<string> 
     license: LICENSE,
     tags: TAGS,
   })
+}
+
+/** Tek sorulu quiz; `listeningVersionId` verilirse kayda bağlıdır. Quiz sürümü döner. */
+export async function publishQuiz(
+  teacher: ApiClient,
+  title: string,
+  questionVersionId: string,
+  listeningVersionId: string | null,
+): Promise<string> {
   return publish(teacher, {
-    title: QUIZ_TITLE,
-    content: { type: 'quiz', items: [{ questionVersionId, points: 1 }], listeningVersionId },
+    title,
+    content: {
+      type: 'quiz',
+      items: [{ questionVersionId, points: 1 }],
+      ...(listeningVersionId === null ? {} : { listeningVersionId }),
+    },
     license: LICENSE,
     tags: TAGS,
   })
+}
+
+/** Dökümlü, altyazılı ses kaydı, dinleme sorusu ve kayda bağlı quiz; quiz sürümü döner. */
+export async function publishListeningQuiz(teacher: ApiClient): Promise<string> {
+  const listeningVersionId = await publishRecording(teacher)
+  const questionVersionId = await publishQuestion(teacher)
+  return publishQuiz(teacher, QUIZ_TITLE, questionVersionId, listeningVersionId)
 }
 
 /** 7-A'ya tek denemelik değerlendirme; `listeningPlays` dinleme hakkıdır. Atama kimliği döner. */

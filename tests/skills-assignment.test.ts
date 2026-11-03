@@ -6,6 +6,7 @@ import {
   resourceVersionInputSchema,
   type AnswerKey,
   type QuestionBody,
+  type ResourceContent,
   type ResourceVersionInput,
 } from '../packages/school-core/src/content/resource.ts'
 import type { AuthorizationSource } from '../packages/school-core/src/lib/authorize.ts'
@@ -983,6 +984,20 @@ describe('puanlama maddeleri ve yeniden puanlama (DOM-BEC-010, 011, DOM-KYN-033)
     attempts: [{ id: `att-${id}`, completedAt: plusMs(now, -DAY), answers: answers(q1) }],
     locked,
   })
+  const quizContent = (
+    links: { passageVersionId?: string | null; listeningVersionId?: string | null } = {},
+  ): ResourceContent => ({
+    type: 'quiz',
+    items: [
+      { questionVersionId: 'test-qv1', points: 1 },
+      { questionVersionId: 'test-qv2', points: 2 },
+    ],
+    timeLimitMinutes: null,
+    shuffleItems: false,
+    passageVersionId: null,
+    listeningVersionId: 'test-au-1',
+    ...links,
+  })
   const context = (input: Partial<RescoreContext> = {}): RescoreContext => ({
     assignment: {
       resourceId: 'test-res1',
@@ -990,7 +1005,13 @@ describe('puanlama maddeleri ve yeniden puanlama (DOM-BEC-010, 011, DOM-KYN-033)
       scoringMode: 'auto',
       attempts: { kind: 'evaluation', maxAttempts: 1, countPolicy: 'first' },
     },
-    nextVersion: { id: 'test-rv-2', resourceId: 'test-res1', status: 'published' },
+    currentContent: quizContent(),
+    nextVersion: {
+      id: 'test-rv-2',
+      resourceId: 'test-res1',
+      status: 'published',
+      content: quizContent(),
+    },
     before: [item('test-qv1', 'b'), item('test-qv2', 'a', 2)],
     after: [item('test-qv1', 'c'), item('test-qv2', 'a', 2)],
     learners: [
@@ -1086,6 +1107,29 @@ describe('puanlama maddeleri ve yeniden puanlama (DOM-BEC-010, 011, DOM-KYN-033)
     )
   })
 
+  test('DOM-KYN-033, IST-042, IST-045 (OG-052): okuma parçası ya da dinleme kaydı bağı değişen sürüme yeniden puanlama rescore_incompatible', () => {
+    for (const links of [
+      { listeningVersionId: 'test-au-2' },
+      { listeningVersionId: null },
+      { passageVersionId: 'test-ps-1' },
+    ]) {
+      const nextVersion = { ...context().nextVersion, content: quizContent(links) }
+      assert.throws(
+        () => previewRescore(context({ nextVersion })),
+        (error: unknown) =>
+          isDomainError('rescore_incompatible')(error) &&
+          /okuma parçası ya da dinleme kaydı/.test((error as Error).message),
+      )
+    }
+    // Bağ kaldırılmış mevcut sürümden bağlı sürüme geçiş de reddedilir.
+    assert.throws(
+      () => previewRescore(context({ currentContent: quizContent({ listeningVersionId: null }) })),
+      isDomainError('rescore_incompatible'),
+    )
+    // Aynı bağlı yeni sürüm kabul edilir.
+    assert.equal(previewRescore(context()).affectedCount, 3)
+  })
+
   test('DOM-KYN-033 öğretmen puanlı görev, başka içerik, aynı sürüm ve uyumsuz sorular reddedilir', () => {
     assert.throws(
       () =>
@@ -1098,7 +1142,7 @@ describe('puanlama maddeleri ve yeniden puanlama (DOM-BEC-010, 011, DOM-KYN-033)
       { id: 'test-rv-2', resourceId: 'test-res9', status: 'published' as const },
       { id: 'test-rv-1', resourceId: 'test-res1', status: 'published' as const },
       { id: 'test-rv-2', resourceId: 'test-res1', status: 'draft' as const },
-    ]) {
+    ].map((version) => ({ ...version, content: quizContent() }))) {
       assert.throws(
         () => previewRescore(context({ nextVersion })),
         isDomainError('rescore_version_invalid', 'conflict'),

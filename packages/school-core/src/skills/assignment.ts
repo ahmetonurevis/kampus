@@ -820,7 +820,9 @@ export type RescorePreview = {
 /** Puanlama sürümünü değiştirmek için gereken bağlam. */
 export type RescoreContext = {
   assignment: Pick<FixedAssignment, 'resourceId' | 'scoringVersionId' | 'scoringMode' | 'attempts'>
-  nextVersion: Pick<ResourceVersion, 'id' | 'resourceId' | 'status'>
+  /** Mevcut puanlama sürümünün içeriği: bağlı okuma parçası ve dinleme kaydı buradan okunur. */
+  currentContent: ResourceContent | null
+  nextVersion: Pick<ResourceVersion, 'id' | 'resourceId' | 'status' | 'content'>
   /** Mevcut puanlama sürümünün maddeleri. */
   before: readonly ScoringItem[]
   /**
@@ -831,6 +833,18 @@ export type RescoreContext = {
   learners: readonly RescoreLearner[]
 }
 
+/** Quiz/alıştırma setinin bağlı okuma parçası ve dinleme kaydı sürümleri; başka türde boş. */
+function activityLinks(content: ResourceContent | null): string {
+  if (content?.type !== 'quiz' && content?.type !== 'exercise_set') return '|'
+  return `${content.passageVersionId ?? ''}|${content.listeningVersionId ?? ''}`
+}
+
+/**
+ * Yeniden puanlanabilir mi (DOM-KYN-033): otomatik puanlı görev, aynı içeriğin yayındaki başka
+ * sürümü, aynı sorular ve aynı bağlı okuma parçası/dinleme kaydı (IST-042, IST-045). Bağ değişirse
+ * cevaplar başka metin ya da kayıt için verilmiş olurdu; dinleme hakkı ve kayıt erişimi atamanın
+ * sabitlenen sürümünden, deneme ayrıntısı puanlama sürümünden okunduğundan ikisi ayrışırdı.
+ */
 function assertRescorable(context: RescoreContext): void {
   const { assignment, nextVersion, before, after } = context
   if (assignment.scoringMode !== 'auto') {
@@ -859,6 +873,13 @@ function assertRescorable(context: RescoreContext): void {
     throw rule(
       'rescore_incompatible',
       'Yeni sürümün soruları mevcut cevaplarla eşleşmiyor; yeni atama açın.',
+      ['scoringVersionId'],
+    )
+  }
+  if (activityLinks(context.currentContent) !== activityLinks(nextVersion.content)) {
+    throw rule(
+      'rescore_incompatible',
+      'Yeni sürümün okuma parçası ya da dinleme kaydı değişmiş; yeni atama açın.',
       ['scoringVersionId'],
     )
   }

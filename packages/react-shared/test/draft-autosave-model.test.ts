@@ -308,3 +308,67 @@ describe('taslak otomatik kaydı: zamanlayıcı', () => {
     )
   })
 })
+
+describe('taslak otomatik kaydı: bekleyeni hemen kaydet (arka plan ve unmount)', () => {
+  beforeEach(() => mock.timers.enable({ apis: ['setTimeout'] }))
+  afterEach(() => mock.timers.reset())
+
+  test('IST-124: arka plana geçişte kirli metin zamanlayıcı beklenmeden kaydedilir', async () => {
+    const t = setup(snap(1, 'Old.'))
+    t.saver.schedule('New.')
+    assert.equal(t.saver.hasPending(), true)
+    assert.equal(await t.saver.saveIfPending('New.'), true)
+    assert.deepEqual(t.calls, [{ revision: 1, body: 'New.' }])
+    // Zamanlayıcı düşürüldü; gecikme dolunca ikinci istek gitmez.
+    assert.equal(t.saver.hasPending(), false)
+    mock.timers.tick(DRAFT_DELAY_MS)
+    await new Promise<void>((resolve) => setImmediate(resolve))
+    assert.equal(t.calls.length, 1)
+    assert.equal(t.saver.isDirty('New.'), false)
+  })
+
+  test('IST-124: kirli olmayan ve boş metin kaydedilmez', async () => {
+    const t = setup(snap(1, 'Saved.'))
+    assert.equal(await t.saver.saveIfPending('Saved.'), null)
+    assert.equal(await t.saver.saveIfPending('   '), null)
+    assert.equal(t.calls.length, 0)
+  })
+
+  test('IST-124: çakışmada başka pencerenin metninin üstüne yazılmaz', async () => {
+    const t = setup(snap(3, 'X'))
+    t.saver.sync(snap(4, 'Y'), 'X plus edit')
+    assert.equal(await t.saver.saveIfPending('X plus edit'), null)
+    assert.equal(t.calls.length, 0)
+    assert.equal(t.saver.hasConflict(), true)
+  })
+
+  test('IST-124: kayıt hatasında false döner ve metin kirli kalır; taslak kaybolmaz', async () => {
+    const t = setup(snap(1, 'Old.'))
+    t.setFail(true)
+    assert.equal(await t.saver.saveIfPending('New.'), false)
+    assert.equal(t.saver.isDirty('New.'), true)
+    assert.equal(t.saver.revision(), 1)
+    // Sonraki arka plan geçişi aynı revizyonla yeniden dener.
+    t.setFail(false)
+    assert.equal(await t.saver.saveIfPending('New.'), true)
+    assert.deepEqual(
+      t.calls.map((call) => call.revision),
+      [1, 1],
+    )
+  })
+
+  test('IST-124: süren kayıt varsa sıraya girer ve yeni revizyonu taşır', async () => {
+    const t = setup(snap(1, ''))
+    t.hold()
+    const first = t.saver.save('One.')
+    const background = t.saver.saveIfPending('One. Two.')
+    await Promise.resolve()
+    t.release()
+    await first
+    assert.equal(await background, true)
+    assert.deepEqual(t.calls, [
+      { revision: 1, body: 'One.' },
+      { revision: 2, body: 'One. Two.' },
+    ])
+  })
+})

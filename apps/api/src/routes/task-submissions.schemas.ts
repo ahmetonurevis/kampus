@@ -109,7 +109,9 @@ const taskFeedbackAudioSchema = z
     durationMs: z.number().int().min(0).nullable().describe('Sunucuda ölçülen süre'),
     status: z
       .enum(['processing', 'ready', 'deleted'])
-      .describe('`ready` ses `GET /api/v1/files/{fileId}/url` ile açılır (DOM-BEC-056)'),
+      .describe(
+        '`ready` ses `GET /api/v1/files/{fileId}/url` ile açılır (DOM-BEC-056). Silinmiş ya da reddedilmiş ses yanıtta yer almaz (`feedbackAudio` `null`); `deleted` şimdilik dönmez',
+      ),
   })
   .meta({ id: 'TaskFeedbackAudio' })
   .describe('Öğretmenin sesli geri bildirimi (DOM-BEC-056); puanla aynı görünürlükte, yoksa `null`')

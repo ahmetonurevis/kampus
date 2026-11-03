@@ -9261,7 +9261,7 @@
               "ready",
               "deleted"
             ],
-            "description": "`ready` ses `GET /api/v1/files/{fileId}/url` ile açılır (DOM-BEC-056)"
+            "description": "`ready` ses `GET /api/v1/files/{fileId}/url` ile açılır (DOM-BEC-056). Silinmiş ya da reddedilmiş ses yanıtta yer almaz (`feedbackAudio` `null`); `deleted` şimdilik dönmez"
           }
         },
         "required": [
@@ -25253,7 +25253,7 @@
               "ready",
               "deleted"
             ],
-            "description": "`ready` ses `GET /api/v1/files/{fileId}/url` ile açılır (DOM-BEC-056)"
+            "description": "`ready` ses `GET /api/v1/files/{fileId}/url` ile açılır (DOM-BEC-056). Silinmiş ya da reddedilmiş ses yanıtta yer almaz (`feedbackAudio` `null`); `deleted` şimdilik dönmez"
           }
         },
         "required": [
@@ -75833,7 +75833,7 @@
         "tags": [
           "task-submissions"
         ],
-        "description": "İlk ve ikinci puan herhangi bir kriterde birden fazla bant ayrıştığında (DOM-BEC-024) atamanın içerik dersinin zümre başkanı (`school`) veya seviyesinin akademik koordinatörü (`language_school`) son sürümü rubrikle puanlar (DOM-YTK-027; core `planRubricScore`, `final`). Gövde ilk puanınkiyle aynıdır. Son puan sonucu kesinleştirir; kursiyer ve veli puanı ve geri bildirimi DOM-BEC-045 kuralıyla görür. Uyuşmazlık yoksa veya son puan zaten verildiyse 409 `final_score_not_needed`; koordinatör o sürümün iki puanlayıcısından biriyse 409 `rater_not_independent`. Roller: yalnız `ogretmen`; yönetici koordinatör sayılmaz, öğrenci, veli ve ön büro 403. Sıra: başka kurumun, arşivli veya kapsam dışı teslim 404 (atamayı görmeyen ve alanının koordinatörü olmayan öğretmen) → atamayı gören ama dersin/seviyenin koordinatörü olmayan öğretmen 403 `coordinator_required` → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. Eşzamanlı iki son puandan yalnız biri yazılır. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "İlk ve ikinci puan herhangi bir kriterde birden fazla bant ayrıştığında (DOM-BEC-024) atamanın içerik dersinin zümre başkanı (`school`) veya seviyesinin akademik koordinatörü (`language_school`) son sürümü rubrikle puanlar (DOM-YTK-027; core `planRubricScore`, `final`). Gövde ilk puanınkiyle aynıdır. Son puan sonucu kesinleştirir; kursiyer ve veli puanı ve geri bildirimi DOM-BEC-045 kuralıyla görür. Uyuşmazlık yoksa veya son puan zaten verildiyse 409 `final_score_not_needed`; koordinatör o sürümün iki puanlayıcısından biriyse 409 `rater_not_independent`. Roller: yalnız `ogretmen`; yönetici koordinatör sayılmaz, öğrenci, veli ve ön büro 403. Sıra: başka kurumun, arşivli veya kapsam dışı teslim 404 (atamayı görmeyen ve alanının koordinatörü olmayan öğretmen) → atamayı gören ama dersin/seviyenin koordinatörü olmayan öğretmen 403 `coordinator_required` → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. Eşzamanlı iki son puandan yalnız biri yazılır. Sesli geri bildirim (DOM-BEC-056): `feedbackAudioFileId` koordinatörün `feedback_audio` amacıyla yüklediği hazır dosyadır ve son puanla aynı işlemde puana bağlanır; başkasının ya da olmayan dosyası 422 `file_unavailable`, başka amaç 422 `file_purpose_mismatch`, hazır olmayan 422 `file_not_ready`, başka kayda bağlı 409 `file_already_attached`; ret hiçbir kaydı değiştirmez. Ses kursiyerin konuşma kaydıyla aynı veri sahibine ve saklama kuralına bağlanır. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "requestBody": {
           "required": true,
           "content": {

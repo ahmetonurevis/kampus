@@ -6,7 +6,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
-import { payInvoice } from '@kampus/school-core/lib/payments.ts'
+import { payInvoice } from '@kampus/school-core/lib/payments-demo.ts'
 import type { App } from '../src/app.ts'
 import { ROLES } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'

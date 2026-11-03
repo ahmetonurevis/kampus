@@ -62,4 +62,27 @@ export default [
       'react-x/no-use-context': 'off',
     },
   },
+  {
+    // Çevrimdışı demo ödeme yolu yalnız demo tüketicilerinde (Vue, mobil, testler) kalır; API ve
+    // React tarafı gerçek ödeme planı (`planPayment`) üzerinden gider.
+    files: [
+      'apps/api/src/**/*.ts',
+      'apps/web-react/src/**/*.{ts,tsx}',
+      'packages/react-shared/src/**/*.{ts,tsx}',
+    ],
+    rules: {
+      'no-restricted-imports': [
+        'error',
+        {
+          patterns: [
+            {
+              group: ['**/payments-demo', '**/payments-demo.ts', '**/payments-demo.js'],
+              message:
+                'Çevrimdışı demo ödeme yolu API ve React kodunda kullanılmaz; planPayment ve recordPaymentSchema kullan.',
+            },
+          ],
+        },
+      ],
+    },
+  },
 ]

@@ -460,16 +460,25 @@ export async function getFile(ctx: ServiceContext, fileId: string) {
  * (`listeningWindowMs`). Dinleme hakkı (IST-045, DOM-BEC-005) burada, bağlantıyla aynı
  * transaction'da sayılır (`grantListeningPlay`): hak bitince 422 `listening_plays_exhausted`, süren
  * deneme yokken açık görevde 422 `listening_attempt_required`. Yeniden bağlantı penceresinde bitiş
- * anı ilk sayımın bitişidir; imzalama başarısız olursa sayım da yazılmaz. Sayım bugün devrede
- * değildir: atama dolu hakkı reddeder (`TODO(dinleme-icerik-bagi)`).
+ * anı ilk sayımın bitişidir; imzalama başarısız olursa sayım da yazılmaz. Kayıt atanan
+ * quiz/alıştırma setine `listeningVersionId` ile bağlıdır (OG-052).
  */
-export async function getFileUrl(ctx: ServiceContext, storage: StorageDriver, fileId: string) {
+/**
+ * İmzalı bağlantı. `attemptId` öğrencinin dinleme hakkının düşeceği denemedir (Sabah kararı 54,
+ * `grantListeningPlay`); verilmezse süren denemelerden seçilir, personel ve velide yok sayılır.
+ */
+export async function getFileUrl(
+  ctx: ServiceContext,
+  storage: StorageDriver,
+  fileId: string,
+  options: { attemptId?: string | undefined } = {},
+) {
   return ctx.db.transaction(async (tx) => {
     const row = await readableFile(tx, ctx, fileId)
     if (row.status === 'processing')
       throw new AppError(409, 'file_processing', FILE_MESSAGES.file_processing)
     const access = FILE_PURPOSE_ACCESS[row.purpose]
-    const listening = await grantListeningPlay(tx, ctx, row)
+    const listening = await grantListeningPlay(tx, ctx, row, options.attemptId)
     // Dinleme kaydının bağlantısı kaydın sonuna kadar yaşar (kayıt süresi + 60 sn, en az 5 dk).
     const ttlMs =
       row.purpose === 'listening_audio'

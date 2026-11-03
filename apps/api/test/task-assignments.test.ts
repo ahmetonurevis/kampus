@@ -582,8 +582,8 @@ describe('görev atama uçları', () => {
       settings: { deadline: { dueAt: DUE }, ...settings },
       targets: [{ kind: 'class', id: '9-A' }],
     })
-    // Core içerik modeli dinleme kaydını atanabilen türe bağlamadığından hak sayılamaz: 1 ve 2
-    // reddedilir (TODO(dinleme-icerik-bagi)); kabul edilse sessizce sınırsız olurdu.
+    // Soru dinleme kaydına bağlı değil, hak sayılamaz: 1 ve 2 reddedilir (IST-045, OG-052);
+    // kabul edilse sessizce sınırsız olurdu. Kayda bağlı quiz `listening-activity.test.ts`'tedir.
     for (const listeningPlays of [1, 2]) {
       const rejected = await create(t.cookies.teacher, listening({ listeningPlays }))
       fails(rejected, 422, 'listening_plays_unavailable')

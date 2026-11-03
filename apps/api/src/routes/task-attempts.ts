@@ -89,7 +89,7 @@ export function registerTaskAttemptRoutes(app: FastifyInstance) {
         operationId: 'getTaskAttempt',
         tags: ['task-attempts'],
         summary: 'Görev denemesi ayrıntısı',
-        description: `Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Kaldırılan içerikte 404 değil: kayıt ve cevaplar döner, \`contentRemoved: true\`, soru ve parça metni ve anahtar gelmez (DOM-KYN-051). ${READ_ACCESS}`,
+        description: `Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Dinleme etkinliğinde \`listeningRecording\` kaydın dosyasını ve (personelde hep, kursiyer ve velide görev kapanınca ya da alıştırmada açık ayarla) dökümünü, \`listening\` kalan hakkı taşır (IST-045, DOM-BEC-005). Kaldırılan içerikte 404 değil: kayıt ve cevaplar döner, \`contentRemoved: true\`, soru, parça ve kayıt ve anahtar gelmez (DOM-KYN-051). ${READ_ACCESS}`,
         params: taskAttemptParamsSchema,
         response: { 200: taskAttemptDetailResponseSchema, ...readErrors },
       },

@@ -16,6 +16,7 @@ import {
   type Answers,
   type CompletedAttempt,
 } from '@kampus/school-core/skills/scoring.ts'
+import { transcriptShown } from '@kampus/school-core/skills/assignment.ts'
 
 import type { Database } from '../db/client.ts'
 import {
@@ -41,12 +42,14 @@ import {
   auditWork,
   canReadLearner,
   learnerFilter,
+  listeningFor,
   loadWorkPairs,
   ownedLearners,
   ownRecord,
   pairsScoringContext,
   passageFor,
   questionsFor,
+  recordingFileOf,
   type WorkPairs,
   readableLearners,
   scoringLicenseExpired,
@@ -348,8 +351,19 @@ async function detailView(
     ...withoutKey(attemptView(viewer, assignment, scoring, attempt, learnerAttempts, now), open),
     questions: open ? questionsFor(context, attempt.id) : [],
     passage: open ? passageFor(context) : null,
+    // Döküm personelde hep, kursiyer ve velide görev kapanınca ya da alıştırmada açık ayarla
+    // (DOM-BEC-005); kayıt da sorular gibi içerik kapısından geçer.
+    listeningRecording: open
+      ? listeningFor(context, viewer.kind !== 'learner' || transcriptShown(assignment, now))
+      : null,
     contentUnavailable,
-    listening: await listeningSummary(db, ctx.institutionId, assignment, attempt.id),
+    listening: await listeningSummary(
+      db,
+      ctx.institutionId,
+      assignment,
+      attempt.id,
+      recordingFileOf(assignment, pairs),
+    ),
   }
 }
 

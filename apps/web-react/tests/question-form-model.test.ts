@@ -11,6 +11,7 @@ import {
   defaultDraft,
   draftFormSchema,
   draftResolver,
+  isDraftFieldPath,
   type DraftFormValues,
 } from '../src/pages/content/content-pool-model.ts'
 import {
@@ -22,6 +23,8 @@ import {
   gapIdsInStem,
   gapKey,
   lines,
+  pruneGapEntries,
+  withoutQuestionImage,
   nextRowId,
   previewQuestion,
   QUESTION_TYPE_OPTIONS,
@@ -207,36 +210,114 @@ describe('Kayıtlı soru → form (yeni sürümde düzenleme)', () => {
     )
   })
 
-  test('IST-033: iki öncülün paylaştığı eş yeni kimlikli kopya olur', () => {
-    const back = questionFormFromCore(
-      {
-        questionType: 'matching',
-        stem: 'Eşleştir',
-        prompts: [
-          { id: 'p1', text: 'big' },
-          { id: 'p2', text: 'large' },
-        ],
-        choices: [
-          { id: 'c1', text: 'büyük' },
-          { id: 'c2', text: 'küçük' },
-        ],
-      },
+  test('IST-033: paylaşılan eş yüklemede iki satıra gelir, kaydedince tek kimlikte kalır', () => {
+    const body = {
+      questionType: 'matching' as const,
+      stem: 'Eşleştir',
+      prompts: [
+        { id: 'p1', text: 'big' },
+        { id: 'p2', text: 'large' },
+      ],
+      choices: [
+        { id: 'c1', text: 'büyük' },
+        { id: 'c2', text: 'küçük' },
+      ],
+    }
+    const key = {
+      questionType: 'matching' as const,
+      pairs: [
+        { promptId: 'p1', choiceId: 'c1' },
+        { promptId: 'p2', choiceId: 'c1' },
+      ],
+      explanation: 'Eş anlamlı.',
+    }
+    const back = questionFormFromCore(body, key)
+    assert.deepEqual(
+      back.question.choices.map((c) => c.text),
+      ['büyük', 'büyük', 'küçük'],
+    )
+    assert.equal(draftFormSchema.safeParse(draft(back)).success, true)
+    const core = coreQuestionFromForm(back.question, back.answerKey)
+    const savedBody = questionBodySchema.parse(core.question)
+    const savedKey = answerKeySchema.parse(core.answerKey)
+    assert.equal(savedBody.questionType, 'matching')
+    assert.equal(savedKey.questionType, 'matching')
+    assert.deepEqual(savedBody.choices, body.choices)
+    assert.deepEqual(savedKey.pairs, key.pairs)
+    // Öğrenci iki öncülü de aynı seçeneğe eşler: iki madde de doğru sayılır.
+    const check = checkPreviewAnswer(
+      savedBody,
+      savedKey,
       {
         questionType: 'matching',
         pairs: [
           { promptId: 'p1', choiceId: 'c1' },
           { promptId: 'p2', choiceId: 'c1' },
         ],
-        explanation: 'Eş anlamlı.',
       },
+      {},
     )
-    const ids = back.question.choices.map((c) => c.id)
-    assert.equal(new Set(ids).size, ids.length)
+    assert.equal(check.correct, true)
+  })
+
+  test('IST-033: aynı metinli eş (boşluk/harf farkıyla) ve çeldirici tek kimliğe iner', () => {
+    const core = coreQuestionFromForm(
+      {
+        ...defaultQuestion('matching', 'Eşleştir').question,
+        prompts: [
+          { id: 'p1', text: 'big' },
+          { id: 'p2', text: 'large' },
+        ],
+        choices: [
+          { id: 'c1', text: 'Büyük' },
+          { id: 'c2', text: '  büyük ' },
+          { id: 'c3', text: 'BÜYÜK' },
+          { id: 'c4', text: 'küçük' },
+        ],
+      },
+      { ...defaultQuestion('matching').answerKey, explanation: 'x' },
+    )
+    const body = questionBodySchema.parse(core.question)
+    const key = answerKeySchema.parse(core.answerKey)
+    assert.equal(body.questionType, 'matching')
+    assert.equal(key.questionType, 'matching')
     assert.deepEqual(
-      back.question.choices.map((c) => c.text),
-      ['büyük', 'büyük', 'küçük'],
+      body.choices.map((c) => c.id),
+      ['c1', 'c4'],
     )
-    assert.equal(draftFormSchema.safeParse(draft(back)).success, true)
+    assert.deepEqual(
+      key.pairs.map((pair) => pair.choiceId),
+      ['c1', 'c1'],
+    )
+  })
+
+  test('IST-033: kökten silinen boşluğun cevapları atılır, aynı numara boş gelir', () => {
+    const entries = {
+      [gapKey('1')]: { accepted: 'go', options: '' },
+      [gapKey('2')]: { accepted: 'day', options: '' },
+    }
+    const pruned = pruneGapEntries(entries, 'I {{1}} to school.')
+    assert.deepEqual(Object.keys(pruned), [gapKey('1')])
+    assert.equal(pruneGapEntries(pruned, 'I {{1}} to school.'), pruned)
+    // Aynı numaralı yeni boşluk eski cevapları geri getirmez.
+    const again = pruneGapEntries(pruned, 'I {{1}} to school every {{2}}.')
+    assert.equal(again[gapKey('2')], undefined)
+  })
+
+  test('IST-033: tür değişince soru görseli dosya listesinden de çıkar', () => {
+    const files = [
+      { id: 'f1', name: 'gorsel.png' },
+      { id: 'f2', name: 'ek.pdf' },
+    ]
+    assert.deepEqual(withoutQuestionImage(files, 'f1'), [{ id: 'f2', name: 'ek.pdf' }])
+    assert.deepEqual(withoutQuestionImage(files, null), files)
+  })
+
+  test('IST-033: hata yolu yalnız formun üst düzey alanıysa alan yolu sayılır', () => {
+    const values = draft(SAMPLES.multiple_choice)
+    assert.equal(isDraftFieldPath('content.question.stem', values), true)
+    assert.equal(isDraftFieldPath('answerKey.root', values), true)
+    assert.equal(isDraftFieldPath('bilinmeyen.alan', values), false)
   })
 
   test('IST-033: sıralama öğeleri anahtar sırasıyla gelir', () => {

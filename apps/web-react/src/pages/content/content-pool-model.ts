@@ -1,7 +1,7 @@
 // İçerik havuzu ekranının saf modeli: satır, etiket, süzgeç seçenekleri ve taslak formu. Kural
 // core `content/` içindedir (taksonomi, `resourceVersionInputSchema`); burada yalnız sunum vardır.
 import { toNestErrors } from '@hookform/resolvers'
-import type { FieldError, Resolver } from 'react-hook-form'
+import type { FieldError, FieldPath, Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import {
   isAuthorableType,
@@ -189,25 +189,25 @@ export function skillOptionsFor(type: AuthorableType) {
  * cevap anahtarına çevrilir (`coreQuestionFromForm`). Diğer değerler olduğu gibi geçer.
  */
 export function coreInputFromForm(values: unknown): unknown {
-  if (typeof values !== 'object' || values === null) return values
-  let result = values as Record<string, unknown>
-  if (Array.isArray(result.files)) {
+  if (!isRecord(values)) return values
+  let result = values
+  if (isFileItems(result.files)) {
     const { files, ...rest } = result
-    // `Array.isArray` `any[]` daraltır; öğe tipi atamayla belirlenir.
-    const items: readonly Pick<FileUploadItem, 'id'>[] = files as FileUploadItem[]
-    const fileIds = items.map((file) => file.id)
-    const content = rest.content as { type?: unknown } | undefined
+    const fileIds = files.map((file) => file.id)
+    const content = isRecord(rest.content) ? rest.content : undefined
     result = {
       ...rest,
       fileIds,
       ...(content?.type === 'file' ? { content: { type: 'file', fileId: fileIds[0] ?? '' } } : {}),
     }
   }
-  const content = result.content as { type?: unknown; question?: unknown } | undefined
-  if (content?.type === 'question' && typeof content.question === 'object' && content.question) {
+  const content = isRecord(result.content) ? result.content : undefined
+  if (content?.type === 'question' && isRecord(content.question)) {
+    // Alan değerleri burada `unknown` gelir (çözümleyici girdisi). Tür yalnız alan adlarını verir;
+    // değerlerin biçimini core şeması doğrular, bozuksa Türkçe iletiyle reddeder.
     const core = coreQuestionFromForm(
       content.question as Partial<QuestionFormValues>,
-      (result.answerKey ?? null) as Partial<AnswerFormValues> | null,
+      isRecord(result.answerKey) ? (result.answerKey as Partial<AnswerFormValues>) : null,
     )
     result = {
       ...result,
@@ -216,6 +216,26 @@ export function coreInputFromForm(values: unknown): unknown {
     }
   }
   return result
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** Dosya alanı değeri çalışma anında doğrulanır: her öğe kimlikli bir dosya satırıdır. */
+const isFileItems = (value: unknown): value is FileUploadItem[] =>
+  Array.isArray(value) && value.every((file) => isRecord(file) && typeof file.id === 'string')
+
+/**
+ * `formIssuePath` çıktısının formun bir alanı olup olmadığı: ilk parça form değerinin üst düzey
+ * anahtarlarından biri olmalıdır. Değilse çağıran hatayı `root` altına yazar; böylece yanlış yol
+ * react-hook-form'a tipsiz geçmez.
+ */
+export function isDraftFieldPath(
+  path: string,
+  values: DraftFormValues,
+): path is FieldPath<DraftFormValues> {
+  const head = path.split('.')[0] ?? ''
+  return Object.hasOwn(values, head)
 }
 
 /**

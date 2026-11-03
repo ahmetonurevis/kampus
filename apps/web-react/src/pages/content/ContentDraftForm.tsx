@@ -1,5 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { useForm, type FieldPath } from 'react-hook-form'
+import { useForm } from 'react-hook-form'
 import { COPYRIGHT_DECLARATION } from '@kampus/school-core/content/taxonomy.ts'
 import { fileAttachField } from '@kampus/react-shared/files.ts'
 import {
@@ -47,6 +47,7 @@ import {
   patchFromDraft,
   type DraftFormOutput,
   type DraftFormValues,
+  isDraftFieldPath,
 } from './content-pool-model.ts'
 import { formIssuePath } from './question-form-model.ts'
 import { linkedFieldMessage, linkedHints } from './reading-activity-model.ts'
@@ -188,12 +189,15 @@ function DraftEditor({
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
   // Sunucu alan hatası: bağlı içerik kodu ortak Türkçe iletiyi alır (`LINKED_CONTENT_MESSAGES`).
   // Sunucunun core yolu da istemcininki gibi form alanına çevrilir (`formIssuePath`).
-  const setServerError: DraftForm['setError'] = (name, error, options) =>
+  const setServerError: DraftForm['setError'] = (name, error, options) => {
+    const values = form.getValues()
+    const path = formIssuePath(name.split('.'), values)
     form.setError(
-      formIssuePath(name.split('.'), form.getValues()) as FieldPath<DraftFormValues>,
+      isDraftFieldPath(path, values) ? path : 'root.server',
       { ...error, message: linkedFieldMessage(error.type ?? '', error.message ?? '') },
       options,
     )
+  }
   // Yayım sorunları kayıtlı sürümündür; kayıtlı bağlar başlangıç değerlerinden okunur.
   const hints = linkedHints(detail?.publicationIssues ?? [], {
     passageVersionId: initial?.content.passageVersionId ?? null,

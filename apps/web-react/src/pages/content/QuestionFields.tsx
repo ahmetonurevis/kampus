@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Controller, useFieldArray, useWatch } from 'react-hook-form'
 import type { QuestionType } from '@kampus/school-core/content/taxonomy.ts'
 import type { TaskAttemptAnswers } from '@kampus/react-shared/use-task-attempts.ts'
@@ -21,10 +21,12 @@ import {
   gapIdsInStem,
   gapKey,
   nextRowId,
+  pruneGapEntries,
   previewQuestion,
   QUESTION_TYPE_OPTIONS,
   ROW_LIMITS,
   TRUE_FALSE_OPTIONS,
+  withoutQuestionImage,
   type AnswerCheck,
 } from './question-form-model.ts'
 
@@ -54,6 +56,10 @@ export function QuestionFields({ form, busy }: EditorProps) {
     const stem = form.getValues('content.question.stem') ?? ''
     const explanation = form.getValues('answerKey.explanation') ?? ''
     const blank = defaultQuestion(next, stem)
+    // Soru görseli türle birlikte bırakılır; dosya listesinde kalırsa soruya bağsız eklenti olur.
+    const imageFileId = form.getValues('content.question.imageFileId')
+    if (imageFileId)
+      form.setValue('files', withoutQuestionImage(form.getValues('files'), imageFileId))
     form.clearErrors(['content.question', 'answerKey'])
     form.setValue('content.question', blank.question)
     form.setValue('answerKey', { ...blank.answerKey, explanation })
@@ -430,6 +436,14 @@ function MatchingEditor({ form, busy }: EditorProps) {
 function GapFillEditor({ form, busy }: EditorProps) {
   const stem = useWatch({ control: form.control, name: 'content.question.stem' }) ?? ''
   const ids = gapIdsInStem(stem)
+  // Kökten silinen işaretin cevapları atılır; aynı numara sonra yeniden kullanılırsa eski cevaplar
+  // geri gelmez.
+  useEffect(() => {
+    const entries = form.getValues('content.question.gapEntries')
+    if (!entries) return
+    const pruned = pruneGapEntries(entries, stem)
+    if (pruned !== entries) form.setValue('content.question.gapEntries', pruned)
+  }, [form, stem])
   return (
     <fieldset className="grid gap-4">
       <legend className="mb-1 text-sm font-medium">Boşluklar</legend>

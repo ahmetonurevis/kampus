@@ -14,6 +14,7 @@ import {
 import { QUESTION_TYPES, type QuestionType } from '@kampus/school-core/content/taxonomy.ts'
 import {
   answerLocaleForTags,
+  normalizeShortAnswer,
   scoreItem,
   type TaskResponse,
 } from '@kampus/school-core/skills/scoring.ts'
@@ -111,6 +112,14 @@ export function defaultQuestion(
   }
 }
 
+/** Tür değişince soru görseli bırakılır; dosya listesinden de çıkar (soruya bağsız eklenti kalmaz). */
+export function withoutQuestionImage<T extends { id: string }>(
+  files: readonly T[],
+  imageFileId: string | null,
+): T[] {
+  return files.filter((file) => file.id !== imageFileId)
+}
+
 // --- Boşluk işaretleri --------------------------------------------------------------------
 
 const GAP_MARKER = /\{\{([A-Za-z0-9_-]{1,40})\}\}/g
@@ -118,6 +127,16 @@ const GAP_MARKER = /\{\{([A-Za-z0-9_-]{1,40})\}\}/g
 /** Kökteki boşluk kimlikleri, ilk görünüş sırasıyla ve tekil. */
 export function gapIdsInStem(stem: string): string[] {
   return [...new Set([...stem.matchAll(GAP_MARKER)].map((match) => match[1] ?? ''))]
+}
+
+/** `entries`ten kökte işareti kalmayan boşlukların girdisini atar; hiçbiri atılmazsa aynı nesne döner. */
+export function pruneGapEntries(
+  entries: Record<string, GapEntry>,
+  stem: string,
+): Record<string, GapEntry> {
+  const keep = new Set(gapIdsInStem(stem).map(gapKey))
+  const kept = Object.entries(entries).filter(([key]) => keep.has(key))
+  return kept.length === Object.keys(entries).length ? entries : Object.fromEntries(kept)
 }
 
 /**
@@ -154,6 +173,29 @@ const textRows = (list: readonly ItemRow[] | undefined) =>
   (list ?? []).map(({ id, text }) => ({ id, text }))
 
 /**
+ * Eşleştirme seçeneklerini metne göre tekilleştirir: iki öncülün paylaştığı eş (kırpılmış, büyük/
+ * küçük harf katlanmış aynı metin) tek seçenek kimliğine gider; aksi halde öğrenci aynı metinli iki
+ * seçenek görür ve core puanlaması (`scoreItem`) kimliğe göre yanlış sayar. İlk görünen kimlik
+ * kalır, aynı metinli çeldirici atılır. Boş metin birleştirilmez (core boşu reddeder).
+ * `aligned[i]`, i. öncülün eşinin (tekilleştirilmiş) kimliğidir.
+ */
+function dedupeChoices(rowsIn: readonly ItemRow[], promptCount: number) {
+  const byText = new Map<string, string>()
+  const choices: ItemRow[] = []
+  const aligned: string[] = []
+  rowsIn.forEach((row, index) => {
+    const folded = normalizeShortAnswer(row.text, 'en')
+    const existing = folded === '' ? undefined : byText.get(folded)
+    if (existing === undefined) {
+      if (folded !== '') byText.set(folded, row.id)
+      choices.push(row)
+    }
+    if (index < promptCount) aligned.push(existing ?? row.id)
+  })
+  return { choices, aligned }
+}
+
+/**
  * Form değerinden core girdisi (`content.question` ve `answerKey`). Seçili türün dışındaki alanlar
  * atılır; eşleştirme ve sıralama anahtarı yazarın dizdiği hizadan, boşluklar kökteki işaretlerden
  * kurulur. Biçim doğrulaması core şemasındadır; eksik değer olduğu gibi geçer ki core Türkçe
@@ -187,13 +229,13 @@ export function coreQuestionFromForm(
       }
     case 'matching': {
       const prompts = textRows(question.prompts)
-      const choices = textRows(question.choices)
+      const { choices, aligned } = dedupeChoices(textRows(question.choices), prompts.length)
       return {
         question: { questionType: type, stem, prompts, choices },
         answerKey: withKey({
           pairs: prompts.map((prompt, index) => ({
             promptId: prompt.id,
-            choiceId: choices[index]?.id ?? '',
+            choiceId: aligned[index] ?? '',
           })),
         }),
       }
@@ -233,8 +275,8 @@ export function coreQuestionFromForm(
 
 /**
  * Kayıtlı sorudan form değeri (düzenleme ve yeni sürüm). Eşleştirmede her öncülün eşi hizasına
- * dizilir, eşi olmayan seçenekler çeldirici olur; iki öncülün paylaştığı eş yeni kimlikli kopya
- * olur (form her çifte ayrı eş yazar). Sıralama öğeleri anahtar sırasıyla gelir.
+ * dizilir, eşi olmayan seçenekler çeldirici olur; iki öncülün paylaştığı eş her iki satıra aynı
+ * metinle gelir (form her çifte ayrı satır yazar; kaydederken `dedupeChoices` tek kimliğe indirir). Sıralama öğeleri anahtar sırasıyla gelir.
  */
 export function questionFormFromCore(
   question: QuestionBody,

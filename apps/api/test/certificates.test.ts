@@ -24,13 +24,24 @@ import {
 } from './support/app.ts'
 
 /**
- * Kurum başarı belgesi uçları (OG-088; IST-081; DOM-DIL-080, 081, 082). Kural core
- * `cefr/certificates.ts`'tedir. Bu dosya duman testidir: düzenleme yolu, kimliksiz doğrulama ve
- * iptal; ayrıntılı uç testleri sonraki adımdadır. Kurulum `progression.test.ts` kalıbıdır.
+ * Kurum başarı belgesi ve MEBBİS belge izi uçları (OG-088; IST-081; DOM-DIL-080, 081, 082). Kural
+ * core `cefr/certificates.ts`'tedir; burada modül ve kurum türü, rol, başka kurum, gövde,
+ * `Idempotency-Key`, `If-Match`, numara sırası, kimliksiz doğrulama ve hız sınırı, kursiyer/veli
+ * görünümü ve MEBBİS listesi denetlenir. Ders saati yoklamasının yazma ucu yoktur (OG-269):
+ * satırlar doğrudan depoya yazılır. Kurulum `progression.test.ts` kalıbıdır.
  */
 
 type Json = ReturnType<typeof JSON.parse>
-type Method = 'GET' | 'POST'
+type Method = 'GET' | 'POST' | 'PATCH'
+type Outcome = 'passed' | 'repeat' | 'incomplete_attendance'
+
+const VERIFICATION_KEYS = [
+  'courseName',
+  'institutionName',
+  'issuedDate',
+  'learnerInitials',
+  'status',
+]
 
 describe('kurum başarı belgesi uçları', () => {
   let db: Database
@@ -79,20 +90,44 @@ describe('kurum başarı belgesi uçları', () => {
   }
 
   /**
-   * Dil okulu: Deniz Yılmaz (`s-deniz`) öğretmenin B1 grubunda; kur sonu kararı `passed` ve B1
-   * akademik koordinatörü onaylamış.
+   * Dil okulu: Deniz Yılmaz (`s-deniz`) öğretmenin B1 grubundadır (12 ders saati). `coordinator`
+   * B1 akademik koordinatörüdür, `other` grubu olmayan öğretmendir. Kur sonu kararı `outcome`
+   * sonucuyla önerilir ve `approve` ise koordinatör onaylar.
    */
-  async function passedTenant() {
+  async function tenant(
+    setup: {
+      type?: 'school' | 'language_school'
+      enabledModules?: Record<string, boolean>
+      outcome?: Outcome
+      approve?: boolean
+    } = {},
+  ) {
+    const { type = 'language_school', outcome = 'passed', approve = true } = setup
     clientIp = `10.88.${(tenantCount += 1)}.1`
-    const institution = await createInstitution(app, { type: 'language_school' })
+    const institution = await createInstitution(app, {
+      type,
+      ...(setup.enabledModules ? { enabledModules: setup.enabledModules } : {}),
+    })
     const users = {
+      frontDesk: await createMember(app, institution.id, 'onburo'),
       teacher: await createMember(app, institution.id, 'ogretmen'),
       coordinator: await createMember(app, institution.id, 'ogretmen'),
+      other: await createMember(app, institution.id, 'ogretmen'),
+      student: await createMember(app, institution.id, 'ogrenci', [
+        { kind: 'student', recordId: 's-deniz' },
+      ]),
+      parent: await createMember(app, institution.id, 'veli', [
+        { kind: 'child', recordId: 's-deniz' },
+      ]),
     }
     const cookies = {
       admin: await signInAs(app, institution.admin),
+      frontDesk: await signInAs(app, users.frontDesk),
       teacher: await signInAs(app, users.teacher),
       coordinator: await signInAs(app, users.coordinator),
+      other: await signInAs(app, users.other),
+      student: await signInAs(app, users.student),
+      parent: await signInAs(app, users.parent),
     }
     await db.insert(records).values({
       institutionId: institution.id,
@@ -101,6 +136,8 @@ describe('kurum başarı belgesi uçları', () => {
       data: { id: 's-deniz', name: 'Deniz Yılmaz' },
       position: 1,
     })
+    const base = { institution, users, cookies, groupId: '', enrollmentId: '', decisionId: '' }
+    if (type !== 'language_school' || setup.enabledModules?.academic === false) return base
     await db.insert(coordinatorDuties).values({
       institutionId: institution.id,
       id: randomUUID(),
@@ -169,16 +206,20 @@ describe('kurum başarı belgesi uçları', () => {
       status: 'active',
       joinedAt: FIXED_NOW,
     })
+    // Devamsızlık kararı için 12 saatin 3'ü gelmedi (binde 750 < 800).
+    const absent = outcome === 'incomplete_attendance' ? 3 : 0
     await insertLessonHourAttendances(
       db,
       institution.id,
       { id: enrollmentId, groupId: group.id, studentId: 's-deniz' },
       Array.from({ length: 12 }, (_, index) => ({
         lessonHourId: `ders-${index + 1}`,
-        status: 'present' as const,
+        status: index < absent ? ('absent' as const) : ('present' as const),
       })),
       { userId: users.teacher.id, at: FIXED_NOW },
     )
+    // Tekrar kararı kur sonu eşiğinin (60) altındaki puanla verilir.
+    const score = outcome === 'repeat' ? 55 : 80
     for (const point of ['baseline', 'midterm', 'final'])
       await ok(
         await call(
@@ -188,8 +229,8 @@ describe('kurum başarı belgesi uçları', () => {
           {
             enrollmentId,
             point,
-            score: 80,
-            skills: CORE_SKILLS.map((skill) => ({ skill, score: 80, feedback: `${skill} iyi` })),
+            score,
+            skills: CORE_SKILLS.map((skill) => ({ skill, score, feedback: `${skill} notu` })),
           },
           key(),
         ),
@@ -200,88 +241,54 @@ describe('kurum başarı belgesi uçları', () => {
         'POST',
         '/progression-decisions',
         cookies.teacher,
-        { enrollmentId, outcome: 'passed', rationale: 'Dört beceride kur sonu hedefine ulaştı.' },
+        { enrollmentId, outcome, rationale: 'Kur sonu ölçmesine ve devama göre karar.' },
         key(),
       ),
       201,
     )
-    const decision = await ok(
-      await call(
-        'POST',
-        `/progression-decisions/${proposed.id}/approve`,
-        cookies.coordinator,
-        {},
-        {
-          ...key(),
-          'if-match': `"${proposed.rowVersion}"`,
-        },
-      ),
-    )
-    return { institution, cookies, groupId: group.id as string, decisionId: decision.id as string }
+    const decision = approve
+      ? await ok(
+          await call(
+            'POST',
+            `/progression-decisions/${proposed.id}/approve`,
+            cookies.coordinator,
+            {},
+            { ...key(), 'if-match': `"${proposed.rowVersion}"` },
+          ),
+        )
+      : proposed
+    return { ...base, groupId: group.id as string, enrollmentId, decisionId: decision.id as string }
   }
+  type Tenant = Awaited<ReturnType<typeof tenant>>
 
-  test('DOM-DIL-082 kimliksiz doğrulama bozuk ve olmayan kodda 404, kişisel veri sızdırmaz', async () => {
-    clientIp = '10.88.250.1'
-    for (const code of ['bozuk', 'ZZZZ', '0000-0000-0000-0000-0000-0000-0000'])
-      fails(await call('GET', `/certificate-verifications/${code}`), 404, 'not_found')
-  })
-
-  test('DOM-DIL-081 DOM-DIL-082 yönetici belgeyi düzenler, doğrulanır, iptal edilince cancelled döner', async () => {
-    const t = await passedTenant()
-    fails(
-      await call(
-        'POST',
-        '/course-certificates',
-        t.cookies.teacher,
-        { decisionId: t.decisionId },
-        key(),
-      ),
-      403,
-      'permission_denied',
+  const issue = (
+    t: Tenant,
+    cookie = t.cookies.admin,
+    body: Record<string, unknown> = { decisionId: t.decisionId },
+    headers: Record<string, string> = key(),
+  ) => call('POST', '/course-certificates', cookie, body, headers)
+  const cancel = (
+    certificate: { id: string; rowVersion: number },
+    cookie: string,
+    version: number | null = certificate.rowVersion,
+    reason = 'Ad yanlış yazıldı.',
+  ) =>
+    call(
+      'POST',
+      `/course-certificates/${certificate.id}/cancel`,
+      cookie,
+      { reason },
+      version === null ? {} : { 'if-match': `"${version}"` },
     )
-    const certificate = await ok(
-      await call(
-        'POST',
-        '/course-certificates',
-        t.cookies.admin,
-        { decisionId: t.decisionId },
-        key(),
-      ),
-      201,
+  const mebbisRecord = (t: Tenant, cookie: string, issuedDate = '2026-10-05') =>
+    call(
+      'POST',
+      `/progression-decisions/${t.decisionId}/mebbis-record`,
+      cookie,
+      { certificateNumber: 'MEB-2026-0042', issuedDate },
+      key(),
     )
-    assert.match(certificate.number, /^KB-\d{4}-000001$/)
-    assert.equal(certificate.status, 'valid')
-    assert.equal(certificate.content.learnerName, 'Deniz Yılmaz')
-    assert.equal(certificate.content.level, 'B1')
-
-    const verification = await ok(
-      await call('GET', `/certificate-verifications/${certificate.verificationCode.toLowerCase()}`),
-    )
-    assert.deepEqual(Object.keys(verification).sort(), [
-      'courseName',
-      'institutionName',
-      'issuedDate',
-      'learnerInitials',
-      'status',
-    ])
-    assert.equal(verification.status, 'valid')
-    assert.equal(verification.learnerInitials, 'D. Y.')
-    assert.equal(verification.courseName, 'Genel İngilizce B1.1')
-
-    await ok(
-      await call(
-        'POST',
-        `/course-certificates/${certificate.id}/cancel`,
-        t.cookies.coordinator,
-        { reason: 'Ad yanlış yazıldı.' },
-        { 'if-match': `"${certificate.rowVersion}"` },
-      ),
-    )
-    const cancelled = await ok(
-      await call('GET', `/certificate-verifications/${certificate.verificationCode}`),
-    )
-    assert.equal(cancelled.status, 'cancelled')
-  })
+  const verify = (code: string) => call('GET', `/certificate-verifications/${code}`)
 
   const snapshot = async (institutionId: string) => ({
     certificates: await db
@@ -296,45 +303,86 @@ describe('kurum başarı belgesi uçları', () => {
       .orderBy(asc(mebbisCertificateRecords.id)),
   })
 
-  test('IST-081 başka kurumun belgesi, kararı ve grubu 404, listede yok, B değişmez; gövdedeki institutionId 400', async () => {
-    const a = await passedTenant()
-    const b = await passedTenant()
-    const foreign = await ok(
-      await call(
-        'POST',
-        '/course-certificates',
-        b.cookies.admin,
-        { decisionId: b.decisionId },
-        key(),
-      ),
-      201,
+  test('IST-081 oturumsuz 401', async () => {
+    const t = await tenant()
+    const id = randomUUID()
+    for (const response of [
+      await issue(t, ''),
+      await cancel({ id, rowVersion: 1 }, ''),
+      await call('GET', '/course-certificates'),
+      await call('GET', `/course-certificates/${id}`),
+      await call('GET', `/groups/${t.groupId}/mebbis-certificates`),
+      await mebbisRecord(t, ''),
+    ])
+      fails(response, 401, 'unauthenticated')
+  })
+
+  test('DOM-DIL-082 DOM-YTK-012 rol 403, düz öğretmen permission_denied, modül kapalı 403, okulda 404; kayıt değişmez', async () => {
+    const t = await tenant()
+    const certificate = await ok(await issue(t), 201)
+    const before = await snapshot(t.institution.id)
+    for (const cookie of [t.cookies.frontDesk, t.cookies.student, t.cookies.parent])
+      for (const response of [
+        await issue(t, cookie),
+        await cancel(certificate, cookie),
+        await call('GET', `/groups/${t.groupId}/mebbis-certificates`, cookie),
+        await mebbisRecord(t, cookie),
+      ])
+        fails(response, 403, 'forbidden')
+    fails(await call('GET', '/course-certificates', t.cookies.frontDesk), 403, 'forbidden')
+    fails(
+      await call('GET', `/course-certificates/${certificate.id}`, t.cookies.frontDesk),
+      403,
+      'forbidden',
     )
+    // Grubun öğretmeni belgeyi düzenleyemez, iptal edemez, MEBBİS'i işaretleyemez.
+    for (const response of [
+      await issue(t, t.cookies.teacher),
+      await cancel(certificate, t.cookies.teacher),
+      await mebbisRecord(t, t.cookies.teacher),
+    ])
+      fails(response, 403, 'permission_denied')
+    // Grubu okuyamayan öğretmen için kayıt yoktur.
+    fails(await issue(t, t.cookies.other), 404, 'not_found')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+
+    const closed = await tenant({ enabledModules: { academic: false } })
+    const school = await tenant({ type: 'school' })
+    const id = randomUUID()
+    for (const [other, status, code] of [
+      [closed, 403, 'module_disabled'],
+      [school, 404, 'not_found'],
+    ] as const) {
+      for (const response of [
+        await issue(other, other.cookies.admin, { decisionId: id }),
+        await cancel({ id, rowVersion: 1 }, other.cookies.admin),
+        await call('GET', '/course-certificates', other.cookies.student),
+        await call('GET', `/course-certificates/${id}`, other.cookies.admin),
+        await call('GET', `/groups/${id}/mebbis-certificates`, other.cookies.admin),
+        await call(
+          'POST',
+          `/progression-decisions/${id}/mebbis-record`,
+          other.cookies.admin,
+          { certificateNumber: 'MEB-1', issuedDate: '2026-10-01' },
+          key(),
+        ),
+      ])
+        fails(response, status, code)
+    }
+  })
+
+  test('IST-081 başka kurumun belgesi, kararı ve grubu 404, listede yok, B değişmez; gövdedeki institutionId 400', async () => {
+    const a = await tenant()
+    const b = await tenant()
+    const foreign = await ok(await issue(b), 201)
     const before = await snapshot(b.institution.id)
     clientIp = '10.88.251.1'
     for (const response of [
-      await call(
-        'POST',
-        '/course-certificates',
-        a.cookies.admin,
-        { decisionId: b.decisionId },
-        key(),
-      ),
-      await call(
-        'POST',
-        `/course-certificates/${foreign.id}/cancel`,
-        a.cookies.admin,
-        { reason: 'Başka kurumdan iptal denemesi.' },
-        { 'if-match': `"${foreign.rowVersion}"` },
-      ),
+      await issue(a, a.cookies.admin, { decisionId: b.decisionId }),
+      await cancel(foreign, a.cookies.admin, foreign.rowVersion, 'Başka kurumdan iptal denemesi.'),
       await call('GET', `/course-certificates/${foreign.id}`, a.cookies.admin),
       await call('GET', `/groups/${b.groupId}/mebbis-certificates`, a.cookies.admin),
-      await call(
-        'POST',
-        `/progression-decisions/${b.decisionId}/mebbis-record`,
-        a.cookies.admin,
-        { certificateNumber: 'MEB-1', issuedDate: '2026-10-01' },
-        key(),
-      ),
+      await mebbisRecord(b, a.cookies.admin),
     ])
       fails(response, 404, 'not_found')
     const list = await call('GET', '/course-certificates', a.cookies.admin)
@@ -342,16 +390,279 @@ describe('kurum başarı belgesi uçları', () => {
     assert.deepEqual(list.json().data, [])
     assert.equal(list.json().meta.total, 0)
     fails(
-      await call(
-        'POST',
-        '/course-certificates',
-        a.cookies.admin,
-        { decisionId: a.decisionId, institutionId: b.institution.id },
-        key(),
-      ),
+      await issue(a, a.cookies.admin, {
+        decisionId: a.decisionId,
+        institutionId: b.institution.id,
+      }),
       400,
       'validation_failed',
     )
     assert.deepEqual(await snapshot(b.institution.id), before)
+    assert.deepEqual((await snapshot(a.institution.id)).certificates, [])
+  })
+
+  test('DOM-DIL-081 onay bekleyen, tekrar ve devamsızlık kararıyla belge düzenlenmez (422); kayıt yazılmaz', async () => {
+    for (const [setup, code] of [
+      [{ approve: false }, 'certificate_decision_pending'],
+      [{ outcome: 'repeat' as const }, 'certificate_not_eligible'],
+      [{ outcome: 'incomplete_attendance' as const }, 'certificate_not_eligible'],
+    ] as const) {
+      const t = await tenant(setup)
+      fails(await issue(t), 422, code)
+      assert.deepEqual((await snapshot(t.institution.id)).certificates, [], code)
+    }
+  })
+
+  test('DOM-DIL-082 numara kurumda tekil ve sıralı; iptal sonrası yeni belge sıra 2, eski numara geri gelmez', async () => {
+    const t = await tenant()
+    const first = await ok(await issue(t), 201)
+    assert.match(first.number, /^KB-2026-000001$/)
+    assert.equal(first.status, 'valid')
+    assert.equal(first.content.learnerName, 'Deniz Yılmaz')
+    assert.equal(first.content.level, 'B1')
+    assert.equal(first.issuedByUserId, t.institution.admin.id)
+
+    const cancelled = await ok(await cancel(first, t.cookies.coordinator))
+    assert.equal(cancelled.status, 'cancelled')
+    assert.equal(cancelled.number, first.number)
+    assert.equal(cancelled.verificationCode, first.verificationCode)
+    assert.equal(cancelled.cancellationReason, 'Ad yanlış yazıldı.')
+    fails(await cancel(cancelled, t.cookies.admin), 409, 'certificate_already_cancelled')
+
+    const second = await ok(
+      await issue(t, t.cookies.coordinator, {
+        decisionId: t.decisionId,
+        replacesCertificateId: first.id,
+      }),
+      201,
+    )
+    assert.equal(second.number, 'KB-2026-000002')
+    assert.equal(second.replacesCertificateId, first.id)
+    assert.notEqual(second.verificationCode, first.verificationCode)
+    const rows = (await snapshot(t.institution.id)).certificates
+    assert.deepEqual(rows.map((row) => row.serial).toSorted(), [1, 2])
+    assert.equal(new Set(rows.map((row) => row.number)).size, 2)
+    assert.equal(new Set(rows.map((row) => row.verificationCode)).size, 2)
+    assert.equal((await ok(await verify(first.verificationCode))).status, 'cancelled')
+    assert.equal((await ok(await verify(second.verificationCode))).status, 'valid')
+
+    // Başka kurumun sırası kendi sayacındandır.
+    const other = await tenant()
+    assert.equal((await ok(await issue(other), 201)).number, 'KB-2026-000001')
+  })
+
+  test('DOM-DIL-082 ikinci geçerli belge 409; iptalin yerine tek belge; Idempotency-Key ve If-Match', async () => {
+    const t = await tenant()
+    fails(
+      await issue(t, t.cookies.admin, { decisionId: t.decisionId }, {}),
+      400,
+      'idempotency_key_required',
+    )
+    const headers = key()
+    const first = await issue(t, t.cookies.admin, { decisionId: t.decisionId }, headers)
+    assert.equal(first.statusCode, 201, first.body)
+    const replay = await issue(t, t.cookies.admin, { decisionId: t.decisionId }, headers)
+    assert.equal(replay.statusCode, 201, replay.body)
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    assert.deepEqual(replay.json(), first.json())
+    const certificate = first.json().data as Json
+    assert.equal((await snapshot(t.institution.id)).certificates.length, 1)
+    fails(await issue(t), 409, 'certificate_already_issued')
+
+    const before = await snapshot(t.institution.id)
+    fails(await cancel(certificate, t.cookies.admin, null), 400, 'if_match_required')
+    fails(
+      await cancel(certificate, t.cookies.admin, certificate.rowVersion + 1),
+      409,
+      'version_conflict',
+    )
+    fails(
+      await cancel(certificate, t.cookies.admin, certificate.rowVersion, ' '),
+      400,
+      'validation_failed',
+    )
+    assert.deepEqual(await snapshot(t.institution.id), before)
+
+    await ok(await cancel(certificate, t.cookies.admin))
+    const replacing = { decisionId: t.decisionId, replacesCertificateId: certificate.id }
+    const second = await ok(await issue(t, t.cookies.admin, replacing), 201)
+    await ok(await cancel(second, t.cookies.admin))
+    fails(await issue(t, t.cookies.admin, replacing), 409, 'certificate_already_replaced')
+    fails(
+      await issue(t, t.cookies.admin, {
+        decisionId: t.decisionId,
+        replacesCertificateId: randomUUID(),
+      }),
+      404,
+      'not_found',
+    )
+    assert.equal((await snapshot(t.institution.id)).certificates.length, 2)
+  })
+
+  test('DOM-DIL-082 Sabah kararı 85: kimliksiz doğrulama yalnız beş alan döner, bozuk kod 404, modül kapansa da doğrular', async () => {
+    const t = await tenant()
+    const certificate = await ok(await issue(t), 201)
+    for (const code of ['bozuk', 'ZZZZ', '0000-0000-0000-0000-0000-0000-0000', 'x'.repeat(90)])
+      fails(await verify(code), 404, 'not_found')
+
+    const response = await verify(certificate.verificationCode.toLowerCase().replaceAll('-', ''))
+    assert.equal(response.statusCode, 200, response.body)
+    const verification = response.json().data as Json
+    assert.deepEqual(Object.keys(verification).toSorted(), VERIFICATION_KEYS)
+    assert.deepEqual(verification, {
+      status: 'valid',
+      learnerInitials: 'D. Y.',
+      courseName: 'Genel İngilizce B1.1',
+      issuedDate: '2026-10-06',
+      institutionName: certificate.content.institutionName,
+    })
+    for (const leaked of [
+      's-deniz',
+      'Deniz Yılmaz',
+      'Yılmaz',
+      certificate.number,
+      certificate.learnerId,
+      t.institution.admin.email,
+      'birthDate',
+      'email',
+    ])
+      assert.equal(response.body.includes(leaked), false, leaked)
+
+    const settings = await ok(await call('GET', '/modules', t.cookies.admin))
+    await ok(
+      await call(
+        'PATCH',
+        '/modules/academic',
+        t.cookies.admin,
+        { enabled: false },
+        { ...key(), 'if-match': `"${settings.version}"` },
+      ),
+    )
+    fails(await call('GET', '/course-certificates', t.cookies.admin), 403, 'module_disabled')
+    assert.equal((await ok(await verify(certificate.verificationCode))).status, 'valid')
+  })
+
+  test('DOM-DIL-082 doğrulama IP başına dakikada 30 istek; aşılınca 429 ve Retry-After', async () => {
+    clientIp = '10.88.252.1'
+    for (let index = 0; index < 30; index += 1)
+      fails(await verify(`BOZUK-${index}`), 404, 'not_found')
+    const limited = await verify('BOZUK-31')
+    fails(limited, 429, 'rate_limited')
+    assert.ok(Number(limited.headers['retry-after']) > 0)
+    // Başka istemci etkilenmez.
+    clientIp = '10.88.253.1'
+    fails(await verify('BOZUK-32'), 404, 'not_found')
+  })
+
+  test('DOM-DIL-081 DOM-DIL-090 öğrenci ve veli yalnız geçerli belgeyi görür; yetişkin kursiyerin velisi görmez', async () => {
+    const t = await tenant()
+    const first = await ok(await issue(t), 201)
+    const learnerKeys = [
+      'content',
+      'courseId',
+      'id',
+      'issuedAt',
+      'number',
+      'status',
+      'verificationCode',
+    ]
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const list = await call('GET', '/course-certificates', cookie)
+      assert.equal(list.statusCode, 200, list.body)
+      assert.equal(list.json().meta.total, 1)
+      const [own] = list.json().data as Json[]
+      assert.deepEqual(Object.keys(own).toSorted(), learnerKeys)
+      assert.equal(own.id, first.id)
+      const detail = await ok(await call('GET', `/course-certificates/${first.id}`, cookie))
+      assert.deepEqual(Object.keys(detail).toSorted(), learnerKeys)
+    }
+    // Personel düzenleyeni ve iptal izini görür.
+    const staff = await ok(await call('GET', `/course-certificates/${first.id}`, t.cookies.teacher))
+    assert.equal(staff.issuedByUserId, t.institution.admin.id)
+
+    await ok(await cancel(first, t.cookies.admin))
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const list = await call('GET', '/course-certificates?status=cancelled', cookie)
+      assert.deepEqual(list.json().data, [])
+      assert.equal((await call('GET', '/course-certificates', cookie)).json().meta.total, 0)
+      fails(await call('GET', `/course-certificates/${first.id}`, cookie), 404, 'not_found')
+    }
+    const second = await ok(
+      await issue(t, t.cookies.admin, {
+        decisionId: t.decisionId,
+        replacesCertificateId: first.id,
+      }),
+      201,
+    )
+    const staffList = await call('GET', '/course-certificates?status=cancelled', t.cookies.admin)
+    assert.deepEqual(
+      (staffList.json().data as Json[]).map((item) => item.id),
+      [first.id],
+    )
+
+    // Kesin kayıtta 18 yaş üstü seçilen kursiyerin velisi belge görmez.
+    await db.insert(records).values({
+      institutionId: t.institution.id,
+      collection: 'prospects',
+      id: 'p-deniz',
+      data: { id: 'p-deniz', studentId: 's-deniz', minor: false },
+      position: 1,
+    })
+    assert.equal((await call('GET', '/course-certificates', t.cookies.parent)).json().meta.total, 0)
+    fails(
+      await call('GET', `/course-certificates/${second.id}`, t.cookies.parent),
+      404,
+      'not_found',
+    )
+    const own = await call('GET', '/course-certificates', t.cookies.student)
+    assert.deepEqual(
+      (own.json().data as Json[]).map((item) => item.id),
+      [second.id],
+    )
+  })
+
+  test('DOM-DIL-080 MEBBİS listesi hak kazananı gösterir, işaret bir kez; ileri tarih 422, tekrar kararı listede yok', async () => {
+    const t = await tenant()
+    const list = await ok(
+      await call('GET', `/groups/${t.groupId}/mebbis-certificates`, t.cookies.admin),
+    )
+    assert.equal(list.canRecord, true)
+    assert.deepEqual(list.learners, [
+      {
+        enrollmentId: t.enrollmentId,
+        studentId: 's-deniz',
+        decisionId: t.decisionId,
+        record: null,
+      },
+    ])
+    const teacherView = await ok(
+      await call('GET', `/groups/${t.groupId}/mebbis-certificates`, t.cookies.teacher),
+    )
+    assert.equal(teacherView.canRecord, false)
+    fails(
+      await call('GET', `/groups/${t.groupId}/mebbis-certificates`, t.cookies.other),
+      404,
+      'not_found',
+    )
+
+    fails(await mebbisRecord(t, t.cookies.admin, '2026-10-07'), 422, 'mebbis_date_in_future')
+    assert.deepEqual((await snapshot(t.institution.id)).mebbis, [])
+    const recorded = await ok(await mebbisRecord(t, t.cookies.coordinator), 201)
+    assert.equal(recorded.certificateNumber, 'MEB-2026-0042')
+    assert.equal(recorded.issuedDate, '2026-10-05')
+    assert.equal(recorded.recordedByUserId, t.users.coordinator.id)
+    fails(await mebbisRecord(t, t.cookies.admin), 409, 'mebbis_already_recorded')
+    const after = await ok(
+      await call('GET', `/groups/${t.groupId}/mebbis-certificates`, t.cookies.admin),
+    )
+    assert.equal(after.learners[0].record.id, recorded.id)
+    assert.equal((await snapshot(t.institution.id)).mebbis.length, 1)
+
+    const repeat = await tenant({ outcome: 'repeat' })
+    const repeatList = await ok(
+      await call('GET', `/groups/${repeat.groupId}/mebbis-certificates`, repeat.cookies.admin),
+    )
+    assert.deepEqual(repeatList.learners, [])
+    fails(await mebbisRecord(repeat, repeat.cookies.admin), 422, 'certificate_not_eligible')
   })
 })

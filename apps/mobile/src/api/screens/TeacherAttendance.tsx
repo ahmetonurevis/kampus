@@ -13,8 +13,11 @@ import {
   attendanceFailureText,
   attendanceMarks,
   attendancePayload,
+  CHANGED_ELSEWHERE_NOTICE,
+  changedElsewhere,
   attendanceTargets,
   isStaleDay,
+  pinnedClassVersion,
   markAll,
   markCounts,
   markStudent,
@@ -22,6 +25,7 @@ import {
   unsavedCount,
   type AttendanceMark,
   type AttendanceTarget,
+  type VersionPin,
 } from '../attendance.ts'
 import {
   ListLoading,
@@ -108,11 +112,13 @@ function StatusChoice({ studentName, value, disabled, onChange }: ChoiceProps) {
 
 type SheetProps = {
   target: AttendanceTarget
-  /** Sınıf kaydının okunan sürümü (`If-Match`); pencere açılırken ve çakışmada tazelenir. */
+  /** Sınıf kaydının açılışta sabitlenen sürümü (`If-Match`); yalnız açılışta ve çakışmada yenilenir. */
   classVersion: number | undefined
-  /** Sınıf sürümü tazeleniyor; eski sürümle gönderilmesin diye kayıt bekler. */
+  /** Sürüm henüz okunmadı ya da yenileniyor; eski sürümle gönderilmesin diye kayıt bekler. */
   versionPending: boolean
   today: string
+  /** Çakışmadan sonra sunucunun son sürümünü yeniden sabitler. */
+  onRepin: () => void
   /** Gün değişti (gece yarısı geçti): ekran yeni güne geçer, pencere kapanır. */
   onDayChanged: () => void
   onClose: () => void
@@ -131,6 +137,7 @@ function AttendanceSheet({
   classVersion,
   versionPending,
   today,
+  onRepin,
   onDayChanged,
   onClose,
 }: SheetProps) {
@@ -146,6 +153,8 @@ function AttendanceSheet({
   // Yalnız kullanıcının dokunduğu işaretler; kayıtlı ya da varsayılan durum altta türetilir.
   const [edits, setEdits] = useState<Record<string, AttendanceMark>>({})
   const [failure, setFailure] = useState<string | null>(null)
+  // İlk düzenlemedeki sunucu durumu; sonradan değişirse başka yerde değişmiş demektir.
+  const [baseline, setBaseline] = useState<Record<string, AttendanceMark> | null>(null)
 
   const active = useMemo(
     () => (students.data ?? []).map((row) => row.record).filter((row) => row.isActive !== false),
@@ -157,6 +166,7 @@ function AttendanceSheet({
   const marks = useMemo(() => attendanceMarks(ids, savedRecords, edits), [ids, savedRecords, edits])
   const counts = markCounts(marks)
   const changed = unsavedCount(base, marks)
+  const elsewhere = changedElsewhere(baseline, base, edits)
   const alreadyTaken = savedRecords.length > 0
   const busy = record.isPending
   const blocked = busy || versionPending
@@ -165,6 +175,7 @@ function AttendanceSheet({
 
   const change = (next: Record<string, AttendanceMark>) => {
     setFailure(null)
+    if (baseline === null && Object.keys(next).length > 0) setBaseline(base)
     setEdits(next)
   }
 
@@ -183,6 +194,10 @@ function AttendanceSheet({
     if (outcome.status === 'failed') {
       // İşaretler yerinde kalır; kayıtlı durum sunucudan tazelenir (409) ya da hiç değişmemiştir.
       setFailure(attendanceFailureText(outcome.error))
+      // Çakışmada sunucunun son hâli ekrandadır ve hata gösterildi: sürüm yeniden sabitlenir,
+      // başka yerde değişti uyarısı bir sonraki düzenlemedeki durumdan sayılır.
+      setBaseline(null)
+      onRepin()
       return
     }
     notify(updating ? 'Yoklama güncellendi.' : 'Yoklama kaydedildi.')
@@ -202,6 +217,9 @@ function AttendanceSheet({
               {counts.excused} mazeretli
             </T>
             {failure && <Notice tone="red" title="Yoklama kaydedilemedi" text={failure} />}
+            {elsewhere && !failure && (
+              <Notice tone="amber" title="Yoklama değişti" text={CHANGED_ELSEWHERE_NOTICE} />
+            )}
             <Button
               accent
               icon="ClipboardCheck"
@@ -357,6 +375,8 @@ export default function TeacherAttendance() {
   const planningOpen = isModuleOpen(session.modules, PLANNING_MODULE)
   const [today, refreshDay] = useAttendanceDay()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
+  // Pencere açılırken okunan sınıf sürümü; odak tazelemesi onu değiştirmez (`pinnedClassVersion`).
+  const [pin, setPin] = useState<VersionPin | null>(null)
 
   // Öğretmen `teachers` okumasında yalnız kendi kaydını görür; atamalar ders verdiği sınıfları verir.
   const teachers = useCollectionAll<TeacherRecord>('teachers', {}, { enabled: open })
@@ -374,10 +394,6 @@ export default function TeacherAttendance() {
   )
 
   const teacherId = teachers.data?.[0]?.record.id ?? ''
-  const classVersions = useMemo(
-    () => new Map((classes.data ?? []).map((row) => [row.id, row.version])),
-    [classes.data],
-  )
   const sections = useMemo(() => {
     if (!teachers.data || !assignments.data || !classes.data || !subjects.data || !taken.data)
       return undefined
@@ -411,6 +427,15 @@ export default function TeacherAttendance() {
     ? [...sections.lessons, ...sections.classes].find((target) => target.key === selectedKey)
     : undefined
 
+  // Sınıf sürümü (`If-Match`) eskimesin: açılışta ve çakışmadan sonra sınıflar tazelenir, gelen
+  // sürüm hedefe sabitlenir. Hata olursa eldeki sürüm sabitlenir; eskiyse sunucu 409 verir.
+  const repin = (target: AttendanceTarget) => {
+    void classes.refetch().then((result) => {
+      const version = result.data?.find((row) => row.id === target.classId)?.version
+      setPin({ key: target.key, version })
+    })
+  }
+
   const openTarget = (target: AttendanceTarget) => {
     // Gün eskidiyse önce yeni güne geçilir; dünün dersi açılmaz.
     if (isStaleDay(today)) {
@@ -418,9 +443,9 @@ export default function TeacherAttendance() {
       notify('Gün değişti; bugünkü dersler yeniden yüklendi.', 'error')
       return
     }
-    // Sınıf sürümü (`If-Match`) eskimesin: pencere açılırken sınıflar tazelenir.
-    void classes.refetch()
     setSelectedKey(target.key)
+    setPin(null)
+    repin(target)
   }
 
   if (!open)
@@ -482,8 +507,9 @@ export default function TeacherAttendance() {
         <AttendanceSheet
           key={selected.key}
           target={selected}
-          classVersion={classVersions.get(selected.classId)}
-          versionPending={classes.isFetching}
+          classVersion={pinnedClassVersion(pin, selected.key).version}
+          versionPending={pinnedClassVersion(pin, selected.key).pending}
+          onRepin={() => repin(selected)}
           today={today}
           onDayChanged={() => {
             setSelectedKey(null)

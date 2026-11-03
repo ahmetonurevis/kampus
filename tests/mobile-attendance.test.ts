@@ -11,11 +11,14 @@ import {
   attendanceMarks,
   attendancePayload,
   attendanceTargets,
+  CHANGED_ELSEWHERE_NOTICE,
+  changedElsewhere,
   isStaleDay,
   markAll,
   markCounts,
   markStudent,
   pendingEdits,
+  pinnedClassVersion,
   teachingClassIds,
   todayLessons,
   unsavedCount,
@@ -301,5 +304,48 @@ describe('IST-124 mobil öğretmen yoklaması: kaydetme', () => {
       'Bir sorun oluştu.',
     )
     assert.equal(attendanceFailureText(apiError(401, 'unauthorized')), null)
+  })
+})
+
+describe('DOM-AKD-035 yoklama penceresi: sürüm sabitleme ve başka yerde değişiklik', () => {
+  test('sınıf sürümü açılışta sabitlenir; sonraki tazeleme göndereceği sürümü değiştirmez', () => {
+    // Sabitleme gelene kadar kayıt beklemededir.
+    assert.deepEqual(pinnedClassVersion(null, 'l1'), { version: undefined, pending: true })
+    const pin = { key: 'l1', version: 4 }
+    assert.deepEqual(pinnedClassVersion(pin, 'l1'), { version: 4, pending: false })
+    // Başka cihaz kaydedip sınıf sürümü 5 olsa da (odak tazelemesi) sabit sürüm 4 kalır: eski
+    // işaretler 409 almadan üzerine yazılmaz.
+    const payload = attendancePayload({
+      classId: 'c1',
+      today: '2026-11-02',
+      marks: { s1: 'absent' },
+      classVersion: pinnedClassVersion(pin, 'l1').version,
+    })
+    assert.equal(payload.classVersion, 4)
+  })
+
+  test('başka hedefe ait sabitleme geçerli sayılmaz (hedef değişince yeniden okunur)', () => {
+    assert.equal(pinnedClassVersion({ key: 'l1', version: 4 }, 'l2').pending, true)
+  })
+
+  test('düzenleme varken sunucu içeriği değişirse uyarı çıkar, aynı içerik uyarmaz', () => {
+    const baseline = { s1: 'present', s2: 'present' } as const
+    const edits = { s1: 'absent' } as const
+    // Aynı içerikli odak tazelemesi: uyarı yok.
+    assert.equal(changedElsewhere(baseline, { s1: 'present', s2: 'present' }, edits), false)
+    // Başka cihaz s2'yi gelmedi yaptı.
+    assert.equal(changedElsewhere(baseline, { s1: 'present', s2: 'absent' }, edits), true)
+    // Öğrenci listesi değiştiyse de değişmiş sayılır.
+    assert.equal(changedElsewhere(baseline, { s1: 'present' }, edits), true)
+  })
+
+  test('düzenleme yokken ya da ilk durum alınmamışken uyarı çıkmaz', () => {
+    const changed = { s1: 'absent' } as const
+    assert.equal(changedElsewhere({ s1: 'present' }, changed, {}), false)
+    assert.equal(changedElsewhere(null, changed, { s1: 'late' }), false)
+  })
+
+  test('uyarı metni başka yerde değiştiğini söyler', () => {
+    assert.match(CHANGED_ELSEWHERE_NOTICE, /^Bu yoklama başka bir yerde değişti/)
   })
 })

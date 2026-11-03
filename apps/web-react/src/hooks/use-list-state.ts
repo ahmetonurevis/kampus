@@ -4,6 +4,7 @@ import { listReducer, restoreListState, type ScrollPosition } from '@/lib/list-s
 import {
   applyListParams,
   hasLegacySearch,
+  keepsSearchInUrl,
   listStateFromParams,
   listStateToParams,
   listSync,
@@ -58,6 +59,7 @@ export function useListState(
   const navigationType = useNavigationType()
   const scope = use(ViewScopeContext)
   const memoryKey = `list:${location.pathname}:${scope}:${key}`
+  const keepSearch = keepsSearchInUrl(location.pathname)
   const remembered = () => restoreListState(readView(memoryKey), pageSize)
   // İlk yüklemede (yenileme, paylaşılan bağlantı) URL bellekten önce gelir.
   const urlScopeKey = `list-url-scope:${location.pathname}`
@@ -76,7 +78,7 @@ export function useListState(
   // Anahtar değişince URL'deki değerler önceki listeye aittir; yalnız bellek kullanılır.
   if (sync === 'restore') dispatch({ type: 'replace', state: remembered() })
   if (sync === 'read-url') {
-    const next = applyListParams(state, params, urlPrefix, urlFilters)
+    const next = applyListParams(state, params, urlPrefix, urlFilters, keepSearch)
     if (next !== state) dispatch({ type: 'replace', state: next })
   }
   const [seenReset, setSeenReset] = useState(resetKey)
@@ -97,7 +99,7 @@ export function useListState(
 
   // Eski bağlantıdaki arama adreste durdukça yazım yeniden çalışır; durum değişmese de (`q` zaten
   // bellekteki aramayla aynıysa) parametre silinir.
-  const legacySearch = hasLegacySearch(params, urlPrefix)
+  const legacySearch = !keepSearch && hasLegacySearch(params, urlPrefix)
 
   // Dış sistemlerle eşitleme: görünüm belleği, adres çubuğu ve kaydırma alanı.
   useEffect(() => {
@@ -107,7 +109,7 @@ export function useListState(
   useEffect(() => {
     writeView(urlScopeKey, scope)
     writeParams(
-      (current) => listStateToParams(state, urlPrefix, current, urlFilters),
+      (current) => listStateToParams(state, urlPrefix, current, urlFilters, keepSearch),
       (search) =>
         void Promise.resolve(
           navigate(
@@ -120,7 +122,7 @@ export function useListState(
           ),
         ).catch((error: unknown) => console.error('[liste] adres güncellenemedi', error)),
     )
-  }, [state, urlPrefix, urlFilters, legacySearch, navigate, urlScopeKey, scope])
+  }, [state, urlPrefix, urlFilters, keepSearch, legacySearch, navigate, urlScopeKey, scope])
 
   // İndirgeyici kaydırmayı sıfırladığında (filtre, sayfa, sıralama) alan başa döner.
   useEffect(() => {

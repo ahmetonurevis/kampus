@@ -18,6 +18,15 @@ const keys = (prefix: string) => ({
   direction: `${prefix}yon`,
 })
 
+// TODO(liste-arama-url-finans): Onur'un finans e2e beklentileri ADR 0009'a uyunca (#24) kaldırılır.
+// Geçiş süresince bu yollardaki listeler arama metnini eskisi gibi URL'ye yazar ve yenilemede okur.
+const SEARCH_IN_URL_PATHS: ReadonlySet<string> = new Set(['/yonetici/finans'])
+
+/** Yol, arama metninin geçici olarak URL'de tutulduğu istisna listesinde mi (tam eşleşme). */
+export function keepsSearchInUrl(pathname: string): boolean {
+  return SEARCH_IN_URL_PATHS.has(pathname.replace(/\/+$/, ''))
+}
+
 /** Adreste eski bağlantıdan kalan arama parametresi var mı (varsa bir sonraki yazım siler). */
 export function hasLegacySearch(params: URLSearchParams, prefix: string): boolean {
   return params.has(keys(prefix).query)
@@ -49,19 +58,21 @@ export function listStateFromParams(
 
 /**
  * Mevcut parametreleri koruyarak liste durumunu yazar; varsayılan değerler URL'den silinir. Arama
- * metni hiç yazılmaz ve eski bağlantıdan kalan `q` silinir (ADR 0009).
+ * metni hiç yazılmaz ve eski bağlantıdan kalan `q` silinir (ADR 0009); yalnız `keepSearch`
+ * (geçici finans istisnası, `keepsSearchInUrl`) verilirse yazılır.
  */
 export function listStateToParams(
   state: ListState,
   prefix: string,
   current: URLSearchParams,
   urlFilters: UrlFilters = NO_URL_FILTERS,
+  keepSearch = false,
 ): URLSearchParams {
   const key = keys(prefix)
   const next = new URLSearchParams(current)
   const set = (name: string, value: string | null) =>
     value === null ? next.delete(name) : next.set(name, value)
-  next.delete(key.query)
+  set(key.query, keepSearch && state.query.trim() ? state.query : null)
   set(key.page, state.page > 1 ? String(state.page) : null)
   set(key.sort, state.sortKey || null)
   set(key.direction, state.sortKey && state.sortDirection === -1 ? 'azalan' : null)
@@ -138,6 +149,7 @@ export function applyListParams(
   params: URLSearchParams,
   prefix: string,
   urlFilters: UrlFilters = NO_URL_FILTERS,
+  keepSearch = false,
 ): ListState {
   const filters = { ...state.filters }
   for (const filter of Object.keys(urlFilters)) delete filters[filter]
@@ -147,6 +159,8 @@ export function applyListParams(
     {
       ...state,
       filters,
+      // İstisna yolunda URL aramanın kaynağıdır; URL'de yoksa arama boştur.
+      query: keepSearch ? '' : state.query,
       page: 1,
       sortKey: '',
       sortDirection: 1,

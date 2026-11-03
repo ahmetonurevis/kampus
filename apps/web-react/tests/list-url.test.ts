@@ -4,6 +4,7 @@ import { initialListState } from '../src/lib/list-state.ts'
 import {
   applyListParams,
   hasLegacySearch,
+  keepsSearchInUrl,
   listStateFromParams,
   listStateToParams,
   listSync,
@@ -165,4 +166,38 @@ test('IST-028: kişisel veri içeren arama hiçbir listede URL’ye yazılmaz; g
   const earlier = applyListParams(state, new URLSearchParams(''), '', {})
   assert.equal(earlier.query, '0532 111 22 33', 'önceki sayfaya dönüşte arama bellekten gelir')
   assert.equal(earlier.page, 1)
+})
+
+test('IST-028: geçici finans istisnasında arama URL’ye yazılır ve URL’den kurulur; diğer yollarda yazılmaz', () => {
+  assert.equal(keepsSearchInUrl('/yonetici/finans'), true)
+  assert.equal(keepsSearchInUrl('/yonetici/finans/'), true)
+  for (const path of [
+    '/onburo/tahsilat-takip',
+    '/veli/finans',
+    '/yonetici/subeler',
+    '/yonetici/finans-x',
+  ])
+    assert.equal(keepsSearchInUrl(path), false, path)
+
+  const state = { ...initialListState(), query: 'Deniz Yılmaz', page: 2 }
+  const kept = listStateToParams(
+    state,
+    '',
+    new URLSearchParams(),
+    {},
+    keepsSearchInUrl('/yonetici/finans'),
+  )
+  assert.equal(kept.toString(), 'q=Deniz+Y%C4%B1lmaz&sayfa=2')
+  const other = listStateToParams(
+    state,
+    '',
+    new URLSearchParams(),
+    {},
+    keepsSearchInUrl('/yonetici/subeler'),
+  )
+  assert.equal(other.toString(), 'sayfa=2')
+
+  assert.equal(applyListParams(state, kept, '', {}, true), state, 'aynı URL aynı nesne')
+  const back = applyListParams(state, new URLSearchParams('sayfa=2'), '', {}, true)
+  assert.equal(back.query, '', 'istisnada URL’de olmayan arama boştur (eski davranış)')
 })

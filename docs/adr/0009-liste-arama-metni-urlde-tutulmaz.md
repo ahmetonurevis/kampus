@@ -33,6 +33,7 @@ API uygulama logu sorgu dizesini zaten atar (`apps/api/src/app.ts` `req` serile�
 - Kullanıcı yenilemede aramasını yeniden yazar; arama sonucu bağlantıyla paylaşılamaz (filtrelerle paylaşılabilir).
 - E2E senaryoları adreste `q=` beklemez; arama sonucunu satır ve sonuç sayısıyla doğrular. Yenilemede aramanın korunduğunu bekleyen senaryolar "yenilemede arama silinir, filtre/sayfa kalır" olarak değişir.
 - Bu ADR yalnız web sayfa adresini kapsar. Sunucu sayfalı listeler arama metnini API'ye sorgu parametresiyle gönderir (`GET /api/v1/…?q=`); API uygulama logu sorgu dizesini yazmaz. **API yayını ADR'si** ters vekil ve CDN erişim loglarının da sorgu dizesini yazmamasını (ör. nginx `log_format`'ta `$request` yerine `$uri`) karar olarak içermelidir.
+- Geçiş istisnası: finans listesi (`/yonetici/finans`) Onur'un finans e2e beklentileri bu karara uyana kadar aramayı eskisi gibi adreste tutar (`list-url.ts` `keepsSearchInUrl`, `TODO(liste-arama-url-finans)`); istisna #24 kapanınca kaldırılır.
 - Geri alınabilir: karar `list-url.ts` içinde tek noktadadır; ürün kararı değişirse arama yeniden adrese yazılabilir.
 
 ## Değerlendirilen alternatifler

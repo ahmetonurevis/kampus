@@ -322,16 +322,22 @@ async function issuesOf(
 ): Promise<(PublicationIssue & { path: string[] })[]> {
   if (!OPEN.includes(version.status) || version.content === null) return []
   const content = version.content
-  const itemIds =
-    content.type === 'quiz' || content.type === 'exercise_set'
-      ? content.items.map((item) => item.questionVersionId)
-      : []
-  const itemVersions = await loadItemVersionRefs(ctx.db, ctx.institutionId, itemIds)
+  const list = content.type === 'quiz' || content.type === 'exercise_set'
+  const itemIds = list ? content.items.map((item) => item.questionVersionId) : []
+  // Okuma-anlama etkinliğinin parçası da yayım denetimine girer (IST-042); verilmezse core her
+  // parçalı etkinlikte `passage_missing` sayardı (OG-984).
+  const passageId = list ? content.passageVersionId : null
+  const refs = await loadItemVersionRefs(
+    ctx.db,
+    ctx.institutionId,
+    passageId === null ? itemIds : [...itemIds, passageId],
+  )
   return publicationIssues({
     institutionType,
     version: asCoreVersion(version),
     now: ctx.now,
-    itemVersions,
+    itemVersions: refs,
+    passageVersion: passageId === null ? undefined : refs.get(passageId),
   }).map((issue) => ({ ...issue, path: [...issue.path] }))
 }
 

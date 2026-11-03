@@ -5,6 +5,7 @@ import type { z } from 'zod'
 import { subjects } from '@kampus/school-core/data/curriculum.ts'
 import { teacherSchema } from '@kampus/school-core/lib/school-management.ts'
 import { useSaveTeacher } from '@kampus/react-shared/use-management-commands.ts'
+import { useAuth } from '@/auth/use-auth.ts'
 import { FormField } from '@/components/FormField.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
@@ -27,7 +28,7 @@ const TEACHER_ROUTES = errorRoutes(TEACHER_ERROR_FIELDS)
 import {
   activeOf,
   COORDINATOR_BRANCH_ERROR,
-  COORDINATOR_DUTIES_PATH,
+  coordinatorBranchHint,
   TEACHER_ERROR_FIELDS,
   teacherDefaults,
   type TeacherFormValues,
@@ -49,7 +50,7 @@ type PanelProps = {
  * Öğretmen ekle/düzenle (Vue "Öğretmen" formu): kısa form sağ panelde. Yalnız core öğretmen
  * kaydıdır; giriş hesabı kurum üyeleri ekranındadır. Aktif e-posta tekildir; ders ataması olan
  * öğretmenin branşı değişmez; yeni branş dışında zümre başkanlığı görevi varsa da değişmez (hata ilgili
- * alanın altında, görev varsa koordinatör görevleri sayfasına bağlantıyla).
+ * alanın altında; Akademik modül açıksa koordinatör görevleri sayfasına bağlantıyla, kapalıysa açıklayıcı metinle).
  */
 export function TeacherFormPanel({ target, lookups, onClose }: PanelProps) {
   const creating = target === NEW_RECORD
@@ -123,6 +124,8 @@ function TeacherForm({ record, version = 0, lookups, reload, onClose }: FormProp
   const busy = save.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
   const focusAfterSubmit = useFocusAfterSubmit(form, busy)
+  const { session } = useAuth()
+  const branchHint = coordinatorBranchHint(session?.modules)
 
   const onSubmit = form.handleSubmit(async (values) => {
     const outcome = await save.submit(
@@ -197,12 +200,13 @@ function TeacherForm({ record, version = 0, lookups, reload, onClose }: FormProp
       </FormField>
       {errors.subjectId?.type === COORDINATOR_BRANCH_ERROR ? (
         <p className="text-sm">
-          <Link
-            to={COORDINATOR_DUTIES_PATH}
-            className="text-primary underline-offset-4 hover:underline"
-          >
-            Koordinatör görevlerini aç ve görevi kaldır
-          </Link>
+          {branchHint.kind === 'link' ? (
+            <Link to={branchHint.to} className="text-primary underline-offset-4 hover:underline">
+              {branchHint.label}
+            </Link>
+          ) : (
+            <span role="note">{branchHint.text}</span>
+          )}
         </p>
       ) : null}
       <FormField id="ogretmen-kampus" label="Kampüs" error={errors.branchId}>

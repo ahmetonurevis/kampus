@@ -12,6 +12,7 @@ import {
   CLASS_ERROR_FIELDS,
   COORDINATOR_BRANCH_ERROR,
   COORDINATOR_DUTIES_PATH,
+  coordinatorBranchHint,
   TEACHER_ERROR_FIELDS,
   classBody,
   classDefaults,
@@ -241,4 +242,16 @@ test('DOM-YTK-027: zümre başkanlığı branş reddi Branş alanına bağlanır
   assert.equal(TEACHER_ERROR_FIELDS.coordinator_duty_outside_branch, 'subjectId')
   assert.equal(TEACHER_ERROR_FIELDS[COORDINATOR_BRANCH_ERROR], 'subjectId')
   assert.equal(COORDINATOR_DUTIES_PATH, '/yonetici/koordinator-gorevleri')
+})
+
+test('DOM-YTK-027: Akademik modül kapalıyken görev sayfası bağlantısı yerine açıklayıcı metin gösterilir', () => {
+  assert.deepEqual(coordinatorBranchHint({ academic: true }), {
+    kind: 'link',
+    to: COORDINATOR_DUTIES_PATH,
+    label: 'Koordinatör görevlerini aç ve görevi kaldır',
+  })
+  const closed = { kind: 'text', text: 'Görevi kaldırmak için önce Akademik modülünü açın.' }
+  assert.deepEqual(coordinatorBranchHint({ academic: false }), closed)
+  assert.deepEqual(coordinatorBranchHint({}), closed)
+  assert.deepEqual(coordinatorBranchHint(undefined), closed)
 })

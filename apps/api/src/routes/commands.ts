@@ -364,7 +364,10 @@ export function registerCommandRoutes(app: FastifyInstance) {
       createBody: teacherSchema,
       patchBody: teacherPatchSchema,
       rules:
-        'Yalnız core `teachers` kaydını yazar; hesap ve üyelik kurum üyeleri ucundadır. Aktif öğretmen e-postası tekildir (409 `teacher_email_taken`); kampüs aktif (422 `campus_required`), branş müfredatta olmalıdır (422 `subject_invalid`). Ders ataması olan öğretmenin branşı değişmez (422 `teacher_has_assignments`); ileri tarihli etüdü olan öğretmenin kampüs/branşı değişmez (422 `teacher_has_future_tutoring`). Yeni branşın dışında kalan etkin zümre başkanlığı görevi varsa branş değişmez (422 `coordinator_duty_outside_branch`, `subjectId` yolu; görev sessizce kesilmez, önce `DELETE /coordinator-duties/:dutyId`). Rehberlik görevi bu uçtan verilmez.',
+        'Yalnız core `teachers` kaydını yazar; hesap ve üyelik kurum üyeleri ucundadır. Aktif öğretmen e-postası tekildir (409 `teacher_email_taken`); kampüs aktif (422 `campus_required`), branş müfredatta olmalıdır (422 `subject_invalid`). Ders ataması olan öğretmenin branşı değişmez (422 `teacher_has_assignments`); ileri tarihli etüdü olan öğretmenin kampüs/branşı değişmez (422 `teacher_has_future_tutoring`). Rehberlik görevi bu uçtan verilmez.',
+      // Yeni kayıtta görev olamaz (görev üyelik kurulduktan sonra verilir): yalnız PATCH denetler.
+      patchRules:
+        'Yeni branşın dışında kalan etkin zümre başkanlığı görevi varsa branş değişmez (422 `coordinator_duty_outside_branch`, `subjectId` yolu; görev sessizce kesilmez, önce `DELETE /coordinator-duties/:dutyId`).',
     },
   ] as const satisfies readonly { kind: ArchiveKind; action: WriteAction; [key: string]: unknown }[]
 
@@ -416,7 +419,7 @@ export function registerCommandRoutes(app: FastifyInstance) {
           operationId: `update${target.name}`,
           tags: ['school-management'],
           summary: `${target.label} düzenle`,
-          description: `${target.label} kaydını kısmi gövdeyle düzenler: gönderilmeyen alan güncel değerinde kalır, sonuç kayıt şemasıyla bütün olarak doğrulanır. Yetki core \`authorize('${target.action}')\`. ${target.rules} Arşivli, olmayan veya başka kurumun kaydı 404. \`If-Match\` zorunludur (yoksa 400 \`if_match_required\`, tutmazsa 409 \`version_conflict\`). Denetim kaydına değer değil alan adı yazılır. Roller: ${rolesOf(target.action)}.`,
+          description: `${target.label} kaydını kısmi gövdeyle düzenler: gönderilmeyen alan güncel değerinde kalır, sonuç kayıt şemasıyla bütün olarak doğrulanır. Yetki core \`authorize('${target.action}')\`. ${target.rules}${'patchRules' in target ? ` ${target.patchRules}` : ''} Arşivli, olmayan veya başka kurumun kaydı 404. \`If-Match\` zorunludur (yoksa 400 \`if_match_required\`, tutmazsa 409 \`version_conflict\`). Denetim kaydına değer değil alan adı yazılır. Roller: ${rolesOf(target.action)}.`,
           headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
           params: target.params,
           body: target.patchBody,

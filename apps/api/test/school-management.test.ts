@@ -483,6 +483,67 @@ describe('kampüs, öğretmen ve sınıf kaydetme uçları', () => {
       assert.equal(ok.statusCode, 200, ok.body)
       assert.equal((await findRecord(db, a.id, 'teachers', teacherId))?.data.subjectId, 'turkish')
     })
+
+    test('DOM-YTK-027: başka öğretmenin aynı dersteki görevi branş değişimini engellemez; arşivli görev de engellemez ve diğer görev yerinde kalır', async () => {
+      const a = await institution()
+      const first = await create('teachers', a.adminCookie, TEACHER)
+      const second = await create('teachers', a.adminCookie, {
+        ...TEACHER,
+        email: 'ikinci-ogretmen@kampus.example',
+      })
+      assert.equal(first.statusCode, 201, first.body)
+      assert.equal(second.statusCode, 201, second.body)
+      const firstId = first.json().data.entity.id as string
+      const secondId = second.json().data.entity.id as string
+      const firstAccount = await createMember(app, a.id, 'ogretmen', [
+        { kind: 'teacher', recordId: firstId },
+      ])
+      const secondAccount = await createMember(app, a.id, 'ogretmen', [
+        { kind: 'teacher', recordId: secondId },
+      ])
+      // Yalnız ikinci öğretmenin Matematik görevi var: birincinin branşı serbestçe değişir.
+      const otherDuty = await create('coordinator-duties', a.adminCookie, {
+        membershipId: secondAccount.membershipId,
+        scopeId: 'math',
+      })
+      assert.equal(otherDuty.statusCode, 201, otherDuty.body)
+      const moved = await update(`teachers/${firstId}`, a.adminCookie, { subjectId: 'turkish' })
+      assert.equal(moved.statusCode, 200, moved.body)
+      assert.equal((await findRecord(db, a.id, 'teachers', firstId))?.data.subjectId, 'turkish')
+      // Birinci öğretmene Türkçe görevi verilir ve arşivlenir: branş yeniden değişebilir.
+      const ownDuty = await create('coordinator-duties', a.adminCookie, {
+        membershipId: firstAccount.membershipId,
+        scopeId: 'turkish',
+      })
+      assert.equal(ownDuty.statusCode, 201, ownDuty.body)
+      const ownData = ownDuty.json().data as { id: string; rowVersion: number }
+      assertError(
+        await update(`teachers/${firstId}`, a.adminCookie, { subjectId: 'math' }, 2),
+        422,
+        'coordinator_duty_outside_branch',
+      )
+      const archived = await app.inject({
+        method: 'DELETE',
+        url: `/api/v1/coordinator-duties/${ownData.id}`,
+        headers: {
+          origin: TEST_ORIGIN,
+          cookie: a.adminCookie,
+          'if-match': `"${ownData.rowVersion}"`,
+        },
+      })
+      assert.equal(archived.statusCode, 200, archived.body)
+      const back = await update(`teachers/${firstId}`, a.adminCookie, { subjectId: 'math' }, 2)
+      assert.equal(back.statusCode, 200, back.body)
+      assert.equal((await findRecord(db, a.id, 'teachers', firstId))?.data.subjectId, 'math')
+      // İkinci öğretmenin görevi dokunulmadan kalır.
+      const list = await app.inject({
+        method: 'GET',
+        url: `/api/v1/coordinator-duties?membershipId=${secondAccount.membershipId}`,
+        headers: { cookie: a.adminCookie },
+      })
+      assert.equal(list.statusCode, 200, list.body)
+      assert.equal(list.json().data.length, 1)
+    })
   })
 
   describe('POST /classes ve PATCH /classes/:classId', () => {

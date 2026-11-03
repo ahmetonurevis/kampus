@@ -9,6 +9,7 @@ import {
   notificationBellVisible,
   notificationDetail,
   notificationPress,
+  notificationRoute,
   notificationRowLabel,
   notificationTarget,
   notificationTopicLabel,
@@ -50,6 +51,18 @@ describe('IST-065 hedef ekran eşleme', () => {
     assert.equal(notificationTarget(session, 'grade'), 'StudentGrades')
     assert.equal(notificationTarget(session, 'message'), 'Messages')
     assert.equal(notificationTarget(session, 'announcement'), 'Announcements')
+    // Öğrenci randevusu telefondadır (IST-124): bildirim Etüt Randevusu ekranını açar.
+    assert.equal(notificationTarget(session, 'appointment'), 'StudentAppointments')
+  })
+
+  test('IST-124 öğrenci randevu bildirimi iletişim modülü kapalıysa ayrıntıya düşer', () => {
+    assert.equal(
+      notificationTarget({ role: 'ogrenci', modules: { communication: false } }, 'appointment'),
+      null,
+    )
+    assert.deepEqual(notificationRoute('StudentAppointments', 'appointment'), {
+      screen: 'StudentAppointments',
+    })
   })
 
   test('veli akademik konuları Akademik Takip, mesaj Mesajlar ekranına gider', () => {
@@ -63,7 +76,7 @@ describe('IST-065 hedef ekran eşleme', () => {
   test('telefonda karşılığı olmayan konu ve randevu ayrıntıya düşer', () => {
     // Öğrenci Devamsızlık sayfası mobilde kayıtlı değil.
     assert.equal(notificationTarget({ role: 'ogrenci', modules: allOpen }, 'attendance'), null)
-    // Randevu yalnız web'de; veli mesaj ekranına yönlendirilmez.
+    // Veli randevusu telefonda yok; veli mesaj ekranına yönlendirilmez.
     assert.equal(notificationTarget({ role: 'veli', modules: allOpen }, 'appointment'), null)
     // Kayıt, ödeme ve onay konularının sayfası yoktur.
     for (const topic of ['enrollment', 'payment', 'consent', 'bulletin'] as const)

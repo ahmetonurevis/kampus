@@ -297,6 +297,7 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'GET /api/v1/task-submissions/:submissionId': ['learning'],
   'GET /api/v1/task-assignments/:assignmentId/draft': ['learning'],
   'PATCH /api/v1/task-assignments/:assignmentId/draft': ['learning'],
+  'POST /api/v1/task-assignments/:assignmentId/draft/submit': ['learning'],
   'POST /api/v1/task-assignments/:assignmentId/submissions': ['learning'],
   'POST /api/v1/task-submissions/:submissionId/scores': ['learning'],
   'POST /api/v1/task-submissions/:submissionId/resubmission-requests': ['learning'],

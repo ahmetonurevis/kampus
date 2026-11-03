@@ -26,7 +26,8 @@ export interface AccountSecurityClient {
     revokeOtherSessions?: boolean
   }): AuthResult
   listSessions(): AuthResult
-  revokeSession(input: { token: string }): AuthResult
+  /** `POST /revoke-session` gövdesi `{ sessionId }` (IST-025): belirteç istemciye verilmez. */
+  revokeSession(input: { sessionId: string }): AuthResult
   revokeOtherSessions(): AuthResult
 }
 
@@ -97,8 +98,8 @@ export function useSessionList(client: AccountSecurityClient, enabled = true) {
 export function useRevokeSession(client: AccountSecurityClient) {
   const queryClient = useQueryClient()
   return useMutation<void, ApiError, string>({
-    mutationFn: async (token) => {
-      await runAuthCall('sessions', () => client.revokeSession({ token }))
+    mutationFn: async (sessionId) => {
+      await runAuthCall('sessions', () => client.revokeSession({ sessionId }))
     },
     onSettled: () => queryClient.invalidateQueries({ queryKey: SESSION_LIST_QUERY_KEY }),
   })

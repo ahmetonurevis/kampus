@@ -173,6 +173,19 @@ describe('IST-124 mobil ekran kaydı', () => {
       }
   })
 
+  test('IST-124 öğrenci soru ve randevu ekranları modülü kapanınca açılmaz', () => {
+    const student = (modules: Record<string, boolean>) => ({ role: 'ogrenci' as const, modules })
+    assert.equal(canOpenScreen(student(ALL_OPEN), 'StudentQuestions'), true)
+    assert.equal(canOpenScreen(student(ALL_OPEN), 'StudentAppointments'), true)
+    assert.equal(canOpenScreen(student({ learning: false }), 'StudentQuestions'), false)
+    assert.equal(canOpenScreen(student({ learning: false }), 'StudentAppointments'), true)
+    assert.equal(canOpenScreen(student({ communication: false }), 'StudentAppointments'), false)
+    assert.equal(canOpenScreen(student({ communication: false }), 'StudentQuestions'), true)
+    // Randevu yalnız öğrencide kayıtlıdır; veli ve öğretmen bu ekranı açamaz (sonraki adımlar).
+    assert.equal(canOpenScreen({ role: 'veli', modules: ALL_OPEN }, 'StudentAppointments'), false)
+    assert.equal(canOpenScreen({ role: 'ogretmen', modules: ALL_OPEN }, 'StudentQuestions'), false)
+  })
+
   test('IST-124 öğrenci ödeme ekranı kaydı reddedilir, veli finans kaydı geçer', () => {
     assert.deepEqual(
       screenRegistryIssues([entry('StudentPayments', [{ role: 'ogrenci', path: 'odemelerim' }])]),

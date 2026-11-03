@@ -82,12 +82,22 @@ describe('hesap güvenliği doğrulaması (IST-003)', () => {
   })
 })
 
+function validRow() {
+  return {
+    id: 's9',
+    createdAt: '2026-11-01T08:00:00.000Z',
+    updatedAt: '2026-11-02T08:00:00.000Z',
+    expiresAt: '2026-11-15T08:00:00.000Z',
+    device: null,
+    current: false,
+  }
+}
+
 describe('oturum listesi (IST-003)', () => {
   test('IST-003: daraltılmış satırlar ayrıştırılır, tarihler ISO olur, bozuk satır düşer', () => {
     const list = parseSessionList([
       {
         id: 's1',
-        token: 't1',
         createdAt: new Date('2026-11-01T08:00:00.000Z'),
         updatedAt: '2026-11-02T08:00:00.000Z',
         expiresAt: '2026-11-15T08:00:00.000Z',
@@ -98,6 +108,8 @@ describe('oturum listesi (IST-003)', () => {
     ])
     assert.equal(list.length, 1)
     assert.equal(list[0]?.createdAt, '2026-11-01T08:00:00.000Z')
+    // IST-025: eski API'nin gönderdiği belirteç satıra taşınmaz.
+    assert.equal('token' in (parseSessionList([{ ...validRow(), token: 'gizli' }])[0] ?? {}), false)
     assert.equal(parseSessionList(null).length, 0)
   })
 

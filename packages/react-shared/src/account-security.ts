@@ -18,7 +18,7 @@ export const ACCOUNT_SECURITY_MESSAGES = {
   resetDone: 'Parolanız değiştirildi. Yeni parolanızla giriş yapın.',
   passwordChanged: 'Parolanız değiştirildi.',
   passwordChangedOthersSignedOut: 'Parolanız değiştirildi; diğer cihazlardaki oturumlar kapatıldı.',
-  sessionRevoked: 'Oturum sonlandırıldı.',
+  sessionRevoked: 'Oturum kapatıldı.',
   otherSessionsRevoked: 'Diğer cihazlardaki oturumlar kapatıldı.',
   invalidToken: 'Bağlantının süresi dolmuş veya geçersiz. Yeni bir bağlantı isteyin.',
   missingToken: 'Bağlantı eksik. E-postadaki bağlantıyı yeniden açın ya da yeni bağlantı isteyin.',
@@ -79,12 +79,12 @@ const isoDate = z
   .transform((value) => (typeof value === 'string' ? value : value.toISOString()))
 
 /**
- * API'nin daralttığı `/list-sessions` satırı (`apps/api/src/lib/session-device.ts`): IP ve ham
- * kullanıcı ajanı yoktur, yalnız kaba cihaz özeti. `token` yalnız tek oturumu sonlandırmak içindir.
+ * API'nin daralttığı `/list-sessions` satırı (`apps/api/src/lib/session-device.ts`): IP, ham
+ * kullanıcı ajanı ve oturum belirteci yoktur, yalnız kaba cihaz özeti (IST-025). Tek oturum `id`
+ * ile kapatılır.
  */
 export const sessionListItemSchema = z.object({
-  id: z.string(),
-  token: z.string(),
+  id: z.string().min(1),
   createdAt: isoDate,
   updatedAt: isoDate,
   expiresAt: isoDate,

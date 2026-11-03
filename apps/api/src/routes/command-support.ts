@@ -27,11 +27,14 @@ function singleHeader(request: FastifyRequest, name: string): string | undefined
 /**
  * `Idempotency-Key` ve istek özeti. Zorunlu uçta başlık yoksa 400 `idempotency_key_required`
  * (api-tasarimi.md §7). Biçim başlık şemasında doğrulanır; burada yeniden denetlenir, çünkü
- * özet bu değere bağlıdır.
+ * özet bu değere bağlıdır. Özet yöntem + yol + gövdedir; `extra` verilirse (ör. gövdesi boş olup
+ * işlenen kaydı `If-Match` ile seçen uç) o da özete girer. Var olan uçların özeti değişmez:
+ * saklı anahtarlarla karşılaştırma bozulmasın diye yalnız gerekli uç verir.
  */
 export function idempotencyOf(
   request: FastifyRequest,
   required: boolean,
+  extra?: Record<string, unknown>,
 ): IdempotencyRequest | null {
   const key = singleHeader(request, 'idempotency-key')
   if (key === undefined) {
@@ -47,7 +50,8 @@ export function idempotencyOf(
         message: 'İstek anahtarı geçersiz.',
       },
     ])
-  return { key, fingerprint: requestFingerprint(request.method, request.url, request.body) }
+  const body = extra === undefined ? request.body : { body: request.body ?? null, extra }
+  return { key, fingerprint: requestFingerprint(request.method, request.url, body) }
 }
 
 /**

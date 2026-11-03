@@ -221,6 +221,17 @@ async function assignment(t: Tenant, kind: 'homework' | 'question') {
 const homeworkAssignment = async (t: Tenant): Promise<Ids> => ({
   assignmentId: await assignment(t, 'homework'),
 })
+/** Yazma görevi ve öğrencinin kaydedilmiş taslağı (revizyon 1; IST-047 taslaktan teslim). */
+async function draftedAssignment(t: Tenant): Promise<Ids> {
+  const assignmentId = await assignment(t, 'homework')
+  const response = await crossInject(app, nextIp(), t.cookies.student, {
+    method: 'PATCH',
+    url: `/api/v1/task-assignments/${assignmentId}/draft`,
+    body: { body: 'Taslak metin.' },
+  })
+  assert.equal(response.statusCode, 200, response.body)
+  return { assignmentId }
+}
 const questionAssignment = async (t: Tenant): Promise<Ids> => ({
   assignmentId: await assignment(t, 'question'),
 })
@@ -456,6 +467,18 @@ const CASES: readonly CrossCase<Tenant>[] = [
       method: 'PATCH',
       url: `/api/v1/task-assignments/${assignmentId}/draft`,
       body: { body: 'Taslak metin.' },
+    }),
+  },
+  {
+    key: 'POST /api/v1/task-assignments/:assignmentId/draft/submit',
+    kind: 'kayıt',
+    actor: (a) => a.cookies.student,
+    make: draftedAssignment,
+    request: ({ assignmentId }) => ({
+      method: 'POST',
+      url: `/api/v1/task-assignments/${assignmentId}/draft/submit`,
+      body: {},
+      ifMatch: 1,
     }),
   },
   {

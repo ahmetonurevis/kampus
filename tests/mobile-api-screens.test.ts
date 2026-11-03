@@ -93,7 +93,7 @@ describe('API modu sayfaları', () => {
     const modules = { academic: true, communication: false }
     assert.deepEqual(
       apiPages({ role: 'ogrenci', modules }).map((page) => page.screen),
-      ['StudentQuizzes', 'StudentHomework', 'StudentGrades'],
+      ['StudentQuizzes', 'StudentQuestions', 'StudentHomework', 'StudentGrades'],
     )
     assert.equal(canOpenScreen({ role: 'ogrenci', modules }, 'Announcements'), false)
     assert.equal(canOpenScreen({ role: 'ogrenci', modules }, 'Messages'), false)
@@ -124,16 +124,18 @@ describe('API modu sayfaları', () => {
       apiPages({ role: 'ogrenci', modules: open }).map((page) => [page.title, page.screen]),
       [
         ['Quiz & Testler', 'StudentQuizzes'],
+        ['Öğretmenime Sor', 'StudentQuestions'],
         ['Ödevlerim', 'StudentHomework'],
         ['Notlarım', 'StudentGrades'],
         ['Mesajlar', 'Messages'],
         ['Duyurular', 'Announcements'],
+        ['Etüt Randevusu', 'StudentAppointments'],
       ],
     )
     assert.deepEqual(apiCategories(apiPages({ role: 'ogrenci', modules: open })), [
-      { key: 'DERSLERİM', label: 'Derslerim', icon: 'School', count: 2 },
+      { key: 'DERSLERİM', label: 'Derslerim', icon: 'School', count: 3 },
       { key: 'GELİŞİMİM', label: 'Gelişimim', icon: 'Award', count: 1 },
-      { key: 'İLETİŞİM', label: 'İletişim', icon: 'MessagesSquare', count: 2 },
+      { key: 'İLETİŞİM', label: 'İletişim', icon: 'MessagesSquare', count: 3 },
     ])
     // Telefonda ödeme sayfası yoktur; ödevin açıklaması teslimi vaat etmez.
     const pages = apiPages({ role: 'ogrenci', modules: open })

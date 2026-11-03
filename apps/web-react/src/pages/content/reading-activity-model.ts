@@ -157,6 +157,10 @@ export const pickerRows = (items: readonly Item[], selected: PickerSelection): P
  * Seçicinin liste sorgusu: tür sabit, başlığa göre sıralı, kısa sayfa. Kısa arama (<2) gönderilmez;
  * dil okulunda CEFR, okulda sınıf düzeyi süzgeci kullanılır. Dinleme kaydında birincil beceri
  * dinlemedir (DOM-BEC-005); dökümü listede görünmez, seçilen kaydın sürümünden okunur.
+ * TODO(dinleme-secici-surum): liste süzgeçleri (beceri, CEFR, sınıf) baş sürüme uygulanır, bağ ise
+ * yayındaki sürüme kurulur. Baş sürümü dinleme becerili olup yayındaki sürümü olmayan kayıt seçilir
+ * ama formda `recordingIssue` yakalar; yayındaki sürümü dinleme becerili, baş sürümü (yeni taslak)
+ * başka becerili kayıt seçicide hiç görünmez. Liste ucu yayındaki sürüme göre süzene kadar sürer.
  */
 export function pickerQuery(input: {
   kind: LinkedKind
@@ -313,6 +317,12 @@ export type RecordingFacts = {
   meta: string
   /** Sürümün dökümü var mı; ses sürümü değilse ya da içerik kaldırıldıysa `null`. */
   hasTranscript: boolean | null
+  /** Ses sürümü mü; içerik kaldırıldıysa (`content: null`) `null`. */
+  audio: boolean | null
+  /** Bağlanan sürümün birincil becerisi dinleme mi. */
+  listeningSkill: boolean
+  /** Bağlanan sürüm yayında mı (arşivlenen ya da kaldırılan sürüm değil). */
+  published: boolean
 }
 
 /**
@@ -321,13 +331,17 @@ export type RecordingFacts = {
  */
 export function recordingFacts(version: StaffResourceVersion): RecordingFacts {
   const content = version.content
+  const audio = content === null ? null : content.type === 'audio'
   return {
     title: version.title,
     meta: linkedMeta(version.tags),
     hasTranscript:
-      content !== null && content.type === 'audio'
+      content !== null && audio
         ? typeof content.transcript === 'string' && content.transcript !== ''
         : null,
+    audio,
+    listeningSkill: version.tags.primarySkill === 'listening',
+    published: version.status === 'published',
   }
 }
 
@@ -345,9 +359,17 @@ export function recordingLine(facts: RecordingFacts): string {
 }
 
 /**
- * Seçili kaydın formda görünen hatası (DOM-BEC-005: transkript olmadan görev yayımlanmaz): dökümsüz
- * kayıt seçilince sunucuyla aynı Türkçe ileti hemen alanın altına yazılır. Taslak yine kaydedilir;
- * onaya gönderimi sunucu aynı kodla (`listening_transcript_required`) reddeder.
+ * Seçili kaydın formda görünen hatası (IST-045, DOM-BEC-005): bağlanan sürüm core `listeningIssue`
+ * sırasıyla denetlenir (ses mi, birincil becerisi dinleme mi, yayında mı, dökümü var mı) ve
+ * sunucuyla aynı Türkçe ileti hemen alanın altına yazılır. Seçici süzgeci baş sürüme uygulandığından
+ * (yayındaki v1 okuma, taslak v2 dinleme becerili) seçilen kaydın bağlanan sürümü de burada
+ * denetlenir. Taslak yine kaydedilir; onaya gönderimi sunucu aynı kodla reddeder.
  */
-export const recordingIssue = (facts: RecordingFacts | null): string | null =>
-  facts?.hasTranscript === false ? LINKED_CONTENT_MESSAGES.listening_transcript_required : null
+export function recordingIssue(facts: RecordingFacts | null): string | null {
+  if (!facts) return null
+  if (facts.audio === false) return LINKED_CONTENT_MESSAGES.listening_not_audio
+  if (!facts.listeningSkill) return LINKED_CONTENT_MESSAGES.listening_skill_required
+  if (!facts.published) return LINKED_CONTENT_MESSAGES.listening_not_published
+  if (facts.hasTranscript === false) return LINKED_CONTENT_MESSAGES.listening_transcript_required
+  return null
+}

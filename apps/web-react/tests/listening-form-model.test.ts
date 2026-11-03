@@ -226,7 +226,14 @@ describe('Dinleme kaydı seçicisi (OG-052, DOM-BEC-005)', () => {
 describe('Seçili dinleme kaydının künyesi ve hataları (DOM-BEC-005)', () => {
   test('DOM-BEC-005: künye bağlanan sürümden okunur: başlık, CEFR ve döküm var', () => {
     const facts = recordingFacts(version())
-    assert.deepEqual(facts, { title: "Tom's week", meta: 'A2 · 9. sınıf', hasTranscript: true })
+    assert.deepEqual(facts, {
+      title: "Tom's week",
+      meta: 'A2 · 9. sınıf',
+      hasTranscript: true,
+      audio: true,
+      listeningSkill: true,
+      published: true,
+    })
     assert.equal(recordingLine(facts), `A2 · 9. sınıf · ${TRANSCRIPT_LABEL.yes}`)
     assert.equal(recordingIssue(facts), null)
   })
@@ -248,15 +255,53 @@ describe('Seçili dinleme kaydının künyesi ve hataları (DOM-BEC-005)', () =>
     assert.equal(recordingIssue(null), null)
   })
 
-  test('kaldırılan ya da ses olmayan sürümde döküm bilinmez; künye boşsa "Etiket yok"', () => {
+  test('DOM-BEC-005: kaldırılan ya da ses olmayan sürümde döküm bilinmez; künye boşsa "Etiket yok"; hata core sırasıyla', () => {
     const removed = recordingFacts(
-      version({ content: null, tags: { ...TAGS, cefrLevel: null, gradeLevels: [] } }),
+      version({
+        status: 'removed',
+        content: null,
+        tags: { ...TAGS, cefrLevel: null, gradeLevels: [] },
+      }),
     )
     assert.equal(removed.hasTranscript, null)
+    assert.equal(removed.audio, null)
     assert.equal(recordingLine(removed), 'Etiket yok')
-    assert.equal(recordingIssue(removed), null)
+    assert.equal(recordingIssue(removed), LINKED_CONTENT_MESSAGES.listening_not_published)
     const passage = recordingFacts(version({ content: { type: 'reading_passage', body: 'x' } }))
     assert.equal(passage.hasTranscript, null)
+    assert.equal(recordingIssue(passage), LINKED_CONTENT_MESSAGES.listening_not_audio)
+  })
+
+  test('IST-045, DOM-BEC-005: seçici baş sürümü süzer; bağlanan (yayındaki) sürüm dinleme becerili değilse ya da yayında değilse anlık Türkçe hata', () => {
+    // Yayındaki v1 okuma becerili, baş sürüm v2 dinleme becerili taslak: seçicide görünür, bağ v1'e
+    // kurulur; v1 okunduğunda hata alanın altına yazılır.
+    const readingV1 = recordingFacts(version({ tags: { ...TAGS, primarySkill: 'reading' } }))
+    assert.equal(readingV1.listeningSkill, false)
+    assert.equal(recordingIssue(readingV1), LINKED_CONTENT_MESSAGES.listening_skill_required)
+    // Beceri hatası döküm hatasından önce gelir (core `listeningIssue` sırası).
+    const both = recordingFacts(
+      version({
+        tags: { ...TAGS, primarySkill: null },
+        content: { type: 'audio', fileId: 'f-1', transcript: null, captionsVtt: 'WEBVTT' },
+      }),
+    )
+    assert.equal(recordingIssue(both), LINKED_CONTENT_MESSAGES.listening_skill_required)
+    for (const status of ['archived', 'draft', 'in_review'] as const) {
+      const facts = recordingFacts(version({ status }))
+      assert.equal(facts.published, false)
+      assert.equal(recordingIssue(facts), LINKED_CONTENT_MESSAGES.listening_not_published, status)
+    }
+    // Yayında değil hatası döküm hatasından önce gelir.
+    const archivedNoTranscript = recordingFacts(
+      version({
+        status: 'archived',
+        content: { type: 'audio', fileId: 'f-1', transcript: null, captionsVtt: 'WEBVTT' },
+      }),
+    )
+    assert.equal(
+      recordingIssue(archivedNoTranscript),
+      LINKED_CONTENT_MESSAGES.listening_not_published,
+    )
   })
 
   test('DOM-BEC-005: listening_* kodları ortak Türkçe iletiyi alır', () => {

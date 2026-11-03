@@ -993,10 +993,22 @@ const RENEWAL = {
   startDate: '2027-09-15',
 }
 
-test('DOM-FIN-002, -021: yenileme yayımlı tarife ister, ilanı ve indirim tavanını aşamaz', () => {
+/** ÜFE %40 + TÜFE %30 → %35, ek 5 puan: %40 artış. */
+const RATES = [{ academicYear: 2027, ppiBasisPoints: 4_000, cpiBasisPoints: 3_000 }]
+
+test('DOM-FIN-002, -005, -020, -025: köprüdeki yenileme yayımlı tarife ister, ilanı ve tavanı aşamaz, serbest burs ve indirim almaz', () => {
   const state = createSeed(new Date(NOW))
+  // s1 2026 sözleşmesiyle devam eder: baz sözleşme tutarı, tavan %40 artışıdır.
+  const contract = state.contracts.find((item) => item.studentId === 's1')
+  assert.ok(contract)
+  contract.grossCents = 15_000_000
   const check = (input: object, tariff: EnrollmentTariff | null = TARIFF) =>
-    assertRenewalWithinTariff(state, input, tariff, 'school')
+    assertRenewalWithinTariff(
+      state,
+      input,
+      tariff === null ? null : { ...tariff, priceIndexes: RATES },
+      'school',
+    )
   assert.doesNotThrow(() => check(RENEWAL))
   assert.throws(() => check(RENEWAL, null), isDomainError('tariff_not_published'))
   assert.throws(
@@ -1004,11 +1016,17 @@ test('DOM-FIN-002, -021: yenileme yayımlı tarife ister, ilanı ve indirim tava
     isDomainError('tariff_tuition_missing'),
   )
   assert.throws(() => check({ ...RENEWAL, total: 200_001 }), isDomainError('renewal_above_tariff'))
+  assert.throws(() => check({ ...RENEWAL, discount: 1 }), isDomainError('discount_not_in_tariff'))
   assert.throws(
-    () => check({ ...RENEWAL, discount: 100_001 }),
-    isDomainError('discount_cap_exceeded'),
+    () => check({ ...RENEWAL, scholarship: 10 }),
+    isDomainError('scholarship_program_required'),
   )
-  assert.doesNotThrow(() => check({ ...RENEWAL, discount: 100_000 }))
+  contract.grossCents = 14_000_000
+  assert.throws(() => check(RENEWAL), isDomainError('renewal_above_ceiling'))
+  assert.throws(
+    () => assertRenewalWithinTariff(state, RENEWAL, TARIFF, 'school'),
+    isDomainError('price_index_missing'),
+  )
 })
 
 test('DOM-KAY-022: mezuniyet ve biçimsiz girdi tarife denetimine takılmaz; dil okulu tutarı serbest', () => {

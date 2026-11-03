@@ -13,6 +13,7 @@ import {
 } from './finance-scholarships.ts'
 import { dayKey } from './format.ts'
 import { OPEN_PROSPECT_STAGES } from './prospects.ts'
+import { assertWithinCeiling, renewalCeiling, type PriceIndexEntry } from './renewal-ceiling.ts'
 import { renewalQuote, workflowSchemas } from './school-workflows.ts'
 import {
   FEE_DISCOUNT_KINDS,
@@ -159,7 +160,11 @@ export interface EnrollmentPrice {
   extras: ExtraLine[]
 }
 
-function itemFor(items: readonly FeeItem[], kind: FeeItemKind, level: string): FeeItem | undefined {
+export function itemFor(
+  items: readonly FeeItem[],
+  kind: FeeItemKind,
+  level: string,
+): FeeItem | undefined {
   return (
     items.find((item) => item.kind === kind && item.level === level) ??
     items.find((item) => item.kind === kind && item.level === null)
@@ -741,15 +746,16 @@ export function previewEnrollment(
 }
 
 /**
- * Yenilemenin tarife denetimi (API; DOM-FIN-002, -021, DOM-KAY-020): hedef yılın yayımlanmış
- * tarifesi olmadan sözleşme açılmaz, öğrenim ücreti ilanı aşamaz, indirim tavanı %50'dir (burs
- * tavana dahil değildir). Dil okulunda tutar saat paketiyle değiştiği için üst sınır denetlenmez.
- * Artış tavanı (DOM-FIN-005) ÜFE/TÜFE verisi gerektirdiği için burada yoktur. Mezuniyet borç açmaz.
+ * İş akışı köprüsündeki yenilemenin tarife denetimi (API; DOM-FIN-002, -005, -020, -025; DOM-KAY-020):
+ * hedef yılın yayımlanmış tarifesi olmadan sözleşme açılmaz, öğrenim ücreti ilanı ve artış tavanını
+ * aşamaz. Köprü serbest burs oranı ve serbest indirim taşır; burs yalnız programdan, indirim yalnız
+ * tarifedeki türden gelir: ikisi de tarifeli plandadır (`lib/renewals.ts`). Dil okulunda tutar saat
+ * paketiyle değiştiği için üst sınır denetlenmez. Mezuniyet borç açmaz.
  */
 export function assertRenewalWithinTariff(
-  state: Pick<State, 'classes'>,
+  state: Pick<State, 'classes' | 'contracts' | 'students' | 'renewals' | 'academicYear'>,
   input: unknown,
-  tariff: Pick<EnrollmentTariff, 'items'> | null,
+  tariff: (Pick<EnrollmentTariff, 'items'> & { priceIndexes?: readonly PriceIndexEntry[] }) | null,
   institutionType: InstitutionType,
 ): void {
   const data = workflowSchemas.renewal.safeParse(input)
@@ -760,25 +766,42 @@ export function assertRenewalWithinTariff(
       'tariff_not_published',
       'Bu eğitim yılı için yayımlanmış ücret tarifesi yok.',
     )
-  const { gross, discountAmount } = renewalQuote(input)
+  const { gross } = renewalQuote(input)
   const target = state.classes.find((item) => item.id === data.data.targetClassId)
   const level = institutionType === 'language_school' ? target?.level : String(target?.grade ?? '')
   const tuition = itemFor(tariff.items, 'tuition', level ?? '')
   if (!tuition)
     throw new DomainError('tariff_tuition_missing', 'Tarifede bu düzey için öğrenim ücreti yok.')
   if (institutionType === 'language_school') return
+  if (data.data.scholarship > 0)
+    throw new DomainError(
+      'scholarship_program_required',
+      'Burs yalnız bildirilmiş burs programından atanır.',
+      { path: ['scholarship'] },
+    )
+  if (data.data.discount > 0)
+    throw new DomainError(
+      'discount_not_in_tariff',
+      'İndirim serbest tutar olarak girilmez; tarifedeki türlerden seçilir.',
+      { path: ['discount'] },
+    )
   if (gross > tuition.amountCents)
     throw new DomainError('renewal_above_tariff', 'Eğitim bedeli ilan edilen ücreti aşamaz.', {
       path: ['total'],
     })
-  if (discountAmount * BASIS > tuition.amountCents * DISCOUNT_CAP_BASIS_POINTS)
-    throw new DomainError(
-      'discount_cap_exceeded',
-      "Toplam indirim ilan ücretinin %50'sini aşamaz.",
-      {
-        path: ['discount'],
-      },
-    )
+  // Hedef sınıf bulunamadıysa iş akışının kendi doğrulaması raporlar.
+  if (target === undefined) return
+  assertWithinCeiling(
+    gross,
+    renewalCeiling(state, {
+      studentId: data.data.studentId,
+      targetGrade: target.grade,
+      year: data.data.year,
+      previousAnnouncedCents: null,
+      priceIndexes: tariff.priceIndexes ?? [],
+    }),
+    ['total'],
+  )
 }
 
 // --- Kesin kaydı yazan işlem (çevrimdışı demo girişi ve tarifeli kayıt ortak çekirdeği) ---

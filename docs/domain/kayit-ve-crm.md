@@ -138,7 +138,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Kayıt yenileme bahar aylarında, sınıf geçme kararı Haziran'da kesinleşir.
 - **Kaynak:** İşletme kuralı; OİKY md. 31/2-b, OKY md. 57-58.
 - **Kurum türü:** `school`
-- **Kodda:** var — `packages/school-core/src/lib/school-workflows.js:748-845` (plan) ve `846-927` (uygulama). Sınıf geçme kararı denetimi yok.
+- **Kodda:** var — plan `POST /api/v1/finance/renewals` (`lib/renewals.ts` `planRenewal`; iş akışı köprüsü `runWorkflow('renewal')`), geçiş ayrı uç `POST /api/v1/finance/renewals/:renewalId/activate` (`runWorkflow('renewal-activate')`). Plan öğrencinin sınıfını değiştirmez. Sınıf geçme kararı denetimi yok (ON-081).
 
 ### DOM-KAY-021 · Yenileme tekilliği ve hedef düzey
 
@@ -146,7 +146,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Mükerrer sözleşme ve taksit engellenir; sınıf tekrarı gerçek bir durumdur.
 - **Kaynak:** İşletme kuralı; OİKY md. 31, OKY md. 58/1.
 - **Kurum türü:** `school`
-- **Kodda:** kısmen — tekillik `packages/school-core/src/lib/school-workflows.js:753-756`, hedef düzey `779-780`; sınıf tekrarı yolu yok (yalnız +1).
+- **Kodda:** kısmen — tekillik ve hedef düzey `renewalPreconditions` (`lib/school-workflows.ts`; köprü ve tarifeli plan ortak); sınıf tekrarı yolu yok (yalnız +1, ON-081).
 
 ### DOM-KAY-022 · Mezuniyet
 

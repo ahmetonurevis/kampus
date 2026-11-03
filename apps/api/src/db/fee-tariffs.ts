@@ -1,9 +1,9 @@
-import { and, count, desc, eq, sql } from 'drizzle-orm'
+import { and, asc, count, desc, eq, sql } from 'drizzle-orm'
 
 import type { FeeDiscount, FeeItem, FeeTariffStatus } from '@kampus/school-core/lib/fee-tariffs.ts'
 
 import type { Database } from './client.ts'
-import { feeTariffs } from './schema/fee-tariffs.ts'
+import { feeTariffs, priceIndexRates } from './schema/fee-tariffs.ts'
 
 /** Ücret tarifesi deposu (ADR 0006 karar 8). İlk parametreler veritabanı ve `institutionId`'dir. */
 
@@ -193,11 +193,15 @@ export async function applyFeeTariffPublish(
 }
 
 /** Eğitim yılının yayındaki tarifesi; yoksa `null` (DOM-FIN-002). */
+/**
+ * Yılın yayımlanmış tarifesi ve kurumun ÜFE/TÜFE satırları. Yenilemenin artış tavanı tarifeyle
+ * birlikte denetlenir (DOM-FIN-005); iş akışı köprüsü de aynı değerleri buradan alır.
+ */
 export async function findPublishedTariff(
   db: Database,
   institutionId: string,
   academicYear: number,
-): Promise<StoredFeeTariff | null> {
+): Promise<(StoredFeeTariff & { priceIndexes: StoredPriceIndex[] }) | null> {
   const [row] = await db
     .select(COLUMNS)
     .from(feeTariffs)
@@ -209,5 +213,112 @@ export async function findPublishedTariff(
       ),
     )
     .limit(1)
-  return row ? stored(row) : null
+  if (!row) return null
+  return { ...stored(row), priceIndexes: await allPriceIndexes(db, institutionId) }
+}
+
+// --- ÜFE ve TÜFE profili (DOM-FIN-005) ---------------------------------------------------------
+
+export interface StoredPriceIndex {
+  academicYear: number
+  ppiBasisPoints: number
+  cpiBasisPoints: number
+  source: string
+  bulletinDate: string
+  version: number
+}
+
+const PRICE_INDEX_COLUMNS = {
+  academicYear: priceIndexRates.academicYear,
+  ppiBasisPoints: priceIndexRates.ppiBasisPoints,
+  cpiBasisPoints: priceIndexRates.cpiBasisPoints,
+  source: priceIndexRates.source,
+  bulletinDate: priceIndexRates.bulletinDate,
+  version: priceIndexRates.version,
+}
+
+export async function allPriceIndexes(
+  db: Database,
+  institutionId: string,
+): Promise<StoredPriceIndex[]> {
+  return db
+    .select(PRICE_INDEX_COLUMNS)
+    .from(priceIndexRates)
+    .where(eq(priceIndexRates.institutionId, institutionId))
+    .orderBy(asc(priceIndexRates.academicYear))
+}
+
+export async function listPriceIndexes(
+  db: Database,
+  institutionId: string,
+  query: { page: number; pageSize: number },
+): Promise<{ items: StoredPriceIndex[]; total: number }> {
+  const where = eq(priceIndexRates.institutionId, institutionId)
+  const [totalRow] = await db.select({ total: count() }).from(priceIndexRates).where(where)
+  const items = await db
+    .select(PRICE_INDEX_COLUMNS)
+    .from(priceIndexRates)
+    .where(where)
+    .orderBy(desc(priceIndexRates.academicYear))
+    .limit(query.pageSize)
+    .offset((query.page - 1) * query.pageSize)
+  return { items, total: totalRow?.total ?? 0 }
+}
+
+export async function findPriceIndex(
+  db: Database,
+  institutionId: string,
+  academicYear: number,
+): Promise<StoredPriceIndex | null> {
+  const [row] = await db
+    .select(PRICE_INDEX_COLUMNS)
+    .from(priceIndexRates)
+    .where(
+      and(
+        eq(priceIndexRates.institutionId, institutionId),
+        eq(priceIndexRates.academicYear, academicYear),
+      ),
+    )
+    .limit(1)
+  return row ?? null
+}
+
+export async function insertPriceIndex(
+  tx: Database,
+  institutionId: string,
+  input: Omit<StoredPriceIndex, 'version'> & { now: Date },
+): Promise<void> {
+  const { now, ...values } = input
+  await tx
+    .insert(priceIndexRates)
+    .values({ institutionId, ...values, createdAt: now, updatedAt: now })
+}
+
+/** Beklenen sürüm tutmazsa `false` (409). */
+export async function updatePriceIndex(
+  tx: Database,
+  institutionId: string,
+  input: {
+    academicYear: number
+    expectedVersion: number
+    changes: Partial<Omit<StoredPriceIndex, 'academicYear' | 'version'>>
+    now: Date
+  },
+): Promise<boolean> {
+  const rows = await tx
+    .update(priceIndexRates)
+    .set({
+      ...input.changes,
+      updatedAt: input.now,
+      version: sql`${priceIndexRates.version} + 1`,
+    })
+    .where(
+      and(
+        eq(priceIndexRates.institutionId, institutionId),
+        eq(priceIndexRates.academicYear, input.academicYear),
+        eq(priceIndexRates.version, input.expectedVersion),
+      ),
+    )
+    .returning({ academicYear: priceIndexRates.academicYear })
+  return rows.length > 0
 }

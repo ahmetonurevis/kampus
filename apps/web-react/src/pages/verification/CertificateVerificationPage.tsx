@@ -80,7 +80,7 @@ export function CertificateVerificationPage() {
           noValidate
           onSubmit={(event) => void onSubmit(event)}
           className="flex flex-col gap-4"
-          aria-label="Doğrulama kodu"
+          aria-label="Kodla doğrula"
         >
           <FormField
             id="dogrulama-kodu"

@@ -12,6 +12,9 @@ import { RESOURCE_MESSAGES, type ActionKind, type ResourceListQuery } from './re
 import { useActiveInstitutionId } from './use-active-institution.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
+import { TASK_ASSIGNMENTS_KEY } from './use-task-assignments.ts'
+import { TASK_ATTEMPTS_KEY } from './use-task-attempts.ts'
+import { TASK_SUBMISSIONS_KEY } from './use-task-submissions.ts'
 
 /**
  * İçerik havuzu kancaları: liste, ayrıntı ve yazma komutları (`/api/v1/resources`, api-tasarimi.md).
@@ -21,6 +24,17 @@ import { useApiQuery } from './use-api-query.ts'
 
 export const RESOURCES_KEY = 'resources'
 const INVALIDATES = [[RESOURCES_KEY]] as const
+/**
+ * Kaldırma içeriği kullanan quiz/alıştırma sürümlerini (`affectedContainerVersionIds`; onlar da
+ * `resources` sorgularıdır) ve görevleri etkiler (DOM-KYN-051): atama ayrıntısı, deneme soruları
+ * ve teslim görünümü aynı kapıdan geçer, kaldırılan içerik oralarda da kapanır.
+ */
+export const REMOVE_RESOURCE_INVALIDATES = [
+  [RESOURCES_KEY],
+  [TASK_ASSIGNMENTS_KEY],
+  [TASK_ATTEMPTS_KEY],
+  [TASK_SUBMISSIONS_KEY],
+] as const
 
 export type ResourceCreateBody =
   operations['createResource']['requestBody']['content']['application/json']
@@ -304,7 +318,7 @@ export function removeResourceRequest(
 export function useRemoveResource(options: CommandOptions = {}) {
   return useApiCommand({
     request: removeResourceRequest,
-    invalidates: INVALIDATES,
+    invalidates: REMOVE_RESOURCE_INVALIDATES,
     version: (input) => input.version,
     messages: RESOURCE_MESSAGES,
     exclusive: true,

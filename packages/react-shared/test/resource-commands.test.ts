@@ -2,12 +2,20 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
 import { createKampusClient } from '@kampus/api-client/client.ts'
+import { QueryClient } from '@tanstack/react-query'
 
 import { runRequest } from '../src/api-result.ts'
-import { commandHeaders, IF_MATCH_MISSING_CODE } from '../src/commands.ts'
+import {
+  commandHeaders,
+  IF_MATCH_MISSING_CODE,
+  invalidateInstitutionQueries,
+} from '../src/commands.ts'
+import { institutionKey } from '../src/query-keys.ts'
 import {
   copyResourceRequest,
   openVersionRequest,
+  REMOVE_RESOURCE_INVALIDATES,
+  RESOURCES_KEY,
   removeResourceRequest,
   reportVersionRequest,
   shareResourceRequest,
@@ -129,5 +137,23 @@ describe('kaynak düzeyindeki komutlar (OG-217)', () => {
     assert.match(sent[0]?.url ?? '', /\/api\/v1\/resources\/r1\/versions\/v1\/report$/)
     assert.equal(sent[0]?.headers.get('if-match'), null)
     assert.deepEqual(await sent[0]?.json(), { reason: 'Yayınevi sayfası izinsiz.' })
+  })
+})
+
+describe('içerik kaldırma önbelleği', () => {
+  test('DOM-KYN-051: kaldırma içerik, quiz/alıştırma ve görev sorgularını tazeler; başka kurumunkini tazelemez', async () => {
+    const queryClient = new QueryClient()
+    const keys = [
+      institutionKey('inst-a', RESOURCES_KEY, 'detail', 'quiz-1'),
+      institutionKey('inst-a', 'task-assignments', 'detail', 'a-1'),
+      institutionKey('inst-a', 'task-attempts', 'list', { assignmentId: 'a-1' }),
+      institutionKey('inst-a', 'task-submissions', 'list', { assignmentId: 'a-1' }),
+    ]
+    const other = institutionKey('inst-b', 'task-assignments', 'detail', 'a-1')
+    for (const key of [...keys, other])
+      await queryClient.fetchQuery({ queryKey: key, queryFn: () => 'x', staleTime: Infinity })
+    await invalidateInstitutionQueries(queryClient, 'inst-a', REMOVE_RESOURCE_INVALIDATES)
+    for (const key of keys) assert.equal(queryClient.getQueryState(key)?.isInvalidated, true)
+    assert.equal(queryClient.getQueryState(other)?.isInvalidated, false)
   })
 })

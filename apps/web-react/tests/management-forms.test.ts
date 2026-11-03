@@ -10,6 +10,9 @@ import {
   branchDefaults,
   canManageStructure,
   CLASS_ERROR_FIELDS,
+  COORDINATOR_BRANCH_ERROR,
+  COORDINATOR_DUTIES_PATH,
+  TEACHER_ERROR_FIELDS,
   classBody,
   classDefaults,
   classStepOf,
@@ -232,4 +235,10 @@ test('arşiv penceresi bağlı aktif kayıtları sayar; bağ yoksa hedef istenme
   assert.deepEqual(archiveDependents('class', 'c2', archived), [])
   assert.match(NO_DESTINATION.teacher, /aynı branştan/)
   assert.ok(ARCHIVE_ERROR_CODES.has('tutor_schedule_conflict'))
+})
+
+test('DOM-YTK-027: zümre başkanlığı branş reddi Branş alanına bağlanır ve görev sayfasına yönlendirir', () => {
+  assert.equal(TEACHER_ERROR_FIELDS.coordinator_duty_outside_branch, 'subjectId')
+  assert.equal(TEACHER_ERROR_FIELDS[COORDINATOR_BRANCH_ERROR], 'subjectId')
+  assert.equal(COORDINATOR_DUTIES_PATH, '/yonetici/koordinator-gorevleri')
 })

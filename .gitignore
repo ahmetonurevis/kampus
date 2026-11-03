@@ -25,3 +25,4 @@ CLAUDE.local.md
 
 # İki geliştiricili çalışma: kullanıcının verdiği yerel alan izinleri (.claude/hooks/alan-koruma.ts)
 .claude/alan-izni.local
+.lighthouseci/

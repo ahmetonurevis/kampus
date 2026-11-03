@@ -112,6 +112,28 @@ describe('Better Auth e-posta/parola girişi', () => {
     )
   })
 
+  test('IST-025: eşzamanlı denemelerden en çok kalan hak kadarı Better Auth’a ulaşır; başarılı giriş de sayılır', async () => {
+    const institution = await createInstitution(app)
+    const teacher = await createMember(app, institution.id, 'ogretmen')
+    // Başarılı giriş sayacı sıfırlamaz, kendisi de bir deneme sayılır.
+    assert.equal((await signIn(app, teacher.email, teacher.password)).statusCode, 200)
+    for (let attempt = 0; attempt < 6; attempt += 1)
+      assert.equal((await signIn(app, teacher.email, 'Yanlis-Parola-123!')).statusCode, 401)
+    // Kalan hak 3; parola özeti hesaplanırken gelen istekler de sayaca önceden yazılır.
+    const responses = await Promise.all(
+      Array.from({ length: 12 }, () => signIn(app, teacher.email, 'Yanlis-Parola-123!')),
+    )
+    const statuses = responses.map((response) => response.statusCode).sort()
+    assert.deepEqual(statuses, [...Array(3).fill(401), ...Array(9).fill(429)])
+    const failures = await db
+      .select()
+      .from(auditLog)
+      .where(eq(auditLog.actorUserId, teacher.id))
+      .then((rows) => rows.filter((row) => row.action === 'auth.login_failed'))
+    assert.equal(failures.length, 9)
+    assert.equal((await signIn(app, teacher.email, teacher.password)).statusCode, 429)
+  })
+
   test('IST-025: kilit hesabın varlığını belli etmez; yanıt IP sınırıyla aynıdır', async () => {
     const institution = await createInstitution(app)
     const student = await createMember(app, institution.id, 'ogrenci')

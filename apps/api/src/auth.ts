@@ -109,13 +109,13 @@ export function trustedOrigins(config: Config): string[] {
 export const SESSION_FRESH_AGE_SECONDS = 15 * 60
 
 /**
- * Hesap başına başarısız giriş sınırı (IST-025, guvenlik-kvkk.md §4). Better Auth `rateLimit`
- * anahtarı yalnız IP + yoldur; farklı IP'lerden tek hesaba deneme bu sınırla yavaşlar. Sayaç
- * `@fastify/rate-limit`'tedir (`plugins/better-auth.ts`), yalnız 401 yanıtında artar; anahtar
- * e-postanın özetidir, hesap olsun olmasın aynı işler (kilit hesabın varlığını belli etmez).
- * Kalıcı kilit yoktur: pencere dolunca deneme yeniden açılır.
+ * Hesap başına giriş sınırı (IST-025, guvenlik-kvkk.md §4). Better Auth `rateLimit` anahtarı yalnız
+ * IP + yoldur; farklı IP'lerden tek hesaba deneme bu sınırla yavaşlar. Sayaç `@fastify/rate-limit`'tedir
+ * (`plugins/better-auth.ts`) ve Better Auth'a gitmeden artar: her deneme sayılır, başarılı giriş
+ * sayacı sıfırlamaz. Anahtar e-postanın özetidir, hesap olsun olmasın aynı işler (kilit hesabın
+ * varlığını belli etmez). Kalıcı kilit yoktur: pencere dolunca deneme yeniden açılır.
  */
-export const SIGN_IN_FAILURE_LIMIT = { max: 10, windowSeconds: 15 * 60 } as const
+export const SIGN_IN_ATTEMPT_LIMIT = { max: 10, windowSeconds: 15 * 60 } as const
 const DAY = 60 * 60 * 24
 
 export interface AuthOptions {

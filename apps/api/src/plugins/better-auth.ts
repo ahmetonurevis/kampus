@@ -2,7 +2,7 @@ import { createHash } from 'node:crypto'
 
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
-import { AUTH_BASE_PATH, isOpenAuthPath, SIGN_IN_FAILURE_LIMIT, type Auth } from '../auth.ts'
+import { AUTH_BASE_PATH, isOpenAuthPath, SIGN_IN_ATTEMPT_LIMIT, type Auth } from '../auth.ts'
 import { MESSAGES } from '../errors.ts'
 import { narrowSessionList } from '../lib/session-device.ts'
 import {
@@ -172,12 +172,13 @@ export async function registerBetterAuth(app: FastifyInstance, auth: Auth, base:
 }
 
 function registerAuthRoute(app: FastifyInstance, auth: Auth, base: string) {
-  // Hesap başına başarısız giriş sınırı (`SIGN_IN_FAILURE_LIMIT`): önce sayaca bakılır, yalnız
-  // 401 (yanlış e-posta/parola) sayılır. Sınır dolunca doğru parola da 429 alır; yanıt Better
-  // Auth'un IP sınırıyla aynıdır, hesabın varlığı ve parolanın doğruluğu belli olmaz.
-  const signInFailures = app.createRateLimit({
-    max: SIGN_IN_FAILURE_LIMIT.max,
-    timeWindow: SIGN_IN_FAILURE_LIMIT.windowSeconds * 1000,
+  // Hesap başına giriş sınırı (`SIGN_IN_ATTEMPT_LIMIT`): sayaç Better Auth'a gitmeden artar, her
+  // deneme (başarılı giriş dahil) sayılır. Artış eşzamanlı isteklerde de tek tek işlenir; parola
+  // özeti hesaplanırken gelen istekler eşiği aşamaz. Sınır dolunca doğru parola da 429 alır; yanıt
+  // Better Auth'un IP sınırıyla aynıdır, hesabın varlığı ve parolanın doğruluğu belli olmaz.
+  const signInAttempts = app.createRateLimit({
+    max: SIGN_IN_ATTEMPT_LIMIT.max,
+    timeWindow: SIGN_IN_ATTEMPT_LIMIT.windowSeconds * 1000,
     keyGenerator: (request) => signInAccountKey(request.body) ?? '',
   })
   app.route({
@@ -190,14 +191,13 @@ function registerAuthRoute(app: FastifyInstance, auth: Auth, base: string) {
       // İzin listesi, Better Auth'un yönlendireceği normalleştirilmiş yol üzerinde denetlenir.
       const pathname = new URL(fetchRequest.url).pathname
       if (!isOpenAuthPath(pathname)) return reply.callNotFound()
-      const accountKey = pathname === SIGN_IN_PATH ? signInAccountKey(request.body) : null
-      if (accountKey) {
-        const status = await signInFailures(request, { increment: false })
-        if (!status.isAllowed && status.remaining === 0)
+      if (pathname === SIGN_IN_PATH && signInAccountKey(request.body)) {
+        const status = await signInAttempts(request)
+        // `isAllowed: true` yalnız izin listesindedir; bu sayaçta izin listesi yok.
+        if (!status.isAllowed && status.isExceeded)
           return relayResponse(reply, tooManyRequests(Math.max(1, status.ttlInSeconds)))
       }
       const response = await auth.handler(fetchRequest)
-      if (accountKey && response.status === 401) await signInFailures(request)
       if (pathname === LIST_SESSIONS_PATH && response.status === 200)
         return relayResponse(reply, await narrowSessions(auth, fetchRequest, response))
       return relayResponse(reply, response)

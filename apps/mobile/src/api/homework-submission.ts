@@ -26,6 +26,7 @@ import {
   SUBMISSION_FILE_LIMIT,
   SUBMISSION_NOTE_MAX_LENGTH,
 } from '@kampus/school-core/lib/homework.ts'
+import type { QueueItem } from './upload-queue.ts'
 
 export { SUBMISSION_FILE_LIMIT, SUBMISSION_NOTE_MAX_LENGTH }
 
@@ -73,7 +74,9 @@ const EXTENSION_TYPES: Readonly<Record<string, AllowedMimeType>> = {
 }
 
 /** Dosyanın kanonik türü: bildirilen tür, yoksa uzantı; tanınmazsa `null`. */
-export function resolveMimeType(file: Pick<PickedFile, 'name' | 'mimeType'>): string | null {
+export function resolveMimeType(
+  file: Pick<PickedFile, 'name' | 'mimeType'>,
+): AllowedMimeType | null {
   const declared = file.mimeType ? canonicalMimeType(file.mimeType) : null
   if (declared) return declared
   const extension = file.name.split('.').pop()?.toLowerCase() ?? ''
@@ -91,7 +94,7 @@ export function pickedFileProblem(file: PickedFile): string | null {
   if (file.size === 0) return `${file.name}: dosya boş.`
   try {
     assertFileAllowed('submission', {
-      contentType: contentType as AllowedMimeType,
+      contentType,
       // Boyutu bildirilmeyen dosyada boyut karar sunucuya kalır.
       byteSize: file.size ?? 1,
     })
@@ -106,27 +109,33 @@ export function pickedFileProblem(file: PickedFile): string | null {
 export const pickedFileKey = (file: Pick<PickedFile, 'uri' | 'name' | 'size'>) =>
   [file.name, file.size ?? '', file.uri].join('|')
 
-export type SubmissionFileState = 'queued' | 'uploading' | 'uploaded' | 'failed'
-
-/** Formdaki dosya satırı: yeni seçilen (`file` dolu) ya da önceki teslimden gelen. */
-export type SubmissionItem = {
-  key: string
+/**
+ * Formdaki dosya satırı: yeni seçilen (`file` dolu) ya da önceki teslimden gelen. Kuyruk alanları
+ * (`state`, `fileId`, `message`) `upload-queue.ts` durum makinesindendir.
+ */
+export type SubmissionItem = QueueItem & {
   name: string
   file: PickedFile | null
-  state: SubmissionFileState
-  /** Yüklenen ya da önceki teslimdeki dosyanın sunucu kimliği. */
-  fileId: string | null
   /** Bu oturumda yüklendi ve güvenlik taraması izleniyor. */
   scanning: boolean
-  /** Başarısız yüklemenin Türkçe nedeni. */
-  message: string | null
 }
+
+/** Yeni seçilen dosyanın kuyruk satırı (sırada). */
+export const queuedItem = (file: PickedFile): SubmissionItem => ({
+  key: pickedFileKey(file),
+  name: file.name,
+  file,
+  state: 'queued',
+  fileId: null,
+  scanning: false,
+  message: null,
+})
 
 export const previousItem = (fileId: string): SubmissionItem => ({
   key: `onceki:${fileId}`,
   name: '',
   file: null,
-  state: 'uploaded',
+  state: 'done',
   fileId,
   scanning: false,
   message: null,
@@ -177,9 +186,10 @@ export function fitPicked(
 export type SubmitCheck = { ok: true; body: SubmitHomeworkBody } | { ok: false; message: string }
 
 /**
- * Teslim düğmesinin kararı. Teslim en az bir dosya ister (telefonda dosya zorunludur); yükleme
- * sürerken, yarım kalmış dosya varken ya da güvenlik taraması bitmemişken gönderilmez, böylece
- * yarıda kalan yükleme teslim oluşturmaz. `scan` dosya kimliğine göre tarama durumudur.
+ * Teslim düğmesinin kararı. Core `submitHomework` gibi açıklama ya da dosyadan en az biri ister
+ * (DOM-AKD-072); dosya zorunlu değildir. Yükleme sürerken, yarım kalmış dosya varken ya da
+ * güvenlik taraması bitmemişken gönderilmez, böylece yarıda kalan yükleme teslim oluşturmaz.
+ * `scan` dosya kimliğine göre tarama durumudur.
  */
 export function checkSubmission(input: {
   note: string
@@ -199,8 +209,9 @@ export function checkSubmission(input: {
       ok: false,
       message: 'Yüklenemeyen dosya var. Yeniden dene ya da dosyayı kaldır.',
     }
-  const ready = items.filter((item) => item.state === 'uploaded' && item.fileId !== null)
-  if (ready.length === 0) return { ok: false, message: 'Teslim için en az bir dosya ekle.' }
+  const ready = items.filter((item) => item.state === 'done' && item.fileId !== null)
+  if (ready.length === 0 && input.note.trim().length === 0)
+    return { ok: false, message: 'Teslim için açıklama yaz ya da dosya ekle.' }
   if (
     ready.some((item) => item.fileId !== null && fileBlocksAttach(scan.get(item.fileId) ?? 'ready'))
   )

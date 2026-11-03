@@ -9,8 +9,8 @@ import { Notice, Section } from '../../ui/SchoolLayout.tsx'
 import {
   checkSubmission,
   fitPicked,
-  pickedFileKey,
   previousItem,
+  queuedItem,
   SUBMISSION_FILE_LIMIT,
   SUBMISSION_NOTE_MAX_LENGTH,
   submissionFailureText,
@@ -22,11 +22,12 @@ import {
 } from '../homework-submission.ts'
 import { pickSubmissionFiles, useSubmissionUpload } from '../submission-files.ts'
 import { useNotify } from '../toast.tsx'
+import { drainQueue, enqueue, isUploading, removeItem, retryItem } from '../upload-queue.ts'
 
 const STATE_TEXT = {
   queued: 'Sırada',
   uploading: 'Yükleniyor…',
-  uploaded: 'Yüklendi',
+  done: 'Yüklendi',
   failed: 'Yüklenemedi',
 } as const
 
@@ -63,12 +64,14 @@ export function SubmissionForm({
   const [items, setItems] = useState<SubmissionItem[]>(() =>
     (submission?.fileIds ?? []).map(previousItem),
   )
+  // Kuyruğun tek doğru kaynağı: yükleme döngüsü her dosyadan önce güncel listeyi buradan okur
+  // (yükleme sürerken eklenen ya da kaldırılan dosya state'in eski görüntüsüne takılmaz).
+  const itemsRef = useRef(items)
   const [pickProblem, setPickProblem] = useState<string | null>(null)
   const [failure, setFailure] = useState<string | null>(null)
   const [sending, setSending] = useState(false)
   const abort = useRef<AbortController | null>(null)
   const mounted = useRef(true)
-  const uploading = useRef(false)
 
   useEffect(() => {
     mounted.current = true
@@ -98,52 +101,43 @@ export function SubmissionForm({
     return fileLabel(infos[index]?.data, index)
   }
 
-  const patch = (key: string, change: Partial<SubmissionItem>) =>
-    setItems((list) => list.map((item) => (item.key === key ? { ...item, ...change } : item)))
+  const apply = (change: (list: SubmissionItem[]) => SubmissionItem[]) => {
+    itemsRef.current = change(itemsRef.current)
+    setItems(itemsRef.current)
+  }
 
-  // Dosyaları sırayla yükler: komut kilidi tek istek ister ve kesin hatada sıradaki dosya sürer.
-  async function upload(files: readonly PickedFile[]) {
-    if (uploading.current) return
-    uploading.current = true
-    try {
-      for (const file of files) {
-        const key = pickedFileKey(file)
-        if (!mounted.current) return
-        patch(key, { state: 'uploading', message: null })
+  // Dosyaları sırayla yükler (`upload-queue.ts`): yükleme sürerken eklenenler sıraya girer,
+  // kaldırılan sıradaki dosya yüklenmez, ağ ya da 5xx hatası kuyruğu durdurur ve yeniden deneme
+  // kalanları da yükler.
+  const drain = () =>
+    drainQueue<SubmissionItem>({
+      read: () => itemsRef.current,
+      write: (next) => apply(() => next),
+      active: () => mounted.current,
+      onDone: (_item, result) => ({ scanning: result.scanning }),
+      upload: async (item) => {
+        if (!item.file) return { kind: 'failed', message: 'Dosya bulunamadı.', retryable: false }
         const outcome = await uploader.upload({
-          file,
+          file: item.file,
           ...(abort.current ? { signal: abort.current.signal } : {}),
         })
-        if (!mounted.current) return
         if (outcome.status === 'success') {
           const stored = outcome.data.data
-          patch(key, {
-            state: 'uploaded',
-            fileId: stored.id,
-            scanning: stored.status === 'processing',
-            message: null,
-          })
-        } else {
-          patch(key, {
-            state: 'failed',
-            message:
-              outcome.status === 'failed'
-                ? uploadFailureText(outcome.error)
-                : 'Önceki yükleme sürüyor. Birazdan yeniden dene.',
-          })
-          // Belirsiz hatada (ağ, 5xx) sıradaki dosyalar beklemede kalır; yeniden denemede
-          // aynı dosya aynı `Idempotency-Key` ile gider.
-          if (outcome.status === 'failed' && uploadIsRetryable(outcome.error)) {
-            const rest = files.slice(files.indexOf(file) + 1)
-            for (const next of rest) patch(pickedFileKey(next), { state: 'queued' })
-            return
-          }
+          return { kind: 'done', fileId: stored.id, scanning: stored.status === 'processing' }
         }
-      }
-    } finally {
-      uploading.current = false
-    }
-  }
+        if (outcome.status === 'busy')
+          return {
+            kind: 'failed',
+            message: 'Önceki yükleme sürüyor. Birazdan yeniden dene.',
+            retryable: true,
+          }
+        return {
+          kind: 'failed',
+          message: uploadFailureText(outcome.error),
+          retryable: uploadIsRetryable(outcome.error),
+        }
+      },
+    })
 
   async function pick() {
     setFailure(null)
@@ -155,27 +149,22 @@ export function SubmissionForm({
       return
     }
     if (picked.length === 0) return
-    const { accepted, problems } = fitPicked(items, picked)
+    const { accepted, problems } = fitPicked(itemsRef.current, picked)
     setPickProblem(problems.length > 0 ? problems.join(' ') : null)
     if (accepted.length === 0) return
-    setItems((list) => [
-      ...list,
-      ...accepted.map((file): SubmissionItem => ({
-        key: pickedFileKey(file),
-        name: file.name,
-        file,
-        state: 'queued',
-        fileId: null,
-        scanning: false,
-        message: null,
-      })),
-    ])
-    void upload(accepted)
+    apply((list) => enqueue(list, accepted.map(queuedItem)))
+    void drain()
+  }
+
+  function retry(key: string) {
+    setFailure(null)
+    apply((list) => retryItem(list, key))
+    void drain()
   }
 
   function remove(key: string) {
     setFailure(null)
-    setItems((list) => list.filter((item) => item.key !== key))
+    apply((list) => removeItem(list, key))
   }
 
   const check = checkSubmission({ note, items, scan })
@@ -210,7 +199,7 @@ export function SubmissionForm({
   }
 
   const full = items.length >= SUBMISSION_FILE_LIMIT
-  const uploadsBusy = items.some((item) => item.state === 'queued' || item.state === 'uploading')
+  const uploadsBusy = isUploading(items)
 
   return (
     <Section title={resubmit ? 'Teslimi güncelle' : 'Ödevi teslim et'} panel>
@@ -238,7 +227,7 @@ export function SubmissionForm({
           multiline
           editable={!busy}
           maxLength={SUBMISSION_NOTE_MAX_LENGTH}
-          hint="Öğretmenine iletmek istediğin açıklama (isteğe bağlı)."
+          hint="Öğretmenine iletmek istediğin açıklama. Açıklama ya da dosyadan biri yeterli."
         />
         <View style={{ gap: 8 }}>
           <T bold size={14}>
@@ -246,7 +235,7 @@ export function SubmissionForm({
           </T>
           <T muted size={12}>
             PDF, Word ya da görsel; en çok {SUBMISSION_FILE_LIMIT} dosya, her biri en fazla 20 MB.
-            En az bir dosya gerekir.
+            Açıklama yazmadan dosya, dosya eklemeden açıklama da teslim edilebilir.
           </T>
           {items.length > 0 && (
             <View style={{ gap: 8 }} accessibilityRole="list">
@@ -283,15 +272,12 @@ export function SubmissionForm({
                         {[sizeText(item.file?.size ?? null), status].filter(Boolean).join(' · ')}
                       </T>
                     </View>
-                    {item.state === 'failed' && item.file && (
+                    {item.state === 'failed' && (
                       <Button
                         small
                         label={`${name} dosyasını yeniden yükle`}
                         disabled={uploadsBusy}
-                        onPress={() => {
-                          const file = item.file
-                          if (file) void upload([file])
-                        }}
+                        onPress={() => retry(item.key)}
                       >
                         Yeniden dene
                       </Button>
@@ -340,7 +326,7 @@ export function SubmissionForm({
         >
           {busy ? 'Gönderiliyor…' : resubmit ? 'Teslimi güncelle' : 'Teslim et'}
         </Button>
-        {!check.ok && !busy && items.length > 0 && (
+        {!check.ok && !busy && (
           <T muted size={13} accessibilityLiveRegion="polite">
             {check.message}
           </T>

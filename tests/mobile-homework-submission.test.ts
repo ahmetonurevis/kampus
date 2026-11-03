@@ -33,7 +33,7 @@ const uploaded = (id: string, scanning = false): SubmissionItem => ({
   key: `k-${id}`,
   name: `${id}.pdf`,
   file: file(`${id}.pdf`),
-  state: 'uploaded',
+  state: 'done',
   fileId: id,
   scanning,
   message: null,
@@ -106,9 +106,15 @@ describe('OG-061 mobil ödev teslimi (IST-124, DOM-AKD-072)', () => {
     assert.deepEqual(again.accepted, [])
   })
 
-  test('DOM-AKD-072 teslim en az bir dosya ister; gövdede boş açıklama gönderilmez', () => {
+  test('DOM-AKD-072 teslim açıklama ya da dosyadan en az birini ister; boş açıklama gönderilmez', () => {
     const scan = new Map<string, FileProcessing>()
-    assert.equal(checkSubmission({ note: 'metin', items: [], scan }).ok, false)
+    // Yalnız açıklamayla teslim web ve core ile aynı şekilde kabul edilir.
+    assert.deepEqual(checkSubmission({ note: ' metin ', items: [], scan }), {
+      ok: true,
+      body: { note: 'metin' },
+    })
+    // Ne açıklama ne dosya: gönderilmez.
+    assert.equal(checkSubmission({ note: '   ', items: [], scan }).ok, false)
     const ok = checkSubmission({ note: '  ', items: [uploaded('1'), uploaded('2')], scan })
     assert.deepEqual(ok, { ok: true, body: { fileIds: ['1', '2'] } })
     const withNote = checkSubmission({ note: ' tamam ', items: [uploaded('1')], scan })

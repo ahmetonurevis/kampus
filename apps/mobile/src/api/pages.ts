@@ -8,14 +8,25 @@ import { isModuleOpen, type MemberRole, type MobileSession } from './session-sta
  * API'ye taşınmış modül ekranları (gezinme yığınında parametresiz). Gezinme tipleri bu
  * birleşimden türer (`route-types.ts`); bu dosya React Navigation tiplerine bağlı kalmaz.
  */
-export type ApiScreen = 'TeacherClasses' | 'ParentGrades' | 'Announcements' | 'Messages'
+export type ApiScreen =
+  | 'TeacherClasses'
+  | 'ParentGrades'
+  | 'StudentGrades'
+  | 'StudentHomework'
+  | 'Announcements'
+  | 'Messages'
 
 /** Rol + sayfa yolu → API'li ekran. Demo ekranlarının API karşılıkları buraya eklenir. */
 const MIGRATED: Partial<Record<MemberRole, Partial<Record<string, ApiScreen>>>> = {
   yonetici: { duyurular: 'Announcements' },
   onburo: { duyurular: 'Announcements' },
   ogretmen: { siniflarim: 'TeacherClasses', duyurular: 'Announcements', mesajlar: 'Messages' },
-  ogrenci: { duyurular: 'Announcements', mesajlar: 'Messages' },
+  ogrenci: {
+    notlarim: 'StudentGrades',
+    odevler: 'StudentHomework',
+    duyurular: 'Announcements',
+    mesajlar: 'Messages',
+  },
   veli: {
     'akademik-takip': 'ParentGrades',
     duyurular: 'Announcements',
@@ -26,13 +37,17 @@ const MIGRATED: Partial<Record<MemberRole, Partial<Record<string, ApiScreen>>>> 
 /**
  * Telefonda iletişim sayfaları web'den dar okunur: yönetici ve ön büro yalnız duyuru okur, mesaj
  * yazmaz; metinler buna göre sadeleşir. Veli sayfası web'de randevu da içerir, telefonda yalnız
- * mesajlar vardır.
+ * mesajlar vardır. Öğrenci ödevi telefonda okur; teslim şimdilik web'dedir.
  */
 const TITLE_OVERRIDES: Partial<Record<string, { title: string; description: string }>> = {
   'yonetici/duyurular': { title: 'Duyurular', description: 'Kurum duyurularını okuyun.' },
   'onburo/duyurular': { title: 'Duyurular', description: 'Kurum duyurularını okuyun.' },
   'ogretmen/duyurular': { title: 'Duyurular', description: 'Kurumdan haberler ve duyurular.' },
   'veli/randevu-mesaj': { title: 'Mesajlar', description: 'Öğretmeninizle yazışın.' },
+  'ogrenci/odevler': {
+    title: 'Ödevlerim',
+    description: 'Ödevlerini, son tarihlerini ve değerlendirmelerini takip et.',
+  },
 }
 
 export type ApiPage = {

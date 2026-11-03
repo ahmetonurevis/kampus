@@ -1,14 +1,20 @@
-// Sunucu sayfalı listelerin saf durum yardımcıları (arama + sayfa). Sayfa 0 tabanlıdır;
-// API'ye `index + 1` gider.
+// Sunucu sayfalı listelerin saf durum yardımcıları (arama + tek süzgeç + sayfa). Sayfa 0
+// tabanlıdır; API'ye `index + 1` gider.
 
 export const API_PAGE_SIZE = 10
 
-export type ListState = { search: string; index: number }
-export const EMPTY_LIST_STATE: ListState = { search: '', index: 0 }
+/** `filter`: listenin tek seçimli süzgeci (ör. ders kimliği); boş metin "tümü" demektir. */
+export type ListState = { search: string; index: number; filter: string }
+export const EMPTY_LIST_STATE: ListState = { search: '', index: 0, filter: '' }
 
 /** Arama değişince sayfa başa döner; aynı aramada sayfa korunur. */
 export function withSearch(state: ListState, search: string): ListState {
-  return state.search === search ? state : { search, index: 0 }
+  return state.search === search ? state : { ...state, search, index: 0 }
+}
+
+/** Süzgeç değişince sayfa başa döner; aynı süzgeçte durum korunur. */
+export function withFilter(state: ListState, filter: string): ListState {
+  return state.filter === filter ? state : { ...state, filter, index: 0 }
 }
 
 /**

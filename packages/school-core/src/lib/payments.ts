@@ -220,7 +220,10 @@ export interface PaymentPlan {
 type Invoice = State['invoices'][number]
 
 /** Taksitin açık tutarı. Tahsilat kaydı olmadan ödenmiş eski taksit tam ödenmiş sayılır. */
-export function openAmount(invoice: Invoice, allocated: ReadonlyMap<string, number>): number {
+export function openAmount(
+  invoice: Pick<Invoice, 'id' | 'amount' | 'paidAt'>,
+  allocated: ReadonlyMap<string, number>,
+): number {
   if (invoice.paidAt) return 0
   return Math.max(invoice.amount - (allocated.get(invoice.id) ?? 0), 0)
 }

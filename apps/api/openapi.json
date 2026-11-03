@@ -4445,7 +4445,11 @@
               "absence_recorded",
               "absence_corrected",
               "absence_decided",
-              "enrollment_completed"
+              "enrollment_completed",
+              "installment_due",
+              "installment_overdue",
+              "payment_received",
+              "refund_paid"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -19773,7 +19777,11 @@
               "absence_recorded",
               "absence_corrected",
               "absence_decided",
-              "enrollment_completed"
+              "enrollment_completed",
+              "installment_due",
+              "installment_overdue",
+              "payment_received",
+              "refund_paid"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },

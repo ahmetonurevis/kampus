@@ -58,6 +58,8 @@ const MODULELESS: Readonly<Record<string, string>> = {
   'GET /api/v1/institution-members/invitations': 'personel hesabı',
   'POST /api/v1/institution-members/invitations': 'personel hesabı',
   'POST /api/v1/institution-members/imports': 'personel hesabı',
+  // Veli hesabı daveti platform yeteneğidir (DOM-YTK-071): rıza ve kapsamın girdisi kapatılamaz.
+  'POST /api/v1/institution-members/guardian-invitations': 'veli hesabı',
   'POST /api/v1/institution-members/invitations/:invitationId/cancel': 'personel hesabı',
   'POST /api/v1/institution-members/:membershipId/role': 'personel hesabı',
   'POST /api/v1/institution-members/:membershipId/deactivate': 'personel hesabı',

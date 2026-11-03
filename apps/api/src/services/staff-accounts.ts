@@ -6,6 +6,7 @@ import {
   planStaffActivation,
   planStaffRoleChange,
   STAFF_ACCOUNT_MESSAGES,
+  STAFF_ROLES,
   staffRoleSchema,
   type StaffInvitationInput,
   type StaffMember,
@@ -112,7 +113,12 @@ export async function listStaffInvitations(
   institutionId: string,
   query: { page: number; pageSize: number },
 ) {
-  const where = and(eq(invitations.institutionId, institutionId), eq(invitations.status, 'pending'))
+  // Veli davetleri (DOM-YTK-071) bu listede değildir; sayım da yalnız personel davetlerini sayar.
+  const where = and(
+    eq(invitations.institutionId, institutionId),
+    eq(invitations.status, 'pending'),
+    inArray(invitations.role, [...STAFF_ROLES]),
+  )
   const [rows, [totals]] = await Promise.all([
     invitationQuery(db)
       .where(where)
@@ -429,7 +435,8 @@ export function cancelStaffInvitation(
       load: async (tx) => {
         await loadActorAdmin(tx, ctx)
         const row = await findInvitation(tx, ctx.institutionId, invitationId)
-        if (row === null) throw new NotFoundError()
+        // Veli davetinin iptali bu uçla yapılmaz: üyelik silinince velayet bağı da silinirdi.
+        if (row === null || !staffRoleSchema.safeParse(row.role).success) throw new NotFoundError()
         const [member] =
           row.membershipId === null
             ? []

@@ -95,6 +95,33 @@ export const staffInvitationResponseSchema = dataResponse(staffInvitationSchema)
 export const staffInvitationListResponseSchema = pageResponse(staffInvitationSchema)
 
 /**
+ * Veli hesabı daveti (DOM-YTK-071). Personel davetiyle aynı ilke: üyelik kimliği ve kullanıcı
+ * tablosundaki ad dönmez, e-postanın başka kurumda hesabı olup olmadığı anlaşılmaz (karar 73).
+ */
+export const guardianInvitationSchema = z
+  .object({
+    id: z.string().describe('Davet kimliği'),
+    name: z.string().nullable().describe('Davette girilen ad'),
+    email: z.string().describe('Davet e-postası; yalnız yönetici ve ön büroya döner'),
+    role: z.literal('veli'),
+    status: z
+      .enum(['pending', 'accepted', 'canceled', 'rejected'])
+      .describe('`pending`: kişi henüz giriş yapmadı; `accepted`: ilk girişini yaptı'),
+    studentIds: z.array(z.string()).describe('Velinin bağlandığı öğrenci kayıtları'),
+    parentId: z
+      .string()
+      .nullable()
+      .describe('Hesaba bağlanan veli kaydı; verilmediyse `null` (velayet bağı kurulmadı)'),
+    createdAt: z.iso.datetime(),
+    expiresAt: z.iso
+      .datetime()
+      .describe('Davet işaretinin süresi; davetle açılan hesap ve üyelik süreden bağımsızdır'),
+  })
+  .meta({ id: 'GuardianInvitation' })
+
+export const guardianInvitationResponseSchema = dataResponse(guardianInvitationSchema)
+
+/**
  * Toplu personel aktarımının sonucu (IST-007). Önizlemede (`dryRun`) satır hataları `issues`'tadır
  * ve hiçbir şey yazılmaz; aktarımda hata varsa yanıt 422 `staff_import_invalid` olur, burası
  * yalnız başarıyı taşır (`issues` boş). Davet başına ayrıntı dönmez: yeni hesap ile başka kurumda

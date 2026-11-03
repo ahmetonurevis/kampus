@@ -228,3 +228,46 @@ export async function ensureGuardianLinks(
     .values(fresh.map((link) => ({ institutionId, id: link.id, ...columnsOf(link) })))
     .onConflictDoNothing()
 }
+
+/**
+ * Veli kaydının kurumdaki bütün etkin bağları; veli hesabı davetinde kaydın başka hesapla
+ * eşlenmiş olması bunlardan denetlenir (core `planGuardianInvitation`; DOM-YTK-071).
+ */
+export async function loadParentGuardians(
+  db: Database,
+  institutionId: string,
+  parentId: string,
+): Promise<StoredGuardianLink[]> {
+  const rows = await db
+    .select()
+    .from(studentGuardians)
+    .where(and(active(institutionId), eq(studentGuardians.parentId, parentId)))
+    .orderBy(asc(studentGuardians.createdAt), asc(studentGuardians.id))
+  return rows.map(toLink)
+}
+
+/**
+ * Veli kaydının bağlarını davetle açılan hesaba bağlar (DOM-YTK-071): yalnız hesabı boş etkin
+ * bağlar yazılır, sürüm artar. Yazılan bağ sayısı beklenenden azsa (arada değişmiş) `false`.
+ */
+export async function attachGuardianAccount(
+  tx: Database,
+  institutionId: string,
+  bondIds: readonly string[],
+  membershipId: string,
+  now: Date,
+): Promise<boolean> {
+  if (bondIds.length === 0) return true
+  const rows = await tx
+    .update(studentGuardians)
+    .set({ membershipId, updatedAt: now, version: sql`${studentGuardians.version} + 1` })
+    .where(
+      and(
+        active(institutionId),
+        inArray(studentGuardians.id, [...bondIds]),
+        isNull(studentGuardians.membershipId),
+      ),
+    )
+    .returning({ id: studentGuardians.id })
+  return rows.length === bondIds.length
+}

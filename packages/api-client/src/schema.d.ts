@@ -99,9 +99,29 @@ export interface paths {
         put?: never;
         /**
          * Personel davet et
-         * @description Yönetici, öğretmen ya da ön büro hesabı açar (DOM-YTK-070, IST-007): kullanıcı (parolasız), üyelik ve isteğe bağlı öğretmen kaydı bağlantısı (`teacherId`, yalnız öğretmen rolünde) aynı işlemde yazılır; Better Auth daveti kişi ilk girişini yapana kadar `pending` kalır. Kişiye parola belirleme bağlantısı (parola sıfırlama akışı) yanıtı beklemeden gönderilir (kuyruk açıkken `staff.password-link` işi). E-posta başka kurumda hesaplıysa üyelik açılmaz ve ileti gitmez; yalnız bekleyen davet yazılır, öğretmen kaydı davette saklanır ve kabulde bağlanır. Yanıtın durum kodu ve alanları iki durumda aynıdır, ad yöneticinin girdiğidir: e-postanın başka kurumda hesabı olup olmadığı yanıttan anlaşılmaz. Kurumda kayıtlı e-posta 409 `member_exists`, bekleyen davet 409 `invitation_exists`, kurumda olmayan öğretmen kaydı 404, başka hesaba bağlı öğretmen kaydı 409 `teacher_already_linked`, kurumun bekleyen başka bir davetinin tuttuğu öğretmen kaydı 409 `teacher_invitation_pending`. Öğrenci ve veli hesapları kayıt aktarımıyla açılır (400). `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
+         * @description Yönetici, öğretmen ya da ön büro hesabı açar (DOM-YTK-070, IST-007): kullanıcı (parolasız), üyelik ve isteğe bağlı öğretmen kaydı bağlantısı (`teacherId`, yalnız öğretmen rolünde) aynı işlemde yazılır; Better Auth daveti kişi ilk girişini yapana kadar `pending` kalır. Kişiye parola belirleme bağlantısı (parola sıfırlama akışı) yanıtı beklemeden gönderilir (kuyruk açıkken `staff.password-link` işi). E-posta başka kurumda hesaplıysa üyelik açılmaz ve ileti gitmez; yalnız bekleyen davet yazılır, öğretmen kaydı davette saklanır ve kabulde bağlanır. Yanıtın durum kodu ve alanları iki durumda aynıdır, ad yöneticinin girdiğidir: e-postanın başka kurumda hesabı olup olmadığı yanıttan anlaşılmaz. Kurumda kayıtlı e-posta 409 `member_exists`, bekleyen davet 409 `invitation_exists`, kurumda olmayan öğretmen kaydı 404, başka hesaba bağlı öğretmen kaydı 409 `teacher_already_linked`, kurumun bekleyen başka bir davetinin tuttuğu öğretmen kaydı 409 `teacher_invitation_pending`. Öğrenci hesapları kayıt aktarımıyla açılır; `veli` rolü 400, veli hesabı `POST /api/v1/institution-members/guardian-invitations` (`inviteGuardianAccount`) ile açılır. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
          */
         post: operations["inviteStaffMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/institution-members/guardian-invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Veli hesabı davet et
+         * @description Kesin kayıttan sonra velinin hesabını açar (DOM-YTK-071): kullanıcı (parolasız), `veli` üyeliği ve seçilen her öğrenci (`studentIds`, 1–10, benzersiz) için çocuk bağlantısı aynı işlemde yazılır. `parentId` verilirse o veli kaydının seçilen öğrencilerdeki velayet bağları hesaba bağlanır; kayıt seçilen bir öğrencinin velisi değilse 422 `guardian_record_not_linked`, bağı başka hesaba bağlıysa ya da kayıt bekleyen bir veli davetinde tutuluyorsa 409 `guardian_link_exists`, kayıt başka öğrencide başka hesapla eşlenmişse 422 `guardian_identity_mismatch`. `parentId` verilmezse velayet bağı kurulmaz ve hesap öğrencinin verisini görmez: velayet ve yakınlık `POST /api/v1/students/{studentId}/guardians` (`membershipId` ile) girilir. Better Auth daveti kişi ilk girişini yapana kadar `pending` kalır; parola belirleme bağlantısı personel davetindeki gibi yanıtı beklemeden gider (kuyruk açıkken `staff.password-link` işi). E-posta başka kurumda hesaplıysa üyelik, bağlantı ve bağ yazılmaz, ileti gitmez; öğrenciler ve veli kaydı davette saklanır ve kabulde bağlanır. Yanıtın durum kodu ve alanları iki durumda aynıdır (karar 73). Kurumda kayıtlı e-posta 409 `member_exists` (kardeş kaydındaki mevcut veli hesabı bağ ucuyla bağlanır), bekleyen davet 409 `invitation_exists`; olmayan, arşivli ya da başka kurumun öğrencisi veya veli kaydı 404. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Yalnız `yonetici`, `onburo` (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
+         */
+        post: operations["inviteGuardianAccount"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6247,6 +6267,32 @@ export interface components {
              */
             expiresAt: string;
         };
+        GuardianInvitationInput: {
+            /** @description Davet kimliği */
+            id: string;
+            /** @description Davette girilen ad */
+            name: string | null;
+            /** @description Davet e-postası; yalnız yönetici ve ön büroya döner */
+            email: string;
+            /** @constant */
+            role: "veli";
+            /**
+             * @description `pending`: kişi henüz giriş yapmadı; `accepted`: ilk girişini yaptı
+             * @enum {string}
+             */
+            status: "pending" | "accepted" | "canceled" | "rejected";
+            /** @description Velinin bağlandığı öğrenci kayıtları */
+            studentIds: string[];
+            /** @description Hesaba bağlanan veli kaydı; verilmediyse `null` (velayet bağı kurulmadı) */
+            parentId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Davet işaretinin süresi; davetle açılan hesap ve üyelik süreden bağımsızdır
+             */
+            expiresAt: string;
+        };
         StaffImportIssueInput: {
             line: number;
             field: ("name" | "email" | "role" | "subject" | "campus") | null;
@@ -10116,6 +10162,32 @@ export interface components {
              */
             expiresAt: string;
         };
+        GuardianInvitation: {
+            /** @description Davet kimliği */
+            id: string;
+            /** @description Davette girilen ad */
+            name: string | null;
+            /** @description Davet e-postası; yalnız yönetici ve ön büroya döner */
+            email: string;
+            /** @constant */
+            role: "veli";
+            /**
+             * @description `pending`: kişi henüz giriş yapmadı; `accepted`: ilk girişini yaptı
+             * @enum {string}
+             */
+            status: "pending" | "accepted" | "canceled" | "rejected";
+            /** @description Velinin bağlandığı öğrenci kayıtları */
+            studentIds: string[];
+            /** @description Hesaba bağlanan veli kaydı; verilmediyse `null` (velayet bağı kurulmadı) */
+            parentId: string | null;
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Davet işaretinin süresi; davetle açılan hesap ve üyelik süreden bağımsızdır
+             */
+            expiresAt: string;
+        };
         StaffImportIssue: {
             line: number;
             field: ("name" | "email" | "role" | "subject" | "campus") | null;
@@ -13562,6 +13634,112 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["StaffInvitation"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    inviteGuardianAccount: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    email: string;
+                    name: string;
+                    studentIds: string[];
+                    parentId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["GuardianInvitation"];
                     };
                 };
             };

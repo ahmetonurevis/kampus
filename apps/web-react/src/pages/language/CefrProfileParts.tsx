@@ -1,7 +1,9 @@
 import { useState } from 'react'
+import { Link } from 'react-router'
 import { isApiError } from '@kampus/api-client/errors.ts'
-import type { CefrProfile } from '@kampus/react-shared/cefr.ts'
+import { isStaffProfile, type CefrProfile } from '@kampus/react-shared/cefr.ts'
 import { useCefrProfile } from '@kampus/react-shared/use-cefr.ts'
+import { useAuth } from '@/auth/use-auth.ts'
 import { EmptyState } from '@/components/EmptyState.tsx'
 import { LineTabs } from '@/components/LineTabs.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -10,17 +12,23 @@ import { combineStates, DashboardGrid, ListCard } from '../dashboard/DashboardPa
 import { SummaryLoading, SummarySection } from '../management/SummaryParts.tsx'
 import {
   currentLevelRows,
+  estimateEvidenceRows,
   estimateSkillRows,
   estimateSummary,
+  excludedEvidenceRows,
   levelChart,
   placementRows,
   resolveTimelineFilter,
   timelineFilterOptions,
   timelineRows,
+  type EvidenceAudience,
+  type EvidenceItemRow,
+  type ExcludedRow,
   type LevelRow,
   type TimelineFilter,
   type TimelineRow,
 } from './cefr-profile-model.ts'
+import type { ProgressAudience } from '../academic/skill-progress-model.ts'
 
 /**
  * CEFR profili görünümleri (OG-054, OG-079; IST-060; DOM-DIL-010…012, DOM-BEC-034). Öğrenci ve
@@ -49,19 +57,117 @@ function LevelList({ label, rows }: { label: string; rows: readonly LevelRow[] }
   )
 }
 
-function EstimateBlock({ profile }: { profile: CefrProfile }) {
+/** Kanıt görevleri (DOM-BEC-034): görev kanıtı görevine bağlanır, tespit bölümü düz metindir. */
+function EstimateEvidence({ rows }: { rows: readonly EvidenceItemRow[] }) {
+  if (!rows.length)
+    return (
+      <p className="text-xs text-muted-foreground">
+        Geçerlilik süresi içinde puanlanmış değerlendirme yok.
+      </p>
+    )
+  return (
+    <ul aria-label="Tahmini seviyenin kanıt görevleri" className="grid gap-1.5">
+      {rows.map((row) => {
+        const body = (
+          <>
+            <span
+              className={`font-medium [overflow-wrap:anywhere] ${row.href ? 'text-primary' : ''}`}
+            >
+              {row.title}
+            </span>
+            <span className="text-xs text-muted-foreground [overflow-wrap:anywhere]">
+              {row.note}
+            </span>
+            <span className="text-xs text-muted-foreground">
+              <time dateTime={row.dateTime}>{row.date}</time> · {row.until}
+            </span>
+          </>
+        )
+        return (
+          <li key={row.key}>
+            {row.href ? (
+              <Link
+                to={row.href}
+                aria-label={row.linkLabel}
+                className="grid min-h-11 min-w-0 rounded-xl border px-3.5 py-2 text-sm hover:bg-muted focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                {body}
+              </Link>
+            ) : (
+              <span className="grid min-w-0 rounded-xl border px-3.5 py-2 text-sm">{body}</span>
+            )}
+          </li>
+        )
+      })}
+    </ul>
+  )
+}
+
+/** Kanıt sayılmayan sonuçlar ve nedenleri (DOM-BEC-031); yalnız personel ekranında. */
+function ExcludedEvidence({ rows }: { rows: readonly ExcludedRow[] }) {
+  if (!rows.length) return null
+  return (
+    <details className="text-xs">
+      <summary className="cursor-pointer font-medium text-primary">
+        Kanıt sayılmayan sonuçlar ({rows.length})
+      </summary>
+      <ul aria-label="Kanıt sayılmayan sonuçlar" className="mt-1.5 grid gap-1.5">
+        {rows.map((row) => (
+          <li key={row.key} className="grid">
+            {row.href ? (
+              <Link
+                to={row.href}
+                className="font-medium text-primary [overflow-wrap:anywhere] hover:underline"
+              >
+                {row.title}
+              </Link>
+            ) : (
+              <span className="font-medium [overflow-wrap:anywhere]">{row.title}</span>
+            )}
+            <span className="text-muted-foreground">{row.reason}</span>
+          </li>
+        ))}
+      </ul>
+    </details>
+  )
+}
+
+/**
+ * "Tahmini seviye" (DOM-BEC-032…034): genel öneri, beceri bazında öneri ve yetersiz kanıtın nedeni,
+ * dayandığı kanıt görevleri. Öneri karar değildir; güncel seviyeden ayrı bölümde gösterilir.
+ */
+function EstimateBlock({
+  profile,
+  audience,
+}: {
+  profile: CefrProfile
+  audience: EvidenceAudience | null
+}) {
   const summary = estimateSummary(profile.estimate)
   const skills = estimateSkillRows(profile.estimate)
+  const evidence = estimateEvidenceRows(profile.estimate, audience)
+  const staff = audience?.kind === 'staff' || isStaffProfile(profile)
   return (
-    <div className="grid gap-3">
+    <div className="grid min-w-0 gap-3">
       <p className="grid rounded-xl border px-3.5 py-2.5 text-sm">
         <span className="text-xs text-muted-foreground">{profile.estimate.label}</span>
         <strong className="text-base font-semibold">{summary.level}</strong>
         <span className="text-xs text-muted-foreground">{summary.note}</span>
       </p>
       {skills.length ? <LevelList label="Beceri bazında tahmini seviye" rows={skills} /> : null}
+      <div className="grid gap-1.5">
+        <p className="text-xs font-semibold text-muted-foreground">Kanıt görevleri</p>
+        <EstimateEvidence rows={evidence} />
+      </div>
+      {staff ? <ExcludedEvidence rows={excludedEvidenceRows(profile.estimate, audience)} /> : null}
     </div>
   )
+}
+
+/** Görev modülü açıksa kanıt görevine bağlanılır; kapalıysa bağlantı çizilmez. */
+function useEvidenceAudience(audience: EvidenceAudience): EvidenceAudience | null {
+  const { session } = useAuth()
+  return session?.modules.learning === true ? audience : null
 }
 
 function PlacementList({ profile }: { profile: CefrProfile }) {
@@ -203,9 +309,19 @@ const EMPTY = {
   timeline: 'Seviye kararı geçmişi yok.',
 } as const
 
-/** Öğrenci ve veli: Akademik Gelişim sayfasındaki CEFR kartları (dil okulu). */
-export function CefrProfileCards({ studentId }: { studentId: string }) {
+/**
+ * Öğrenci ve veli: Akademik Gelişim sayfasındaki CEFR kartları (dil okulu). `audience` kanıt
+ * görevinin bağlantısını kurar: öğrenci kendi çalışma alanı, veli çocuğun takip sekmesi.
+ */
+export function CefrProfileCards({
+  studentId,
+  audience,
+}: {
+  studentId: string
+  audience: ProgressAudience
+}) {
   const query = useCefrProfile(studentId)
+  const links = useEvidenceAudience(audience)
   const state = combineStates(query)
   const profile = query.data
   return (
@@ -222,12 +338,12 @@ export function CefrProfileCards({ studentId }: { studentId: string }) {
         </ListCard>
         <ListCard
           title="Tahmini seviye"
-          description="Tespit sonuçlarından hesaplanır"
+          description="Değerlendirme görevlerinden ve tespitten hesaplanır; karar değildir"
           state={state}
           isEmpty={false}
           emptyText=""
         >
-          {profile ? <EstimateBlock profile={profile} /> : null}
+          {profile ? <EstimateBlock profile={profile} audience={links} /> : null}
         </ListCard>
       </DashboardGrid>
       <DashboardGrid>
@@ -258,8 +374,15 @@ export function CefrProfileCards({ studentId }: { studentId: string }) {
  * Yönetici ve öğretmen: grup özetindeki kursiyerin profili. Öğretmenin grubunda olmayan öğrenci
  * sunucuda 404'tür ve "görüntülenemiyor" gösterilir.
  */
-export function CefrProfileSummary({ studentId }: { studentId: string }) {
+export function CefrProfileSummary({
+  studentId,
+  role,
+}: {
+  studentId: string
+  role: 'yonetici' | 'ogretmen'
+}) {
   const query = useCefrProfile(studentId)
+  const links = useEvidenceAudience({ kind: 'staff', role })
   if (query.error)
     return isApiError(query.error) && query.error.status === 404 ? (
       <EmptyState
@@ -282,7 +405,7 @@ export function CefrProfileSummary({ studentId }: { studentId: string }) {
         )}
       </SummarySection>
       <SummarySection title="Tahmini seviye">
-        <EstimateBlock profile={profile} />
+        <EstimateBlock profile={profile} audience={links} />
       </SummarySection>
       <SummarySection title="Seviye geçmişi">
         {profile.timeline.length ? (

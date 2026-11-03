@@ -3,9 +3,13 @@ import { test } from 'node:test'
 import type { CefrProfile, CefrStaffTimelineEntry } from '@kampus/react-shared/cefr.ts'
 import {
   currentLevelRows,
+  estimateEvidenceRows,
   estimateSkillRows,
   estimateSummary,
+  evidenceHref,
+  excludedEvidenceRows,
   GENERAL_LEVEL_LABEL,
+  insufficientReason,
   levelChart,
   placementRows,
   resolveTimelineFilter,
@@ -324,4 +328,114 @@ test('IST-060: süzgeç yeni kursiyerin seçeneklerinde yoksa "Tümü"ne döner'
   assert.equal(resolveTimelineFilter(options, 'reading'), 'all')
   // Süzgeci çıkmayan (tek becerili) kursiyere geçince eski seçim kalmaz.
   assert.equal(resolveTimelineFilter(timelineFilterOptions(base), 'speaking'), 'all')
+})
+
+// OG-247 (DOM-BEC-031…034): tahmini seviyenin kanıt görevleri, bağlantıları ve yetersiz kanıt nedeni.
+
+const ASSIGNMENT_ID = '00000000-0000-4000-8000-0000a0000001'
+const withEvidence: CefrProfile['estimate'] = {
+  ...base.estimate,
+  evidence: [
+    {
+      id: 'attempt-1',
+      title: 'Okuma değerlendirmesi',
+      source: 'task',
+      task: { assignmentId: ASSIGNMENT_ID, scoring: 'auto' },
+      skill: 'reading',
+      targetLevel: 'B1',
+      performedAt: '2026-10-01T09:00:00.000Z',
+      expiresAt: '2027-01-29T09:00:00.000Z',
+      successful: true,
+      percent: 80,
+    },
+    {
+      id: 'section-1',
+      title: 'Seviye tespiti · Konuşma',
+      source: 'placement',
+      task: null,
+      skill: 'speaking',
+      targetLevel: 'A2',
+      performedAt: '2026-10-20T09:00:00.000Z',
+      expiresAt: '2027-01-18T09:00:00.000Z',
+      successful: false,
+      percent: 40,
+    },
+  ],
+  excluded: [
+    {
+      id: 'version-1',
+      title: '',
+      reason: 'unscored',
+      task: { assignmentId: ASSIGNMENT_ID, scoring: 'rubric' },
+    },
+  ],
+}
+
+test('DOM-BEC-034 OG-247: kanıtlar en yeniden eskiye; görev kanıtı görevine bağlanır, tespit bölümü bağlantısız', () => {
+  const rows = estimateEvidenceRows(withEvidence, { kind: 'student' })
+  assert.deepEqual(
+    rows.map((row) => [row.key, row.note, row.successful, row.href]),
+    [
+      ['section-1', 'Konuşma · hedef A2 · %40 · başarısız · Seviye tespiti', false, null],
+      [
+        'attempt-1',
+        'Okuma · hedef B1 · %80 · başarılı',
+        true,
+        `/ogrenci/soru-coz?coz=${ASSIGNMENT_ID}`,
+      ],
+    ],
+  )
+  assert.match(rows[1]!.until, /tarihine kadar geçerli$/)
+  assert.equal(rows[1]!.dateTime, '2026-10-01T09:00:00.000Z')
+  // Görev modülü kapalıysa (`null`) bağlantı çizilmez.
+  assert.ok(estimateEvidenceRows(withEvidence, null).every((row) => row.href === null))
+})
+
+test('OG-247: kanıt görevinin adresi role göre kurulur', () => {
+  const auto = { assignmentId: ASSIGNMENT_ID, scoring: 'auto' } as const
+  const rubric = { assignmentId: ASSIGNMENT_ID, scoring: 'rubric' } as const
+  assert.equal(
+    evidenceHref(auto, { kind: 'staff', role: 'yonetici' }),
+    `/yonetici/odevler?gorev=${ASSIGNMENT_ID}`,
+  )
+  assert.equal(
+    evidenceHref(rubric, { kind: 'staff', role: 'ogretmen' }),
+    `/ogretmen/odevler?sekme=gorevler&gorev=${ASSIGNMENT_ID}`,
+  )
+  assert.equal(evidenceHref(rubric, { kind: 'student' }), `/ogrenci/odevler?yaz=${ASSIGNMENT_ID}`)
+  assert.equal(
+    evidenceHref(auto, { kind: 'parent', childId: 'student-1' }),
+    `/veli/akademik-takip?cocuk=student-1&sekme=gorevler&gorev=${ASSIGNMENT_ID}`,
+  )
+})
+
+test('DOM-BEC-031 OG-247: kanıt sayılmayan sonuç Türkçe nedeniyle listelenir', () => {
+  assert.deepEqual(excludedEvidenceRows(withEvidence, { kind: 'staff', role: 'ogretmen' }), [
+    {
+      key: 'version-1',
+      title: 'Adsız görev',
+      reason: 'Sonuç henüz puanlanmadı.',
+      href: `/ogretmen/odevler?sekme=gorevler&gorev=${ASSIGNMENT_ID}`,
+    },
+  ])
+})
+
+test('DOM-BEC-032 OG-247: yetersiz kanıtın nedeni eksik kanıt ve madde sayısını söyler', () => {
+  const row = base.estimate.skills[0]!
+  assert.equal(
+    insufficientReason({ ...row, missingEvidence: 2, missingItems: 8 }),
+    '2 kanıt ve 8 madde daha gerekir',
+  )
+  assert.equal(
+    insufficientReason({ ...row, missingEvidence: 0, missingItems: 4 }),
+    '4 madde daha gerekir',
+  )
+  assert.equal(
+    insufficientReason({ ...row, missingEvidence: 0, missingItems: 0 }),
+    'Geçerli kanıt yok',
+  )
+  assert.equal(
+    insufficientReason({ ...row, missingEvidence: 0, missingItems: 0, evidenceIds: ['e1'] }),
+    'Başarılı kanıt payı ya da farklı gün koşulu sağlanmadı',
+  )
 })

@@ -2,16 +2,26 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq } from 'drizzle-orm'
+import { and, eq, isNull } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import { SESSION_FRESH_AGE_SECONDS } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
-import { invitations, memberships, sessions, users } from '../src/db/schema/auth.ts'
+import {
+  institutions,
+  invitations,
+  memberships,
+  sessions,
+  users,
+  verifications,
+} from '../src/db/schema/auth.ts'
 import { membershipLinks } from '../src/db/schema/membership-links.ts'
+import { AppError } from '../src/errors.ts'
+import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { MemoryMailer } from '../src/services/mailer.ts'
+import { changeStaffRole, setStaffActive } from '../src/services/staff-accounts.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -23,6 +33,7 @@ import {
   signInAs,
   TEST_ORIGIN,
   type TestInstitution,
+  type TestUser,
 } from './support/app.ts'
 
 /**
@@ -178,7 +189,12 @@ describe('personel hesapları (DOM-YTK-070)', () => {
       const member = await membershipOf(institution.id, address)
       assert.ok(member)
       assert.equal(member.role, 'ogretmen')
-      assert.equal(data.membershipId, member.id)
+      assert.equal('membershipId' in data, false, 'üyelik kimliği yanıtta yok')
+      const [stored] = await db
+        .select({ membershipId: invitations.membershipId, name: invitations.name })
+        .from(invitations)
+        .where(eq(invitations.id, data.id))
+      assert.deepEqual(stored, { membershipId: member.id, name: 'Selin Kaya' })
       const links = await db
         .select({ kind: membershipLinks.kind, recordId: membershipLinks.recordId })
         .from(membershipLinks)
@@ -316,20 +332,117 @@ describe('personel hesapları (DOM-YTK-070)', () => {
       assert.equal(injected.statusCode, 400)
     })
 
-    test('DOM-YTK-070: başka kurumda hesabı olan kişi yeni hesap açılmadan üye olur', async () => {
+    test('DOM-YTK-070: başka kurumda hesabı olan e-postaya davet üyelik açmaz, ileti göndermez, yanıt yeni hesaptakiyle aynıdır (karar 73)', async () => {
       const { institution, cookie } = await kurum()
       const other = await createInstitution(app)
       const existing = await createMember(app, other.id, 'ogretmen')
+      const [account] = await db
+        .select({ name: users.name })
+        .from(users)
+        .where(eq(users.id, existing.id))
+      const realName = account?.name ?? ''
+      assert.notEqual(realName, '')
+      const sentBefore = mailer.outbox.length
+
+      const fresh = await invite(cookie, { email: email(), name: 'Yeni Kişi', role: 'onburo' })
       const response = await invite(cookie, {
         email: existing.email,
         name: 'Farklı Ad',
-        role: 'onburo',
+        role: 'ogretmen',
+        teacherId: 't-a',
       })
+      // Aynı durum kodu, aynı anahtarlar; ad yöneticinin girdiği, gerçek ad hiçbir alanda yok.
       assert.equal(response.statusCode, 201, response.body)
+      assert.equal(response.statusCode, fresh.statusCode)
+      assert.equal(response.headers.location, fresh.headers.location)
+      assert.deepEqual(Object.keys(response.json()).sort(), Object.keys(fresh.json()).sort())
+      assert.deepEqual(
+        Object.keys(response.json().data).sort(),
+        Object.keys(fresh.json().data).sort(),
+      )
+      const data = response.json().data
+      assert.equal(data.name, 'Farklı Ad')
+      assert.equal(data.status, 'pending')
+      assert.equal(data.email, existing.email)
+      assert.ok(!response.body.includes(realName), 'gerçek ad yanıtta yok')
+      assert.ok(!response.body.includes(other.id), 'başka kurum yanıtta yok')
+
+      // Üyelik ve öğretmen bağlantısı açılmaz; hesap ve adı değişmez.
+      assert.equal(await membershipOf(institution.id, existing.email), null)
       const [user] = await db.select().from(users).where(eq(users.email, existing.email))
       assert.equal(user?.id, existing.id)
-      assert.notEqual(user?.name, 'Farklı Ad')
-      assert.equal((await membershipOf(institution.id, existing.email))?.role, 'onburo')
+      assert.equal(user?.name, realName)
+      const links = await db
+        .select()
+        .from(membershipLinks)
+        .where(
+          and(
+            eq(membershipLinks.institutionId, institution.id),
+            eq(membershipLinks.recordId, 't-a'),
+          ),
+        )
+      assert.equal(links.length, 0)
+      const [stored] = await db
+        .select({ membershipId: invitations.membershipId, name: invitations.name })
+        .from(invitations)
+        .where(eq(invitations.id, data.id))
+      assert.deepEqual(stored, { membershipId: null, name: 'Farklı Ad' })
+
+      // Parola sıfırlama iletisi ve belirteci yok; yalnız yeni hesaba bağlantı gitti.
+      assert.equal(mailer.lastTo(existing.email), undefined)
+      assert.equal(mailer.outbox.length, sentBefore + 1)
+      const tokens = await db
+        .select()
+        .from(verifications)
+        .where(eq(verifications.value, existing.id))
+      assert.equal(tokens.length, 0)
+
+      // Denetim alanları iki davette aynı.
+      const audit = await audits(institution.id, 'staff.invite')
+      assert.deepEqual(
+        audit.map((row) => JSON.stringify(row.changes)).sort(),
+        [{ fields: ['email', 'name', 'role'] }, { fields: ['email', 'name', 'role', 'teacherId'] }]
+          .map((changes) => JSON.stringify(changes))
+          .sort(),
+      )
+
+      // Bekleyen davetler listesi girilen adı gösterir.
+      const list = await app.inject({
+        method: 'GET',
+        url: '/api/v1/institution-members/invitations',
+        headers: { origin: TEST_ORIGIN, cookie },
+      })
+      const listed = list.json().data.find((row: { id: string }) => row.id === data.id)
+      assert.equal(listed?.name, 'Farklı Ad')
+      assert.ok(!list.body.includes(realName))
+
+      // Mevcut hesabın girişi daveti kabul etmez ve üyelik açmaz.
+      const login = await signIn(app, existing.email, existing.password)
+      assert.equal(login.statusCode, 200)
+      const [after] = await db
+        .select({ status: invitations.status })
+        .from(invitations)
+        .where(eq(invitations.id, data.id))
+      assert.equal(after?.status, 'pending')
+      assert.equal(await membershipOf(institution.id, existing.email), null)
+
+      // İptal yalnız daveti kapatır: hesaba ve başka kurumdaki üyeliğe dokunulmaz.
+      const cancel = await post(`/api/v1/institution-members/invitations/${data.id}/cancel`, {
+        cookie,
+      })
+      assert.equal(cancel.statusCode, 200, cancel.body)
+      assert.equal(cancel.json().data.status, 'canceled')
+      assert.equal(cancel.json().data.name, 'Farklı Ad')
+      assert.ok(await membershipOf(other.id, existing.email))
+      assert.equal(
+        (await db.select().from(users).where(eq(users.id, existing.id))).length,
+        1,
+        'hesap silinmedi',
+      )
+      assert.deepEqual(
+        (await audits(institution.id, 'staff.invitation_cancel')).map((row) => row.changes),
+        [{ fields: ['status'] }],
+      )
     })
   })
 
@@ -359,7 +472,6 @@ describe('personel hesapları (DOM-YTK-070)', () => {
       const response = await post(url, { cookie })
       assert.equal(response.statusCode, 200, response.body)
       assert.equal(response.json().data.status, 'canceled')
-      assert.equal(response.json().data.membershipId, null)
       assert.equal(await membershipOf(institution.id, address), null)
       const [user] = await db.select().from(users).where(eq(users.email, address))
       assert.equal(user, undefined)
@@ -544,14 +656,54 @@ describe('personel hesapları (DOM-YTK-070)', () => {
       const left = await db.select().from(sessions).where(eq(sessions.userId, teacher.id))
       assert.equal(left.length, 0)
 
-      // Yeniden giriş kurumsuz oturum açar: kurum uçları 403.
+      // Yeniden giriş kurumsuz oturum açar: `/me` etkin kurumsuz ve üyeliksiz, kurum uçları 403.
       const again = await signInAs(app, teacher)
       const blocked = await app.inject({
         method: 'GET',
         url: '/api/v1/me',
         headers: { origin: TEST_ORIGIN, cookie: again },
       })
-      assert.ok([200, 403].includes(blocked.statusCode))
+      assert.equal(blocked.statusCode, 200, blocked.body)
+      assert.equal(blocked.json().data.activeInstitution, null)
+      assert.equal(blocked.json().data.activeMembership, null)
+      assert.deepEqual(blocked.json().data.memberships, [])
+
+      // Better Auth kurum uçları pasif üyeliği üyelik yokmuş gibi reddeder.
+      const auth = (method: 'GET' | 'POST', path: string, payload?: object) =>
+        app.inject({
+          method,
+          url: `/api/v1/auth${path}`,
+          headers: { origin: TEST_ORIGIN, cookie: again },
+          ...(payload === undefined ? {} : { payload }),
+        })
+      const switched = await auth('POST', '/organization/set-active', {
+        organizationId: institution.id,
+      })
+      assert.equal(switched.statusCode, 403, switched.body)
+      assert.equal(switched.json().message, 'Bu kurumda üyeliğiniz bulunmuyor.')
+      const [{ slug } = { slug: '' }] = await db
+        .select({ slug: institutions.slug })
+        .from(institutions)
+        .where(eq(institutions.id, institution.id))
+      const bySlug = await auth('POST', '/organization/set-active', { organizationSlug: slug })
+      assert.equal(bySlug.statusCode, 403, bySlug.body)
+      const [unchanged] = await db
+        .select({ active: sessions.activeInstitutionId })
+        .from(sessions)
+        .where(eq(sessions.userId, teacher.id))
+      assert.equal(unchanged?.active, null)
+      // Pasifleştirmeden önce açılmış (etkin kurumu bu kurum olan) oturumu taklit et.
+      await db
+        .update(sessions)
+        .set({ activeInstitutionId: institution.id })
+        .where(eq(sessions.userId, teacher.id))
+      const member = await auth('GET', '/organization/get-active-member')
+      assert.equal(member.statusCode, 403, member.body)
+      assert.equal(member.json().message, 'Bu kurumda üyeliğiniz bulunmuyor.')
+      await db
+        .update(sessions)
+        .set({ activeInstitutionId: null })
+        .where(eq(sessions.userId, teacher.id))
       const lessons = await app.inject({
         method: 'GET',
         url: '/api/v1/institution-members/invitations',
@@ -594,6 +746,109 @@ describe('personel hesapları (DOM-YTK-070)', () => {
       assert.equal(allowed.statusCode, 403)
       assert.equal(allowed.json().code, 'forbidden', 'üyelik geri geldi; rol yine öğretmen')
       assert.equal((await audits(institution.id, 'staff.reactivate')).length, 1)
+    })
+
+    /** Rota denetimini (`requireRole`) geçmiş yöneticinin servis bağlamı: yarışta kilit öncesi an. */
+    function adminContext(
+      institutionId: string,
+      member: Pick<TestUser, 'id'> & { membershipId: string },
+    ): ServiceContext {
+      return {
+        db,
+        institutionId,
+        actor: { userId: member.id, role: 'yonetici', membershipId: member.membershipId },
+        now: FIXED_NOW,
+        log: app.log,
+      }
+    }
+
+    function outcome(result: PromiseSettledResult<{ statusCode: number }>): string {
+      if (result.status === 'fulfilled') return String(result.value.statusCode)
+      const reason: unknown = result.reason
+      return reason instanceof AppError ? `${reason.statusCode}:${reason.code}` : 'unexpected'
+    }
+
+    test('DOM-YTK-070: iki yönetici aynı anda birbirini pasifleştirir ya da düşürür: biri 422 last_admin', async () => {
+      for (const kind of ['deactivate', 'role', 'mixed'] as const) {
+        const { institution } = await kurum()
+        const first = { id: institution.admin.id, membershipId: institution.adminMembershipId }
+        const second = await createMember(app, institution.id, 'yonetici')
+        const demote = (actor: typeof first, target: string) =>
+          changeStaffRole(
+            adminContext(institution.id, actor),
+            app.auth,
+            target,
+            { role: 'ogretmen' },
+            null,
+          )
+        const deactivate = (actor: typeof first, target: string) =>
+          setStaffActive(adminContext(institution.id, actor), app.auth, target, false, null)
+        const results = await Promise.allSettled([
+          kind === 'role'
+            ? demote(first, second.membershipId)
+            : deactivate(first, second.membershipId),
+          kind === 'deactivate'
+            ? deactivate(second, first.membershipId)
+            : demote(second, first.membershipId),
+        ])
+        const codes = results.map(outcome).sort()
+        assert.deepEqual(codes, ['200', '422:last_admin'], kind)
+        const admins = await db
+          .select({ id: memberships.id })
+          .from(memberships)
+          .where(
+            and(
+              eq(memberships.institutionId, institution.id),
+              eq(memberships.role, 'yonetici'),
+              isNull(memberships.deactivatedAt),
+            ),
+          )
+        assert.equal(admins.length, 1, `${kind}: bir etkin yönetici kalır`)
+      }
+    })
+
+    test('DOM-YTK-070: kilit altında yetkisini yitirmiş yönetici yazamaz; kendini geri alamaz', async () => {
+      const { institution, cookie } = await kurum()
+      const second = await createMember(app, institution.id, 'yonetici')
+      const teacher = await createMember(app, institution.id, 'ogretmen')
+      const secondContext = adminContext(institution.id, second)
+      // `second` istek denetimini geçti, kilidi beklerken pasifleştirildi.
+      const deactivated = await post(
+        `/api/v1/institution-members/${second.membershipId}/deactivate`,
+        { cookie },
+      )
+      assert.equal(deactivated.statusCode, 200, deactivated.body)
+      await assert.rejects(
+        setStaffActive(secondContext, app.auth, second.membershipId, true, null),
+        (error: unknown) => error instanceof AppError && error.code === 'self_reactivate',
+      )
+      await assert.rejects(
+        setStaffActive(secondContext, app.auth, teacher.membershipId, false, null),
+        (error: unknown) => error instanceof AppError && error.statusCode === 403,
+      )
+      await assert.rejects(
+        changeStaffRole(secondContext, app.auth, teacher.membershipId, { role: 'onburo' }, null),
+        (error: unknown) => error instanceof AppError && error.statusCode === 403,
+      )
+      const [row] = await db
+        .select({ deactivatedAt: memberships.deactivatedAt })
+        .from(memberships)
+        .where(eq(memberships.id, second.membershipId))
+      assert.notEqual(row?.deactivatedAt, null, 'kendini geri alamadı')
+      const [teacherRow] = await db
+        .select({ role: memberships.role, deactivatedAt: memberships.deactivatedAt })
+        .from(memberships)
+        .where(eq(memberships.id, teacher.membershipId))
+      assert.deepEqual(teacherRow, { role: 'ogretmen', deactivatedAt: null })
+      assert.equal((await audits(institution.id, 'staff.reactivate')).length, 0)
+
+      // HTTP: kendi hesabını geri alma 422 `self_reactivate` (etkin yönetici için de).
+      const self = await post(
+        `/api/v1/institution-members/${institution.adminMembershipId}/reactivate`,
+        { cookie },
+      )
+      assert.equal(self.statusCode, 422)
+      assert.equal(self.json().code, 'self_reactivate')
     })
   })
 })

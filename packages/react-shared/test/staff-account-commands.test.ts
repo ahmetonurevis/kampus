@@ -66,7 +66,6 @@ const member = {
 const invitation = {
   data: {
     id: 'inv-1',
-    membershipId: 'm-1',
     name: 'Selin Kaya',
     email: 'selin@kampus.example',
     role: 'ogretmen',
@@ -126,6 +125,7 @@ describe('personel hesabı istekleri (DOM-YTK-070)', () => {
       ['last_admin', 'son etkin yönetici'],
       ['self_role_change', 'Kendi rolünüzü'],
       ['self_deactivate', 'Kendi hesabınızı'],
+      ['self_reactivate', 'Kendi hesabınızı etkinleştiremezsiniz'],
       ['member_exists', 'zaten kayıtlı'],
       ['teacher_already_linked', 'başka bir hesaba'],
     ] as const

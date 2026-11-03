@@ -64,6 +64,7 @@ export const STAFF_ACCOUNT_MESSAGES = {
     'Bu işlem yalnız personel hesaplarında yapılır. Öğrenci ve veli hesapları kayıttan yönetilir.',
   self_role_change: 'Kendi rolünüzü değiştiremezsiniz.',
   self_deactivate: 'Kendi hesabınızı pasifleştiremezsiniz.',
+  self_reactivate: 'Kendi hesabınızı etkinleştiremezsiniz.',
   last_admin: 'Kurumdaki son etkin yönetici düşürülemez ya da pasifleştirilemez.',
   member_deactivated: 'Pasif hesabın rolü değiştirilemez. Önce hesabı etkinleştirin.',
   member_exists: 'Bu e-posta adresi kurumda zaten kayıtlı.',
@@ -105,8 +106,9 @@ export function planStaffRoleChange(input: {
 
 /**
  * Pasifleştirme ya da geri alma (DOM-YTK-070). Durumu zaten istenen olan hesap `false` döner
- * (işlem yazmaz). Yalnız personel; kişi kendini pasifleştiremez; son etkin yönetici
- * pasifleştirilemez. Geri almada sınır yoktur.
+ * (işlem yazmaz). Yalnız personel; kişi kendi hesabının durumunu iki yönde de değiştiremez
+ * (pasifleştirilen yönetici, kurum kilidinde bekleyen kendi geri alma isteğiyle kendini geri
+ * alamasın); son etkin yönetici pasifleştirilemez. Başkasını geri almada sınır yoktur.
  */
 export function planStaffActivation(input: {
   actorMembershipId: string
@@ -116,9 +118,9 @@ export function planStaffActivation(input: {
 }): boolean {
   const { target, active } = input
   if (!isStaffRole(target.role)) reject('member_not_staff')
+  if (target.id === input.actorMembershipId) reject(active ? 'self_reactivate' : 'self_deactivate')
   if (target.deactivated === !active) return false
   if (active) return true
-  if (target.id === input.actorMembershipId) reject('self_deactivate')
   if (target.role === 'yonetici' && activeAdminCount(input.members) <= 1) reject('last_admin')
   return true
 }

@@ -181,6 +181,24 @@ describe('personel hesapları (DOM-YTK-070)', () => {
       ),
       'rule:last_admin',
     )
+    // Kendi hesabı geri almada da reddedilir (pasif yöneticinin bekleyen kendi isteği).
+    assert.equal(
+      code(() =>
+        planStaffActivation({
+          actorMembershipId: admin.id,
+          target: { ...admin, deactivated: true },
+          members,
+          active: true,
+        }),
+      ),
+      'rule:self_reactivate',
+    )
+    assert.equal(
+      code(() =>
+        planStaffActivation({ actorMembershipId: admin.id, target: admin, members, active: true }),
+      ),
+      'rule:self_reactivate',
+    )
     assert.equal(
       code(() =>
         planStaffActivation({

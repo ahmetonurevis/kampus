@@ -79,9 +79,9 @@ export function StaffInviteForm({ onClose }: { onClose: () => void }) {
     if (outcome.status !== 'done') return
     const result = outcome.result
     if (result.status === 'success') {
-      notify.success(
-        `${result.data.data.name ?? values.name} davet edildi. Parola belirleme bağlantısı e-postayla gönderildi.`,
-      )
+      // Bildirim iki durumda aynıdır (DOM-YTK-070, karar 73): e-postanın başka kurumda hesabı
+      // olup olmadığı, bağlantının gidip gitmediği yöneticiye belli edilmez.
+      notify.success(`${result.data.data.name ?? values.name} davet edildi.`)
       onClose()
     } else if (result.status === 'failed') {
       focusAfterSubmit(INVITE_ROUTES.fieldFor(result.error))
@@ -97,8 +97,8 @@ export function StaffInviteForm({ onClose }: { onClose: () => void }) {
         className="grid gap-5"
       >
         <p className="text-sm text-muted-foreground">
-          Hesap hemen açılır; kişi e-postadaki bağlantıyla parolasını belirleyip giriş yapar.
-          Öğrenci ve veli hesapları kayıt üzerinden açılır.
+          Davet edilen kişi e-postadaki bağlantıyla parolasını belirleyip giriş yapar. Öğrenci ve
+          veli hesapları kayıt üzerinden açılır.
         </p>
         <FormField id="davet-ad" label="Ad soyad" error={errors.name}>
           {(control) => (

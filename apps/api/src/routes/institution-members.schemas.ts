@@ -75,11 +75,9 @@ export const staffInvitationListQuerySchema = pageQuerySchema.strict()
 export const staffInvitationSchema = z
   .object({
     id: z.string().describe('Davet kimliği'),
-    membershipId: z
-      .string()
-      .nullable()
-      .describe('Davetle açılan üyelik; iptal edilen davette `null`'),
-    name: z.string().nullable().describe('Davet edilen kişinin adı; hesap silindiyse `null`'),
+    // Üyelik kimliği ve kullanıcı tablosundaki ad dönmez: e-postanın başka kurumda hesabı olup
+    // olmadığını belli ederdi (DOM-YTK-070, karar 73).
+    name: z.string().nullable().describe('Yöneticinin davette girdiği ad'),
     email: z.string().describe('Davet e-postası; yalnız yöneticiye döner'),
     role: staffRoleSchema,
     status: z
@@ -88,7 +86,7 @@ export const staffInvitationSchema = z
     createdAt: z.iso.datetime(),
     expiresAt: z.iso
       .datetime()
-      .describe('Davet işaretinin süresi; hesap ve üyelik süreden bağımsız açıktır'),
+      .describe('Davet işaretinin süresi; davetle açılan hesap ve üyelik süreden bağımsızdır'),
   })
   .meta({ id: 'StaffInvitation' })
 

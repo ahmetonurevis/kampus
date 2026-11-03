@@ -135,7 +135,6 @@ describe('personel hesabı (DOM-YTK-070)', () => {
   test('DOM-YTK-070: davet satırı adı yoksa e-postayı gösterir, rol Türkçe', () => {
     const row = invitationRow({
       id: 'inv-1',
-      membershipId: 'm-1',
       name: null,
       email: 'selin@kampus.example',
       role: 'ogretmen',

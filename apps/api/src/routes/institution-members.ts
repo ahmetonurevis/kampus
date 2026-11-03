@@ -33,7 +33,7 @@ import {
 } from './institution-members.schemas.ts'
 
 const WRITE_ACCESS =
-  'Yalnız yönetici (diğer roller 403); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.'
+  'Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.'
 
 /** Komut yanıtı; tekrarlanan yanıt veritabanından geldiği için şemayla yeniden okunur. */
 function send<T>(reply: FastifyReply, response: CommandResponse, schema: z.ZodType<T>): T {
@@ -109,7 +109,7 @@ export function registerInstitutionMemberRoutes(app: FastifyInstance) {
         operationId: 'inviteStaffMember',
         tags: ['institution'],
         summary: 'Personel davet et',
-        description: `Yönetici, öğretmen ya da ön büro hesabı açar (DOM-YTK-070, IST-007): kullanıcı (parolasız), üyelik ve isteğe bağlı öğretmen kaydı bağlantısı (\`teacherId\`, yalnız öğretmen rolünde) aynı işlemde yazılır; Better Auth daveti kişi ilk girişini yapana kadar \`pending\` kalır. İşlemden sonra kişiye parola belirleme bağlantısı (parola sıfırlama akışı) gönderilir. E-posta başka kurumda hesaplıysa yeni hesap açılmaz, hesap bu kuruma da üye olur. Kurumda kayıtlı e-posta 409 \`member_exists\`, bekleyen davet 409 \`invitation_exists\`, kurumda olmayan öğretmen kaydı 404, başka hesaba bağlı öğretmen kaydı 409 \`teacher_already_linked\`. Öğrenci ve veli hesapları kayıt aktarımıyla açılır (400). \`Idempotency-Key\` zorunlu; başarı 201 ve \`Location\`. ${WRITE_ACCESS}`,
+        description: `Yönetici, öğretmen ya da ön büro hesabı açar (DOM-YTK-070, IST-007): kullanıcı (parolasız), üyelik ve isteğe bağlı öğretmen kaydı bağlantısı (\`teacherId\`, yalnız öğretmen rolünde) aynı işlemde yazılır; Better Auth daveti kişi ilk girişini yapana kadar \`pending\` kalır. İşlemden sonra kişiye parola belirleme bağlantısı (parola sıfırlama akışı) gönderilir. E-posta başka kurumda hesaplıysa üyelik açılmaz, öğretmen kaydı bağlanmaz ve ileti gitmez; yalnız bekleyen davet yazılır. Yanıtın durum kodu ve alanları iki durumda aynıdır, ad yöneticinin girdiğidir: e-postanın başka kurumda hesabı olup olmadığı yanıttan anlaşılmaz. Kurumda kayıtlı e-posta 409 \`member_exists\`, bekleyen davet 409 \`invitation_exists\`, kurumda olmayan öğretmen kaydı 404, başka hesaba bağlı öğretmen kaydı 409 \`teacher_already_linked\`. Öğrenci ve veli hesapları kayıt aktarımıyla açılır (400). \`Idempotency-Key\` zorunlu; başarı 201 ve \`Location\`. ${WRITE_ACCESS}`,
         body: staffInvitationInputSchema,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         response: { 201: staffInvitationResponseSchema, ...commandErrors },
@@ -118,13 +118,13 @@ export function registerInstitutionMemberRoutes(app: FastifyInstance) {
     async (request, reply) => {
       ifMatchVersion(request, false)
       const ctx = contextOf(request)
-      const response = await inviteStaffMember(
+      const { response, sendPasswordLink } = await inviteStaffMember(
         ctx,
         app.auth,
         request.body,
         idempotencyOf(request, true),
       )
-      if (!response.replayed) await sendStaffPasswordLink(ctx, app.auth, request.body.email)
+      if (sendPasswordLink) await sendStaffPasswordLink(ctx, app.auth, request.body.email)
       reply.header('location', '/api/v1/institution-members/invitations')
       return send(reply, response, staffInvitationResponseSchema)
     },
@@ -138,7 +138,7 @@ export function registerInstitutionMemberRoutes(app: FastifyInstance) {
         operationId: 'cancelStaffInvitation',
         tags: ['institution'],
         summary: 'Personel davetini iptal et',
-        description: `Bekleyen daveti iptal eder (DOM-YTK-070): davet \`canceled\` olur, davetle açılan üyelik ve öğretmen bağlantısı silinir; kişinin başka kurumda üyeliği yoksa açık parola bağlantısı geçersizleşir, hiç parola koymadıysa hesabı da silinir. Bekleyen olmayan davet 409 \`invitation_not_pending\`. \`Idempotency-Key\` isteğe bağlı. ${WRITE_ACCESS}`,
+        description: `Bekleyen daveti iptal eder (DOM-YTK-070): davet \`canceled\` olur, davetle açılan üyelik ve öğretmen bağlantısı silinir (mevcut hesaba yazılmış davette yalnız davet iptal edilir); kişinin başka kurumda üyeliği yoksa açık parola bağlantısı geçersizleşir, hiç parola koymadıysa hesabı da silinir. Bekleyen olmayan davet 409 \`invitation_not_pending\`. \`Idempotency-Key\` isteğe bağlı. ${WRITE_ACCESS}`,
         params: staffInvitationParamsSchema,
         headers: commandHeadersSchema('optional', { ifMatch: false }),
         response: { 200: staffInvitationResponseSchema, ...commandErrors },
@@ -200,7 +200,7 @@ export function registerInstitutionMemberRoutes(app: FastifyInstance) {
           tags: ['institution'],
           summary: active ? 'Personel hesabını etkinleştir' : 'Personel hesabını pasifleştir',
           description: active
-            ? `Pasifleştirilen personel hesabını geri alır (DOM-YTK-070); kişi yeniden giriş yapabilir. Etkin hesap yazılmaz (200, denetim yok). Öğrenci ve veli hesabı 422 \`member_not_staff\`. \`Idempotency-Key\` isteğe bağlı. ${WRITE_ACCESS}`
+            ? `Pasifleştirilen personel hesabını geri alır (DOM-YTK-070); kişi yeniden giriş yapabilir. Etkin hesap yazılmaz (200, denetim yok). Kendi hesabı 422 \`self_reactivate\`. Öğrenci ve veli hesabı 422 \`member_not_staff\`. \`Idempotency-Key\` isteğe bağlı. ${WRITE_ACCESS}`
             : `Personel hesabını pasifleştirir (DOM-YTK-070): üyelik kimlik doğrulamada yok sayılır, kişinin bu kurumdaki oturumları kapatılır; kayıtları ve geçmişi korunur. Pasif hesap yazılmaz (200, denetim yok). Kendi hesabı 422 \`self_deactivate\`; kurumdaki son etkin yönetici 422 \`last_admin\`; öğrenci ve veli hesabı 422 \`member_not_staff\`. \`Idempotency-Key\` isteğe bağlı. ${WRITE_ACCESS}`,
           params: institutionMemberParamsSchema,
           headers: commandHeadersSchema('optional', { ifMatch: false }),

@@ -18,7 +18,7 @@ import type { Database } from '../db/client.ts'
 import { findRecord } from '../db/records.ts'
 import { invitations, memberships, users } from '../db/schema/auth.ts'
 import { membershipLinks } from '../db/schema/membership-links.ts'
-import { AppError, NotFoundError } from '../errors.ts'
+import { AppError, ForbiddenError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { authTransaction } from './auth-transaction.ts'
 import { getInstitutionMember } from './institution-members.ts'
@@ -27,22 +27,29 @@ import { auditWork } from './task-work.ts'
 
 /**
  * Personel hesabı yönetimi (IST-007; DOM-YTK-070). Hesabı kurum açar (`disableSignUp`): yönetici
- * personeli davet eder; davet kullanıcıyı (parolasız), üyeliği ve isteğe bağlı öğretmen kaydı
- * bağlantısını aynı işlemde açar, Better Auth daveti "bekliyor" işaretidir. Kişi parolasını mevcut
+ * personeli davet eder. E-postanın hiç hesabı yoksa davet kullanıcıyı (parolasız), üyeliği ve
+ * isteğe bağlı öğretmen kaydı bağlantısını aynı işlemde açar; Better Auth daveti "bekliyor"
+ * işaretidir ve açtığı üyeliği (`invitations.membership_id`) taşır. Kişi parolasını mevcut
  * sıfırlama akışıyla belirler (bağlantı davetten sonra gönderilir, `sendStaffPasswordLink`); ilk
- * girişte davet kabul edilmiş sayılır (`auth-hooks.ts`). Kural kararı core `lib/staff-accounts.ts`
- * içindedir. Bütün yazmalar `runCommand` ile kurum kilidi altında tek transaction'dır; Better Auth
- * satırları aynı işleme bağlı bağdaştırıcıyla yazılır (`auth-transaction.ts`). Denetime yalnız
- * alan adları gider; e-posta ve ad loglanmaz, denetime yazılmaz.
+ * girişte davet kabul edilmiş sayılır (`auth-hooks.ts`). E-postanın başka kurumda hesabı varsa
+ * (karar 73) üyelik açılmaz, ileti gitmez, yalnız bekleyen davet yazılır; yanıt yeni hesaptakiyle
+ * aynı biçimdedir (e-posta sayımı olmasın). Kural kararı core `lib/staff-accounts.ts` içindedir.
+ * Bütün yazmalar `runCommand` ile kurum kilidi altında tek transaction'dır; aktörün etkin yönetici
+ * üyeliği kilit altında yeniden okunur. Better Auth satırları aynı işleme bağlı bağdaştırıcıyla
+ * yazılır (`auth-transaction.ts`). Denetime yalnız alan adları gider; e-posta ve ad loglanmaz,
+ * denetime yazılmaz.
  */
 
 const INVITATION = 'staff_invitation'
 const MEMBER = 'membership'
 
-/** Bekleyen davet görünümü (yalnız yönetici). */
+/**
+ * Bekleyen davet görünümü (yalnız yönetici). Ad yöneticinin davette girdiğidir; kullanıcı
+ * tablosundaki ad ve üyelik bilgisi dönmez: ikisi de e-postanın başka kurumda hesabı olup
+ * olmadığını belli ederdi (karar 73).
+ */
 export interface StaffInvitationView {
   id: string
-  membershipId: string | null
   name: string | null
   email: string
   role: StaffRole
@@ -67,22 +74,12 @@ const invitationColumns = {
   status: invitations.status,
   createdAt: invitations.createdAt,
   expiresAt: invitations.expiresAt,
-  name: users.name,
-  membershipId: memberships.id,
+  name: invitations.name,
+  membershipId: invitations.membershipId,
 }
 
 function invitationQuery(db: Database) {
-  return db
-    .select(invitationColumns)
-    .from(invitations)
-    .leftJoin(users, eq(users.email, invitations.email))
-    .leftJoin(
-      memberships,
-      and(
-        eq(memberships.userId, users.id),
-        eq(memberships.institutionId, invitations.institutionId),
-      ),
-    )
+  return db.select(invitationColumns).from(invitations)
 }
 
 type InvitationRow = Awaited<ReturnType<ReturnType<typeof invitationQuery>['where']>>[number]
@@ -92,7 +89,6 @@ function toInvitationView(row: InvitationRow): StaffInvitationView | null {
   if (!role.success) return null
   return {
     id: row.id,
-    membershipId: row.membershipId,
     name: row.name,
     email: row.email,
     role: role.data,
@@ -164,6 +160,39 @@ async function loadStaffMembers(db: Database, institutionId: string): Promise<St
   }))
 }
 
+/**
+ * Rota denetimi (`requireRole`) kurum kilidinden önce çalışır: arada düşürülen ya da
+ * pasifleştirilen yönetici kilitte bekleyen isteğiyle yazamasın diye aktörün etkin yönetici
+ * üyeliği kilit altında okunan üyeliklerle yeniden doğrulanır (403).
+ */
+function assertActorAdmin(ctx: ServiceContext, members: readonly StaffMember[]): void {
+  const actor = members.find((member) => member.id === ctx.actor.membershipId)
+  if (actor === undefined || actor.deactivated || actor.role !== 'yonetici')
+    throw new ForbiddenError()
+}
+
+async function loadActorAdmin(tx: Database, ctx: ServiceContext): Promise<void> {
+  const rows = await tx
+    .select({
+      id: memberships.id,
+      role: memberships.role,
+      deactivatedAt: memberships.deactivatedAt,
+    })
+    .from(memberships)
+    .where(
+      and(
+        eq(memberships.institutionId, ctx.institutionId),
+        eq(memberships.id, ctx.actor.membershipId),
+        eq(memberships.userId, ctx.actor.userId),
+      ),
+    )
+    .limit(1)
+  assertActorAdmin(
+    ctx,
+    rows.map((row) => ({ id: row.id, role: row.role, deactivated: row.deactivatedAt !== null })),
+  )
+}
+
 async function memberBody(tx: Database, ctx: ServiceContext, membershipId: string) {
   const member = await getInstitutionMember(tx, ctx.institutionId, membershipId, ctx.log)
   if (member === null) throw new Error('membership disappeared after write')
@@ -177,21 +206,34 @@ function respondWith(out: { body?: unknown }, statusCode: number) {
   }
 }
 
+/** Davetin sonucu: yanıt ve parola bağlantısının gönderilip gönderilmeyeceği (yalnız yeni hesap). */
+export interface StaffInvitationOutcome {
+  response: CommandResponse
+  sendPasswordLink: boolean
+}
+
 /**
  * Personel daveti (DOM-YTK-070). Kurumda kayıtlı e-posta 409 `member_exists`, bekleyen davet 409
  * `invitation_exists`; öğretmen kaydı kurumda yoksa 404, başka hesaba bağlıysa 409
- * `teacher_already_linked`. E-posta başka kurumda hesaplıysa yeni kullanıcı açılmaz, hesap bu
- * kuruma da üye olur (ad değişmez). Başarı 201; parola bağlantısı işlemden sonra gider.
+ * `teacher_already_linked`. Başarı 201; parola bağlantısı işlemden sonra yalnız yeni hesaba gider.
+ *
+ * E-posta başka kurumda hesaplıysa (karar 73) üyelik açılmaz, öğretmen kaydı bağlanmaz, parola
+ * bağlantısı gitmez; yalnız bekleyen davet (girilen adla) yazılır. Yanıtın durum kodu, alanları ve
+ * denetim alanları yeni hesaptakiyle aynıdır: yönetici e-postanın başka kurumda hesabı olduğunu
+ * öğrenemez. Kişinin bu daveti oturumla kabul ettiği akış henüz yok.
  */
-export function inviteStaffMember(
+// TODO(staff-invite-accept): Mevcut hesabın daveti kendi oturumuyla kabul ettiği akış (üyeliği ve
+// öğretmen bağlantısını o an açar); o zamana kadar davet bekler ya da yönetici iptal eder.
+export async function inviteStaffMember(
   ctx: ServiceContext,
   auth: Auth,
   input: StaffInvitationInput,
   idempotency: IdempotencyRequest | null,
-): Promise<CommandResponse> {
+): Promise<StaffInvitationOutcome> {
   const out: { body?: unknown } = {}
   let existingUserId: string | null = null
-  return runCommand<void>(
+  let createdAccount = false
+  const response = await runCommand<void>(
     ctx,
     {
       action: 'staff.invite',
@@ -200,6 +242,7 @@ export function inviteStaffMember(
       // Better Auth'un ürettiği davet kimliğiyle yazılır.
       entity: { type: INVITATION, id: 'new' },
       load: async (tx) => {
+        await loadActorAdmin(tx, ctx)
         const user = await findUserByEmail(tx, input.email)
         existingUserId = user?.id ?? null
         const alreadyMember =
@@ -246,35 +289,40 @@ export function inviteStaffMember(
         const bound = await authTransaction(auth, tx)
         const inviter = await bound.internalAdapter.findUserById(ctx.actor.userId)
         if (inviter === null) throw new Error('inviter not found')
+        let membershipId: string | null = null
+        if (existingUserId === null) {
+          // Yeni hesap: kullanıcı (parolasız), üyelik ve öğretmen bağlantısı davetle açılır.
+          const user = await bound.internalAdapter.createUser(
+            { name: input.name, email: input.email, emailVerified: false },
+            { method: 'email-password' },
+          )
+          const member = await bound.organization.createMember({
+            organizationId: ctx.institutionId,
+            userId: user.id,
+            role: input.role,
+          })
+          membershipId = member.id
+          if (input.teacherId !== undefined)
+            await tx.insert(membershipLinks).values({
+              institutionId: ctx.institutionId,
+              membershipId: member.id,
+              kind: 'teacher',
+              recordId: input.teacherId,
+            })
+          createdAccount = true
+        }
         const invitation = await bound.organization.createInvitation({
           invitation: {
             email: input.email,
             role: input.role,
             organizationId: ctx.institutionId,
             teamIds: [],
+            name: input.name,
+            membershipId,
           },
           user: inviter,
         })
-        const userId =
-          existingUserId ??
-          (
-            await bound.internalAdapter.createUser(
-              { name: input.name, email: input.email, emailVerified: false },
-              { method: 'email-password' },
-            )
-          ).id
-        const member = await bound.organization.createMember({
-          organizationId: ctx.institutionId,
-          userId,
-          role: input.role,
-        })
-        if (input.teacherId !== undefined)
-          await tx.insert(membershipLinks).values({
-            institutionId: ctx.institutionId,
-            membershipId: member.id,
-            kind: 'teacher',
-            recordId: input.teacherId,
-          })
+        // Denetim alanları iki durumda aynıdır: denetim listesi de hesabın varlığını belli etmez.
         await auditWork(tx, ctx, 'staff.invite', { type: INVITATION, id: invitation.id }, [
           'email',
           'name',
@@ -290,6 +338,7 @@ export function inviteStaffMember(
     respondWith(out, 201),
     idempotency,
   )
+  return { response, sendPasswordLink: !response.replayed && createdAccount }
 }
 
 /**
@@ -311,10 +360,11 @@ export async function sendStaffPasswordLink(
 }
 
 /**
- * Bekleyen daveti iptal eder (DOM-YTK-070): davet `canceled`, davetle açılan üyelik ve bağlantıları
- * silinir; kişinin başka kurumda üyeliği yoksa açık parola bağlantıları geçersizleşir, hiç parola
- * koymamışsa hesap da silinir. Olmayan ya da başka kurumun daveti 404; bekleyen değilse 409
- * `invitation_not_pending`.
+ * Bekleyen daveti iptal eder (DOM-YTK-070): davet `canceled`, davetle açılan üyelik
+ * (`invitations.membership_id`) ve bağlantıları silinir; kişinin başka kurumda üyeliği yoksa açık
+ * parola bağlantıları geçersizleşir, hiç parola koymamışsa hesap da silinir. Mevcut hesaba yazılmış
+ * davette (karar 73) yalnız davet iptal edilir; hesaba ve başka yoldan açılmış üyeliğe dokunulmaz.
+ * Olmayan ya da başka kurumun daveti 404; bekleyen değilse 409 `invitation_not_pending`.
  */
 export function cancelStaffInvitation(
   ctx: ServiceContext,
@@ -323,7 +373,7 @@ export function cancelStaffInvitation(
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   const out: { body?: unknown } = {}
-  let target: { email: string; userId: string | null; membershipId: string | null } | null = null
+  let target: { userId: string | null; membershipId: string | null } | null = null
   return runCommand<void>(
     ctx,
     {
@@ -331,10 +381,23 @@ export function cancelStaffInvitation(
       collections: [],
       entity: { type: INVITATION, id: invitationId },
       load: async (tx) => {
+        await loadActorAdmin(tx, ctx)
         const row = await findInvitation(tx, ctx.institutionId, invitationId)
         if (row === null) throw new NotFoundError()
-        const user = await findUserByEmail(tx, row.email)
-        target = { email: row.email, userId: user?.id ?? null, membershipId: row.membershipId }
+        const [member] =
+          row.membershipId === null
+            ? []
+            : await tx
+                .select({ userId: memberships.userId })
+                .from(memberships)
+                .where(
+                  and(
+                    eq(memberships.institutionId, ctx.institutionId),
+                    eq(memberships.id, row.membershipId),
+                  ),
+                )
+                .limit(1)
+        target = { userId: member?.userId ?? null, membershipId: row.membershipId }
         return { run: () => assertInvitationPending(row.status) }
       },
       after: async (tx) => {
@@ -353,15 +416,13 @@ export function cancelStaffInvitation(
             STAFF_ACCOUNT_MESSAGES.invitation_not_pending,
           )
         const fields = ['status']
-        if (found.userId !== null) {
-          if (found.membershipId !== null) {
-            await bound.organization.deleteMember({
-              memberId: found.membershipId,
-              organizationId: ctx.institutionId,
-              userId: found.userId,
-            })
-            fields.push('membership')
-          }
+        if (found.userId !== null && found.membershipId !== null) {
+          await bound.organization.deleteMember({
+            memberId: found.membershipId,
+            organizationId: ctx.institutionId,
+            userId: found.userId,
+          })
+          fields.push('membership')
           const [remaining] = await tx
             .select({ total: count() })
             .from(memberships)
@@ -405,7 +466,8 @@ async function loadTarget(tx: Database, ctx: ServiceContext, membershipId: strin
 }
 
 /**
- * Personel rolünü değiştirir (DOM-YTK-070). Aynı rol yazmaz (200, denetim yok). Kendi rolü 422
+ * Personel rolünü değiştirir (DOM-YTK-070). Aynı rol yazmaz (200, denetim yok). Kilit altında
+ * etkin yönetici olmayan aktör 403. Kendi rolü 422
  * `self_role_change`, son etkin yönetici 422 `last_admin`, pasif hesap 422 `member_deactivated`,
  * öğrenci ve veli 422 `member_not_staff`; başka kurumun üyeliği 404. Rol her istekte okunduğu için
  * değişiklik kişinin bir sonraki isteğinde geçerlidir.
@@ -427,13 +489,17 @@ export function changeStaffRole(
       load: async (tx) => {
         const { members, target } = await loadTarget(tx, ctx, membershipId)
         return {
-          run: () =>
-            planStaffRoleChange({
+          run: () => {
+            // Kural önce: iki yönetici birbirini aynı anda düşürürse ikincisi `last_admin` alır.
+            const change = planStaffRoleChange({
               actorMembershipId: ctx.actor.membershipId,
               target,
               members,
               role: input.role,
-            }),
+            })
+            assertActorAdmin(ctx, members)
+            return change
+          },
         }
       },
       after: async (tx, change) => {
@@ -456,7 +522,8 @@ export function changeStaffRole(
  * Personel hesabını pasifleştirir ya da geri alır (DOM-YTK-070). Pasifleştirmede üyelik kimlik
  * doğrulamada yok sayılır ve kişinin bu kurumda etkin oturumları kapatılır; başka kurumdaki
  * oturumları sürer. Durumu zaten istenen olan hesap yazılmaz (200, denetim yok). Kendini
- * pasifleştirme 422 `self_deactivate`, son etkin yönetici 422 `last_admin`.
+ * pasifleştirme 422 `self_deactivate`, kendini geri alma 422 `self_reactivate`, son etkin yönetici
+ * 422 `last_admin`; kilit altında etkin yönetici olmayan aktör 403.
  */
 export function setStaffActive(
   ctx: ServiceContext,
@@ -476,13 +543,18 @@ export function setStaffActive(
       load: async (tx) => {
         const { members, target } = await loadTarget(tx, ctx, membershipId)
         return {
-          run: () =>
-            planStaffActivation({
+          run: () => {
+            // Kural önce: iki yönetici birbirini aynı anda pasifleştirirse ikincisi `last_admin`,
+            // pasifleştirilen yöneticinin bekleyen kendi geri alma isteği `self_reactivate` alır.
+            const changed = planStaffActivation({
               actorMembershipId: ctx.actor.membershipId,
               target,
               members,
               active,
-            }),
+            })
+            assertActorAdmin(ctx, members)
+            return changed
+          },
         }
       },
       after: async (tx, changed) => {

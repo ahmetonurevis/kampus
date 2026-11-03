@@ -15,6 +15,9 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
     .filter(([, route]) => route.idempotency === 'required')
     .map(([command]) => `POST /api/v1/assessment/${command}`),
   'POST /api/v1/grades',
+  // Kazanım kataloğu: kurum kazanımı ekleme ve arşiv (routes/learning-outcomes.ts; DOM-KYN-011).
+  'POST /api/v1/learning-outcomes',
+  'POST /api/v1/learning-outcomes/{code}/archive',
   // Ders planlama: yeniden denemede ikinci ders açılmaz (routes/lessons.ts; DOM-YTK-069).
   'POST /api/v1/lessons',
   // İletişim (routes/communication.ts): oluşturma ve mesaj gönderimi.

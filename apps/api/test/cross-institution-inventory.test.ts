@@ -348,6 +348,13 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'POST /api/v1/resources/:resourceId/remove': RESOURCE_WRITE,
   'POST /api/v1/resources/:resourceId/share': RESOURCE_WRITE,
   'POST /api/v1/resources/:resourceId/copy': RESOURCE_WRITE,
+  // Kazanım kataloğu (DOM-KYN-011): kurum kazanımı kurum kapsamlı, platform satırı kurumsuz.
+  'GET /api/v1/learning-outcomes': liste('learning-outcomes.test.ts', 'başka kurum yok'),
+  'POST /api/v1/learning-outcomes': govde('learning-outcomes.test.ts', 'başka kurumda serbest'),
+  'POST /api/v1/learning-outcomes/:code/archive': kayit(
+    'learning-outcomes.test.ts',
+    'başka kurumun ve platformun kodu 404',
+  ),
   'GET /api/v1/rubrics': RUBRIC,
   'GET /api/v1/rubrics/:rubricId': RUBRIC,
   'GET /api/v1/rubric-versions/:versionId': kayit(

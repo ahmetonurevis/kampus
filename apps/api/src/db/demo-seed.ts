@@ -5,6 +5,7 @@ import {
   type GuardianSeedAccount,
 } from '@kampus/school-core/platform/seed-guardians.ts'
 import { createCourses } from '@kampus/school-core/platform/seed-courses.ts'
+import { samplePlatformOutcomes } from '@kampus/school-core/content/outcomes.ts'
 
 import type { Auth, InstitutionType, Role } from '../auth.ts'
 import { AppError, MESSAGES } from '../errors.ts'
@@ -19,6 +20,7 @@ import {
 import { ensureAcademicYears } from './academic-years.ts'
 import type { Database } from './client.ts'
 import { ensureCourses } from './courses.ts'
+import { syncPlatformOutcomes } from './learning-outcomes.ts'
 import { recordKey, STORED_COLLECTIONS, type RecordData } from './collections.ts'
 import { insertMissingRecords } from './records.ts'
 import { ensureGuardianLinks } from './student-guardians.ts'
@@ -217,6 +219,9 @@ export interface SeedOptions {
  * değişmez; sonradan değiştirilmiş kayıt ezilmez.
  */
 export async function seedDemo(auth: Auth, db: Database, password: string, options: SeedOptions) {
+  // Örnek platform kazanım kataloğu (DOM-KYN-011): kurumdan bağımsızdır, bakım betiğinin işidir
+  // (ADR 0004 karar 9); resmî program içe aktarımı gelene kadar (OG-132) örnek kodlar yazılır.
+  const platformOutcomes = await syncPlatformOutcomes(db, samplePlatformOutcomes(), options.now)
   const founder = await ensureUser(auth, { ...FOUNDER, password })
   const institutionIds = new Map<string, string>()
   for (const institution of DEMO_INSTITUTIONS) {
@@ -282,5 +287,5 @@ export async function seedDemo(auth: Auth, db: Database, password: string, optio
       options.now,
     )
   }
-  return { institutionIds: Object.fromEntries(institutionIds), insertedRecords }
+  return { institutionIds: Object.fromEntries(institutionIds), insertedRecords, platformOutcomes }
 }

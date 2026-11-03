@@ -7,7 +7,7 @@ import { attendanceSummary, campusOccupancy, dashboardHref } from './dashboard-m
 
 /**
  * Yönetici Genel Bakışı'nın akademik ve kurum kartları (Vue `Dashboard.vue` yönetici). Finans
- * kartları `HandoverFinanceCards.tsx`'tedir. Değerler tek özet isteğinden gelir; kartlar ilgili listeyi
+ * kartları Onur'un `pages/finance/FinanceDashboardCards.tsx` dosyasındadır. Değerler tek özet isteğinden gelir; kartlar ilgili listeyi
  * filtresi adreste açar.
  */
 export const ADMIN_CARDS = [

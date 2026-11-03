@@ -43,7 +43,7 @@ const DUE = '2026-10-20T20:59:00.000Z'
 const EXPLANATION = 'Pazar günleri okur.'
 const UNIT = { number: 3, title: 'Daily routines' }
 const ITEM_OUTCOME = { outcomeId: 'ENG.9.3.1', outcomeSource: 'platform' } as const
-const SET_OUTCOME = { outcomeId: 'ENG.9.3', outcomeSource: 'platform' } as const
+const SET_OUTCOME = { outcomeId: 'ENG.9.2.1', outcomeSource: 'platform' } as const
 
 const question = (
   stem: string,

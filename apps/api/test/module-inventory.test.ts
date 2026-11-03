@@ -262,6 +262,9 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'POST /api/v1/resources/:resourceId/remove': ['learning'],
   'POST /api/v1/resources/:resourceId/share': ['learning'],
   'POST /api/v1/resources/:resourceId/copy': ['learning'],
+  'GET /api/v1/learning-outcomes': ['learning'],
+  'POST /api/v1/learning-outcomes': ['learning'],
+  'POST /api/v1/learning-outcomes/:code/archive': ['learning'],
   'GET /api/v1/rubrics': ['learning'],
   'GET /api/v1/rubrics/:rubricId': ['learning'],
   'GET /api/v1/rubric-versions/:versionId': ['learning'],
@@ -317,14 +320,14 @@ const WORKFLOW_MODULES: Readonly<Record<string, Expected>> = Object.fromEntries(
 
 /**
  * Onur'un kayıt ve finans uçları (`app.ts` Onur bloğu): yol öneki alan haritasıyla aynıdır. Bu
- * uçlar tek tek listelenmez (Onur bu dosyayı düzenlemez); her biri `crm` ya da `finance`
- * modülüne bağlı olmalıdır. Modülsüz kayıt/finans ucu gerekirse Oğuzhan'a iş isteğiyle eklenir.
+ * uçlar tek tek listelenmez (Onur bu dosyayı düzenlemez); her biri `crm`, `finance` ya da
+ * `renewal` (kayıt yenileme, ON-030) modülüne bağlı olmalıdır. Modülsüz kayıt/finans ucu gerekirse Oğuzhan'a iş isteğiyle eklenir.
  */
 const ONUR_PATHS = [
   /^\/api\/v1\/(fee-tariffs|finance|payments|payment-settings|bank-accounts|withdrawals|prospects)(\/|$)/,
   /^\/api\/v1\/students\/:studentId\/(withdraw|withdrawal-quote|identity)$/,
 ]
-const ONUR_MODULES = new Set(['crm', 'finance'])
+const ONUR_MODULES = new Set(['crm', 'finance', 'renewal'])
 const isOnurRoute = (url: string) => ONUR_PATHS.some((pattern) => pattern.test(url))
 
 /**

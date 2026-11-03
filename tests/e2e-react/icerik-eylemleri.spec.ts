@@ -1,3 +1,5 @@
+import { randomUUID } from 'node:crypto'
+
 import type { Page } from '@playwright/test'
 
 import { expect, test } from './support/fixtures.ts'
@@ -68,7 +70,16 @@ test('DOM-KYN-040, DOM-KYN-050: öğretmen içeriğini sınıfıyla paylaşır v
   const menu = await moreActions(page, panel)
   // Kaldırma yalnız yöneticinindir.
   await expect(menu.getByRole('menuitem', { name: 'Kaldır' })).toHaveCount(0)
+  // Kopya sürerken paneldeki durum geçişleri de kilitlidir (ortak meşgul durumu).
+  let release = () => {}
+  const held = new Promise<void>((resolve) => (release = resolve))
+  await page.route('**/api/v1/resources/*/copy', async (route) => {
+    await held
+    await route.continue()
+  })
   await menu.getByRole('menuitem', { name: 'Kopyala' }).click()
+  await expect(panel.getByRole('button', { name: 'Arşivle' })).toBeDisabled()
+  release()
   await expect(toasts(page).filter({ hasText: 'Kopya oluşturuldu' })).toBeVisible()
   // Kopyanın paneli açılır: taslak ve yalnız sahibine açık.
   await expect(page).not.toHaveURL(new RegExp(`icerik=${material.resourceId}`))
@@ -135,4 +146,49 @@ test('DOM-KYN-025, DOM-KYN-051: öğretmen telif bildirimi yapar, yönetici gere
     content: null,
     removalReason: 'Telif ihlali doğrulandı; içerik kaldırıldı.',
   })
+})
+
+test('DOM-KYN-040: yöneticinin eklediği kapsam dışı sınıf korunur; öğretmen kendi sınıfını ekler', async ({
+  page,
+  loginAs,
+  api,
+  tenant,
+}) => {
+  const school = await tenant({ roles: ['yonetici', 'ogretmen'] })
+  const title = 'Oranlar etkinliği'
+  const teacher = await api(school.user('ogretmen'))
+  const material = await publishMaterial(teacher, school.institutionId, {
+    title,
+    file: pdf('oranlar.pdf'),
+    gradeLevel: 7,
+  })
+  // Yönetici içeriği Selin Kaya'nın ders vermediği 7-B (c9) ile paylaşır.
+  const admin = await api(school.user('yonetici'))
+  const shared = await admin.post(
+    `/api/v1/resources/${material.resourceId}/share`,
+    { scope: 'classes', classIds: ['c9'] },
+    { 'idempotency-key': randomUUID(), 'if-match': `"${String(material.rowVersion)}"` },
+  )
+  expect(shared.status).toBe(200)
+
+  await loginAs(school.user('ogretmen'))
+  await page.goto('/ogretmen/icerik-havuzu')
+  const panel = await openPanel(page, title)
+  await panel.getByRole('button', { name: 'Paylaş', exact: true }).click()
+  const share = page.getByRole('dialog', { name: 'İçeriği paylaş' })
+  const classes = share.getByRole('group', { name: 'Sınıf ve gruplar' })
+  await expect(classes.getByLabel('7-A')).not.toBeChecked()
+  // Listede olmayan kayıtlı hedef salt okunur görünür, kaldırılamaz.
+  await expect(share.getByText('Kapsamınız dışında 1 sınıf')).toBeVisible()
+  await classes.getByLabel('7-A').check()
+  await share.getByRole('button', { name: 'Paylaşımı kaydet' }).click()
+  await expect(share).toBeHidden()
+  await expect(toasts(page).filter({ hasText: 'Paylaşım güncellendi.' })).toBeVisible()
+  const stored = await teacher.get(`/api/v1/resources/${material.resourceId}`)
+  expect(
+    [
+      ...(stored.body as { data: { resource: { sharedClassIds: string[] } } }).data.resource
+        .sharedClassIds,
+    ].sort(),
+  ).toEqual(['c1', 'c9'])
 })

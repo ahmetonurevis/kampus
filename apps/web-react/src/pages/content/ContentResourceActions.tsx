@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch } from 'react-hook-form'
 import type { ApiError } from '@kampus/api-client/errors.ts'
@@ -63,6 +63,8 @@ type Props = {
   onCopied: (resourceId: string) => void
   /** Kaldırılan içerik listeden düşer; panel kapanır. */
   onRemoved: () => void
+  /** Eylemlerden biri sürüyor mu: panel durum geçişlerini aynı süre kilitler. */
+  onPendingChange?: (pending: boolean) => void
 }
 
 /**
@@ -78,13 +80,19 @@ export function ContentResourceActions({
   onConflict,
   onCopied,
   onRemoved,
+  onPendingChange,
 }: Props) {
   const [dialog, setDialog] = useState<Dialog>(null)
   const copy = useCopyResource()
   const report = useReportResourceVersion()
   const remove = useRemoveResource()
   const { resource, head } = detail
-  const locked = busy || copy.isPending || report.isPending || remove.isPending
+  const pending = copy.isPending || report.isPending || remove.isPending
+  useEffect(() => {
+    onPendingChange?.(pending)
+    return () => onPendingChange?.(false)
+  }, [pending, onPendingChange])
+  const locked = busy || pending
   const menu = commands.copy !== null || commands.report !== null || commands.remove
   if (!commands.share && !menu) return null
 

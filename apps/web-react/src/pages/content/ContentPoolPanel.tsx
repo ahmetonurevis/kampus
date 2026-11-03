@@ -150,6 +150,8 @@ function PanelBody({
   const [reloading, setReloading] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  // Kaynak eylemlerinden biri (kopya, bildirim, kaldırma) sürerken durum geçişleri de kilitli.
+  const [commandPending, setCommandPending] = useState(false)
   const { head, resource } = detail
   if (!session) return null
   const actor = { role: session.role, userId: session.user.id }
@@ -165,7 +167,7 @@ function PanelBody({
     commands.share || commands.copy !== null || commands.report !== null || commands.remove
   const editable = canEditDraft(head, actor.userId) && draftFromHead(head) !== null
   const newVersion = canOpenNewVersion({ detail, actor, institutionType })
-  const busy = transition.isPending || openVersion.isPending
+  const busy = transition.isPending || openVersion.isPending || commandPending
 
   async function run(action: ActionKind, reason?: string) {
     const outcome = await transition.submit(
@@ -330,6 +332,7 @@ function PanelBody({
           onConflict={() => setConflict(true)}
           onCopied={onOpen}
           onRemoved={onClose}
+          onPendingChange={setCommandPending}
         />
       </div>
       {actions.length === 0 && !editable && !newVersion && !hasCommands ? (

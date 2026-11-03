@@ -43,6 +43,7 @@ const NO_SORT: readonly string[] = []
  * aynı panelde açılır (`?tespit-islem=`), yeni oturum ayrı panelde (`?tespit-ac=yeni`). Uçlar
  * yönetici ve öğretmene açıktır; öğretmen yalnız grubundaki öğrenciye ulaşır (kapsam dışı 404).
  */
+// TODO(cefr-tespit-oynatici): Kursiyerin kendi girdiği sınav oynatıcısı yok; personel cevapları girer.
 // TODO(api-tespit-listesi): Liste ucu kişiye bağlıdır (`learnerKind` + `learnerId` zorunlu);
 // kurum geneli, durum süzgeçli tespit listesi yok. Gelince kişi seçmeden süren tespitler listelenir.
 export function PlacementPage({ page }: { page: NavPage }) {

@@ -26,9 +26,8 @@ import {
  * CEFR profili görünümleri (OG-054, OG-079; IST-060; DOM-DIL-010…012, DOM-BEC-034). Öğrenci ve
  * veli Akademik Gelişim sayfasında kartlarla, yönetici ve öğretmen grup özetinde panel bölümleriyle
  * görür. Kapsam ve görünüm sunucudadır: gerekçe, kararı veren ve kanıt yalnız personel yanıtında
- * gelir.
- * TODO(cefr-tespit-ekrani): tespit oturumu açma, bölüm girişi ve karar ekranı sonraki adımdır;
- * kancalar `@kampus/react-shared/use-cefr.ts`'te hazırdır.
+ * gelir. Tespit oturumu açma, bölüm girişi ve karar ekranı Seviye Tespiti sayfasındadır
+ * (`PlacementPage.tsx`, OG-078).
  */
 
 function LevelList({ label, rows }: { label: string; rows: readonly LevelRow[] }) {

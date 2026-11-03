@@ -52,6 +52,14 @@ export const FILE_PURPOSE_ACCESS = {
     linkTtlSeconds: 120,
     auditAccess: true,
   },
+  // Öğretmenin sesli geri bildirimi (DOM-BEC-056): puanlayan personel yükler; puanla aynı
+  // görünürlükte açılır, her bağlantı denetimde ve kısa ömürlü.
+  feedback_audio: {
+    module: 'learning',
+    uploaders: STAFF,
+    linkTtlSeconds: 120,
+    auditAccess: true,
+  },
   // Özür belgesi (DOM-ILT-053): bildirimi yapan veli yükler; sağlık verisi olabilir, her bağlantı
   // denetimde. İzin/mazeret bildirimi gibi `academic` modülüne bağlıdır.
   absence_document: {

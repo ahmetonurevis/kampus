@@ -14,7 +14,12 @@ import { auditLog } from '../src/db/schema/audit-log.ts'
 import { institutions } from '../src/db/schema/auth.ts'
 import { files } from '../src/db/schema/files.ts'
 import { records } from '../src/db/schema/records.ts'
-import { rubrics, rubricVersions, submissionVersions } from '../src/db/schema/skills.ts'
+import {
+  rubricScores,
+  rubrics,
+  rubricVersions,
+  submissionVersions,
+} from '../src/db/schema/skills.ts'
 import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { recordFileCheck } from '../src/services/files.ts'
 import { transcodeAudioFile } from '../src/services/media-transcode.ts'
@@ -850,6 +855,607 @@ describe('beceri görevinde dosyalı ve sesli teslim', () => {
           ),
         )
       assert.equal(access?.entityId, recordingId)
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+  // --- Sesli geri bildirim (DOM-BEC-056) -------------------------------------------------------
+
+  /** Öğretmenin yüklediği sesli geri bildirim; `ready: false` işlenmekte kalır. */
+  const feedbackAudio = (t: Tenant, cookie = t.cookies.teacher, ready = true) =>
+    upload(t, cookie, uploadParts('feedback_audio', MP3, 'Selin-geri-bildirim.mp3', 'audio/mpeg'), {
+      ready,
+      ...(ready ? { durationMs: 20_000 } : {}),
+    })
+  const scoreRows = (t: Tenant) =>
+    db.select().from(rubricScores).where(eq(rubricScores.institutionId, t.institution.id))
+
+  test('DOM-BEC-056: sesli geri bildirim puanla aynı işlemde puana bağlanır; geçersiz kimlik 400, başkasının dosyası, başka amaç ve hazır olmayan dosya 422, ret hiçbir satırı değiştirmez; aynı anahtar ikinci puan açmaz', async () => {
+    const t = await tenant()
+    const other = await tenant()
+    await consent(t)
+    const { submissionId, recordingId } = await spoken(t, await assign(t, 'audio'))
+    const audioId = await feedbackAudio(t)
+    const pending = await feedbackAudio(t, t.cookies.teacher, false)
+    const foreign = await feedbackAudio(other, other.cookies.teacher)
+    const material = await upload(
+      t,
+      t.cookies.teacher,
+      uploadParts('material', MP3, 'dinleme.mp3', 'audio/mpeg'),
+    )
+
+    fails(
+      await write('scores', t.cookies.teacher, submissionId, {
+        ...SCORE,
+        feedbackAudioFileId: 'ses.mp3',
+      }),
+      400,
+      'validation_failed',
+    )
+    for (const [fileId, status, code] of [
+      [recordingId, 422, 'file_unavailable'],
+      [foreign, 422, 'file_unavailable'],
+      [material, 422, 'file_purpose_mismatch'],
+      [pending, 422, 'file_not_ready'],
+    ] as const) {
+      // Öğrencinin kaydı ve başka kurumun sesi puanlayanın değildir: varlığı sızmaz.
+      fails(
+        await write('scores', t.cookies.teacher, submissionId, {
+          ...SCORE,
+          feedbackAudioFileId: fileId,
+        }),
+        status,
+        code,
+      )
+    }
+    assert.equal((await scoreRows(t)).length, 0)
+    assert.equal((await fileRow(t, audioId)).attachedId, null)
+
+    const headers = {
+      'if-match': `"${await rowVersionOf(t.cookies.teacher, submissionId)}"`,
+      ...key(),
+    }
+    const payload = { ...SCORE, feedbackAudioFileId: audioId }
+    const path = `/task-submissions/${submissionId}/scores`
+    const created = await ok(await call('POST', path, t.cookies.teacher, payload, headers), 201)
+    const score = created.versions[0].score
+    assert.equal(score.feedbackAudio.id, audioId)
+    assert.equal(score.feedbackAudio.durationMs, 20_000)
+    assert.equal(score.feedbackAudio.status, 'ready')
+    assert.equal('purpose' in score.feedbackAudio, false)
+    const replay = await ok(await call('POST', path, t.cookies.teacher, payload, headers), 201)
+    assert.deepEqual(replay, created)
+    const [row] = await scoreRows(t)
+    assert.equal((await scoreRows(t)).length, 1)
+    const attached = await fileRow(t, audioId)
+    assert.equal(attached.attachedType, 'task_rubric_score')
+    assert.equal(attached.attachedId, row?.id)
+    assert.equal(
+      JSON.stringify(
+        await db.select().from(auditLog).where(eq(auditLog.institutionId, t.institution.id)),
+      ).includes('Selin-geri-bildirim'),
+      false,
+    )
+  })
+
+  test('DOM-BEC-056, DOM-BEC-045, DOM-BEC-024: sesli geri bildirimi puanı gören dinler; puanlayan hemen, kursiyer, veli ve yönetici puan kesinleşip geri bildirim açılınca; ikinci puanlayıcı ilk puanın sesini duymaz; başka öğrenci, ilgisiz öğretmen, ön büro ve başka kurum 404; 18 yaşını dolduran kursiyerin velisi de dinler', async () => {
+    const t = await tenant()
+    const other = await tenant()
+    const colleague = await signInAs(
+      app,
+      await createMember(app, t.institution.id, 'ogretmen', [
+        { kind: 'teacher', recordId: 't-eng' } as never,
+      ]),
+    )
+    await consent(t)
+    const { submissionId } = await spoken(t, await assign(t, 'audio'))
+    const audioId = await feedbackAudio(t)
+    try {
+      at('2026-10-21T09:00:00.000Z')
+      await ok(
+        await write('second-rating-requests', t.cookies.admin, submissionId, {
+          versionNumber: 1,
+        }),
+        201,
+      )
+      await ok(
+        await write('scores', t.cookies.teacher, submissionId, {
+          ...SCORE,
+          feedbackAudioFileId: audioId,
+        }),
+        201,
+      )
+      // İkinci puan bekleniyor: puan kesinleşmedi. Yalnız puanlayan dinler; yönetici koordinatör
+      // değildir ve kör puanlamada ilk puanı görmez (DOM-BEC-024), sesi de duymaz.
+      await ok(await urlOf(t.cookies.teacher, audioId))
+      const pending = await ok(
+        await call('GET', `/task-submissions/${submissionId}`, t.cookies.admin),
+      )
+      assert.equal(JSON.stringify(pending).includes(audioId), false)
+      for (const cookie of [
+        t.cookies.admin,
+        t.cookies.student,
+        t.cookies.parent,
+        colleague,
+        t.cookies.otherStudent,
+        t.cookies.otherTeacher,
+        t.cookies.frontDesk,
+        other.cookies.admin,
+        other.cookies.teacher,
+      ])
+        fails(await urlOf(cookie, audioId), 404, 'not_found')
+      const own = await ok(
+        await call('GET', `/task-submissions/${submissionId}`, t.cookies.student),
+      )
+      assert.equal(own.versions[0].score, null)
+      const blind = await ok(await call('GET', `/task-submissions/${submissionId}`, colleague))
+      assert.equal(JSON.stringify(blind).includes(audioId), false)
+
+      // Uyuşan ikinci puan sonucu kesinleştirir: geri bildirim ve ses kursiyere ve veliye açılır.
+      await ok(await write('second-scores', colleague, submissionId, SCORE, t.cookies.admin), 201)
+      for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.admin]) {
+        const data = await ok(await urlOf(cookie, audioId))
+        assert.equal(data.expiresAt, new Date(now.getTime() + 120_000).toISOString())
+        const detail = await ok(await call('GET', `/task-submissions/${submissionId}`, cookie))
+        assert.equal(detail.versions[0].score.feedbackAudio.id, audioId)
+      }
+      for (const cookie of [
+        t.cookies.otherStudent,
+        t.cookies.otherTeacher,
+        t.cookies.frontDesk,
+        other.cookies.admin,
+      ])
+        fails(await urlOf(cookie, audioId), 404, 'not_found')
+
+      // Ses öğretmenindir: 18 yaşını dolduran kursiyerin velisi yazılı geri bildirim gibi dinler.
+      await db
+        .update(records)
+        .set({
+          data: {
+            id: 's-1',
+            name: 'Deniz Yılmaz',
+            classId: '9-A',
+            isActive: true,
+            birthDate: '2008-01-01',
+          },
+        })
+        .where(
+          and(
+            eq(records.institutionId, t.institution.id),
+            eq(records.collection, 'students'),
+            eq(records.id, 's-1'),
+          ),
+        )
+      await ok(await urlOf(t.cookies.parent, audioId))
+      const accesses = await db
+        .select()
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.institutionId, t.institution.id),
+            eq(auditLog.action, 'file.access'),
+            eq(auditLog.entityId, audioId),
+          ),
+        )
+      assert.equal(accesses.length, 5)
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+  // --- Sesli geri bildirim: ikinci ve son puan, kör puanlama, bağlama, yetki, saklama ----------
+
+  /** Aynı kadrodan ikinci öğretmen ve atamayı görmeyen zümre başkanı (koordinatör görevli). */
+  async function raters(t: Tenant) {
+    await insertMissingRecords(
+      db,
+      t.institution.id,
+      [
+        {
+          collection: 'teachers',
+          id: 't-head',
+          data: { id: 't-head', name: 'Zeynep Ak', subjectId: 'ingilizce', branchId: 'b-1' },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const head = await createMember(app, t.institution.id, 'ogretmen', [
+      { kind: 'teacher', recordId: 't-head' } as never,
+    ])
+    const colleague = await signInAs(
+      app,
+      await createMember(app, t.institution.id, 'ogretmen', [
+        { kind: 'teacher', recordId: 't-eng' } as never,
+      ]),
+    )
+    await ok(
+      await call(
+        'POST',
+        '/coordinator-duties',
+        t.cookies.admin,
+        { membershipId: head.membershipId, scopeId: 'ingilizce' },
+        key(),
+      ),
+      201,
+    )
+    return { colleague, head: await signInAs(app, head) }
+  }
+  const requestSecondRating = async (t: Tenant, submissionId: string) =>
+    ok(
+      await write('second-rating-requests', t.cookies.admin, submissionId, { versionNumber: 1 }),
+      201,
+    )
+  const withAudio = (feedbackAudioFileId: string, body: object = SCORE) => ({
+    ...body,
+    feedbackAudioFileId,
+  })
+
+  test('DOM-BEC-056, DOM-BEC-024: ikinci puan sesli geri bildirimi puanla aynı işlemde bağlar; geri bildirim açılınca kursiyer dinler', async () => {
+    const t = await tenant()
+    const { colleague } = await raters(t)
+    await consent(t)
+    const { submissionId } = await spoken(t, await assign(t, 'audio'))
+    const firstAudio = await feedbackAudio(t)
+    try {
+      at('2026-10-21T09:00:00.000Z')
+      await requestSecondRating(t, submissionId)
+      await ok(await write('scores', t.cookies.teacher, submissionId, withAudio(firstAudio)), 201)
+      // İkinci puanlayıcı kendi dosyasını yükler: öğretmenin dosyası ona ait değildir (422).
+      fails(
+        await write(
+          'second-scores',
+          colleague,
+          submissionId,
+          withAudio(firstAudio),
+          t.cookies.admin,
+        ),
+        422,
+        'file_unavailable',
+      )
+      const own = await upload(
+        t,
+        colleague,
+        uploadParts('feedback_audio', MP3, 'Meral-geri-bildirim.mp3', 'audio/mpeg'),
+        { durationMs: 15_000 },
+      )
+      const created = await ok(
+        await write('second-scores', colleague, submissionId, withAudio(own), t.cookies.admin),
+        201,
+      )
+      const scores = await scoreRows(t)
+      assert.equal(scores.length, 2)
+      const secondRow = scores.find((row) => row.raterRole === 'second')
+      const attached = await fileRow(t, own)
+      assert.equal(attached.attachedType, 'task_rubric_score')
+      assert.equal(attached.attachedId, secondRow?.id)
+      assert.equal(attached.dataSubjectId, 's-1')
+      assert.equal(JSON.stringify(created).includes(own), true)
+      // Uyuşan ikinci puan geri bildirimi açar: kursiyer ilk puanın sesini dinler.
+      await ok(await urlOf(t.cookies.student, firstAudio))
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
+  test('DOM-BEC-056, DOM-BEC-024, DOM-YTK-027: son puan sesli geri bildirimi puanla aynı işlemde bağlar ve kesinleşen sonucu kursiyere açar; geçersiz dosya puanı yazdırmaz', async () => {
+    const t = await tenant()
+    const { colleague, head } = await raters(t)
+    await consent(t)
+    const { submissionId } = await spoken(t, await assign(t, 'audio'))
+    const finalAudio = await upload(
+      t,
+      head,
+      uploadParts('feedback_audio', MP3, 'Zeynep-geri-bildirim.mp3', 'audio/mpeg'),
+      { durationMs: 12_000 },
+    )
+    try {
+      at('2026-10-21T09:00:00.000Z')
+      await requestSecondRating(t, submissionId)
+      await ok(await write('scores', t.cookies.teacher, submissionId, SCORE), 201)
+      await ok(
+        await write('second-scores', colleague, submissionId, DISAGREEING, t.cookies.admin),
+        201,
+      )
+      // Koordinatörün kendi olmayan (öğretmenin) sesi ve hazır olmayan ses puan yazdırmaz.
+      const foreign = await feedbackAudio(t)
+      const before = (await scoreRows(t)).length
+      fails(
+        await write('final-scores', head, submissionId, withAudio(foreign), head),
+        422,
+        'file_unavailable',
+      )
+      assert.equal((await scoreRows(t)).length, before)
+
+      const created = await ok(
+        await write('final-scores', head, submissionId, withAudio(finalAudio), head),
+        201,
+      )
+      assert.equal(JSON.stringify(created).includes(finalAudio), true)
+      const finalRow = (await scoreRows(t)).find((row) => row.raterRole === 'final')
+      const attached = await fileRow(t, finalAudio)
+      assert.equal(attached.attachedType, 'task_rubric_score')
+      assert.equal(attached.attachedId, finalRow?.id)
+      assert.equal(attached.dataSubjectId, 's-1')
+      // Son puan sonucu kesinleştirir: kursiyer ve veli sesi dinler.
+      await ok(await urlOf(t.cookies.student, finalAudio))
+      await ok(await urlOf(t.cookies.parent, finalAudio))
+      await ok(await urlOf(head, finalAudio))
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
+  test('DOM-BEC-056, DOM-BEC-024: uyuşmazlıkta ilk puanlayıcı ikinci puanlayıcının sesini, ikinci puanlayıcı ilkinin sesini duymaz (dosya ucu 404, teslim yanıtında alan yok); koordinatör ikisini de dinler', async () => {
+    const t = await tenant()
+    const { colleague, head } = await raters(t)
+    await consent(t)
+    const { submissionId } = await spoken(t, await assign(t, 'audio'))
+    const firstAudio = await feedbackAudio(t)
+    const secondAudio = await upload(
+      t,
+      colleague,
+      uploadParts('feedback_audio', MP3, 'Meral-geri-bildirim.mp3', 'audio/mpeg'),
+      { durationMs: 15_000 },
+    )
+    try {
+      at('2026-10-21T09:00:00.000Z')
+      await requestSecondRating(t, submissionId)
+      await ok(await write('scores', t.cookies.teacher, submissionId, withAudio(firstAudio)), 201)
+      await ok(
+        await write(
+          'second-scores',
+          colleague,
+          submissionId,
+          withAudio(secondAudio, DISAGREEING),
+          t.cookies.admin,
+        ),
+        201,
+      )
+      // Puanlayan kendi sesini dinler; öbür puanlayıcının sesi kör puanlamada kapalıdır.
+      await ok(await urlOf(t.cookies.teacher, firstAudio))
+      await ok(await urlOf(colleague, secondAudio))
+      fails(await urlOf(t.cookies.teacher, secondAudio), 404, 'not_found')
+      fails(await urlOf(colleague, firstAudio), 404, 'not_found')
+      const teacherView = await ok(
+        await call('GET', `/task-submissions/${submissionId}`, t.cookies.teacher),
+      )
+      assert.equal(JSON.stringify(teacherView).includes(secondAudio), false)
+      const colleagueView = await ok(
+        await call('GET', `/task-submissions/${submissionId}`, colleague),
+      )
+      assert.equal(JSON.stringify(colleagueView).includes(firstAudio), false)
+      // Uyuşmazlıkta sonuç kursiyere kapalıdır; ses de kapalıdır.
+      fails(await urlOf(t.cookies.student, firstAudio), 404, 'not_found')
+      fails(await urlOf(t.cookies.student, secondAudio), 404, 'not_found')
+
+      // Uyuşmazlığı çözecek koordinatör iki sesi de duyar.
+      await ok(await urlOf(head, firstAudio))
+      await ok(await urlOf(head, secondAudio))
+      const headView = await ok(await call('GET', `/task-submissions/${submissionId}`, head))
+      assert.equal(JSON.stringify(headView).includes(firstAudio), true)
+      assert.equal(JSON.stringify(headView).includes(secondAudio), true)
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
+  test('DOM-BEC-056: aynı ses ikinci bir teslimin puanına bağlanamaz (409 file_already_attached), ikinci puan yazılmaz', async () => {
+    const t = await tenant()
+    await consent(t)
+    const first = await spoken(t, await assign(t, 'audio'))
+    // İkinci teslim aynı öğrencinin el yazısı görevindedir (aynı içerik iki kez atanamaz).
+    const image = await upload(
+      t,
+      t.cookies.student,
+      uploadParts('submission', png(), 'sayfa.png', 'image/png'),
+    )
+    const second = {
+      submissionId: (
+        await ok(
+          await submit(await assign(t, 'file'), t.cookies.student, {
+            submissionKind: 'file',
+            fileIds: [image],
+          }),
+          201,
+        )
+      ).id as string,
+    }
+    const audioId = await feedbackAudio(t)
+    await ok(await write('scores', t.cookies.teacher, first.submissionId, withAudio(audioId)), 201)
+    const bound = await fileRow(t, audioId)
+    assert.equal(bound.attachedType, 'task_rubric_score')
+
+    fails(
+      await write('scores', t.cookies.teacher, second.submissionId, withAudio(audioId)),
+      409,
+      'file_already_attached',
+    )
+    assert.equal((await scoreRows(t)).length, 1)
+    assert.equal((await fileRow(t, audioId)).attachedId, bound.attachedId)
+    // Sesiz puan yazılabilir: ret hiçbir kaydı bozmamıştır.
+    await ok(await write('scores', t.cookies.teacher, second.submissionId, SCORE), 201)
+  })
+
+  test('DOM-BEC-056: öğrenci ve veli feedback_audio yükleyemez (403); yönetici ve öğretmen yükler; oturumsuz yükleme ve puan 401', async () => {
+    const t = await tenant()
+    const parts = () => uploadParts('feedback_audio', MP3, 'Selin-geri-bildirim.mp3', 'audio/mpeg')
+    const send = (cookie: string | null) => {
+      const body = multipart(parts())
+      return app.inject({
+        method: 'POST',
+        url: '/api/v1/files',
+        headers: {
+          origin: TEST_ORIGIN,
+          ...(cookie === null ? {} : { cookie }),
+          'content-type': body.contentType,
+          'idempotency-key': randomUUID(),
+        },
+        payload: body.payload,
+      })
+    }
+    for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.otherStudent])
+      fails(await send(cookie), 403, 'forbidden')
+    assert.equal((await send(t.cookies.teacher)).statusCode, 201)
+    assert.equal((await send(t.cookies.admin)).statusCode, 201)
+
+    const anonymous = await send(null)
+    assert.equal(anonymous.statusCode, 401, anonymous.body)
+    await consent(t)
+    const { submissionId } = await spoken(t, await assign(t, 'audio'))
+    const audioId = await feedbackAudio(t)
+    for (const path of ['scores', 'second-scores', 'final-scores']) {
+      const response = await app.inject({
+        method: 'POST',
+        url: `/api/v1/task-submissions/${submissionId}/${path}`,
+        headers: {
+          origin: TEST_ORIGIN,
+          'content-type': 'application/json',
+          'idempotency-key': randomUUID(),
+          'if-match': '"1"',
+        },
+        payload: JSON.stringify(withAudio(audioId)),
+      })
+      assert.equal(response.statusCode, 401, response.body)
+    }
+    assert.equal((await scoreRows(t)).length, 0)
+    assert.equal((await fileRow(t, audioId)).attachedId, null)
+  })
+
+  test('DOM-BEC-056: öğrenme modülü kapalıyken feedback_audio yükleme ve puana ses bağlama 403 module_disabled', async () => {
+    const t = await tenant()
+    await consent(t)
+    const { submissionId } = await spoken(t, await assign(t, 'audio'))
+    const audioId = await feedbackAudio(t)
+    await db
+      .update(institutions)
+      .set({ enabledModules: { learning: false } })
+      .where(eq(institutions.id, t.institution.id))
+    const body = multipart(
+      uploadParts('feedback_audio', MP3, 'Selin-geri-bildirim.mp3', 'audio/mpeg'),
+    )
+    fails(
+      await app.inject({
+        method: 'POST',
+        url: '/api/v1/files',
+        headers: {
+          origin: TEST_ORIGIN,
+          cookie: t.cookies.teacher,
+          'content-type': body.contentType,
+          'idempotency-key': randomUUID(),
+        },
+        payload: body.payload,
+      }),
+      403,
+      'module_disabled',
+    )
+    fails(
+      await app.inject({
+        method: 'POST',
+        url: `/api/v1/task-submissions/${submissionId}/scores`,
+        headers: {
+          origin: TEST_ORIGIN,
+          cookie: t.cookies.teacher,
+          'content-type': 'application/json',
+          'idempotency-key': randomUUID(),
+          'if-match': '"1"',
+        },
+        payload: JSON.stringify(withAudio(audioId)),
+      }),
+      403,
+      'module_disabled',
+    )
+    assert.equal((await scoreRows(t)).length, 0)
+    assert.equal((await fileRow(t, audioId)).attachedId, null)
+  })
+
+  test('DOM-BEC-056, DOM-BEC-052, DOM-YTK-059, DOM-BEC-050: sesli geri bildirim öğrencinin veri sahibine ve konuşma kaydının saklama süresine bağlanır; puanı kesinleşmemişken imha bekler, rıza geri çekilince konuşma kaydıyla birlikte silinir', async () => {
+    const t = await tenant()
+    const { consentId } = await consent(t)
+    const { submissionId, recordingId } = await spoken(t, await assign(t, 'audio'))
+    const audioId = await feedbackAudio(t)
+    const subject = async () =>
+      (
+        await db
+          .select()
+          .from(files)
+          .where(and(eq(files.institutionId, t.institution.id), eq(files.dataSubjectId, 's-1')))
+      )
+        .filter((row) => row.status !== 'deleted')
+        .map((row) => row.id)
+        .sort()
+    try {
+      at('2026-10-21T09:00:00.000Z')
+      await requestSecondRating(t, submissionId)
+      await ok(await write('scores', t.cookies.teacher, submissionId, withAudio(audioId)), 201)
+
+      // Veri sahibi öğrencidir (öğretmen değil, boş değil) ve süre konuşma kaydınınkiyle aynıdır.
+      const audio = await fileRow(t, audioId)
+      const spokenRow = await fileRow(t, recordingId)
+      assert.equal(audio.dataSubjectId, 's-1')
+      assert.notEqual(audio.retentionUntil, null)
+      assert.equal(audio.retentionUntil?.toISOString(), spokenRow.retentionUntil?.toISOString())
+      assert.deepEqual(await subject(), [audioId, recordingId].sort())
+
+      // Saklama sonu geçse de ikinci puan bekliyor: konuşma kaydı gibi ses de bekletilir.
+      const later = '2028-03-01T00:00:00.000Z'
+      assert.ok(Date.parse(later) > (audio.retentionUntil?.getTime() ?? 0))
+      assert.deepEqual(await purge(t, later), { purged: 0, held: 2, rounds: 1 })
+
+      // Rıza geri çekilince ikisi de imhaya işaretlenir ve silinir; yazılı geri bildirim kalır.
+      await ok(await call('POST', `/consents/${consentId}/withdraw`, t.cookies.parent, {}, key()))
+      assert.equal((await fileRow(t, audioId)).retentionUntil?.toISOString(), now.toISOString())
+      assert.deepEqual(await purge(t, later), { purged: 2, held: 0, rounds: 1 })
+      assert.equal((await fileRow(t, audioId)).status, 'deleted')
+      assert.equal((await fileRow(t, recordingId)).status, 'deleted')
+      assert.deepEqual(await subject(), [])
+      const detail = await ok(
+        await call('GET', `/task-submissions/${submissionId}`, t.cookies.teacher),
+      )
+      assert.equal(detail.versions[0].score.feedbackAudio, null)
+      assert.equal(detail.versions[0].score.overallComment, SCORE.overallComment)
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+  test('DOM-BEC-056, DOM-BEC-052, DOM-BEC-025: sesli geri bildirimin saklama sonu konuşma kaydıyla birlikte geç puanlamada ve itirazda ileri alınır; açık itirazlı ses imha edilmez', async () => {
+    const t = await tenant()
+    await db
+      .update(academicYears)
+      .set({ startDate: '2026-01-01', endDate: '2026-10-10' })
+      .where(
+        and(eq(academicYears.institutionId, t.institution.id), eq(academicYears.startYear, 2026)),
+      )
+    await consent(t)
+    const { submissionId, recordingId } = await spoken(t, await assign(t, 'audio'))
+    const audioId = await feedbackAudio(t)
+    const retention = async (id: string) => (await fileRow(t, id)).retentionUntil?.toISOString()
+    try {
+      // Geç puanlama: sonuç 1 Aralık'ta duyurulur, itiraz 8 Aralık'ta kapanır; ses de aynı gün.
+      at('2026-12-01T10:00:00.000Z')
+      await ok(await write('scores', t.cookies.teacher, submissionId, withAudio(audioId)), 201)
+      assert.equal(await retention(recordingId), '2027-06-08T20:59:59.999Z')
+      assert.equal(await retention(audioId), '2027-06-08T20:59:59.999Z')
+
+      at('2026-12-03T10:00:00.000Z')
+      await ok(
+        await call(
+          'POST',
+          `/task-submissions/${submissionId}/appeals`,
+          t.cookies.student,
+          { versionNumber: 1, reason: 'Kriterler yeniden okunmalı.' },
+          key(),
+        ),
+        201,
+      )
+      assert.equal(await retention(recordingId), '2027-06-10T20:59:59.999Z')
+      assert.equal(await retention(audioId), '2027-06-10T20:59:59.999Z')
+
+      // Karar gecikse de açık itirazlı sürümün sesi de kaydı gibi imha edilmez.
+      assert.deepEqual(await purge(t, '2027-07-01T00:00:00.000Z'), {
+        purged: 0,
+        held: 2,
+        rounds: 1,
+      })
+      assert.equal((await fileRow(t, audioId)).status, 'ready')
     } finally {
       now = FIXED_NOW
     }

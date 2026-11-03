@@ -1,5 +1,5 @@
 {
-  "id": "de24b236-6acf-4e77-ba79-9cd81655cb1a",
+  "id": "d7ef970b-8d59-42d9-b847-ddeb791fc50c",
   "prevId": "0e93135d-a053-4e44-ba30-29b42a3360f5",
   "version": "7",
   "dialect": "postgresql",
@@ -753,18 +753,6 @@
         },
         "teacher_id": {
           "name": "teacher_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "student_ids": {
-          "name": "student_ids",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "parent_id": {
-          "name": "parent_id",
           "type": "text",
           "primaryKey": false,
           "notNull": false
@@ -4893,7 +4881,7 @@
       "checkConstraints": {
         "files_purpose_check": {
           "name": "files_purpose_check",
-          "value": "\"files\".\"purpose\" in ('submission', 'material', 'question_image', 'student_question_photo', 'listening_audio', 'speaking_recording', 'document', 'absence_document')"
+          "value": "\"files\".\"purpose\" in ('submission', 'material', 'question_image', 'student_question_photo', 'listening_audio', 'speaking_recording', 'feedback_audio', 'document', 'absence_document')"
         },
         "files_status_check": {
           "name": "files_status_check",

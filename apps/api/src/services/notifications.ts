@@ -1,15 +1,17 @@
 import { SCOPE_SOURCE_COLLECTIONS } from '@kampus/school-core/lib/scope.ts'
 import type { Participant } from '@kampus/school-core/lib/communication.ts'
+import { PAYER_NOTIFICATION_KINDS } from '@kampus/school-core/lib/guardianship.ts'
 import {
   hiddenNotificationKinds,
   markAllNotificationsRead,
   markNotificationRead,
   notificationAudienceOf,
+  NOTIFICATION_AUDIENCES,
   notificationReadId,
   notificationRecordSchema,
   notificationSpec,
   notificationTitle,
-  type NotificationAudience,
+  payerNotificationStudentIds,
 } from '@kampus/school-core/lib/notifications.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
@@ -20,7 +22,7 @@ import { ValidationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
-import { listMembershipLinks } from './memberships.ts'
+import { listActorLinks } from './memberships.ts'
 import { getInstitutionModules } from './modules.ts'
 import { runCommand, type CommandResponse, type LoadScope } from './operation-runner.ts'
 
@@ -47,9 +49,17 @@ const NO_SCOPE: Partial<Record<CollectionName, LoadScope>> = Object.fromEntries(
   SCOPE_SOURCE_COLLECTIONS.map((collection) => [collection, NONE]),
 )
 
+/**
+ * Aktörün kitlesi: velayet bağlantılarının kitlesi ve ödeyici velinin finans bildirimi
+ * (`payer`; K-04, DOM-ILT-074). Ödeyici bağı yalnız finans türlerini açar.
+ */
 async function audienceOf(ctx: ServiceContext): Promise<AudienceIds> {
-  const links = await listMembershipLinks(ctx.db, ctx.institutionId, ctx.actor.membershipId)
-  return notificationAudienceOf({ role: ctx.actor.role, links })
+  const links = await listActorLinks(ctx.db, ctx.institutionId, ctx.actor.membershipId)
+  const actor = { role: ctx.actor.role, links }
+  return {
+    ...notificationAudienceOf(actor),
+    payer: { studentIds: payerNotificationStudentIds(actor), kinds: PAYER_NOTIFICATION_KINDS },
+  }
 }
 
 /**
@@ -201,10 +211,13 @@ export async function readAllNotificationsCommand(
   options: CommandOptions,
 ): Promise<CommandResponse> {
   const audience = await audienceOf(ctx)
-  const kinds = (Object.keys(audience) as NotificationAudience[]).filter(
-    (kind) => audience[kind].length > 0,
+  // Ödeyici bildirimi veli kitlesindedir; yükleme yalnız adayları daraltır, kararı core
+  // `canSeeNotification` işlemdeki bağlantılarla verir.
+  const payerIds = audience.payer?.studentIds ?? []
+  const kinds = NOTIFICATION_AUDIENCES.filter(
+    (kind) => audience[kind].length > 0 || (kind === 'parent' && payerIds.length > 0),
   )
-  const studentIds = kinds.flatMap((kind) => audience[kind])
+  const studentIds = [...new Set([...kinds.flatMap((kind) => audience[kind]), ...payerIds])]
   const notifications: LoadScope =
     studentIds.length === 0
       ? NONE

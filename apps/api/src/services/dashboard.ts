@@ -482,13 +482,32 @@ export interface OpenQuestions {
   }[]
 }
 
+/** Zamana göre artan sıra; geçersiz ya da boş tarih (NaN) en sona gider. */
+function byTime(a: string, b: string): number {
+  const x = Date.parse(a)
+  const y = Date.parse(b)
+  if (Number.isNaN(x) || Number.isNaN(y)) return Number.isNaN(x) ? (Number.isNaN(y) ? 0 : 1) : -1
+  return x - y
+}
+
 /**
  * Yanıt bekleyen sorular (`questions?answered=false&withdrawn=false`; kapsam öğretmene atanan
  * sorular, DOM-ILT-093). Yanıt süresi saklanmaz: core `questionResponse` isteğin anıyla (`ctx.now`)
  * iş takvimine göre hesaplar. Sıra Soru Kuyruğu'yla aynıdır: en eski soru önce.
  */
 async function openQuestions(ctx: ServiceContext): Promise<OpenQuestions> {
-  const pending = await all(ctx, 'questions', { states: { answered: false, withdrawn: false } })
+  const states = { answered: false, withdrawn: false }
+  // Toplam, Soru Kuyruğu listesinin kullandığı sayımdır (aynı kapsam ve süzgeç).
+  const [counted, read] = await Promise.all([
+    count(ctx, 'questions', { groupBy: 'teacherId', states }),
+    list(ctx, 'questions', { pageSize: ALL_ROWS, states }),
+  ])
+  // Süre aşımı satır satır hesaplanır; okuma sınırı aşılırsa sayı sessizce eksik kalmasın.
+  if (counted.total > read.items.length)
+    throw new Error(
+      `Yanıt bekleyen soru sayısı okuma sınırını aşıyor (${counted.total} > ${ALL_ROWS}).`,
+    )
+  const pending = read.items
   const now = ctx.now.toISOString()
   const rows = pending
     .map((item) => {
@@ -503,9 +522,9 @@ async function openQuestions(ctx: ServiceContext): Promise<OpenQuestions> {
         overdue,
       }
     })
-    .toSorted((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+    .toSorted((a, b) => byTime(a.createdAt, b.createdAt))
   return {
-    total: rows.length,
+    total: counted.total,
     overdue: rows.filter((row) => row.overdue).length,
     items: rows.slice(0, QUESTION_LIST),
   }

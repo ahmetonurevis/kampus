@@ -418,6 +418,52 @@ describe('Genel Bakış özeti', () => {
     assert.equal(other.questions.total, t2)
   })
 
+  test('DOM-ILT-091: geri çekilen soru öğretmenin panosunda sayılmaz', async () => {
+    const { id } = await institution()
+    const cookie = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+    const before = await dashboard(cookie)
+    await insertMissingRecords(
+      db,
+      id,
+      [
+        {
+          collection: 'questions',
+          id: 'test-geri-cekilen',
+          data: {
+            ...SEED.questions[0],
+            id: 'test-geri-cekilen',
+            teacherId: 't1',
+            createdAt: '2026-10-01T08:00:00.000Z',
+            answeredAt: null,
+            withdrawnAt: '2026-10-02T08:00:00.000Z',
+          },
+        },
+      ],
+      new Date(FIXED_NOW.getTime() + 60_000),
+    )
+    const after = await dashboard(cookie)
+    assert.equal(after.questions.total, before.questions.total)
+    assert.doesNotMatch(JSON.stringify(after.questions), /test-geri-cekilen/)
+  })
+
+  test('IST-116: bekleyen soru sayısı okuma sınırını aşarsa sessizce eksik sayılmaz', async () => {
+    const { id } = await institution()
+    const cookie = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+    const rows = Array.from({ length: 5001 }, (_, index) => ({
+      collection: 'questions' as const,
+      id: `test-toplu-${index}`,
+      data: {
+        ...SEED.questions[0],
+        id: `test-toplu-${index}`,
+        teacherId: 't1',
+        answeredAt: null,
+      },
+    }))
+    await insertMissingRecords(db, id, rows, new Date(FIXED_NOW.getTime() + 60_000))
+    const response = await get('/api/v1/dashboard', cookie)
+    assert.equal(response.statusCode, 500)
+  })
+
   test('öğrenci: yalnız kendi özeti, ödeme alanı yok; başka öğrenci 404', async () => {
     const { id } = await institution()
     const cookie = await memberCookie(id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
@@ -591,8 +637,39 @@ describe('Genel Bakış özeti', () => {
       ],
       new Date(FIXED_NOW.getTime() + 60_000),
     )
+    // B kurumunda yeni talep ve yanıtsız soru: A'nın ön büro ve öğretmen sayıları değişmez.
+    await insertMissingRecords(
+      db,
+      b.id,
+      [
+        {
+          collection: 'requests',
+          id: 'test-b-talep',
+          data: { ...SEED.requests[0], id: 'test-b-talep', status: 'Yeni' },
+        },
+        {
+          collection: 'questions',
+          id: 'test-b-soru',
+          data: { ...SEED.questions[0], id: 'test-b-soru', teacherId: 't1', answeredAt: null },
+        },
+      ],
+      new Date(FIXED_NOW.getTime() + 120_000),
+    )
+    const deskA = await memberCookie(a.id, 'onburo')
+    const teacherA = await memberCookie(a.id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+    const deskBefore = await dashboard(deskA)
+    const teacherBefore = await dashboard(teacherA)
     const after = await dashboard(a.adminCookie)
     assert.deepEqual(after, before)
+    assert.equal(
+      (await dashboard(await memberCookie(b.id, 'onburo'))).requests.new,
+      deskBefore.requests.new + 1,
+    )
+    assert.equal(
+      (await dashboard(await memberCookie(b.id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])))
+        .questions.total,
+      teacherBefore.questions.total + 1,
+    )
     const inB = await dashboard(b.adminCookie)
     assert.equal(inB.students.active, before.students.active + 1)
     assert.equal(inB.finance.invoices.total, before.finance.invoices.total + 1)

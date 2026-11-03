@@ -1,6 +1,6 @@
 // API modunun kökü (`EXPO_PUBLIC_API_URL` verildiğinde `AppRoot` tembel yükler). Demo
 // kalıcılığı (AsyncStorage snapshot'ı) bu modda hiç açılmaz.
-import { useCallback, useState, type ComponentType, type ReactNode } from 'react'
+import { useCallback, useState, type ReactNode } from 'react'
 import { View, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { DarkTheme, DefaultTheme, NavigationContainer } from '@react-navigation/native'
@@ -14,6 +14,7 @@ import { ErrorBoundary } from '../ui/ErrorBoundary.tsx'
 import { ApiHeader } from './ApiHeader.tsx'
 import { ApiAuthProvider, useApiAuth } from './auth.tsx'
 import { createApiClients } from './clients.ts'
+import { registeredScreen } from './registered-screen.tsx'
 import { SCREEN_REGISTRY } from './screen-registry.ts'
 import ApiCategory from './screens/ApiCategory.tsx'
 import ApiHome from './screens/ApiHome.tsx'
@@ -25,6 +26,13 @@ import { useApiAppearance } from './use-api-appearance.ts'
 import { ViewMemoryProvider } from './view-memory.tsx'
 
 const Stack = createNativeStackNavigator<ApiStackParamList>()
+
+// Menü ekranları ekran kaydından gelir (`screen-registry.ts`); her biri ilk açılışta yüklenir ve
+// kendi hata sınırındadır. Bileşenler bir kez kurulur ki yığın her çizimde yeniden bağlanmasın.
+const MENU_SCREENS = SCREEN_REGISTRY.map((entry) => ({
+  name: entry.screen,
+  component: registeredScreen(entry),
+}))
 
 function SignedIn({ session }: { session: MobileSession }) {
   const c = useColors()
@@ -65,15 +73,8 @@ function SignedIn({ session }: { session: MobileSession }) {
           <Stack.Group navigationKey={sessionScopeKey(session)}>
             <Stack.Screen name="ApiHome" component={ApiHome} />
             <Stack.Screen name="ApiCategory" component={ApiCategory} />
-            {/* Menü ekranları ekran kaydından gelir (`screen-registry.ts`), bileşen ilk açılışta
-                yüklenir. Kayıt parametresiz ekran tutar; prop tipi ekran adına göre daraltılamadığı
-                için genişletilir. */}
-            {SCREEN_REGISTRY.map((entry) => (
-              <Stack.Screen
-                key={entry.screen}
-                name={entry.screen}
-                getComponent={entry.getComponent as () => ComponentType<object>}
-              />
+            {MENU_SCREENS.map((screen) => (
+              <Stack.Screen key={screen.name} name={screen.name} component={screen.component} />
             ))}
             <Stack.Screen name="ApiConversation" component={Conversation} />
           </Stack.Group>

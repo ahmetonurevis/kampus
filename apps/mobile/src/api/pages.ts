@@ -7,6 +7,7 @@ import { categoryLabel } from '../model/hub.ts'
 import {
   SCREEN_REGISTRY,
   type ApiScreen,
+  type MenuScreen,
   type ScreenEntry,
   type ScreenPlacement,
 } from './screen-registry.ts'
@@ -120,4 +121,25 @@ export function canOpenScreen(
   screen: ApiScreen,
 ): boolean {
   return apiPages(session).some((page) => page.screen === screen)
+}
+
+const loadedScreens = new Map<string, MenuScreen>()
+
+/**
+ * Kayıttaki ekran bileşenini ilk açılışta yükler ve saklar. Yükleme hatası ya da eksik varsayılan
+ * bileşen fırlatılır ve saklanmaz ("Yeniden dene" tekrar dener); ekran sarmalayıcısının hata sınırı
+ * yakalar, kabuk ayakta kalır (`registered-screen.tsx`).
+ */
+export function loadScreenComponent(
+  entry: Pick<ScreenEntry, 'screen' | 'getComponent'>,
+): MenuScreen {
+  const cached = loadedScreens.get(entry.screen)
+  if (cached) return cached
+  const component = entry.getComponent()
+  // `require(...).default` tip denetiminden geçmez (`any`); eksik dışa aktarım burada yakalanır.
+  const value: unknown = component
+  if (typeof value !== 'function' && (typeof value !== 'object' || value === null))
+    throw new Error(`Ekran kaydı ${entry.screen}: varsayılan bileşen bulunamadı`)
+  loadedScreens.set(entry.screen, component)
+  return component
 }

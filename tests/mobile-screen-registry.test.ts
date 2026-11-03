@@ -7,6 +7,7 @@ import {
   apiCategories,
   apiPages,
   canOpenScreen,
+  loadScreenComponent,
   screenRegistryIssues,
 } from '../apps/mobile/src/api/pages.ts'
 import {
@@ -29,6 +30,13 @@ const entry = (screen: string, pages: ScreenEntry['pages']): ScreenEntry => ({
 })
 const registry: readonly ScreenEntry[] = SCREEN_REGISTRY
 
+/**
+ * Varsayılan dışa aktarım bir bileşen olmalı: adlı fonksiyon/sınıf, `memo(`/`forwardRef(` sarması ya
+ * da PascalCase bileşen adı. `export default {}` ya da küçük harfli değer geçmez.
+ */
+const DEFAULT_COMPONENT_EXPORT =
+  /^export default (?:function [A-Z]\w*\s*\(|class [A-Z]\w*|(?:memo|forwardRef)\(|[A-Z]\w*;?\s*$)/m
+
 describe('IST-124 mobil ekran kaydı', () => {
   test('IST-124 gerçek kayıt kurallara uyar', () => {
     assert.deepEqual(screenRegistryIssues(registry), [])
@@ -47,8 +55,63 @@ describe('IST-124 mobil ekran kaydı', () => {
       )
       const url = new URL(`../apps/mobile/src/api/${path}`, import.meta.url)
       assert.ok(existsSync(url), `${item.screen}: ${path} yok`)
-      assert.match(readFileSync(url, 'utf8'), /^export default /m, item.screen)
+      assert.match(readFileSync(url, 'utf8'), DEFAULT_COMPONENT_EXPORT, item.screen)
     }
+  })
+
+  test('IST-124 varsayılan dışa aktarım denetimi bileşen olmayanı geçirmez', () => {
+    for (const source of [
+      'export default function ParentFinance() {}',
+      'export default function ParentFinance({ route }: Props) {}',
+      'export default memo(ParentFinance)',
+      'const A = () => null\nexport default ParentFinance',
+    ])
+      assert.match(source, DEFAULT_COMPONENT_EXPORT, source)
+    for (const source of [
+      'export default {}',
+      'export default { screen: 1 }',
+      'export default function () {}',
+      'export default parentFinance',
+      'export const ParentFinance = () => null',
+    ])
+      assert.doesNotMatch(source, DEFAULT_COMPONENT_EXPORT, source)
+  })
+
+  test('IST-124 ekran bileşeni bir kez yüklenir; hata saklanmaz, yeniden denenir', () => {
+    const Screen = (() => null) as MenuScreen
+    let calls = 0
+    const ok = {
+      screen: 'TestLoadOnce',
+      getComponent: () => {
+        calls += 1
+        return Screen
+      },
+    }
+    assert.equal(loadScreenComponent(ok), Screen)
+    assert.equal(loadScreenComponent(ok), Screen)
+    assert.equal(calls, 1)
+
+    let attempts = 0
+    const missing = {
+      screen: 'TestMissingDefault',
+      getComponent: () => {
+        attempts += 1
+        // `require(...).default` eksikse `undefined` döner.
+        return (attempts < 3 ? undefined : Screen) as MenuScreen
+      },
+    }
+    assert.throws(() => loadScreenComponent(missing), /varsayılan bileşen bulunamadı/)
+    assert.throws(() => loadScreenComponent(missing), /varsayılan bileşen bulunamadı/)
+    assert.equal(loadScreenComponent(missing), Screen)
+    assert.equal(attempts, 3)
+
+    const failing = {
+      screen: 'TestRequireFails',
+      getComponent: (): MenuScreen => {
+        throw new Error('modül yüklenemedi')
+      },
+    }
+    assert.throws(() => loadScreenComponent(failing), /modül yüklenemedi/)
   })
 
   test('IST-124 her kayıt menüye ve ekran listesine yansır, kayıt dışı sayfa görünmez', () => {

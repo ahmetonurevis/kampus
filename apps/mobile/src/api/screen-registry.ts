@@ -1,12 +1,13 @@
-// Mobil API modu ekran kaydı (web `apps/web-react/src/pages/page-registry.tsx` eşi; ortak dosya,
-// git-ve-surum §7.6 blok kuralı). Her kayıt bir gezinme ekranıdır: ekran adı, bileşen ve ekranın
+// Mobil API modu ekran kaydı (web `apps/web-react/src/pages/page-registry.tsx` eşi, sahip blokları,
+// git-ve-surum §7.6). Ortak dosya önerisi #25; onaya kadar Oğuzhan'ındır. Her kayıt bir gezinme ekranıdır: ekran adı, bileşen ve ekranın
 // açıldığı rol + ortak menü yolları (`school-core/modules/full-navigation.ts`). Menü kartı, kategori,
 // yığın kaydı (`ApiApp.tsx`) ve `ApiScreen` tipi yalnız bu listeden türer; ikinci liste yoktur.
 //
 // Dosya `.tsx` değil `.ts`'tir: kök birim testleri (`tests/mobile-screen-registry.test.ts`) kaydı
-// Node'da okur. Bileşen `getComponent` ile ilk açılışta yüklenir (React Navigation `getComponent`),
-// böylece kayıt React Native'e bağlanmadan sınanır. Dosyanın var olduğu ve varsayılan bileşen
-// dışa aktardığı testte `getComponent` kaynağından denetlenir (kök tip denetimi `.tsx` okumaz).
+// Node'da okur. Bileşen `getComponent` ile ilk açılışta, ekranın hata sınırı içinde yüklenir
+// (`registered-screen.tsx`); kayıt böylece React Native'e bağlanmadan sınanır. Dosyanın var olduğu
+// ve varsayılan bileşen dışa aktardığı testte `getComponent` kaynağından denetlenir (kök tip
+// denetimi `.tsx` okumaz).
 //
 // Kurallar (`screenRegistryIssues`, testte denetlenir): ekran adı tek; bir rol + yol yalnız bir
 // ekrana bağlanır; yol o rolün ortak menüsünde bulunur; öğrenciye ödeme (`finance` modülü) ekranı
@@ -112,8 +113,11 @@ export const OGUZHAN_SCREENS = [
 // Oğuzhan: platform, akademik ve iletişim sonu
 
 // Onur: kayıt ve finans
-// Yeni ekran bu dizinin sonuna eklenir. Ekran dosyası Onur'un alan kalıbına uyan adla yazılır
-// (ör. `screens/finance-parent.tsx` → `**/finance*`) ve `export default` bileşen verir. Örnek:
+// Ortak dosya önerisi #25; onaya kadar Onur kayıt satırını `sahip:oguzhan` issue'suyla ister, biz
+// ekleriz. Yeni ekran bu dizinin sonuna eklenir. Ekran dosyası küçük harfli ve Onur'un alan kalıbına
+// uyan adla yazılır (`screens/finance-parent.tsx` → `**/finance*`, `screens/contract-approval.tsx`
+// → `**/contract*`; `ParentFinance.tsx` kalıba uymaz) ve `export default function` bileşen verir.
+// Örnek:
 //
 //   {
 //     screen: 'ParentFinance',

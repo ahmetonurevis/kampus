@@ -65,16 +65,23 @@ type MigrationTarget = Parameters<typeof migrate>[0]
 
 /**
  * Better Auth her okumada şemadaki bütün kolonları seçer. Sonraki migration'ların kimlik
- * tablolarına eklediği kolon (0045 `memberships.deactivated_at`) eski şemada yoksa test uygulaması
- * üye açamaz; kolon kısmi şemaya geçici eklenir ve kalan migration'lardan önce kaldırılır.
+ * tablolarına eklediği kolonlar (0045 `memberships.deactivated_at`, `invitations.name` ve
+ * `invitations.membership_id`) eski şemada yoksa test uygulaması üye ya da davet açamaz; kolonlar
+ * kısmi şemaya geçici eklenir ve kalan migration'lardan önce kaldırılır.
  */
 async function migratePartial(db: MigrationTarget, folder: string): Promise<void> {
   await migrate(db, { migrationsFolder: folder })
   await db.execute(sql`alter table memberships add column if not exists deactivated_at timestamp`)
+  await db.execute(
+    sql`alter table invitations add column if not exists name text, add column if not exists membership_id text`,
+  )
 }
 
 async function migrateRest(db: MigrationTarget): Promise<void> {
   await db.execute(sql`alter table memberships drop column if exists deactivated_at`)
+  await db.execute(
+    sql`alter table invitations drop column if exists name, drop column if exists membership_id`,
+  )
   await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
 }
 

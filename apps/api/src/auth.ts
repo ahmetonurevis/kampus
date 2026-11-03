@@ -145,7 +145,22 @@ export const ORGANIZATION_OPTIONS = {
         deactivatedAt: { type: 'date', required: false, input: false },
       },
     },
-    invitation: { fields: { organizationId: 'institutionId' } },
+    invitation: {
+      fields: { organizationId: 'institutionId' },
+      additionalFields: {
+        // Personel daveti (DOM-YTK-070): yöneticinin girdiği ad. Bekleyen davet görünümü yalnız
+        // bunu gösterir; kullanıcı tablosundaki gerçek ad hiçbir yanıta girmez (karar 73).
+        name: { type: 'string', required: false, input: false },
+        // Davetin açtığı üyelik; yalnız kurumun açtığı yeni hesapta dolu. İlk girişte kabul ve
+        // iptalde üyelik silme yalnız bu üyeliğe uygulanır. Yalnız sunucu yazar.
+        membershipId: {
+          type: 'string',
+          required: false,
+          input: false,
+          references: { model: 'member', field: 'id', onDelete: 'set null' },
+        },
+      },
+    },
     session: { fields: { activeOrganizationId: 'activeInstitutionId' } },
   },
   // Davet yalnız "bekliyor" işaretidir; hesap ve üyelik davette açılır (DOM-YTK-070).

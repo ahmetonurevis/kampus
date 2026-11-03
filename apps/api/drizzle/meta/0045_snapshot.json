@@ -1,5 +1,5 @@
 {
-  "id": "1701e3a0-2466-4a5d-9a3d-541c215c5f00",
+  "id": "485433e9-ff86-427e-8650-163fa599533c",
   "prevId": "794adfee-1a19-4c7a-8916-677166933de3",
   "version": "7",
   "dialect": "postgresql",
@@ -738,6 +738,18 @@
           "type": "text",
           "primaryKey": false,
           "notNull": true
+        },
+        "name": {
+          "name": "name",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "membership_id": {
+          "name": "membership_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {
@@ -797,6 +809,19 @@
             "id"
           ],
           "onDelete": "cascade",
+          "onUpdate": "no action"
+        },
+        "invitations_membership_id_memberships_id_fk": {
+          "name": "invitations_membership_id_memberships_id_fk",
+          "tableFrom": "invitations",
+          "tableTo": "memberships",
+          "columnsFrom": [
+            "membership_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "set null",
           "onUpdate": "no action"
         }
       },

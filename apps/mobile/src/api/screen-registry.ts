@@ -109,6 +109,18 @@ export const OGUZHAN_SCREENS = [
       },
     ],
   },
+  {
+    screen: 'TeacherAttendance',
+    getComponent: (): MenuScreen => require('./screens/TeacherAttendance.tsx').default,
+    // Telefonda yalnız bugünkü yoklama alınır; yoklama geçmişi web'dedir.
+    pages: [
+      {
+        role: 'ogretmen',
+        path: 'yoklama',
+        description: 'Bugünkü derslerinizin yoklamasını alın.',
+      },
+    ],
+  },
 ] as const satisfies readonly ScreenEntry[]
 // Oğuzhan: platform, akademik ve iletişim sonu
 

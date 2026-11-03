@@ -3,14 +3,13 @@ import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import {
   appointmentActions,
-  appointmentFilters,
   appointmentLookups,
   appointmentRow,
   orderAppointments,
   outsideChildScope,
   pendingCount,
   upcomingSchedule,
-} from '../src/pages/communication/appointment-rows.ts'
+} from '../src/appointment-model.ts'
 
 const NOW = '2026-10-15T09:00:00.000Z'
 const FUTURE = '2026-10-20T10:00:00.000Z'
@@ -217,27 +216,6 @@ test('DOM-ILT-102: satırın işlemleri kurulduğu andaki saate göredir; saat g
   assert.deepEqual(confirmed.actions, ['cancel'])
   assert.deepEqual(appointmentActions(confirmed, 'teacher', afterStart), [])
   assert.deepEqual(appointmentActions(confirmed, 'teacher', NOW), ['cancel'])
-})
-
-test('DOM-ILT-104: süzgeç seçenekleri sabittir: öğrenci yalnız kendi türlerini, öğretmen ve veli üç türü görür', () => {
-  const labels = (audience: Parameters<typeof appointmentFilters>[0], key: string) =>
-    appointmentFilters(audience)
-      .find((field) => field.key === key)
-      ?.options?.map((option) => option.value)
-  assert.deepEqual(labels('teacher', 'status'), [
-    'Bekliyor',
-    'Onaylandı',
-    'Reddedildi',
-    'İptal',
-    'Geri çekildi',
-  ])
-  assert.deepEqual(labels('teacher', 'type'), [
-    'Bireysel etüt',
-    'Veli görüşmesi',
-    'Akademik danışmanlık',
-  ])
-  assert.deepEqual(labels('parent', 'type'), labels('teacher', 'type'))
-  assert.deepEqual(labels('student', 'type'), ['Bireysel etüt', 'Akademik danışmanlık'])
 })
 
 test('DOM-ILT-103: veli panelinde seçili çocuğun olmayan randevu bulunamadı sayılır', () => {

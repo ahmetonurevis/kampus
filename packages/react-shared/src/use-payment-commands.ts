@@ -52,6 +52,7 @@ export function usePaymentList(query: {
   pageSize: number
   q?: string
   mebbis?: 'pending'
+  method?: PaymentMethodValue
 }) {
   return useApiQuery({
     key: [...PAYMENTS_KEY, 'list', query],

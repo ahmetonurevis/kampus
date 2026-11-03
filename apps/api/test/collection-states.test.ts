@@ -56,6 +56,31 @@ const SUBMISSIONS = [
   submission('test-s-e', 's11', { score: 55 }),
 ]
 
+const question = (id: string, teacherId: string, extra: Record<string, unknown> = {}) => ({
+  collection: 'questions' as const,
+  id,
+  data: {
+    id,
+    studentId: 's1',
+    teacherId,
+    subjectId: 'math',
+    title: 'Soru',
+    text: 'Metin',
+    createdAt: '2026-10-05T08:00:00.000Z',
+    answeredAt: null,
+    answer: '',
+    ...extra,
+  },
+})
+// Core `questionStatus`: yanıt geri çekmenin önündedir; boş `answeredAt` yanıt değildir.
+const QUESTIONS = [
+  question('test-q-a', 't1'),
+  question('test-q-b', 't1', { answeredAt: '2026-10-05T09:00:00.000Z', answer: 'Yanıt' }),
+  question('test-q-c', 't1', { withdrawnAt: '2026-10-05T09:30:00.000Z' }),
+  question('test-q-d', 't2'),
+  question('test-q-e', 't1', { answeredAt: '' }),
+]
+
 describe('durum süzgeçleri: cancelled ve graded', () => {
   let db: Database
   let close: () => Promise<void>
@@ -75,7 +100,7 @@ describe('durum süzgeçleri: cancelled ve graded', () => {
     await insertMissingRecords(
       db,
       created.id,
-      [...sampleRows(), ...LESSONS, ...SUBMISSIONS],
+      [...sampleRows(), ...LESSONS, ...SUBMISSIONS, ...QUESTIONS],
       FIXED_NOW,
     )
     return { ...created, adminCookie: await signInAs(app, created.admin) }
@@ -200,6 +225,40 @@ describe('durum süzgeçleri: cancelled ve graded', () => {
       await institution()
       const cookie = await signInAs(app, (await createInstitution(app)).admin)
       assert.deepEqual(await ids(cookie, 'submissions', 'graded=false'), [])
+    })
+  })
+
+  describe('questions: answered ve withdrawn', () => {
+    test('DOM-ILT-093: yanıt bekleyen soru answered=false&withdrawn=false; liste ve sayım aynı', async () => {
+      const { id, adminCookie } = await institution()
+      assert.deepEqual(await ids(adminCookie, 'questions', 'answered=true'), ['test-q-b'])
+      assert.deepEqual(await ids(adminCookie, 'questions', 'withdrawn=true'), ['test-q-c'])
+      const pending = 'answered=false&withdrawn=false'
+      assert.deepEqual(await ids(adminCookie, 'questions', pending), [
+        'test-q-a',
+        'test-q-d',
+        'test-q-e',
+      ])
+      assert.equal(await counted(adminCookie, 'questions', pending), 3)
+      // Öğretmen yalnız kendisine atanan soruları görür; süzgeç kapsamı genişletmez.
+      const teacher = await member(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+      assert.deepEqual(await ids(teacher, 'questions', pending), ['test-q-a', 'test-q-e'])
+      assert.equal(await counted(teacher, 'questions', pending), 2)
+    })
+
+    test('soru süzgeci başka koleksiyonda 400', async () => {
+      const { adminCookie } = await institution()
+      for (const query of ['answered=true', 'withdrawn=false']) {
+        const response = await get(`/api/v1/collections/submissions?${query}`, adminCookie)
+        assert.equal(response.statusCode, 400, query)
+        assert.equal(
+          response.json().issues[0].message,
+          'Bu süzgeç yalnız sorularda kullanılır.',
+          query,
+        )
+      }
+      const wrong = await get('/api/v1/collections/questions?answered=evet', adminCookie)
+      assert.equal(wrong.statusCode, 400)
     })
   })
 

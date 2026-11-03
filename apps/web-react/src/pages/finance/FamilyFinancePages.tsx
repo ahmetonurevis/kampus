@@ -84,9 +84,7 @@ export function ParentFinancePage({ page, receipts }: { page: NavPage; receipts:
 }
 
 function ChildStatement({ childId }: { childId: string }) {
-  const student = useCoreItem('students', childId)
-  if (!student.data) return null
-  return <StudentStatementSection studentId={childId} studentName={student.data.record.name} />
+  return <StudentStatementSection studentId={childId} />
 }
 
 /**
@@ -277,7 +275,6 @@ export function StudentPaymentsPage({ page }: { page: NavPage }) {
 function OwnStatement() {
   const { session } = useAuth()
   const studentId = session?.links.find((link) => link.kind === 'student')?.recordId
-  const student = useCoreItem('students', studentId ?? null)
-  if (!studentId || !student.data) return null
-  return <StudentStatementSection studentId={studentId} studentName={student.data.record.name} />
+  if (!studentId) return null
+  return <StudentStatementSection studentId={studentId} />
 }

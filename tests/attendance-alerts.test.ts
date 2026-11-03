@@ -44,7 +44,13 @@ test('DOM-ILT-052: devamsızlık türleri zorunlu hizmet bildirimidir ve akademi
   // DOM-YTK-040: akademik kapalıyken tür bildirim merkezinde gizlenir; mazeret kararı
   // (`absence_decided`, DOM-ILT-053) da akademik modüle bağlıdır.
   assert.deepEqual(
-    hiddenNotificationKinds({ communication: true, academic: false, learning: true, crm: true }),
+    hiddenNotificationKinds({
+      communication: true,
+      academic: false,
+      learning: true,
+      crm: true,
+      finance: true,
+    }),
     ['absence_recorded', 'absence_corrected', 'absence_decided'],
   )
 })

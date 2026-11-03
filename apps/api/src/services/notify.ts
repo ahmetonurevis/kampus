@@ -152,7 +152,7 @@ export function dedupedNotificationId(
  * kimlik satırındaki doğum tarihi (`student_identities`, ADR 0006 karar 9), yoksa kesin kayda
  * alınan adayın 18 yaş seçimi okunur. Kişisel veri loglanmaz.
  */
-async function learnerMinor(
+export async function learnerMinor(
   tx: Database,
   ctx: NotifyContext,
   institutionType: InstitutionType,

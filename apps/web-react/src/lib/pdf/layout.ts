@@ -76,6 +76,11 @@ export type LayoutMeta = {
 export const date = (value: Date | string | null | undefined) =>
   dateLabel(value, { year: 'numeric' })
 
+const WHITE = rgb('#FFFFFF')
+
+/** QR modülleri: `dark[y][x]` koyu kare; kenar boşluğu (sessiz bölge) çizimde bırakılır. */
+export type QrModules = { size: number; dark: readonly (readonly boolean[])[] }
+
 /** Sütun kalıbı: genişlikler mm, toplamı içerik genişliğidir. */
 export type TableColumn = { header: string; width: number }
 
@@ -300,6 +305,29 @@ export class DocumentLayout {
     this.rule(this.y + height - 3, PAGE.left, 76)
     this.rule(this.y + height - 3, 109, 83)
     this.y += height + 3
+  }
+
+  /**
+   * QR kodu: koyu modüller satır satır birleşik dikdörtgenlerle çizilir (görüntü gömülmez, PDF
+   * vektör kalır). Matris kenar boşluğu olmadan gelir; dört modüllük sessiz bölge `size` içinde
+   * beyaz zemin olarak bırakılır.
+   */
+  qrCode(matrix: QrModules, x: number, y: number, size: number) {
+    const quiet = 4
+    const cell = size / (matrix.size + quiet * 2)
+    this.box(x, y, size, size, WHITE)
+    matrix.dark.forEach((row, rowIndex) => {
+      let start = -1
+      for (let column = 0; column <= row.length; column++) {
+        const dark = row[column] === true
+        if (dark && start < 0) start = column
+        if (!dark && start >= 0) {
+          const top = y + (quiet + rowIndex) * cell
+          this.box(x + (quiet + start) * cell, top, (column - start) * cell, cell, COLORS.ink)
+          start = -1
+        }
+      }
+    })
   }
 
   /** Altbilgiyi (sorumluluk notu, sayfa "n / toplam", belge no) her sayfaya yazar. */

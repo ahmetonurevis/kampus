@@ -36,7 +36,7 @@ async function teacherMembershipId(admin: ApiClient, name: string): Promise<stri
 
 /**
  * Etkin B1 kuru ve planlı grubu; öğrenci gruba kursiyer olarak eklenir. `teacherName: null`
- * öğretmensiz grup açar (koordinatör kapsamı, OG-079).
+ * öğretmensiz grup açar (koordinatör kapsamı, OG-079). Kur, grup ve kayıt kimlikleri döner.
  */
 export async function seedTeacherGroup(
   admin: ApiClient,
@@ -46,7 +46,7 @@ export async function seedTeacherGroup(
     studentId: string
     groupName: string
   },
-): Promise<void> {
+): Promise<{ courseId: string; groupId: string; enrollmentId: string }> {
   const course = await admin.post(
     '/api/v1/courses',
     {
@@ -91,11 +91,12 @@ export async function seedTeacherGroup(
   expect(group.status, JSON.stringify(group.body)).toBe(201)
   const groupId = (group.body as { data: { id: string } }).data.id
 
+  const enrollmentId = randomUUID()
   const { db, close } = connectPostgres(e2e.databaseUrl)
   try {
     await db.insert(languageGroupMembers).values({
       institutionId: input.institutionId,
-      id: randomUUID(),
+      id: enrollmentId,
       groupId,
       studentId: input.studentId,
       status: 'active',
@@ -104,6 +105,7 @@ export async function seedTeacherGroup(
   } finally {
     await close()
   }
+  return { courseId, groupId, enrollmentId }
 }
 
 /** Öğretmene seviyenin akademik koordinatörlüğünü verir (DOM-YTK-027). */

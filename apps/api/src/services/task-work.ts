@@ -3,6 +3,7 @@ import {
   listeningView,
   passageView,
   seededRandom,
+  shuffleItemOrder,
 } from '@kampus/school-core/content/resource.ts'
 import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
@@ -164,6 +165,12 @@ export interface ScoringContext {
    * Bağ yoksa ya da kayıt okunamıyorsa (kaldırıldı) `null`.
    */
   listening: StoredResourceVersion | null
+  /**
+   * Quiz'in `shuffleItems` ayarı (core `shuffleItemOrder`): açıksa kursiyer maddeleri deneme
+   * kimliğinden tohumlu sırayla görür (`attemptItemOrder`). Puan, cevap ve sonuç madde kimliğiyle
+   * eşlenir; `items` her zaman yazarın sırasındadır. Tek soru görevinde `false`.
+   */
+  shuffleItems: boolean
 }
 
 /**
@@ -298,6 +305,7 @@ function buildScoringContext(
   let versions: Map<string, StoredResourceVersion>
   let passage: StoredResourceVersion | null = null
   let listening: StoredResourceVersion | null = null
+  let shuffleItems = false
   switch (content.type) {
     case 'question':
       entries = [{ questionVersionId: scoring.id, points: 1 }]
@@ -306,6 +314,7 @@ function buildScoringContext(
     case 'quiz':
     case 'exercise_set':
       entries = content.items
+      shuffleItems = content.shuffleItems
       if (content.passageVersionId !== null) {
         const linked = questionPairs.get(content.passageVersionId)?.version
         // Okunamayan parça metinsiz gelir; kaldırılmış ya da askıdaki parçada yazma kapısı
@@ -351,6 +360,7 @@ function buildScoringContext(
       ],
       passage,
       listening,
+      shuffleItems,
     }
   } catch (error) {
     throw mapOperationError(error)
@@ -383,13 +393,44 @@ export async function assertWorkOpen(
 }
 
 /**
+ * Denemenin madde sırası: `shuffleItems` açıksa deneme kimliğinden tohumlu karışım (sayfa
+ * yenilenince aynı, denemeler arasında farklı olabilir), kapalıysa yazarın sırası. Yalnız
+ * gösterim sırasıdır; puanlama ve cevap eşleme madde kimliğiyledir.
+ */
+export function attemptItemOrder(context: ScoringContext, attemptId: string): ScoringItem[] {
+  return shuffleItemOrder(context.items, context.shuffleItems, seededRandom(`${attemptId}:items`))
+}
+
+/**
+ * Madde kimlikli bir listeyi denemenin sırasına dizer (kursiyerin sonuç görünümü soru listesiyle
+ * aynı sırada olsun diye); listede olmayan kimlik sona gider, göreli sırası korunur.
+ */
+export function inAttemptOrder<T extends { questionVersionId: string }>(
+  list: readonly T[],
+  context: ScoringContext,
+  attemptId: string,
+): T[] {
+  if (!context.shuffleItems) return [...list]
+  const rank = new Map(
+    attemptItemOrder(context, attemptId).map((item, index) => [item.questionVersionId, index]),
+  )
+  const at = (item: T) => rank.get(item.questionVersionId) ?? rank.size
+  return [...list].sort((a, b) => at(a) - at(b))
+}
+
+/**
  * Denemede gösterilen sorular: anahtar ve açıklama yoktur (ADR 0004 karar 3, core `learnerView`);
  * seçenekler deneme ve soru kimliğinden tohumlu karıştırılır, sayfa yenilenince sıra aynı kalır.
+ * Quiz'in `shuffleItems` ayarı açıksa maddeler de deneme sırasıyla gelir (`attemptItemOrder`);
+ * `authorOrder` personelin inceleme görünümüdür ve yazarın sırasını korur.
  */
-// TODO(F4b3-soru-sirasi): Quiz'in `shuffleItems` ayarı soru sırasını karıştırmaz; core'da madde
-// sırası için dışa açık karıştırıcı yok, sorular yazarın sırasıyla gelir.
-export function questionsFor(context: ScoringContext, attemptId: string) {
-  return context.items.map((item) => {
+export function questionsFor(
+  context: ScoringContext,
+  attemptId: string,
+  options: { authorOrder?: boolean } = {},
+) {
+  const items = options.authorOrder === true ? context.items : attemptItemOrder(context, attemptId)
+  return items.map((item) => {
     const version = context.versions.get(item.questionVersionId)
     const view =
       version === undefined

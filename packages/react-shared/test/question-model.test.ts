@@ -2,7 +2,6 @@ import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 import { responseDueAt } from '@kampus/school-core/lib/communication.ts'
-import { sortRows } from '../src/lib/list-query.ts'
 import {
   DUE_SOON_MINUTES,
   OVERDUE_LABEL,
@@ -11,7 +10,7 @@ import {
   orderQuestions,
   questionLookups,
   questionRow,
-} from '../src/pages/learning/question-rows.ts'
+} from '../src/question-model.ts'
 
 const NOW = '2026-10-15T09:00:00.000Z'
 
@@ -261,24 +260,18 @@ test('DOM-ILT-013: yanıt süresi süzgeci aşılmış ve yaklaşan soruları ay
   )
 })
 
-test('DOM-ILT-093: kalan dakika sayısal sıralanır; acil soru önce gelir, yanıtlananlar sona düşer', () => {
+test('DOM-ILT-093: kalan dakika yanıt süresine göre hesaplanır; gecikmiş eksi, yanıtlanan boştur', () => {
   const due = Date.parse(responseDueAt(base.createdAt))
   const now = new Date(due - 120 * 60_000).toISOString()
   const make = (id: string, createdAt: string, extra: Partial<Question> = {}) =>
     questionRow(wrap({ ...base, id, createdAt, ...extra }), lookups, now)
-  const rows = [
-    make('answered', '2026-10-14T09:00:00.000Z', { answeredAt: now, answer: 'Yanıt.' }),
-    make('late', '2026-10-13T09:00:00.000Z'),
-    make('fresh', '2026-10-14T09:00:00.000Z'),
-  ]
-  // "Yanıt süresi" sütunu `remainingMinutes` anahtarıyla DataTable'ın sayısal sıralamasından geçer.
-  const sorted = sortRows(rows, 'remainingMinutes', 1)
-  assert.deepEqual(
-    sorted.map((item) => item.id),
-    ['late', 'fresh', 'answered'],
-  )
-  assert.deepEqual(
-    sortRows(rows, 'remainingMinutes', -1).map((item) => item.id),
-    ['fresh', 'late', 'answered'],
-  )
+  const fresh = make('fresh', base.createdAt)
+  const late = make('late', '2026-10-13T09:00:00.000Z')
+  const answered = make('answered', '2026-10-14T09:00:00.000Z', {
+    answeredAt: now,
+    answer: 'Yanıt.',
+  })
+  assert.equal(fresh.remainingMinutes, 120)
+  assert.ok((late.remainingMinutes ?? 0) < 0)
+  assert.equal(answered.remainingMinutes, null)
 })

@@ -1,6 +1,7 @@
 import type { Locator, Page } from '@playwright/test'
 
 import { expect, test } from './support/fixtures.ts'
+import { pickOutcome } from './support/ui.ts'
 
 // Soru bankası yazma ekranı (OG-068, IST-033; DOM-KYN-002, 032): öğretmen içerik havuzunda
 // sıralama ve eşleştirme sorusu yazar, kaydetmeden önce oynatıcıyla önizler, yayımlar ve yeni
@@ -35,8 +36,7 @@ async function openQuestionForm(page: Page, title: string, questionType: string)
 async function tagAndDeclare(form: Locator) {
   await form.getByLabel('Ders').selectOption({ label: 'Matematik' })
   await form.getByLabel('7. sınıf', { exact: true }).check()
-  await form.getByRole('button', { name: 'Kazanım ekle' }).click()
-  await form.getByLabel('1. kazanım kodu').fill('MAT.7.1.1')
+  await pickOutcome(form, 'MAT.7.1.1')
   await form.getByLabel('Menşe ve lisans').selectOption('institution_original')
   await form.getByLabel(/Bu içeriği kullanma hakkım var/).check()
 }

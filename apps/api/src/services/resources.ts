@@ -339,7 +339,7 @@ async function issuesOf(
   }).map((issue) => ({ ...issue, path: [...issue.path] }))
 }
 
-async function loadReadable(ctx: ServiceContext, resourceId: string, versionIds?: string[]) {
+export async function loadReadable(ctx: ServiceContext, resourceId: string, versionIds?: string[]) {
   const reader = await contentReader(ctx)
   const resource = await findResource(ctx.db, ctx.institutionId, resourceId)
   if (!resource) throw new NotFoundError()

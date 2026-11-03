@@ -2,6 +2,7 @@ import type { Page } from '@playwright/test'
 
 import { expect, test } from './support/fixtures.ts'
 import { markFilesReady, pdf } from './support/materials.ts'
+import { pickOutcome } from './support/ui.ts'
 
 // Materyal dosyası (OG-250; DOM-KYN-006, 051): öğretmen Materyal Kütüphanesi'nden içerik havuzunda
 // materyal dosyası taslağı açar, PDF yükler, taslakta bir dosyayı çıkarır ve yayımlar; içerik
@@ -40,8 +41,7 @@ test('DOM-KYN-006: öğretmen materyale PDF ekleyip yayımlar, taslakta dosya ç
   await expect(attached.getByRole('listitem').first()).toContainText(MAIN.name)
   await form.getByLabel('Ders').selectOption({ label: 'Matematik' })
   await form.getByLabel('7. sınıf', { exact: true }).check()
-  await form.getByRole('button', { name: 'Kazanım ekle' }).click()
-  await form.getByLabel('1. kazanım kodu').fill('MAT.7.1.1')
+  await pickOutcome(form, 'MAT.7.1.1')
   await form.getByLabel('Menşe ve lisans').selectOption('institution_original')
   await form.getByLabel(/Bu içeriği kullanma hakkım var/).check()
   await markFilesReady(school.institutionId)

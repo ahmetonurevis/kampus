@@ -13,7 +13,7 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
@@ -23,15 +23,21 @@ import { sortableColumns } from '@/lib/collection-list.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import {
+  CLASS_FILTER_TOO_MANY,
   INVOICE_LIST,
   INVOICE_STATUS_OPTIONS,
+  invoiceClassScope,
   invoiceCsvRow,
   invoiceExportQuery,
+  invoiceFilterFields,
   invoiceListQuery,
   invoiceRow,
   isInvoiceStatusKey,
+  type InvoiceBranchRef,
+  type InvoiceClassRef,
   type InvoiceRow,
 } from './finance-rows.ts'
+import { InvoicePresets } from './InvoicePresets.tsx'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
@@ -41,7 +47,7 @@ import { PaymentsSection } from './PaymentsSection.tsx'
 import { WithdrawalsSection } from './WithdrawalsSection.tsx'
 import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
 
-const INVOICE_URL_FILTERS = { status: 'durum' }
+const INVOICE_URL_FILTERS = { status: 'durum', branchId: 'kampus', classId: 'sinif' }
 const SORTABLE = sortableColumns(INVOICE_LIST)
 const MOBILE_COLUMNS = ['installment', 'dueDate', 'amount', 'status']
 const CSV_NAME = 'finans-raporu'
@@ -66,7 +72,8 @@ const viewOf = (param: string | null): FinanceView =>
 
 /**
  * Finans & Tahsilat (yönetici `/finans`, ön büro `/tahsilat-takip`; Vue `Finance.vue`): kurumun
- * taksitleri sunucu sayfalı; öğrenci adı/numarası/sınıf araması, ödeme durumu filtresi,
+ * taksitleri sunucu sayfalı; öğrenci adı/numarası/sınıf araması, ödeme durumu filtresi (hazır
+ * çipler aynı süzgeçtir), kampüs/sınıf ve tahsilat tarihi süzgeci (panel),
  * öğrenci/vade/tutar/taksit sıralaması sunucuda uygulanır. Toplam kartları kurum geneli
  * `GET /finance/totals` yanıtından gelir; kısmi ödemeleri sayar (liste araması ve durumundan bağımsız).
  * Öğrenci adı, okul numarası ve sınıf adı satırın `joined` alanından gelir; ayrı öğrenci/sınıf listesi çekilmez.
@@ -79,8 +86,36 @@ export function FinancePage({ page }: { page: NavPage }) {
   const isManager = session?.role === 'yonetici'
   const list = useListState('taksitler', { urlFilters: INVOICE_URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
-  const query = useMemo(() => invoiceListQuery(list.state, search), [list.state, search])
-  const active = useCoreList('invoices', query)
+  const branchQuery = useCoreAll('branches')
+  const classQuery = useCoreAll('classes')
+  const branches = useMemo<InvoiceBranchRef[]>(
+    () => (branchQuery.data ?? []).map(({ record }) => ({ id: record.id, name: record.name })),
+    [branchQuery.data],
+  )
+  const classes = useMemo<InvoiceClassRef[]>(
+    () =>
+      (classQuery.data ?? []).map(({ record }) => ({
+        id: record.id,
+        name: record.name,
+        branchId: record.branchId,
+      })),
+    [classQuery.data],
+  )
+  const branchFilter =
+    typeof list.state.filters.branchId === 'string' ? list.state.filters.branchId : ''
+  const filterFields = useMemo(
+    () => invoiceFilterFields(branches, classes, branchFilter),
+    [branches, classes, branchFilter],
+  )
+  const classScope = invoiceClassScope(list.state.filters, classes)
+  const query = useMemo(
+    () => invoiceListQuery(list.state, search, classes),
+    [list.state, search, classes],
+  )
+  // Kampüs süzgeci sınıf listesine çevrilir: sınıflar gelmeden süzülmemiş liste istenmez.
+  const active = useCoreList('invoices', query, {
+    enabled: branchFilter === '' || classQuery.data !== undefined,
+  })
   const totalsQuery = useFinanceTotals()
   const totals = totalsQuery.data?.data
 
@@ -174,7 +209,7 @@ export function FinancePage({ page }: { page: NavPage }) {
   function download() {
     const csvColumns = columns.filter((column) => column.key !== ACTIONS_KEY)
     void csv.download(CSV_NAME, csvColumns, async () => {
-      const items = await fetchAll(invoiceExportQuery(list.state, search))
+      const items = await fetchAll(invoiceExportQuery(list.state, search, classes))
       return items.map((item) => invoiceCsvRow(invoiceRow(item, today)))
     })
   }
@@ -200,6 +235,15 @@ export function FinancePage({ page }: { page: NavPage }) {
           )
         }
       />
+      {branchQuery.error || classQuery.error ? (
+        <LookupError
+          error={branchQuery.error ?? classQuery.error}
+          onRetry={() => {
+            void branchQuery.refetch()
+            void classQuery.refetch()
+          }}
+        />
+      ) : null}
       {totalsQuery.error ? (
         <LookupError error={totalsQuery.error} onRetry={() => void totalsQuery.refetch()} />
       ) : null}
@@ -259,6 +303,11 @@ export function FinancePage({ page }: { page: NavPage }) {
             <p className="text-sm text-muted-foreground">
               {view.total} kayıt · Kurum genelinde ödeme hareketleri
             </p>
+            {classScope.kind === 'too_many' ? (
+              <p role="status" className="mt-2 text-sm text-muted-foreground">
+                {CLASS_FILTER_TOO_MANY}
+              </p>
+            ) : null}
           </header>
           <ServerDataTable
             list={list}
@@ -274,6 +323,8 @@ export function FinancePage({ page }: { page: NavPage }) {
               error ? <QueryError error={error} onRetry={() => void active.refetch()} /> : undefined
             }
             onRowClick={(row) => openInvoice(row.id)}
+            filters={filterFields}
+            presets={<InvoicePresets value={statusKey} onChange={setStatus} />}
             externalActive={statusKey !== ''}
             externalLabel={statusKey ? `Ödeme durumu: ${INVOICE_STATUS_LABELS[statusKey]}` : ''}
             onReset={() => setStatus(ALL)}

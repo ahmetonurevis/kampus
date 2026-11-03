@@ -1,16 +1,25 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
+import type { CollectionQuery } from '@kampus/react-shared/collections.ts'
 import {
+  ALL_STAGES,
   CONTACT_LABELS,
+  CREATED_FILTER,
   isOpenStage,
   prospectContactOwner,
   meetingEvents,
+  meetingView,
+  meetingWeek,
+  meetingWeekStart,
+  meetingWeekTitle,
   prospectRow,
   slotLabel,
   stageFilter,
+  stageTabs,
   stageTargets,
   stageTone,
+  withCreatedRange,
 } from '../src/pages/crm/prospect-rows.ts'
 
 type Prospect = ReturnType<typeof createSeed>['prospects'][number]
@@ -171,4 +180,118 @@ test('DOM-KAY-003: aday satırı telefonun sahibini taşır', () => {
   assert.equal(row(true).phoneOwner, 'guardian')
   assert.equal(row(undefined).phoneOwner, 'guardian')
   assert.equal(row(false).phoneOwner, 'self')
+})
+
+// --- ON-035: Vue eşitliği (Crm.vue aday listesi ve Tanışma Görüşmeleri) -------------------
+
+test('ON-035, DOM-KAY-007: kayıt tarihi aralığı sunucuya createdAt günü olarak gider, öteki süzgeçler korunur', () => {
+  const base = { page: 2, filters: { stage: 'Yeni aday' } }
+  assert.equal(CREATED_FILTER.type, 'date')
+  assert.deepEqual(withCreatedRange(base, { min: '2026-10-01', max: '2026-10-31' }), {
+    page: 2,
+    filters: {
+      stage: 'Yeni aday',
+      dateField: 'createdAt',
+      dateFrom: '2026-10-01',
+      dateTo: '2026-10-31',
+    },
+  })
+  // Tek uç açık aralıktır.
+  const empty: Pick<CollectionQuery, 'filters'> = {}
+  assert.deepEqual(withCreatedRange(empty, { min: '', max: '2026-10-31' }).filters, {
+    dateField: 'createdAt',
+    dateTo: '2026-10-31',
+  })
+})
+
+test('ON-035: boş, biçimsiz ve ters kayıt tarihi aralığı sorguyu değiştirmez', () => {
+  const base = { filters: { source: 'Telefon' } }
+  assert.equal(withCreatedRange(base, undefined), base)
+  assert.equal(withCreatedRange(base, ''), base)
+  assert.equal(withCreatedRange(base, { min: null, max: '' }), base)
+  assert.equal(withCreatedRange(base, { min: '1.10.2026', max: 'x' }), base)
+  assert.equal(withCreatedRange(base, { min: '2026-10-31', max: '2026-10-01' }), base)
+})
+
+test('ON-035: aşama sekmeleri tüm adaylar ve her aşamayı sayısıyla verir; sayım yokken rozet yoktur', () => {
+  const counts = {
+    total: 9,
+    groups: [
+      { value: 'Yeni aday', count: 5 },
+      { value: 'Kayıt oldu', count: 3 },
+      { value: null, count: 1 },
+    ],
+  }
+  const tabs = stageTabs(counts, 'school')
+  assert.deepEqual(tabs[0], { value: ALL_STAGES, label: 'Tüm adaylar', count: 9 })
+  assert.equal(tabs.length, 7)
+  assert.deepEqual(
+    tabs.map((tab) => tab.count),
+    [9, 5, 0, 0, 0, 3, 0],
+  )
+  assert.ok(stageTabs(undefined, 'school').every((tab) => tab.count === undefined))
+  const language = stageTabs(counts, 'language_school').map((tab) => tab.label)
+  assert.ok(language.includes('Seviye tespiti / deneme dersi planlandı'))
+  // Sekme değeri saklanan aşamadır; dil okulu adı yalnız etikettir.
+  assert.ok(stageTabs(counts, 'language_school').some((tab) => tab.value === 'Görüşme planlandı'))
+})
+
+test('ON-035: görünüm adresten okunur; bilinmeyen değer listedir', () => {
+  assert.equal(meetingView('hafta'), 'hafta')
+  assert.equal(meetingView('liste'), 'liste')
+  assert.equal(meetingView(null), 'liste')
+  assert.equal(meetingView('ay'), 'liste')
+})
+
+test('ON-035: hafta adresteki günün pazartesisidir; geçersiz değer bugünün haftasıdır', () => {
+  // 15 Ekim 2026 perşembe.
+  assert.equal(meetingWeekStart(null, '2026-10-15'), '2026-10-12')
+  assert.equal(meetingWeekStart('2026-10-25', '2026-10-15'), '2026-10-19')
+  assert.equal(meetingWeekStart('bozuk', '2026-10-15'), '2026-10-12')
+  assert.equal(meetingWeekTitle('2026-10-19'), '19 Eki – 25 Eki 2026')
+})
+
+test('ON-035, DOM-KAY-033: haftalık takvim yedi gündür; olaylar kendi gününde saat sırasıyla, bugün işaretli', () => {
+  const events = meetingEvents(
+    [
+      prospect({ id: 'p-late', stage: 'Görüşme planlandı', trialAt: '2026-10-20T13:00:00.000Z' }),
+      prospect({ id: 'p-early', stage: 'Görüşme planlandı', trialAt: '2026-10-20T07:00:00.000Z' }),
+      prospect({ id: 'p-next', stage: 'Görüşme planlandı', trialAt: '2026-10-27T10:00:00.000Z' }),
+      // İstanbul'da 26 Ekim 01:30: UTC günü 25 Ekim olsa da sonraki haftadadır.
+      prospect({ id: 'p-edge', stage: 'Görüşme planlandı', trialAt: '2026-10-25T22:30:00.000Z' }),
+    ],
+    'school',
+    context,
+  )
+  const week = meetingWeek(events, '2026-10-19', '2026-10-20')
+  assert.equal(week.length, 7)
+  assert.deepEqual(
+    week.map((day) => day.day),
+    [
+      '2026-10-19',
+      '2026-10-20',
+      '2026-10-21',
+      '2026-10-22',
+      '2026-10-23',
+      '2026-10-24',
+      '2026-10-25',
+    ],
+  )
+  assert.deepEqual(
+    week[1]?.events.map((event) => event.prospectId),
+    ['p-early', 'p-late'],
+  )
+  assert.deepEqual(
+    week.map((day) => day.today),
+    [false, true, false, false, false, false, false],
+  )
+  assert.equal(
+    week.flatMap((day) => day.events).some((event) => event.prospectId === 'p-next'),
+    false,
+  )
+  assert.equal(
+    week.flatMap((day) => day.events).some((event) => event.prospectId === 'p-edge'),
+    false,
+  )
+  assert.match(week[0]?.label ?? '', /Pazartesi/)
 })

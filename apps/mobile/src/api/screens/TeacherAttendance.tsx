@@ -3,23 +3,45 @@ import { AppState, Pressable, View, useWindowDimensions } from 'react-native'
 import { toApiError } from '@kampus/api-client/errors.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
+import {
+  attendanceMarks,
+  bulkMark,
+  lateMinutesIssueErrors,
+  lateMinutesPayload,
+  markCounts,
+  minuteChangedIds,
+  savedLateMinutes,
+} from '@kampus/react-shared/attendance-model.ts'
 import { useRecordAttendance } from '@kampus/react-shared/use-academic-commands.ts'
 import { useCollectionAll } from '@kampus/react-shared/use-collection.ts'
 import { useLessonsInRange } from '@kampus/react-shared/use-lessons.ts'
-import { Badge, Button, Empty, Icon, Sheet, T, toneSoft, useColors } from '../../ui/components.tsx'
-import { ListRow, Notice, Screen, Section } from '../../ui/SchoolLayout.tsx'
+import {
+  Badge,
+  Button,
+  Empty,
+  Field,
+  Icon,
+  Sheet,
+  T,
+  toneSoft,
+  useColors,
+} from '../../ui/components.tsx'
+import type { ApiScreenProps } from '../../route-types.ts'
+import { ListRow, Notice, Screen, Section, Tabs } from '../../ui/SchoolLayout.tsx'
+import {
+  DEFAULT_TEACHER_ATTENDANCE_TAB,
+  TEACHER_ATTENDANCE_TABS,
+  type TeacherAttendanceTab,
+} from '../attendance-history.ts'
 import {
   ATTENDANCE_CHOICES,
   attendanceFailureText,
-  attendanceMarks,
   attendancePayload,
   CHANGED_ELSEWHERE_NOTICE,
   changedElsewhere,
   attendanceTargets,
   isStaleDay,
   pinnedClassVersion,
-  markAll,
-  markCounts,
   markStudent,
   teachingClassIds,
   unsavedCount,
@@ -35,6 +57,8 @@ import {
   useApiSession,
   useNotify,
 } from '../shell.ts'
+import { useRouteTab } from '../use-route-tab.ts'
+import { AttendanceHistory } from './attendance-history.tsx'
 
 type ClassRecord = State['classes'][number]
 type SubjectRecord = State['subjects'][number]
@@ -153,6 +177,9 @@ function AttendanceSheet({
   // Yalnız kullanıcının dokunduğu işaretler; kayıtlı ya da varsayılan durum altta türetilir.
   const [edits, setEdits] = useState<Record<string, AttendanceMark>>({})
   const [failure, setFailure] = useState<string | null>(null)
+  // Geç kalma dakikası alanları (ham metin) ve alan hataları; kayıtlı dakika altta türetilir.
+  const [minuteEdits, setMinuteEdits] = useState<Record<string, string>>({})
+  const [minuteErrors, setMinuteErrors] = useState<Record<string, string>>({})
   // İlk düzenlemedeki sunucu durumu; sonradan değişirse başka yerde değişmiş demektir.
   const [baseline, setBaseline] = useState<Record<string, AttendanceMark> | null>(null)
 
@@ -164,8 +191,16 @@ function AttendanceSheet({
   const savedRecords = useMemo(() => (saved.data ?? []).map((row) => row.record), [saved.data])
   const base = useMemo(() => attendanceMarks(ids, savedRecords), [ids, savedRecords])
   const marks = useMemo(() => attendanceMarks(ids, savedRecords, edits), [ids, savedRecords, edits])
+  const minuteText = useMemo(
+    () => ({ ...savedLateMinutes(savedRecords), ...minuteEdits }),
+    [savedRecords, minuteEdits],
+  )
   const counts = markCounts(marks)
-  const changed = unsavedCount(base, marks)
+  const changed = unsavedCount(
+    base,
+    marks,
+    minuteChangedIds(marks, savedLateMinutes(savedRecords), minuteText),
+  )
   const elsewhere = changedElsewhere(baseline, base, edits)
   const alreadyTaken = savedRecords.length > 0
   const busy = record.isPending
@@ -173,8 +208,16 @@ function AttendanceSheet({
   const loading = !students.data || !saved.data
   const error = students.error ?? saved.error
 
+  // Durum değişince o öğrencinin eski dakika hatası kalkar; gönderimde yeniden hesaplanır.
+  const clearMinuteErrors = (studentIds: readonly string[]) =>
+    setMinuteErrors((current) => {
+      const next = { ...current }
+      for (const id of studentIds) delete next[id]
+      return next
+    })
   const change = (next: Record<string, AttendanceMark>) => {
     setFailure(null)
+    clearMinuteErrors(Object.keys(next).filter((id) => next[id] !== edits[id]))
     if (baseline === null && Object.keys(next).length > 0) setBaseline(base)
     setEdits(next)
   }
@@ -185,21 +228,42 @@ function AttendanceSheet({
       return
     }
     const updating = alreadyTaken
+    // Geçersiz dakika istek atılmadan o öğrencinin alanında gösterilir (kural core şemasındandır).
+    const late = lateMinutesPayload(marks, minuteText)
+    setMinuteErrors(late.errors)
+    if (Object.keys(late.errors).length > 0) {
+      setFailure('Geç kalma süresini kontrol edin.')
+      return
+    }
     const outcome = await record.submit(
-      attendancePayload({ classId: target.classId, today, marks, classVersion }),
+      attendancePayload({
+        classId: target.classId,
+        today,
+        marks,
+        classVersion,
+        lateMinutes: late.minutes,
+      }),
       // Hata pencerede gösterilir; aynı mesaj toast olarak da çıkmaz.
       { silent: () => true },
     )
     if (outcome.status === 'busy') return
     if (outcome.status === 'failed') {
       // İşaretler yerinde kalır; kayıtlı durum sunucudan tazelenir (409) ya da hiç değişmemiştir.
-      setFailure(attendanceFailureText(outcome.error))
+      // Üst sınır (ders süresi) sunucuda denetlenir; iletisi o öğrencinin alanına yazılır.
+      const fieldErrors = lateMinutesIssueErrors(outcome.error.issues)
+      setMinuteErrors(fieldErrors)
+      setFailure(
+        Object.keys(fieldErrors).length > 0
+          ? 'Geç kalma süresini kontrol edin.'
+          : attendanceFailureText(outcome.error),
+      )
       // Çakışmada sunucunun son hâli ekrandadır ve hata gösterildi: sürüm yeniden sabitlenir,
       // başka yerde değişti uyarısı bir sonraki düzenlemedeki durumdan sayılır.
       setBaseline(null)
       onRepin()
       return
     }
+    setMinuteEdits({})
     notify(updating ? 'Yoklama güncellendi.' : 'Yoklama kaydedildi.')
     onClose()
   }
@@ -270,7 +334,7 @@ function AttendanceSheet({
           <Button
             icon="CheckCheck"
             disabled={busy}
-            onPress={() => change(markAll(edits, ids, 'present'))}
+            onPress={() => change(bulkMark(edits, ids, 'present'))}
           >
             Tümünü geldi işaretle
           </Button>
@@ -296,6 +360,30 @@ function AttendanceSheet({
                   disabled={busy}
                   onChange={(status) => change(markStudent(edits, student.id, status))}
                 />
+                {marks[student.id] === 'late' && (
+                  <View style={{ gap: 6 }}>
+                    <T bold size={14}>
+                      Geç kalma süresi (dakika, isteğe bağlı)
+                    </T>
+                    <Field
+                      hideLabel
+                      compact
+                      label={`${student.name}: geç kalma süresi, dakika`}
+                      value={minuteText[student.id] ?? ''}
+                      keyboard="number-pad"
+                      maxLength={3}
+                      placeholder="Örn. 10"
+                      editable={!busy}
+                      error={minuteErrors[student.id] ?? ''}
+                      hint="Boş bırakırsanız dakikasız geç geldi olarak kaydedilir."
+                      onChange={(text) => {
+                        setFailure(null)
+                        clearMinuteErrors([student.id])
+                        setMinuteEdits((current) => ({ ...current, [student.id]: text }))
+                      }}
+                    />
+                  </View>
+                )}
               </View>
             ))}
           </View>
@@ -361,17 +449,17 @@ function useAttendanceDay(): [string, () => void] {
 }
 
 /**
- * Öğretmen: yoklama alma (web `ogretmen/yoklama` "Yoklama al" bölümü). Bugünün (Europe/Istanbul)
+ * Bugünkü yoklama sekmesi (web `ogretmen/yoklama` "Yoklama al" bölümü). Bugünün (Europe/Istanbul)
  * dersleri `/lessons` ucundan gelir (sunucu öğretmenin kendi derslerine daraltır, iptal dersler
  * dönmez); ders verilen ama bugün dersi olmayan sınıflar ayrı bölümdedir. Ders programı modülü
  * kapalıysa web'deki gibi yalnız ders verilen sınıflar listelenir. Öğretmen yalnız ders verdiği
  * sınıfın bugünkü yoklamasını alır; yetkiyi sunucu yine denetler (DOM-YTK-022, DOM-AKD-035). Gün
- * uygulama öne gelince ve pencere açılırken yeniden hesaplanır. Yoklama geçmişi telefonda yoktur.
+ * uygulama öne gelince ve pencere açılırken yeniden hesaplanır. Geçmiş ayrı sekmededir
+ * (`attendance-history.tsx`).
  */
-export default function TeacherAttendance() {
+function TodayAttendance() {
   const session = useApiSession()
   const notify = useNotify()
-  const open = canOpenScreen(session, 'TeacherAttendance')
   const planningOpen = isModuleOpen(session.modules, PLANNING_MODULE)
   const [today, refreshDay] = useAttendanceDay()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
@@ -379,19 +467,14 @@ export default function TeacherAttendance() {
   const [pin, setPin] = useState<VersionPin | null>(null)
 
   // Öğretmen `teachers` okumasında yalnız kendi kaydını görür; atamalar ders verdiği sınıfları verir.
-  const teachers = useCollectionAll<TeacherRecord>('teachers', {}, { enabled: open })
-  const assignments = useCollectionAll<AssignmentRecord>('assignments', {}, { enabled: open })
-  const classes = useCollectionAll<ClassRecord>('classes', {}, { enabled: open })
-  const subjects = useCollectionAll<SubjectRecord>('subjects', {}, { enabled: open })
-  const taken = useCollectionAll<AttendanceRecord>(
-    'attendance',
-    { filters: { dateFrom: today, dateTo: today } },
-    { enabled: open },
-  )
-  const lessons = useLessonsInRange(
-    { dateFrom: today, dateTo: today },
-    { enabled: open && planningOpen },
-  )
+  const teachers = useCollectionAll<TeacherRecord>('teachers', {})
+  const assignments = useCollectionAll<AssignmentRecord>('assignments', {})
+  const classes = useCollectionAll<ClassRecord>('classes', {})
+  const subjects = useCollectionAll<SubjectRecord>('subjects', {})
+  const taken = useCollectionAll<AttendanceRecord>('attendance', {
+    filters: { dateFrom: today, dateTo: today },
+  })
+  const lessons = useLessonsInRange({ dateFrom: today, dateTo: today }, { enabled: planningOpen })
 
   const teacherId = teachers.data?.[0]?.record.id ?? ''
   const sections = useMemo(() => {
@@ -448,14 +531,8 @@ export default function TeacherAttendance() {
     repin(target)
   }
 
-  if (!open)
-    return (
-      <Screen>
-        <Empty title="Modül kullanıma kapalı" text="Yönetici modül tercihlerini değiştirebilir." />
-      </Screen>
-    )
   return (
-    <Screen>
+    <>
       <View style={{ gap: 6 }}>
         <T muted>
           {planningOpen
@@ -519,6 +596,35 @@ export default function TeacherAttendance() {
           onClose={() => setSelectedKey(null)}
         />
       )}
+    </>
+  )
+}
+
+/**
+ * Öğretmen: yoklama (web `ogretmen/yoklama`). İki sekme: bugünkü yoklamayı alma ve yoklama geçmişi
+ * (salt okunur). Devamsızlık bildirimi geçmiş sekmesini açar (`route.params.tab`).
+ */
+export default function TeacherAttendance({
+  route,
+  navigation,
+}: ApiScreenProps<'TeacherAttendance'>) {
+  const session = useApiSession()
+  const open = canOpenScreen(session, 'TeacherAttendance')
+  const [tab, setTab] = useRouteTab<TeacherAttendanceTab>(
+    route.params,
+    DEFAULT_TEACHER_ATTENDANCE_TAB,
+    () => navigation.setParams({ tab: undefined }),
+  )
+  if (!open)
+    return (
+      <Screen>
+        <Empty title="Modül kullanıma kapalı" text="Yönetici modül tercihlerini değiştirebilir." />
+      </Screen>
+    )
+  return (
+    <Screen>
+      <Tabs value={tab} onChange={setTab} options={TEACHER_ATTENDANCE_TABS} />
+      {tab === 'gecmis' ? <AttendanceHistory /> : <TodayAttendance />}
     </Screen>
   )
 }

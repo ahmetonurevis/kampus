@@ -40,6 +40,7 @@ import {
 } from '../db/privacy.ts'
 import { findRecord } from '../db/records.ts'
 import { loadMembershipGuardians } from '../db/student-guardians.ts'
+import { findStudentIdentity } from '../db/student-identities.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment } from './commands.ts'
@@ -83,7 +84,9 @@ const ownStudentId = (links: readonly ActorLink[]) =>
   links.find((link) => link.kind === 'student')?.recordId
 
 /**
- * Rızanın veri sahibi öğrenci: güncel doğum tarihiyle (DOM-YTK-057). Geçersiz ya da boş doğum
+ * Rızanın veri sahibi öğrenci: güncel doğum tarihiyle (DOM-YTK-057). Kesin kayıt doğum tarihini
+ * yalnız kimlik tablosuna yazar (`student_identities`, ADR 0006 karar 9); satır varsa o okunur,
+ * yoksa öğrenci kaydındaki alan (kimliksiz eski kayıt ve örnek veri). Geçersiz ya da boş doğum
  * tarihi bilinmiyor sayılır (öğrenci 18 yaş altıdır). Olmayan ya da arşivli kayıt `null`.
  */
 export async function consentStudentOf(
@@ -94,7 +97,8 @@ export async function consentStudentOf(
   if (studentId === undefined) return null
   const record = await findRecord(tx, institutionId, 'students', studentId)
   if (record === null) return null
-  const birthDate = record.data.birthDate
+  const identity = await findStudentIdentity(tx, institutionId, studentId)
+  const birthDate = identity?.birthDate ?? record.data.birthDate
   return {
     id: record.id,
     birthDate: typeof birthDate === 'string' && isCalendarDay(birthDate) ? birthDate : null,

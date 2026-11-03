@@ -26,6 +26,7 @@ import {
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import { notify } from './notify.ts'
 import {
   runCommand,
   runReadOnly,
@@ -36,7 +37,8 @@ import {
 /**
  * Ayrılış ve iade servisi (ADR 0006 karar 10; docs/domain/finans.md DOM-FIN-040, -041; IST-110).
  * Kural core `lib/withdrawals.ts`'tedir. Öğrenci, taksit, bağlı kayıt, iade kaydı ve kimlik arşivi
- * tek transaction'dadır. Döküm, IBAN ve gerekçe loglanmaz; denetime yalnız alan adları düşer.
+ * tek transaction'dadır. Döküm, IBAN ve gerekçe loglanmaz; denetime yalnız alan adları düşer. İade
+ * ödendi bildirimi (`refund_paid`) ödemeyle aynı transaction'dadır, yalnız ayrılış kimliğini taşır.
  */
 
 const SPEC = OPERATION_COMMANDS['student.withdraw']
@@ -222,6 +224,12 @@ export function payRefundCommand(
         const row = await findWithdrawal(tx, ctx.institutionId, withdrawalId)
         if (row === null) throw new NotFoundError()
         result = view(row)
+        await notify(tx, ctx, {
+          type: 'refund_paid',
+          recipients: { studentIds: [row.studentId] },
+          data: { withdrawalId },
+          dedupeKey: withdrawalId,
+        })
       },
     },
     () => {

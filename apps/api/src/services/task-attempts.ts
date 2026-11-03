@@ -14,6 +14,7 @@ import {
   submissionWindow,
   subskillBreakdown,
   type Answers,
+  type AttemptScore,
   type CompletedAttempt,
 } from '@kampus/school-core/skills/scoring.ts'
 import { transcriptShown } from '@kampus/school-core/skills/assignment.ts'
@@ -51,6 +52,7 @@ import {
   assertWorkOpen,
   auditWork,
   canReadLearner,
+  inAttemptOrder,
   learnerFilter,
   listeningFor,
   loadWorkPairs,
@@ -192,6 +194,13 @@ function attemptView(
   const parentPractice = hidesPracticeResult(viewer, assignment)
   const items = level === 'none' || parentPractice ? null : (context?.items ?? null)
   const score = items === null ? null : scoreAttempt(items, attempt.answers)
+  // Kursiyer ve veli madde sonuçlarını soru listesiyle aynı sırada görür (quiz `shuffleItems`);
+  // personel yazarın sırasında inceler. Puan her zaman yazarın sırasında ve madde kimliğiyle
+  // hesaplanır, yalnız liste sırası değişir.
+  const shown = <T extends { questionVersionId: string }>(list: readonly T[]): T[] =>
+    viewer.kind === 'learner' && context !== null
+      ? inAttemptOrder(list, context, attempt.id)
+      : [...list]
   return {
     id: attempt.id,
     assignmentId: attempt.assignmentId,
@@ -214,16 +223,18 @@ function attemptView(
             earned: score.earned,
             possible: score.possible,
             percent: score.percent,
-            items: level === 'score' ? null : score.items,
+            items: level === 'score' ? null : shown(score.items),
             // Alt beceri dökümü madde sonuçlarıyla aynı anda açılır: tek maddeli alt beceri
             // maddenin doğruluğunu verir (DOM-BEC-006, DOM-BEC-045).
             subskills: level === 'score' ? null : subskillBreakdown(items, score),
             answerKey:
               level === 'full'
-                ? items.map((item) => ({
-                    questionVersionId: item.questionVersionId,
-                    answerKey: item.answerKey,
-                  }))
+                ? shown(
+                    items.map((item) => ({
+                      questionVersionId: item.questionVersionId,
+                      answerKey: item.answerKey,
+                    })),
+                  )
                 : null,
           },
     // Anında geri bildirim (DOM-BEC-047): alıştırmada kontrol edilen maddeler; anahtar yalnız kilitli
@@ -231,7 +242,7 @@ function attemptView(
     feedback:
       assignment.kind !== 'practice' || parentPractice || context === null
         ? null
-        : itemFeedback(context.items, checks),
+        : shown(itemFeedback(context.items, checks)),
     contentRemoved: scoring.removed,
     rowVersion: attempt.rowVersion,
   }
@@ -332,21 +343,27 @@ export function learnerAttemptProgress(
  * Kursiyerin bu atamadaki sayılan denemesi ve puanı (beceri ilerleme panosu, DOM-BEC-035,
  * DOM-BEC-042). Sayılan deneme yalnız değerlendirmede ve tamamlanmış denemeler arasından seçilir;
  * tamamlanmış denemenin toplam puanı kursiyer ve veliye de açıktır (core `learnerResultLevel`,
- * DOM-BEC-045). Puanlama bağlamı yoksa (kaldırılmış içerik) sonuç yoktur.
+ * DOM-BEC-045). Puanlama bağlamı yoksa (kaldırılmış içerik) sonuç yoktur. `score` CEFR önerisinin
+ * kanıtıdır (oran ve madde sayısı, DOM-BEC-031/032).
  */
 export function countedAttemptResult(
   assignment: StoredAssignment,
   context: ScoringContext,
   attempts: readonly StoredAttempt[],
   now: Date,
-): { attemptId: string; completedAt: string; percent: number } | null {
+): { attemptId: string; completedAt: string; percent: number; score: AttemptScore } | null {
   const counted = countedAttempt(
     assignment.attempts,
     completedOf(assignment, context, attempts, now.toISOString()),
   )
   return counted === null
     ? null
-    : { attemptId: counted.id, completedAt: counted.completedAt, percent: counted.score.percent }
+    : {
+        attemptId: counted.id,
+        completedAt: counted.completedAt,
+        percent: counted.score.percent,
+        score: counted.score,
+      }
 }
 
 /** Kursiyerin bu atamada süren denemesi var mı (içerik kapısının süren işi; Sabah kararı 47). */
@@ -417,7 +434,10 @@ async function detailView(
       ),
       open,
     ),
-    questions: open ? questionsFor(context, attempt.id) : [],
+    // Kursiyer ve veli denemenin sırasını görür (`shuffleItems`); personel yazarın sırasını.
+    questions: open
+      ? questionsFor(context, attempt.id, { authorOrder: viewer.kind !== 'learner' })
+      : [],
     passage: open ? passageFor(context) : null,
     // Döküm personelde hep, kursiyer ve velide görev kapanınca ya da alıştırmada açık ayarla
     // (DOM-BEC-005); kayıt da sorular gibi içerik kapısından geçer.

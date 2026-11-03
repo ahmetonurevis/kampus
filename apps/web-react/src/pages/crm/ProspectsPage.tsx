@@ -4,12 +4,18 @@ import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { LineTabs } from '@/components/LineTabs.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
-import { useCoreAll, useCoreFetchAll, useCoreList } from '@/hooks/use-core-collection.ts'
+import {
+  useCoreAll,
+  useCoreCounts,
+  useCoreFetchAll,
+  useCoreList,
+} from '@/hooks/use-core-collection.ts'
 import { useCsvExport } from '@/hooks/use-csv-export.ts'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
@@ -25,12 +31,16 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { NEW_PROSPECT, ProspectFormPanel } from './ProspectFormPanel.tsx'
 import {
+  ALL_STAGES,
   CONTACT_LABELS,
+  CREATED_FILTER,
   prospectCsvRow,
   prospectRow,
   SOURCE_FILTER,
   stageFilter,
+  stageTabs,
   stageTone,
+  withCreatedRange,
   type ProspectRow,
 } from './prospect-rows.ts'
 
@@ -49,12 +59,15 @@ const URL_FILTERS = { stage: 'asama', source: 'kaynak', branchId: 'kampus' }
 const SORTABLE = sortableColumns(LIST)
 const MOBILE_COLUMNS = ['interest', 'stageLabel', 'branch']
 const ALL = 'all'
+const STAGE_COUNTS = { groupBy: 'stage' } as const
 
 /**
  * Aday Öğrenciler (ön büro, Vue `Crm.vue` `adaylar`): sunucu sayfalı tablo; arama (ad, telefon,
- * ilgi), aşama, kaynak ve kampüs süzgeci, sıralama ve sayfa adreste tutulur. Aday adı detay
- * sayfasına (`/onburo/aday/:id`) götürür; "Yeni aday ekle" sağ panelde açılır (`?aday-form=yeni`).
- * CSV tüm filtrelenmiş sonucu içerir.
+ * ilgi), aşama, kaynak ve kampüs süzgeci, sıralama ve sayfa adreste tutulur. Aşama sekmeleri
+ * (Vue "Aday aşaması") aşama süzgecinin kısayoludur ve kurum genelindeki sayıları gösterir; kayıt
+ * tarihi aralığı sunucuda `createdAt` gününe göre süzülür (aralık bellektedir, adrese yazılmaz).
+ * Aday adı detay sayfasına (`/onburo/aday/:id`) götürür; "Yeni aday ekle" sağ panelde açılır
+ * (`?aday-form=yeni`). CSV tüm filtrelenmiş sonucu içerir.
  */
 export function ProspectsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -70,7 +83,14 @@ export function ProspectsPage({ page }: { page: NavPage }) {
     }),
     [branches.data],
   )
-  const prospects = useCoreList('prospects', collectionQueryFromList(list.state, LIST, search))
+  const createdRange = list.state.filters.createdAt
+  const prospects = useCoreList(
+    'prospects',
+    withCreatedRange(collectionQueryFromList(list.state, LIST, search), createdRange),
+  )
+  const stageCounts = useCoreCounts('prospects', STAGE_COUNTS)
+  const tabs = useMemo(() => stageTabs(stageCounts.data, type), [stageCounts.data, type])
+  const stage = typeof list.state.filters.stage === 'string' ? list.state.filters.stage : ''
   const rows = useMemo(
     () => prospects.data?.rows.map((item) => prospectRow(item, type, lookups)),
     [prospects.data, type, lookups],
@@ -78,7 +98,7 @@ export function ProspectsPage({ page }: { page: NavPage }) {
   const form = useDetailPanel('aday-form')
   const fetchAll = useCoreFetchAll('prospects')
   const csv = useCsvExport()
-  const filters = useMemo(() => [stageFilter(type), SOURCE_FILTER], [type])
+  const filters = useMemo(() => [stageFilter(type), SOURCE_FILTER, CREATED_FILTER], [type])
 
   const branchId =
     typeof list.state.filters.branchId === 'string' ? list.state.filters.branchId : ''
@@ -145,7 +165,7 @@ export function ProspectsPage({ page }: { page: NavPage }) {
   )
 
   function download() {
-    const query = exportQueryFromList(list.state, LIST, search)
+    const query = withCreatedRange(exportQueryFromList(list.state, LIST, search), createdRange)
     void csv.download(
       page.title,
       columns.filter((column) => column.key !== ACTIONS_KEY),
@@ -189,6 +209,20 @@ export function ProspectsPage({ page }: { page: NavPage }) {
             {prospects.data?.total ?? 0} aday · arama ad, telefon ve ilgi alanında çalışır
           </p>
         </header>
+        <div className="px-6 max-[650px]:px-4">
+          <LineTabs
+            label="Aday aşaması"
+            value={stage || ALL_STAGES}
+            options={tabs}
+            onChange={(value) =>
+              list.dispatch({
+                type: 'filter',
+                key: 'stage',
+                value: value === ALL_STAGES ? '' : value,
+              })
+            }
+          />
+        </div>
         <ServerDataTable
           list={list}
           rows={rows}

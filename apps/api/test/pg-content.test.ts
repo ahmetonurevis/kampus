@@ -76,7 +76,7 @@ describe('PostgreSQL 16: eşzamanlı içerik onayı', { skip: PG_SKIP }, () => {
       tags: {
         subjectId: 'matematik',
         gradeLevels: [9],
-        outcomes: [{ outcomeId: 'M.9.1.1', outcomeSource: 'platform' }],
+        outcomes: [{ outcomeId: 'MAT.9.1.1', outcomeSource: 'platform' }],
       },
     })
     assert.equal(created.statusCode, 201, created.body)

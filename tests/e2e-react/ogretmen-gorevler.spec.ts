@@ -60,7 +60,7 @@ async function publishContent(author: ApiClient, admin: ApiClient = author) {
           gradeLevels: [7],
           primarySkill: 'writing',
           cefrLevel: 'A2',
-          outcomes: [{ outcomeId: 'YAZ.7.1', outcomeSource: 'institution' }],
+          outcomes: [{ outcomeId: 'ENG.7.4.1', outcomeSource: 'platform' }],
         },
         license: { kind: 'institution_original' },
       },

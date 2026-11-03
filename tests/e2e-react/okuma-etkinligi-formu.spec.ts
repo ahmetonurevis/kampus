@@ -3,7 +3,7 @@ import type { Page } from '@playwright/test'
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 import { BODY, expectOk, GLOSSARY, idempotent, type Json } from './support/reading-activity.ts'
-import { expectNoHorizontalOverflow } from './support/ui.ts'
+import { expectNoHorizontalOverflow, pickOutcome } from './support/ui.ts'
 
 // Okuma etkinliği formu (OG-984; IST-042, DOM-BEC-006, DOM-KYN-013): öğretmen içerik havuzunda
 // okuma parçasına bağlı quiz'i formdan kurar (bağlı içerik seçicisiyle parça ve sorular), sıralar ve
@@ -15,7 +15,7 @@ const TAGS = {
   gradeLevels: [7],
   primarySkill: 'reading',
   cefrLevel: 'A2',
-  outcomes: [{ outcomeId: 'OKU.7.1', outcomeSource: 'institution' }],
+  outcomes: [{ outcomeId: 'ENG.7.1.1', outcomeSource: 'platform' }],
 }
 const LICENSE = { kind: 'institution_original' }
 const SECOND_BODY =
@@ -156,8 +156,7 @@ test.describe('okuma etkinliği formu', () => {
     await form.getByLabel('Ders').selectOption({ label: 'İngilizce' })
     await form.getByLabel('7. sınıf', { exact: true }).check()
     await form.getByLabel('CEFR düzeyi').selectOption('A2')
-    await form.getByRole('button', { name: 'Kazanım ekle' }).click()
-    await form.getByLabel('1. kazanım kodu').fill('OKU.7.1')
+    await pickOutcome(form, 'ENG.7.1.1')
     await form.getByLabel('Menşe ve lisans').selectOption('institution_original')
     await form.getByLabel(/Bu içeriği kullanma hakkım var/).check()
     await page.setViewportSize({ width: 390, height: 844 })

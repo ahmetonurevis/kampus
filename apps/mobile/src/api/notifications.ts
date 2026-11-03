@@ -9,7 +9,9 @@ import {
 } from '@kampus/react-shared/notification-model.ts'
 import { messageStamp } from '@kampus/react-shared/conversation-model.ts'
 import type { NotificationView } from '@kampus/react-shared/use-notifications.ts'
+import type { TeacherAttendanceTab } from './attendance-history.ts'
 import { apiPages, type ApiScreen } from './pages.ts'
+import type { ParentTab } from './parent-tracking.ts'
 import { isModuleOpen, type MobileSession } from './session-state.ts'
 
 type SessionScope = Pick<MobileSession, 'role' | 'modules'>
@@ -24,30 +26,69 @@ export function notificationBellVisible(session: SessionScope): boolean {
 }
 
 /**
- * Telefonda karşılığı olmayan konular: randevu yalnız web'dedir (veli "Randevu ve mesaj" sayfası
- * telefonda yalnız mesajları açar), bu yüzden randevu bildirimi mesaj ekranına yönlendirilmez.
+ * Telefonda karşılığı olmayan (rol, konu) çiftleri: öğrenci randevu ekranı telefondadır
+ * (`StudentAppointments`, IST-124), ama veli randevusu henüz yoktur ve veli "Randevu ve mesaj"
+ * sayfası telefonda yalnız mesajları açar; bu yüzden velinin randevu bildirimi mesaj ekranına
+ * yönlendirilmez.
  */
-const WEB_ONLY_TOPICS: readonly Topic[] = ['appointment']
+const WEB_ONLY_TOPICS: Readonly<Record<string, readonly Topic[]>> = {
+  veli: ['appointment'],
+  ogretmen: ['appointment'],
+}
 
 /**
  * Bildirimin açacağı mobil ekran. Konunun rol sayfası mobilde kayıtlı ve modülü açıksa o ekran;
  * aksi halde `null` (ayrıntı bildirim ekranında gösterilir).
  */
 export function notificationTarget(session: SessionScope, topic: Topic): ApiScreen | null {
-  if (WEB_ONLY_TOPICS.includes(topic)) return null
-  const path = notificationTopicPath(session.role, topic)
+  if (WEB_ONLY_TOPICS[session.role]?.includes(topic)) return null
+  const path = topicPath(session.role, topic)
   if (!path) return null
   return apiPages(session).find((page) => page.path === path)?.screen ?? null
 }
 
+/**
+ * Konunun rol sayfası: ortak tablo (`notification-model.ts`) artı telefonda öğretmenin yoklama
+ * sayfası. Öğretmen bugün bildirim almaz (alıcılar öğrenci ve veli; zil görünmez), ama alırsa
+ * devamsızlık konusu yoklama geçmişine gider.
+ */
+function topicPath(role: string, topic: Topic): string | null {
+  if (role === 'ogretmen' && topic === 'attendance') return 'yoklama'
+  return notificationTopicPath(role, topic)
+}
+
 /** Çocuğa özgü konular: hedef ekran bildirimin çocuğu seçili açılır (veli çocuk seçicisi). */
 const CHILD_SCOPED_TOPICS: readonly Topic[] = ['homework', 'grade', 'attendance']
+
+/**
+ * Hedef ekran ve varsa açılacak sekme. Devamsızlık bildirimi velide Akademik Takip'in Devamsızlık
+ * sekmesini, öğretmende Yoklama'nın geçmiş sekmesini açar; diğer konular parametresiz gider.
+ */
+export type NotificationRoute =
+  | { screen: 'ParentTracking'; params: { tab: ParentTab } | undefined }
+  | { screen: 'TeacherAttendance'; params: { tab: TeacherAttendanceTab } | undefined }
+  | { screen: Exclude<ApiScreen, 'ParentTracking' | 'TeacherAttendance'>; params?: undefined }
+
+/** Hedef ekran adı ve konuya göre sekme parametresi; ekran yoksa `null`. */
+export function notificationRoute(
+  screen: ApiScreen | null,
+  topic: Topic,
+): NotificationRoute | null {
+  if (screen === null) return null
+  if (screen === 'ParentTracking')
+    return { screen, params: topic === 'attendance' ? { tab: 'devamsizlik' } : undefined }
+  if (screen === 'TeacherAttendance')
+    return { screen, params: topic === 'attendance' ? { tab: 'gecmis' } : undefined }
+  return { screen }
+}
 
 export type NotificationPress = {
   /** Dokununca okundu yazılsın mı (zaten okunmuşsa yazılmaz). */
   markRead: boolean
   /** Gidilecek ekran; `null` ise ayrıntı sayfa içinde açılır. */
   screen: ApiScreen | null
+  /** `screen` ve açılacak sekme; ekran yoksa `null`. */
+  route: NotificationRoute | null
   /** Hedef ekranda seçilecek çocuk (yalnız veli, çocuğa özgü konu ve hesabın çocuğuysa). */
   childId: string | null
 }
@@ -65,7 +106,12 @@ export function notificationPress(
     session.childIds?.includes(item.studentId) === true
       ? item.studentId
       : null
-  return { markRead: item.readAt === null, screen, childId }
+  return {
+    markRead: item.readAt === null,
+    screen,
+    route: notificationRoute(screen, item.topic),
+    childId,
+  }
 }
 
 /**

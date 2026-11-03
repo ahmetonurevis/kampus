@@ -57,6 +57,8 @@ const CONVERSATION = kayit('communication.test.ts', 'kurumlar arası 404: başka
 const GROUP = kayit('language-groups.test.ts', 'başka kurumun grubu 404, listede görünmez')
 const GROUP_COMMAND = (verb: string) =>
   kayit('language-groups.test.ts', 'başka kurumun grubu açılmaz ve birleştirilmez', `'${verb}'`)
+const PROGRESSION = 'başka kurumun kaydı, kararı, grubu ve öğrencisi 404, B değişmez'
+const CERTIFICATE = 'başka kurumun belgesi, kararı ve grubu 404, listede yok, B değişmez'
 const PLACEMENT = kayit('cefr.test.ts', 'başka kurumun oturumu ve öğrencisi 404, B değişmez')
 const PLACEMENT_COMMAND = (verb: string) =>
   kayit('cefr.test.ts', 'başka kurumun oturumu ve öğrencisi 404, B değişmez', `'${verb}'`)
@@ -348,6 +350,13 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'POST /api/v1/resources/:resourceId/remove': RESOURCE_WRITE,
   'POST /api/v1/resources/:resourceId/share': RESOURCE_WRITE,
   'POST /api/v1/resources/:resourceId/copy': RESOURCE_WRITE,
+  // Kazanım kataloğu (DOM-KYN-011): kurum kazanımı kurum kapsamlı, platform satırı kurumsuz.
+  'GET /api/v1/learning-outcomes': liste('learning-outcomes.test.ts', 'başka kurum yok'),
+  'POST /api/v1/learning-outcomes': govde('learning-outcomes.test.ts', 'başka kurumda serbest'),
+  'POST /api/v1/learning-outcomes/:code/archive': kayit(
+    'learning-outcomes.test.ts',
+    'başka kurumun ve platformun kodu 404',
+  ),
   'GET /api/v1/rubrics': RUBRIC,
   'GET /api/v1/rubrics/:rubricId': RUBRIC,
   'GET /api/v1/rubric-versions/:versionId': kayit(
@@ -475,11 +484,59 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'cefr-profile',
   ),
 
+  // --- Kur sonu değerlendirme ve geçiş kararı (OG-086; IST-062, DOM-DIL-070) ------------------
+  'POST /api/v1/course-assessments': govde('progression.test.ts', PROGRESSION),
+  'POST /api/v1/progression-decisions': govde('progression.test.ts', PROGRESSION),
+  'POST /api/v1/progression-decisions/:decisionId/approve': kayit(
+    'progression.test.ts',
+    PROGRESSION,
+    "'approve'",
+  ),
+  'POST /api/v1/progression-decisions/:decisionId/reject': kayit(
+    'progression.test.ts',
+    PROGRESSION,
+    "'reject'",
+  ),
+  'GET /api/v1/groups/:groupId/progression': kayit('progression.test.ts', PROGRESSION),
+  'GET /api/v1/students/:studentId/progression-decisions': kayit(
+    'progression.test.ts',
+    PROGRESSION,
+  ),
+
+  // --- Kurum başarı belgesi ve MEBBİS izi (OG-088; IST-081, DOM-DIL-080, 082) -----------------
+  'POST /api/v1/course-certificates': govde('certificates.test.ts', CERTIFICATE),
+  'POST /api/v1/course-certificates/:certificateId/cancel': kayit(
+    'certificates.test.ts',
+    CERTIFICATE,
+  ),
+  'GET /api/v1/course-certificates': liste('certificates.test.ts', CERTIFICATE),
+  'GET /api/v1/course-certificates/:certificateId': kayit('certificates.test.ts', CERTIFICATE),
+  'GET /api/v1/groups/:groupId/mebbis-certificates': kayit('certificates.test.ts', CERTIFICATE),
+  'POST /api/v1/progression-decisions/:decisionId/mebbis-record': kayit(
+    'certificates.test.ts',
+    CERTIFICATE,
+  ),
+  // Sabah kararı 85: kimliksiz ve modülsüz; kurum oturumdan gelmez, kod kurumlar arası tekildir.
+  'GET /api/v1/certificate-verifications/:code': yok(
+    'kimliksiz belge doğrulama; oturum ve kurum okumaz, yalnız baş harf ve kur döner',
+  ),
+
   // --- Beceri ilerleme panosu (OG-080; IST-057, DOM-BEC-035) -----------------------------------
   'GET /api/v1/students/:studentId/skill-progress': kayit(
     'skill-progress.test.ts',
     'kapsam dışı, olmayan ve başka kurum 404',
     'skill-progress',
+  ),
+
+  // --- İçerikten toplu atama ve sonuç özeti (OG-089; IST-034, DOM-BEC-049, 036) ---------------
+  'POST /api/v1/task-assignments/batches': govde(
+    'content-assignments.test.ts',
+    'başka kurumun içeriği 404 ve o kurumda atama yazılmaz; öğedeki kurum kimliği etkisiz',
+  ),
+  'GET /api/v1/resources/:resourceId/assignment-results': kayit(
+    'content-assignments.test.ts',
+    'başka kurumun içeriği 404',
+    'assignment-results',
   ),
 
   // --- Ünite alıştırma seti (OG-085; IST-056, DOM-BEC-047, 048) --------------------------------
@@ -639,6 +696,7 @@ const LEARNING: Readonly<Record<string, Proof>> = Object.fromEntries([
   learning('kayıt', 'GET /api/v1/task-submissions/:submissionId'),
   learning('kayıt', 'GET /api/v1/task-assignments/:assignmentId/draft'),
   learning('kayıt', 'PATCH /api/v1/task-assignments/:assignmentId/draft'),
+  learning('kayıt', 'POST /api/v1/task-assignments/:assignmentId/draft/submit'),
   learning('kayıt', 'POST /api/v1/task-assignments/:assignmentId/submissions'),
   learning('kayıt', 'POST /api/v1/task-submissions/:submissionId/second-scores'),
   learning('kayıt', 'POST /api/v1/task-submissions/:submissionId/final-scores'),

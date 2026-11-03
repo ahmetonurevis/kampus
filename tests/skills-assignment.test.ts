@@ -12,12 +12,15 @@ import {
 import type { AuthorizationSource } from '../packages/school-core/src/lib/authorize.ts'
 import type { Actor } from '../packages/school-core/src/lib/scope.ts'
 import {
+  ASSIGNMENT_BATCH_MAX,
   LISTENING_PLAYS_DEFAULT,
   RESUBMISSION_MAX_DAYS,
   assertNoOverlappingAssignment,
+  assignmentBatchInputSchema,
   assignmentSettingsSchema,
   deadlineForVersion,
   planAssignment,
+  planAssignmentBatch,
   planAssignmentChange,
   planRescore,
   planResubmissionRequest,
@@ -639,6 +642,85 @@ describe('atama işlemi (IST-034)', () => {
   })
 })
 
+describe('toplu atama (DOM-BEC-049, IST-034)', () => {
+  const later = plusMs(due, 2 * DAY)
+  const item = (classId: string, dueAt = due): AssignmentInput =>
+    planInput({ targets: [{ kind: 'class', id: classId }], settings: { deadline: { dueAt } } })
+  const batch = (
+    items: AssignmentInput[],
+    input: Partial<Parameters<typeof planAssignmentBatch>[0]> = {},
+  ) =>
+    planAssignmentBatch({
+      ...quiz,
+      actor: teacher,
+      source,
+      institutionType: 'school',
+      rubricVersions: new Map(),
+      existing: [],
+      input: { items },
+      now,
+      ...input,
+    })
+
+  test('DOM-BEC-049 aynı içerik iki sınıfa her birine ayrı son tarihle ayrı atama olur', () => {
+    const plans = batch([item('test-c7a'), item('test-c8a', later)])
+    assert.deepEqual(
+      plans.map((p) => [p.targets[0]?.id, p.assignment.deadline.dueAt, p.learnerIds]),
+      [
+        ['test-c7a', due, ['test-s1', 'test-s2']],
+        ['test-c8a', later, ['test-s4']],
+      ],
+    )
+  })
+
+  test('DOM-BEC-049 öğe reddedilirse hata öğenin yoluyla döner, plan çıkmaz', () => {
+    assert.throws(
+      () => batch([item('test-c7a'), item('test-c7b', later)]),
+      (error: unknown) =>
+        isDomainError('target_scope_denied', 'forbidden')(error) &&
+        (error as { path: string[] }).path.slice(0, 2).join('.') === 'items.1',
+    )
+  })
+
+  test('DOM-BEC-049 aynı kursiyer iki öğeden aynı içeriği alamaz', () => {
+    const student = (id: string, dueAt: string): AssignmentInput =>
+      planInput({ targets: [{ kind: 'student', id }], settings: { deadline: { dueAt } } })
+    assert.throws(
+      () => batch([item('test-c7a'), student('test-s1', later)]),
+      isDomainError('assignment_overlap', 'conflict'),
+    )
+  })
+
+  test('DOM-BEC-049 gövde: farklı içerik, yinelenen hedef ve sınır reddedilir (Zod)', () => {
+    const parse = (items: AssignmentInput[]) => assignmentBatchInputSchema.safeParse({ items })
+    assert.equal(parse([item('test-c7a'), item('test-c8a', later)]).success, true)
+    assert.equal(parse([]).success, false)
+    assert.equal(parse([item('test-c7a'), item('test-c7a', later)]).success, false)
+    assert.equal(
+      parse([item('test-c7a'), { ...item('test-c8a'), resourceVersionId: 'test-rv-0' }]).success,
+      false,
+    )
+    const many = Array.from({ length: ASSIGNMENT_BATCH_MAX + 1 }, (_, i) => item(`test-c${i}`))
+    assert.equal(parse(many).success, false)
+    assert.throws(() => batch([]), ZodError)
+  })
+
+  test('DOM-BEC-049 öğenin rubrik sürümü haritadan okunur', () => {
+    const body = planInput({
+      settings: {
+        deadline: { dueAt: due },
+        submission: { submissionKind: 'text' },
+        rubricVersionId: 'test-rbv1',
+      },
+    })
+    const [result] = batch([body], {
+      ...homework,
+      rubricVersions: new Map([['test-rbv1', rubric()]]),
+    })
+    assert.equal(result?.assignment.rubricVersionId, 'test-rbv1')
+  })
+})
+
 describe('yayım sonrası değişiklik (DOM-BEC-041, 042)', () => {
   const fixed = resolve(quiz, settings({ attempts: { kind: 'evaluation', maxAttempts: 2 } }))
 
@@ -889,6 +971,38 @@ describe('yeniden teslim isteği (DOM-BEC-040)', () => {
     assert.equal(planned.version.number, 3)
     assert.equal(versionIsLate({ submittedAt: plusMs(now, 2 * DAY + 1) }, next), true)
     assert.equal(submissionWindow(next).closesAt, plusMs(now, 2 * DAY))
+  })
+
+  test('DOM-BEC-040, IST-047 yeniden teslim geçmişinde her sürüm kendisinden önceki en son turun tarihine bağlıdır', () => {
+    const assignmentDeadline = { dueAt: plusMs(now, -10 * DAY), lateAcceptanceDays: 2 }
+    const first = { versionNumber: 1, dueAt: plusMs(now, -5 * DAY) }
+    const second = { versionNumber: 2, dueAt: plusMs(now, 3 * DAY) }
+    const withHistory = {
+      ...submission,
+      resubmissionRequestedForVersion: 2,
+      resubmissionDueAt: second.dueAt,
+      // Sıra önemsiz: tur sürüm numarasıyla seçilir.
+      resubmissionRounds: [second, first],
+    }
+    assert.equal(deadlineForVersion(assignmentDeadline, withHistory, 1), assignmentDeadline)
+    assert.deepEqual(deadlineForVersion(assignmentDeadline, withHistory, 2), {
+      dueAt: first.dueAt,
+      lateAcceptanceDays: 0,
+    })
+    assert.deepEqual(deadlineForVersion(assignmentDeadline, withHistory, 3), {
+      dueAt: second.dueAt,
+      lateAcceptanceDays: 0,
+    })
+    // İlk tur içinde gönderilen v2, ikinci istek geldikten sonra da geç sayılmaz.
+    const v2 = { submittedAt: plusMs(now, -6 * DAY) }
+    assert.equal(versionIsLate(v2, deadlineForVersion(assignmentDeadline, withHistory, 2)), false)
+    // Geçmiş verilmezse yalnız son istek bilinir: v2 atamanın tarihiyle okunur (eski davranış).
+    const latestOnly = { ...withHistory, resubmissionRounds: undefined }
+    assert.equal(deadlineForVersion(assignmentDeadline, latestOnly, 2), assignmentDeadline)
+    assert.deepEqual(
+      deadlineForVersion(assignmentDeadline, { ...submission, resubmissionRounds: [] }, 3),
+      assignmentDeadline,
+    )
   })
 })
 

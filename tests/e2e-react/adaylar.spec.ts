@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto'
+import { readFile } from 'node:fs/promises'
 
 import type { Page } from '@playwright/test'
 
@@ -685,7 +686,7 @@ test.describe('Tanışma Görüşmeleri', () => {
     await expect(page.getByRole('heading', { name: 'Tanışma görüşmesi planlandı' })).toBeVisible()
   })
 
-  test('görüşme yoksa boş durum planlamayı aday detayına yönlendirir', async ({
+  test('görüşme yoksa boş durum planlamayı düğmeye ve aday detayına yönlendirir', async ({
     page,
     loginAs,
     tenant,
@@ -694,7 +695,9 @@ test.describe('Tanışma Görüşmeleri', () => {
     await loginAs(school.user('onburo'))
     await page.goto(MEETINGS_URL)
     await expect(
-      page.getByText('Planlanmış görüşme yok. Aday detayından tanışma görüşmesi planlayın.'),
+      page.getByText(
+        'Planlanmış görüşme yok. “Tanışma görüşmesi planla” ile ya da aday detayından planlayın.',
+      ),
     ).toBeVisible()
   })
 })
@@ -941,5 +944,266 @@ test.describe('390 px genişlik', () => {
     await page.goto(MEETINGS_URL)
     await expect(page.getByRole('heading', { name: 'Tanışma Görüşmeleri', level: 1 })).toBeVisible()
     await expectNoHorizontalOverflow(page)
+  })
+})
+
+// ON-035: Vue `Crm.vue` eşitliği. Aday listesinin aşama sekmeleri ("Aday aşaması" LineTabs, kurum
+// geneli sayılar), kayıt tarihi aralığı, detaydan dönüşte liste durumu; Tanışma Görüşmeleri'nin
+// haftalık takvimi (`WeekCalendar`) ve sayfadan aday seçerek planlama.
+
+/** Kurulum kaydındaki tanışma görüşmesi (seed biçimi). */
+const meetingOf = (date: string, room = 'Oda 3') => ({
+  date,
+  duration: 30,
+  room,
+  teacherId: null,
+  scheduledAt: at(-5, 9),
+  by: { role: 'onburo', userId: 'u-onburo' },
+})
+/** Kaydın İstanbul günü; 09:00Z ve 10:00Z kayıtlar aynı UTC günündedir. */
+const dayOf = (iso: string) => iso.slice(0, 10)
+
+test.describe('Vue eşitliği: aday listesi (ON-035)', () => {
+  test('ON-035, DOM-KAY-007: aşama sekmeleri sayılarıyla listeyi süzer; kayıt tarihi aralığı sunucuda süzer, CSV süzülmüş sonucu verir', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['onburo'], records: listRecords() })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    const tabs = page.getByRole('toolbar', { name: 'Aday aşaması' })
+    const all = tabs.getByRole('button', { name: /^Tüm adaylar/ })
+    const offered = tabs.getByRole('button', { name: /^Teklif verildi/ })
+    await expect(all).toContainText('11')
+    await expect(offered).toContainText('4')
+    await expect(tabs.getByRole('button', { name: /^Vazgeçti/ })).toContainText('0')
+
+    await offered.click()
+    await expect(offered).toHaveAttribute('aria-pressed', 'true')
+    await expect(page).toHaveURL(/asama=/)
+    await expect(resultCount(page)).toContainText('1–4 / 4 kayıt')
+    await expectEveryRow(bodyRows(page, 'Aday öğrenciler'), 'Teklif verildi')
+    await all.click()
+    await expect(page).not.toHaveURL(/asama=/)
+    await expect(resultCount(page)).toContainText('1–8 / 11 kayıt')
+
+    await page.getByRole('button', { name: 'Filtreler', exact: true }).click()
+    await page.getByLabel('Kayıt tarihi başlangıç').fill(dayOf(at(-3, 9)))
+    await page.getByLabel('Kayıt tarihi bitiş').fill(dayOf(at(-1, 9)))
+    await expect(resultCount(page)).toContainText('1–3 / 3 kayıt')
+    await expect(bodyRows(page, 'Aday öğrenciler').filter({ hasText: 'Aday 04' })).toHaveCount(0)
+
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Listeyi indir' }).click()
+    const csv = await readFile(await (await downloading).path(), 'utf8')
+    for (const name of ['Aday 01', 'Aday 02', 'Aday 03']) expect(csv).toContain(name)
+    expect(csv).not.toContain('Aday 04')
+  })
+
+  test('ON-035: detaydan geri dönünce kampüs süzgeci, sıralama ve sayfa korunur', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['onburo'], records: listRecords() })
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await page.getByLabel('Kampüs filtresi').selectOption('b1')
+    await expect(page).toHaveURL(/kampus=b1/)
+    const header = tableOf(page, 'Aday öğrenciler').getByRole('columnheader', {
+      name: /Aday öğrenci/,
+    })
+    await header.getByRole('button').click()
+    await expect(header).toHaveAttribute('aria-sort', 'ascending')
+    await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
+    await expect(resultCount(page)).toContainText('9–11 / 11 kayıt')
+    await expect(bodyRows(page, 'Aday öğrenciler').first()).toContainText('Aday 09')
+
+    await page.getByRole('link', { name: 'Aday 09', exact: true }).click()
+    await expect(page.getByRole('heading', { name: 'Aday 09', level: 1 })).toBeVisible()
+    await page.goBack()
+    await expect(resultCount(page)).toContainText('9–11 / 11 kayıt')
+    await expect(header).toHaveAttribute('aria-sort', 'ascending')
+    await expect(page.getByLabel('Kampüs filtresi')).toHaveValue('b1')
+    await expect(bodyRows(page, 'Aday öğrenciler').first()).toContainText('Aday 09')
+  })
+})
+
+test.describe('Vue eşitliği: Tanışma Görüşmeleri (ON-035)', () => {
+  test('ON-035, DOM-KAY-033: haftalık takvim görüşmeyi kendi gününde gösterir, haftalar arasında gezilir; kapalı aday yoktur', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-pr-hafta',
+          name: 'Takvim Aday',
+          phone: '05550300091',
+          stage: 'Görüşme planlandı',
+          trialAt: at(9, 10),
+          meeting: meetingOf(at(9, 10)),
+        }),
+        prospect({
+          id: 'e2e-pr-sonraki',
+          name: 'Sonraki Hafta Aday',
+          phone: '05550300092',
+          stage: 'Görüşme planlandı',
+          trialAt: at(16, 10),
+          meeting: meetingOf(at(16, 10)),
+        }),
+        prospect({
+          id: 'e2e-pr-vazgecen',
+          name: 'Vazgeçen Takvim',
+          phone: '05550300093',
+          stage: 'Vazgeçti',
+          trialAt: at(9, 11),
+          meeting: meetingOf(at(9, 11), 'Oda 4'),
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(MEETINGS_URL)
+    await page
+      .getByRole('toolbar', { name: 'Görünüm' })
+      .getByRole('button', { name: 'Haftalık takvim' })
+      .click()
+    await expect(page).toHaveURL(/gorunum=hafta/)
+
+    await page.goto(`${MEETINGS_URL}?gorunum=hafta&hafta=${dayOf(at(9, 10))}`)
+    const calendar = page.getByRole('list', { name: 'Haftalık görüşme takvimi' })
+    await expect(calendar).toContainText('Takvim Aday')
+    await expect(calendar).toContainText('13:00 – 13:30')
+    await expect(calendar).not.toContainText('Sonraki Hafta Aday')
+    await expect(calendar).not.toContainText('Vazgeçen Takvim')
+
+    await page.getByRole('button', { name: 'Sonraki hafta' }).click()
+    await expect(calendar).toContainText('Sonraki Hafta Aday')
+    await expect(calendar).not.toContainText('Takvim Aday')
+    await page.getByRole('button', { name: 'Önceki hafta' }).click()
+    await expect(calendar).toContainText('Takvim Aday')
+
+    await calendar.getByRole('link', { name: 'Takvim Aday' }).click()
+    await expect(page).toHaveURL(/\/onburo\/aday\/e2e-pr-hafta$/)
+    await page.goBack()
+    await expect(calendar).toContainText('Takvim Aday')
+  })
+
+  test('ON-035, DOM-KAY-033: sayfadan açık aday seçilerek görüşme planlanır; kapalı aday seçilemez', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({ id: 'e2e-pr-plan', name: 'Plan Aday', phone: '05550300094' }),
+        prospect({
+          id: 'e2e-pr-plan-x',
+          name: 'Kapalı Plan',
+          phone: '05550300095',
+          stage: 'Vazgeçti',
+          lostReason: 'Başka okul',
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(MEETINGS_URL)
+    await page.getByRole('button', { name: 'Tanışma görüşmesi planla' }).click()
+    await expect(page).toHaveURL(/planlama=gorusme/)
+    const panel = page.getByRole('dialog', { name: 'Tanışma görüşmesi planla' })
+    const choice = panel.getByLabel('Aday', { exact: true })
+    await expect(choice.getByRole('option', { name: /Kapalı Plan/ })).toHaveCount(0)
+    await expect(panel.getByLabel('Görüşme günü')).toHaveCount(0)
+    await choice.selectOption('e2e-pr-plan')
+    await panel.getByLabel('Görüşme günü').fill(dayOf(at(4, 10)))
+    await panel.getByLabel('Başlangıç saati').fill('15:00')
+    await panel.getByLabel('Görüşme odası').fill('Oda 9')
+    await panel.getByRole('button', { name: 'Planla' }).click()
+    await expect(toast(page, 'Tanışma görüşmesi planlandı.')).toBeVisible()
+    await expect(panel).toBeHidden()
+    const rows = bodyRows(page, 'Planlanan görüşmeler')
+    await expect(rows).toHaveCount(1)
+    await expect(rows.first()).toContainText('Plan Aday')
+    await expect(rows.first()).toContainText('15:00 – 15:30')
+  })
+})
+
+test.describe('Vue eşitliği: ön büro panosu aday sayaçları (ON-035)', () => {
+  test('ON-035, DOM-KAY-033: "Bugünkü tanışma görüşmesi" açık adayların bugünkü görüşmelerini, "Toplam kesin kayıt" kayıt olanları sayar', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    // İstanbul günü; 09:00Z o gün 12:00'dir (görüşme geçmiş olabilir, yine bugündür).
+    const today = new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(
+      new Date(),
+    )
+    const todayAt = `${today}T09:00:00.000Z`
+    const school = await tenant({
+      roles: ['onburo'],
+      records: [
+        prospect({
+          id: 'e2e-pr-bugun-1',
+          name: 'Bugün Bir',
+          phone: '05550300101',
+          stage: 'Görüşme planlandı',
+          trialAt: todayAt,
+          meeting: meetingOf(todayAt),
+        }),
+        prospect({
+          id: 'e2e-pr-bugun-2',
+          name: 'Bugün İki',
+          phone: '05550300102',
+          stage: 'Görüşme planlandı',
+          trialAt: todayAt,
+          meeting: meetingOf(todayAt, 'Oda 5'),
+        }),
+        prospect({
+          id: 'e2e-pr-bugun-x',
+          name: 'Bugün Vazgeçen',
+          phone: '05550300103',
+          stage: 'Vazgeçti',
+          trialAt: todayAt,
+          meeting: meetingOf(todayAt, 'Oda 6'),
+        }),
+        prospect({
+          id: 'e2e-pr-ileri',
+          name: 'İleri Aday',
+          phone: '05550300104',
+          stage: 'Görüşme planlandı',
+          trialAt: at(3, 10),
+          meeting: meetingOf(at(3, 10)),
+        }),
+        prospect({
+          id: 'e2e-pr-kayitli',
+          name: 'Kayıtlı Aday',
+          phone: '05550300105',
+          stage: 'Kayıt oldu',
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/dashboard')
+    const card = (name: string) => page.getByRole('article', { name, exact: true })
+    await expect
+      .poll(() => card('Bugünkü tanışma görüşmesi').locator('.stat-value').innerText())
+      .toBe('2')
+    await expect.poll(() => card('Toplam kesin kayıt').locator('.stat-value').innerText()).toBe('1')
+    await expect(card('Toplam kesin kayıt')).toContainText('5 adaydan %20 kesin kayıt')
+
+    await card('Bugünkü tanışma görüşmesi').getByRole('link').click()
+    await expect(page).toHaveURL(/\/onburo\/deneme-dersi-takvimi\?gorunum=hafta/)
+    const calendar = page.getByRole('list', { name: 'Haftalık görüşme takvimi' })
+    await expect(calendar).toContainText('Bugün Bir')
+    await expect(calendar).not.toContainText('Bugün Vazgeçen')
+
+    await page.goto('/onburo/dashboard')
+    await card('Toplam kesin kayıt').getByRole('link').click()
+    await expect(page).toHaveURL(/\/onburo\/adaylar\?asama=/)
+    await expect(resultCount(page)).toContainText('1–1 / 1 kayıt')
   })
 })

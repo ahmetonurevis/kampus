@@ -93,7 +93,7 @@ describe('API modu sayfaları', () => {
     const modules = { academic: true, communication: false }
     assert.deepEqual(
       apiPages({ role: 'ogrenci', modules }).map((page) => page.screen),
-      ['StudentHomework', 'StudentGrades'],
+      ['StudentQuizzes', 'StudentQuestions', 'StudentHomework', 'StudentGrades'],
     )
     assert.equal(canOpenScreen({ role: 'ogrenci', modules }, 'Announcements'), false)
     assert.equal(canOpenScreen({ role: 'ogrenci', modules }, 'Messages'), false)
@@ -123,16 +123,19 @@ describe('API modu sayfaları', () => {
     assert.deepEqual(
       apiPages({ role: 'ogrenci', modules: open }).map((page) => [page.title, page.screen]),
       [
+        ['Quiz & Testler', 'StudentQuizzes'],
+        ['Öğretmenime Sor', 'StudentQuestions'],
         ['Ödevlerim', 'StudentHomework'],
         ['Notlarım', 'StudentGrades'],
         ['Mesajlar', 'Messages'],
         ['Duyurular', 'Announcements'],
+        ['Etüt Randevusu', 'StudentAppointments'],
       ],
     )
     assert.deepEqual(apiCategories(apiPages({ role: 'ogrenci', modules: open })), [
-      { key: 'DERSLERİM', label: 'Derslerim', icon: 'School', count: 1 },
+      { key: 'DERSLERİM', label: 'Derslerim', icon: 'School', count: 3 },
       { key: 'GELİŞİMİM', label: 'Gelişimim', icon: 'Award', count: 1 },
-      { key: 'İLETİŞİM', label: 'İletişim', icon: 'MessagesSquare', count: 2 },
+      { key: 'İLETİŞİM', label: 'İletişim', icon: 'MessagesSquare', count: 3 },
     ])
     // Telefonda ödeme sayfası yoktur; ödevin açıklaması teslimi vaat etmez.
     const pages = apiPages({ role: 'ogrenci', modules: open })
@@ -146,6 +149,14 @@ describe('API modu sayfaları', () => {
   test('IST-124 öğrenme veya akademik modül kapanınca öğrenci ekranı ve kategorisi kapanır', () => {
     const noLearning = { learning: false }
     assert.equal(canOpenScreen({ role: 'ogrenci', modules: noLearning }, 'StudentHomework'), false)
+    // IST-095 quiz ekranı da `learning` modülündedir: kapalıysa kart ve doğrudan erişim kapanır.
+    assert.equal(canOpenScreen({ role: 'ogrenci', modules: noLearning }, 'StudentQuizzes'), false)
+    assert.ok(
+      !apiPages({ role: 'ogrenci', modules: noLearning }).some(
+        (page) => page.screen === 'StudentQuizzes',
+      ),
+    )
+    assert.equal(canOpenScreen({ role: 'ogrenci', modules: open }, 'StudentQuizzes'), true)
     assert.equal(canOpenScreen({ role: 'ogrenci', modules: noLearning }, 'StudentGrades'), true)
     assert.ok(
       !apiCategories(apiPages({ role: 'ogrenci', modules: noLearning })).some(
@@ -158,6 +169,7 @@ describe('API modu sayfaları', () => {
     for (const role of ['yonetici', 'onburo', 'ogretmen', 'veli'] as const) {
       assert.equal(canOpenScreen({ role, modules: open }, 'StudentGrades'), false, role)
       assert.equal(canOpenScreen({ role, modules: open }, 'StudentHomework'), false, role)
+      assert.equal(canOpenScreen({ role, modules: open }, 'StudentQuizzes'), false, role)
     }
   })
 

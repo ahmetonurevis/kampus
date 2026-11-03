@@ -63,3 +63,30 @@ export const feeTariffs = pgTable(
     index('fee_tariffs_year_idx').on(table.institutionId, table.academicYear),
   ],
 )
+
+/**
+ * Artış tavanının ÜFE ve TÜFE profili (DOM-FIN-005). `academic_year` sınırlanan ücretin yılıdır,
+ * oranlar bir önceki yılın ortalamalarıdır; değer kaynağıyla (TÜİK bülteni, tarih) girilir.
+ */
+export const priceIndexRates = pgTable(
+  'price_index_rates',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    academicYear: integer('academic_year').notNull(),
+    ppiBasisPoints: integer('ppi_basis_points').notNull(),
+    cpiBasisPoints: integer('cpi_basis_points').notNull(),
+    source: text('source').notNull(),
+    bulletinDate: date('bulletin_date').notNull(),
+    ...requiredColumns(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'price_index_rates_pkey',
+      columns: [table.institutionId, table.academicYear],
+    }),
+    check('price_index_rates_ppi_check', sql`${table.ppiBasisPoints} >= 0`),
+    check('price_index_rates_cpi_check', sql`${table.cpiBasisPoints} >= 0`),
+  ],
+)

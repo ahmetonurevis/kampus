@@ -850,6 +850,28 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     finance('kayıt', 'POST /api/v1/finance/scholarship-programs/:programId/notify'),
     finance('kayıt', 'POST /api/v1/finance/scholarship-awards/:awardId/mebbis-record'),
   ]),
+  // Kayıt yenileme (IST-100): kaynak ve testi Onur'un `finance-renewals.test.ts`'indedir.
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/renewals', 'BASE, a.admin'],
+        ['kayıt', 'POST /api/v1/finance/renewals/quote', '/quote'],
+        ['gövde', 'POST /api/v1/finance/renewals', 'institutionId: b.id'],
+        ['liste', 'GET /api/v1/finance/renewals/price-indexes', 'INDEXES, a.admin'],
+        ['gövde', 'POST /api/v1/finance/renewals/price-indexes', 'INDEXES, a.admin, { ...INDEX'],
+        ['kayıt', 'PATCH /api/v1/finance/renewals/price-indexes/:academicYear', '/2028'],
+        ['kayıt', 'GET /api/v1/finance/renewals/:renewalId', '`${BASE}/${id}`'],
+        ['kayıt', 'POST /api/v1/finance/renewals/:renewalId/activate', '/activate'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-renewals.test.ts',
+        'başka kurumun yenilemesi okuma ve geçişte 404, B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

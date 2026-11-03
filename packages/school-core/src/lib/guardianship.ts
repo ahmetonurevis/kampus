@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { Role } from '../modules/navigation.ts'
 import type { GuardianBond } from './consents.ts'
 import { DomainError } from './errors.ts'
+import { FINANCE_NOTIFICATION_TYPES } from './finance-notifications.ts'
 
 /**
  * Veli–öğrenci bağı (IST-019; docs/domain/iletisim-ve-veli.md DOM-ILT-070…075). Bir öğrencinin
@@ -173,6 +174,76 @@ export function guardedActorLinks<L extends { kind: string; recordId: string }>(
   const accessible = new Set(accessibleStudentIds(guardians, membershipId))
   return links.filter((link) => link.kind !== 'child' || accessible.has(link.recordId))
 }
+
+/**
+ * Ödeyici bağı (K-04, kullanıcı kararı 2026-11-03; DOM-ILT-074): velayeti olsun olmasın, iletişim
+ * kısıtı olmayan ödeyici veli öğrencinin finansını (fatura, sözleşme, tahsilat, bakiye, ekstre)
+ * görür ve finans bildirimini alır. Bağlantı velayet bağlantısından (`child`) ayrı türdür ki
+ * akademik, iletişim ve rıza kapsamına karışmasın: o kararlar yalnız `child` okur, `payer`
+ * yalnız finans kuralında (`modules/scope-builders.ts` `ownOrPayerStudent`) ve finans
+ * bildiriminde (`PAYER_NOTIFICATION_KINDS`) kapsam verir. Kayıt `recordId` öğrenci kimliğidir.
+ */
+export type PayerActorLink = { kind: 'payer'; recordId: string }
+
+/** Hesabın ödeyicisi olduğu öğrenciler: ödeyici ve kısıtsız bağlar (velayet aranmaz). */
+export function payerStudentIds(links: readonly GuardianLink[], membershipId: string): string[] {
+  const ids = new Set<string>()
+  for (const link of links)
+    if (link.membershipId === membershipId && link.isPayer && !link.contactRestricted)
+      ids.add(link.studentId)
+  return [...ids].sort()
+}
+
+/**
+ * Aktörün ödeyici bağlantıları (K-04; DOM-ILT-074). `guardedActorLinks` gibi kapalı başarısızdır:
+ * hesabın o öğrenciye kayıtlı çocuk bağlantısı (`links`, süzülmemiş) ve aynı öğrencide ödeyici,
+ * kısıtsız bir bağı (`guardians`) birlikte olmalıdır; bağı kaldırılan ya da kısıtlanan veli finansı
+ * görmez. Velayetli ödeyici velide `child` ile birlikte `payer` de döner; iki küme ayrı okunduğu
+ * için çift bağlantı kapsamı genişletmez.
+ */
+export function payerActorLinks<L extends { kind: string; recordId: string }>(
+  links: readonly L[],
+  guardians: readonly GuardianLink[],
+  membershipId: string,
+): PayerActorLink[] {
+  const payer = new Set(payerStudentIds(guardians, membershipId))
+  const ids = new Set(
+    links
+      .filter((link) => link.kind === 'child' && payer.has(link.recordId))
+      .map((link) => link.recordId),
+  )
+  return [...ids].sort().map((recordId) => ({ kind: 'payer', recordId }))
+}
+
+/**
+ * Okuma kapsamını kuran aktörün bütün bağlantıları: velayetle süzülmüş bağlantılar
+ * (`guardedActorLinks`) ve ödeyici bağlantıları (`payerActorLinks`). API okuma kapsamı, komut
+ * oturumu ve bildirim kitlesi bunu kullanır; `/me` ve akademik servisler velayet bağlantılarını
+ * (`guardedActorLinks`) okumaya devam eder.
+ */
+export function scopedActorLinks<L extends { kind: string; recordId: string }>(
+  links: readonly L[],
+  guardians: readonly GuardianLink[],
+  membershipId: string,
+): (L | PayerActorLink)[] {
+  return [
+    ...guardedActorLinks(links, guardians, membershipId),
+    ...payerActorLinks(links, guardians, membershipId),
+  ]
+}
+
+/**
+ * Ödeyici bağının alıcı yaptığı bildirim türleri: finans türleri (`lib/finance-notifications.ts`;
+ * taksit vadesi yaklaştı/geçti, tahsilat, iade). Velayeti olmayan ödeyici veli yalnız bunların
+ * veli (`parent`) bildirimini görür; diğer türlerin alıcısı velayet bağlantısıdır (K-04).
+ */
+export type PayerNotificationKind = keyof typeof FINANCE_NOTIFICATION_TYPES
+export const PAYER_NOTIFICATION_KINDS = Object.keys(
+  FINANCE_NOTIFICATION_TYPES,
+) as PayerNotificationKind[]
+const PAYER_KINDS: ReadonlySet<string> = new Set(PAYER_NOTIFICATION_KINDS)
+export const isPayerNotificationKind = (kind: string | undefined): boolean =>
+  kind !== undefined && PAYER_KINDS.has(kind)
 
 /**
  * Rıza kararının girdisi (`lib/consents.ts` `GuardianBond`; DOM-YTK-057): hesabın her bağı

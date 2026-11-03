@@ -43,13 +43,16 @@ import { maskParentContact } from './parent-contact.ts'
  *
  * Aktör API'deki üyelik bağlantılarıyla aynı biçimdedir (`links: [{ kind, recordId }]`): öğrenci
  * kendi kaydına (`student`), veli çocuklarına (`child`), öğretmen öğretmen kaydına (`teacher`)
- * bağlanır. Kapsam istemcinin gönderdiği kimlikten değil bu bağlantılardan hesaplanır.
+ * bağlanır. Kapsam istemcinin gönderdiği kimlikten değil bu bağlantılardan hesaplanır. Ödeyici
+ * veli ayrıca ödediği öğrenciye `payer` bağlantısı taşır (K-04; `lib/guardianship.ts`
+ * `payerActorLinks`): yalnız `payerStudentIds` kümesine girer, `studentIds`/`classIds` ve onlara
+ * dayanan akademik, iletişim ve rıza kapsamını değiştirmez; finans kuralı onu açıkça okur.
  *
  * Kullanım: `scopeFor(kaynak, aktör)` indeksleri bir kez kurar; `read(koleksiyon, satırlar)`
  * satırları süzer ve alan ayıklar. Bilinmeyen koleksiyon veya rol en dar varsayılandır (boş).
  */
 
-export const ACTOR_LINK_KINDS = ['student', 'child', 'teacher'] as const
+export const ACTOR_LINK_KINDS = ['student', 'child', 'teacher', 'payer'] as const
 export type ActorLinkKind = (typeof ACTOR_LINK_KINDS)[number]
 export type ActorLink = { kind: ActorLinkKind; recordId: string }
 export type Actor = {
@@ -137,6 +140,11 @@ export type Scope = {
   readonly studentIds: ReadonlySet<string>
   /** Kapsamdaki sınıflar: öğretmende ders verdiği ve rehberi olduğu, öğrenci/velide kendi sınıfı. */
   readonly classIds: ReadonlySet<string>
+  /**
+   * Velinin ödeyicisi olduğu öğrenciler (`payer` bağlantısı; K-04, DOM-ILT-074). Yalnız finans
+   * kapsamıdır: `studentIds`'e girmez; velayetli ödeyicide ikisinde de bulunur. Veli dışı rolde boş.
+   */
+  readonly payerStudentIds: ReadonlySet<string>
   /** Öğretmen aktörün verdiği ödevler (kaynaktaki `homework`; teslim kapsamı, DOM-AKD-074). */
   readonly homeworkIds: ReadonlySet<string>
   /** Öğretmen aktörün hazırladığı quizler (kaynaktaki `quizzes`; deneme kapsamı, DOM-AKD-079). */
@@ -319,7 +327,8 @@ function buildContext(source: ScopeSource, actor: Actor, role: Role | undefined)
   const studentClass = new Map(source.students.map((s) => [s.id, s.classId]))
   const classIds = new Set<string>(),
     homeroomIds = new Set<string>(),
-    studentIds = new Set<string>()
+    studentIds = new Set<string>(),
+    payerStudentIds = new Set<string>()
   if (admin) {
     for (const c of source.classes) classIds.add(c.id)
     for (const s of source.students) studentIds.add(s.id)
@@ -339,6 +348,9 @@ function buildContext(source: ScopeSource, actor: Actor, role: Role | undefined)
       studentIds.add(id)
       classIds.add(classId)
     }
+    // Ödeyici bağlantısı sınıf ya da öğrenci kapsamı açmaz; yalnız finans kuralının kümesidir.
+    if (role === 'veli')
+      for (const id of linked('payer')) if (studentClass.has(id)) payerStudentIds.add(id)
   }
   const branchIds = new Set<string>(),
     grades = new Set<number>(),
@@ -376,6 +388,7 @@ function buildContext(source: ScopeSource, actor: Actor, role: Role | undefined)
     teacher,
     counselor: teacher?.guidanceCounselor === true,
     studentIds,
+    payerStudentIds,
     classIds,
     homeroomIds,
     branchIds,
@@ -462,6 +475,7 @@ export function scopeFor(source: ScopeSource, actor: Actor, options: ScopeOption
     teacher: context.teacher,
     counselor: context.counselor,
     studentIds: context.studentIds,
+    payerStudentIds: context.payerStudentIds,
     classIds: context.classIds,
     get homeworkIds() {
       return context.homeworkIds
@@ -501,6 +515,15 @@ const DENIAL_ERRORS: Record<ReadDenial, () => DomainError> = {
     new DomainError('permission_denied', 'Bu işlem için yetkiniz bulunmuyor.', {
       kind: 'forbidden',
     }),
+}
+
+/**
+ * Finans kapsamındaki öğrenciler: kapsamdaki öğrenciler ve ödeyicisi olunan öğrenciler (K-04,
+ * DOM-ILT-074). Yalnız finans okuması (bakiye, ekstre, tahsilat) içindir; akademik veya iletişim
+ * kararında `studentIds` kullanılır.
+ */
+export function financeStudentIds(scope: Pick<Scope, 'studentIds' | 'payerStudentIds'>) {
+  return new Set([...scope.studentIds, ...scope.payerStudentIds])
 }
 
 /** Okuma uçları için: koleksiyon kapalıysa DomainError fırlatır (API 404 veya 403). */

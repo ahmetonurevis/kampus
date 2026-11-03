@@ -145,7 +145,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 - **Kural:** Her grubun asgari açılış sayısı (kurum ayarı) vardır. Başlangıç tarihinde asgari sayıya ulaşmayan grup açılmaz; kayıtlı kursiyerlere seçenek sunulur: aynı kurdaki başka gruba geçiş, bekleme veya ücretin tamamının iadesi. Kursiyerin onayı olmadan başka gün/saatteki gruba taşınmaz.
 - **Gerekçe:** Kurum kaynaklı iptalde kursiyer kesintiye uğramamalı; tarih/saat sözleşmenin esasıdır.
-- **Kaynak:** İşletme kuralı; tam iade, ÖÖKY md. 56/3-b'deki %10 kesintinin kursiyer kaynaklı ayrılış için olduğu yorumuna dayanır — **doğrulanmalı**.
+- **Kaynak:** İşletme kuralı; tam iade, ÖÖKY md. 56/3-b'deki %10 kesintinin kursiyer kaynaklı ayrılış için olduğu yorumuna dayanır — **doğrulanmalı** (H-18).
 - **Kurum türü:** `language_school`
 - **Kodda:** kısmen — `packages/school-core/src/lib/language-groups.ts` `planGroupOpen` açılışı asgari sayıya (kurun `minLearners`) bağlar (422 `group_below_minimum`), başlangıç geçmişse açmaz; `planGroupCancellation` gerekçeyle iptal eder; `planGroupMerge` aynı kur ve yaş bandını birleştirir, kapasiteyi, taşınan kursiyerin saat çakışmasını ve 21.00 sınırını denetler, gün/saat farklıysa kursiyer onayı beyanı ister (`group_merge_consent_required`), kaynak iptal edilir. Açılmış grupta öğretmen ve derslik boşaltılamaz. Başlangıcı geçmiş hiç açılmamış grup açılmaz; kursiyersizse ileri tarihe alınır, kursiyerliyse birleştirilir ya da iptal edilir ve iptale kadar kur arşivini engeller. Uçlar `POST /api/v1/groups/:groupId/open|cancel|merge`. Birleştirmede kaynağın kayıt satırları arşivlenir, taşınan kursiyere hedefte yeni kayıt açılır; kur sonu kararı (`DOM-DIL-070`) kayda bağlı olduğundan taşınmaz: taşınan kursiyerin onay bekleyen kararı varsa birleştirme 422 `progression_pending` ile reddedilir ve hiçbir kayıt değişmez, onaylı ya da reddedilmiş karar arşivlenen eski kayıtta geçmiş olarak kalır (`apps/api/src/db/language-groups.ts` `moveGroupMembers`). Kursiyere seçenek sunma ve iade kayıt/finans akışındadır (ON-058).
 
@@ -187,7 +187,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 - **Kural:** Paket saat bakiyesi saklanmaz; satın alınan saat − tüketilen saat − iade edilen saat olarak hesaplanır. Grup kurunda tüketim, kursiyerin kayıtlı olduğu sürede yapılmış derslerin saatidir (kursiyerin devamsızlığı saati geri vermez). Bireysel/esnek pakette tüketim, gerçekleşen ve geç iptal edilen (`DOM-DIL-054`) derslerdir. Paketin kullanım süresi olabilir; süre dolduğunda kullanılmayan saatler silinmez, kursiyerin seçimine göre süre uzatılır veya `DOM-FIN-040` ile iade hesabına girer.
 - **Gerekçe:** Hesaplanabilen değer saklanmaz; mevzuat ayrılanlara alınmamış ders saatlerinin iadesini öngörür, "kullanılmayan saat yanar" koşulu bununla çelişir.
-- **Kaynak:** ÖÖKY md. 56/3-b ve 4 (iade bir ay içinde); süre dolumunda yanma yasağının 6502 açısından değerlendirilmesi **doğrulanmalı**.
+- **Kaynak:** ÖÖKY md. 56/3-b ve 4 (iade bir ay içinde); süre dolumunda yanma yasağının 6502 açısından değerlendirilmesi **doğrulanmalı** (H-19).
 - **Kurum türü:** `language_school`
 - **Kodda:** yok.
 
@@ -195,7 +195,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 - **Kural:** Kursiyer (18 yaş altında veli) gerekçeyle kayıt dondurma ister; yönetici onaylar. Dondurma kur sınırında başlar (kur bitiminde veya yeni kur başlamadan). Kur ortasında dondurma yalnız sağlık, askerlik, taşınma, iş/okul takvimi gibi belgeli nedenle olur; bu durumda kursiyer o kuru `tamamlamadı` olarak kapatır ve kalan ders saatleri bakiyeye geçer. Dondurma süresinde saat tüketilmez, devamsızlık yazılmaz, kursiyer grup kapasitesinde yer tutmaz (dönüşte aynı grup garanti edilmez). Bir kayıtta toplam dondurma 6 ayı geçemez; süre dolunca kursiyer döner veya ayrılış (`DOM-KAY-024`) ve iade (`DOM-FIN-040`) işlemi açılır. Dönüşte 90 günü aşan dondurmada seviye tespiti yenilenir (`DOM-DIL-012`). Dondurma ayrılış değildir; taksit planı dondurma süresince ertelenir ve yeni plan kursiyere/veliye onaylatılır.
 - **Gerekçe:** Yetişkin kursiyerlerde ara verme yaygındır; kur ortasında dondurup başka gruba dönmek devam ve kur geçme hesabını bozar.
-- **Kaynak:** İşletme kuralı (ÖÖKY'de dondurma hükmü bulunamadı). MEBBİS'teki kursiyer kaydına etkisi (kayıt kapatma/yeniden açma) **doğrulanmalı**.
+- **Kaynak:** İşletme kuralı (ÖÖKY'de dondurma hükmü bulunamadı). MEBBİS'teki kursiyer kaydına etkisi (kayıt kapatma/yeniden açma) **doğrulanmalı** (H-24).
 - **Kurum türü:** `language_school`
 - **Kodda:** yok.
 
@@ -299,7 +299,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 - **Kural:** Kayıt tarihinde 18 yaşını doldurmuş kursiyer kendi hesabıyla kaydolur; veli kaydı açılmaz. Sözleşme tarafı kursiyerdir; ödeyici kursiyer veya kurumsal kayıtta işverendir. Kursiyerin verisi (devam, not, ses kaydı) üçüncü kişilere (eş, ebeveyn, işveren) gösterilmez; kursiyer isterse sınırlı yetkili kişi tanımlar (`DOM-DIL-093`). Yaş, doğum tarihinden Europe/Istanbul gününe göre hesaplanır.
 - **Gerekçe:** Ergin kişi kendi adına sözleşme yapar; verisine erişim onun kararıdır.
-- **Kaynak:** 4721 sayılı TMK md. 11–12 (erginlik) — **doğrulanmalı**; KVKK md. 5.
+- **Kaynak:** 4721 sayılı TMK md. 11–12 (erginlik) — **doğrulanmalı** (H-10); KVKK md. 5.
 - **Kurum türü:** `language_school`
 - **Kodda:** çelişiyor — kesin kayıt her öğrenci için yeni veli üretir (`packages/school-core/src/lib/domain.ts:280,314-318`).
 
@@ -307,7 +307,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 - **Kural:** 18 yaş altı kursiyer en az bir veliye bağlanır; sözleşmeyi veli yapar, onayları veli verir (`DOM-KAY-012`). Veli yalnız kendi çocuğunun devam, ilerleme ve ödeme bilgisini görür. Zorunlu eğitim çağındaki kursiyerin ders saatleri `DOM-DIL-003` sınırına uyar; ruhsat türü özel öğretim kursu olan kurumda kursiyerin MEBBİS kaydı e-Okul ile ilişkilendirilir ve kursiyer yalnız sınıf düzeyine uygun programa kaydolur.
 - **Gerekçe:** Reşit olmayanı yasal temsilcisi temsil eder; özel öğretim kursları için e-Okul bağı zorunludur.
-- **Kaynak:** ÖÖKY md. 51/12 (özel öğretim kursları), md. 10/6; TMK — **doğrulanmalı**.
+- **Kaynak:** ÖÖKY md. 51/12 (özel öğretim kursları), md. 10/6; TMK — **doğrulanmalı** (H-10).
 - **Kurum türü:** `language_school`
 - **Kodda:** yok.
 
@@ -315,7 +315,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 - **Kural:** Kayıtlı kursiyer 18 yaşına girdiği gün veli erişimi askıya alınır ve kursiyere bildirilir; kursiyer onaylarsa veli `yetkili kişi` olarak kalır. Veli imzalı mevcut sözleşme ve ödeyici süre sonuna kadar değişmez; yeni sözleşmeyi kursiyer yapar.
 - **Gerekçe:** Erginlikle birlikte veri üzerindeki karar kişinin kendisine geçer; devam eden borç ilişkisi kendiliğinden el değiştirmez.
-- **Kaynak:** İşletme kuralı; KVKK md. 5; borç ilişkisinin devamı **doğrulanmalı**.
+- **Kaynak:** İşletme kuralı; KVKK md. 5; borç ilişkisinin devamı **doğrulanmalı** (H-11).
 - **Kurum türü:** `language_school`
 - **Kodda:** yok.
 
@@ -323,7 +323,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 
 - **Kural:** İşverenin ödediği kurumsal eğitimde işverene yalnız devam oranı ve kur sonucu raporlanır; bunun için kursiyere kayıtta aydınlatma yapılır. Yazma ürünleri, ses kayıtları ve öğretmen yorumları işverene verilmez. Yetişkin kursiyerin tanımladığı yetkili kişi de yalnız kursiyerin seçtiği alanları görür ve kursiyer yetkiyi her an geri alabilir.
 - **Gerekçe:** Ödeyici olmak verinin tamamına erişim hakkı vermez; ölçülülük.
-- **Kaynak:** KVKK md. 4, 10; işveren raporunun hukuki dayanağı (sözleşmenin ifası mı açık rıza mı) **doğrulanmalı**.
+- **Kaynak:** KVKK md. 4, 10; işveren raporunun hukuki dayanağı (sözleşmenin ifası mı açık rıza mı) **doğrulanmalı** (H-25).
 - **Kurum türü:** `language_school`
 - **Kodda:** yok.
 

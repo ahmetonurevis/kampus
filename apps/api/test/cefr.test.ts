@@ -367,6 +367,7 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
     for (const cookie of [t.cookies.admin, t.cookies.frontDesk, t.cookies.student]) {
       fails(await open(t, {}, cookie), 404, 'not_found')
       fails(await call('GET', `/placement-sessions/${randomUUID()}`, cookie), 404, 'not_found')
+      fails(await call('GET', `/placement-sessions/${randomUUID()}/form`, cookie), 404, 'not_found')
       fails(await call('GET', '/students/s-deniz/cefr-profile', cookie), 404, 'not_found')
     }
     assert.equal((await sessionRows(t.institution.id)).length, 0)

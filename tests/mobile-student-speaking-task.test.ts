@@ -28,6 +28,10 @@ import {
   speakingSettings,
   speakingSubmitInput,
   speakingUploadInput,
+  PHONE_BLOCK_MESSAGES,
+  permissionBlock,
+  phoneLiveMessage,
+  recordingClockSpoken,
   type PhoneRecorderEvent,
 } from '../apps/mobile/src/api/student-speaking-task.ts'
 
@@ -319,5 +323,25 @@ describe('OG-064: teslim akışı (kayıt makinesi + gerçek komut)', () => {
     const rejected = speakingFailure(apiError(422, 'recording_too_long', 'Süre aşıldı.'))
     const idle = recorderReducer(toSending(), rejected.event)
     assert.equal(idle.phase.kind, 'idle')
+  })
+})
+
+describe('telefon metinleri', () => {
+  test('izin reddi telefona özgü metinle anlatılır, tarayıcıdan söz edilmez', () => {
+    assert.equal(permissionBlock(true), null)
+    assert.equal(permissionBlock(false), 'denied')
+    for (const reason of ['denied', 'unsupported'] as const)
+      assert.doesNotMatch(PHONE_BLOCK_MESSAGES[reason], /[Tt]arayıcı/)
+    const phase = { kind: 'blocked', reason: 'denied' } as const
+    assert.equal(phoneLiveMessage(phase, 0), PHONE_BLOCK_MESSAGES.denied)
+    assert.equal(phoneLiveMessage({ kind: 'requesting' }, 0), 'Mikrofon izni isteniyor.')
+  })
+
+  test('sayaç etiketi her saniye değişmez', () => {
+    const labels = new Set<string>()
+    for (let ms = 60_000; ms > 50_000; ms -= 1000) labels.add(recordingClockSpoken(ms, 'Kayıt'))
+    assert.equal(labels.size, 1)
+    assert.equal(recordingClockSpoken(150_000, 'Hazırlık'), 'Hazırlık: kalan 3 dakika')
+    assert.equal(recordingClockSpoken(0, 'Kayıt'), 'Kayıt: kalan 0 saniye')
   })
 })

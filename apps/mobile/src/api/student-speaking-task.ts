@@ -8,10 +8,14 @@
 import type { ApiError } from '@kampus/api-client/errors.ts'
 import { commandFeedback } from '@kampus/react-shared/commands.ts'
 import type { FileProcessing } from '@kampus/react-shared/files.ts'
-import type {
-  RecorderEvent,
-  SpeakingLimits,
-  Take,
+import {
+  BLOCK_MESSAGES,
+  liveMessage,
+  type BlockReason,
+  type RecorderEvent,
+  type RecorderPhase,
+  type SpeakingLimits,
+  type Take,
 } from '@kampus/react-shared/speaking-recorder-model.ts'
 import { isSpeakingTask } from '@kampus/react-shared/task-labels.ts'
 import type { TaskAssignmentLearner } from '@kampus/react-shared/use-task-assignments.ts'
@@ -261,4 +265,34 @@ export function speakingFailure(
     default:
       return kind satisfies never
   }
+}
+
+// --- Telefon metinleri ---------------------------------------------------------------------
+
+/**
+ * Engel metinleri: ortak `BLOCK_MESSAGES`'ın tarayıcıya özgü iki iletisi (`unsupported`, `denied`)
+ * telefon için yeniden yazılır; rıza, mikrofon yok ve başlatılamadı iletileri aynıdır.
+ */
+export const PHONE_BLOCK_MESSAGES: Record<BlockReason, string> = {
+  ...BLOCK_MESSAGES,
+  unsupported: 'Bu cihaz ses kaydını desteklemiyor. Görevi web sürümünden çözün.',
+  denied:
+    'Mikrofon izni verilmedi. Telefonun Ayarlar > Uygulamalar bölümünden mikrofona izin verip yeniden deneyin.',
+}
+
+/** Canlı bölge metni: ortak `liveMessage`, engel evresinde telefon metinleriyle. */
+export const phoneLiveMessage = (phase: RecorderPhase<unknown>, now: number): string =>
+  phase.kind === 'blocked' ? PHONE_BLOCK_MESSAGES[phase.reason] : liveMessage(phase, now)
+
+/** İzin yanıtından engel nedeni; izin verildiyse `null`. */
+export const permissionBlock = (granted: boolean): BlockReason | null => (granted ? null : 'denied')
+
+/**
+ * Sayaç için ekran okuyucu etiketi: görünen saat her saniye değişir, etiket yalnız dakikada bir
+ * (son dakikada on saniyede bir) değişir; böylece her saniye okunmaz.
+ */
+export function recordingClockSpoken(remainingMs: number, what: 'Hazırlık' | 'Kayıt'): string {
+  const seconds = Math.max(0, Math.ceil(remainingMs / 1000))
+  if (seconds <= 60) return `${what}: kalan ${Math.ceil(seconds / 10) * 10} saniye`
+  return `${what}: kalan ${Math.ceil(seconds / 60)} dakika`
 }

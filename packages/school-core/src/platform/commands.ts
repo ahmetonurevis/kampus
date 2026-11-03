@@ -174,6 +174,11 @@ export const PLATFORM_OPERATION_COMMANDS = {
     'permissionForms',
     'permissionDecisions',
   ]),
+  'permissionForm.cancel': spec('communication', [
+    ...SCOPE,
+    'permissionForms',
+    'permissionDecisions',
+  ]),
   'permissionForm.archive': spec('communication', [
     ...SCOPE,
     'permissionForms',

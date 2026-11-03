@@ -35,6 +35,11 @@ import type { RequestActor } from './requests.ts'
  * - Kararı olan formun hedefi daraltılamaz, form arşivlenemez (kapatılır); son günü geçmiş formun
  *   son günü değişmez (DOM-ILT-038).
  * - Hatırlatılacaklar saf hesaptır (`permissionReminders`, DOM-ILT-039); zamanlanmış iş API'dedir.
+ * - Etkinlik ayrıntısı (gün, saat, yer, ulaşım, ücret) değişirse alınmış kararlar düşer
+ *   (DOM-ILT-032): form `detailsRevision` sayacını artırır, karar satırı verildiği sürümü
+ *   (`formRevision`) taşır; sürümü formunkinden eski karar satır olarak kalır (ispat, DOM-ILT-034)
+ *   ama durumu etkilemez. Düşme saklanan bir bayrak değil, iki sayının farkıdır: karar satırı
+ *   hiç yazılmaz, silinmez. İptal formu kapatır ve `cancelledAt` işaretler.
  */
 
 z.config(z.locales.tr())
@@ -64,6 +69,9 @@ export const PERMISSION_FORM_DESCRIPTION_MAX_LENGTH = 4000
 export const PERMISSION_NOTE_MAX_LENGTH = 500
 export const PERMISSION_FORM_CLASS_LIMIT = 50
 export const PERMISSION_FORM_STUDENT_LIMIT = 500
+export const PERMISSION_EVENT_TEXT_MAX_LENGTH = 200
+/** Katılım ücreti üst sınırı (kuruş): 100.000 TL. */
+export const PERMISSION_EVENT_FEE_MAX = 10_000_000
 /** Son günden kaç gün önce ve son gün hatırlatılır (DOM-ILT-039). */
 export const PERMISSION_REMINDER_DAYS = [2, 0] as const
 
@@ -97,6 +105,25 @@ const ids = (label: string, limit: number) =>
 const classIds = ids('Sınıf', PERMISSION_FORM_CLASS_LIMIT)
 const studentIds = ids('Öğrenci', PERMISSION_FORM_STUDENT_LIMIT)
 
+/** Etkinlik günü (`YYYY-MM-DD`, Europe/Istanbul). */
+const eventDate = z.iso.date('Etkinlik gününü seçin.')
+const eventTime = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Saati SS:DD biçiminde girin.')
+const eventText = (label: string) =>
+  z
+    .string()
+    .trim()
+    .min(2, `${label} yazın.`)
+    .max(
+      PERMISSION_EVENT_TEXT_MAX_LENGTH,
+      `${label} en fazla ${PERMISSION_EVENT_TEXT_MAX_LENGTH} karakter olabilir.`,
+    )
+/** Katılım ücreti, tamsayı kuruş; ücretsiz 0. */
+const eventFee = z
+  .number('Ücreti girin.')
+  .int('Ücret kuruş cinsinden tam sayı olmalıdır.')
+  .min(0, 'Ücret eksi olamaz.')
+  .max(PERMISSION_EVENT_FEE_MAX, 'Ücret çok yüksek.')
+
 const hasTarget = (body: { classIds?: string[] | undefined; studentIds?: string[] | undefined }) =>
   (body.classIds?.length ?? 0) > 0 || (body.studentIds?.length ?? 0) > 0
 const TARGET_REQUIRED = { message: 'En az bir sınıf ya da öğrenci seçin.', path: ['classIds'] }
@@ -110,6 +137,12 @@ export const createPermissionFormSchema = z
     classIds: classIds.optional(),
     /** Sınıf dışında ya da sınıfın yalnız bir kısmı için tek tek öğrenciler. */
     studentIds: studentIds.optional(),
+    // Etkinlik ayrıntısı (DOM-ILT-032): verilen izin bu ayrıntıya verilir; değişirse düşer.
+    eventDate: eventDate.optional(),
+    eventTime: eventTime.optional(),
+    location: eventText('Yeri').optional(),
+    transport: eventText('Ulaşım biçimini').optional(),
+    fee: eventFee.optional(),
   })
   .refine(hasTarget, TARGET_REQUIRED)
 export type CreatePermissionFormInput = z.input<typeof createPermissionFormSchema>
@@ -122,6 +155,12 @@ export const updatePermissionFormSchema = z
     deadline: deadline.optional(),
     classIds: classIds.optional(),
     studentIds: studentIds.optional(),
+    // `null` ayrıntıyı kaldırır; kaldırmak da değişikliktir (DOM-ILT-032).
+    eventDate: eventDate.nullable().optional(),
+    eventTime: eventTime.nullable().optional(),
+    location: eventText('Yeri').nullable().optional(),
+    transport: eventText('Ulaşım biçimini').nullable().optional(),
+    fee: eventFee.nullable().optional(),
   })
   .refine((body) => Object.values(body).some((value) => value !== undefined), {
     message: 'En az bir alan gönderin.',
@@ -164,10 +203,29 @@ export type PermissionFormRecord = {
   targetStudentIds: string[]
   /** Açılışta çözülen hedef öğrenciler: sınıfların etkin öğrencileri ve tek tek seçilenler. */
   studentIds: string[]
+  /**
+   * Etkinlik ayrıntısı (DOM-ILT-032); alanı olmayan kayıt ve `null` "belirtilmemiş" sayılır.
+   * Değişmesi alınmış kararları düşürür (`permissionDroppingChanges`).
+   */
+  eventDate?: string | null
+  /** Etkinlik saati (`SS:DD`, Europe/Istanbul). */
+  eventTime?: string | null
+  location?: string | null
+  /** Ulaşım biçimi (servis, veli getirir…). */
+  transport?: string | null
+  /** Katılım ücreti, tamsayı kuruş. */
+  fee?: number | null
+  /**
+   * Etkinlik ayrıntısı sürümü: izni düşüren her değişiklikte bir artar. Alanı olmayan kayıt 0'dır.
+   * Karar satırı verildiği sürümü taşır (`formRevision`); formunkinden eski karar düşmüştür.
+   */
+  detailsRevision?: number
   /** Formu açan öğretmen (yönetici açtıysa `null`); düzenleme yetkisi buna göredir. */
   teacherId: string | null
   status: 'open' | 'closed'
   closedAt: string | null
+  /** Etkinlik iptal edildi (DOM-ILT-032); iptal formu da kapatır. Alanı olmayan kayıt iptal değildir. */
+  cancelledAt?: string | null
   createdBy: RequestActor
   createdAt: string
   updatedAt: string
@@ -188,6 +246,11 @@ export type PermissionDecisionRecord = {
   decidedByUserId: string
   decidedByRole: 'veli' | 'ogrenci'
   decidedAt: string
+  /**
+   * Kararın verildiği form sürümü (`PermissionFormRecord.detailsRevision`); alanı olmayan satır 0.
+   * Formun sürümünden eskiyse karar düşmüştür (DOM-ILT-032): satır kalır, durumu etkilemez.
+   */
+  formRevision?: number
 }
 
 /** Yetkinin dayandığı form tarafları. */
@@ -252,6 +315,87 @@ export const isPermissionFormOpen = (
   form: Pick<PermissionFormRecord, 'deadline' | 'status'>,
   now: string,
 ) => form.status === 'open' && !isPermissionDeadlinePassed(form, now)
+
+/** İzni düşüren etkinlik ayrıntıları (DOM-ILT-032). Başlık, açıklama ve son gün düşürmez. */
+export const PERMISSION_EVENT_DETAIL_FIELDS = [
+  'eventDate',
+  'eventTime',
+  'location',
+  'transport',
+  'fee',
+] as const
+export type PermissionEventDetailField = (typeof PERMISSION_EVENT_DETAIL_FIELDS)[number]
+export type PermissionEventDetails = {
+  eventDate?: string | null | undefined
+  eventTime?: string | null | undefined
+  location?: string | null | undefined
+  transport?: string | null | undefined
+  fee?: number | null | undefined
+}
+
+/** Boş metin, `null` ve eksik alan aynı "belirtilmemiş" değeridir; metin kenar boşluksuz karşılaşır. */
+const detailValue = (value: string | number | null | undefined) =>
+  value === undefined || value === null || value === ''
+    ? null
+    : typeof value === 'string'
+      ? value.trim()
+      : value
+
+/**
+ * İzni düşüren değişiklik kararı (DOM-ILT-032): `patch`'te verilen ve `current`'tan farklı olan
+ * etkinlik ayrıntıları (gün, saat, yer, ulaşım, ücret). Verilmeyen alan değişmez; aynı değerin
+ * yeniden yazılması değişiklik değildir (mükerrer güncelleme izin düşürmez). Boş liste: izinler
+ * korunur. Değerin eklenmesi ve kaldırılması da değişikliktir: veli belirli bir ayrıntıya izin
+ * verir (muhafazakâr yön).
+ */
+export function permissionDroppingChanges(
+  current: PermissionEventDetails,
+  patch: PermissionEventDetails,
+): PermissionEventDetailField[] {
+  return PERMISSION_EVENT_DETAIL_FIELDS.filter(
+    (field) =>
+      patch[field] !== undefined && detailValue(patch[field]) !== detailValue(current[field]),
+  )
+}
+
+/** Formun etkinlik ayrıntısı sürümü; alanı olmayan kayıt 0'dır. */
+export const permissionFormRevision = (form: { detailsRevision?: number | undefined }) =>
+  form.detailsRevision ?? 0
+
+/** Karar formun şimdiki sürümünde mi verildi (düşmemiş mi); alanı olmayan satır 0 sürümündedir. */
+export const isCurrentDecision = (
+  form: { detailsRevision?: number | undefined },
+  decision: { formRevision?: number | undefined },
+) => (decision.formRevision ?? 0) === permissionFormRevision(form)
+
+/** Durumu etkileyen kararlar: düşenler (eski sürüm) ispat olarak kalır ama sayılmaz. */
+export const currentDecisions = <D extends { formRevision?: number | undefined }>(
+  form: { detailsRevision?: number | undefined },
+  decisions: readonly D[],
+): D[] => decisions.filter((decision) => isCurrentDecision(form, decision))
+
+/**
+ * Yeniden izin istenecek öğrenciler (DOM-ILT-032): ayrıntı değişmeden önce kararı olan (onay ya da
+ * ret) öğrenciler. Durumlar bugün velayetli veliler üzerinden hesaplanmış olmalıdır
+ * (`permissionStatus`); velayeti kalkan velinin kararı sayılmadığı için o öğrenci istenmez.
+ */
+export const permissionReaskStudents = (statuses: ReadonlyMap<string, PermissionStatus>) =>
+  [...statuses].filter(([, status]) => status !== 'pending').map(([studentId]) => studentId)
+
+/**
+ * İptali bildirilecek öğrenciler (DOM-ILT-032): izin vermiş (`approved`) ve karar bekleyen
+ * (`pending`) olanlar; etkinliği reddetmiş velinin çocuğuna iptal bildirimi gitmez.
+ */
+export const permissionCancelStudents = (statuses: ReadonlyMap<string, PermissionStatus>) =>
+  [...statuses].filter(([, status]) => status !== 'rejected').map(([studentId]) => studentId)
+
+/** Etkinlik günü bugünden önce olamaz (Europe/Istanbul günü). */
+function assertEventDateNotPast(day: string | null | undefined, now: string) {
+  if (typeof day === 'string' && day < dayKey(now))
+    throw new DomainError('permission_form_event_in_past', 'Etkinlik günü geçmişte olamaz.', {
+      path: ['eventDate'],
+    })
+}
 
 function assertDeadlineNotPast(day: string, now: string) {
   if (day < dayKey(now))
@@ -339,6 +483,7 @@ export function createPermissionForm(
     options,
   )
   assertDeadlineNotPast(data.deadline, now)
+  assertEventDateNotPast(data.eventDate, now)
   const studentIds = resolveStudents(state, targets)
   const teacherId =
     by.role === 'ogretmen'
@@ -350,6 +495,11 @@ export function createPermissionForm(
     title: data.title,
     description: data.description,
     deadline: data.deadline,
+    ...(data.eventDate === undefined ? {} : { eventDate: data.eventDate }),
+    ...(data.eventTime === undefined ? {} : { eventTime: data.eventTime }),
+    ...(data.location === undefined ? {} : { location: data.location }),
+    ...(data.transport === undefined ? {} : { transport: data.transport }),
+    ...(data.fee === undefined ? {} : { fee: data.fee }),
     ...targets,
     studentIds,
     teacherId,
@@ -385,10 +535,19 @@ export type PermissionFormUpdate = {
   form: PermissionFormRecord
   /** Düzenlemeyle hedefe yeni giren öğrenciler (bildirim yalnız onlara gider). */
   addedStudentIds: string[]
+  /** İzni düşüren değişen etkinlik ayrıntıları; boşsa izinler korunur (DOM-ILT-032). */
+  droppedFields: PermissionEventDetailField[]
+  /**
+   * Değişiklikten önceki ayrıntı sürümü. `droppedFields` doluysa bu sürümdeki kararlar düştü;
+   * yeniden izin istenecekler onlardır (`permissionReaskStudents`).
+   */
+  previousRevision: number
 }
 
 /**
- * İzin formunu düzenle (DOM-ILT-038): başlık, açıklama, son gün ve hedef; konu türü değişmez.
+ * İzin formunu düzenle (DOM-ILT-038): başlık, açıklama, son gün, hedef ve etkinlik ayrıntısı;
+ * konu türü değişmez. Etkinlik günü, saati, yeri, ulaşım biçimi ya da ücreti değişirse alınmış
+ * kararlar düşer (DOM-ILT-032): ayrıntı sürümü bir artar, karar satırlarına dokunulmaz.
  * Kapalı form 422 `permission_form_closed`. Son günü geçmiş formun son günü değişmez (422
  * `permission_form_deadline_passed`); yeni son gün bugünden önce olamaz. Kararı olan formda
  * hedeften sınıf ya da öğrenci çıkarılamaz (422 `permission_form_scope_locked`); eklenebilir ve
@@ -432,6 +591,8 @@ export function updatePermissionForm(
       )
     assertDeadlineNotPast(data.deadline, now)
   }
+  const droppedFields = permissionDroppingChanges(form, data)
+  if (droppedFields.includes('eventDate')) assertEventDateNotPast(data.eventDate, now)
   let studentIds = form.studentIds
   if (targets) {
     const locked = hasDecisions(state, form.id)
@@ -450,15 +611,19 @@ export function updatePermissionForm(
     studentIds = locked ? [...form.studentIds, ...removed(resolved, form.studentIds)] : resolved
   }
   const addedStudentIds = removed(studentIds, form.studentIds)
+  const previousRevision = permissionFormRevision(form)
   Object.assign(form, {
     ...(data.title === undefined ? {} : { title: data.title }),
     ...(data.description === undefined ? {} : { description: data.description }),
     ...(data.deadline === undefined ? {} : { deadline: data.deadline }),
+    // Yalnız gerçekten değişen ayrıntı yazılır: aynı değer yeniden gelirse kayıt değişmez.
+    ...Object.fromEntries(droppedFields.map((field) => [field, data[field] ?? null])),
+    ...(droppedFields.length > 0 ? { detailsRevision: previousRevision + 1 } : {}),
     ...(targets ?? {}),
     studentIds,
     updatedAt: now,
   })
-  return { form, addedStudentIds }
+  return { form, addedStudentIds, droppedFields, previousRevision }
 }
 
 /**
@@ -480,6 +645,36 @@ export function closePermissionForm(
       kind: 'conflict',
     })
   Object.assign(form, { status: 'closed', closedAt: now, updatedAt: now })
+  return form
+}
+
+/**
+ * Etkinliği iptal et (DOM-ILT-032): form kapanır ve `cancelledAt` işaretlenir; kararlar korunur.
+ * İzin vermiş ve bekleyen velilere bildirim API'dedir (`permissionCancelStudents`). Son günü
+ * geçmiş form da iptal edilir (etkinlik son günden sonradır); kapatılmış ama iptal edilmemiş
+ * form iptal edilebilir, kapanış zamanı korunur. İptal edilmiş form yeniden iptal edilmez (409
+ * `permission_form_cancelled`). Yetki kapatmayla aynıdır (yönetici ve formun öğretmeni).
+ */
+export function cancelPermissionForm(
+  state: State,
+  by: Participant,
+  formId: string,
+  now: string,
+  options: PermissionFormOptions = {},
+): PermissionFormRecord {
+  const form = findForm(state, formId)
+  requireAuthorized(by, 'permissionForm.cancel', { form: partiesOf(form) }, state, options)
+  if (!form) throw formNotFound()
+  if (form.cancelledAt)
+    throw new DomainError('permission_form_cancelled', 'Etkinlik zaten iptal edilmiş.', {
+      kind: 'conflict',
+    })
+  Object.assign(form, {
+    status: 'closed',
+    closedAt: form.closedAt ?? now,
+    cancelledAt: now,
+    updatedAt: now,
+  })
   return form
 }
 
@@ -581,8 +776,13 @@ export function decidePermission(
       'Son gün geçtiği için karar verilemez ya da değiştirilemez.',
     )
   const note = data.note ?? ''
+  // Düşmüş (eski sürüm) karar "aynı karar" sayılmaz: etkinlik değişince yeniden verilen onay
+  // yeni sürümde yeni satırdır (DOM-ILT-032).
   const previous = latestDecisions(
-    state.permissionDecisions.filter((d) => d.formId === form.id && d.studentId === student.id),
+    currentDecisions(
+      form,
+      state.permissionDecisions.filter((d) => d.formId === form.id && d.studentId === student.id),
+    ),
   ).find((d) => d.decidedByUserId === by.userId)
   if (previous && previous.decision === data.decision && previous.note === note)
     return { decision: previous, created: false }
@@ -597,6 +797,7 @@ export function decidePermission(
     decidedByUserId: by.userId,
     decidedByRole: by.role === 'ogrenci' ? 'ogrenci' : 'veli',
     decidedAt: now,
+    formRevision: permissionFormRevision(form),
   }
   state.permissionDecisions.push(decision)
   return { decision, created: true }
@@ -684,10 +885,19 @@ const dayNumber = (day: string) => Date.parse(`${day}T00:00:00Z`) / 86_400_000
  * onaylamış öğrenciye hatırlatma gitmez. `deciders` öğrencinin bugün kararı sayılanlarıdır.
  */
 export function permissionReminders(input: {
-  forms: readonly Pick<PermissionFormRecord, 'id' | 'deadline' | 'status' | 'studentIds'>[]
+  forms: readonly Pick<
+    PermissionFormRecord,
+    'id' | 'deadline' | 'status' | 'studentIds' | 'detailsRevision'
+  >[]
   decisions: readonly Pick<
     PermissionDecisionRecord,
-    'formId' | 'studentId' | 'decidedByUserId' | 'decidedAt' | 'decision' | 'relation'
+    | 'formId'
+    | 'studentId'
+    | 'decidedByUserId'
+    | 'decidedAt'
+    | 'decision'
+    | 'relation'
+    | 'formRevision'
   >[]
   deciders: (studentId: string) => PermissionDeciders
   now: string
@@ -704,7 +914,8 @@ export function permissionReminders(input: {
     if (!isPermissionFormOpen(form, input.now)) continue
     const daysLeft = dayNumber(form.deadline) - dayNumber(today)
     if (!(PERMISSION_REMINDER_DAYS as readonly number[]).includes(daysLeft)) continue
-    const decisions = byForm.get(form.id) ?? []
+    // Düşen (eski sürüm) karar beklenen sayılır: yeniden izin istenen öğrenci hatırlatılır.
+    const decisions = currentDecisions(form, byForm.get(form.id) ?? [])
     const studentIds = form.studentIds.filter(
       (studentId) =>
         permissionStatus(

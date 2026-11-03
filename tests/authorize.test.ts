@@ -82,6 +82,7 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'permissionForm.create': ['yonetici', 'ogretmen'],
     'permissionForm.update': ['yonetici', 'ogretmen'],
     'permissionForm.close': ['yonetici', 'ogretmen'],
+    'permissionForm.cancel': ['yonetici', 'ogretmen'],
     'permissionForm.archive': ['yonetici', 'ogretmen'],
     'permissionForm.decide': ['veli', 'ogrenci'],
     'prospect.create': ['yonetici', 'onburo'],

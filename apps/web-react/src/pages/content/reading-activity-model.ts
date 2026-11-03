@@ -45,8 +45,34 @@ export type LinkedSummary = {
   title: string
   /** "A2 · 7. sınıf" gibi kısa künye; yoksa boş. */
   meta: string
-  /** Sorunun alt becerisi (DOM-BEC-006); parçada ve etiketsiz soruda `null`. */
+  /** Sorunun alt becerisi (DOM-BEC-006); parçada, etiketsiz soruda ve bilinmeyince `null`. */
   subskill: string | null
+  /**
+   * Künye ve alt beceri bağlanan sürümü anlatmıyorsa nedeni: liste satırı kaynağın baş sürümünü
+   * taşır; baş sürüm yeni bir taslaksa bağlanan yayındaki sürümün etiketleri yanıtta yoktur.
+   */
+  note: string | null
+}
+
+/** Baş sürüm yayındaki sürümden yeniyken künyenin yerine gösterilen not (DOM-BEC-006). */
+export const PUBLISHED_VERSION_NOTE =
+  'Yeni sürümü hazırlanıyor; yayındaki sürüm bağlanır, etiketleri burada gösterilmez.'
+
+/** Kayıtlı bağın özeti bulunamadığında tarafsız metin: sürüm eski olabilir ya da listede yok. */
+export const LINKED_DETAIL_UNKNOWN = {
+  reading_passage: 'Bağlı parçanın ayrıntısı yüklenemedi.',
+  question: 'Sorunun ayrıntısı yüklenemedi.',
+} as const satisfies Record<LinkedKind, string>
+export const LINKED_DETAIL_LOADING = 'Ayrıntı yükleniyor…'
+
+/**
+ * Seçicide zaten seçili olanlar: sürüm kimlikleri ve (soru listesinde) kaynak kimlikleri. Aynı
+ * sorunun başka sürümü listedeyse güncel sürümü ikinci kez eklenemez; parça ise değiştirilir,
+ * yalnız aynı sürüm kapalıdır.
+ */
+export type PickerSelection = {
+  versionIds: ReadonlySet<string>
+  resourceIds: ReadonlySet<string>
 }
 
 export type PickerRow = LinkedSummary & {
@@ -55,6 +81,26 @@ export type PickerRow = LinkedSummary & {
 }
 
 type Item = StaffResourceListItem | LearnerResourceListItem
+
+/**
+ * Satırın yayındaki sürümünün gösterim alanları. Liste satırı baş sürümü taşır; baş sürüm yayındaki
+ * sürümse etiketler doğrudan okunur, değilse (yeni taslak) künye ve alt beceri gösterilmez, not
+ * düşülür. Başlık kaynağı tanıtmak için baş sürümden kalır.
+ */
+function publishedView(
+  item: StaffResourceListItem,
+): Pick<LinkedSummary, 'meta' | 'subskill' | 'note'> {
+  const differs = item.currentVersionId !== null && item.currentVersionId !== item.version.id
+  return differs ? { meta: '', subskill: null, note: PUBLISHED_VERSION_NOTE } : headView(item)
+}
+
+function headView(item: StaffResourceListItem): Pick<LinkedSummary, 'meta' | 'subskill' | 'note'> {
+  return {
+    meta: linkedMeta(item.version.tags),
+    subskill: subskillLabel(item.version.tags.subskill),
+    note: null,
+  }
+}
 
 export function linkedMeta(tags: StaffResourceListItem['version']['tags']): string {
   const parts: string[] = []
@@ -73,24 +119,23 @@ export const subskillLabel = (subskill: string | null | undefined): string | nul
  * sürüm açık bir taslak olsa da etkinlik yayındaki sürüme bağlanır (DOM-BEC-006: parçanın yeni
  * sürümü etkinliği değiştirmez). Hiç yayımlanmamış kaynak seçilemez.
  */
-export function pickerRow(item: StaffResourceListItem, selected: ReadonlySet<string>): PickerRow {
+export function pickerRow(item: StaffResourceListItem, selected: PickerSelection): PickerRow {
   const versionId = item.currentVersionId ?? ''
   return {
     versionId,
     resourceId: item.id,
     title: item.version.title,
-    meta: linkedMeta(item.version.tags),
-    subskill: subskillLabel(item.version.tags.subskill),
+    ...publishedView(item),
     disabledReason:
       item.currentVersionId === null
         ? 'Yayında değil'
-        : selected.has(item.currentVersionId)
+        : selected.versionIds.has(item.currentVersionId) || selected.resourceIds.has(item.id)
           ? 'Zaten seçili'
           : null,
   }
 }
 
-export const pickerRows = (items: readonly Item[], selected: ReadonlySet<string>): PickerRow[] =>
+export const pickerRows = (items: readonly Item[], selected: PickerSelection): PickerRow[] =>
   items.filter(isStaffItem).map((item) => pickerRow(item, selected))
 
 /**
@@ -120,24 +165,48 @@ export function pickerQuery(input: {
 }
 
 /**
- * Düzenlemede kayıtlı kimliklerin özetleri: liste satırının hem yayındaki hem baş sürümü eşlenir.
- * Listede bulunmayan (eski sürüme bağlı) kimlik eşlenmez; ekran genel bir adla gösterir.
+ * Düzenlemede kayıtlı kimliklerin özetleri: liste satırının hem yayındaki hem baş sürümü eşlenir;
+ * yayındaki sürümün etiketleri baş sürüm aynıysa okunur (`publishedView`). Listede bulunmayan
+ * kimlik (eski sürüm ya da ilk sayfanın dışında kalan kaynak) eşlenmez; ekran tarafsız metin
+ * gösterir (`LINKED_DETAIL_UNKNOWN`).
  */
 export function summariesFrom(items: readonly Item[]): Map<string, LinkedSummary> {
   const map = new Map<string, LinkedSummary>()
   for (const item of items.filter(isStaffItem)) {
-    const summary = {
-      resourceId: item.id,
-      title: item.version.title,
-      meta: linkedMeta(item.version.tags),
-      subskill: subskillLabel(item.version.tags.subskill),
-    }
+    const base = { resourceId: item.id, title: item.version.title }
     if (item.currentVersionId)
-      map.set(item.currentVersionId, { ...summary, versionId: item.currentVersionId })
+      map.set(item.currentVersionId, {
+        ...base,
+        ...publishedView(item),
+        versionId: item.currentVersionId,
+      })
     if (!map.has(item.version.id))
-      map.set(item.version.id, { ...summary, versionId: item.version.id })
+      map.set(item.version.id, { ...base, ...headView(item), versionId: item.version.id })
   }
   return map
+}
+
+/**
+ * Soru listesinin seçici seçimi: listedeki sürümler ve özeti bilinen soruların kaynakları. Özeti
+ * bilinmeyen (eski sürüm, listede yok) sorunun kaynağı da bilinmez; o kaynak seçicide açık kalır.
+ */
+export function questionSelection(
+  itemIds: readonly string[],
+  summaryOf: (versionId: string) => LinkedSummary | undefined,
+): PickerSelection {
+  const resourceIds = new Set<string>()
+  for (const id of itemIds) {
+    const resourceId = summaryOf(id)?.resourceId
+    if (resourceId) resourceIds.add(resourceId)
+  }
+  return { versionIds: new Set(itemIds), resourceIds }
+}
+
+/** Sınırı aşan soru seçiminin Türkçe uyarısı (DOM-KYN-013: en çok 200 soru); taşma yoksa `null`. */
+export function overflowMessage(overflow: number): string | null {
+  return overflow > 0
+    ? `${overflow} soru eklenmedi: bir sette en çok ${ITEMS_MAX} soru olabilir.`
+    : null
 }
 
 export type SetItem = { questionVersionId: string; points: number }

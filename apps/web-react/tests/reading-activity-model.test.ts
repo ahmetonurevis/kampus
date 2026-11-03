@@ -22,9 +22,13 @@ import {
   linkedFieldMessage,
   linkedHints,
   linkedMeta,
+  LINKED_DETAIL_UNKNOWN,
   moveTarget,
+  overflowMessage,
   pickerQuery,
   pickerRows,
+  PUBLISHED_VERSION_NOTE,
+  questionSelection,
   summariesFrom,
 } from '../src/pages/content/reading-activity-model.ts'
 
@@ -265,7 +269,7 @@ describe('Bağlı içerik seçicisi (OG-984)', () => {
         listItem('r3', { currentVersionId: null }),
         listItem('r4'),
       ],
-      new Set(['r4-v1']),
+      { versionIds: new Set(['r4-v1']), resourceIds: new Set() },
     )
     assert.deepEqual(
       rows.map((row) => [row.versionId, row.subskill, row.disabledReason]),
@@ -286,6 +290,57 @@ describe('Bağlı içerik seçicisi (OG-984)', () => {
     assert.equal(map.get('r2-v1')?.versionId, 'r2-v1')
     assert.equal(map.get('r2-v2')?.versionId, 'r2-v2')
     assert.equal(map.has('eski-surum'), false)
+    assert.notEqual(LINKED_DETAIL_UNKNOWN.reading_passage, '')
+    assert.doesNotMatch(LINKED_DETAIL_UNKNOWN.reading_passage, /önceki/)
+  })
+
+  test('DOM-BEC-006: baş sürüm yeni taslakken yayındaki sürümün künyesi ve alt becerisi baş sürümden alınmaz; not düşülür', () => {
+    const draftHead = listItem('r2', {
+      headId: 'r2-v2',
+      tags: { subskill: 'inference', cefrLevel: 'B1' },
+    })
+    const [row] = pickerRows([draftHead], { versionIds: new Set(), resourceIds: new Set() })
+    assert.equal(row?.versionId, 'r2-v1')
+    assert.equal(row?.subskill, null)
+    assert.equal(row?.meta, '')
+    assert.equal(row?.note, PUBLISHED_VERSION_NOTE)
+    const map = summariesFrom([draftHead, listItem('r1', { tags: { subskill: 'main_idea' } })])
+    assert.deepEqual(
+      [map.get('r2-v1')?.subskill, map.get('r2-v1')?.meta, map.get('r2-v1')?.note],
+      [null, '', PUBLISHED_VERSION_NOTE],
+    )
+    // Baş sürümün kendi özeti kendi etiketiyle; baş sürüm yayındaysa not yok.
+    assert.equal(map.get('r2-v2')?.subskill, 'Çıkarım')
+    assert.equal(map.get('r2-v2')?.note, null)
+    assert.equal(map.get('r1-v1')?.subskill, 'Ana fikir')
+    assert.equal(map.get('r1-v1')?.note, null)
+  })
+
+  test('DOM-KYN-013: aynı sorunun başka sürümü listedeyse güncel sürümü seçicide kapalıdır; kaynağı bilinmeyen soru seçimi kapatmaz', () => {
+    // Soru r1'in eski sürümü (r1-v0) listede, güncel sürümü r1-v1; özet bu oturumda seçimden gelir.
+    const known = new Map([
+      [
+        'r1-v0',
+        {
+          versionId: 'r1-v0',
+          resourceId: 'r1',
+          title: 'Başlık r1',
+          meta: '',
+          subskill: null,
+          note: null,
+        },
+      ],
+    ])
+    const selection = questionSelection(['r1-v0', 'bilinmeyen'], (id) => known.get(id))
+    assert.deepEqual([...selection.resourceIds], ['r1'])
+    const rows = pickerRows([listItem('r1'), listItem('r2')], selection)
+    assert.deepEqual(
+      rows.map((row) => [row.versionId, row.disabledReason]),
+      [
+        ['r1-v1', 'Zaten seçili'],
+        ['r2-v1', null],
+      ],
+    )
   })
 })
 
@@ -314,6 +369,11 @@ describe('Soru listesi işlemleri (DOM-KYN-013)', () => {
     assert.equal(next.items.length, ITEMS_MAX)
     assert.equal(next.added, 1)
     assert.equal(next.overflow, 2)
+    assert.equal(
+      overflowMessage(next.overflow),
+      `2 soru eklenmedi: bir sette en çok ${ITEMS_MAX} soru olabilir.`,
+    )
+    assert.equal(overflowMessage(0), null)
   })
 
   test('sıra düğmesi sınırda kapalıdır; puan alanı kimliği sıradan türer', () => {

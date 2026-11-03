@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
+import { notify } from '@/lib/notify.ts'
 import { fieldError, type DraftForm } from './ContentDraftFields.tsx'
 import { LinkedContentPicker } from './LinkedContentPicker.tsx'
 import { glossaryFocusAfterRemove } from './content-pool-model.ts'
@@ -16,7 +17,11 @@ import {
   ITEM_POINTS,
   itemPointsId,
   ITEMS_MAX,
+  LINKED_DETAIL_LOADING,
+  LINKED_DETAIL_UNKNOWN,
   moveTarget,
+  overflowMessage,
+  questionSelection,
   summariesFrom,
   type LinkedHints,
   type LinkedKind,
@@ -37,15 +42,16 @@ const LOOKUP_PAGE_SIZE = 100
 
 /**
  * Kayıtlı bağların gösterim özetleri: türün ilk sayfası (başlığa göre) okunur, sürüm kimliği
- * eşlenir. Seçicide seçilenler kendi özetiyle gelir; listede bulunmayan eski sürüm genel adla
- * görünür. TODO(okuma-etkinligi-ozet): sürüm kimliğiyle özet okuyan uç gelince bu tarama kalkar.
+ * eşlenir. Seçicide seçilenler kendi özetiyle gelir; listede bulunmayan kimlik (eski sürüm ya da ilk
+ * sayfanın dışında kalan kaynak) tarafsız metinle görünür. TODO(okuma-etkinligi-ozet): sürüm
+ * kimliğiyle özet okuyan uç gelince bu tarama kalkar; eski sürüme bağlı sorunun kaynağı da bilinir.
  */
 function useLinkedLookup(kind: LinkedKind, enabled: boolean) {
   const list = useResourceList(
     { page: 1, pageSize: LOOKUP_PAGE_SIZE, contentType: kind, sort: 'title' },
     { enabled },
   )
-  return summariesFrom(list.data?.data ?? [])
+  return { map: summariesFrom(list.data?.data ?? []), loading: enabled && list.isPending }
 }
 
 /**
@@ -72,7 +78,9 @@ export function ItemSetFields({ form, busy, languageSchool, hints = NO_HINTS }: 
     passageVersionId != null && unresolved([passageVersionId]),
   )
   const questions = useLinkedLookup('question', unresolved(itemIds))
-  const summaryOf = (id: string) => picked.get(id) ?? passages.get(id) ?? questions.get(id)
+  const summaryOf = (id: string) => picked.get(id) ?? passages.map.get(id) ?? questions.map.get(id)
+  const unknownText = (kind: LinkedKind, loading: boolean) =>
+    loading ? LINKED_DETAIL_LOADING : LINKED_DETAIL_UNKNOWN[kind]
 
   // Satır taşınınca ya da silinince odak düşmesin (WCAG 2.4.3): çizimden sonra hedefe taşınır.
   useEffect(() => {
@@ -111,6 +119,8 @@ export function ItemSetFields({ form, busy, languageSchool, hints = NO_HINTS }: 
       list.map((summary) => summary.versionId),
     )
     if (next.added > 0) items.append(next.items.slice(next.items.length - next.added))
+    const overflow = overflowMessage(next.overflow)
+    if (overflow) notify.warning(overflow, 'icerik-soru-siniri')
   }
 
   function move(index: number, delta: -1 | 1) {
@@ -155,8 +165,8 @@ export function ItemSetFields({ form, busy, languageSchool, hints = NO_HINTS }: 
               </p>
               <p className="text-xs text-muted-foreground">
                 {passage
-                  ? passage.meta || 'Etiket yok'
-                  : 'Parçanın önceki bir sürümü bağlı; ayrıntısı listede yok.'}
+                  ? passage.note || passage.meta || 'Etiket yok'
+                  : unknownText('reading_passage', passages.loading)}
               </p>
             </div>
             <Button
@@ -222,13 +232,20 @@ export function ItemSetFields({ form, busy, languageSchool, hints = NO_HINTS }: 
                       {position}. {summary?.title ?? 'Soru'}
                     </p>
                     <div className="mt-1 flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
-                      {summary?.subskill ? (
-                        <StatusBadge text={summary.subskill} tone="purple" />
+                      {!summary ? (
+                        <span>{unknownText('question', questions.loading)}</span>
+                      ) : summary.note ? (
+                        <span>{summary.note}</span>
                       ) : (
-                        <span>Alt beceri yok</span>
+                        <>
+                          {summary.subskill ? (
+                            <StatusBadge text={summary.subskill} tone="purple" />
+                          ) : (
+                            <span>Alt beceri yok</span>
+                          )}
+                          {summary.meta ? <span>{summary.meta}</span> : null}
+                        </>
                       )}
-                      {summary?.meta ? <span>{summary.meta}</span> : null}
-                      {!summary ? <span>Ayrıntısı listede yok (önceki sürüm).</span> : null}
                     </div>
                     {itemError ? (
                       <p role="alert" className="mt-2 text-sm text-destructive">
@@ -364,7 +381,12 @@ export function ItemSetFields({ form, busy, languageSchool, hints = NO_HINTS }: 
         kind={pickerKind}
         multiple={pickerKind === 'question'}
         selected={
-          new Set(pickerKind === 'question' ? itemIds : passageVersionId ? [passageVersionId] : [])
+          pickerKind === 'question'
+            ? questionSelection(itemIds, summaryOf)
+            : {
+                versionIds: new Set(passageVersionId ? [passageVersionId] : []),
+                resourceIds: new Set<string>(),
+              }
         }
         languageSchool={languageSchool}
         onPick={pickerKind === 'question' ? pickQuestions : pickPassage}

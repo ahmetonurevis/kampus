@@ -19,6 +19,7 @@ import {
   type LinkedKind,
   type LinkedSummary,
   type PickerRow,
+  type PickerSelection,
 } from './reading-activity-model.ts'
 
 type PickerProps = {
@@ -27,8 +28,8 @@ type PickerProps = {
   kind: LinkedKind
   /** Çoklu seçim (sorular) ya da tek seçim (parça). */
   multiple: boolean
-  /** Formda zaten bağlı sürümler: satırda "Zaten seçili" olur. */
-  selected: ReadonlySet<string>
+  /** Formda zaten bağlı sürümler ve soru kaynakları: satırda "Zaten seçili" olur. */
+  selected: PickerSelection
   /** Dil okulunda sınıf düzeyi süzgeci yoktur. */
   languageSchool: boolean
   onPick: (picked: LinkedSummary[]) => void
@@ -178,8 +179,9 @@ function PickerBody({
                   <p className="text-sm font-medium [overflow-wrap:anywhere]">{row.title}</p>
                 )}
                 <p id={`secici-${row.resourceId}-kunye`} className="text-xs text-muted-foreground">
-                  {[row.meta, row.subskill, row.disabledReason].filter(Boolean).join(' · ') ||
-                    'Etiket yok'}
+                  {[row.meta, row.subskill, row.note, row.disabledReason]
+                    .filter(Boolean)
+                    .join(' · ') || 'Etiket yok'}
                 </p>
               </div>
               {row.subskill ? <StatusBadge text={row.subskill} /> : null}

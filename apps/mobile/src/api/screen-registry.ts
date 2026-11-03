@@ -31,7 +31,10 @@ export type MenuScreen = ComponentType<never>
 export type ScreenEntry = {
   /** Gezinme adı (PascalCase, tek). `ApiHome`, `ApiCategory`, `ApiConversation`, `ApiNotifications` ayrılmıştır. */
   screen: string
-  /** Menü sayfası olduğundan parametre almaz; oturumu `useApiSession()` ile okur. */
+  /**
+   * Menü sayfasıdır, parametre zorunlu değildir; yalnız bildirimden açılan sekmeli ekranlar isteğe
+   * bağlı `tab` alır (`route-types.ts`, `use-route-tab.ts`). Oturumu `useApiSession()` ile okur.
+   */
   getComponent: () => MenuScreen
   pages: readonly ScreenPlacement[]
 }
@@ -120,13 +123,13 @@ export const OGUZHAN_SCREENS = [
   {
     screen: 'TeacherAttendance',
     getComponent: (): MenuScreen => require('./screens/TeacherAttendance.tsx').default,
-    // Telefonda bugünkü yoklama alınır; yoklama geçmişi (salt okunur) aynı sayfada ikinci sekmedir,
-    // geçmiş günü düzeltme web'de ve yöneticidedir.
+    // İki sekme: bugünkü yoklamayı alma ve yoklama geçmişi (salt okunur; geçmiş günü yalnız yönetici
+    // düzeltir). Devamsızlık bildirimi geçmiş sekmesini `route.params.tab` ile açar.
     pages: [
       {
         role: 'ogretmen',
         path: 'yoklama',
-        description: 'Bugünkü derslerinizin yoklamasını alın.',
+        description: 'Bugünkü yoklamayı alın, yoklama geçmişini görün.',
       },
     ],
   },

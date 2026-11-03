@@ -1,7 +1,6 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Pressable, View } from 'react-native'
 import type { State } from '@kampus/school-core/data/seed.ts'
-import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { useCurrentAcademicPeriod } from '@kampus/react-shared/use-academic-years.ts'
 import {
   useCollectionAll,
@@ -12,10 +11,12 @@ import { Badge, Empty, SearchField, Select, Sheet, T, useColors } from '../../ui
 import { EmptyResults, ListRow, Notice, Pagination } from '../../ui/SchoolLayout.tsx'
 import {
   DEFAULT_HISTORY_FILTER,
+  changeHistoryFilter,
+  clearHistoryFilters,
   decodeHistoryFilter,
   emptyHistoryText,
-  encodeHistoryFilter,
   countsFromGroups,
+  historyDay,
   HISTORY_READ_ONLY_NOTICE,
   historyQueryFilters,
   historyRangeFilters,
@@ -98,7 +99,8 @@ function RangeChoice({
 }
 
 /**
- * Durum özeti: kart seçili durumun listesini süzer, aynı karta yeniden dokununca süzgeç kalkar.
+ * Durum özeti: kart seçili durumun listesini süzer, aynı karta yeniden dokununca süzgeç kalkar
+ * (açılıp kapanan düğme: `button` rolü ve `selected` durumu; radyo grubu seçimin kalkmasına izin vermez).
  * Sayılar seçili aralık, sınıf ve arama içindeki bütün kayıtlardan sunucuda hesaplanır; durum
  * süzgecinden etkilenmez.
  */
@@ -114,7 +116,7 @@ function StatusCards({
   const c = useColors()
   return (
     <View
-      accessibilityRole="radiogroup"
+      accessibilityRole="toolbar"
       accessibilityLabel="Katılım özeti"
       style={{ flexDirection: 'row', flexWrap: 'wrap', gap: 10 }}
     >
@@ -124,11 +126,11 @@ function StatusCards({
         return (
           <Pressable
             key={status}
-            accessibilityRole="radio"
+            accessibilityRole="button"
             accessibilityLabel={`${label}: ${counts[status]} kayıt`}
             accessibilityHint={selected ? 'Süzgeci kaldırır' : 'Geçmişi bu duruma göre süzer'}
-            accessibilityState={{ checked: selected }}
-            aria-checked={selected}
+            accessibilityState={{ selected }}
+            aria-selected={selected}
             onPress={() => onChange(selected ? '' : status)}
             style={({ pressed }) => ({
               flexGrow: 1,
@@ -235,6 +237,16 @@ function StudentSheet({
   )
 }
 
+/** Dakikada bir yenilenen saat: gece yarısı geçince gün (ve dönem) yeniden istenir. */
+function useMinuteClock(): Date {
+  const [now, setNow] = useState(() => new Date())
+  useEffect(() => {
+    const timer = setInterval(() => setNow(new Date()), 60_000)
+    return () => clearInterval(timer)
+  }, [])
+  return now
+}
+
 /**
  * Öğretmen: yoklama geçmişi (web `ogretmen/yoklama` "Yoklama geçmişi" bölümü). Kapsamı sunucu
  * uygular: öğretmen yalnız ders verdiği ya da danışmanı olduğu sınıfların kayıtlarını görür, istemci
@@ -244,11 +256,18 @@ function StudentSheet({
  * Telefonda salt okunurdur: geçmiş günü yalnız yönetici düzeltir (DOM-AKD-035).
  */
 export function AttendanceHistory() {
-  const { state, setSearch, setFilter, setIndex, clear } = useListMemory('ogretmen/yoklama/gecmis')
+  const { state, setSearch, setIndex, replace } = useListMemory('ogretmen/yoklama/gecmis')
   const search = useDebouncedValue(state.search)
   const period = useCurrentAcademicPeriod()
   const termStatus: TermStatus = period.data ? 'ready' : period.error ? 'error' : 'loading'
   const term: CurrentTerm = period.data?.data.term ?? null
+  // Gün sunucudandır (dönemle aynı yanıt); cihaz saati yalnız yanıtın eskidiğini anlamak içindir.
+  const now = useMinuteClock()
+  const { today, stale } = historyDay(period.data?.data.date, period.dataUpdatedAt, now)
+  const refetchPeriod = period.refetch
+  useEffect(() => {
+    if (stale) void refetchPeriod()
+  }, [stale, refetchPeriod])
   const decoded = decodeHistoryFilter(state.filter)
   const classes = useCollectionAll<ClassRecord>('classes')
   const classOptions = useMemo(
@@ -266,8 +285,11 @@ export function AttendanceHistory() {
     : decoded.classId
   const { range, wait } = resolveHistoryRange(decoded.range, termStatus, term)
   const filter: HistoryFilter = { range, classId, status: decoded.status }
-  const dayRange = historyRangeFilters(range, dayKey(), term)
-  const enabled = wait === null
+  // Gün gelmeden istek kurulmaz (`enabled`); boş aralık yalnız sorgu anahtarını doldurur.
+  const dayRange: DayRange = today
+    ? historyRangeFilters(range, today, term)
+    : { dateFrom: '', dateTo: '' }
+  const enabled = wait === null && today !== null
   const [student, setStudent] = useState<StudentTarget | null>(null)
 
   const counts = useCollectionCounts(
@@ -294,8 +316,9 @@ export function AttendanceHistory() {
   const index = clampPageIndex(state.index, total)
   if (index !== state.index) setIndex(index)
 
+  // Süzgeç değişince sayfa başa döner (`changeHistoryFilter`); arama ayrı alandadır.
   const change = (next: Partial<HistoryFilter>) =>
-    setFilter(encodeHistoryFilter({ ...filter, ...next }))
+    replace(changeHistoryFilter(state, { ...filter, ...next }))
   const filtered = classId !== '' || decoded.status !== '' || search.trim().length >= 2
   const empty = emptyHistoryText(filtered)
 
@@ -307,7 +330,7 @@ export function AttendanceHistory() {
         value={range}
         onChange={(next) => change({ range: next })}
       />
-      {wait === null && (
+      {enabled && (
         <T muted size={14} accessibilityLiveRegion="polite">
           {historyRangeText(dayRange)}
         </T>
@@ -323,7 +346,7 @@ export function AttendanceHistory() {
         onChange={setSearch}
         placeholder="Öğrenci, numara veya sınıf"
       />
-      {wait === null &&
+      {enabled &&
         (counts.error ? (
           <QueryError error={counts.error} onRetry={() => void counts.refetch()} />
         ) : !counts.data ? (
@@ -338,7 +361,7 @@ export function AttendanceHistory() {
       {wait === 'error' && period.error ? (
         <QueryError error={period.error} onRetry={() => void period.refetch()} />
       ) : wait === 'error' ? null : wait === 'loading' ? (
-        <ListLoading label="Dönem bilgisi yükleniyor…" />
+        <ListLoading label="Gün ve dönem bilgisi yükleniyor…" />
       ) : records.error ? (
         <QueryError error={records.error} onRetry={() => void records.refetch()} />
       ) : !records.data || records.isPlaceholderData ? (
@@ -346,7 +369,7 @@ export function AttendanceHistory() {
         <ListLoading label="Yoklama geçmişi yükleniyor…" />
       ) : records.data.rows.length === 0 ? (
         filtered ? (
-          <EmptyResults noun="yoklama kaydı" onClear={clear} />
+          <EmptyResults noun="yoklama kaydı" onClear={() => replace(clearHistoryFilters(state))} />
         ) : (
           <Empty title={empty.title} text={empty.text} />
         )

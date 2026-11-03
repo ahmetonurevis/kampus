@@ -91,12 +91,14 @@ function GradeList({ childId }: { childId: string }) {
  * sekmesi çizilmez. Devamsızlık bildirimi bu ekranı Devamsızlık sekmesinde açar (`route.params.tab`);
  * sekme modülü kapalıysa ilk görünen sekmeye düşülür.
  */
-export default function ParentTracking({ route }: ApiScreenProps<'ParentTracking'>) {
+export default function ParentTracking({ route, navigation }: ApiScreenProps<'ParentTracking'>) {
   const session = useApiSession()
   const open = canOpenScreen(session, 'ParentTracking')
   const [selected, setSelected] = useSelectedChild()
   // Bildirimden gelen sekme (`devamsizlik`) ekran yığındayken de uygulanır; menüden `notlar` açılır.
-  const [requestedTab, setTab] = useRouteTab<ParentTab>(route.params, DEFAULT_PARENT_TAB)
+  const [requestedTab, setTab] = useRouteTab<ParentTab>(route.params, DEFAULT_PARENT_TAB, () =>
+    navigation.setParams({ tab: undefined }),
+  )
   const students = useCollectionAll<StudentRecord>('students', {}, { enabled: open })
   const classes = useCollectionAll<ClassRecord>('classes', {}, { enabled: open })
   const options = useMemo(

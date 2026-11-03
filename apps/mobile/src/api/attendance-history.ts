@@ -3,7 +3,7 @@
 // buradaki işlevler yalnız istek parametrelerini kurar ve gösterimi sadeleştirir. Web karşılığı
 // `apps/web-react/src/pages/academic/AttendanceView.tsx` (öğretmen kipi, IST-093, DOM-AKD-036).
 // Geçmiş günü düzeltme yalnız yöneticidedir (DOM-AKD-035); telefonda liste salt okunurdur.
-import { dateLabel } from '@kampus/school-core/lib/format.ts'
+import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   addDays,
   attendanceCounts,
@@ -15,6 +15,7 @@ import {
   type CurrentTerm,
   type TermStatus,
 } from './parent-tracking.ts'
+import { EMPTY_LIST_STATE, withFilter, type ListState } from './list-state.ts'
 
 // --- Ekran sekmeleri -------------------------------------------------------------------------
 
@@ -67,7 +68,10 @@ export function historyRangeFilters(
   if (range === 'term' && term) {
     const dateTo = term.endDate < today ? term.endDate : today
     const earliest = addDays(dateTo, -MAX_SPAN_DAYS)
-    return { dateFrom: term.startDate > earliest ? term.startDate : earliest, dateTo }
+    const start = term.startDate > earliest ? term.startDate : earliest
+    // Dönem başlangıcı bugünden sonraysa (bayat dönem bilgisi) başlangıç bitişi aşmaz: sunucu
+    // `dateFrom > dateTo` için 400 verir.
+    return { dateFrom: start > dateTo ? dateTo : start, dateTo }
   }
   return { dateFrom: weekStart(today), dateTo: today }
 }
@@ -82,18 +86,45 @@ export const presentedHistoryRanges = (status: TermStatus, term: CurrentTerm): H
 
 export type HistoryRangeResolution = {
   range: HistoryRange
-  /** `loading`/`error`: dönem bilinmeden "Dönem" istenemez; liste istekleri bekletilir. */
+  /**
+   * `loading`/`error`: gün ve dönem sunucudan gelir (`/academic-years/current`); bilinmeden hiçbir
+   * aralık kurulamaz, liste istekleri bekletilir. Cihaz saati kullanılmaz (saat geri kalmışsa
+   * `dateFrom > dateTo` olurdu).
+   */
   wait: 'loading' | 'error' | null
 }
 
-/** Seçili aralığın uygulanacak değeri; yalnız "Dönem" dönem bilgisine bağlıdır. */
+/** Seçili aralığın uygulanacak değeri; dönem yoksa "Dönem" varsayılana düşer. */
 export function resolveHistoryRange(
   range: HistoryRange,
   status: TermStatus,
   term: CurrentTerm,
 ): HistoryRangeResolution {
-  if (range === 'term' && status !== 'ready') return { range, wait: status }
+  if (status !== 'ready') return { range, wait: status }
   return { range: historyRanges(term).includes(range) ? range : DEFAULT_HISTORY_RANGE, wait: null }
+}
+
+export type HistoryDay = {
+  /** Sunucunun bugünü (Europe/Istanbul); yanıt gelmediyse `null`. */
+  today: string | null
+  /** Yanıt cihazın başka bir gününde alındı: gün geçmiş olabilir, yeniden istenmeli. */
+  stale: boolean
+}
+
+/**
+ * Ekranın günü: sunucunun günüdür (`/academic-years/current` `date`), cihaz saati yalnız "yanıt
+ * eskidi mi" için kullanılır. Yanıtın alındığı andaki cihaz günü şimdikinden farklıysa gece yarısı
+ * geçmiştir ve gün yeniden istenir; o zamana kadar tek yanıttan türeyen gün, dönem ve aralık tutarlı
+ * kalır.
+ */
+export function historyDay(
+  serverDate: string | undefined,
+  fetchedAt: number | undefined,
+  now: Date = new Date(),
+): HistoryDay {
+  if (!serverDate) return { today: null, stale: false }
+  const stale = fetchedAt !== undefined && dayKey(new Date(fetchedAt)) !== dayKey(now)
+  return { today: serverDate, stale }
 }
 
 // --- Süzgeç (aralık, sınıf, durum) -----------------------------------------------------------
@@ -132,6 +163,23 @@ export function decodeHistoryFilter(value: string): HistoryFilter {
 /** Seçili sınıf öğretmenin sınıfları arasında değilse (atama kalktı, arşiv) "bütün sınıflar". */
 export function resolveHistoryClass(classId: string, classIds: readonly string[]): string {
   return classId !== '' && classIds.includes(classId) ? classId : ''
+}
+
+/** Süzgeç alanı değişir, sayfa başa döner; arama korunur. */
+export function changeHistoryFilter(state: ListState, patch: Partial<HistoryFilter>): ListState {
+  return withFilter(state, encodeHistoryFilter({ ...decodeHistoryFilter(state.filter), ...patch }))
+}
+
+/**
+ * "Süzgeci temizle": sınıf, durum ve arama sıfırlanır, sayfa başa döner; tarih aralığı korunur
+ * (aralık varsayılan bir görünümdür, kullanıcının seçtiği dönem kaybolmaz).
+ */
+export function clearHistoryFilters(state: ListState): ListState {
+  const { range } = decodeHistoryFilter(state.filter)
+  return {
+    ...EMPTY_LIST_STATE,
+    filter: encodeHistoryFilter({ ...DEFAULT_HISTORY_FILTER, range }),
+  }
 }
 
 /**

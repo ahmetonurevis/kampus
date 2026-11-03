@@ -3,10 +3,13 @@ import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import {
   DEFAULT_HISTORY_FILTER,
+  changeHistoryFilter,
+  clearHistoryFilters,
   countsFromGroups,
   decodeHistoryFilter,
   emptyHistoryText,
   encodeHistoryFilter,
+  historyDay,
   historyQueryFilters,
   historyRangeFilters,
   historyRangeText,
@@ -16,7 +19,12 @@ import {
   resolveHistoryClass,
   resolveHistoryRange,
 } from '../apps/mobile/src/api/attendance-history.ts'
-import { withFilter, withSearch } from '../apps/mobile/src/api/list-state.ts'
+import { EMPTY_LIST_STATE, withFilter, withSearch } from '../apps/mobile/src/api/list-state.ts'
+import {
+  initialRouteTab,
+  shouldConsumeRouteTab,
+  syncRouteTab,
+} from '../apps/mobile/src/api/route-tab.ts'
 import {
   notificationPress,
   notificationRoute,
@@ -102,21 +110,39 @@ describe('DOM-AKD-036 tarih aralığı hesabı', () => {
     })
   })
 
-  test('dönem bilinmeden "Dönem" bekletilir, bilgi gelince süzülür', () => {
-    assert.deepEqual(resolveHistoryRange('term', 'loading', null), {
-      range: 'term',
-      wait: 'loading',
-    })
-    assert.deepEqual(resolveHistoryRange('term', 'error', null), { range: 'term', wait: 'error' })
+  test('gün ve dönem sunucudan gelir: bilinmeden hiçbir aralık kurulmaz', () => {
+    for (const range of ['week', 'last30', 'term'] as const) {
+      assert.deepEqual(resolveHistoryRange(range, 'loading', null), { range, wait: 'loading' })
+      assert.deepEqual(resolveHistoryRange(range, 'error', null), { range, wait: 'error' })
+    }
     assert.deepEqual(resolveHistoryRange('term', 'ready', TERM), { range: 'term', wait: null })
     assert.deepEqual(resolveHistoryRange('term', 'ready', null), { range: 'week', wait: null })
-    // Dönemsiz aralıklar dönem bilgisini beklemez.
-    assert.deepEqual(resolveHistoryRange('last30', 'loading', null), {
-      range: 'last30',
-      wait: null,
-    })
+    assert.deepEqual(resolveHistoryRange('last30', 'ready', null), { range: 'last30', wait: null })
     assert.deepEqual(presentedHistoryRanges('loading', null), ['week', 'last30', 'term'])
     assert.deepEqual(presentedHistoryRanges('ready', null), ['week', 'last30'])
+  })
+
+  test('bugün sunucunun gününden alınır; cihaz saati geri kalsa da başlangıç bitişi aşmaz', () => {
+    // Sunucu günü 2026-11-04, cihaz saati bir gün geri (2026-11-03): aralık sunucu gününe göre kurulur.
+    const fetchedAt = Date.parse('2026-11-03T10:00:00Z')
+    const day = historyDay('2026-11-04', fetchedAt, new Date('2026-11-03T10:05:00Z'))
+    assert.deepEqual(day, { today: '2026-11-04', stale: false })
+    for (const range of ['week', 'last30', 'term'] as const) {
+      const { dateFrom, dateTo } = historyRangeFilters(range, day.today!, TERM)
+      assert.ok(dateFrom <= dateTo, range)
+      assert.equal(dateTo, '2026-11-04')
+    }
+    // Dönem bilgisi bayatsa (başlangıç bugünden sonra) başlangıç bitişe çekilir, 400 oluşmaz.
+    const stale = historyRangeFilters('term', '2026-09-01', TERM)
+    assert.deepEqual(stale, { dateFrom: '2026-09-01', dateTo: '2026-09-01' })
+  })
+
+  test('gece yarısı geçince (cihaz günü değişince) gün yeniden istenir', () => {
+    const fetchedAt = Date.parse('2026-11-03T20:30:00Z') // İstanbul 23:30
+    assert.equal(historyDay('2026-11-03', fetchedAt, new Date('2026-11-03T20:59:00Z')).stale, false)
+    assert.equal(historyDay('2026-11-03', fetchedAt, new Date('2026-11-03T21:01:00Z')).stale, true)
+    // Yanıt yokken gün yoktur, istek de atılmaz.
+    assert.deepEqual(historyDay(undefined, undefined), { today: null, stale: false })
   })
 
   test('aralık metni uçları Türkçe gün olarak yazar', () => {
@@ -164,6 +190,79 @@ describe('DOM-AKD-036 süzgeç kodlaması ve sorgu', () => {
     assert.equal(next.index, 0)
     assert.equal(withSearch(state, 'veli').index, 0)
     assert.equal(withFilter(state, state.filter).index, 3)
+  })
+})
+
+describe("DOM-AKD-036 süzgeç durumu (ekran reducer'ları)", () => {
+  const state = {
+    search: 'ali',
+    index: 4,
+    filter: encodeHistoryFilter({ range: 'last30', classId: 'c-9a', status: 'absent' }),
+  }
+
+  test('sınıf, durum ya da aralık değişince sayfa başa döner, arama ve diğer alanlar korunur', () => {
+    for (const patch of [{ classId: 'c-9b' }, { status: 'late' }, { range: 'week' }] as const) {
+      const next = changeHistoryFilter(state, patch)
+      assert.equal(next.index, 0, JSON.stringify(patch))
+      assert.equal(next.search, 'ali')
+    }
+    const next = changeHistoryFilter(state, { classId: 'c-9b' })
+    assert.deepEqual(decodeHistoryFilter(next.filter), {
+      range: 'last30',
+      classId: 'c-9b',
+      status: 'absent',
+    })
+    // Değişmeyen süzgeçte sayfa korunur.
+    assert.equal(changeHistoryFilter(state, { classId: 'c-9a' }).index, 4)
+  })
+
+  test('süzgeci temizle sınıf, durum ve aramayı sıfırlar; tarih aralığı korunur', () => {
+    const cleared = clearHistoryFilters(state)
+    assert.deepEqual(decodeHistoryFilter(cleared.filter), {
+      range: 'last30',
+      classId: '',
+      status: '',
+    })
+    assert.equal(cleared.search, '')
+    assert.equal(cleared.index, 0)
+    // Süzgeçsiz varsayılan durum zaten temizdir.
+    assert.deepEqual(clearHistoryFilters(EMPTY_LIST_STATE).search, '')
+  })
+})
+
+describe('Sekme parametresi (route-tab)', () => {
+  test('parametresiz açılışta varsayılan, parametreyle istenen sekme açılır', () => {
+    assert.equal(initialRouteTab<'a' | 'b'>(undefined, 'a').tab, 'a')
+    assert.equal(initialRouteTab<'a' | 'b'>({ tab: 'b' }, 'a').tab, 'b')
+  })
+
+  test('aynı parametre nesnesinde kullanıcının sonradan seçtiği sekme korunur', () => {
+    const params = { tab: 'b' } as const
+    const state = { ...initialRouteTab<'a' | 'b' | 'c'>(params, 'a'), tab: 'c' as const }
+    assert.equal(syncRouteTab(state, params), state)
+  })
+
+  test('yeni parametre nesnesi (aynı sekme olsa da) sekmeyi açar', () => {
+    const state = { ...initialRouteTab<'a' | 'b'>({ tab: 'b' }, 'a'), tab: 'a' as const }
+    const next = syncRouteTab(state, { tab: 'b' })
+    assert.equal(next.tab, 'b')
+  })
+
+  test('parametresiz gezinme (menü kartı) ve tüketilmiş parametre sekmeye dokunmaz', () => {
+    const state = { ...initialRouteTab<'a' | 'b'>({ tab: 'b' }, 'a'), tab: 'b' as const }
+    assert.equal(syncRouteTab(state, undefined).tab, 'b')
+    assert.equal(syncRouteTab(state, { tab: undefined }).tab, 'b')
+  })
+
+  test('parametre bir kez tüketilir: yalnız sekme taşıyan parametre temizlenir', () => {
+    assert.equal(shouldConsumeRouteTab({ tab: 'devamsizlik' }), true)
+    assert.equal(shouldConsumeRouteTab({ tab: undefined }), false)
+    assert.equal(shouldConsumeRouteTab(undefined), false)
+    // Ekran yeniden kurulunca ("Yeniden dene") tüketilmiş parametreyle varsayılana düşer.
+    assert.equal(
+      initialRouteTab<'notlar' | 'devamsizlik'>({ tab: undefined }, 'notlar').tab,
+      'notlar',
+    )
   })
 })
 
@@ -295,8 +394,11 @@ describe('Ekran bağları (kaynak denetimi)', () => {
   test('veli ve öğretmen ekranı sekmeyi gezinme parametresinden alır', () => {
     const parent = source('apps/mobile/src/api/screens/ParentTracking.tsx')
     const teacher = source('apps/mobile/src/api/screens/TeacherAttendance.tsx')
-    assert.match(parent, /useRouteTab<ParentTab>\(route\.params/)
+    assert.match(parent, /useRouteTab<ParentTab>\(\s*route\.params/)
     assert.match(teacher, /useRouteTab<TeacherAttendanceTab>\(\s*route\.params/)
+    // Parametre tüketilir (ekran yeniden kurulunca bildirim sekmesine dönülmez).
+    for (const screen of [parent, teacher])
+      assert.match(screen, /navigation\.setParams\(\{ tab: undefined \}\)/)
     assert.match(teacher, /<AttendanceHistory \/>/)
   })
 
@@ -304,5 +406,17 @@ describe('Ekran bağları (kaynak denetimi)', () => {
     const history = source('apps/mobile/src/api/screens/attendance-history.tsx')
     assert.ok(!/useRecordAttendance|useApiCommand|AsyncStorage/.test(history))
     assert.match(history, /HISTORY_READ_ONLY_NOTICE/)
+  })
+
+  test('geçmiş günü sunucudan alır, cihaz saatinden istek kurmaz; durum kartları düğmedir', () => {
+    const history = source('apps/mobile/src/api/screens/attendance-history.tsx')
+    assert.ok(!/dayKey\(/.test(history))
+    assert.match(history, /historyDay\(period\.data\?\.data\.date/)
+    assert.ok(!/accessibilityRole="radio"[\s\S]{0,120}selected \? ''/.test(history))
+    assert.match(
+      history,
+      /accessibilityRole="button"[\s\S]{0,200}accessibilityState=\{\{ selected \}\}/,
+    )
+    assert.match(history, /clearHistoryFilters\(state\)/)
   })
 })

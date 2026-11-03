@@ -524,12 +524,16 @@ function TodayAttendance() {
  * Öğretmen: yoklama (web `ogretmen/yoklama`). İki sekme: bugünkü yoklamayı alma ve yoklama geçmişi
  * (salt okunur). Devamsızlık bildirimi geçmiş sekmesini açar (`route.params.tab`).
  */
-export default function TeacherAttendance({ route }: ApiScreenProps<'TeacherAttendance'>) {
+export default function TeacherAttendance({
+  route,
+  navigation,
+}: ApiScreenProps<'TeacherAttendance'>) {
   const session = useApiSession()
   const open = canOpenScreen(session, 'TeacherAttendance')
   const [tab, setTab] = useRouteTab<TeacherAttendanceTab>(
     route.params,
     DEFAULT_TEACHER_ATTENDANCE_TAB,
+    () => navigation.setParams({ tab: undefined }),
   )
   if (!open)
     return (

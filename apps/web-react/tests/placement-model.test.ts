@@ -20,6 +20,7 @@ import {
   sectionRows,
   skillSuggestionRows,
   suggestedLevel,
+  unenteredAutoSections,
   validityText,
 } from '../src/pages/language/placement-model.ts'
 
@@ -449,4 +450,22 @@ test('IST-058 kişi türü: CRM kapalıyken aday seçilemez, adresteki aday öğ
   assert.equal(resolveLearnerKind('student', false), 'student')
   assert.equal(resolveLearnerKind('bilinmeyen', true), 'student')
   assert.equal(resolveLearnerKind(null, true), 'student')
+})
+
+test('DOM-DIL-010 bitirme onayı: formda olup girilmemiş otomatik bölümler adıyla sayılır', () => {
+  assert.deepEqual(unenteredAutoSections(session()), ['language_use', 'reading', 'listening'])
+  assert.deepEqual(
+    unenteredAutoSections(
+      session({
+        sections: [
+          section('language_use', 'auto', 'scored', 90),
+          section('reading', 'auto', 'pending'),
+          section('listening', 'auto', 'missing'),
+          section('writing', 'rubric', 'pending'),
+        ],
+      }),
+    ),
+    ['reading'],
+  )
+  assert.deepEqual(unenteredAutoSections(completed()), [])
 })

@@ -19,6 +19,16 @@ import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
@@ -53,6 +63,7 @@ import {
   SECTION_KEYS,
   sectionLabel,
   sectionRows,
+  unenteredAutoSections,
   skillSuggestionRows,
   suggestedLevel,
   validityText,
@@ -150,9 +161,13 @@ function PlacementSummary({
   const blocked = decisionBlockedReason(session)
   const scored = session.sections.filter((row) => row.status === 'scored').length
 
+  const [confirmFinish, setConfirmFinish] = useState(false)
+  const unentered = unenteredAutoSections(session)
+
   async function finish() {
     const outcome = await complete.submit({ sessionId: session.id, version: session.version })
     if (outcome.status === 'success') notify.success('Seviye tespiti bitirildi.')
+    setConfirmFinish(false)
   }
 
   return (
@@ -234,7 +249,7 @@ function PlacementSummary({
         {session.completedAt === null ? (
           <Button
             variant="secondary"
-            onClick={() => void finish()}
+            onClick={() => (unentered.length ? setConfirmFinish(true) : void finish())}
             disabled={complete.isPending}
             aria-busy={complete.isPending || undefined}
           >
@@ -249,6 +264,30 @@ function PlacementSummary({
           </Button>
         ) : null}
       </div>
+      <AlertDialog open={confirmFinish} onOpenChange={setConfirmFinish}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Tespiti bitir</AlertDialogTitle>
+            <AlertDialogDescription>
+              {`Girilmemiş otomatik bölüm var: ${unentered.join(', ')}. Tespit bittikten sonra bu bölümler girilemez; ilgili beceriler için seviye önerisi çıkmaz. Yine de bitirilsin mi?`}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={complete.isPending}>Vazgeç</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={complete.isPending}
+              aria-busy={complete.isPending || undefined}
+              onClick={(event) => {
+                // Pencere sonuç gelene kadar açık kalır; kapanışı `finish` yönetir.
+                event.preventDefault()
+                void finish()
+              }}
+            >
+              Yine de bitir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

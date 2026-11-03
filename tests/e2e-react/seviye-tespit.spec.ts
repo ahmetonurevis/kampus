@@ -163,6 +163,14 @@ test('IST-058 DOM-DIL-010: yönetici tespiti açar, bölümleri puanlar, bitirir
 
   // Otomatik bölümler: cevaplar girilir, puan sunucuda hesaplanır.
   for (const { label, count } of SECTIONS) {
+    if (label === 'Dinleme') {
+      // Girilmemiş otomatik bölüm varken bitirme onay ister ve eksik bölümü adıyla söyler.
+      await panel.getByRole('button', { name: 'Tespiti bitir' }).click()
+      const confirm = page.getByRole('alertdialog', { name: 'Tespiti bitir' })
+      await expect(confirm).toContainText('Girilmemiş otomatik bölüm var: Dinleme')
+      await confirm.getByRole('button', { name: 'Vazgeç' }).click()
+      await expect(confirm).toHaveCount(0)
+    }
     await panel.getByRole('button', { name: `${label} bölümünü puanla` }).click()
     const form = page.getByRole('dialog', { name: `${label} bölümünü puanla` })
     await expect(form.getByRole('status')).toHaveText(`0 / ${count} soru cevaplandı`)

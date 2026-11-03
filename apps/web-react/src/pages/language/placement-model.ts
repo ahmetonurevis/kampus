@@ -158,6 +158,16 @@ export function canScoreSection(
   return row.scoring === 'rubric' || session.completedAt === null
 }
 
+/**
+ * Bitirmeden önce girilmemiş otomatik bölümlerin adları: formda olup henüz girilmeyenler. Bitmiş
+ * oturumda otomatik bölüm girilemediğinden bitirme onayı bunları söyler (DOM-DIL-010).
+ */
+export function unenteredAutoSections(session: Pick<PlacementSession, 'sections'>): string[] {
+  return session.sections
+    .filter((row) => row.scoring === 'auto' && row.status === 'pending')
+    .map((row) => row.label)
+}
+
 /** Beş bölüm sabit sırayla: puanlama türü, durum, yüzde ve hedef seviye. */
 export function sectionRows(
   session: Pick<PlacementSession, 'sections' | 'decisions' | 'completedAt'>,

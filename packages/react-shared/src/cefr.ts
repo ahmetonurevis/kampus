@@ -17,9 +17,11 @@ import { fetchAllPages, type ListPage } from './institution-lists.ts'
 /** Profil yanıtı görünüm birleşimidir: `staff` (yönetici, öğretmen) ve `learner` (öğrenci, veli). */
 export type CefrProfile = components['schemas']['CefrProfile']
 export type CefrProfileStaff = components['schemas']['CefrProfileStaff']
-/** Öğrenci ve veli görünümü: zaman çizelgesinde gerekçe ve kararı veren yoktur. */
+/** Öğrenci ve veli görünümü: zaman çizelgesinde gerekçe, kararı veren ve kanıt özeti yoktur. */
 export type CefrProfileLearner = components['schemas']['CefrProfileLearner']
 export type CefrTimelineEntry = CefrProfile['timeline'][number]
+/** Personel çizelgesinin satırı: kararı veren, gerekçe ve karar anının kanıt özeti (OG-079). */
+export type CefrStaffTimelineEntry = CefrProfileStaff['timeline'][number]
 
 export type PlacementSession =
   operations['getPlacementSession']['responses'][200]['content']['application/json']['data']
@@ -77,7 +79,7 @@ export const CEFR_MESSAGES = {
 export const placementStale = (error: ApiError) =>
   error.status === 404 || (error.status === 409 && error.code === 'version_conflict')
 
-/** Profil `staff` görünümünde mi (gerekçe ve kararı veren yalnız orada). */
+/** Profil `staff` görünümünde mi (gerekçe, kararı veren ve kanıt özeti yalnız orada). */
 export function isStaffProfile(profile: CefrProfile): profile is CefrProfileStaff {
   return profile.view === 'staff'
 }

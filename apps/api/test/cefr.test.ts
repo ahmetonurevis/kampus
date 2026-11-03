@@ -9,6 +9,7 @@ import type { ResourceVersionInput } from '@kampus/school-core/content/resource.
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { users } from '../src/db/schema/auth.ts'
 import { levelDecisions, placementSessions } from '../src/db/schema/cefr.ts'
 import { languageGroupMembers } from '../src/db/schema/language-groups.ts'
 import { records } from '../src/db/schema/records.ts'
@@ -754,6 +755,77 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
             d.rationale === decideBody(1).rationale && d.decidedByUserId === t.users.teacher.id,
         ),
       )
+    }
+  })
+
+  test('IST-060 OG-079 zaman çizelgesi: kim ve hangi kanıtla personelde; öğrenci ve veli yalnız seviye, tür, an ve değişim', async () => {
+    const t = await tenant()
+    await db.update(users).set({ name: 'Selin Kaya' }).where(eq(users.id, t.users.teacher.id))
+    const session = await scoredSession(t)
+    await ok(await command(t.cookies.teacher, session.id, 'decide', decideBody(session.version)))
+    // Yönetici genel seviyeyi sonradan düzeltir; kopya karar anınınkidir (düzeltme yazma akışı
+    // ayrı görevdedir, burada satır doğrudan yazılır).
+    const [placement] = (await decisionRows(t.institution.id)).filter((r) => r.skill === null)
+    await db.insert(levelDecisions).values({
+      ...placement!,
+      id: randomUUID(),
+      kind: 'correction',
+      placementSessionId: null,
+      level: 'B2',
+      rationale: 'Kur içi yazma görevleri B2 düzeyinde.',
+      decidedByUserId: t.institution.admin.id,
+      decidedAt: new Date(FIXED_NOW.getTime() + 60_000),
+    })
+    const profile = async (cookie: string) =>
+      ok(await call('GET', '/students/s-deniz/cefr-profile', cookie))
+
+    for (const cookie of [t.cookies.teacher, t.cookies.admin]) {
+      const view = await profile(cookie)
+      assert.equal(view.view, 'staff')
+      const [latest, ...rest] = view.timeline
+      assert.deepEqual(
+        [latest.kind, latest.skill, latest.level, latest.previousLevel, latest.change],
+        ['correction', null, 'B2', 'B1', 'up'],
+      )
+      assert.equal(latest.decidedByUserId, t.institution.admin.id)
+      assert.equal(typeof latest.decidedByName, 'string')
+      const general = rest.find((d: Json) => d.skill === null)
+      const speaking = rest.find((d: Json) => d.skill === 'speaking')
+      assert.deepEqual(
+        [general.previousLevel, general.change, speaking.previousLevel, speaking.change],
+        [null, 'first', null, 'first'],
+      )
+      assert.equal(general.decidedByName, 'Selin Kaya')
+      assert.equal(general.rationale, decideBody(1).rationale)
+      // Kanıt yalnız kararın kopyasından: tespit bağlamı, beceri kararında yalnız o beceri.
+      assert.equal(speaking.evidence.context, 'placement')
+      assert.ok(speaking.evidence.items.length > 0)
+      assert.ok(speaking.evidence.items.every((e: Json) => e.skill === 'speaking'))
+      assert.equal(
+        speaking.evidence.followsSuggestion,
+        speaking.evidence.suggestedLevel === null
+          ? null
+          : speaking.evidence.suggestedLevel === 'B1+',
+      )
+      assert.ok(new Set(general.evidence.items.map((e: Json) => e.skill)).size > 1)
+      assert.equal(
+        general.evidence.successful,
+        general.evidence.items.filter((e: Json) => e.successful).length,
+      )
+    }
+
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const view = await profile(cookie)
+      assert.equal(view.view, 'learner')
+      assert.equal(view.timeline.length, 3)
+      assert.deepEqual(
+        [view.timeline[0].level, view.timeline[0].previousLevel, view.timeline[0].change],
+        ['B2', 'B1', 'up'],
+      )
+      for (const decision of view.timeline)
+        for (const hidden of ['rationale', 'decidedByUserId', 'decidedByName', 'evidence'])
+          assert.ok(!(hidden in decision), `${hidden}: ${JSON.stringify(decision)}`)
+      assert.ok(!JSON.stringify(view.timeline).includes('Selin Kaya'))
     }
   })
 

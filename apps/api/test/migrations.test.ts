@@ -65,7 +65,7 @@ type MigrationTarget = Parameters<typeof migrate>[0]
 
 /**
  * Better Auth her okumada şemadaki bütün kolonları seçer. Sonraki migration'ların kimlik
- * tablolarına eklediği kolonlar (0045 `memberships.deactivated_at`, `invitations.name` ve
+ * tablolarına eklediği kolonlar (0046 `memberships.deactivated_at`, `invitations.name` ve
  * `invitations.membership_id`) eski şemada yoksa test uygulaması üye ya da davet açamaz; kolonlar
  * kısmi şemaya geçici eklenir ve kalan migration'lardan önce kaldırılır.
  */

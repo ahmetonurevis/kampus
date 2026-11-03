@@ -1,6 +1,7 @@
 import { and, asc, count, eq, inArray, isNotNull, isNull, max, sql, type SQL } from 'drizzle-orm'
 import { z } from 'zod'
 
+import type { AnnouncementStatus } from '@kampus/school-core/lib/communication.ts'
 import {
   INVOICE_STATUS_LABELS as CORE_INVOICE_STATUS_LABELS,
   type InvoiceStatus,
@@ -133,6 +134,18 @@ export interface InvoiceStatusMatch {
   todayStart: string
 }
 
+/**
+ * Duyuru durumu süzgeci (`status`; durum saklanmaz, core `announcementStatusOf` okuyucuya göre
+ * daraltılmış kayıttan türetir). `myReadAt` okuyucuya özgüdür ve ham kayıtta yoktur: SQL
+ * koşulu yalnız `withdrawnAt` ve `revisedAt`'e bakan, kesin olmayan adaydır (geri çekildi
+ * kesindir; okunmadı ve yayında geri çekilmemişlerin, güncellendi geri çekilmemiş ve
+ * düzeltilmişlerin üst kümesidir). Karar ayıklanmış kayıtta core fonksiyonuyla verilir.
+ */
+export interface AnnouncementStatusMatch {
+  kind: 'announcementStatus'
+  statuses: readonly AnnouncementStatus[]
+}
+
 /** Core `invoiceStatus` etiketleri (`lib/format.ts`), core'un tanım sırasıyla. */
 export const INVOICE_STATUS_LABELS: readonly InvoiceStatus[] = Object.values(
   CORE_INVOICE_STATUS_LABELS,
@@ -174,6 +187,7 @@ export type RecordFilter =
   | SetMatch
   | DayRangeMatch
   | InvoiceStatusMatch
+  | AnnouncementStatusMatch
   | OwnOrViaMatch
   | SettledMatch
 
@@ -314,6 +328,26 @@ function invoiceStatusMatch(match: InvoiceStatusMatch): SQL {
   return parts.length === 0 ? sql`false` : sql`(${sql.join(parts, sql` or `)})`
 }
 
+function announcementStatusMatch({ statuses }: AnnouncementStatusMatch): SQL {
+  const filled = (field: string) =>
+    sql`(coalesce(${records.data} -> ${field}::text, 'null'::jsonb) not in ${FALSY_JSON})`
+  const withdrawn = filled('withdrawnAt')
+  const parts = statuses.map((status) => {
+    switch (status) {
+      case 'Geri çekildi':
+        return withdrawn
+      case 'Okunmadı':
+      case 'Yayında':
+        return sql`(not ${withdrawn})`
+      case 'Güncellendi':
+        return sql`(not ${withdrawn} and ${filled('revisedAt')})`
+      default:
+        return status satisfies never
+    }
+  })
+  return parts.length === 0 ? sql`false` : sql`(${sql.join(parts, sql` or `)})`
+}
+
 function settledMatch({ expiredBefore }: SettledMatch): SQL {
   const status = sql`coalesce(${records.data} ->> 'status', '')`
   const expiresAt = sql`(${records.data} ->> 'expiresAt')`
@@ -341,6 +375,8 @@ export function recordFilter(filter: RecordFilter): SQL {
       return dayRangeMatch(filter)
     case 'invoiceStatus':
       return invoiceStatusMatch(filter)
+    case 'announcementStatus':
+      return announcementStatusMatch(filter)
     case 'ownOrVia':
       return ownOrViaMatch(filter)
     case 'settled':

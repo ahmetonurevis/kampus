@@ -151,9 +151,9 @@ export function appointmentRow(
 ): AppointmentRow {
   const record = item.record
   const student = item.joined?.studentName ?? ''
-  // TODO(randevu-eski-ogretmen-adi): arşivdeki öğretmen kapsamlı `teachers` listesinde yoktur;
-  // ad sunucuda satıra bağlanınca (`joined`) buradan okunur.
-  const teacher = lookups.teachers.get(record.teacherId) ?? '—'
+  // Ad satıra sunucuda bağlıdır (`joined.teacherName`, arşivli öğretmen dahil); kapsamlı kadro
+  // listesi yalnız sunucu adı vermediğinde yedektir.
+  const teacher = item.joined?.teacherName ?? lookups.teachers.get(record.teacherId) ?? '—'
   const status = record.status
   const mine = record.requestedBy !== undefined && record.requestedBy.userId === viewerId
   const partial = { status, startsAt: record.date, mine }

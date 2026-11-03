@@ -132,6 +132,9 @@ const ParentMessagesPage = lazy(async () => ({
 const RequestsPage = lazy(async () => ({
   default: (await import('../requests/RequestsPage.tsx')).RequestsPage,
 }))
+const AbsenceApprovalsPage = lazy(async () => ({
+  default: (await import('../requests/AbsenceApprovalsPage.tsx')).AbsenceApprovalsPage,
+}))
 const AbsenceNoticesPage = lazy(async () => ({
   default: (await import('../requests/AbsenceNoticesPage.tsx')).AbsenceNoticesPage,
 }))
@@ -175,6 +178,10 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
       return <AttendanceCorrectionPage page={page} />
     case 'yonetici/koordinator-gorevleri':
       return <CoordinatorDutiesPage page={page} />
+    case 'yonetici/mazeret-bildirimleri':
+      return <AbsenceApprovalsPage page={page} viewer="admin" />
+    case 'ogretmen/mazeret-bildirimleri':
+      return <AbsenceApprovalsPage page={page} viewer="teacher" />
     case 'yonetici/risk-listesi':
       return <RiskListPage page={page} />
     case 'yonetici/sla-raporu':

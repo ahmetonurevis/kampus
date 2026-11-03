@@ -166,6 +166,9 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'POST /api/v1/grades': ['academic'],
   'PATCH /api/v1/grades/:gradeId': ['academic'],
   'POST /api/v1/absences': ['academic'],
+  'POST /api/v1/absences/:absenceId/documents': ['academic'],
+  'POST /api/v1/absences/:absenceId/approve': ['academic'],
+  'POST /api/v1/absences/:absenceId/reject': ['academic'],
   // Etüt.
   'POST /api/v1/tutor-sessions': ['tutoring'],
   'POST /api/v1/tutor-sessions/:sessionId/cancel': ['tutoring'],

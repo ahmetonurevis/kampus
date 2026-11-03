@@ -171,9 +171,34 @@ export const API_ACADEMIC_PAGES: Record<Role, readonly NavigationPage[]> = {
       group: 'YÖNETİM',
       apiOnly: true,
     },
+    {
+      path: 'mazeret-bildirimleri',
+      title: 'Mazeret Bildirimleri',
+      icon: 'FileCheck',
+      module: 'academic',
+      view: 'AbsenceApprovals',
+      description:
+        'Velilerin izin ve mazeret bildirimlerini özür belgesiyle inceleyin, karar verin.',
+      group: 'YÖNETİM',
+      apiOnly: true,
+    },
   ],
   onburo: [],
-  ogretmen: [],
+  // Sınıf rehber öğretmeni şubesinin bildirimlerini ve belgelerini salt okur görür; karar vermez
+  // (DOM-ILT-053). Rehber olmayan öğretmende sunucu kapsamı listeyi boş döner.
+  ogretmen: [
+    {
+      path: 'mazeret-bildirimleri',
+      title: 'Mazeret Bildirimleri',
+      icon: 'FileCheck',
+      module: 'academic',
+      view: 'AbsenceApprovals',
+      description:
+        'Rehber öğretmeni olduğunuz sınıfların mazeret bildirimlerini ve belgelerini görün.',
+      group: 'AKADEMİK',
+      apiOnly: true,
+    },
+  ],
   ogrenci: [],
   veli: [],
 }

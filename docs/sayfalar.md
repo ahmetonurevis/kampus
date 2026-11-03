@@ -24,7 +24,7 @@ Vue–React sayfa eşitliği denetimi (Oğuzhan'ın alanı, OG-072 ön koşulu):
 
 <!-- Onur: kayıt ve finans sonu -->
 
-Aşağıdaki tablolar Vue demosunun sayfa yollarıdır; yalnız React'te bulunan İçerik Havuzu (`/yonetici/icerik-havuzu`, `/ogretmen/icerik-havuzu`), Yoklama Düzeltme (`/yonetici/yoklama-duzeltme`) ve Zümre & Koordinatörler (`/yonetici/koordinator-gorevleri`) bunlarda yer almaz.
+Aşağıdaki tablolar Vue demosunun sayfa yollarıdır; yalnız React'te bulunan İçerik Havuzu (`/yonetici/icerik-havuzu`, `/ogretmen/icerik-havuzu`), Yoklama Düzeltme (`/yonetici/yoklama-duzeltme`), Zümre & Koordinatörler (`/yonetici/koordinator-gorevleri`) ve Mazeret Bildirimleri (`/yonetici/mazeret-bildirimleri`, `/ogretmen/mazeret-bildirimleri`) bunlarda yer almaz.
 
 ## Yönetici
 

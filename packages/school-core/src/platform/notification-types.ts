@@ -141,4 +141,24 @@ export const PLATFORM_NOTIFICATION_TYPES = {
       parent: '{öğrenci} için gelmedi kaydı düzeltildi.',
     },
   }),
+  /**
+   * İzin/mazeret bildirimi sonuçlandı (DOM-ILT-053): idare onayladı ya da reddetti; ikisinde de
+   * bildirilir. Sonuç, gerekçe ve kategori bildirimde yoktur (sağlık bilgisi sızmaz,
+   * DOM-ILT-023); bildirim ayrıntısında okunur. Bildirimi veli yaptığı için 18 yaş altında yalnız
+   * veliye gider.
+   */
+  absence_decided: defineNotificationType({
+    topic: 'attendance',
+    category: 'service',
+    mandatory: true,
+    module: 'academic',
+    audiences: { minor: ['parent'], adult: ['student'] },
+    subjectType: 'absence',
+    data: z.strictObject({ absenceId: notificationId }),
+    subjectId: (data) => data.absenceId,
+    titles: {
+      student: 'İzin/mazeret bildirimin sonuçlandı.',
+      parent: '{öğrenci} için izin/mazeret bildirimi sonuçlandı.',
+    },
+  }),
 } as const

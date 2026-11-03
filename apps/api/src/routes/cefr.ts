@@ -10,6 +10,7 @@ import {
   completePlacementSession,
   decidePlacement,
   getCefrProfile,
+  getPlacementForm,
   getPlacementSession,
   listLearnerPlacementSessions,
   openPlacementSession,
@@ -23,6 +24,7 @@ import {
   completePlacementSessionBodySchema,
   decidePlacementBodySchema,
   openPlacementSessionBodySchema,
+  placementFormResponseSchema,
   placementSessionListQuerySchema,
   placementSessionListResponseSchema,
   placementSessionParamsSchema,
@@ -108,6 +110,24 @@ export function registerCefrRoutes(app: FastifyInstance) {
     },
     async (request) => ({
       data: await getPlacementSession(contextOf(request), request.params.sessionId),
+    }),
+  )
+
+  typed.get(
+    '/api/v1/placement-sessions/:sessionId/form',
+    {
+      preValidation: placement,
+      schema: {
+        operationId: 'getPlacementForm',
+        tags: ['learning'],
+        summary: 'Seviye tespiti formu',
+        description: `Oturumun formundaki otomatik bölümlerin (dil kullanımı, okuma, dinleme) soruları; personel kursiyerin cevaplarını bununla girer (OG-078, IST-058). Soru gövdesi anahtarsızdır: doğru cevap ve açıklama gönderilmez. Formda sorusu olmayan bölüm listede yoktur. Olmayan ya da başka kurumun oturumu 404. ${PLACEMENT_ACCESS}`,
+        params: placementSessionParamsSchema,
+        response: { 200: placementFormResponseSchema, ...readErrors },
+      },
+    },
+    async (request) => ({
+      data: await getPlacementForm(contextOf(request), request.params.sessionId),
     }),
   )
 

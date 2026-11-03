@@ -9,13 +9,20 @@ import {
 import { LEVEL_CHANGES } from '@kampus/school-core/cefr/timeline.ts'
 import {
   LEARNER_KINDS,
+  PLACEMENT_ANSWER_SECTIONS,
   PLACEMENT_MODES,
   PLACEMENT_SECTIONS,
   placementDecisionInputSchema,
   placementScoreInputSchema,
   placementSessionInputSchema,
 } from '@kampus/school-core/cefr/placement.ts'
-import { CEFR_LEVELS, PRIMARY_SKILLS, enumKeys } from '@kampus/school-core/content/taxonomy.ts'
+import { questionBodySchema } from '@kampus/school-core/content/resource.ts'
+import {
+  CEFR_LEVELS,
+  PRIMARY_SKILLS,
+  SUBSKILLS,
+  enumKeys,
+} from '@kampus/school-core/content/taxonomy.ts'
 
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
 
@@ -132,6 +139,35 @@ export const placementSessionSchema = z.object({
 export const placementSessionResponseSchema = dataResponse(placementSessionSchema)
 export const placementSessionListResponseSchema = pageResponse(
   z.object({ ...sessionBase, validity: validitySchema }),
+)
+
+/**
+ * Tespit formu (OG-078, IST-058): otomatik bölümlerin soruları, personelin cevap girişi için.
+ * Soru gövdesi anahtarsızdır; doğru cevap ve açıklama yanıtta yoktur.
+ */
+export const placementFormResponseSchema = dataResponse(
+  z
+    .object({
+      sessionId: z.uuid(),
+      formVersionId: z.uuid(),
+      sections: z
+        .array(
+          z.object({
+            section: z.enum(PLACEMENT_ANSWER_SECTIONS),
+            targetLevel: level.nullable().describe('Bölüm sorularının ortak CEFR seviyesi'),
+            items: z.array(
+              z.object({
+                questionVersionId: z.string(),
+                points: z.number(),
+                subskill: z.enum(enumKeys(SUBSKILLS)).nullable(),
+                question: questionBodySchema,
+              }),
+            ),
+          }),
+        )
+        .describe('Formda sorusu olan otomatik bölümler, ekrandaki sırayla'),
+    })
+    .meta({ id: 'PlacementForm' }),
 )
 
 /** Çizelgede aynı becerinin önceki kararına göre değişim (OG-079; core `levelTimeline`). */

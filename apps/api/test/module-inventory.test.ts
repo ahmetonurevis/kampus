@@ -145,6 +145,7 @@ const INSTITUTION_TYPE_ROUTES: Readonly<Record<string, InstitutionType>> = {
   // Seviye tespiti ve CEFR profili (OG-054; IST-058, IST-060; DOM-DIL-010).
   'GET /api/v1/placement-sessions': 'language_school',
   'GET /api/v1/placement-sessions/:sessionId': 'language_school',
+  'GET /api/v1/placement-sessions/:sessionId/form': 'language_school',
   'POST /api/v1/placement-sessions': 'language_school',
   'POST /api/v1/placement-sessions/:sessionId/score': 'language_school',
   'POST /api/v1/placement-sessions/:sessionId/complete': 'language_school',

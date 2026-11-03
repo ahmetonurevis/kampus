@@ -29,6 +29,10 @@ export type PlacementSession =
 export type PlacementSessionRow =
   operations['listPlacementSessions']['responses'][200]['content']['application/json']['data'][number]
 export type PlacementSessionListQuery = operations['listPlacementSessions']['parameters']['query']
+/** Tespit formu: otomatik bölümlerin anahtarsız soruları (OG-078; cevap girişi). */
+export type PlacementForm = components['schemas']['PlacementForm']
+export type PlacementFormSection = PlacementForm['sections'][number]
+export type PlacementFormItem = PlacementFormSection['items'][number]
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -115,6 +119,16 @@ export async function fetchPlacementPage(
     }),
   )
   return { rows: body.data, ...body.meta }
+}
+
+/** Oturumun formu: personel kursiyerin otomatik bölüm cevaplarını bununla girer (OG-078). */
+export function fetchPlacementForm(client: KampusClient, sessionId: string, signal?: AbortSignal) {
+  return runRequest(() =>
+    client.GET('/api/v1/placement-sessions/{sessionId}/form', {
+      params: { path: { sessionId } },
+      ...(signal ? { signal } : {}),
+    }),
+  )
 }
 
 /** Kişinin bütün tespit oturumları (sayfa sayfa). */

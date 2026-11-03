@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { z } from 'zod'
 
 import {
+  PLACEMENT_ANSWER_SECTIONS,
   PLACEMENT_SECTIONS,
   placementEvidence,
   placementSectionLevel,
@@ -315,6 +316,41 @@ export async function getPlacementSession(ctx: ServiceContext, sessionId: string
   if (session === null) throw new NotFoundError()
   await assertLearnerReach(ctx.db, ctx, session)
   return sessionView(ctx.db, ctx, session)
+}
+
+/**
+ * Oturumun tespit formu (OG-078, IST-058): otomatik bölümlerin soruları, cevap girişi için.
+ * Bölümler `PLACEMENT_SECTIONS` sırasıyla, yalnız formda sorusu olanlar; soru gövdesi anahtarsızdır
+ * (doğru cevap ve açıklama gönderilmez), seçenekler formdaki sırasıyla. Kapsam oturum okumasıyla
+ * aynıdır: olmayan, başka kurumun ya da öğretmenin kapsamı dışındaki oturum 404.
+ */
+export async function getPlacementForm(ctx: ServiceContext, sessionId: string) {
+  const session = UUID.test(sessionId)
+    ? await findPlacementSession(ctx.db, ctx.institutionId, sessionId)
+    : null
+  if (session === null) throw new NotFoundError()
+  await assertLearnerReach(ctx.db, ctx, session)
+  const form = await loadFormScoring(ctx.db, ctx, session.formVersionId)
+  return {
+    sessionId: session.id,
+    formVersionId: session.formVersionId,
+    sections: PLACEMENT_ANSWER_SECTIONS.flatMap((section) => {
+      const scoring = form.auto.get(section)
+      if (scoring === undefined) return []
+      return [
+        {
+          section,
+          targetLevel: scoring.targetLevel,
+          items: scoring.items.map((item) => ({
+            questionVersionId: item.questionVersionId,
+            points: item.points,
+            subskill: item.subskill ?? null,
+            question: item.question,
+          })),
+        },
+      ]
+    }),
+  }
 }
 
 /**

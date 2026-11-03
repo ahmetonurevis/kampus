@@ -1,4 +1,4 @@
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 
 import type { ApiError } from '@kampus/api-client/errors.ts'
 
@@ -8,9 +8,12 @@ import {
   decidePlacementCommand,
   fetchAllPlacements,
   fetchCefrProfile,
+  fetchPlacementForm,
+  fetchPlacementPage,
   openPlacementCommand,
   scorePlacementCommand,
   type CefrProfile,
+  type PlacementForm,
   type PlacementSessionListQuery,
 } from './cefr.ts'
 import { useKampusClient } from './kampus-context.ts'
@@ -52,6 +55,34 @@ export function usePlacementSessions(
     queryKey: institutionKey(institutionId, ...CEFR_KEY, 'placements', query),
     queryFn: ({ signal }) => fetchAllPlacements(client, query, signal),
     enabled: institutionId !== null && query.learnerId !== '' && (options.enabled ?? true),
+  })
+}
+
+/**
+ * Kişinin tespit oturumlarının tek sayfası (OG-078; seviye tespiti ekranı). Sorgu değişirken
+ * önceki sayfa ekranda kalır; kişi seçilmemişken (`learnerId` boş) istek atılmaz.
+ */
+export function usePlacementPage(query: PlacementSessionListQuery, options: Options = {}) {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQuery({
+    queryKey: institutionKey(institutionId, ...CEFR_KEY, 'placement-page', query),
+    queryFn: ({ signal }) => fetchPlacementPage(client, query, signal),
+    enabled: institutionId !== null && query.learnerId !== '' && (options.enabled ?? true),
+    placeholderData: keepPreviousData,
+  })
+}
+
+/** Oturumun formu: otomatik bölümlerin anahtarsız soruları (cevap girişi; OG-078). */
+export function usePlacementForm(sessionId: string, options: Options = {}) {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQuery<PlacementForm, ApiError>({
+    queryKey: institutionKey(institutionId, ...CEFR_KEY, 'placement-form', sessionId),
+    queryFn: async ({ signal }) => (await fetchPlacementForm(client, sessionId, signal)).data,
+    enabled: institutionId !== null && sessionId !== '' && (options.enabled ?? true),
+    // Form sürümü oturuma sabittir; sorular değişmez.
+    staleTime: Infinity,
   })
 }
 

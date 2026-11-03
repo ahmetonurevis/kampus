@@ -655,6 +655,59 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
     assert.equal(row?.sectionEntries.length, 1)
   })
 
+  test('IST-058 OG-078 tespit formu: sorular anahtarsız; başka kurumun oturumu 404, kapsam oturumla aynı', async () => {
+    const t = await tenant()
+    const session = await ok(await open(t), 201)
+    fails(await call('GET', `/placement-sessions/${session.id}/form`), 401, 'unauthenticated')
+    for (const cookie of [t.cookies.frontDesk, t.cookies.student, t.cookies.parent])
+      fails(await call('GET', `/placement-sessions/${session.id}/form`, cookie), 403, 'forbidden')
+    fails(
+      await call('GET', `/placement-sessions/${session.id}/form`, t.cookies.other),
+      404,
+      'not_found',
+    )
+    fails(
+      await call('GET', `/placement-sessions/${randomUUID()}/form`, t.cookies.admin),
+      404,
+      'not_found',
+    )
+    const response = await call('GET', `/placement-sessions/${session.id}/form`, t.cookies.teacher)
+    const form = await ok(response)
+    assert.equal(form.sessionId, session.id)
+    assert.deepEqual(
+      form.sections.map((section: Json) => [section.section, section.targetLevel]),
+      [
+        ['language_use', 'B1'],
+        ['reading', 'B1'],
+        ['listening', 'B1'],
+      ],
+    )
+    assert.deepEqual(
+      form.sections.map((section: Json) =>
+        section.items.map((item: Json) => item.questionVersionId),
+      ),
+      [t.questions.language_use, t.questions.reading, t.questions.listening],
+    )
+    const [item] = form.sections[0].items
+    assert.equal(item.question.questionType, 'multiple_choice')
+    assert.equal(item.points, 1)
+    // Doğru cevap ve açıklama yanıtta hiç yoktur.
+    assert.doesNotMatch(response.body, /correctOptionId|A doğrudur|answerKey/)
+    // Okulda uç yoktur; başka kurumun oturumu 404.
+    const school = await tenant('school')
+    fails(
+      await call('GET', `/placement-sessions/${session.id}/form`, school.cookies.admin),
+      404,
+      'not_found',
+    )
+    const other = await tenant()
+    fails(
+      await call('GET', `/placement-sessions/${session.id}/form`, other.cookies.admin),
+      404,
+      'not_found',
+    )
+  })
+
   test('IST-058 IST-060 başka kurumun oturumu ve öğrencisi 404, B değişmez', async () => {
     const a = await tenant()
     const b = await tenant()

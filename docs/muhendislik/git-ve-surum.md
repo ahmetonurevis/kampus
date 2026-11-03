@@ -95,7 +95,7 @@ etki: minor
 
 ## 7. İki geliştirici
 
-İki geliştirici (Oğuzhan Demirci, Ahmet Onur Evis) Claude Code ile paralel çalışır. İlke: **izin yok, görünürlük var; hız önce.** Kendi alanında herkes sormadan yazar, birleştirir, gönderir; iş görev tablolarında (`docs/is-bolumu/<sahip>.md`) görünür tutulur. Yalnız sahiplik/kural değişikliği (bu bölüm, `alanlar.json`) ve ürün, hukuk, maliyet kararları birlikte alınır. Hook'lar (`alan-koruma`, `push-kontrol`) insan onayı istemeden otomatik denetler. Bu bölüm §1 ve §3'ün entegrasyon dalı (`feature/platform-gecisi`) için yerini alır. Zorunlu özet kök `CLAUDE.md`'de, ajan kuralı `.claude/rules/ortak-calisma.md`'de, alan haritası `.claude/alanlar.json`'da, görev tabloları `docs/is-bolumu/`'dadır, ilk kurulum `docs/is-bolumu/ilk-kurulum.md`. Skill'ler: `is-baslat`, `entegre-et`.
+İki geliştirici (Oğuzhan Demirci, Ahmet Onur Evis) Claude Code ile paralel çalışır. İlke: **izin yok, görünürlük var; hız önce.** Kendi alanında herkes sormadan yazar, birleştirir, gönderir; iş görev tablolarında (`docs/is-bolumu/<sahip>.md`) görünür tutulur. Yalnız sahiplik/kural değişikliği (bu bölüm, `alanlar.json`) ve ürün, hukuk, maliyet kararları birlikte alınır. Hook'lar (`alan-koruma`, `push-kontrol`) insan onayı istemeden otomatik denetler. Bu bölüm §1 ve §3'ün entegrasyon dalı (`feature/platform-gecisi`) için yerini alır. Zorunlu özetin tek kaynağı `.claude/rules/ortak-calisma.md`'dir (kök `CLAUDE.md` yalnız işaret eder), alan haritası `.claude/alanlar.json`'da, görev tabloları `docs/is-bolumu/`'dadır, ilk kurulum `docs/is-bolumu/ilk-kurulum.md`. Skill'ler: `is-baslat`, `entegre-et`.
 
 ### 7.1 Alanlar
 

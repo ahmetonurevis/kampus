@@ -214,7 +214,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 
 - **Kural:** Kapalı modülün verisi dashboard kartlarında, haftalık bültende, aramada, CSV dışa aktarımında ve bildirimlerde görünmez; modüle bağlı zamanlanmış işler (hatırlatma, bülten bölümü) durur. İstisna: ileri tarihli etüt rezervasyonu kaybolmaz ve çakışma denetimine katılmaya devam eder.
 - **Gerekçe:** Modül kapatma kurum kararıdır; veri başka kapıdan görünmeye devam ederse karar uygulanmamış olur. Etüt istisnası, kapatma sırasında öğrencinin ayrılmış saatinin başka işe verilmesini önler.
-- **Kaynak:** İşletme kuralı; CLAUDE.md "Gelecek etüt rezervasyonu modül kapanınca kaybolmaz".
+- **Kaynak:** İşletme kuralı; `.claude/rules/okul-is-akislari.md` "Gelecek etüt rezervasyonu modül kapanınca kaybolmaz".
 - **Kurum türü:** ikisi
 - **Kodda:** kısmen — etüt istisnası var; pano kapalı modülün bölümünü `null` döner, web kartı çizmez; bildirim kapalı modülde üretilmez ve önceden yazılmış bildirim liste, imleç ve okunmamış sayısından süzülür (core `hiddenNotificationKinds`, OG-036). Haftalık bülten, arama ve zamanlanmış işler için toplu denetim yok.
 

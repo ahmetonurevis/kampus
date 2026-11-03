@@ -121,6 +121,17 @@ export function createDraftSaver(options: DraftSaverOptions) {
       }
       return (await save(text)) ? revision : null
     },
+    /**
+     * Bekleyen değişikliği zamanlayıcıyı beklemeden kaydeder (bileşen kalkarken ve mobil uygulama
+     * arka plana geçerken). Kayıt kapalıyken (`enabled` false: teslim kapalı ya da sürüyor),
+     * çakışmada (başka pencerenin kaydı onaylanmadı), kirli olmayan ve boş metinde yazılmaz. Kayıt başlatıldıysa sonucu (`true`/`false`), yazılmadıysa `null` döner.
+     */
+    async saveIfPending(text: string, enabled = true): Promise<boolean | null> {
+      if (!enabled || conflict) return null
+      cancel()
+      if (!isDirty(text) || text.trim() === '') return null
+      return save(text)
+    },
     /** Sunucudan gelen güncel taslağı işler; `screenText` ekrandaki metindir. */
     sync(latest: DraftSnapshot, screenText: string): SyncOutcome {
       if (latest.revision === revision) return { kind: 'none' }

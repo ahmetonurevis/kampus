@@ -1525,6 +1525,8 @@ export async function insertSubmissionVersion(
   submissionId: string,
   version: VersionRow,
   now: Date,
+  /** Taslaktan teslimde teslim edilen taslak revizyonu (IST-047); diğer teslimlerde `null`. */
+  draftRevision: number | null = null,
 ): Promise<unknown> {
   return constraintAs(
     tx.insert(submissionVersions).values({
@@ -1535,6 +1537,7 @@ export async function insertSubmissionVersion(
       submittedAt: new Date(version.submittedAt),
       body: version.body,
       fileIds: [...version.fileIds],
+      draftRevision,
       createdAt: now,
       updatedAt: now,
     }),
@@ -1545,6 +1548,29 @@ export async function insertSubmissionVersion(
       ),
     },
   )
+}
+
+/**
+ * Kursiyerin taslağından teslim edilmiş en yüksek revizyon (IST-047); taslaktan hiç teslim yoksa
+ * `null`. Taslak satırı kursiyer × atama başına tektir ve revizyonu yalnız artar; bu yüzden taslağın
+ * revizyonu bundan büyük değilse o metin zaten teslim edilmiştir. Metin, dosya ve ses teslimi
+ * taslağı tüketmez.
+ */
+export async function lastSubmittedDraftRevision(
+  db: Database,
+  institutionId: string,
+  submissionId: string,
+): Promise<number | null> {
+  const [row] = await db
+    .select({ revision: max(submissionVersions.draftRevision) })
+    .from(submissionVersions)
+    .where(
+      and(
+        eq(submissionVersions.institutionId, institutionId),
+        eq(submissionVersions.submissionId, submissionId),
+      ),
+    )
+  return row?.revision ?? null
 }
 
 /** Yeniden teslim isteği (`planResubmissionRequest`); aynı sürüm için ikinci istek 409. */

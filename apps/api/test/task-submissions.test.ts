@@ -1423,4 +1423,57 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     fails(await submitDraft(assignmentId, t.cookies.student, 2), 422, 'submission_closed')
     assert.deepEqual(await snapshot(t.institution.id), before)
   })
+
+  test('IST-047, DOM-BEC-040: teslim edilmişlik revizyonla ölçülür: teslimden önce başlayıp sonra yazılan otomatik kayıt (savedAt < submittedAt) yeni revizyondur ve teslim edilir', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, {
+      submission: { submissionKind: 'text', maxVersions: 3, minWords: null, maxWords: null },
+    })
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    const started = now
+    // Teslim kurum kilidini önce alır: v1 = revizyon 1, submittedAt = T1.
+    now = new Date(started.getTime() + MINUTE)
+    await ok(await submitDraft(assignmentId, t.cookies.student, 1), 201)
+    // Otomatik kayıt istek başındaki saatle (T0 < T1) sonra yazılır; If-Match 1 tutar.
+    now = new Date(started.getTime() + MINUTE / 2)
+    const saved = await ok(
+      await saveDraft(assignmentId, t.cookies.student, `${DRAFT_TEXT} son tuşlar`, revision(1)),
+    )
+    assert.equal(saved.revision, 2)
+    assert.ok(Date.parse(saved.savedAt) < started.getTime() + MINUTE)
+    now = new Date(started.getTime() + 2 * MINUTE)
+    const second = await ok(await submitDraft(assignmentId, t.cookies.student, 2), 201)
+    assert.deepEqual(
+      second.versions.map((v: Json) => [v.number, v.body]),
+      [
+        [1, DRAFT_TEXT],
+        [2, `${DRAFT_TEXT} son tuşlar`],
+      ],
+    )
+    fails(await submitDraft(assignmentId, t.cookies.student, 2), 409, 'draft_already_submitted')
+  })
+
+  test('IST-047, DOM-BEC-040: metinle teslim taslağı tüketmez: teslim edilmemiş taslak revizyonu metin sürümünden sonra da teslim edilir, teslim edilmiş revizyon metin sürümünden sonra da 409', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t, {
+      submission: { submissionKind: 'text', maxVersions: 3, minWords: null, maxWords: null },
+    })
+    await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    now = new Date(now.getTime() + MINUTE)
+    await ok(await submit(assignmentId, t.cookies.student), 201)
+    now = new Date(now.getTime() + MINUTE)
+    const fromDraft = await ok(await submitDraft(assignmentId, t.cookies.student, 1), 201)
+    assert.deepEqual(
+      fromDraft.versions.map((v: Json) => [v.number, v.body]),
+      [
+        [1, SECRET_TEXT],
+        [2, DRAFT_TEXT],
+      ],
+    )
+    now = new Date(now.getTime() + MINUTE)
+    await ok(await submit(assignmentId, t.cookies.student), 201)
+    const before = await snapshot(t.institution.id)
+    fails(await submitDraft(assignmentId, t.cookies.student, 1), 409, 'draft_already_submitted')
+    assert.deepEqual(await snapshot(t.institution.id), before)
+  })
 })

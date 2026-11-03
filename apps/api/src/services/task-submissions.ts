@@ -44,6 +44,7 @@ import {
   findSubmissionOfVersion,
   insertSubmission,
   insertSubmissionVersion,
+  lastSubmittedDraftRevision,
   listSubmissions,
   loadAppealsBySubmission,
   loadDraft,
@@ -1029,8 +1030,9 @@ export interface DraftSubmitInput {
 /**
  * Taslaktan teslim (IST-047; DOM-BEC-040, 046): kaydedilmiş taslağın metni yeni değişmez sürüm
  * olur; teslim edilen metin kursiyerin son gördüğü revizyondur. Sıra: kapsam 404 → taslak yoksa
- * 404 → eski revizyon 409 `draft_conflict` → taslak son sürümden sonra değişmediyse 409
- * `draft_already_submitted` (aynı taslağın ikinci kez teslimi) → yazma dışı görev 422
+ * 404 → eski revizyon 409 `draft_conflict` → bu revizyon (ya da sonrası) taslaktan zaten teslim
+ * edildiyse 409 `draft_already_submitted` (sürümün `draft_revision`'ı; metinle teslim taslağı
+ * tüketmez) → yazma dışı görev 422
  * `draft_not_supported` → boş taslak 422 `draft_empty` → içerik kuralı → `planSubmissionVersion`
  * (sürüm sınırı, yeniden teslim, son tarih ve geç kabul metin teslimiyle aynı). Taslak silinmez:
  * yeniden teslim istenirse kursiyer kaldığı metinden devam eder.
@@ -1067,10 +1069,15 @@ async function draftSubmission(
       'draft_conflict',
       'Taslak başka bir pencerede değişti; sayfayı yenileyip devam edin.',
     )
-  const latest = (
-    await loadSubmission(tx, ctx.institutionId, assignment.id, learnerId)
-  )?.versions.at(-1)
-  if (latest !== undefined && Date.parse(draft.savedAt) <= Date.parse(latest.submittedAt))
+  // Zamanla değil revizyonla (IST-047): otomatik kayıt istek başındaki saati yazar; teslimden önce
+  // başlayıp sonra yazılan revizyonun `savedAt`'i son sürümden eski olabilir ama metni yenidir.
+  // Metinle (taslaksız) teslim taslağı tüketmez.
+  const work = await loadSubmission(tx, ctx.institutionId, assignment.id, learnerId)
+  const submitted =
+    work === null
+      ? null
+      : await lastSubmittedDraftRevision(tx, ctx.institutionId, work.submission.id)
+  if (submitted !== null && draft.revision <= submitted)
     throw new AppError(
       409,
       'draft_already_submitted',
@@ -1199,7 +1206,14 @@ async function submitVersion(
         // Yeniden teslim isteği yeni sürümle kendiliğinden kapanır: istek son sürümden eski kalır
         // (core `versionAllowance`); ayrıca satır güncellenmez.
         const version = { id: randomUUID(), ...plan.version }
-        await insertSubmissionVersion(tx, ctx.institutionId, submissionId, version, ctx.now)
+        await insertSubmissionVersion(
+          tx,
+          ctx.institutionId,
+          submissionId,
+          version,
+          ctx.now,
+          source.kind === 'draft' ? source.expectedRevision : null,
+        )
         await attachVersionFiles(tx, ctx, {
           assignment,
           submission: work?.submission ?? null,

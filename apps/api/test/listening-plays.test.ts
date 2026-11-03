@@ -2,12 +2,13 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
-import { eq } from 'drizzle-orm'
+import { and, eq, sql } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { files } from '../src/db/schema/files.ts'
+import { records } from '../src/db/schema/records.ts'
 import { attemptMediaPlays, taskAssignments } from '../src/db/schema/skills.ts'
 import { insertMediaPlay } from '../src/db/skills.ts'
 import { AppError } from '../src/errors.ts'
@@ -395,6 +396,49 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: first.id, playNumber: 1 }])
     const detail = await ok(await call('GET', `/task-attempts/${second.id}`, t.cookies.student))
     assert.deepEqual(detail.listening.media, [{ fileId: t.fileId, used: 0, remaining: 1 }])
+  })
+
+  test('IST-045, DOM-BEC-005 (OG-998): sınıf değiştiren öğrencinin eski sınırlı atamadaki süren denemesi karara katılmaz; kimliksiz istek yeni sınıfın sınırsız atamasıyla sayılmadan açılır, eski deneme kimliği 404', async () => {
+    const t = await tenant()
+    const old = await start(t, await assign(t, 2))
+    await insertMissingRecords(
+      db,
+      t.institution.id,
+      [
+        {
+          collection: 'classes',
+          id: '9-B',
+          data: { id: '9-B', grade: 9, level: '9', branchId: 'b-1', teacherId: 't-eng' },
+        },
+      ],
+      FIXED_NOW,
+    )
+    await db
+      .update(records)
+      .set({
+        data: sql`jsonb_set(${records.data}, '{classId}', '"9-B"')`,
+        version: sql`${records.version} + 1`,
+      })
+      .where(
+        and(
+          eq(records.institutionId, t.institution.id),
+          eq(records.collection, 'students'),
+          eq(records.id, 's-1'),
+        ),
+      )
+    // Yeni sınıfa aynı kaydı bağlayan sınırsız görev: öğrenci kaydı bu atamayla okur.
+    await ok(
+      await call('POST', '/task-assignments', t.cookies.admin, {
+        resourceVersionId: await secondQuiz(t),
+        settings: { deadline: { dueAt: DUE }, listeningPlays: null },
+        targets: [{ kind: 'class', id: '9-B' }],
+      }),
+      201,
+    )
+
+    assert.equal((await ok(await url(t, t.cookies.student))).listening, null)
+    fails(await url(t, t.cookies.student, t.fileId, old.id), 404, 'not_found')
+    assert.deepEqual(await playsOf(t.institution.id), [])
   })
 
   test('IST-045, DOM-KYN-006 (OG-052): kaydın yeni sürümü ya da kopyası aynı dosyayı taşır; ona bağlı etkinlikte hak yine sayılır', async () => {

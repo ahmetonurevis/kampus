@@ -13,6 +13,7 @@ import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { consents, noticeAcknowledgements, privacyNotices } from '../src/db/schema/privacy.ts'
 import { records } from '../src/db/schema/records.ts'
+import { insertStudentIdentity } from '../src/db/student-identities.ts'
 import type { MembershipLinkInput } from '../src/services/identity.ts'
 import {
   buildTestApp,
@@ -602,6 +603,18 @@ describe('aydınlatma ve açık rıza uçları', () => {
     assert.ok(
       (await grantors(w.otherParent.cookie, 'studentId=s5')).has('speaking_recording:guardian'),
     )
+
+    // Kesin kayıt doğum tarihini yalnız kimlik tablosuna yazar (ADR 0006 karar 9, #26): satır
+    // varsa yaş oradan okunur; reşit öğrenci rızayı kendisi verir.
+    await insertStudentIdentity(db, w.id, {
+      studentId: 's5',
+      academicYear: 2026,
+      kind: 'foreign',
+      number: 'TEST-RIZA-0001',
+      birthDate: '2000-01-01',
+      now: FIXED_NOW,
+    })
+    assert.ok((await grantors(w.otherParent.cookie, 'studentId=s5')).has('speaking_recording:self'))
   })
 
   test('DOM-YTK-059 DOM-YTK-062 liste canWithdraw: 18 yaş altı öğrenci velinin satırını geri çekemez, kendi itirazını çeker', async () => {

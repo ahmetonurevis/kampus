@@ -55,11 +55,10 @@ import {
   type StoredSubmissionWork,
 } from '../db/skills.ts'
 import { listConsentsOfSubject } from '../db/privacy.ts'
-import { findRecord } from '../db/records.ts'
 import { AppError, MESSAGES, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { loadLearnerNames } from './task-learner-names.ts'
-import { actorStudentConsent } from './consents.ts'
+import { actorStudentConsent, consentStudentOf } from './consents.ts'
 import { defineFileAttachment } from './file-registry.ts'
 import { listMembershipLinks } from './memberships.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
@@ -1159,14 +1158,14 @@ async function canReadVersionFile(
   }
   if (!readable) return false
   if (file.purpose !== 'speaking_recording') return true
-  const student = await findRecord(tx, ctx.institutionId, 'students', learnerId)
-  const birthDate = student?.data.birthDate
+  // Yaş kimlik tablosundan (kesin kayıt doğum tarihini öğrenci kaydına yazmaz, #26).
+  const student = await consentStudentOf(tx, ctx.institutionId, learnerId)
   return canAccessRecording(
     {
       role: ctx.actor.role,
       ownsLearner: viewer.kind === 'learner',
       readsSubmission: viewer.kind !== 'learner',
-      learnerBirthDate: typeof birthDate === 'string' ? birthDate : null,
+      learnerBirthDate: student?.birthDate ?? null,
     },
     ctx.now,
   )

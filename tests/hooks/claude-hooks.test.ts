@@ -137,9 +137,13 @@ describe('alan-koruma', () => {
     assert.equal(owner('docs/domain/yetki-ve-kapsam.md'), 'oguzhan')
     assert.equal(owner('apps/api/drizzle/0014_create_payments.sql'), 'ortak')
     assert.equal(owner('packages/school-core/src/modules/commands.ts'), 'ortak')
-    assert.equal(owner('apps/mobile/src/api/screen-registry.ts'), 'ortak')
-    assert.equal(owner('apps/mobile/src/api/screens/finance-parent.tsx'), 'onur')
+    // Mobil ekran kaydı ortak dosya önerisi (#25) onaylanana kadar Oğuzhan'ındır. Onur'un mobil
+    // ekran dosyası küçük harfli ve kendi kalıbına uyan adla yazılır; PascalCase ad kalıba uymaz.
+    assert.equal(owner('apps/mobile/src/api/screen-registry.ts'), 'oguzhan')
     assert.equal(owner('apps/mobile/src/api/pages.ts'), 'oguzhan')
+    assert.equal(owner('apps/mobile/src/api/screens/finance-parent.tsx'), 'onur')
+    assert.equal(owner('apps/mobile/src/api/screens/contract-approval.tsx'), 'onur')
+    assert.equal(owner('apps/mobile/src/api/screens/ParentFinance.tsx'), 'oguzhan')
     assert.equal(owner('apps/api/package.json'), 'ortak')
     assert.equal(owner('packages/school-core/changes/odeme-iadesi.md'), 'ortak')
     assert.equal(owner('docs/is-bolumu/README.md'), 'ortak')

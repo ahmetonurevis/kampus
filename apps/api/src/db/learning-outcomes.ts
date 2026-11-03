@@ -286,22 +286,49 @@ export async function catalogRowsFor(
   return map
 }
 
+/** Senkron sonucu: eklenen yeni kod sayısı ve kurum koduyla çakıştığı için atlanan kodlar. */
+export interface PlatformOutcomeSyncResult {
+  inserted: number
+  /** Platformda henüz olmayan ama bir kurumun kendi kodu olarak kullandığı kodlar (sıralı). */
+  conflicts: string[]
+}
+
 /**
  * Platform bakım betiği (ADR 0004 karar 9; HTTP'den değil): verilen program satırlarını koda göre
  * ekler ya da günceller; satır değişmediyse sürüm artmaz. Tekrar çalıştırmak güvenlidir. Listede
- * olmayan satıra dokunulmaz (program geçişi ayrı adımdır; OG-132). Eklenen satır sayısını döndürür.
+ * olmayan satıra dokunulmaz (program geçişi ayrı adımdır; OG-132).
+ *
+ * Kod platform ve kurum kataloğunda tekildir (DOM-KYN-011): kurum kazanımı eklenirken platform kodu
+ * reddedilir, burada da platformda olmayan ve bir kurumda kullanılan kod eklenmez, `conflicts` ile
+ * raporlanır (sessiz ikilik olmasın; çözüm resmî program içe aktarımında, OG-132). Platformda zaten
+ * olan kod güncellenir; kurum o kodu sonradan alamaz.
  */
 export async function syncPlatformOutcomes(
   db: Database,
   rows: readonly PlatformOutcomeSeed[],
   now: Date,
-): Promise<number> {
-  if (rows.length === 0) return 0
+): Promise<PlatformOutcomeSyncResult> {
+  if (rows.length === 0) return { inserted: 0, conflicts: [] }
   const t = platformLearningOutcomes
+  const codes = rows.map((row) => row.code)
+  const [known, taken] = await Promise.all([
+    db.select({ code: t.code }).from(t).where(inArray(t.code, codes)),
+    db
+      .selectDistinct({ code: learningOutcomes.code })
+      .from(learningOutcomes)
+      .where(inArray(learningOutcomes.code, codes)),
+  ])
+  const platformCodes = new Set(known.map((row) => row.code))
+  const conflicts = [
+    ...new Set(taken.map((row) => row.code).filter((code) => !platformCodes.has(code))),
+  ].sort()
+  const blocked = new Set(conflicts)
+  const writable = rows.filter((row) => !blocked.has(row.code))
+  if (writable.length === 0) return { inserted: 0, conflicts }
   const result = await db
     .insert(t)
     .values(
-      rows.map((row) => ({
+      writable.map((row) => ({
         code: row.code,
         programVersion: row.programVersion,
         subjectId: row.subjectId,
@@ -326,5 +353,5 @@ export async function syncPlatformOutcomes(
       setWhere: sql`(${t.programVersion}, ${t.subjectId}, ${t.gradeLevel}, ${t.name}, ${t.position}) is distinct from (excluded.program_version, excluded.subject_id, excluded.grade_level, excluded.name, excluded.position)`,
     })
     .returning({ inserted: sql<boolean>`xmax = 0` })
-  return result.filter((row) => row.inserted).length
+  return { inserted: result.filter((row) => row.inserted).length, conflicts }
 }

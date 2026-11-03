@@ -6,6 +6,7 @@ import { GLOSSARY_MAX } from '@kampus/school-core/content/resource.ts'
 import { FileUploadField, type FileUploadItem } from '@/components/FileUploadField.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
+import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -482,7 +483,11 @@ function OutcomeFields({
   const lookup = useLearningOutcomeList(lookupQuery ?? { page: 1, pageSize: 1 }, {
     enabled: lookupQuery !== null,
   })
-  const views = selectedOutcomeViews(selected, lookupQuery === null ? [] : lookup.data?.data)
+  const views = selectedOutcomeViews(
+    selected,
+    lookupQuery === null ? [] : lookup.data?.data,
+    lookup.error !== null,
+  )
   const full = outcomeCapacity(selected) === 0
 
   useEffect(() => {
@@ -510,7 +515,9 @@ function OutcomeFields({
                 ? OUTCOME_COPY.archivedNote
                 : view?.state === 'missing'
                   ? OUTCOME_COPY.missingNote
-                  : null
+                  : view?.state === 'error'
+                    ? OUTCOME_COPY.lookupErrorNote
+                    : null
             return (
               <li
                 key={field.id}
@@ -527,7 +534,10 @@ function OutcomeFields({
                       <StatusBadge text={OUTCOME_COPY.archived} tone="amber" />
                     ) : null}
                     {view?.state === 'missing' ? (
-                      <StatusBadge text={OUTCOME_COPY.missing} tone="red" />
+                      <StatusBadge text={OUTCOME_COPY.missing} tone="amber" />
+                    ) : null}
+                    {view?.state === 'error' ? (
+                      <StatusBadge text={OUTCOME_COPY.lookupError} tone="red" />
                     ) : null}
                   </div>
                   {note ? (
@@ -571,6 +581,9 @@ function OutcomeFields({
         <p role="alert" className="text-sm text-destructive">
           {fieldError(form, 'tags.outcomes')?.message}
         </p>
+      ) : null}
+      {lookupQuery !== null && lookup.error ? (
+        <QueryError error={lookup.error} onRetry={() => void lookup.refetch()} />
       ) : null}
       <div className="flex flex-wrap items-center gap-2">
         <Button

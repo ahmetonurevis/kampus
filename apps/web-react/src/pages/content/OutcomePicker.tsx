@@ -59,12 +59,17 @@ function PickerBody({
   const [page, setPage] = useState(1)
   const [chosen, setChosen] = useState<ReadonlyMap<string, OutcomeRef>>(() => new Map())
   const search = useDebouncedValue(q)
-  const list = useLearningOutcomeList(outcomePickerQuery({ q: search, subject, level, page }))
+  // Veri azalınca geçersiz sayfada kalınmaz: sorgu son bilinen toplamla sınırlanmış sayfayı ister
+  // (önceki yanıt `keepPreviousData` ile durur); süzgeç değişince sayfa başa döner.
+  const [total, setTotal] = useState<number | null>(null)
+  const pages = Math.max(1, Math.ceil((total ?? 0) / OUTCOME_PICKER_PAGE_SIZE))
+  const current = total === null ? page : Math.min(page, pages)
+  const list = useLearningOutcomeList(
+    outcomePickerQuery({ q: search, subject, level, page: current }),
+  )
+  const latestTotal = list.data?.meta.total ?? null
+  if (latestTotal !== null && latestTotal !== total) setTotal(latestTotal)
   const rows = outcomePickerRows(list.data?.data ?? [], selected)
-  const total = list.data?.meta.total ?? 0
-  const pages = Math.max(1, Math.ceil(total / OUTCOME_PICKER_PAGE_SIZE))
-  // Veri azalınca geçersiz sayfada kalınmaz.
-  const current = Math.min(page, pages)
   const full = chosen.size >= outcomeCapacity(selected)
 
   function toggle(row: OutcomePickerRow, on: boolean) {

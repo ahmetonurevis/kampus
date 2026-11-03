@@ -124,6 +124,8 @@ export const bandAlignmentSchema = z.discriminatedUnion('kind', [
   }),
   z.object({
     kind: z.literal('outcome'),
+    // TODO(rubrik-kazanim-katalog): kod kazanım kataloğuyla doğrulanmıyor (DOM-KYN-011); içerik
+    // yazımındaki `assertOutcomesSelectable` denetimi rubrik sürümüne de uygulanmalı.
     outcomeId: identifier,
     outcomeSource: z.enum(enumKeys(OUTCOME_SOURCES)),
   }),

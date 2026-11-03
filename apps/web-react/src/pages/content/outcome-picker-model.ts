@@ -27,7 +27,9 @@ export const OUTCOME_COPY = {
   archived: 'Arşivli',
   archivedNote: 'Arşivlenmiş kazanım: bu içerikte korunur, yeniden seçilemez.',
   missing: 'Katalogda bulunamadı',
-  missingNote: 'Kod katalogda yok; kaydetmeden önce silip katalogdan seçin.',
+  missingNote: 'Katalog öncesi girilmiş kod: bu içerikte korunur, silinirse yeniden seçilemez.',
+  lookupError: 'Kazanım bilgisi yüklenemedi',
+  lookupErrorNote: 'Kod bu içerikte korunur; adı ve arşiv durumu için yeniden deneyin.',
 } as const
 
 const SUBJECT_NAMES = new Map(subjects.map((subject) => [subject.id, subject.name]))
@@ -123,13 +125,17 @@ export function appendOutcomes(
   return fresh.slice(0, outcomeCapacity(selected))
 }
 
-/** İçerikteki kazanımların adını ve arşiv durumunu çözen sorgu; seçim yoksa `null`. */
+/**
+ * İçerikteki kazanımların adını ve arşiv durumunu çözen sorgu; seçim yoksa `null`. Kodlar
+ * içerikteki gibi birebir gider (sunucu da birebir arar; virgül ya da küçük harf içeren eski kod
+ * bozulmaz) ve tekrarlı parametre olarak yazılır (`codes=A&codes=B`).
+ */
 export function selectedOutcomesQuery(
   selected: readonly OutcomeRef[],
 ): LearningOutcomeListQuery | null {
   const codes = [...new Set(selected.map((ref) => ref.outcomeId).filter((code) => code !== ''))]
   if (codes.length === 0) return null
-  return { codes: [...codes].sort().join(','), page: 1, pageSize: 100 }
+  return { codes: codes.sort(), page: 1, pageSize: 100 }
 }
 
 export type SelectedOutcomeView = {
@@ -137,16 +143,18 @@ export type SelectedOutcomeView = {
   /** Katalog adı; çözülmediyse `null`. */
   name: string | null
   source: string
-  state: 'active' | 'archived' | 'missing' | 'loading'
+  state: 'active' | 'archived' | 'missing' | 'loading' | 'error'
 }
 
 /**
  * Seçili kazanımın görünümü: katalog yanıtı (`codes`) geldiyse ad ve arşiv durumu; yanıt yoksa
- * "loading", katalogda yoksa "missing" (eski serbest kod).
+ * "loading" (sorgu hatasında "error"), katalogda yoksa "missing" (katalog öncesi serbest kod). Eşleme
+ * kaynak + birebir koddur, sunucunun kaynak yazımı denetimiyle aynı.
  */
 export function selectedOutcomeViews(
   selected: readonly OutcomeRef[],
   catalog: readonly LearningOutcomeRow[] | undefined,
+  failed = false,
 ): SelectedOutcomeView[] {
   const byKey = new Map((catalog ?? []).map((row) => [outcomeKey(refOf(row)), row]))
   return selected.map((ref) => {
@@ -161,7 +169,9 @@ export function selectedOutcomeViews(
             ? 'active'
             : 'archived'
           : catalog === undefined
-            ? 'loading'
+            ? failed
+              ? 'error'
+              : 'loading'
             : 'missing',
     }
   })

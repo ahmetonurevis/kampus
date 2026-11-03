@@ -44283,8 +44283,8 @@ export interface operations {
                 q?: string;
                 /** @description Katalog: `platform` öğretim programı, `institution` kurum kazanımı; yoksa ikisi */
                 source?: "platform" | "institution";
-                /** @description Virgülle ayrılmış kodlar (en çok 50); verilirse yalnız bu kodlar döner ve arşivliler de dahildir (mevcut içerikteki kazanımın adı ve arşiv durumu için) */
-                codes?: string;
+                /** @description Kod; tekrarlanabilir (`codes=A&codes=B`, en çok 20). Verilirse yalnız bu kodlar birebir (büyük/küçük harf dönüşümü yok, içerikteki bağla aynı) ve arşivliler dahil döner; mevcut içerikteki kazanımın adı ve arşiv durumu için */
+                codes?: string[];
             };
             header?: never;
             path?: never;

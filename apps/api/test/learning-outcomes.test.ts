@@ -6,9 +6,10 @@ import { and, eq } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
+import { syncPlatformOutcomes } from '../src/db/learning-outcomes.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { coordinatorDuties } from '../src/db/schema/coordinator-duties.ts'
-import { learningOutcomes } from '../src/db/schema/learning-outcomes.ts'
+import { learningOutcomes, platformLearningOutcomes } from '../src/db/schema/learning-outcomes.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -228,9 +229,15 @@ describe('kazanım kataloğu uçları', () => {
     )
     assert.deepEqual(paged.meta, { page: 3, pageSize: 2, total: 5 })
 
-    // `codes`: mevcut içeriğin kazanımları arşivliler dahil çözülür; başka kurumun kodu yok.
+    // `codes`: mevcut içeriğin kazanımları arşivliler dahil çözülür; başka kurumun kodu yok. Kod
+    // birebir aranır (kaynak yazımının katalog denetimi gibi): küçük harfli eski bağ katalogda değildir.
+    const codes = (list: string[]) =>
+      list.map((code) => `codes=${encodeURIComponent(code)}`).join('&')
     const resolved = await ok(
-      await list(t.cookies.teacher, '?codes=kur.7.2,MAT.7.1.1,BASKA.7.1,YOK.1'),
+      await list(
+        t.cookies.teacher,
+        `?${codes(['KUR.7.2', 'MAT.7.1.1', 'BASKA.7.1', 'YOK.1', 'mat.7.2.1', 'A,B'])}`,
+      ),
     )
     assert.deepEqual(
       resolved.data.map((row: Json) => [row.source, row.code, row.archivedAt !== null]),
@@ -239,14 +246,17 @@ describe('kazanım kataloğu uçları', () => {
         ['institution', 'KUR.7.2', true],
       ],
     )
-    fails(
-      await list(
-        t.cookies.admin,
-        `?codes=${Array.from({ length: 51 }, (_, i) => `K${i}`).join(',')}`,
-      ),
-      400,
-      'validation_failed',
+    // Tek kod da dizi gibi okunur; 200 karakterlik eski kod geçerlidir.
+    const single = await ok(await list(t.cookies.teacher, `?${codes(['MAT.7.1.1'])}`))
+    assert.deepEqual(
+      single.data.map((row: Json) => row.code),
+      ['MAT.7.1.1'],
     )
+    await ok(await list(t.cookies.teacher, `?${codes(['X'.repeat(200)])}`))
+    const many = Array.from({ length: 20 }, (_, i) => `${'K'.repeat(195)}${String(i)}`)
+    await ok(await list(t.cookies.teacher, `?${codes(many)}`))
+    for (const bad of [[...many, 'FAZLA'], ['X'.repeat(201)], ['']])
+      fails(await list(t.cookies.admin, `?${codes(bad)}`), 400, 'validation_failed')
 
     fails(await list(t.cookies.admin, '?institutionId=x'), 400, 'validation_failed')
     fails(await list(t.cookies.admin, '?level=13'), 400, 'validation_failed')
@@ -429,5 +439,74 @@ describe('kazanım kataloğu uçları', () => {
       201,
     )
     assert.deepEqual(opened.data.version.tags.outcomes, [own('KOR.7.2')])
+  })
+
+  test('DOM-KYN-011: katalog öncesi serbest kod taslak düzenlemede korunur; yeni serbest kod 422', async () => {
+    const t = await tenant()
+    // Katalogda hiç olmayan eski bağ (küçük harfli serbest kod); doğrudan yazılır.
+    const { resource, versions } = await seedResource(db, t.institution.id, {
+      ownerUserId: t.institution.admin.id,
+      versions: [{ status: 'draft', input: text([own('eski kod 7')]) }],
+    })
+    const versionUrl = `/resources/${resource.id}/versions/${versions[0]!.id}`
+    const draft = (await ok(await call('GET', versionUrl, t.cookies.admin))).data
+    const kept = await ok(
+      await call(
+        'PATCH',
+        versionUrl,
+        t.cookies.admin,
+        { tags: text([own('eski kod 7'), platform('MAT.7.1.1')]).tags },
+        { 'if-match': `"${draft.version.rowVersion}"` },
+      ),
+    )
+    assert.deepEqual(kept.data.version.tags.outcomes, [own('eski kod 7'), platform('MAT.7.1.1')])
+    const added = await call(
+      'PATCH',
+      versionUrl,
+      t.cookies.admin,
+      { tags: text([own('eski kod 7'), own('baska serbest')]).tags },
+      { 'if-match': `"${kept.data.version.rowVersion}"` },
+    )
+    fails(added, 422, 'outcome_not_found')
+    const detail = await ok(await call('GET', `/resources/${resource.id}`, t.cookies.admin))
+    assert.deepEqual(detail.data.head.tags.outcomes, [own('eski kod 7'), platform('MAT.7.1.1')])
+  })
+
+  test('DOM-KYN-011: platform senkronu kurum koduyla çakışan yeni kodu eklemez ve raporlar; mevcut platform kodu güncellenir', async () => {
+    const t = await tenant()
+    await ok(await create(t.cookies.admin, outcome('SENK.12.1', 'math', 12)), 201)
+    const now = new Date('2026-10-20T09:00:00.000Z')
+    const row = (code: string, name = `${code} adı`) => ({
+      code,
+      name,
+      subjectId: 'senkron-test',
+      gradeLevel: 12,
+      programVersion: 'senkron-test',
+      position: 9000,
+    })
+    const first = await syncPlatformOutcomes(db, [row('SENK.12.1'), row('SENK.12.2')], now)
+    assert.deepEqual(first, { inserted: 1, conflicts: ['SENK.12.1'] })
+    const stored = await db
+      .select({ code: platformLearningOutcomes.code, version: platformLearningOutcomes.version })
+      .from(platformLearningOutcomes)
+      .where(eq(platformLearningOutcomes.subjectId, 'senkron-test'))
+    assert.deepEqual(stored, [{ code: 'SENK.12.2', version: 1 }])
+    // Kurum kodu yerinde kalır; tekrar senkron aynı çakışmayı raporlar, değişen satırı günceller.
+    assert.equal((await snapshot(t.institution.id)).rows.length, 1)
+    const again = await syncPlatformOutcomes(
+      db,
+      [row('SENK.12.1'), row('SENK.12.2', 'Yeni ad')],
+      now,
+    )
+    assert.deepEqual(again, { inserted: 0, conflicts: ['SENK.12.1'] })
+    const [updated] = await db
+      .select({ name: platformLearningOutcomes.name, version: platformLearningOutcomes.version })
+      .from(platformLearningOutcomes)
+      .where(eq(platformLearningOutcomes.code, 'SENK.12.2'))
+    assert.deepEqual(updated, { name: 'Yeni ad', version: 2 })
+    assert.deepEqual(await syncPlatformOutcomes(db, [row('SENK.12.1')], now), {
+      inserted: 0,
+      conflicts: ['SENK.12.1'],
+    })
   })
 })

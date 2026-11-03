@@ -89432,14 +89432,21 @@
           },
           {
             "schema": {
-              "type": "string",
-              "minLength": 1,
-              "maxLength": 2050
+              "anyOf": [
+                {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                }
+              ]
             },
             "in": "query",
             "name": "codes",
             "required": false,
-            "description": "Virgülle ayrılmış kodlar (en çok 50); verilirse yalnız bu kodlar döner ve arşivliler de dahildir (mevcut içerikteki kazanımın adı ve arşiv durumu için)"
+            "description": "Kod; tekrarlanabilir (`codes=A&codes=B`, en çok 20). Verilirse yalnız bu kodlar birebir (büyük/küçük harf dönüşümü yok, içerikteki bağla aynı) ve arşivliler dahil döner; mevcut içerikteki kazanımın adı ve arşiv durumu için"
           }
         ],
         "responses": {

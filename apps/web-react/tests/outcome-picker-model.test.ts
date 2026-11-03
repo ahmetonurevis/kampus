@@ -97,16 +97,17 @@ describe('kazanım seçici satırları ve ekleme', () => {
 })
 
 describe('seçili kazanımların görünümü', () => {
-  test('DOM-KYN-011: kodlar sıralı ve tekil sorulur; seçim yoksa sorgu yok', () => {
+  test('DOM-KYN-011: kodlar sıralı, tekil ve birebir (virgül ve küçük harf korunur) sorulur; seçim yoksa sorgu yok', () => {
     assert.equal(selectedOutcomesQuery([]), null)
     assert.equal(selectedOutcomesQuery([platform('')]), null)
     assert.deepEqual(
-      selectedOutcomesQuery([own('KUR.1'), platform('MAT.7.1.1'), platform('KUR.1')]),
-      {
-        codes: 'KUR.1,MAT.7.1.1',
-        page: 1,
-        pageSize: 100,
-      },
+      selectedOutcomesQuery([
+        own('KUR.1'),
+        platform('MAT.7.1.1'),
+        platform('KUR.1'),
+        own('eski, kod'),
+      ]),
+      { codes: ['KUR.1', 'MAT.7.1.1', 'eski, kod'], page: 1, pageSize: 100 },
     )
   })
 
@@ -115,6 +116,11 @@ describe('seçili kazanımların görünümü', () => {
     assert.deepEqual(
       selectedOutcomeViews(selected, undefined).map((v) => v.state),
       ['loading', 'loading', 'loading'],
+    )
+    // Çözüm sorgusu başarısızsa satır yüklenmede kalmaz, hata durumuna geçer.
+    assert.deepEqual(
+      selectedOutcomeViews(selected, undefined, true).map((v) => v.state),
+      ['error', 'error', 'error'],
     )
     const views = selectedOutcomeViews(selected, [
       row(),
@@ -127,6 +133,11 @@ describe('seçili kazanımların görünümü', () => {
       // Aynı kod platformda: kurum bağlantısını çözmez.
       row({ code: 'ESKI.1' }),
     ])
+    // Eşleme birebirdir (sunucunun yazım denetimi gibi): küçük harfli eski bağ katalog kodu değildir.
+    assert.equal(selectedOutcomeViews([platform('mat.7.1.1')], [row()])[0]?.state, 'missing')
+    // Katalog öncesi kodun notu silmeye yönlendirmez: kod korunur, silinirse yeniden seçilemez.
+    assert.match(OUTCOME_COPY.missingNote, /korunur/)
+    assert.doesNotMatch(OUTCOME_COPY.missingNote, /silip/)
     assert.deepEqual(views, [
       {
         code: 'MAT.7.1.1',

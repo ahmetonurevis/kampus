@@ -44,6 +44,7 @@ export const learningOutcomeInputSchema = z.strictObject({
     .trim()
     .min(1, 'Kazanımın adını yazın.')
     .max(OUTCOME_NAME_MAX, `En fazla ${OUTCOME_NAME_MAX} karakter girebilirsiniz.`),
+  // TODO(kazanim-ders-dogrulama): ders kurumun ders kaydıyla doğrulanmıyor (kaynak etiketi gibi).
   subjectId: z.string().trim().min(1, 'Dersi seçin.').max(200),
   gradeLevel: z
     .number()

@@ -14,8 +14,13 @@ import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts
  * `learningOutcomeInputSchema`'dır; kod büyük harfe çevrilir.
  */
 
-/** `codes` sorgusunda en çok kod sayısı (bir içeriğin kazanım sınırının üstünde). */
-export const LEARNING_OUTCOME_CODES_MAX = 50
+/**
+ * `codes` sorgusu içerikte kayıtlı bağları çözer: bir sürüm en çok 20 kazanım taşır ve eski
+ * serbest kod 200 karaktere kadar olabilir (core `resourceTagsSchema`). Kod içerikteki gibi
+ * birebir aranır; kaynak yazımının katalog denetimi (`catalogRowsFor`) de birebirdir.
+ */
+export const LEARNING_OUTCOME_CODES_MAX = 20
+const outcomeRefCode = z.string().trim().min(1).max(200)
 
 export const learningOutcomeListQuerySchema = pageQuerySchema
   .extend({
@@ -38,29 +43,14 @@ export const learningOutcomeListQuerySchema = pageQuerySchema
       .optional()
       .describe('Katalog: `platform` öğretim programı, `institution` kurum kazanımı; yoksa ikisi'),
     codes: z
-      .string()
-      .trim()
-      .min(1)
-      .max(LEARNING_OUTCOME_CODES_MAX * 41)
-      .transform((value, ctx) => {
-        const codes = [
-          ...new Set(
-            value
-              .split(',')
-              .map((code) => code.trim().toUpperCase())
-              .filter((code) => code !== ''),
-          ),
-        ]
-        if (codes.length === 0 || codes.length > LEARNING_OUTCOME_CODES_MAX)
-          ctx.addIssue({
-            code: 'custom',
-            message: `En az 1, en çok ${LEARNING_OUTCOME_CODES_MAX} kod verilebilir.`,
-          })
-        return codes
+      .union([outcomeRefCode.transform((code) => [code]), z.array(outcomeRefCode)])
+      .refine((codes) => codes.length <= LEARNING_OUTCOME_CODES_MAX, {
+        message: `En çok ${String(LEARNING_OUTCOME_CODES_MAX)} kod verilebilir.`,
       })
+      .transform((codes) => [...new Set(codes)])
       .optional()
       .describe(
-        `Virgülle ayrılmış kodlar (en çok ${LEARNING_OUTCOME_CODES_MAX}); verilirse yalnız bu kodlar döner ve arşivliler de dahildir (mevcut içerikteki kazanımın adı ve arşiv durumu için)`,
+        `Kod; tekrarlanabilir (\`codes=A&codes=B\`, en çok ${String(LEARNING_OUTCOME_CODES_MAX)}). Verilirse yalnız bu kodlar birebir (büyük/küçük harf dönüşümü yok, içerikteki bağla aynı) ve arşivliler dahil döner; mevcut içerikteki kazanımın adı ve arşiv durumu için`,
       ),
   })
   .strict()

@@ -708,6 +708,25 @@ export function decidePlacement(
 // --- CEFR profili -------------------------------------------------------------------------
 
 /**
+ * Öğrencinin "Tahmini seviye" önerisi (DOM-BEC-030): bitmiş tespit oturumlarının bölümlerinden.
+ * Profil ve kur sonu kararının kopyası (`evidenceSnapshot`, DOM-DIL-070) aynı öneriyi kullanır.
+ */
+// TODO(cefr-gorev-kaniti): Görev kanıtları henüz yüklenmiyor (profil notu).
+export async function learnerSuggestion(db: Database, ctx: ServiceContext, studentId: string) {
+  const sessions = await listPlacementSessions(db, ctx.institutionId, {
+    kind: 'student',
+    id: studentId,
+  })
+  const candidates = []
+  for (const session of sessions) {
+    if (session.completedAt === null) continue
+    const form = await loadFormScoring(db, ctx, session.formVersionId)
+    candidates.push(...placementEvidence(session, await sectionRowsOf(db, ctx, session, form)))
+  }
+  return { sessions, suggestion: suggestCefrLevels({ candidates, now: ctx.now }) }
+}
+
+/**
  * Kursiyerin CEFR profili (IST-060; DOM-BEC-034; core `cefrProfileView`): beceri başına güncel
  * seviye (insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi.
  * Öğrenci kendisi, veli bağlı çocuğu, öğretmen kursiyerin grubuna göre, yönetici herkesi görür;
@@ -729,14 +748,7 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
     throw new NotFoundError()
 
   const learner = { kind: 'student' as const, id: studentId }
-  const sessions = await listPlacementSessions(ctx.db, ctx.institutionId, learner)
-  const candidates = []
-  for (const session of sessions) {
-    if (session.completedAt === null) continue
-    const form = await loadFormScoring(ctx.db, ctx, session.formVersionId)
-    candidates.push(...placementEvidence(session, await sectionRowsOf(ctx.db, ctx, session, form)))
-  }
-  const suggestion = suggestCefrLevels({ candidates, now: ctx.now })
+  const { sessions, suggestion } = await learnerSuggestion(ctx.db, ctx, studentId)
   const decisions = await listLevelDecisions(ctx.db, ctx.institutionId, learner)
   const view = cefrProfileView({ institutionType: 'language_school', suggestion, decisions })
   // Çizelge core `levelTimeline` ile: en yeniden eskiye, aynı becerinin önceki kararına göre

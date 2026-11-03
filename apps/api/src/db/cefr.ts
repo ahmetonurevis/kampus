@@ -102,8 +102,21 @@ function toLevelDecision(row: LevelRow): StoredLevelDecision {
   }
 }
 
-function toProgression(row: ProgressionRow): ProgressionDecisionRecord {
+/**
+ * Saklanan kur sonu kararı: core `ProgressionDecisionRecord`, kaydın grubu ve satır sürümü
+ * (`If-Match` iyimser kilidi, OG-086).
+ */
+export type StoredProgressionDecision = ProgressionDecisionRecord & {
+  groupId: string
+  rowVersion: number
+  updatedAt: string
+}
+
+function toProgression(row: ProgressionRow): StoredProgressionDecision {
   return {
+    groupId: row.groupId,
+    rowVersion: row.version,
+    updatedAt: row.updatedAt.toISOString(),
     id: row.id,
     enrollmentId: row.enrollmentId,
     learnerId: row.learnerId,
@@ -344,7 +357,7 @@ export async function insertProgressionDecision(
   institutionId: string,
   draft: GroupProgressionDraft,
   id: string = randomUUID(),
-): Promise<ProgressionDecisionRecord> {
+): Promise<StoredProgressionDecision> {
   const [row] = await db
     .insert(progressionDecisions)
     .values({
@@ -372,15 +385,16 @@ export async function insertProgressionDecision(
 }
 
 /**
- * Kur kaydının (`enrollmentId`) ya da kursiyerin (`learnerId`) kur sonu kararları, karar anına
- * göre eskiden yeniye; bekleyen, onaylı ve reddedilmiş hepsi (core `planProgressionDecision`
- * `existingDecisions`).
+ * Kur kaydının (`enrollmentId`), kayıtların (`enrollmentIds`, grup listesi) ya da kursiyerin
+ * (`learnerId`) kur sonu kararları, karar anına göre eskiden yeniye; bekleyen, onaylı ve
+ * reddedilmiş hepsi (core `planProgressionDecision` `existingDecisions`).
  */
 export async function listProgressionDecisions(
   db: Database,
   institutionId: string,
-  filter: { enrollmentId: string } | { learnerId: string },
-): Promise<ProgressionDecisionRecord[]> {
+  filter: { enrollmentId: string } | { enrollmentIds: readonly string[] } | { learnerId: string },
+): Promise<StoredProgressionDecision[]> {
+  if ('enrollmentIds' in filter && filter.enrollmentIds.length === 0) return []
   const rows = await db
     .select()
     .from(progressionDecisions)
@@ -389,10 +403,70 @@ export async function listProgressionDecisions(
         eq(progressionDecisions.institutionId, institutionId),
         'enrollmentId' in filter
           ? eq(progressionDecisions.enrollmentId, filter.enrollmentId)
-          : eq(progressionDecisions.learnerId, filter.learnerId),
+          : 'enrollmentIds' in filter
+            ? inArray(progressionDecisions.enrollmentId, [...filter.enrollmentIds])
+            : eq(progressionDecisions.learnerId, filter.learnerId),
         isNull(progressionDecisions.archivedAt),
       ),
     )
     .orderBy(asc(progressionDecisions.decidedAt), asc(progressionDecisions.id))
   return rows.map(toProgression)
+}
+
+/** Kurumun kur sonu kararı; yoksa ya da başka kurumunsa `null`. */
+export async function findProgressionDecision(
+  db: Database,
+  institutionId: string,
+  decisionId: string,
+): Promise<StoredProgressionDecision | null> {
+  const [row] = await db
+    .select()
+    .from(progressionDecisions)
+    .where(
+      and(
+        eq(progressionDecisions.institutionId, institutionId),
+        eq(progressionDecisions.id, decisionId),
+        isNull(progressionDecisions.archivedAt),
+      ),
+    )
+  return row === undefined ? null : toProgression(row)
+}
+
+/**
+ * Açık kararın incelemesini yazar (core `planProgressionReview` çıktısı): durum, inceleyen, an ve
+ * ret gerekçesi. Yalnız `pending` ve beklenen sürümdeki satır güncellenir, sürüm bir artar; aksi
+ * halde `null` (eşzamanlı onayda ikinci yazma 409 olur). Sonuçlanmış satırı tetikleyici de korur.
+ */
+export async function saveProgressionReview(
+  db: Database,
+  institutionId: string,
+  decisionId: string,
+  expectedVersion: number,
+  review: Pick<
+    ProgressionDecisionRecord,
+    'status' | 'reviewedByUserId' | 'reviewedAt' | 'rejectionReason'
+  >,
+  now: Date,
+): Promise<StoredProgressionDecision | null> {
+  const [row] = await db
+    .update(progressionDecisions)
+    .set({
+      status: review.status,
+      reviewedByUserId: review.reviewedByUserId,
+      reviewedAt: review.reviewedAt === null ? null : new Date(review.reviewedAt),
+      rejectionReason: review.rejectionReason,
+      updatedAt: now,
+      version: sql`${progressionDecisions.version} + 1`,
+    })
+    .where(
+      and(
+        eq(progressionDecisions.institutionId, institutionId),
+        eq(progressionDecisions.id, decisionId),
+        eq(progressionDecisions.version, expectedVersion),
+        eq(progressionDecisions.status, 'pending'),
+        isNull(progressionDecisions.archivedAt),
+      ),
+    )
+    .returning()
+  return row === undefined ? null : toProgression(row)
 }

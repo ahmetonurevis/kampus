@@ -1,14 +1,17 @@
 import { isApiError } from '@kampus/api-client/errors.ts'
 import { useConsentStatus, useConsentTexts } from '@kampus/react-shared/use-consents.ts'
+import { useGuardianInvitations } from '@kampus/react-shared/use-guardian-invitations.ts'
+import { useAuth } from '@/auth/use-auth.ts'
 import { NO_TEXT_INFO, STUDENT_PURPOSES, purposeLabel } from '@/components/consent/consent-model.ts'
 import { QueryError } from '@/components/QueryError.tsx'
 import {
-  ACCOUNT_LINK_NOTE,
   ACCOUNT_PURPOSE_NOTE,
+  accountNote,
   CONSENT_OPTIONAL_NOTE,
   enrollmentConsentSummary,
   type ConsentTextState,
 } from './enrollment-consent.ts'
+import { canManageGuardianAccounts, hasPendingInvitation } from './enrollment-guardian-account.ts'
 
 const textStateOf = (query: ReturnType<typeof useConsentTexts>[number]): ConsentTextState => {
   if (query.data) return 'ready'
@@ -33,6 +36,12 @@ export function EnrollmentConsentNotice({
   const states = texts.map(textStateOf)
   const failure =
     status.error ?? texts.find((_, index) => states[index] === 'error')?.error ?? undefined
+  // Hesap notu bekleyen veli davetinden türetilir (ON-290): davet açılınca liste tazelenir.
+  const { session } = useAuth()
+  const invitations = useGuardianInvitations(1, {
+    enabled: !adult && canManageGuardianAccounts(session?.role),
+  })
+  const invited = hasPendingInvitation(invitations.data?.data ?? [], studentId)
 
   return (
     <section aria-labelledby="kayit-riza" className="grid w-full gap-3 border-t pt-4">
@@ -54,6 +63,7 @@ export function EnrollmentConsentNotice({
             textState: (purpose) => states[STUDENT_PURPOSES.indexOf(purpose)] ?? 'loading',
             adult,
           })}
+          note={accountNote({ adult, invited })}
         />
       ) : (
         <p role="status" className="text-sm text-muted-foreground">
@@ -66,7 +76,13 @@ export function EnrollmentConsentNotice({
   )
 }
 
-function Summary({ summary }: { summary: ReturnType<typeof enrollmentConsentSummary> }) {
+function Summary({
+  summary,
+  note,
+}: {
+  summary: ReturnType<typeof enrollmentConsentSummary>
+  note: string
+}) {
   const { awaiting, unavailable, granted } = summary
   return (
     <>
@@ -81,9 +97,7 @@ function Summary({ summary }: { summary: ReturnType<typeof enrollmentConsentSumm
           <p>{group.guidance}</p>
         </div>
       ))}
-      {awaiting.length > 0 ? (
-        <p className="text-sm text-muted-foreground">{ACCOUNT_LINK_NOTE}</p>
-      ) : null}
+      {awaiting.length > 0 ? <p className="text-sm text-muted-foreground">{note}</p> : null}
       {unavailable.length > 0 ? (
         <p className="text-sm text-muted-foreground">
           {NO_TEXT_INFO} {unavailable.map(purposeLabel).join('; ')}.

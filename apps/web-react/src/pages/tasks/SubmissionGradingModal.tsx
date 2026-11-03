@@ -9,7 +9,7 @@ import type { TaskScore } from '@kampus/react-shared/use-task-grading.ts'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
-import { RecordingPlayer } from './RecordingPlayer.tsx'
+import { FeedbackAudioPlayer, RecordingPlayer } from './RecordingPlayer.tsx'
 import {
   gradedVersionNote,
   isSpeakingSubmission,
@@ -311,6 +311,7 @@ export function ScoreCard({ score, rubric }: { score: TaskScore; rubric: RubricV
         <span className="font-medium">Genel geri bildirim: </span>
         {score.overallComment}
       </p>
+      {score.feedbackAudio ? <FeedbackAudioPlayer file={score.feedbackAudio} /> : null}
     </div>
   )
 }

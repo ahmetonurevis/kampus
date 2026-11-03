@@ -1,7 +1,7 @@
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
-import { RecordingPlayer } from './RecordingPlayer.tsx'
+import { FeedbackAudioPlayer, RecordingPlayer } from './RecordingPlayer.tsx'
 import { recordingTitle, versionRecording } from './recording-review-model.ts'
 import { submittedTextLabel, type ResultAudience } from './student-task-model.ts'
 
@@ -16,6 +16,7 @@ const stamp = (iso: string) => `${dateLabel(iso, { year: 'numeric' })} ${timeLab
  * Veli (`audience="parent"`) aynı alanları okur; itiraz ve puanlama iç ayrıntısı çizilmez.
  * Konuşma sürümünde kayıt dinlenebilir (IST-052; DOM-BEC-052, 053): bağlantıyı sunucu yalnız
  * kaydın sahibine ve 18 yaş altında velisine verir; açılmayan kayıt "erişilemiyor" der.
+ * Öğretmenin sesli geri bildirimi (DOM-BEC-056) yazılı geri bildirimle birlikte açılır.
  */
 export function SubmissionVersions({
   versions,
@@ -73,6 +74,7 @@ export function SubmissionVersions({
                 {score.overallComment ? (
                   <p className="[overflow-wrap:anywhere]">{score.overallComment}</p>
                 ) : null}
+                {score.feedbackAudio ? <FeedbackAudioPlayer file={score.feedbackAudio} /> : null}
                 <ul className="grid gap-1">
                   {score.criteria.map((criterion, index) => (
                     <li key={criterion.criterionId}>

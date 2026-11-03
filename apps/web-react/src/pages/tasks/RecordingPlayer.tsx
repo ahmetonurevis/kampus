@@ -14,6 +14,7 @@ import {
   type PlaybackRate,
   type SubmissionFile,
 } from './recording-review-model.ts'
+import { FEEDBACK_AUDIO_TITLE } from './feedback-audio-model.ts'
 
 type Source =
   | { kind: 'idle' }
@@ -29,7 +30,16 @@ type Source =
  * ayrı bir seçim kutusundadır. Döküm (transkript) üretilmez (DOM-BEC-051). Bağlantının süresi
  * dolup ses yüklenemezse yeni bağlantı istenebilir.
  */
-export function RecordingPlayer({ file, title }: { file: SubmissionFile; title: string }) {
+export function RecordingPlayer({
+  file,
+  title,
+  listenLabel = 'Kaydı dinle',
+}: {
+  /** Teslim kaydı ya da öğretmenin sesli geri bildirimi (DOM-BEC-056): kimlik, durum ve süre. */
+  file: Pick<SubmissionFile, 'id' | 'status' | 'durationMs'>
+  title: string
+  listenLabel?: string
+}) {
   const fetchUrl = useFileUrlFetcher()
   const [source, setSource] = useState<Source>({ kind: 'idle' })
   const [rate, setRate] = useState<PlaybackRate>(DEFAULT_PLAYBACK_RATE)
@@ -109,7 +119,7 @@ export function RecordingPlayer({ file, title }: { file: SubmissionFile; title: 
             onClick={() => void open()}
           >
             <Icon name="Play" size={15} aria-hidden="true" />
-            Kaydı dinle
+            {listenLabel}
           </Button>
           {source.kind === 'failed' ? (
             <p role="alert" className="text-sm text-destructive">
@@ -119,5 +129,23 @@ export function RecordingPlayer({ file, title }: { file: SubmissionFile; title: 
         </div>
       )}
     </div>
+  )
+}
+
+/**
+ * Öğretmenin sesli geri bildirimi (IST-052; DOM-BEC-056): puanla aynı görünürlükte gelir, aynı
+ * oynatıcıyla ve aynı imzalı bağlantı kuralıyla çalar.
+ */
+export function FeedbackAudioPlayer({
+  file,
+}: {
+  file: Pick<SubmissionFile, 'id' | 'status' | 'durationMs'>
+}) {
+  return (
+    <RecordingPlayer
+      file={file}
+      title={FEEDBACK_AUDIO_TITLE}
+      listenLabel="Sesli geri bildirimi dinle"
+    />
   )
 }

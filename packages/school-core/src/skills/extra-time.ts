@@ -158,6 +158,18 @@ const rule = (code: string, message: string, path: string[]) =>
   new DomainError(code, message, { path })
 
 /**
+ * Kaydın saati: istek anı ile son kaydın saatinin büyüğü. Kurum kilidinde bekleyen istek eski bir
+ * `now` taşıyabilir; kayıt saatleri sıra numarasıyla birlikte azalmaz, böylece geçmişe yazılan
+ * kayıt bitmiş bir denemeyi yeniden açamaz (`attemptExtraMinutes`).
+ */
+function effectiveNow(now: Instant, rows: readonly ExtraTimeRow[]): string {
+  const last = ordered(rows).at(-1)
+  const requested = Date.parse(toIso(now))
+  const floor = last === undefined ? requested : Date.parse(toIso(last.grantedAt))
+  return new Date(Math.max(requested, floor)).toISOString()
+}
+
+/**
  * Ek süre verme, değiştirme ve kaldırma (DOM-BEC-043). Sıra: modül ve rol (403) → atama ve
  * kursiyer kapsamı (404) → atayan ya da yönetici (403) → gövde (Zod) → sürüm (409) → kayıt
  * durumu (verilmiş ek süreye ikinci verme 409 `extra_time_exists`, olmayanı değiştirme ya da
@@ -202,14 +214,14 @@ export function planExtraTime(input: ExtraTimePlanInput): ExtraTimePlan {
   if (limit === null) {
     throw rule('extra_time_untimed', 'Ek süre yalnız süreli görevde tanımlanır.', ['minutes'])
   }
-  assertSubmissionOpen(assignment.deadline, input.now)
+  const now = effectiveNow(input.now, input.rows)
+  assertSubmissionOpen(assignment.deadline, now)
   const minutes = data?.minutes ?? 0
   if (minutes > limit) {
     throw rule('extra_time_too_long', `Ek süre görevin süresini (${limit} dakika) aşamaz.`, [
       'minutes',
     ])
   }
-  const now = toIso(input.now)
   const timing = learnerTiming(assignment, input.rows)
   const next: AttemptTiming = { ...timing, extraTime: undefined, extraMinutes: minutes }
   for (const attempt of input.attempts) {

@@ -92,6 +92,7 @@ export function registerTaskExtraTimeRoutes(app: FastifyInstance) {
           contextOf(request),
           { kind: 'grant', assignmentId: request.params.assignmentId, learnerId, input },
           idempotencyOf(request, false),
+          app.clock,
         ),
       )
     },
@@ -125,6 +126,7 @@ export function registerTaskExtraTimeRoutes(app: FastifyInstance) {
             expectedVersion: requiredVersion(request),
           },
           idempotencyOf(request, false),
+          app.clock,
         ),
       ),
   )
@@ -155,6 +157,7 @@ export function registerTaskExtraTimeRoutes(app: FastifyInstance) {
             expectedVersion: requiredVersion(request),
           },
           idempotencyOf(request, false),
+          app.clock,
         ),
       ),
   )

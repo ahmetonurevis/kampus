@@ -11,6 +11,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { taskExtraTimes } from '../src/db/schema/skills.ts'
+import { writeTaskExtraTime } from '../src/services/task-extra-times.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -444,16 +445,21 @@ describe('bireysel ek süre uçları', () => {
     assert.equal(longer.endsAt, new Date(FIXED_NOW.getTime() + 15 * MINUTE).toISOString())
     assert.equal(longer.remainingMs, 7 * MINUTE)
     // Öğrenci ek süre gerekçesini hiçbir yanıtta görmez.
-    for (const response of [
-      await call('GET', `/task-attempts/${attempt.id}`, t.cookies.student),
-      await call('GET', `/task-attempts?assignmentId=${id}`, t.cookies.student),
-      await call('GET', `/task-assignments/${id}`, t.cookies.student),
-      await call('GET', '/task-assignments', t.cookies.student),
-    ]) {
-      assert.equal(response.statusCode, 200, response.body)
-      assert.ok(!response.body.includes('accommodation'), 'gerekçe öğrenciye gitti')
-      assert.ok(!response.body.includes('"reason"'), 'gerekçe alanı öğrenciye gitti')
-    }
+    // Veli de görmez (DOM-BEC-043; kategori kvkk: Ç).
+    for (const [who, cookie] of [
+      ['öğrenciye', t.cookies.student],
+      ['veliye', t.cookies.parent],
+    ] as const)
+      for (const response of [
+        await call('GET', `/task-attempts/${attempt.id}`, cookie),
+        await call('GET', `/task-attempts?assignmentId=${id}`, cookie),
+        await call('GET', `/task-assignments/${id}`, cookie),
+        await call('GET', '/task-assignments', cookie),
+      ]) {
+        assert.equal(response.statusCode, 200, response.body)
+        assert.ok(!response.body.includes('accommodation'), `gerekçe ${who} gitti`)
+        assert.ok(!response.body.includes('"reason"'), `gerekçe alanı ${who} gitti`)
+      }
     // 12. dakikada 10 + 1 dakikalık sınır denemeyi geçmişte bitirirdi: reddedilir.
     at(12 * MINUTE)
     fails(
@@ -483,6 +489,132 @@ describe('bireysel ek süre uçları', () => {
     const fresh = await ok(await startAttempt(second, t.cookies.student), 201)
     assert.equal(fresh.extraMinutes, 5)
     assert.equal(fresh.remainingMs, 15 * MINUTE)
+  })
+
+  test('DOM-BEC-043, sabah kararı 93: gerekçe yalnız atayan öğretmen ve yöneticiye döner; kapsamla gören öğretmen satırı ve dakikayı görür, gerekçeyi görmez', async () => {
+    const t = await tenant()
+    // Yönetici atar ve verir; 9-A öğretmeni atamayı sınıf kapsamıyla görür ama atayan değildir.
+    const id = await assign(t, { timeLimitMinutes: LIMIT }, t.cookies.admin)
+    await ok(await grant(id, t.cookies.admin, ACCOMMODATION), 201)
+    await ok(await change(id, t.cookies.admin, 's-1', { minutes: 6, reason: 'other' }, 1))
+
+    const reading = await list(id, t.cookies.teacher)
+    const seen = (await ok(reading)).learners[0]
+    assert.equal((await ok(reading)).canManage, false)
+    assert.equal(seen.learnerName, 'Deniz Yılmaz')
+    assert.equal(seen.current.minutes, 6)
+    assert.equal(seen.version, 2)
+    assert.deepEqual(
+      seen.history.map((entry: Json) => [entry.sequence, entry.minutes]),
+      [
+        [2, 6],
+        [1, 5],
+      ],
+    )
+    assert.ok(!('reason' in seen.current), 'gerekçe okuyan öğretmene gitti')
+    for (const entry of seen.history) assert.ok(!('reason' in entry), 'geçmiş gerekçesi gitti')
+    assert.ok(!reading.body.includes('accommodation') && !reading.body.includes('"reason"'))
+
+    // Atayan öğretmen ve yönetici gerekçeyi görür.
+    const own = await assign(t)
+    await ok(await grant(own, t.cookies.teacher, ACCOMMODATION), 201)
+    for (const [assignmentId, cookie] of [
+      [own, t.cookies.teacher],
+      [id, t.cookies.admin],
+    ] as const) {
+      const row = (await ok(await list(assignmentId, cookie))).learners[0]
+      assert.ok(['accommodation', 'other'].includes(row.current.reason))
+      assert.ok(row.history.every((entry: Json) => entry.reason !== undefined))
+    }
+  })
+
+  test('DOM-BEC-043: iki eşzamanlı verme ya da değiştirme sıralanır; biri kazanır, diğeri 409, kayıt sayısı ve sıra tutarlı', async () => {
+    const t = await tenant()
+    const id = await assign(t)
+    const racing = await Promise.all([
+      grant(id, t.cookies.teacher, ACCOMMODATION),
+      grant(id, t.cookies.admin, { ...ACCOMMODATION, minutes: 7 }),
+    ])
+    assert.deepEqual(racing.map((r) => r.statusCode).sort(), [201, 409])
+    fails(
+      racing.find((r) => r.statusCode === 409)!,
+      409,
+      'extra_time_exists',
+    )
+    assert.equal((await stored(t.institution.id)).extra.length, 1)
+
+    const changes = await Promise.all([
+      change(id, t.cookies.teacher, 's-1', { minutes: 6, reason: 'other' }, 1),
+      change(id, t.cookies.admin, 's-1', { minutes: 8, reason: 'other' }, 1),
+    ])
+    assert.deepEqual(changes.map((r) => r.statusCode).sort(), [200, 409])
+    fails(
+      changes.find((r) => r.statusCode === 409)!,
+      409,
+      'version_conflict',
+    )
+    const rows = (await stored(t.institution.id)).extra.sort((a, b) => a.sequence - b.sequence)
+    assert.deepEqual(
+      rows.map((row) => row.sequence),
+      [1, 2],
+    )
+    assert.ok(rows[1]!.grantedAt.getTime() >= rows[0]!.grantedAt.getTime())
+    const winner = changes.find((r) => r.statusCode === 200)!
+    assert.equal((await ok(winner)).current.minutes, rows[1]!.minutes)
+  })
+
+  test('DOM-BEC-043: kilitte bekleyen isteğin eski saati kayıt saatini geriye çekmez ve bitmiş denemeyi yeniden açmaz', async () => {
+    const t = await tenant()
+    const id = await assign(t, { timeLimitMinutes: LIMIT, attempts: { kind: 'practice' } })
+    const attempt = await ok(await startAttempt(id, t.cookies.student), 201)
+    at(5 * MINUTE)
+    await ok(await grant(id, t.cookies.teacher, ACCOMMODATION), 201)
+    // Deneme 10 + 5. dakikada biter; 20. dakikada sona ermiştir.
+    at(20 * MINUTE)
+    const ended = new Date(FIXED_NOW.getTime() + 15 * MINUTE).toISOString()
+    assert.equal((await attemptOf(attempt.id, t.cookies.student)).status, 'expired')
+
+    // 12. dakikada başlayan istek (ctx.now eski) kilidi 20. dakikada alır: kayıt saati kilitten sonra.
+    const stale = new Date(FIXED_NOW.getTime() + 12 * MINUTE)
+    const ctx = {
+      db,
+      institutionId: t.institution.id,
+      actor: {
+        userId: t.institution.admin.id,
+        role: 'yonetici' as const,
+        membershipId: t.institution.adminMembershipId,
+      },
+      now: stale,
+      log: app.log,
+    }
+    const write = (clock: () => Date, minutes: number, expectedVersion: number) =>
+      writeTaskExtraTime(
+        ctx,
+        {
+          kind: 'change',
+          assignmentId: id,
+          learnerId: 's-1',
+          input: { minutes, reason: 'other' },
+          expectedVersion,
+        },
+        null,
+        clock,
+      )
+    await write(() => now, 8, 1)
+    const rows = () =>
+      stored(t.institution.id).then((s) => s.extra.sort((a, b) => a.sequence - b.sequence))
+    assert.equal((await rows())[1]!.grantedAt.toISOString(), now.toISOString())
+    const after = await attemptOf(attempt.id, t.cookies.student)
+    assert.deepEqual([after.status, after.extraMinutes, after.completedAt], ['expired', 5, ended])
+
+    // Saat kilitte de eski kalsa bile (saat geri sarıldı) kayıt saati son kaydın gerisine inmez.
+    await write(() => stale, 9, 2)
+    const [, second, third] = await rows()
+    assert.equal(third!.sequence, 3)
+    assert.ok(third!.grantedAt.getTime() >= second!.grantedAt.getTime())
+    assert.equal(third!.grantedAt.toISOString(), second!.grantedAt.toISOString())
+    const still = await attemptOf(attempt.id, t.cookies.student)
+    assert.deepEqual([still.status, still.extraMinutes, still.completedAt], ['expired', 5, ended])
   })
 
   test('DOM-BEC-043: kayıtlar değişmez; güncelleme, silme ve boşaltma veritabanında reddedilir', async () => {

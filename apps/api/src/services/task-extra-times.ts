@@ -46,17 +46,24 @@ import { auditWork } from './task-work.ts'
 
 const ENTITY = 'task_extra_time'
 
-/** Bir kursiyerin ek süre satırı: güncel ek süre, sürüm ve kayıt geçmişi (yeniden eskiye). */
+const laterOf = (a: Date, b: Date) => (a.getTime() >= b.getTime() ? a : b)
+
+/**
+ * Bir kursiyerin ek süre satırı: güncel ek süre, sürüm ve kayıt geçmişi (yeniden eskiye).
+ * Gerekçe kategorisi (`reason`, kvkk: Ç) yalnız yazma yetkisi olanlara (atayan öğretmen ve
+ * yönetici) döner; yalnız okuyan öğretmen satırı ve dakikayı görür, gerekçe alanı hiç yer almaz.
+ */
 function learnerRow(
   learnerId: string,
   rows: readonly ExtraTimeRow[],
   names: ReadonlyMap<string, string>,
+  withReason: boolean,
 ) {
   const current = currentExtraTime(rows)
   const entry = (row: ExtraTimeRow) => ({
     sequence: row.sequence,
     minutes: row.minutes,
-    reason: row.reason,
+    ...(withReason ? { reason: row.reason } : {}),
     grantedAt: row.grantedAt,
     grantedByUserId: row.grantedByUserId,
   })
@@ -68,7 +75,7 @@ function learnerRow(
         ? null
         : {
             minutes: current.minutes,
-            reason: current.reason ?? 'other',
+            ...(withReason ? { reason: current.reason ?? 'other' } : {}),
             grantedAt: current.grantedAt,
             grantedByUserId: current.grantedByUserId,
           },
@@ -125,11 +132,12 @@ export async function listTaskExtraTimes(ctx: ServiceContext, assignmentId: stri
   const assignment = await visibleAssignment(ctx.db, ctx, viewer, assignmentId)
   const { shown } = await learnersOf(ctx, viewer, assignment)
   const names = await loadLearnerNames(ctx, viewer, shown)
+  const canManage = canManageExtraTime(ctx.actor, assignment)
   return {
     assignmentId: assignment.id,
     timeLimitMinutes: assignment.timeLimitMinutes,
-    canManage: canManageExtraTime(ctx.actor, assignment),
-    learners: shown.map((id) => learnerRow(id, rowsOf(assignment, id), names)),
+    canManage,
+    learners: shown.map((id) => learnerRow(id, rowsOf(assignment, id), names, canManage)),
   }
 }
 
@@ -166,12 +174,15 @@ function changeOf(command: ExtraTimeCommand): ExtraTimeChange {
 /**
  * Ek süre verme, değiştirme ya da kaldırma (core `planExtraTime`). Tek transaction'da kurum kilidi
  * altında yeni kayıt ve denetim satırı yazılır; hata hiçbir şey yazmaz. Yanıt kursiyerin güncel
- * ek süre satırıdır. Verme 201, değiştirme ve kaldırma 200.
+ * ek süre satırıdır. Verme 201, değiştirme ve kaldırma 200. Kayıt saati kilitten sonra `clock`tan
+ * okunur ve son kaydın saatinin gerisine inmez (core `planExtraTime`): kilit kuyruğunda bekleyen
+ * istek bitmiş bir denemeyi eski saatle yeniden açamaz.
  */
 export async function writeTaskExtraTime(
   ctx: ServiceContext,
   command: ExtraTimeCommand,
   idempotency: IdempotencyRequest | null,
+  clock: () => Date = () => ctx.now,
 ): Promise<CommandResponse> {
   const viewer = staffViewer(await viewerOf(ctx))
   const out: { body?: unknown } = {}
@@ -192,7 +203,9 @@ export async function writeTaskExtraTime(
           getInstitutionModules(tx, ctx.institutionId),
         ])
         return {
-          run: (_state, tools) => ({
+          // Kayıt saati kurum kilidi alındıktan sonra okunur: kilit kuyruğunda bekleyen isteğin
+          // `ctx.now`'ı eskimiş olabilir. Core ayrıca son kaydın saatinin gerisine inmez.
+          run: () => ({
             assignment,
             plan: planExtraTime({
               actor: ctx.actor,
@@ -202,7 +215,7 @@ export async function writeTaskExtraTime(
               rows: rowsOf(assignment, command.learnerId),
               attempts,
               change: changeOf(command),
-              now: tools.now,
+              now: laterOf(ctx.now, clock()),
             }),
           }),
         }
@@ -231,7 +244,8 @@ export async function writeTaskExtraTime(
           { ...plan, grantedByUserId: ctx.actor.userId },
         ]
         const names = await loadLearnerNames({ ...ctx, db: tx }, viewer, [command.learnerId])
-        out.body = { data: learnerRow(command.learnerId, rows, names) }
+        // Yazma yetkisi load'da doğrulandı: yazan her zaman gerekçeyi görür.
+        out.body = { data: learnerRow(command.learnerId, rows, names, true) }
       },
     },
     () => {

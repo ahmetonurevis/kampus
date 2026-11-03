@@ -202,6 +202,42 @@ describe('bireysel ek süre (DOM-BEC-043)', () => {
     )
   })
 
+  test('DOM-BEC-043 kayıt saati son kaydın gerisine inmez; eski saatle yazılan kayıt bitmiş denemeyi açmaz', () => {
+    const last = row({ grantedAt: '2026-11-05T09:58:00.000Z' })
+    // Kilitte bekleyen isteğin saati son kayıttan eskidir: kayıt saati son kaydınki olur.
+    const planned = plan({
+      rows: [last],
+      change: { kind: 'change', input: { minutes: 20, reason: 'other' }, expectedVersion: 1 },
+      now: '2026-11-05T09:40:00.000Z',
+    })
+    assert.equal(planned.sequence, 2)
+    assert.equal(planned.grantedAt, last.grantedAt)
+    // Saat ilerliyorsa istek anı kullanılır.
+    assert.equal(
+      plan({
+        rows: [last],
+        change: { kind: 'change', input: { minutes: 20, reason: 'other' }, expectedVersion: 1 },
+      }).grantedAt,
+      now,
+    )
+    // 09:20'de başlayan deneme 09:50'de bitti; son kayıt 09:55'te. 09:10 saatli eski istek
+    // kayıt saatini 09:55 yapar, denemenin bitişinden önceye düşüp onu yeniden açamaz.
+    const ended = attempt({ startedAt: '2026-11-05T09:20:00.000Z' })
+    const granted = plan({
+      attempts: [ended],
+      rows: [row({ minutes: 5, grantedAt: '2026-11-05T09:55:00.000Z' })],
+      change: { kind: 'change', input: { minutes: 20, reason: 'other' }, expectedVersion: 1 },
+      now: '2026-11-05T09:10:00.000Z',
+    })
+    const timing = learnerTiming(assignment, [
+      row({ minutes: 5, grantedAt: '2026-11-05T09:55:00.000Z' }),
+      { ...granted, grantedByUserId: 'test-u-teacher' },
+    ])
+    assert.equal(granted.grantedAt, '2026-11-05T09:55:00.000Z')
+    assert.equal(attemptExtraMinutes(ended, timing), 0)
+    assert.equal(attemptState(ended, timing, now).status, 'expired')
+  })
+
   test('DOM-BEC-043 rol kapsamı: atayan öğretmen ve yönetici verir; diğerleri 403', () => {
     assert.equal(canManageExtraTime(teacher, assignment), true)
     assert.equal(canManageExtraTime(admin, assignment), true)

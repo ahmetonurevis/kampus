@@ -7,6 +7,7 @@ import {
   useSubmitTaskDraft,
   type TaskDraft,
 } from '@kampus/react-shared/use-task-submissions.ts'
+import { useDraftAutosave } from '@kampus/react-shared/use-draft-autosave.ts'
 import { liveWordCount } from '@kampus/react-shared/writing-model.ts'
 import { submissionVersionInputSchema } from '@kampus/school-core/skills/submission.ts'
 import { timeLabel } from '@kampus/school-core/lib/format.ts'
@@ -16,7 +17,6 @@ import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
-import { useDraftAutosave } from './use-draft-autosave.ts'
 
 /** Metin teslimi alanı çekirdeğin teslim şemasındandır (boş metin ve 50.000 karakter sınırı). */
 const textBody = submissionVersionInputSchema.options[0].shape.body

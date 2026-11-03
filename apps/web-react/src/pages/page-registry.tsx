@@ -41,6 +41,9 @@ const MeetingsPage = lazy(async () => ({
 const EnrollmentPage = lazy(async () => ({
   default: (await import('./crm/EnrollmentPage.tsx')).EnrollmentPage,
 }))
+const RenewalsPage = lazy(async () => ({
+  default: (await import('./finance/RenewalsPage.tsx')).RenewalsPage,
+}))
 
 function renderOnurPage(role: RoleKey, page: NavPage): ReactNode {
   switch (`${role}/${page.path}`) {
@@ -69,6 +72,10 @@ function renderOnurPage(role: RoleKey, page: NavPage): ReactNode {
     case 'onburo/aday':
     case 'yonetici/aday':
       return <ProspectDetailPage page={page} />
+    case 'yonetici/kayit-yenileme':
+    case 'onburo/kayit-yenileme':
+    case 'veli/kayit-yenileme':
+      return <RenewalsPage page={page} />
     default:
       return null
   }

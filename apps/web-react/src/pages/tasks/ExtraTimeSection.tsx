@@ -74,7 +74,9 @@ export function ExtraTimeSection({ item }: Props) {
 function ExtraTimeBody({ assignmentId, list }: { assignmentId: string; list: TaskExtraTimeList }) {
   const [editing, setEditing] = useState<Editing>(null)
   const remove = useRemoveTaskExtraTime()
-  const given = list.learners.filter((learner) => learner.current !== null)
+  const given = list.learners.flatMap((learner) =>
+    learner.current === null ? [] : [{ learner, current: learner.current }],
+  )
   const free = learnersWithoutExtraTime(list)
 
   async function removeFor(learner: TaskExtraTimeLearner) {
@@ -92,9 +94,8 @@ function ExtraTimeBody({ assignmentId, list }: { assignmentId: string; list: Tas
         <p className="text-sm text-muted-foreground">Bu görevde ek süre tanımlı kursiyer yok.</p>
       ) : (
         <ul aria-label="Ek süresi olan kursiyerler" className="grid gap-2">
-          {given.map((learner) => {
+          {given.map(({ learner, current }) => {
             const name = learnerExtraTimeName(learner)
-            const current = learner.current!
             return (
               <li key={learner.learnerId} className="rounded-xl border px-3.5 py-2.5 text-sm">
                 <div className="flex flex-wrap items-center justify-between gap-2">
@@ -102,8 +103,8 @@ function ExtraTimeBody({ assignmentId, list }: { assignmentId: string; list: Tas
                     <span className="font-medium">{name}</span>
                     <span className="text-muted-foreground">
                       {' '}
-                      · {extraTimeMinutesLabel(current.minutes)} ·{' '}
-                      {extraTimeReasonLabel(current.reason)}
+                      · {extraTimeMinutesLabel(current.minutes)}
+                      {current.reason ? ` · ${extraTimeReasonLabel(current.reason)}` : ''}
                     </span>
                   </span>
                   {list.canManage ? (
@@ -180,7 +181,7 @@ function ExtraTimeBody({ assignmentId, list }: { assignmentId: string; list: Tas
   )
 }
 
-/** Gerekçeli kayıt geçmişi (DOM-BEC-043): yeniden eskiye; yalnız personel görür. */
+/** Kayıt geçmişi (DOM-BEC-043): yeniden eskiye; gerekçe yalnız yazma yetkisi olana döner. */
 function History({ learner }: { learner: TaskExtraTimeLearner }) {
   if (learner.history.length < 2) return null
   return (

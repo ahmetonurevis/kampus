@@ -673,10 +673,16 @@ export async function insertAssignment(
     )
 }
 
+/**
+ * Atamaları hedefleri ve ek süre kayıtlarıyla yükler. `extraTimesFor` verilirse yalnız bu
+ * kursiyerlerin ek süre kayıtları okunur (öğrenci ve veli yolu: başkasının kaydı yüklenmez);
+ * verilmezse atamanın bütün kayıtları gelir (personel yolu).
+ */
 async function withTargets(
   db: Database,
   institutionId: string,
   rows: readonly TaskAssignmentRow[],
+  extraTimesFor?: readonly string[],
 ): Promise<StoredAssignment[]> {
   if (rows.length === 0) return []
   const versionIds = [...new Set(rows.map((row) => row.resourceVersionId))]
@@ -699,6 +705,7 @@ async function withTargets(
       db,
       institutionId,
       rows.filter((row) => row.timeLimitMinutes !== null).map((row) => row.id),
+      extraTimesFor,
     ),
   ])
   const areaOf = new Map(areas.map(({ id, ...area }) => [id, area]))
@@ -728,13 +735,20 @@ async function loadExtraTimes(
   db: Database,
   institutionId: string,
   assignmentIds: readonly string[],
+  learnerIds?: readonly string[],
 ): Promise<(StoredExtraTime & { assignmentId: string })[]> {
-  if (assignmentIds.length === 0) return []
+  if (assignmentIds.length === 0 || learnerIds?.length === 0) return []
   const t = taskExtraTimes
   const rows = await db
     .select()
     .from(t)
-    .where(and(eq(t.institutionId, institutionId), inArray(t.assignmentId, [...assignmentIds])))
+    .where(
+      and(
+        eq(t.institutionId, institutionId),
+        inArray(t.assignmentId, [...assignmentIds]),
+        ...(learnerIds === undefined ? [] : [inArray(t.learnerId, [...learnerIds])]),
+      ),
+    )
     .orderBy(asc(t.assignmentId), asc(t.learnerId), asc(t.sequence))
   return rows.map((row) => ({
     assignmentId: row.assignmentId,
@@ -795,11 +809,15 @@ function targetsOf(db: Database, institutionId: string, rows: readonly TaskAssig
     .orderBy(asc(taskAssignmentTargets.targetKind), asc(taskAssignmentTargets.targetId))
 }
 
-/** Atama (arşivli dahil; başka kurumun kimliği `null`). */
+/**
+ * Atama (arşivli dahil; başka kurumun kimliği `null`). `extraTimesFor` yalnız bu kursiyerlerin ek
+ * süre kayıtlarını yükler (öğrenci ve veli yolu); verilmezse hepsi gelir.
+ */
 export async function findAssignment(
   db: Database,
   institutionId: string,
   assignmentId: string,
+  extraTimesFor?: readonly string[],
 ): Promise<StoredAssignment | null> {
   const rows = await db
     .select()
@@ -807,7 +825,7 @@ export async function findAssignment(
     .where(
       and(eq(taskAssignments.institutionId, institutionId), eq(taskAssignments.id, assignmentId)),
     )
-  const [stored] = await withTargets(db, institutionId, rows)
+  const [stored] = await withTargets(db, institutionId, rows, extraTimesFor)
   return stored ?? null
 }
 

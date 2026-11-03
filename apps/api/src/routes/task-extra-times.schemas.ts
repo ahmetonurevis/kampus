@@ -35,7 +35,12 @@ const historyEntrySchema = z
   .object({
     sequence: z.number().int().min(1).describe('Kayıt sırası; son kaydınki ek sürenin sürümüdür'),
     minutes: z.number().int().min(0).describe('Ek süre, dakika; 0 kaldırmadır'),
-    reason: reason.nullable().describe('Gerekçe; kaldırmada `null`'),
+    reason: reason
+      .nullable()
+      .optional()
+      .describe(
+        'Gerekçe; kaldırmada `null`. Yalnız yazma yetkisi olana (atayan öğretmen, yönetici) döner; yalnız okuyan öğretmende alan yoktur (kvkk: Ç)',
+      ),
     grantedAt: instant,
     grantedByUserId: z.string(),
   })
@@ -53,7 +58,9 @@ const learnerExtraTimeSchema = z
     current: z
       .object({
         minutes: z.number().int().min(1),
-        reason,
+        reason: reason
+          .optional()
+          .describe('Yalnız yazma yetkisi olana döner; yalnız okuyan öğretmende alan yoktur'),
         grantedAt: instant,
         grantedByUserId: z.string(),
       })

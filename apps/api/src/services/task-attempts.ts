@@ -48,7 +48,7 @@ import { attemptContentGate, contentRemoved } from './learner-content.ts'
 import { listeningSummary } from './listening-plays.ts'
 import { loadLearnerNames } from './task-learner-names.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
-import { viewerOf, visible, type Viewer } from './task-assignments.ts'
+import { ownExtraTimeLearners, viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
   assertWorkOpen,
   auditWork,
@@ -493,7 +493,12 @@ export interface TaskAttemptListInput {
  */
 export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptListInput) {
   const viewer = await viewerOf(ctx)
-  const assignment = await findAssignment(ctx.db, ctx.institutionId, input.assignmentId)
+  const assignment = await findAssignment(
+    ctx.db,
+    ctx.institutionId,
+    input.assignmentId,
+    ownExtraTimeLearners(viewer),
+  )
   if (!assignment) throw new NotFoundError()
   const readable = readableLearners(viewer, assignment)
   if (readable.kind === 'none') throw new NotFoundError()
@@ -567,7 +572,13 @@ export async function getTaskAttempt(ctx: ServiceContext, attemptId: string) {
   const viewer = await viewerOf(ctx)
   const attempt = await findAttempt(ctx.db, ctx.institutionId, attemptId)
   const assignment =
-    attempt && (await findAssignment(ctx.db, ctx.institutionId, attempt.assignmentId))
+    attempt &&
+    (await findAssignment(
+      ctx.db,
+      ctx.institutionId,
+      attempt.assignmentId,
+      ownExtraTimeLearners(viewer),
+    ))
   if (!attempt || !assignment || !canReadLearner(viewer, assignment, attempt.learnerId))
     throw new NotFoundError()
   return detailView(ctx.db, ctx, viewer, assignment, attempt)
@@ -623,7 +634,12 @@ export async function startTaskAttempt(
       collections: [],
       entity: { type: ENTITY, id: attemptId },
       load: async (tx) => {
-        const assignment = await findAssignment(tx, ctx.institutionId, assignmentId)
+        const assignment = await findAssignment(
+          tx,
+          ctx.institutionId,
+          assignmentId,
+          ownExtraTimeLearners(viewer),
+        )
         // Kapsam (404): olmayan, başka kurumun, arşivli veya öğrenciyi hedeflemeyen atama.
         if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
         const learnerId = targetedLearner(viewer, assignment)
@@ -698,7 +714,12 @@ async function ownedAttempt(
 ): Promise<Owned> {
   const attempt = await findAttempt(tx, ctx.institutionId, input.attemptId)
   if (!attempt) throw new NotFoundError()
-  const assignment = await findAssignment(tx, ctx.institutionId, attempt.assignmentId)
+  const assignment = await findAssignment(
+    tx,
+    ctx.institutionId,
+    attempt.assignmentId,
+    ownExtraTimeLearners(viewer),
+  )
   if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
   ownRecord(viewer, attempt.learnerId)
   if (attempt.rowVersion !== input.expectedVersion) throw new ConflictError()

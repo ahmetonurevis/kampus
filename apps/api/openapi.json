@@ -16071,6 +16071,7 @@
             "description": "Ek süre, dakika; 0 kaldırmadır"
           },
           "reason": {
+            "description": "Gerekçe; kaldırmada `null`. Yalnız yazma yetkisi olana (atayan öğretmen, yönetici) döner; yalnız okuyan öğretmende alan yoktur (kvkk: Ç)",
             "anyOf": [
               {
                 "type": "string",
@@ -16084,8 +16085,7 @@
               {
                 "type": "null"
               }
-            ],
-            "description": "Gerekçe; kaldırmada `null`"
+            ]
           },
           "grantedAt": {
             "type": "string",
@@ -16099,7 +16099,6 @@
         "required": [
           "sequence",
           "minutes",
-          "reason",
           "grantedAt",
           "grantedByUserId"
         ]
@@ -16128,13 +16127,13 @@
                     "maximum": 9007199254740991
                   },
                   "reason": {
+                    "description": "Yalnız yazma yetkisi olana döner; yalnız okuyan öğretmende alan yoktur",
                     "type": "string",
                     "enum": [
                       "accommodation",
                       "technical_issue",
                       "other"
-                    ],
-                    "description": "Gerekçe kategorisi: `accommodation` (bireysel uyarlama), `technical_issue`, `other`"
+                    ]
                   },
                   "grantedAt": {
                     "type": "string",
@@ -16147,7 +16146,6 @@
                 },
                 "required": [
                   "minutes",
-                  "reason",
                   "grantedAt",
                   "grantedByUserId"
                 ]
@@ -32650,6 +32648,7 @@
             "description": "Ek süre, dakika; 0 kaldırmadır"
           },
           "reason": {
+            "description": "Gerekçe; kaldırmada `null`. Yalnız yazma yetkisi olana (atayan öğretmen, yönetici) döner; yalnız okuyan öğretmende alan yoktur (kvkk: Ç)",
             "anyOf": [
               {
                 "type": "string",
@@ -32663,8 +32662,7 @@
               {
                 "type": "null"
               }
-            ],
-            "description": "Gerekçe; kaldırmada `null`"
+            ]
           },
           "grantedAt": {
             "type": "string",
@@ -32678,7 +32676,6 @@
         "required": [
           "sequence",
           "minutes",
-          "reason",
           "grantedAt",
           "grantedByUserId"
         ],
@@ -32708,13 +32705,13 @@
                     "maximum": 9007199254740991
                   },
                   "reason": {
+                    "description": "Yalnız yazma yetkisi olana döner; yalnız okuyan öğretmende alan yoktur",
                     "type": "string",
                     "enum": [
                       "accommodation",
                       "technical_issue",
                       "other"
-                    ],
-                    "description": "Gerekçe kategorisi: `accommodation` (bireysel uyarlama), `technical_issue`, `other`"
+                    ]
                   },
                   "grantedAt": {
                     "type": "string",
@@ -32727,7 +32724,6 @@
                 },
                 "required": [
                   "minutes",
-                  "reason",
                   "grantedAt",
                   "grantedByUserId"
                 ],

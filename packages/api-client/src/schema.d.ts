@@ -9471,8 +9471,8 @@ export interface components {
             sequence: number;
             /** @description Ek süre, dakika; 0 kaldırmadır */
             minutes: number;
-            /** @description Gerekçe; kaldırmada `null` */
-            reason: ("accommodation" | "technical_issue" | "other") | null;
+            /** @description Gerekçe; kaldırmada `null`. Yalnız yazma yetkisi olana (atayan öğretmen, yönetici) döner; yalnız okuyan öğretmende alan yoktur (kvkk: Ç) */
+            reason?: ("accommodation" | "technical_issue" | "other") | null;
             /** Format: date-time */
             grantedAt: string;
             grantedByUserId: string;
@@ -9485,10 +9485,10 @@ export interface components {
             current: {
                 minutes: number;
                 /**
-                 * @description Gerekçe kategorisi: `accommodation` (bireysel uyarlama), `technical_issue`, `other`
+                 * @description Yalnız yazma yetkisi olana döner; yalnız okuyan öğretmende alan yoktur
                  * @enum {string}
                  */
-                reason: "accommodation" | "technical_issue" | "other";
+                reason?: "accommodation" | "technical_issue" | "other";
                 /** Format: date-time */
                 grantedAt: string;
                 grantedByUserId: string;
@@ -13424,8 +13424,8 @@ export interface components {
             sequence: number;
             /** @description Ek süre, dakika; 0 kaldırmadır */
             minutes: number;
-            /** @description Gerekçe; kaldırmada `null` */
-            reason: ("accommodation" | "technical_issue" | "other") | null;
+            /** @description Gerekçe; kaldırmada `null`. Yalnız yazma yetkisi olana (atayan öğretmen, yönetici) döner; yalnız okuyan öğretmende alan yoktur (kvkk: Ç) */
+            reason?: ("accommodation" | "technical_issue" | "other") | null;
             /** Format: date-time */
             grantedAt: string;
             grantedByUserId: string;
@@ -13438,10 +13438,10 @@ export interface components {
             current: {
                 minutes: number;
                 /**
-                 * @description Gerekçe kategorisi: `accommodation` (bireysel uyarlama), `technical_issue`, `other`
+                 * @description Yalnız yazma yetkisi olana döner; yalnız okuyan öğretmende alan yoktur
                  * @enum {string}
                  */
-                reason: "accommodation" | "technical_issue" | "other";
+                reason?: "accommodation" | "technical_issue" | "other";
                 /** Format: date-time */
                 grantedAt: string;
                 grantedByUserId: string;

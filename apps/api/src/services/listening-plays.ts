@@ -256,7 +256,7 @@ async function grantForAttempt(
     learnerId === null ? null : await findAttempt(tx, ctx.institutionId, attemptId, { lock: true })
   const assignment =
     attempt && attempt.learnerId === learnerId
-      ? await findAssignment(tx, ctx.institutionId, attempt.assignmentId)
+      ? await findAssignment(tx, ctx.institutionId, attempt.assignmentId, [attempt.learnerId])
       : null
   if (!attempt || !assignment || !visible(viewer, assignment)) throw new NotFoundError()
   const assignments = await recordingAssignments(tx, ctx, file)

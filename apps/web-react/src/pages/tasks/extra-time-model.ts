@@ -35,8 +35,12 @@ export const defaultExtraTimeForm = (): ExtraTimeFormValues => ({
 /** Değiştirme formu kursiyerin güncel değeriyle açılır. */
 export const extraTimeFormFor = (
   learnerId: string,
-  current: { minutes: number; reason: ExtraTimeGrantInput['reason'] },
-): ExtraTimeFormValues => ({ learnerId, minutes: current.minutes, reason: current.reason })
+  current: { minutes: number; reason?: ExtraTimeGrantInput['reason'] | undefined },
+): ExtraTimeFormValues => ({
+  learnerId,
+  minutes: current.minutes,
+  reason: current.reason ?? '',
+})
 
 /** Sunucu hata yolunu form alanına çevirir; bilinmeyen yol form düzeyi hatadır. */
 export function extraTimeFieldFor(

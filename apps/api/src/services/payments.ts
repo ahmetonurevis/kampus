@@ -38,6 +38,7 @@ import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import { notify } from './notify.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { readScope } from './read-scope.ts'
 
@@ -48,6 +49,9 @@ import { readScope } from './read-scope.ts'
  *
  * Denetimde iki eylem vardır: `payment.record`/`payment.reverse` tahsilatın kendisi, çalıştırıcının
  * yazdığı `invoice.pay`/`payment.invoices` ise taksitlerde değişen alanlardır.
+ *
+ * Tahsilat bildirimi (`payment_received`, IST-106) aynı transaction'dadır; yalnız tahsilat kimliğini
+ * taşır, tutar ve referans yazmaz. İptal bildirim üretmez.
  */
 
 const SPEC = OPERATION_COMMANDS['invoice.pay']
@@ -177,6 +181,12 @@ export function recordPaymentCommand(
           'allocations',
         ])
         stored = (await findPayment(tx, ctx.institutionId, id)) ?? undefined
+        await notify(tx, ctx, {
+          type: 'payment_received',
+          recipients: { studentIds: [plan.studentId] },
+          data: { paymentId: id },
+          dedupeKey: id,
+        })
       },
     },
     () => {

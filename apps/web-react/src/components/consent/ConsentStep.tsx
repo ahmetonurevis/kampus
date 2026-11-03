@@ -65,7 +65,8 @@ export interface ConsentStepProps {
   purposes: readonly ConsentPurpose[]
   /**
    * Açılışta ve durum her değiştiğinde (seçim, metin ya da geçerlilik tazelenmesi, kayıt) güncel
-   * durum: `complete` kayıt formunun "İleri" düğmesini açar. Personelde `actionable: false`.
+   * durum: `complete` çağıranın sonraki adımını açar (ör. bir sihirbazın "İleri" düğmesi).
+   * Personelde `actionable: false`.
    */
   onChange?: ((state: ConsentStepState) => void) | undefined
   /**

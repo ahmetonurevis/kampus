@@ -1,6 +1,7 @@
 // Oturum listesinin KVKK daraltması (IST-003, guvenlik-kvkk.md §3). Better Auth `/list-sessions`
 // ham IP ve tam kullanıcı ajanı döndürür; kullanıcıya yalnız kaba cihaz özeti gerekir. IP ve
-// ayrıntılı ajan (sürüm, cihaz modeli) veri en aza indirme ilkesiyle istemciye gönderilmez.
+// ayrıntılı ajan (sürüm, cihaz modeli) veri en aza indirme ilkesiyle istemciye gönderilmez; oturum
+// belirteci de gönderilmez (çerez dışında hiçbir yanıta girmez).
 
 const BROWSERS: readonly [RegExp, string][] = [
   [/Kampus|Expo|okhttp|CFNetwork|Darwin\//i, 'Kampüs uygulaması'],
@@ -34,10 +35,12 @@ export function deviceSummary(userAgent: string | null | undefined): string | nu
   return parts.length ? parts.join(' · ') : null
 }
 
-/** İstemciye giden oturum satırı. `token` yalnız `/revoke-session` içindir (imzasız, çerez yerine geçmez). */
+/**
+ * İstemciye giden oturum satırı. Oturum belirteci yoktur (IST-025): tek oturum `id` ile kapatılır
+ * (`/revoke-session` gövdesi `{ sessionId }`), belirteç sunucuda çözülür.
+ */
 export interface SessionListItem {
   id: string
-  token: string
   createdAt: string
   updatedAt: string
   expiresAt: string
@@ -56,7 +59,6 @@ export function narrowSessionList(body: unknown, currentToken: string | null): S
     .filter((item): item is Record<string, unknown> => typeof item === 'object' && item !== null)
     .map((item) => ({
       id: text(item.id),
-      token: text(item.token),
       createdAt: text(item.createdAt),
       updatedAt: text(item.updatedAt),
       expiresAt: text(item.expiresAt),

@@ -71,6 +71,11 @@ export const roles = {
  * `/parola-sifirla#token=…` sayfasına gider (`services/password-reset.ts`), belirteç orada
  * `POST /reset-password` ile tüketilir. Yönlendirme ucu `callbackURL` alır; açmak gereksiz bir
  * yönlendirme yüzeyi ve belirtecin API erişim loglarına düşmesi demektir.
+ *
+ * Oturum uçları (IST-025): `/list-sessions` daraltılmış satır döndürür, oturum belirteci istemciye
+ * gitmez (`lib/session-device.ts`); `/revoke-session` gövdesi `{ sessionId }`'dir, belirteç
+ * sunucuda kullanıcının kendi oturumlarından çözülür. Listeleme ve kapatma taze oturum ister
+ * (`services/auth-hooks.ts`).
  */
 export const OPEN_AUTH_PATHS: ReadonlySet<string> = new Set([
   '/sign-in/email',
@@ -102,6 +107,15 @@ export function trustedOrigins(config: Config): string[] {
 
 /** Hassas işlemlerde oturumun en çok yaşı (guvenlik-kvkk.md). */
 export const SESSION_FRESH_AGE_SECONDS = 15 * 60
+
+/**
+ * Hesap başına başarısız giriş sınırı (IST-025, guvenlik-kvkk.md §4). Better Auth `rateLimit`
+ * anahtarı yalnız IP + yoldur; farklı IP'lerden tek hesaba deneme bu sınırla yavaşlar. Sayaç
+ * `@fastify/rate-limit`'tedir (`plugins/better-auth.ts`), yalnız 401 yanıtında artar; anahtar
+ * e-postanın özetidir, hesap olsun olmasın aynı işler (kilit hesabın varlığını belli etmez).
+ * Kalıcı kilit yoktur: pencere dolunca deneme yeniden açılır.
+ */
+export const SIGN_IN_FAILURE_LIMIT = { max: 10, windowSeconds: 15 * 60 } as const
 const DAY = 60 * 60 * 24
 
 export interface AuthOptions {

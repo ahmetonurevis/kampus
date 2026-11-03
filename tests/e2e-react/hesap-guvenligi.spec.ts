@@ -3,7 +3,7 @@ import { e2e } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
 import { accountMenuButton } from './support/ui.ts'
 
-// IST-003: parola unutma bilgisi, parola değişimi ve oturum sonlandırma. Sıfırlama bağlantısının
+// IST-003, IST-025: parola unutma bilgisi, parola değişimi ve oturum kapatma. Sıfırlama bağlantısının
 // kendisi (belirteç, süre, oturum iptali) API testindedir (`apps/api/test/password-reset.test.ts`):
 // e2e API'si bellek kutusunu dışarı açmaz, test için ayrı uç da açılmaz.
 
@@ -54,7 +54,41 @@ test.describe('hesap güvenliği', () => {
     expect(apiRequests.filter((url) => url.includes('uydurma-belirtec-123'))).toEqual([])
   })
 
-  test('IST-003: Güvenlik sayfasında oturum sonlandırılır ve parola diğer cihazlardan çıkışla değişir', async ({
+  test('IST-025: Oturumlarım diğer tüm oturumları onayla kapatır, bu oturum sürer', async ({
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['veli'] })
+    const parent = school.user('veli')
+    const phone = await createApiClient({ email: parent.email }, { fresh: true })
+    const tablet = await createApiClient({ email: parent.email }, { fresh: true })
+    try {
+      const page = await loginAs(parent)
+      await page.goto('/veli/guvenlik')
+      const sessions = page.getByRole('list', { name: 'Oturumlarım' }).getByRole('listitem')
+      await expect(sessions).toHaveCount(3)
+      // IP adresi gösterilmez.
+      await expect(page.getByRole('list', { name: 'Oturumlarım' })).not.toContainText(
+        /\d+\.\d+\.\d+/,
+      )
+
+      await page.getByRole('button', { name: 'Diğer tüm oturumları kapat' }).click()
+      const confirm = page.getByRole('alertdialog', { name: 'Diğer tüm oturumlar kapatılsın mı?' })
+      await expect(confirm).toContainText('Bu cihaz dışındaki 2 oturum kapanır')
+      await confirm.getByRole('button', { name: 'Diğer tüm oturumları kapat' }).click()
+      await expect(page.getByText('Diğer cihazlardaki oturumlar kapatıldı.')).toBeVisible()
+      await expect(sessions).toHaveCount(1)
+      await expect(sessions.first()).toContainText('Bu oturum')
+      expect(await sessionUserId(phone)).toBeNull()
+      expect(await sessionUserId(tablet)).toBeNull()
+      await expect(page.getByRole('button', { name: 'Diğer tüm oturumları kapat' })).toBeHidden()
+    } finally {
+      await phone.dispose()
+      await tablet.dispose()
+    }
+  })
+
+  test('IST-003: Güvenlik sayfasında oturum kapatılır ve parola diğer cihazlardan çıkışla değişir', async ({
     loginAs,
     tenant,
   }) => {
@@ -70,15 +104,20 @@ test.describe('hesap güvenliği', () => {
       await expect(page).toHaveURL(/\/ogretmen\/guvenlik$/)
       await expect(page.getByRole('heading', { level: 1, name: 'Güvenlik' })).toBeVisible()
 
-      const sessions = page.getByRole('list', { name: 'Açık oturumlar' }).getByRole('listitem')
+      const sessions = page.getByRole('list', { name: 'Oturumlarım' }).getByRole('listitem')
       await expect(sessions).toHaveCount(3)
-      await expect(sessions.filter({ hasText: 'Bu cihaz' })).toHaveCount(1)
+      await expect(sessions.filter({ hasText: 'Bu oturum' })).toHaveCount(1)
 
-      // Tek oturum sonlandırma: iki diğer oturumdan biri kapanır.
-      await page
-        .getByRole('button', { name: /^Oturumu sonlandır/ })
-        .first()
-        .click()
+      // IST-025: tek oturum onay penceresiyle kapanır; vazgeçince hiçbir oturum kapanmaz.
+      const revokeOne = page.getByRole('button', { name: /^Bu oturumu kapat:/ }).first()
+      await revokeOne.click()
+      const confirm = page.getByRole('alertdialog', { name: 'Bu oturum kapatılsın mı?' })
+      await confirm.getByRole('button', { name: 'Vazgeç' }).click()
+      await expect(confirm).toBeHidden()
+      await expect(sessions).toHaveCount(3)
+      await revokeOne.click()
+      await confirm.getByRole('button', { name: 'Bu oturumu kapat' }).click()
+      await expect(page.getByText('Oturum kapatıldı.')).toBeVisible()
       await expect(sessions).toHaveCount(2)
       await expect
         .poll(async () => [await sessionUserId(phone), await sessionUserId(tablet)].filter(Boolean))

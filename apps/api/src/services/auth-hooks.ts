@@ -4,7 +4,7 @@ import { getOrgAdapter } from 'better-auth/plugins/organization'
 import { and, asc, eq, isNotNull, isNull } from 'drizzle-orm'
 
 import type { Database } from '../db/client.ts'
-import { institutions, memberships, users } from '../db/schema/auth.ts'
+import { institutions, memberships, sessions, users } from '../db/schema/auth.ts'
 import { isWeakPassword } from '../lib/password-policy.ts'
 import { recordAudit } from './audit.ts'
 
@@ -132,6 +132,66 @@ async function isDeactivatedMember(
   return row !== undefined
 }
 
+/**
+ * Oturum yönetimi uçları (IST-025). Better Auth `/list-sessions`'ı taze oturumla sınırlar, kapatma
+ * uçlarını yalnız geçerli oturumla; burada kapatma da taze oturum ister: ele geçirilmiş eski bir
+ * çerez sahibin öteki cihazlarını kapatamaz, sahibi yeniden giriş yapıp hepsini kapatabilir.
+ */
+const SESSION_REVOKE_PATHS = new Set([
+  '/revoke-session',
+  '/revoke-sessions',
+  '/revoke-other-sessions',
+])
+
+/** Better Auth `freshSessionMiddleware`'in kodu ve mesajı (çevirisi `plugins/better-auth.ts`). */
+function sessionNotFresh() {
+  return new APIError('FORBIDDEN', {
+    code: 'SESSION_NOT_FRESH',
+    message: 'Session is not fresh',
+  })
+}
+
+/**
+ * `/revoke-session` gövdesindeki oturum kimliğinin belirteci; yalnız isteği yapanın kendi
+ * oturumundan. Başkasının ya da olmayan oturum boş belirteç olur, Better Auth hiçbir şey silmez ve
+ * yanıt aynıdır (kimliğin varlığı belli olmaz).
+ */
+async function ownSessionToken(db: Database, userId: string, sessionId: string): Promise<string> {
+  const [row] = await db
+    .select({ token: sessions.token })
+    .from(sessions)
+    .where(and(eq(sessions.id, sessionId), eq(sessions.userId, userId)))
+    .limit(1)
+  return row?.token ?? ''
+}
+
+/**
+ * Parolası değişecek hesap: oturumdan, sıfırlamada belirtecin doğrulama kaydından (geçersiz
+ * belirteçte `null`; Better Auth `INVALID_TOKEN` döndürür).
+ */
+async function passwordOwner(
+  db: Database,
+  context: HookEndpointContext,
+): Promise<{ id: string; email: string } | null> {
+  const session = await getSessionFromCtx(context).catch(() => null)
+  if (session) return { id: session.user.id, email: session.user.email }
+  if (context.path !== '/reset-password') return null
+  const queryToken: unknown = context.query ? Reflect.get(context.query, 'token') : undefined
+  const token =
+    stringField(context.body, 'token') ?? (typeof queryToken === 'string' ? queryToken : null)
+  if (!token) return null
+  const verification = await context.context.internalAdapter.findVerificationValue(
+    `reset-password:${token}`,
+  )
+  if (!verification || verification.expiresAt < new Date()) return null
+  const [user] = await db
+    .select({ id: users.id, email: users.email })
+    .from(users)
+    .where(eq(users.id, verification.value))
+    .limit(1)
+  return user ?? null
+}
+
 export const WEAK_PASSWORD_MESSAGE =
   'Bu parola çok yaygın veya kişisel bilgilerinize fazla benziyor. Başka bir parola seçin.'
 
@@ -145,15 +205,36 @@ export function authBeforeHook(ctx: HookContext) {
       const password =
         stringField(context.body, 'newPassword') ?? stringField(context.body, 'password')
       if (!password) return
-      const session = await getSessionFromCtx(context).catch(() => null)
-      const email = session?.user.email ?? stringField(context.body, 'email')
-      const names = session ? await institutionNames(ctx.db, session.user.id) : []
+      // Sıfırlamada da e-posta ve kurum adı türevi reddedilir: hesap belirteçten çözülür.
+      const owner = await passwordOwner(ctx.db, context)
+      const email = owner?.email ?? stringField(context.body, 'email')
+      const names = owner ? await institutionNames(ctx.db, owner.id) : []
       if (isWeakPassword(password, { email, institutionNames: names }))
         throw new APIError('BAD_REQUEST', {
           code: 'PASSWORD_TOO_COMMON',
           message: WEAK_PASSWORD_MESSAGE,
         })
       return
+    }
+    if (SESSION_REVOKE_PATHS.has(context.path)) {
+      const session = await getSessionFromCtx(context).catch(() => null)
+      // Better Auth `sensitiveSessionMiddleware`'in yanıtı; gövde doğrulamasından önce.
+      if (!session)
+        throw new APIError('UNAUTHORIZED', { code: 'UNAUTHORIZED', message: 'Unauthorized' })
+      const freshAge = context.context.sessionConfig.freshAge * 1000
+      if (freshAge > 0 && Date.now() - new Date(session.session.createdAt).getTime() >= freshAge)
+        throw sessionNotFresh()
+      if (context.path !== '/revoke-session') return
+      // Belirteç istemciye verilmez; gövdedeki `token` yok sayılır, kimlikten çözülür.
+      const sessionId = stringField(context.body, 'sessionId')
+      if (!sessionId)
+        throw new APIError('BAD_REQUEST', {
+          code: 'VALIDATION_ERROR',
+          message: 'sessionId is required',
+        })
+      return {
+        context: { body: { token: await ownSessionToken(ctx.db, session.user.id, sessionId) } },
+      }
     }
     if (MEMBERSHIP_PATHS.has(context.path)) {
       const session = await getSessionFromCtx(context).catch(() => null)

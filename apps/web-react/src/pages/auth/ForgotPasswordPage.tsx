@@ -11,7 +11,7 @@ import { FormField } from '@/components/FormField.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
-import { authClient } from '@/lib/kampus-clients.ts'
+import { accountSecurityClient } from '@/lib/kampus-clients.ts'
 import { notify } from '@/lib/notify.ts'
 import { AuthCard } from './AuthCard.tsx'
 
@@ -23,7 +23,7 @@ const fieldClass = 'h-[46px] rounded-field px-3.5 text-base md:text-base'
  */
 export function ForgotPasswordPage() {
   useDocumentTitle('Parolamı unuttum')
-  const request = useRequestPasswordReset(authClient)
+  const request = useRequestPasswordReset(accountSecurityClient)
   const [sent, setSent] = useState(false)
   const {
     register,

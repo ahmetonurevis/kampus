@@ -235,6 +235,23 @@ describe('parola sıfırlama (IST-003)', () => {
     assert.equal((await resetPassword(token)).statusCode, 200)
   })
 
+  test('IST-025: sıfırlamada e-posta ve kurum adı türevi de reddedilir (hesap belirteçten çözülür)', async () => {
+    const institution = await createInstitution(app, { name: 'Zeytinlik Koleji' })
+    const user = await createMember(app, institution.id, 'veli')
+    await requestReset(app, user.email)
+    const token = tokenFor(user.email)
+    const local = user.email.split('@')[0] ?? ''
+    for (const password of [`${local}-2026!`, 'Zeytinlik-Parola-77']) {
+      const response = await resetPassword(token, password)
+      assert.equal(response.statusCode, 400, password)
+      assert.equal(response.json().code, 'PASSWORD_TOO_COMMON', password)
+    }
+    // Geçersiz belirteçte hesap çözülmez; Better Auth belirteci reddeder.
+    const invalid = await resetPassword('gecersiz-belirtec', 'Zeytinlik-Parola-77')
+    assert.equal(invalid.json().code, 'INVALID_TOKEN')
+    assert.equal((await resetPassword(token)).statusCode, 200)
+  })
+
   test('IST-003: kurumda üyeliği kalmamış hesaba ileti gitmez, yanıt yine aynıdır', async () => {
     const institution = await createInstitution(app)
     const member = await createMember(app, institution.id, 'ogrenci')

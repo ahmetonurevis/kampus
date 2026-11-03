@@ -57,6 +57,7 @@ const CONVERSATION = kayit('communication.test.ts', 'kurumlar arası 404: başka
 const GROUP = kayit('language-groups.test.ts', 'başka kurumun grubu 404, listede görünmez')
 const GROUP_COMMAND = (verb: string) =>
   kayit('language-groups.test.ts', 'başka kurumun grubu açılmaz ve birleştirilmez', `'${verb}'`)
+const PROGRESSION = 'başka kurumun kaydı, kararı, grubu ve öğrencisi 404, B değişmez'
 const PLACEMENT = kayit('cefr.test.ts', 'başka kurumun oturumu ve öğrencisi 404, B değişmez')
 const PLACEMENT_COMMAND = (verb: string) =>
   kayit('cefr.test.ts', 'başka kurumun oturumu ve öğrencisi 404, B değişmez', `'${verb}'`)
@@ -480,6 +481,25 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'cefr.test.ts',
     'başka kurumun oturumu ve öğrencisi 404',
     'cefr-profile',
+  ),
+
+  // --- Kur sonu değerlendirme ve geçiş kararı (OG-086; IST-062, DOM-DIL-070) ------------------
+  'POST /api/v1/course-assessments': govde('progression.test.ts', PROGRESSION),
+  'POST /api/v1/progression-decisions': govde('progression.test.ts', PROGRESSION),
+  'POST /api/v1/progression-decisions/:decisionId/approve': kayit(
+    'progression.test.ts',
+    PROGRESSION,
+    "'approve'",
+  ),
+  'POST /api/v1/progression-decisions/:decisionId/reject': kayit(
+    'progression.test.ts',
+    PROGRESSION,
+    "'reject'",
+  ),
+  'GET /api/v1/groups/:groupId/progression': kayit('progression.test.ts', PROGRESSION),
+  'GET /api/v1/students/:studentId/progression-decisions': kayit(
+    'progression.test.ts',
+    PROGRESSION,
   ),
 
   // --- Beceri ilerleme panosu (OG-080; IST-057, DOM-BEC-035) -----------------------------------

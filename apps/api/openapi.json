@@ -90557,6 +90557,3235 @@
         }
       }
     },
+    "/api/v1/course-assessments": {
+      "post": {
+        "operationId": "recordCourseAssessment",
+        "summary": "Kur içi ölçme sonucunu gir",
+        "tags": [
+          "learning"
+        ],
+        "description": "Başlangıç, ara ya da kur sonu ölçmesi (DOM-DIL-013): dört becerinin puanı ve geri bildirimi zorunlu. Yalnız grubun öğretmeni (diğer öğretmen 403); nokta kayıt başına bir kez (409 `assessment_already_recorded`), ölçme değişmez. Başarı 201. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enrollmentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "point": {
+                    "type": "string",
+                    "enum": [
+                      "baseline",
+                      "midterm",
+                      "final"
+                    ]
+                  },
+                  "score": {
+                    "type": "number",
+                    "minimum": 0,
+                    "maximum": 100
+                  },
+                  "skills": {
+                    "minItems": 4,
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "object",
+                      "properties": {
+                        "skill": {
+                          "type": "string",
+                          "enum": [
+                            "reading",
+                            "listening",
+                            "writing",
+                            "speaking"
+                          ]
+                        },
+                        "score": {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        "feedback": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 2000
+                        }
+                      },
+                      "required": [
+                        "skill",
+                        "score",
+                        "feedback"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "enrollmentId",
+                  "point",
+                  "score",
+                  "skills"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "enrollmentId": {
+                          "type": "string"
+                        },
+                        "point": {
+                          "type": "string",
+                          "enum": [
+                            "baseline",
+                            "midterm",
+                            "final"
+                          ]
+                        },
+                        "score": {
+                          "type": "number"
+                        },
+                        "skills": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "skill": {
+                                "type": "string"
+                              },
+                              "score": {
+                                "type": "number"
+                              },
+                              "feedback": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "skill",
+                              "score",
+                              "feedback"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "assessedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "assessedByUserId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "enrollmentId",
+                        "point",
+                        "score",
+                        "skills",
+                        "assessedAt",
+                        "assessedByUserId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/progression-decisions": {
+      "post": {
+        "operationId": "proposeProgressionDecision",
+        "summary": "Kur sonu kararını öner",
+        "tags": [
+          "learning"
+        ],
+        "description": "Grubun öğretmeni kur sonu kararını önerir (DOM-DIL-070, DOM-DIL-060): `passed` için devam şartı, kur sonu eşiği ve dört becerinin her biri 50; koşulları sağlamayan sonuç 422. Kayıtta açık karar varken 409 `progression_pending`; onaylı karar varken değişiklik `correctsDecisionId` ile düzeltme kararıdır. Devam ders saati yoklamasındandır; yoklaması alınmamış saat varken devam belli değildir ve karar 409 `attendance_pending` olur (yoklama alma ucu OG-269). Başarı 201, durum `pending`. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "enrollmentId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "outcome": {
+                    "type": "string",
+                    "enum": [
+                      "passed",
+                      "repeat",
+                      "incomplete_attendance"
+                    ]
+                  },
+                  "rationale": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  },
+                  "correctsDecisionId": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "enrollmentId",
+                  "outcome",
+                  "rationale"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "enrollmentId": {
+                          "type": "string"
+                        },
+                        "groupId": {
+                          "type": "string"
+                        },
+                        "learnerId": {
+                          "type": "string"
+                        },
+                        "courseId": {
+                          "type": "string"
+                        },
+                        "outcome": {
+                          "type": "string",
+                          "enum": [
+                            "passed",
+                            "repeat",
+                            "incomplete_attendance"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ]
+                        },
+                        "rationale": {
+                          "type": "string"
+                        },
+                        "correctsDecisionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByUserId": {
+                          "type": "string"
+                        },
+                        "decidedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "reviewedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reviewedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "basis": {
+                          "type": "object",
+                          "properties": {
+                            "schemaVersion": {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            "attendance": {
+                              "type": "object",
+                              "properties": {
+                                "totalHours": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9007199254740991
+                                },
+                                "attendedHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "absentHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "unrecordedHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "requiredHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "minAttendancePermille": {
+                                  "type": "integer",
+                                  "minimum": 800,
+                                  "maximum": 1000
+                                },
+                                "met": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "totalHours",
+                                "attendedHours",
+                                "absentHours",
+                                "unrecordedHours",
+                                "requiredHours",
+                                "minAttendancePermille",
+                                "met"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "finalPassScore": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "assessments": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "point": {
+                                    "type": "string",
+                                    "enum": [
+                                      "midterm",
+                                      "final"
+                                    ]
+                                  },
+                                  "score": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  },
+                                  "skills": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "skill": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reading",
+                                            "listening",
+                                            "writing",
+                                            "speaking"
+                                          ]
+                                        },
+                                        "score": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 100
+                                        }
+                                      },
+                                      "required": [
+                                        "skill",
+                                        "score"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "point",
+                                  "score",
+                                  "skills"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "conditions": {
+                              "type": "object",
+                              "properties": {
+                                "attendance": {
+                                  "type": "boolean"
+                                },
+                                "finalScore": {
+                                  "type": "boolean"
+                                },
+                                "skills": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "attendance",
+                                "finalScore",
+                                "skills"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "schemaVersion",
+                            "attendance",
+                            "finalPassScore",
+                            "assessments",
+                            "conditions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "suggestedLevel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "Pre-A1",
+                                "A1",
+                                "A2",
+                                "A2+",
+                                "B1",
+                                "B1+",
+                                "B2",
+                                "B2+",
+                                "C1",
+                                "C2"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Karar anının genel seviye önerisi (gerekçe)"
+                        },
+                        "rowVersion": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Kararın satır sürümü (`If-Match`)"
+                        },
+                        "next": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "decisionId": {
+                                  "type": "string"
+                                },
+                                "enrollmentId": {
+                                  "type": "string"
+                                },
+                                "learnerId": {
+                                  "type": "string"
+                                },
+                                "fromCourseId": {
+                                  "type": "string"
+                                },
+                                "fromLevel": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Pre-A1",
+                                    "A1",
+                                    "A2",
+                                    "A2+",
+                                    "B1",
+                                    "B1+",
+                                    "B2",
+                                    "B2+",
+                                    "C1",
+                                    "C2"
+                                  ]
+                                },
+                                "nextCourseId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "nextLevel": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "Pre-A1",
+                                        "A1",
+                                        "A2",
+                                        "A2+",
+                                        "B1",
+                                        "B1+",
+                                        "B2",
+                                        "B2+",
+                                        "C1",
+                                        "C2"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "decisionId",
+                                "enrollmentId",
+                                "learnerId",
+                                "fromCourseId",
+                                "fromLevel",
+                                "nextCourseId",
+                                "nextLevel"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`."
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "enrollmentId",
+                        "groupId",
+                        "learnerId",
+                        "courseId",
+                        "outcome",
+                        "status",
+                        "rationale",
+                        "correctsDecisionId",
+                        "decidedByUserId",
+                        "decidedAt",
+                        "reviewedByUserId",
+                        "reviewedAt",
+                        "rejectionReason",
+                        "basis",
+                        "suggestedLevel",
+                        "rowVersion",
+                        "next"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/progression-decisions/{decisionId}/approve": {
+      "post": {
+        "operationId": "approveProgressionDecision",
+        "summary": "Kur sonu kararını onayla",
+        "tags": [
+          "learning"
+        ],
+        "description": "Koşullar güncel devam ve ölçmelerle yeniden hesaplanır; dayanak değiştiyse 409 `progression_basis_changed`. Onaylı `passed` kararında `next` üst kur çıktısıdır. Yalnız kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi; diğer öğretmen 403, yönetici 403). Kararı veren onaylayamaz (403 `progression_self_review`); sonuçlanmış karar 409 `progression_already_reviewed`. `If-Match` kararın satır sürümü (`rowVersion`; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Olmayan ya da başka kurumun kararı 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {},
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "decisionId",
+            "required": true,
+            "description": "Karar kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "enrollmentId": {
+                          "type": "string"
+                        },
+                        "groupId": {
+                          "type": "string"
+                        },
+                        "learnerId": {
+                          "type": "string"
+                        },
+                        "courseId": {
+                          "type": "string"
+                        },
+                        "outcome": {
+                          "type": "string",
+                          "enum": [
+                            "passed",
+                            "repeat",
+                            "incomplete_attendance"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ]
+                        },
+                        "rationale": {
+                          "type": "string"
+                        },
+                        "correctsDecisionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByUserId": {
+                          "type": "string"
+                        },
+                        "decidedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "reviewedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reviewedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "basis": {
+                          "type": "object",
+                          "properties": {
+                            "schemaVersion": {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            "attendance": {
+                              "type": "object",
+                              "properties": {
+                                "totalHours": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9007199254740991
+                                },
+                                "attendedHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "absentHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "unrecordedHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "requiredHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "minAttendancePermille": {
+                                  "type": "integer",
+                                  "minimum": 800,
+                                  "maximum": 1000
+                                },
+                                "met": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "totalHours",
+                                "attendedHours",
+                                "absentHours",
+                                "unrecordedHours",
+                                "requiredHours",
+                                "minAttendancePermille",
+                                "met"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "finalPassScore": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "assessments": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "point": {
+                                    "type": "string",
+                                    "enum": [
+                                      "midterm",
+                                      "final"
+                                    ]
+                                  },
+                                  "score": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  },
+                                  "skills": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "skill": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reading",
+                                            "listening",
+                                            "writing",
+                                            "speaking"
+                                          ]
+                                        },
+                                        "score": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 100
+                                        }
+                                      },
+                                      "required": [
+                                        "skill",
+                                        "score"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "point",
+                                  "score",
+                                  "skills"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "conditions": {
+                              "type": "object",
+                              "properties": {
+                                "attendance": {
+                                  "type": "boolean"
+                                },
+                                "finalScore": {
+                                  "type": "boolean"
+                                },
+                                "skills": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "attendance",
+                                "finalScore",
+                                "skills"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "schemaVersion",
+                            "attendance",
+                            "finalPassScore",
+                            "assessments",
+                            "conditions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "suggestedLevel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "Pre-A1",
+                                "A1",
+                                "A2",
+                                "A2+",
+                                "B1",
+                                "B1+",
+                                "B2",
+                                "B2+",
+                                "C1",
+                                "C2"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Karar anının genel seviye önerisi (gerekçe)"
+                        },
+                        "rowVersion": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Kararın satır sürümü (`If-Match`)"
+                        },
+                        "next": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "decisionId": {
+                                  "type": "string"
+                                },
+                                "enrollmentId": {
+                                  "type": "string"
+                                },
+                                "learnerId": {
+                                  "type": "string"
+                                },
+                                "fromCourseId": {
+                                  "type": "string"
+                                },
+                                "fromLevel": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Pre-A1",
+                                    "A1",
+                                    "A2",
+                                    "A2+",
+                                    "B1",
+                                    "B1+",
+                                    "B2",
+                                    "B2+",
+                                    "C1",
+                                    "C2"
+                                  ]
+                                },
+                                "nextCourseId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "nextLevel": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "Pre-A1",
+                                        "A1",
+                                        "A2",
+                                        "A2+",
+                                        "B1",
+                                        "B1+",
+                                        "B2",
+                                        "B2+",
+                                        "C1",
+                                        "C2"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "decisionId",
+                                "enrollmentId",
+                                "learnerId",
+                                "fromCourseId",
+                                "fromLevel",
+                                "nextCourseId",
+                                "nextLevel"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`."
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "enrollmentId",
+                        "groupId",
+                        "learnerId",
+                        "courseId",
+                        "outcome",
+                        "status",
+                        "rationale",
+                        "correctsDecisionId",
+                        "decidedByUserId",
+                        "decidedAt",
+                        "reviewedByUserId",
+                        "reviewedAt",
+                        "rejectionReason",
+                        "basis",
+                        "suggestedLevel",
+                        "rowVersion",
+                        "next"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/progression-decisions/{decisionId}/reject": {
+      "post": {
+        "operationId": "rejectProgressionDecision",
+        "summary": "Kur sonu kararını reddet",
+        "tags": [
+          "learning"
+        ],
+        "description": "Ret gerekçesi zorunlu; öğretmen yeniden önerebilir. Yalnız kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi; diğer öğretmen 403, yönetici 403). Kararı veren onaylayamaz (403 `progression_self_review`); sonuçlanmış karar 409 `progression_already_reviewed`. `If-Match` kararın satır sürümü (`rowVersion`; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Olmayan ya da başka kurumun kararı 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 2000
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "decisionId",
+            "required": true,
+            "description": "Karar kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "enrollmentId": {
+                          "type": "string"
+                        },
+                        "groupId": {
+                          "type": "string"
+                        },
+                        "learnerId": {
+                          "type": "string"
+                        },
+                        "courseId": {
+                          "type": "string"
+                        },
+                        "outcome": {
+                          "type": "string",
+                          "enum": [
+                            "passed",
+                            "repeat",
+                            "incomplete_attendance"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "pending",
+                            "approved",
+                            "rejected"
+                          ]
+                        },
+                        "rationale": {
+                          "type": "string"
+                        },
+                        "correctsDecisionId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "decidedByUserId": {
+                          "type": "string"
+                        },
+                        "decidedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "reviewedByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "reviewedAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "rejectionReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "basis": {
+                          "type": "object",
+                          "properties": {
+                            "schemaVersion": {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            "attendance": {
+                              "type": "object",
+                              "properties": {
+                                "totalHours": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9007199254740991
+                                },
+                                "attendedHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "absentHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "unrecordedHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "requiredHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "minAttendancePermille": {
+                                  "type": "integer",
+                                  "minimum": 800,
+                                  "maximum": 1000
+                                },
+                                "met": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "totalHours",
+                                "attendedHours",
+                                "absentHours",
+                                "unrecordedHours",
+                                "requiredHours",
+                                "minAttendancePermille",
+                                "met"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "finalPassScore": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "assessments": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "point": {
+                                    "type": "string",
+                                    "enum": [
+                                      "midterm",
+                                      "final"
+                                    ]
+                                  },
+                                  "score": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  },
+                                  "skills": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "skill": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reading",
+                                            "listening",
+                                            "writing",
+                                            "speaking"
+                                          ]
+                                        },
+                                        "score": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 100
+                                        }
+                                      },
+                                      "required": [
+                                        "skill",
+                                        "score"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  }
+                                },
+                                "required": [
+                                  "point",
+                                  "score",
+                                  "skills"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "conditions": {
+                              "type": "object",
+                              "properties": {
+                                "attendance": {
+                                  "type": "boolean"
+                                },
+                                "finalScore": {
+                                  "type": "boolean"
+                                },
+                                "skills": {
+                                  "type": "boolean"
+                                }
+                              },
+                              "required": [
+                                "attendance",
+                                "finalScore",
+                                "skills"
+                              ],
+                              "additionalProperties": false
+                            }
+                          },
+                          "required": [
+                            "schemaVersion",
+                            "attendance",
+                            "finalPassScore",
+                            "assessments",
+                            "conditions"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "suggestedLevel": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "enum": [
+                                "Pre-A1",
+                                "A1",
+                                "A2",
+                                "A2+",
+                                "B1",
+                                "B1+",
+                                "B2",
+                                "B2+",
+                                "C1",
+                                "C2"
+                              ]
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Karar anının genel seviye önerisi (gerekçe)"
+                        },
+                        "rowVersion": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Kararın satır sürümü (`If-Match`)"
+                        },
+                        "next": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "decisionId": {
+                                  "type": "string"
+                                },
+                                "enrollmentId": {
+                                  "type": "string"
+                                },
+                                "learnerId": {
+                                  "type": "string"
+                                },
+                                "fromCourseId": {
+                                  "type": "string"
+                                },
+                                "fromLevel": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Pre-A1",
+                                    "A1",
+                                    "A2",
+                                    "A2+",
+                                    "B1",
+                                    "B1+",
+                                    "B2",
+                                    "B2+",
+                                    "C1",
+                                    "C2"
+                                  ]
+                                },
+                                "nextCourseId": {
+                                  "type": [
+                                    "string",
+                                    "null"
+                                  ]
+                                },
+                                "nextLevel": {
+                                  "anyOf": [
+                                    {
+                                      "type": "string",
+                                      "enum": [
+                                        "Pre-A1",
+                                        "A1",
+                                        "A2",
+                                        "A2+",
+                                        "B1",
+                                        "B1+",
+                                        "B2",
+                                        "B2+",
+                                        "C1",
+                                        "C2"
+                                      ]
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                }
+                              },
+                              "required": [
+                                "decisionId",
+                                "enrollmentId",
+                                "learnerId",
+                                "fromCourseId",
+                                "fromLevel",
+                                "nextCourseId",
+                                "nextLevel"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`."
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "enrollmentId",
+                        "groupId",
+                        "learnerId",
+                        "courseId",
+                        "outcome",
+                        "status",
+                        "rationale",
+                        "correctsDecisionId",
+                        "decidedByUserId",
+                        "decidedAt",
+                        "reviewedByUserId",
+                        "reviewedAt",
+                        "rejectionReason",
+                        "basis",
+                        "suggestedLevel",
+                        "rowVersion",
+                        "next"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/groups/{groupId}/progression": {
+      "get": {
+        "operationId": "getGroupProgression",
+        "summary": "Grubun kur sonu tablosu",
+        "tags": [
+          "learning"
+        ],
+        "description": "Kursiyer başına devam özeti, ölçmeler, kur geçme koşulları, verilebilir sonuçlar ve engel (hesaplanır, saklanmaz), kararlar ve üst kur çıktısı (IST-062). Roller: `yonetici`, `ogretmen` (grubun öğretmeni ya da kurun seviyesinin akademik koordinatörü); diğer roller 403. Olmayan ya da başka kurumun grubu 404. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "description": "Dil grubu kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "groupId": {
+                          "type": "string"
+                        },
+                        "courseId": {
+                          "type": "string"
+                        },
+                        "level": {
+                          "type": "string",
+                          "enum": [
+                            "Pre-A1",
+                            "A1",
+                            "A2",
+                            "A2+",
+                            "B1",
+                            "B1+",
+                            "B2",
+                            "B2+",
+                            "C1",
+                            "C2"
+                          ]
+                        },
+                        "canDecide": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kişi grubun öğretmeni mi (ölçme ve karar)"
+                        },
+                        "canReview": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kişi kurun akademik koordinatörü mü (onay)"
+                        },
+                        "learners": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "enrollmentId": {
+                                "type": "string"
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "memberStatus": {
+                                "type": "string",
+                                "enum": [
+                                  "active",
+                                  "frozen"
+                                ]
+                              },
+                              "attendance": {
+                                "type": "object",
+                                "properties": {
+                                  "totalHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "recordedHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "attendedHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "absentHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "unrecordedHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "requiredHours": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "eligible",
+                                      "ineligible",
+                                      "pending"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "totalHours",
+                                  "recordedHours",
+                                  "attendedHours",
+                                  "absentHours",
+                                  "unrecordedHours",
+                                  "requiredHours",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "assessments": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "enrollmentId": {
+                                      "type": "string"
+                                    },
+                                    "point": {
+                                      "type": "string",
+                                      "enum": [
+                                        "baseline",
+                                        "midterm",
+                                        "final"
+                                      ]
+                                    },
+                                    "score": {
+                                      "type": "number"
+                                    },
+                                    "skills": {
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "skill": {
+                                            "type": "string"
+                                          },
+                                          "score": {
+                                            "type": "number"
+                                          },
+                                          "feedback": {
+                                            "type": [
+                                              "string",
+                                              "null"
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "skill",
+                                          "score",
+                                          "feedback"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "assessedAt": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    "assessedByUserId": {
+                                      "type": "string"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "enrollmentId",
+                                    "point",
+                                    "score",
+                                    "skills",
+                                    "assessedAt",
+                                    "assessedByUserId"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "conditions": {
+                                "type": "object",
+                                "properties": {
+                                  "attendance": {
+                                    "type": "boolean"
+                                  },
+                                  "finalScore": {
+                                    "type": "boolean"
+                                  },
+                                  "skills": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "attendance",
+                                  "finalScore",
+                                  "skills"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "failingSkills": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string"
+                                }
+                              },
+                              "allowedOutcomes": {
+                                "type": "array",
+                                "items": {
+                                  "type": "string",
+                                  "enum": [
+                                    "passed",
+                                    "repeat",
+                                    "incomplete_attendance"
+                                  ]
+                                }
+                              },
+                              "blocker": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "attendance_pending",
+                                      "assessments_incomplete"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "decisions": {
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string"
+                                    },
+                                    "enrollmentId": {
+                                      "type": "string"
+                                    },
+                                    "groupId": {
+                                      "type": "string"
+                                    },
+                                    "learnerId": {
+                                      "type": "string"
+                                    },
+                                    "courseId": {
+                                      "type": "string"
+                                    },
+                                    "outcome": {
+                                      "type": "string",
+                                      "enum": [
+                                        "passed",
+                                        "repeat",
+                                        "incomplete_attendance"
+                                      ]
+                                    },
+                                    "status": {
+                                      "type": "string",
+                                      "enum": [
+                                        "pending",
+                                        "approved",
+                                        "rejected"
+                                      ]
+                                    },
+                                    "rationale": {
+                                      "type": "string"
+                                    },
+                                    "correctsDecisionId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "decidedByUserId": {
+                                      "type": "string"
+                                    },
+                                    "decidedAt": {
+                                      "type": "string",
+                                      "format": "date-time",
+                                      "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                    },
+                                    "reviewedByUserId": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "reviewedAt": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "format": "date-time",
+                                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ]
+                                    },
+                                    "rejectionReason": {
+                                      "type": [
+                                        "string",
+                                        "null"
+                                      ]
+                                    },
+                                    "basis": {
+                                      "type": "object",
+                                      "properties": {
+                                        "schemaVersion": {
+                                          "type": "number",
+                                          "enum": [
+                                            1
+                                          ]
+                                        },
+                                        "attendance": {
+                                          "type": "object",
+                                          "properties": {
+                                            "totalHours": {
+                                              "type": "integer",
+                                              "minimum": 1,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "attendedHours": {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "absentHours": {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "unrecordedHours": {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "requiredHours": {
+                                              "type": "integer",
+                                              "minimum": 0,
+                                              "maximum": 9007199254740991
+                                            },
+                                            "minAttendancePermille": {
+                                              "type": "integer",
+                                              "minimum": 800,
+                                              "maximum": 1000
+                                            },
+                                            "met": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "totalHours",
+                                            "attendedHours",
+                                            "absentHours",
+                                            "unrecordedHours",
+                                            "requiredHours",
+                                            "minAttendancePermille",
+                                            "met"
+                                          ],
+                                          "additionalProperties": false
+                                        },
+                                        "finalPassScore": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 100
+                                        },
+                                        "assessments": {
+                                          "type": "array",
+                                          "items": {
+                                            "type": "object",
+                                            "properties": {
+                                              "point": {
+                                                "type": "string",
+                                                "enum": [
+                                                  "midterm",
+                                                  "final"
+                                                ]
+                                              },
+                                              "score": {
+                                                "type": "number",
+                                                "minimum": 0,
+                                                "maximum": 100
+                                              },
+                                              "skills": {
+                                                "type": "array",
+                                                "items": {
+                                                  "type": "object",
+                                                  "properties": {
+                                                    "skill": {
+                                                      "type": "string",
+                                                      "enum": [
+                                                        "reading",
+                                                        "listening",
+                                                        "writing",
+                                                        "speaking"
+                                                      ]
+                                                    },
+                                                    "score": {
+                                                      "type": "number",
+                                                      "minimum": 0,
+                                                      "maximum": 100
+                                                    }
+                                                  },
+                                                  "required": [
+                                                    "skill",
+                                                    "score"
+                                                  ],
+                                                  "additionalProperties": false
+                                                }
+                                              }
+                                            },
+                                            "required": [
+                                              "point",
+                                              "score",
+                                              "skills"
+                                            ],
+                                            "additionalProperties": false
+                                          }
+                                        },
+                                        "conditions": {
+                                          "type": "object",
+                                          "properties": {
+                                            "attendance": {
+                                              "type": "boolean"
+                                            },
+                                            "finalScore": {
+                                              "type": "boolean"
+                                            },
+                                            "skills": {
+                                              "type": "boolean"
+                                            }
+                                          },
+                                          "required": [
+                                            "attendance",
+                                            "finalScore",
+                                            "skills"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "required": [
+                                        "schemaVersion",
+                                        "attendance",
+                                        "finalPassScore",
+                                        "assessments",
+                                        "conditions"
+                                      ],
+                                      "additionalProperties": false
+                                    },
+                                    "suggestedLevel": {
+                                      "anyOf": [
+                                        {
+                                          "type": "string",
+                                          "enum": [
+                                            "Pre-A1",
+                                            "A1",
+                                            "A2",
+                                            "A2+",
+                                            "B1",
+                                            "B1+",
+                                            "B2",
+                                            "B2+",
+                                            "C1",
+                                            "C2"
+                                          ]
+                                        },
+                                        {
+                                          "type": "null"
+                                        }
+                                      ],
+                                      "description": "Karar anının genel seviye önerisi (gerekçe)"
+                                    },
+                                    "rowVersion": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 9007199254740991,
+                                      "description": "Kararın satır sürümü (`If-Match`)"
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "enrollmentId",
+                                    "groupId",
+                                    "learnerId",
+                                    "courseId",
+                                    "outcome",
+                                    "status",
+                                    "rationale",
+                                    "correctsDecisionId",
+                                    "decidedByUserId",
+                                    "decidedAt",
+                                    "reviewedByUserId",
+                                    "reviewedAt",
+                                    "rejectionReason",
+                                    "basis",
+                                    "suggestedLevel",
+                                    "rowVersion"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "next": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "decisionId": {
+                                        "type": "string"
+                                      },
+                                      "enrollmentId": {
+                                        "type": "string"
+                                      },
+                                      "learnerId": {
+                                        "type": "string"
+                                      },
+                                      "fromCourseId": {
+                                        "type": "string"
+                                      },
+                                      "fromLevel": {
+                                        "type": "string",
+                                        "enum": [
+                                          "Pre-A1",
+                                          "A1",
+                                          "A2",
+                                          "A2+",
+                                          "B1",
+                                          "B1+",
+                                          "B2",
+                                          "B2+",
+                                          "C1",
+                                          "C2"
+                                        ]
+                                      },
+                                      "nextCourseId": {
+                                        "type": [
+                                          "string",
+                                          "null"
+                                        ]
+                                      },
+                                      "nextLevel": {
+                                        "anyOf": [
+                                          {
+                                            "type": "string",
+                                            "enum": [
+                                              "Pre-A1",
+                                              "A1",
+                                              "A2",
+                                              "A2+",
+                                              "B1",
+                                              "B1+",
+                                              "B2",
+                                              "B2+",
+                                              "C1",
+                                              "C2"
+                                            ]
+                                          },
+                                          {
+                                            "type": "null"
+                                          }
+                                        ]
+                                      }
+                                    },
+                                    "required": [
+                                      "decisionId",
+                                      "enrollmentId",
+                                      "learnerId",
+                                      "fromCourseId",
+                                      "fromLevel",
+                                      "nextCourseId",
+                                      "nextLevel"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ],
+                                "description": "Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`."
+                              }
+                            },
+                            "required": [
+                              "enrollmentId",
+                              "studentId",
+                              "memberStatus",
+                              "attendance",
+                              "assessments",
+                              "conditions",
+                              "failingSkills",
+                              "allowedOutcomes",
+                              "blocker",
+                              "decisions",
+                              "next"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "groupId",
+                        "courseId",
+                        "level",
+                        "canDecide",
+                        "canReview",
+                        "learners"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{studentId}/progression-decisions": {
+      "get": {
+        "operationId": "getStudentProgressionDecisions",
+        "summary": "Kursiyerin kur sonu kararları",
+        "tags": [
+          "learning"
+        ],
+        "description": "Öğrenci kendisinin, veli 18 yaş altı çocuğunun yalnız onaylı kararlarını görür; gerekçe, karar veren ve inceleyen gösterilmez, onaylanmamış öneri görünmez. Personel (yönetici; öğretmen yalnız okuyabildiği grupların kararları) bütün kararları görür. Ön büro 403; kapsam dışı ya da başka kurumun öğrencisi 404. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "decisions": {
+                          "type": "array",
+                          "items": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "enrollmentId": {
+                                    "type": "string"
+                                  },
+                                  "groupId": {
+                                    "type": "string"
+                                  },
+                                  "learnerId": {
+                                    "type": "string"
+                                  },
+                                  "courseId": {
+                                    "type": "string"
+                                  },
+                                  "outcome": {
+                                    "type": "string",
+                                    "enum": [
+                                      "passed",
+                                      "repeat",
+                                      "incomplete_attendance"
+                                    ]
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "pending",
+                                      "approved",
+                                      "rejected"
+                                    ]
+                                  },
+                                  "rationale": {
+                                    "type": "string"
+                                  },
+                                  "correctsDecisionId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "decidedByUserId": {
+                                    "type": "string"
+                                  },
+                                  "decidedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  },
+                                  "reviewedByUserId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "reviewedAt": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  },
+                                  "rejectionReason": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "basis": {
+                                    "type": "object",
+                                    "properties": {
+                                      "schemaVersion": {
+                                        "type": "number",
+                                        "enum": [
+                                          1
+                                        ]
+                                      },
+                                      "attendance": {
+                                        "type": "object",
+                                        "properties": {
+                                          "totalHours": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "attendedHours": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "absentHours": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "unrecordedHours": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "requiredHours": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "minAttendancePermille": {
+                                            "type": "integer",
+                                            "minimum": 800,
+                                            "maximum": 1000
+                                          },
+                                          "met": {
+                                            "type": "boolean"
+                                          }
+                                        },
+                                        "required": [
+                                          "totalHours",
+                                          "attendedHours",
+                                          "absentHours",
+                                          "unrecordedHours",
+                                          "requiredHours",
+                                          "minAttendancePermille",
+                                          "met"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "finalPassScore": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 100
+                                      },
+                                      "assessments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "point": {
+                                              "type": "string",
+                                              "enum": [
+                                                "midterm",
+                                                "final"
+                                              ]
+                                            },
+                                            "score": {
+                                              "type": "number",
+                                              "minimum": 0,
+                                              "maximum": 100
+                                            },
+                                            "skills": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "skill": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "reading",
+                                                      "listening",
+                                                      "writing",
+                                                      "speaking"
+                                                    ]
+                                                  },
+                                                  "score": {
+                                                    "type": "number",
+                                                    "minimum": 0,
+                                                    "maximum": 100
+                                                  }
+                                                },
+                                                "required": [
+                                                  "skill",
+                                                  "score"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "point",
+                                            "score",
+                                            "skills"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "conditions": {
+                                        "type": "object",
+                                        "properties": {
+                                          "attendance": {
+                                            "type": "boolean"
+                                          },
+                                          "finalScore": {
+                                            "type": "boolean"
+                                          },
+                                          "skills": {
+                                            "type": "boolean"
+                                          }
+                                        },
+                                        "required": [
+                                          "attendance",
+                                          "finalScore",
+                                          "skills"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "required": [
+                                      "schemaVersion",
+                                      "attendance",
+                                      "finalPassScore",
+                                      "assessments",
+                                      "conditions"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "suggestedLevel": {
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "enum": [
+                                          "Pre-A1",
+                                          "A1",
+                                          "A2",
+                                          "A2+",
+                                          "B1",
+                                          "B1+",
+                                          "B2",
+                                          "B2+",
+                                          "C1",
+                                          "C2"
+                                        ]
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Karar anının genel seviye önerisi (gerekçe)"
+                                  },
+                                  "rowVersion": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 9007199254740991,
+                                    "description": "Kararın satır sürümü (`If-Match`)"
+                                  },
+                                  "next": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "decisionId": {
+                                            "type": "string"
+                                          },
+                                          "enrollmentId": {
+                                            "type": "string"
+                                          },
+                                          "learnerId": {
+                                            "type": "string"
+                                          },
+                                          "fromCourseId": {
+                                            "type": "string"
+                                          },
+                                          "fromLevel": {
+                                            "type": "string",
+                                            "enum": [
+                                              "Pre-A1",
+                                              "A1",
+                                              "A2",
+                                              "A2+",
+                                              "B1",
+                                              "B1+",
+                                              "B2",
+                                              "B2+",
+                                              "C1",
+                                              "C2"
+                                            ]
+                                          },
+                                          "nextCourseId": {
+                                            "type": [
+                                              "string",
+                                              "null"
+                                            ]
+                                          },
+                                          "nextLevel": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "Pre-A1",
+                                                  "A1",
+                                                  "A2",
+                                                  "A2+",
+                                                  "B1",
+                                                  "B1+",
+                                                  "B2",
+                                                  "B2+",
+                                                  "C1",
+                                                  "C2"
+                                                ]
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "decisionId",
+                                          "enrollmentId",
+                                          "learnerId",
+                                          "fromCourseId",
+                                          "fromLevel",
+                                          "nextCourseId",
+                                          "nextLevel"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`."
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "enrollmentId",
+                                  "groupId",
+                                  "learnerId",
+                                  "courseId",
+                                  "outcome",
+                                  "status",
+                                  "rationale",
+                                  "correctsDecisionId",
+                                  "decidedByUserId",
+                                  "decidedAt",
+                                  "reviewedByUserId",
+                                  "reviewedAt",
+                                  "rejectionReason",
+                                  "basis",
+                                  "suggestedLevel",
+                                  "rowVersion",
+                                  "next"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "id": {
+                                    "type": "string"
+                                  },
+                                  "courseId": {
+                                    "type": "string"
+                                  },
+                                  "outcome": {
+                                    "type": "string",
+                                    "enum": [
+                                      "passed",
+                                      "repeat",
+                                      "incomplete_attendance"
+                                    ]
+                                  },
+                                  "correctsDecisionId": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "approvedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  },
+                                  "basis": {
+                                    "type": "object",
+                                    "properties": {
+                                      "schemaVersion": {
+                                        "type": "number",
+                                        "enum": [
+                                          1
+                                        ]
+                                      },
+                                      "attendance": {
+                                        "type": "object",
+                                        "properties": {
+                                          "totalHours": {
+                                            "type": "integer",
+                                            "minimum": 1,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "attendedHours": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "absentHours": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "unrecordedHours": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "requiredHours": {
+                                            "type": "integer",
+                                            "minimum": 0,
+                                            "maximum": 9007199254740991
+                                          },
+                                          "minAttendancePermille": {
+                                            "type": "integer",
+                                            "minimum": 800,
+                                            "maximum": 1000
+                                          },
+                                          "met": {
+                                            "type": "boolean"
+                                          }
+                                        },
+                                        "required": [
+                                          "totalHours",
+                                          "attendedHours",
+                                          "absentHours",
+                                          "unrecordedHours",
+                                          "requiredHours",
+                                          "minAttendancePermille",
+                                          "met"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      "finalPassScore": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 100
+                                      },
+                                      "assessments": {
+                                        "type": "array",
+                                        "items": {
+                                          "type": "object",
+                                          "properties": {
+                                            "point": {
+                                              "type": "string",
+                                              "enum": [
+                                                "midterm",
+                                                "final"
+                                              ]
+                                            },
+                                            "score": {
+                                              "type": "number",
+                                              "minimum": 0,
+                                              "maximum": 100
+                                            },
+                                            "skills": {
+                                              "type": "array",
+                                              "items": {
+                                                "type": "object",
+                                                "properties": {
+                                                  "skill": {
+                                                    "type": "string",
+                                                    "enum": [
+                                                      "reading",
+                                                      "listening",
+                                                      "writing",
+                                                      "speaking"
+                                                    ]
+                                                  },
+                                                  "score": {
+                                                    "type": "number",
+                                                    "minimum": 0,
+                                                    "maximum": 100
+                                                  }
+                                                },
+                                                "required": [
+                                                  "skill",
+                                                  "score"
+                                                ],
+                                                "additionalProperties": false
+                                              }
+                                            }
+                                          },
+                                          "required": [
+                                            "point",
+                                            "score",
+                                            "skills"
+                                          ],
+                                          "additionalProperties": false
+                                        }
+                                      },
+                                      "conditions": {
+                                        "type": "object",
+                                        "properties": {
+                                          "attendance": {
+                                            "type": "boolean"
+                                          },
+                                          "finalScore": {
+                                            "type": "boolean"
+                                          },
+                                          "skills": {
+                                            "type": "boolean"
+                                          }
+                                        },
+                                        "required": [
+                                          "attendance",
+                                          "finalScore",
+                                          "skills"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "required": [
+                                      "schemaVersion",
+                                      "attendance",
+                                      "finalPassScore",
+                                      "assessments",
+                                      "conditions"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "next": {
+                                    "anyOf": [
+                                      {
+                                        "type": "object",
+                                        "properties": {
+                                          "decisionId": {
+                                            "type": "string"
+                                          },
+                                          "enrollmentId": {
+                                            "type": "string"
+                                          },
+                                          "learnerId": {
+                                            "type": "string"
+                                          },
+                                          "fromCourseId": {
+                                            "type": "string"
+                                          },
+                                          "fromLevel": {
+                                            "type": "string",
+                                            "enum": [
+                                              "Pre-A1",
+                                              "A1",
+                                              "A2",
+                                              "A2+",
+                                              "B1",
+                                              "B1+",
+                                              "B2",
+                                              "B2+",
+                                              "C1",
+                                              "C2"
+                                            ]
+                                          },
+                                          "nextCourseId": {
+                                            "type": [
+                                              "string",
+                                              "null"
+                                            ]
+                                          },
+                                          "nextLevel": {
+                                            "anyOf": [
+                                              {
+                                                "type": "string",
+                                                "enum": [
+                                                  "Pre-A1",
+                                                  "A1",
+                                                  "A2",
+                                                  "A2+",
+                                                  "B1",
+                                                  "B1+",
+                                                  "B2",
+                                                  "B2+",
+                                                  "C1",
+                                                  "C2"
+                                                ]
+                                              },
+                                              {
+                                                "type": "null"
+                                              }
+                                            ]
+                                          }
+                                        },
+                                        "required": [
+                                          "decisionId",
+                                          "enrollmentId",
+                                          "learnerId",
+                                          "fromCourseId",
+                                          "fromLevel",
+                                          "nextCourseId",
+                                          "nextLevel"
+                                        ],
+                                        "additionalProperties": false
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ],
+                                    "description": "Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`."
+                                  }
+                                },
+                                "required": [
+                                  "id",
+                                  "courseId",
+                                  "outcome",
+                                  "correctsDecisionId",
+                                  "approvedAt",
+                                  "basis",
+                                  "next"
+                                ],
+                                "additionalProperties": false
+                              }
+                            ]
+                          }
+                        }
+                      },
+                      "required": [
+                        "studentId",
+                        "decisions"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/files": {
       "post": {
         "operationId": "uploadFile",

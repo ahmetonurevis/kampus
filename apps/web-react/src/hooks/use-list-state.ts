@@ -3,6 +3,7 @@ import { useLocation, useNavigate, useNavigationType, useSearchParams } from 're
 import { listReducer, restoreListState, type ScrollPosition } from '@/lib/list-state.ts'
 import {
   applyListParams,
+  hasLegacySearch,
   listStateFromParams,
   listStateToParams,
   listSync,
@@ -32,8 +33,8 @@ type Options = {
    */
   urlFilters?: UrlFilters
   /**
-   * Arama metni URL'ye yazılsın mı (varsayılan evet). Kişisel veri aranan listelerde (telefon,
-   * veli adı) kapatılır: metin yalnız bileşen belleğinde kalır, tarayıcı geçmişine girmez.
+   * @deprecated Etkisizdir: arama metni hiçbir listede URL'ye yazılmaz (ADR 0009). Mevcut
+   * çağrılar derlensin diye tipte durur; yeni kodda verilmez.
    */
   searchInUrl?: boolean
 }
@@ -41,19 +42,15 @@ type Options = {
 const NO_URL_FILTERS: UrlFilters = {}
 
 /**
- * Liste görünüm durumu: yol + `key` (liste + çocuk/sekme kapsamı) başına bellekte, arama/sayfa/
- * sıralama ayrıca URL'de tutulur. Geri/ileri ile değişen URL yeniden okunur; kendi `replace`
- * yazımlarımız okunmaz. Kaydırma konumu her olayda render tetiklemesin diye ref'te izlenir.
+ * Liste görünüm durumu: yol + `key` (liste + çocuk/sekme kapsamı) başına bellekte, sayfa/sıralama
+ * ve `urlFilters` ayrıca URL'de tutulur. Arama metni yalnız bellektedir (ADR 0009, KVKK): geri/
+ * ileri ve sayfa içi gezinmede bellekten döner, tam yenilemede kaybolur; eski bağlantıdaki `q` bir
+ * kez okunur ve `replace` ile adresten silinir. Geri/ileri ile değişen URL yeniden okunur; kendi
+ * `replace` yazımlarımız okunmaz. Kaydırma konumu her olayda render tetiklemesin diye ref'te izlenir.
  */
 export function useListState(
   key: string,
-  {
-    pageSize = 8,
-    urlPrefix = '',
-    resetKey = '',
-    urlFilters = NO_URL_FILTERS,
-    searchInUrl = true,
-  }: Options = {},
+  { pageSize = 8, urlPrefix = '', resetKey = '', urlFilters = NO_URL_FILTERS }: Options = {},
 ) {
   const [params] = useSearchParams()
   const navigate = useNavigate()
@@ -66,7 +63,7 @@ export function useListState(
   const urlScopeKey = `list-url-scope:${location.pathname}`
   const [state, dispatch] = useReducer(listReducer, undefined, () =>
     urlBelongsToScope(readView(urlScopeKey), scope)
-      ? listStateFromParams(params, urlPrefix, remembered(), urlFilters, searchInUrl)
+      ? listStateFromParams(params, urlPrefix, remembered(), urlFilters)
       : remembered(),
   )
 
@@ -79,7 +76,7 @@ export function useListState(
   // Anahtar değişince URL'deki değerler önceki listeye aittir; yalnız bellek kullanılır.
   if (sync === 'restore') dispatch({ type: 'replace', state: remembered() })
   if (sync === 'read-url') {
-    const next = applyListParams(state, params, urlPrefix, urlFilters, searchInUrl)
+    const next = applyListParams(state, params, urlPrefix, urlFilters)
     if (next !== state) dispatch({ type: 'replace', state: next })
   }
   const [seenReset, setSeenReset] = useState(resetKey)
@@ -98,6 +95,10 @@ export function useListState(
   const element = useRef<HTMLElement | null>(null)
   const position = useRef<ScrollPosition>(state.scroll)
 
+  // Eski bağlantıdaki arama adreste durdukça yazım yeniden çalışır; durum değişmese de (`q` zaten
+  // bellekteki aramayla aynıysa) parametre silinir.
+  const legacySearch = hasLegacySearch(params, urlPrefix)
+
   // Dış sistemlerle eşitleme: görünüm belleği, adres çubuğu ve kaydırma alanı.
   useEffect(() => {
     writeView(memoryKey, { ...state, scroll: position.current })
@@ -106,7 +107,7 @@ export function useListState(
   useEffect(() => {
     writeView(urlScopeKey, scope)
     writeParams(
-      (current) => listStateToParams(state, urlPrefix, current, urlFilters, searchInUrl),
+      (current) => listStateToParams(state, urlPrefix, current, urlFilters),
       (search) =>
         void Promise.resolve(
           navigate(
@@ -119,7 +120,7 @@ export function useListState(
           ),
         ).catch((error: unknown) => console.error('[liste] adres güncellenemedi', error)),
     )
-  }, [state, urlPrefix, urlFilters, searchInUrl, navigate, urlScopeKey, scope])
+  }, [state, urlPrefix, urlFilters, legacySearch, navigate, urlScopeKey, scope])
 
   // İndirgeyici kaydırmayı sıfırladığında (filtre, sayfa, sıralama) alan başa döner.
   useEffect(() => {

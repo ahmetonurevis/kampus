@@ -73,7 +73,8 @@ test.describe('okul iş akışları', () => {
     expect(created?.record.branchId).toBe('b2')
 
     await page.getByLabel('Tabloda ara').fill(title)
-    await expect(page).toHaveURL(/[?&]q=/)
+    // Arama metni adrese yazılmaz (ADR 0009, IST-028).
+    await expect(page).not.toHaveURL(/[?&]q=/)
     const link = page.getByRole('button', { name: title })
     await expect(link).toBeVisible()
     await link.click()

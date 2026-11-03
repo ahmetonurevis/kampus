@@ -207,14 +207,15 @@ test.describe('öğretmen: öğrenci profili', () => {
     await page.getByLabel('Analiz dersi').selectOption({ label: 'Matematik' })
     await expect(page).toHaveURL(/[?&]ders=/)
 
-    // Not geçmişi: arama (adrese yazılır), sıralama ve sağ panel açma.
+    // Not geçmişi: arama (adrese yazılmaz, ADR 0009), sıralama ve sağ panel açma.
     await page
       .getByRole('toolbar', { name: 'Öğrenci profili bölümleri' })
       .getByRole('button', { name: 'Not geçmişi' })
       .click()
     await expect(page).toHaveURL(/[?&]sekme=notlar/)
     await page.getByLabel('Tabloda ara').fill('Matematik')
-    await expect(page).toHaveURL(/[?&]not-q=/)
+    await expect(page.getByLabel('Tabloda ara')).toHaveValue('Matematik')
+    await expect(page).not.toHaveURL(/[?&]not-q=/)
     const firstRecord = page.locator('button.record-link, a.record-link').first()
     await firstRecord.click()
     await expect(page).toHaveURL(/[?&]not=/)
@@ -230,7 +231,8 @@ test.describe('öğretmen: öğrenci profili', () => {
       page.getByRole('heading', { level: 2, name: 'Quiz sonuçları', exact: true }),
     ).toBeVisible()
     await page.getByLabel('Tabloda ara').first().fill('kazanım')
-    await expect(page).toHaveURL(/[?&]quiz-q=/)
+    await expect(page.getByLabel('Tabloda ara').first()).toHaveValue('kazanım')
+    await expect(page).not.toHaveURL(/[?&]quiz-q=/)
 
     await page.getByRole('link', { name: 'Listeye dön' }).click()
     await expect(page).toHaveURL(/\/ogretmen\/siniflarim\?sinif=c1$/)

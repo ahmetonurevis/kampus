@@ -1,8 +1,9 @@
-// Liste durumunun paylaşılabilir kısmı (arama, sayfa, sıralama) URL arama parametresinde tutulur;
-// böylece yenileme ve geri/ileri durumu korur. Filtre değerleri ve kaydırma varsayılan olarak
-// yalnız bellektedir; liste `urlFilters` verirse o tekli filtreler de URL'ye yazılır. Kişisel veri
-// aranan listelerde (`searchInUrl = false`) arama metni hiç URL'ye yazılmaz ve okunmaz (KVKK:
-// telefon ve veli adı tarayıcı geçmişine girmesin).
+// Liste durumunun paylaşılabilir kısmı (sayfa, sıralama) URL arama parametresinde tutulur; böylece
+// yenileme ve geri/ileri durumu korur. Filtre değerleri ve kaydırma varsayılan olarak yalnız
+// bellektedir; liste `urlFilters` verirse o tekli filtreler de URL'ye yazılır. Serbest arama metni
+// hiçbir listede URL'ye yazılmaz (ADR 0009, IST-028): ad, telefon gibi kişisel veri tarayıcı
+// geçmişine, paylaşılan bağlantıya ve erişim loguna girmesin. Eski bağlantıdaki `q` bir kez okunur;
+// sonraki adres yazımı onu siler.
 import type { FilterValues } from './list-query.ts'
 import type { ListState } from './list-state.ts'
 
@@ -17,13 +18,20 @@ const keys = (prefix: string) => ({
   direction: `${prefix}yon`,
 })
 
-/** URL'deki değerler varsa temel duruma uygular; bozuk değerler yok sayılır. */
+/** Adreste eski bağlantıdan kalan arama parametresi var mı (varsa bir sonraki yazım siler). */
+export function hasLegacySearch(params: URLSearchParams, prefix: string): boolean {
+  return params.has(keys(prefix).query)
+}
+
+/**
+ * URL'deki değerler varsa temel duruma uygular; bozuk değerler yok sayılır. Arama metni URL'de
+ * tutulmaz; yalnız eski bağlantıdan gelen `q` okunur, yoksa bellekteki (temel) arama kalır.
+ */
 export function listStateFromParams(
   params: URLSearchParams,
   prefix: string,
   base: ListState,
   urlFilters: UrlFilters = NO_URL_FILTERS,
-  searchInUrl = true,
 ): ListState {
   const key = keys(prefix)
   const query = params.get(key.query)
@@ -32,26 +40,28 @@ export function listStateFromParams(
   return {
     ...base,
     filters: filtersFromParams(params, prefix, base.filters, urlFilters),
-    query: searchInUrl ? (query ?? base.query) : base.query,
+    query: query ?? base.query,
     page: Number.isInteger(page) && page >= 1 ? page : params.has(key.page) ? 1 : base.page,
     sortKey: sort ?? base.sortKey,
     sortDirection: sort ? (params.get(key.direction) === 'azalan' ? -1 : 1) : base.sortDirection,
   }
 }
 
-/** Mevcut parametreleri koruyarak liste durumunu yazar; varsayılan değerler URL'den silinir. */
+/**
+ * Mevcut parametreleri koruyarak liste durumunu yazar; varsayılan değerler URL'den silinir. Arama
+ * metni hiç yazılmaz ve eski bağlantıdan kalan `q` silinir (ADR 0009).
+ */
 export function listStateToParams(
   state: ListState,
   prefix: string,
   current: URLSearchParams,
   urlFilters: UrlFilters = NO_URL_FILTERS,
-  searchInUrl = true,
 ): URLSearchParams {
   const key = keys(prefix)
   const next = new URLSearchParams(current)
   const set = (name: string, value: string | null) =>
     value === null ? next.delete(name) : next.set(name, value)
-  set(key.query, searchInUrl && state.query.trim() ? state.query : null)
+  next.delete(key.query)
   set(key.page, state.page > 1 ? String(state.page) : null)
   set(key.sort, state.sortKey || null)
   set(key.direction, state.sortKey && state.sortDirection === -1 ? 'azalan' : null)
@@ -117,17 +127,17 @@ const sameUrlState = (left: ListState, right: ListState, urlFilters: UrlFilters)
   )
 
 /**
- * Geri/ileri veya bağlantıyla gelen URL'yi duruma uygular. URL'de olmayan değer varsayılandır
- * (ilk yüklemedeki bellek yedeği burada kullanılmaz). Değişiklik yoksa aynı nesne döner; varsa
- * dikey kaydırma başa alınır. URL'de tutulmayan filtreler korunur; `urlFilters` anahtarları
- * URL'de yoksa kaldırılır.
+ * Geri/ileri veya bağlantıyla gelen URL'yi duruma uygular. URL'de olmayan sayfa, sıralama ve URL
+ * filtresi varsayılandır (ilk yüklemedeki bellek yedeği burada kullanılmaz). Arama URL'de
+ * tutulmadığı için bellekteki değer kalır; yalnız eski bağlantıdaki `q` onu değiştirir. Değişiklik
+ * yoksa aynı nesne döner; varsa dikey kaydırma başa alınır. URL'de tutulmayan filtreler korunur;
+ * `urlFilters` anahtarları URL'de yoksa kaldırılır.
  */
 export function applyListParams(
   state: ListState,
   params: URLSearchParams,
   prefix: string,
   urlFilters: UrlFilters = NO_URL_FILTERS,
-  searchInUrl = true,
 ): ListState {
   const filters = { ...state.filters }
   for (const filter of Object.keys(urlFilters)) delete filters[filter]
@@ -137,13 +147,11 @@ export function applyListParams(
     {
       ...state,
       filters,
-      query: searchInUrl ? '' : state.query,
       page: 1,
       sortKey: '',
       sortDirection: 1,
     },
     urlFilters,
-    searchInUrl,
   )
   if (sameUrlState(state, next, urlFilters)) return state
   return { ...next, scroll: { top: 0, left: state.scroll.left } }

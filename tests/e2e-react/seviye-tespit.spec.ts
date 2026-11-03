@@ -147,7 +147,7 @@ test('IST-058 DOM-DIL-010: yönetici tespiti açar, bölümleri puanlar, bitirir
   await loginAs(school.user('yonetici'))
   await page.goto('/yonetici/seviye-tespiti')
   await expect(page.getByRole('heading', { name: 'Seviye Tespiti', level: 1 })).toBeVisible()
-  await expect(page.getByText('Kişi seçin', { exact: true }).first()).toBeVisible()
+  await expect(page.getByRole('heading', { name: 'Kişi seçin', level: 2 })).toBeVisible()
 
   // Oturum açma: kişi, form ve yer seçilir.
   await page.getByRole('button', { name: 'Seviye tespiti aç' }).click()

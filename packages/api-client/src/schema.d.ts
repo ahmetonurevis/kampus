@@ -5644,6 +5644,31 @@ export interface components {
             archivedAt: string | null;
             removedAt: string | null;
         };
+        ResourceVersionHistoryItemInput: {
+            /** Format: uuid */
+            id: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+            title: string;
+            authorUserId: string;
+            tags: components["schemas"]["ResourceTagsInput"];
+            /** @description Lisans türü; seçilmemişse `null` */
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
+            archivedAt: string | null;
+            removedAt: string | null;
+            /** @description Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel */
+            license: {
+                [key: string]: unknown;
+            } | null;
+            reviewedByUserId: string | null;
+        };
         ResourceVersionInput: {
             /** Format: uuid */
             id: string;
@@ -5766,7 +5791,7 @@ export interface components {
             view: "staff";
             resource: components["schemas"]["StaffResourceInput"];
             /** @description Okunabilir sürümler, numaraya göre artan */
-            versions: components["schemas"]["ResourceVersionSummaryInput"][];
+            versions: components["schemas"]["ResourceVersionHistoryItemInput"][];
             head: components["schemas"]["ResourceVersionInput"];
             /** @description Açık sürümde (taslak, incelemede, reddedildi) yayım eksikleri; diğerlerinde boş */
             publicationIssues: {
@@ -8914,6 +8939,31 @@ export interface components {
             archivedAt: string | null;
             removedAt: string | null;
         };
+        ResourceVersionHistoryItem: {
+            /** Format: uuid */
+            id: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+            title: string;
+            authorUserId: string;
+            tags: components["schemas"]["ResourceTags"];
+            /** @description Lisans türü; seçilmemişse `null` */
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
+            archivedAt: string | null;
+            removedAt: string | null;
+            /** @description Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel */
+            license: {
+                [key: string]: unknown;
+            } | null;
+            reviewedByUserId: string | null;
+        };
         ResourceVersion: {
             /** Format: uuid */
             id: string;
@@ -9036,7 +9086,7 @@ export interface components {
             view: "staff";
             resource: components["schemas"]["StaffResource"];
             /** @description Okunabilir sürümler, numaraya göre artan */
-            versions: components["schemas"]["ResourceVersionSummary"][];
+            versions: components["schemas"]["ResourceVersionHistoryItem"][];
             head: components["schemas"]["ResourceVersion"];
             /** @description Açık sürümde (taslak, incelemede, reddedildi) yayım eksikleri; diğerlerinde boş */
             publicationIssues: {

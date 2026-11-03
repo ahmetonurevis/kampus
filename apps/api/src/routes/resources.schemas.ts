@@ -189,6 +189,20 @@ const versionSummarySchema = z
   })
   .meta({ id: 'ResourceVersionSummary' })
 
+const licenseDetailSchema = z
+  .record(z.string(), z.unknown())
+  .nullable()
+  .describe('Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel')
+
+/**
+ * Ayrıntıdaki sürüm geçmişi satırı: özet + yayın kararlarının dayandığı lisans ve onay bilgisi.
+ * Baş sürüm yayın sürümü değilken (açık taslak) kopya ve yönetim kararı yayın sürümünün gerçek
+ * lisansıyla verilir (DOM-KYN-050).
+ */
+const versionHistoryItemSchema = versionSummarySchema
+  .extend({ license: licenseDetailSchema, reviewedByUserId: z.string().nullable() })
+  .meta({ id: 'ResourceVersionHistoryItem' })
+
 const staffVersionSchema = versionSummarySchema
   .extend({
     content: contentSchema.nullable().describe('Kaldırılan sürümde `null` (DOM-KYN-051)'),
@@ -196,10 +210,7 @@ const staffVersionSchema = versionSummarySchema
       .record(z.string(), z.unknown())
       .nullable()
       .describe('Cevap anahtarı (school-core `answerKeySchema`); yalnız personel'),
-    license: z
-      .record(z.string(), z.unknown())
-      .nullable()
-      .describe('Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel'),
+    license: licenseDetailSchema,
     attributions: z.array(attributionSchema),
     submittedAt: instant.nullable(),
     reviewedByUserId: z.string().nullable(),
@@ -287,7 +298,7 @@ export const resourceDetailResponseSchema = dataResponse(
         view: z.literal('staff'),
         resource: staffResourceSchema,
         versions: z
-          .array(versionSummarySchema)
+          .array(versionHistoryItemSchema)
           .describe('Okunabilir sürümler, numaraya göre artan'),
         head: staffVersionSchema,
         publicationIssues: z

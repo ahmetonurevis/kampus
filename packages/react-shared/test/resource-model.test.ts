@@ -8,6 +8,7 @@ import {
   availableActions,
   canEditDraft,
   canOpenNewVersion,
+  coreVersion,
   isVersionConflict,
   RESOURCE_FILE_GONE_MESSAGE,
   RESOURCE_FILE_NOT_READY_MESSAGE,
@@ -17,6 +18,7 @@ import {
   resourceFileSize,
   resourceCommands,
   resourceListQuery,
+  versionFromSummary,
   type StaffResourceDetail,
 } from '../src/resource-model.ts'
 
@@ -490,6 +492,57 @@ describe('Kaynak düzeyindeki eylemler (DOM-KYN-025, 040, 050, 051)', () => {
       versions: [base.head, { ...draftHead, publishedAt: null }],
     }
     assert.deepEqual(commands(item, TEACHER).report, { versionId: 'v1', rowVersion: undefined })
+  })
+
+  test('DOM-KYN-050: baş sürüm açık taslakken kopya kararı yayın sürümünün lisansıyla verilir', () => {
+    const licenseOf = (allowsAdaptation: boolean) => ({
+      kind: 'licensed_publication',
+      publisher: 'Örnek Yayınevi',
+      contractNumber: 'S-1',
+      coverage: 'Okul içi kullanım',
+      expiryDate: '2027-06-30',
+      allowsAdaptation,
+      restrictedToBookOwners: false,
+    })
+    const withDraft = (publishedAllows: boolean): StaffResourceDetail => {
+      const base = published(
+        { licenseKind: 'licensed_publication', license: licenseOf(publishedAllows) },
+        { shareScope: 'institution' },
+      )
+      const draft = {
+        ...base.head,
+        id: 'v2',
+        versionNumber: 2,
+        status: 'draft' as const,
+        publishedAt: null,
+        tags: { ...base.head.tags, gradeLevels: [8] },
+        license: licenseOf(!publishedAllows),
+        reviewedByUserId: null,
+      }
+      return {
+        ...base,
+        head: draft,
+        versions: [{ ...base.head, reviewedByUserId: 'u-admin' }, draft],
+      }
+    }
+    assert.deepEqual(commands(withDraft(false), TEACHER).copy, {
+      blockedReason: 'Lisans uyarlamaya izin vermediği için bu içerik kopyalanamaz.',
+    })
+    assert.deepEqual(commands(withDraft(true), TEACHER).copy, { blockedReason: null })
+
+    const item = withDraft(false)
+    const head = coreVersion(item.head, item.resource.id)
+    assert.ok(head)
+    const current = versionFromSummary(head, item.versions[0]!)
+    assert.equal(current?.id, 'v1')
+    assert.deepEqual(current?.tags.gradeLevels, [7], 'etiketler yayın sürümünden')
+    assert.equal(current?.reviewedByUserId, 'u-admin')
+    assert.equal(current?.license?.kind, 'licensed_publication')
+    assert.equal(
+      versionFromSummary(head, { ...item.versions[0]!, license: { kind: 'bilinmeyen' } }),
+      undefined,
+      'çözülemeyen lisansta karar sunucuya kalır',
+    )
   })
 
   test('DOM-KYN-051: kaldırılmış kaynakta hiçbir eylem yok', () => {

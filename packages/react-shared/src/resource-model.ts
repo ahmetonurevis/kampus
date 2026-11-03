@@ -7,6 +7,8 @@ import {
   planVersionTransition,
   requiresReview,
   publicationIssues,
+  resourceLicenseSchema,
+  resourceTagsSchema,
   resourceVersionInputSchema,
   RESOURCE_ACTIONS,
   EDITABLE_STATUSES,
@@ -386,20 +388,28 @@ export type ResourceCommandState = {
 const COPY_BLOCKED_CODES = new Set(['license_forbids_copy', 'license_expired'])
 
 /**
- * Ayrıntıdaki sürüm özetini core sürüm şekline çevirir. Özet içerik taşımaz; içerik ve lisans
- * baş sürümden alınır. Yalnız durum, yetki ve kapsam kararı içindir (kuru çalıştırma): sonucu
- * sunucu aynı kuralla gerçek sürüm üzerinde yeniden verir.
+ * Ayrıntıdaki sürüm geçmişi satırını core sürüm şekline çevirir. Kararın dayandığı alanlar (durum,
+ * etiketler, lisans, onaylayan) satırın kendisinden gelir: baş sürüm açık taslakken kopya ve
+ * yönetim kararı yayın sürümünün gerçek verisiyle verilir (DOM-KYN-050). Satır içerik taşımaz;
+ * içerik baş sürümden doldurulur ve hiçbir eylem kararında kullanılmaz. Lisans çözülemezse
+ * `undefined` döner: o sürüme bağlı kararı sunucu verir.
  */
-function versionFromSummary(
+export function versionFromSummary(
   base: ResourceVersion,
   summary: StaffResourceDetail['versions'][number],
-): ResourceVersion {
+): ResourceVersion | undefined {
+  const license = resourceLicenseSchema.nullable().safeParse(summary.license)
+  const tags = resourceTagsSchema.safeParse(summary.tags)
+  if (!license.success || !tags.success) return undefined
   return {
     ...base,
     id: summary.id,
     versionNumber: summary.versionNumber,
     status: summary.status,
     authorUserId: summary.authorUserId,
+    tags: tags.data,
+    license: license.data,
+    reviewedByUserId: summary.reviewedByUserId,
     publishedAt: summary.publishedAt,
     archivedAt: summary.archivedAt,
     removedAt: summary.removedAt,
@@ -433,10 +443,14 @@ export function resourceCommands({
   if (!head || detail.versions.some((v) => v.status === 'removed')) return none
   const resource = coreResource(detail)
   const contentActor = asActor(actor)
-  const versions = detail.versions.map((summary) =>
+  const converted = detail.versions.map((summary) =>
     summary.id === head.id ? head : versionFromSummary(head, summary),
   )
+  const versions = converted.filter((v): v is ResourceVersion => v !== undefined)
+  const currentSummary = detail.versions.find((v) => v.id === resource.currentVersionId)
   const current = versions.find((v) => v.id === resource.currentVersionId) ?? null
+  // Yayın sürümü çözülemediyse (beklenmez) kopya ve bildirim açık kalır; kararı sunucu verir.
+  const currentUnknown = currentSummary !== undefined && current === null
 
   // Mevcut hedeflerle kuru çalıştırma yalnız "paylaşımı yönetebilir mi" sorusunu sınar; seçilen
   // yeni hedefin kapsamını (öğretmenin sınıfları) sunucu denetler.
@@ -458,7 +472,7 @@ export function resourceCommands({
     }),
   )
 
-  let copy: ResourceCommandState['copy'] = null
+  let copy: ResourceCommandState['copy'] = currentUnknown ? { blockedReason: null } : null
   if (current) {
     try {
       planCopy({

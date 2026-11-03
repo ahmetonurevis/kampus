@@ -973,4 +973,47 @@ describe('içerik havuzu yazma uçları', () => {
     assert.equal(forbidden.statusCode, 403)
     assert.equal(forbidden.json().code, 'license_forbids_copy')
   })
+
+  test('DOM-KYN-050: ayrıntının sürüm geçmişi yayın sürümünün lisansını taşır; açık taslağın lisansı kopya kararını değiştirmez', async () => {
+    const t = await tenant()
+    const license = {
+      kind: 'licensed_publication',
+      publisher: 'Örnek Yayınevi',
+      contractNumber: 'SZ-2026-02',
+      coverage: 'Tüm öğrenciler',
+      expiryDate: '2027-06-30',
+      restrictedToBookOwners: false,
+      allowsAdaptation: false,
+    }
+    const attributions = [{ work: 'Kitap', author: 'A. Yazar', source: 'Yayınevi', year: 2020 }]
+    const seeded = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacher.id,
+      shareScope: 'institution',
+      versions: [
+        {
+          status: 'published',
+          input: { ...publishable('Yayındaki'), license, attributions } as never,
+        },
+        {
+          status: 'draft',
+          input: {
+            ...publishable('Taslak'),
+            license: { ...license, allowsAdaptation: true },
+            attributions,
+          } as never,
+        },
+      ],
+    })
+    const [v1, v2] = seeded.versions
+    const detail = (await call('GET', `/resources/${seeded.resource.id}`, t.cookies.teacher)).json()
+      .data
+    assert.equal(detail.head.id, v2!.id, 'baş sürüm açık taslaktır')
+    const history = new Map(detail.versions.map((v: Json) => [v.id, v]))
+    assert.equal((history.get(v1!.id) as Json).license.allowsAdaptation, false)
+    assert.equal((history.get(v1!.id) as Json).reviewedByUserId, null)
+    assert.equal((history.get(v2!.id) as Json).license.allowsAdaptation, true)
+    const copy = await post(`/resources/${seeded.resource.id}/copy`, t.cookies.teacher)
+    assert.equal(copy.statusCode, 403)
+    assert.equal(copy.json().code, 'license_forbids_copy')
+  })
 })

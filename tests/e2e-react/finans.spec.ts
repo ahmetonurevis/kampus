@@ -719,6 +719,39 @@ test.describe('Finans: tahsilat', () => {
     const client = await api('ogretmen')
     expect((await client.get('/api/v1/collections/invoices')).status).toBe(403)
   })
+
+  test('ON-036, DOM-YTK-040: finans modülü kapalıyken menü, adresler, pano kartları ve uçlar kapanır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['veli'] })
+    const admin = await api(school.user('yonetici'))
+    const settings = await admin.get('/api/v1/modules')
+    expect(settings.status).toBe(200)
+    const { version } = (settings.body as { data: { version: number } }).data
+    const closed = await admin.context.patch('/api/v1/modules/finance', {
+      data: { enabled: false },
+      headers: { 'if-match': `"${String(version)}"`, 'idempotency-key': randomUUID() },
+    })
+    expect(closed.status()).toBe(200)
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(ADMIN_URL)
+    await expect(page).toHaveURL(/\/yonetici\/dashboard$/)
+    await expect(page.getByText('Bu modül kurum ayarlarından kapatılmış.')).toBeVisible()
+    const menu = page.getByRole('navigation', { name: 'Menü' })
+    await expect(menu.getByRole('link', { name: 'Finans & Tahsilat' })).toHaveCount(0)
+    await expect(page.getByRole('article', { name: 'Tahsilat oranı', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Yaklaşan ödemeler & takip' })).toHaveCount(0)
+    const denied = await admin.get('/api/v1/payments')
+    expect(denied.status).toBe(403)
+    expect((denied.body as { code: string }).code).toBe('module_disabled')
+
+    const parent = await api(school.user('veli'))
+    expect((await parent.get('/api/v1/collections/invoices')).status).toBe(403)
+  })
 })
 
 /** Kartın kuruş değeri: "24.500,00 ₺" biçimindeki metnin rakamları. */

@@ -115,6 +115,27 @@ test('DOM-DIL-082: 404 bulunamadı, 429 çok fazla deneme metni verir', () => {
   assert.equal(limited.kind === 'message' && limited.message, VERIFICATION_MESSAGES.rateLimited)
 })
 
+test('DOM-DIL-082: yeniden doğrulamada eski hata ya da sonuç yerine yükleniyor gösterilir', () => {
+  const error = new ApiError({ status: 404, code: 'not_found', message: 'x' })
+  assert.deepEqual(verificationView(CODE, { data: undefined, error, isFetching: true }), {
+    kind: 'loading',
+    code: CODE,
+  })
+  const data = {
+    status: 'valid' as const,
+    learnerInitials: 'D. Y.',
+    courseName: 'B1',
+    issuedDate: '2026-11-03',
+    institutionName: 'Kampüs Dil Akademisi',
+  }
+  assert.equal(verificationView(CODE, { data, error: null, isFetching: true }).kind, 'loading')
+  // İstek bitince hata yeniden görünür.
+  assert.equal(
+    verificationView(CODE, { data: undefined, error, isFetching: false }).kind,
+    'message',
+  )
+})
+
 test('düzenleme günü İstanbul gününde kalır', () => {
   assert.equal(verificationDateLabel('2026-01-01'), '1 Ocak 2026')
   assert.equal(verificationDateLabel('2026-12-31'), '31 Aralık 2026')

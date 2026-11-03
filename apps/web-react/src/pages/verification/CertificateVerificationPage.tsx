@@ -40,7 +40,11 @@ export function CertificateVerificationPage() {
   const { code: rawCode } = useParams<{ code?: string }>()
   const navigate = useNavigate()
   const query = useCertificateVerification(rawCode ?? '')
-  const view = verificationView(rawCode, { data: query.data, error: query.error })
+  const view = verificationView(rawCode, {
+    data: query.data,
+    error: query.error,
+    isFetching: query.isFetching,
+  })
 
   const {
     register,
@@ -102,10 +106,10 @@ export function CertificateVerificationPage() {
           </FormField>
           <Button
             type="submit"
-            disabled={view.kind === 'loading'}
+            disabled={view.kind === 'loading' || query.isFetching}
             className="min-h-[47px] rounded-lg bg-brand px-5 text-base text-on-brand hover:bg-brand-hover"
           >
-            {view.kind === 'loading' ? 'Doğrulanıyor…' : 'Doğrula'}
+            {view.kind === 'loading' || query.isFetching ? 'Doğrulanıyor…' : 'Doğrula'}
           </Button>
         </form>
 

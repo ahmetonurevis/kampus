@@ -31,6 +31,8 @@ export type VerificationView =
 type QueryState = {
   data: CertificateVerification | undefined
   error: ApiError | null
+  /** İstek sürüyor (ilk yükleme ya da aynı kodla yeniden doğrulama). */
+  isFetching?: boolean
 }
 
 /** Düzenleme günü (`YYYY-MM-DD`, Europe/Istanbul gün anahtarı) → "3 Kasım 2026". */
@@ -46,7 +48,7 @@ const RESULT_MESSAGES = {
 
 /**
  * Adresteki ham kod ve sorgu durumundan sonuç bölgesi. Biçimi bozuk kod istek atılmadan
- * reddedilir; 404 "bulunamadı", 429 "çok fazla deneme" metniyle gösterilir (react-shared).
+ * reddedilir; istek sürerken (`isFetching`) eski sonuç ya da hata yerine `loading` döner; 404 "bulunamadı", 429 "çok fazla deneme" metniyle gösterilir (react-shared).
  */
 export function verificationView(rawCode: string | undefined, query: QueryState): VerificationView {
   if (!rawCode) return { kind: 'idle' }
@@ -58,6 +60,8 @@ export function verificationView(rawCode: string | undefined, query: QueryState)
       title: 'Kod geçersiz',
       message: VERIFICATION_MESSAGES.invalidCode,
     }
+  // Yeniden doğrulamada (`refetch`) eski veri/hata sürerken istek yenilenir: sonuç gösterilmez.
+  if (query.isFetching) return { kind: 'loading', code }
   if (query.data) {
     const { status } = query.data
     return {

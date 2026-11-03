@@ -209,6 +209,12 @@ export function verifyCertificateRequest(client: KampusClient, code: string, sig
 }
 
 /**
+ * Doğrulama sonucu önbellekte bayatlamaz: belge iptal edilebilir, geri/ileri gezinmede ya da
+ * sayfa yeniden açıldığında iptal edilmiş belge "Geçerli" görünmemelidir (DOM-DIL-082).
+ */
+export const VERIFICATION_QUERY_FRESHNESS = { staleTime: 0, refetchOnMount: 'always' } as const
+
+/**
  * Kimliksiz doğrulama (`GET /certificate-verifications/:code`). Biçimi bozuk kod için istek
  * atılmaz (sunucu da aynı 404'ü verirdi). 404 ve 429 yeniden denenmez (`shouldRetry`).
  */
@@ -220,7 +226,7 @@ export function useCertificateVerification(rawCode: string) {
     queryFn: async ({ signal }) =>
       (await runRequest(() => verifyCertificateRequest(client, code ?? '', signal))).data,
     enabled: code !== null,
-    staleTime: 60_000,
+    ...VERIFICATION_QUERY_FRESHNESS,
   })
 }
 

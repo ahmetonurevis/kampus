@@ -75,11 +75,11 @@ function StaffCertificates({ page }: { page: NavPage }) {
   const tab: Tab = isTab(requested) ? requested : 'belgeler'
   const groupId = params.get('grup') ?? ''
 
-  function open(next: Tab, group = '') {
+  function open(next: Tab, group = '', replace = false) {
     const search: Record<string, string> = {}
     if (next !== 'belgeler') search.sekme = next
     if (group) search.grup = group
-    setParams(search, { preventScrollReset: true })
+    setParams(search, { preventScrollReset: true, replace })
   }
 
   return (
@@ -93,7 +93,7 @@ function StaffCertificates({ page }: { page: NavPage }) {
       ) : (
         <EligibleList
           groupId={groupId}
-          onGroup={(group) => open('hak-kazananlar', group)}
+          onGroup={(group) => open('hak-kazananlar', group, true)}
           title={page.title}
         />
       )}
@@ -289,7 +289,7 @@ function EligibleList({
                       decisionId: row.decisionId,
                       learner: row.learner,
                       replacesCertificateId: row.replacesCertificateId,
-                      replacesNumber: row.certificate.replace(/ iptal edildi$/, ''),
+                      replacesNumber: row.replacesNumber ?? row.certificate,
                     })
                   }
                 >

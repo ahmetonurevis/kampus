@@ -255,6 +255,10 @@ test('DOM-DIL-080: hak kazanan satırı belge ve MEBBİS izini gösterir', () =>
   assert.equal(third?.certificateState, 'replace')
   assert.equal(third?.replacesCertificateId, 'cert-9')
   assert.match(third?.certificate ?? '', /iptal edildi$/)
+  // İptal edilen belgenin numarası ekran metninden değil ayrı alandan gelir.
+  assert.equal(third?.replacesNumber, 'KB-2026-000001')
+  assert.equal(first?.replacesNumber, null)
+  assert.equal(second?.replacesNumber, null)
 })
 
 test('DOM-DIL-080: hak kazanan satırında işlemler yalnız işaretleyebilen personelde', () => {

@@ -128,6 +128,8 @@ export type EligibleRow = {
   decisionId: string
   learner: string
   certificate: string
+  /** Yeniden düzenlemede iptal edilen belgenin numarası (metinden ayrıştırılmaz). */
+  replacesNumber: string | null
   certificateState: 'valid' | 'replace' | 'none'
   /** Yeniden düzenlemede iptal edilen belge. */
   replacesCertificateId: string | null
@@ -160,6 +162,7 @@ export function eligibleRows(
             : 'Düzenlenmedi',
       certificateState: state.kind,
       replacesCertificateId: state.kind === 'replace' ? state.certificate.id : null,
+      replacesNumber: state.kind === 'replace' ? state.certificate.number : null,
       mebbis: learner.record
         ? `${learner.record.certificateNumber} · ${certificateDate(learner.record.issuedDate)}`
         : 'İşaretlenmedi',

@@ -34,6 +34,7 @@ import {
   verificationErrorMessage,
   verificationFormSchema,
   verificationKey,
+  VERIFICATION_QUERY_FRESHNESS,
   verifyCertificateRequest,
   type CourseCertificate,
 } from '../src/use-course-certificates.ts'
@@ -336,6 +337,10 @@ describe('kimliksiz belge doğrulama', () => {
       '/api/v1/certificate-verifications/ABCD-EFGH-JKMN-PQRS-TVWX-YZ01-2345',
     )
     assert.equal(verificationKey('X')[0], SESSION_KEY_ROOT)
+  })
+
+  test('DOM-DIL-082: doğrulama sonucu önbellekte bayatlamaz, açılışta yeniden çekilir', () => {
+    assert.deepEqual(VERIFICATION_QUERY_FRESHNESS, { staleTime: 0, refetchOnMount: 'always' })
   })
 
   test('DOM-DIL-082: 404 "Belge bulunamadı", 429 çok fazla deneme; teknik ayrıntı gösterilmez', () => {

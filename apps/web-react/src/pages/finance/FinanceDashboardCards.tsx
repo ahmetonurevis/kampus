@@ -101,7 +101,8 @@ function PriorityInvoicesCard({ ctx }: { ctx: DashboardCardContext<DashboardOf<'
     enabled: ready && query !== null,
   })
   if (ready && query === null) return null
-  const today = ctx.data?.today ?? ''
+  // Pano özeti henüz gelmediyse bugünün günü kullanılır; boş gün tarih biçimlendirmesini bozar.
+  const today = ctx.data?.today ?? dayKey()
   const rows = invoices.data?.rows.map((item) => invoiceRow(item, today))
   return (
     <ListCard

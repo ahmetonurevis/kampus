@@ -146,6 +146,35 @@ const isRubricSkill = (skill: string | null): skill is RubricSkill =>
   skill !== null && (RUBRIC_SKILLS as readonly string[]).includes(skill)
 
 /**
+ * Dinleme görevi mi (DOM-BEC-005): birincil becerisi dinleme olan içerik ya da dinleme kaydına
+ * bağlı quiz/alıştırma seti (`listeningVersionId`, IST-045). Dinleme hakkı yalnız bunlarda
+ * sabitlenir; sayılacak kaydı yalnız kayda bağlı etkinlik taşır (`recordingVersionId`).
+ */
+export function isListeningTask(version: Pick<ResourceVersion, 'tags' | 'content'>): boolean {
+  return version.tags.primarySkill === 'listening' || recordingVersionId(version.content) !== null
+}
+
+/** Quiz/alıştırma setinin bağlı dinleme kaydı sürümü; bağ yoksa ya da başka türse `null`. */
+export function recordingVersionId(content: ResourceContent | null): string | null {
+  if (content?.type !== 'quiz' && content?.type !== 'exercise_set') return null
+  return content.listeningVersionId
+}
+
+/**
+ * Kursiyer ve veli dinleme dökümünü görür mü (DOM-BEC-005): görev kapandıysa (son teslim ve geç
+ * kabul geçti, `isClosed`) ya da alıştırmada öğretmen açtıysa (`showTranscript`; değerlendirmede
+ * açılamaz, `assignmentSettingsSchema`). Personel dökümü hep görür; bu karar çağırana aittir.
+ */
+// TODO(beceri-dinleme-uyarlama): işitme engelli kursiyere değerlendirmede kişiye özel döküm açma
+// (erişilebilirlik uyarlaması) atama düzeyinde değil, kursiyer düzeyinde tanımlanacak; bugün yok.
+export function transcriptShown(
+  assignment: Pick<FixedAssignment, 'showTranscript' | 'deadline'>,
+  now: Instant,
+): boolean {
+  return assignment.showTranscript || isClosed(assignment.deadline, now)
+}
+
+/**
  * Ayarları içerikle birleştirip sabitler (ADR 0004 karar 4; DOM-KYN-032). Yalnız güncel yayındaki
  * sürüm atanır; otomatik puanlı görevde teslim ve rubrik, öğretmen puanlı görevde deneme hakkı ve
  * süre uygulanmaz. Yazma, konuşma ve aracılık görevi rubrikle puanlanır (DOM-BEC-020); rubrik
@@ -216,7 +245,7 @@ export function resolveAssignmentSettings(
       scoringMode,
       timeLimitMinutes:
         settings.timeLimitMinutes === undefined ? contentLimit : settings.timeLimitMinutes,
-      listeningPlays: version.tags.primarySkill === 'listening' ? settings.listeningPlays : null,
+      listeningPlays: isListeningTask(version) ? settings.listeningPlays : null,
       submission: null,
       secondRatingPercent: 0,
     }

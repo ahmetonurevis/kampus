@@ -1,0 +1,5 @@
+---
+etki: minor
+---
+
+- Dinleme etkinliği eklendi (OG-052; IST-045, DOM-BEC-005): quiz ve alıştırma seti `listeningVersionId` ile ses (`audio`) sürümüne bağlanır. Yayım bağlı kaydın bulunmasını, ses olmasını, birincil becerisinin dinleme olmasını, yayında olmasını ve dökümünün bulunmasını ister (`listening_missing`, `listening_not_audio`, `listening_skill_required`, `listening_not_published`, `listening_transcript_required`; `PublicationContext.listeningVersion`, `ListeningVersionRef.hasTranscript`). `listeningView` kursiyerin kaydını (dosya, seviye, kaynak gösterimi; döküm ve altyazı yalnız açıkken) verir. `isListeningTask` kayda bağlı quiz'i de dinleme görevi sayar: dinleme hakkı birincil beceriden bağımsız sabitlenir; `recordingVersionId` bağı okur, `transcriptShown` kursiyerin dökümü görüp görmediğini (görev kapandı ya da alıştırmada açık ayar) söyler. Kaldırılan kayda bağlı etkinlik `planResourceRemoval` etkilenen içeriğe girer.

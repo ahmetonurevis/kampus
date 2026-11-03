@@ -68,6 +68,7 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
       'kurlar',
       'gruplar',
       'icerik-havuzu',
+      'rubrik-kutuphanesi',
       'duyurular',
       'mesajlar',
       'izin-formlari',
@@ -193,6 +194,26 @@ test('İçerik Havuzu yalnız yönetici ve öğretmende, learning modülüne ba�
   assert.equal(teacher[teacher.indexOf('sorular') + 1], 'icerik-havuzu')
   const admin = navigation.yonetici.map((p) => p.path)
   assert.ok(admin.indexOf('icerik-havuzu') < admin.indexOf('kayit-raporlari'))
+})
+
+test('IST-048: Rubrik Kütüphanesi yalnız yönetici ve öğretmende, learning modülünde ve içerik havuzunun ardından (OG-083)', () => {
+  for (const role of roleKeys) {
+    const page = navigation[role].find((p) => p.path === 'rubrik-kutuphanesi')
+    if (role !== 'yonetici' && role !== 'ogretmen') {
+      assert.equal(page, undefined, `${role} rubrik kütüphanesini görmemeli`)
+      continue
+    }
+    assert.ok(page, `${role} menüsünde yok`)
+    assert.deepEqual(
+      [page.module, page.group, page.title, page.apiOnly],
+      ['learning', 'ÖĞRENME', 'Rubrik Kütüphanesi', true],
+    )
+    assert.ok(!demoNavigation[role].some((p) => p.path === 'rubrik-kutuphanesi'))
+  }
+  const teacher = navigation.ogretmen.map((p) => p.path)
+  assert.equal(teacher[teacher.indexOf('icerik-havuzu') + 1], 'rubrik-kutuphanesi')
+  const admin = navigation.yonetici.map((p) => p.path)
+  assert.equal(admin[admin.indexOf('odevler') + 1], 'rubrik-kutuphanesi')
 })
 
 test('Beceri Görevleri yalnız yöneticide, öğretmenin Ödevler sayfasıyla aynı adreste ve learning modülünde (OG-993)', () => {

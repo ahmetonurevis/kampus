@@ -236,7 +236,9 @@ describe('atama ayarları (ADR 0004 karar 4)', () => {
       countPolicy: 'first',
     })
     assert.deepEqual(s.deadline, { dueAt: due, lateAcceptanceDays: 0 })
-    assert.equal(s.listeningPlays, LISTENING_PLAYS_DEFAULT)
+    // DOM-BEC-005: hak verilmezse boş kalır; dinleme görevinde sabitlenirken 2 olur.
+    assert.equal(s.listeningPlays, undefined)
+    assert.equal(LISTENING_PLAYS_DEFAULT, 2)
     assert.equal(s.showTranscript, false)
     assert.equal(s.secondRatingPercent, undefined)
     assert.equal(s.timeLimitMinutes, undefined)

@@ -27,6 +27,7 @@ import {
   asCoreVersion,
   findResource,
   listContainerVersions,
+  listListeningContainerVersions,
   listPassageContainerVersions,
   listCopies,
   listResourceVersions,
@@ -247,6 +248,26 @@ async function assertItemsReadable(
         },
       ],
     })
+  // Dinleme etkinliğinin kaydı (IST-045): parça gibi kurumda bulunmalı ve kişi okuyabilmeli; türü,
+  // becerisi, durumu ve dökümü yayımda (`publicationIssues`) denetlenir.
+  const listeningId = content.listeningVersionId
+  const listening =
+    listeningId === null
+      ? null
+      : (await loadVersionPairs(tx, ctx.institutionId, [listeningId])).get(listeningId)
+  if (
+    listeningId !== null &&
+    !(listening && readable(staff, listening.resource, listening.version, ctx.now))
+  )
+    throw new RuleViolationError('listening_missing', 'Seçilen dinleme kaydı bulunamadı.', {
+      issues: [
+        {
+          path: ['content', 'listeningVersionId'],
+          code: 'listening_missing',
+          message: 'Seçilen dinleme kaydı bulunamadı.',
+        },
+      ],
+    })
   const issues = content.items.flatMap((item, index) => {
     const pair = pairs.get(item.questionVersionId)
     return pair && readable(staff, pair.resource, pair.version, ctx.now)
@@ -263,20 +284,19 @@ async function assertItemsReadable(
     throw new RuleViolationError('quiz_item_missing', 'Seçilen soru bulunamadı.', { issues })
 }
 
-/** Yayım denetiminin soru sürümleri ve okuma parçası (DOM-KYN-013; IST-042). */
+/** Yayım denetiminin soru sürümleri, okuma parçası ve dinleme kaydı (DOM-KYN-013; IST-042, 045). */
 async function itemRefs(tx: Database, ctx: ServiceContext, version: StoredResourceVersion) {
   const content = version.content
   const list = content && (content.type === 'quiz' || content.type === 'exercise_set')
   const ids = list ? content.items.map((item) => item.questionVersionId) : []
   const passageId = list ? content.passageVersionId : null
-  const refs = await loadItemVersionRefs(
-    tx,
-    ctx.institutionId,
-    passageId === null ? ids : [...ids, passageId],
-  )
+  const listeningId = list ? content.listeningVersionId : null
+  const linked = [passageId, listeningId].filter((id): id is string => id !== null)
+  const refs = await loadItemVersionRefs(tx, ctx.institutionId, [...ids, ...linked])
   return {
     itemVersions: refs,
     passageVersion: passageId === null ? undefined : refs.get(passageId),
+    listeningVersion: listeningId === null ? undefined : refs.get(listeningId),
   }
 }
 
@@ -548,7 +568,7 @@ export async function transitionVersion(
         const target = await loadTarget(tx, ctx, staff, input.resourceId)
         const version = readableVersion(ctx, staff, target, input.versionId)
         assertExpected(version.rowVersion, input.expectedVersion)
-        const { itemVersions, passageVersion } = await itemRefs(tx, ctx, version)
+        const { itemVersions, passageVersion, listeningVersion } = await itemRefs(tx, ctx, version)
         return () => ({
           target,
           version,
@@ -562,6 +582,7 @@ export async function transitionVersion(
             reason: input.reason,
             itemVersions,
             passageVersion,
+            listeningVersion,
           }),
         })
       },
@@ -643,14 +664,17 @@ export async function removeResource(
         const target = await loadTarget(tx, ctx, staff, input.resourceId)
         assertExpected(target.resource.rowVersion, input.expectedVersion)
         const versionIds = target.versions.map((version) => version.id)
-        const [copies, itemContainers, passageContainers] = await Promise.all([
+        const [copies, itemContainers, passageContainers, listeningContainers] = await Promise.all([
           listCopies(tx, ctx.institutionId, versionIds),
           listContainerVersions(tx, ctx.institutionId, versionIds),
           target.resource.contentType === 'reading_passage'
             ? listPassageContainerVersions(tx, ctx.institutionId, versionIds)
             : [],
+          target.resource.contentType === 'audio'
+            ? listListeningContainerVersions(tx, ctx.institutionId, versionIds)
+            : [],
         ])
-        const containers = [...itemContainers, ...passageContainers]
+        const containers = [...itemContainers, ...passageContainers, ...listeningContainers]
         return () => ({
           target,
           plan: planResourceRemoval({

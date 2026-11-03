@@ -83,10 +83,15 @@ export const assignmentSettingsSchema = z
     attempts: attemptRulesSchema.prefault({ kind: 'evaluation' }),
     deadline: deadlineSchema.prefault({}),
     timeLimitMinutes: z.number().int().min(1).max(300).nullable().optional(),
+    /**
+     * Dinleme hakkı; verilmezse (`undefined`) dinleme görevinde `LISTENING_PLAYS_DEFAULT`
+     * (`resolveAssignmentSettings`). Verilmemiş hak seçilmiş haktan ayrı tutulur: API sayılacak
+     * kaydı olmayan görevde yalnız açıkça seçilen sınırı reddeder (IST-045).
+     */
     listeningPlays: z
       .union([z.literal(1), z.literal(2)])
       .nullable()
-      .default(LISTENING_PLAYS_DEFAULT),
+      .optional(),
     /** Dinleme dökümü görev kapanmadan gösterilmez (DOM-BEC-005); yalnız alıştırmada açılabilir. */
     showTranscript: z.boolean().default(false),
     submission: submissionSettingsSchema.nullable().default(null),
@@ -245,7 +250,11 @@ export function resolveAssignmentSettings(
       scoringMode,
       timeLimitMinutes:
         settings.timeLimitMinutes === undefined ? contentLimit : settings.timeLimitMinutes,
-      listeningPlays: isListeningTask(version) ? settings.listeningPlays : null,
+      listeningPlays: isListeningTask(version)
+        ? settings.listeningPlays === undefined
+          ? LISTENING_PLAYS_DEFAULT
+          : settings.listeningPlays
+        : null,
       submission: null,
       secondRatingPercent: 0,
     }

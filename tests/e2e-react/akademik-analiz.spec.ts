@@ -176,7 +176,8 @@ test.describe('öğrenci: Sınav Analizi ve Akademik Gelişim', () => {
 
     await page.goto('/ogrenci/seviye-takibi?cocuk=s2')
     await expect(page.getByRole('heading', { name: /Deniz Yılmaz, her gün/ })).toBeVisible()
-    await expect(page.getByText('Ece')).toHaveCount(0)
+    // Büyük harfle ad aranır: dizgi araması "Beceri gelişimi" başlığındaki "ece"yi de bulurdu.
+    await expect(page.getByText(/Ece/)).toHaveCount(0)
   })
 
   test('öğrenci kendi analizinde doğru cevapları görür; sınıf arkadaşının analizi gelmez', async ({

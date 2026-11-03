@@ -422,6 +422,9 @@ export const taskAttempts = pgTable(
       table.assignmentId,
       table.learnerId,
     ),
+    // Kursiyerin bütün atamalardaki denemeleri (beceri ilerleme panosu, DOM-BEC-035;
+    // `loadLearnerAttempts`): tekil indeks atamayla başladığından kursiyer süzgecine yaramaz.
+    index('task_attempts_learner_idx').on(table.institutionId, table.learnerId),
   ],
 )
 
@@ -507,6 +510,8 @@ export const taskSubmissions = pgTable(
       table.assignmentId,
       table.learnerId,
     ),
+    // Kursiyerin bütün atamalardaki teslimleri (DOM-BEC-035; `loadLearnerSubmissions`).
+    index('task_submissions_learner_idx').on(table.institutionId, table.learnerId),
   ],
 )
 

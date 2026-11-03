@@ -261,9 +261,9 @@ async function sessionView(db: Database, ctx: ServiceContext, session: StoredPla
  * Öğretmenin kursiyeri görmesi (IST-060): kursiyerin grubunu okuyabilmesi (kendi grubu ya da
  * akademik koordinatörü olduğu seviyenin grubu; core `canReadGroup`). Kapsam yalnız ETKİN grup
  * üyeliğiyle kurulur: dondurulan ya da gruptan ayrılan (arşivlenen) kursiyerin eski öğretmeni
- * profile ve tespitlere ulaşamaz (404).
+ * profile ve tespitlere ulaşamaz (404). Beceri ilerleme panosu da kullanır (DOM-BEC-035).
  */
-async function teacherReaches(
+export async function teacherReaches(
   db: Database,
   ctx: ServiceContext,
   studentId: string,

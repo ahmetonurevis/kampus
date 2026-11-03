@@ -103,6 +103,10 @@
           "branchName": {
             "description": "Kaydın kampüsünün adı",
             "type": "string"
+          },
+          "teacherName": {
+            "description": "Yalnız `questions` ve `appointments`: kaydın öğretmeninin adı. Kapsam okumasından bağımsız, kimlikle çözülür; öğretmen kadrodan ayrılmış (arşivli ya da pasif) olsa da döner. İletişim ve diğer öğretmen alanları dönmez",
+            "type": "string"
           }
         }
       },
@@ -13528,6 +13532,10 @@
           },
           "branchName": {
             "description": "Kaydın kampüsünün adı",
+            "type": "string"
+          },
+          "teacherName": {
+            "description": "Yalnız `questions` ve `appointments`: kaydın öğretmeninin adı. Kapsam okumasından bağımsız, kimlikle çözülür; öğretmen kadrodan ayrılmış (arşivli ya da pasif) olsa da döner. İletişim ve diğer öğretmen alanları dönmez",
             "type": "string"
           }
         },

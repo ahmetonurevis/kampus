@@ -4834,6 +4834,8 @@ export interface components {
             className?: string;
             /** @description Kaydın kampüsünün adı */
             branchName?: string;
+            /** @description Yalnız `questions` ve `appointments`: kaydın öğretmeninin adı. Kapsam okumasından bağımsız, kimlikle çözülür; öğretmen kadrodan ayrılmış (arşivli ya da pasif) olsa da döner. İletişim ve diğer öğretmen alanları dönmez */
+            teacherName?: string;
         };
         CollectionItemInput: {
             /** @description Kayıt kimliği */
@@ -8133,6 +8135,8 @@ export interface components {
             className?: string;
             /** @description Kaydın kampüsünün adı */
             branchName?: string;
+            /** @description Yalnız `questions` ve `appointments`: kaydın öğretmeninin adı. Kapsam okumasından bağımsız, kimlikle çözülür; öğretmen kadrodan ayrılmış (arşivli ya da pasif) olsa da döner. İletişim ve diğer öğretmen alanları dönmez */
+            teacherName?: string;
         };
         CollectionItem: {
             /** @description Kayıt kimliği */

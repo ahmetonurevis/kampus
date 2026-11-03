@@ -202,6 +202,13 @@ export const collectionItemSchema = z
           .optional()
           .describe('Kaydın sınıfının adı; kayıtta sınıf yoksa öğrencinin güncel sınıfı'),
         branchName: z.string().optional().describe('Kaydın kampüsünün adı'),
+        // kvkk: K — yalnız `questions` ve `appointments`; öğretmen ayrılmış (arşivli, pasif) olsa da döner.
+        teacherName: z
+          .string()
+          .optional()
+          .describe(
+            'Yalnız `questions` ve `appointments`: kaydın öğretmeninin adı. Kapsam okumasından bağımsız, kimlikle çözülür; öğretmen kadrodan ayrılmış (arşivli ya da pasif) olsa da döner. İletişim ve diğer öğretmen alanları dönmez',
+          ),
       })
       .meta({ id: 'CollectionItemJoined' })
       .optional()

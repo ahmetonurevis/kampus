@@ -15,7 +15,9 @@ import { useDebouncedValue } from '../use-debounced-value.ts'
 import { useListMemory, useSelectedChild } from '../view-memory.tsx'
 import { ParentAttendance } from './parent-attendance.tsx'
 import { childOptions, ChildPicker } from './parent-child-picker.tsx'
+import { ParentQuizzes } from './parent-quizzes.tsx'
 import { ParentSchedule } from './parent-schedule.tsx'
+import { ParentSkillTasks } from './parent-skill-tasks.tsx'
 import { HomeworkList } from './homework-list.tsx'
 
 type StudentRecord = State['students'][number]
@@ -75,7 +77,7 @@ function GradeList({ childId }: { childId: string }) {
 
 /**
  * Veli: Akademik Takip (web `veli/akademik-takip` ile aynı sekmeler): seçili çocuğun notları,
- * devamsızlığı, haftalık ders programı ve ödevleri. Çocuk seçici bir kez üstte durur, seçim
+ * devamsızlığı, haftalık ders programı, ödevleri, quiz sonuçları ve beceri görevleri. Çocuk seçici bir kez üstte durur, seçim
  * ekranlar arasında korunur (`useSelectedChild`, yalnız bellekte). Çocuklar sunucunun veli
  * kapsamından gelir (yalnız bağlı çocuklar); her sekme verisini `studentId`/`classId` ile ister,
  * sunucu yine yalnız bu velinin çocuklarının kayıtlarını döndürür, istemci süzmez. Kapalı modülün
@@ -108,7 +110,9 @@ export default function ParentTracking() {
     )
   return (
     <Screen>
-      <T muted>Notlar, devamsızlık, ders programı ve ödevler tek bir yerde.</T>
+      <T muted>
+        Notlar, devamsızlık, ders programı, ödevler, quizler ve beceri görevleri tek bir yerde.
+      </T>
       {students.error ? (
         <QueryError error={students.error} onRetry={() => void students.refetch()} />
       ) : !students.data ? (
@@ -123,13 +127,18 @@ export default function ParentTracking() {
             <GradeList key={childId} childId={childId} />
           ) : tab === 'devamsizlik' ? (
             <ParentAttendance key={childId} childId={childId} />
+          ) : tab === 'gorevler' ? (
+            // Görev ataması sınıfa değil çocuğa hedeflenir; sınıf atanmamış çocukta da görünür.
+            <ParentSkillTasks key={childId} childId={childId} />
           ) : !classId ? (
             <Empty
               title="Sınıf atanmamış"
-              text="Çocuğunuzun sınıfı atandığında program ve ödevler burada görünür."
+              text="Çocuğunuzun sınıfı atandığında program, ödev ve quizler burada görünür."
             />
           ) : tab === 'program' ? (
-            <ParentSchedule key={childId} classId={classId} />
+            <ParentSchedule key={childId} classId={classId} childId={childId} />
+          ) : tab === 'quizler' ? (
+            <ParentQuizzes key={childId} student={{ id: childId, classId }} />
           ) : (
             <HomeworkList
               key={childId}

@@ -173,6 +173,18 @@ describe('DOM-BEC-047 anında geri bildirim', () => {
       }),
       { kind: 'duplicate' },
     )
+    // Veritabanından okunan jsonb anahtar sırasını değiştirir; aynı cevap yine mükerrerdir.
+    const stored = check('test-q-match', 1, {
+      pairs: pairs.map(({ promptId, choiceId }) => ({ choiceId, promptId })),
+      questionType: 'matching',
+    } as never)
+    assert.deepEqual(
+      plan({
+        checks: [stored],
+        check: { questionVersionId: 'test-q-match', response: reordered },
+      }),
+      { kind: 'duplicate' },
+    )
     // Kilitli maddede aynı cevabın yeniden gönderimi de mükerrerdir (ret değil).
     const locked = [check('test-q-mc', 1, choose('b'))]
     assert.deepEqual(

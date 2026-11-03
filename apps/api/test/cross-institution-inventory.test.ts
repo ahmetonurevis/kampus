@@ -437,6 +437,18 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'skill-progress',
   ),
 
+  // --- Ünite alıştırma seti (OG-085; IST-056, DOM-BEC-047, 048) --------------------------------
+  'POST /api/v1/task-attempts/:attemptId/checks': kayit(
+    'practice-sets.test.ts',
+    'başkasının ve başka kurumun denemesi',
+    '/checks',
+  ),
+  'GET /api/v1/practice-gradebook': liste(
+    'practice-sets.test.ts',
+    'başka kurumun alıştırma sonuçları',
+    'practice-gradebook',
+  ),
+
   // --- Ders programı ---------------------------------------------------------------------------
   'GET /api/v1/lessons': LESSON_READ,
   'GET /api/v1/lessons/:lessonId': LESSON_READ,

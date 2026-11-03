@@ -3340,6 +3340,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/task-attempts/{attemptId}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Alıştırma maddesini kontrol et
+         * @description Alıştırmada anında geri bildirim (IST-056, DOM-BEC-047; core `planItemCheck`): cevap denemeye kaydedilir, yanıt denemenin ayrıntısıdır ve `feedback` maddenin doğru/yanlış sonucunu, kalan hakkı ve yalnız kilitli maddenin anahtarını taşır. Madde başına 2 hak; doğru cevap ya da hakkın bitmesi maddeyi kilitler, kilitli maddenin cevabı kayıt ve teslimde değişmez. Son kontrolle aynı cevap mükerrerdir: hak tüketmez, hiçbir şey yazılmaz. Değerlendirme 422 `instant_feedback_unavailable`; kilitli madde 422 `item_check_locked`; görevde olmayan soru ya da uyuşmayan cevap 422 `answer_invalid`; süre dolduysa 422 `attempt_time_over`; teslim edilmiş deneme 409 `attempt_already_submitted`. İçerik kuralı cevap kaydıyla aynıdır (422 `content_unavailable`). `If-Match` zorunlu (denemenin `rowVersion`'ı; tutmazsa 409 `version_conflict`). Denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["checkTaskAttemptItem"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/task-submissions": {
         parameters: {
             query?: never;
@@ -4732,6 +4752,26 @@ export interface paths {
          * @description Öğrencinin okuma, dinleme, yazma ve konuşma eğrileri (IST-057, DOM-BEC-035): her nokta bir değerlendirme görevinin sayılan denemesi ya da kesinleşmiş puanlı teslimidir ve atama ile deneme/teslim kimliğini taşır. Alıştırma, puanı kişiye açılmamış sonuç (DOM-BEC-045), içeriği kaldırılmış görev (DOM-KYN-051) ve arşivlenmiş atama girmez. Son değer ve eğilim her okumada hesaplanır, saklanmaz. Roller: `yonetici` herkesi, `ogretmen` ders verdiği sınıftaki ya da grubunu okuyabildiği öğrenciyi (yalnız atamasını gördüğü görevler), `ogrenci` kendisini, `veli` bağlı çocuğunu görür; ön büro 403. Göremediği, olmayan ya da başka kurumun öğrencisi 404. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         get: operations["getSkillProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/practice-gradebook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Alıştırma not defteri
+         * @description Alıştırma sonuçlarının ünite, beceri ve kazanım kırılımı (IST-056, DOM-BEC-048): kişinin gördüğü arşivsiz, otomatik puanlı alıştırma atamalarından kursiyer başına son tamamlanan deneme alınır. Hücre madde puanlarının toplamıdır (kazanılan / olası × 100); ünite setin, beceri ve kazanım maddenin etiketidir (soru etiketsizse setin). Her okumada hesaplanır, saklanmaz; not aktarımına, not ortalamasına, seviye önerisine ve beceri panosuna girmez. İçeriği kaldırılmış atama girmez (DOM-KYN-051). En yeni 100 alıştırma ataması okunur (`truncated`). `targetId` hedefi o sınıf/grup/öğrenci olan atamalara daraltır. Roller: `yonetici` bütün atamalar, `ogretmen` atadığı ya da kapsamındaki hedefi yüzünden gördüğü atamalar (DOM-YTK-028), `ogrenci` yalnız kendi sonucu; `veli` (DOM-BEC-041) ve ön büro 403. Bilinmeyen parametre 400. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getPracticeGradebook"];
         put?: never;
         post?: never;
         delete?: never;
@@ -6502,6 +6542,59 @@ export interface components {
         };
         TaskAssignmentInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerInput"];
         TaskAssignmentDetailInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerDetailInput"];
+        TaskAttemptItemFeedbackInput: {
+            questionVersionId: string;
+            /** @description Kullanılan kontrol hakkı */
+            used: number;
+            /** @description Kalan kontrol hakkı (madde başına 2) */
+            remaining: number;
+            /** @description Son kontrol edilen cevap tam doğru mu */
+            correct: boolean;
+            correctParts: number;
+            /** @description Çok maddeli soruda madde sayısı; diğerlerinde 1 */
+            parts: number;
+            /** @description Doğru cevap ya da hak bitti: cevap bu denemede değişmez, anahtar açılır */
+            locked: boolean;
+            /** @description Yalnız kilitli maddenin doğru cevabı ve açıklaması; diğer maddeler `null` (DOM-BEC-045, 047). İçerik kapalıysa `null` */
+            answerKey: ({
+                /** @constant */
+                questionType: "multiple_choice";
+                correctOptionId: string;
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "true_false";
+                /** @enum {string} */
+                answer: "true" | "false" | "not_given";
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "matching";
+                pairs: {
+                    promptId: string;
+                    choiceId: string;
+                }[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "gap_fill";
+                gaps: {
+                    gapId: string;
+                    accepted: string[];
+                }[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "ordering";
+                order: string[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "short_answer";
+                accepted: string[];
+                explanation: string;
+            }) | null;
+        };
         TaskAttemptItemScoreInput: {
             questionVersionId: string;
             parts: number;
@@ -6635,6 +6728,8 @@ export interface components {
             };
             /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResultInput"] | null;
+            /** @description Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null` */
+            feedback: components["schemas"]["TaskAttemptItemFeedbackInput"][] | null;
             /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
             contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
@@ -6701,6 +6796,8 @@ export interface components {
             };
             /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResultInput"] | null;
+            /** @description Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null` */
+            feedback: components["schemas"]["TaskAttemptItemFeedbackInput"][] | null;
             /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
             contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
@@ -8231,6 +8328,131 @@ export interface components {
                 /** @description Eğilim: son nokta, önceki en çok üç noktanın ortalamasına göre (±5 puan) */
                 trend: ("up" | "down" | "steady") | null;
             }[];
+        };
+        PracticeGradebookInput: {
+            /** @description Not defterine giren alıştırma atamaları, en yeni önce */
+            assignments: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                unit: {
+                    number: number;
+                    title: string | null;
+                } | null;
+                /** @description Tamamlanmış denemesi olan kursiyer sayısı */
+                learners: number;
+            }[];
+            /** @description Kursiyer başına kırılım, kimlik sırasıyla */
+            learners: {
+                learnerId: string;
+                /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende kapsamındakiler */
+                learnerName: string | null;
+                /** @description Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı */
+                sets: number;
+                /** @description Bütün maddeler */
+                overall: {
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                };
+                /** @description Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır */
+                units: {
+                    number: number;
+                    title: string | null;
+                    sets: number;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …) */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla */
+                outcomes: {
+                    /** @enum {string} */
+                    outcomeSource: "platform" | "institution";
+                    outcomeId: string;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+            }[];
+            /** @description Bütün kursiyerlerin toplamı */
+            totals: {
+                /** @description Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı */
+                sets: number;
+                /** @description Bütün maddeler */
+                overall: {
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                };
+                /** @description Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır */
+                units: {
+                    number: number;
+                    title: string | null;
+                    sets: number;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …) */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla */
+                outcomes: {
+                    /** @enum {string} */
+                    outcomeSource: "platform" | "institution";
+                    outcomeId: string;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+            };
+            /** @description Görülen alıştırma ataması sınırı (100) aştı; en yeniler okundu */
+            truncated: boolean;
         };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
@@ -9910,6 +10132,59 @@ export interface components {
         };
         TaskAssignment: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearner"];
         TaskAssignmentDetail: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearnerDetail"];
+        TaskAttemptItemFeedback: {
+            questionVersionId: string;
+            /** @description Kullanılan kontrol hakkı */
+            used: number;
+            /** @description Kalan kontrol hakkı (madde başına 2) */
+            remaining: number;
+            /** @description Son kontrol edilen cevap tam doğru mu */
+            correct: boolean;
+            correctParts: number;
+            /** @description Çok maddeli soruda madde sayısı; diğerlerinde 1 */
+            parts: number;
+            /** @description Doğru cevap ya da hak bitti: cevap bu denemede değişmez, anahtar açılır */
+            locked: boolean;
+            /** @description Yalnız kilitli maddenin doğru cevabı ve açıklaması; diğer maddeler `null` (DOM-BEC-045, 047). İçerik kapalıysa `null` */
+            answerKey: ({
+                /** @constant */
+                questionType: "multiple_choice";
+                correctOptionId: string;
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "true_false";
+                /** @enum {string} */
+                answer: "true" | "false" | "not_given";
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "matching";
+                pairs: {
+                    promptId: string;
+                    choiceId: string;
+                }[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "gap_fill";
+                gaps: {
+                    gapId: string;
+                    accepted: unknown;
+                }[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "ordering";
+                order: string[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "short_answer";
+                accepted: unknown;
+                explanation: string;
+            }) | null;
+        };
         TaskAttemptItemScore: {
             questionVersionId: string;
             parts: number;
@@ -10043,6 +10318,8 @@ export interface components {
             };
             /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResult"] | null;
+            /** @description Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null` */
+            feedback: components["schemas"]["TaskAttemptItemFeedback"][] | null;
             /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
             contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
@@ -10109,6 +10386,8 @@ export interface components {
             };
             /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResult"] | null;
+            /** @description Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null` */
+            feedback: components["schemas"]["TaskAttemptItemFeedback"][] | null;
             /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
             contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
@@ -11638,6 +11917,131 @@ export interface components {
                 /** @description Eğilim: son nokta, önceki en çok üç noktanın ortalamasına göre (±5 puan) */
                 trend: ("up" | "down" | "steady") | null;
             }[];
+        };
+        PracticeGradebook: {
+            /** @description Not defterine giren alıştırma atamaları, en yeni önce */
+            assignments: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                unit: {
+                    number: number;
+                    title: string | null;
+                } | null;
+                /** @description Tamamlanmış denemesi olan kursiyer sayısı */
+                learners: number;
+            }[];
+            /** @description Kursiyer başına kırılım, kimlik sırasıyla */
+            learners: {
+                learnerId: string;
+                /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende kapsamındakiler */
+                learnerName: string | null;
+                /** @description Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı */
+                sets: number;
+                /** @description Bütün maddeler */
+                overall: {
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                };
+                /** @description Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır */
+                units: {
+                    number: number;
+                    title: string | null;
+                    sets: number;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …) */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla */
+                outcomes: {
+                    /** @enum {string} */
+                    outcomeSource: "platform" | "institution";
+                    outcomeId: string;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+            }[];
+            /** @description Bütün kursiyerlerin toplamı */
+            totals: {
+                /** @description Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı */
+                sets: number;
+                /** @description Bütün maddeler */
+                overall: {
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                };
+                /** @description Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır */
+                units: {
+                    number: number;
+                    title: string | null;
+                    sets: number;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …) */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla */
+                outcomes: {
+                    /** @enum {string} */
+                    outcomeSource: "platform" | "institution";
+                    outcomeId: string;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+            };
+            /** @description Görülen alıştırma ataması sınırı (100) aştı; en yeniler okundu */
+            truncated: boolean;
         };
     };
     responses: never;
@@ -32447,6 +32851,146 @@ export interface operations {
             };
         };
     };
+    checkTaskAttemptItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Deneme kimliği */
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        /** @description Kontrol edilecek madde (puanlama sürümündeki soru sürümü) ve cevabı; cevap denemeye de kaydedilir */
+        requestBody: {
+            content: {
+                "application/json": {
+                    questionVersionId: string;
+                    response: {
+                        /** @enum {string} */
+                        questionType: "multiple_choice";
+                        optionId: string | null;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "true_false";
+                        answer: ("true" | "false" | "not_given") | null;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "matching";
+                        pairs: {
+                            promptId: string;
+                            choiceId: string;
+                        }[];
+                    } | {
+                        /** @enum {string} */
+                        questionType: "gap_fill";
+                        gaps: {
+                            gapId: string;
+                            value: string;
+                        }[];
+                    } | {
+                        /** @enum {string} */
+                        questionType: "ordering";
+                        order: string[];
+                    } | {
+                        /** @enum {string} */
+                        questionType: "short_answer";
+                        value: string;
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAttemptDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listTaskSubmissions: {
         parameters: {
             query: {
@@ -41979,6 +42523,85 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["SkillProgress"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPracticeGradebook: {
+        parameters: {
+            query?: {
+                /** @description Hedef süzgeci: sınıf/şube, dil grubu ya da öğrenci hedefi kimliği */
+                targetId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PracticeGradebook"];
                     };
                 };
             };

@@ -6,6 +6,7 @@ import { AppError, MESSAGES } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import {
+  checkTaskAttemptItem,
   getTaskAttempt,
   listTaskAttempts,
   saveTaskAttemptAnswers,
@@ -18,6 +19,7 @@ import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import { readErrors } from './communication.schemas.ts'
 import {
   taskAttemptAnswersBodySchema,
+  taskAttemptCheckBodySchema,
   taskAttemptAssignmentParamsSchema,
   taskAttemptDetailResponseSchema,
   taskAttemptListQuerySchema,
@@ -178,6 +180,35 @@ export function registerTaskAttemptRoutes(app: FastifyInstance) {
         contextOf(request),
         { attemptId: request.params.attemptId, answers: request.body.answers, expectedVersion },
         idempotencyOf(request, true),
+      )
+      return send(reply, result)
+    },
+  )
+
+  typed.post(
+    '/api/v1/task-attempts/:attemptId/checks',
+    {
+      preValidation: [...write, requireIfMatch()],
+      schema: {
+        operationId: 'checkTaskAttemptItem',
+        tags: ['task-attempts'],
+        summary: 'Alıştırma maddesini kontrol et',
+        description: `Alıştırmada anında geri bildirim (IST-056, DOM-BEC-047; core \`planItemCheck\`): cevap denemeye kaydedilir, yanıt denemenin ayrıntısıdır ve \`feedback\` maddenin doğru/yanlış sonucunu, kalan hakkı ve yalnız kilitli maddenin anahtarını taşır. Madde başına 2 hak; doğru cevap ya da hakkın bitmesi maddeyi kilitler, kilitli maddenin cevabı kayıt ve teslimde değişmez. Son kontrolle aynı cevap mükerrerdir: hak tüketmez, hiçbir şey yazılmaz. Değerlendirme 422 \`instant_feedback_unavailable\`; kilitli madde 422 \`item_check_locked\`; görevde olmayan soru ya da uyuşmayan cevap 422 \`answer_invalid\`; süre dolduysa 422 \`attempt_time_over\`; teslim edilmiş deneme 409 \`attempt_already_submitted\`. İçerik kuralı cevap kaydıyla aynıdır (422 \`content_unavailable\`). \`If-Match\` zorunlu (denemenin \`rowVersion\`'ı; tutmazsa 409 \`version_conflict\`). Denetim kaydına yazılmaz. ${WRITE_ACCESS}`,
+        params: taskAttemptParamsSchema,
+        body: taskAttemptCheckBodySchema,
+        headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
+        response: { 200: taskAttemptDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const result = await checkTaskAttemptItem(
+        contextOf(request),
+        {
+          attemptId: request.params.attemptId,
+          expectedVersion: requiredVersion(request),
+          check: request.body,
+        },
+        idempotencyOf(request, false),
       )
       return send(reply, result)
     },

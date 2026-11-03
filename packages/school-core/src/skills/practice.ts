@@ -71,16 +71,31 @@ export type ItemFeedback = {
   answerKey: AnswerKey | null
 }
 
-/** Cevabın sıra bağımsız karşılaştırma biçimi: eşleştirme ve boşluk listesi kimliğe göre dizilir. */
+/** Nesne anahtarları sözlük sırasıyla dizilmiş JSON: jsonb anahtar sırasını korumaz. */
+function sortedJson(value: unknown): string {
+  if (Array.isArray(value)) return `[${value.map(sortedJson).join(',')}]`
+  if (typeof value === 'object' && value !== null)
+    return `{${Object.entries(value)
+      .filter(([, entry]) => entry !== undefined)
+      .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+      .map(([key, entry]) => `${JSON.stringify(key)}:${sortedJson(entry)}`)
+      .join(',')}}`
+  return JSON.stringify(value)
+}
+
+/**
+ * Cevabın sıra bağımsız karşılaştırma biçimi: eşleştirme ve boşluk listesi kimliğe göre dizilir,
+ * nesne anahtarları sıralanır (kayıtlı kontrol veritabanından anahtar sırası değişmiş okunur).
+ */
 function canonical(response: TaskResponse): string {
   switch (response.questionType) {
     case 'matching':
-      return JSON.stringify({
+      return sortedJson({
         ...response,
         pairs: [...response.pairs].sort((a, b) => a.promptId.localeCompare(b.promptId)),
       })
     case 'gap_fill':
-      return JSON.stringify({
+      return sortedJson({
         ...response,
         gaps: [...response.gaps].sort((a, b) => a.gapId.localeCompare(b.gapId)),
       })
@@ -88,7 +103,7 @@ function canonical(response: TaskResponse): string {
     case 'true_false':
     case 'ordering':
     case 'short_answer':
-      return JSON.stringify(response)
+      return sortedJson(response)
     default:
       return response satisfies never
   }

@@ -24,7 +24,7 @@ import {
   type TaskAssignmentListInput,
   type Viewer,
 } from './task-assignments.ts'
-import { learnerAttemptProgress } from './task-attempts.ts'
+import { hidesPracticeResult, learnerAttemptProgress } from './task-attempts.ts'
 import { learnerSubmissionProgress, loadGrading } from './task-submissions.ts'
 import {
   loadWorkPairs,
@@ -137,7 +137,13 @@ function rawProgressOf(
       const own = book.attempts.filter(
         (attempt) => attempt.assignmentId === assignment.id && attempt.learnerId === learnerId,
       )
-      const progress = learnerAttemptProgress(assignment, context, own, ctx.now)
+      const progress = learnerAttemptProgress(
+        assignment,
+        context,
+        own,
+        ctx.now,
+        hidesPracticeResult(viewer, assignment),
+      )
       return {
         learnerId,
         resubmissionRequested: false,

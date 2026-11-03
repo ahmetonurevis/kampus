@@ -316,6 +316,13 @@
       "when": 1793681335594,
       "tag": "0044_add_task_learner_indexes",
       "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793684633883,
+      "tag": "0045_add_attempt_item_checks",
+      "breakpoints": true
     }
   ]
 }

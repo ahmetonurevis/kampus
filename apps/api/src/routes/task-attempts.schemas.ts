@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { answerKeySchema, questionBodySchema } from '@kampus/school-core/content/resource.ts'
 import { CEFR_LEVELS, enumKeys, SUBSKILLS } from '@kampus/school-core/content/taxonomy.ts'
+import { ITEM_CHECK_LIMIT, itemCheckInputSchema } from '@kampus/school-core/skills/practice.ts'
 import { answersSchema } from '@kampus/school-core/skills/scoring.ts'
 
 import { attributionSchema } from './resources.schemas.ts'
@@ -48,6 +49,34 @@ export const taskAttemptSubmitBodySchema = z.strictObject({
     .optional()
     .describe('Teslimle birlikte kaydedilecek son cevaplar; süre dolduysa alınmaz'),
 })
+
+export const taskAttemptCheckBodySchema = itemCheckInputSchema.describe(
+  'Kontrol edilecek madde (puanlama sürümündeki soru sürümü) ve cevabı; cevap denemeye de kaydedilir',
+)
+
+const itemFeedbackSchema = z
+  .object({
+    questionVersionId: z.string(),
+    used: z.number().int().min(1).describe('Kullanılan kontrol hakkı'),
+    remaining: z
+      .number()
+      .int()
+      .min(0)
+      .max(ITEM_CHECK_LIMIT)
+      .describe(`Kalan kontrol hakkı (madde başına ${ITEM_CHECK_LIMIT})`),
+    correct: z.boolean().describe('Son kontrol edilen cevap tam doğru mu'),
+    correctParts: z.number().int().min(0),
+    parts: z.number().int().min(0).describe('Çok maddeli soruda madde sayısı; diğerlerinde 1'),
+    locked: z
+      .boolean()
+      .describe('Doğru cevap ya da hak bitti: cevap bu denemede değişmez, anahtar açılır'),
+    answerKey: answerKeySchema
+      .nullable()
+      .describe(
+        'Yalnız kilitli maddenin doğru cevabı ve açıklaması; diğer maddeler `null` (DOM-BEC-045, 047). İçerik kapalıysa `null`',
+      ),
+  })
+  .meta({ id: 'TaskAttemptItemFeedback' })
 
 const itemScoreSchema = z
   .object({
@@ -122,6 +151,12 @@ const attemptShape = {
     .nullable()
     .describe(
       'Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010)',
+    ),
+  feedback: z
+    .array(itemFeedbackSchema)
+    .nullable()
+    .describe(
+      'Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null`',
     ),
   contentRemoved: z
     .boolean()

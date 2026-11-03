@@ -52,7 +52,7 @@ export function todayLessons<T extends Pick<Lesson, 'id' | 'date' | 'status'>>(
     )
 }
 
-/** Listede dokunulan satır: bir ders (ya da program kapalıyken bir sınıf) ve sınıfın yoklaması. */
+/** Listede dokunulan satır: bir ders ya da bir sınıf ve sınıfın bugünkü yoklaması. */
 export type AttendanceTarget = {
   key: string
   classId: string
@@ -62,6 +62,15 @@ export type AttendanceTarget = {
   canTake: boolean
   /** Sınıfın bugünkü yoklaması kayıtlı. */
   taken: boolean
+}
+
+/**
+ * Ekranın iki bölümü: bugünün dersleri ve ders verilen ama bugün dersi olmayan sınıflar. Ders
+ * programı kapalıyken ders bölümü boştur, ders verilen bütün sınıflar ikinci bölümdedir.
+ */
+export type AttendanceSections = {
+  lessons: AttendanceTarget[]
+  classes: AttendanceTarget[]
 }
 
 type TargetInput = {
@@ -88,9 +97,10 @@ function lessonSubtitle(lesson: LessonFields, subjectNames: ReadonlyMap<string, 
 }
 
 /**
- * Yoklama listesi. Ders programı açıksa bugünün dersleri (iptal hariç); kapalıysa web'deki gibi
- * öğretmenin ders verdiği sınıflar (ad sırasıyla). Yoklama sınıf ve gün bazındadır: aynı sınıfın
- * bugünkü dersleri aynı kaydı gösterir (DOM-AKD-030 boşluğu, ders saati bazlı yoklama yok).
+ * Yoklama listesi. Ders programı açıksa önce bugünün dersleri (iptal hariç, saat sırasıyla), sonra
+ * ders verilen ama bugün dersi olmayan sınıflar; web her ders verilen sınıfta bugünkü yoklamaya
+ * izin verir (DOM-YTK-022). Program kapalıysa yalnız sınıflar (ad sırasıyla). Yoklama sınıf ve gün
+ * bazındadır: aynı sınıfın bugünkü dersleri aynı kaydı gösterir (DOM-AKD-030 boşluğu).
  */
 export function attendanceTargets({
   lessons,
@@ -99,27 +109,38 @@ export function attendanceTargets({
   subjectNames,
   teachingClassIds,
   takenClassIds,
-}: TargetInput): AttendanceTarget[] {
+}: TargetInput): AttendanceSections {
   const className = (classId: string) => classNames.get(classId) ?? 'Sınıf'
-  if (lessons)
-    return todayLessons(lessons, today).map((lesson) => ({
-      key: lesson.id,
-      classId: lesson.classId,
-      title: className(lesson.classId),
-      subtitle: lessonSubtitle(lesson, subjectNames),
-      canTake: teachingClassIds.has(lesson.classId),
-      taken: takenClassIds.has(lesson.classId),
-    }))
-  return [...teachingClassIds]
+  const lessonRows = todayLessons(lessons ?? [], today).map((lesson) => ({
+    key: `lesson:${lesson.id}`,
+    classId: lesson.classId,
+    title: className(lesson.classId),
+    subtitle: lessonSubtitle(lesson, subjectNames),
+    canTake: teachingClassIds.has(lesson.classId),
+    taken: takenClassIds.has(lesson.classId),
+  }))
+  const withLesson = new Set(lessonRows.map((row) => row.classId))
+  const classRows = [...teachingClassIds]
+    .filter((classId) => !withLesson.has(classId))
     .map((classId) => ({
-      key: classId,
+      key: `class:${classId}`,
       classId,
       title: className(classId),
-      subtitle: 'Bugünkü yoklama',
+      subtitle: lessons ? 'Bugün programda dersi yok' : 'Bugünkü yoklama',
       canTake: true,
       taken: takenClassIds.has(classId),
     }))
     .sort((left, right) => left.title.localeCompare(right.title, 'tr', { numeric: true }))
+  return { lessons: lessonRows, classes: classRows }
+}
+
+/**
+ * Ekranın günü eskidi mi: gün Europe/Istanbul takvimine göredir. Uygulama gece yarısını arka
+ * planda geçirdiyse dünün dersleri gösterilmez, dünün tarihiyle kayıt gönderilmez (öğretmen geçmiş
+ * günü düzeltemez, `attendance_correction_admin_only`, DOM-AKD-035).
+ */
+export function isStaleDay(day: string, now: Date = new Date()): boolean {
+  return dayKey(now) !== day
 }
 
 /** Öğretmenin ders verdiği sınıflar; yalnız rehberi olduğu sınıfta yoklama alınamaz (DOM-YTK-022). */
@@ -179,12 +200,26 @@ export function markCounts(
   return counts
 }
 
-/** Kayıtlı (ya da varsayılan) duruma göre değişen öğrenci sayısı; kaydedilmemiş iş uyarısı için. */
+/**
+ * Kaydedilmemiş işaretler: sunucudaki son hâlden (ya da varsayılan "Geldi"den) farklı olanlar.
+ * Sürüm çakışmasından (409) sonra sorgular tazelenince sunucunun yeni değeriyle aynı olan işaret
+ * düşer, farklı olan kalır (web `AttendanceTaking` ile aynı: kullanıcının işi silinmez).
+ */
+export function pendingEdits(
+  base: Readonly<Record<string, AttendanceMark>>,
+  edits: Readonly<Record<string, AttendanceMark>>,
+): Record<string, AttendanceMark> {
+  return Object.fromEntries(
+    Object.entries(edits).filter(([id, status]) => id in base && base[id] !== status),
+  )
+}
+
+/** Sunucudaki son hâle göre değişen öğrenci sayısı; kaydedilmemiş iş uyarısı için. */
 export function unsavedCount(
   base: Readonly<Record<string, AttendanceMark>>,
   marks: Readonly<Record<string, AttendanceMark>>,
 ): number {
-  return Object.entries(marks).filter(([id, status]) => base[id] !== status).length
+  return Object.keys(pendingEdits(base, marks)).length
 }
 
 /**
@@ -205,19 +240,6 @@ export function attendancePayload(input: {
     marks: { ...input.marks },
     classVersion: input.classVersion ?? null,
   }
-}
-
-/**
- * Başarısız gönderimden sonra ekrandaki işaretler. Sürüm çakışmasında (409) sorgular tazelenir ve
- * işaretler bırakılır: ekran sunucudaki son hâli gösterir, öğretmen kontrol edip yeniden kaydeder.
- * Ağ ya da kural hatasında hiçbir kayıt değişmemiştir; kayıtlı durum aynı kalır, öğretmenin
- * kaydedilmemiş işaretleri yeniden denemek için korunur.
- */
-export function editsAfterFailure(
-  edits: Readonly<Record<string, AttendanceMark>>,
-  error: Pick<ApiError, 'status' | 'code'>,
-): Record<string, AttendanceMark> {
-  return error.status === 409 && error.code === 'version_conflict' ? {} : { ...edits }
 }
 
 /** Pencere içinde gösterilecek Türkçe hata (toast pencerenin altında kalır); 401'de `null`. */

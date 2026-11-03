@@ -1,5 +1,5 @@
-import { useMemo, useState } from 'react'
-import { Pressable, View, useWindowDimensions } from 'react-native'
+import { useEffect, useMemo, useState } from 'react'
+import { AppState, Pressable, View, useWindowDimensions } from 'react-native'
 import { toApiError } from '@kampus/api-client/errors.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
@@ -7,14 +7,14 @@ import { useRecordAttendance } from '@kampus/react-shared/use-academic-commands.
 import { useCollectionAll } from '@kampus/react-shared/use-collection.ts'
 import { useLessonsInRange } from '@kampus/react-shared/use-lessons.ts'
 import { Badge, Button, Empty, Icon, Sheet, T, toneSoft, useColors } from '../../ui/components.tsx'
-import { ListRow, Notice, Screen } from '../../ui/SchoolLayout.tsx'
+import { ListRow, Notice, Screen, Section } from '../../ui/SchoolLayout.tsx'
 import {
   ATTENDANCE_CHOICES,
   attendanceFailureText,
   attendanceMarks,
   attendancePayload,
   attendanceTargets,
-  editsAfterFailure,
+  isStaleDay,
   markAll,
   markCounts,
   markStudent,
@@ -108,9 +108,13 @@ function StatusChoice({ studentName, value, disabled, onChange }: ChoiceProps) {
 
 type SheetProps = {
   target: AttendanceTarget
-  /** Sınıf kaydının okunan sürümü (`If-Match`); çakışmada sınıf sorgusuyla tazelenir. */
+  /** Sınıf kaydının okunan sürümü (`If-Match`); pencere açılırken ve çakışmada tazelenir. */
   classVersion: number | undefined
+  /** Sınıf sürümü tazeleniyor; eski sürümle gönderilmesin diye kayıt bekler. */
+  versionPending: boolean
   today: string
+  /** Gün değişti (gece yarısı geçti): ekran yeni güne geçer, pencere kapanır. */
+  onDayChanged: () => void
   onClose: () => void
 }
 
@@ -118,9 +122,18 @@ type SheetProps = {
  * Sınıfın bugünkü yoklaması (web "Yoklama al" formu). Varsayılan "Geldi"; kayıtlı gün varsa onun
  * durumu yüklenir. Kayıt tek istektir ve yinelenmez: ikinci gönderim aynı günün kaydını günceller
  * (DOM-AKD-035). İyimser güncelleme yoktur; başarıdan sonra liste sunucudan tazelenir. Hata pencere
- * içinde gösterilir (toast pencerenin altında kalır).
+ * içinde gösterilir (toast pencerenin altında kalır). Başarısız kayıtta öğretmenin işaretleri
+ * silinmez: sürüm çakışmasında (409) sorgular tazelenir, ekran sunucunun son hâlini gösterir ve
+ * ondan farklı işaretler "kaydedilmemiş" olarak kalır (web `AttendanceTaking` ile aynı).
  */
-function AttendanceSheet({ target, classVersion, today, onClose }: SheetProps) {
+function AttendanceSheet({
+  target,
+  classVersion,
+  versionPending,
+  today,
+  onDayChanged,
+  onClose,
+}: SheetProps) {
   const c = useColors()
   const notify = useNotify()
   const students = useCollectionAll<StudentRecord>('students', {
@@ -146,6 +159,7 @@ function AttendanceSheet({ target, classVersion, today, onClose }: SheetProps) {
   const changed = unsavedCount(base, marks)
   const alreadyTaken = savedRecords.length > 0
   const busy = record.isPending
+  const blocked = busy || versionPending
   const loading = !students.data || !saved.data
   const error = students.error ?? saved.error
 
@@ -155,6 +169,10 @@ function AttendanceSheet({ target, classVersion, today, onClose }: SheetProps) {
   }
 
   async function save() {
+    if (isStaleDay(today)) {
+      onDayChanged()
+      return
+    }
     const updating = alreadyTaken
     const outcome = await record.submit(
       attendancePayload({ classId: target.classId, today, marks, classVersion }),
@@ -163,8 +181,8 @@ function AttendanceSheet({ target, classVersion, today, onClose }: SheetProps) {
     )
     if (outcome.status === 'busy') return
     if (outcome.status === 'failed') {
+      // İşaretler yerinde kalır; kayıtlı durum sunucudan tazelenir (409) ya da hiç değişmemiştir.
       setFailure(attendanceFailureText(outcome.error))
-      setEdits((current) => editsAfterFailure(current, outcome.error))
       return
     }
     notify(updating ? 'Yoklama güncellendi.' : 'Yoklama kaydedildi.')
@@ -187,7 +205,7 @@ function AttendanceSheet({ target, classVersion, today, onClose }: SheetProps) {
             <Button
               accent
               icon="ClipboardCheck"
-              disabled={busy}
+              disabled={blocked}
               label={busy ? 'Yoklama kaydediliyor' : 'Yoklamayı kaydet'}
               onPress={() => void save()}
             >
@@ -296,18 +314,48 @@ function TargetRow({ target, onOpen }: { target: AttendanceTarget; onOpen: () =>
   )
 }
 
+function TargetList({
+  targets,
+  onOpen,
+}: {
+  targets: readonly AttendanceTarget[]
+  onOpen: (target: AttendanceTarget) => void
+}) {
+  return (
+    <View style={{ gap: 10 }} accessibilityRole="list">
+      {targets.map((target) => (
+        <TargetRow key={target.key} target={target} onOpen={() => onOpen(target)} />
+      ))}
+    </View>
+  )
+}
+
+/** Europe/Istanbul günü; uygulama öne gelince yeniden hesaplanır (gece yarısı arka planda geçmiş olabilir). */
+function useAttendanceDay(): [string, () => void] {
+  const [day, setDay] = useState(() => dayKey())
+  useEffect(() => {
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') setDay(dayKey())
+    })
+    return () => subscription.remove()
+  }, [])
+  return [day, () => setDay(dayKey())]
+}
+
 /**
  * Öğretmen: yoklama alma (web `ogretmen/yoklama` "Yoklama al" bölümü). Bugünün (Europe/Istanbul)
  * dersleri `/lessons` ucundan gelir (sunucu öğretmenin kendi derslerine daraltır, iptal dersler
- * dönmez); derse dokununca sınıf listesi açılır. Ders programı modülü kapalıysa web'deki gibi ders
- * verilen sınıflar listelenir. Öğretmen yalnız ders verdiği sınıfın bugünkü yoklamasını alır;
- * yetkiyi sunucu yine denetler (DOM-YTK-022, DOM-AKD-035). Yoklama geçmişi telefonda yoktur.
+ * dönmez); ders verilen ama bugün dersi olmayan sınıflar ayrı bölümdedir. Ders programı modülü
+ * kapalıysa web'deki gibi yalnız ders verilen sınıflar listelenir. Öğretmen yalnız ders verdiği
+ * sınıfın bugünkü yoklamasını alır; yetkiyi sunucu yine denetler (DOM-YTK-022, DOM-AKD-035). Gün
+ * uygulama öne gelince ve pencere açılırken yeniden hesaplanır. Yoklama geçmişi telefonda yoktur.
  */
 export default function TeacherAttendance() {
   const session = useApiSession()
+  const notify = useNotify()
   const open = canOpenScreen(session, 'TeacherAttendance')
   const planningOpen = isModuleOpen(session.modules, PLANNING_MODULE)
-  const today = dayKey()
+  const [today, refreshDay] = useAttendanceDay()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
 
   // Öğretmen `teachers` okumasında yalnız kendi kaydını görür; atamalar ders verdiği sınıfları verir.
@@ -330,7 +378,7 @@ export default function TeacherAttendance() {
     () => new Map((classes.data ?? []).map((row) => [row.id, row.version])),
     [classes.data],
   )
-  const targets = useMemo(() => {
+  const sections = useMemo(() => {
     if (!teachers.data || !assignments.data || !classes.data || !subjects.data || !taken.data)
       return undefined
     if (planningOpen && !lessons.data) return undefined
@@ -359,7 +407,21 @@ export default function TeacherAttendance() {
   const queries = [teachers, assignments, classes, subjects, taken]
   const lessonError = planningOpen && lessons.error ? toApiError(lessons.error) : null
   const error = queries.find((query) => query.error)?.error ?? lessonError
-  const selected = targets?.find((target) => target.key === selectedKey)
+  const selected = sections
+    ? [...sections.lessons, ...sections.classes].find((target) => target.key === selectedKey)
+    : undefined
+
+  const openTarget = (target: AttendanceTarget) => {
+    // Gün eskidiyse önce yeni güne geçilir; dünün dersi açılmaz.
+    if (isStaleDay(today)) {
+      refreshDay()
+      notify('Gün değişti; bugünkü dersler yeniden yüklendi.', 'error')
+      return
+    }
+    // Sınıf sürümü (`If-Match`) eskimesin: pencere açılırken sınıflar tazelenir.
+    void classes.refetch()
+    setSelectedKey(target.key)
+  }
 
   if (!open)
     return (
@@ -372,7 +434,7 @@ export default function TeacherAttendance() {
       <View style={{ gap: 6 }}>
         <T muted>
           {planningOpen
-            ? 'Bugünkü dersleriniz. Yoklama almak için derse dokunun.'
+            ? 'Bugünkü dersleriniz. Yoklama almak için derse ya da sınıfa dokunun.'
             : 'Ders verdiğiniz sınıflar. Bugünkü yoklama için sınıfa dokunun.'}
         </T>
         <T muted size={13}>
@@ -387,27 +449,47 @@ export default function TeacherAttendance() {
             if (lessonError) void lessons.refetch()
           }}
         />
-      ) : !targets ? (
+      ) : !sections ? (
         <ListLoading label="Bugünkü dersler yükleniyor…" />
-      ) : targets.length === 0 ? (
+      ) : sections.lessons.length === 0 && sections.classes.length === 0 ? (
         planningOpen ? (
-          <Empty title="Bugün dersiniz yok" text="İptal edilen dersler burada görünmez." />
+          <Empty
+            title="Bugün yoklama alınacak ders yok"
+            text="İptal edilen dersler burada görünmez; ders atamaları yönetimden yapılır."
+          />
         ) : (
           <Empty title="Ders verdiğiniz sınıf yok" text="Ders atamaları yönetimden yapılır." />
         )
+      ) : planningOpen ? (
+        <>
+          <Section title="Bugünkü dersler">
+            {sections.lessons.length > 0 ? (
+              <TargetList targets={sections.lessons} onOpen={openTarget} />
+            ) : (
+              <T muted>Bugün programda dersiniz yok. İptal edilen dersler görünmez.</T>
+            )}
+          </Section>
+          {sections.classes.length > 0 && (
+            <Section title="Bugün dersi olmayan sınıflar">
+              <TargetList targets={sections.classes} onOpen={openTarget} />
+            </Section>
+          )}
+        </>
       ) : (
-        <View style={{ gap: 10 }} accessibilityRole="list">
-          {targets.map((target) => (
-            <TargetRow key={target.key} target={target} onOpen={() => setSelectedKey(target.key)} />
-          ))}
-        </View>
+        <TargetList targets={sections.classes} onOpen={openTarget} />
       )}
       {selected && (
         <AttendanceSheet
           key={selected.key}
           target={selected}
           classVersion={classVersions.get(selected.classId)}
+          versionPending={classes.isFetching}
           today={today}
+          onDayChanged={() => {
+            setSelectedKey(null)
+            refreshDay()
+            notify('Gün değişti; bugünkü dersler yeniden yüklendi.', 'error')
+          }}
           onClose={() => setSelectedKey(null)}
         />
       )}

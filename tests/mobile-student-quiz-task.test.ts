@@ -239,6 +239,17 @@ describe('OG-061: görev satırı hangi pencereyi açar (IST-124; Sabah kararı 
     assert.equal(row.note, WEB_ONLY_TEXT)
   })
 
+  test('konuşma görevi kayıt alabilen cihazda konuşma penceresini açar', () => {
+    const audio = teacher({
+      submission: { submissionKind: 'audio' } as TaskAssignmentLearner['submission'],
+    })
+    const row = studentTaskRow(audio, now, { canRecord: true })
+    assert.equal(row.open, 'speaking')
+    assert.equal(row.note, null)
+    assert.match(row.label, /Görevi aç$/)
+    assert.equal(studentTaskRow(audio, now, { canRecord: false }).open, null)
+  })
+
   test('durum ve puan atama özetinden gelir; satır başına istek yoktur', () => {
     const row = studentTaskRow(
       task({ progress: [progress({ status: 'in_progress', canAct: true })] }),

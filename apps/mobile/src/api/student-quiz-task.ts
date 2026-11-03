@@ -34,6 +34,7 @@ import {
   type MobileTone,
   type WritingTaskRow,
 } from './student-writing.ts'
+import { canRecordOnPhone } from './student-speaking-task.ts'
 
 type Fields = Pick<TaskAssignmentLearner, 'scoringMode' | 'contentType' | 'listeningPlays'> &
   Partial<
@@ -130,7 +131,7 @@ export function quizTaskState(assignment: Fields, evidence?: ListeningEvidence):
 
 /** Ödevlerim > Görevler satırı: hangi pencerenin açılacağı ve açılmayanın nedeni. */
 export type StudentTaskRow = Omit<WritingTaskRow, 'writable'> & {
-  open: 'writing' | 'quiz' | null
+  open: 'writing' | 'quiz' | 'speaking' | null
   /** Açılmayan görevin satır altı bilgisi; açılıyorsa `null`. */
   note: string | null
 }
@@ -138,12 +139,19 @@ export type StudentTaskRow = Omit<WritingTaskRow, 'writable'> & {
 /**
  * Öğrenci görev satırı (öğretmen puanlı yazma + otomatik puanlı quiz görevleri tek listede).
  * Yazma görevi ve açılabilir quiz görevi dokununca açılır; konuşma, el yazısı ve dinlemeli görev
- * satırda "web'den çözülür" notuyla kalır (Sabah kararı 92). Durum ve puan atama özetindendir.
+ * satırda "web'den çözülür" notuyla kalır (Sabah kararı 92); konuşma görevi cihaz kayıt alabiliyorsa (`canRecord`) konuşma penceresini açar. Durum ve puan atama özetindendir.
  */
-export function studentTaskRow(assignment: TaskAssignmentLearner, now: Date): StudentTaskRow {
+export function studentTaskRow(
+  assignment: TaskAssignmentLearner,
+  now: Date,
+  /** Cihaz ses kaydı alabilir mi (webde dışa aktarımda `false`); konuşma görevi buna bağlı açılır. */
+  options: { canRecord?: boolean } = {},
+): StudentTaskRow {
   const { writable, ...row } = writingTaskRow(assignment, now)
   const named = (hint: string) => `${assignment.title}, ${row.status}. ${hint}`
   if (writable) return { ...row, open: 'writing', note: null, label: named('Görevi aç') }
+  if (options.canRecord && assignment.scoringMode === 'teacher' && canRecordOnPhone(assignment))
+    return { ...row, open: 'speaking', note: null, label: named('Görevi aç') }
   const state =
     assignment.scoringMode === 'auto'
       ? quizTaskState(assignment)

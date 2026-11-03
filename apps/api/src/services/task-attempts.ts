@@ -30,7 +30,7 @@ import {
   type StoredAssignment,
   type StoredAttempt,
 } from '../db/skills.ts'
-import { ConflictError, NotFoundError } from '../errors.ts'
+import { ConflictError, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { attemptContentGate, contentRemoved } from './learner-content.ts'
 import { listeningSummary } from './listening-plays.ts'
@@ -88,16 +88,29 @@ function completedOf(
 }
 
 /**
+ * Kaldırmanın beklenen sonucu olan bağlam hatası: içerik ya da soru okunamıyor (`NotFoundError`)
+ * veya anahtarı silinmiş (`answer_key_missing`). Başka hata (otomatik puanlanmayan tür, anahtar
+ * uyuşmazlığı, programlama hatası) kaldırmayla açıklanamaz; veri bütünlüğü sinyalidir.
+ */
+function removalExplains(error: unknown): boolean {
+  return (
+    error instanceof NotFoundError ||
+    (error instanceof RuleViolationError && error.code === 'answer_key_missing')
+  )
+}
+
+/**
  * Denemenin puanlama bağlamı ve kaldırılma durumu (DOM-KYN-051, DOM-BEC-010). Kaldırma içeriği ve
  * cevap anahtarını siler; puan saklanmadığı için (her okumada anahtardan hesaplanır) bağlam
- * kurulamazsa deneme kaydı ve cevaplar puansız döner (`context: null`), 404 değil. Kaldırılmamış
- * içerikte kurulamayan bağlam (veri bütünlüğü) eskisi gibi hata verir. Okuma parçası
- * kaldırıldığında soruların anahtarı durur: bağlam kurulur, puan görünür.
+ * kurulamazsa deneme kaydı ve cevaplar puansız döner (`context: null`), 404 değil. Yalnız
+ * kaldırmanın beklenen sonucu olan hatalar yutulur (`removalExplains`); kaldırılmamış içerikte
+ * ya da başka sınıf bir hata (veri bütünlüğü) eskisi gibi fırlar. Okuma parçası kaldırıldığında
+ * soruların anahtarı durur: bağlam kurulur, puan görünür.
  */
 // TODO(kaldirilan-puan): quizin kendisi ya da bağlı sorusu kaldırılınca geçmiş puan kaybolur;
 // DOM-KYN-051 geçmiş notu korumak ister, DOM-BEC-010 puanı saklamaz. Kaldırma anında puanın
 // saklanması (migration) ürün kararı bekler.
-function attemptScoring(
+export function attemptScoring(
   assignment: StoredAssignment,
   pairs: WorkPairs,
 ): { context: ScoringContext | null; removed: boolean } {
@@ -105,7 +118,7 @@ function attemptScoring(
   try {
     return { context: pairsScoringContext(assignment, pairs), removed }
   } catch (error) {
-    if (removed) return { context: null, removed }
+    if (removed && removalExplains(error)) return { context: null, removed }
     throw error
   }
 }

@@ -5451,10 +5451,10 @@ export interface components {
                 name: string;
                 slug: string;
                 /**
-                 * @description Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri
+                 * @description Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri, `course_center` sınav hazırlık programı + ders + konu
                  * @enum {string}
                  */
-                type: "school" | "language_school";
+                type: "school" | "language_school" | "course_center";
                 /** @description Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir. Kurum türünde bulunmayan modül her zaman `false`tır ve uçları 404 döner (DOM-YTK-012); kurumun kapattığı modülün uçları 403 `module_disabled` */
                 enabledModules: {
                     [key: string]: boolean;
@@ -5475,10 +5475,10 @@ export interface components {
                 institutionId: string;
                 institutionName: string;
                 /**
-                 * @description Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri
+                 * @description Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri, `course_center` sınav hazırlık programı + ders + konu
                  * @enum {string}
                  */
-                institutionType: "school" | "language_school";
+                institutionType: "school" | "language_school" | "course_center";
                 /** @enum {string} */
                 role: "yonetici" | "onburo" | "ogretmen" | "ogrenci" | "veli";
             }[];
@@ -8859,10 +8859,10 @@ export interface components {
                 name: string;
                 slug: string;
                 /**
-                 * @description Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri
+                 * @description Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri, `course_center` sınav hazırlık programı + ders + konu
                  * @enum {string}
                  */
-                type: "school" | "language_school";
+                type: "school" | "language_school" | "course_center";
                 /** @description Modül anahtarı → açık mı. school-core modül kaydındaki her modül listelenir. Kurum türünde bulunmayan modül her zaman `false`tır ve uçları 404 döner (DOM-YTK-012); kurumun kapattığı modülün uçları 403 `module_disabled` */
                 enabledModules: {
                     [key: string]: boolean;
@@ -8883,10 +8883,10 @@ export interface components {
                 institutionId: string;
                 institutionName: string;
                 /**
-                 * @description Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri
+                 * @description Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri, `course_center` sınav hazırlık programı + ders + konu
                  * @enum {string}
                  */
-                institutionType: "school" | "language_school";
+                institutionType: "school" | "language_school" | "course_center";
                 /** @enum {string} */
                 role: "yonetici" | "onburo" | "ogretmen" | "ogrenci" | "veli";
             }[];

@@ -17,9 +17,8 @@ import {
   type AcademicYearStatus,
 } from '@kampus/school-core/lib/academic-years.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
-
-export type InstitutionKind = 'school' | 'language_school'
 
 const noon = (day: string) => `${day}T12:00:00.000Z`
 
@@ -125,7 +124,7 @@ export type ActivationPlan = {
 export function activationPlan(
   rows: readonly YearRow[],
   startYear: number,
-  institutionType: InstitutionKind,
+  institutionType: InstitutionType,
   today: string,
 ): ActivationPlan | null {
   const target = rows.find((row) => row.startYear === startYear)

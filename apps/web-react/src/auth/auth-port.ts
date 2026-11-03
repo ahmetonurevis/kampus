@@ -2,6 +2,7 @@
 // istemcisidir (`better-auth-port.ts`), oturum durumu `GET /api/v1/me`'den eşlenir (`session-mapping.ts`).
 import type { SignInResult } from '@kampus/react-shared/sign-in-errors.ts'
 import { z } from 'zod'
+import { INSTITUTION_TYPES } from '@kampus/school-core/modules/collection-modules.ts'
 import { ROLE_KEYS } from '../lib/navigation.ts'
 
 export const loginSchema = z.object({
@@ -14,7 +15,7 @@ export const loginSchema = z.object({
 })
 export type LoginInput = z.infer<typeof loginSchema>
 
-const institutionTypeSchema = z.enum(['school', 'language_school'])
+const institutionTypeSchema = z.enum(INSTITUTION_TYPES)
 
 /**
  * Arayüz oturumunun tip kaynağı (`z.infer`). Çalışma anında ayrıştırılmaz; değer tipli `/me`

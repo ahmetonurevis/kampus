@@ -480,7 +480,10 @@ test('DOM-ILT-030: kimlik satırındaki doğum tarihi öğrenci kaydının yerin
 })
 
 test('DOM-ILT-030, DOM-ILT-037: permissionDecider karar vereni tek kaynaktan seçer', () => {
-  const at = (institutionType: 'school' | 'language_school') => ({ institutionType, now })
+  const at = (institutionType: 'school' | 'language_school' | 'course_center') => ({
+    institutionType,
+    now,
+  })
   // Doğum tarihi biliniyorsa kurum türü fark etmez: 18 yaşındaki lise öğrencisi kendisi verir.
   assert.equal(permissionDecider({ birthDate: '2008-10-06' }, at('school')), 'self')
   assert.equal(permissionDecider({ birthDate: '2008-10-07' }, at('school')), 'guardians')
@@ -506,6 +509,9 @@ test('DOM-ILT-030, DOM-ILT-037: permissionDecider karar vereni tek kaynaktan se�
   assert.equal(permissionDecider({ prospectMinor: false }, at('language_school')), 'self')
   assert.equal(permissionDecider({ prospectMinor: true }, at('language_school')), 'guardians')
   assert.equal(permissionDecider({ prospectMinor: false }, at('school')), 'guardians')
+  // Kurs da yetişkini velisiz kaydeder (ADR 0008 karar 5, DOM-YTK-030).
+  assert.equal(permissionDecider({ prospectMinor: false }, at('course_center')), 'self')
+  assert.equal(permissionDecider({}, at('course_center')), 'guardians')
   // Doğum tarihi aday seçiminin önüne geçer; geçersiz tarih bilinmiyor sayılır.
   assert.equal(
     permissionDecider({ birthDate: '2015-01-01', prospectMinor: false }, at('language_school')),

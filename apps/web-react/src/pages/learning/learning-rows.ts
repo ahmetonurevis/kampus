@@ -5,6 +5,7 @@
 // yeniden hesaplanmaz ve saklanmaz.
 import { CEFR_LEVELS, GRADE_LEVEL_RANGE } from '@kampus/school-core/content/taxonomy.ts'
 import { homeworkStatus } from '@kampus/school-core/lib/format.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import type { Homework, HomeworkListItem } from '@kampus/react-shared/homework.ts'
 import { attemptOf, type QuizListItem } from '@kampus/react-shared/quizzes.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
@@ -23,10 +24,11 @@ export const MATERIAL_LIST = {
 } satisfies CollectionListConfig
 
 /**
- * Düzey süzgeci seçenekleri (sunucunun kabul ettiği değerler): okulda `N. Sınıf`, dil okulunda
- * CEFR seviyesi. Materyalin `level` alanı bu biçimlerde saklanır.
+ * Düzey süzgeci seçenekleri (sunucunun kabul ettiği değerler): okulda ve kursta `N. Sınıf`, dil
+ * okulunda CEFR seviyesi. Materyalin `level` alanı bu biçimlerde saklanır. Kursun program düzeyi
+ * (YKS TYT, KPSS GY-GK) ADR 0008 adım 2'dedir; o zamana kadar okul biçimi geçerlidir.
  */
-export function materialLevelOptions(type: 'school' | 'language_school'): string[] {
+export function materialLevelOptions(type: InstitutionType): string[] {
   if (type === 'language_school') return Object.keys(CEFR_LEVELS)
   const { min, max } = GRADE_LEVEL_RANGE
   return Array.from({ length: max - min + 1 }, (_, index) => `${min + index}. Sınıf`)

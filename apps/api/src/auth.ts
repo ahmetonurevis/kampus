@@ -6,6 +6,8 @@ import { organization } from 'better-auth/plugins/organization'
 import { defaultStatements } from 'better-auth/plugins/organization/access'
 import { z } from 'zod'
 
+import { INSTITUTION_TYPES } from '@kampus/school-core/modules/collection-modules.ts'
+
 import { isDevelopmentLike, publicUrl, useSecureCookies, webUrl, type Config } from './config.ts'
 import { schema, type Database } from './db/client.ts'
 import {
@@ -36,9 +38,13 @@ export const ROLES = ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'] as co
 export const roleSchema = z.enum(ROLES)
 export type Role = z.infer<typeof roleSchema>
 
-/** `school` ders + kazanım, `language_school` CEFR (Pre-A1, A1–C2, A2+/B1+/B2+) + beceri. */
-export const INSTITUTION_TYPES = ['school', 'language_school'] as const
-export type InstitutionType = (typeof INSTITUTION_TYPES)[number]
+/**
+ * Kurum türleri tek kaynaktan, core'dan gelir: `school` ders + kazanım, `language_school` CEFR
+ * (Pre-A1, A1–C2, A2+/B1+/B2+) + beceri, `course_center` sınav hazırlık programı + ders + konu
+ * (ADR 0008). Veritabanında `text` kolondur; değer kısıtı Better Auth alanı ve Zod şemalarındadır.
+ */
+export { INSTITUTION_TYPES }
+export type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 
 export const ac = createAccessControl(defaultStatements)
 

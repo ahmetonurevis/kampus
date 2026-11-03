@@ -149,6 +149,30 @@ describe('Kurum modül ayarı (DOM-YTK-040, DOM-YTK-042)', () => {
       assert.ok(schoolSettings.modules.every((item) => item.enabled))
     })
 
+    test('IST-001, DOM-YTK-012: kurs türü kendi modüllerini varsayılanlarıyla listeler (ADR 0008)', async () => {
+      const course = await admin({ type: 'course_center' })
+      const courseSettings = await settings(course.cookie)
+      assert.deepEqual(
+        courseSettings.modules.map((item) => item.key),
+        modulesFor('course_center'),
+      )
+      const enabled = Object.fromEntries(courseSettings.modules.map((m) => [m.key, m.enabled]))
+      // Sınav hazırlık modülleri açık; rehberlik ve kayıt yenileme kursta bulunmaz.
+      for (const key of ['exams', 'optical', 'tutoring', 'goals']) assert.equal(enabled[key], true)
+      assert.ok(!('guidance' in enabled) && !('renewal' in enabled))
+      // Servis, yemek ve kulüp kapalı başlar (core `defaultModuleMap`).
+      for (const key of ['transport', 'meals', 'clubs']) assert.equal(enabled[key], false, key)
+      const me = await call('GET', '/api/v1/me', course.cookie)
+      assert.equal(me.statusCode, 200, me.body)
+      const active = me.json<{
+        data: { activeInstitution: { type: string; enabledModules: Record<string, boolean> } }
+      }>().data.activeInstitution
+      assert.equal(active.type, 'course_center')
+      assert.equal(active.enabledModules.guidance, false)
+      assert.equal(active.enabledModules.exams, true)
+      assert.equal(active.enabledModules.meals, false)
+    })
+
     test('ayar satırı olmayan kurum 404 alır', async () => {
       const { cookie } = await admin({ academicYear: null })
       assert.equal((await call('GET', '/api/v1/modules', cookie)).statusCode, 404)

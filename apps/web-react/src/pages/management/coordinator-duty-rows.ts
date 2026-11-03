@@ -24,16 +24,20 @@ export type DutyTexts = {
   empty: string
 }
 
+const SUBJECT_HEAD_TEXTS = {
+  scopeLabel: 'Ders',
+  scopePlaceholder: 'Ders seçin',
+  tableTitle: 'Zümre başkanları',
+  addLabel: 'Zümre başkanı ata',
+  formTitle: 'Zümre başkanı ata',
+  formNote: 'Zümre başkanlığı öğretmenin kendi branşındaki derste verilir.',
+  empty: 'Henüz zümre başkanı atanmadı.',
+} as const
+
 const TEXTS = {
-  school: {
-    scopeLabel: 'Ders',
-    scopePlaceholder: 'Ders seçin',
-    tableTitle: 'Zümre başkanları',
-    addLabel: 'Zümre başkanı ata',
-    formTitle: 'Zümre başkanı ata',
-    formNote: 'Zümre başkanlığı öğretmenin kendi branşındaki derste verilir.',
-    empty: 'Henüz zümre başkanı atanmadı.',
-  },
+  school: SUBJECT_HEAD_TEXTS,
+  // Kurs ders + konu ağacıyla çalışır; görev okuldaki gibi ders kapsamlıdır (ADR 0008).
+  course_center: SUBJECT_HEAD_TEXTS,
   language_school: {
     scopeLabel: 'Seviye',
     scopePlaceholder: 'Seviye seçin',
@@ -51,9 +55,12 @@ export function dutyTexts(type: InstitutionType): DutyTexts {
 
 export type ScopeOption = { value: string; label: string }
 
-/** `school`: müfredattaki dersler; `language_school`: CEFR seviyeleri (düşükten yükseğe). */
+/**
+ * `school` ve `course_center`: müfredattaki dersler; `language_school`: CEFR seviyeleri (düşükten
+ * yükseğe).
+ */
 export function scopeOptions(type: InstitutionType): ScopeOption[] {
-  if (type === 'school')
+  if (dutyKindFor(type) === 'subject_head')
     return subjects.map((subject) => ({ value: subject.id, label: subject.name }))
   return Object.entries(CEFR_LEVELS)
     .sort(([, a], [, b]) => a.rank - b.rank)

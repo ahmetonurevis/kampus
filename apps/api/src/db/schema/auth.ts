@@ -81,7 +81,7 @@ export const institutions = pgTable('institutions', {
   logo: text('logo'),
   createdAt: timestamp('created_at').notNull(),
   metadata: text('metadata'),
-  type: text('type', { enum: ['school', 'language_school'] })
+  type: text('type', { enum: ['school', 'language_school', 'course_center'] })
     .default('school')
     .notNull(),
   enabledModules: jsonb('enabled_modules').notNull(),

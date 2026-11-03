@@ -8,6 +8,7 @@ import type { Participant } from './communication.ts'
 import type { MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
+import { adultEnrollsWithoutGuardian } from './institution-types.ts'
 import type { LearnerAgeFacts } from './notifications.ts'
 import type { RequestActor } from './requests.ts'
 
@@ -221,9 +222,10 @@ export type PermissionDecider = 'self' | 'guardians'
  * kitlesi (form açılışı, hatırlatma) ve velinin formu görmesi bu sonuca göredir. Doğum tarihi
  * (API'de `student_identities`, ADR 0006 karar 9) biliniyorsa `now` anındaki Europe/Istanbul
  * gününe göre 18 yaşını dolduran öğrenci kendisi karar verir; kurum türü fark etmez (18 yaşındaki
- * lise öğrencisi de kendisi verir). Doğum tarihi yoksa en korumalı yorum 18 altıdır; yalnız dil
- * okulunda adayın açık `minor: false` seçimiyle kesin kayda alınan kursiyer yetişkindir (`prospects`
- * kaydı, DOM-DIL-091; okulda aday `minor: false` olamaz).
+ * lise öğrencisi de kendisi verir). Doğum tarihi yoksa en korumalı yorum 18 altıdır; yalnız
+ * yetişkinin velisiz kaydolduğu türlerde (dil okulu ve kurs, ADR 0008 karar 5) adayın açık
+ * `minor: false` seçimiyle kesin kayda alınan kursiyer yetişkindir (`prospects` kaydı, DOM-DIL-091;
+ * okulda aday `minor: false` olamaz).
  */
 export function permissionDecider(
   facts: LearnerAgeFacts,
@@ -232,7 +234,8 @@ export function permissionDecider(
   const birthDate =
     facts.birthDate !== undefined && isCalendarDay(facts.birthDate) ? facts.birthDate : null
   if (birthDate !== null) return ageOn(birthDate, options.now) >= ADULT_AGE ? 'self' : 'guardians'
-  return options.institutionType === 'language_school' && facts.prospectMinor === false
+  return adultEnrollsWithoutGuardian(options.institutionType ?? 'school') &&
+    facts.prospectMinor === false
     ? 'self'
     : 'guardians'
 }

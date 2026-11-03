@@ -9,11 +9,18 @@ import type { State } from '../data/seed.ts'
  * Web, mobil ve API aynı tabloyu okur; API kendi kopyasını tutmaz.
  */
 
-export const INSTITUTION_TYPES = ['school', 'language_school'] as const
+/**
+ * Kurum türleri (IST-001): `school` ders + kazanım, `language_school` CEFR + beceri,
+ * `course_center` sınav hazırlık kursu (YKS, KPSS, LGS) program + ders + konu (ADR 0008).
+ * Tür adı, terminoloji ve varsayılan modüller `lib/institution-types.ts`'tedir.
+ */
+export const INSTITUTION_TYPES = ['school', 'language_school', 'course_center'] as const
 export type InstitutionType = (typeof INSTITUTION_TYPES)[number]
 
-const BOTH = INSTITUTION_TYPES
+const EVERY_TYPE = INSTITUTION_TYPES
 const SCHOOL_ONLY = ['school'] as const satisfies readonly InstitutionType[]
+// Kurs (`course_center`, ADR 0008): deneme, optik, etüt ve hedef sınav hazırlığının merkezidir.
+const EXAM_PREP = ['school', 'course_center'] as const satisfies readonly InstitutionType[]
 
 /**
  * Bilinen her modül ve açılabildiği kurum türleri. Temel modüller (`crm` … `communication`) menü
@@ -21,26 +28,26 @@ const SCHOOL_ONLY = ['school'] as const satisfies readonly InstitutionType[]
  * anahtar kümesinin bu iki kaynakla aynı kaldığını doğrular.
  */
 export const MODULE_INSTITUTION_TYPES = {
-  crm: BOTH,
-  finance: BOTH,
-  academic: BOTH,
-  learning: BOTH,
-  communication: BOTH,
-  // Optik değerlendirme, otomatik etüt ve hedefler LGS/YKS denemesine dayanır (DOM-YTK-012).
-  optical: SCHOOL_ONLY,
-  tutoring: SCHOOL_ONLY,
-  // Rehberlik yalnız `school` için tanımlıdır (DOM-YTK-026, DOM-ILT-040).
+  crm: EVERY_TYPE,
+  finance: EVERY_TYPE,
+  academic: EVERY_TYPE,
+  learning: EVERY_TYPE,
+  communication: EVERY_TYPE,
+  // Optik değerlendirme, otomatik etüt ve hedefler LGS/YKS/KPSS denemesine dayanır (DOM-YTK-012).
+  optical: EXAM_PREP,
+  tutoring: EXAM_PREP,
+  // Rehberlik yalnız `school` için tanımlıdır (DOM-YTK-026, DOM-ILT-040); kurs için ADR 0008.
   guidance: SCHOOL_ONLY,
-  exams: SCHOOL_ONLY,
-  goals: SCHOOL_ONLY,
+  exams: EXAM_PREP,
+  goals: EXAM_PREP,
   // Kayıt yenileme bir üst sınıf düzeyine geçirir; sınıf geçme yalnız `school` (DOM-YTK-012).
   renewal: SCHOOL_ONLY,
-  planning: BOTH,
-  study: BOTH,
-  calendar: BOTH,
-  transport: BOTH,
-  meals: BOTH,
-  clubs: BOTH,
+  planning: EVERY_TYPE,
+  study: EVERY_TYPE,
+  calendar: EVERY_TYPE,
+  transport: EVERY_TYPE,
+  meals: EVERY_TYPE,
+  clubs: EVERY_TYPE,
 } as const satisfies Record<string, readonly InstitutionType[]>
 
 export type ModuleKey = keyof typeof MODULE_INSTITUTION_TYPES

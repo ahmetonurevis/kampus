@@ -86,10 +86,10 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 
 ### DOM-YTK-012 · Kurum türü modülleri daraltır
 
-- **Kural:** Kurum türüne uymayan modül açılamaz: sınıf düzeyi, karne, LGS/YKS denemesi, sınıf geçme yalnız `school`; CEFR seviye tespiti, kur/paket, esnek dönem yalnız `language_school`. İngilizce beceri modülleri iki türde de açılır. Uymayan modülün API uçları o kurumda bulunmaz gibi davranır.
+- **Kural:** Kurum türüne uymayan modül açılamaz: sınıf düzeyi, karne, sınıf geçme (kayıt yenileme) ve rehberlik yalnız `school`; LGS/YKS/KPSS denemesi, optik değerlendirme, otomatik etüt ve hedef planı `school` ve `course_center`; CEFR seviye tespiti, kur/paket, esnek dönem yalnız `language_school`. İngilizce beceri modülleri her türde açılır. Uymayan modülün API uçları o kurumda bulunmaz gibi davranır. Türde açılabilen modülün yeni kurumdaki başlangıç durumu türün varsayılanıdır (kursta servis, yemek ve kulüp kapalı başlar; ADR 0008 karar 3).
 - **Gerekçe:** Dil okulunda "7-A şubesi" veya "LGS netleri" anlamsız veri ve yanlış yetki alanı üretir.
-- **Kaynak:** ADR 0001 karar 4.
-- **Kurum türü:** ikisi
+- **Kaynak:** ADR 0001 karar 4, ADR 0008 karar 3.
+- **Kurum türü:** hepsi
 - **Kodda:** kısmen — modül → kurum türü tablosu `MODULE_INSTITUTION_TYPES` ve koleksiyon → modül eşlemesi `COLLECTION_MODULES` (`packages/school-core/src/modules/collection-modules.ts`); `scopeFor(..., { institutionType })` uymayan modülün koleksiyonunu bulunmaz sayar. API kurum kaydındaki türü kullanır: `requireModule` ve koleksiyon okuma uçları uymayan modülde 404 döner (`apps/api/src/plugins/modules.ts`, `apps/api/src/services/read-scope.ts`); kurum türüne göre modül açma engeli (ayar ekranı) yok.
 
 ## Roller ve kapsamlar
@@ -173,7 +173,7 @@ Kısaltmalar: **Y** oluşturur/değiştirir, **O** okur, **—** erişim yok. Pa
 - **Kural:** Kayıt anında 18 yaşını doldurmuş kursiyere veli bağlanamaz. Sözleşme, ödeme, rıza, izin ve mesaj kursiyerin kendisine aittir. Ödeyici başka biri olabilir (aile, işveren); ödeyici yalnız fatura ve ödeme bilgisini görür, devam, not, seviye ve mesaj bilgisini kursiyerin açık onayı olmadan göremez. İşverenin kurumsal eğitim raporu (devam oranı, seviye) sözleşmede yazılı ve kursiyere bildirilmiş olmalıdır.
 - **Gerekçe:** Ergin kişinin fiil ehliyeti vardır; başkasının onun verisine erişmesi üçüncü kişiye aktarımdır.
 - **Kaynak:** TMK md. 10-11 ("Erginlik onsekiz yaşın doldurulmasıyla başlar"); KVKK md. 5, 8. Kurumsal eğitimde işverene raporlama dayanağı **doğrulanmalı**.
-- **Kurum türü:** `language_school` (lisede 18 yaşını dolduran öğrenci için `DOM-YTK-031`)
+- **Kurum türü:** `language_school`, `course_center` (ADR 0008 karar 5; lisede 18 yaşını dolduran öğrenci için `DOM-YTK-031`)
 - **Kodda:** yok — yaş ve kursiyer kavramı yok; her öğrenciye veli üretilir (`packages/school-core/src/lib/domain.js:153-157`).
 
 ### DOM-YTK-031 · 18 yaşını dolduran öğrenci

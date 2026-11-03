@@ -2431,9 +2431,10 @@
                     "type": "string",
                     "enum": [
                       "school",
-                      "language_school"
+                      "language_school",
+                      "course_center"
                     ],
-                    "description": "Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri"
+                    "description": "Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri, `course_center` sınav hazırlık programı + ders + konu"
                   },
                   "enabledModules": {
                     "type": "object",
@@ -2529,9 +2530,10 @@
                   "type": "string",
                   "enum": [
                     "school",
-                    "language_school"
+                    "language_school",
+                    "course_center"
                   ],
-                  "description": "Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri"
+                  "description": "Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri, `course_center` sınav hazırlık programı + ders + konu"
                 },
                 "role": {
                   "type": "string",
@@ -16426,9 +16428,10 @@
                     "type": "string",
                     "enum": [
                       "school",
-                      "language_school"
+                      "language_school",
+                      "course_center"
                     ],
-                    "description": "Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri"
+                    "description": "Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri, `course_center` sınav hazırlık programı + ders + konu"
                   },
                   "enabledModules": {
                     "type": "object",
@@ -16526,9 +16529,10 @@
                   "type": "string",
                   "enum": [
                     "school",
-                    "language_school"
+                    "language_school",
+                    "course_center"
                   ],
-                  "description": "Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri"
+                  "description": "Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri, `course_center` sınav hazırlık programı + ders + konu"
                 },
                 "role": {
                   "type": "string",

@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { and, eq } from 'drizzle-orm'
 
 import { defaultAcademicYearDates } from '@kampus/school-core/lib/academic-years.ts'
+import { defaultModuleMap } from '@kampus/school-core/lib/institution-types.ts'
 
 import type { Auth, InstitutionType, Role } from '../auth.ts'
 import { ensureAcademicYears } from '../db/academic-years.ts'
@@ -61,7 +62,10 @@ export interface InstitutionInput {
   type: InstitutionType
   /** Kurumu açan kullanıcı; Better Auth onu `yonetici` üyesi yapar. */
   creatorUserId: string
-  /** Modül anahtarı → açık mı; verilmeyen modül varsayılanındadır. */
+  /**
+   * Modül anahtarı → açık mı; verilmezse türün varsayılanı (core `defaultModuleMap`, ADR 0008):
+   * okul ve dil okulunda her modül açık, kursta servis, yemek ve kulüp kapalı başlar.
+   */
   enabledModules?: Record<string, boolean>
 }
 
@@ -82,7 +86,7 @@ export async function ensureInstitution(
       name: input.name,
       slug: input.slug,
       type: input.type,
-      enabledModules: input.enabledModules ?? {},
+      enabledModules: input.enabledModules ?? defaultModuleMap(input.type),
       userId: input.creatorUserId,
     },
   })

@@ -20,14 +20,25 @@ import type { Role } from '../modules/navigation.ts'
 z.config(z.locales.tr())
 
 export const COORDINATOR_DUTY_KINDS = {
-  subject_head: { label: 'Zümre başkanı', institutionType: 'school' },
-  academic_coordinator: { label: 'Akademik koordinatör', institutionType: 'language_school' },
-} as const satisfies Record<string, { label: string; institutionType: InstitutionType }>
+  subject_head: { label: 'Zümre başkanı', institutionTypes: ['school', 'course_center'] },
+  academic_coordinator: { label: 'Akademik koordinatör', institutionTypes: ['language_school'] },
+} as const satisfies Record<string, { label: string; institutionTypes: readonly InstitutionType[] }>
 export type CoordinatorDutyKind = keyof typeof COORDINATOR_DUTY_KINDS
 
-/** Kurum türünün görev türü: `school` zümre başkanı, `language_school` akademik koordinatör. */
+/**
+ * Kurum türünün görev türü: `school` ve `course_center` zümre başkanı (kapsam ders; kurs ders +
+ * konu ağacıyla çalışır, ADR 0008), `language_school` akademik koordinatör (kapsam CEFR seviyesi).
+ */
 export function dutyKindFor(institutionType: InstitutionType): CoordinatorDutyKind {
-  return institutionType === 'school' ? 'subject_head' : 'academic_coordinator'
+  switch (institutionType) {
+    case 'school':
+    case 'course_center':
+      return 'subject_head'
+    case 'language_school':
+      return 'academic_coordinator'
+    default:
+      return institutionType satisfies never
+  }
 }
 
 export const coordinatorDutyInputSchema = z.strictObject({

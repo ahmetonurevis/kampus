@@ -6,7 +6,9 @@ import { dataResponse } from './common.schemas.ts'
 
 export const institutionTypeSchema = z
   .enum(INSTITUTION_TYPES)
-  .describe('Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri')
+  .describe(
+    'Kurum türü: `school` ders + kazanım, `language_school` CEFR + beceri, `course_center` sınav hazırlık programı + ders + konu',
+  )
 
 export const membershipLinkSchema = z
   .object({

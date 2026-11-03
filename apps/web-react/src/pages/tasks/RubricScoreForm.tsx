@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useId, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch, type Resolver } from 'react-hook-form'
 import {
@@ -87,6 +87,8 @@ export function RubricScoreForm({
   const audioPending = audio.kind === 'pending'
   const version = submission.rowVersion
   const errors = form.formState.errors
+  // Aynı sayfada birden çok form (ilk ve son puan) açılabilir; kimlik formun örneğine özgüdür.
+  const audioPendingId = useId()
 
   const submit = form.handleSubmit(async (values) => {
     if (version === null || audioPending) return
@@ -228,7 +230,7 @@ export function RubricScoreForm({
       <RootError message={errors.root?.server?.message} />
       <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-4">
         {audioPending ? (
-          <p id="sesli-geri-bildirim-bekliyor" className="text-sm text-muted-foreground">
+          <p id={audioPendingId} className="text-sm text-muted-foreground">
             {PENDING_FEEDBACK_AUDIO}
           </p>
         ) : null}
@@ -236,7 +238,7 @@ export function RubricScoreForm({
           type="submit"
           disabled={busy || version === null || audioPending}
           aria-busy={busy || undefined}
-          aria-describedby={audioPending ? 'sesli-geri-bildirim-bekliyor' : undefined}
+          aria-describedby={audioPending ? audioPendingId : undefined}
         >
           <Icon name="Check" size={17} aria-hidden="true" />
           {kind === 'final' ? 'Son puanı kaydet' : 'Puanı kaydet'}

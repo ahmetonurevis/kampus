@@ -101,6 +101,10 @@ export const TASK_GRADING_MESSAGES = {
     'Son puan yalnız iki puanlayıcı arasında uyuşmazlık varsa verilir; sonuç zaten kesinleşmiş olabilir.',
   coordinator_required:
     'Uyuşmazlıkta son puanı dersin zümre başkanı veya seviyenin akademik koordinatörü verir.',
+  // Sesli geri bildirim (DOM-BEC-056): puanla birlikte bağlanamadıysa puan da yazılmaz.
+  file_unavailable: 'Sesli geri bildirim bulunamadı; yeniden kaydedin.',
+  file_not_ready: 'Sesli geri bildirim hâlâ işleniyor; birazdan yeniden kaydedin.',
+  file_purpose_mismatch: 'Bu dosya sesli geri bildirim olarak eklenemez; yeniden kaydedin.',
 } as const satisfies CommandMessages
 
 /** İtiraz hata metinleri (kursiyer ve veli; DOM-BEC-025). */

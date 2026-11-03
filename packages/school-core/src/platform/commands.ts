@@ -213,6 +213,11 @@ export const PLATFORM_OPERATION_COMMANDS = {
   // rıza ve kapsamın girdisidir), modül kapatılamaz. Kayıtlar `student_guardians` tablosundadır.
   'guardian.read': spec(null, [...SCOPE]),
   'guardian.manage': spec(null, [...SCOPE]),
+  // Veli hesabı daveti (`lib/guardian-invitations.ts`; DOM-YTK-071): hesap ve bağ platform
+  // yeteneğidir, modül kapatılamaz. Kayıtlar kimlik tablolarında ve `student_guardians`'tadır.
+  'guardian.invite': spec(null, [...SCOPE]),
+  'guardian.invite_list': spec(null, [...SCOPE]),
+  'guardian.invite_cancel': spec(null, [...SCOPE]),
   // Dil okulu kur programı (`lib/courses.ts`; DOM-DIL-005…007): modüle bağlı değildir, kurum türüne
   // bağlıdır (yalnız `language_school`; okulda 404). Kayıtlar ilişkisel tablodadır (`courses`).
   'course.read': spec(null, [...SCOPE]),

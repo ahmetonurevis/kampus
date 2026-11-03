@@ -308,7 +308,7 @@ export type GuardianAccount = { role: Role }
  * bağda başka bir hesapla ya da hesap başka bir kayıtla eşlenmişse 422
  * `guardian_identity_mismatch`. İkisi de daha önce eşlenmemişse ilk bağ eşlemeyi kurar.
  */
-function requireSameGuardian(
+export function requireSameGuardian(
   parentId: string,
   membershipId: string,
   identityLinks: readonly GuardianLink[],

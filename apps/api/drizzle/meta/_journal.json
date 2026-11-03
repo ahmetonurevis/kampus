@@ -379,6 +379,20 @@
       "when": 1793714104585,
       "tag": "0053_create_course_certificates",
       "breakpoints": true
+    },
+    {
+      "idx": 54,
+      "version": "7",
+      "when": 1793727490950,
+      "tag": "0054_allow_feedback_audio",
+      "breakpoints": true
+    },
+    {
+      "idx": 55,
+      "version": "7",
+      "when": 1793733079397,
+      "tag": "0055_invitation_guardian",
+      "breakpoints": true
     }
   ]
 }

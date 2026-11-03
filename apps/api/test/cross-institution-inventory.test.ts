@@ -126,6 +126,18 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'staff-accounts.test.ts',
     'başka kurumun öğretmen kaydı 404',
   ),
+  'GET /api/v1/institution-members/guardian-invitations': liste(
+    'guardian-invitations.test.ts',
+    'başka kurumun veli daveti listede yok',
+  ),
+  'POST /api/v1/institution-members/guardian-invitations/:invitationId/cancel': kayit(
+    'guardian-invitations.test.ts',
+    'başka kurumun veli davetini iptal edemez',
+  ),
+  'POST /api/v1/institution-members/guardian-invitations': govde(
+    'guardian-invitations.test.ts',
+    'başka kurumun öğrencisi ya da veli kaydı 404',
+  ),
   'POST /api/v1/institution-members/imports': govde(
     'staff-import.test.ts',
     'başka kurumun üyesi ve öğretmen kaydı bu kurumu etkilemez',

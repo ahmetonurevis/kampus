@@ -381,6 +381,14 @@ export const FILE_PURPOSES = {
     maxDurationSeconds: 10 * 60,
     requiresConsent: true,
   },
+  // kvkk: K — öğretmenin konuşma ya da yazma teslimine sesli geri bildirimi (DOM-BEC-056). Öğretmenin
+  // sesidir; puanla aynı görünürlükte açılır, kurum dışına gönderilmez.
+  feedback_audio: {
+    label: 'Sesli geri bildirim',
+    mimeTypes: [MIME.m4a, MIME.m4aAlt, MIME.webmAudio, MIME.mp3],
+    maxBytes: 10 * MB,
+    maxDurationSeconds: 3 * 60,
+  },
   document: { label: 'Kurum belgesi', mimeTypes: [MIME.pdf], maxBytes: 20 * MB },
   // kvkk: Ö — velinin izin/mazeret bildirimine eklediği özür belgesi (sağlık raporu, resmi yazı);
   // sağlık verisi olabilir. Yalnız bildirimin okuma kapsamına açılır, her bağlantı denetimdedir

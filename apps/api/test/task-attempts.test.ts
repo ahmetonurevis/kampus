@@ -528,9 +528,19 @@ describe('görev deneme uçları', () => {
     assert.equal(staff.result.answerKey, null)
     const admin = await ok(await list(assignmentId, t.cookies.admin, '&learnerId=s-1'))
     assert.equal(admin.length, 1)
+    // OG-213: öğrenci adı yalnız satırı okuyan personele gelir; öğrenci ve veliye null.
+    assert.equal(admin[0].learnerName, 'Deniz Yılmaz')
+    assert.equal(staff.learnerName, 'Deniz Yılmaz')
+    assert.equal((await ok(await list(assignmentId, t.cookies.student)))[0].learnerName, null)
+    assert.equal((await ok(await list(assignmentId, t.cookies.parent)))[0].learnerName, null)
     assert.deepEqual(await ok(await list(assignmentId, t.cookies.admin, '&learnerId=s-3')), [])
     const parentView = await ok(await call('GET', `/task-attempts/${started.id}`, t.cookies.parent))
     assert.equal(parentView.result.percent, 25)
+    assert.equal(parentView.learnerName, null)
+    assert.equal(
+      (await ok(await call('GET', `/task-attempts/${started.id}`, t.cookies.teacher))).learnerName,
+      'Deniz Yılmaz',
+    )
     assert.equal(parentView.result.items, null)
     fails(
       await call('GET', `/task-attempts/${started.id}`, t.cookies.otherStudent),

@@ -7219,6 +7219,13 @@
           "learnerId": {
             "type": "string"
           },
+          "learnerName": {
+            "description": "Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "attemptNumber": {
             "type": "integer",
             "minimum": 1,
@@ -7483,6 +7490,7 @@
           "id",
           "assignmentId",
           "learnerId",
+          "learnerName",
           "attemptNumber",
           "status",
           "startedAt",
@@ -7513,6 +7521,13 @@
           },
           "learnerId": {
             "type": "string"
+          },
+          "learnerName": {
+            "description": "Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "attemptNumber": {
             "type": "integer",
@@ -8351,6 +8366,7 @@
           "id",
           "assignmentId",
           "learnerId",
+          "learnerName",
           "attemptNumber",
           "status",
           "startedAt",
@@ -8563,6 +8579,13 @@
           "learnerId": {
             "type": "string"
           },
+          "learnerName": {
+            "description": "Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -8684,6 +8707,7 @@
           "id",
           "assignmentId",
           "learnerId",
+          "learnerName",
           "status",
           "versionCount",
           "latestVersion",
@@ -8922,6 +8946,13 @@
           },
           "learnerId": {
             "type": "string"
+          },
+          "learnerName": {
+            "description": "Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "type": "string",
@@ -9214,6 +9245,7 @@
           "id",
           "assignmentId",
           "learnerId",
+          "learnerName",
           "status",
           "versionCount",
           "latestVersion",
@@ -9279,6 +9311,13 @@
           },
           "learnerId": {
             "type": "string"
+          },
+          "learnerName": {
+            "description": "Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "type": "string",
@@ -9456,6 +9495,7 @@
           "id",
           "assignmentId",
           "learnerId",
+          "learnerName",
           "status",
           "versionCount",
           "latestVersion",
@@ -20943,6 +20983,13 @@
           "learnerId": {
             "type": "string"
           },
+          "learnerName": {
+            "description": "Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "attemptNumber": {
             "type": "integer",
             "minimum": 1,
@@ -21215,6 +21262,7 @@
           "id",
           "assignmentId",
           "learnerId",
+          "learnerName",
           "attemptNumber",
           "status",
           "startedAt",
@@ -21246,6 +21294,13 @@
           },
           "learnerId": {
             "type": "string"
+          },
+          "learnerName": {
+            "description": "Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "attemptNumber": {
             "type": "integer",
@@ -22106,6 +22161,7 @@
           "id",
           "assignmentId",
           "learnerId",
+          "learnerName",
           "attemptNumber",
           "status",
           "startedAt",
@@ -22323,6 +22379,13 @@
           "learnerId": {
             "type": "string"
           },
+          "learnerName": {
+            "description": "Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "status": {
             "type": "string",
             "enum": [
@@ -22446,6 +22509,7 @@
           "id",
           "assignmentId",
           "learnerId",
+          "learnerName",
           "status",
           "versionCount",
           "latestVersion",
@@ -22689,6 +22753,13 @@
           },
           "learnerId": {
             "type": "string"
+          },
+          "learnerName": {
+            "description": "Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "type": "string",
@@ -22985,6 +23056,7 @@
           "id",
           "assignmentId",
           "learnerId",
+          "learnerName",
           "status",
           "versionCount",
           "latestVersion",
@@ -23052,6 +23124,13 @@
           },
           "learnerId": {
             "type": "string"
+          },
+          "learnerName": {
+            "description": "Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "status": {
             "type": "string",
@@ -23232,6 +23311,7 @@
           "id",
           "assignmentId",
           "learnerId",
+          "learnerName",
           "status",
           "versionCount",
           "latestVersion",

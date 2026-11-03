@@ -6558,6 +6558,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            learnerName: string | null;
             attemptNumber: number;
             /**
              * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
@@ -6622,6 +6624,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            learnerName: string | null;
             attemptNumber: number;
             /**
              * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
@@ -6864,6 +6868,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -6958,6 +6964,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -7032,6 +7040,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -9882,6 +9892,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            learnerName: string | null;
             attemptNumber: number;
             /**
              * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
@@ -9946,6 +9958,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            learnerName: string | null;
             attemptNumber: number;
             /**
              * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
@@ -10187,6 +10201,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -10281,6 +10297,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -10355,6 +10373,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}

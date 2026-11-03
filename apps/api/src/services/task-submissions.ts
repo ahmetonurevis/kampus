@@ -58,6 +58,7 @@ import { listConsentsOfSubject } from '../db/privacy.ts'
 import { findRecord } from '../db/records.ts'
 import { AppError, MESSAGES, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { loadLearnerNames } from './task-learner-names.ts'
 import { actorStudentConsent } from './consents.ts'
 import { defineFileAttachment } from './file-registry.ts'
 import { listMembershipLinks } from './memberships.ts'
@@ -379,6 +380,7 @@ function summaryView(
   book: GradingBook,
   assignment: StoredAssignment,
   work: StoredSubmissionWork,
+  learnerNames: ReadonlyMap<string, string>,
 ) {
   const latest = work.versions.at(-1)
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
@@ -386,6 +388,7 @@ function summaryView(
     id: work.submission.id,
     assignmentId: work.submission.assignmentId,
     learnerId: work.submission.learnerId,
+    learnerName: learnerNames.get(work.submission.learnerId) ?? null,
     status: statusOf(assignment, work, ctx.now),
     versionCount: work.versions.length,
     latestVersion:
@@ -537,13 +540,14 @@ export async function detailView(
   assignment: StoredAssignment,
   work: StoredSubmissionWork,
 ) {
-  const [book, files] = await Promise.all([
+  const [book, files, learnerNames] = await Promise.all([
     loadGrading(db, ctx, [work.submission.id]),
     loadVersionFiles(db, ctx.institutionId, work.versions),
+    loadLearnerNames({ ...ctx, db }, viewer, [work.submission.learnerId]),
   ])
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
   return {
-    ...summaryView(viewer, ctx, book, assignment, work),
+    ...summaryView(viewer, ctx, book, assignment, work, learnerNames),
     versions: work.versions.map((version) => ({
       ...versionView(assignment, work, version),
       body: version.body,
@@ -672,15 +676,22 @@ export async function listSummaries(
   assignments: ReadonlyMap<string, StoredAssignment>,
   rows: readonly StoredSubmissionWork[],
 ) {
-  const book = await loadGrading(
-    db,
-    ctx,
-    rows.map((work) => work.submission.id),
-  )
+  const [book, learnerNames] = await Promise.all([
+    loadGrading(
+      db,
+      ctx,
+      rows.map((work) => work.submission.id),
+    ),
+    loadLearnerNames(
+      { ...ctx, db },
+      viewer,
+      rows.map((work) => work.submission.learnerId),
+    ),
+  ])
   return rows.map((work) => {
     const assignment = assignments.get(work.submission.assignmentId)
     if (assignment === undefined) throw new Error('submission summary without its assignment')
-    return summaryView(viewer, ctx, book, assignment, work)
+    return summaryView(viewer, ctx, book, assignment, work, learnerNames)
   })
 }
 

@@ -471,6 +471,8 @@ describe('zümre başkanı ve akademik koordinatör', () => {
       ['disagreement', true, ['first', 'second']],
     )
     assert.equal(seen.versions[0].score.settled, false)
+    // OG-213: koordinatör öğrenciyi okumasa da teslimi okuduğu için adı ayrıntıda ve kuyrukta gelir.
+    assert.equal(seen.learnerName, 'Deniz Yılmaz')
     // Puanlayıcı-koordinatör kör kalır: yalnız kendi puanını görür, son puanı veremez.
     const rater = (await ok(await detail(id, t.cookies.teacher))).versions[0].grading
     assert.deepEqual(
@@ -495,6 +497,10 @@ describe('zümre başkanı ve akademik koordinatör', () => {
         ]),
         // Atamayı görmeyen koordinatör de görev başlığını kuyruktan okur (OG-058).
         [[id, 'Hafta sonu yazısı', true, false]],
+      )
+      assert.deepEqual(
+        rows.map((row: Json) => row.learnerName),
+        ['Deniz Yılmaz'],
       )
     }
     assert.deepEqual(await ok(await queue(t.cookies.head, '&awaiting=first')), [])
@@ -522,7 +528,7 @@ describe('zümre başkanı ve akademik koordinatör', () => {
     )
     assert.deepEqual(await learnerViews(t, id, assignmentId), before)
     for (const view of before)
-      for (const text of ['GIZLI-GERI-BILDIRIM', 'İkinci puanlayıcının', 'GIZLI-SON-PUAN'])
+      for (const text of ['GIZLI-GERI-BILDIRIM', 'İkinci puanlayıcının', 'GIZLI-SON-PUAN', 'Deniz'])
         assert.ok(!view.includes(text), 'kursiyere puan sızdı')
 
     const resolved = await finalScore(id, t.cookies.head, rowVersion)

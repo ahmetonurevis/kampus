@@ -129,6 +129,12 @@ const summaryShape = {
   id,
   assignmentId: id,
   learnerId: z.string(),
+  learnerName: z
+    .string()
+    .nullable()
+    .describe(
+      'Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)',
+    ),
   status: z
     .enum(['pending', 'submitted', 'late', 'not_submitted'])
     .describe('Son sürüme göre teslim durumu (DOM-BEC-044)'),

@@ -28,6 +28,13 @@ import {
 } from './support/app.ts'
 import { seedResource } from './support/resources-sample.ts'
 
+/**
+ * Her takım yeni bir bellek içi PostgreSQL açıp migration uygular; yüklü makinede (paralel test
+ * süreçleri) bu birkaç saniye sürer. Süre sınırı takılan bir veritabanını sonsuza dek beklemek
+ * yerine açık bir hata verir; takım başına normal koşu ~1–5 sn, yükte ~15 sn olduğundan sınır geniştir (OG-202).
+ */
+const SLOW = { timeout: 180_000 }
+
 interface Journal {
   entries: { tag: string }[]
 }
@@ -54,7 +61,7 @@ async function migrationsUpTo(lastTag: string): Promise<string> {
   return folder
 }
 
-describe('veri dönüştüren migration’lar', () => {
+describe('veri dönüştüren migration’lar', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -143,7 +150,7 @@ describe('veri dönüştüren migration’lar', () => {
   })
 })
 
-describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
+describe('0007: veli kimliği olmayan yazışmaların doldurulması', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -216,7 +223,7 @@ describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
   })
 })
 
-describe('0008: denetim kaydı gerekçe kolonu', () => {
+describe('0008: denetim kaydı gerekçe kolonu', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -272,7 +279,7 @@ describe('0008: denetim kaydı gerekçe kolonu', () => {
   })
 })
 
-describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
+describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -443,7 +450,7 @@ describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
   })
 })
 
-describe('0010–0012: içerik havuzu tabloları', () => {
+describe('0010–0012: içerik havuzu tabloları', SLOW, () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>
@@ -547,7 +554,7 @@ describe('0010–0012: içerik havuzu tabloları', () => {
   })
 })
 
-describe('0013: beceri görevi tabloları', () => {
+describe('0013: beceri görevi tabloları', SLOW, () => {
   const skillTables = [
     'rubrics',
     'rubric_versions',
@@ -753,7 +760,7 @@ describe('0013: beceri görevi tabloları', () => {
   })
 })
 
-describe('0026: kurum ayarından etkin yıl geri doldurması', () => {
+describe('0026: kurum ayarından etkin yıl geri doldurması', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -801,7 +808,7 @@ describe('0026: kurum ayarından etkin yıl geri doldurması', () => {
   })
 })
 
-describe('0026: eğitim yılı tabloları', () => {
+describe('0026: eğitim yılı tabloları', SLOW, () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>
@@ -873,7 +880,7 @@ describe('0026: eğitim yılı tabloları', () => {
   })
 })
 
-describe('0027: veli bağı geri doldurması', () => {
+describe('0027: veli bağı geri doldurması', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -928,7 +935,7 @@ describe('0027: veli bağı geri doldurması', () => {
   })
 })
 
-describe('0027: veli bağı tablosu', () => {
+describe('0027: veli bağı tablosu', SLOW, () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>
@@ -985,7 +992,7 @@ describe('0027: veli bağı tablosu', () => {
   })
 })
 
-describe('0028: kur programı tablosu', () => {
+describe('0028: kur programı tablosu', SLOW, () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>
@@ -1096,7 +1103,7 @@ describe('0028: kur programı tablosu', () => {
   })
 })
 
-describe('0029: dil okulu grup tabloları', () => {
+describe('0029: dil okulu grup tabloları', SLOW, () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>

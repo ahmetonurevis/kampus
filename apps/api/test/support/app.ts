@@ -51,11 +51,28 @@ export function newPGlite(): PGlite {
   return new PGlite({ extensions: { btree_gin } })
 }
 
+/**
+ * Süreç içi şablon (OG-202): aynı süreçte ikinci kez veritabanı kurulunca migrate edilmiş veri
+ * dizini bir kez dökülür, sonrakiler onu yükler. Boş PGlite açıp 44 migration uygulamak yükte
+ * yüklemeye göre ~3 kat yavaştır. Her test dosyası ayrı süreçtir ve çoğu tek veritabanı kurar;
+ * bu yüzden ilk kurulum şablon için ek iş yapmaz, döküm ikinci kurulumda (birden çok
+ * veritabanı kuran dosyada) bir kez alınır.
+ */
+let migratedTemplate: Promise<Blob | File> | undefined
+let databasesCreated = 0
+
 /** Dosya başına bellek içi PostgreSQL (PGlite) ve üretim migration'ları. */
 export async function createTestDatabase(): Promise<{ db: Database; close: () => Promise<void> }> {
+  databasesCreated += 1
+  if (migratedTemplate !== undefined) {
+    const client = new PGlite({ extensions: { btree_gin }, loadDataDir: await migratedTemplate })
+    return { db: drizzle({ client, schema }), close: () => client.close() }
+  }
   const client = newPGlite()
   const db = drizzle({ client, schema })
   await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
+  // Döküm hiçbir test verisi yazılmadan, migrate'in hemen arkasında alınır.
+  if (databasesCreated > 1) migratedTemplate = Promise.resolve(await client.dumpDataDir('none'))
   return { db, close: () => client.close() }
 }
 

@@ -96,11 +96,13 @@ describe('IST-065 hedef ekran eşleme', () => {
     assert.deepEqual(notificationPress(session, { topic: 'homework', readAt: null }), {
       markRead: true,
       screen: 'StudentHomework',
+      route: { screen: 'StudentHomework' },
       childId: null,
     })
     assert.deepEqual(notificationPress(session, { topic: 'attendance', readAt: READ }), {
       markRead: false,
       screen: null,
+      route: null,
       childId: null,
     })
   })

@@ -1,5 +1,5 @@
 {
-  "id": "c52c0ebe-b68a-4f49-b883-39ecafa9ce55",
+  "id": "f0107b04-fbe9-40e1-aa70-954c2d2afb35",
   "prevId": "8a0a972d-a1d2-4b51-bc9b-3ac508400336",
   "version": "7",
   "dialect": "postgresql",
@@ -3036,113 +3036,6 @@
       },
       "isRLSEnabled": false
     },
-    "public.price_index_rates": {
-      "name": "price_index_rates",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "academic_year": {
-          "name": "academic_year",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "ppi_basis_points": {
-          "name": "ppi_basis_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "cpi_basis_points": {
-          "name": "cpi_basis_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "source": {
-          "name": "source",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "bulletin_date": {
-          "name": "bulletin_date",
-          "type": "date",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "price_index_rates_institution_id_institutions_id_fk": {
-          "name": "price_index_rates_institution_id_institutions_id_fk",
-          "tableFrom": "price_index_rates",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {
-        "price_index_rates_pkey": {
-          "name": "price_index_rates_pkey",
-          "columns": [
-            "institution_id",
-            "academic_year"
-          ]
-        }
-      },
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {
-        "price_index_rates_ppi_check": {
-          "name": "price_index_rates_ppi_check",
-          "value": "\"price_index_rates\".\"ppi_basis_points\" >= 0"
-        },
-        "price_index_rates_cpi_check": {
-          "name": "price_index_rates_cpi_check",
-          "value": "\"price_index_rates\".\"cpi_basis_points\" >= 0"
-        }
-      },
-      "isRLSEnabled": false
-    },
     "public.files": {
       "name": "files",
       "schema": "",
@@ -3503,6 +3396,72 @@
           "value": "\"files\".\"superseded_storage_key\" is null or \"files\".\"superseded_storage_key\" <> \"files\".\"storage_key\""
         }
       },
+      "isRLSEnabled": false
+    },
+    "public.finance_export_profiles": {
+      "name": "finance_export_profiles",
+      "schema": "",
+      "columns": {
+        "institution_id": {
+          "name": "institution_id",
+          "type": "text",
+          "primaryKey": true,
+          "notNull": true
+        },
+        "profile": {
+          "name": "profile",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "created_at": {
+          "name": "created_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "updated_at": {
+          "name": "updated_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": true,
+          "default": "now()"
+        },
+        "archived_at": {
+          "name": "archived_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "version": {
+          "name": "version",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "default": 1
+        }
+      },
+      "indexes": {},
+      "foreignKeys": {
+        "finance_export_profiles_institution_id_institutions_id_fk": {
+          "name": "finance_export_profiles_institution_id_institutions_id_fk",
+          "tableFrom": "finance_export_profiles",
+          "tableTo": "institutions",
+          "columnsFrom": [
+            "institution_id"
+          ],
+          "columnsTo": [
+            "id"
+          ],
+          "onDelete": "no action",
+          "onUpdate": "no action"
+        }
+      },
+      "compositePrimaryKeys": {},
+      "uniqueConstraints": {},
+      "policies": {},
+      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.scholarship_awards": {

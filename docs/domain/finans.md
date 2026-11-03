@@ -44,7 +44,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevcut veliyi sözleşme sonrası fahiş artıştan korur; MEB bu sınırı denetler.
 - **Kaynak:** ÖÖKY md. 53/1 (RG 5/8/2023-32270 değişikliği).
 - **Kurum türü:** `school`
-- **Kodda:** var (core ve API) — tavan core `renewalCeiling` (`lib/renewal-ceiling.ts`; hesap `tuitionIncreaseCeiling`, kuruş tamsayısı, aşağı yuvarlanır). Baz son sözleşmenin indirimsiz ücreti (`grossCents`), sözleşmesi olmayanda önceki yılın ilan ücretidir; baz da yoksa tavan hesaplanamaz (`no_base`, ekranda uyarı). Atlanan yıllarda oranlar sırayla uygulanır. ÜFE/TÜFE profili `price_index_rates` (migration `0049`; `GET/POST /api/v1/finance/renewals/price-indexes`, `PATCH …/:academicYear`, yazma yönetici). Tarifeli plan (`POST /api/v1/finance/renewals`) ve iş akışı köprüsü tavanı aşan tutarı 422 `renewal_above_tariff`/`renewal_above_ceiling`, oranı girilmemiş yılı 422 `price_index_missing` ile reddeder. Kademe başlangıç sınıfı (1, 5, 9) ara sınıf sayılmaz, tavan uygulanmaz (**doğrulanmalı**). Ders yılı içinde kayıt olanın bazı sözleşmesindeki tarife ücretidir; ayrı bir kısmi yıl kuralı yok. Ekran: Kayıt Yenileme sayfasında ücret özeti ve `Artış tavanı oranları` bölümü (`/yonetici/kayit-yenileme`, `/onburo/kayit-yenileme`).
+- **Kodda:** var (core ve API) — tavan core `renewalCeiling` (`lib/renewal-ceiling.ts`; hesap `tuitionIncreaseCeiling`, kuruş tamsayısı, aşağı yuvarlanır). Baz son sözleşmenin indirimsiz ücreti (`grossCents`), sözleşmesi olmayanda önceki yılın ilan ücretidir; baz da yoksa tavan hesaplanamaz (`no_base`, ekranda uyarı). Atlanan yıllarda oranlar sırayla uygulanır. ÜFE/TÜFE profili `price_index_rates` (migration `0050`; `GET/POST /api/v1/finance/renewals/price-indexes`, `PATCH …/:academicYear`, yazma yönetici). Tarifeli plan (`POST /api/v1/finance/renewals`) ve iş akışı köprüsü tavanı aşan tutarı 422 `renewal_above_tariff`/`renewal_above_ceiling`, oranı girilmemiş yılı 422 `price_index_missing` ile reddeder. Kademe başlangıç sınıfı (1, 5, 9) ara sınıf sayılmaz, tavan uygulanmaz (**doğrulanmalı**). Ders yılı içinde kayıt olanın bazı sözleşmesindeki tarife ücretidir; ayrı bir kısmi yıl kuralı yok. Ekran: Kayıt Yenileme sayfasında ücret özeti ve `Artış tavanı oranları` bölümü (`/yonetici/kayit-yenileme`, `/onburo/kayit-yenileme`).
 
 ### DOM-FIN-006 · Ücret birimi kurum türüne göre
 
@@ -271,6 +271,14 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Kaynak:** İşletme kuralı; ÖÖKY md. 53/2 (ücret tespitinin belgelendirilmesi).
 - **Kurum türü:** ikisi
 - **Kodda:** çelişiyor — denetim kaydı son 200 kayıtla kesilir (`packages/school-core/src/lib/school-workflows.js:1334`).
+
+### DOM-FIN-055 · Muhasebe aktarım profili
+
+- **Kural:** Kurum muhasebe dosyasının sütun adını, sırasını, ayırıcısını, tarih ve tutar biçimini ve sabit hesap kodlarını kendisi eşler. Profil yalnız biçimdir: satırlar ve toplamlar değişmez. Profil yoksa standart dosya iner. Yalnız yönetici düzenler.
+- **Gerekçe:** Kurumlar farklı muhasebe programı kullanır; dosya bağlanan programa göre gelmelidir (IST-111).
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `lib/finance-export-profile.ts`, `GET`/`PATCH /api/v1/finance/export-profile`, `FinanceExportProfilePanel.tsx`. Programa özel hazır profil örnek dosya gelince eklenir; doğrudan API bağlantısı kapsam dışıdır.
 
 ### DOM-FIN-054 · Cari ekstre
 

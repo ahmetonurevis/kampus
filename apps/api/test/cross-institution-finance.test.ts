@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
+import { defaultFinanceExportProfile } from '@kampus/school-core/lib/finance-export-profile.ts'
 import { createSeed } from '@kampus/school-core/data/seed.ts'
 
 import type { App } from '../src/app.ts'
@@ -536,6 +537,27 @@ describe('IST-002: kayıt ve finans uçlarında başka kurum (DOM-YTK-001, DOM-Y
     const closed = await change(a, { cashPaymentsEnabled: false }, (await settings(a)).version)
     assert.equal(closed.statusCode, 200, closed.body)
     assert.equal((await settings(b)).cashPaymentsEnabled, true)
+    assert.deepEqual(await snapshot(b.id), before)
+  })
+  test('IST-002: GET ve PATCH /api/v1/finance/export-profile: başka kurumun profili görünmez ve değişmez', async () => {
+    const a = await tenant()
+    const b = await tenant()
+    const read_ = (t: Tenant) =>
+      read<{ profile: unknown; version: number }>(t.cookies.admin, '/api/v1/finance/export-profile')
+    const change = (t: Tenant, body: Record<string, unknown>, version: number) =>
+      call(t.cookies.admin, {
+        method: 'PATCH',
+        url: '/api/v1/finance/export-profile',
+        body,
+        ifMatch: version,
+      })
+    const opened = await change(b, { profile: defaultFinanceExportProfile() }, 1)
+    assert.equal(opened.statusCode, 200, opened.body)
+    assert.equal((await read_(a)).profile, null)
+    const before = await snapshot(b.id)
+    const forged = await change(a, { profile: null, institutionId: b.id }, 1)
+    assert.equal(forged.statusCode, 400, forged.body)
+    assert.equal((await change(a, { profile: null }, 1)).statusCode, 200)
     assert.deepEqual(await snapshot(b.id), before)
   })
 })

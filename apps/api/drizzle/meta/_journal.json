@@ -348,8 +348,15 @@
     {
       "idx": 49,
       "version": "7",
-      "when": 1793702384717,
-      "tag": "0049_create_price_index_rates",
+      "when": 1793702412744,
+      "tag": "0049_create_finance_export_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793703590071,
+      "tag": "0050_create_price_index_rates",
       "breakpoints": true
     }
   ]

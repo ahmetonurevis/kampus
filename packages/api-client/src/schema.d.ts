@@ -2284,6 +2284,30 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/export-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Muhasebe aktarım profili
+         * @description Aktarım dosyasının sütun adı, sırası, tarih ve tutar biçimi (ON-024, IST-111). Satır yoksa `profile` boştur ve standart dosya iner. Roller: `yonetici`.
+         */
+        get: operations["getFinanceExportProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Muhasebe aktarım profilini kaydet
+         * @description Kurumun dosya biçimini kaydeder; `profile: null` standart dosyaya döner. Profil yalnız biçimi belirler, satırları ve toplamları değiştirmez. `If-Match` ve `Idempotency-Key` zorunludur; sürüm tutmazsa 409. Roller: `yonetici`.
+         */
+        patch: operations["setFinanceExportProfile"];
+        trace?: never;
+    };
     "/api/v1/finance/exports": {
         parameters: {
             query?: never;
@@ -25710,6 +25734,287 @@ export interface operations {
                                 totalCents: number;
                                 paidCents: number;
                             };
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceExportProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kurumun aktarım profili; boşsa standart dosya iner */
+                            profile: {
+                                /** @enum {string} */
+                                separator: ";" | "," | "\t";
+                                /** @enum {string} */
+                                dateFormat: "iso" | "tr";
+                                /** @enum {string} */
+                                decimal: "," | ".";
+                                columns: {
+                                    payments: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
+                                    refunds: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
+                                    invoices: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
+                                };
+                            } | null;
+                            /** @description `If-Match` için profil sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setFinanceExportProfile: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    profile: {
+                        /** @enum {string} */
+                        separator: ";" | "," | "\t";
+                        /** @enum {string} */
+                        dateFormat: "iso" | "tr";
+                        /** @enum {string} */
+                        decimal: "," | ".";
+                        columns: {
+                            payments: {
+                                source: string;
+                                header: string;
+                                value?: string;
+                            }[];
+                            refunds: {
+                                source: string;
+                                header: string;
+                                value?: string;
+                            }[];
+                            invoices: {
+                                source: string;
+                                header: string;
+                                value?: string;
+                            }[];
+                        };
+                    } | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Kurumun aktarım profili; boşsa standart dosya iner */
+                            profile: {
+                                /** @enum {string} */
+                                separator: ";" | "," | "\t";
+                                /** @enum {string} */
+                                dateFormat: "iso" | "tr";
+                                /** @enum {string} */
+                                decimal: "," | ".";
+                                columns: {
+                                    payments: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
+                                    refunds: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
+                                    invoices: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
+                                };
+                            } | null;
+                            /** @description `If-Match` için profil sürümü */
+                            version: number;
                         };
                     };
                 };

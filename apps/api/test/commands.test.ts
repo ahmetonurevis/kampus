@@ -35,6 +35,7 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   'POST /api/v1/payments/{paymentId}/mebbis-record',
   'POST /api/v1/payments/{paymentId}/reverse',
   'PATCH /api/v1/payment-settings',
+  'PATCH /api/v1/finance/export-profile',
   'POST /api/v1/bank-accounts',
   'DELETE /api/v1/bank-accounts/{bankAccountId}',
   // Ayrılış ve iade (routes/withdrawals.ts; DOM-FIN-041).

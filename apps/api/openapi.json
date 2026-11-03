@@ -53374,6 +53374,700 @@
         }
       }
     },
+    "/api/v1/finance/export-profile": {
+      "get": {
+        "operationId": "getFinanceExportProfile",
+        "summary": "Muhasebe aktarım profili",
+        "tags": [
+          "finance-exports"
+        ],
+        "description": "Aktarım dosyasının sütun adı, sırası, tarih ve tutar biçimi (ON-024, IST-111). Satır yoksa `profile` boştur ve standart dosya iner. Roller: `yonetici`.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "profile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "separator": {
+                                  "type": "string",
+                                  "enum": [
+                                    ";",
+                                    ",",
+                                    "\t"
+                                  ]
+                                },
+                                "dateFormat": {
+                                  "type": "string",
+                                  "enum": [
+                                    "iso",
+                                    "tr"
+                                  ]
+                                },
+                                "decimal": {
+                                  "type": "string",
+                                  "enum": [
+                                    ",",
+                                    "."
+                                  ]
+                                },
+                                "columns": {
+                                  "type": "object",
+                                  "properties": {
+                                    "payments": {
+                                      "minItems": 1,
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "header": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 60
+                                          },
+                                          "value": {
+                                            "type": "string",
+                                            "maxLength": 100
+                                          }
+                                        },
+                                        "required": [
+                                          "source",
+                                          "header"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "refunds": {
+                                      "minItems": 1,
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "header": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 60
+                                          },
+                                          "value": {
+                                            "type": "string",
+                                            "maxLength": 100
+                                          }
+                                        },
+                                        "required": [
+                                          "source",
+                                          "header"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "invoices": {
+                                      "minItems": 1,
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "header": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 60
+                                          },
+                                          "value": {
+                                            "type": "string",
+                                            "maxLength": 100
+                                          }
+                                        },
+                                        "required": [
+                                          "source",
+                                          "header"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "payments",
+                                    "refunds",
+                                    "invoices"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "separator",
+                                "dateFormat",
+                                "decimal",
+                                "columns"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kurumun aktarım profili; boşsa standart dosya iner"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için profil sürümü"
+                        }
+                      },
+                      "required": [
+                        "profile",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "setFinanceExportProfile",
+        "summary": "Muhasebe aktarım profilini kaydet",
+        "tags": [
+          "finance-exports"
+        ],
+        "description": "Kurumun dosya biçimini kaydeder; `profile: null` standart dosyaya döner. Profil yalnız biçimi belirler, satırları ve toplamları değiştirmez. `If-Match` ve `Idempotency-Key` zorunludur; sürüm tutmazsa 409. Roller: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "profile": {
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "separator": {
+                            "type": "string",
+                            "enum": [
+                              ";",
+                              ",",
+                              "\t"
+                            ]
+                          },
+                          "dateFormat": {
+                            "type": "string",
+                            "enum": [
+                              "iso",
+                              "tr"
+                            ]
+                          },
+                          "decimal": {
+                            "type": "string",
+                            "enum": [
+                              ",",
+                              "."
+                            ]
+                          },
+                          "columns": {
+                            "type": "object",
+                            "properties": {
+                              "payments": {
+                                "minItems": 1,
+                                "maxItems": 30,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "source": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "header": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 60
+                                    },
+                                    "value": {
+                                      "type": "string",
+                                      "maxLength": 100
+                                    }
+                                  },
+                                  "required": [
+                                    "source",
+                                    "header"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "refunds": {
+                                "minItems": 1,
+                                "maxItems": 30,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "source": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "header": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 60
+                                    },
+                                    "value": {
+                                      "type": "string",
+                                      "maxLength": 100
+                                    }
+                                  },
+                                  "required": [
+                                    "source",
+                                    "header"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "invoices": {
+                                "minItems": 1,
+                                "maxItems": 30,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "source": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "header": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 60
+                                    },
+                                    "value": {
+                                      "type": "string",
+                                      "maxLength": 100
+                                    }
+                                  },
+                                  "required": [
+                                    "source",
+                                    "header"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "payments",
+                              "refunds",
+                              "invoices"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "required": [
+                          "separator",
+                          "dateFormat",
+                          "decimal",
+                          "columns"
+                        ],
+                        "additionalProperties": false
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "profile"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "profile": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "separator": {
+                                  "type": "string",
+                                  "enum": [
+                                    ";",
+                                    ",",
+                                    "\t"
+                                  ]
+                                },
+                                "dateFormat": {
+                                  "type": "string",
+                                  "enum": [
+                                    "iso",
+                                    "tr"
+                                  ]
+                                },
+                                "decimal": {
+                                  "type": "string",
+                                  "enum": [
+                                    ",",
+                                    "."
+                                  ]
+                                },
+                                "columns": {
+                                  "type": "object",
+                                  "properties": {
+                                    "payments": {
+                                      "minItems": 1,
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "header": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 60
+                                          },
+                                          "value": {
+                                            "type": "string",
+                                            "maxLength": 100
+                                          }
+                                        },
+                                        "required": [
+                                          "source",
+                                          "header"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "refunds": {
+                                      "minItems": 1,
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "header": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 60
+                                          },
+                                          "value": {
+                                            "type": "string",
+                                            "maxLength": 100
+                                          }
+                                        },
+                                        "required": [
+                                          "source",
+                                          "header"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "invoices": {
+                                      "minItems": 1,
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "header": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 60
+                                          },
+                                          "value": {
+                                            "type": "string",
+                                            "maxLength": 100
+                                          }
+                                        },
+                                        "required": [
+                                          "source",
+                                          "header"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "payments",
+                                    "refunds",
+                                    "invoices"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "required": [
+                                "separator",
+                                "dateFormat",
+                                "decimal",
+                                "columns"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kurumun aktarım profili; boşsa standart dosya iner"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için profil sürümü"
+                        }
+                      },
+                      "required": [
+                        "profile",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/exports": {
       "get": {
         "operationId": "exportFinance",

@@ -47,6 +47,8 @@ const MODULELESS: Readonly<Record<string, string>> = {
   'GET /api/v1/auth/*': 'kimlik',
   'POST /api/v1/auth/*': 'kimlik',
   'GET /api/v1/health': 'sağlık denetimi, oturumsuz',
+  // Sabah kararı 85: düzenlenmiş belge, modül kapansa da üçüncü kişiye doğrulanabilir (DOM-DIL-082).
+  'GET /api/v1/certificate-verifications/:code': 'belge doğrulama, oturumsuz (Sabah kararı 85)',
   // Oturum, rol ve etkin modül haritası; istemci menüyü ve route korumasını bundan kurar.
   'GET /api/v1/me': 'oturum',
   // Üyelik ve kadro çekirdek kayıtlardır (öğrenci, öğretmen, veli koleksiyonları her zaman açık).
@@ -272,6 +274,13 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'POST /api/v1/progression-decisions/:decisionId/reject': ['academic'],
   'GET /api/v1/groups/:groupId/progression': ['academic'],
   'GET /api/v1/students/:studentId/progression-decisions': ['academic'],
+  // Kurum başarı belgesi ve MEBBİS izi (OG-088; IST-081): yalnız dil okulunda, okulda 404.
+  'POST /api/v1/course-certificates': ['academic'],
+  'POST /api/v1/course-certificates/:certificateId/cancel': ['academic'],
+  'GET /api/v1/course-certificates': ['academic'],
+  'GET /api/v1/course-certificates/:certificateId': ['academic'],
+  'GET /api/v1/groups/:groupId/mebbis-certificates': ['academic'],
+  'POST /api/v1/progression-decisions/:decisionId/mebbis-record': ['academic'],
   'GET /api/v1/rubrics': ['learning'],
   'GET /api/v1/rubrics/:rubricId': ['learning'],
   'GET /api/v1/rubric-versions/:versionId': ['learning'],

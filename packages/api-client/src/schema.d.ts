@@ -5192,6 +5192,130 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/course-certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kurum başarı belgeleri
+         * @description Yönetici kurumun bütün belgelerini, öğretmen okuyabildiği grupların belgelerini görür. Öğrenci kendisinin, veli 18 yaş altı çocuğunun yalnız geçerli belgelerini görür; iptal izi ve düzenleyen gösterilmez. Ön büro 403. Yeniden eskiye, sayfalı (`meta.total`). Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        get: operations["listCourseCertificates"];
+        put?: never;
+        /**
+         * Kurum başarı belgesi düzenle
+         * @description Kaydın geçerli onaylı `passed` kararıyla belge düzenler (DOM-DIL-081, 082); onay bekleyen, tekrar ya da devamsızlık kararı 422. İçerik düzenleme anının kopyasıdır. Numara kurum sayacından `KB-<yıl>-<sıra>`, doğrulama kodu rastgeledir. Karar başına tek geçerli belge (409 `certificate_already_issued`); hatalı belge iptal edilip `replacesCertificateId` ile yeniden düzenlenir. Yalnız kurum yöneticisi ya da kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi); diğer öğretmen 403. Başarı 201. `Idempotency-Key` zorunlu (yoksa 400 `idempotency_key_required`). Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        post: operations["issueCourseCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/course-certificates/{certificateId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kurum başarı belgesini iptal et
+         * @description Gerekçe zorunlu; belge bir kez iptal edilir (409 `certificate_already_cancelled`). Numara ve kod korunur, doğrulama bundan sonra `cancelled` döner (DOM-DIL-082). Yalnız kurum yöneticisi ya da kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi); diğer öğretmen 403. `If-Match` belgenin satır sürümü (`rowVersion`; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Olmayan ya da başka kurumun belgesi 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        post: operations["cancelCourseCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/course-certificates/{certificateId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kurum başarı belgesi ayrıntısı
+         * @description Kapsam dışı, başka kurumun ya da kursiyer ve veli için iptal edilmiş belge 404. Ön büro 403. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        get: operations["getCourseCertificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{groupId}/mebbis-certificates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Grubun MEBBİS belge listesi
+         * @description Belgeye hak kazanan kursiyerler (geçerli karar onaylı `passed`; devamsızlık ve tekrar listeye girmez) ve MEBBİS'te düzenlenen Kurs Bitirme Belgesi izi (DOM-DIL-080). Roller: `yonetici`, `ogretmen` (grubu okuyabilen); diğer roller 403. Olmayan ya da başka kurumun grubu 404. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        get: operations["getGroupMebbisCertificates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/progression-decisions/{decisionId}/mebbis-record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * MEBBİS belgesini işaretle
+         * @description Resmî Kurs Bitirme Belgesinin MEBBİS'te düzenlendiğini belge no ve tarihle işaretler; platform resmî belgeyi üretmez (DOM-DIL-080). Yalnız kaydın geçerli onaylı `passed` kararı (aksi 422); karar başına bir iz (409 `mebbis_already_recorded`); ileri tarih 422. Yalnız kurum yöneticisi ya da kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi); diğer öğretmen 403. Başarı 201. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        post: operations["recordMebbisCertificate"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/certificate-verifications/{code}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kurum başarı belgesini doğrula
+         * @description Kimlik gerektirmez ve modülden bağımsızdır: düzenlenmiş belge modül kapansa da doğrulanır (DOM-DIL-082, Sabah kararı 85). Yanıt yalnız durum (`valid` ya da `cancelled`), kursiyerin baş harfleri, kur adı, düzenleme günü ve kurum adıdır; belge numarası ve puanlar yoktur. Biçimi bozuk ve bulunamayan kod aynı 404 `not_found`. IP başına dakikada 30 istek; aşılırsa 429 `rate_limited` ve `Retry-After`.
+         */
+        get: operations["verifyCourseCertificate"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -46122,6 +46246,943 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listCourseCertificates: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Belge durumu süzgeci */
+                status?: "valid" | "cancelled";
+                /** @description Kursiyer süzgeci */
+                studentId?: string;
+                /** @description Kur süzgeci */
+                courseId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: ({
+                            id: string;
+                            /** @description Belge numarası `KB-<yıl>-<sıra>`; kurum içinde tekil */
+                            number: string;
+                            /** @enum {string} */
+                            status: "valid" | "cancelled";
+                            /** @description Doğrulama kodu (7×4 Crockford base32) */
+                            verificationCode: string;
+                            enrollmentId: string;
+                            groupId: string;
+                            learnerId: string;
+                            courseId: string;
+                            decisionId: string;
+                            content: {
+                                /** @enum {number} */
+                                schemaVersion: 1;
+                                /** @enum {string} */
+                                title: "Kurum başarı belgesi";
+                                institutionName: string;
+                                learnerName: string;
+                                courseId: string;
+                                courseName: string;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                levelStatement: string;
+                                totalHours: number;
+                                attendance: {
+                                    attendedHours: number;
+                                    totalHours: number;
+                                    permille: number;
+                                };
+                                finalScore: number;
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking";
+                                    score: number;
+                                }[];
+                                decisionId: string;
+                                /** Format: date-time */
+                                approvedAt: string;
+                            };
+                            replacesCertificateId: string | null;
+                            issuedByUserId: string;
+                            /** Format: date-time */
+                            issuedAt: string;
+                            cancelledByUserId: string | null;
+                            cancelledAt: string | null;
+                            cancellationReason: string | null;
+                            /** @description Belgenin satır sürümü (`If-Match`) */
+                            rowVersion: number;
+                        } | {
+                            id: string;
+                            number: string;
+                            /** @enum {string} */
+                            status: "valid" | "cancelled";
+                            verificationCode: string;
+                            courseId: string;
+                            content: {
+                                /** @enum {number} */
+                                schemaVersion: 1;
+                                /** @enum {string} */
+                                title: "Kurum başarı belgesi";
+                                institutionName: string;
+                                learnerName: string;
+                                courseId: string;
+                                courseName: string;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                levelStatement: string;
+                                totalHours: number;
+                                attendance: {
+                                    attendedHours: number;
+                                    totalHours: number;
+                                    permille: number;
+                                };
+                                finalScore: number;
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking";
+                                    score: number;
+                                }[];
+                                decisionId: string;
+                                /** Format: date-time */
+                                approvedAt: string;
+                            };
+                            /** Format: date-time */
+                            issuedAt: string;
+                        })[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    issueCourseCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    decisionId: string;
+                    /** @default null */
+                    replacesCertificateId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belge numarası `KB-<yıl>-<sıra>`; kurum içinde tekil */
+                            number: string;
+                            /** @enum {string} */
+                            status: "valid" | "cancelled";
+                            /** @description Doğrulama kodu (7×4 Crockford base32) */
+                            verificationCode: string;
+                            enrollmentId: string;
+                            groupId: string;
+                            learnerId: string;
+                            courseId: string;
+                            decisionId: string;
+                            content: {
+                                /** @enum {number} */
+                                schemaVersion: 1;
+                                /** @enum {string} */
+                                title: "Kurum başarı belgesi";
+                                institutionName: string;
+                                learnerName: string;
+                                courseId: string;
+                                courseName: string;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                levelStatement: string;
+                                totalHours: number;
+                                attendance: {
+                                    attendedHours: number;
+                                    totalHours: number;
+                                    permille: number;
+                                };
+                                finalScore: number;
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking";
+                                    score: number;
+                                }[];
+                                decisionId: string;
+                                /** Format: date-time */
+                                approvedAt: string;
+                            };
+                            replacesCertificateId: string | null;
+                            issuedByUserId: string;
+                            /** Format: date-time */
+                            issuedAt: string;
+                            cancelledByUserId: string | null;
+                            cancelledAt: string | null;
+                            cancellationReason: string | null;
+                            /** @description Belgenin satır sürümü (`If-Match`) */
+                            rowVersion: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelCourseCertificate: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Belge kimliği */
+                certificateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belge numarası `KB-<yıl>-<sıra>`; kurum içinde tekil */
+                            number: string;
+                            /** @enum {string} */
+                            status: "valid" | "cancelled";
+                            /** @description Doğrulama kodu (7×4 Crockford base32) */
+                            verificationCode: string;
+                            enrollmentId: string;
+                            groupId: string;
+                            learnerId: string;
+                            courseId: string;
+                            decisionId: string;
+                            content: {
+                                /** @enum {number} */
+                                schemaVersion: 1;
+                                /** @enum {string} */
+                                title: "Kurum başarı belgesi";
+                                institutionName: string;
+                                learnerName: string;
+                                courseId: string;
+                                courseName: string;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                levelStatement: string;
+                                totalHours: number;
+                                attendance: {
+                                    attendedHours: number;
+                                    totalHours: number;
+                                    permille: number;
+                                };
+                                finalScore: number;
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking";
+                                    score: number;
+                                }[];
+                                decisionId: string;
+                                /** Format: date-time */
+                                approvedAt: string;
+                            };
+                            replacesCertificateId: string | null;
+                            issuedByUserId: string;
+                            /** Format: date-time */
+                            issuedAt: string;
+                            cancelledByUserId: string | null;
+                            cancelledAt: string | null;
+                            cancellationReason: string | null;
+                            /** @description Belgenin satır sürümü (`If-Match`) */
+                            rowVersion: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getCourseCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Belge kimliği */
+                certificateId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Belge numarası `KB-<yıl>-<sıra>`; kurum içinde tekil */
+                            number: string;
+                            /** @enum {string} */
+                            status: "valid" | "cancelled";
+                            /** @description Doğrulama kodu (7×4 Crockford base32) */
+                            verificationCode: string;
+                            enrollmentId: string;
+                            groupId: string;
+                            learnerId: string;
+                            courseId: string;
+                            decisionId: string;
+                            content: {
+                                /** @enum {number} */
+                                schemaVersion: 1;
+                                /** @enum {string} */
+                                title: "Kurum başarı belgesi";
+                                institutionName: string;
+                                learnerName: string;
+                                courseId: string;
+                                courseName: string;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                levelStatement: string;
+                                totalHours: number;
+                                attendance: {
+                                    attendedHours: number;
+                                    totalHours: number;
+                                    permille: number;
+                                };
+                                finalScore: number;
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking";
+                                    score: number;
+                                }[];
+                                decisionId: string;
+                                /** Format: date-time */
+                                approvedAt: string;
+                            };
+                            replacesCertificateId: string | null;
+                            issuedByUserId: string;
+                            /** Format: date-time */
+                            issuedAt: string;
+                            cancelledByUserId: string | null;
+                            cancelledAt: string | null;
+                            cancellationReason: string | null;
+                            /** @description Belgenin satır sürümü (`If-Match`) */
+                            rowVersion: number;
+                        } | {
+                            id: string;
+                            number: string;
+                            /** @enum {string} */
+                            status: "valid" | "cancelled";
+                            verificationCode: string;
+                            courseId: string;
+                            content: {
+                                /** @enum {number} */
+                                schemaVersion: 1;
+                                /** @enum {string} */
+                                title: "Kurum başarı belgesi";
+                                institutionName: string;
+                                learnerName: string;
+                                courseId: string;
+                                courseName: string;
+                                /** @enum {string} */
+                                level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                levelStatement: string;
+                                totalHours: number;
+                                attendance: {
+                                    attendedHours: number;
+                                    totalHours: number;
+                                    permille: number;
+                                };
+                                finalScore: number;
+                                skills: {
+                                    /** @enum {string} */
+                                    skill: "reading" | "listening" | "writing" | "speaking";
+                                    score: number;
+                                }[];
+                                decisionId: string;
+                                /** Format: date-time */
+                                approvedAt: string;
+                            };
+                            /** Format: date-time */
+                            issuedAt: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGroupMebbisCertificates: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Dil grubu kimliği */
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            groupId: string;
+                            courseId: string;
+                            /** @description Oturumdaki kişi belgeyi işaretleyebilir mi (yönetici ya da koordinatör) */
+                            canRecord: boolean;
+                            learners: {
+                                enrollmentId: string;
+                                studentId: string;
+                                decisionId: string;
+                                record: {
+                                    id: string;
+                                    decisionId: string;
+                                    /** @description MEBBİS Kurs Bitirme Belgesi numarası */
+                                    certificateNumber: string;
+                                    /** Format: date */
+                                    issuedDate: string;
+                                    recordedByUserId: string;
+                                    /** Format: date-time */
+                                    recordedAt: string;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordMebbisCertificate: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Kur sonu kararı kimliği */
+                decisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    certificateNumber: string;
+                    /** Format: date */
+                    issuedDate: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            decisionId: string;
+                            /** @description MEBBİS Kurs Bitirme Belgesi numarası */
+                            certificateNumber: string;
+                            /** Format: date */
+                            issuedDate: string;
+                            recordedByUserId: string;
+                            /** Format: date-time */
+                            recordedAt: string;
+                            enrollmentId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    verifyCourseCertificate: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Belgedeki doğrulama kodu (büyük/küçük harf ve tire fark etmez) */
+                code: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            status: "valid" | "cancelled";
+                            /** @description Kursiyerin ad-soyad baş harfleri */
+                            learnerInitials: string;
+                            courseName: string;
+                            /**
+                             * Format: date
+                             * @description Düzenleme günü (Europe/Istanbul)
+                             */
+                            issuedDate: string;
+                            institutionName: string;
+                        };
+                    };
                 };
             };
             /** @description Default Response */

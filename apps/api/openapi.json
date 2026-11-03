@@ -93999,6 +93999,2442 @@
         }
       }
     },
+    "/api/v1/course-certificates": {
+      "post": {
+        "operationId": "issueCourseCertificate",
+        "summary": "Kurum başarı belgesi düzenle",
+        "tags": [
+          "learning"
+        ],
+        "description": "Kaydın geçerli onaylı `passed` kararıyla belge düzenler (DOM-DIL-081, 082); onay bekleyen, tekrar ya da devamsızlık kararı 422. İçerik düzenleme anının kopyasıdır. Numara kurum sayacından `KB-<yıl>-<sıra>`, doğrulama kodu rastgeledir. Karar başına tek geçerli belge (409 `certificate_already_issued`); hatalı belge iptal edilip `replacesCertificateId` ile yeniden düzenlenir. Yalnız kurum yöneticisi ya da kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi); diğer öğretmen 403. Başarı 201. `Idempotency-Key` zorunlu (yoksa 400 `idempotency_key_required`). Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "decisionId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "replacesCertificateId": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "decisionId"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Belge numarası `KB-<yıl>-<sıra>`; kurum içinde tekil"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "valid",
+                            "cancelled"
+                          ]
+                        },
+                        "verificationCode": {
+                          "type": "string",
+                          "description": "Doğrulama kodu (7×4 Crockford base32)"
+                        },
+                        "enrollmentId": {
+                          "type": "string"
+                        },
+                        "groupId": {
+                          "type": "string"
+                        },
+                        "learnerId": {
+                          "type": "string"
+                        },
+                        "courseId": {
+                          "type": "string"
+                        },
+                        "decisionId": {
+                          "type": "string"
+                        },
+                        "content": {
+                          "type": "object",
+                          "properties": {
+                            "schemaVersion": {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            "title": {
+                              "type": "string",
+                              "enum": [
+                                "Kurum başarı belgesi"
+                              ]
+                            },
+                            "institutionName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "learnerName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "courseId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "courseName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "level": {
+                              "type": "string",
+                              "enum": [
+                                "Pre-A1",
+                                "A1",
+                                "A2",
+                                "A2+",
+                                "B1",
+                                "B1+",
+                                "B2",
+                                "B2+",
+                                "C1",
+                                "C2"
+                              ]
+                            },
+                            "levelStatement": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "totalHours": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 9007199254740991
+                            },
+                            "attendance": {
+                              "type": "object",
+                              "properties": {
+                                "attendedHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "totalHours": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9007199254740991
+                                },
+                                "permille": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1000
+                                }
+                              },
+                              "required": [
+                                "attendedHours",
+                                "totalHours",
+                                "permille"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "finalScore": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "skills": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "skill": {
+                                    "type": "string",
+                                    "enum": [
+                                      "reading",
+                                      "listening",
+                                      "writing",
+                                      "speaking"
+                                    ]
+                                  },
+                                  "score": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "skill",
+                                  "score"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "decisionId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "approvedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "schemaVersion",
+                            "title",
+                            "institutionName",
+                            "learnerName",
+                            "courseId",
+                            "courseName",
+                            "level",
+                            "levelStatement",
+                            "totalHours",
+                            "attendance",
+                            "finalScore",
+                            "skills",
+                            "decisionId",
+                            "approvedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "replacesCertificateId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "issuedByUserId": {
+                          "type": "string"
+                        },
+                        "issuedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "cancelledByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "cancellationReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rowVersion": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Belgenin satır sürümü (`If-Match`)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "status",
+                        "verificationCode",
+                        "enrollmentId",
+                        "groupId",
+                        "learnerId",
+                        "courseId",
+                        "decisionId",
+                        "content",
+                        "replacesCertificateId",
+                        "issuedByUserId",
+                        "issuedAt",
+                        "cancelledByUserId",
+                        "cancelledAt",
+                        "cancellationReason",
+                        "rowVersion"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listCourseCertificates",
+        "summary": "Kurum başarı belgeleri",
+        "tags": [
+          "learning"
+        ],
+        "description": "Yönetici kurumun bütün belgelerini, öğretmen okuyabildiği grupların belgelerini görür. Öğrenci kendisinin, veli 18 yaş altı çocuğunun yalnız geçerli belgelerini görür; iptal izi ve düzenleyen gösterilmez. Ön büro 403. Yeniden eskiye, sayfalı (`meta.total`). Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "valid",
+                "cancelled"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Belge durumu süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Kursiyer süzgeci"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "courseId",
+            "required": false,
+            "description": "Kur süzgeci"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "anyOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string",
+                                "description": "Belge numarası `KB-<yıl>-<sıra>`; kurum içinde tekil"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "valid",
+                                  "cancelled"
+                                ]
+                              },
+                              "verificationCode": {
+                                "type": "string",
+                                "description": "Doğrulama kodu (7×4 Crockford base32)"
+                              },
+                              "enrollmentId": {
+                                "type": "string"
+                              },
+                              "groupId": {
+                                "type": "string"
+                              },
+                              "learnerId": {
+                                "type": "string"
+                              },
+                              "courseId": {
+                                "type": "string"
+                              },
+                              "decisionId": {
+                                "type": "string"
+                              },
+                              "content": {
+                                "type": "object",
+                                "properties": {
+                                  "schemaVersion": {
+                                    "type": "number",
+                                    "enum": [
+                                      1
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "enum": [
+                                      "Kurum başarı belgesi"
+                                    ]
+                                  },
+                                  "institutionName": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "learnerName": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "courseId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "courseName": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "level": {
+                                    "type": "string",
+                                    "enum": [
+                                      "Pre-A1",
+                                      "A1",
+                                      "A2",
+                                      "A2+",
+                                      "B1",
+                                      "B1+",
+                                      "B2",
+                                      "B2+",
+                                      "C1",
+                                      "C2"
+                                    ]
+                                  },
+                                  "levelStatement": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "totalHours": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "attendance": {
+                                    "type": "object",
+                                    "properties": {
+                                      "attendedHours": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "totalHours": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "permille": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1000
+                                      }
+                                    },
+                                    "required": [
+                                      "attendedHours",
+                                      "totalHours",
+                                      "permille"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "finalScore": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  },
+                                  "skills": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "skill": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reading",
+                                            "listening",
+                                            "writing",
+                                            "speaking"
+                                          ]
+                                        },
+                                        "score": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 100
+                                        }
+                                      },
+                                      "required": [
+                                        "skill",
+                                        "score"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "decisionId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "approvedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  }
+                                },
+                                "required": [
+                                  "schemaVersion",
+                                  "title",
+                                  "institutionName",
+                                  "learnerName",
+                                  "courseId",
+                                  "courseName",
+                                  "level",
+                                  "levelStatement",
+                                  "totalHours",
+                                  "attendance",
+                                  "finalScore",
+                                  "skills",
+                                  "decisionId",
+                                  "approvedAt"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "replacesCertificateId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "issuedByUserId": {
+                                "type": "string"
+                              },
+                              "issuedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              },
+                              "cancelledByUserId": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "cancelledAt": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              },
+                              "cancellationReason": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "rowVersion": {
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 9007199254740991,
+                                "description": "Belgenin satır sürümü (`If-Match`)"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "status",
+                              "verificationCode",
+                              "enrollmentId",
+                              "groupId",
+                              "learnerId",
+                              "courseId",
+                              "decisionId",
+                              "content",
+                              "replacesCertificateId",
+                              "issuedByUserId",
+                              "issuedAt",
+                              "cancelledByUserId",
+                              "cancelledAt",
+                              "cancellationReason",
+                              "rowVersion"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "number": {
+                                "type": "string"
+                              },
+                              "status": {
+                                "type": "string",
+                                "enum": [
+                                  "valid",
+                                  "cancelled"
+                                ]
+                              },
+                              "verificationCode": {
+                                "type": "string"
+                              },
+                              "courseId": {
+                                "type": "string"
+                              },
+                              "content": {
+                                "type": "object",
+                                "properties": {
+                                  "schemaVersion": {
+                                    "type": "number",
+                                    "enum": [
+                                      1
+                                    ]
+                                  },
+                                  "title": {
+                                    "type": "string",
+                                    "enum": [
+                                      "Kurum başarı belgesi"
+                                    ]
+                                  },
+                                  "institutionName": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "learnerName": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "courseId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "courseName": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "level": {
+                                    "type": "string",
+                                    "enum": [
+                                      "Pre-A1",
+                                      "A1",
+                                      "A2",
+                                      "A2+",
+                                      "B1",
+                                      "B1+",
+                                      "B2",
+                                      "B2+",
+                                      "C1",
+                                      "C2"
+                                    ]
+                                  },
+                                  "levelStatement": {
+                                    "type": "string",
+                                    "minLength": 1
+                                  },
+                                  "totalHours": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "attendance": {
+                                    "type": "object",
+                                    "properties": {
+                                      "attendedHours": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "totalHours": {
+                                        "type": "integer",
+                                        "minimum": 1,
+                                        "maximum": 9007199254740991
+                                      },
+                                      "permille": {
+                                        "type": "integer",
+                                        "minimum": 0,
+                                        "maximum": 1000
+                                      }
+                                    },
+                                    "required": [
+                                      "attendedHours",
+                                      "totalHours",
+                                      "permille"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  "finalScore": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  },
+                                  "skills": {
+                                    "type": "array",
+                                    "items": {
+                                      "type": "object",
+                                      "properties": {
+                                        "skill": {
+                                          "type": "string",
+                                          "enum": [
+                                            "reading",
+                                            "listening",
+                                            "writing",
+                                            "speaking"
+                                          ]
+                                        },
+                                        "score": {
+                                          "type": "number",
+                                          "minimum": 0,
+                                          "maximum": 100
+                                        }
+                                      },
+                                      "required": [
+                                        "skill",
+                                        "score"
+                                      ],
+                                      "additionalProperties": false
+                                    }
+                                  },
+                                  "decisionId": {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  "approvedAt": {
+                                    "type": "string",
+                                    "format": "date-time",
+                                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                  }
+                                },
+                                "required": [
+                                  "schemaVersion",
+                                  "title",
+                                  "institutionName",
+                                  "learnerName",
+                                  "courseId",
+                                  "courseName",
+                                  "level",
+                                  "levelStatement",
+                                  "totalHours",
+                                  "attendance",
+                                  "finalScore",
+                                  "skills",
+                                  "decisionId",
+                                  "approvedAt"
+                                ],
+                                "additionalProperties": false
+                              },
+                              "issuedAt": {
+                                "type": "string",
+                                "format": "date-time",
+                                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "number",
+                              "status",
+                              "verificationCode",
+                              "courseId",
+                              "content",
+                              "issuedAt"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/course-certificates/{certificateId}/cancel": {
+      "post": {
+        "operationId": "cancelCourseCertificate",
+        "summary": "Kurum başarı belgesini iptal et",
+        "tags": [
+          "learning"
+        ],
+        "description": "Gerekçe zorunlu; belge bir kez iptal edilir (409 `certificate_already_cancelled`). Numara ve kod korunur, doğrulama bundan sonra `cancelled` döner (DOM-DIL-082). Yalnız kurum yöneticisi ya da kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi); diğer öğretmen 403. `If-Match` belgenin satır sürümü (`rowVersion`; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Olmayan ya da başka kurumun belgesi 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "reason": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "certificateId",
+            "required": true,
+            "description": "Belge kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "number": {
+                          "type": "string",
+                          "description": "Belge numarası `KB-<yıl>-<sıra>`; kurum içinde tekil"
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "valid",
+                            "cancelled"
+                          ]
+                        },
+                        "verificationCode": {
+                          "type": "string",
+                          "description": "Doğrulama kodu (7×4 Crockford base32)"
+                        },
+                        "enrollmentId": {
+                          "type": "string"
+                        },
+                        "groupId": {
+                          "type": "string"
+                        },
+                        "learnerId": {
+                          "type": "string"
+                        },
+                        "courseId": {
+                          "type": "string"
+                        },
+                        "decisionId": {
+                          "type": "string"
+                        },
+                        "content": {
+                          "type": "object",
+                          "properties": {
+                            "schemaVersion": {
+                              "type": "number",
+                              "enum": [
+                                1
+                              ]
+                            },
+                            "title": {
+                              "type": "string",
+                              "enum": [
+                                "Kurum başarı belgesi"
+                              ]
+                            },
+                            "institutionName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "learnerName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "courseId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "courseName": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "level": {
+                              "type": "string",
+                              "enum": [
+                                "Pre-A1",
+                                "A1",
+                                "A2",
+                                "A2+",
+                                "B1",
+                                "B1+",
+                                "B2",
+                                "B2+",
+                                "C1",
+                                "C2"
+                              ]
+                            },
+                            "levelStatement": {
+                              "type": "string",
+                              "minLength": 1
+                            },
+                            "totalHours": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 9007199254740991
+                            },
+                            "attendance": {
+                              "type": "object",
+                              "properties": {
+                                "attendedHours": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 9007199254740991
+                                },
+                                "totalHours": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9007199254740991
+                                },
+                                "permille": {
+                                  "type": "integer",
+                                  "minimum": 0,
+                                  "maximum": 1000
+                                }
+                              },
+                              "required": [
+                                "attendedHours",
+                                "totalHours",
+                                "permille"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "finalScore": {
+                              "type": "number",
+                              "minimum": 0,
+                              "maximum": 100
+                            },
+                            "skills": {
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "skill": {
+                                    "type": "string",
+                                    "enum": [
+                                      "reading",
+                                      "listening",
+                                      "writing",
+                                      "speaking"
+                                    ]
+                                  },
+                                  "score": {
+                                    "type": "number",
+                                    "minimum": 0,
+                                    "maximum": 100
+                                  }
+                                },
+                                "required": [
+                                  "skill",
+                                  "score"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "decisionId": {
+                              "type": "string",
+                              "minLength": 1,
+                              "maxLength": 200
+                            },
+                            "approvedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "schemaVersion",
+                            "title",
+                            "institutionName",
+                            "learnerName",
+                            "courseId",
+                            "courseName",
+                            "level",
+                            "levelStatement",
+                            "totalHours",
+                            "attendance",
+                            "finalScore",
+                            "skills",
+                            "decisionId",
+                            "approvedAt"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "replacesCertificateId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "issuedByUserId": {
+                          "type": "string"
+                        },
+                        "issuedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "cancelledByUserId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "cancelledAt": {
+                          "anyOf": [
+                            {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ]
+                        },
+                        "cancellationReason": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "rowVersion": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991,
+                          "description": "Belgenin satır sürümü (`If-Match`)"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "number",
+                        "status",
+                        "verificationCode",
+                        "enrollmentId",
+                        "groupId",
+                        "learnerId",
+                        "courseId",
+                        "decisionId",
+                        "content",
+                        "replacesCertificateId",
+                        "issuedByUserId",
+                        "issuedAt",
+                        "cancelledByUserId",
+                        "cancelledAt",
+                        "cancellationReason",
+                        "rowVersion"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/course-certificates/{certificateId}": {
+      "get": {
+        "operationId": "getCourseCertificate",
+        "summary": "Kurum başarı belgesi ayrıntısı",
+        "tags": [
+          "learning"
+        ],
+        "description": "Kapsam dışı, başka kurumun ya da kursiyer ve veli için iptal edilmiş belge 404. Ön büro 403. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "certificateId",
+            "required": true,
+            "description": "Belge kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "anyOf": [
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string",
+                              "description": "Belge numarası `KB-<yıl>-<sıra>`; kurum içinde tekil"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "valid",
+                                "cancelled"
+                              ]
+                            },
+                            "verificationCode": {
+                              "type": "string",
+                              "description": "Doğrulama kodu (7×4 Crockford base32)"
+                            },
+                            "enrollmentId": {
+                              "type": "string"
+                            },
+                            "groupId": {
+                              "type": "string"
+                            },
+                            "learnerId": {
+                              "type": "string"
+                            },
+                            "courseId": {
+                              "type": "string"
+                            },
+                            "decisionId": {
+                              "type": "string"
+                            },
+                            "content": {
+                              "type": "object",
+                              "properties": {
+                                "schemaVersion": {
+                                  "type": "number",
+                                  "enum": [
+                                    1
+                                  ]
+                                },
+                                "title": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Kurum başarı belgesi"
+                                  ]
+                                },
+                                "institutionName": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "learnerName": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "courseId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "courseName": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "level": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Pre-A1",
+                                    "A1",
+                                    "A2",
+                                    "A2+",
+                                    "B1",
+                                    "B1+",
+                                    "B2",
+                                    "B2+",
+                                    "C1",
+                                    "C2"
+                                  ]
+                                },
+                                "levelStatement": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "totalHours": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9007199254740991
+                                },
+                                "attendance": {
+                                  "type": "object",
+                                  "properties": {
+                                    "attendedHours": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "totalHours": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "permille": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1000
+                                    }
+                                  },
+                                  "required": [
+                                    "attendedHours",
+                                    "totalHours",
+                                    "permille"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "finalScore": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 100
+                                },
+                                "skills": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "skill": {
+                                        "type": "string",
+                                        "enum": [
+                                          "reading",
+                                          "listening",
+                                          "writing",
+                                          "speaking"
+                                        ]
+                                      },
+                                      "score": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 100
+                                      }
+                                    },
+                                    "required": [
+                                      "skill",
+                                      "score"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "decisionId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "approvedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "schemaVersion",
+                                "title",
+                                "institutionName",
+                                "learnerName",
+                                "courseId",
+                                "courseName",
+                                "level",
+                                "levelStatement",
+                                "totalHours",
+                                "attendance",
+                                "finalScore",
+                                "skills",
+                                "decisionId",
+                                "approvedAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "replacesCertificateId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "issuedByUserId": {
+                              "type": "string"
+                            },
+                            "issuedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            },
+                            "cancelledByUserId": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "cancelledAt": {
+                              "anyOf": [
+                                {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                },
+                                {
+                                  "type": "null"
+                                }
+                              ]
+                            },
+                            "cancellationReason": {
+                              "type": [
+                                "string",
+                                "null"
+                              ]
+                            },
+                            "rowVersion": {
+                              "type": "integer",
+                              "minimum": 1,
+                              "maximum": 9007199254740991,
+                              "description": "Belgenin satır sürümü (`If-Match`)"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status",
+                            "verificationCode",
+                            "enrollmentId",
+                            "groupId",
+                            "learnerId",
+                            "courseId",
+                            "decisionId",
+                            "content",
+                            "replacesCertificateId",
+                            "issuedByUserId",
+                            "issuedAt",
+                            "cancelledByUserId",
+                            "cancelledAt",
+                            "cancellationReason",
+                            "rowVersion"
+                          ],
+                          "additionalProperties": false
+                        },
+                        {
+                          "type": "object",
+                          "properties": {
+                            "id": {
+                              "type": "string"
+                            },
+                            "number": {
+                              "type": "string"
+                            },
+                            "status": {
+                              "type": "string",
+                              "enum": [
+                                "valid",
+                                "cancelled"
+                              ]
+                            },
+                            "verificationCode": {
+                              "type": "string"
+                            },
+                            "courseId": {
+                              "type": "string"
+                            },
+                            "content": {
+                              "type": "object",
+                              "properties": {
+                                "schemaVersion": {
+                                  "type": "number",
+                                  "enum": [
+                                    1
+                                  ]
+                                },
+                                "title": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Kurum başarı belgesi"
+                                  ]
+                                },
+                                "institutionName": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "learnerName": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "courseId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "courseName": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "level": {
+                                  "type": "string",
+                                  "enum": [
+                                    "Pre-A1",
+                                    "A1",
+                                    "A2",
+                                    "A2+",
+                                    "B1",
+                                    "B1+",
+                                    "B2",
+                                    "B2+",
+                                    "C1",
+                                    "C2"
+                                  ]
+                                },
+                                "levelStatement": {
+                                  "type": "string",
+                                  "minLength": 1
+                                },
+                                "totalHours": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 9007199254740991
+                                },
+                                "attendance": {
+                                  "type": "object",
+                                  "properties": {
+                                    "attendedHours": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "totalHours": {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "permille": {
+                                      "type": "integer",
+                                      "minimum": 0,
+                                      "maximum": 1000
+                                    }
+                                  },
+                                  "required": [
+                                    "attendedHours",
+                                    "totalHours",
+                                    "permille"
+                                  ],
+                                  "additionalProperties": false
+                                },
+                                "finalScore": {
+                                  "type": "number",
+                                  "minimum": 0,
+                                  "maximum": 100
+                                },
+                                "skills": {
+                                  "type": "array",
+                                  "items": {
+                                    "type": "object",
+                                    "properties": {
+                                      "skill": {
+                                        "type": "string",
+                                        "enum": [
+                                          "reading",
+                                          "listening",
+                                          "writing",
+                                          "speaking"
+                                        ]
+                                      },
+                                      "score": {
+                                        "type": "number",
+                                        "minimum": 0,
+                                        "maximum": 100
+                                      }
+                                    },
+                                    "required": [
+                                      "skill",
+                                      "score"
+                                    ],
+                                    "additionalProperties": false
+                                  }
+                                },
+                                "decisionId": {
+                                  "type": "string",
+                                  "minLength": 1,
+                                  "maxLength": 200
+                                },
+                                "approvedAt": {
+                                  "type": "string",
+                                  "format": "date-time",
+                                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                }
+                              },
+                              "required": [
+                                "schemaVersion",
+                                "title",
+                                "institutionName",
+                                "learnerName",
+                                "courseId",
+                                "courseName",
+                                "level",
+                                "levelStatement",
+                                "totalHours",
+                                "attendance",
+                                "finalScore",
+                                "skills",
+                                "decisionId",
+                                "approvedAt"
+                              ],
+                              "additionalProperties": false
+                            },
+                            "issuedAt": {
+                              "type": "string",
+                              "format": "date-time",
+                              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                            }
+                          },
+                          "required": [
+                            "id",
+                            "number",
+                            "status",
+                            "verificationCode",
+                            "courseId",
+                            "content",
+                            "issuedAt"
+                          ],
+                          "additionalProperties": false
+                        }
+                      ]
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/groups/{groupId}/mebbis-certificates": {
+      "get": {
+        "operationId": "getGroupMebbisCertificates",
+        "summary": "Grubun MEBBİS belge listesi",
+        "tags": [
+          "learning"
+        ],
+        "description": "Belgeye hak kazanan kursiyerler (geçerli karar onaylı `passed`; devamsızlık ve tekrar listeye girmez) ve MEBBİS'te düzenlenen Kurs Bitirme Belgesi izi (DOM-DIL-080). Roller: `yonetici`, `ogretmen` (grubu okuyabilen); diğer roller 403. Olmayan ya da başka kurumun grubu 404. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "groupId",
+            "required": true,
+            "description": "Dil grubu kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "groupId": {
+                          "type": "string"
+                        },
+                        "courseId": {
+                          "type": "string"
+                        },
+                        "canRecord": {
+                          "type": "boolean",
+                          "description": "Oturumdaki kişi belgeyi işaretleyebilir mi (yönetici ya da koordinatör)"
+                        },
+                        "learners": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "enrollmentId": {
+                                "type": "string"
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "decisionId": {
+                                "type": "string"
+                              },
+                              "record": {
+                                "anyOf": [
+                                  {
+                                    "type": "object",
+                                    "properties": {
+                                      "id": {
+                                        "type": "string"
+                                      },
+                                      "decisionId": {
+                                        "type": "string"
+                                      },
+                                      "certificateNumber": {
+                                        "type": "string",
+                                        "description": "MEBBİS Kurs Bitirme Belgesi numarası"
+                                      },
+                                      "issuedDate": {
+                                        "type": "string",
+                                        "format": "date",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                                      },
+                                      "recordedByUserId": {
+                                        "type": "string"
+                                      },
+                                      "recordedAt": {
+                                        "type": "string",
+                                        "format": "date-time",
+                                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                                      }
+                                    },
+                                    "required": [
+                                      "id",
+                                      "decisionId",
+                                      "certificateNumber",
+                                      "issuedDate",
+                                      "recordedByUserId",
+                                      "recordedAt"
+                                    ],
+                                    "additionalProperties": false
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "enrollmentId",
+                              "studentId",
+                              "decisionId",
+                              "record"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "groupId",
+                        "courseId",
+                        "canRecord",
+                        "learners"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/progression-decisions/{decisionId}/mebbis-record": {
+      "post": {
+        "operationId": "recordMebbisCertificate",
+        "summary": "MEBBİS belgesini işaretle",
+        "tags": [
+          "learning"
+        ],
+        "description": "Resmî Kurs Bitirme Belgesinin MEBBİS'te düzenlendiğini belge no ve tarihle işaretler; platform resmî belgeyi üretmez (DOM-DIL-080). Yalnız kaydın geçerli onaylı `passed` kararı (aksi 422); karar başına bir iz (409 `mebbis_already_recorded`); ileri tarih 422. Yalnız kurum yöneticisi ya da kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi); diğer öğretmen 403. Başarı 201. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "certificateNumber": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 100
+                  },
+                  "issuedDate": {
+                    "type": "string",
+                    "format": "date",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                  }
+                },
+                "required": [
+                  "certificateNumber",
+                  "issuedDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "decisionId",
+            "required": true,
+            "description": "Kur sonu kararı kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "decisionId": {
+                          "type": "string"
+                        },
+                        "certificateNumber": {
+                          "type": "string",
+                          "description": "MEBBİS Kurs Bitirme Belgesi numarası"
+                        },
+                        "issuedDate": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+                        },
+                        "recordedByUserId": {
+                          "type": "string"
+                        },
+                        "recordedAt": {
+                          "type": "string",
+                          "format": "date-time",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                        },
+                        "enrollmentId": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "decisionId",
+                        "certificateNumber",
+                        "issuedDate",
+                        "recordedByUserId",
+                        "recordedAt",
+                        "enrollmentId"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/certificate-verifications/{code}": {
+      "get": {
+        "operationId": "verifyCourseCertificate",
+        "summary": "Kurum başarı belgesini doğrula",
+        "tags": [
+          "learning"
+        ],
+        "description": "Kimlik gerektirmez ve modülden bağımsızdır: düzenlenmiş belge modül kapansa da doğrulanır (DOM-DIL-082, Sabah kararı 85). Yanıt yalnız durum (`valid` ya da `cancelled`), kursiyerin baş harfleri, kur adı, düzenleme günü ve kurum adıdır; belge numarası ve puanlar yoktur. Biçimi bozuk ve bulunamayan kod aynı 404 `not_found`. IP başına dakikada 30 istek; aşılırsa 429 `rate_limited` ve `Retry-After`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string"
+            },
+            "in": "path",
+            "name": "code",
+            "required": true,
+            "description": "Belgedeki doğrulama kodu (büyük/küçük harf ve tire fark etmez)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "valid",
+                            "cancelled"
+                          ]
+                        },
+                        "learnerInitials": {
+                          "type": "string",
+                          "description": "Kursiyerin ad-soyad baş harfleri"
+                        },
+                        "courseName": {
+                          "type": "string"
+                        },
+                        "issuedDate": {
+                          "type": "string",
+                          "format": "date",
+                          "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$",
+                          "description": "Düzenleme günü (Europe/Istanbul)"
+                        },
+                        "institutionName": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "status",
+                        "learnerInitials",
+                        "courseName",
+                        "issuedDate",
+                        "institutionName"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/files": {
       "post": {
         "operationId": "uploadFile",

@@ -69,13 +69,13 @@ import { auditWork } from './task-work.ts'
 // TODO(cefr-kur-ayari): Kurum kur geçme eşiği ayarı (`progressionSettingsSchema`) saklanmıyor;
 // core varsayılanı (kur sonu 60, devam binde 800) kullanılır.
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const assessmentEntity = (id: string) => ({ type: 'course_assessment', id })
 const decisionEntity = (id: string) => ({ type: 'progression_decision', id })
 
 /** Kur kaydının bağlamı: grup, kur, core `CourseEnrollment` ve kişinin rolü. */
-type EnrollmentContext = {
+export type EnrollmentContext = {
   stored: StoredEnrollment
   group: StoredGroup
   course: StoredCourse
@@ -84,13 +84,13 @@ type EnrollmentContext = {
   actor: ProgressionActor
 }
 
-async function languageSchool(db: Database, ctx: ServiceContext) {
+export async function languageSchool(db: Database, ctx: ServiceContext) {
   const institution = await getInstitution(db, ctx.institutionId)
   if (institution === null) throw new NotFoundError()
   return institution.type
 }
 
-async function coordinationOf(db: Database, ctx: ServiceContext) {
+export async function coordinationOf(db: Database, ctx: ServiceContext) {
   if (ctx.actor.role !== 'ogretmen') return NO_COORDINATOR_SCOPE
   const duties = await activeDutiesOf(db, ctx.institutionId, ctx.actor.membershipId)
   return duties.length === 0 ? NO_COORDINATOR_SCOPE : coordinatorScopeOf(duties)
@@ -100,7 +100,7 @@ async function coordinationOf(db: Database, ctx: ServiceContext) {
  * Grubun bağlamı; grup ya da kuru yoksa veya personel grubu okuyamıyorsa (core `canReadGroup`:
  * yönetici her grubu, öğretmen kendi grubunu ya da koordinatörü olduğu seviyenin grubunu) 404.
  */
-async function groupContext(db: Database, ctx: ServiceContext, groupId: string) {
+export async function groupContext(db: Database, ctx: ServiceContext, groupId: string) {
   const [groups, courses, coordination] = await Promise.all([
     loadGroups(db, ctx.institutionId),
     loadCourses(db, ctx.institutionId),
@@ -154,7 +154,7 @@ function toCourseEnrollment(
 }
 
 /** Kur kaydının bağlamı; kayıt yoksa, başka kurumunsa ya da kapsam dışıysa 404. */
-async function enrollmentContext(
+export async function enrollmentContext(
   db: Database,
   ctx: ServiceContext,
   enrollmentId: string,

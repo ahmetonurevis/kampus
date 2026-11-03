@@ -139,6 +139,14 @@ export const REDACTED_PATHS = [
   // kvkk: K — toplu personel aktarımının CSV içeriği: ad ve e-posta satırları (IST-007).
   'csv',
   '*.csv',
+  // kvkk: K — kurum başarı belgesinin doğrulama kodu, iptal gerekçesi ve MEBBİS belge numarası
+  // (DOM-DIL-080, DOM-DIL-082); kod kimliksiz doğrulama yolunda da gizlenir (`req` aşağıda).
+  'verificationCode',
+  '*.verificationCode',
+  'cancellationReason',
+  '*.cancellationReason',
+  'certificateNumber',
+  '*.certificateNumber',
   '*.cookie',
   '*.authorization',
 ]
@@ -154,6 +162,13 @@ export function maskIp(ip: string | undefined): string | undefined {
   return groups.length > 4 ? `${groups.slice(0, 4).join(':')}::` : ip
 }
 
+/** Kimliksiz doğrulama yolundaki belge kodu loglanmaz (DOM-DIL-082). */
+const CERTIFICATE_VERIFICATION_PATH = /^(\/api\/v1\/certificate-verifications\/)[^/]+/
+
+function maskCertificateCode(url: string): string {
+  return url.replace(CERTIFICATE_VERIFICATION_PATH, '$1[gizli]')
+}
+
 function loggerOptions(config: Config, stream?: NodeJS.WritableStream) {
   return {
     level: config.LOG_LEVEL,
@@ -163,7 +178,7 @@ function loggerOptions(config: Config, stream?: NodeJS.WritableStream) {
       req(request: FastifyRequest) {
         return {
           method: request.method,
-          url: request.url.split('?')[0],
+          url: maskCertificateCode(request.url.split('?')[0] ?? ''),
           remoteAddress: maskIp(request.ip),
         }
       },

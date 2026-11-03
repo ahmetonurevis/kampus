@@ -58,6 +58,7 @@ const GROUP = kayit('language-groups.test.ts', 'başka kurumun grubu 404, listed
 const GROUP_COMMAND = (verb: string) =>
   kayit('language-groups.test.ts', 'başka kurumun grubu açılmaz ve birleştirilmez', `'${verb}'`)
 const PROGRESSION = 'başka kurumun kaydı, kararı, grubu ve öğrencisi 404, B değişmez'
+const CERTIFICATE = 'başka kurumun belgesi, kararı ve grubu 404, listede yok, B değişmez'
 const PLACEMENT = kayit('cefr.test.ts', 'başka kurumun oturumu ve öğrencisi 404, B değişmez')
 const PLACEMENT_COMMAND = (verb: string) =>
   kayit('cefr.test.ts', 'başka kurumun oturumu ve öğrencisi 404, B değişmez', `'${verb}'`)
@@ -500,6 +501,24 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'GET /api/v1/students/:studentId/progression-decisions': kayit(
     'progression.test.ts',
     PROGRESSION,
+  ),
+
+  // --- Kurum başarı belgesi ve MEBBİS izi (OG-088; IST-081, DOM-DIL-080, 082) -----------------
+  'POST /api/v1/course-certificates': govde('certificates.test.ts', CERTIFICATE),
+  'POST /api/v1/course-certificates/:certificateId/cancel': kayit(
+    'certificates.test.ts',
+    CERTIFICATE,
+  ),
+  'GET /api/v1/course-certificates': liste('certificates.test.ts', CERTIFICATE),
+  'GET /api/v1/course-certificates/:certificateId': kayit('certificates.test.ts', CERTIFICATE),
+  'GET /api/v1/groups/:groupId/mebbis-certificates': kayit('certificates.test.ts', CERTIFICATE),
+  'POST /api/v1/progression-decisions/:decisionId/mebbis-record': kayit(
+    'certificates.test.ts',
+    CERTIFICATE,
+  ),
+  // Sabah kararı 85: kimliksiz ve modülsüz; kurum oturumdan gelmez, kod kurumlar arası tekildir.
+  'GET /api/v1/certificate-verifications/:code': yok(
+    'kimliksiz belge doğrulama; oturum ve kurum okumaz, yalnız baş harf ve kur döner',
   ),
 
   // --- Beceri ilerleme panosu (OG-080; IST-057, DOM-BEC-035) -----------------------------------

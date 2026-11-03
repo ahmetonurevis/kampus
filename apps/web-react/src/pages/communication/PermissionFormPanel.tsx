@@ -9,9 +9,11 @@ import {
   PERMISSION_TOPIC_LABELS,
   type PermissionFormDecision,
   type PermissionFormDetail,
+  type PermissionFormStudent,
 } from '@kampus/react-shared/permission-forms.ts'
 import {
   useArchivePermissionForm,
+  useCancelPermissionForm,
   useClosePermissionForm,
   usePermissionForm,
 } from '@kampus/react-shared/use-permission-forms.ts'
@@ -38,6 +40,7 @@ import { SummaryLoading, SummaryMetrics, SummarySection } from '../management/Su
 import { Facts, SummaryTitle } from '../learning/LearningParts.tsx'
 import { NEW_PERMISSION_FORM, PermissionFormContent } from './PermissionFormEditor.tsx'
 import {
+  eventFacts,
   permissionActions,
   permissionFormState,
   permissionFormTone,
@@ -112,6 +115,7 @@ function PermissionFormDetailView({
   const students = useCoreAll('students')
   const classes = useCoreAll('classes')
   const [closing, setClosing] = useState(false)
+  const [cancelling, setCancelling] = useState(false)
   const [archiving, setArchiving] = useState(false)
   const form = item.data?.data
   const names = useMemo(
@@ -139,6 +143,7 @@ function PermissionFormDetailView({
   const actions = permissionActions(actor, form)
   const expired = form.status === 'closed' && form.closedAt === null
   const closed = form.closedAt !== null
+  const cancelled = form.cancelledAt !== null
   const decided = hasDecisions(form)
   const target = (form.classIds ?? []).map((id) => classNames.get(id) ?? 'Sınıf')
   return (
@@ -152,8 +157,12 @@ function PermissionFormDetailView({
         items={[
           ['Konu', PERMISSION_TOPIC_LABELS[form.topic]],
           ['Son gün', dateLabel(form.deadline, { year: 'numeric' })],
+          ...eventFacts(form),
           ['Durum', <StatusBadge key="durum" text={state} tone={permissionFormTone(state)} />],
-          ...(form.closedAt ? ([['Kapatıldı', when(form.closedAt)]] as const) : []),
+          ...(form.cancelledAt ? ([['İptal edildi', when(form.cancelledAt)]] as const) : []),
+          ...(form.closedAt && !form.cancelledAt
+            ? ([['Kapatıldı', when(form.closedAt)]] as const)
+            : []),
           ['Hedef sınıflar', target.length ? target.join(', ') : 'Yok'],
           ...(form.targetStudentIds?.length
             ? ([['Tek tek öğrenciler', `${form.targetStudentIds.length} öğrenci`]] as const)
@@ -178,6 +187,15 @@ function PermissionFormDetailView({
           <Button
             type="button"
             variant="outline"
+            disabled={cancelled}
+            onClick={() => setCancelling(true)}
+          >
+            <Icon name="X" size={15} aria-hidden="true" />
+            Etkinliği iptal et
+          </Button>
+          <Button
+            type="button"
+            variant="outline"
             disabled={decided}
             onClick={() => setArchiving(true)}
           >
@@ -197,6 +215,7 @@ function PermissionFormDetailView({
             </p>
           ) : null}
           <CloseDialog form={form} open={closing} onOpenChange={setClosing} />
+          <CancelDialog form={form} open={cancelling} onOpenChange={setCancelling} />
           <ArchiveDialog
             form={form}
             open={archiving}
@@ -237,7 +256,11 @@ function PermissionFormDetailView({
                       ) : null}
                     </strong>
                     <StatusBadge
-                      text={permissionStatusText(entry.status)}
+                      text={
+                        reasking(entry)
+                          ? 'Yeniden izin bekleniyor'
+                          : permissionStatusText(entry.status)
+                      }
                       tone={permissionStatusTone(entry.status)}
                     />
                   </div>
@@ -260,6 +283,14 @@ function PermissionFormDetailView({
   )
 }
 
+/**
+ * Durumu bekleyen ama kararı etkinlik değişikliğiyle düşmüş öğrenci: "Yeniden izin bekleniyor"
+ * (DOM-ILT-032). Karar satırını görmeyen rol (derse giren öğretmen) bunu ayırt edemez; durum
+ * "Bekliyor" kalır.
+ */
+const reasking = (entry: Pick<PermissionFormStudent, 'status' | 'decisions'>) =>
+  entry.status === 'pending' && entry.decisions.some((decision) => !decision.current)
+
 function DecisionHistory({ decisions }: { decisions: readonly PermissionFormDecision[] }) {
   return (
     <ul aria-label="Karar geçmişi" className="grid gap-1 border-t pt-2 text-xs">
@@ -272,6 +303,11 @@ function DecisionHistory({ decisions }: { decisions: readonly PermissionFormDeci
             </strong>{' '}
             <span className="text-muted-foreground">· {when(decision.decidedAt)}</span>
           </span>
+          {!decision.current ? (
+            <span className="text-muted-foreground">
+              Etkinlik değiştiği için düştü; yeniden izin istendi.
+            </span>
+          ) : null}
           {decision.note ? (
             <span className="text-muted-foreground [overflow-wrap:anywhere]">
               Not: {decision.note}
@@ -363,6 +399,62 @@ function CloseDialog({
             }}
           >
             Formu kapat
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+  )
+}
+
+function CancelDialog({
+  form,
+  open,
+  onOpenChange,
+}: {
+  form: Pick<PermissionFormDetail, 'id' | 'title' | 'counts'>
+  open: boolean
+  onOpenChange: (open: boolean) => void
+}) {
+  const cancel = useCancelPermissionForm()
+  const fetchFresh = useFreshForm(form.id)
+  const confirming = useConfirmBusy()
+  const busy = confirming.busy || cancel.isPending
+  const confirm = () => confirming.run(submit)
+  async function submit() {
+    const result = await submitWithFreshRecord(fetchFresh, (fresh) =>
+      cancel.submit({ formId: fresh.id, version: fresh.version }),
+    )
+    if (result.status === 'missing') {
+      notify.error(RECORD_UNAVAILABLE_MESSAGE)
+      return
+    }
+    if (result.outcome.status === 'success') {
+      notify.success(`${form.title} iptal edildi; izin vermiş ve bekleyen velilere bildirildi.`)
+      onOpenChange(false)
+    }
+  }
+  const informed = form.counts.approved + form.counts.pending
+  return (
+    <AlertDialog open={open} onOpenChange={(next) => (busy ? undefined : onOpenChange(next))}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Etkinliği iptal et</AlertDialogTitle>
+          <AlertDialogDescription>
+            {form.title} iptal edilir ve form kapanır; kararlar korunur. İzin vermiş ve karar
+            bekleyen {informed} öğrencinin velisine iptal bildirimi gider. İptal geri alınamaz.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel disabled={busy}>Vazgeç</AlertDialogCancel>
+          <AlertDialogAction
+            disabled={busy}
+            aria-busy={busy || undefined}
+            onClick={(event) => {
+              event.preventDefault()
+              void confirm()
+            }}
+          >
+            Etkinliği iptal et
           </AlertDialogAction>
         </AlertDialogFooter>
       </AlertDialogContent>

@@ -16,7 +16,8 @@ import {
   type PermissionStatus,
   type UpdatePermissionFormBody,
 } from '@kampus/react-shared/permission-forms.ts'
-import { dateLabel } from '@kampus/school-core/lib/format.ts'
+import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
+import { amountInputValue, parseAmountInput } from '@kampus/school-core/lib/payments.ts'
 import {
   createPermissionFormSchema,
   type CreatePermissionFormInput,
@@ -62,6 +63,30 @@ export function permissionActions(
 
 // --- Form ----------------------------------------------------------------------
 
+/** Ücret metni → kuruş: boş "belirtilmemiş" (`null`), geçersiz metin `undefined`. */
+export function fee(text: string): number | null | undefined {
+  const value = text.trim()
+  if (value === '') return null
+  return /^0+(?:[.,]0{1,2})?$/.test(value) ? 0 : (parseAmountInput(value) ?? undefined)
+}
+
+const blank = (text: string) => (text.trim() === '' ? undefined : text.trim())
+
+/** Form metinlerini core girdisine çevirir: boş ayrıntı gönderilmez (core `optional`). */
+type EventTexts = Record<'eventDate' | 'eventTime' | 'location' | 'transport' | 'fee', string>
+
+function coreInput<T extends EventTexts>(values: T) {
+  const kurus = fee(values.fee)
+  return {
+    ...values,
+    eventDate: blank(values.eventDate),
+    eventTime: blank(values.eventTime),
+    location: blank(values.location),
+    transport: blank(values.transport),
+    fee: kurus ?? undefined,
+  }
+}
+
 /**
  * Form şeması core `createPermissionForm` ile aynıdır (konu, başlık, açıklama, son gün, hedef);
  * düzenlemede konu sabit kalır. Son günün geçmişte olup olmadığını sunucu karara bağlar: istemci
@@ -73,6 +98,12 @@ export const permissionFormSchema = z
     title: z.string(),
     description: z.string(),
     deadline: z.string(),
+    // Etkinlik ayrıntısı (DOM-ILT-032): boş bırakılan "belirtilmemiş"tir; ücret ₺ olarak yazılır.
+    eventDate: z.string(),
+    eventTime: z.string(),
+    location: z.string(),
+    transport: z.string(),
+    fee: z.string(),
     classIds: z.array(z.string()),
     studentIds: z.array(z.string()),
   })
@@ -80,7 +111,13 @@ export const permissionFormSchema = z
   // durur; boş gönderimde tüm alan hataları (hedef dahil) birlikte görünsün diye core sonucu
   // burada toplanır.
   .superRefine((values, ctx) => {
-    const result = createPermissionFormSchema.safeParse(values)
+    if (fee(values.fee) === undefined)
+      ctx.addIssue({
+        code: 'custom',
+        message: 'Ücreti 250 ya da 250,50 biçiminde girin; ücretsizse 0 yazın.',
+        path: ['fee'],
+      })
+    const result = createPermissionFormSchema.safeParse(coreInput(values))
     const issues = result.success ? [] : result.error.issues
     for (const issue of issues) ctx.addIssue({ ...issue })
     const noTarget = values.classIds.length === 0 && values.studentIds.length === 0
@@ -93,7 +130,7 @@ export const permissionFormSchema = z
   })
   // Boş konu seçimi de buradan geçer; geçersiz konuyu core şemasındaki `enum` Türkçe mesajla reddeder.
   .transform((values): CreatePermissionFormInput => ({
-    ...values,
+    ...coreInput(values),
     topic: values.topic as CreatePermissionFormInput['topic'],
   }))
   .pipe(createPermissionFormSchema)
@@ -102,7 +139,17 @@ export type PermissionFormOutput = z.output<typeof permissionFormSchema>
 
 type EditableForm = Pick<
   PermissionFormListItem,
-  'topic' | 'title' | 'description' | 'deadline' | 'classIds' | 'targetStudentIds'
+  | 'topic'
+  | 'title'
+  | 'description'
+  | 'deadline'
+  | 'classIds'
+  | 'targetStudentIds'
+  | 'eventDate'
+  | 'eventTime'
+  | 'location'
+  | 'transport'
+  | 'fee'
 >
 
 export type PermissionTarget = { classIds: readonly string[]; studentIds: readonly string[] }
@@ -125,6 +172,11 @@ export function permissionFormDefaults(form?: EditableForm): PermissionFormValue
     title: form?.title ?? '',
     description: form?.description ?? '',
     deadline: form?.deadline ?? '',
+    eventDate: form?.eventDate ?? '',
+    eventTime: form?.eventTime ?? '',
+    location: form?.location ?? '',
+    transport: form?.transport ?? '',
+    fee: form?.fee == null ? '' : amountInputValue(form.fee),
     classIds: [...(form?.classIds ?? [])],
     studentIds: [...(form?.targetStudentIds ?? [])],
   }
@@ -150,6 +202,16 @@ export function changedPermissionFormFields(
   if (values.title !== opened.title) changed.title = values.title
   if (values.description !== opened.description) changed.description = values.description
   if (values.deadline !== opened.deadline) changed.deadline = values.deadline
+  // Kaldırılan ayrıntı `null` gider (belirtilmemiş); değişiklik izni düşürür (DOM-ILT-032).
+  if ((values.eventDate ?? null) !== (opened.eventDate ?? null))
+    changed.eventDate = values.eventDate ?? null
+  if ((values.eventTime ?? null) !== (opened.eventTime ?? null))
+    changed.eventTime = values.eventTime ?? null
+  if ((values.location ?? null) !== (opened.location ?? null))
+    changed.location = values.location ?? null
+  if ((values.transport ?? null) !== (opened.transport ?? null))
+    changed.transport = values.transport ?? null
+  if ((values.fee ?? null) !== (opened.fee ?? null)) changed.fee = values.fee ?? null
   if (
     targetChanged(permissionTarget(opened), {
       classIds: values.classIds ?? [],
@@ -225,6 +287,9 @@ export function planPermissionFormUpdate(
         mine: field === 'deadline' ? dateLabel(yours, { year: 'numeric' }) : preview(yours),
       })
   }
+  // Etkinlik ayrıntısı: kullanıcının değiştirdiği ve kayıtlıdan farklı olan alan gider.
+  for (const field of ['eventDate', 'eventTime', 'location', 'transport', 'fee'] as const)
+    if (field in mine && field in differsFromFresh) Object.assign(body, { [field]: mine[field] })
   if ('classIds' in mine && 'classIds' in differsFromFresh) {
     body.classIds = mine.classIds
     body.studentIds = mine.studentIds
@@ -259,15 +324,19 @@ export type PermissionFormRow = {
   deadline: string
   /** Sıralama ve gösterim: son gün `YYYY-MM-DD`. */
   deadlineLabel: string
-  status: 'Açık' | 'Kapalı' | 'Süresi doldu'
+  status: 'Açık' | 'Kapalı' | 'Süresi doldu' | 'İptal edildi'
   summary: string
   item: PermissionFormListItem
 }
 
-/** Durum: kapatılmış `Kapalı`, yalnız son günü geçmiş `Süresi doldu` (DOM-ILT-038). */
+/**
+ * Durum: iptal edilmiş `İptal edildi` (DOM-ILT-032), kapatılmış `Kapalı`, yalnız son günü geçmiş
+ * `Süresi doldu` (DOM-ILT-038).
+ */
 export function permissionFormState(
-  form: Pick<PermissionFormListItem, 'status' | 'closedAt'>,
+  form: Pick<PermissionFormListItem, 'status' | 'closedAt' | 'cancelledAt'>,
 ): PermissionFormRow['status'] {
+  if (form.cancelledAt !== null) return 'İptal edildi'
   if (form.status === 'open') return 'Açık'
   return form.closedAt !== null ? 'Kapalı' : 'Süresi doldu'
 }
@@ -333,7 +402,29 @@ export const studentEntry = (
 export function myDecision(
   entry: Pick<PermissionFormStudent, 'decisions'> | undefined,
 ): PermissionFormDecision | undefined {
-  return entry?.decisions.findLast((decision) => decision.mine)
+  return entry?.decisions.findLast((decision) => decision.mine && decision.current)
+}
+
+/**
+ * Okuyanın kararı etkinlik değişince düştü mü (DOM-ILT-032): kendi kararı var ama hiçbiri geçerli
+ * değil. Yeniden izin istenir; eski karar satır olarak kalır.
+ */
+export const decisionDropped = (entry: Pick<PermissionFormStudent, 'decisions'> | undefined) =>
+  entry !== undefined &&
+  myDecision(entry) === undefined &&
+  entry.decisions.some((decision) => decision.mine && !decision.current)
+
+/** Etkinlik ayrıntısı satırları (belirtilenler): gün, saat, yer, ulaşım, ücret. */
+export function eventFacts(
+  form: Pick<PermissionFormListItem, 'eventDate' | 'eventTime' | 'location' | 'transport' | 'fee'>,
+): [string, string][] {
+  const facts: [string, string][] = []
+  if (form.eventDate) facts.push(['Etkinlik günü', dateLabel(form.eventDate, { year: 'numeric' })])
+  if (form.eventTime) facts.push(['Saat', form.eventTime])
+  if (form.location) facts.push(['Yer', form.location])
+  if (form.transport) facts.push(['Ulaşım', form.transport])
+  if (form.fee !== null) facts.push(['Ücret', form.fee === 0 ? 'Ücretsiz' : money(form.fee)])
+  return facts
 }
 
 /**

@@ -1,7 +1,10 @@
 import type { KampusClient } from '@kampus/api-client/client.ts'
 import type { ApiError } from '@kampus/api-client/errors.ts'
 import type { components, operations } from '@kampus/api-client/schema.d.ts'
-import { PERMISSION_FORM_TOPICS } from '@kampus/school-core/lib/permission-forms.ts'
+import {
+  PERMISSION_FORM_TOPICS,
+  type PermissionEventDetailField,
+} from '@kampus/school-core/lib/permission-forms.ts'
 
 import { runRequest } from './api-result.ts'
 import { requireIfMatch, type CommandHeaders, type CommandMessages } from './commands.ts'
@@ -63,16 +66,27 @@ export const PERMISSION_DECISION_LABELS = {
   rejected: 'Reddetti',
 } as const satisfies Record<PermissionDecisionValue, string>
 
+/** İzni düşüren etkinlik ayrıntılarının ekranda görünen adları (DOM-ILT-032). */
+export const PERMISSION_EVENT_FIELD_LABELS = {
+  eventDate: 'gün',
+  eventTime: 'saat',
+  location: 'yer',
+  transport: 'ulaşım',
+  fee: 'ücret',
+} as const satisfies Record<PermissionEventDetailField, string>
+
 export const PERMISSION_FORM_CHANGED_MESSAGE =
   'İzin formu bu arada değişti. Güncel hâli yüklendi; kontrol edip yeniden deneyin.'
 
 const FORM_CLOSED_MESSAGE = 'Bu izin formu kapatılmış; artık karar verilemez ya da değiştirilemez.'
+const FORM_CANCELLED_MESSAGE = 'Bu etkinlik zaten iptal edilmiş.'
 
 /** Yazma işlemine özgü kod metinleri (DOM-ILT-030, -036…038); listede olmayan kodda sunucunun mesajı. */
 const COMMON_MESSAGES = {
   version_conflict: PERMISSION_FORM_CHANGED_MESSAGE,
   not_found: 'İzin formu bulunamadı. Liste güncellendi.',
   permission_form_closed: FORM_CLOSED_MESSAGE,
+  permission_form_cancelled: FORM_CANCELLED_MESSAGE,
 } as const satisfies CommandMessages
 
 export const PERMISSION_FORM_MESSAGES = {
@@ -81,6 +95,7 @@ export const PERMISSION_FORM_MESSAGES = {
     'Bu sınıf ya da öğrenciler için izin formu açamazsınız; yalnız rehber öğretmeni olduğunuz sınıflar.',
   permission_form_deadline_in_past: 'Son gün geçmişte olamaz. Bugün ya da ileri bir gün seçin.',
   permission_form_deadline_passed: 'Son günü geçmiş formun son günü değiştirilemez.',
+  permission_form_event_in_past: 'Etkinlik günü geçmişte olamaz. Bugün ya da ileri bir gün seçin.',
   permission_form_no_students: 'Seçilen sınıflarda izin istenecek öğrenci yok.',
   permission_form_scope_locked:
     'Karar verilmiş formun hedefinden sınıf ya da öğrenci çıkarılamaz; yalnız eklenebilir.',
@@ -113,6 +128,11 @@ const FORM_FIELDS = {
     'title',
     'description',
     'deadline',
+    'eventDate',
+    'eventTime',
+    'location',
+    'transport',
+    'fee',
     'classIds',
     'studentIds',
     PERMISSION_FORM_ROOT,
@@ -124,12 +144,14 @@ const FORM_FIELDS = {
 export const PERMISSION_ERROR_FIELDS = {
   permission_form_deadline_in_past: 'deadline',
   permission_form_deadline_passed: 'deadline',
+  permission_form_event_in_past: 'eventDate',
   permission_form_no_students: 'classIds',
   permission_form_scope_denied: 'classIds',
   record_inactive: 'classIds',
   student_inactive: 'studentIds',
   // Form artık bu işleme kapalı: açık formun içinde, formu kapatmadan gösterilir.
   permission_form_closed: PERMISSION_FORM_ROOT,
+  permission_form_cancelled: PERMISSION_FORM_ROOT,
   permission_form_scope_locked: PERMISSION_FORM_ROOT,
   permission_form_has_decisions: PERMISSION_FORM_ROOT,
   permission_form_not_owner: PERMISSION_FORM_ROOT,
@@ -173,6 +195,7 @@ export const permissionStale = (error: ApiError) =>
   (error.status === 409 &&
     (error.code === 'version_conflict' ||
       error.code === 'permission_form_closed' ||
+      error.code === 'permission_form_cancelled' ||
       error.code === 'permission_form_has_decisions')) ||
   (error.status === 422 &&
     (error.code === 'permission_form_closed' || error.code === 'permission_form_deadline_passed'))
@@ -296,6 +319,16 @@ export function closePermissionFormRequest(
   })
 }
 
+export function cancelPermissionFormRequest(
+  client: KampusClient,
+  input: PermissionFormTarget,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/permission-forms/{formId}/cancel', {
+    params: { path: { formId: input.formId }, header: versioned(headers) },
+  })
+}
+
 export function archivePermissionFormRequest(
   client: KampusClient,
   input: PermissionFormTarget,
@@ -340,9 +373,10 @@ export function decidePermissionBody(input: {
  * ile son günü geçmiş form ayrı söylenir (DOM-ILT-038).
  */
 export function decisionBlockedReason(
-  form: Pick<PermissionForm, 'acceptingDecisions' | 'closedAt' | 'deadline'>,
+  form: Pick<PermissionForm, 'acceptingDecisions' | 'closedAt' | 'deadline' | 'cancelledAt'>,
 ): string | null {
   if (form.acceptingDecisions) return null
+  if (form.cancelledAt !== null) return 'Etkinlik iptal edildi; izin istenmiyor.'
   return form.closedAt !== null
     ? 'Form kapatıldı; artık karar verilemez ya da değiştirilemez.'
     : 'Son gün geçti; artık karar verilemez ya da değiştirilemez.'
@@ -356,6 +390,23 @@ export function decisionBlockedReason(
  */
 export const hasDecisions = (form: Pick<PermissionForm, 'hasDecisions'>) =>
   form.hasDecisions === true
+
+/**
+ * İzni düşüren değişiklik uyarısı (DOM-ILT-032): yönetici etkinlik ayrıntısını değiştirmeden önce
+ * kaç kararın düşeceğini görür; `counts` formun şimdiki geçerli durumlarıdır (düşenler zaten
+ * sayılmaz). Değişen alan ya da düşecek karar yoksa `null`: uyarı gerekmez.
+ */
+export function permissionDropWarning(
+  counts: Pick<PermissionCounts, 'approved' | 'rejected'>,
+  fields: readonly PermissionEventDetailField[],
+): string | null {
+  const decided = counts.approved + counts.rejected
+  if (fields.length === 0 || decided === 0) return null
+  const changed = fields.map((field) => PERMISSION_EVENT_FIELD_LABELS[field]).join(', ')
+  const rejected =
+    counts.rejected > 0 ? ` (${String(counts.approved)} onay, ${String(counts.rejected)} ret)` : ''
+  return `Bu değişiklik (${changed}) alınmış ${String(decided)} izni düşürür${rejected}; velilerden yeniden izin istenir.`
+}
 
 const target = (input: { version: number }) => input.version
 
@@ -374,6 +425,13 @@ export const updatePermissionFormCommand = {
 } as const
 export const closePermissionFormCommand = {
   request: closePermissionFormRequest,
+  version: target,
+  invalidates: PERMISSION_FORMS_INVALIDATES,
+  refreshOn: permissionStale,
+  messages: PERMISSION_FORM_MESSAGES,
+} as const
+export const cancelPermissionFormCommand = {
+  request: cancelPermissionFormRequest,
   version: target,
   invalidates: PERMISSION_FORMS_INVALIDATES,
   refreshOn: permissionStale,

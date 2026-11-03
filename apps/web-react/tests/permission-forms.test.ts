@@ -9,7 +9,10 @@ import type {
 import {
   changedPermissionFormFields,
   countsSummary,
+  decisionDropped,
   decisionFormSchema,
+  eventFacts,
+  fee,
   formsForStudent,
   myDecision,
   myDecisionText,
@@ -33,6 +36,11 @@ const opened = {
   title: 'Müze gezisi',
   description: 'Servisle gidilir.',
   deadline: '2026-12-01',
+  eventDate: null as string | null,
+  eventTime: null as string | null,
+  location: null as string | null,
+  transport: null as string | null,
+  fee: null as number | null,
   classIds: ['c1'],
   targetStudentIds: [] as string[],
 }
@@ -50,11 +58,6 @@ const item = (overrides: Partial<PermissionFormListItem> = {}): PermissionFormLi
   version: 2,
   ...opened,
   deadlineEndsAt: '2026-12-01T21:00:00.000Z',
-  eventDate: null,
-  eventTime: null,
-  location: null,
-  transport: null,
-  fee: null,
   detailsRevision: 0,
   studentIds: ['s1', 's2'],
   teacherId: 't1',
@@ -96,6 +99,11 @@ describe('form şeması core kuralıdır', () => {
     title: 'Müze gezisi',
     description: 'Servisle gidilir.',
     deadline: '2026-12-01',
+    eventDate: '',
+    eventTime: '',
+    location: '',
+    transport: '',
+    fee: '',
     classIds: ['c1'],
     studentIds: [],
   }
@@ -156,6 +164,11 @@ describe('düzenleme: yalnız değişen alanlar gider', () => {
       title: opened.title,
       description: opened.description,
       deadline: opened.deadline,
+      eventDate: '',
+      eventTime: '',
+      location: '',
+      transport: '',
+      fee: '',
       classIds: ['c1'],
       studentIds: ['s7'],
     })
@@ -267,6 +280,14 @@ describe('liste satırı (DOM-ILT-038)', () => {
     assert.equal(permissionFormState(item({ status: 'closed', closedAt: null })), 'Süresi doldu')
   })
 
+  test('DOM-ILT-032: iptal edilmiş form kapanıştan önce "İptal edildi" söyler', () => {
+    const at = '2026-11-02T06:00:00.000Z'
+    assert.equal(
+      permissionFormState(item({ status: 'closed', closedAt: at, cancelledAt: at })),
+      'İptal edildi',
+    )
+  })
+
   test('karar özeti sayıları söyler; öğrencisiz özet tire olur', () => {
     assert.equal(
       countsSummary({ pending: 3, approved: 2, rejected: 1, total: 6 }),
@@ -319,6 +340,22 @@ describe('veli ve öğrenci kararı (DOM-ILT-030, DOM-ILT-037, DOM-ILT-038)', ()
     assert.equal(myDecisionText(decision()), 'Onayladınız.')
   })
 
+  test('DOM-ILT-032: düşmüş karar geçerli karar sayılmaz; yeniden izin istenir', () => {
+    const dropped = { decisions: [decision({ id: 'd1', current: false })] }
+    assert.equal(myDecision(dropped), undefined)
+    assert.equal(decisionDropped(dropped), true)
+    // Yeniden karar verilince düşmüş satır kalır ama geçerli karar yenisidir.
+    const again = {
+      decisions: [...dropped.decisions, decision({ id: 'd2', decision: 'rejected' })],
+    }
+    assert.equal(myDecision(again)?.id, 'd2')
+    assert.equal(decisionDropped(again), false)
+    // Başkasının düşmüş kararı okuyanın kararı değildir; hiç kararı olmayan "düştü" sayılmaz.
+    assert.equal(decisionDropped({ decisions: [decision({ mine: false, current: false })] }), false)
+    assert.equal(decisionDropped({ decisions: [] }), false)
+    assert.equal(decisionDropped(undefined), false)
+  })
+
   test('çocuğun satırı yalnız hedef olduğu formda bulunur', () => {
     const students = [
       { studentId: 's1', status: 'pending' as const, canDecide: true, decisions: [] },
@@ -346,5 +383,105 @@ describe('veli ve öğrenci kararı (DOM-ILT-030, DOM-ILT-037, DOM-ILT-038)', ()
       ['d', 'b'],
     )
     assert.deepEqual(formsForStudent(items, 's3'), [])
+  })
+})
+
+describe('etkinlik ayrıntısı (DOM-ILT-032)', () => {
+  const valid = {
+    topic: 'trip',
+    title: 'Müze gezisi',
+    description: 'Servisle gidilir.',
+    deadline: '2026-12-01',
+    eventDate: '2026-12-10',
+    eventTime: '09:30',
+    location: ' Arkeoloji Müzesi ',
+    transport: 'Servis',
+    fee: '250,50',
+    classIds: ['c1'],
+    studentIds: [],
+  }
+
+  test('DOM-ILT-032: ücret metni kuruşa çevrilir; boş belirtilmemiş, geçersiz metin reddedilir', () => {
+    assert.equal(fee(''), null)
+    assert.equal(fee('  '), null)
+    assert.equal(fee('0'), 0)
+    assert.equal(fee('0,00'), 0)
+    assert.equal(fee('250'), 25000)
+    assert.equal(fee('250,50'), 25050)
+    assert.equal(fee('abc'), undefined)
+    assert.equal(fee('-5'), undefined)
+  })
+
+  test('DOM-ILT-032: ayrıntı core girdisine çevrilir; boş alan gönderilmez', () => {
+    const parsed = permissionFormSchema.safeParse(valid)
+    assert.equal(parsed.success, true)
+    assert.equal(parsed.data?.eventDate, '2026-12-10')
+    assert.equal(parsed.data?.eventTime, '09:30')
+    assert.equal(parsed.data?.location, 'Arkeoloji Müzesi')
+    assert.equal(parsed.data?.fee, 25050)
+    const empty = permissionFormSchema.safeParse({
+      ...valid,
+      eventDate: '',
+      eventTime: '',
+      location: '',
+      transport: '',
+      fee: '',
+    })
+    assert.equal(empty.success, true)
+    for (const field of ['eventDate', 'eventTime', 'location', 'transport', 'fee'] as const)
+      assert.equal(empty.data?.[field], undefined, field)
+  })
+
+  test('DOM-ILT-032: geçersiz ücret ve saat kendi alanında Türkçe mesaj verir', () => {
+    const result = permissionFormSchema.safeParse({ ...valid, fee: 'on lira', eventTime: '25:00' })
+    assert.equal(result.success, false)
+    const messages = new Map(
+      result.error?.issues.map((issue) => [String(issue.path[0]), issue.message]),
+    )
+    assert.ok(messages.get('fee')?.includes('250,50'))
+    assert.equal(messages.get('eventTime'), 'Saati SS:DD biçiminde girin.')
+  })
+
+  test('DOM-ILT-032: kayıtlı ücret formda ₺ metni olur, ayrıntısız formda alanlar boştur', () => {
+    const defaults = permissionFormDefaults({ ...opened, fee: 25050, location: 'Müze' })
+    assert.equal(defaults.fee, '250,50')
+    assert.equal(defaults.location, 'Müze')
+    assert.equal(permissionFormDefaults(opened).fee, '')
+  })
+
+  test('DOM-ILT-032: değişen ayrıntı gider, kaldırılan ayrıntı null gider', () => {
+    const withDetails = { ...opened, eventDate: '2026-12-10', fee: 0 }
+    assert.deepEqual(
+      changedPermissionFormFields(
+        withDetails,
+        values({ eventDate: '2026-12-11', fee: 0, location: 'Müze' }),
+      ),
+      { eventDate: '2026-12-11', location: 'Müze' },
+    )
+    assert.deepEqual(changedPermissionFormFields(withDetails, values()), {
+      eventDate: null,
+      fee: null,
+    })
+    assert.deepEqual(
+      changedPermissionFormFields(withDetails, values({ eventDate: '2026-12-10', fee: 0 })),
+      {},
+    )
+  })
+
+  test('DOM-ILT-032: başkasının değiştirdiği ayrıntı geri yazılmaz', () => {
+    const fresh = { ...opened, location: 'Başkasının yeri' }
+    const plan = planPermissionFormUpdate(opened, fresh, values({ eventTime: '10:00' }))
+    assert.deepEqual(plan.body, { eventTime: '10:00' })
+  })
+
+  test('DOM-ILT-032: yalnız belirtilen ayrıntı satır olur; sıfır ücret "Ücretsiz" yazılır', () => {
+    assert.deepEqual(eventFacts(item()), [])
+    const facts = new Map(
+      eventFacts(item({ eventDate: '2026-12-10', eventTime: '09:30', location: 'Müze', fee: 0 })),
+    )
+    assert.deepEqual([...facts.keys()], ['Etkinlik günü', 'Saat', 'Yer', 'Ücret'])
+    assert.ok(facts.get('Etkinlik günü')?.includes('2026'))
+    assert.equal(facts.get('Ücret'), 'Ücretsiz')
+    assert.equal(new Map(eventFacts(item({ fee: 25050 }))).get('Ücret'), '250,50 ₺')
   })
 })

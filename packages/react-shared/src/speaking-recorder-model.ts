@@ -235,6 +235,10 @@ export function durationLabel(seconds: number): string {
   return rest === 0 ? `${minutes} dakika` : `${minutes} dakika ${rest} saniye`
 }
 
+/** Kayıt öncesi aydınlatma (DOM-BEC-050, 051, 053, 054); kayıt başlamadan her zaman görünür. */
+export const RECORDING_NOTICE =
+  'Kaydınız yalnız bu görevin puanlanması, geri bildirimi ve itirazı için kullanılır. Kaydı siz, 18 yaşından küçükseniz veliniz ve görevi değerlendiren öğretmenler dinleyebilir. Kayıt kurum dışına gönderilmez, ses tanıma yapılmaz ve saklama süresi sonunda silinir. Gönderene kadar yalnız bu sayfada tutulur; sayfadan ayrılırsanız silinir.'
+
 export const BLOCK_MESSAGES: Record<BlockReason, string> = {
   unsupported:
     'Tarayıcınız ses kaydını desteklemiyor. Görevi güncel Chrome, Edge, Firefox ya da Safari ile açın.',

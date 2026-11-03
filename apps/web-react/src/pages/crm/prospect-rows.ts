@@ -11,9 +11,15 @@ import {
   type ProspectStage,
 } from '@kampus/school-core/lib/prospects.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
+import type {
+  CollectionCounts,
+  CollectionFilters,
+  CollectionQuery,
+} from '@kampus/react-shared/collections.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
-import type { FilterField } from '@/lib/list-query.ts'
+import type { FilterField, FilterValue } from '@/lib/list-query.ts'
+import { addDays, isDayKey, weekDays, weekStart } from '../academic/academic-rows.ts'
 
 type Prospect = CoreRecord<'prospects'>
 type Lookups = { branches: ReadonlyMap<string, string> }
@@ -49,6 +55,53 @@ export const SOURCE_FILTER: FilterField = {
   key: 'source',
   label: 'Kaynak',
   options: PROSPECT_SOURCES.map((source) => ({ value: source, label: source })),
+}
+
+/** Kayıt tarihi aralığı (Vue "Kayıt tarihi" süzgeci); sunucuda `dateField=createdAt` ile süzülür. */
+export const CREATED_FILTER: FilterField = { key: 'createdAt', label: 'Kayıt tarihi', type: 'date' }
+
+/**
+ * Liste sorgusuna kayıt tarihi aralığını ekler (`dateField=createdAt`, `dateFrom`/`dateTo`;
+ * Europe/Istanbul günü, uçlar dahil). Tek uç açık aralıktır; biçimsiz uç ve bitişi başlangıçtan
+ * önce olan aralık gönderilmez (hata süzgeç alanının altında görünür, sunucu 400 vermez).
+ */
+export function withCreatedRange<Q extends Pick<CollectionQuery, 'filters'>>(
+  query: Q,
+  value: FilterValue,
+): Q {
+  if (typeof value !== 'object' || value === null) return query
+  const from = isDayKey(value.min) ? value.min : ''
+  const to = isDayKey(value.max) ? value.max : ''
+  if (!from && !to) return query
+  if (from && to && to < from) return query
+  const range: CollectionFilters = {
+    dateField: 'createdAt',
+    ...(from ? { dateFrom: from } : {}),
+    ...(to ? { dateTo: to } : {}),
+  }
+  return { ...query, filters: { ...query.filters, ...range } }
+}
+
+export const ALL_STAGES = 'all'
+
+export type StageTab = { value: string; label: string; count?: number }
+
+/**
+ * Aşama sekmeleri (Vue `LineTabs` "Aday aşaması"): "Tüm adaylar" ve her aşama, sayısıyla. Sayılar
+ * kurum genelidir (`counts?groupBy=stage`, öteki süzgeçlerden bağımsız; Vue'daki gibi); sayım
+ * gelmeden sayı rozeti çizilmez. Kayıtta olmayan aşama sıfır sayılır.
+ */
+export function stageTabs(counts: CollectionCounts | undefined, type: InstitutionType): StageTab[] {
+  const countOf = (stage: string) =>
+    counts?.groups.find((group) => group.value === stage)?.count ?? 0
+  return [
+    { value: ALL_STAGES, label: 'Tüm adaylar', ...(counts ? { count: counts.total } : {}) },
+    ...PROSPECT_STAGES.map((stage) => ({
+      value: stage,
+      label: prospectStageLabel(stage, type),
+      ...(counts ? { count: countOf(stage) } : {}),
+    })),
+  ]
 }
 
 /**
@@ -226,3 +279,49 @@ export const MEETING_DAY_FILTER: FilterField = {
   label: 'Görüşme günü',
   type: 'date',
 }
+
+export const MEETING_VIEWS = [
+  { value: 'liste', label: 'Liste' },
+  { value: 'hafta', label: 'Haftalık takvim' },
+] as const
+export type MeetingView = (typeof MEETING_VIEWS)[number]['value']
+
+/** Adresteki görünüm (`?gorunum=`); bilinmeyen değer listedir. */
+export const meetingView = (value: string | null): MeetingView =>
+  value === 'hafta' ? 'hafta' : 'liste'
+
+/** Adresteki hafta (`?hafta=`) ya da bugünün haftası; her gün kendi haftasının pazartesisine iner. */
+export const meetingWeekStart = (value: string | null, today: string): string =>
+  weekStart(isDayKey(value) ? value : today)
+
+export type MeetingDay = {
+  day: string
+  /** Gün adıyla gün başlığı (Europe/Istanbul). */
+  label: string
+  today: boolean
+  events: MeetingEvent[]
+}
+
+/**
+ * Haftalık takvim (Vue `WeekCalendar`): pazartesiden pazara yedi gün, her gün o günün
+ * (Europe/Istanbul) görüşme ve deneme dersleri saat sırasıyla. Olaylar `meetingEvents`'ten gelir;
+ * kapalı adayın olayı orada zaten düşmüştür.
+ */
+export function meetingWeek(
+  events: readonly MeetingEvent[],
+  start: string,
+  today: string,
+): MeetingDay[] {
+  return weekDays(start).map((day) => ({
+    day,
+    label: dateLabel(`${day}T12:00:00.000Z`, { weekday: 'long' }),
+    today: day === today,
+    events: events
+      .filter((event) => event.day === day)
+      .toSorted((a, b) => Date.parse(a.startsAt) - Date.parse(b.startsAt)),
+  }))
+}
+
+/** Hafta başlığı: "19 Eki – 25 Eki 2026". */
+export const meetingWeekTitle = (start: string) =>
+  `${dateLabel(`${start}T12:00:00.000Z`)} – ${dateLabel(`${addDays(start, 6)}T12:00:00.000Z`, { year: 'numeric' })}`

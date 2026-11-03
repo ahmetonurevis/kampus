@@ -94,3 +94,14 @@ export function enrollmentServerError(
     ? { ...target, type: error.type, message }
     : { field: 'root.server', step: null, type: error.type, message }
 }
+
+/**
+ * Kesin kayıttan sonra "Ödeme planını görüntüle" bağlantısı: rolün taksit listesi (ön büro Tahsilat
+ * Takibi, yönetici Finans & Tahsilat). Kesin kaydı yalnız bu iki rol yapar (DOM-KAY-035); başka
+ * rolde bağlantı yoktur.
+ */
+export function paymentPlanHref(role: string | undefined): string | null {
+  if (role === 'onburo') return '/onburo/tahsilat-takip'
+  if (role === 'yonetici') return '/yonetici/finans'
+  return null
+}

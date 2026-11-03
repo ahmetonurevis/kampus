@@ -61,8 +61,11 @@ test('IST-116: taşınan kartların kimlikleri korunur', () => {
     'onburo.son-tahsilatlar',
     'veli.guncel-bakiye',
   ])
+  // Taşınan iki kartın kimliği korunur; ON-035 Vue eşitliği iki sayaç ekledi.
   assert.deepEqual(ids(read('crm/EnrollmentDashboardCards.tsx')), [
+    'onburo.bugunku-gorusme',
     'onburo.gorusme-bekleyen-aday',
+    'onburo.toplam-kesin-kayit',
     'onburo.aday-asamalari',
   ])
 })

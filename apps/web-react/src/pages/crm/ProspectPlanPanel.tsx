@@ -80,7 +80,16 @@ export function ProspectPlanPanel({
   )
 }
 
-function MeetingForm({ prospect, version, canPickTeacher, onClose }: Omit<PanelProps, 'kind'>) {
+/**
+ * Tanışma görüşmesi formu (DOM-KAY-033). Aday detayındaki panel ve Tanışma Görüşmeleri'ndeki aday
+ * seçmeli panel (`MeetingPlanPanel`) aynı formu kullanır.
+ */
+export function MeetingForm({
+  prospect,
+  version,
+  canPickTeacher,
+  onClose,
+}: Omit<PanelProps, 'kind'>) {
   const schedule = useScheduleProspectMeeting()
   const teachers = useCoreAll('teachers', {}, { enabled: canPickTeacher })
   const [today] = useState(() => dayKey(Date.now()))

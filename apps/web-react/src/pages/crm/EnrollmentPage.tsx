@@ -54,6 +54,7 @@ import {
   prospectNoticeLabel,
 } from './enrollment-consent.ts'
 import {
+  enrollmentFieldForCode,
   enrollmentServerError,
   guardianModeFor,
   paymentPlanHref,
@@ -326,10 +327,20 @@ function EnrollmentForm({
         body: enrollmentFormToBody(data, tariff.id),
       },
       {
-        // Veli, doğum tarihi ve kimlik hatası kendi alanına ve adımına döner (DOM-KAY-012).
+        fieldFor: (error) => enrollmentFieldForCode(error.code),
+        // Sınıf, veli, doğum tarihi ve kimlik hatası kendi alanına ve adımına döner; odak alana
+        // gider (DOM-KAY-010, DOM-KAY-012).
         setError: (name, error) => {
           const target = enrollmentServerError(name, error)
-          if (target.step !== null) setStep(target.step)
+          if (target.step !== null) {
+            setStep(target.step)
+            focusAfterSubmit(target.field)
+          }
+          // Form açıkken sınıf dolmuş ya da kampüsü değişmiş olabilir: liste ve doluluk tazelenir.
+          if (target.field === 'classId') {
+            void classes.refetch()
+            void occupancy.refetch()
+          }
           form.setError(target.field, { type: target.type, message: target.message })
         },
       },

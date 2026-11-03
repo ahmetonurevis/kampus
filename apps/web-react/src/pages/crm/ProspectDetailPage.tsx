@@ -13,6 +13,8 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { prospectStageLabel } from '@kampus/school-core/lib/prospects.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { canManageGuardianAccounts, isGuardianRecord } from './enrollment-guardian-account.ts'
+import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
 import { ProspectNoteForm } from './ProspectNoteForm.tsx'
 import { ProspectPlanPanel } from './ProspectPlanPanel.tsx'
 import { ProspectConsentPanel } from './ProspectConsentPanel.tsx'
@@ -272,6 +274,9 @@ function Detail({
               Kesin kayıt tamamlandı; öğrenci kaydı Kayıt İşlemleri ve öğrenci listelerinde görünür.
             </p>
           ) : null}
+          {enrolled && prospect.studentId && canManageGuardianAccounts(role) ? (
+            <EnrolledGuardianAccount studentId={prospect.studentId} />
+          ) : null}
         </aside>
         <div className="grid gap-6">
           <Section
@@ -346,5 +351,24 @@ function Detail({
         onClose={plan.close}
       />
     </>
+  )
+}
+
+/**
+ * Kayda dönmüş adayın öğrencisi için "Veli hesabı aç" (ON-290): öğrencinin kayıtlı veli kaydı
+ * kullanılır. Kursiyerin kendi satırı veli değildir; o durumda ve öğrenci okunamazsa düğme çıkmaz.
+ */
+function EnrolledGuardianAccount({ studentId }: { studentId: string }) {
+  const student = useCoreItem('students', studentId)
+  const parentId = student.data?.record.parentId
+  const parent = useCoreItem('parents', parentId ?? null)
+  if (!student.data || !parentId || !parent.data || !isGuardianRecord(parent.data.record))
+    return null
+  return (
+    <GuardianAccountAction
+      studentId={studentId}
+      studentName={student.data.record.name}
+      parentId={parentId}
+    />
   )
 }

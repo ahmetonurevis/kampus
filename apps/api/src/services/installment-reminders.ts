@@ -22,9 +22,9 @@ import { dedupedNotificationId, notify } from './notify.ts'
  * Arşivlenmiş öğrencinin taksiti taranmaz. Ayrılan (pasif) öğrencinin kalan borç taksiti taranır:
  * borç sürer ve velisi kaydı görmeye devam eder. Log ve sonuç yalnız sayı taşır.
  */
-// TODO(finans-odeyici-hedefi): DOM-FIN-035 ve DOM-ILT-074 bildirimi ödeyiciye ister. `notify` alıcıyı
-// öğrenci bağından çözer ve velayetli kısıtsız bütün velilere gösterir; ödeyici hedefi `notify` ile
-// okuma kapsamında (`notificationAudienceOf`) gelir, Oğuzhan'ın alanındadır.
+// Alıcı `notify` öğrenci bağından çözülür (velayetli kısıtsız veliler ya da yetişkin kursiyer);
+// ödeyici veli, velayeti olmasa da, finans bildirimini okuma kapsamından görür (K-04, DOM-ILT-074;
+// core `PAYER_NOTIFICATION_KINDS`). İletişim kısıtlı veli görmez.
 
 export type InstallmentReminderResult = {
   invoices: number

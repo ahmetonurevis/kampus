@@ -778,6 +778,24 @@ const ACCESS: Readonly<Record<string, Proof>> = {
  * eşleşmesi, öğrenci kimlik özeti ve deneme dersi.
  */
 const FINANCE: Readonly<Record<string, Proof>> = {
+  // Onur: sözleşme onayı (ON-028, #28); kanıt Onur'un `finance-contracts.test.ts` dosyasındadır.
+  ...Object.fromEntries(
+    (
+      [
+        ['POST /api/v1/finance/contracts/:contractId/signatory', '/signatory'],
+        ['POST /api/v1/finance/contracts/:contractId/approve', '/approve'],
+        ['POST /api/v1/finance/contracts/:contractId/amendments', '/amendments'],
+        ['POST /api/v1/finance/contracts/:contractId/cancel-amendment', '/cancel-amendment'],
+      ] as const
+    ).map(([key, marker]) => [
+      key,
+      kayit(
+        'finance-contracts.test.ts',
+        'başka kurumun sözleşmesi olmayan kimlikle aynı 404',
+        marker,
+      ),
+    ]),
+  ),
   'GET /api/v1/finance/totals': liste(
     'cross-institution-finance.test.ts',
     'GET /api/v1/finance/totals, /finance/summary ve /finance/overview: başka kurumun tahsilatı',
@@ -841,6 +859,28 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     finance('kayıt', 'POST /api/v1/finance/scholarship-programs/:programId/notify'),
     finance('kayıt', 'POST /api/v1/finance/scholarship-awards/:awardId/mebbis-record'),
   ]),
+  // Kayıt yenileme (IST-100): kaynak ve testi Onur'un `finance-renewals.test.ts`'indedir.
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/renewals', 'BASE, a.admin'],
+        ['kayıt', 'POST /api/v1/finance/renewals/quote', '/quote'],
+        ['gövde', 'POST /api/v1/finance/renewals', 'institutionId: b.id'],
+        ['liste', 'GET /api/v1/finance/renewals/price-indexes', 'INDEXES, a.admin'],
+        ['gövde', 'POST /api/v1/finance/renewals/price-indexes', 'INDEXES, a.admin, { ...INDEX'],
+        ['kayıt', 'PATCH /api/v1/finance/renewals/price-indexes/:academicYear', '/2028'],
+        ['kayıt', 'GET /api/v1/finance/renewals/:renewalId', '`${BASE}/${id}`'],
+        ['kayıt', 'POST /api/v1/finance/renewals/:renewalId/activate', '/activate'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-renewals.test.ts',
+        'başka kurumun yenilemesi okuma ve geçişte 404, B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

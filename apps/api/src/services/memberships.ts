@@ -1,6 +1,7 @@
 import { and, asc, count, eq, isNull, type SQL } from 'drizzle-orm'
 
-import { guardedActorLinks } from '@kampus/school-core/lib/guardianship.ts'
+import { guardedActorLinks, scopedActorLinks } from '@kampus/school-core/lib/guardianship.ts'
+import type { ActorLink } from '@kampus/school-core/lib/scope.ts'
 
 import { roleSchema, type Role } from '../auth.ts'
 import type { Database } from '../db/client.ts'
@@ -74,8 +75,9 @@ export async function getInstitution(db: Database, institutionId: string) {
 export type MembershipLink = { kind: MembershipLinkKind; recordId: string }
 
 /**
- * Aktörün okuma kapsamı bağlantıları (IST-019; DOM-ILT-070, DOM-ILT-074). Kapsamın tek kaynağıdır:
- * `scopeFor`, `/me` çocuk listesi, bildirim kitlesi, yazışma, pano ve dosya erişimi buradan okur.
+ * Aktörün velayet bağlantıları (IST-019; DOM-ILT-070, DOM-ILT-074). `/me` çocuk listesi, yazışma,
+ * akademik servisler ve rıza buradan okur; okuma kapsamı (`scopeFor`), komut oturumu ve bildirim
+ * kitlesi bunun üstüne ödeyici bağlantısını da ekleyen `listActorLinks`'i okur.
  * Veli `child` bağlantısı yalnız velayetli ve kısıtsız veli–öğrenci bağıyla (`student_guardians`)
  * kapsam verir (core `guardedActorLinks`): iletişim kısıtlı ya da velayeti olmayan veli öğrenciyi
  * hiç görmez; kısıt kalkınca yeniden görür. Bağ tablosu yalnız çocuk bağlantısı varsa okunur.
@@ -89,6 +91,27 @@ export async function listMembershipLinks(
   if (!links.some((link) => link.kind === 'child')) return links
   const guardians = await loadMembershipGuardians(db, institutionId, membershipId)
   return guardedActorLinks(links, guardians, membershipId)
+}
+
+/**
+ * Okuma kapsamını kuran aktörün bağlantıları: `listMembershipLinks` ve ödeyici bağlantıları
+ * (`{ kind: 'payer', recordId: <öğrenci> }`; core `scopedActorLinks`; K-04, DOM-ILT-074). Ödeyici
+ * ve iletişim kısıtı olmayan veli, velayeti olmasa da ödediği öğrenci için `payer` bağlantısı
+ * alır. Yalnız core aktörünü kuran üç yer okur: okuma kapsamı (`services/read-scope.ts`), komut
+ * oturumu (`services/commands.ts` `environment`) ve bildirim kitlesi (`services/notifications.ts`).
+ * Core `payer` bağlantısını yalnız finans kümesine (`payerStudentIds`) ve finans bildirimine
+ * alır; `/me` ve akademik servisler `listMembershipLinks` okumaya devam eder, bu yüzden bağlantı
+ * istemciye ve velayet kararına gitmez.
+ */
+export async function listActorLinks(
+  db: Database,
+  institutionId: string,
+  membershipId: string,
+): Promise<ActorLink[]> {
+  const links = await listStoredMembershipLinks(db, institutionId, membershipId)
+  if (!links.some((link) => link.kind === 'child')) return links
+  const guardians = await loadMembershipGuardians(db, institutionId, membershipId)
+  return scopedActorLinks(links, guardians, membershipId)
 }
 
 /**

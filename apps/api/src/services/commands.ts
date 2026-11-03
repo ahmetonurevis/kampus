@@ -52,7 +52,7 @@ import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { notifyAttendanceAlerts } from './attendance-alerts.ts'
 import { commandBody } from './command-result.ts'
-import { listMembershipLinks } from './memberships.ts'
+import { listActorLinks } from './memberships.ts'
 import { getInstitutionModules } from './modules.ts'
 import {
   runCommand,
@@ -93,7 +93,8 @@ export interface Environment {
 }
 
 /**
- * Core oturumu ve skaler State alanları: bağlantılar `membership_links`'ten, modüller kurumdan,
+ * Core oturumu ve skaler State alanları: bağlantılar `membership_links`'ten (velayet ve ödeyici
+ * süzgeciyle, `listActorLinks`), modüller kurumdan,
  * eğitim yılı `institution_settings`'ten. Ayar satırı yoksa `academicYear` verilmez; onu okuyan
  * işlem (yenileme) 500 ile durur. İşlem çalıştırıcı bunu kurum kilidinden sonra, işlemin
  * transaction'ında (`tx`) çağırır (`OperationRequest.load`). İletişim komutları da kullanır
@@ -106,7 +107,7 @@ export async function environment(
   childId?: string,
 ): Promise<Environment> {
   const [links, institution, settings] = await Promise.all([
-    listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId),
+    listActorLinks(tx, ctx.institutionId, ctx.actor.membershipId),
     getInstitutionModules(tx, ctx.institutionId),
     tx
       .select({ academicYear: institutionSettings.academicYear })

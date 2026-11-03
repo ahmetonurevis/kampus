@@ -397,8 +397,22 @@
     {
       "idx": 56,
       "version": "7",
-      "when": 1793734615409,
-      "tag": "0056_task_extra_time",
+      "when": 1793742157538,
+      "tag": "0056_protect_approved_contracts",
+      "breakpoints": true
+    },
+    {
+      "idx": 57,
+      "version": "7",
+      "when": 1793742877335,
+      "tag": "0057_create_price_index_rates",
+      "breakpoints": true
+    },
+    {
+      "idx": 58,
+      "version": "7",
+      "when": 1793745191572,
+      "tag": "0058_task_extra_time",
       "breakpoints": true
     }
   ]

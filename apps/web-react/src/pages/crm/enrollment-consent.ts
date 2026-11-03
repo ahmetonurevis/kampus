@@ -20,6 +20,20 @@ export const UNKNOWN_GRANTOR_GUIDANCE = `${STAFF_CONSENT_INFO} Yeri: web panelin
 /** Rızalarım hesabın bağlı olduğu öğrencileri listeler; bağ kayıtla birlikte kurulmaz. */
 export const ACCOUNT_LINK_NOTE =
   'Hesap bu öğrenciye bağlı değilse öğrenci Rızalarım bölümünde görünmez; önce hesap bağlantısı kurulmalıdır.'
+/** Veli hesabı kesin kayıtla açılmaz; personel ayrıca açar (ON-290, DOM-YTK-071). */
+export const GUARDIAN_ACCOUNT_MISSING_NOTE =
+  'Velinin bu öğrenciye bağlı bir hesabı yoksa öğrenci Rızalarım bölümünde görünmez ve veli rıza veremez. Hesabı "Veli hesabı aç" ile açabilirsiniz.'
+export const GUARDIAN_ACCOUNT_INVITED_NOTE =
+  'Veli hesabı açıldı. Veli e-postadaki bağlantıyla parolasını belirleyip giriş yapınca bu öğrenci Rızalarım bölümünde görünür ve rızayı oradan verir.'
+
+/**
+ * Beklenen rızanın altındaki hesap notu: yetişkin kursiyer kendi hesabıyla verir (eski not);
+ * veli için bekleyen veli daveti varsa hesabın açıldığı, yoksa açılması gerektiği yazılır.
+ */
+export function accountNote(input: { adult: boolean; invited: boolean }): string {
+  if (input.adult) return ACCOUNT_LINK_NOTE
+  return input.invited ? GUARDIAN_ACCOUNT_INVITED_NOTE : GUARDIAN_ACCOUNT_MISSING_NOTE
+}
 export const CONSENT_OPTIONAL_NOTE =
   'Rıza vermek zorunlu değildir; verilmemesi kaydı ve temel eğitim hizmetini etkilemez.'
 /** Tanıtım iletisi öğrencinin değil hesabın amacıdır; öğrenci sonucunda (`studentId`) dönmez. */

@@ -13,6 +13,7 @@ import { useDebouncedValue } from '../use-debounced-value.ts'
 import { useListMemory } from '../view-memory.tsx'
 
 type GradeRecord = State['grades'][number]
+type SubjectRecord = State['subjects'][number]
 
 const LIST_KEY = 'ogrenci/notlarim'
 
@@ -95,7 +96,16 @@ export default function StudentGrades() {
   const { state, setSearch, setFilter, setIndex, clear } = useListMemory(LIST_KEY)
   const search = useDebouncedValue(state.search)
   const all = useCollectionAll<GradeRecord>('grades', {}, { enabled: open })
-  const summary = useMemo(() => gradeSummary((all.data ?? []).map((row) => row.record)), [all.data])
+  // Ders adları güncel ders kaydından; ders listesi okunamazsa notun kendi ders adı kalır.
+  const subjects = useCollectionAll<SubjectRecord>('subjects', {}, { enabled: open })
+  const summary = useMemo(
+    () =>
+      gradeSummary(
+        (all.data ?? []).map((row) => row.record),
+        new Map((subjects.data ?? []).map((row) => [row.id, row.record])),
+      ),
+    [all.data, subjects.data],
+  )
   // Kayıtlı süzgeç artık notu olmayan bir derse aitse liste "tümü"ne döner.
   const subjectId =
     all.data && !summary.subjects.some((item) => item.subjectId === state.filter)

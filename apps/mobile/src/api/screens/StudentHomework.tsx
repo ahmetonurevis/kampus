@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { View } from 'react-native'
 import { toApiError } from '@kampus/api-client/errors.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
+import { acceptsLate } from '@kampus/school-core/lib/homework.ts'
 import type { HomeworkSubmission } from '@kampus/react-shared/homework.ts'
 import { useAllHomework, useHomework } from '@kampus/react-shared/use-homework.ts'
 import { useCollectionAll } from '@kampus/react-shared/use-collection.ts'
@@ -18,12 +19,18 @@ import {
 import { useApiSession } from '../auth.tsx'
 import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
 import { canOpenScreen } from '../pages.ts'
-import { dueText, fileSummary, homeworkView, matchesSearch } from '../presentation.ts'
+import {
+  dueText,
+  fileSummary,
+  homeworkView,
+  matchesSearch,
+  submissionHint,
+  type SubmissionFields,
+} from '../presentation.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { useListMemory } from '../view-memory.tsx'
 
 type StudentRecord = State['students'][number]
-type SubmissionRecord = State['submissions'][number] & { late?: boolean }
 
 const LIST_KEY = 'ogrenci/odevler'
 
@@ -50,9 +57,9 @@ function HomeworkSheet({
   const submission: HomeworkSubmission | undefined = homework?.submissions.find(
     (entry) => entry.studentId === studentId,
   )
-  const view = homework
-    ? homeworkView(homework, homework.submissions, studentId, new Date())
-    : undefined
+  const now = new Date()
+  const view = homework ? homeworkView(homework, homework.submissions, studentId, now) : undefined
+  const hint = homework && view ? submissionHint(homework, view.status, now) : null
   return (
     <Sheet visible title={view?.title ?? 'Ödev ayrıntısı'} onClose={onClose}>
       {item.error ? (
@@ -71,7 +78,7 @@ function HomeworkSheet({
               <DetailPair label="Son teslim" value={dueText(homework.dueDate)} />
               <DetailPair
                 label="Geç teslim"
-                value={homework.allowLate ? 'Kabul edilir' : 'Kabul edilmez'}
+                value={acceptsLate(homework) ? 'Kabul edilir' : 'Kabul edilmez'}
               />
               <DetailPair
                 label="Teslim tarihi"
@@ -94,11 +101,14 @@ function HomeworkSheet({
               <Paragraph text={submission.note} empty="Açıklama yazılmadı." />
             </Section>
           )}
-          {view.status !== 'Değerlendirildi' && (
+          {hint === 'web' && (
             <Notice
               title="Teslim web'de"
               text="Ödevini şimdilik Kampüs web uygulamasından teslim edebilirsin."
             />
+          )}
+          {hint === 'closed' && (
+            <Notice title="Teslim süresi doldu" text="Bu ödev geç teslime kapalı." tone="amber" />
           )}
         </>
       )}
@@ -112,7 +122,7 @@ function HomeworkList({ student }: { student: StudentRecord }) {
   // Sınıfın ödevleri `/homework` ucundan; öğrencinin teslim durumu ve puanı kendi teslim
   // kayıtlarından (web `StudentHomeworkView` ile aynı kaynaklar).
   const homework = useAllHomework({ classId: student.classId })
-  const submissions = useCollectionAll<SubmissionRecord>('submissions', {
+  const submissions = useCollectionAll<SubmissionFields>('submissions', {
     filters: { studentId: student.id },
   })
   const rows = useMemo(() => {
@@ -122,7 +132,7 @@ function HomeworkList({ student }: { student: StudentRecord }) {
     return homework.data.map((item) => homeworkView(item, entries, student.id, now))
   }, [homework.data, submissions.data, student.id])
   const visible = useMemo(
-    () => rows?.filter((row) => matchesSearch([row.title, row.subtitle], state.search)),
+    () => rows?.filter((row) => matchesSearch([row.title, row.subject], state.search)),
     [rows, state.search],
   )
   const total = visible?.length

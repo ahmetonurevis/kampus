@@ -15,6 +15,7 @@ import {
   gradeView,
   homeworkView,
   matchesSearch,
+  submissionHint,
 } from '../apps/mobile/src/api/presentation.ts'
 
 const open = { academic: true }
@@ -209,7 +210,7 @@ describe('öğrenci notları ve ödevleri (IST-124)', () => {
     ...(score === undefined ? {} : { score }),
   })
 
-  test('DOM-AKD-003 genel ortalama bütün notlardan, ders ortalaması core ile hesaplanır', () => {
+  test('genel ortalama bütün notlardan, ders ortalaması core ile kayıtlardan hesaplanır', () => {
     const summary = gradeSummary([
       grade('math', 'Matematik', 90),
       grade('math', 'Matematik', 61),
@@ -224,6 +225,19 @@ describe('öğrenci notları ve ödevleri (IST-124)', () => {
       { subjectId: 'math', name: 'Matematik', average: '76 / 100', count: 2 },
       { subjectId: 'tr', name: 'Türkçe', average: '70 / 100', count: 1 },
     ])
+  })
+
+  test('ders kartı adı güncel ders kaydından gelir; ders listesi yoksa notun adı kalır', () => {
+    const records = [grade('math', 'Mat.', 80), grade('tr', 'Türkçe', 60)]
+    const subjects = new Map([['math', { name: 'Matematik' }]])
+    assert.deepEqual(
+      gradeSummary(records, subjects).subjects.map((item) => item.name),
+      ['Matematik', 'Türkçe'],
+    )
+    assert.deepEqual(
+      gradeSummary(records).subjects.map((item) => item.name),
+      ['Mat.', 'Türkçe'],
+    )
   })
 
   test('notsuz öğrencide özet boştur', () => {
@@ -248,6 +262,7 @@ describe('öğrenci notları ve ödevleri (IST-124)', () => {
     assert.equal(graded.status, 'Değerlendirildi')
     assert.equal(graded.score, '85 / 100')
     assert.match(graded.subtitle, /^Matematik · Son teslim /)
+    assert.equal(graded.subject, 'Matematik')
     const late = homeworkView(homework('h2', '2026-10-01T09:00:00.000Z'), submissions, 's1', now)
     assert.equal(late.status, 'Teslim edildi')
     assert.equal(late.late, true)
@@ -260,6 +275,21 @@ describe('öğrenci notları ve ödevleri (IST-124)', () => {
       homeworkView(homework('h4', '2026-10-20T09:00:00.000Z'), submissions, 's1', now).status,
       'Bekliyor',
     )
+  })
+
+  test('DOM-AKD-072 teslim bilgisi: açık veya geç teslim kabul eden ödevde web, kapalıda süre doldu', () => {
+    const now = new Date('2026-10-10T09:00:00.000Z')
+    const past = '2026-10-01T09:00:00.000Z'
+    const future = '2026-10-20T09:00:00.000Z'
+    assert.equal(submissionHint({ dueDate: future, allowLate: false }, 'Bekliyor', now), 'web')
+    assert.equal(submissionHint({ dueDate: past, allowLate: true }, 'Gecikmiş', now), 'web')
+    assert.equal(submissionHint({ dueDate: past, allowLate: false }, 'Gecikmiş', now), 'closed')
+    // Teslim edilmiş ama puanlanmamış ödev kapalıysa yeniden teslim de yapılamaz.
+    assert.equal(
+      submissionHint({ dueDate: past, allowLate: false }, 'Teslim edildi', now),
+      'closed',
+    )
+    assert.equal(submissionHint({ dueDate: future, allowLate: true }, 'Değerlendirildi', now), null)
   })
 
   test('ödev araması Türkçe harf duyarsızdır; boş arama hepsini getirir', () => {

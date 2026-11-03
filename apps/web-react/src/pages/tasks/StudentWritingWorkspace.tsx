@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { learnerSubmissionsQuery } from '@kampus/react-shared/use-learner-task-progress.ts'
 import { useTaskAssignment } from '@kampus/react-shared/use-task-assignments.ts'
 import {
@@ -67,6 +67,15 @@ export function StudentWritingWorkspace({
   // Yazma görevinde dönülür: editör eski taslakla ve açık düğmeyle görünüp yazılan metni
   // kaybettirmesin ya da aynı metni yeniden gönderttirmesin.
   const [shown, setShown] = useState(false)
+  // Teslimden sonra editör yeniden kurulur; odak kaybolmasın diye yeni sürümün listesine taşınır.
+  const focusVersions = useRef(false)
+  const versionsHeading = useRef<HTMLHeadingElement>(null)
+  const versionCount = detailQuery.data?.data.versionCount ?? 0
+  useEffect(() => {
+    if (!focusVersions.current || !versionsHeading.current) return
+    focusVersions.current = false
+    versionsHeading.current.focus()
+  }, [versionCount])
 
   const assignment =
     assignmentQuery.data && isLearnerAssignment(assignmentQuery.data.data)
@@ -233,10 +242,13 @@ export function StudentWritingWorkspace({
                 assignmentId={assignmentId}
                 initialBody={initialBody}
                 draft={draft}
+                lastSubmittedBody={detail?.versions.at(-1)?.body ?? null}
                 minWords={settings?.submissionKind === 'text' ? settings.minWords : null}
                 maxWords={settings?.submissionKind === 'text' ? settings.maxWords : null}
                 canSubmit={progress.canAct}
-                onSubmitted={() => undefined}
+                onSubmitted={() => {
+                  focusVersions.current = true
+                }}
               />
             </>
           )}
@@ -247,7 +259,12 @@ export function StudentWritingWorkspace({
             aria-labelledby="surumler"
             className="panel rounded-card border bg-surface p-6 max-[650px]:p-4"
           >
-            <h2 id="surumler" className="mb-3 text-lg font-semibold">
+            <h2
+              id="surumler"
+              ref={versionsHeading}
+              tabIndex={-1}
+              className="mb-3 text-lg font-semibold outline-none"
+            >
               Gönderdikleriniz
             </h2>
             <SubmissionVersions versions={detail.versions} />

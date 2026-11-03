@@ -372,6 +372,8 @@ async function writeScore(
           await notify(tx, ctx, {
             type: 'feedback_released',
             recipients: { studentIds: [work.submission.learnerId] },
+            // Veli alıştırma puanını görmez (DOM-BEC-041): alıştırmada bildirim yalnız kursiyere.
+            ...(assignment.kind === 'practice' ? { audiences: ['student' as const] } : {}),
             data: { submissionId: work.submission.id },
             // Bir sürümün sonucu bir kez kesinleşir; aynı sürüm için ikinci bildirim yazılmaz.
             dedupeKey: draft.submissionVersionId,

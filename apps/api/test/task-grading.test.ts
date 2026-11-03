@@ -1686,6 +1686,26 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       .map((n) => [n.audience, n.studentId, n.subject.id] as const)
   }
 
+  test('DOM-BEC-041, DOM-BEC-045: öğretmenin puanladığı alıştırma teslimi için feedback_released yalnız öğrenciye gider, veliye gitmez; aynı puan değerlendirmede öğrenciye ve veliye bildirim üretir', async () => {
+    const practice = await setup({ attempts: { kind: 'practice' } })
+    const practiceId = practice.submission.id as string
+    await ok(await score(practiceId, practice.t.cookies.teacher, 1), 201)
+    assert.deepEqual(await feedbackNotices(practice.t.cookies.student), [
+      ['student', 's-1', practiceId],
+    ])
+    assert.deepEqual(await feedbackNotices(practice.t.cookies.parent), [])
+
+    const evaluation = await setup({ attempts: { kind: 'evaluation', maxAttempts: 1 } })
+    const evaluationId = evaluation.submission.id as string
+    await ok(await score(evaluationId, evaluation.t.cookies.teacher, 1), 201)
+    assert.deepEqual(await feedbackNotices(evaluation.t.cookies.student), [
+      ['student', 's-1', evaluationId],
+    ])
+    assert.deepEqual(await feedbackNotices(evaluation.t.cookies.parent), [
+      ['parent', 's-1', evaluationId],
+    ])
+  })
+
   test('DOM-BEC-045, DOM-ILT-023: puanı kesinleştiren ilk puan öğrenciye ve veliye bildirim üretir; başka öğrenci ve veliye gitmez; bildirimde puan ve geri bildirim metni yok, logda da yok', async () => {
     const { t, submission } = await setup()
     const id = submission.id as string

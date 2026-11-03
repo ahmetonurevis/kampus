@@ -150,6 +150,16 @@ describe('API modu sayfaları', () => {
     }
   })
 
+  test('IST-065 bildirim ekranı menü kartı değildir, hiçbir rolde kategori sayısını artırmaz', () => {
+    for (const role of ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'] as const)
+      assert.ok(
+        !allApiPages({ role, modules: open }).some(
+          (page) => String(page.screen) === 'ApiNotifications',
+        ),
+        role,
+      )
+  })
+
   test('kategori kartları yalnız açık sayfası olan kategorilerdir', () => {
     assert.deepEqual(apiCategories(apiPages({ role: 'veli', modules: open })), [
       { key: 'AKADEMİK', label: 'Akademik', icon: 'GraduationCap', count: 1 },

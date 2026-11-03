@@ -29,7 +29,7 @@ export type ScreenPlacement = {
 export type MenuScreen = ComponentType<never>
 
 export type ScreenEntry = {
-  /** Gezinme adı (PascalCase, tek). `ApiHome`, `ApiCategory`, `ApiConversation` ayrılmıştır. */
+  /** Gezinme adı (PascalCase, tek). `ApiHome`, `ApiCategory`, `ApiConversation`, `ApiNotifications` ayrılmıştır. */
   screen: string
   /** Menü sayfası olduğundan parametre almaz; oturumu `useApiSession()` ile okur. */
   getComponent: () => MenuScreen

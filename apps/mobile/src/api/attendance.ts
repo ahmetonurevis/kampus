@@ -214,6 +214,43 @@ export function pendingEdits(
   )
 }
 
+/** Pencere açılışında okunan sınıf sürümü; hedefe (`key`) bağlıdır, başka hedefe geçmez. */
+export type VersionPin = { key: string; version: number | undefined }
+
+/**
+ * Pencerenin göndereceği sınıf sürümü (`If-Match`). Sürüm pencere açılırken sınıflar tazelenince bir
+ * kez sabitlenir (`VersionPin`); sonraki tazelemeler (uygulama öne dönünce odak tazelemesi dahil)
+ * onu değiştirmez. Aksi halde başka bir cihazın kaydı sürümü yükseltir, ekrandaki eski işaretler
+ * yeni sürümle 409 almadan üzerine yazılırdı. Sabitleme gelene kadar (ya da başka hedefe ait) kayıt
+ * beklemede sayılır.
+ */
+export function pinnedClassVersion(
+  pin: VersionPin | null,
+  key: string,
+): { version: number | undefined; pending: boolean } {
+  if (pin === null || pin.key !== key) return { version: undefined, pending: true }
+  return { version: pin.version, pending: false }
+}
+
+/**
+ * Düzenleme sürerken sunucu kaydı değişti mi: ilk düzenlemedeki sunucu durumu (`baseline`) ile şimdiki
+ * durum farklıysa başka bir yerde (başka cihaz, yönetici) yoklama değişmiştir. Yalnız içerik
+ * karşılaştırılır; aynı içeriği getiren odak tazelemesi uyarı çıkarmaz. Düzenleme yoksa uyarı yoktur.
+ */
+export function changedElsewhere(
+  baseline: Readonly<Record<string, AttendanceMark>> | null,
+  base: Readonly<Record<string, AttendanceMark>>,
+  edits: Readonly<Record<string, AttendanceMark>>,
+): boolean {
+  if (baseline === null || Object.keys(edits).length === 0) return false
+  const ids = new Set([...Object.keys(baseline), ...Object.keys(base)])
+  return [...ids].some((id) => baseline[id] !== base[id])
+}
+
+/** Sunucu kaydı değişince pencerede gösterilen uyarı (düzenlenmiş öğrencilerin işareti korunur). */
+export const CHANGED_ELSEWHERE_NOTICE =
+  'Bu yoklama başka bir yerde değişti. Dokunmadığınız öğrencilerin durumu güncellendi; kaydetmeden önce kontrol edin.'
+
 /** Sunucudaki son hâle göre değişen öğrenci sayısı; kaydedilmemiş iş uyarısı için. */
 export function unsavedCount(
   base: Readonly<Record<string, AttendanceMark>>,

@@ -12,7 +12,13 @@ import { insertMissingRecords } from '../src/db/records.ts'
 import { coordinatorDuties } from '../src/db/schema/coordinator-duties.ts'
 import { languageGroupMembers } from '../src/db/schema/language-groups.ts'
 import { records } from '../src/db/schema/records.ts'
-import { rubrics, rubricVersions } from '../src/db/schema/skills.ts'
+import {
+  rubrics,
+  rubricVersions,
+  taskAssignments,
+  taskAssignmentTargets,
+  taskAttempts,
+} from '../src/db/schema/skills.ts'
 import { insertSecondRatingRequest } from '../src/db/skills.ts'
 import {
   buildTestApp,
@@ -24,13 +30,15 @@ import {
   TEST_ORIGIN,
 } from './support/app.ts'
 import { seedResource } from './support/resources-sample.ts'
-import { sampleRubricData } from './support/skills-sample.ts'
+import { autoAssignment, sampleRubricData } from './support/skills-sample.ts'
 
 /**
  * Beceri ilerleme panosu ucu (OG-080; IST-057; DOM-BEC-035). Kural core `skills/progress.ts`'tedir;
- * burada rol × kapsam (öğrenci kendisi, veli çocuğu, öğretmen sınıfı, yönetici herkes; kapsam dışı
- * ve başka kurum 404), modül kapalı 403, noktaların görev sonucu kimlikleri, alıştırmanın ve
- * kesinleşmemiş puanın dışarıda kalması ve kaldırılmış içeriğin puansızlığı (DOM-KYN-051) denetlenir.
+ * burada rol × kapsam (öğrenci kendisi, veli çocuğu, öğretmen sınıfı, koordinatör yalnız açabildiği
+ * görev, yönetici herkes; kapsam dışı ve başka kurum 404), modül kapalı 403, noktaların görev sonucu
+ * kimlikleri, çok denemede sayılan deneme, alıştırmanın ve kesinleşmemiş puanın dışarıda kalması,
+ * açılmamış yeni puan yerine eski açılmış puan, eğilim ve kaldırılmış içeriğin puansızlığı
+ * (DOM-KYN-051) denetlenir.
  */
 
 type Json = ReturnType<typeof JSON.parse>
@@ -82,7 +90,7 @@ const homework = (): Partial<ResourceVersionInput> => ({
   tags: tags('writing'),
 })
 
-const choice = (optionId: string) => ({ questionType: 'multiple_choice', optionId })
+const choice = (optionId: string) => ({ questionType: 'multiple_choice' as const, optionId })
 
 describe('beceri ilerleme panosu ucu', () => {
   let db: Database
@@ -310,17 +318,22 @@ describe('beceri ilerleme panosu ucu', () => {
     return submission
   }
 
-  /** Öğretmen ilk sürümü puanlar: `task` 4, `grammar` 2 → %60. */
-  const score = (submissionId: string, cookie: string, rowVersion: number) =>
+  /** Öğretmen sürümü puanlar; varsayılan ilk sürüm, `task` 4, `grammar` 2 → %60. */
+  const score = (
+    submissionId: string,
+    cookie: string,
+    rowVersion: number,
+    { versionNumber = 1, task = 4, grammar = 2 } = {},
+  ) =>
     call(
       'POST',
       `/task-submissions/${submissionId}/scores`,
       cookie,
       {
-        versionNumber: 1,
+        versionNumber,
         criteria: [
-          { criterionId: 'task', band: 4, comment: null },
-          { criterionId: 'grammar', band: 2, comment: 'Zaman ekleri eksik.' },
+          { criterionId: 'task', band: task, comment: null },
+          { criterionId: 'grammar', band: grammar, comment: 'Zaman ekleri eksik.' },
         ],
         overallComment: 'İyi.',
       },
@@ -457,6 +470,152 @@ describe('beceri ilerleme panosu ucu', () => {
       assert.deepEqual(curve(await ok(await progress('s-1', cookie)), 'writing').points, [])
   })
 
+  test('DOM-BEC-035, DOM-BEC-042: çok denemeli görevde sayılan deneme nokta olur — en yüksek kuralında son değil en yüksek, ilk deneme kuralında ilk deneme', async () => {
+    const t = await tenant()
+    const [r1, r2] = t.reading.items
+    const highest = await assign(t, t.reading.versionId, {
+      attempts: { kind: 'evaluation', maxAttempts: 2, countPolicy: 'highest' },
+    })
+    const best = await solve(t, highest, { [r1]: choice('a'), [r2]: choice('b') })
+    now = new Date(FIXED_NOW.getTime() + 10 * MINUTE)
+    // Son deneme daha düşük (%25): sayılan yine en yüksek (%100) denemedir.
+    await solve(t, highest, { [r1]: choice('a'), [r2]: choice('a') })
+    const [l1, l2] = t.listening.items
+    const first = await assign(t, t.listening.versionId, {
+      attempts: { kind: 'evaluation', maxAttempts: 2, countPolicy: 'first' },
+    })
+    now = new Date(FIXED_NOW.getTime() + 20 * MINUTE)
+    const initial = await solve(t, first, { [l1]: choice('a'), [l2]: choice('a') })
+    now = new Date(FIXED_NOW.getTime() + 30 * MINUTE)
+    // Sonraki deneme daha yüksek (%100): ilk deneme kuralında sayılan yine ilk denemedir (%25).
+    await solve(t, first, { [l1]: choice('a'), [l2]: choice('b') })
+
+    for (const cookie of [
+      t.cookies.parent,
+      t.cookies.student,
+      t.cookies.teacher,
+      t.cookies.admin,
+    ]) {
+      const data = await ok(await progress('s-1', cookie))
+      const points = (skill: string) =>
+        curve(data, skill).points.map((p: Json) => [
+          p.assignmentId,
+          p.attemptId,
+          p.performedAt,
+          p.percent,
+        ])
+      assert.deepEqual(points('reading'), [[highest, best, FIXED_NOW.toISOString(), 100]])
+      assert.deepEqual(points('listening'), [
+        [first, initial, new Date(FIXED_NOW.getTime() + 20 * MINUTE).toISOString(), 25],
+      ])
+    }
+  })
+
+  test('DOM-BEC-035, DOM-BEC-045: yeni sürümün puanı kursiyere açılmamışken öğrenci ve veli eski sürümün açılmış puanını, öğretmen ve yönetici yeni puanı görür', async () => {
+    const t = await tenant()
+    const at = (minutes: number) => new Date(FIXED_NOW.getTime() + minutes * MINUTE)
+    const writingAssignment = await writingTask(t)
+    const submission = await submitWriting(t, writingAssignment)
+    now = at(10)
+    await ok(await score(submission.id, t.cookies.teacher, submission.rowVersion ?? 1), 201)
+    await ok(
+      await call(
+        'POST',
+        `/task-submissions/${submission.id}/resubmission-requests`,
+        t.cookies.teacher,
+        { versionNumber: 1, dueAt: new Date(now.getTime() + 3 * 24 * 60 * MINUTE).toISOString() },
+        { ...key(), ...match(2) },
+      ),
+      201,
+    )
+    now = at(20)
+    await ok(
+      await call(
+        'POST',
+        `/task-assignments/${writingAssignment}/submissions`,
+        t.cookies.student,
+        { submissionKind: 'text', body: 'My weekend was busy, long and nice.' },
+        key(),
+      ),
+      201,
+    )
+    now = at(40)
+    const staff = await ok(
+      await call('GET', `/task-submissions/${submission.id}`, t.cookies.teacher),
+    )
+    await ok(
+      await score(submission.id, t.cookies.teacher, staff.rowVersion, {
+        versionNumber: 2,
+        task: 5,
+        grammar: 5,
+      }),
+      201,
+    )
+
+    const points = async (cookie: string) =>
+      curve(await ok(await progress('s-1', cookie)), 'writing').points.map((p: Json) => [
+        p.submissionId,
+        p.performedAt,
+        p.percent,
+      ])
+    const older = [[submission.id, FIXED_NOW.toISOString(), 60]]
+    const newer = [[submission.id, at(20).toISOString(), 100]]
+    // Geri bildirim kesinleşme anında açılır (core `teacherFeedbackReleased`; kesinleşme anı
+    // puanın anıdır). Okuma o andan önceyken yeni sürümün puanı kesinleşmiş ama açılmamıştır.
+    now = at(30)
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.deepEqual(await points(cookie), older)
+    for (const cookie of [t.cookies.teacher, t.cookies.admin])
+      assert.deepEqual(await points(cookie), newer)
+    now = at(40)
+    for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.teacher, t.cookies.admin])
+      assert.deepEqual(await points(cookie), newer)
+  })
+
+  test('DOM-BEC-035: eğilim yanıtta döner — son nokta öncekinden 5 puan ve üstü yüksekse up; tek noktada ve boş eğride null', async () => {
+    const t = await tenant()
+    const [r1, r2] = t.reading.items
+    const readingTask = await assign(t, t.reading.versionId, {
+      attempts: { kind: 'evaluation', maxAttempts: 1 },
+    })
+    await solve(t, readingTask, { [r1]: choice('a'), [r2]: choice('a') })
+    now = new Date(FIXED_NOW.getTime() + 10 * MINUTE)
+    // Alıştırma içeriği değerlendirme olarak atanınca panoya girer (ikinci okuma noktası).
+    const [p1, p2] = t.practice.items
+    const second = await assign(t, t.practice.versionId, {
+      attempts: { kind: 'evaluation', maxAttempts: 1 },
+    })
+    await solve(t, second, { [p1]: choice('a'), [p2]: choice('b') })
+    const [l1, l2] = t.listening.items
+    const listeningTask = await assign(t, t.listening.versionId, {
+      attempts: { kind: 'evaluation', maxAttempts: 1 },
+    })
+    await solve(t, listeningTask, { [l1]: choice('a'), [l2]: choice('b') })
+
+    for (const cookie of [
+      t.cookies.parent,
+      t.cookies.student,
+      t.cookies.teacher,
+      t.cookies.admin,
+    ]) {
+      const data = await ok(await progress('s-1', cookie))
+      assert.deepEqual(
+        data.skills.map((item: Json) => [
+          item.skill,
+          item.points.map((p: Json) => p.percent),
+          item.latest,
+          item.trend,
+        ]),
+        [
+          ['reading', [25, 100], 100, 'up'],
+          ['listening', [100], 100, null],
+          ['writing', [], null, null],
+          ['speaking', [], null, null],
+        ],
+      )
+    }
+  })
+
   test('DOM-BEC-035, DOM-KYN-051: kaldırılmış quizin puanı panoda yok', async () => {
     const t = await tenant()
     const [r1, r2] = t.reading.items
@@ -514,7 +673,7 @@ describe('beceri ilerleme panosu ucu', () => {
       assert.equal(curve(await ok(await progress('s-1', cookie)), 'reading').latest, 100)
   })
 
-  test('DOM-BEC-035, IST-060: dil okulunda grup öğretmeni ve seviye koordinatörü kursiyeri görür; grubu olmayan öğretmen 404', async () => {
+  test('DOM-BEC-035, IST-060 (Sabah kararı 66): dil okulunda grup öğretmeni ve seviye koordinatörü kursiyeri görür; koordinatör yalnız açabildiği görevin noktasını görür, açamadığı görevle eğri boş döner; grubu olmayan öğretmen 404', async () => {
     clientIp = `10.1.${(tenantCount += 1)}.1`
     const institution = await createInstitution(app, { type: 'language_school' })
     const teacher = await createMember(app, institution.id, 'ogretmen')
@@ -586,11 +745,109 @@ describe('beceri ilerleme panosu ucu', () => {
       status: 'active',
       joinedAt: FIXED_NOW,
     })
-    for (const member of [teacher, coordinator]) {
-      const data = await ok(await progress('s-deniz', await signInAs(app, member)))
-      assert.equal(data.studentId, 's-deniz')
-      assert.equal(data.skills.length, 4)
+    const cookies = {
+      admin,
+      teacher: await signInAs(app, teacher),
+      coordinator: await signInAs(app, coordinator),
     }
+    // Kursiyere doğrudan atanmış iki otomatik okuma görevi: biri grup öğretmeninin, biri
+    // koordinatörün. Koordinatörlük atama görünürlüğü vermez (DOM-YTK-027): koordinatör grup
+    // öğretmeninin görevini açamaz, bu yüzden onun noktasını da görmez.
+    const at = (minutes: number) => new Date(FIXED_NOW.getTime() + minutes * MINUTE)
+    const stamps = { createdAt: FIXED_NOW, updatedAt: FIXED_NOW }
+    const readingQuiz = async (ownerUserId: string, title: string) => {
+      const versionOf = async (input: Partial<ResourceVersionInput>) => {
+        const { resource, versions } = await seedResource(db, institution.id, {
+          ownerUserId,
+          versions: [{ status: 'published', input }],
+        })
+        return { resourceId: resource.id, versionId: versions[0]!.id }
+      }
+      const first = await versionOf(question(`${title} 1`, 'a', 'reading'))
+      const second = await versionOf(question(`${title} 2`, 'b', 'reading'))
+      const quiz = await versionOf({
+        title,
+        content: {
+          type: 'quiz',
+          items: [
+            { questionVersionId: first.versionId, points: 1 },
+            { questionVersionId: second.versionId, points: 3 },
+          ],
+        },
+        license: { kind: 'institution_original' },
+        tags: { ...tags('reading'), cefrLevel: 'B1' },
+      })
+      return { ...quiz, items: [first.versionId, second.versionId] as const }
+    }
+    /** Görevi kişi adına Deniz'e atar ve Deniz'in tamamlanmış denemesini yazar. */
+    const solved = async (
+      assignedByUserId: string,
+      title: string,
+      options: readonly [string, string],
+      minutes: number,
+    ) => {
+      const quiz = await readingQuiz(assignedByUserId, title)
+      const assignmentId = randomUUID()
+      const attemptId = randomUUID()
+      await db.insert(taskAssignments).values({
+        institutionId: institution.id,
+        id: assignmentId,
+        ...autoAssignment(quiz.resourceId, quiz.versionId),
+        assignedByUserId,
+        ...stamps,
+      })
+      await db.insert(taskAssignmentTargets).values({
+        institutionId: institution.id,
+        assignmentId,
+        targetKind: 'student',
+        targetId: 's-deniz',
+        ...stamps,
+      })
+      await db.insert(taskAttempts).values({
+        institutionId: institution.id,
+        id: attemptId,
+        assignmentId,
+        learnerId: 's-deniz',
+        attemptNumber: 1,
+        startedAt: at(minutes),
+        submittedAt: at(minutes + 5),
+        answers: { [quiz.items[0]]: choice(options[0]), [quiz.items[1]]: choice(options[1]) },
+        ...stamps,
+      })
+      return { assignmentId, attemptId }
+    }
+    const reading = async (cookie: string) =>
+      curve(await ok(await progress('s-deniz', cookie)), 'reading').points.map((p: Json) => [
+        p.assignmentId,
+        p.attemptId,
+        p.percent,
+      ])
+
+    const own = await solved(teacher.id, 'Grup quizi', ['a', 'a'], 0)
+    // Boş durum: koordinatör kursiyere ulaşır (200) ama açamadığı görev sayılmaz.
+    const empty = await ok(await progress('s-deniz', cookies.coordinator))
+    assert.equal(empty.studentId, 's-deniz')
+    assert.deepEqual(
+      empty.skills.map((item: Json) => [item.skill, item.points.length, item.latest, item.trend]),
+      [
+        ['reading', 0, null, null],
+        ['listening', 0, null, null],
+        ['writing', 0, null, null],
+        ['speaking', 0, null, null],
+      ],
+    )
+    assert.deepEqual(await reading(cookies.teacher), [[own.assignmentId, own.attemptId, 25]])
+
+    // Dolu durum: koordinatörün kendi ataması görünür; grup öğretmeninin görevi yine görünmez.
+    const coordinated = await solved(coordinator.id, 'Seviye quizi', ['a', 'b'], 10)
+    assert.deepEqual(await reading(cookies.coordinator), [
+      [coordinated.assignmentId, coordinated.attemptId, 100],
+    ])
+    assert.deepEqual(await reading(cookies.teacher), [[own.assignmentId, own.attemptId, 25]])
+    assert.deepEqual(await reading(cookies.admin), [
+      [own.assignmentId, own.attemptId, 25],
+      [coordinated.assignmentId, coordinated.attemptId, 100],
+    ])
     fails(await progress('s-deniz', await signInAs(app, other)), 404, 'not_found')
   })
 })

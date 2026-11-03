@@ -341,19 +341,35 @@ describe('veli ve öğrenci kararı (DOM-ILT-030, DOM-ILT-037, DOM-ILT-038)', ()
   })
 
   test('DOM-ILT-032: düşmüş karar geçerli karar sayılmaz; yeniden izin istenir', () => {
-    const dropped = { decisions: [decision({ id: 'd1', current: false })] }
+    const dropped = {
+      status: 'pending' as const,
+      decisions: [decision({ id: 'd1', current: false })],
+    }
     assert.equal(myDecision(dropped), undefined)
     assert.equal(decisionDropped(dropped), true)
     // Yeniden karar verilince düşmüş satır kalır ama geçerli karar yenisidir.
     const again = {
+      status: 'pending' as const,
       decisions: [...dropped.decisions, decision({ id: 'd2', decision: 'rejected' })],
     }
     assert.equal(myDecision(again)?.id, 'd2')
     assert.equal(decisionDropped(again), false)
     // Başkasının düşmüş kararı okuyanın kararı değildir; hiç kararı olmayan "düştü" sayılmaz.
-    assert.equal(decisionDropped({ decisions: [decision({ mine: false, current: false })] }), false)
-    assert.equal(decisionDropped({ decisions: [] }), false)
+    assert.equal(
+      decisionDropped({
+        status: 'pending',
+        decisions: [decision({ mine: false, current: false })],
+      }),
+      false,
+    )
+    assert.equal(decisionDropped({ status: 'pending', decisions: [] }), false)
     assert.equal(decisionDropped(undefined), false)
+  })
+
+  test('DOM-ILT-032: öbür veli yeni sürümde karar verdiyse durum bekliyor değildir, "yeniden izin" denmez', () => {
+    const decisions = [decision({ id: 'd1', current: false })]
+    for (const status of ['approved', 'rejected'] as const)
+      assert.equal(decisionDropped({ status, decisions }), false)
   })
 
   test('çocuğun satırı yalnız hedef olduğu formda bulunur', () => {

@@ -429,7 +429,7 @@ function CancelDialog({
       return
     }
     if (result.outcome.status === 'success') {
-      notify.success(`${form.title} iptal edildi; izin vermiş ve bekleyen velilere bildirildi.`)
+      notify.success(`${form.title} iptal edildi; izin vermiş ve bekleyen kişilere bildirildi.`)
       onOpenChange(false)
     }
   }
@@ -441,7 +441,7 @@ function CancelDialog({
           <AlertDialogTitle>Etkinliği iptal et</AlertDialogTitle>
           <AlertDialogDescription>
             {form.title} iptal edilir ve form kapanır; kararlar korunur. İzin vermiş ve karar
-            bekleyen {informed} öğrencinin velisine iptal bildirimi gider. İptal geri alınamaz.
+            bekleyen {informed} öğrenci için iptal bildirimi gider. İptal geri alınamaz.
           </AlertDialogDescription>
         </AlertDialogHeader>
         <AlertDialogFooter>

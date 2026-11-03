@@ -84,9 +84,10 @@ describe('etkinlik değişikliği ve iptal (DOM-ILT-032)', () => {
     'idempotency-key': `test-event-change-${String(++serial).padStart(5, '0')}`,
   })
 
+  let now = FIXED_NOW
   before(async () => {
     ;({ db, close } = await createTestDatabase())
-    app = await buildTestApp(db, { clock: () => FIXED_NOW })
+    app = await buildTestApp(db, { clock: () => now })
   })
   after(async () => {
     await app.close()
@@ -363,6 +364,53 @@ describe('etkinlik değişikliği ve iptal (DOM-ILT-032)', () => {
     assert.equal(same.detailsRevision, 0)
     assert.equal(studentOf(await detail(a.adminCookie, form.id), 's1').status, 'approved')
     assert.deepEqual(await notices(a.id, RECONSENT), [])
+  })
+
+  test('DOM-ILT-032, DOM-ILT-038: son günü geçmiş açık formda izni düşüren değişiklik 422, kayıt ve bildirim değişmez; açıklama serbest', async () => {
+    const a = await institution()
+    const t1 = await teacher(a.id, 't1')
+    const anne = await mother(a.id)
+    const form = await opened(t1)
+    await approved(anne.cookie, form.id)
+    // Son gün (9 Ekim) Europe/Istanbul gün sonunda biter; form hâlâ `open`.
+    now = new Date('2026-10-09T21:00:00.000Z')
+    try {
+      await unchanged(a.id, async () => {
+        for (const body of [{ eventTime: '11:00' }, { fee: 0 }, { eventDate: '2026-10-17' }])
+          assertError(await patch(t1, form.id, body, 1), 422, 'permission_form_deadline_passed')
+      })
+      assert.deepEqual(await notices(a.id, RECONSENT), [])
+      const updated = await change(t1, form.id, { description: 'Güncel açıklama.' })
+      assert.equal(updated.detailsRevision, 0)
+      assert.equal(studentOf(await detail(a.adminCookie, form.id), 's1').status, 'approved')
+    } finally {
+      now = FIXED_NOW
+    }
+  })
+
+  test('DOM-ILT-044: son gün etkinlik gününden sonra olamaz; oluşturma ve güncellemede 422, kayıt değişmez', async () => {
+    const a = await institution()
+    const t1 = await teacher(a.id, 't1')
+    const form = await opened(t1)
+    await unchanged(a.id, async () => {
+      assertError(
+        await create(t1, { ...EVENT, deadline: '2026-10-17' }),
+        422,
+        'permission_form_deadline_after_event',
+      )
+      assertError(
+        await patch(t1, form.id, { deadline: '2026-10-17' }, 1),
+        422,
+        'permission_form_deadline_after_event',
+      )
+      assertError(
+        await patch(t1, form.id, { eventDate: '2026-10-08' }, 1),
+        422,
+        'permission_form_deadline_after_event',
+      )
+    })
+    const same = await opened(t1, { ...EVENT, deadline: '2026-10-16' })
+    assert.equal(same.deadline, '2026-10-16')
   })
 
   test('DOM-ILT-032: mükerrer güncelleme ikinci bildirim yazmaz; ret de yeniden istenir', async () => {

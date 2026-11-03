@@ -407,10 +407,15 @@ export function myDecision(
 
 /**
  * Okuyanın kararı etkinlik değişince düştü mü (DOM-ILT-032): kendi kararı var ama hiçbiri geçerli
- * değil. Yeniden izin istenir; eski karar satır olarak kalır.
+ * değil ve öğrencinin durumu hâlâ bekliyor. Yeniden izin istenir; eski karar satır olarak kalır.
+ * Öbür veli yeni sürümde onay ya da ret verdiyse durum karar bekliyor değildir, "yeniden izin
+ * bekleniyor" denmez.
  */
-export const decisionDropped = (entry: Pick<PermissionFormStudent, 'decisions'> | undefined) =>
+export const decisionDropped = (
+  entry: Pick<PermissionFormStudent, 'decisions' | 'status'> | undefined,
+) =>
   entry !== undefined &&
+  entry.status === 'pending' &&
   myDecision(entry) === undefined &&
   entry.decisions.some((decision) => decision.mine && !decision.current)
 

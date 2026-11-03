@@ -823,6 +823,72 @@ test('DOM-ILT-032: ayrıntı değişince alınmış karar düşer, satır silinm
   assert.equal(statusOf(state, form), 'pending')
 })
 
+test('DOM-ILT-032: son günü geçmiş formda izni düşüren değişiklik 422, kayıt değişmez; açıklama serbest', () => {
+  const state = seed()
+  const form = open(state, teacher('t1'), { ...EVENT, deadline: '2026-10-08' })
+  approve(state, form.id)
+  const late = '2026-10-09T10:00:00.000Z'
+  for (const patch of [{ eventTime: '11:00' }, { fee: 0 }, { location: null }])
+    unchanged(
+      state,
+      () => updatePermissionForm(state, teacher('t1'), form.id, patch, late),
+      isDomainError('permission_form_deadline_passed', 'rule'),
+    )
+  assert.equal(form.detailsRevision, undefined)
+  assert.equal(statusOf(state, form), 'approved')
+  const update = updatePermissionForm(
+    state,
+    teacher('t1'),
+    form.id,
+    { description: 'Yeni açıklama metni.' },
+    late,
+  )
+  assert.deepEqual(update.droppedFields, [])
+  assert.equal(form.description, 'Yeni açıklama metni.')
+  assert.equal(statusOf(state, form), 'approved')
+})
+
+test('DOM-ILT-044: son gün etkinlik gününden sonra olamaz; aynı gün olabilir', () => {
+  const state = seed()
+  unchanged(
+    state,
+    () => open(state, admin, { ...EVENT, deadline: '2026-10-17' }),
+    isDomainError('permission_form_deadline_after_event'),
+  )
+  assert.equal(open(state, admin, { ...EVENT, deadline: '2026-10-16' }).deadline, '2026-10-16')
+  // Etkinlik günü olmayan formda sınır yoktur.
+  assert.equal(open(state, admin, { ...FORM, deadline: '2027-01-01' }).deadline, '2027-01-01')
+})
+
+test('DOM-ILT-044: güncellemede son gün ya da etkinlik günü kuralı bozamaz; eski kayıt okunur', () => {
+  const state = seed()
+  const form = open(state, admin, EVENT)
+  unchanged(
+    state,
+    () => updatePermissionForm(state, admin, form.id, { deadline: '2026-10-17' }, now),
+    isDomainError('permission_form_deadline_after_event'),
+  )
+  // Etkinlik günü öne çekilip mevcut son günün (9 Ekim) altına inemez.
+  unchanged(
+    state,
+    () => updatePermissionForm(state, admin, form.id, { eventDate: '2026-10-08' }, now),
+    isDomainError('permission_form_deadline_after_event'),
+  )
+  const both = updatePermissionForm(
+    state,
+    admin,
+    form.id,
+    { eventDate: '2026-10-08', deadline: '2026-10-07' },
+    now,
+  )
+  assert.equal(both.form.deadline, '2026-10-07')
+  // Kuralı ihlal eden eski kayıt: ilgisiz alan değişikliği engellenmez.
+  const legacy = open(state, admin, EVENT)
+  legacy.deadline = '2026-10-20'
+  updatePermissionForm(state, admin, legacy.id, { title: 'Eski kayıt' }, now)
+  assert.equal(legacy.title, 'Eski kayıt')
+})
+
 test('DOM-ILT-032: düşen izin yeniden verilir; yeni satır yeni sürümü taşır, eskisi kalır', () => {
   const state = seed()
   const form = open(state, teacher('t1'), EVENT)

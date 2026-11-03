@@ -404,6 +404,22 @@ function assertDeadlineNotPast(day: string, now: string) {
     })
 }
 
+/**
+ * Son gün etkinlik gününden sonra olamaz (DOM-ILT-044; ikisi de Europe/Istanbul günü). Etkinlik
+ * günü geçmiş formda yeni karar alınmaz: son gün etkinlik gününü aşamadığı için `deadline`
+ * geçmişe düşer ve `decidePermission` zaten 422 `permission_form_deadline_passed` verir; ayrıca
+ * bir denetim eklenmez. Yalnız yazmada uygulanır; kuralı ihlal eden eski kayıt okunur ve
+ * yalnız ilgili alanlar değişirken yeniden denetlenir.
+ */
+function assertDeadlineNotAfterEvent(deadlineDay: string, eventDay: string | null | undefined) {
+  if (typeof eventDay === 'string' && deadlineDay > eventDay)
+    throw new DomainError(
+      'permission_form_deadline_after_event',
+      'Son gün etkinlik gününden sonra olamaz.',
+      { path: ['deadline'] },
+    )
+}
+
 type Targets = { classIds: string[]; targetStudentIds: string[] }
 
 /**
@@ -460,7 +476,8 @@ function resolveStudents(state: State, targets: Targets): string[] {
 /**
  * İzin formu aç (DOM-ILT-036). Yönetici her sınıf ve öğrenciye; öğretmen yalnız rehberi olduğu
  * sınıflara ve onların öğrencilerine (403 `permission_form_scope_denied`). Son gün bugünden önce
- * olamaz (422 `permission_form_deadline_in_past`). Hedef öğrenciler açılışta çözülür.
+ * olamaz (422 `permission_form_deadline_in_past`) ve etkinlik gününden sonra olamaz (422
+ * `permission_form_deadline_after_event`, DOM-ILT-044). Hedef öğrenciler açılışta çözülür.
  */
 export function createPermissionForm(
   state: State,
@@ -484,6 +501,7 @@ export function createPermissionForm(
   )
   assertDeadlineNotPast(data.deadline, now)
   assertEventDateNotPast(data.eventDate, now)
+  assertDeadlineNotAfterEvent(data.deadline, data.eventDate)
   const studentIds = resolveStudents(state, targets)
   const teacherId =
     by.role === 'ogretmen'
@@ -548,8 +566,10 @@ export type PermissionFormUpdate = {
  * İzin formunu düzenle (DOM-ILT-038): başlık, açıklama, son gün, hedef ve etkinlik ayrıntısı;
  * konu türü değişmez. Etkinlik günü, saati, yeri, ulaşım biçimi ya da ücreti değişirse alınmış
  * kararlar düşer (DOM-ILT-032): ayrıntı sürümü bir artar, karar satırlarına dokunulmaz.
- * Kapalı form 422 `permission_form_closed`. Son günü geçmiş formun son günü değişmez (422
- * `permission_form_deadline_passed`); yeni son gün bugünden önce olamaz. Kararı olan formda
+ * Kapalı form 422 `permission_form_closed`. Son günü geçmiş formun son günü değişmez ve izni
+ * düşüren değişiklik yapılamaz (422 `permission_form_deadline_passed`; açıklama gibi izni
+ * düşürmeyen alanlar serbest); yeni son gün bugünden önce ve etkinlik gününden sonra olamaz
+ * (422 `permission_form_deadline_in_past`, `permission_form_deadline_after_event`, DOM-ILT-044). Kararı olan formda
  * hedeften sınıf ya da öğrenci çıkarılamaz (422 `permission_form_scope_locked`); eklenebilir ve
  * önceden çözülmüş öğrenciler hedefte kalır. Formun öğretmeni ya da yönetici düzenler; formu
  * gören başka öğretmen 403 `permission_form_not_owner`, görmeyen 404.
@@ -592,7 +612,20 @@ export function updatePermissionForm(
     assertDeadlineNotPast(data.deadline, now)
   }
   const droppedFields = permissionDroppingChanges(form, data)
+  // Son günü geçmiş formda izni düşüren değişiklik yapılamaz: bütün izinler düşerdi ama son gün
+  // yeniden karar almaya izin vermez (DOM-ILT-038); etkinliğin geçerli izni kalmazdı.
+  if (droppedFields.length > 0 && isPermissionDeadlinePassed(form, now))
+    throw new DomainError(
+      'permission_form_deadline_passed',
+      'Son gün geçtiği için izni düşüren değişiklik yapılamaz; etkinliği iptal edip yeni form açın.',
+      { kind: 'rule' },
+    )
   if (droppedFields.includes('eventDate')) assertEventDateNotPast(data.eventDate, now)
+  if (data.deadline !== undefined || droppedFields.includes('eventDate'))
+    assertDeadlineNotAfterEvent(
+      data.deadline ?? form.deadline,
+      droppedFields.includes('eventDate') ? data.eventDate : form.eventDate,
+    )
   let studentIds = form.studentIds
   if (targets) {
     const locked = hasDecisions(state, form.id)

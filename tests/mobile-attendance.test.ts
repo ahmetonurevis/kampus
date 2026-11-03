@@ -11,6 +11,7 @@ import {
   lateMinutesIssueErrors,
   lateMinutesPayload,
   markCounts,
+  minuteChangedIds,
   savedLateMinutes,
 } from '../packages/react-shared/src/attendance-model.ts'
 import {
@@ -315,6 +316,31 @@ describe('IST-124 mobil öğretmen yoklaması: kaydetme', () => {
     assert.equal(bad.errors['test-s-ece'], 'Geç kalma süresi en az 1 dakika olmalıdır.')
     // Geç gelmeyen öğrencinin eski dakikası gönderilmez.
     assert.deepEqual(lateMinutesPayload({ ...marks, 'test-s-ece': 'absent' }, text).minutes, {})
+  })
+
+  test('DOM-AKD-036 yalnız dakikası düzeltilen öğrenci kaydedilmemiş değişiklik sayılır', () => {
+    const ids = ['test-s-deniz', 'test-s-ece']
+    const saved = [
+      { studentId: 'test-s-deniz', status: 'present' },
+      { studentId: 'test-s-ece', status: 'late', lateMinutes: 12 },
+    ]
+    const base = attendanceMarks(ids, saved)
+    const savedText = savedLateMinutes(saved)
+    const edited = { ...savedText, 'test-s-ece': '15' }
+    const minutes = minuteChangedIds(base, savedText, edited)
+    assert.equal(unsavedCount(base, base), 0)
+    assert.equal(unsavedCount(base, base, minuteChangedIds(base, savedText, savedText)), 0)
+    assert.equal(unsavedCount(base, base, minutes), 1)
+    // Hem durumu hem dakikası değişen öğrenci bir kez sayılır.
+    const marks = attendanceMarks(ids, saved, { 'test-s-deniz': 'late', 'test-s-ece': 'late' })
+    assert.equal(
+      unsavedCount(
+        base,
+        marks,
+        minuteChangedIds(marks, savedText, { ...edited, 'test-s-deniz': '5' }),
+      ),
+      2,
+    )
   })
 
   test('DOM-AKD-036 sunucunun 422 dakika iletisi o öğrencinin alanına düşer', () => {

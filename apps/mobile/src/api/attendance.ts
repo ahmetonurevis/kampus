@@ -210,12 +210,17 @@ export function changedElsewhere(
 export const CHANGED_ELSEWHERE_NOTICE =
   'Bu yoklama başka bir yerde değişti. Dokunmadığınız öğrencilerin durumu güncellendi; kaydetmeden önce kontrol edin.'
 
-/** Sunucudaki son hâle göre değişen öğrenci sayısı; kaydedilmemiş iş uyarısı için. */
+/**
+ * Sunucudaki son hâle göre değişen öğrenci sayısı; kaydedilmemiş iş uyarısı için. Durumu ya da
+ * geç kalma dakikası (`minuteChangedIds`) değişen öğrenci bir kez sayılır; yalnız dakikası
+ * düzeltilen öğrencinin işi de pencere kapanırken uyarılır.
+ */
 export function unsavedCount(
   base: Readonly<Record<string, AttendanceMark>>,
   marks: Readonly<Record<string, AttendanceMark>>,
+  minuteChanged: readonly string[] = [],
 ): number {
-  return Object.keys(pendingEdits(base, marks)).length
+  return new Set([...Object.keys(pendingEdits(base, marks)), ...minuteChanged]).size
 }
 
 /**

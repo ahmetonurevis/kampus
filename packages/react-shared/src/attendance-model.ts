@@ -110,3 +110,21 @@ export function lateMinutesIssueErrors(
   }
   return errors
 }
+
+/**
+ * Kaydedilmemiş geç kalma dakikası düzeltmesi olan öğrenciler: "Geç geldi" işaretli ve alandaki
+ * değer (kırpılmış) kayıtlı değerden (`saved`, boş = dakikasız) farklı olanlar. Geç gelmeyen
+ * öğrencinin dakikası gönderilmediği için sayılmaz; durum değişikliği zaten ayrı sayılır
+ * (DOM-AKD-036).
+ */
+export function minuteChangedIds(
+  marks: Readonly<Record<string, AttendanceStatus>>,
+  saved: Readonly<Record<string, string>>,
+  text: Readonly<Record<string, string>>,
+): string[] {
+  return Object.entries(marks)
+    .filter(
+      ([id, status]) => status === 'late' && (text[id] ?? '').trim() !== (saved[id] ?? '').trim(),
+    )
+    .map(([id]) => id)
+}

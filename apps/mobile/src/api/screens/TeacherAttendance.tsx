@@ -9,6 +9,7 @@ import {
   lateMinutesIssueErrors,
   lateMinutesPayload,
   markCounts,
+  minuteChangedIds,
   savedLateMinutes,
 } from '@kampus/react-shared/attendance-model.ts'
 import { useRecordAttendance } from '@kampus/react-shared/use-academic-commands.ts'
@@ -195,7 +196,11 @@ function AttendanceSheet({
     [savedRecords, minuteEdits],
   )
   const counts = markCounts(marks)
-  const changed = unsavedCount(base, marks)
+  const changed = unsavedCount(
+    base,
+    marks,
+    minuteChangedIds(marks, savedLateMinutes(savedRecords), minuteText),
+  )
   const elsewhere = changedElsewhere(baseline, base, edits)
   const alreadyTaken = savedRecords.length > 0
   const busy = record.isPending

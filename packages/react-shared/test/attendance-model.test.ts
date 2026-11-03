@@ -9,6 +9,7 @@ import {
   lateMinutesIssueErrors,
   lateMinutesPayload,
   markCounts,
+  minuteChangedIds,
   savedLateMinutes,
 } from '../src/attendance-model.ts'
 
@@ -106,4 +107,20 @@ test('DOM-AKD-036: sunucunun dakika maddesi o öğrencinin alanına eşlenir', (
     { s1: limit },
   )
   assert.deepEqual(lateMinutesIssueErrors([]), {})
+})
+
+test('DOM-AKD-036: kayıtlı değerden farklı dakika kaydedilmemiş değişikliktir', () => {
+  const marks = { s1: 'late', s2: 'late', s3: 'present', s4: 'late' } as const
+  const saved = { s1: '12', s2: '8' }
+  // s1 12 -> 15 düzeltildi; s2 dokunulmadı; s3 geç gelmeyen; s4 dakikasız kayıttan dakika eklendi.
+  assert.deepEqual(minuteChangedIds(marks, saved, { ...saved, s1: '15', s3: '5', s4: '7' }), [
+    's1',
+    's4',
+  ])
+  assert.deepEqual(minuteChangedIds(marks, saved, saved), [])
+  // Boşluk farkı değişiklik değildir; dakikanın silinmesi değişikliktir.
+  assert.deepEqual(minuteChangedIds(marks, saved, { ...saved, s1: ' 12 ' }), [])
+  assert.deepEqual(minuteChangedIds(marks, saved, { ...saved, s1: '' }), ['s1'])
+  // Geç gelmeyen öğrencinin eski dakika alanı sayılmaz.
+  assert.deepEqual(minuteChangedIds({ s1: 'absent' }, saved, { s1: '99' }), [])
 })

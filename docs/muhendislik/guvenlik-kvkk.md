@@ -67,18 +67,20 @@ Kimlik doğrulama ve oturum **Better Auth** iledir (ADR 0002 karar 3; ADR 0001 k
 - CORS (`@fastify/cors`): izinli kaynaklar `CORS_ORIGINS` ortam değişkeninden tam eşleşmeyle, `credentials: true`; `*` yok. Aynı liste Better Auth `trustedOrigins`'e verilir. Mobil yerel istemci CORS'a tabi değildir.
 - CSRF: oturum çerezde olduğu için durum değiştiren (`POST`, `PATCH`, `DELETE`) uygulama isteklerinde `Sec-Fetch-Site: cross-site` veya izinli listede olmayan `Origin` 403 `csrf_rejected` alır. `GET` yan etkisizdir. Kimlik uçlarında bu denetimi Better Auth yapar.
 - API (`@fastify/helmet`): `Strict-Transport-Security: max-age=31536000; includeSubDomains`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` (kişisel veri içeren yanıtlarda).
-- Web CSP (statik sunucuda başlık olarak):
+- Web CSP (statik sunucuda başlık olarak; uygulanan hâli `deploy/site.conf`, OG-203):
 
 ```
-default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self' data: blob:;
-font-src 'self'; connect-src 'self'; worker-src 'self' blob:;
-frame-src 'self' blob:; media-src 'self' blob:; object-src 'none'; base-uri 'self';
-form-action 'self'; frame-ancestors 'none'; upgrade-insecure-requests
+default-src 'self'; script-src 'self' 'sha256-<tema betiği>'; style-src 'self' 'unsafe-inline';
+img-src 'self' data:; font-src 'self'; connect-src 'self'; media-src 'self' blob:;
+worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'
 ```
 
-- `unsafe-eval` yok. Radix/shadcn bileşenlerinin konumlandırma için yazdığı satır içi `style` öznitelikleri gerekiyorsa yalnız `style-src-attr 'unsafe-inline'` eklenir; `script-src`'ye satır içi izin verilmez. CSP önce `Content-Security-Policy-Report-Only` ile denenir.
+- Politika derlenmiş web'in gerçek kaynaklarından çıkarıldı: yazı tipleri kendi kökenimizden (Inter `@fontsource`, PDF için Noto Sans), Google Fonts/CDN yok; satır içi betik yalnız `apps/web-react/index.html`'deki tema betiğidir (hash'lenir; betik değişirse hash yeniden hesaplanır, `site.conf` yorumunda komut var); pdf.js worker'ı aynı kökenli modüldür; sesler `blob:` ile çalınır; sitenin iframe'i yoktur (`frame-src` tanımsız).
+- `unsafe-eval` ve `script-src` altında satır içi izin yok. `style-src 'unsafe-inline'` zorunludur: sonner ve react-remove-scroll-bar (Radix pencere kaydırma kilidi) çalışma anında `<style>` öğesi yazar, PDF yazdırma penceresi de `<style>` ekler; nonce statik sunucuda üretilemez. Stil enjeksiyonu betik çalıştıramadığından kabul edilen taviz budur. Radix'in satır içi `style` öznitelikleri bu izinle zaten karşılanır.
+- Önce Report-Only denenmez, doğrudan uygulanır: statik sunucuda rapor toplayan uç olmadığından Report-Only yalnız tarayıcı konsoluna yazar ve kimse görmez. Bunun yerine politika nginx ile gerçek tarayıcıda denendi (Vue belge/PDF/yazdırma senaryoları, React girişi). Geri dönüş: başlık adını geçici olarak `Content-Security-Policy-Report-Only` yapıp yeniden yayınlamak. API ayrı kökende sunulursa `connect-src`'e (ve dosya indirme için aşağıdaki kökenlere) eklenir; API yayını ADR'si bunu karara bağlar. `upgrade-insecure-requests` konmaz: sertifika alınana kadarki geçici HTTP yapılandırmasını bozar, HTTPS'i HSTS ve 301 sağlar.
+- nginx (`deploy/site.conf`, `https.conf`): `Strict-Transport-Security: max-age=31536000; includeSubDomains` yalnız 443 sunucusunda; `preload` bilerek yok (liste kaydedilebilir kök alan adını, yani `onurevis.com`'u ister ve girişi tüm alt alan adlarını aylarca geri alınamaz biçimde HTTPS'e bağlar; demo alt alanı tek başına listeye alınamaz, kök alan için ayrı karar gerekir). `X-Content-Type-Options: nosniff`, `X-Frame-Options: DENY`, `Referrer-Policy: strict-origin-when-cross-origin`, `Permissions-Policy` (aşağıda) ve CSP bir snippet'te server düzeyinde tanımlıdır. nginx `add_header` miras kuralı: bir `location` kendi `add_header`'ını yazarsa üst düzeydeki hepsi düşer; bu yüzden `site.conf`'taki `location`'larda `add_header` yoktur, eklenecekse tüm güvenlik başlıkları o `location`'da yinelenir.
 - Dosya indirme (ADR 0003 karar 6): disk sürücüsünde imzalı bağlantı API kökenindedir; web API'yi ayrı kökende sunarsa `img-src`/`media-src`/`frame-src`'ye API kökeni eklenir. S3 sürücüsünde `STORAGE_PUBLIC_URL` kökeni eklenir (`TODO(F3c2-csp)`, S3 ile birlikte). İndirme ucu Helmet'in `Cross-Origin-Resource-Policy: same-origin` varsayılanını `cross-origin` ile ezer; yoksa tarayıcı başka kökenden gömülen görsel/sesi engeller. Yetki imzadadır (S3 ön imzalı bağlantısı da CORP göndermez); JSON uçları `same-origin` kalır.
-- `Permissions-Policy: camera=(), geolocation=(), microphone=(self)` (konuşma becerisi kaydı için yalnız kendi kaynağımız).
+- `Permissions-Policy`: kullanılmayan özellikler kapalıdır (`camera`, `geolocation`, `payment`, `usb`, `bluetooth`, `serial`, `hid`, `midi`, `display-capture`, `accelerometer`, `gyroscope`, `magnetometer`, `browsing-topics`); `microphone=(self)` konuşma becerisi kaydı (IST-052/126) için yalnız kendi kaynağımıza açıktır.
 
 ## 6. Kiracı izolasyonu
 

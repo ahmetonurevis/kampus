@@ -1291,15 +1291,15 @@ describe('0029: dil okulu grup tabloları', SLOW, () => {
   })
 })
 
-describe('0049: kazanım kataloğu tabloları', SLOW, () => {
+describe('0050: kazanım kataloğu tabloları', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
   let folder: string
 
   before(async () => {
-    folder = await migrationsUpTo('0048_invitation_teacher')
-    // 0048 kimlik kolonlarının hepsini içerir: geçici kolon gerekmez (`migratePartial` değil).
+    folder = await migrationsUpTo('0049_create_finance_export_profiles')
+    // 0049'a kadar kimlik kolonlarının hepsi vardır: geçici kolon gerekmez (`migratePartial` değil).
     await migrate(pglite, { migrationsFolder: folder })
   })
   after(async () => {

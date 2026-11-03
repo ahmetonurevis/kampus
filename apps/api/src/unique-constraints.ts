@@ -92,7 +92,7 @@ export const UNIQUE_CONSTRAINTS = {
     'Bu görev öğretmene zaten verilmiş.',
   ),
 
-  // --- Kazanım kataloğu (DOM-KYN-011, migration 0049) ----------------------------------------
+  // --- Kazanım kataloğu (DOM-KYN-011, migration 0050) ----------------------------------------
   platform_learning_outcomes_pkey: RETRY,
   learning_outcomes_pkey: rule(
     'learning_outcome_code_taken',

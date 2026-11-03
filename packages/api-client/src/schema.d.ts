@@ -4824,6 +4824,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/placement-sessions/{sessionId}/form": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Seviye tespiti formu
+         * @description Oturumun formundaki otomatik bölümlerin (dil kullanımı, okuma, dinleme) soruları; personel kursiyerin cevaplarını bununla girer (OG-078, IST-058). Soru gövdesi anahtarsızdır: doğru cevap ve açıklama gönderilmez. Formda sorusu olmayan bölüm listede yoktur. Olmayan ya da başka kurumun oturumu 404. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        get: operations["getPlacementForm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/placement-sessions/{sessionId}/score": {
         parameters: {
             query?: never;
@@ -8225,6 +8245,80 @@ export interface components {
              * @enum {string}
              */
             studentStatus: "pending" | "approved" | "rejected";
+        };
+        PlacementFormInput: {
+            /** Format: uuid */
+            sessionId: string;
+            /** Format: uuid */
+            formVersionId: string;
+            /** @description Formda sorusu olan otomatik bölümler, ekrandaki sırayla */
+            sections: {
+                /** @enum {string} */
+                section: "language_use" | "reading" | "listening";
+                /** @description Bölüm sorularının ortak CEFR seviyesi */
+                targetLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                items: {
+                    questionVersionId: string;
+                    points: number;
+                    subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
+                    question: {
+                        /** @constant */
+                        questionType: "multiple_choice";
+                        stem: string;
+                        options: {
+                            id: string;
+                            text: string;
+                        }[];
+                        /** @default null */
+                        imageFileId: string | null;
+                    } | {
+                        /** @constant */
+                        questionType: "true_false";
+                        stem: string;
+                        /** @default false */
+                        allowNotGiven: boolean;
+                        /** @default null */
+                        imageFileId: string | null;
+                    } | {
+                        /** @constant */
+                        questionType: "matching";
+                        stem: string;
+                        prompts: {
+                            id: string;
+                            text: string;
+                        }[];
+                        choices: {
+                            id: string;
+                            text: string;
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "gap_fill";
+                        stem: string;
+                        gaps: {
+                            id: string;
+                            /** @default [] */
+                            options: string[];
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "ordering";
+                        stem: string;
+                        items: {
+                            id: string;
+                            text: string;
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "short_answer";
+                        stem: string;
+                        /** @default 100 */
+                        maxLength: number;
+                        /** @default null */
+                        imageFileId: string | null;
+                    };
+                }[];
+            }[];
         };
         CefrProfileStaffInput: {
             /**
@@ -11838,6 +11932,79 @@ export interface components {
              * @enum {string}
              */
             studentStatus: "pending" | "approved" | "rejected";
+        };
+        PlacementForm: {
+            /** Format: uuid */
+            sessionId: string;
+            /** Format: uuid */
+            formVersionId: string;
+            /** @description Formda sorusu olan otomatik bölümler, ekrandaki sırayla */
+            sections: {
+                /** @enum {string} */
+                section: "language_use" | "reading" | "listening";
+                /** @description Bölüm sorularının ortak CEFR seviyesi */
+                targetLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                items: {
+                    questionVersionId: string;
+                    points: number;
+                    subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
+                    question: {
+                        /** @constant */
+                        questionType: "multiple_choice";
+                        stem: string;
+                        options: {
+                            id: string;
+                            text: string;
+                        }[];
+                        /** @default null */
+                        imageFileId: string | null;
+                    } | {
+                        /** @constant */
+                        questionType: "true_false";
+                        stem: string;
+                        /** @default false */
+                        allowNotGiven: boolean;
+                        /** @default null */
+                        imageFileId: string | null;
+                    } | {
+                        /** @constant */
+                        questionType: "matching";
+                        stem: string;
+                        prompts: {
+                            id: string;
+                            text: string;
+                        }[];
+                        choices: {
+                            id: string;
+                            text: string;
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "gap_fill";
+                        stem: string;
+                        gaps: {
+                            id: string;
+                            options: unknown;
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "ordering";
+                        stem: string;
+                        items: {
+                            id: string;
+                            text: string;
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "short_answer";
+                        stem: string;
+                        /** @default 100 */
+                        maxLength: number;
+                        /** @default null */
+                        imageFileId: string | null;
+                    };
+                }[];
+            }[];
         };
         CefrProfileStaff: {
             /**
@@ -42846,6 +43013,85 @@ export interface operations {
                                 placementSessionId: string | null;
                             }[];
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPlacementForm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tespit oturumu kimliği */
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PlacementForm"];
                     };
                 };
             };

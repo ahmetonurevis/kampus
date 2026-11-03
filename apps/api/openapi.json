@@ -12848,6 +12848,392 @@
           "studentStatus"
         ]
       },
+      "PlacementFormInput": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "formVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "section": {
+                  "type": "string",
+                  "enum": [
+                    "language_use",
+                    "reading",
+                    "listening"
+                  ]
+                },
+                "targetLevel": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Bölüm sorularının ortak CEFR seviyesi"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "questionVersionId": {
+                        "type": "string"
+                      },
+                      "points": {
+                        "type": "number"
+                      },
+                      "subskill": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "main_idea",
+                              "detail",
+                              "inference",
+                              "vocabulary"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "question": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "multiple_choice"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "options": {
+                                "minItems": 4,
+                                "maxItems": 8,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "text"
+                                  ]
+                                }
+                              },
+                              "imageFileId": {
+                                "default": null,
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem",
+                              "options"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "true_false"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "allowNotGiven": {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              "imageFileId": {
+                                "default": null,
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "matching"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "prompts": {
+                                "minItems": 2,
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "text"
+                                  ]
+                                }
+                              },
+                              "choices": {
+                                "minItems": 2,
+                                "maxItems": 26,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "text"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem",
+                              "prompts",
+                              "choices"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "gap_fill"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "gaps": {
+                                "minItems": 1,
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                    },
+                                    "options": {
+                                      "default": [],
+                                      "maxItems": 10,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "string",
+                                        "minLength": 1,
+                                        "maxLength": 200
+                                      }
+                                    }
+                                  },
+                                  "required": [
+                                    "id"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem",
+                              "gaps"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "ordering"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "items": {
+                                "minItems": 2,
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "text"
+                                  ]
+                                }
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem",
+                              "items"
+                            ]
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "short_answer"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "maxLength": {
+                                "default": 100,
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 500
+                              },
+                              "imageFileId": {
+                                "default": null,
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem"
+                            ]
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "questionVersionId",
+                      "points",
+                      "subskill",
+                      "question"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "section",
+                "targetLevel",
+                "items"
+              ]
+            },
+            "description": "Formda sorusu olan otomatik bölümler, ekrandaki sırayla"
+          }
+        },
+        "required": [
+          "sessionId",
+          "formVersionId",
+          "sections"
+        ]
+      },
       "CefrProfileStaffInput": {
         "type": "object",
         "properties": {
@@ -27890,6 +28276,403 @@
           "relation",
           "decidedAt",
           "studentStatus"
+        ],
+        "additionalProperties": false
+      },
+      "PlacementForm": {
+        "type": "object",
+        "properties": {
+          "sessionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "formVersionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "sections": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "section": {
+                  "type": "string",
+                  "enum": [
+                    "language_use",
+                    "reading",
+                    "listening"
+                  ]
+                },
+                "targetLevel": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Bölüm sorularının ortak CEFR seviyesi"
+                },
+                "items": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "questionVersionId": {
+                        "type": "string"
+                      },
+                      "points": {
+                        "type": "number"
+                      },
+                      "subskill": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "enum": [
+                              "main_idea",
+                              "detail",
+                              "inference",
+                              "vocabulary"
+                            ]
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ]
+                      },
+                      "question": {
+                        "oneOf": [
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "multiple_choice"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "options": {
+                                "minItems": 4,
+                                "maxItems": 8,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "text"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "imageFileId": {
+                                "default": null,
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem",
+                              "options",
+                              "imageFileId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "true_false"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "allowNotGiven": {
+                                "default": false,
+                                "type": "boolean"
+                              },
+                              "imageFileId": {
+                                "default": null,
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem",
+                              "allowNotGiven",
+                              "imageFileId"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "matching"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "prompts": {
+                                "minItems": 2,
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "text"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "choices": {
+                                "minItems": 2,
+                                "maxItems": 26,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "text"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem",
+                              "prompts",
+                              "choices"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "gap_fill"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "gaps": {
+                                "minItems": 1,
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                    },
+                                    "options": {}
+                                  },
+                                  "required": [
+                                    "id",
+                                    "options"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem",
+                              "gaps"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "ordering"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "items": {
+                                "minItems": 2,
+                                "maxItems": 20,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "id": {
+                                      "type": "string",
+                                      "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                    },
+                                    "text": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 500
+                                    }
+                                  },
+                                  "required": [
+                                    "id",
+                                    "text"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem",
+                              "items"
+                            ],
+                            "additionalProperties": false
+                          },
+                          {
+                            "type": "object",
+                            "properties": {
+                              "questionType": {
+                                "type": "string",
+                                "const": "short_answer"
+                              },
+                              "stem": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 5000
+                              },
+                              "maxLength": {
+                                "default": 100,
+                                "type": "integer",
+                                "minimum": 1,
+                                "maximum": 500
+                              },
+                              "imageFileId": {
+                                "default": null,
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "minLength": 1,
+                                    "maxLength": 200
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "questionType",
+                              "stem",
+                              "maxLength",
+                              "imageFileId"
+                            ],
+                            "additionalProperties": false
+                          }
+                        ]
+                      }
+                    },
+                    "required": [
+                      "questionVersionId",
+                      "points",
+                      "subskill",
+                      "question"
+                    ],
+                    "additionalProperties": false
+                  }
+                }
+              },
+              "required": [
+                "section",
+                "targetLevel",
+                "items"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Formda sorusu olan otomatik bölümler, ekrandaki sırayla"
+          }
+        },
+        "required": [
+          "sessionId",
+          "formVersionId",
+          "sections"
         ],
         "additionalProperties": false
       },
@@ -85375,6 +86158,110 @@
                         "decisions"
                       ],
                       "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/placement-sessions/{sessionId}/form": {
+      "get": {
+        "operationId": "getPlacementForm",
+        "summary": "Seviye tespiti formu",
+        "tags": [
+          "learning"
+        ],
+        "description": "Oturumun formundaki otomatik bölümlerin (dil kullanımı, okuma, dinleme) soruları; personel kursiyerin cevaplarını bununla girer (OG-078, IST-058). Soru gövdesi anahtarsızdır: doğru cevap ve açıklama gönderilmez. Formda sorusu olmayan bölüm listede yoktur. Olmayan ya da başka kurumun oturumu 404. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "sessionId",
+            "required": true,
+            "description": "Tespit oturumu kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PlacementForm"
                     }
                   },
                   "required": [

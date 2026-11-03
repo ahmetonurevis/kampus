@@ -367,6 +367,7 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
     for (const cookie of [t.cookies.admin, t.cookies.frontDesk, t.cookies.student]) {
       fails(await open(t, {}, cookie), 404, 'not_found')
       fails(await call('GET', `/placement-sessions/${randomUUID()}`, cookie), 404, 'not_found')
+      fails(await call('GET', `/placement-sessions/${randomUUID()}/form`, cookie), 404, 'not_found')
       fails(await call('GET', '/students/s-deniz/cefr-profile', cookie), 404, 'not_found')
     }
     assert.equal((await sessionRows(t.institution.id)).length, 0)
@@ -653,6 +654,171 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
     assert.equal(replay.version, scored.version)
     const [row] = await sessionRows(t.institution.id)
     assert.equal(row?.sectionEntries.length, 1)
+  })
+
+  test('IST-058 OG-078 tespit formu: sorular anahtarsız; başka kurumun oturumu 404, kapsam oturumla aynı', async () => {
+    const t = await tenant()
+    const session = await ok(await open(t), 201)
+    fails(await call('GET', `/placement-sessions/${session.id}/form`), 401, 'unauthenticated')
+    for (const cookie of [t.cookies.frontDesk, t.cookies.student, t.cookies.parent])
+      fails(await call('GET', `/placement-sessions/${session.id}/form`, cookie), 403, 'forbidden')
+    fails(
+      await call('GET', `/placement-sessions/${session.id}/form`, t.cookies.other),
+      404,
+      'not_found',
+    )
+    fails(
+      await call('GET', `/placement-sessions/${randomUUID()}/form`, t.cookies.admin),
+      404,
+      'not_found',
+    )
+    const response = await call('GET', `/placement-sessions/${session.id}/form`, t.cookies.teacher)
+    const form = await ok(response)
+    assert.equal(form.sessionId, session.id)
+    assert.deepEqual(
+      form.sections.map((section: Json) => [section.section, section.targetLevel]),
+      [
+        ['language_use', 'B1'],
+        ['reading', 'B1'],
+        ['listening', 'B1'],
+      ],
+    )
+    assert.deepEqual(
+      form.sections.map((section: Json) =>
+        section.items.map((item: Json) => item.questionVersionId),
+      ),
+      [t.questions.language_use, t.questions.reading, t.questions.listening],
+    )
+    const [item] = form.sections[0].items
+    assert.equal(item.question.questionType, 'multiple_choice')
+    assert.equal(item.points, 1)
+    // Doğru cevap ve açıklama yanıtta hiç yoktur.
+    assert.doesNotMatch(response.body, /correctOptionId|A doğrudur|answerKey/)
+    // Okulda uç yoktur; başka kurumun oturumu 404.
+    const school = await tenant('school')
+    fails(
+      await call('GET', `/placement-sessions/${session.id}/form`, school.cookies.admin),
+      404,
+      'not_found',
+    )
+    const other = await tenant()
+    fails(
+      await call('GET', `/placement-sessions/${session.id}/form`, other.cookies.admin),
+      404,
+      'not_found',
+    )
+  })
+
+  test('IST-058 OG-078 tespit formu: sıralama ve eşleştirme karışık gelir, oturumda sabit kalır, doğru cevap tam puan verir', async () => {
+    const t = await tenant()
+    const ids = (prefix: string, count: number) =>
+      Array.from({ length: count }, (_, index) => `${prefix}${index + 1}`)
+    const seed = async (input: Partial<ResourceVersionInput>) =>
+      (
+        await seedResource(db, t.institution.id, {
+          ownerUserId: t.institution.admin.id,
+          versions: [{ status: 'published', input }],
+        })
+      ).versions[0]!
+    const tags: ResourceVersionInput['tags'] = {
+      subjectId: 'ingilizce',
+      gradeLevels: [9],
+      primarySkill: 'reading',
+      cefrLevel: 'B1',
+    }
+    const ordering = await seed({
+      title: 'Sıralama sorusu',
+      content: {
+        type: 'question',
+        question: {
+          questionType: 'ordering',
+          stem: 'Cümleleri sıraya koyun.',
+          items: ids('o', 5).map((id) => ({ id, text: `Öğe ${id}` })),
+        },
+      },
+      answerKey: { questionType: 'ordering', order: ids('o', 5), explanation: 'Sıra o1…o5.' },
+      license: { kind: 'institution_original' },
+      tags,
+    })
+    const matching = await seed({
+      title: 'Eşleştirme sorusu',
+      content: {
+        type: 'question',
+        question: {
+          questionType: 'matching',
+          stem: 'Eşleştirin.',
+          prompts: ids('p', 4).map((id) => ({ id, text: `Öncül ${id}` })),
+          choices: ids('c', 4).map((id) => ({ id, text: `Eşleşme ${id}` })),
+        },
+      },
+      answerKey: {
+        questionType: 'matching',
+        pairs: ids('p', 4).map((promptId, index) => ({ promptId, choiceId: `c${index + 1}` })),
+        explanation: 'pN, cN ile eşleşir.',
+      },
+      license: { kind: 'institution_original' },
+      tags,
+    })
+    const form = await seed({
+      title: 'Sıralama ve eşleştirme formu',
+      content: {
+        type: 'quiz',
+        items: [ordering, matching].map((version) => ({
+          questionVersionId: version.id,
+          points: 2,
+        })),
+      },
+      license: { kind: 'institution_original' },
+      tags: { subjectId: 'ingilizce', gradeLevels: [9] },
+    })
+    const session = await ok(
+      await open(t, { formId: form.resourceId, formVersionId: form.id }),
+      201,
+    )
+    const read = async () => {
+      const response = await call(
+        'GET',
+        `/placement-sessions/${session.id}/form`,
+        t.cookies.teacher,
+      )
+      const [reading] = (await ok(response)).sections as Json[]
+      const [orderQuestion, matchQuestion] = reading.items.map((item: Json) => item.question)
+      return {
+        body: response.body,
+        order: orderQuestion.items.map((item: Json) => item.id),
+        choices: matchQuestion.choices.map((choice: Json) => choice.id),
+        prompts: matchQuestion.prompts.map((prompt: Json) => prompt.id),
+      }
+    }
+    const first = await read()
+    // Kayıtlı sıra doğru sıradır; yanıtta aynı olmamalı, ama öğeler eksiksiz gelmeli.
+    assert.notDeepEqual(first.order, ids('o', 5))
+    assert.deepEqual([...first.order].sort(), ids('o', 5))
+    assert.notDeepEqual(first.choices, ids('c', 4))
+    assert.deepEqual([...first.choices].sort(), ids('c', 4))
+    assert.deepEqual(first.prompts, ids('p', 4))
+    // Aynı oturum yeniden okununca sıra değişmez.
+    assert.equal((await read()).body, first.body)
+    assert.doesNotMatch(first.body, /correctOptionId|answerKey|explanation|pN, cN/)
+
+    const scored = await ok(
+      await command(t.cookies.teacher, session.id, 'score', {
+        version: session.version,
+        section: 'reading',
+        answers: {
+          [ordering.id]: { questionType: 'ordering', order: ids('o', 5) },
+          [matching.id]: {
+            questionType: 'matching',
+            pairs: ids('p', 4).map((promptId, index) => ({
+              promptId,
+              choiceId: `c${index + 1}`,
+            })),
+          },
+        },
+      }),
+    )
+    const row = scored.sections.find((item: Json) => item.section === 'reading')
+    assert.equal(row.percent, 100)
   })
 
   test('IST-058 IST-060 başka kurumun oturumu ve öğrencisi 404, B değişmez', async () => {

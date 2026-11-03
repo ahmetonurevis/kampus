@@ -34,6 +34,8 @@ export const PLATFORM_MIGRATED: readonly string[] = [
   'yonetici/gruplar',
   'onburo/gruplar',
   'ogretmen/gruplar',
+  'yonetici/seviye-tespiti',
+  'ogretmen/seviye-tespiti',
   'yonetici/icerik-havuzu',
   'ogretmen/icerik-havuzu',
   'yonetici/rubrik-kutuphanesi',

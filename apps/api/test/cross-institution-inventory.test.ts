@@ -456,6 +456,11 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   // --- Seviye tespiti ve CEFR profili (yalnız dil okulu; OG-054) ------------------------------
   'GET /api/v1/placement-sessions': PLACEMENT,
   'GET /api/v1/placement-sessions/:sessionId': PLACEMENT,
+  'GET /api/v1/placement-sessions/:sessionId/form': kayit(
+    'cefr.test.ts',
+    'tespit formu: sorular anahtarsız; başka kurumun oturumu 404',
+    'other.cookies.admin',
+  ),
   'POST /api/v1/placement-sessions': PLACEMENT,
   'POST /api/v1/placement-sessions/:sessionId/score': PLACEMENT_COMMAND('score'),
   'POST /api/v1/placement-sessions/:sessionId/complete': PLACEMENT_COMMAND('complete'),

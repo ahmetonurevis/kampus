@@ -92,6 +92,13 @@ export const UNIQUE_CONSTRAINTS = {
     'Bu görev öğretmene zaten verilmiş.',
   ),
 
+  // --- Kazanım kataloğu (DOM-KYN-011, migration 0050) ----------------------------------------
+  platform_learning_outcomes_pkey: RETRY,
+  learning_outcomes_pkey: rule(
+    'learning_outcome_code_taken',
+    'Bu kazanım kodu kurumda ya da öğretim programında zaten kullanılıyor.',
+  ),
+
   // --- KVKK aydınlatma ve rıza (DOM-YTK-056…062) --------------------------------------------
   privacy_notices_pkey: RETRY,
   // Metin sürüm numarası en büyük + 1'dir: çakışma eşzamanlı yayımdır.

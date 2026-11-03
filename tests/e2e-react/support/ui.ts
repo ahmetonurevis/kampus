@@ -95,3 +95,17 @@ export async function expectContentInsideCards(cards: Locator) {
     )
     .toEqual([])
 }
+
+/**
+ * Formun kazanım seçicisinden katalog kodu seçer (OG-067; DOM-KYN-011): kod elle yazılmaz.
+ * Seçici formun ders ve sınıf düzeyiyle süzülü açılır; kod aranır, işaretlenir ve eklenir.
+ */
+export async function pickOutcome(form: Locator, code: string) {
+  await form.getByRole('button', { name: 'Kazanım ekle' }).click()
+  const picker = form.page().getByRole('dialog', { name: 'Kazanım seç' })
+  await picker.getByLabel('Kazanım ara').fill(code)
+  await picker.getByRole('checkbox', { name: `${code} ·` }).check()
+  await picker.getByRole('button', { name: 'Seçilenleri ekle (1)' }).click()
+  await expect(picker).toBeHidden()
+  await expect(form.getByRole('list', { name: 'Seçili kazanımlar' })).toContainText(code)
+}

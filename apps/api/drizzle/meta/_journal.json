@@ -351,6 +351,13 @@
       "when": 1793702412744,
       "tag": "0049_create_finance_export_profiles",
       "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793703307627,
+      "tag": "0050_learning_outcomes",
+      "breakpoints": true
     }
   ]
 }

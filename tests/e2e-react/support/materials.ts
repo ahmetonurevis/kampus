@@ -109,7 +109,7 @@ export async function publishMaterial(
           subjectId: 'math',
           gradeLevels: [input.gradeLevel],
           outcomes: [
-            { outcomeId: `MAT.${String(input.gradeLevel)}.1.1`, outcomeSource: 'institution' },
+            { outcomeId: `MAT.${String(input.gradeLevel)}.1.1`, outcomeSource: 'platform' },
           ],
         },
       },

@@ -839,6 +839,32 @@ test.describe('Finans: liste', () => {
     await expect(page).toHaveURL(/\/yonetici\/finans\?durum=odendi/)
   })
 
+  test('ON-036: pano "Yaklaşan ödemeler & takip" vadesi en erken dört ödenmemiş taksittir', async ({
+    page,
+    api,
+  }) => {
+    const client = await api('yonetici')
+    const result = await client.get(
+      `/api/v1/collections/invoices?page=1&pageSize=4&sort=dueDate,id&status=${encodeURIComponent('Gecikmiş')}&status=${encodeURIComponent('Yaklaşan')}`,
+    )
+    expect(result.status).toBe(200)
+    const expected = (result.body as { data: { joined?: { studentName?: string } }[] }).data.map(
+      (row) => row.joined?.studentName ?? '—',
+    )
+    expect(expected).toHaveLength(4)
+
+    await page.goto('/yonetici/dashboard')
+    const section = page.getByRole('region', { name: 'Yaklaşan ödemeler & takip' })
+    const items = section.getByRole('list', { name: 'Öncelikli tahsilatlar' }).getByRole('listitem')
+    await expect(items).toHaveCount(4)
+    for (const [index, name] of expected.entries()) {
+      await expect(items.nth(index)).toContainText(name)
+      await expect(items.nth(index)).toContainText(/Gecikmiş|Yaklaşan|Kısmi ödendi/)
+    }
+    await section.getByRole('link', { name: 'Tümünü gör' }).click()
+    await expect(page).toHaveURL(/\/yonetici\/finans$/)
+  })
+
   test('durum filtresi sunucuda sayfalanır; ikinci sayfa aynı durumu verir', async ({ page }) => {
     const requests: string[] = []
     page.on('request', (request) => {

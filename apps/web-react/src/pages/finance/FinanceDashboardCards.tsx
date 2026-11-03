@@ -8,6 +8,7 @@ import { dateLabel, dayKey, money, number } from '@kampus/school-core/lib/format
 import type { DashboardOf } from '@kampus/react-shared/dashboard.ts'
 import { useFinanceOverview } from '@kampus/react-shared/use-finance-exports.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { useCoreAll, useCoreList } from '@/hooks/use-core-collection.ts'
 import { CollectionTrend } from '../dashboard/CollectionTrend.tsx'
 import {
   CardList,
@@ -30,7 +31,9 @@ import {
   collectionRateLabel,
   overdueStudentsNote,
   overdueTrendPoints,
+  priorityInvoicesQuery,
 } from './finance-dashboard-model.ts'
+import { invoiceClassScope, invoiceRow } from './finance-rows.ts'
 
 const SLICE_TONE = { gecikmis: 'warning', yaklasan: 'primary', odendi: 'success' } as const
 const FRONT_DESK_PATH = 'tahsilat-takip'
@@ -67,6 +70,66 @@ function OverdueAmountCard({ ctx }: { ctx: DashboardCardContext<DashboardOf<'yon
       state={combineStates(query)}
       spark={{ label: sparkLabel('Vade ayına göre gecikmiş tutar', points, money), points }}
     />
+  )
+}
+
+const NO_PRIORITY_QUERY = { page: 1, pageSize: 1 } as const
+
+/**
+ * Yönetici "Yaklaşan ödemeler & takip" (Vue `Dashboard.vue` personel tablosu): vadesi en erken
+ * dört ödenmemiş taksit; öğrenci, sınıf, vade, tutar ve durum. Pano özetinde satır yoktur; liste
+ * taksit koleksiyonundan okunur, seçili kampüs sınıflarına çevrilir. Kampüsün sınıfları tek
+ * süzgece sığmıyorsa (`too_many`) kurum rakamı seçili kampüsünkü sanılmasın diye kart çizilmez.
+ */
+function PriorityInvoicesCard({ ctx }: { ctx: DashboardCardContext<DashboardOf<'yonetici'>> }) {
+  const [params] = useSearchParams()
+  const branchId = params.get(BRANCH_PARAM) ?? ''
+  const classes = useCoreAll('classes', { filters: { branchId } }, { enabled: branchId !== '' })
+  const scope = branchId
+    ? invoiceClassScope(
+        { branchId },
+        (classes.data ?? []).map(({ record }) => ({
+          id: record.id,
+          name: record.name,
+          branchId: record.branchId,
+        })),
+      )
+    : ({ kind: 'all' } as const)
+  const query = priorityInvoicesQuery(scope)
+  const ready = branchId === '' || classes.data !== undefined
+  const invoices = useCoreList('invoices', query ?? NO_PRIORITY_QUERY, {
+    enabled: ready && query !== null,
+  })
+  if (ready && query === null) return null
+  const today = ctx.data?.today ?? ''
+  const rows = invoices.data?.rows.map((item) => invoiceRow(item, today))
+  return (
+    <ListCard
+      title="Yaklaşan ödemeler & takip"
+      description="Öncelik verilmesi gereken tahsilatlar"
+      action={{ label: 'Tümünü gör', href: dashboardHref(ctx.role, 'finans') }}
+      state={branchId ? combineStates(classes, invoices) : combineStates(invoices)}
+      isEmpty={invoices.data?.total === 0}
+      emptyText="Ödenmemiş taksit bulunmuyor."
+    >
+      <CardList label="Öncelikli tahsilatlar">
+        {rows?.map((row) => (
+          <li
+            key={row.id}
+            className="flex flex-wrap items-center justify-between gap-x-4 gap-y-1 py-2.5 first:pt-0 last:pb-0"
+          >
+            <StudentName
+              name={row.studentName}
+              detail={`${row.className} · ${String(row.installment)}. taksit · vade ${dateLabel(row.dueDate, { year: 'numeric' })}`}
+            />
+            <span className="flex items-center gap-2 text-md font-semibold tabular-nums">
+              {money(row.amount)}
+              <StatusBadge text={row.status} />
+            </span>
+          </li>
+        ))}
+      </CardList>
+    </ListCard>
   )
 }
 
@@ -186,6 +249,15 @@ export const FINANCE_CARDS = [
         </ListCard>
       )
     },
+  }),
+  defineCard({
+    id: 'yonetici.yaklasan-odemeler',
+    roles: ['yonetici'],
+    module: 'finance',
+    section: (data) => data.finance,
+    area: 'side',
+    order: 105,
+    component: PriorityInvoicesCard,
   }),
   defineCard({
     id: 'yonetici.aylik-tahsilat',

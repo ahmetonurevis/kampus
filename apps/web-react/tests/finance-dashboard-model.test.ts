@@ -6,6 +6,8 @@ import {
   collectionRateLabel,
   overdueStudentsNote,
   overdueTrendPoints,
+  PRIORITY_INVOICE_COUNT,
+  priorityInvoicesQuery,
 } from '../src/pages/finance/finance-dashboard-model.ts'
 
 // ON-032: pano finans ve kayıt kartları Onur bloğundadır; mini grafik gerçek kayıttan türetilir.
@@ -54,6 +56,7 @@ test('IST-116: taşınan kartların kimlikleri korunur', () => {
     'yonetici.bekleyen-tahsilat',
     'yonetici.gecikmis-tutar',
     'yonetici.taksit-durumu',
+    'yonetici.yaklasan-odemeler',
     'yonetici.aylik-tahsilat',
     'onburo.gecikmis-taksit',
     'onburo.yaklasan-taksit',
@@ -87,4 +90,22 @@ test('ON-036: tahsilat oranı ödenmiş tutarın ödeme planına oranıdır, yuv
 test('ON-036: ödeme planı yoksa tahsilat oranı yoktur, tire gösterilir', () => {
   assert.equal(collectionRate({ amount: 0, paid: { amount: 0 } }), null)
   assert.equal(collectionRateLabel(null), '—')
+})
+
+test('ON-036: öncelikli tahsilatlar vadesi en erken dört ödenmemiş taksittir', () => {
+  assert.equal(PRIORITY_INVOICE_COUNT, 4)
+  assert.deepEqual(priorityInvoicesQuery({ kind: 'all' }), {
+    page: 1,
+    pageSize: 4,
+    sort: ['dueDate', 'id'],
+    filters: { status: ['Gecikmiş', 'Yaklaşan'] },
+  })
+})
+
+test('ON-036: öncelikli tahsilatlar seçili kampüsün sınıflarına daralır; sığmayan kampüste sorgu yok', () => {
+  assert.deepEqual(priorityInvoicesQuery({ kind: 'classes', classIds: ['c9', 'c10'] })?.filters, {
+    status: ['Gecikmiş', 'Yaklaşan'],
+    classId: ['c9', 'c10'],
+  })
+  assert.equal(priorityInvoicesQuery({ kind: 'too_many' }), null)
 })

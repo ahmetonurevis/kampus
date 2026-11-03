@@ -709,6 +709,118 @@ describe('seviye tespiti ve CEFR profili uçları', () => {
     )
   })
 
+  test('IST-058 OG-078 tespit formu: sıralama ve eşleştirme karışık gelir, oturumda sabit kalır, doğru cevap tam puan verir', async () => {
+    const t = await tenant()
+    const ids = (prefix: string, count: number) =>
+      Array.from({ length: count }, (_, index) => `${prefix}${index + 1}`)
+    const seed = async (input: Partial<ResourceVersionInput>) =>
+      (
+        await seedResource(db, t.institution.id, {
+          ownerUserId: t.institution.admin.id,
+          versions: [{ status: 'published', input }],
+        })
+      ).versions[0]!
+    const tags: ResourceVersionInput['tags'] = {
+      subjectId: 'ingilizce',
+      gradeLevels: [9],
+      primarySkill: 'reading',
+      cefrLevel: 'B1',
+    }
+    const ordering = await seed({
+      title: 'Sıralama sorusu',
+      content: {
+        type: 'question',
+        question: {
+          questionType: 'ordering',
+          stem: 'Cümleleri sıraya koyun.',
+          items: ids('o', 5).map((id) => ({ id, text: `Öğe ${id}` })),
+        },
+      },
+      answerKey: { questionType: 'ordering', order: ids('o', 5), explanation: 'Sıra o1…o5.' },
+      license: { kind: 'institution_original' },
+      tags,
+    })
+    const matching = await seed({
+      title: 'Eşleştirme sorusu',
+      content: {
+        type: 'question',
+        question: {
+          questionType: 'matching',
+          stem: 'Eşleştirin.',
+          prompts: ids('p', 4).map((id) => ({ id, text: `Öncül ${id}` })),
+          choices: ids('c', 4).map((id) => ({ id, text: `Eşleşme ${id}` })),
+        },
+      },
+      answerKey: {
+        questionType: 'matching',
+        pairs: ids('p', 4).map((promptId, index) => ({ promptId, choiceId: `c${index + 1}` })),
+        explanation: 'pN, cN ile eşleşir.',
+      },
+      license: { kind: 'institution_original' },
+      tags,
+    })
+    const form = await seed({
+      title: 'Sıralama ve eşleştirme formu',
+      content: {
+        type: 'quiz',
+        items: [ordering, matching].map((version) => ({
+          questionVersionId: version.id,
+          points: 2,
+        })),
+      },
+      license: { kind: 'institution_original' },
+      tags: { subjectId: 'ingilizce', gradeLevels: [9] },
+    })
+    const session = await ok(
+      await open(t, { formId: form.resourceId, formVersionId: form.id }),
+      201,
+    )
+    const read = async () => {
+      const response = await call(
+        'GET',
+        `/placement-sessions/${session.id}/form`,
+        t.cookies.teacher,
+      )
+      const [reading] = (await ok(response)).sections as Json[]
+      const [orderQuestion, matchQuestion] = reading.items.map((item: Json) => item.question)
+      return {
+        body: response.body,
+        order: orderQuestion.items.map((item: Json) => item.id),
+        choices: matchQuestion.choices.map((choice: Json) => choice.id),
+        prompts: matchQuestion.prompts.map((prompt: Json) => prompt.id),
+      }
+    }
+    const first = await read()
+    // Kayıtlı sıra doğru sıradır; yanıtta aynı olmamalı, ama öğeler eksiksiz gelmeli.
+    assert.notDeepEqual(first.order, ids('o', 5))
+    assert.deepEqual([...first.order].sort(), ids('o', 5))
+    assert.notDeepEqual(first.choices, ids('c', 4))
+    assert.deepEqual([...first.choices].sort(), ids('c', 4))
+    assert.deepEqual(first.prompts, ids('p', 4))
+    // Aynı oturum yeniden okununca sıra değişmez.
+    assert.equal((await read()).body, first.body)
+    assert.doesNotMatch(first.body, /correctOptionId|answerKey|explanation|pN, cN/)
+
+    const scored = await ok(
+      await command(t.cookies.teacher, session.id, 'score', {
+        version: session.version,
+        section: 'reading',
+        answers: {
+          [ordering.id]: { questionType: 'ordering', order: ids('o', 5) },
+          [matching.id]: {
+            questionType: 'matching',
+            pairs: ids('p', 4).map((promptId, index) => ({
+              promptId,
+              choiceId: `c${index + 1}`,
+            })),
+          },
+        },
+      }),
+    )
+    const row = scored.sections.find((item: Json) => item.section === 'reading')
+    assert.equal(row.percent, 100)
+  })
+
   test('IST-058 IST-060 başka kurumun oturumu ve öğrencisi 404, B değişmez', async () => {
     const a = await tenant()
     const b = await tenant()

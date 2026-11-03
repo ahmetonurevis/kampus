@@ -69,7 +69,7 @@ import {
   type CommandResponse,
   type IdempotencyRequest,
 } from './operation-runner.ts'
-import { auditWork, versionScoringContext, type ScoringContext } from './task-work.ts'
+import { auditWork, questionsFor, versionScoringContext, type ScoringContext } from './task-work.ts'
 
 /**
  * Seviye tespiti ve CEFR profili (OG-054; IST-058, IST-060; docs/domain/dil-okulu.md
@@ -99,6 +99,8 @@ async function institutionTypeOf(db: Database, ctx: ServiceContext) {
 type FormScoring = {
   /** Formun otomatik bölümleri: bölüm başına maddeler ve hedef seviye. */
   auto: Map<PlacementSection, Extract<PlacementSectionScoring, { mode: 'auto' }>>
+  /** Soru görünümü (`questionsFor`) için formun puanlama bağlamı. */
+  context: ScoringContext
 }
 
 /**
@@ -122,7 +124,7 @@ function formScoringOf(context: ScoringContext): FormScoring {
       ),
     })
   }
-  return { auto }
+  return { auto, context }
 }
 
 async function loadFormScoring(db: Database, ctx: ServiceContext, formVersionId: string) {
@@ -321,8 +323,11 @@ export async function getPlacementSession(ctx: ServiceContext, sessionId: string
 /**
  * Oturumun tespit formu (OG-078, IST-058): otomatik bölümlerin soruları, cevap girişi için.
  * Bölümler `PLACEMENT_SECTIONS` sırasıyla, yalnız formda sorusu olanlar; soru gövdesi anahtarsızdır
- * (doğru cevap ve açıklama gönderilmez), seçenekler formdaki sırasıyla. Kapsam oturum okumasıyla
- * aynıdır: olmayan, başka kurumun ya da öğretmenin kapsamı dışındaki oturum 404.
+ * (doğru cevap ve açıklama gönderilmez). Seçenekler ve öğeler kursiyer görünümüyle aynı çekirdek
+ * karıştırmayla (`learnerView`) dizilir: sıralama öğeleri doğru sırada, eşleştirme seçenekleri
+ * öncülle hizalı görünmez. Tohum `oturumKimliği:soruSürümüKimliği`'dir, aynı oturum yeniden
+ * açılınca sıra değişmez. Kapsam oturum okumasıyla aynıdır: olmayan, başka kurumun ya da
+ * öğretmenin kapsamı dışındaki oturum 404.
  */
 export async function getPlacementForm(ctx: ServiceContext, sessionId: string) {
   const session = UUID.test(sessionId)
@@ -341,12 +346,7 @@ export async function getPlacementForm(ctx: ServiceContext, sessionId: string) {
         {
           section,
           targetLevel: scoring.targetLevel,
-          items: scoring.items.map((item) => ({
-            questionVersionId: item.questionVersionId,
-            points: item.points,
-            subskill: item.subskill ?? null,
-            question: item.question,
-          })),
+          items: questionsFor({ ...form.context, items: [...scoring.items] }, session.id),
         },
       ]
     }),

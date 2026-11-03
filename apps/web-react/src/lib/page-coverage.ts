@@ -13,7 +13,8 @@ import type { RoleKey } from './navigation.ts'
 export { ANNOUNCEMENT_PATH, ASSESSMENT_PATHS }
 
 // Onur: kayıt ve finans
-export const ONUR_WORKFLOW_PATHS: readonly string[] = ['kayit-yenileme']
+// Kayıt yenileme kendi API'li sayfasıdır (`ONUR_MIGRATED`), iş akışı köprüsü sayfası değil.
+export const ONUR_WORKFLOW_PATHS: readonly string[] = []
 export const ONUR_MIGRATED: readonly string[] = [
   'yonetici/finans',
   'onburo/tahsilat-takip',
@@ -29,6 +30,9 @@ export const ONUR_MIGRATED: readonly string[] = [
   'onburo/aday',
   'yonetici/aday',
   'yonetici/kayit-raporlari',
+  'yonetici/kayit-yenileme',
+  'onburo/kayit-yenileme',
+  'veli/kayit-yenileme',
 ]
 // Onur: kayıt ve finans sonu
 

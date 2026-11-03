@@ -6,6 +6,7 @@ import type { Role } from '../modules/navigation.ts'
 import { appointmentHoldsTime } from './appointment-status.ts'
 import { toAuditValue, type AuditValue, type RecordAuditEntry } from './audit.ts'
 import { type MakeId, type Session } from './domain.ts'
+import type { RenewalPricing } from './renewal-ceiling.ts'
 import { installmentAmounts } from './payments.ts'
 import { dayKey } from './format.ts'
 import { tutorConflict, type Interval } from './tutor-conflicts.ts'
@@ -256,7 +257,7 @@ export type Renewal = Stamp &
   Pick<RenewalQuote, 'amount'> &
   Partial<
     Omit<WorkflowInput<'renewal'>, RenewalKey> &
-      Omit<RenewalQuote, 'amount'> & { contractId: string }
+      Omit<RenewalQuote, 'amount'> & { contractId: string; pricing: RenewalPricing }
   > & { fromClassId: string; status: string; activatedAt?: string }
 export type EnrollmentRecord = Stamp & {
   studentId: string
@@ -516,6 +517,63 @@ export function renewalQuote(input: unknown) {
     amount,
     installments: installmentAmounts(amount, data.count),
   }
+}
+/**
+ * Yenilemenin tutardan bağımsız ön koşulları (DOM-KAY-020, DOM-KAY-021, DOM-KAY-022): kapsamdaki
+ * etkin öğrenci, ileri yıl, yıl başına tek yenileme, açık plan yokluğu, mezuniyet düzeyi, bir üst
+ * düzey ve planlanmış yenilemeleri de sayan kontenjan. İş akışı köprüsü ile tarifeli plan
+ * (`lib/renewals.ts`) aynı denetimi çalıştırır. Mezuniyette `target` boştur.
+ */
+export function renewalPreconditions(
+  state: State,
+  session: Session,
+  data: { studentId: string; targetClassId: string; year: number; mode: 'renew' | 'graduate' },
+) {
+  const student = scopedStudent(state, session, data.studentId),
+    oldClass = active(state.classes, student.classId)
+  if (data.year <= state.academicYear)
+    throw new DomainError(
+      'renewal_year_invalid',
+      'Yenileme için mevcut dönemden sonraki bir yıl seçin.',
+    )
+  if (state.renewals.some((r) => r.studentId === student.id && r.year === data.year))
+    throw new DomainError(
+      'renewal_already_exists',
+      'Bu öğrenci için bu yılın yenilemesi zaten oluşturulmuş.',
+      { kind: 'conflict' },
+    )
+  if (state.renewals.some((r) => r.studentId === student.id && r.status === 'Planlandı'))
+    throw new DomainError(
+      'transition_planned_exists',
+      'Öğrencinin planlanmış bir dönem geçişi var; önce onu tamamlayın.',
+      { kind: 'conflict' },
+    )
+  if (data.mode === 'graduate') {
+    if (oldClass.grade !== 12)
+      throw new DomainError(
+        'graduation_grade_invalid',
+        'Mezuniyet yalnızca 12. sınıf öğrencileri için yapılabilir.',
+      )
+    return { student, oldClass, target: null }
+  }
+  const target = active(state.classes, data.targetClassId)
+  active(state.branches, target.branchId)
+  if (target.grade !== oldClass.grade + 1)
+    throw new DomainError(
+      'new_class_level_invalid',
+      'Yeni sınıf öğrencinin bir üst sınıf düzeyinde olmalıdır.',
+    )
+  const occupants = new Set(
+    state.students.filter((s) => s.isActive && s.classId === target.id).map((s) => s.id),
+  )
+  state.renewals
+    .filter(
+      (r) => r.targetClassId === target.id && r.year === data.year && r.status === 'Planlandı',
+    )
+    .forEach((r) => occupants.add(r.studentId))
+  if (occupants.size >= target.capacity)
+    throw new DomainError('class_capacity_full', 'Yeni sınıfta yeterli kontenjan yok.')
+  return { student, oldClass, target }
 }
 function overlaps(a: Interval, b: Interval) {
   return (
@@ -964,31 +1022,8 @@ function workflowHandlers(
     },
     renewal: () => {
       const data = workflowSchemas.renewal.parse(input)
-      const student = scopedStudent(state, session, data.studentId),
-        oldClass = active(state.classes, student.classId)
-      if (data.year <= state.academicYear)
-        throw new DomainError(
-          'renewal_year_invalid',
-          'Yenileme için mevcut dönemden sonraki bir yıl seçin.',
-        )
-      if (state.renewals.some((r) => r.studentId === student.id && r.year === data.year))
-        throw new DomainError(
-          'renewal_already_exists',
-          'Bu öğrenci için bu yılın yenilemesi zaten oluşturulmuş.',
-          { kind: 'conflict' },
-        )
-      if (state.renewals.some((r) => r.studentId === student.id && r.status === 'Planlandı'))
-        throw new DomainError(
-          'transition_planned_exists',
-          'Öğrencinin planlanmış bir dönem geçişi var; önce onu tamamlayın.',
-          { kind: 'conflict' },
-        )
-      if (data.mode === 'graduate') {
-        if (oldClass.grade !== 12)
-          throw new DomainError(
-            'graduation_grade_invalid',
-            'Mezuniyet yalnızca 12. sınıf öğrencileri için yapılabilir.',
-          )
+      const { student, oldClass, target } = renewalPreconditions(state, session, data)
+      if (target === null) {
         const entry = stamped(
           makeId,
           'renewal',
@@ -1006,23 +1041,6 @@ function workflowHandlers(
         state.renewals.unshift(entry)
         return entry
       }
-      const target = active(state.classes, data.targetClassId)
-      active(state.branches, target.branchId)
-      if (target.grade !== oldClass.grade + 1)
-        throw new DomainError(
-          'new_class_level_invalid',
-          'Yeni sınıf öğrencinin bir üst sınıf düzeyinde olmalıdır.',
-        )
-      const occupants = new Set(
-        state.students.filter((s) => s.isActive && s.classId === target.id).map((s) => s.id),
-      )
-      state.renewals
-        .filter(
-          (r) => r.targetClassId === target.id && r.year === data.year && r.status === 'Planlandı',
-        )
-        .forEach((r) => occupants.add(r.studentId))
-      if (occupants.size >= target.capacity)
-        throw new DomainError('class_capacity_full', 'Yeni sınıfta yeterli kontenjan yok.')
       const quote = renewalQuote(input),
         entryId = makeId('renewal'),
         contractId = makeId('contract'),

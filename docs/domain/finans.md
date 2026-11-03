@@ -20,7 +20,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kurum ilan etmeden ücret tahsil edemez ve ilan ettiği ücretin üzerinde ücret isteyemez.
 - **Kaynak:** 5580 md. 13/1 (ocak–mayıs ilanı); ÖÖKY md. 54/1-a, c, ç, d ve 54/2. 2024 sonrası güncel metin **doğrulanmalı** (H-12).
 - **Kurum türü:** ikisi (dil okulunda ders saati ücreti, `DOM-FIN-006`)
-- **Kodda:** kısmen — tarife sürümü, ilan ve MEBBİS tarihi var (`lib/fee-tariffs.ts`, `POST /api/v1/fee-tariffs`, ADR 0006 karar 8). Kesin kayıt tutarı yayımlanmış tarifeden hesaplanır (`lib/enrollment.ts`). Yenileme de yayımlı tarife ister, ilanı aşamaz (API, `assertRenewalWithinTariff`); çevrimdışı demo tutarı serbesttir. İlan dönemi dışındaki yayımda yayım penceresi uyarır, engellemez (`isOutsideAnnouncementPeriod`). İlan tutarını aşan fiyat editörde girilirken uyarı verir (`tariffItemExceedsAnnounced`, IST-104), yayımda reddedilir (`tariff_amount_exceeds_announced`).
+- **Kodda:** kısmen — tarife sürümü, ilan ve MEBBİS tarihi var (`lib/fee-tariffs.ts`, `POST /api/v1/fee-tariffs`, ADR 0006 karar 8). Kesin kayıt tutarı yayımlanmış tarifeden hesaplanır (`lib/enrollment.ts`). Yenileme de yayımlı tarife ister, ilanı aşamaz: tarifeli plan `POST /api/v1/finance/renewals` (`lib/renewals.ts`) ve iş akışı köprüsü (`assertRenewalWithinTariff`); çevrimdışı demo tutarı serbesttir. İlan dönemi dışındaki yayımda yayım penceresi uyarır, engellemez (`isOutsideAnnouncementPeriod`). İlan tutarını aşan fiyat editörde girilirken uyarı verir (`tariffItemExceedsAnnounced`, IST-104), yayımda reddedilir (`tariff_amount_exceeds_announced`).
 
 ### DOM-FIN-003 · Ek hizmetler ayrı kalemdir ve isteğe bağlıdır
 
@@ -28,7 +28,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat bu hizmetleri ayrı tespit ve ilan ettirir; hizmetten talep eden veli yararlanır.
 - **Kaynak:** ÖÖKY md. 53/5, 54/1-a son cümle.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API, kesin kayıt) — ek hizmet ayrı taksit kaydıdır (`feeKind`, `lib/enrollment.ts`). Yenileme henüz kalem ayırmaz.
+- **Kodda:** var (API, kesin kayıt) — ek hizmet ayrı taksit kaydıdır (`feeKind`, `lib/enrollment.ts`). Tarifeli yenileme de ek hizmeti ayrı taksit açar (`lib/renewals.ts`); iş akışı köprüsü kalem ayırmaz.
 
 ### DOM-FIN-004 · İlan dışı ad altında tahsilat yok
 
@@ -44,7 +44,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevcut veliyi sözleşme sonrası fahiş artıştan korur; MEB bu sınırı denetler.
 - **Kaynak:** ÖÖKY md. 53/1 (RG 5/8/2023-32270 değişikliği). 2024 sonrası güncel metin **doğrulanmalı** (H-12).
 - **Kurum türü:** `school`
-- **Kodda:** kısmen — tavan hesabı core `tuitionIncreaseCeiling` (`lib/fee-tariffs.ts`, kuruş tamsayısı, tavan aşılmasın diye aşağı yuvarlanır). Uygulanmıyor: `renewalQuote` (`lib/school-workflows.ts`) önceki sözleşmeye bakmaz, ÜFE/TÜFE değerlerinin kurum başına girileceği alan ve kademe başı (1, 5, 9) istisnası yok; yenileme API'siyle bağlanır (ON-030).
+- **Kodda:** var (core ve API) — tavan core `renewalCeiling` (`lib/renewal-ceiling.ts`; hesap `tuitionIncreaseCeiling`, kuruş tamsayısı, aşağı yuvarlanır). Baz son sözleşmenin indirimsiz ücreti (`grossCents`), sözleşmesi olmayanda önceki yılın ilan ücretidir; baz da yoksa tavan hesaplanamaz (`no_base`, ekranda uyarı). Atlanan yıllarda oranlar sırayla uygulanır. ÜFE/TÜFE oranı kurum başına girilir (kullanıcı kararı, 2026-11-03): `price_index_rates` (migration `0050`; `GET/POST /api/v1/finance/renewals/price-indexes`, `PATCH …/:academicYear`, yazma yönetici). Tarifeli plan (`POST /api/v1/finance/renewals`) ve iş akışı köprüsü tavanı aşan tutarı 422 `renewal_above_tariff`/`renewal_above_ceiling`, oranı girilmemiş yılı 422 `price_index_missing` ile reddeder. Kademe başlangıç sınıfı (1, 5, 9) ara sınıf sayılmaz, tavan uygulanmaz (kullanıcı kararı, 2026-11-03). Ders yılı içinde kayıt olanın bazı sözleşmesindeki tarife ücretidir; ayrı bir kısmi yıl kuralı yok. Ekran: Kayıt Yenileme sayfasında ücret özeti ve `Artış tavanı oranları` bölümü (`/yonetici/kayit-yenileme`, `/onburo/kayit-yenileme`).
 
 ### DOM-FIN-006 · Ücret birimi kurum türüne göre
 
@@ -96,7 +96,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat kurumca belirlenecek indirimlerin ilanda belirtilmesini ister. Serbest indirim ilan dışı uygulama ve kayıt dışı pazarlık riski taşır.
 - **Kaynak:** ÖÖKY md. 54/1-a.
 - **Kurum türü:** ikisi
-- **Kodda:** var (API, kesin kayıt) — `priceEnrollment` (`lib/enrollment.ts`). Yenilemede indirim henüz serbest tutardır (`lib/school-workflows.ts`).
+- **Kodda:** var (API, kesin kayıt) — `priceEnrollment` (`lib/enrollment.ts`). Yenilemede de (`planRenewal`, `lib/renewals.ts`); iş akışı köprüsü serbest indirimi reddeder (422 `discount_not_in_tariff`).
 
 ### DOM-FIN-021 · Toplam indirim tavanı
 
@@ -104,7 +104,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat indirim oranını sınırlar; sınırsız indirim haksız rekabet ve ilanın anlamsızlaşması demektir.
 - **Kaynak:** ÖÖKY md. 54/1-a. Burs ve ücretsiz okutmanın %50 tavanına dahil olmadığı yorumu ÖÖKY md. 62/4'e (burslu oranı ücretsiz oranının dışında tutulur) ve bursun ayrı bölümde düzenlenmesine dayanır; **doğrulanmalı** (H-02).
 - **Kurum türü:** ikisi
-- **Kodda:** var (API, kesin kayıt) — `DISCOUNT_CAP_BASIS_POINTS`, 422 `discount_cap_exceeded`; personel çocuğu istisnası yönetici onayıyla. Personel kaydına bağlama ve yenileme henüz yok. Burs (`DOM-FIN-025`) tavan hesabına girmez.
+- **Kodda:** var (API, kesin kayıt) — `DISCOUNT_CAP_BASIS_POINTS`, 422 `discount_cap_exceeded`; personel çocuğu istisnası yönetici onayıyla. Yenilemede de uygulanır; tavanla düşen ücret indirimi karşılayamazsa 422 `discount_exceeds_gross`. Personel kaydına bağlama henüz yok. Burs (`DOM-FIN-025`) tavan hesabına girmez.
 
 ### DOM-FIN-022 · Kardeş indirimi
 
@@ -120,7 +120,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mevzuat indirim şartı kalkan öğrencinin sonraki yıl ücretinin nasıl bulunacağını ayrıca düzenler.
 - **Kaynak:** ÖÖKY md. 53/1 son cümle. Cari yıl sözleşmesinin korunması işletme kuralıdır.
 - **Kurum türü:** `school`
-- **Kodda:** kısmen — hesap core `tuitionAfterDiscountLoss` (`lib/fee-tariffs.ts`). Yenileme planında gerekçesiyle gösterim ve koşulun kalktığının tespiti yok (ON-030).
+- **Kodda:** var (core ve API) — kardeş indirimli son sözleşmede aynı veliye bağlı aktif kardeş kalmadıysa tavanın bazı kayıt yılındaki indirimsiz ücrettir ve her yılın oranı sırayla uygulanır (`renewalCeiling`, `tuitionAfterDiscountLoss`); gerekçe önizlemede ve plan kaydında `ceiling.discountLoss` olarak döner, cari sözleşme değişmez. Yalnız kardeş koşulu tespit edilir; diğer indirim koşulları (personel, kurumsal) henüz yok.
 
 ### DOM-FIN-024 · Referans indirimi
 
@@ -142,7 +142,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Burs mevzuatta indirimden ayrı, bildirime ve sınav kurallarına bağlı bir kurumdur.
 - **Kaynak:** 5580 md. 13/5; ÖÖKY md. 58/4, 62, 63/3.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — program ve atama core `lib/finance-scholarships.ts`, tablolar `scholarship_programs` ve `scholarship_awards` (migration `0032`, öğrenci başına yılda tek atama kısmi benzersiz indeksle). API `GET/POST /api/v1/finance/scholarship-programs`, `POST …/:programId/notify` (bildirim günü bir kez, gelecek gün 422), `GET /api/v1/finance/scholarship-awards`, `POST …/:awardId/mebbis-record`; yazma yalnız yönetici (`scholarship.manage`), okuma yönetici ve ön büro. Atama kesin kayıtta yapılır (`scholarshipProgramId`, `enrollProspectWithTariff`): yalnız yönetici (422 `scholarship_approval_required`), bildirilmemiş program 422 `scholarship_program_not_notified`, dolu kontenjan 409 `scholarship_capacity_full` (kurum kilidi altında sayılır). Oran ilan ücretinden hesaplanır, indirimlerden sonra kalan neti aşamaz; sözleşmeye `scholarship` kalemi yazılır, tam bursta öğrenim taksiti açılmaz. Yok: burs sınavı ve valilik izni (ON-136), kesilme ve geri isteme (ON-283), kayıtlı öğrenciye sonradan atama, ayrılışta burslu istisnası (ON-023), yenilemedeki serbest burs yüzdesinin programa bağlanması (ON-030). Ekran: Finans sayfasında "Burslar" sekmesi (`?gorunum=burs`; ön büro yalnız görür) ve kesin kayıt formunun ücret adımında yalnız yöneticiye açılan burs seçimi, önizlemede burs kalemi.
+- **Kodda:** kısmen — program ve atama core `lib/finance-scholarships.ts`, tablolar `scholarship_programs` ve `scholarship_awards` (migration `0032`, öğrenci başına yılda tek atama kısmi benzersiz indeksle). API `GET/POST /api/v1/finance/scholarship-programs`, `POST …/:programId/notify` (bildirim günü bir kez, gelecek gün 422), `GET /api/v1/finance/scholarship-awards`, `POST …/:awardId/mebbis-record`; yazma yalnız yönetici (`scholarship.manage`), okuma yönetici ve ön büro. Atama kesin kayıtta yapılır (`scholarshipProgramId`, `enrollProspectWithTariff`): yalnız yönetici (422 `scholarship_approval_required`), bildirilmemiş program 422 `scholarship_program_not_notified`, dolu kontenjan 409 `scholarship_capacity_full` (kurum kilidi altında sayılır). Oran ilan ücretinden hesaplanır, indirimlerden sonra kalan neti aşamaz; sözleşmeye `scholarship` kalemi yazılır, tam bursta öğrenim taksiti açılmaz. Yok: burs sınavı ve valilik izni (ON-136), kesilme ve geri isteme (ON-283), kayıtlı öğrenciye sonradan atama, ayrılışta burslu istisnası (ON-023), kayıtlı öğrenciye yenilemede atama tarifeli plandadır (`planRenewal`, yalnız yönetici, aynı işlemde `scholarship_awards`), iş akışı köprüsü serbest burs oranını reddeder (422 `scholarship_program_required`); planlanmış yenileme iptal edilince atama kalkmaz. Ekran: Finans sayfasında "Burslar" sekmesi (`?gorunum=burs`; ön büro yalnız görür) ve kesin kayıt formunun ücret adımında yalnız yöneticiye açılan burs seçimi, önizlemede burs kalemi.
 
 ### DOM-FIN-026 · Ücretsiz okutma kontenjanı
 
@@ -293,7 +293,6 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 | Kural       | Fark                                                                                                                                                            |
 | ----------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | DOM-FIN-001 | Kayıt tutarı tam TL, yenileme tutarı iki ondalık alır; iki giriş kuralı farklı (`packages/school-core/src/lib/domain.js:22-26`, `school-workflows.js:117-126`). |
-| DOM-FIN-005 | Yenilemede ÜFE/TÜFE+5 artış tavanı denetlenmez (`packages/school-core/src/lib/school-workflows.js:435-450`).                                                    |
 | DOM-FIN-035 | Yalnız uygulama içi kanal, ödeyiciye daraltma yok; Vue demosu gerçek ileti göndermez (`apps/web/src/views/Finance.vue:89-95`).                                  |
 | DOM-FIN-050 | Dekont numarası taksit kimliğidir; ardışık numara yok (`packages/school-core/src/lib/document-data.js:18`).                                                     |
 | DOM-FIN-053 | Denetim izi 200 kayıtla kesilir (`packages/school-core/src/lib/school-workflows.js:1334`).                                                                      |

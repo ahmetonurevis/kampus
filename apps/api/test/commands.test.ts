@@ -2,7 +2,8 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { describe, test } from 'node:test'
 
-import { feeTariffs } from '../src/db/schema/fee-tariffs.ts'
+import { insertMissingRecords } from '../src/db/records.ts'
+import { feeTariffs, priceIndexRates } from '../src/db/schema/fee-tariffs.ts'
 import { FIXED_NOW } from './support/app.ts'
 import {
   app,
@@ -40,6 +41,8 @@ const ONUR_IDEMPOTENT_ENDPOINTS = [
   // Ayrılış ve iade (routes/withdrawals.ts; DOM-FIN-041).
   'POST /api/v1/students/{studentId}/withdraw',
   'POST /api/v1/withdrawals/{withdrawalId}/pay-refund',
+  // Tarifeye bağlı yenileme sözleşme ve taksit yazar (routes/finance-renewals.ts; DOM-FIN-002).
+  'POST /api/v1/finance/renewals',
   // Sözleşme onayı ve ek protokol (routes/finance-contracts.ts; IST-092, DOM-FIN-010).
   'POST /api/v1/finance/contracts/{contractId}/signatory',
   'POST /api/v1/finance/contracts/{contractId}/approve',
@@ -52,7 +55,7 @@ describe('yazma uçları', () => {
   useCommandsHarness()
 
   // Onur: kayıt ve finans
-  describe('POST /workflows/renewal (DOM-FIN-002, -021)', () => {
+  describe('POST /workflows/renewal (DOM-FIN-002, -005, -020, -025)', () => {
     const body = {
       studentId: 's3',
       targetClassId: 'c1',
@@ -103,7 +106,7 @@ describe('yazma uçları', () => {
       assert.equal(await count(a.id, 'renewals'), before)
     })
 
-    test('ilanı veya indirim tavanını aşan yenileme reddedilir; tarifeye uyan açılır', async () => {
+    test('ilanı aşan, serbest indirimli ya da serbest burslu yenileme reddedilir; tarifeye uyan açılır', async () => {
       const a = await institution()
       await publishTuition(a.id, 2027, 2_850_000)
       const before = await count(a.id, 'renewals')
@@ -113,14 +116,59 @@ describe('yazma uçları', () => {
         'renewal_above_tariff',
       )
       assertError(
-        await renew(a.adminCookie, { ...body, discount: 14_251 }),
+        await renew(a.adminCookie, { ...body, discount: 1 }),
         422,
-        'discount_cap_exceeded',
+        'discount_not_in_tariff',
+      )
+      assertError(
+        await renew(a.adminCookie, { ...body, scholarship: 10 }),
+        422,
+        'scholarship_program_required',
       )
       assert.equal(await count(a.id, 'renewals'), before)
       const created = await renew(a.adminCookie)
       assert.equal(created.statusCode, 200, created.body)
       assert.equal(await count(a.id, 'renewals'), before + 1)
+    })
+
+    test('DOM-FIN-005: devam eden öğrencide köprü de artış tavanını uygular; oran yoksa reddeder', async () => {
+      const a = await institution()
+      await publishTuition(a.id, 2027, 2_850_000)
+      await insertMissingRecords(
+        db,
+        a.id,
+        [
+          {
+            collection: 'contracts',
+            id: 'test-contract-s3',
+            data: {
+              id: 'test-contract-s3',
+              studentId: 's3',
+              date: FIXED_NOW.toISOString(),
+              amount: 2_000_000,
+              title: 'Özel okul eğitim sözleşmesi',
+              academicYear: 2026,
+              grossCents: 2_000_000,
+            },
+          },
+        ],
+        FIXED_NOW,
+      )
+      const before = await count(a.id, 'renewals')
+      assertError(await renew(a.adminCookie), 422, 'price_index_missing')
+      // ÜFE %40 + TÜFE %30: tavan 20.000 ₺ × 1,40 = 28.000 ₺.
+      await db.insert(priceIndexRates).values({
+        institutionId: a.id,
+        academicYear: 2027,
+        ppiBasisPoints: 4_000,
+        cpiBasisPoints: 3_000,
+        source: 'TÜİK bülteni',
+        bulletinDate: '2026-02-03',
+      })
+      assertError(await renew(a.adminCookie), 422, 'renewal_above_ceiling')
+      assert.equal(await count(a.id, 'renewals'), before)
+      const created = await renew(a.adminCookie, { ...body, total: 28_000 })
+      assert.equal(created.statusCode, 200, created.body)
     })
 
     test('başka kurumun tarifesi geçerli sayılmaz', async () => {

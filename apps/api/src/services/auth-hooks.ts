@@ -166,15 +166,18 @@ async function ownSessionToken(db: Database, userId: string, sessionId: string):
 }
 
 /**
- * Parolası değişecek hesap: oturumdan, sıfırlamada belirtecin doğrulama kaydından (geçersiz
- * belirteçte `null`; Better Auth `INVALID_TOKEN` döndürür).
+ * Parolası değişecek hesap. Parola değişiminde oturumdan; sıfırlamada yalnız belirtecin doğrulama
+ * kaydından (geçersiz belirteçte `null`; Better Auth `INVALID_TOKEN` döndürür). Sıfırlamada oturuma
+ * bakılmaz: aynı tarayıcıda başka hesabın oturumu açıkken türev denetimi o hesapla yapılmasın.
  */
 async function passwordOwner(
   db: Database,
   context: HookEndpointContext,
 ): Promise<{ id: string; email: string } | null> {
-  const session = await getSessionFromCtx(context).catch(() => null)
-  if (session) return { id: session.user.id, email: session.user.email }
+  if (context.path === '/change-password') {
+    const session = await getSessionFromCtx(context).catch(() => null)
+    return session ? { id: session.user.id, email: session.user.email } : null
+  }
   if (context.path !== '/reset-password') return null
   const queryToken: unknown = context.query ? Reflect.get(context.query, 'token') : undefined
   const token =

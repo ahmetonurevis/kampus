@@ -252,6 +252,34 @@ describe('parola sıfırlama (IST-003)', () => {
     assert.equal((await resetPassword(token)).statusCode, 200)
   })
 
+  test('IST-025: açık başka oturum varken sıfırlamada parola belirtecin hesabına göre denetlenir', async () => {
+    const institution = await createInstitution(app, { name: 'Ardıçlı Koleji' })
+    const other = await createInstitution(app, { name: 'Defne Akademi' })
+    const owner = await createMember(app, institution.id, 'veli')
+    const signedIn = await createMember(app, other.id, 'ogretmen')
+    const cookie = await signInAs(app, signedIn)
+    await requestReset(app, owner.email)
+    const token = tokenFor(owner.email)
+    const resetWithCookie = (newPassword: string) =>
+      app.inject({
+        method: 'POST',
+        url: '/api/v1/auth/reset-password',
+        headers: { origin: TEST_ORIGIN, 'content-type': 'application/json', cookie },
+        remoteAddress: nextIp(),
+        payload: { token, newPassword },
+      })
+    // Aynı tarayıcıda başka hesabın oturumu açık olsa da e-posta ve kurum adı belirtecin
+    // hesabından okunur.
+    const local = owner.email.split('@')[0] ?? ''
+    for (const password of [`${local}-2026!`, 'Ardicli-Parola-2026']) {
+      const response = await resetWithCookie(password)
+      assert.equal(response.statusCode, 400, password)
+      assert.equal(response.json().code, 'PASSWORD_TOO_COMMON', password)
+    }
+    // Oturumdaki hesabın kurum adı belirtecin hesabı için zayıf sayılmaz.
+    assert.equal((await resetWithCookie('Defne-Parola-2026-Uzun')).statusCode, 200)
+  })
+
   test('IST-003: kurumda üyeliği kalmamış hesaba ileti gitmez, yanıt yine aynıdır', async () => {
     const institution = await createInstitution(app)
     const member = await createMember(app, institution.id, 'ogrenci')

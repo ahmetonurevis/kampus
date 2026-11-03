@@ -17,7 +17,6 @@
         "backgroundColor": "#1E3A8A"
       },
       "blockedPermissions": [
-        "android.permission.RECORD_AUDIO",
         "android.permission.SYSTEM_ALERT_WINDOW",
         "android.permission.READ_EXTERNAL_STORAGE",
         "android.permission.WRITE_EXTERNAL_STORAGE"
@@ -33,7 +32,13 @@
       "expo-asset",
       "@react-native-community/datetimepicker",
       "./plugins/with-release-signing.cjs",
-      "expo-secure-store"
+      "expo-secure-store",
+      [
+        "expo-audio",
+        {
+          "microphonePermission": "Kampüs, konuşma görevlerinde cevabınızı kaydetmek için mikrofonu kullanır."
+        }
+      ]
     ],
     "scheme": "kampus",
     "description": "Akademi Özel Okulları: beş rol için çevrimdışı okul yönetimi."

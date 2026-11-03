@@ -1,6 +1,6 @@
 import { isApiError } from '@kampus/api-client/errors.ts'
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
-import { clockLabel } from './speaking-recorder-model.ts'
+import { clockLabel } from '@kampus/react-shared/speaking-recorder-model.ts'
 import type { ResultAudience } from './student-task-model.ts'
 
 /**

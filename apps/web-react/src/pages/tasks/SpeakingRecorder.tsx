@@ -26,7 +26,7 @@ import {
   takesLeft,
   type RecorderPhase,
   type SpeakingLimits,
-} from './speaking-recorder-model.ts'
+} from '@kampus/react-shared/speaking-recorder-model.ts'
 import { useObjectUrlSource, useSpeakingRecorder } from './use-speaking-recorder.ts'
 
 /** Kayıt öncesi aydınlatma (DOM-BEC-050, 051, 053, 054); kayıt başlamadan her zaman görünür. */

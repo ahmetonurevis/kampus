@@ -41,6 +41,7 @@ const auto = (overrides: Partial<TaskAssignmentLearner> = {}): TaskAssignmentLea
   deadline: { dueAt: FUTURE, lateAcceptanceDays: 0 },
   timeLimitMinutes: null,
   listeningPlays: null,
+  hasListening: false,
   showTranscript: false,
   submission: null,
   createdAt: '2026-10-01T09:00:00.000Z',

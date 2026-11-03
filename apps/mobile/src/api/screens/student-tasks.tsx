@@ -7,30 +7,39 @@ import { EmptyResults, ListRow, Pagination } from '../../ui/SchoolLayout.tsx'
 import { useNow } from '../../ui/use-now.ts'
 import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
-import { teacherTasks, writingTaskMatches, writingTaskRow } from '../student-writing.ts'
+import { studentTaskRow, type StudentTaskRow } from '../student-quiz-task.ts'
+import { writingTaskMatches } from '../student-writing.ts'
 import { useListMemory } from '../view-memory.tsx'
+import { TaskQuizSheet } from './task-quiz-sheet.tsx'
 import { WritingSheet } from './writing-sheet.tsx'
 
+/** Açılabilir satır dokununca ilgili pencereyi seçer; açılmayan satır yalnız bilgidir. */
+const openProps = (
+  row: StudentTaskRow,
+  select: (value: { id: string; open: 'writing' | 'quiz' }) => void,
+) => {
+  const open = row.open
+  return open ? { onPress: () => select({ id: row.id, open }) } : {}
+}
+
 /**
- * Öğrenci: Ödevlerim > Görevler (web `StudentTaskSection` `mode="teacher"`; IST-124). Öğretmen puanlı
- * görevler listelenir; durum, hak ve açılmış puan atama listesinin kursiyer özetinden gelir, kapsamı
- * sunucu uygular. Yalnız yazma görevi dokununca açılır (`writing-sheet.tsx`); konuşma ve el yazısı
- * görevleri telefonda yalnız listelenir. Arama ve sayfa yalnız bellekte tutulur.
+ * Öğrenci: Ödevlerim > Görevler (web `StudentTaskSection`; IST-124). Öğretmen puanlı ve otomatik
+ * puanlı görevler tek listededir; durum, hak ve açılmış puan atama listesinin kursiyer özetinden
+ * gelir, kapsamı sunucu uygular. Yazma görevi `writing-sheet.tsx`, açılabilir quiz görevi
+ * `task-quiz-sheet.tsx` penceresini açar (`studentTaskRow`); konuşma, el yazısı ve dinlemeli görevler
+ * satırda "web'den çözülür" notuyla kalır. Arama ve sayfa yalnız bellekte tutulur.
  */
-export function StudentWritingTasks() {
+export function StudentTasks() {
   const { state, setSearch, setIndex } = useListMemory('ogrenci/odevler/gorevler')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  const [selected, setSelected] = useState<{ id: string; open: 'writing' | 'quiz' } | null>(null)
   const assignments = useLearnerAssignments()
   const now = useNow()
-  const items = useMemo(
-    () => teacherTasks(assignments.items.filter(isLearnerAssignment)),
-    [assignments.items],
-  )
+  const items = useMemo(() => assignments.items.filter(isLearnerAssignment), [assignments.items])
   const visible = useMemo(
     () =>
       assignments.isReady
         ? items
-            .map((item) => writingTaskRow(item, now))
+            .map((item) => studentTaskRow(item, now))
             .filter((row) => writingTaskMatches(row, state.search))
         : undefined,
     [assignments.isReady, items, now, state.search],
@@ -54,7 +63,7 @@ export function StudentWritingTasks() {
         ) : incomplete ? null : (
           <Empty
             title="Atanmış görev yok"
-            text="Öğretmenin yazma ya da konuşma görevi atadığında burada görünür."
+            text="Öğretmenin yazma, quiz ya da konuşma görevi atadığında burada görünür."
           />
         )
       ) : (
@@ -67,9 +76,15 @@ export function StudentWritingTasks() {
               subtitle={row.subtitle}
               eyebrow={row.score ? `Puan ${row.score}` : undefined}
               label={row.label}
-              {...(row.writable ? { onPress: () => setSelectedId(row.id) } : {})}
+              {...openProps(row, setSelected)}
               badge={<Badge text={row.status} tone={row.tone} />}
-            />
+            >
+              {!!row.note && (
+                <T muted size={13}>
+                  {row.note}
+                </T>
+              )}
+            </ListRow>
           ))}
         </View>
       )}
@@ -81,11 +96,18 @@ export function StudentWritingTasks() {
       {total !== undefined && (
         <Pagination count={total} index={index} pageSize={API_PAGE_SIZE} onChange={setIndex} />
       )}
-      {selectedId && (
+      {selected?.open === 'writing' && (
         <WritingSheet
-          key={selectedId}
-          assignmentId={selectedId}
-          onClose={() => setSelectedId(null)}
+          key={selected.id}
+          assignmentId={selected.id}
+          onClose={() => setSelected(null)}
+        />
+      )}
+      {selected?.open === 'quiz' && (
+        <TaskQuizSheet
+          key={selected.id}
+          assignmentId={selected.id}
+          onClose={() => setSelected(null)}
         />
       )}
     </>

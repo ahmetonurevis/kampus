@@ -7,7 +7,11 @@ import {
 } from '@kampus/school-core/content/resource.ts'
 import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
-import { scoringItemsFor, type QuestionVersionRef } from '@kampus/school-core/skills/assignment.ts'
+import {
+  isListeningTask,
+  scoringItemsFor,
+  type QuestionVersionRef,
+} from '@kampus/school-core/skills/assignment.ts'
 import { learnerTiming } from '@kampus/school-core/skills/extra-time.ts'
 import type { AttemptTiming, ScoringItem } from '@kampus/school-core/skills/scoring.ts'
 
@@ -232,6 +236,22 @@ export function workPairsOf(
   const ids = [...new Set([assignment.resourceVersionId, assignment.scoringVersionId])]
   const linked = linkedIdsOf(pairs.get(assignment.scoringVersionId)?.version)
   return [...ids, ...linked].map((id) => pairs.get(id))
+}
+
+/**
+ * Görev dinleme kaydı ya da dinleme içeriği taşıyabilir mi (DOM-BEC-005, IST-045): sabitlenen
+ * sürüm birincil becerisi dinleme olan içerik ya da dinleme kaydına bağlı quiz/alıştırma seti.
+ * Tek soruda `false` (kayıt yalnız quiz ve alıştırma setine bağlanır). Toplu okunmuş sürümlerden
+ * hesaplanır (`loadWorkPairs`, ek sorgu yok), saklanmaz. Sürüm okunamazsa `true`: kayıt yokluğu
+ * kanıtlanamayan görev, çözülemeyen istemcide açılmaz.
+ */
+export function hasListeningOf(assignment: StoredAssignment, pairs: WorkPairs): boolean {
+  const pair = pairs.get(assignment.resourceVersionId)
+  if (pair === undefined) return true
+  if (pair.resource.contentType === 'question') return false
+  const { tags, content } = pair.version
+  // Kaldırılmış sürümün içeriği yoktur (DOM-KYN-051); kapıyı içerik kapısı kapatır.
+  return content === null ? tags.primarySkill === 'listening' : isListeningTask({ tags, content })
 }
 
 /**

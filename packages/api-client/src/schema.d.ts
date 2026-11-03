@@ -7360,6 +7360,8 @@ export interface components {
             createdAt: string;
             /** @description Görevin hedeflediği kişinin kendisi veya velinin çocukları */
             learnerIds: string[];
+            /** @description Görev dinleme kaydı ya da dinleme içeriği taşıyabilir mi (DOM-BEC-005, IST-045): sabitlenen sürüm birincil becerisi dinleme olan içerik ya da dinleme kaydına bağlı quiz/alıştırma seti; tek soruda `false`. Sunucuda hesaplanır, saklanmaz; telefonda açılabilirliği belirler. */
+            hasListening: boolean;
             /** @description `learnerIds` sırasıyla her kişinin durumu */
             progress: components["schemas"]["TaskAssignmentLearnerProgressInput"][];
         };
@@ -7525,6 +7527,8 @@ export interface components {
             createdAt: string;
             /** @description Görevin hedeflediği kişinin kendisi veya velinin çocukları */
             learnerIds: string[];
+            /** @description Görev dinleme kaydı ya da dinleme içeriği taşıyabilir mi (DOM-BEC-005, IST-045): sabitlenen sürüm birincil becerisi dinleme olan içerik ya da dinleme kaydına bağlı quiz/alıştırma seti; tek soruda `false`. Sunucuda hesaplanır, saklanmaz; telefonda açılabilirliği belirler. */
+            hasListening: boolean;
             /** @description `learnerIds` sırasıyla her kişinin durumu */
             progress: components["schemas"]["TaskAssignmentLearnerProgressInput"][];
             content: components["schemas"]["TaskAssignmentLearnerContentInput"] | null;
@@ -11315,6 +11319,8 @@ export interface components {
             createdAt: string;
             /** @description Görevin hedeflediği kişinin kendisi veya velinin çocukları */
             learnerIds: string[];
+            /** @description Görev dinleme kaydı ya da dinleme içeriği taşıyabilir mi (DOM-BEC-005, IST-045): sabitlenen sürüm birincil becerisi dinleme olan içerik ya da dinleme kaydına bağlı quiz/alıştırma seti; tek soruda `false`. Sunucuda hesaplanır, saklanmaz; telefonda açılabilirliği belirler. */
+            hasListening: boolean;
             /** @description `learnerIds` sırasıyla her kişinin durumu */
             progress: components["schemas"]["TaskAssignmentLearnerProgress"][];
         };
@@ -11480,6 +11486,8 @@ export interface components {
             createdAt: string;
             /** @description Görevin hedeflediği kişinin kendisi veya velinin çocukları */
             learnerIds: string[];
+            /** @description Görev dinleme kaydı ya da dinleme içeriği taşıyabilir mi (DOM-BEC-005, IST-045): sabitlenen sürüm birincil becerisi dinleme olan içerik ya da dinleme kaydına bağlı quiz/alıştırma seti; tek soruda `false`. Sunucuda hesaplanır, saklanmaz; telefonda açılabilirliği belirler. */
+            hasListening: boolean;
             /** @description `learnerIds` sırasıyla her kişinin durumu */
             progress: components["schemas"]["TaskAssignmentLearnerProgress"][];
             content: components["schemas"]["TaskAssignmentLearnerContent"] | null;

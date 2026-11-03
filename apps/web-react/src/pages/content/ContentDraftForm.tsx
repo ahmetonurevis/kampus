@@ -1,7 +1,5 @@
 import { useState, type FormEvent } from 'react'
-import { zodResolver } from '@hookform/resolvers/zod'
-import { useForm } from 'react-hook-form'
-import type { z } from 'zod'
+import { useForm, type FieldPath } from 'react-hook-form'
 import { COPYRIGHT_DECLARATION } from '@kampus/school-core/content/taxonomy.ts'
 import { fileAttachField } from '@kampus/react-shared/files.ts'
 import {
@@ -43,13 +41,14 @@ import {
 import {
   AUTHORABLE_OPTIONS,
   defaultDraft,
-  draftFormSchema,
+  draftResolver,
   draftFromHead,
   isItemSetType,
   patchFromDraft,
   type DraftFormOutput,
   type DraftFormValues,
 } from './content-pool-model.ts'
+import { formIssuePath } from './question-form-model.ts'
 import { linkedFieldMessage, linkedHints } from './reading-activity-model.ts'
 
 type FormModalProps = {
@@ -63,7 +62,7 @@ type FormModalProps = {
 }
 
 /**
- * Taslak formu (geniş pencere): okuma parçası, tek çoktan seçmeli soru, materyal dosyası
+ * Taslak formu (geniş pencere): okuma parçası, soru (altı tür, IST-033), materyal dosyası
  * (DOM-KYN-006) ya da quiz/alıştırma seti (okuma parçasına bağlanınca okuma-anlama etkinliği;
  * OG-984, IST-042, DOM-BEC-006; dinleme kaydına bağlanınca dinleme etkinliği, OG-052, IST-045,
  * DOM-BEC-005). Bağlı parça, kayıt ve soru hataları (`passage_*`, `listening_*`, `quiz_item_*`)
@@ -175,10 +174,9 @@ function DraftEditor({
   const [declared, setDeclared] = useState(false)
   const [declarationMissing, setDeclarationMissing] = useState(false)
   // Çözümleyici birleşim girdisini (core) doğrular; form değerleri düz tipte tutulur (yollar tipli
-  // kalsın). Ön işlem (`files` → `fileIds`) girdiyi `unknown` yaptığından tip form değerine bağlanır.
+  // kalsın). Core hata yolu form alanına çevrilir (soru formunun türetilen alanları, IST-033).
   const form: DraftForm = useForm<DraftFormValues, unknown, DraftFormOutput>({
-    // TODO(ts): `z.preprocess` girdiyi `unknown` yapar; şema tipi form değerine bağlanır.
-    resolver: zodResolver(draftFormSchema as z.ZodType<DraftFormOutput, DraftFormValues>),
+    resolver: draftResolver,
     defaultValues: initial ?? defaultDraft(initialType),
   })
   const conflict = useEditConflict<DraftFormValues>({
@@ -189,9 +187,10 @@ function DraftEditor({
   // Yükleme sürerken alanlar açık kalır (iptal, başka alan); yalnız kaydet ve tür seçimi kilitli.
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
   // Sunucu alan hatası: bağlı içerik kodu ortak Türkçe iletiyi alır (`LINKED_CONTENT_MESSAGES`).
+  // Sunucunun core yolu da istemcininki gibi form alanına çevrilir (`formIssuePath`).
   const setServerError: DraftForm['setError'] = (name, error, options) =>
     form.setError(
-      name,
+      formIssuePath(name.split('.'), form.getValues()) as FieldPath<DraftFormValues>,
       { ...error, message: linkedFieldMessage(error.type ?? '', error.message ?? '') },
       options,
     )

@@ -26,7 +26,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Tür, hangi alanın denetleneceğini ve öğrenciye nasıl sunulacağını belirler; serbest "Doküman/Video" ayrımı beceri çalışmasına yetmez.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — materyal formu yalnız `Doküman` ve `Video` türlerini tanır (`apps/web/src/views/Learning.vue:56,276-318`); soru bankası satırları kök, cevap, üç çeldirici, konu ve çözümü taşır (`packages/school-core/src/data/question-bank.js:3`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`resourceContentSchema`, `wordCount`). Okuma parçasının sözlükçesi (`glossary`) ve anlama sorusu bağlantısı (quiz/alıştırma setinde `passageVersionId`) `DOM-BEC-006`'dadır.
+- **Kodda:** kısmen — materyal formu yalnız `Doküman` ve `Video` türlerini tanır (`apps/web/src/views/Learning.vue:56,276-318`); soru bankası satırları kök, cevap, üç çeldirici, konu ve çözümü taşır (`packages/school-core/src/data/question-bank.js:3`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`resourceContentSchema`, `wordCount`). Okuma parçasının sözlükçesi (`glossary`) ve anlama sorusu bağlantısı (quiz/alıştırma setinde `passageVersionId`) `DOM-BEC-006`'dadır. Soru yazma ekranı (OG-068, IST-033): altı soru türü web içerik havuzunda yazılır ve yeni sürümle düzenlenir (`apps/web-react/src/pages/content/QuestionFields.tsx`, form modeli `question-form-model.ts`: `coreQuestionFromForm`, `questionFormFromCore`, `formIssuePath`); doğrulama core `resourceVersionInputSchema`, önizleme core `shuffleQuestion` ve `scoreItem`; e2e `tests/e2e-react/soru-yazma.spec.ts`.
 
 ### DOM-KYN-003 · Ses ve videoda erişilebilirlik
 

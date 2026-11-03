@@ -39,12 +39,15 @@ import {
   SHARE_SCOPE_NOTES,
   SHARE_SCOPE_OPTIONS,
   SHARE_SUCCESS,
+  lockedShareTargets,
+  lockedTargetsLabel,
   shareDefaults,
   shareErrorField,
   shareFormSchema,
   type ReasonInput,
   type ShareFormOutput,
   type ShareFormValues,
+  withLockedTargets,
 } from './content-actions-model.ts'
 
 type Dialog = 'share' | 'report' | 'remove' | null
@@ -226,8 +229,10 @@ const NO_RECORDS: never[] = []
 
 /**
  * Paylaşım hedefi seçimi (DOM-KYN-040). Sınıf ve öğrenci listeleri rol kapsamlı koleksiyonlardan
- * gelir: öğretmen yalnız ders verdiği sınıf ve öğrencileri görür, yönetici kurumun tümünü. Kapsam
- * yine sunucuda denetlenir (403 `share_target_out_of_scope`).
+ * gelir: öğretmen yalnız ders verdiği sınıf ve öğrencileri görür, yönetici kurumun tümünü. Kayıtlı
+ * paylaşımda olup listede bulunmayan hedef (başkasının eklediği sınıf, arşivlenmiş kayıt) salt
+ * okunur etiketle gösterilir ve gövdede değişmeden korunur; sunucu kapsamı yalnız eklenen ve
+ * çıkarılan hedefe uygular (403 `share_target_out_of_scope`).
  */
 function ShareModal({
   open,
@@ -270,6 +275,10 @@ function ShareModal({
         .sort((a, b) => a.label.localeCompare(b.label, 'tr', { numeric: true })),
     [classRecords],
   )
+  const studentNames = useMemo(
+    () => new Map((students.data ?? []).map((row) => [row.record.id, row.record.name])),
+    [students.data],
+  )
   const pickable = useMemo<PickableStudent[]>(
     () =>
       (students.data ?? [])
@@ -281,6 +290,22 @@ function ShareModal({
           className: classNames.get(student.classId) ?? '',
         })),
     [students.data, classNames],
+  )
+  const lockedClassIds = useMemo(
+    () =>
+      lockedShareTargets(
+        resource.sharedClassIds,
+        classes.data ? new Set(classOptions.map((option) => option.value)) : null,
+      ),
+    [resource.sharedClassIds, classes.data, classOptions],
+  )
+  const lockedStudentIds = useMemo(
+    () =>
+      lockedShareTargets(
+        resource.sharedStudentIds,
+        students.data ? new Set(pickable.map((student) => student.id)) : null,
+      ),
+    [resource.sharedStudentIds, students.data, pickable],
   )
   const errors = form.formState.errors
   const busy = form.formState.isSubmitting || share.isPending
@@ -358,21 +383,24 @@ function ShareModal({
             control={form.control}
             name="classIds"
             render={({ field }) => (
-              <CheckGroup
-                legend="Sınıf ve gruplar"
-                hint={
-                  classes.isPending
-                    ? 'Sınıflar yükleniyor…'
-                    : classOptions.length === 0
-                      ? 'Paylaşabileceğiniz sınıf yok.'
-                      : 'Yalnız ders verdiğiniz sınıf ve gruplar listelenir.'
-                }
-                options={classOptions}
-                value={field.value}
-                onChange={field.onChange}
-                disabled={busy}
-                error={errors.classIds?.message}
-              />
+              <div className="grid gap-2">
+                <CheckGroup
+                  legend="Sınıf ve gruplar"
+                  hint={
+                    classes.isPending
+                      ? 'Sınıflar yükleniyor…'
+                      : classOptions.length === 0
+                        ? 'Paylaşabileceğiniz sınıf yok.'
+                        : 'Yalnız ders verdiğiniz sınıf ve gruplar listelenir.'
+                  }
+                  options={classOptions}
+                  value={field.value.filter((id) => !lockedClassIds.includes(id))}
+                  onChange={(next) => field.onChange(withLockedTargets(lockedClassIds, next))}
+                  disabled={busy}
+                  error={errors.classIds?.message}
+                />
+                <LockedTargets label={lockedTargetsLabel(lockedClassIds, classNames, 'sınıf')} />
+              </div>
             )}
           />
         ) : null}
@@ -381,13 +409,18 @@ function ShareModal({
             control={form.control}
             name="studentIds"
             render={({ field }) => (
-              <StudentTargetPicker
-                students={pickable}
-                value={field.value}
-                onChange={field.onChange}
-                disabled={busy}
-                error={errors.studentIds?.message}
-              />
+              <div className="grid gap-2">
+                <StudentTargetPicker
+                  students={pickable}
+                  value={field.value.filter((id) => !lockedStudentIds.includes(id))}
+                  onChange={(next) => field.onChange(withLockedTargets(lockedStudentIds, next))}
+                  disabled={busy}
+                  error={errors.studentIds?.message}
+                />
+                <LockedTargets
+                  label={lockedTargetsLabel(lockedStudentIds, studentNames, 'öğrenci')}
+                />
+              </div>
             )}
           />
         ) : null}
@@ -407,6 +440,17 @@ function ShareModal({
         </div>
       </form>
     </Modal>
+  )
+}
+
+/** Kapsam dışı kayıtlı hedeflerin salt okunur etiketi (DOM-KYN-040); kaldırma denetimi yoktur. */
+function LockedTargets({ label }: { label: string | null }) {
+  if (label === null) return null
+  return (
+    <p className="flex items-start gap-1.5 text-xs text-muted-foreground">
+      <Icon name="Lock" size={14} aria-hidden="true" className="mt-px shrink-0" />
+      <span>{label}. Kaydettiğinizde değişmeden korunur.</span>
+    </p>
   )
 }
 

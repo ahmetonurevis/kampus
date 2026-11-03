@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import {
+  lockedShareTargets,
+  lockedTargetsLabel,
   reasonSchema,
   removalNotice,
   REMOVE_SUCCESS,
@@ -10,6 +12,7 @@ import {
   shareDefaults,
   shareErrorField,
   shareFormSchema,
+  withLockedTargets,
 } from '../src/pages/content/content-actions-model.ts'
 
 describe('İçerik paylaşım formu (DOM-KYN-040)', () => {
@@ -23,6 +26,25 @@ describe('İçerik paylaşım formu (DOM-KYN-040)', () => {
     assert.deepEqual(values, { scope: 'classes', classIds: ['c1'], studentIds: [] })
     values.classIds.push('c2')
     assert.deepEqual(resource.sharedClassIds, ['c1'])
+  })
+
+  test('DOM-KYN-040: kapsam dışı kayıtlı hedef salt okunur gösterilir ve gövdede korunur', () => {
+    assert.deepEqual(lockedShareTargets(['7-B', '7-A'], new Set(['7-A'])), ['7-B'])
+    assert.deepEqual(lockedShareTargets(['7-B'], null), [], 'liste yüklenmeden karar verilmez')
+    assert.deepEqual(withLockedTargets(['7-B'], ['7-A']), ['7-B', '7-A'])
+    assert.deepEqual(withLockedTargets(['7-B'], []), ['7-B'], 'kilitli hedef kaldırılamaz')
+    assert.deepEqual(withLockedTargets(['7-B'], ['7-B', '7-A']), ['7-B', '7-A'])
+    const names = new Map([['7-B', '7-B Şubesi']])
+    assert.equal(
+      lockedTargetsLabel(['7-B'], names, 'sınıf'),
+      'Kapsamınız dışındaki paylaşım: 7-B Şubesi',
+    )
+    assert.equal(lockedTargetsLabel(['x'], names, 'sınıf'), 'Kapsamınız dışında 1 sınıf')
+    assert.equal(
+      lockedTargetsLabel(['7-B', 'x', 'y'], names, 'öğrenci'),
+      'Kapsamınız dışındaki paylaşım: 7-B Şubesi ve 2 öğrenci daha',
+    )
+    assert.equal(lockedTargetsLabel([], names, 'sınıf'), null)
   })
 
   test('DOM-KYN-040: gövdeye yalnız seçilen kapsamın listesi girer', () => {

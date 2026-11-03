@@ -818,6 +818,36 @@ describe('içerik havuzu yazma uçları', () => {
     assert.deepEqual(admin.resource.sharedStudentIds, ['s-1', 's-2'])
   })
 
+  test('DOM-KYN-040: yöneticinin eklediği kapsam dışı hedef korunur; öğretmen onu kaldıramaz', async () => {
+    const t = await tenant()
+    const data = await create(t.cookies.teacher)
+    const url = `/resources/${data.resource.id}/share`
+    await ok(await act(t.cookies.teacher, data, 'publish'))
+    await ok(await post(url, t.cookies.admin, { scope: 'classes', classIds: ['10-B'] }))
+    // Öğretmen kendi 9-A sınıfını ekler; ders vermediği 10-B değişmeden kalır.
+    const added = await ok(
+      await post(url, t.cookies.teacher, { scope: 'classes', classIds: ['10-B', '9-A'] }),
+    )
+    assert.deepEqual([...added.resource.sharedClassIds].sort(), ['10-B', '9-A'])
+    const before = await snapshot(t.institution.id)
+    for (const body of [{ scope: 'classes', classIds: ['9-A'] }, { scope: 'private' }]) {
+      const removed = await post(url, t.cookies.teacher, body)
+      assert.equal(removed.statusCode, 403)
+      assert.equal(removed.json().code, 'share_target_out_of_scope')
+    }
+    assert.deepEqual(await snapshot(t.institution.id), before)
+    const shares = await db
+      .select({ targetId: resourceShares.targetId })
+      .from(resourceShares)
+      .where(
+        and(
+          eq(resourceShares.resourceId, data.resource.id),
+          sql`${resourceShares.archivedAt} is null`,
+        ),
+      )
+    assert.deepEqual(shares.map((share) => share.targetId).sort(), ['10-B', '9-A'])
+  })
+
   test('DOM-KYN-025/051: denetim kaydı yalnız alan adlarını taşır; gerekçe ve içerik değeri yazılmaz', async () => {
     const t = await tenant()
     const data = await create(t.cookies.teacher, question())

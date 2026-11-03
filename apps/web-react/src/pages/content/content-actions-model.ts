@@ -47,6 +47,52 @@ export function shareDefaults(
   }
 }
 
+/**
+ * Kapsam dışı kayıtlı hedefler (DOM-KYN-040): kayıtlı paylaşımda olup aktörün seçebileceği
+ * listede bulunmayan kimlikler (başkasının eklediği sınıf ya da arşivlenmiş kayıt). Bunlar
+ * gövdede değişmeden korunur, formda kaldırılamaz. Liste yüklenmeden (`selectable` `null`) karar
+ * verilmez.
+ */
+export function lockedShareTargets(
+  saved: readonly string[],
+  selectable: ReadonlySet<string> | null,
+): string[] {
+  if (selectable === null) return []
+  return saved.filter((id) => !selectable.has(id))
+}
+
+/**
+ * Düzenlenebilir seçimin değişikliğini kilitli hedeflerle birleştirir: kilitli kimlikler ne
+ * kaldırılır ne çoğaltılır (DOM-KYN-040).
+ */
+export function withLockedTargets(
+  locked: readonly string[],
+  editable: readonly string[],
+): string[] {
+  const keep = new Set(locked)
+  return [...locked, ...editable.filter((id) => !keep.has(id))]
+}
+
+/**
+ * Kapsam dışı hedeflerin salt okunur etiketi: adı bilinenler adıyla ("Kapsamınız dışındaki
+ * paylaşım: 7-B"), bilinmeyenler sayıyla ("Kapsamınız dışında 1 sınıf").
+ */
+export function lockedTargetsLabel(
+  locked: readonly string[],
+  names: ReadonlyMap<string, string>,
+  noun: 'sınıf' | 'öğrenci',
+): string | null {
+  if (locked.length === 0) return null
+  const named = locked.flatMap((id) => {
+    const name = names.get(id)
+    return name ? [name] : []
+  })
+  const unnamed = locked.length - named.length
+  if (named.length === 0) return `Kapsamınız dışında ${unnamed} ${noun}`
+  const rest = unnamed > 0 ? ` ve ${unnamed} ${noun} daha` : ''
+  return `Kapsamınız dışındaki paylaşım: ${named.join(', ')}${rest}`
+}
+
 export const SHARE_SCOPE_OPTIONS = (Object.keys(SHARE_SCOPES) as ShareScope[]).map((value) => ({
   value,
   label: SHARE_SCOPES[value].label,

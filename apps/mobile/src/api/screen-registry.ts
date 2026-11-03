@@ -120,7 +120,8 @@ export const OGUZHAN_SCREENS = [
   {
     screen: 'TeacherAttendance',
     getComponent: (): MenuScreen => require('./screens/TeacherAttendance.tsx').default,
-    // Telefonda yalnız bugünkü yoklama alınır; yoklama geçmişi web'dedir.
+    // Telefonda bugünkü yoklama alınır; yoklama geçmişi (salt okunur) aynı sayfada ikinci sekmedir,
+    // geçmiş günü düzeltme web'de ve yöneticidedir.
     pages: [
       {
         role: 'ogretmen',

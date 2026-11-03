@@ -7,7 +7,13 @@ import { useRecordAttendance } from '@kampus/react-shared/use-academic-commands.
 import { useCollectionAll } from '@kampus/react-shared/use-collection.ts'
 import { useLessonsInRange } from '@kampus/react-shared/use-lessons.ts'
 import { Badge, Button, Empty, Icon, Sheet, T, toneSoft, useColors } from '../../ui/components.tsx'
-import { ListRow, Notice, Screen, Section } from '../../ui/SchoolLayout.tsx'
+import type { ApiScreenProps } from '../../route-types.ts'
+import { ListRow, Notice, Screen, Section, Tabs } from '../../ui/SchoolLayout.tsx'
+import {
+  DEFAULT_TEACHER_ATTENDANCE_TAB,
+  TEACHER_ATTENDANCE_TABS,
+  type TeacherAttendanceTab,
+} from '../attendance-history.ts'
 import {
   ATTENDANCE_CHOICES,
   attendanceFailureText,
@@ -35,6 +41,8 @@ import {
   useApiSession,
   useNotify,
 } from '../shell.ts'
+import { useRouteTab } from '../use-route-tab.ts'
+import { AttendanceHistory } from './attendance-history.tsx'
 
 type ClassRecord = State['classes'][number]
 type SubjectRecord = State['subjects'][number]
@@ -361,17 +369,17 @@ function useAttendanceDay(): [string, () => void] {
 }
 
 /**
- * Öğretmen: yoklama alma (web `ogretmen/yoklama` "Yoklama al" bölümü). Bugünün (Europe/Istanbul)
+ * Bugünkü yoklama sekmesi (web `ogretmen/yoklama` "Yoklama al" bölümü). Bugünün (Europe/Istanbul)
  * dersleri `/lessons` ucundan gelir (sunucu öğretmenin kendi derslerine daraltır, iptal dersler
  * dönmez); ders verilen ama bugün dersi olmayan sınıflar ayrı bölümdedir. Ders programı modülü
  * kapalıysa web'deki gibi yalnız ders verilen sınıflar listelenir. Öğretmen yalnız ders verdiği
  * sınıfın bugünkü yoklamasını alır; yetkiyi sunucu yine denetler (DOM-YTK-022, DOM-AKD-035). Gün
- * uygulama öne gelince ve pencere açılırken yeniden hesaplanır. Yoklama geçmişi telefonda yoktur.
+ * uygulama öne gelince ve pencere açılırken yeniden hesaplanır. Geçmiş ayrı sekmededir
+ * (`attendance-history.tsx`).
  */
-export default function TeacherAttendance() {
+function TodayAttendance() {
   const session = useApiSession()
   const notify = useNotify()
-  const open = canOpenScreen(session, 'TeacherAttendance')
   const planningOpen = isModuleOpen(session.modules, PLANNING_MODULE)
   const [today, refreshDay] = useAttendanceDay()
   const [selectedKey, setSelectedKey] = useState<string | null>(null)
@@ -379,19 +387,14 @@ export default function TeacherAttendance() {
   const [pin, setPin] = useState<VersionPin | null>(null)
 
   // Öğretmen `teachers` okumasında yalnız kendi kaydını görür; atamalar ders verdiği sınıfları verir.
-  const teachers = useCollectionAll<TeacherRecord>('teachers', {}, { enabled: open })
-  const assignments = useCollectionAll<AssignmentRecord>('assignments', {}, { enabled: open })
-  const classes = useCollectionAll<ClassRecord>('classes', {}, { enabled: open })
-  const subjects = useCollectionAll<SubjectRecord>('subjects', {}, { enabled: open })
-  const taken = useCollectionAll<AttendanceRecord>(
-    'attendance',
-    { filters: { dateFrom: today, dateTo: today } },
-    { enabled: open },
-  )
-  const lessons = useLessonsInRange(
-    { dateFrom: today, dateTo: today },
-    { enabled: open && planningOpen },
-  )
+  const teachers = useCollectionAll<TeacherRecord>('teachers', {})
+  const assignments = useCollectionAll<AssignmentRecord>('assignments', {})
+  const classes = useCollectionAll<ClassRecord>('classes', {})
+  const subjects = useCollectionAll<SubjectRecord>('subjects', {})
+  const taken = useCollectionAll<AttendanceRecord>('attendance', {
+    filters: { dateFrom: today, dateTo: today },
+  })
+  const lessons = useLessonsInRange({ dateFrom: today, dateTo: today }, { enabled: planningOpen })
 
   const teacherId = teachers.data?.[0]?.record.id ?? ''
   const sections = useMemo(() => {
@@ -448,14 +451,8 @@ export default function TeacherAttendance() {
     repin(target)
   }
 
-  if (!open)
-    return (
-      <Screen>
-        <Empty title="Modül kullanıma kapalı" text="Yönetici modül tercihlerini değiştirebilir." />
-      </Screen>
-    )
   return (
-    <Screen>
+    <>
       <View style={{ gap: 6 }}>
         <T muted>
           {planningOpen
@@ -519,6 +516,31 @@ export default function TeacherAttendance() {
           onClose={() => setSelectedKey(null)}
         />
       )}
+    </>
+  )
+}
+
+/**
+ * Öğretmen: yoklama (web `ogretmen/yoklama`). İki sekme: bugünkü yoklamayı alma ve yoklama geçmişi
+ * (salt okunur). Devamsızlık bildirimi geçmiş sekmesini açar (`route.params.tab`).
+ */
+export default function TeacherAttendance({ route }: ApiScreenProps<'TeacherAttendance'>) {
+  const session = useApiSession()
+  const open = canOpenScreen(session, 'TeacherAttendance')
+  const [tab, setTab] = useRouteTab<TeacherAttendanceTab>(
+    route.params,
+    DEFAULT_TEACHER_ATTENDANCE_TAB,
+  )
+  if (!open)
+    return (
+      <Screen>
+        <Empty title="Modül kullanıma kapalı" text="Yönetici modül tercihlerini değiştirebilir." />
+      </Screen>
+    )
+  return (
+    <Screen>
+      <Tabs value={tab} onChange={setTab} options={TEACHER_ATTENDANCE_TABS} />
+      {tab === 'gecmis' ? <AttendanceHistory /> : <TodayAttendance />}
     </Screen>
   )
 }

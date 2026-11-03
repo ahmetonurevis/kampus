@@ -1,17 +1,24 @@
-import { useMemo, useState } from 'react'
+import { useMemo } from 'react'
 import { View } from 'react-native'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { useCollectionAll, useCollectionList } from '@kampus/react-shared/use-collection.ts'
+import type { ApiScreenProps } from '../../route-types.ts'
 import { Badge, Empty, SearchField, T } from '../../ui/components.tsx'
 import { EmptyResults, ListRow, Pagination, Screen, Tabs } from '../../ui/SchoolLayout.tsx'
 import { useApiSession } from '../auth.tsx'
 import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
 import { canOpenScreen } from '../pages.ts'
-import { parentTabs, resolveParentTab, type ParentTab } from '../parent-tracking.ts'
+import {
+  DEFAULT_PARENT_TAB,
+  parentTabs,
+  resolveParentTab,
+  type ParentTab,
+} from '../parent-tracking.ts'
 import { gradeView } from '../presentation.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { resolveChild } from '../session-state.ts'
 import { useDebouncedValue } from '../use-debounced-value.ts'
+import { useRouteTab } from '../use-route-tab.ts'
 import { useListMemory, useSelectedChild } from '../view-memory.tsx'
 import { ParentAttendance } from './parent-attendance.tsx'
 import { childOptions, ChildPicker } from './parent-child-picker.tsx'
@@ -81,13 +88,15 @@ function GradeList({ childId }: { childId: string }) {
  * ekranlar arasında korunur (`useSelectedChild`, yalnız bellekte). Çocuklar sunucunun veli
  * kapsamından gelir (yalnız bağlı çocuklar); her sekme verisini `studentId`/`classId` ile ister,
  * sunucu yine yalnız bu velinin çocuklarının kayıtlarını döndürür, istemci süzmez. Kapalı modülün
- * sekmesi çizilmez.
+ * sekmesi çizilmez. Devamsızlık bildirimi bu ekranı Devamsızlık sekmesinde açar (`route.params.tab`);
+ * sekme modülü kapalıysa ilk görünen sekmeye düşülür.
  */
-export default function ParentTracking() {
+export default function ParentTracking({ route }: ApiScreenProps<'ParentTracking'>) {
   const session = useApiSession()
   const open = canOpenScreen(session, 'ParentTracking')
   const [selected, setSelected] = useSelectedChild()
-  const [requestedTab, setTab] = useState<ParentTab>('notlar')
+  // Bildirimden gelen sekme (`devamsizlik`) ekran yığındayken de uygulanır; menüden `notlar` açılır.
+  const [requestedTab, setTab] = useRouteTab<ParentTab>(route.params, DEFAULT_PARENT_TAB)
   const students = useCollectionAll<StudentRecord>('students', {}, { enabled: open })
   const classes = useCollectionAll<ClassRecord>('classes', {}, { enabled: open })
   const options = useMemo(

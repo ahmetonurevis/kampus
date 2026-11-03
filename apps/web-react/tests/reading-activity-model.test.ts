@@ -195,6 +195,8 @@ describe('Okuma etkinliği form değeri (IST-042, DOM-BEC-006)', () => {
       listeningVersionId: null,
       timeLimitMinutes: null,
       shuffleItems: false,
+      // Ünite (IST-056, DOM-BEC-047) isteğe bağlıdır; seçilmeyince `null` gider.
+      unit: null,
     })
     assert.equal('fileIds' in patch, false)
     const plain = draftFormSchema.parse({
@@ -207,9 +209,18 @@ describe('Okuma etkinliği form değeri (IST-042, DOM-BEC-006)', () => {
   test('DOM-BEC-006: baş sürüm forma bütün olarak gelir ve gövdede aynen geri gider (parça, sıra, puan, ayar)', () => {
     const values = draftFromHead(head())
     assert.ok(values)
-    assert.deepEqual(values.content, head().content)
+    // Eski sürümde `unit` alanı yoktur; çekirdek şema `null` ile tamamlar (DOM-BEC-047).
+    assert.deepEqual(values.content, { ...(head().content as object), unit: null })
     const patch = patchFromDraft(draftFormSchema.parse(values))
-    assert.deepEqual(patch.content, head().content)
+    assert.deepEqual(patch.content, { ...(head().content as object), unit: null })
+    // Ünite (IST-056) düzenlemede kaybolmaz.
+    const unit = { number: 4, title: 'Daily Routines' }
+    const withUnit = patchFromDraft(
+      draftFormSchema.parse(
+        draftFromHead(head({ content: { ...(head().content as object), unit } as never })),
+      ),
+    )
+    assert.deepEqual(withUnit.content.type === 'quiz' && withUnit.content.unit, unit)
     // Dinleme kaydı bağı (IST-045) düzenlemede kaybolmaz.
     const listening = head({
       content: {

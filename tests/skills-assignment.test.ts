@@ -996,6 +996,7 @@ describe('puanlama maddeleri ve yeniden puanlama (DOM-BEC-010, 011, DOM-KYN-033)
     shuffleItems: false,
     passageVersionId: null,
     listeningVersionId: 'test-au-1',
+    unit: null,
     ...links,
   })
   const context = (input: Partial<RescoreContext> = {}): RescoreContext => ({

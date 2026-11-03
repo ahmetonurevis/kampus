@@ -28436,6 +28436,11 @@ export interface operations {
                         passageVersionId?: string | null;
                         /** @default null */
                         listeningVersionId?: string | null;
+                        unit?: {
+                            number: number;
+                            /** @default null */
+                            title?: string | null;
+                        } | null;
                     } | {
                         /** @enum {string} */
                         type: "exercise_set";
@@ -28452,6 +28457,11 @@ export interface operations {
                         passageVersionId?: string | null;
                         /** @default null */
                         listeningVersionId?: string | null;
+                        unit?: {
+                            number: number;
+                            /** @default null */
+                            title?: string | null;
+                        } | null;
                     } | {
                         /** @enum {string} */
                         type: "homework_template";
@@ -28997,6 +29007,11 @@ export interface operations {
                         passageVersionId?: string | null;
                         /** @default null */
                         listeningVersionId?: string | null;
+                        unit?: {
+                            number: number;
+                            /** @default null */
+                            title?: string | null;
+                        } | null;
                     } | {
                         /** @enum {string} */
                         type: "exercise_set";
@@ -29013,6 +29028,11 @@ export interface operations {
                         passageVersionId?: string | null;
                         /** @default null */
                         listeningVersionId?: string | null;
+                        unit?: {
+                            number: number;
+                            /** @default null */
+                            title?: string | null;
+                        } | null;
                     } | {
                         /** @enum {string} */
                         type: "homework_template";

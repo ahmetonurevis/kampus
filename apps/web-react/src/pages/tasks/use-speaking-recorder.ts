@@ -4,12 +4,14 @@ import {
   canRerecord,
   canStart,
   initialRecorderState,
-  mediaErrorReason,
-  pickRecordingMime,
   recorderReducer,
-  recordingFileName,
   type RecorderEvent,
   type SpeakingLimits,
+} from '@kampus/react-shared/speaking-recorder-model.ts'
+import {
+  mediaErrorReason,
+  pickRecordingMime,
+  recordingFileName,
 } from './speaking-recorder-model.ts'
 
 /** Tarayıcı kayıt yapabiliyor mu ve hangi biçimde (güvenli bağlam, mikrofon, MediaRecorder). */

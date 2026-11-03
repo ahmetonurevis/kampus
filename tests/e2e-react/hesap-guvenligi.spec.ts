@@ -78,7 +78,7 @@ test.describe('hesap güvenliği', () => {
       await confirm.getByRole('button', { name: 'Diğer tüm oturumları kapat' }).click()
       await expect(page.getByText('Diğer cihazlardaki oturumlar kapatıldı.')).toBeVisible()
       await expect(sessions).toHaveCount(1)
-      await expect(sessions.first()).toContainText('Bu oturum')
+      await expect(sessions.first().getByText('Bu oturum', { exact: true })).toBeVisible()
       expect(await sessionUserId(phone)).toBeNull()
       expect(await sessionUserId(tablet)).toBeNull()
       await expect(page.getByRole('button', { name: 'Diğer tüm oturumları kapat' })).toBeHidden()
@@ -106,7 +106,9 @@ test.describe('hesap güvenliği', () => {
 
       const sessions = page.getByRole('list', { name: 'Oturumlarım' }).getByRole('listitem')
       await expect(sessions).toHaveCount(3)
-      await expect(sessions.filter({ hasText: 'Bu oturum' })).toHaveCount(1)
+      await expect(
+        sessions.filter({ has: page.getByText('Bu oturum', { exact: true }) }),
+      ).toHaveCount(1)
 
       // IST-025: tek oturum onay penceresiyle kapanır; vazgeçince hiçbir oturum kapanmaz.
       const revokeOne = page.getByRole('button', { name: /^Bu oturumu kapat:/ }).first()

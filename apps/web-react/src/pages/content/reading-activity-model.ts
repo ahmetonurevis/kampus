@@ -1,6 +1,6 @@
-// Okuma etkinliği formunun saf modeli (OG-984; IST-042, DOM-BEC-006, DOM-KYN-013): quiz ve
-// alıştırma setinin bağlı içerik seçicisi (okuma parçası, sorular), soru listesi işlemleri ve
-// bağlı içerik hatalarının alan eşlemesi. Kural core `resourceContentSchema` ve
+// Okuma ve dinleme etkinliği formunun saf modeli (OG-984, OG-052; IST-042, IST-045, DOM-BEC-005,
+// DOM-BEC-006, DOM-KYN-013): quiz ve alıştırma setinin bağlı içerik seçicisi (okuma parçası, dinleme
+// kaydı, sorular), soru listesi işlemleri ve bağlı içerik hatalarının alan eşlemesi. Kural core `resourceContentSchema` ve
 // `publicationIssues`'tadır; burada yalnız sunum ve liste işlemi vardır.
 import {
   isLinkedIssueCode,
@@ -9,6 +9,7 @@ import {
   type PublicationIssueView,
   type ResourceListQuery,
   type StaffResourceListItem,
+  type StaffResourceVersion,
   type LearnerResourceListItem,
 } from '@kampus/react-shared/resource-model.ts'
 import { SUBSKILLS } from '@kampus/school-core/content/taxonomy.ts'
@@ -19,8 +20,9 @@ export const ITEM_POINTS = { min: 1, max: 100 } as const
 export const PICKER_PAGE_SIZE = 10
 
 /**
- * Bağlı içerik seçicisinin türleri. Seçici türden bağımsızdır: ileride dinleme kaydı gibi başka
- * bağlı kayıtlar aynı bileşenle seçilir (`LINKED_KINDS`'e satır eklenir).
+ * Bağlı içerik seçicisinin türleri (anahtar içerik türüdür). Seçici türden bağımsızdır: yeni bağlı
+ * kayıt türü `LINKED_KINDS`'e satır eklenerek aynı bileşenle seçilir. `primarySkill` verilirse liste
+ * o birincil beceriyle süzülür (dinleme kaydı: dinleme becerili ses, DOM-BEC-005).
  */
 export const LINKED_KINDS = {
   reading_passage: {
@@ -28,6 +30,13 @@ export const LINKED_KINDS = {
     searchLabel: 'Okuma parçası ara',
     listLabel: 'Okuma parçaları',
     empty: 'Aramaya uyan okuma parçası yok.',
+  },
+  audio: {
+    title: 'Dinleme kaydı seç',
+    searchLabel: 'Dinleme kaydı ara',
+    listLabel: 'Dinleme kayıtları',
+    empty: 'Aramaya uyan dinleme kaydı yok.',
+    primarySkill: 'listening',
   },
   question: {
     title: 'Soru ekle',
@@ -37,6 +46,11 @@ export const LINKED_KINDS = {
   },
 } as const
 export type LinkedKind = keyof typeof LINKED_KINDS
+
+const kindSkill = (kind: LinkedKind): 'listening' | null => {
+  const entry = LINKED_KINDS[kind]
+  return 'primarySkill' in entry ? entry.primarySkill : null
+}
 
 /** Seçilen bağlı içeriğin gösterim özeti; gövdeye yalnız `versionId` gider. */
 export type LinkedSummary = {
@@ -61,6 +75,7 @@ export const PUBLISHED_VERSION_NOTE =
 /** Kayıtlı bağın özeti bulunamadığında tarafsız metin: sürüm eski olabilir ya da listede yok. */
 export const LINKED_DETAIL_UNKNOWN = {
   reading_passage: 'Bağlı parçanın ayrıntısı yüklenemedi.',
+  audio: 'Bağlı dinleme kaydının ayrıntısı yüklenemedi.',
   question: 'Sorunun ayrıntısı yüklenemedi.',
 } as const satisfies Record<LinkedKind, string>
 export const LINKED_DETAIL_LOADING = 'Ayrıntı yükleniyor…'
@@ -140,7 +155,12 @@ export const pickerRows = (items: readonly Item[], selected: PickerSelection): P
 
 /**
  * Seçicinin liste sorgusu: tür sabit, başlığa göre sıralı, kısa sayfa. Kısa arama (<2) gönderilmez;
- * dil okulunda CEFR, okulda sınıf düzeyi süzgeci kullanılır.
+ * dil okulunda CEFR, okulda sınıf düzeyi süzgeci kullanılır. Dinleme kaydında birincil beceri
+ * dinlemedir (DOM-BEC-005); dökümü listede görünmez, seçilen kaydın sürümünden okunur.
+ * TODO(dinleme-secici-surum): liste süzgeçleri (beceri, CEFR, sınıf) baş sürüme uygulanır, bağ ise
+ * yayındaki sürüme kurulur. Baş sürümü dinleme becerili olup yayındaki sürümü olmayan kayıt seçilir
+ * ama formda `recordingIssue` yakalar; yayındaki sürümü dinleme becerili, baş sürümü (yeni taslak)
+ * başka becerili kayıt seçicide hiç görünmez. Liste ucu yayındaki sürüme göre süzene kadar sürer.
  */
 export function pickerQuery(input: {
   kind: LinkedKind
@@ -151,11 +171,13 @@ export function pickerQuery(input: {
 }): ResourceListQuery {
   const q = input.q.trim()
   const grade = Number(input.gradeLevel)
+  const primarySkill = kindSkill(input.kind)
   return {
     page: input.page,
     pageSize: PICKER_PAGE_SIZE,
     contentType: input.kind,
     sort: 'title',
+    ...(primarySkill ? { primarySkill } : {}),
     ...(q.length >= 2 ? { q } : {}),
     ...(input.cefrLevel !== ''
       ? { cefrLevel: input.cefrLevel as ResourceListQuery['cefrLevel'] }
@@ -244,9 +266,13 @@ export function linkedFieldMessage(code: string, message: string): string {
   return isLinkedIssueCode(code) ? LINKED_CONTENT_MESSAGES[code] : message
 }
 
+type SavedHint = { versionId: string; message: string }
+
 export type LinkedHints = {
   /** Kayıtlı parça sürümünün sorunu (kimliğiyle; parça değişince uyarı kalkar). */
-  passage: { versionId: string; message: string } | null
+  passage: SavedHint | null
+  /** Kayıtlı dinleme kaydı sürümünün sorunu (IST-045; kayıt değişince uyarı kalkar). */
+  listening: SavedHint | null
   /** Soru sürümü → ileti; sıra değişse de uyarı aynı soruda kalır. */
   items: ReadonlyMap<string, string>
 }
@@ -259,19 +285,91 @@ export type LinkedHints = {
  */
 export function linkedHints(
   issues: readonly PublicationIssueView[],
-  saved: { passageVersionId: string | null; itemIds: readonly string[] },
+  saved: {
+    passageVersionId: string | null
+    listeningVersionId?: string | null
+    itemIds: readonly string[]
+  },
 ): LinkedHints {
   let passage: LinkedHints['passage'] = null
+  let listening: LinkedHints['listening'] = null
+  const listeningVersionId = saved.listeningVersionId ?? null
   const items = new Map<string, string>()
   for (const issue of issues) {
     if (!isLinkedIssueCode(issue.code) || issue.path[0] !== 'content') continue
     const message = LINKED_CONTENT_MESSAGES[issue.code]
     if (issue.path[1] === 'passageVersionId' && saved.passageVersionId !== null)
       passage ??= { versionId: saved.passageVersionId, message }
+    else if (issue.path[1] === 'listeningVersionId' && listeningVersionId !== null)
+      listening ??= { versionId: listeningVersionId, message }
     else if (issue.path[1] === 'items') {
       const id = saved.itemIds[Number(issue.path[2])]
       if (id !== undefined && !items.has(id)) items.set(id, message)
     }
   }
-  return { passage, items }
+  return { passage, listening, items }
+}
+
+/** Seçili dinleme kaydının künyesi: bağlanan sürümden okunur (başlık, CEFR, döküm var/yok). */
+export type RecordingFacts = {
+  title: string
+  /** "A2 · 9. sınıf" gibi künye; yoksa boş. */
+  meta: string
+  /** Sürümün dökümü var mı; ses sürümü değilse ya da içerik kaldırıldıysa `null`. */
+  hasTranscript: boolean | null
+  /** Ses sürümü mü; içerik kaldırıldıysa (`content: null`) `null`. */
+  audio: boolean | null
+  /** Bağlanan sürümün birincil becerisi dinleme mi. */
+  listeningSkill: boolean
+  /** Bağlanan sürüm yayında mı (arşivlenen ya da kaldırılan sürüm değil). */
+  published: boolean
+}
+
+/**
+ * Bağlanan ses sürümünün künyesi (IST-045, DOM-BEC-005). Döküm koşulu sunucuyla aynıdır
+ * (`hasTranscript`: ses içeriğinde `transcript` dolu); yalnız altyazı döküm sayılmaz.
+ */
+export function recordingFacts(version: StaffResourceVersion): RecordingFacts {
+  const content = version.content
+  const audio = content === null ? null : content.type === 'audio'
+  return {
+    title: version.title,
+    meta: linkedMeta(version.tags),
+    hasTranscript:
+      content !== null && audio
+        ? typeof content.transcript === 'string' && content.transcript !== ''
+        : null,
+    audio,
+    listeningSkill: version.tags.primarySkill === 'listening',
+    published: version.status === 'published',
+  }
+}
+
+export const TRANSCRIPT_LABEL = { yes: 'Döküm var', no: 'Döküm yok' } as const
+
+/** Künye satırı: CEFR/sınıf ve döküm durumu ("A2 · Döküm var"). */
+export function recordingLine(facts: RecordingFacts): string {
+  const transcript =
+    facts.hasTranscript === null
+      ? null
+      : facts.hasTranscript
+        ? TRANSCRIPT_LABEL.yes
+        : TRANSCRIPT_LABEL.no
+  return [facts.meta, transcript].filter(Boolean).join(' · ') || 'Etiket yok'
+}
+
+/**
+ * Seçili kaydın formda görünen hatası (IST-045, DOM-BEC-005): bağlanan sürüm core `listeningIssue`
+ * sırasıyla denetlenir (ses mi, birincil becerisi dinleme mi, yayında mı, dökümü var mı) ve
+ * sunucuyla aynı Türkçe ileti hemen alanın altına yazılır. Seçici süzgeci baş sürüme uygulandığından
+ * (yayındaki v1 okuma, taslak v2 dinleme becerili) seçilen kaydın bağlanan sürümü de burada
+ * denetlenir. Taslak yine kaydedilir; onaya gönderimi sunucu aynı kodla reddeder.
+ */
+export function recordingIssue(facts: RecordingFacts | null): string | null {
+  if (!facts) return null
+  if (facts.audio === false) return LINKED_CONTENT_MESSAGES.listening_not_audio
+  if (!facts.listeningSkill) return LINKED_CONTENT_MESSAGES.listening_skill_required
+  if (!facts.published) return LINKED_CONTENT_MESSAGES.listening_not_published
+  if (facts.hasTranscript === false) return LINKED_CONTENT_MESSAGES.listening_transcript_required
+  return null
 }

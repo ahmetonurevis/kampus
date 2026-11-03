@@ -255,6 +255,11 @@ export type DraftFormValues = Omit<DraftFormInput, 'content' | 'answerKey'> & {
     items?: { questionVersionId: string; points: number }[]
     /** Okuma-anlama etkinliğinin parçası (IST-042, DOM-BEC-006): yayındaki parça sürümü. */
     passageVersionId?: string | null
+    /**
+     * Dinleme etkinliğinin kaydı (IST-045, DOM-BEC-005): yayındaki, dinleme becerili, dökümlü ses
+     * sürümü. Parçayla birlikte de bağlanabilir (core ikisini dışlamaz).
+     */
+    listeningVersionId?: string | null
     timeLimitMinutes?: number | null
     shuffleItems?: boolean
     question?: {
@@ -309,13 +314,15 @@ const emptyTags = {
 
 export function defaultDraft(type: AuthorableType): DraftFormValues {
   if (isItemSetType(type)) {
-    // Okuma etkinliği varsayılanı: birincil beceri okuma; parça isteğe bağlıdır (dil kullanımı seti).
+    // Set varsayılanı: birincil beceri okuma; parça ve dinleme kaydı isteğe bağlıdır (dil kullanımı
+    // seti). Dinleme kaydı bağlanınca etkinlik birincil beceriden bağımsız dinleme görevidir.
     return {
       title: '',
       content: {
         type,
         items: [],
         passageVersionId: null,
+        listeningVersionId: null,
         timeLimitMinutes: null,
         shuffleItems: false,
       },
@@ -470,6 +477,8 @@ export type ContentPreview =
       itemCount: number
       /** Okuma-anlama etkinliği mi (bağlı okuma parçası var). */
       reading: boolean
+      /** Dinleme etkinliği mi (bağlı dinleme kaydı var; IST-045). */
+      listening: boolean
       timeLimitMinutes: number | null
     }
   | { kind: 'other' }
@@ -496,6 +505,7 @@ export function previewFromHead(head: StaffResourceVersion): ContentPreview {
       kind: 'set',
       itemCount: content.items.length,
       reading: content.passageVersionId !== null,
+      listening: content.listeningVersionId !== null,
       timeLimitMinutes: content.timeLimitMinutes,
     }
   if (content.type === 'question' && content.question.questionType === 'multiple_choice') {

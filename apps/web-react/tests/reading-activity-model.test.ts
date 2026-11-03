@@ -151,6 +151,7 @@ describe('Okuma etkinliği form değeri (IST-042, DOM-BEC-006)', () => {
         type,
         items: [],
         passageVersionId: null,
+        listeningVersionId: null,
         timeLimitMinutes: null,
         shuffleItems: false,
       })
@@ -190,7 +191,7 @@ describe('Okuma etkinliği form değeri (IST-042, DOM-BEC-006)', () => {
       type: 'quiz',
       items: [{ questionVersionId: 'q-1', points: 1 }],
       passageVersionId: 'p-1',
-      // Dinleme kaydı bağı (IST-045) formda yazılmaz; verilmeyince core `null` yapar.
+      // Dinleme kaydı bağı (IST-045) isteğe bağlıdır; seçilmeyince `null` gider.
       listeningVersionId: null,
       timeLimitMinutes: null,
       shuffleItems: false,
@@ -209,7 +210,7 @@ describe('Okuma etkinliği form değeri (IST-042, DOM-BEC-006)', () => {
     assert.deepEqual(values.content, head().content)
     const patch = patchFromDraft(draftFormSchema.parse(values))
     assert.deepEqual(patch.content, head().content)
-    // Formun yazmadığı dinleme kaydı bağı (IST-045) düzenlemede kaybolmaz.
+    // Dinleme kaydı bağı (IST-045) düzenlemede kaybolmaz.
     const listening = head({
       content: {
         ...(head().content as object),
@@ -235,6 +236,7 @@ describe('Okuma etkinliği form değeri (IST-042, DOM-BEC-006)', () => {
       kind: 'set',
       itemCount: 2,
       reading: true,
+      listening: false,
       timeLimitMinutes: 20,
     })
   })
@@ -422,6 +424,7 @@ describe('Bağlı içerik hataları (IST-042, DOM-BEC-006)', () => {
     assert.deepEqual([...hints.items], [['q-2', LINKED_CONTENT_MESSAGES.quiz_item_not_published]])
     assert.deepEqual(linkedHints([], { passageVersionId: null, itemIds: [] }), {
       passage: null,
+      listening: null,
       items: new Map(),
     })
   })

@@ -8,6 +8,7 @@ import * as academicYearsSchema from './schema/academic-years.ts'
 import * as auditLogSchema from './schema/audit-log.ts'
 import * as authSchema from './schema/auth.ts'
 import * as cefrSchema from './schema/cefr.ts'
+import * as certificatesSchema from './schema/certificates.ts'
 import * as coordinatorDutiesSchema from './schema/coordinator-duties.ts'
 import * as coursesSchema from './schema/courses.ts'
 import * as filesSchema from './schema/files.ts'
@@ -40,6 +41,7 @@ export const schema = {
   ...coursesSchema,
   ...languageGroupsSchema,
   ...cefrSchema,
+  ...certificatesSchema,
 }
 export type Schema = typeof schema
 

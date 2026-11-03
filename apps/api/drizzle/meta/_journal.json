@@ -372,6 +372,13 @@
       "when": 1793708732672,
       "tag": "0052_create_course_assessments",
       "breakpoints": true
+    },
+    {
+      "idx": 53,
+      "version": "7",
+      "when": 1793711144823,
+      "tag": "0053_create_course_certificates",
+      "breakpoints": true
     }
   ]
 }

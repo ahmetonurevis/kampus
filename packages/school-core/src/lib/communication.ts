@@ -75,6 +75,40 @@ const announcementText = z
   .trim()
   .min(1, 'Duyuru metnini yazın.')
   .max(5000, 'Duyuru metni en fazla 5000 karakter olabilir.')
+/**
+ * Duyuru listesinin durum değerleri (süzgeç ve rozet; DOM-ILT-003, -004). Durum saklanmaz,
+ * okuyucuya göre daraltılmış kayıttan türetilir; sunucu süzgeci ve web aynı kuralı kullanır.
+ */
+export const ANNOUNCEMENT_STATUS = {
+  published: 'Yayında',
+  unread: 'Okunmadı',
+  updated: 'Güncellendi',
+  withdrawn: 'Geri çekildi',
+} as const
+export type AnnouncementStatus = (typeof ANNOUNCEMENT_STATUS)[keyof typeof ANNOUNCEMENT_STATUS]
+export const ANNOUNCEMENT_STATUSES: readonly AnnouncementStatus[] = [
+  ANNOUNCEMENT_STATUS.unread,
+  ANNOUNCEMENT_STATUS.updated,
+  ANNOUNCEMENT_STATUS.withdrawn,
+  ANNOUNCEMENT_STATUS.published,
+]
+
+/**
+ * Daraltılmış duyuru kaydının tek durumu: geri çekildi > okunmadı (yalnız alıcıda `myReadAt`
+ * `null`; alıcı olmayan okuyucuda alan yoktur, hiçbir duyuru okunmadı sayılmaz) > güncellendi >
+ * yayında.
+ */
+export function announcementStatusOf(record: {
+  withdrawnAt?: unknown
+  revisedAt?: unknown
+  myReadAt?: unknown
+}): AnnouncementStatus {
+  if (record.withdrawnAt) return ANNOUNCEMENT_STATUS.withdrawn
+  if (record.myReadAt === null) return ANNOUNCEMENT_STATUS.unread
+  if (record.revisedAt) return ANNOUNCEMENT_STATUS.updated
+  return ANNOUNCEMENT_STATUS.published
+}
+
 const announcementCategory = z.enum(ANNOUNCEMENT_CATEGORIES, 'Kategori seçin.')
 
 export const publishAnnouncementSchema = z.object({

@@ -66,11 +66,28 @@ export const COUNT_POLICY_OPTIONS = (
 const contentTypeLabel = (type: string) =>
   type in CONTENT_TYPES ? CONTENT_TYPES[type as keyof typeof CONTENT_TYPES].label : type
 
+// --- Deneme listesi adresi -----------------------------------------------------------------
+
+/** Panelin deneme listesinin adres öneki; sayfa `dn-sayfa` ile adreste tutulur (OG-994). */
+export const ATTEMPT_LIST_PREFIX = 'dn-'
+/** Görev paneli kapanınca silinen deneme listesi parametreleri (bir sonraki panele taşınmaz). */
+export const ATTEMPT_LIST_PARAMS: readonly string[] = [`${ATTEMPT_LIST_PREFIX}sayfa`]
+
 // --- Atama satırı --------------------------------------------------------------------------
 
 export interface TargetNames {
   className: (id: string) => string
-  studentName: (id: string) => string
+}
+
+/** Genel öğrenci etiketi: ad satırda gelmediğinde (sunucu `null` döner) gösterilir. */
+export const LEARNER_FALLBACK = 'Öğrenci'
+
+/**
+ * Teslim/deneme satırının öğrenci adı. Ad sunucudan satırla gelir (`learnerName`, OG-213); yalnız
+ * satırı okuyan personele dolu, diğerlerinde `null` olur ve genel etiket gösterilir.
+ */
+export function learnerLabel(row: { learnerName: string | null }): string {
+  return row.learnerName ?? LEARNER_FALLBACK
 }
 
 export interface AssignmentRow extends Record<string, unknown> {
@@ -120,6 +137,17 @@ export function assignmentRow(
     targets: targetsLabel(item.targets, names),
     owner: item.assignedByUserId === userId ? 'Siz' : 'Başka kullanıcı',
   }
+}
+
+/**
+ * Görev listesinin kapsam notu. Yönetici kurumun bütün atamalarını görür (OG-993), öğretmen
+ * atadıklarını ve sınıflarını hedefleyenleri (DOM-YTK-028); kapsamı sunucu uygular, metin yalnız
+ * bilgidir.
+ */
+export function assignmentScopeNote(role: string): string {
+  return role === 'yonetici'
+    ? 'Kurumdaki bütün sınıfların görevleri'
+    : 'Atadıklarınız ve sınıflarınızı hedefleyenler'
 }
 
 /** Atamayı yalnız atayan değiştirir (DOM-YTK-028); yönetici de değiştirebilir. */
@@ -310,6 +338,8 @@ export const assignmentFormSchema = z
     minWords: optionalCount,
     maxWords: optionalCount,
     rubricVersionId: z.string(),
+    /** Dinleme hakkı (DOM-BEC-005); yalnız dinleme kaydına bağlı içerikte gövdeye girer. */
+    listeningPlays: z.enum(['1', '2', 'unlimited']),
     dueAt: z.string(),
     lateAcceptanceDays: z.coerce
       .number<string>()
@@ -355,19 +385,62 @@ export const defaultAssignment: AssignmentFormValues = {
   minWords: '',
   maxWords: '',
   rubricVersionId: '',
+  listeningPlays: '2',
   dueAt: '',
   lateAcceptanceDays: '0',
 }
 
+/** Dinleme hakkı seçenekleri (DOM-BEC-005); varsayılan 2, değerlendirmede yaygın sınav uygulaması. */
+export const LISTENING_PLAY_OPTIONS = [
+  { value: '2', label: '2 dinleme (varsayılan)' },
+  { value: '1', label: '1 dinleme' },
+  { value: 'unlimited', label: 'Sınırsız' },
+] as const satisfies readonly { value: AssignmentFormValues['listeningPlays']; label: string }[]
+
+/**
+ * İçerik dinleme kaydına bağlı quiz/alıştırma seti mi (IST-045): yalnız öyleyse hak seçilir ve
+ * gönderilir. Kaydı olmayan dinleme görevinde hak gönderilmez; sunucu sınırsız saklar (1 ya da 2
+ * gönderilse 422 `listening_plays_unavailable`).
+ */
+export function hasListeningRecording(content: Record<string, unknown> | null | undefined) {
+  if (content?.type !== 'quiz' && content?.type !== 'exercise_set') return false
+  return typeof content.listeningVersionId === 'string' && content.listeningVersionId !== ''
+}
+
+/**
+ * Atama formunda seçilen içeriğin dinleme kaydı durumu (IST-045, DOM-BEC-005). Bağ yayındaki
+ * sürümün içeriğindedir ve ayrı sorguyla okunur (`loaded` yalnız seçili içeriğin yayındaki
+ * sürümüyse dolar; önceki içeriğin sürümü sayılmaz): içerik değişince yeni sürüm yüklenene kadar
+ * `pending` olur ve gönderim kilitlenir; yoksa hak seçimi gövdeye girmeden atama yapılır ve
+ * sunucu varsayılanı (2) seçimin yerine geçerdi. Seçim form değerinde kalır; alan gizlenip
+ * yeniden açılınca korunur. Sürüm okunamazsa (`failed`) kilit kalkar, hak gönderilmez.
+ */
+export function assignmentListening(input: {
+  /** Görev türü quiz ya da alıştırma seti mi (bağ yalnız onlarda okunur). */
+  itemList: boolean
+  /** Yayındaki sürümü olan bir içerik seçildi mi. */
+  selected: boolean
+  /** Seçili içeriğin yayındaki sürümü okunduysa içeriği (personel görünümü); okunmadıysa `null`. */
+  loaded: { content: Record<string, unknown> | null } | null
+  failed: boolean
+}): { listening: boolean; pending: boolean } {
+  if (!input.itemList || !input.selected) return { listening: false, pending: false }
+  if (input.loaded === null) return { listening: false, pending: !input.failed }
+  return { listening: hasListeningRecording(input.loaded.content), pending: false }
+}
+
+const LISTENING_PLAYS = { '1': 1, '2': 2, unlimited: null } as const
+
 /**
  * Form değerlerinden API gövdesi. Sunucu kuralları (hak, teslim ayarı, rubrik uyumu) core'dadır;
- * burada yalnız görev türüne uymayan alanlar gövdeye girmez. Dinleme hakkı gönderilmez (sunucu
- * sınırsız saklar).
+ * burada yalnız görev türüne uymayan alanlar gövdeye girmez. Dinleme hakkı yalnız dinleme kaydına
+ * bağlı içerikte (`listening`) gönderilir; aksi hâlde sunucu sınırsız saklar (DOM-BEC-005).
  */
 export function assignmentBody(
   values: AssignmentFormOutput,
   resourceVersionId: string,
   groupKind: 'class' | 'group',
+  listening = false,
 ): TaskAssignmentBody {
   const teacher = isTeacherScored(values.taskType)
   const dueAt = values.dueAt.trim() === '' ? null : istanbulLocalToUtc(values.dueAt)
@@ -388,6 +461,7 @@ export function assignmentBody(
     settings: {
       attempts,
       deadline: { dueAt, lateAcceptanceDays: values.lateAcceptanceDays },
+      ...(listening && !teacher ? { listeningPlays: LISTENING_PLAYS[values.listeningPlays] } : {}),
       ...(teacher
         ? {
             submission: {
@@ -411,6 +485,7 @@ export function formFieldFor(path: string): string {
   if (first !== 'settings') return 'root.server'
   if (second === 'deadline') return third === 'dueAt' ? 'dueAt' : 'lateAcceptanceDays'
   if (second === 'rubricVersionId') return 'rubricVersionId'
+  if (second === 'listeningPlays') return 'listeningPlays'
   if (second === 'submission') {
     if (third === 'minWords') return 'minWords'
     if (third === 'maxWords') return 'maxWords'

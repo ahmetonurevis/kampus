@@ -10,6 +10,7 @@ import {
   libraryVersionVisible,
   planShareChange,
   reachesBookOwner,
+  shareTargetDelta,
   shareTargetsSchema,
   type ContentLearner,
   type ContentViewer,
@@ -133,6 +134,46 @@ describe('Paylaşım hedefleri', () => {
       }).shareScope,
       'classes',
       'yönetici kurumun bütün sınıflarına paylaşır',
+    )
+  })
+
+  test('DOM-KYN-040: kapsam yalnız eklenen ve çıkarılan hedefe uygulanır; kapsam dışı kayıtlı hedef korunur', () => {
+    const built = published(schoolText(), { shareScope: 'classes', sharedClassIds: ['test-7b'] })
+    const base = {
+      actor: author,
+      institutionType: 'school' as const,
+      resource: built.resource,
+      currentVersion: built.version,
+      teaching,
+    }
+    assert.deepEqual(
+      planShareChange({ ...base, targets: { scope: 'classes', classIds: ['test-7b', 'test-7a'] } }),
+      { shareScope: 'classes', sharedStudentIds: [], sharedClassIds: ['test-7b', 'test-7a'] },
+      'yöneticinin eklediği 7-B değişmeden kalır, öğretmen kendi 7-A sınıfını ekler',
+    )
+    assert.equal(
+      planShareChange({ ...base, targets: { scope: 'classes', classIds: ['test-7b'] } })
+        .sharedClassIds[0],
+      'test-7b',
+      'hedef değişmeden yeniden kaydedilebilir',
+    )
+    for (const targets of [
+      { scope: 'classes' as const, classIds: ['test-7a'] },
+      { scope: 'private' as const },
+      { scope: 'students' as const, studentIds: ['test-s1'] },
+    ]) {
+      assert.throws(
+        () => planShareChange({ ...base, targets }),
+        isDomainError('share_target_out_of_scope', 'forbidden'),
+        `kapsam dışı 7-B kaldırılamaz (${targets.scope})`,
+      )
+    }
+    assert.deepEqual(
+      shareTargetDelta(
+        { sharedStudentIds: ['a', 'b'], sharedClassIds: ['c'] },
+        { studentIds: ['b', 'd'], classIds: ['c'] },
+      ),
+      { addedStudentIds: ['d'], removedStudentIds: ['a'], addedClassIds: [], removedClassIds: [] },
     )
   })
 

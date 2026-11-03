@@ -1,7 +1,8 @@
 import type { LearnerTaskProgress } from '@kampus/react-shared/use-learner-task-progress.ts'
-import type {
-  TaskAssignmentLearner,
-  TaskAssignmentLearnerDetail,
+import {
+  TASK_CONTENT_UNAVAILABLE_MESSAGE,
+  type TaskAssignmentLearner,
+  type TaskAssignmentLearnerDetail,
 } from '@kampus/react-shared/use-task-assignments.ts'
 import type {
   TaskAttempt,
@@ -12,7 +13,9 @@ import type {
   TaskSubmission,
   TaskSubmissionDetail,
 } from '@kampus/react-shared/use-task-submissions.ts'
+import { isSpeakingTask, taskTypeLabel } from '@kampus/react-shared/task-labels.ts'
 import { isApiError } from '@kampus/api-client/errors.ts'
+import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
 
@@ -30,30 +33,9 @@ export const isLearnerAssignment = <T extends { view: string }>(
   item: T,
 ): item is Extract<T, { view: 'learner' }> => item.view === 'learner'
 
-const CONTENT_LABELS: Record<TaskAssignmentLearner['contentType'], string> = {
-  quiz: 'Quiz',
-  exercise_set: 'Alıştırma seti',
-  question: 'Soru',
-  homework_template: 'Yazma ödevi',
-  text: 'Metin',
-  reading_passage: 'Okuma parçası',
-  audio: 'Dinleme',
-  video: 'Video',
-  worksheet: 'Çalışma kâğıdı',
-  file: 'Dosya',
-  link: 'Bağlantı',
-  book_reference: 'Kitap',
-}
-
 type SubmissionOf = Partial<Pick<TaskAssignmentLearner, 'submission'>>
 
-/** Konuşma görevi: ses kaydıyla teslim edilen öğretmen puanlı görev (IST-051). */
-export const isSpeakingTask = (assignment: SubmissionOf) =>
-  assignment.submission?.submissionKind === 'audio'
-
-export const taskTypeLabel = (
-  assignment: Pick<TaskAssignmentLearner, 'contentType'> & SubmissionOf,
-) => (isSpeakingTask(assignment) ? 'Konuşma görevi' : CONTENT_LABELS[assignment.contentType])
+export { isSpeakingTask, taskTypeLabel }
 
 export const taskKindLabel = (assignment: Pick<TaskAssignmentLearner, 'kind'>) =>
   assignment.kind === 'evaluation' ? 'Değerlendirme' : 'Alıştırma'
@@ -76,6 +58,40 @@ export type TaskProgress = {
   canAct: boolean
   /** `canAct` değilse neden; puanlamadan bağımsız ve sızıntısız metin. */
   blockedReason: string | null
+}
+
+/**
+ * Sunucu özetinin içerik kapısı engeli (DOM-KYN-021, 025, 051): yazma ucu bu görevde 422
+ * `content_unavailable` ya da 409 `resource_license_expired` döneceğinden çalışma alanı da işlem
+ * önermez. Kapalı içerik her yerel nedenden önce gelir; lisans engeli yalnız başka neden yokken.
+ */
+function contentBlock(
+  assignment: Pick<TaskAssignmentLearner, 'progress' | 'scoringMode'>,
+): { reason: string; overrides: boolean } | null {
+  const entry = assignment.progress[0]
+  if (entry?.blockedBy === 'content_unavailable')
+    return { reason: TASK_CONTENT_UNAVAILABLE_MESSAGE, overrides: true }
+  if (entry?.blockedBy === 'license_expired')
+    return {
+      reason:
+        summaryBlockedReason(assignment.scoringMode === 'auto' ? 'auto' : 'teacher', entry) ?? '',
+      overrides: false,
+    }
+  return null
+}
+
+/** Yerel durum kararına içerik engelini işler (`contentBlock`). */
+function withContentBlock(
+  assignment: Pick<TaskAssignmentLearner, 'progress' | 'scoringMode'>,
+  canAct: boolean,
+  blockedReason: string | null,
+): Pick<TaskProgress, 'canAct' | 'blockedReason'> {
+  const block = contentBlock(assignment)
+  if (!block) return { canAct, blockedReason }
+  return {
+    canAct: false,
+    blockedReason: block.overrides || blockedReason === null ? block.reason : blockedReason,
+  }
 }
 
 const byNumber = (a: TaskAttempt, b: TaskAttempt) => a.attemptNumber - b.attemptNumber
@@ -107,14 +123,21 @@ export function autoProgress(
   const score = scoreLabel(shown?.result?.percent)
 
   const limitReached = limit !== null && attempts.length >= limit
-  const blockedReason = running
+  const localReason = running
     ? null
     : closed
       ? 'Teslim süresi doldu; yeni deneme başlatılamaz.'
       : limitReached
         ? 'Deneme hakkınız doldu.'
         : null
-  const canAct = running !== undefined || blockedReason === null
+  // Süren deneme çözme ekranında sürer; kaldırılmış içerikte yazma ucu süren denemeyi de reddeder
+  // (422 `content_unavailable`), çözme ekranı açılmaz. Telif askısında süren deneme sürer (özet
+  // `in_progress`; Sabah kararı 47). Yeni deneme içerik kapısına takılırsa önerilmez.
+  const { canAct, blockedReason } = running
+    ? contentBlock(assignment)?.overrides
+      ? { canAct: false, blockedReason: TASK_CONTENT_UNAVAILABLE_MESSAGE }
+      : { canAct: true, blockedReason: null }
+    : withContentBlock(assignment, localReason === null, localReason)
 
   if (running)
     return { status: 'Sürüyor', tone: 'amber', rights, score: '—', canAct, blockedReason }
@@ -203,14 +226,16 @@ export function writingProgress(
   // Ayrıntı okunduysa düğme kararı sunucunun `allowance`'ındandır; okunmadıysa pencereye bakılır
   // (son söz yine sunucunundur: kapalı pencerede teslim 422 `submission_closed` alır).
   const allowance = submission?.allowance ?? null
-  const canAct = allowance ? allowance.canSubmit : !closed
-  const blockedReason = canAct
+  const localCanAct = allowance ? allowance.canSubmit : !closed
+  const localReason = localCanAct
     ? null
     : allowance
       ? blockedByMessage(allowance.blockedBy ?? 'locked', speaking)
       : submission && submission.versionCount > 0
         ? blockedByMessage('locked', speaking)
         : 'Teslim süresi doldu.'
+  // Atama özetinin içerik kapısı (taslak ve teslim ucu aynı kuralla 422/409 döner).
+  const { canAct, blockedReason } = withContentBlock(assignment, localCanAct, localReason)
 
   if (!submission || submission.versionCount === 0)
     return closed
@@ -252,6 +277,8 @@ export function summaryBlockedReason(
     case 'in_progress':
       // Süren deneme yeni deneme açmaz ama sürdürülebilir; engel sayılmaz.
       return null
+    case 'content_unavailable':
+      return TASK_CONTENT_UNAVAILABLE_MESSAGE
     case 'license_expired':
       return mode === 'auto'
         ? 'İçeriğin kullanım lisansının süresi doldu; yeni deneme başlatılamaz.'
@@ -492,6 +519,41 @@ export function formatRemaining(ms: number): string {
   return hours > 0 ? `${hours}:${two(minutes)}:${two(seconds)}` : `${two(minutes)}:${two(seconds)}`
 }
 
+/**
+ * Çözme ekranının saat etiketi (DOM-BEC-043). Sunucunun `remainingMs`'i süre ile teslim penceresinin
+ * erken kapananına göredir; süre sınırı yoksa bu son teslime (geç kabul dahil) kadarki saattir ve
+ * geri sayım olarak gösterilmez: yerine son teslim tarihi yazılır (Europe/Istanbul), son teslim
+ * yoksa etiket yoktur. Pencere kapandıysa (sunucu kaydedilmiş cevaplarla teslim eder) söylenir.
+ * Süreli denemede kalan süre geri sayılır; son dakika kırmızıdır.
+ */
+export function attemptClock({
+  timeLimitMinutes,
+  dueAt,
+  remainingMs,
+}: {
+  timeLimitMinutes: number | null
+  dueAt: string | null
+  /** Şu an kalan süre (ms); sunucu `null` döndüyse `null`. */
+  remainingMs: number | null
+}): { text: string; tone: 'gray' | 'red' } | null {
+  const over = remainingMs !== null && remainingMs <= 0
+  if (timeLimitMinutes === null) {
+    if (over) return { text: 'Teslim süresi doldu', tone: 'red' }
+    return dueAt === null
+      ? null
+      : {
+          text: `Son teslim: ${dateLabel(dueAt, { year: 'numeric' })} ${timeLabel(dueAt)}`,
+          tone: 'gray',
+        }
+  }
+  if (remainingMs === null) return null
+  if (over) return { text: 'Süre doldu', tone: 'red' }
+  return {
+    text: `Kalan süre ${formatRemaining(remainingMs)}`,
+    tone: remainingMs < 60_000 ? 'red' : 'gray',
+  }
+}
+
 /** Kaydedilen cevapların kararlı karşılaştırma anahtarı (değişiklik algısı). */
 export const answersFingerprint = (answers: TaskAttemptAnswers) =>
   JSON.stringify(
@@ -603,3 +665,88 @@ export function describeKey(body: QuestionBody, key: KeyEntry): string {
 /** Atama okuması 404 döndüyse görev yok ya da öğrencinin kapsamında değil (varlığı sızdırılmaz). */
 export const isNotFoundError = (error: unknown): boolean =>
   isApiError(error) && error.status === 404
+
+// --- Deneme sonucu (kursiyer, personel, veli) ----------------------------------------------
+
+/** Sonuç ekranına kim bakıyor: kursiyer kendi cevabını, personel ve veli öğrencinin cevabını okur. */
+export type ResultAudience = 'learner' | 'staff' | 'parent'
+
+const RESPONSE_LABELS = {
+  learner: 'Cevabınız: ',
+  staff: 'Öğrencinin cevabı: ',
+  parent: 'Çocuğunuzun cevabı: ',
+} as const satisfies Record<ResultAudience, string>
+
+/** Madde satırında cevabın önündeki etiket. */
+export const responseLabel = (audience: ResultAudience) => RESPONSE_LABELS[audience]
+
+const SUBMITTED_TEXT_LABELS = {
+  learner: 'Gönderdiğiniz metni göster',
+  staff: 'Gönderilen metni göster',
+  parent: 'Çocuğunuzun gönderdiği metni göster',
+} as const satisfies Record<ResultAudience, string>
+
+/** Teslim sürümündeki metni açan özet etiketi. */
+export const submittedTextLabel = (audience: ResultAudience) => SUBMITTED_TEXT_LABELS[audience]
+
+type ItemScore = NonNullable<NonNullable<TaskAttemptDetail['result']>['items']>[number]
+
+/**
+ * Puan gösterimi: tamsayıysa ondalıksız, değilse en çok iki ondalık (sunucu iki ondalığa
+ * yuvarlar).
+ */
+export const formatPoints = (value: number) =>
+  value.toLocaleString('tr-TR', { maximumFractionDigits: 2, minimumFractionDigits: 0 })
+
+/**
+ * Maddenin sunucu sonucundan okunur durum (DOM-BEC-045): yalnız sunucu madde sonucunu açtıysa
+ * çağrılır. Cevapsız madde yanlış sayılır ama ayrı yazılır; çok parçalı maddede (eşleştirme,
+ * boşluk doldurma) bir kısmı doğruysa "Kısmen doğru".
+ */
+export function itemOutcome(score: ItemScore): { label: string; tone: BadgeTone } {
+  if (!score.answered) return { label: 'Cevapsız', tone: 'gray' }
+  if (score.parts > 0 && score.correctParts === score.parts)
+    return { label: 'Doğru', tone: 'green' }
+  if (score.correctParts > 0) return { label: 'Kısmen doğru', tone: 'amber' }
+  return { label: 'Yanlış', tone: 'red' }
+}
+
+/** Personelin deneme listesindeki durum (DOM-BEC-042, 043): süren, teslim, süre dolunca teslim. */
+export function attemptStatusBadge(
+  attempt: Pick<TaskAttempt, 'status' | 'late' | 'autoSubmitted'>,
+): { label: string; tone: BadgeTone } {
+  if (attempt.status === 'in_progress') return { label: 'Sürüyor', tone: 'amber' }
+  if (attempt.late) return { label: 'Geç teslim', tone: 'red' }
+  if (attempt.status === 'expired' || attempt.autoSubmitted)
+    return { label: 'Süre dolunca teslim', tone: 'gray' }
+  return { label: 'Teslim edildi', tone: 'purple' }
+}
+
+/**
+ * Deneme sonucu bölümünün başlığı: süren denemede (teslim edilmemiş) "sonuç" denmez, çünkü sonuç
+ * yoktur; içerik kaldırılmış ve puan hesaplanamıyorsa bile süren deneme "sürüyor" başlığı alır
+ * (DOM-KYN-051, DOM-BEC-045).
+ */
+export function attemptResultHeading(
+  attempt: Pick<TaskAttempt, 'attemptNumber' | 'status'>,
+): string {
+  return attempt.status === 'in_progress'
+    ? `${attempt.attemptNumber}. deneme (sürüyor)`
+    : `${attempt.attemptNumber}. deneme sonucu`
+}
+
+/** Görevin içeriği kaldırıldı (DOM-KYN-051): geçmiş görevlerde bu not görünür. */
+export const TASK_CONTENT_REMOVED_MESSAGE = 'Bu içerik kaldırıldı.'
+
+/**
+ * Deneme sonucunda soru listesinin yerine çizilen not (DOM-KYN-025, 051): içerik kaldırıldıysa
+ * "Bu içerik kaldırıldı", başka nedenle kapalıysa (telif askısı, lisans, kitap sahibi) genel not;
+ * açıksa `null`. Kaldırmada anahtar silindiği için puan hesaplanamıyorsa (`result: null`) not tek
+ * başına görünür; kayıt ve deneme bilgisi kalır.
+ */
+export function attemptContentNote(
+  attempt: Pick<TaskAttemptDetail, 'contentRemoved' | 'contentUnavailable'>,
+): string | null {
+  if (attempt.contentRemoved) return TASK_CONTENT_REMOVED_MESSAGE
+  return attempt.contentUnavailable ? TASK_CONTENT_UNAVAILABLE_MESSAGE : null
+}

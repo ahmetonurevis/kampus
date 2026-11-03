@@ -32,7 +32,19 @@ export const RESPONSE_JOINED_FIELDS = [
   'branchName',
 ] as const
 export type ResponseJoinedField = (typeof RESPONSE_JOINED_FIELDS)[number]
-export type JoinedNames = Partial<Record<ResponseJoinedField, string>>
+
+/**
+ * Yalnız yanıtta dönen öğretmen adı (arama ve sıralamada yok; kvkk: K). Öğrenci ve veli yalnız
+ * sınıfında ders veren öğretmenleri okuyabilir (`teachers` kapsamı); öğretmen ayrılınca (arşiv,
+ * pasif kadro) kayıt kapsam dışı kalır ve eski soru/randevuda ad boş çıkardı. Satırın kendisi
+ * aktörün kapsamındadır ve `teacherId`'si ayıklanmamıştır; bu yüzden yalnız `name`, kapsamdan
+ * bağımsız, arşivli ve pasif kayıt dahil kimlikle okunur. İletişim ve oranlar dönmez.
+ */
+export const TEACHER_NAME_COLLECTIONS: ReadonlySet<CollectionName> = new Set<CollectionName>([
+  'questions',
+  'appointments',
+])
+export type JoinedNames = Partial<Record<ResponseJoinedField | 'teacherName', string>>
 
 export function isJoinedField(value: string): value is JoinedField {
   return JOINED_FIELDS.some((field) => field === value)
@@ -213,7 +225,8 @@ export async function loadPageNames(
   const fields = joinedFieldsOf(collection).filter((field): field is ResponseJoinedField =>
     RESPONSE_JOINED_FIELDS.some((name) => name === field),
   )
-  if (fields.length === 0) return null
+  const withTeacher = TEACHER_NAME_COLLECTIONS.has(collection)
+  if (fields.length === 0 && !withTeacher) return null
   const load = async (target: JoinTarget, wanted: readonly string[]) =>
     scope.access(target).allowed
       ? await loadRecordsByIds(ctx.db, ctx.institutionId, target, wanted)
@@ -233,9 +246,23 @@ export async function loadPageNames(
     fields.includes('branchName') ? load('branches', ids(records, 'branchId')) : [],
   ])
   const joiner = makeJoiner(fields, indexTargets(scope, [...students, ...classes, ...branches]))
+  const teachers = withTeacher
+    ? new Map(
+        (
+          await loadRecordsByIds(ctx.db, ctx.institutionId, 'teachers', ids(records, 'teacherId'), {
+            includeArchived: true,
+          })
+        ).flatMap((row): [string, string][] =>
+          typeof row.data.name === 'string' ? [[row.id, row.data.name]] : [],
+        ),
+      )
+    : new Map<string, string>()
   return records.map((record) => {
     const { studentName, studentNumber, className, branchName } = joiner.values(record)
+    const teacherName =
+      typeof record.teacherId === 'string' ? teachers.get(record.teacherId) : undefined
     return {
+      ...(teacherName === undefined ? {} : { teacherName }),
       ...(studentName === undefined ? {} : { studentName }),
       ...(studentNumber === undefined ? {} : { studentNumber }),
       ...(className === undefined ? {} : { className }),

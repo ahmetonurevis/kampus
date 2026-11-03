@@ -18,7 +18,10 @@ const NOW = '2026-10-15T09:00:00.000Z'
 type Seed = ReturnType<typeof createSeed>
 type Question = Seed['questions'][number]
 
-const wrap = (record: Question, joined?: { studentName?: string; className?: string }) => ({
+const wrap = (
+  record: Question,
+  joined?: { studentName?: string; className?: string; teacherName?: string },
+) => ({
   id: record.id,
   version: 3,
   createdAt: NOW,
@@ -45,6 +48,21 @@ const base: Question = {
   answer: '',
   fileName: null,
 }
+
+test('OG-221: arşivdeki öğretmenin adı satıra bağlı gelir, kadro listesinde olmasa da "—" olmaz', () => {
+  const departed = { ...base, teacherId: 't-ayrildi' }
+  assert.equal(
+    questionRow(wrap(departed, { teacherName: 'Mehmet Demir' }), lookups, NOW).teacher,
+    'Mehmet Demir',
+  )
+  // Sunucu adı varsa kadro listesindeki ad değil o kullanılır; yoksa kadro listesi yedektir.
+  assert.equal(
+    questionRow(wrap(base, { teacherName: 'Selin Kaya (Yeni)' }), lookups, NOW).teacher,
+    'Selin Kaya (Yeni)',
+  )
+  assert.equal(questionRow(wrap(base), lookups, NOW).teacher, 'Selin Kaya')
+  assert.equal(questionRow(wrap(departed), lookups, NOW).teacher, '—')
+})
 
 test('DOM-ILT-093: yanıtsız soru "Yanıt bekliyor" olur, hedef süresi hesaplanır ve geçince gecikir', () => {
   const early = questionRow(

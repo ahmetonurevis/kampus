@@ -13,8 +13,11 @@ import { useListState } from '@/hooks/use-list-state.ts'
 import { NEW_ASSIGNMENT, TaskAssignmentForm } from './TaskAssignmentForm.tsx'
 import { TaskAssignmentPanel } from './TaskAssignmentPanel.tsx'
 import { SubmissionGradingModal } from './SubmissionGradingModal.tsx'
+import { ATTEMPT_PARAM, AttemptReviewModal } from './AttemptReviewModal.tsx'
 import {
   assignmentRow,
+  assignmentScopeNote,
+  ATTEMPT_LIST_PARAMS,
   dateTimeLabel,
   isStaffAssignment,
   KIND_OPTIONS,
@@ -30,7 +33,8 @@ const MOBILE_COLUMNS = ['contentType', 'dueAt', 'owner']
  * Görevler (öğretmen ve yönetici): atadıklarım ve sınıflarımı hedefleyen atamalar, sunucu sayfalı
  * (kapsam sunucuda; DOM-YTK-028: sınıfın öğretmeni görür, yalnız atayan değiştirir). Satırdan
  * ayrıntı sağ panelde (`?gorev=`), yeni atama geniş pencerede (`?gorev-form=yeni`), teslim
- * puanlama penceresi `?puanla=` ile açılır.
+ * puanlama penceresi `?puanla=`, otomatik puanlı görevin deneme ayrıntısı `?deneme=` ile açılır;
+ * ikisi de panel açıksa panelin içinde iç içe pencere olur (OG-994).
  */
 export function TaskAssignmentsView() {
   const { session } = useAuth()
@@ -42,7 +46,7 @@ export function TaskAssignmentsView() {
     pageSize: list.state.pageSize,
     ...(kind ? { kind: kind as 'evaluation' | 'practice' } : {}),
   })
-  const { names } = useTaskLookups({ students: false })
+  const { names } = useTaskLookups()
   const rows = useMemo<AssignmentRow[] | undefined>(
     () =>
       assignments.data?.data
@@ -51,9 +55,17 @@ export function TaskAssignmentsView() {
     [assignments.data, names, userId],
   )
 
-  const panel = useDetailPanel('gorev')
+  const panel = useDetailPanel('gorev', ATTEMPT_LIST_PARAMS)
   const form = useDetailPanel('gorev-form')
   const grading = useDetailPanel('puanla')
+  const review = useDetailPanel(ATTEMPT_PARAM)
+  // Panel açıkken deneme ve puanlama pencereleri panelin içinde (iç içe pencere), değilse tek
+  // başına çizilir (OG-994): ayrı kök pencere Radix'te panelle birbirini erişilebilirlik
+  // ağacından gizlerdi; iç içe yığında üstteki pencere erişilebilir, panel arkada açık kalır.
+  const reviewModal = <AttemptReviewModal attemptId={review.selectedId} onClose={review.close} />
+  const gradingModal = (
+    <SubmissionGradingModal submissionId={grading.selectedId} onClose={grading.close} />
+  )
   const openPanel = panel.open
   const navigate = useNavigate()
   /** Yeni görev kaydedilince form kapanır, yeni kaydın ayrıntısı açılır (tek geçmiş adımı). */
@@ -124,7 +136,7 @@ export function TaskAssignmentsView() {
             Görev atamaları
           </h2>
           <p className="text-sm text-muted-foreground">
-            {assignments.data?.meta.total ?? 0} görev · Atadıklarınız ve sınıflarınızı hedefleyenler
+            {assignments.data?.meta.total ?? 0} görev · {assignmentScopeNote(session?.role ?? '')}
           </p>
         </div>
         <Button onClick={() => form.open(NEW_ASSIGNMENT)}>
@@ -176,13 +188,22 @@ export function TaskAssignmentsView() {
         assignmentId={panel.selectedId}
         onClose={panel.close}
         onGrade={grading.open}
-      />
+        onReview={review.open}
+      >
+        {panel.selectedId ? (
+          <>
+            {reviewModal}
+            {gradingModal}
+          </>
+        ) : null}
+      </TaskAssignmentPanel>
       <TaskAssignmentForm
         open={form.selectedId === NEW_ASSIGNMENT}
         onClose={form.close}
         onCreated={showCreated}
       />
-      <SubmissionGradingModal submissionId={grading.selectedId} onClose={grading.close} />
+      {panel.selectedId ? null : reviewModal}
+      {panel.selectedId ? null : gradingModal}
     </section>
   )
 }

@@ -1,8 +1,9 @@
-// Liste durumunun paylaşılabilir kısmı (arama, sayfa, sıralama) URL arama parametresinde tutulur;
-// böylece yenileme ve geri/ileri durumu korur. Filtre değerleri ve kaydırma varsayılan olarak
-// yalnız bellektedir; liste `urlFilters` verirse o tekli filtreler de URL'ye yazılır. Kişisel veri
-// aranan listelerde (`searchInUrl = false`) arama metni hiç URL'ye yazılmaz ve okunmaz (KVKK:
-// telefon ve veli adı tarayıcı geçmişine girmesin).
+// Liste durumunun paylaşılabilir kısmı (sayfa, sıralama) URL arama parametresinde tutulur; böylece
+// yenileme ve geri/ileri durumu korur. Filtre değerleri ve kaydırma varsayılan olarak yalnız
+// bellektedir; liste `urlFilters` verirse o tekli filtreler de URL'ye yazılır. Serbest arama metni
+// hiçbir listede URL'ye yazılmaz (ADR 0009, IST-028): ad, telefon gibi kişisel veri tarayıcı
+// geçmişine, paylaşılan bağlantıya ve erişim loguna girmesin. Eski bağlantıdaki `q` bir kez okunur;
+// sonraki adres yazımı onu siler.
 import type { FilterValues } from './list-query.ts'
 import type { ListState } from './list-state.ts'
 
@@ -17,13 +18,31 @@ const keys = (prefix: string) => ({
   direction: `${prefix}yon`,
 })
 
-/** URL'deki değerler varsa temel duruma uygular; bozuk değerler yok sayılır. */
+// TODO(liste-arama-url-finans): Onur'un finans e2e beklentileri ADR 0009'a uyunca (#24) kaldırılır.
+// Geçiş süresince bu yollardaki listeler arama metnini eskisi gibi URL'ye yazar ve yenilemede okur.
+// Ön büro tahsilat takibi (`/onburo/tahsilat-takip`) bilinçli olarak istisnada değildir: e2e onun
+// aramasını adreste beklemez, daha güvenli olan ADR 0009 davranışı orada da geçerlidir.
+const SEARCH_IN_URL_PATHS: ReadonlySet<string> = new Set(['/yonetici/finans'])
+
+/** Yol, arama metninin geçici olarak URL'de tutulduğu istisna listesinde mi (tam eşleşme). */
+export function keepsSearchInUrl(pathname: string): boolean {
+  return SEARCH_IN_URL_PATHS.has(pathname.replace(/\/+$/, ''))
+}
+
+/** Adreste eski bağlantıdan kalan arama parametresi var mı (varsa bir sonraki yazım siler). */
+export function hasLegacySearch(params: URLSearchParams, prefix: string): boolean {
+  return params.has(keys(prefix).query)
+}
+
+/**
+ * URL'deki değerler varsa temel duruma uygular; bozuk değerler yok sayılır. Arama metni URL'de
+ * tutulmaz; yalnız eski bağlantıdan gelen `q` okunur, yoksa bellekteki (temel) arama kalır.
+ */
 export function listStateFromParams(
   params: URLSearchParams,
   prefix: string,
   base: ListState,
   urlFilters: UrlFilters = NO_URL_FILTERS,
-  searchInUrl = true,
 ): ListState {
   const key = keys(prefix)
   const query = params.get(key.query)
@@ -32,27 +51,34 @@ export function listStateFromParams(
   return {
     ...base,
     filters: filtersFromParams(params, prefix, base.filters, urlFilters),
-    query: searchInUrl ? (query ?? base.query) : base.query,
+    query: query ?? base.query,
     page: Number.isInteger(page) && page >= 1 ? page : params.has(key.page) ? 1 : base.page,
     sortKey: sort ?? base.sortKey,
     sortDirection: sort ? (params.get(key.direction) === 'azalan' ? -1 : 1) : base.sortDirection,
   }
 }
 
-/** Mevcut parametreleri koruyarak liste durumunu yazar; varsayılan değerler URL'den silinir. */
+/**
+ * Mevcut parametreleri koruyarak liste durumunu yazar; varsayılan değerler URL'den silinir. Arama
+ * metni hiç yazılmaz ve eski bağlantıdan kalan `q` silinir (ADR 0009); yalnız `keepSearch`
+ * (geçici finans istisnası, `keepsSearchInUrl`) verilirse yazılır. Arama varken sayfa da yazılmaz.
+ */
 export function listStateToParams(
   state: ListState,
   prefix: string,
   current: URLSearchParams,
   urlFilters: UrlFilters = NO_URL_FILTERS,
-  searchInUrl = true,
+  keepSearch = false,
 ): URLSearchParams {
   const key = keys(prefix)
   const next = new URLSearchParams(current)
   const set = (name: string, value: string | null) =>
     value === null ? next.delete(name) : next.set(name, value)
-  set(key.query, searchInUrl && state.query.trim() ? state.query : null)
-  set(key.page, state.page > 1 ? String(state.page) : null)
+  const searching = state.query.trim() !== ''
+  set(key.query, keepSearch && searching ? state.query : null)
+  // Arama varken sayfa da yalnız bellektedir: yenilemede arama kaybolunca kullanıcı aramasız
+  // listenin N. sayfasına düşmesin (ADR 0009). İstisna yolunda arama da adreste olduğundan yazılır.
+  set(key.page, state.page > 1 && (keepSearch || !searching) ? String(state.page) : null)
   set(key.sort, state.sortKey || null)
   set(key.direction, state.sortKey && state.sortDirection === -1 ? 'azalan' : null)
   for (const [filter, name] of Object.entries(urlFilters))
@@ -117,17 +143,18 @@ const sameUrlState = (left: ListState, right: ListState, urlFilters: UrlFilters)
   )
 
 /**
- * Geri/ileri veya bağlantıyla gelen URL'yi duruma uygular. URL'de olmayan değer varsayılandır
- * (ilk yüklemedeki bellek yedeği burada kullanılmaz). Değişiklik yoksa aynı nesne döner; varsa
- * dikey kaydırma başa alınır. URL'de tutulmayan filtreler korunur; `urlFilters` anahtarları
- * URL'de yoksa kaldırılır.
+ * Geri/ileri veya bağlantıyla gelen URL'yi duruma uygular. URL'de olmayan sayfa, sıralama ve URL
+ * filtresi varsayılandır (ilk yüklemedeki bellek yedeği burada kullanılmaz). Arama URL'de
+ * tutulmadığı için bellekteki değer kalır; yalnız eski bağlantıdaki `q` onu değiştirir. Değişiklik
+ * yoksa aynı nesne döner; varsa dikey kaydırma başa alınır. URL'de tutulmayan filtreler korunur;
+ * `urlFilters` anahtarları URL'de yoksa kaldırılır.
  */
 export function applyListParams(
   state: ListState,
   params: URLSearchParams,
   prefix: string,
   urlFilters: UrlFilters = NO_URL_FILTERS,
-  searchInUrl = true,
+  keepSearch = false,
 ): ListState {
   const filters = { ...state.filters }
   for (const filter of Object.keys(urlFilters)) delete filters[filter]
@@ -137,13 +164,14 @@ export function applyListParams(
     {
       ...state,
       filters,
-      query: searchInUrl ? '' : state.query,
-      page: 1,
+      // İstisna yolunda URL aramanın kaynağıdır; URL'de yoksa arama boştur.
+      query: keepSearch ? '' : state.query,
+      // Arama sürerken sayfa adrese yazılmadığından bellekteki sayfa korunur.
+      page: !keepSearch && state.query.trim() ? state.page : 1,
       sortKey: '',
       sortDirection: 1,
     },
     urlFilters,
-    searchInUrl,
   )
   if (sameUrlState(state, next, urlFilters)) return state
   return { ...next, scroll: { top: 0, left: state.scroll.left } }

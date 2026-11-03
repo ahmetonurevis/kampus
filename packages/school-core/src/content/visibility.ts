@@ -85,9 +85,38 @@ export type ShareChangeInput = {
   teaching?: TeachingScope | undefined
 }
 
+/** Paylaşım hedeflerinin eklenen ve çıkarılan kısmı (DOM-KYN-040). */
+export type ShareTargetDelta = {
+  addedStudentIds: string[]
+  removedStudentIds: string[]
+  addedClassIds: string[]
+  removedClassIds: string[]
+}
+
+/**
+ * Kayıtlı hedeflerle yeni hedefleri karşılaştırır (DOM-KYN-040). Öğretmen kapsamı ve API'nin
+ * "kurumda var mı" denetimi yalnız bu farka uygulanır; değişmeyen hedef olduğu gibi korunur.
+ */
+export function shareTargetDelta(
+  previous: Pick<ResourceRecord, 'sharedStudentIds' | 'sharedClassIds'>,
+  next: { studentIds: readonly string[]; classIds: readonly string[] },
+): ShareTargetDelta {
+  const minus = (list: readonly string[], other: readonly string[]) => {
+    const exclude = new Set(other)
+    return distinct(list).filter((id) => !exclude.has(id))
+  }
+  return {
+    addedStudentIds: minus(next.studentIds, previous.sharedStudentIds),
+    removedStudentIds: minus(previous.sharedStudentIds, next.studentIds),
+    addedClassIds: minus(next.classIds, previous.sharedClassIds),
+    removedClassIds: minus(previous.sharedClassIds, next.classIds),
+  }
+}
+
 /**
  * Paylaşım kapsamını değiştirir (DOM-KYN-021, 031, 040). Yalnız kaynağı yönetebilen kişi; öğretmen
- * yalnız kendi sınıf ve öğrencilerine paylaşır. Onaysız yayımlanmış içerik zümre veya kuruma
+ * yalnız kendi sınıf ve öğrencilerini ekler ya da çıkarır, kapsamı dışındaki kayıtlı hedef
+ * değişmeden korunur (kaldırılamaz). Onaysız yayımlanmış içerik zümre veya kuruma
  * açılırken onaylı bir sürüm gerekir. Kitap sahibiyle sınırlı lisans öğrenci kapsamını aşamaz.
  */
 export function planShareChange(
@@ -111,14 +140,21 @@ export function planShareChange(
   const targets = shareTargetsSchema.parse(input.targets)
 
   if (actor.role !== 'yonetici') {
+    // Kapsam yalnız değişen hedefe uygulanır: başkasının eklediği (ya da arşivlenmiş) hedef
+    // değişmeden korunur, öğretmen onu ne ekleyebilir ne kaldırabilir.
     const teaching = input.teaching
+    const delta = shareTargetDelta(resource, targets)
     const outside =
-      targets.classIds.some((id) => !teaching?.classIds.has(id)) ||
-      targets.studentIds.some((id) => !teaching?.studentIds.has(id))
+      [...delta.addedClassIds, ...delta.removedClassIds].some(
+        (id) => !teaching?.classIds.has(id),
+      ) ||
+      [...delta.addedStudentIds, ...delta.removedStudentIds].some(
+        (id) => !teaching?.studentIds.has(id),
+      )
     if (outside) {
       forbidden(
         'share_target_out_of_scope',
-        'Yalnız ders verdiğiniz sınıf ve öğrencilerle paylaşabilirsiniz.',
+        'Yalnız ders verdiğiniz sınıf ve öğrencileri ekleyip çıkarabilirsiniz; kapsamınız dışındaki paylaşım korunur.',
       )
     }
   }

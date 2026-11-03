@@ -148,6 +148,7 @@ describe('görev deneme uçları', () => {
       student: await signInAs(app, await member('ogrenci', 'student', 's-1')),
       otherStudent: await signInAs(app, await member('ogrenci', 'student', 's-3')),
       parent: await signInAs(app, await member('veli', 'child', 's-1')),
+      otherParent: await signInAs(app, await member('veli', 'child', 's-3')),
       frontDesk: await signInAs(app, await createMember(app, institution.id, 'onburo')),
     }
     const seed = async (input: Partial<ResourceVersionInput>) =>
@@ -527,9 +528,19 @@ describe('görev deneme uçları', () => {
     assert.equal(staff.result.answerKey, null)
     const admin = await ok(await list(assignmentId, t.cookies.admin, '&learnerId=s-1'))
     assert.equal(admin.length, 1)
+    // OG-213: öğrenci adı yalnız satırı okuyan personele gelir; öğrenci ve veliye null.
+    assert.equal(admin[0].learnerName, 'Deniz Yılmaz')
+    assert.equal(staff.learnerName, 'Deniz Yılmaz')
+    assert.equal((await ok(await list(assignmentId, t.cookies.student)))[0].learnerName, null)
+    assert.equal((await ok(await list(assignmentId, t.cookies.parent)))[0].learnerName, null)
     assert.deepEqual(await ok(await list(assignmentId, t.cookies.admin, '&learnerId=s-3')), [])
     const parentView = await ok(await call('GET', `/task-attempts/${started.id}`, t.cookies.parent))
     assert.equal(parentView.result.percent, 25)
+    assert.equal(parentView.learnerName, null)
+    assert.equal(
+      (await ok(await call('GET', `/task-attempts/${started.id}`, t.cookies.teacher))).learnerName,
+      'Deniz Yılmaz',
+    )
     assert.equal(parentView.result.items, null)
     fails(
       await call('GET', `/task-attempts/${started.id}`, t.cookies.otherStudent),
@@ -553,6 +564,48 @@ describe('görev deneme uçları', () => {
     )
     assert.ok(released.body.includes(SECRET_EXPLANATION))
     fails(await start(assignmentId, t.cookies.student), 422, 'submission_closed')
+  })
+
+  test('OG-213, DOM-YTK-028: deneme listesi ve ayrıntısı öğrenci adını yönetici ve kendi öğrencisi için öğretmene taşır; kapsam dışı öğrenci, öğrenci ve veli null alır; atamayı görmeyen öğretmen ve başka kurum 404', async () => {
+    const t = await tenant()
+    const both = await assignAsAdmin(t, [
+      { kind: 'class', id: '9-A' },
+      { kind: 'class', id: '9-B' },
+    ])
+    const deniz = await ok(await start(both, t.cookies.student), 201)
+    const can = await ok(await start(both, t.cookies.otherStudent), 201)
+    const nameOf = async (cookie: string, attemptId: string) =>
+      (await ok(await call('GET', `/task-attempts/${attemptId}`, cookie))).learnerName
+    const listed = async (cookie: string) =>
+      new Map(
+        ((await ok(await list(both, cookie))) as Json[]).map((row) => [row.id, row.learnerName]),
+      )
+    // Atamayı gören her öğretmen bütün denemeleri okur; ad yalnız kendi öğrencisininki gelir.
+    const teacher = await listed(t.cookies.teacher)
+    assert.deepEqual([teacher.get(deniz.id), teacher.get(can.id)], ['Deniz Yılmaz', null])
+    assert.equal(await nameOf(t.cookies.teacher, deniz.id), 'Deniz Yılmaz')
+    assert.equal(await nameOf(t.cookies.teacher, can.id), null)
+    const other = await listed(t.cookies.otherTeacher)
+    assert.deepEqual([other.get(deniz.id), other.get(can.id)], [null, 'Can Arslan'])
+    const admin = await listed(t.cookies.admin)
+    assert.deepEqual([admin.get(deniz.id), admin.get(can.id)], ['Deniz Yılmaz', 'Can Arslan'])
+    // Öğrenci ve veli kendi/çocuğunun denemesini okur; ad gelmez.
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      assert.deepEqual([...(await listed(cookie)).values()], [null])
+      assert.equal(await nameOf(cookie, deniz.id), null)
+    }
+    // Atamayı görmeyen 9-B öğretmeni (yalnız 9-A'ya atama) ve başka kurumun yöneticisi 404.
+    const only9a = await assign(t, { attempts: { kind: 'practice' } }, t.quizId)
+    const lonely = await ok(await start(only9a, t.cookies.student), 201)
+    fails(await list(only9a, t.cookies.otherTeacher), 404, 'not_found')
+    fails(
+      await call('GET', `/task-attempts/${lonely.id}`, t.cookies.otherTeacher),
+      404,
+      'not_found',
+    )
+    const otherAdmin = await signInAs(app, (await createInstitution(app)).admin)
+    fails(await list(both, otherAdmin), 404, 'not_found')
+    fails(await call('GET', `/task-attempts/${deniz.id}`, otherAdmin), 404, 'not_found')
   })
 
   test('DOM-BEC-042: değerlendirme hakkı dolunca 422; "en yüksek" politikasında sayılan deneme en iyisi; eşzamanlı başlatma tek satır', async () => {
@@ -932,6 +985,14 @@ describe('görev deneme uçları', () => {
         reason: 'Telif ihlali kabul edildi',
       }),
     )
+    // Özet yazma ucuyla aynı kapıdan geçer (OG-985): süren deneme de sürdürülemez.
+    const summary = await ok(
+      await call('GET', `/task-assignments/${assignmentId}`, t.cookies.student),
+    )
+    assert.deepEqual(
+      [summary.progress[0].canAct, summary.progress[0].blockedBy, summary.contentUnavailable],
+      [false, 'content_unavailable', 'unavailable'],
+    )
     const before = await stored(t.institution.id)
     fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
     fails(
@@ -952,6 +1013,282 @@ describe('görev deneme uçları', () => {
     assert.deepEqual(await stored(t.institution.id), before)
   })
 
+  test('DOM-KYN-051, OG-996: hata sırası kapsam 404 → rol 403 → sürüm 409 → içerik kuralı 422: kaldırılmış içerikte eski sürümle cevap kaydı ve teslim 409 version_conflict, güncel sürümle 422 content_unavailable; kayıt değişmez', async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t, question('Ordered question?', 'a'))
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, versionId)
+    const running = await ok(await start(assignmentId, t.cookies.student), 201)
+    const saved = await ok(
+      await save(running.id, t.cookies.student, { [versionId]: choice('b') }, running.rowVersion),
+    )
+    await ok(
+      await call('POST', `/resources/${resourceId}/remove`, t.cookies.admin, {
+        reason: 'Telif ihlali kabul edildi',
+      }),
+    )
+    const before = await stored(t.institution.id)
+    const stale = running.rowVersion as number
+    // Taslak ve teslim uçlarıyla aynı sıra (api-tasarimi §6): sürüm içerik kuralından önce gelir.
+    fails(
+      await save(running.id, t.cookies.student, { [versionId]: choice('a') }, stale),
+      409,
+      'version_conflict',
+    )
+    fails(await submit(running.id, t.cookies.student, {}, stale), 409, 'version_conflict')
+    fails(
+      await save(running.id, t.cookies.student, { [versionId]: choice('a') }, saved.rowVersion),
+      422,
+      'content_unavailable',
+    )
+    fails(
+      await submit(running.id, t.cookies.student, {}, saved.rowVersion),
+      422,
+      'content_unavailable',
+    )
+    // Kapsam ve rol sürümden önce: veli 403, başka kurum 404 (eski sürümle de).
+    fails(await submit(running.id, t.cookies.parent, {}, stale), 403, 'forbidden')
+    fails(await submit(running.id, await foreignStudent(), {}, stale), 404, 'not_found')
+    assert.deepEqual(await stored(t.institution.id), before)
+  })
+
+  test("DOM-KYN-051, OG-985: quiz'in bağlı sorusu kaldırılınca görev ayrıntısı da içeriği göstermez (özetle aynı sürüm kümesi); özet content_unavailable; başka kurum 404", async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t, question('Linked question?', 'a'))
+    const quizId = await t.seed({
+      title: 'Bağlı soru quizi',
+      content: { type: 'quiz', items: [{ questionVersionId: versionId, points: 1 }] },
+      license: { kind: 'institution_original' },
+      tags: { subjectId: 'ingilizce', gradeLevels: [9], primarySkill: 'reading', cefrLevel: 'A2' },
+    })
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, quizId)
+    const gate = async () => {
+      const seen = await progressOf(assignmentId, t.cookies.student)
+      return [seen.contentUnavailable, seen.content?.versionId ?? null, seen.progress[0].blockedBy]
+    }
+    assert.deepEqual(await gate(), [null, quizId, null])
+    await ok(
+      await call('POST', `/resources/${resourceId}/remove`, t.cookies.admin, {
+        reason: 'Telif ihlali kabul edildi',
+      }),
+    )
+    // Quiz'in kendisi kaldırılmadı; soru kaldırıldığı için yazma ucu 422 verir, ayrıntı da kapalı.
+    assert.deepEqual(await gate(), ['unavailable', null, 'content_unavailable'])
+    fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
+    fails(
+      await call('GET', `/task-assignments/${assignmentId}`, await foreignStudent()),
+      404,
+      'not_found',
+    )
+  })
+
+  /** Öğrenci tamamlanmış bir deneme bırakır, sonra yönetici kaynağı kaldırır (DOM-KYN-051). */
+  async function removedAfterAttempt(t: Tenant, removeQuiz: boolean) {
+    const stem = 'Who wrote the removed text?'
+    const item = await seedOwned(t, question(stem, 'a', 'reading'))
+    const quiz = await seedOwned(t, {
+      title: 'Kaldırılacak quiz',
+      content: { type: 'quiz', items: [{ questionVersionId: item.versionId, points: 2 }] },
+      license: { kind: 'institution_original' },
+      tags: { subjectId: 'ingilizce', gradeLevels: [9], primarySkill: 'reading', cefrLevel: 'A2' },
+    })
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, quiz.versionId)
+    const running = await ok(await start(assignmentId, t.cookies.student), 201)
+    const answers = { [item.versionId]: choice('a') }
+    const done = await ok(
+      await submit(running.id, t.cookies.student, { answers }, running.rowVersion),
+    )
+    assert.deepEqual([done.result.percent, done.contentRemoved], [100, false])
+    await ok(
+      await call(
+        'POST',
+        `/resources/${(removeQuiz ? quiz : item).resourceId}/remove`,
+        t.cookies.admin,
+        { reason: 'Telif ihlali kabul edildi' },
+      ),
+    )
+    return { assignmentId, attemptId: running.id as string, answers, stem }
+  }
+
+  for (const removeQuiz of [true, false])
+    test(`DOM-KYN-051, OG-997: ${removeQuiz ? 'quizin kendisi' : 'quizin bağlı sorusu'} kaldırılınca deneme listesi ve ayrıntısı 404 değil: kayıt ve cevaplar korunur, contentRemoved; soru metni ve anahtar gelmez; kapsam dışı ve başka kurum 404, kayıt değişmez`, async () => {
+      const t = await tenant()
+      const { assignmentId, attemptId, answers, stem } = await removedAfterAttempt(t, removeQuiz)
+      const before = await stored(t.institution.id)
+      for (const cookie of [
+        t.cookies.student,
+        t.cookies.parent,
+        t.cookies.teacher,
+        t.cookies.admin,
+      ]) {
+        const rows = await ok(await list(assignmentId, cookie))
+        assert.deepEqual(
+          rows.map((row: Json) => [
+            row.id,
+            row.status,
+            row.contentRemoved,
+            row.result,
+            row.answers,
+          ]),
+          [[attemptId, 'submitted', true, null, answers]],
+        )
+        const response = await call('GET', `/task-attempts/${attemptId}`, cookie)
+        const detail = await ok(response)
+        assert.deepEqual(
+          [detail.contentRemoved, detail.contentUnavailable, detail.questions, detail.passage],
+          [true, 'unavailable', [], null],
+        )
+        assert.deepEqual(
+          [detail.result, detail.answers, detail.status],
+          [null, answers, 'submitted'],
+        )
+        for (const text of [stem, SECRET_EXPLANATION, 'correctOptionId'])
+          assert.ok(!response.body.includes(text), text)
+      }
+      // Kapsam aynen kalır: hedeflenmeyen öğrenci, atamayı görmeyen öğretmen ve başka kurum 404.
+      const foreign = await foreignStudent()
+      for (const cookie of [t.cookies.otherStudent, t.cookies.otherTeacher, foreign]) {
+        fails(await list(assignmentId, cookie), 404, 'not_found')
+        fails(await call('GET', `/task-attempts/${attemptId}`, cookie), 404, 'not_found')
+      }
+      fails(await list(assignmentId, t.cookies.frontDesk), 403, 'forbidden')
+      assert.deepEqual(await stored(t.institution.id), before)
+    })
+
+  const PASSAGE_BODY = 'Ann lives in Izmir and takes the ferry to work every day.'
+
+  test('DOM-KYN-051, DOM-BEC-010, OG-997: yalnız okuma parçası kaldırılınca deneme contentRemoved true; soru ve parça metni ile anahtar gelmez, anahtarlar durduğu için puan ve madde sonuçları kalır (personel ve öğrenci)', async () => {
+    const t = await tenant()
+    const tags = {
+      subjectId: 'ingilizce',
+      gradeLevels: [9],
+      primarySkill: 'reading' as const,
+      cefrLevel: 'A2' as const,
+    }
+    const passage = await seedOwned(t, {
+      title: 'Ann günü',
+      content: { type: 'reading_passage', body: PASSAGE_BODY, glossary: [] },
+      license: { kind: 'institution_original' },
+      tags,
+    })
+    const stem = 'Where does Ann live in the removed passage?'
+    const item = await seedOwned(t, question(stem, 'a', 'reading'))
+    const quiz = await seedOwned(t, {
+      title: 'Parçalı quiz',
+      content: {
+        type: 'quiz',
+        items: [{ questionVersionId: item.versionId, points: 2 }],
+        passageVersionId: passage.versionId,
+      },
+      license: { kind: 'institution_original' },
+      tags,
+    })
+    const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, quiz.versionId)
+    const running = await ok(await start(assignmentId, t.cookies.student), 201)
+    const done = await ok(
+      await submit(
+        running.id,
+        t.cookies.student,
+        { answers: { [item.versionId]: choice('a') } },
+        running.rowVersion,
+      ),
+    )
+    assert.deepEqual([done.result.percent, done.contentRemoved], [100, false])
+    await ok(
+      await call('POST', `/resources/${passage.resourceId}/remove`, t.cookies.admin, {
+        reason: 'Telif ihlali kabul edildi',
+      }),
+    )
+    const before = await stored(t.institution.id)
+    for (const cookie of [t.cookies.student, t.cookies.teacher, t.cookies.admin]) {
+      const rows = await ok(await list(assignmentId, cookie))
+      assert.equal(rows.length, 1)
+      const response = await call('GET', `/task-attempts/${running.id}`, cookie)
+      const detail = await ok(response)
+      for (const view of [rows[0], detail]) {
+        assert.equal(view.contentRemoved, true)
+        assert.deepEqual(
+          [view.result.earned, view.result.possible, view.result.percent],
+          [2, 2, 100],
+        )
+        assert.equal(view.result.items.length, 1)
+        assert.equal(view.result.answerKey, null)
+      }
+      assert.deepEqual([detail.questions, detail.passage], [[], null])
+      assert.equal(detail.contentUnavailable, 'unavailable')
+      for (const text of [stem, PASSAGE_BODY, SECRET_EXPLANATION, 'correctOptionId'])
+        assert.ok(!response.body.includes(text), text)
+    }
+    assert.deepEqual(await stored(t.institution.id), before)
+  })
+
+  test('DOM-KYN-025, DOM-KYN-021, OG-997: telif bildirimiyle askıdaki (incelemede) ve lisansı biten içerik kaldırılmış sayılmaz: contentRemoved false, puan kalır', async () => {
+    const t = await tenant()
+    const reported = await seedOwned(t, question('Reported question?', 'a'))
+    const licensed = await seedOwned(t, {
+      ...question('Licensed question?', 'c'),
+      license: {
+        kind: 'licensed_publication',
+        publisher: 'Örnek Yayınevi',
+        contractNumber: 'SZ-2026-03',
+        coverage: 'Kurumun bütün öğrencileri',
+        expiryDate: '2026-10-06',
+        restrictedToBookOwners: false,
+      },
+    })
+    const finished = async (versionId: string, optionId: string) => {
+      const assignmentId = await assign(t, { attempts: { kind: 'practice' } }, versionId)
+      const running = await ok(await start(assignmentId, t.cookies.student), 201)
+      const done = await ok(
+        await submit(
+          running.id,
+          t.cookies.student,
+          { answers: { [versionId]: choice(optionId) } },
+          running.rowVersion,
+        ),
+      )
+      assert.equal(done.result.percent, 100)
+      return { assignmentId, attemptId: running.id as string }
+    }
+    const first = await finished(reported.versionId, 'a')
+    const second = await finished(licensed.versionId, 'c')
+    await ok(
+      await call(
+        'POST',
+        `/resources/${reported.resourceId}/versions/${reported.versionId}/report`,
+        t.cookies.teacher,
+        { reason: 'Telif ihlali şüphesi' },
+      ),
+    )
+    at(24 * 60 * MINUTE)
+    try {
+      for (const { assignmentId, attemptId } of [first, second])
+        for (const cookie of [t.cookies.student, t.cookies.teacher, t.cookies.admin]) {
+          const rows = await ok(await list(assignmentId, cookie))
+          const detail = await ok(await call('GET', `/task-attempts/${attemptId}`, cookie))
+          for (const view of [rows[0], detail]) {
+            assert.equal(view.contentRemoved, false)
+            assert.equal(view.result.percent, 100)
+          }
+        }
+    } finally {
+      at(0)
+    }
+  })
+
+  test('DOM-YTK-028, OG-997: kapsam dışı veli (başkasının çocuğu) kaldırılmış içerikte de deneme listesi ve ayrıntısında 404; ilgili veli görür; kayıt değişmez', async () => {
+    const t = await tenant()
+    const { assignmentId, attemptId } = await removedAfterAttempt(t, true)
+    const before = await stored(t.institution.id)
+    fails(await list(assignmentId, t.cookies.otherParent), 404, 'not_found')
+    fails(await call('GET', `/task-attempts/${attemptId}`, t.cookies.otherParent), 404, 'not_found')
+    const rows = await ok(await list(assignmentId, t.cookies.parent))
+    assert.deepEqual(
+      rows.map((row: Json) => [row.id, row.contentRemoved]),
+      [[attemptId, true]],
+    )
+    assert.deepEqual(await stored(t.institution.id), before)
+  })
+
   test('DOM-KYN-025, IST-036: telif bildirimiyle incelemedeki kaynakta yeni deneme 422 content_unavailable; süren deneme kaydedilir ve teslim edilir, mükerrer teslim yeni kayıt açmaz; yeniden yayında deneme açılır', async () => {
     const t = await tenant()
     const { resourceId, versionId } = await seedOwned(t, question('Reported question?', 'a'))
@@ -963,6 +1300,14 @@ describe('görev deneme uçları', () => {
         reason: 'Telif ihlali şüphesi',
       }),
     )
+    // Özet (OG-985): süren deneme sürdürülür (Sabah kararı 47: içerik görünür).
+    const summary = async () => {
+      const seen = await ok(
+        await call('GET', `/task-assignments/${assignmentId}`, t.cookies.student),
+      )
+      return [seen.progress[0].canAct, seen.progress[0].blockedBy, seen.contentUnavailable]
+    }
+    assert.deepEqual(await summary(), [false, 'in_progress', null])
     const before = await stored(t.institution.id)
     fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
     assert.deepEqual(await stored(t.institution.id), before)
@@ -988,6 +1333,8 @@ describe('görev deneme uçları', () => {
     )
     fails(await start(assignmentId, t.cookies.student), 422, 'content_unavailable')
     assert.deepEqual(await stored(t.institution.id), finished)
+    // Tamamlanan deneme süren iş değildir: içerik kapanır, yeni deneme önerilmez.
+    assert.deepEqual(await summary(), [false, 'content_unavailable', 'unavailable'])
     // Yönetici yeniden yayına alır (onay koşulları bu testin konusu değil): yeni deneme açılır.
     await republish(t, versionId)
     await ok(await start(assignmentId, t.cookies.student), 201)
@@ -1066,7 +1413,7 @@ describe('görev deneme uçları', () => {
     )
   })
 
-  test('IST-051: puanlama bağlamı kurulamayan atama için uyarı istek başına bir kez ve yalnız atama kimliğiyle loglanır (kursiyer sayısından bağımsız); özet unavailable', async () => {
+  test('IST-051: puanlama bağlamı kurulamayan atama için uyarı istek başına bir kez ve yalnız atama kimliğiyle loglanır (kursiyer sayısından bağımsız); özet içerik kapısıyla content_unavailable', async () => {
     const t = await tenant()
     const assignmentId = await assignAsAdmin(t, [
       { kind: 'class', id: '9-A' },
@@ -1093,11 +1440,13 @@ describe('görev deneme uçları', () => {
     const [row] = (await ok(await call('GET', '/task-assignments', twins))).filter(
       (item: Json) => item.id === assignmentId,
     )
+    // İçeriği olmayan sürüm içerik kapısından da geçmez: yazma ucu 422 `content_unavailable`
+    // döneceğinden özet de onu söyler (OG-985; kapı diğer engellerden önce gelir).
     assert.deepEqual(
-      row.progress.map((item: Json) => [item.learnerId, item.blockedBy]),
+      row.progress.map((item: Json) => [item.learnerId, item.canAct, item.blockedBy]),
       [
-        ['s-1', 'unavailable'],
-        ['s-3', 'unavailable'],
+        ['s-1', false, 'content_unavailable'],
+        ['s-3', false, 'content_unavailable'],
       ],
     )
     const warnings = logs

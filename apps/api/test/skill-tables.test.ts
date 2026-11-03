@@ -7,6 +7,7 @@ import { and, eq, sql, type SQL } from 'drizzle-orm'
 import type { Database } from '../src/db/client.ts'
 import { files } from '../src/db/schema/files.ts'
 import {
+  attemptItemChecks,
   attemptMediaPlays,
   resubmissionRequests,
   rubrics,
@@ -674,6 +675,70 @@ describe('0013: beceri görevi tabloları', () => {
     })
     const [remaining] = await rows<{ n: number }>(
       sql`select count(*)::int as n from attempt_media_plays where ${own}`,
+    )
+    assert.equal(remaining?.n, 0)
+  })
+
+  test('DOM-BEC-047 (OG-085): madde kontrolü deneme × soru × sırada tekil, en çok 2; deneme aynı kurumun; satır değişmez, yalnız imha siler', async () => {
+    const { institutionId, chain: c } = await chain()
+    const other = await chain()
+    const attemptOf = async (institution: string, assignmentId: string) => {
+      const id = randomUUID()
+      await db.insert(taskAttempts).values({
+        institutionId: institution,
+        id,
+        assignmentId,
+        learnerId: LEARNER,
+        attemptNumber: 1,
+        startedAt: FIXED_NOW,
+        ...at,
+      })
+      return id
+    }
+    const attemptId = await attemptOf(institutionId, c.assignmentId)
+    const otherAttempt = await attemptOf(other.institutionId, other.chain.assignmentId)
+    const checkRow = (columns: Record<string, unknown> = {}) =>
+      db.insert(attemptItemChecks).values({
+        institutionId,
+        attemptId,
+        questionVersionId: 'test-q-1',
+        checkNumber: 1,
+        response: { questionType: 'multiple_choice', optionId: 'a' },
+        checkedAt: FIXED_NOW,
+        ...at,
+        ...columns,
+      })
+    await checkRow()
+    await violates(checkRow(), 'attempt_item_checks_pkey', '23505')
+    await checkRow({ checkNumber: 2 })
+    await violates(checkRow({ checkNumber: 3 }), 'attempt_item_checks_number_check')
+    await violates(checkRow({ checkNumber: 0 }), 'attempt_item_checks_number_check')
+    await violates(checkRow({ response: [] }), 'attempt_item_checks_response_check')
+    await violates(
+      checkRow({ attemptId: otherAttempt }),
+      'attempt_item_checks_attempt_fkey',
+      '23503',
+    )
+    await violates(
+      checkRow({ questionVersionId: 'test-q-2', version: 2 }),
+      'attempt_item_checks_version_check',
+    )
+    const own = sql`attempt_item_checks.institution_id = ${institutionId}`
+    await rejectsImmutable(
+      db.execute(sql`update attempt_item_checks set check_number = 1 where ${own}`),
+      'attempt_item_checks',
+    )
+    await rejectsImmutable(
+      db.execute(sql`delete from attempt_item_checks where ${own}`),
+      'attempt_item_checks',
+    )
+    await rejectsImmutable(db.execute(sql`truncate attempt_item_checks`), 'attempt_item_checks')
+    await db.transaction(async (tx) => {
+      await tx.execute(sql`set local kampus.allow_immutable_purge = 'on'`)
+      await tx.execute(sql`delete from attempt_item_checks where ${own}`)
+    })
+    const [remaining] = await rows<{ n: number }>(
+      sql`select count(*)::int as n from attempt_item_checks where ${own}`,
     )
     assert.equal(remaining?.n, 0)
   })

@@ -130,11 +130,28 @@ Referans cihaz: orta seviye Android (4 GB RAM), release derlemesi.
 
 ### Ölçüm yöntemi
 
-| Alan  | Laboratuvar                                                                                                           | Sürekli                                                                                                          |
-| ----- | --------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Web   | `vite build` + `vite preview` üzerinde Lighthouse (giriş, panel, öğrenci listesi); Chrome DevTools Performans ile INP | CI'da paket boyutu kontrolü (gzip, bütçe aşımında kırmızı); saha ölçümü için `web-vitals` + kendi ucumuz (öneri) |
-| API   | Örnek ölçekli seed üzerinde `autocannon` yük testi (öneri), `EXPLAIN (ANALYZE, BUFFERS)`                              | pino `responseTime` alanından uç bazlı p95; 100 ms üstü sorgu logu                                               |
-| Mobil | `adb shell am start -W` ile `TotalTime` (5 ölçümün ortancası); Android Studio profiler / Perfetto ile kare süresi     | Her sürüm notunda (`docs/mobile-release.md`) açılış süresi ve APK boyutu                                         |
+| Alan  | Laboratuvar                                                                                                                               | Sürekli                                                                                                                                                                                                                                 |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web   | `vite build` + `vite preview` üzerinde Lighthouse (giriş, panel, öğrenci listesi; CI'da yalnız giriş); Chrome DevTools Performans ile INP | CI'da paket boyutu kontrolü (`pnpm size`, gzip, bütçe aşımında kırmızı) ve Lighthouse (`pnpm dlx @lhci/cli@0.15.1 autorun`; kök bağımlılık değildir, sürüm `checks.yml`'de sabit); saha ölçümü için `web-vitals` + kendi ucumuz (öneri) |
+| API   | Örnek ölçekli seed üzerinde `autocannon` yük testi (öneri), `EXPLAIN (ANALYZE, BUFFERS)`                                                  | pino `responseTime` alanından uç bazlı p95; 100 ms üstü sorgu logu                                                                                                                                                                      |
+| Mobil | `adb shell am start -W` ile `TotalTime` (5 ölçümün ortancası); Android Studio profiler / Perfetto ile kare süresi                         | Her sürüm notunda (`docs/mobile-release.md`) açılış süresi ve APK boyutu                                                                                                                                                                |
 
 - Ölçüm her zaman üretim derlemesinde yapılır; geliştirme sunucusu ölçümü sayılmaz.
 - Bütçeyi aşan değişiklik ya düzeltilir ya da commit gövdesinde ölçümle gerekçelendirilip bütçe bu belgede açıkça güncellenir.
+
+#### Web: CI'da paket bütçesi ve Lighthouse (OG-197)
+
+CI'daki `web-budget` işi sırasıyla React derlemesini, `pnpm size` ve `pnpm dlx @lhci/cli@0.15.1 autorun` komutlarını koşar. Yerelde aynısı:
+
+```bash
+pnpm --filter @kampus/web-react build
+pnpm size                                  # size-limit, gzip; bütçe aşımında çıkış kodu 1
+CHROME_PATH=<chrome yolu> pnpm dlx @lhci/cli@0.15.1 autorun   # vite preview 4174, 3 koşu, ortanca
+```
+
+- Paket bütçesi `.size-limit.json` içindedir (`size-limit` + `@size-limit/file`; gzip; 1 kB = 1000 bayt). Parça adları yalnız hash kısmıyla değişir, glob'lar bunu karşılar; yeni ağır tembel parça çıkarsa girdi eklenir.
+- Bütçeler: giriş JS (index + çalışma zamanı + `clsx`) ≤ 200 KB (ölçülen 150,7 KB); ilk yükleme CSS ≤ 50 KB (ölçülen 18,4 KB); kabuk rota parçası (`RoleShell`) ≤ 100 KB (ölçülen 34,9 KB). Tablodaki 200 KB "giriş + kabuk + ilk rota" bütçesinin tam toplamı şu an aşılıyor (giriş sayfası yolu ~208 KB, panel yolu ~299 KB gzip; `schemas`, `FormField` gibi ortak parçalar giriş sayfasına statik bağlı); düzeltilene kadar yalnız giriş parçaları ölçülür; giriş sayfasının ortak parçaları bölmek ayrı görevdir.
+- Belgede sayısı olmayan tembel parçalar için ölçümün ~%10 üstü kullanılır (3 Kasım 2026 ölçümü): grafik parçası (recharts) ≤ 85 KB (76,7), belge parçaları (`PdfPages` + `jspdf`) ≤ 290 KB (258,0). pdf.js işçisi (`pdf.worker`) ayrı dosyadır, ölçülmez.
+- Lighthouse yalnız giriş sayfasını (`/giris`) ölçer; diğer sayfalar oturum ve API ister, bu iş API kurmaz. Mobil profil, 3 koşunun ortanca koşusu (`lighthouserc.json`): erişilebilirlik < 0,9 işi **kırar** (`error`); performans < 0,8, en iyi uygulamalar < 0,9, LCP > 2,5 sn, CLS > 0,1 ve TBT > 200 ms yalnız **uyarır** (`warn`). İlk ölçümde erişilebilirlik 1,00, en iyi uygulamalar 0,93, performans ~0,80, LCP ~4,0 sn (uyarı; `vite preview` sıkıştırmasız sunar, sahadaki değer değildir).
+- Raporlar `web-budget-lighthouse` artifact'ı olarak 3 gün saklanır (`temporary-public-storage` kullanılmaz). Chrome runner'daki hazır sürümdür; yerelde yoksa `CHROME_PATH` ile Playwright Chromium verilir.
+- Bütçe aşımında: önce nedeni bul (`vite build` çıktısındaki parça listesi; gerekirse `rollup-plugin-visualizer`), ağır kütüphaneyi `import()` ile tembel yap ya da kaldır. Düzeltilemiyorsa commit gövdesinde ölçümle gerekçelendir ve `.size-limit.json` ile bu belgedeki sayıyı aynı committe güncelle. Lighthouse dalgalanıyorsa eşik gevşetilmez; üç koşunun ortancası ve raporu artifact'tan incelenir.

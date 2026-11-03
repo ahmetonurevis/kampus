@@ -2,11 +2,10 @@
 // seviye görünümü). Girdi API'nin kapsamlı okuma kayıtlarıdır; hiçbir sonuç saklanmaz, hepsi
 // kayıtlardan türetilir (ortalama ve net core işlevleriyle).
 import { average, dateLabel } from '@kampus/school-core/lib/format.ts'
-import { subjectAverages } from '@kampus/school-core/lib/grades.ts'
+import { subjectAverages, withSubjectNames } from '@kampus/school-core/lib/grades.ts'
 import { examNet } from '@kampus/school-core/lib/school-workflows.ts'
 import type { CoreRecord } from '@/hooks/use-core-collection.ts'
 import type { TrendPoint } from '../dashboard/dashboard-model.ts'
-import { withSubjectNames } from './academic-rows.ts'
 
 type Grade = CoreRecord<'grades'>
 type Quiz = Pick<CoreRecord<'quizzes'>, 'id' | 'subjectId'>

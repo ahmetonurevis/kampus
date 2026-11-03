@@ -57,6 +57,10 @@ export type PlatformWriteTargets = {
   'request.open': { studentId: string }
   'request.update': Record<string, never>
   'absence.notify': { studentId: string }
+  // Kayıt yoksa `undefined` (varlık işlemin işidir, 404); kapsam dışı bildirim de 404'tür.
+  'absence.attach': { studentId: string | undefined }
+  'absence.approve': { studentId: string | undefined }
+  'absence.reject': { studentId: string | undefined }
   // Randevu (`lib/appointments.ts`): talep hedef öğrenciyle; durum değişikliğinin kaydı ve
   // aktörün o kayıttaki rolü (öğretmen, talep eden) işlemde denetlenir.
   'appointment.book': { studentId: string }
@@ -171,6 +175,11 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   'request.update': ['yonetici', 'onburo'],
   // İzin ve mazereti veli bildirir (DOM-ILT-053); ön büro yoklama ve mazeret görmez (DOM-YTK-021).
   'absence.notify': ['veli'],
+  // Belgeyi bildiren veli ekler; özürlü sayılmayı idare (yönetici) onaylar ya da gerekçeyle
+  // reddeder. Sınıf rehber öğretmeni bildirimi okur, karar vermez (DOM-ILT-053).
+  'absence.attach': ['veli'],
+  'absence.approve': ['yonetici'],
+  'absence.reject': ['yonetici'],
   // Randevuyu veli bağlı çocuğu, öğrenci kendisi için talep eder; onay ve red ilgili
   // öğretmenindir, geri çekme talep edenindir (DOM-ILT-100, -102). Yönetici ve ön büro yazmaz.
   // TODO(randevu-yonetici-iptal): yöneticinin onaylı randevuyu iptal etmesi kural olarak yok.

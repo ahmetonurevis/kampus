@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import type { z } from 'zod'
 
 import {
+  PLACEMENT_ANSWER_SECTIONS,
   PLACEMENT_SECTIONS,
   placementEvidence,
   placementSectionLevel,
@@ -29,6 +30,7 @@ import {
   type CefrSuggestion,
   type LevelDecisionRow,
 } from '@kampus/school-core/cefr/suggestion.ts'
+import { decisionEvidence, levelTimeline } from '@kampus/school-core/cefr/timeline.ts'
 import { SKILLS, type PrimarySkill } from '@kampus/school-core/content/taxonomy.ts'
 import {
   coordinatorScopeOf,
@@ -42,6 +44,7 @@ import {
   findPlacementSession,
   insertLevelDecisions,
   insertPlacementSession,
+  levelDeciderNames,
   listLevelDecisions,
   listPlacementSessions,
   listSessionDecisions,
@@ -66,7 +69,7 @@ import {
   type CommandResponse,
   type IdempotencyRequest,
 } from './operation-runner.ts'
-import { auditWork, versionScoringContext, type ScoringContext } from './task-work.ts'
+import { auditWork, questionsFor, versionScoringContext, type ScoringContext } from './task-work.ts'
 
 /**
  * Seviye tespiti ve CEFR profili (OG-054; IST-058, IST-060; docs/domain/dil-okulu.md
@@ -96,6 +99,8 @@ async function institutionTypeOf(db: Database, ctx: ServiceContext) {
 type FormScoring = {
   /** Formun otomatik bölümleri: bölüm başına maddeler ve hedef seviye. */
   auto: Map<PlacementSection, Extract<PlacementSectionScoring, { mode: 'auto' }>>
+  /** Soru görünümü (`questionsFor`) için formun puanlama bağlamı. */
+  context: ScoringContext
 }
 
 /**
@@ -119,7 +124,7 @@ function formScoringOf(context: ScoringContext): FormScoring {
       ),
     })
   }
-  return { auto }
+  return { auto, context }
 }
 
 async function loadFormScoring(db: Database, ctx: ServiceContext, formVersionId: string) {
@@ -259,9 +264,9 @@ async function sessionView(db: Database, ctx: ServiceContext, session: StoredPla
  * Öğretmenin kursiyeri görmesi (IST-060): kursiyerin grubunu okuyabilmesi (kendi grubu ya da
  * akademik koordinatörü olduğu seviyenin grubu; core `canReadGroup`). Kapsam yalnız ETKİN grup
  * üyeliğiyle kurulur: dondurulan ya da gruptan ayrılan (arşivlenen) kursiyerin eski öğretmeni
- * profile ve tespitlere ulaşamaz (404).
+ * profile ve tespitlere ulaşamaz (404). Beceri ilerleme panosu da kullanır (DOM-BEC-035).
  */
-async function teacherReaches(
+export async function teacherReaches(
   db: Database,
   ctx: ServiceContext,
   studentId: string,
@@ -313,6 +318,39 @@ export async function getPlacementSession(ctx: ServiceContext, sessionId: string
   if (session === null) throw new NotFoundError()
   await assertLearnerReach(ctx.db, ctx, session)
   return sessionView(ctx.db, ctx, session)
+}
+
+/**
+ * Oturumun tespit formu (OG-078, IST-058): otomatik bölümlerin soruları, cevap girişi için.
+ * Bölümler `PLACEMENT_SECTIONS` sırasıyla, yalnız formda sorusu olanlar; soru gövdesi anahtarsızdır
+ * (doğru cevap ve açıklama gönderilmez). Seçenekler ve öğeler kursiyer görünümüyle aynı çekirdek
+ * karıştırmayla (`learnerView`) dizilir: sıralama öğeleri doğru sırada, eşleştirme seçenekleri
+ * öncülle hizalı görünmez. Tohum `oturumKimliği:soruSürümüKimliği`'dir, aynı oturum yeniden
+ * açılınca sıra değişmez. Kapsam oturum okumasıyla aynıdır: olmayan, başka kurumun ya da
+ * öğretmenin kapsamı dışındaki oturum 404.
+ */
+export async function getPlacementForm(ctx: ServiceContext, sessionId: string) {
+  const session = UUID.test(sessionId)
+    ? await findPlacementSession(ctx.db, ctx.institutionId, sessionId)
+    : null
+  if (session === null) throw new NotFoundError()
+  await assertLearnerReach(ctx.db, ctx, session)
+  const form = await loadFormScoring(ctx.db, ctx, session.formVersionId)
+  return {
+    sessionId: session.id,
+    formVersionId: session.formVersionId,
+    sections: PLACEMENT_ANSWER_SECTIONS.flatMap((section) => {
+      const scoring = form.auto.get(section)
+      if (scoring === undefined) return []
+      return [
+        {
+          section,
+          targetLevel: scoring.targetLevel,
+          items: questionsFor({ ...form.context, items: [...scoring.items] }, session.id),
+        },
+      ]
+    }),
+  }
 }
 
 /**
@@ -701,7 +739,9 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   const suggestion = suggestCefrLevels({ candidates, now: ctx.now })
   const decisions = await listLevelDecisions(ctx.db, ctx.institutionId, learner)
   const view = cefrProfileView({ institutionType: 'language_school', suggestion, decisions })
-  const timeline = (view.decisions?.history ?? []).map(decisionView)
+  // Çizelge core `levelTimeline` ile: en yeniden eskiye, aynı becerinin önceki kararına göre
+  // değişim (OG-079). Sıra `view.decisions.history` ile aynıdır.
+  const timeline = levelTimeline(decisions)
   const shared = {
     studentId,
     title: view.title,
@@ -737,6 +777,8 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
   }
   // Öğrenci ve veli kararın gerekçesini (öğretmenin serbest metni) ve vereni görmez (Sabah kararı
   // 35); alan kapsamı role özgü yanıt şemasıyla da kapanır.
+  // Kanıt özeti de yalnız personeldedir (OG-079 güvenli taraf; Sabah kararı önerisi): öğrenci ve
+  // veli çizelgede seviye, tür, an ve önceki seviyeyi görür.
   if (ctx.actor.role === 'ogrenci' || ctx.actor.role === 'veli') {
     return {
       view: 'learner' as const,
@@ -748,8 +790,25 @@ export async function getCefrProfile(ctx: ServiceContext, studentId: string) {
         level: d.level,
         decidedAt: d.decidedAt,
         placementSessionId: d.placementSessionId,
+        previousLevel: d.previousLevel,
+        change: d.change,
       })),
     }
   }
-  return { view: 'staff' as const, ...shared, timeline }
+  const names = await levelDeciderNames(
+    ctx.db,
+    ctx.institutionId,
+    timeline.map((d) => d.decidedByUserId),
+  )
+  return {
+    view: 'staff' as const,
+    ...shared,
+    timeline: timeline.map((d) => ({
+      ...decisionView(d),
+      decidedByName: names.get(d.decidedByUserId) ?? null,
+      previousLevel: d.previousLevel,
+      change: d.change,
+      evidence: decisionEvidence(d),
+    })),
+  }
 }

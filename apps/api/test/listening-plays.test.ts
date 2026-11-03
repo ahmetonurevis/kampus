@@ -2,23 +2,17 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
-import { eq } from 'drizzle-orm'
-
-import type { ResourceVersionInput } from '@kampus/school-core/content/resource.ts'
+import { and, eq, sql } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { files } from '../src/db/schema/files.ts'
-import { resourceVersionFiles } from '../src/db/schema/resources.ts'
+import { records } from '../src/db/schema/records.ts'
 import { attemptMediaPlays, taskAssignments } from '../src/db/schema/skills.ts'
 import { insertMediaPlay } from '../src/db/skills.ts'
 import { AppError } from '../src/errors.ts'
-import {
-  listeningWindowMs,
-  planListeningPlay,
-  RESOURCE_VERSION_ATTACHMENT,
-} from '../src/services/listening-plays.ts'
+import { listeningWindowMs, planListeningPlay } from '../src/services/listening-plays.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -29,19 +23,21 @@ import {
   TEST_ORIGIN,
 } from './support/app.ts'
 import { tempStorage } from './support/files-sample.ts'
+import {
+  linkVersionFile,
+  listeningAudio,
+  listeningQuiz,
+  seedListeningActivity,
+} from './support/listening-sample.ts'
 import { seedResource } from './support/resources-sample.ts'
 
 /**
- * Altyapı birimi: dinleme hakkı sayımı (OG-049; IST-045; ADR 0003 karar 6, ADR 0004 karar 6;
+ * Dinleme hakkı sayımı (OG-049, OG-052; IST-045; ADR 0003 karar 6, ADR 0004 karar 6;
  * DOM-BEC-005). Hak `GET /files/:fileId/url` ile verilen imzalı bağlantıda, öğrencinin süren
- * denemesinde sayılır.
- *
- * Bu testler gerçek akışı iddia etmez: sayılacak şekil bugün core ve API'yle kurulamaz. Core içerik
- * modeli dinleme kaydını atanabilen türlere bağlamaz ve API 1 veya 2 hakkı 422
- * `listening_plays_unavailable` ile reddeder (gerçek akış `task-assignments.test.ts`'tedir). Burada
- * şekil elle kurulur: dosya satırı ve sürüm bağı soru sürümüne doğrudan yazılır (okuma kuralı
- * kaynağınkidir; sürüm 9-A'ya paylaşılır, DOM-KYN-006) ve atamanın hakkı veritabanında verilir.
- * TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türe bağlayınca testler gerçek akışa geçer.
+ * denemesinde sayılır. Gerçek akış: ses sürümü ve `listening_audio` dosyası, dinleme sorusu ve
+ * kaydı `listeningVersionId` ile bağlayan quiz yayında; öğretmen quiz'i API ile atar (hak core
+ * varsayılanıyla 2 ya da seçilen 1/sınırsız), öğrenci API ile başlatır. Ses ve soru öğretmende
+ * özeldir: öğrenci kaydı quiz'in atamasıyla açar (`services/resource-files.ts`).
  */
 
 type Json = ReturnType<typeof JSON.parse>
@@ -50,30 +46,6 @@ const DUE = '2026-10-20T20:59:00.000Z'
 /** Süresi ölçülmemiş kaydın penceresi: 15 dk kayıt üst sınırı + 60 sn. */
 const WINDOW = listeningWindowMs(null)
 const AFTER_DUE = Date.parse(DUE) - FIXED_NOW.getTime() + 60_000
-
-const listeningQuestion = (): Partial<ResourceVersionInput> => ({
-  title: 'Dinleme sorusu',
-  content: {
-    type: 'question',
-    question: {
-      questionType: 'multiple_choice',
-      stem: 'What does Tom do on Sundays?',
-      options: [
-        { id: 'a', text: 'He swims.' },
-        { id: 'b', text: 'He reads.' },
-        { id: 'c', text: 'He cooks.' },
-        { id: 'd', text: 'He sleeps.' },
-      ],
-    },
-  },
-  answerKey: {
-    questionType: 'multiple_choice',
-    correctOptionId: 'b',
-    explanation: 'Pazar günleri okur.',
-  },
-  license: { kind: 'institution_original' },
-  tags: { subjectId: 'ingilizce', gradeLevels: [9], primarySkill: 'listening', cefrLevel: 'A2' },
-})
 
 describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
   let db: Database
@@ -98,7 +70,7 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     now = new Date(FIXED_NOW.getTime() + offsetMs)
   }
 
-  /** Deniz (`s-1`) 9-A'da, öğretmeni `t-eng`; veli Deniz'in velisi. Dinleme sorusu yayında. */
+  /** Deniz (`s-1`) 9-A'da, öğretmeni `t-eng`; veli Deniz'in velisi. Dinleme etkinliği yayında. */
   async function tenant() {
     now = FIXED_NOW
     const institution = await createInstitution(app)
@@ -109,7 +81,7 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
         {
           collection: 'teachers',
           id: 't-eng',
-          data: { id: 't-eng', name: 'Selin Kaya', subjectId: 'ingilizce', branchId: 'b-1' },
+          data: { id: 't-eng', name: 'Selin Kaya', subjectId: 'english', branchId: 'b-1' },
         },
         {
           collection: 'classes',
@@ -124,7 +96,7 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
         {
           collection: 'assignments',
           id: 'as-1',
-          data: { id: 'as-1', classId: '9-A', teacherId: 't-eng', subjectId: 'ingilizce' },
+          data: { id: 'as-1', classId: '9-A', teacherId: 't-eng', subjectId: 'english' },
         },
       ],
       FIXED_NOW,
@@ -138,40 +110,10 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
       student: await signInAs(app, await member('ogrenci', 'student', 's-1')),
       parent: await signInAs(app, await member('veli', 'child', 's-1')),
     }
-    const { versions } = await seedResource(db, institution.id, {
-      ownerUserId: teacher.id,
-      // Dosyanın okuma kuralı kaynağınkidir (DOM-KYN-006): 9-A'ya paylaşılan sürümü öğrenci okur.
-      shareScope: 'classes',
-      sharedClassIds: ['9-A'],
-      versions: [{ status: 'published', input: listeningQuestion() }],
-    })
-    const versionId = versions[0]!.id
-    const fileId = randomUUID()
-    await db.insert(files).values({
-      institutionId: institution.id,
-      id: fileId,
-      purpose: 'listening_audio',
-      status: 'ready',
-      storageKey: `${institution.id}/listening_audio/2026/10/${fileId}`,
-      contentType: 'audio/mpeg',
-      byteSize: 2048,
-      sha256: 'b'.repeat(64),
-      uploadedByUserId: teacher.id,
-      attachedType: RESOURCE_VERSION_ATTACHMENT,
-      attachedId: versionId,
-      attachedAt: FIXED_NOW,
-      createdAt: FIXED_NOW,
-      updatedAt: FIXED_NOW,
-    })
-    await db.insert(resourceVersionFiles).values({
-      institutionId: institution.id,
-      versionId,
-      fileId,
-      position: 0,
-      createdAt: FIXED_NOW,
-      updatedAt: FIXED_NOW,
-    })
-    return { institution, cookies, versionId, fileId }
+    const activity = await seedListeningActivity(db, institution.id, { ownerUserId: teacher.id })
+    const { fileId } = activity
+    const versionId = activity.quiz.versionId
+    return { institution, cookies, teacherId: teacher.id, activity, versionId, fileId }
   }
   type Tenant = Awaited<ReturnType<typeof tenant>>
 
@@ -198,31 +140,61 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     return response.json() as Json
   }
 
-  /**
-   * API ataması dinleme hakkını sınırsız saklar (dolu hak 422); sınırlı hak altyapı birimi için
-   * veritabanında verilir.
-   */
-  async function assign(t: Tenant, listeningPlays: 1 | 2 | null = 2) {
+  /** Quiz'i 9-A'ya atar; hak gönderilmezse core varsayılanı (2) sabitlenir. */
+  async function assign(t: Tenant, listeningPlays?: 1 | 2 | null, versionId = t.versionId) {
     const data = await ok(
       await call('POST', '/task-assignments', t.cookies.teacher, {
-        resourceVersionId: t.versionId,
-        settings: { deadline: { dueAt: DUE } },
+        resourceVersionId: versionId,
+        settings: {
+          deadline: { dueAt: DUE },
+          ...(listeningPlays === undefined ? {} : { listeningPlays }),
+        },
         targets: [{ kind: 'class', id: '9-A' }],
       }),
       201,
     )
-    assert.equal(data.listeningPlays, null)
-    if (listeningPlays !== null)
-      await db
-        .update(taskAssignments)
-        .set({ listeningPlays })
-        .where(eq(taskAssignments.id, data.id as string))
+    assert.equal(data.listeningPlays, listeningPlays === undefined ? 2 : listeningPlays)
     return data.id as string
   }
   const start = async (t: Tenant, assignmentId: string) =>
     ok(await call('POST', `/task-assignments/${assignmentId}/attempts`, t.cookies.student, {}), 201)
-  const url = (t: Tenant, cookie: string, fileId = t.fileId) =>
-    call('GET', `/files/${fileId}/url`, cookie)
+  const url = (t: Tenant, cookie: string, fileId = t.fileId, attemptId?: string) =>
+    call(
+      'GET',
+      `/files/${fileId}/url${attemptId === undefined ? '' : `?attemptId=${attemptId}`}`,
+      cookie,
+    )
+  const submit = async (t: Tenant, attempt: { id: string; rowVersion: number }) => {
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/task-attempts/${attempt.id}/submit`,
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie: t.cookies.student,
+        'content-type': 'application/json',
+        'idempotency-key': randomUUID(),
+        'if-match': `"${attempt.rowVersion}"`,
+      },
+      payload: JSON.stringify({}),
+    })
+    assert.equal(response.statusCode, 200, response.body)
+  }
+  /** Aynı ses sürümünü dinleme kaydı olarak bağlayan ikinci quiz (değerlendirme). */
+  async function secondQuiz(
+    t: Tenant,
+    listeningVersionId: string | null = t.activity.audio.versionId,
+  ) {
+    const quiz = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      versions: [
+        {
+          status: 'published',
+          input: listeningQuiz(t.activity.questionVersionId, listeningVersionId),
+        },
+      ],
+    })
+    return quiz.versions[0]!.id
+  }
   const playsOf = async (institutionId: string) =>
     db
       .select({ attemptId: attemptMediaPlays.attemptId, playNumber: attemptMediaPlays.playNumber })
@@ -239,7 +211,7 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
       media: [{ fileId: t.fileId, used: 0, remaining: 2 }],
     })
 
-    const first = await ok(await url(t, t.cookies.student))
+    const first = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.deepEqual(first.listening, {
       attemptId: attempt.id,
       limit: 2,
@@ -252,22 +224,29 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
 
     // Sayfa yenileme: pencere içinde yeni bağlantı sayılmaz, bitiş ilk sayımın bitişidir.
     at(WINDOW - 1000)
-    const replay = await ok(await url(t, t.cookies.student))
+    const replay = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.equal(replay.listening.counted, false)
     assert.equal(replay.listening.used, 1)
     assert.equal(replay.expiresAt, expiresAt)
     assert.equal((await playsOf(t.institution.id)).length, 1)
 
     at(WINDOW)
-    const second = await ok(await url(t, t.cookies.student))
+    const second = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.deepEqual([second.listening.used, second.listening.remaining], [2, 0])
     assert.equal(second.listening.counted, true)
 
     // Son dinlemenin penceresinde yeniden bağlantı hâlâ verilir, sonra hak biter.
     at(2 * WINDOW - 1)
-    assert.equal((await ok(await url(t, t.cookies.student))).listening.counted, false)
+    assert.equal(
+      (await ok(await url(t, t.cookies.student, t.fileId, attempt.id))).listening.counted,
+      false,
+    )
     at(2 * WINDOW)
-    const exhausted = fails(await url(t, t.cookies.student), 422, 'listening_plays_exhausted')
+    const exhausted = fails(
+      await url(t, t.cookies.student, t.fileId, attempt.id),
+      422,
+      'listening_plays_exhausted',
+    )
     assert.match(exhausted.message, /dinleme hakkı doldu/)
     assert.deepEqual(await playsOf(t.institution.id), [
       { attemptId: attempt.id, playNumber: 1 },
@@ -293,13 +272,19 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     const t = await tenant()
     const assignmentId = await assign(t, 1)
     const attempt = await start(t, assignmentId)
-    const responses = await Promise.all([url(t, t.cookies.student), url(t, t.cookies.student)])
+    const responses = await Promise.all([
+      url(t, t.cookies.student, t.fileId, attempt.id),
+      url(t, t.cookies.student, t.fileId, attempt.id),
+    ])
     const bodies = await Promise.all(responses.map((response) => ok(response)))
     assert.deepEqual(bodies.map((body) => body.listening.counted).sort(), [false, true])
     assert.equal(bodies[0].expiresAt, bodies[1].expiresAt)
     assert.equal((await playsOf(t.institution.id)).length, 1)
     at(WINDOW)
-    const late = await Promise.all([url(t, t.cookies.student), url(t, t.cookies.student)])
+    const late = await Promise.all([
+      url(t, t.cookies.student, t.fileId, attempt.id),
+      url(t, t.cookies.student, t.fileId, attempt.id),
+    ])
     for (const response of late) fails(response, 422, 'listening_plays_exhausted')
     assert.equal((await playsOf(t.institution.id)).length, 1)
 
@@ -360,19 +345,147 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     assert.equal(detail.listening, null)
 
     const attempt = await start(t, limited)
-    const counted = await ok(await url(t, t.cookies.student))
+    const counted = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.equal(counted.listening.attemptId, attempt.id)
     assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: attempt.id, playNumber: 1 }])
   })
 
-  test('DOM-BEC-005 (OG-049): dinleme kaydı olmayan sınırlı atamanın deneme özeti null; uygulanmayan sınır gösterilmez', async () => {
+  test('IST-045, DOM-BEC-005 (Sabah kararı 56): sınırsız A ve sınırlı B aynı kaydı bağlar; B sürerken A sonucundan deneme kimliksiz istek 422 listening_attempt_running, sayım yazılmaz; kapanmış A kimliği 422 listening_attempt_closed; personel ve veli etkilenmez', async () => {
     const t = await tenant()
+    const unlimited = await assign(t, null)
+    const finished = await start(t, unlimited)
+    await submit(t, finished)
+    const limited = await start(t, await assign(t, 2, await secondQuiz(t)))
+
+    const running = fails(await url(t, t.cookies.student), 422, 'listening_attempt_running')
+    assert.match(running.message, /o denemenin ekranından/)
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    // Kapanmış A denemesinin kimliği de sayım yazmaz: deneme sona ermiştir.
+    fails(await url(t, t.cookies.student, t.fileId, finished.id), 422, 'listening_attempt_closed')
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    const detail = await ok(await call('GET', `/task-attempts/${limited.id}`, t.cookies.student))
+    assert.deepEqual(detail.listening.media, [{ fileId: t.fileId, used: 0, remaining: 2 }])
+
+    // Personel ve veli etkilenmez: bağlantı sayılmadan verilir.
+    for (const cookie of [t.cookies.teacher, t.cookies.admin, t.cookies.parent])
+      assert.equal((await ok(await url(t, cookie))).listening, null)
+    assert.deepEqual(await playsOf(t.institution.id), [])
+
+    // B'nin kendi ekranı kimliği gönderir; hak yalnız oradan düşer.
+    const counted = await ok(await url(t, t.cookies.student, t.fileId, limited.id))
+    assert.equal(counted.listening.attemptId, limited.id)
+    assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: limited.id, playNumber: 1 }])
+  })
+
+  test('IST-045, DOM-BEC-005 (Sabah kararı 56, OG-998): sınırsız A ve sınırlı B aynı kaydı bağlar ve ikisi de sürer; kimliksiz istek 422 listening_attempt_running, sayım yazılmaz', async () => {
+    const t = await tenant()
+    const unlimited = await start(t, await assign(t, null))
+    const limited = await start(t, await assign(t, 2, await secondQuiz(t)))
+
+    // Sınırsız A'nın süren denemesi sınırlı B'nin sınırını atlatmaz.
+    fails(await url(t, t.cookies.student), 422, 'listening_attempt_running')
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    // A'nın kendi ekranı kimliği gönderir: sınırsızdır, sayılmadan açılır.
+    assert.equal(
+      (await ok(await url(t, t.cookies.student, t.fileId, unlimited.id))).listening,
+      null,
+    )
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    const detail = await ok(await call('GET', `/task-attempts/${limited.id}`, t.cookies.student))
+    assert.deepEqual(detail.listening.media, [{ fileId: t.fileId, used: 0, remaining: 2 }])
+  })
+
+  test('IST-045, DOM-BEC-005 (Sabah kararı 56): aynı görevin ikinci denemesi sürerken ilk denemenin sonucundan kimliksiz istek 422 listening_attempt_running; sayım yazılmaz', async () => {
+    const t = await tenant()
+    const practice = await ok(
+      await call('POST', '/task-assignments', t.cookies.teacher, {
+        resourceVersionId: t.versionId,
+        settings: { attempts: { kind: 'practice' }, deadline: { dueAt: DUE }, listeningPlays: 1 },
+        targets: [{ kind: 'class', id: '9-A' }],
+      }),
+      201,
+    )
+    const first = await start(t, practice.id as string)
+    await ok(await url(t, t.cookies.student, t.fileId, first.id))
+    await submit(t, first)
+    const second = await start(t, practice.id as string)
+    at(WINDOW)
+    fails(await url(t, t.cookies.student), 422, 'listening_attempt_running')
+    assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: first.id, playNumber: 1 }])
+    const detail = await ok(await call('GET', `/task-attempts/${second.id}`, t.cookies.student))
+    assert.deepEqual(detail.listening.media, [{ fileId: t.fileId, used: 0, remaining: 1 }])
+  })
+
+  test('IST-045, DOM-BEC-005 (OG-998): sınıf değiştiren öğrencinin eski sınırlı atamadaki süren denemesi karara katılmaz; kimliksiz istek yeni sınıfın sınırsız atamasıyla sayılmadan açılır, eski deneme kimliği 404', async () => {
+    const t = await tenant()
+    const old = await start(t, await assign(t, 2))
+    await insertMissingRecords(
+      db,
+      t.institution.id,
+      [
+        {
+          collection: 'classes',
+          id: '9-B',
+          data: { id: '9-B', grade: 9, level: '9', branchId: 'b-1', teacherId: 't-eng' },
+        },
+      ],
+      FIXED_NOW,
+    )
     await db
-      .update(files)
-      .set({ attachedType: null, attachedId: null, attachedAt: null })
-      .where(eq(files.id, t.fileId))
-    const attempt = await start(t, await assign(t, 2))
-    assert.equal(attempt.listening, null)
+      .update(records)
+      .set({
+        data: sql`jsonb_set(${records.data}, '{classId}', '"9-B"')`,
+        version: sql`${records.version} + 1`,
+      })
+      .where(
+        and(
+          eq(records.institutionId, t.institution.id),
+          eq(records.collection, 'students'),
+          eq(records.id, 's-1'),
+        ),
+      )
+    // Yeni sınıfa aynı kaydı bağlayan sınırsız görev: öğrenci kaydı bu atamayla okur.
+    await ok(
+      await call('POST', '/task-assignments', t.cookies.admin, {
+        resourceVersionId: await secondQuiz(t),
+        settings: { deadline: { dueAt: DUE }, listeningPlays: null },
+        targets: [{ kind: 'class', id: '9-B' }],
+      }),
+      201,
+    )
+
+    assert.equal((await ok(await url(t, t.cookies.student))).listening, null)
+    fails(await url(t, t.cookies.student, t.fileId, old.id), 404, 'not_found')
+    assert.deepEqual(await playsOf(t.institution.id), [])
+  })
+
+  test('IST-045, DOM-KYN-006 (OG-052): kaydın yeni sürümü ya da kopyası aynı dosyayı taşır; ona bağlı etkinlikte hak yine sayılır', async () => {
+    const t = await tenant()
+    // Dosyanın ilk bağı ilk ses sürümündedir; ikinci ses sürümü dosyayı bağ tablosuyla taşır.
+    const copy = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      versions: [{ status: 'published', input: listeningAudio(t.fileId) }],
+    })
+    const copyVersionId = copy.versions[0]!.id
+    await linkVersionFile(db, t.institution.id, copyVersionId, t.fileId)
+    const quiz = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      versions: [
+        {
+          status: 'published',
+          input: listeningQuiz(t.activity.questionVersionId, copyVersionId),
+        },
+      ],
+    })
+    const attempt = await start(t, await assign(t, 1, quiz.versions[0]!.id))
+    assert.deepEqual(attempt.listening, {
+      limit: 1,
+      media: [{ fileId: t.fileId, used: 0, remaining: 1 }],
+    })
+    const counted = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
+    assert.equal(counted.listening.attemptId, attempt.id)
+    assert.equal(counted.listening.remaining, 0)
+    assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: attempt.id, playNumber: 1 }])
   })
 
   test('DOM-BEC-005 (OG-049): dinleme bağlantısı ve penceresi kayıt süresi + 60 sn, en az 5 dk; süre yoksa 15 dk + 60 sn', async () => {
@@ -394,14 +507,17 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     const measured = await ok(await url(t, t.cookies.teacher))
     assert.equal(measured.expiresAt, new Date(FIXED_NOW.getTime() + 11 * 60_000).toISOString())
 
-    await start(t, await assign(t, 1))
-    const first = await ok(await url(t, t.cookies.student))
+    const attempt = await start(t, await assign(t, 1))
+    const first = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.equal(first.listening.counted, true)
     assert.equal(first.expiresAt, measured.expiresAt)
     at(11 * 60_000 - 1)
-    assert.equal((await ok(await url(t, t.cookies.student))).listening.counted, false)
+    assert.equal(
+      (await ok(await url(t, t.cookies.student, t.fileId, attempt.id))).listening.counted,
+      false,
+    )
     at(11 * 60_000)
-    fails(await url(t, t.cookies.student), 422, 'listening_plays_exhausted')
+    fails(await url(t, t.cookies.student, t.fileId, attempt.id), 422, 'listening_plays_exhausted')
   })
 
   test('IST-045: süren deneme yokken açık görevde 422 listening_attempt_required; teslim edilmiş deneme sayılmaz; teslim kapanınca bağlantı sayılmadan verilir', async () => {
@@ -409,7 +525,8 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     const assignmentId = await assign(t)
     fails(await url(t, t.cookies.student), 422, 'listening_attempt_required')
     const attempt = await start(t, assignmentId)
-    await ok(await url(t, t.cookies.student))
+    fails(await url(t, t.cookies.student), 422, 'listening_attempt_running')
+    await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     const submitted = await app.inject({
       method: 'POST',
       url: `/api/v1/task-attempts/${attempt.id}/submit`,
@@ -453,8 +570,115 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     assert.deepEqual(await playsOf(t.institution.id), [])
     assert.deepEqual(await playsOf(other.institution.id), [])
     // Kendi kurumunda sayım kendi denemesine düşer.
-    const own = await ok(await url(other, other.cookies.student))
+    const own = await ok(await url(other, other.cookies.student, other.fileId, otherAttempt.id))
     assert.equal(own.listening.attemptId, otherAttempt.id)
+  })
+
+  test('IST-045, DOM-BEC-005 (Sabah kararı 54): attemptId verilince hak o denemeden düşer; aynı sesi bağlayan önceki alıştırma denemesi etkilenmez', async () => {
+    const t = await tenant()
+    // Alıştırma denemesi dünden açık; aynı sesi bağlayan değerlendirme bugün başlar.
+    const practice = await start(t, await assign(t, 2))
+    at(24 * 60 * 60_000)
+    const assessment = await start(t, await assign(t, 2, await secondQuiz(t)))
+
+    const first = await ok(await url(t, t.cookies.student, t.fileId, assessment.id))
+    assert.deepEqual(first.listening, {
+      attemptId: assessment.id,
+      limit: 2,
+      used: 1,
+      remaining: 1,
+      counted: true,
+    })
+    at(24 * 60 * 60_000 + WINDOW)
+    const second = await ok(await url(t, t.cookies.student, t.fileId, assessment.id))
+    assert.deepEqual([second.listening.used, second.listening.remaining], [2, 0])
+    at(24 * 60 * 60_000 + 2 * WINDOW)
+    fails(
+      await url(t, t.cookies.student, t.fileId, assessment.id),
+      422,
+      'listening_plays_exhausted',
+    )
+
+    const detail = (attemptId: string) =>
+      call('GET', `/task-attempts/${attemptId}`, t.cookies.student)
+    assert.deepEqual((await ok(await detail(assessment.id))).listening.media, [
+      { fileId: t.fileId, used: 2, remaining: 0 },
+    ])
+    assert.deepEqual((await ok(await detail(practice.id))).listening.media, [
+      { fileId: t.fileId, used: 0, remaining: 2 },
+    ])
+    // Kimlik verilmezse hak hiç sayılmaz; süren sınırlı deneme varken bağlantı da verilmez
+    // (Sabah kararı 56): önceki alıştırma denemesinin hakkı yanmaz.
+    fails(await url(t, t.cookies.student), 422, 'listening_attempt_running')
+    const plays = await playsOf(t.institution.id)
+    const numbersOf = (attemptId: string) =>
+      plays.filter((play) => play.attemptId === attemptId).map((play) => play.playNumber)
+    assert.deepEqual(numbersOf(assessment.id), [1, 2])
+    assert.deepEqual(numbersOf(practice.id), [])
+  })
+
+  test('IST-002, IST-045 (Sabah kararı 54): yabancı deneme 404, kaydı bağlamayan deneme 422 listening_attempt_mismatch, kapanmış deneme 422 listening_attempt_closed; sayım yazılmaz; personel ve velide attemptId sayılmaz', async () => {
+    const t = await tenant()
+    const own = await start(t, await assign(t, 2))
+    // Aynı sınıftaki başka öğrencinin denemesi.
+    await insertMissingRecords(
+      db,
+      t.institution.id,
+      [
+        {
+          collection: 'students',
+          id: 's-2',
+          data: { id: 's-2', name: 'Ece Yılmaz', classId: '9-A', isActive: true },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const classmate = await signInAs(
+      app,
+      await createMember(app, t.institution.id, 'ogrenci', [
+        { kind: 'student', recordId: 's-2' } as never,
+      ]),
+    )
+    const assessmentId = await assign(t, 2, await secondQuiz(t))
+    const foreign = await ok(
+      await call('POST', `/task-assignments/${assessmentId}/attempts`, classmate, {}),
+      201,
+    )
+    const other = await tenant()
+    const otherAttempt = await start(other, await assign(other))
+    for (const attemptId of [foreign.id, otherAttempt.id, randomUUID()])
+      fails(await url(t, t.cookies.student, t.fileId, attemptId), 404, 'not_found')
+    assert.equal(
+      (await call('GET', `/files/${t.fileId}/url?attemptId=yok`, t.cookies.student)).statusCode,
+      400,
+    )
+
+    // Kaydı bağlamayan görevin denemesi: bu dosya o denemenin dinleme kaydı değildir.
+    const silent = await start(t, await assign(t, null, await secondQuiz(t, null)))
+    const mismatch = fails(
+      await url(t, t.cookies.student, t.fileId, silent.id),
+      422,
+      'listening_attempt_mismatch',
+    )
+    assert.match(mismatch.message, /bu göreve ait değil/)
+
+    // Personel ve veli deneme kimliği gönderse de sayılmaz.
+    for (const cookie of [t.cookies.teacher, t.cookies.admin, t.cookies.parent])
+      assert.equal((await ok(await url(t, cookie, t.fileId, own.id))).listening, null)
+    assert.deepEqual(await playsOf(t.institution.id), [])
+
+    // Teslim edilen deneme kapanmıştır; teslim penceresi kapandıktan sonra da sayılmaz.
+    await submit(t, own)
+    const closed = fails(
+      await url(t, t.cookies.student, t.fileId, own.id),
+      422,
+      'listening_attempt_closed',
+    )
+    assert.match(closed.message, /deneme sona erdi/)
+    at(AFTER_DUE)
+    fails(await url(t, t.cookies.student, t.fileId, own.id), 422, 'listening_attempt_closed')
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    assert.deepEqual(await playsOf(other.institution.id), [])
   })
 
   test('DOM-BEC-005: yeniden bağlantı penceresi son sayılan dinlemenin bağlantı ömrüdür (saf karar)', () => {

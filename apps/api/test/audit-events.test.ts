@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import { ROLES, type Role } from '../src/auth.ts'
@@ -60,7 +60,14 @@ describe('GET /api/v1/audit-events (DOM-YTK-053)', () => {
     const institution = await createInstitution(app)
     const cookie = await signInAs(app, institution.admin)
     // Giriş kendi `auth.login_succeeded` kaydını yazar; testler yalnız kendi kayıtlarını sayar.
-    await db.delete(auditLog).where(eq(auditLog.institutionId, institution.id))
+    // `audit_log` yalnız eklenir (migration 0043, OG-200); yalnız bu fikstür temizliği için tetikleyici
+    // dosyanın kendi veritabanında bir an kapatılır (uygulama koduna istisna açılmaz).
+    await db.execute(sql`alter table audit_log disable trigger audit_log_immutable_trigger`)
+    try {
+      await db.delete(auditLog).where(eq(auditLog.institutionId, institution.id))
+    } finally {
+      await db.execute(sql`alter table audit_log enable trigger audit_log_immutable_trigger`)
+    }
     return { institution, cookie }
   }
 

@@ -5,6 +5,7 @@ import { createKampusClient } from '@kampus/api-client/client.ts'
 import { ApiError } from '@kampus/api-client/errors.ts'
 
 import { runRequest } from '../src/api-result.ts'
+import type { QuizAttempt } from '../src/quizzes.ts'
 import {
   commandFeedback,
   commandHeaders,
@@ -301,7 +302,7 @@ describe('quiz istekleri (IST-095)', () => {
         attempt(),
         attempt({ id: 'a2', studentId: 's2', result: { score: 100, correctCount: 3, total: 3 } }),
       ],
-    } as Parameters<typeof attemptOf>[0]
+    } as { attempts: QuizAttempt[] }
     assert.equal(attemptOf(item, 's2')?.result?.score, 100)
     assert.equal(attemptOf(item, 's1')?.result?.score, 67)
     assert.equal(attemptOf(item, 's9'), undefined)

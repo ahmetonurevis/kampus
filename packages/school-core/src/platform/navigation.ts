@@ -89,6 +89,7 @@ export const API_COMMUNICATION_PAGES: Record<Role, readonly NavigationPage[]> = 
 
 // İçerik havuzu (ADR 0004, docs/domain/kaynak-platformu.md): yalnız içerik personeli (yönetici,
 // öğretmen; DOM-YTK-021). Öğrenci ve veli içeriği paylaşım ve atamayla görür, ön büro görmez.
+// Sayfa kendi kategorisinin (`group`) sonuna girer.
 // Vue demosunun karşılığı yoktur; mobil API menüsü yalnız taşıdığı sayfaları gösterir.
 const contentPoolPage = (description: string): NavigationPage => ({
   path: 'icerik-havuzu',
@@ -101,16 +102,61 @@ const contentPoolPage = (description: string): NavigationPage => ({
   apiOnly: true,
 })
 
+// Rubrik kütüphanesi (OG-083; IST-048, DOM-BEC-020, DOM-BEC-022): kurumun ortak rubrikleri tek
+// listede; aynı rubrik birçok görevde kullanılır, bu yüzden tek göreve bağlı Ödevler sekmesi değil
+// içerik havuzunun yanında ayrı sayfadır. Uçlar yalnız içerik personeline (yönetici, öğretmen;
+// koordinatör öğretmen rolündedir) açıktır; modül `learning` kapalıysa menüden ve rotadan kalkar.
+const rubricLibraryPage = (description: string): NavigationPage => ({
+  path: 'rubrik-kutuphanesi',
+  title: 'Rubrik Kütüphanesi',
+  icon: 'Table2',
+  module: 'learning',
+  view: 'RubricLibrary',
+  description,
+  group: 'ÖĞRENME',
+  apiOnly: true,
+})
+
 export const API_LEARNING_PAGES: Record<Role, readonly NavigationPage[]> = {
   yonetici: [
     contentPoolPage('Kurumun okuma parçası ve soru havuzunu inceleyin, onaylayın ve yönetin.'),
+    // Beceri görevleri (OG-993; DOM-YTK-028): öğretmenin "Ödevler & Değerlendirme" sayfasındaki
+    // Görevler sekmesinin yönetici karşılığı. Yönetici kurumun bütün atamalarını okur ve atar;
+    // adres öğretmendekiyle aynı adı taşır (`/yonetici/odevler`), modül aynıdır (`learning`).
+    {
+      path: 'odevler',
+      title: 'Beceri Görevleri',
+      icon: 'ListChecks',
+      module: 'learning',
+      view: 'Learning',
+      description:
+        'Kurumun beceri görevlerini izleyin, sınıflara görev atayın ve teslimleri görün.',
+      group: 'ÖĞRENME',
+      apiOnly: true,
+    },
+    rubricLibraryPage('Kurumun yazma ve konuşma rubriklerini inceleyin, yayımlayın ve arşivleyin.'),
   ],
   onburo: [],
   ogretmen: [
     contentPoolPage('Okuma parçası ve soru hazırlayın, onaya gönderin, yayındaki içeriği izleyin.'),
+    rubricLibraryPage('Yazma ve konuşma rubriklerini hazırlayın, yayımlayın ve yeni sürüm açın.'),
   ],
   ogrenci: [],
-  veli: [],
+  // Veli Materyaller (OG-982; DOM-KYN-041): öğrencinin "Paylaşılan dosyalar" sekmesinin karşılığı,
+  // seçili çocuğa paylaşılan yayındaki materyal dosyaları salt okunur. Modül öğrencinin
+  // Materyaller sayfasıyla aynıdır (`learning`); kapalıysa menüden ve rotadan kalkar.
+  veli: [
+    {
+      path: 'materyaller',
+      title: 'Materyaller',
+      icon: 'FolderOpen',
+      module: 'learning',
+      view: 'Learning',
+      description: 'Öğretmenlerin çocuğunuzla paylaştığı materyal dosyaları.',
+      group: 'AKADEMİK',
+      apiOnly: true,
+    },
+  ],
 }
 
 // Akademik yönetim (IST-093, DOM-AKD-035): geçmiş günün yoklamasını yalnız yönetici gerekçeyle
@@ -142,9 +188,34 @@ export const API_ACADEMIC_PAGES: Record<Role, readonly NavigationPage[]> = {
       group: 'YÖNETİM',
       apiOnly: true,
     },
+    {
+      path: 'mazeret-bildirimleri',
+      title: 'Mazeret Bildirimleri',
+      icon: 'FileCheck',
+      module: 'academic',
+      view: 'AbsenceApprovals',
+      description:
+        'Velilerin izin ve mazeret bildirimlerini özür belgesiyle inceleyin, karar verin.',
+      group: 'YÖNETİM',
+      apiOnly: true,
+    },
   ],
   onburo: [],
-  ogretmen: [],
+  // Sınıf rehber öğretmeni şubesinin bildirimlerini ve belgelerini salt okur görür; karar vermez
+  // (DOM-ILT-053). Rehber olmayan öğretmende sunucu kapsamı listeyi boş döner.
+  ogretmen: [
+    {
+      path: 'mazeret-bildirimleri',
+      title: 'Mazeret Bildirimleri',
+      icon: 'FileCheck',
+      module: 'academic',
+      view: 'AbsenceApprovals',
+      description:
+        'Rehber öğretmeni olduğunuz sınıfların mazeret bildirimlerini ve belgelerini görün.',
+      group: 'AKADEMİK',
+      apiOnly: true,
+    },
+  ],
   ogrenci: [],
   veli: [],
 }
@@ -176,11 +247,16 @@ const coursesPage = (group: string, description: string) =>
   languageSchoolPage('kurlar', 'Kurlar', 'Languages', description, group)
 const groupsPage = (group: string, description: string) =>
   languageSchoolPage('gruplar', 'Gruplar', 'UsersRound', description, group)
+// Seviye tespiti (OG-078; IST-058, DOM-DIL-010…012): uçların rolleri `PLACEMENT_DECIDER_ROLES`
+// (yönetici, öğretmen); ön büro uçlarda 403 aldığından menüde yoktur.
+const placementPage = (group: string, description: string) =>
+  languageSchoolPage('seviye-tespiti', 'Seviye Tespiti', 'ListChecks', description, group)
 
 export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> = {
   yonetici: [
     coursesPage('YÖNETİM', 'Kur programını tanımlayın, etkinleştirin ve e-Özel kaydını izleyin.'),
     groupsPage('YÖNETİM', 'Kurlardan grup açın; öğretmen, derslik ve takvimi planlayın.'),
+    placementPage('YÖNETİM', 'Seviye tespiti açın, bölümleri puanlayın ve yerleştirin.'),
   ],
   onburo: [
     coursesPage('KAYIT & SATIŞ', 'Etkin kurları ve kapasitelerini inceleyin.'),
@@ -189,6 +265,7 @@ export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> 
   ogretmen: [
     coursesPage('AKADEMİK', 'Koordinatörü olduğunuz seviyelerin kurlarını yönetin.'),
     groupsPage('AKADEMİK', 'Gruplarınızın takvimini ve doluluğunu izleyin.'),
+    placementPage('AKADEMİK', 'Kursiyer ve adayların seviye tespitini yürütün.'),
   ],
   ogrenci: [],
   veli: [],

@@ -83,10 +83,15 @@ export const assignmentSettingsSchema = z
     attempts: attemptRulesSchema.prefault({ kind: 'evaluation' }),
     deadline: deadlineSchema.prefault({}),
     timeLimitMinutes: z.number().int().min(1).max(300).nullable().optional(),
+    /**
+     * Dinleme hakkı; verilmezse (`undefined`) dinleme görevinde `LISTENING_PLAYS_DEFAULT`
+     * (`resolveAssignmentSettings`). Verilmemiş hak seçilmiş haktan ayrı tutulur: API sayılacak
+     * kaydı olmayan görevde yalnız açıkça seçilen sınırı reddeder (IST-045).
+     */
     listeningPlays: z
       .union([z.literal(1), z.literal(2)])
       .nullable()
-      .default(LISTENING_PLAYS_DEFAULT),
+      .optional(),
     /** Dinleme dökümü görev kapanmadan gösterilmez (DOM-BEC-005); yalnız alıştırmada açılabilir. */
     showTranscript: z.boolean().default(false),
     submission: submissionSettingsSchema.nullable().default(null),
@@ -144,6 +149,35 @@ const rule = (code: string, message: string, path: string[], kind: 'rule' | 'con
 
 const isRubricSkill = (skill: string | null): skill is RubricSkill =>
   skill !== null && (RUBRIC_SKILLS as readonly string[]).includes(skill)
+
+/**
+ * Dinleme görevi mi (DOM-BEC-005): birincil becerisi dinleme olan içerik ya da dinleme kaydına
+ * bağlı quiz/alıştırma seti (`listeningVersionId`, IST-045). Dinleme hakkı yalnız bunlarda
+ * sabitlenir; sayılacak kaydı yalnız kayda bağlı etkinlik taşır (`recordingVersionId`).
+ */
+export function isListeningTask(version: Pick<ResourceVersion, 'tags' | 'content'>): boolean {
+  return version.tags.primarySkill === 'listening' || recordingVersionId(version.content) !== null
+}
+
+/** Quiz/alıştırma setinin bağlı dinleme kaydı sürümü; bağ yoksa ya da başka türse `null`. */
+export function recordingVersionId(content: ResourceContent | null): string | null {
+  if (content?.type !== 'quiz' && content?.type !== 'exercise_set') return null
+  return content.listeningVersionId
+}
+
+/**
+ * Kursiyer ve veli dinleme dökümünü görür mü (DOM-BEC-005): görev kapandıysa (son teslim ve geç
+ * kabul geçti, `isClosed`) ya da alıştırmada öğretmen açtıysa (`showTranscript`; değerlendirmede
+ * açılamaz, `assignmentSettingsSchema`). Personel dökümü hep görür; bu karar çağırana aittir.
+ */
+// TODO(beceri-dinleme-uyarlama): işitme engelli kursiyere değerlendirmede kişiye özel döküm açma
+// (erişilebilirlik uyarlaması) atama düzeyinde değil, kursiyer düzeyinde tanımlanacak; bugün yok.
+export function transcriptShown(
+  assignment: Pick<FixedAssignment, 'showTranscript' | 'deadline'>,
+  now: Instant,
+): boolean {
+  return assignment.showTranscript || isClosed(assignment.deadline, now)
+}
 
 /**
  * Ayarları içerikle birleştirip sabitler (ADR 0004 karar 4; DOM-KYN-032). Yalnız güncel yayındaki
@@ -216,7 +250,11 @@ export function resolveAssignmentSettings(
       scoringMode,
       timeLimitMinutes:
         settings.timeLimitMinutes === undefined ? contentLimit : settings.timeLimitMinutes,
-      listeningPlays: version.tags.primarySkill === 'listening' ? settings.listeningPlays : null,
+      listeningPlays: isListeningTask(version)
+        ? settings.listeningPlays === undefined
+          ? LISTENING_PLAYS_DEFAULT
+          : settings.listeningPlays
+        : null,
       submission: null,
       secondRatingPercent: 0,
     }
@@ -701,7 +739,8 @@ export function deadlineForVersion(
 /** Puanlanan sorunun sürümü (`content.type === 'question'`). */
 export type QuestionVersionRef = {
   id: string
-  tags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill' | 'skills' | 'subskill'>
+  tags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill' | 'skills' | 'subskill'> &
+    Partial<Pick<ResourceTags, 'outcomes'>>
   content: ResourceContent
   answerKey: AnswerKey | null
 }
@@ -712,7 +751,8 @@ export type QuestionVersionRef = {
  * (DOM-BEC-010, `answerLocaleForTags`). Eksik soru, anahtarsız soru `not_found`/`rule` reddidir.
  */
 export function scoringItemsFor(input: {
-  parentTags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill' | 'skills'>
+  parentTags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill' | 'skills'> &
+    Partial<Pick<ResourceTags, 'outcomes'>>
   items: readonly { questionVersionId: string; points: number }[]
   questions: ReadonlyMap<string, QuestionVersionRef>
 }): ScoringItem[] {
@@ -740,6 +780,12 @@ export function scoringItemsFor(input: {
       answerKey: question.answerKey,
       locale,
       subskill: question.tags.subskill,
+      // Not defteri kırılımı (DOM-BEC-048): soru etiketlenmemişse setin becerisi ve kazanımları.
+      skill: question.tags.primarySkill ?? input.parentTags.primarySkill,
+      outcomes:
+        (question.tags.outcomes ?? []).length > 0
+          ? (question.tags.outcomes ?? [])
+          : (input.parentTags.outcomes ?? []),
     }
   })
 }
@@ -782,7 +828,9 @@ export type RescorePreview = {
 /** Puanlama sürümünü değiştirmek için gereken bağlam. */
 export type RescoreContext = {
   assignment: Pick<FixedAssignment, 'resourceId' | 'scoringVersionId' | 'scoringMode' | 'attempts'>
-  nextVersion: Pick<ResourceVersion, 'id' | 'resourceId' | 'status'>
+  /** Mevcut puanlama sürümünün içeriği: bağlı okuma parçası ve dinleme kaydı buradan okunur. */
+  currentContent: ResourceContent | null
+  nextVersion: Pick<ResourceVersion, 'id' | 'resourceId' | 'status' | 'content'>
   /** Mevcut puanlama sürümünün maddeleri. */
   before: readonly ScoringItem[]
   /**
@@ -793,6 +841,18 @@ export type RescoreContext = {
   learners: readonly RescoreLearner[]
 }
 
+/** Quiz/alıştırma setinin bağlı okuma parçası ve dinleme kaydı sürümleri; başka türde boş. */
+function activityLinks(content: ResourceContent | null): string {
+  if (content?.type !== 'quiz' && content?.type !== 'exercise_set') return '|'
+  return `${content.passageVersionId ?? ''}|${content.listeningVersionId ?? ''}`
+}
+
+/**
+ * Yeniden puanlanabilir mi (DOM-KYN-033): otomatik puanlı görev, aynı içeriğin yayındaki başka
+ * sürümü, aynı sorular ve aynı bağlı okuma parçası/dinleme kaydı (IST-042, IST-045). Bağ değişirse
+ * cevaplar başka metin ya da kayıt için verilmiş olurdu; dinleme hakkı ve kayıt erişimi atamanın
+ * sabitlenen sürümünden, deneme ayrıntısı puanlama sürümünden okunduğundan ikisi ayrışırdı.
+ */
 function assertRescorable(context: RescoreContext): void {
   const { assignment, nextVersion, before, after } = context
   if (assignment.scoringMode !== 'auto') {
@@ -821,6 +881,13 @@ function assertRescorable(context: RescoreContext): void {
     throw rule(
       'rescore_incompatible',
       'Yeni sürümün soruları mevcut cevaplarla eşleşmiyor; yeni atama açın.',
+      ['scoringVersionId'],
+    )
+  }
+  if (activityLinks(context.currentContent) !== activityLinks(nextVersion.content)) {
+    throw rule(
+      'rescore_incompatible',
+      'Yeni sürümün okuma parçası ya da dinleme kaydı değişmiş; yeni atama açın.',
       ['scoringVersionId'],
     )
   }

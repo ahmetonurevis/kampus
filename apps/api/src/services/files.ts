@@ -16,6 +16,7 @@ import type { Database } from '../db/client.ts'
 import {
   attachFileRow,
   clearSupersededStorageKey,
+  completeAudioScan,
   detachFileRow,
   findFile,
   insertFile,
@@ -70,7 +71,10 @@ const GB = 1024 * MB
 /** Kurum ayarı yokken kota (ADR 0003 Açık soru 6-a: 50 GB, platform yöneticisi artırır). */
 export const DEFAULT_STORAGE_QUOTA_BYTES = 50 * GB
 
-/** Bağlanmamış dosyanın ömrü (karar 5). */
+/**
+ * Bağlanmamış dosyanın ömrü (karar 5): yüklemeden, `ready` olmuş dosyada `ready` anından
+ * (`ready_at`, OG-995) sayılır; geç taranan dosya bağlanmaya fırsat bulmadan silinmez.
+ */
 export const UNATTACHED_FILE_TTL_MS = 24 * 60 * 60 * 1000
 
 /**
@@ -110,6 +114,8 @@ export const FILE_MESSAGES = {
  * Taramada reddedilmiş dosya (Sabah kararı 42; ADR 0003 karar 8, OG-092): ses dışı amaçta
  * `rejected` durum yalnız `file.scan`'den gelir. Ses dönüşümünün reddi (boş, sessiz, çözülemeyen
  * kayıt) tarama reddi değildir; o dosya eskisi gibi bulunmaz (404 / 422 `file_unavailable`).
+ * Taramada reddedilen ses de (OG-988) bugün ayırt edilmez, dönüşüm reddi gibi bulunmaz:
+ * `TODO(ses-tarama-ret-kodu)` sesin ret nedenini satırda tutup 422 `file_rejected`'e çevirmek.
  */
 export function isScanRejected(row: Pick<StoredFile, 'status' | 'purpose'>): boolean {
   return row.status === 'rejected' && !needsTranscode(row.purpose)
@@ -265,9 +271,11 @@ async function storeStream(
  *
  * Tarayıcı açıkken (`scan` verilmişse) ses dışı amaçlar da `processing` başlar ve `file.scan` işi
  * aynı transaction'da kuyruğa girer (karar 8, OG-092); tarama bitene kadar dosya bağlanamaz ve
- * bağlantı verilmez (409 `file_processing`). Tarayıcı kapalıyken (`FILE_SCANNER=off`, üretim
- * dışı) dosya `pending` kalır. TODO(ses-taramasi): ses de taranmalı (karar 8); dönüşüm bugün
- * taramasız `ready` olur.
+ * bağlantı verilmez (409 `file_processing`). Ses de taranır (OG-988): `media.transcode` ve
+ * `file.scan` aynı transaction'da kuyruğa girer, satır `scanPending` başlar; dönüşüm taramayı
+ * beklemez, dosya ikisi de bitince `ready` olur (sonra biten yazar). Tarayıcı kapalıyken
+ * (`FILE_SCANNER=off`, üretim dışı) ses dışı dosya `pending` kalır, ses eskisi gibi dönüşümle
+ * `ready` olur.
  */
 export async function uploadFile(
   ctx: ServiceContext,
@@ -277,7 +285,7 @@ export async function uploadFile(
 ): Promise<CommandResponse> {
   const { purpose } = input
   const transcode = needsTranscode(purpose)
-  const scan = transcode ? null : schedulers.scan
+  const scan = schedulers.scan
   await assertCanUpload(ctx, purpose)
   const fileId = randomUUID()
   const storageKey = storageKeyFor({
@@ -346,6 +354,7 @@ export async function uploadFile(
             },
             ctx.now,
             transcode || scan !== null ? 'processing' : 'pending',
+            { scanPending: transcode && scan !== null },
           )
           const job = { institutionId: ctx.institutionId, fileId }
           if (transcode) await schedulers.transcode.enqueue(tx, job)
@@ -450,17 +459,27 @@ export async function getFile(ctx: ServiceContext, fileId: string) {
  * Dinleme kaydının bağlantısı kayıt süresi + 60 sn yaşar, en az 5 dk; süre ölçülmemişse 16 dk
  * (`listeningWindowMs`). Dinleme hakkı (IST-045, DOM-BEC-005) burada, bağlantıyla aynı
  * transaction'da sayılır (`grantListeningPlay`): hak bitince 422 `listening_plays_exhausted`, süren
- * deneme yokken açık görevde 422 `listening_attempt_required`. Yeniden bağlantı penceresinde bitiş
- * anı ilk sayımın bitişidir; imzalama başarısız olursa sayım da yazılmaz. Sayım bugün devrede
- * değildir: atama dolu hakkı reddeder (`TODO(dinleme-icerik-bagi)`).
+ * deneme yokken açık görevde 422 `listening_attempt_required`, deneme kimliği verilmeden süren sınırlı
+ * denemede 422 `listening_attempt_running`. Yeniden bağlantı penceresinde bitiş
+ * anı ilk sayımın bitişidir; imzalama başarısız olursa sayım da yazılmaz. Kayıt atanan
+ * quiz/alıştırma setine `listeningVersionId` ile bağlıdır (OG-052).
  */
-export async function getFileUrl(ctx: ServiceContext, storage: StorageDriver, fileId: string) {
+/**
+ * İmzalı bağlantı. `attemptId` öğrencinin dinleme hakkının düşeceği denemedir (Sabah kararı 54,
+ * `grantListeningPlay`); verilmezse hak sayılmaz (Sabah kararı 56), personel ve velide yok sayılır.
+ */
+export async function getFileUrl(
+  ctx: ServiceContext,
+  storage: StorageDriver,
+  fileId: string,
+  options: { attemptId?: string | undefined } = {},
+) {
   return ctx.db.transaction(async (tx) => {
     const row = await readableFile(tx, ctx, fileId)
     if (row.status === 'processing')
       throw new AppError(409, 'file_processing', FILE_MESSAGES.file_processing)
     const access = FILE_PURPOSE_ACCESS[row.purpose]
-    const listening = await grantListeningPlay(tx, ctx, row)
+    const listening = await grantListeningPlay(tx, ctx, row, options.attemptId)
     // Dinleme kaydının bağlantısı kaydın sonuna kadar yaşar (kayıt süresi + 60 sn, en az 5 dk).
     const ttlMs =
       row.purpose === 'listening_audio'
@@ -600,7 +619,8 @@ export async function attachFile(
  * kayda bağlı dosyanın bağı kalkar; olmayan, silinmiş ya da başka kayda bağlı dosyaya dokunulmaz
  * (eski kayıtta dosya kimliği `files` satırı olmadan da bulunabilir). Bağı kalkan dosya artık
  * kaydın okuma kuralıyla açılmaz, yalnız yükleyen görür; yeni bir imha işi yoktur, karar 5'in
- * bağlanmamış dosya temizliği (`purgeUnattachedFiles`, yüklemeden 24 saat sonra) siler.
+ * bağlanmamış dosya temizliği (`purgeUnattachedFiles`, yüklemeden ya da `ready` olduğu andan 24
+ * saat sonra; OG-995) siler.
  */
 export async function detachFile(
   tx: Database,
@@ -620,7 +640,10 @@ export async function detachFile(
  * görür). Aynı dosya için ret yeniden bildirilirse (iş yeniden denemesi) durum ve denetim
  * değişmeden yalnız nesne silme yeniden çalışır; `ready` bildirimi 409 `file_already_checked`
  * kalır. Hiç yeniden denenmeyen nesne `TODO(F3c2-orphans)` taramasıyla silinir.
+ * Reddedilen seste dönüşmüş çıktı da özgün nesne de silinir (OG-988: tarama dönüşümden sonra
+ * bitebilir); izdeki özgün nesne silinemezse `releaseSupersededObject` izi bırakır, temizlik siler.
  * Çağıranlar: `file.scan` (`services/file-scan.ts`, ClamAV; OG-092) ve ses dönüşümünün reddi.
+ * Sesin temiz taraması `recordAudioScanClean`'dedir.
  * Tarayıcı kapalıyken (`FILE_SCANNER=off`) dosya `pending` kalır (yalnız yükleyen okur,
  * bağlanamaz). TODO(gorsel-meta-veri): `sharp` ile görsel meta veri temizliği (karar 7, OG-263)
  * de bu fonksiyonu çağıracak.
@@ -669,7 +692,43 @@ export async function recordFileCheck(
       })
       throw error
     }
+    await releaseSupersededObject({ db, storage, log: input.log }, row)
   }
+  return row
+}
+
+/**
+ * Sesin temiz tarama sonucu (ADR 0003 karar 8, OG-988). Satır kilidi altında okunur: taraması süren
+ * (`scanPending`) `processing` ses değilse 409 `file_already_checked` (bu arada reddedilmiş ya da
+ * silinmiş). Dönüşüm bitmişse dosya `ready` olur (`file.ready`) ve transaction'dan sonra
+ * taramanın okuduğu özgün nesne silinir; bitmemişse yalnız `scanPending` düşer (`file.scanned`),
+ * `ready`'yi dönüşüm yazar. Dönüşüm de aynı satırı kilitleyip kararını kilit altında verdiği için
+ * iki işten hangisi sonra biterse `ready`'yi o yazar; ikisi birden yazamaz, hiçbiri atlanamaz.
+ */
+export async function recordAudioScanClean(
+  db: Database,
+  storage: StorageDriver,
+  input: { institutionId: string; fileId: string; now: Date; log: FastifyBaseLogger },
+): Promise<StoredFile> {
+  const row = await db.transaction(async (tx) => {
+    const current = await findFile(tx, input.institutionId, input.fileId, { lock: true })
+    if (!current) throw new NotFoundError()
+    if (current.status !== 'processing' || !current.scanPending)
+      throw new AppError(409, 'file_already_checked', 'Dosya zaten denetlendi.')
+    const updated = await completeAudioScan(tx, input.institutionId, current, input.now)
+    if (!updated) throw new ConflictError()
+    const ready = updated.status === 'ready'
+    await tx.insert(auditLog).values({
+      institutionId: input.institutionId,
+      action: ready ? 'file.ready' : 'file.scanned',
+      entityType: ENTITY,
+      entityId: current.id,
+      changes: { fields: ready ? ['status', 'scanPending'] : ['scanPending'] },
+      createdAt: input.now,
+    })
+    return updated
+  })
+  if (row.status === 'ready') await releaseSupersededObject({ db, storage, log: input.log }, row)
   return row
 }
 
@@ -746,7 +805,10 @@ async function deletePurgedObjects(deps: ObjectCleanupDeps, row: StoredFile) {
 
 /**
  * Kurumun 24 saatte bağlanmayan (veya reddedilen) dosyalarının temizliği (karar 5, 13); işlenmeyi
- * bekleyen (`processing`) dosya yüklemeden 7 gün sonra (`PROCESSING_FILE_TTL_MS`). Nesne
+ * bekleyen (`processing`) dosya yüklemeden 7 gün sonra (`PROCESSING_FILE_TTL_MS`). `ready`
+ * dosyanın 24 saati `ready` anından sayılır (`ready_at`, OG-995): `clamd` kesintisinden sonra
+ * yüklemeden 30 saat sonra taranan dosya taramadan 24 saat sonra silinir. Taramasız (`pending`)
+ * dosyada süre yüklemeden sayılır. Nesne
  * silinir, satır `deleted` kalır ve özgün ad silinir; her dosya `file.purge` olarak denetime
  * yazılır. Satır kilitlenip `deleted` yazıldıktan sonra nesne silinir: aynı anda bağlanan dosyanın
  * nesnesi silinemez (bağlama da satırı kilitler ve `deleted` dosyayı reddeder). Nesne silinemezse

@@ -7,10 +7,8 @@ import { eq } from 'drizzle-orm'
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
-import { files } from '../src/db/schema/files.ts'
-import { resourceVersionFiles } from '../src/db/schema/resources.ts'
-import { attemptMediaPlays, taskAssignments } from '../src/db/schema/skills.ts'
-import { listeningWindowMs, RESOURCE_VERSION_ATTACHMENT } from '../src/services/listening-plays.ts'
+import { attemptMediaPlays } from '../src/db/schema/skills.ts'
+import { listeningWindowMs } from '../src/services/listening-plays.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -20,16 +18,15 @@ import {
   TEST_ORIGIN,
 } from './support/app.ts'
 import { tempStorage } from './support/files-sample.ts'
+import { seedListeningActivity } from './support/listening-sample.ts'
 import { createPgDatabase, PG_SKIP } from './support/pg.ts'
-import { seedResource } from './support/resources-sample.ts'
 
 /**
  * Altyapı birimi, PostgreSQL 16: dinleme hakkının eşzamanlı sayımı (OG-049; IST-045, DOM-BEC-005).
  * Deneme satırı `for update` ile kilitlenir; aynı anda gelen bağlantı isteklerinden yalnız biri
  * sayar, ötekiler yeniden bağlantı penceresinde sayılmadan bağlantı alır. PGlite tek bağlantılı
- * olduğundan gerçek eşzamanlılık yalnız burada sınanır. Gerçek akışı iddia etmez: dosya soru
- * sürümüne elle bağlanır (okuma kuralı kaynağınkidir, sürüm 9-A'ya paylaşılır) ve atamanın hakkı veritabanında verilir (API dolu
- * hakkı 422 ile reddeder; `TODO(dinleme-icerik-bagi)`, ayrıntı `listening-plays.test.ts`).
+ * olduğundan gerçek eşzamanlılık yalnız burada sınanır. Akış gerçektir (OG-052): kayıt quiz'e
+ * `listeningVersionId` ile bağlıdır, hak atama gövdesinde verilir (ayrıntı `listening-plays.test.ts`).
  */
 
 const WINDOW = listeningWindowMs(null)
@@ -67,7 +64,10 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
     })
   }
 
-  /** Deniz (`s-1`) 9-A'da; yönetici dinleme sorusunu 9-A'ya atar, hak veritabanında verilir, Deniz başlatır. */
+  /**
+   * Deniz (`s-1`) 9-A'da; yönetici kayda bağlı dinleme quiz'ini hakla 9-A'ya atar, Deniz başlatır.
+   * Ses ve soru sahibinde özel kalır; dosya quiz'in atamasıyla açılır.
+   */
   async function setup(listeningPlays: 1 | 2) {
     now = FIXED_NOW
     const institution = await createInstitution(app)
@@ -93,76 +93,16 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
       await createMember(app, institution.id, 'ogrenci', [{ kind: 'student', recordId: 's-1' }]),
     )
     const admin = await signInAs(app, institution.admin)
-    const { versions } = await seedResource(db, institution.id, {
+    const activity = await seedListeningActivity(db, institution.id, {
       ownerUserId: institution.admin.id,
-      // Dosyanın okuma kuralı kaynağınkidir (DOM-KYN-006): 9-A'ya paylaşılan sürümü öğrenci okur.
-      shareScope: 'classes',
-      sharedClassIds: ['9-A'],
-      versions: [
-        {
-          status: 'published',
-          input: {
-            title: 'Dinleme sorusu',
-            content: {
-              type: 'question',
-              question: {
-                questionType: 'multiple_choice',
-                stem: 'What does Tom do on Sundays?',
-                options: [
-                  { id: 'a', text: 'He swims.' },
-                  { id: 'b', text: 'He reads.' },
-                  { id: 'c', text: 'He cooks.' },
-                  { id: 'd', text: 'He sleeps.' },
-                ],
-              },
-            },
-            answerKey: {
-              questionType: 'multiple_choice',
-              correctOptionId: 'b',
-              explanation: 'Pazar günleri okur.',
-            },
-            license: { kind: 'institution_original' },
-            tags: { gradeLevels: [9], primarySkill: 'listening', cefrLevel: 'A2' },
-          },
-        },
-      ],
-    })
-    const versionId = versions[0]!.id
-    const fileId = randomUUID()
-    await db.insert(files).values({
-      institutionId: institution.id,
-      id: fileId,
-      purpose: 'listening_audio',
-      status: 'ready',
-      storageKey: `${institution.id}/listening_audio/2026/10/${fileId}`,
-      contentType: 'audio/mpeg',
-      byteSize: 2048,
-      sha256: 'c'.repeat(64),
-      uploadedByUserId: institution.admin.id,
-      attachedType: RESOURCE_VERSION_ATTACHMENT,
-      attachedId: versionId,
-      attachedAt: FIXED_NOW,
-      createdAt: FIXED_NOW,
-      updatedAt: FIXED_NOW,
-    })
-    await db.insert(resourceVersionFiles).values({
-      institutionId: institution.id,
-      versionId,
-      fileId,
-      position: 0,
-      createdAt: FIXED_NOW,
-      updatedAt: FIXED_NOW,
     })
     const created = await call('POST', '/task-assignments', admin, {
-      resourceVersionId: versionId,
-      settings: { deadline: { dueAt: '2026-10-20T20:59:00.000Z' } },
+      resourceVersionId: activity.quiz.versionId,
+      settings: { deadline: { dueAt: '2026-10-20T20:59:00.000Z' }, listeningPlays },
       targets: [{ kind: 'class', id: '9-A' }],
     })
     assert.equal(created.statusCode, 201, created.body)
-    await db
-      .update(taskAssignments)
-      .set({ listeningPlays })
-      .where(eq(taskAssignments.id, created.json().data.id as string))
+    assert.equal(created.json().data.listeningPlays, listeningPlays)
     const started = await call(
       'POST',
       `/task-assignments/${created.json().data.id}/attempts`,
@@ -170,7 +110,7 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
       {},
     )
     assert.equal(started.statusCode, 201, started.body)
-    return { institution, student, fileId }
+    return { institution, student, fileId: activity.fileId, attemptId: started.json().data.id }
   }
 
   const playRows = (institutionId: string) =>
@@ -180,8 +120,8 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
       .where(eq(attemptMediaPlays.institutionId, institutionId))
 
   test('IST-045: hak 1 iken eşzamanlı beş bağlantı isteği: hepsi 200, biri sayar, tek satır; pencere sonrası hepsi 422', async () => {
-    const { institution, student, fileId } = await setup(1)
-    const request = () => call('GET', `/files/${fileId}/url`, student)
+    const { institution, student, fileId, attemptId } = await setup(1)
+    const request = () => call('GET', `/files/${fileId}/url?attemptId=${attemptId}`, student)
     const responses = await Promise.all(Array.from({ length: 5 }, request))
     for (const response of responses) assert.equal(response.statusCode, 200, response.body)
     const counted = responses.filter((response) => response.json().data.listening.counted)
@@ -198,8 +138,8 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
   })
 
   test('IST-045: hak 2 iken pencere dışında eşzamanlı iki istek ikinci hakkı bir kez tüketir', async () => {
-    const { institution, student, fileId } = await setup(2)
-    const request = () => call('GET', `/files/${fileId}/url`, student)
+    const { institution, student, fileId, attemptId } = await setup(2)
+    const request = () => call('GET', `/files/${fileId}/url?attemptId=${attemptId}`, student)
     assert.equal((await request()).statusCode, 200)
     now = new Date(FIXED_NOW.getTime() + WINDOW)
     const responses = await Promise.all([request(), request()])

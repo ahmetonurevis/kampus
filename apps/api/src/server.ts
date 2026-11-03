@@ -5,9 +5,17 @@ import { bootJobs } from './jobs/boot.ts'
 import { createStorage } from './storage/create.ts'
 
 const config = loadConfig()
-const { db, close } = connectPostgres(config.DATABASE_URL)
+// Havuz hatası uygulama logger'ı kurulmadan da gelebilir; o zamana kadar yalnız hata kodu stderr'e yazılır.
+const poolLog: { logger?: Pick<typeof app.log, 'error'> } = {}
+const { db, close } = connectPostgres(config.DATABASE_URL, {
+  onPoolError: (error) => {
+    if (poolLog.logger) poolLog.logger.error({ err: error }, 'database pool client error')
+    else process.stderr.write(`database pool client error: ${error.name}\n`)
+  },
+})
 const storage = createStorage(config)
 const app = await buildApp({ config, db, storage })
+poolLog.logger = app.log
 
 let stopping = false
 async function shutdown(signal: string) {

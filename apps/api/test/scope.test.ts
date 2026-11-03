@@ -352,6 +352,8 @@ describe('kimlik ve kurum kapsamı', () => {
       const response = await app.inject({
         method,
         url: path.replace(/\{[^}]+\}/g, 'test-id'),
+        // Rota sayısı dakikalık hız sınırını (300) aşabilir; her istek ayrı istemci IP'si kullanır.
+        remoteAddress: nextIp(),
         headers: { origin: TEST_ORIGIN },
         ...(method === 'GET' ? {} : { payload: {} }),
       })

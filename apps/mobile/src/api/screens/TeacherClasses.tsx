@@ -1,9 +1,9 @@
-import { useMemo } from 'react'
+import { useMemo, useState } from 'react'
 import { View } from 'react-native'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { useCollectionAll, useCollectionList } from '@kampus/react-shared/use-collection.ts'
 import { Badge, Empty, SearchField, T } from '../../ui/components.tsx'
-import { EmptyResults, ListRow, Pagination, Screen } from '../../ui/SchoolLayout.tsx'
+import { EmptyResults, ListRow, Pagination, Screen, Tabs } from '../../ui/SchoolLayout.tsx'
 import { useApiSession } from '../auth.tsx'
 import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
 import { canOpenScreen } from '../pages.ts'
@@ -11,6 +11,7 @@ import { classSubtitle } from '../presentation.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { useDebouncedValue } from '../use-debounced-value.ts'
 import { useListMemory } from '../view-memory.tsx'
+import { TeacherGrades } from './teacher-grades.tsx'
 
 type ClassRecord = State['classes'][number]
 type BranchRecord = State['branches'][number]
@@ -26,21 +27,23 @@ function StudentCount({ classId }: { classId: string }) {
   )
 }
 
-/**
- * Öğretmenin sınıfları (demo `siniflarim` karşılığı). Hangi sınıfların görüneceği sunucudaki
- * kapsamdan gelir (ders verdiği ve rehberi olduğu sınıflar); istemci süzmez.
- */
-export default function TeacherClasses() {
-  const session = useApiSession()
-  const open = canOpenScreen(session, 'TeacherClasses')
+type Tab = 'siniflar' | 'notlar'
+const TABS: readonly { value: Tab; label: string }[] = [
+  { value: 'siniflar', label: 'Sınıflar' },
+  { value: 'notlar', label: 'Not girişi' },
+]
+
+/** Sınıf listesi sekmesi: kapsamı sunucu uygular, istemci süzmez. */
+function ClassList() {
   const { state, setSearch, setIndex } = useListMemory('ogretmen/siniflarim')
   const search = useDebouncedValue(state.search)
-  const classes = useCollectionList<ClassRecord>(
-    'classes',
-    { page: state.index + 1, pageSize: API_PAGE_SIZE, q: search, sort: ['name'] },
-    { enabled: open },
-  )
-  const branches = useCollectionAll<BranchRecord>('branches', {}, { enabled: open })
+  const classes = useCollectionList<ClassRecord>('classes', {
+    page: state.index + 1,
+    pageSize: API_PAGE_SIZE,
+    q: search,
+    sort: ['name'],
+  })
+  const branches = useCollectionAll<BranchRecord>('branches')
   const branchNames = useMemo(
     () => new Map((branches.data ?? []).map((row) => [row.id, row.record.name])),
     [branches.data],
@@ -49,15 +52,8 @@ export default function TeacherClasses() {
   const index = clampPageIndex(state.index, total)
   if (index !== state.index) setIndex(index)
 
-  if (!open)
-    return (
-      <Screen>
-        <Empty title="Modül kullanıma kapalı" text="Yönetici modül tercihlerini değiştirebilir." />
-      </Screen>
-    )
   return (
-    <Screen>
-      <T muted>Sınıflarınız ve öğrencileriniz bir arada.</T>
+    <>
       <SearchField value={state.search} onChange={setSearch} placeholder="Sınıf adı veya düzey" />
       {classes.error ? (
         <QueryError error={classes.error} onRetry={() => void classes.refetch()} />
@@ -87,6 +83,31 @@ export default function TeacherClasses() {
       {total !== undefined && (
         <Pagination count={total} index={index} pageSize={API_PAGE_SIZE} onChange={setIndex} />
       )}
+    </>
+  )
+}
+
+/**
+ * Öğretmenin sınıfları (demo `siniflarim` karşılığı) ve not girişi (web `Sınıflarım` > "Not listesi"
+ * sekmesinin yazma tarafı, `teacher-grades.tsx`). Hangi sınıfların görüneceği sunucudaki kapsamdan
+ * gelir (ders verdiği ve rehberi olduğu sınıflar); istemci süzmez. Not listesi (okuma) telefonda yoktur.
+ */
+export default function TeacherClasses() {
+  const session = useApiSession()
+  const open = canOpenScreen(session, 'TeacherClasses')
+  const [tab, setTab] = useState<Tab>('siniflar')
+
+  if (!open)
+    return (
+      <Screen>
+        <Empty title="Modül kullanıma kapalı" text="Yönetici modül tercihlerini değiştirebilir." />
+      </Screen>
+    )
+  return (
+    <Screen>
+      <T muted>Sınıflarınız, öğrencileriniz ve not girişiniz bir arada.</T>
+      <Tabs value={tab} onChange={setTab} options={TABS} />
+      {tab === 'siniflar' ? <ClassList /> : <TeacherGrades />}
     </Screen>
   )
 }

@@ -377,6 +377,48 @@ test.describe('öğretmen görevleri: puanlama', () => {
     expect(assignmentId).toBeTruthy()
   })
 
+  test('OG-994: görev panelindeki teslim puanlama penceresi panelin içinde açılır; kapanınca odak düğmeye döner, panel açık kalır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const { school, assignmentId, submissionId } = await setUp(tenant, api)
+    await loginAs(school.user('ogretmen'))
+    await page.goto(`/ogretmen/odevler?sekme=gorevler&gorev=${assignmentId}`)
+    const panel = page.getByRole('dialog', { name: 'Görev ayrıntısı' })
+    const open = panel.getByRole('button', { name: `${DENIZ} teslimini aç` })
+    await open.click()
+    await expect(page).toHaveURL(/[?&]puanla=/)
+
+    // Pencere panelin içinde: üstteki pencere erişilebilirlik ağacındadır, panelin metni
+    // arkada görünür kalır ve panel kapanmaz.
+    const dialog = page.getByRole('dialog', { name: 'Teslimi puanla' })
+    await expect(dialog.getByText(STUDENT_TEXT)).toBeVisible()
+    await expect(
+      page.getByRole('heading', { name: WRITING, level: 3, includeHidden: true }),
+    ).toBeVisible()
+    await expect(page).toHaveURL(/[?&]gorev=/)
+
+    // Esc yalnız puanlama penceresini kapatır; panel açık, odak açan düğmede.
+    await page.keyboard.press('Escape')
+    await expect(dialog).toHaveCount(0)
+    await expect(panel).toBeVisible()
+    await expect(page).toHaveURL(/[?&]gorev=/)
+    await expect(page).not.toHaveURL(/[?&]puanla=/)
+    await expect(open).toBeFocused()
+
+    // Adres paylaşılabilir: iki parametreyle yenilenince puanlama penceresi erişilebilir kalır;
+    // kapatınca panel yerinde durur.
+    await open.click()
+    await page.reload()
+    await expect(dialog.getByText(STUDENT_TEXT)).toBeVisible()
+    await dialog.getByRole('button', { name: 'Pencereyi kapat' }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(panel.getByRole('heading', { name: WRITING })).toBeVisible()
+    expect(submissionId).toBeTruthy()
+  })
+
   test('atama revize edilmiş rubriğin eski sürümüne sabitliyse puanlama açılır; sürüm kimlikle tek çağrıda okunur (DOM-BEC-022)', async ({
     page,
     loginAs,

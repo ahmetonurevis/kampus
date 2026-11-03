@@ -4,17 +4,17 @@ import {
   type LearnerResourceView,
 } from '@kampus/school-core/content/resource.ts'
 
-import { asCoreVersion, loadVersionPairs } from '../db/resources.ts'
+import { asCoreVersion } from '../db/resources.ts'
 import {
+  draftKeysAmong,
   loadAttemptsAmong,
-  loadDraft,
   loadSubmissionsAmong,
   type StoredAssignment,
   type StoredAttempt,
   type StoredSubmissionWork,
 } from '../db/skills.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
-import { learnerContentGate } from './learner-content.ts'
+import { learnerContentGate, learnerWorkBlocks, type LearnerWorkBlock } from './learner-content.ts'
 import {
   learnerAssignmentView,
   loadTaskAssignment,
@@ -24,9 +24,15 @@ import {
   type TaskAssignmentListInput,
   type Viewer,
 } from './task-assignments.ts'
-import { learnerAttemptProgress } from './task-attempts.ts'
+import { hidesPracticeResult, learnerAttemptProgress } from './task-attempts.ts'
 import { learnerSubmissionProgress, loadGrading } from './task-submissions.ts'
-import { scoringContexts, type ScoringContext } from './task-work.ts'
+import {
+  loadWorkPairs,
+  scoringContexts,
+  workPairsOf,
+  type ScoringContext,
+  type WorkPairs,
+} from './task-work.ts'
 
 /**
  * Atama okumalarının kursiyer ve veli eki (IST-051; docs/domain/beceri-gelisimi.md DOM-BEC-040…046;
@@ -38,15 +44,20 @@ import { scoringContexts, type ScoringContext } from './task-work.ts'
  * uçlarının kendi kurallarıyla hesaplanır (`learnerAttemptProgress`, `learnerSubmissionProgress`),
  * dolayısıyla aynı gizlemeyi taşır (DOM-BEC-045): açılmamış puan, ikinci puan, ikinci puanlama
  * örneklemi ve isteği, uyuşmazlık ve itiraz durumu hiçbir alandan çıkarılamaz; satır sürümü yoktur.
- * Liste satır başına istek atmaz: denemeler, teslimler, puanlar ve puanlama bağlamları toplu okunur.
+ * Hak, içerik kapısının yazma yüzünü de yansıtır (`learnerWorkBlocks`; DOM-KYN-021, 025, 051):
+ * yazma ucunun 422 `content_unavailable` vereceği satırda `canAct: false`, `blockedBy:
+ * 'content_unavailable'`; 409 `resource_license_expired` vereceği satırda `license_expired`.
+ * Liste satır başına istek atmaz: denemeler, teslimler, taslaklar, sürümler, çekilmiş kaynaklar,
+ * puanlar ve puanlama bağlamları toplu okunur.
  *
  * İçerik (`content`, yalnız ayrıntı): atamada sabitlenen sürümün kursiyere dönük hâli (core
  * `learnerView`): cevap anahtarı ve lisans ayrıntısı yoktur, kaynak gösterimi korunur (DOM-KYN-024),
  * yazma şablonunun değerlendirme ölçütü ve rubrik bağı (puanlama notu) çıkarılır, otomatik puanlı
  * içeriğin soru metinleri yalnız denemede görünür (burada soru sayısı). İçeriğin açıklığı deneme
  * ve teslim uçlarıyla aynı kuraldır (`services/learner-content.ts`): kaldırılmış veya yayın
- * geçmişi olmayan sürüm ve herhangi bir sürümü telif bildirimiyle incelemede olan kaynak
- * (DOM-KYN-025; süren iş olsa da) `unavailable`; kitap sahibiyle sınırlı lisansta hedeflenen
+ * geçmişi olmayan sürüm (süren iş olsa da) ve herhangi bir sürümü telif bildirimiyle incelemede
+ * olan kaynak (DOM-KYN-025) süren işi olmayana `unavailable`; telif askısında süren işi olan
+ * kursiyer yönergeyi görmeye devam eder (Sabah kararı 47); kitap sahibiyle sınırlı lisansta hedeflenen
  * kişilerden biri kitap sahibi değilse de `unavailable` (DOM-KYN-021). Lisansı dolmuş içerik
  * (DOM-KYN-021) yeni iş başlatmaz ama süren iş biter: süren denemesi, teslimi ya da taslağı olan
  * kursiyere içerik gösterilir, olmayana `license_expired` döner.
@@ -57,11 +68,18 @@ export type LearnerViewer = Extract<Viewer, { kind: 'learner' }>
 interface WorkBook {
   attempts: readonly StoredAttempt[]
   submissions: readonly StoredSubmissionWork[]
+  /** Taslağı olan `atama:kursiyer` çiftleri; yalnız öğrencide okunur (veli taslağı görmez). */
+  drafts: ReadonlySet<string>
+  /** Kursiyerin gördüğü sürümler (`loadWorkPairs`): içerik kapısı ve puanlama bağlamı. */
+  pairs: WorkPairs
   contexts: ReadonlyMap<string, ScoringContext | Error>
   grading: Awaited<ReturnType<typeof loadGrading>>
 }
 
-/** Atamaların kursiyer kayıtları, toplu okumayla (deneme, teslim, puan, puanlama bağlamı). */
+/**
+ * Atamaların kursiyer kayıtları, toplu okumayla (deneme, teslim, taslak, sürümler, puan, puanlama
+ * bağlamı); atama sayısından bağımsız sabit sayıda sorgu.
+ */
 async function loadWork(
   ctx: ServiceContext,
   viewer: LearnerViewer,
@@ -70,7 +88,7 @@ async function loadWork(
   const learnerIds = [...viewer.classOf.keys()]
   const auto = assignments.filter((assignment) => assignment.scoringMode === 'auto')
   const written = assignments.filter((assignment) => assignment.scoringMode === 'teacher')
-  const [attempts, submissions, contexts] = await Promise.all([
+  const [attempts, submissions, drafts, pairs] = await Promise.all([
     loadAttemptsAmong(
       ctx.db,
       ctx.institutionId,
@@ -83,8 +101,17 @@ async function loadWork(
       written.map((assignment) => assignment.id),
       learnerIds,
     ),
-    scoringContexts(ctx.db, ctx.institutionId, auto),
+    ctx.actor.role === 'ogrenci'
+      ? draftKeysAmong(
+          ctx.db,
+          ctx.institutionId,
+          written.map((assignment) => assignment.id),
+          learnerIds,
+        )
+      : Promise.resolve(new Set<string>()),
+    loadWorkPairs(ctx.db, ctx.institutionId, assignments),
   ])
+  const contexts = scoringContexts(auto, pairs)
   // Bağlam veri bütünlüğü sorunuyla kurulamadı: atama başına bir uyarı, yalnız atama kimliğiyle
   // (kişisel veri ve içerik loglanmaz). Özet bu atamada `unavailable` döner.
   for (const [assignmentId, context] of contexts)
@@ -95,10 +122,10 @@ async function loadWork(
     ctx,
     submissions.map((work) => work.submission.id),
   )
-  return { attempts, submissions, contexts, grading }
+  return { attempts, submissions, drafts, pairs, contexts, grading }
 }
 
-function progressOf(
+function rawProgressOf(
   ctx: ServiceContext,
   viewer: LearnerViewer,
   book: WorkBook,
@@ -110,7 +137,13 @@ function progressOf(
       const own = book.attempts.filter(
         (attempt) => attempt.assignmentId === assignment.id && attempt.learnerId === learnerId,
       )
-      const progress = learnerAttemptProgress(assignment, context, own, ctx.now)
+      const progress = learnerAttemptProgress(
+        assignment,
+        context,
+        own,
+        ctx.now,
+        hidesPracticeResult(viewer, assignment),
+      )
       return {
         learnerId,
         resubmissionRequested: false,
@@ -150,15 +183,84 @@ function progressOf(
   })
 }
 
-type Progress = ReturnType<typeof progressOf>[number]
+type RawProgress = ReturnType<typeof rawProgressOf>[number]
 
-/** Kursiyerin şu an yürüyen işi var mı: süren deneme, teslim ya da (öğrencide) taslak. */
-async function hasWork(ctx: ServiceContext, assignment: StoredAssignment, progress: Progress[]) {
-  if (progress.some((row) => row.status === 'in_progress' || row.submissionId !== null)) return true
-  if (assignment.scoringMode !== 'teacher' || ctx.actor.role !== 'ogrenci') return false
-  const [learnerId] = progress.map((row) => row.learnerId)
-  if (learnerId === undefined) return false
-  return (await loadDraft(ctx.db, ctx.institutionId, assignment.id, learnerId)) !== null
+/** Kursiyerin bu atamada şu an yürüyen işi var mı: süren deneme, teslim ya da (öğrencide) taslak. */
+function rowHasWork(book: WorkBook, assignment: StoredAssignment, row: RawProgress): boolean {
+  return (
+    row.status === 'in_progress' ||
+    row.submissionId !== null ||
+    book.drafts.has(`${assignment.id}:${row.learnerId}`)
+  )
+}
+
+/** Hedeflenen kişilerden birinin yürüyen işi var mı (okuma yüzü: içerik ve dosya). */
+const hasWork = (book: WorkBook, assignment: StoredAssignment, progress: readonly RawProgress[]) =>
+  progress.some((row) => rowHasWork(book, assignment, row))
+
+const rowKey = (assignmentId: string, learnerId: string) => `${assignmentId}:${learnerId}`
+
+/**
+ * İçerik kapısının yazma yüzü özetin her satırına (DOM-KYN-021, 025, 051; Sabah kararı 40): satırın
+ * sonucu, sıradaki işlemin (süren işi sürdürmek ya da yeni iş açmak) yazma ucunda alacağı yanıttır.
+ * Bütün satırlar tek sorguyla sınanır (`learnerWorkBlocks`).
+ */
+function contentBlocks(
+  ctx: ServiceContext,
+  book: WorkBook,
+  rows: readonly { assignment: StoredAssignment; progress: readonly RawProgress[] }[],
+) {
+  return learnerWorkBlocks(
+    ctx,
+    rows.flatMap(({ assignment, progress }) =>
+      progress.map((row) => ({
+        key: rowKey(assignment.id, row.learnerId),
+        learnerId: row.learnerId,
+        pairs: workPairsOf(assignment, book.pairs),
+        hasWork: rowHasWork(book, assignment, row),
+      })),
+    ),
+  )
+}
+
+/**
+ * Satıra içerik engelini işler. İçerik kuralı yazma uçlarında (`assertWorkOpen`) kapsam ve sürüm
+ * denetiminden sonra, her core kuralından önce çalışır: kapalı içerik (`content_unavailable`) ve lisans engeli (`license_expired`) süren deneme,
+ * hak ve pencere engellerinin yerine geçer. Süren işi olana lisans engeli dönmez; dolayısıyla
+ * lisans engeli yalnız yeni iş açan satırda pencere ya da hak engelini örter (yazma ucu da önce 409
+ * `resource_license_expired` döner). İçerik kapalıyken yeni işlem penceresi (`actionableUntil`)
+ * anlamsızdır; süren denemenin bitişi kalır (durum zamanla değişir).
+ */
+function withContentBlock(row: RawProgress, block: LearnerWorkBlock) {
+  if (block === null) return row
+  return {
+    ...row,
+    canAct: false,
+    blockedBy: block,
+    actionableUntil: row.status === 'in_progress' ? row.actionableUntil : null,
+  }
+}
+
+/** Satırların durum özeti, içerik engeliyle. */
+async function progressOf(
+  ctx: ServiceContext,
+  viewer: LearnerViewer,
+  book: WorkBook,
+  assignments: readonly StoredAssignment[],
+) {
+  const rows = assignments.map((assignment) => ({
+    assignment,
+    progress: rawProgressOf(ctx, viewer, book, assignment),
+  }))
+  const blocks = await contentBlocks(ctx, book, rows)
+  return new Map(
+    rows.map(({ assignment, progress }) => [
+      assignment.id,
+      progress.map((row) =>
+        withContentBlock(row, blocks.get(rowKey(assignment.id, row.learnerId)) ?? null),
+      ),
+    ]),
+  )
 }
 
 /** Kursiyerin atama üzerinden şu an yürüyen işi var mı (görevden dosya açma yolunun lisans kuralı). */
@@ -168,19 +270,31 @@ export async function learnerHasWork(
   assignment: StoredAssignment,
 ): Promise<boolean> {
   const book = await loadWork(ctx, viewer, [assignment])
-  return hasWork(ctx, assignment, progressOf(ctx, viewer, book, assignment))
+  return hasWork(book, assignment, rawProgressOf(ctx, viewer, book, assignment))
 }
 
+/**
+ * Sabitlenen sürümün kursiyer içeriği. Kapı, özetin ve yazma uçlarının sınadığı bütün sürümlere
+ * bakar (`workPairsOf`: sabitlenen sürüm, puanlama sürümü, soruları ve okuma parçası). Telif
+ * askısında süren işi olan kursiyer yönergeyi görmeye devam eder (Sabah kararı 47;
+ * `learnerContentGate` `content` yüzü); yeni işi olmayan görmez, kaldırılmış içeriği kimse görmez.
+ */
 async function learnerContent(
   ctx: ServiceContext,
   viewer: LearnerViewer,
+  book: WorkBook,
   assignment: StoredAssignment,
-  progress: Progress[],
 ) {
-  const pairs = await loadVersionPairs(ctx.db, ctx.institutionId, [assignment.resourceVersionId])
-  const pair = pairs.get(assignment.resourceVersionId)
-  const gate = await learnerContentGate(ctx, viewer, assignment, [pair], () =>
-    hasWork(ctx, assignment, progress),
+  const progress = rawProgressOf(ctx, viewer, book, assignment)
+  const pair = book.pairs.get(assignment.resourceVersionId)
+  // Özetle aynı küme (`workPairsOf`): bağlı soru ya da okuma parçası kapalıysa görev içeriği de.
+  const gate = await learnerContentGate(
+    ctx,
+    viewer,
+    assignment,
+    workPairsOf(assignment, book.pairs),
+    () => Promise.resolve(hasWork(book, assignment, progress)),
+    'content',
   )
   if (gate !== null || !pair) return { content: null, contentUnavailable: gate ?? 'unavailable' }
   const version = pair.version
@@ -257,11 +371,12 @@ export async function listTaskAssignments(ctx: ServiceContext, input: TaskAssign
   if (viewer.kind !== 'learner')
     return { total, items: rows.map((row) => staffAssignmentView(ctx, viewer, row, refs)) }
   const book = await loadWork(ctx, viewer, rows)
+  const progress = await progressOf(ctx, viewer, book, rows)
   return {
     total,
     items: rows.map((row) => ({
       ...learnerAssignmentView(ctx, viewer, row, refs),
-      progress: progressOf(ctx, viewer, book, row),
+      progress: progress.get(row.id) ?? [],
     })),
   }
 }
@@ -275,6 +390,6 @@ export async function getTaskAssignment(ctx: ServiceContext, assignmentId: strin
   if (viewer.kind !== 'learner') return staffAssignmentView(ctx, viewer, assignment, refs)
   const view = learnerAssignmentView(ctx, viewer, assignment, refs)
   const book = await loadWork(ctx, viewer, [assignment])
-  const progress = progressOf(ctx, viewer, book, assignment)
-  return { ...view, progress, ...(await learnerContent(ctx, viewer, assignment, progress)) }
+  const progress = (await progressOf(ctx, viewer, book, [assignment])).get(assignment.id) ?? []
+  return { ...view, progress, ...(await learnerContent(ctx, viewer, book, assignment)) }
 }

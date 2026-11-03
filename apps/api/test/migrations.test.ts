@@ -28,6 +28,13 @@ import {
 } from './support/app.ts'
 import { seedResource } from './support/resources-sample.ts'
 
+/**
+ * Her takım yeni bir bellek içi PostgreSQL açıp migration uygular; yüklü makinede (paralel test
+ * süreçleri) bu birkaç saniye sürer. Süre sınırı takılan bir veritabanını sonsuza dek beklemek
+ * yerine açık bir hata verir; takım başına normal koşu ~1–5 sn, yükte ~15 sn olduğundan sınır geniştir (OG-202).
+ */
+const SLOW = { timeout: 180_000 }
+
 interface Journal {
   entries: { tag: string }[]
 }
@@ -54,7 +61,31 @@ async function migrationsUpTo(lastTag: string): Promise<string> {
   return folder
 }
 
-describe('veri dönüştüren migration’lar', () => {
+type MigrationTarget = Parameters<typeof migrate>[0]
+
+/**
+ * Better Auth her okumada şemadaki bütün kolonları seçer. Sonraki migration'ların kimlik
+ * tablolarına eklediği kolonlar (0046 `memberships.deactivated_at`, `invitations.name` ve
+ * `invitations.membership_id`; 0048 `invitations.teacher_id`) eski şemada yoksa test uygulaması üye ya da davet açamaz; kolonlar
+ * kısmi şemaya geçici eklenir ve kalan migration'lardan önce kaldırılır.
+ */
+async function migratePartial(db: MigrationTarget, folder: string): Promise<void> {
+  await migrate(db, { migrationsFolder: folder })
+  await db.execute(sql`alter table memberships add column if not exists deactivated_at timestamp`)
+  await db.execute(
+    sql`alter table invitations add column if not exists name text, add column if not exists membership_id text, add column if not exists teacher_id text`,
+  )
+}
+
+async function migrateRest(db: MigrationTarget): Promise<void> {
+  await db.execute(sql`alter table memberships drop column if exists deactivated_at`)
+  await db.execute(
+    sql`alter table invitations drop column if exists name, drop column if exists membership_id, drop column if exists teacher_id`,
+  )
+  await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
+}
+
+describe('veri dönüştüren migration’lar', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -62,7 +93,7 @@ describe('veri dönüştüren migration’lar', () => {
 
   before(async () => {
     folder = await migrationsUpTo('0003_create_institution_settings')
-    await migrate(pglite, { migrationsFolder: folder })
+    await migratePartial(pglite, folder)
   })
   after(async () => {
     await client.close()
@@ -99,7 +130,7 @@ describe('veri dönüştüren migration’lar', () => {
         sql`insert into records (institution_id, collection, id, data, created_at, updated_at) values (${id}, 'audit', 'audit-legacy', '{"id": "audit-legacy"}'::jsonb, ${FIXED_NOW}, ${FIXED_NOW})`,
       )
 
-      await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+      await migrateRest(pglite)
 
       // 0005: core denetim satırları arşivlenir ve yüklenmez.
       assert.deepEqual(await loadRecords(db, id, ['audit']), [])
@@ -143,7 +174,7 @@ describe('veri dönüştüren migration’lar', () => {
   })
 })
 
-describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
+describe('0007: veli kimliği olmayan yazışmaların doldurulması', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -151,7 +182,7 @@ describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
 
   before(async () => {
     folder = await migrationsUpTo('0006_create_idempotency_keys')
-    await migrate(pglite, { migrationsFolder: folder })
+    await migratePartial(pglite, folder)
   })
   after(async () => {
     await client.close()
@@ -216,7 +247,7 @@ describe('0007: veli kimliği olmayan yazışmaların doldurulması', () => {
   })
 })
 
-describe('0008: denetim kaydı gerekçe kolonu', () => {
+describe('0008: denetim kaydı gerekçe kolonu', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -224,7 +255,7 @@ describe('0008: denetim kaydı gerekçe kolonu', () => {
 
   before(async () => {
     folder = await migrationsUpTo('0007_backfill_conversation_parent_user')
-    await migrate(pglite, { migrationsFolder: folder })
+    await migratePartial(pglite, folder)
   })
   after(async () => {
     await client.close()
@@ -241,7 +272,7 @@ describe('0008: denetim kaydı gerekçe kolonu', () => {
     await insert('conversation.access', { reason: REASON, fields: ['messages'] })
     await insert('message.send', { fields: ['messages'] })
 
-    await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+    await migrateRest(pglite)
 
     const rows = await db
       .select({ action: auditLog.action, reason: auditLog.reason, changes: auditLog.changes })
@@ -272,7 +303,7 @@ describe('0008: denetim kaydı gerekçe kolonu', () => {
   })
 })
 
-describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
+describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -280,7 +311,7 @@ describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
 
   before(async () => {
     folder = await migrationsUpTo('0008_add_audit_log_reason')
-    await migrate(pglite, { migrationsFolder: folder })
+    await migratePartial(pglite, folder)
   })
   after(async () => {
     await client.close()
@@ -373,7 +404,7 @@ describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
           sql`insert into records (institution_id, collection, id, data, position, created_at, updated_at, archived_at) values (${id}, 'conversations', ${row.id}, ${JSON.stringify(row.data)}::jsonb, ${row.position}, ${FIXED_NOW}, ${FIXED_NOW}, ${row.archived ? FIXED_NOW : null})`,
         )
 
-      await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+      await migrateRest(pglite)
 
       const stored = await loadRecords(db, id, ['conversations', 'conversationMessages'], {
         includeArchived: true,
@@ -443,7 +474,7 @@ describe('0009: yazışma mesajlarının ayrı kayıtlara bölünmesi', () => {
   })
 })
 
-describe('0010–0012: içerik havuzu tabloları', () => {
+describe('0010–0012: içerik havuzu tabloları', SLOW, () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>
@@ -547,7 +578,7 @@ describe('0010–0012: içerik havuzu tabloları', () => {
   })
 })
 
-describe('0013: beceri görevi tabloları', () => {
+describe('0013: beceri görevi tabloları', SLOW, () => {
   const skillTables = [
     'rubrics',
     'rubric_versions',
@@ -753,7 +784,7 @@ describe('0013: beceri görevi tabloları', () => {
   })
 })
 
-describe('0026: kurum ayarından etkin yıl geri doldurması', () => {
+describe('0026: kurum ayarından etkin yıl geri doldurması', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -761,7 +792,7 @@ describe('0026: kurum ayarından etkin yıl geri doldurması', () => {
 
   before(async () => {
     folder = await migrationsUpTo('0025_index_notifications')
-    await migrate(pglite, { migrationsFolder: folder })
+    await migratePartial(pglite, folder)
   })
   after(async () => {
     await client.close()
@@ -778,7 +809,7 @@ describe('0026: kurum ayarından etkin yıl geri doldurması', () => {
         sql`insert into institution_settings (institution_id, academic_year) values (${withSettings.id}, 2025)`,
       )
 
-      await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+      await migrateRest(pglite)
 
       const rows = await db
         .select()
@@ -801,7 +832,7 @@ describe('0026: kurum ayarından etkin yıl geri doldurması', () => {
   })
 })
 
-describe('0026: eğitim yılı tabloları', () => {
+describe('0026: eğitim yılı tabloları', SLOW, () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>
@@ -873,7 +904,7 @@ describe('0026: eğitim yılı tabloları', () => {
   })
 })
 
-describe('0027: veli bağı geri doldurması', () => {
+describe('0027: veli bağı geri doldurması', SLOW, () => {
   const client = newPGlite()
   const pglite = drizzle({ client, schema })
   const db: Database = pglite
@@ -881,7 +912,7 @@ describe('0027: veli bağı geri doldurması', () => {
 
   before(async () => {
     folder = await migrationsUpTo('0026_create_academic_years')
-    await migrate(pglite, { migrationsFolder: folder })
+    await migratePartial(pglite, folder)
   })
   after(async () => {
     await client.close()
@@ -904,7 +935,7 @@ describe('0027: veli bağı geri doldurması', () => {
       await link('veli', 'child', true)
       await link('ogrenci', 'student')
 
-      await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+      await migrateRest(pglite)
 
       const rows = await db
         .select()
@@ -928,7 +959,7 @@ describe('0027: veli bağı geri doldurması', () => {
   })
 })
 
-describe('0027: veli bağı tablosu', () => {
+describe('0027: veli bağı tablosu', SLOW, () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>
@@ -985,7 +1016,7 @@ describe('0027: veli bağı tablosu', () => {
   })
 })
 
-describe('0028: kur programı tablosu', () => {
+describe('0028: kur programı tablosu', SLOW, () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>
@@ -1096,7 +1127,7 @@ describe('0028: kur programı tablosu', () => {
   })
 })
 
-describe('0029: dil okulu grup tabloları', () => {
+describe('0029: dil okulu grup tabloları', SLOW, () => {
   let db: Database
   let close: () => Promise<void>
   let app: Awaited<ReturnType<typeof buildTestApp>>

@@ -4,6 +4,8 @@
 // yalnız gösterim kararı verilir; yetkiyi sunucu uygular.
 import {
   ANNOUNCEMENT_CATEGORIES,
+  ANNOUNCEMENT_STATUS,
+  announcementStatusOf,
   type AnnouncementTarget,
 } from '@kampus/school-core/lib/communication.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
@@ -37,10 +39,10 @@ export type AnnouncementRecord = {
   myReadAt?: string | null
 }
 
-export const STATUS_PUBLISHED = 'Yayında'
-export const STATUS_UNREAD = 'Okunmadı'
-export const STATUS_UPDATED = 'Güncellendi'
-export const STATUS_WITHDRAWN = 'Geri çekildi'
+export const STATUS_PUBLISHED = ANNOUNCEMENT_STATUS.published
+export const STATUS_UNREAD = ANNOUNCEMENT_STATUS.unread
+export const STATUS_UPDATED = ANNOUNCEMENT_STATUS.updated
+export const STATUS_WITHDRAWN = ANNOUNCEMENT_STATUS.withdrawn
 export const WITHDRAWN_NOTICE = 'Bu duyuru geri çekildi. İçeriği artık görüntülenemez.'
 
 export type AnnouncementRow = {
@@ -64,12 +66,12 @@ export type AnnouncementRow = {
 
 export type Viewer = { role: Role; userId: string }
 
-/** Satırın tek durum değeri; rozetler ayrıca `withdrawn`/`revised`/`unread`'dan çizilir. */
+/**
+ * Satırın tek durum değeri; rozetler ayrıca `withdrawn`/`revised`/`unread`'dan çizilir. Kural
+ * core'dadır (`announcementStatusOf`): sunucunun durum süzgeciyle aynı karar.
+ */
 export function announcementStatus(record: AnnouncementRecord): string {
-  if (record.withdrawnAt) return STATUS_WITHDRAWN
-  if (record.myReadAt === null) return STATUS_UNREAD
-  if (record.revisedAt) return STATUS_UPDATED
-  return STATUS_PUBLISHED
+  return announcementStatusOf(record)
 }
 
 /** Okundu oranı yalnız yetkiliye gelir (`readCount` yoksa gösterilmez). */

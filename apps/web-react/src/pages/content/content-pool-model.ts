@@ -1,5 +1,7 @@
 // İçerik havuzu ekranının saf modeli: satır, etiket, süzgeç seçenekleri ve taslak formu. Kural
 // core `content/` içindedir (taksonomi, `resourceVersionInputSchema`); burada yalnız sunum vardır.
+import { toNestErrors } from '@hookform/resolvers'
+import type { FieldError, FieldPath, Resolver } from 'react-hook-form'
 import { z } from 'zod'
 import {
   isAuthorableType,
@@ -33,6 +35,16 @@ import {
 } from '@kampus/school-core/content/taxonomy.ts'
 import type { FileUploadItem } from '@/components/file-upload-model.ts'
 import type { BadgeTone } from '@/lib/badge-tone.ts'
+import {
+  coreQuestionFromForm,
+  defaultQuestion,
+  formIssuePath,
+  questionFormFromCore,
+  questionSummary,
+  type AnswerFormValues,
+  type QuestionFormValues,
+  type QuestionSummary,
+} from './question-form-model.ts'
 
 export const STATUS_TONES = {
   draft: 'gray',
@@ -118,9 +130,18 @@ export const MATERIAL_FILE_REQUIRED = 'En az bir dosya ekleyin.'
 /** Bu dilimde oluşturulabilen türler (diğerleri TODO(F3c2) ile sonraki dilimde). */
 export const AUTHORABLE_OPTIONS: { value: AuthorableType; label: string }[] = [
   { value: 'reading_passage', label: CONTENT_TYPES.reading_passage.label },
-  { value: 'question', label: `${CONTENT_TYPES.question.label} (çoktan seçmeli)` },
+  // Altı soru türü (IST-033): tür formun soru bölümünde seçilir.
+  { value: 'question', label: CONTENT_TYPES.question.label },
   { value: 'file', label: MATERIAL_TYPE_LABEL },
+  // Okuma-anlama etkinliği (IST-042, DOM-BEC-006): okuma parçasına bağlanabilen soru setleri.
+  { value: 'quiz', label: CONTENT_TYPES.quiz.label },
+  { value: 'exercise_set', label: CONTENT_TYPES.exercise_set.label },
 ]
+
+/** Soru listesi taşıyan türler (quiz ve alıştırma seti; okuma etkinliği formu, OG-984). */
+export type ItemSetType = Extract<AuthorableType, 'quiz' | 'exercise_set'>
+export const isItemSetType = (type: AuthorableType): type is ItemSetType =>
+  type === 'quiz' || type === 'exercise_set'
 
 // TODO(F3c2): lisanslı yayın (sözleşme, kapsam, bitiş günü) ve Kampüs örnek içeriğinden
 // türetilen menşe, kütüphane ve kopya akışıyla birlikte eklenir.
@@ -150,39 +171,79 @@ export const LICENSE_NOTES: Record<(typeof FORM_LICENSE_KINDS)[number], string> 
 export const requiresAttribution = (kind: LicenseKind | undefined) =>
   kind !== undefined && LICENSE_KINDS[kind].requiresAttribution
 
-/** Primary beceri seçenekleri: aracılık bu dilimde yok; okuma parçasında dil kullanımı birincil olamaz. */
+/**
+ * Birincil beceri seçenekleri: aracılık bu dilimde yok; dil kullanımı yalnız soru, quiz ve alıştırma
+ * setinde birincil olur (DOM-KYN-012), okuma parçası ve materyalde olmaz.
+ */
 export function skillOptionsFor(type: AuthorableType) {
+  const languageUse = type === 'question' || isItemSetType(type)
   return SKILL_OPTIONS.filter(
-    (option) =>
-      option.value !== 'mediation' && (type === 'question' || option.value !== 'language_use'),
+    (option) => option.value !== 'mediation' && (languageUse || option.value !== 'language_use'),
   )
 }
 
 /**
  * Form değerinden core girdisi: dosya alanındaki liste (`files`, adlarıyla) sıralı `fileIds` olur;
  * materyal dosyasında içeriğin ana dosyası (`content.fileId`) listenin ilkidir, böylece içerikteki
- * dosya her zaman listededir (DOM-KYN-006). `files` taşımayan değer olduğu gibi geçer.
+ * dosya her zaman listededir (DOM-KYN-006). Soru formu (altı tür, IST-033) core soru gövdesine ve
+ * cevap anahtarına çevrilir (`coreQuestionFromForm`). Diğer değerler olduğu gibi geçer.
  */
 export function coreInputFromForm(values: unknown): unknown {
-  if (typeof values !== 'object' || values === null || !('files' in values)) return values
-  const { files, ...rest } = values as { files: unknown; content?: unknown }
-  if (!Array.isArray(files)) return values
-  // `Array.isArray` `any[]` daraltır; öğe tipi atamayla belirlenir.
-  const items: readonly Pick<FileUploadItem, 'id'>[] = files
-  const fileIds = items.map((file) => file.id)
-  const content = rest.content as { type?: unknown } | undefined
-  return {
-    ...rest,
-    fileIds,
-    ...(content?.type === 'file' ? { content: { type: 'file', fileId: fileIds[0] ?? '' } } : {}),
+  if (!isRecord(values)) return values
+  let result = values
+  if (isFileItems(result.files)) {
+    const { files, ...rest } = result
+    const fileIds = files.map((file) => file.id)
+    const content = isRecord(rest.content) ? rest.content : undefined
+    result = {
+      ...rest,
+      fileIds,
+      ...(content?.type === 'file' ? { content: { type: 'file', fileId: fileIds[0] ?? '' } } : {}),
+    }
   }
+  const content = isRecord(result.content) ? result.content : undefined
+  if (content?.type === 'question' && isRecord(content.question)) {
+    // Alan değerleri burada `unknown` gelir (çözümleyici girdisi). Tür yalnız alan adlarını verir;
+    // değerlerin biçimini core şeması doğrular, bozuksa Türkçe iletiyle reddeder.
+    const core = coreQuestionFromForm(
+      content.question as Partial<QuestionFormValues>,
+      isRecord(result.answerKey) ? (result.answerKey as Partial<AnswerFormValues>) : null,
+    )
+    result = {
+      ...result,
+      content: { type: 'question', question: core.question },
+      answerKey: core.answerKey,
+    }
+  }
+  return result
+}
+
+const isRecord = (value: unknown): value is Record<string, unknown> =>
+  typeof value === 'object' && value !== null && !Array.isArray(value)
+
+/** Dosya alanı değeri çalışma anında doğrulanır: her öğe kimlikli bir dosya satırıdır. */
+const isFileItems = (value: unknown): value is FileUploadItem[] =>
+  Array.isArray(value) && value.every((file) => isRecord(file) && typeof file.id === 'string')
+
+/**
+ * `formIssuePath` çıktısının formun bir alanı olup olmadığı: ilk parça form değerinin üst düzey
+ * anahtarlarından biri olmalıdır. Değilse çağıran hatayı `root` altına yazar; böylece yanlış yol
+ * react-hook-form'a tipsiz geçmez.
+ */
+export function isDraftFieldPath(
+  path: string,
+  values: DraftFormValues,
+): path is FieldPath<DraftFormValues> {
+  const head = path.split('.')[0] ?? ''
+  return Object.hasOwn(values, head)
 }
 
 /**
  * Form şeması: core sürüm girdisi + formun kuralları. Taslak eksik kaydedilebilir (API bunu
- * kabul eder) ama lisans bu ekranda zorunludur; yalnız bu dilimde oluşturulabilen türler ve
- * çoktan seçmeli soru kabul edilir. Materyal dosyası en az bir dosya ister; sayı sınırı core
- * `resourceFileCountIssue` ile sunucuyla aynı iletiyi verir (DOM-KYN-006).
+ * kabul eder) ama lisans bu ekranda zorunludur; yalnız bu dilimde oluşturulabilen türler kabul
+ * edilir. Soru altı türün hepsinde cevap anahtarıyla kaydedilir (IST-033, DOM-KYN-002). Materyal
+ * dosyası en az bir dosya ister; sayı sınırı core `resourceFileCountIssue` ile sunucuyla aynı
+ * iletiyi verir (DOM-KYN-006).
  */
 const draftCoreSchema = resourceVersionInputSchema.superRefine((value, ctx) => {
   if (value.content.type === 'file') {
@@ -200,21 +261,8 @@ const draftCoreSchema = resourceVersionInputSchema.superRefine((value, ctx) => {
       message: 'Bu içerik türü henüz oluşturulamaz.',
       path: ['content', 'type'],
     })
-  } else if (value.content.type === 'question') {
-    if (value.content.question.questionType !== 'multiple_choice') {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Bu soru türü henüz oluşturulamaz.',
-        path: ['content', 'question', 'questionType'],
-      })
-    }
-    if (value.answerKey === null) {
-      ctx.addIssue({
-        code: 'custom',
-        message: 'Doğru seçeneği işaretleyin.',
-        path: ['answerKey', 'correctOptionId'],
-      })
-    }
+  } else if (value.content.type === 'question' && value.answerKey === null) {
+    ctx.addIssue({ code: 'custom', message: 'Doğru cevabı belirleyin.', path: ['answerKey'] })
   }
 })
 export const draftFormSchema = z.preprocess(coreInputFromForm, draftCoreSchema)
@@ -222,8 +270,27 @@ export type DraftFormInput = z.input<typeof draftCoreSchema>
 export type DraftFormOutput = z.output<typeof draftCoreSchema>
 
 /**
+ * Formun çözümleyicisi: `draftFormSchema` ile doğrular, core hata yolunu form alanına çevirir
+ * (`formIssuePath`; soru formunda türetilen alanlar). Alan başına ilk hata kalır.
+ */
+export const draftResolver: Resolver<DraftFormValues, unknown, DraftFormOutput> = async (
+  values,
+  _context,
+  options,
+) => {
+  const parsed = await draftFormSchema.safeParseAsync(values)
+  if (parsed.success) return { values: parsed.data, errors: {} }
+  const flat: Record<string, FieldError> = {}
+  for (const issue of parsed.error.issues) {
+    const path = formIssuePath(issue.path, values)
+    flat[path] ??= { type: issue.code, message: issue.message }
+  }
+  return { values: {}, errors: toNestErrors(flat, options) }
+}
+
+/**
  * Form değerleri: core girdisinin düz (birleşimsiz) hâli. `register` yolları tipli kalsın diye
- * içerik ve cevap anahtarı yalnız bu dilimde yazılabilen iki türü taşır; doğrulayan yine core
+ * soru altı türün alanlarını bir arada taşır (`QuestionFormValues`); doğrulayan yine core
  * şemasıdır (`draftFormSchema`, çözümleyicide tek çevrim).
  */
 export type DraftFormValues = Omit<DraftFormInput, 'content' | 'answerKey'> & {
@@ -237,18 +304,25 @@ export type DraftFormValues = Omit<DraftFormInput, 'content' | 'answerKey'> & {
     glossary?: GlossaryEntry[]
     /** Materyal dosyasının ana dosyası; çözümleyici listenin ilkiyle doldurur. */
     fileId?: string | null
-    question?: {
-      questionType: 'multiple_choice'
-      stem: string
-      options: { id: string; text: string }[]
-      imageFileId: null
-    }
+    /**
+     * Quiz/alıştırma setinin soruları, sırasıyla (DOM-KYN-013): yayındaki soru sürümleri. Seçici
+     * ekler, form sıralar ve çıkarır; puan madde başınadır.
+     */
+    items?: { questionVersionId: string; points: number }[]
+    /** Okuma-anlama etkinliğinin parçası (IST-042, DOM-BEC-006): yayındaki parça sürümü. */
+    passageVersionId?: string | null
+    /**
+     * Dinleme etkinliğinin kaydı (IST-045, DOM-BEC-005): yayındaki, dinleme becerili, dökümlü ses
+     * sürümü. Parçayla birlikte de bağlanabilir (core ikisini dışlamaz).
+     */
+    listeningVersionId?: string | null
+    timeLimitMinutes?: number | null
+    shuffleItems?: boolean
+    /** Soru (IST-033): altı türün alanları; core gövdesine `coreQuestionFromForm` çevirir. */
+    question?: QuestionFormValues
   }
-  answerKey: {
-    questionType: 'multiple_choice'
-    correctOptionId: string
-    explanation: string
-  } | null
+  /** Soru dışı türlerde `null`; soruda formun cevap alanları (anahtar türden kurulur). */
+  answerKey: AnswerFormValues | null
   /** Sürümün dosyaları, sırasıyla (adı gösterim içindir; gövdeye yalnız kimlik gider). */
   files: FileUploadItem[]
 }
@@ -288,6 +362,26 @@ const emptyTags = {
 } satisfies NonNullable<DraftFormInput['tags']>
 
 export function defaultDraft(type: AuthorableType): DraftFormValues {
+  if (isItemSetType(type)) {
+    // Set varsayılanı: birincil beceri okuma; parça ve dinleme kaydı isteğe bağlıdır (dil kullanımı
+    // seti). Dinleme kaydı bağlanınca etkinlik birincil beceriden bağımsız dinleme görevidir.
+    return {
+      title: '',
+      content: {
+        type,
+        items: [],
+        passageVersionId: null,
+        listeningVersionId: null,
+        timeLimitMinutes: null,
+        shuffleItems: false,
+      },
+      answerKey: null,
+      tags: { ...emptyTags, primarySkill: 'reading' },
+      license: null,
+      attributions: [],
+      files: [],
+    }
+  }
   if (type === 'reading_passage') {
     return {
       title: '',
@@ -310,18 +404,11 @@ export function defaultDraft(type: AuthorableType): DraftFormValues {
       files: [],
     }
   }
+  const blank = defaultQuestion('multiple_choice')
   return {
     title: '',
-    content: {
-      type: 'question',
-      question: {
-        questionType: 'multiple_choice',
-        stem: '',
-        options: OPTION_IDS.slice(0, MIN_OPTIONS).map((id) => ({ id, text: '' })),
-        imageFileId: null,
-      },
-    },
-    answerKey: { questionType: 'multiple_choice', correctOptionId: 'a', explanation: '' },
+    content: { type: 'question', question: blank.question },
+    answerKey: blank.answerKey,
     tags: { ...emptyTags },
     license: null,
     attributions: [],
@@ -340,8 +427,9 @@ export function draftFiles(head: Pick<StaffResourceVersion, 'files'>): FileUploa
 }
 
 /**
- * Sunucudaki baş sürümden form değerleri; desteklenmeyen tür/soru biçimi veya kaldırılmış
- * (içeriksiz) sürüm için `null`. Eksik taslak (ör. lisans henüz yok) düzenlenebilir.
+ * Sunucudaki baş sürümden form değerleri; desteklenmeyen tür veya kaldırılmış (içeriksiz) sürüm
+ * için `null`. Altı soru türü de düzenlenir (IST-033). Eksik taslak (ör. lisans henüz yok)
+ * düzenlenebilir.
  */
 export function draftFromHead(head: StaffResourceVersion): DraftFormValues | null {
   const parsed = resourceVersionInputSchema.safeParse({
@@ -364,24 +452,20 @@ export function draftFromHead(head: StaffResourceVersion): DraftFormValues | nul
     }
   if (content.type === 'file')
     return { ...rest, content: { type: 'file', fileId: content.fileId }, answerKey: null }
-  if (content.type === 'question' && content.question.questionType === 'multiple_choice') {
-    const key = answerKey?.questionType === 'multiple_choice' ? answerKey : null
+  // Quiz/alıştırma seti içeriği bütün olarak taşınır: formun yazmadığı alan (ör. ileride eklenen
+  // bağlı kayıtlar) yamada aynen geri gider, kaybolmaz.
+  if (content.type === 'quiz' || content.type === 'exercise_set')
     return {
       ...rest,
-      content: {
-        type: 'question',
-        question: {
-          questionType: 'multiple_choice',
-          stem: content.question.stem,
-          options: content.question.options.map(({ id, text }) => ({ id, text })),
-          imageFileId: null,
-        },
-      },
-      answerKey: {
-        questionType: 'multiple_choice',
-        correctOptionId: key?.correctOptionId ?? content.question.options[0]?.id ?? 'a',
-        explanation: key?.explanation ?? '',
-      },
+      content: { ...content, items: content.items.map((item) => ({ ...item })) },
+      answerKey: null,
+    }
+  if (content.type === 'question') {
+    const form = questionFormFromCore(content.question, answerKey)
+    return {
+      ...rest,
+      content: { type: 'question', question: form.question },
+      answerKey: form.answerKey,
     }
   }
   return null
@@ -412,17 +496,24 @@ export const isEnglishContent = (tags: Tags) =>
 
 export type ContentPreview =
   | { kind: 'reading'; body: string }
-  | {
-      kind: 'question'
-      stem: string
-      options: { id: string; text: string; correct: boolean }[]
-      explanation: string
-    }
+  | { kind: 'question'; summary: QuestionSummary }
   | { kind: 'file' }
+  | {
+      kind: 'set'
+      itemCount: number
+      /** Okuma-anlama etkinliği mi (bağlı okuma parçası var). */
+      reading: boolean
+      /** Dinleme etkinliği mi (bağlı dinleme kaydı var; IST-045). */
+      listening: boolean
+      timeLimitMinutes: number | null
+    }
   | { kind: 'other' }
   | { kind: 'removed' }
 
-/** Panel önizlemesi: okuma metni ya da soru (kök, seçenekler, doğru işaretli); diğer türler yalnız künye. */
+/**
+ * Panel önizlemesi: okuma metni ya da soru (altı tür: kök, doğru cevap ve çözüm); diğer türler
+ * yalnız künye.
+ */
 export function previewFromHead(head: StaffResourceVersion): ContentPreview {
   if (head.status === 'removed' || head.content === null) return { kind: 'removed' }
   const parsed = resourceVersionInputSchema.safeParse({
@@ -438,19 +529,15 @@ export function previewFromHead(head: StaffResourceVersion): ContentPreview {
   if (content.type === 'reading_passage') return { kind: 'reading', body: content.body }
   // Materyal dosyasının içeriği dosyalarıdır; panel onları ayrı listeler.
   if (content.type === 'file') return { kind: 'file' }
-  if (content.type === 'question' && content.question.questionType === 'multiple_choice') {
-    const correct = answerKey?.questionType === 'multiple_choice' ? answerKey.correctOptionId : null
+  if (content.type === 'quiz' || content.type === 'exercise_set')
     return {
-      kind: 'question',
-      stem: content.question.stem,
-      options: content.question.options.map((option) => ({
-        id: option.id,
-        text: option.text,
-        correct: option.id === correct,
-      })),
-      explanation:
-        answerKey?.questionType === 'multiple_choice' ? (answerKey.explanation ?? '') : '',
+      kind: 'set',
+      itemCount: content.items.length,
+      reading: content.passageVersionId !== null,
+      listening: content.listeningVersionId !== null,
+      timeLimitMinutes: content.timeLimitMinutes,
     }
-  }
+  if (content.type === 'question')
+    return { kind: 'question', summary: questionSummary(content.question, answerKey) }
   return { kind: 'other' }
 }

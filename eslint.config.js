@@ -39,6 +39,12 @@ export default [
     rules: { 'react/no-missing-key': 'error', 'react/rules-of-hooks': 'error' },
   },
   {
+    // Mobil ekran kaydı bileşeni React Navigation `getComponent` içinde `require` ile ilk açılışta
+    // yükler; kayıt böylece Node birim testlerinde React Native'e bağlanmadan okunur.
+    files: ['apps/mobile/src/api/screen-registry.ts'],
+    rules: { '@typescript-eslint/no-require-imports': 'off' },
+  },
+  {
     files: ['apps/web-react/**/*.{ts,tsx}'],
     ...react.configs['recommended-typescript'],
   },

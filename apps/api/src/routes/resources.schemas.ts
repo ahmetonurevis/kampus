@@ -30,7 +30,7 @@ import {
   SUBSKILLS,
 } from '@kampus/school-core/content/taxonomy.ts'
 
-import { RESOURCE_SORTS } from '../db/resources.ts'
+import { RESOURCE_LIST_VERSIONS, RESOURCE_SORTS } from '../db/resources.ts'
 import { dataResponse, pageQuerySchema, pageResponse } from './common.schemas.ts'
 import { filePurposeSchema } from './files.schemas.ts'
 
@@ -88,6 +88,20 @@ export const resourceListQuerySchema = pageQuerySchema
       .max(200)
       .optional()
       .describe('Kaynak sahibi. Yalnız personel; öğrenci ve velide 400 `staff_only_filter`'),
+    studentId: z
+      .string()
+      .min(1)
+      .max(200)
+      .optional()
+      .describe(
+        'Yalnız öğrenci ve velide: bu öğrencinin gördüğü kaynaklar (DOM-KYN-041). Velide seçili çocuk (velayetli ve kısıtsız bağlı); öğrencide yalnız kendi kaydı. Kapsam dışı öğrenci 404; personelde 400 `learner_only_filter`',
+      ),
+    filterOn: z
+      .enum(RESOURCE_LIST_VERSIONS)
+      .default('head')
+      .describe(
+        'Personel satırının sürümü ve süzgeçlerin uygulandığı sürüm: `head` okunabilir baş sürüm, `current` güncel yayındaki sürüm (hiç yayımlanmamış kaynak listelenmez). Bağ yayındaki sürüme kurulan seçicide kullanılır (dinleme kaydı, DOM-BEC-005). Öğrenci ve velide satır zaten yayındaki sürümdür, etkisizdir',
+      ),
     sort: z
       .enum(RESOURCE_SORTS)
       .default('-updatedAt')
@@ -181,6 +195,20 @@ const versionSummarySchema = z
   })
   .meta({ id: 'ResourceVersionSummary' })
 
+const licenseDetailSchema = z
+  .record(z.string(), z.unknown())
+  .nullable()
+  .describe('Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel')
+
+/**
+ * Ayrıntıdaki sürüm geçmişi satırı: özet + yayın kararlarının dayandığı lisans ve onay bilgisi.
+ * Baş sürüm yayın sürümü değilken (açık taslak) kopya ve yönetim kararı yayın sürümünün gerçek
+ * lisansıyla verilir (DOM-KYN-050).
+ */
+const versionHistoryItemSchema = versionSummarySchema
+  .extend({ license: licenseDetailSchema, reviewedByUserId: z.string().nullable() })
+  .meta({ id: 'ResourceVersionHistoryItem' })
+
 const staffVersionSchema = versionSummarySchema
   .extend({
     content: contentSchema.nullable().describe('Kaldırılan sürümde `null` (DOM-KYN-051)'),
@@ -188,10 +216,7 @@ const staffVersionSchema = versionSummarySchema
       .record(z.string(), z.unknown())
       .nullable()
       .describe('Cevap anahtarı (school-core `answerKeySchema`); yalnız personel'),
-    license: z
-      .record(z.string(), z.unknown())
-      .nullable()
-      .describe('Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel'),
+    license: licenseDetailSchema,
     attributions: z.array(attributionSchema),
     submittedAt: instant.nullable(),
     reviewedByUserId: z.string().nullable(),
@@ -249,7 +274,15 @@ const staffListItemSchema = z
   .object({
     view: z.literal('staff'),
     ...resourceSummaryShape,
-    version: versionSummarySchema.describe('Okunabilir baş sürüm'),
+    version: versionSummarySchema.describe(
+      'Okunabilir baş sürüm; `filterOn=current` ile güncel yayındaki sürüm',
+    ),
+    hasTranscript: z
+      .boolean()
+      .nullable()
+      .describe(
+        'Satır sürümü ses içeriğiyse dökümü var mı (dinleme kaydı yayım koşulu, DOM-BEC-005); ses değilse ya da içerik kaldırıldıysa `null`. Döküm metni listede yoktur',
+      ),
   })
   .meta({ id: 'StaffResourceListItem' })
 
@@ -279,7 +312,7 @@ export const resourceDetailResponseSchema = dataResponse(
         view: z.literal('staff'),
         resource: staffResourceSchema,
         versions: z
-          .array(versionSummarySchema)
+          .array(versionHistoryItemSchema)
           .describe('Okunabilir sürümler, numaraya göre artan'),
         head: staffVersionSchema,
         publicationIssues: z

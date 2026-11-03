@@ -3,11 +3,14 @@ import { Pressable, View, useWindowDimensions } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import type { NativeStackHeaderProps } from '@react-navigation/native-stack'
 import { useActiveInstitution } from '@kampus/react-shared/use-active-institution.ts'
+import { bellLabel, unreadBadgeText } from '@kampus/react-shared/notification-model.ts'
+import { useUnreadNotificationCount } from '@kampus/react-shared/use-notifications.ts'
 import { roles } from '@kampus/school-core/modules/navigation.ts'
 import { categoryLabel } from '../model/hub.ts'
 import { Avatar, Button, Icon, IconButton, Sheet, T, styles, useColors } from '../ui/components.tsx'
 import { ThemePreference } from '../ui/SchoolLayout.tsx'
 import { useApiAuth, useApiSession } from './auth.tsx'
+import { notificationBellVisible } from './notifications.ts'
 import { apiPages } from './pages.ts'
 import { institutionChoices, type MobileSession } from './session-state.ts'
 import { useNotify } from './toast.tsx'
@@ -18,6 +21,7 @@ function routeTitle(session: MobileSession, name: string, params: unknown): stri
     if (typeof category === 'string') return categoryLabel(category)
   }
   if (name === 'ApiConversation') return 'Yazışma'
+  if (name === 'ApiNotifications') return 'Bildirimler'
   return apiPages(session).find((page) => page.screen === name)?.title ?? 'Kampüs'
 }
 
@@ -28,6 +32,7 @@ export function ApiHeader({ navigation, route, back }: NativeStackHeaderProps) {
   const { fontScale } = useWindowDimensions()
   const [menu, setMenu] = useState(false)
   const isHome = route.name === 'ApiHome'
+  const bell = notificationBellVisible(session)
   const name = session.user.name
   return (
     <>
@@ -70,6 +75,12 @@ export function ApiHeader({ navigation, route, back }: NativeStackHeaderProps) {
               />
             </>
           )}
+          {bell && (
+            <NotificationButton
+              active={route.name === 'ApiNotifications'}
+              onPress={() => navigation.navigate('ApiNotifications')}
+            />
+          )}
           <Pressable
             accessibilityRole="button"
             accessibilityLabel={`Hesap: ${name}`}
@@ -94,6 +105,63 @@ export function ApiHeader({ navigation, route, back }: NativeStackHeaderProps) {
       </SafeAreaView>
       {menu && <AccountSheet session={session} onClose={() => setMenu(false)} />}
     </>
+  )
+}
+
+/**
+ * Üst başlıktaki bildirim zili: okunmamış sayısı turuncu rozette ve erişilebilir adta ("Bildirimler,
+ * 3 okunmamış"). Sayı odağa dönüşte ve okundu işaretinde tazelenir; rozet gizlidir, sayı etikettedir.
+ */
+function NotificationButton({ active, onPress }: { active: boolean; onPress: () => void }) {
+  const c = useColors()
+  const count = useUnreadNotificationCount()
+  const unread = count.data?.data.unread
+  const badge = unreadBadgeText(unread)
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={bellLabel(unread)}
+      accessibilityState={{ selected: active }}
+      onPress={onPress}
+      style={({ pressed }) => ({
+        width: 48,
+        height: 48,
+        borderRadius: 12,
+        justifyContent: 'center',
+        alignItems: 'center',
+        backgroundColor: pressed || active ? '#FFFFFF2E' : 'transparent',
+      })}
+    >
+      <Icon name="Bell" color={c.heroText} />
+      {badge && (
+        <View
+          importantForAccessibility="no-hide-descendants"
+          accessibilityElementsHidden
+          style={{
+            position: 'absolute',
+            top: 4,
+            right: 2,
+            minWidth: 20,
+            minHeight: 20,
+            paddingHorizontal: 5,
+            paddingVertical: 1,
+            borderRadius: 10,
+            alignItems: 'center',
+            justifyContent: 'center',
+            backgroundColor: c.accent,
+          }}
+        >
+          <T
+            bold
+            size={11}
+            maxFontSizeMultiplier={1.3}
+            style={{ color: c.onAccent, lineHeight: 14 }}
+          >
+            {badge}
+          </T>
+        </View>
+      )}
+    </Pressable>
   )
 }
 

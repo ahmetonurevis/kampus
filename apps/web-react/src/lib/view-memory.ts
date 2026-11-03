@@ -1,6 +1,6 @@
 // Görünüm belleği: liste durumu, açık menü grupları ve kaydırma konumu yalnız bellekte tutulur.
-// Kişisel veri içerebileceği için sessionStorage/localStorage'a yazılmaz; sayfa yenilenince
-// liste durumu URL arama parametrelerinden geri kurulur.
+// Kişisel veri içerebileceği için sessionStorage/localStorage'a yazılmaz; sayfa yenilenince sayfa,
+// sıralama ve URL filtreleri adresten geri kurulur, arama metni kaybolur (ADR 0009).
 const memory = new Map<string, unknown>()
 
 export function readView(key: string): unknown {

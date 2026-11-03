@@ -301,3 +301,78 @@ test('IST-009: academic kapalıyken görev atama sayfası menüden ve adresten k
   await openMenuGroup(page, 'Yönetim')
   await expect(menu.getByRole('link', { name: PAGE_TITLE })).toBeVisible()
 })
+
+test('IST-005, DOM-YTK-027: zümre başkanı öğretmenin branşı değişmez; hata Branş alanının altında bağlantıyla görünür, görev kaldırılınca branş değişir', async ({
+  loginAs,
+  api,
+  tenant,
+}) => {
+  // Seed öğretmenlerinin hepsinin ders ataması var (branş zaten kilitli); bu yüzden ataması olmayan
+  // kendi öğretmen kaydı kurulur ve hesaba bağlanır.
+  const recordId = 't-og059'
+  const school = await tenant({
+    roles: ['ogretmen'],
+    teacherId: recordId,
+    records: [
+      {
+        collection: 'teachers',
+        data: {
+          id: recordId,
+          name: 'Zeynep Koordinatör',
+          email: 'zeynep.koordinator@kampus.example',
+          phone: '05551003040',
+          subjectId: 'math',
+          subject: 'Matematik',
+          branchId: 'b1',
+          attendanceRate: 100,
+          homeworkRate: 100,
+          isActive: true,
+          deletedAt: null,
+          guidanceCounselor: false,
+        },
+      },
+    ],
+  })
+  const adminUser = school.user('yonetici')
+  const admin = await api(adminUser)
+  const teacher = school.user('ogretmen').name
+  await assignViaApi(admin, await teacherMembershipId(admin, teacher), 'math')
+  const subjectOf = async () => {
+    const result = await admin.get('/api/v1/collections/teachers?pageSize=100')
+    expect(result.status).toBe(200)
+    const rows = (result.body as { data: { id: string; record: { subjectId: string } }[] }).data
+    return rows.find((row) => row.id === recordId)?.record.subjectId
+  }
+  const editUrl = `/yonetici/personel?ogretmen-form=${recordId}`
+
+  const page = await loginAs(adminUser)
+  await page.goto(editUrl)
+  const panel = page.getByRole('dialog', { name: 'Öğretmeni düzenle' })
+  await panel.getByLabel('Branş').selectOption({ label: 'Fizik' })
+  await panel.getByRole('button', { name: 'Kaydet' }).click()
+  // Hata yalnız Branş alanının altındadır (toast yok); kayıt değişmez.
+  await expect(panel.getByText(/Matematik koordinatör görevi yeni branşla uyuşmuyor/)).toBeVisible()
+  await expect(panel.getByLabel('Branş')).toHaveAttribute('aria-invalid', 'true')
+  await expect(panel.getByLabel('Branş')).toBeFocused()
+  await expect(page.locator('[data-sonner-toast]')).toHaveCount(0)
+  expect(await subjectOf()).toBe('math')
+
+  // Bağlantı görev sayfasına götürür; görev kaldırılır.
+  await panel.getByRole('link', { name: 'Koordinatör görevlerini aç ve görevi kaldır' }).click()
+  await expect(page.getByRole('heading', { level: 1, name: PAGE_TITLE })).toBeVisible()
+  await page.getByRole('button', { name: `${teacher} Matematik görevini kaldır` }).click()
+  await page
+    .getByRole('alertdialog', { name: 'Görevi kaldır' })
+    .getByRole('button', { name: 'Görevi kaldır' })
+    .click()
+  await expect(page.getByText('Zümre başkanı görevi kaldırıldı.')).toBeVisible()
+  expect(await dutyCount(admin)).toBe(0)
+
+  // Görev yokken aynı değişiklik kaydedilir.
+  await page.goto(editUrl)
+  const again = page.getByRole('dialog', { name: 'Öğretmeni düzenle' })
+  await again.getByLabel('Branş').selectOption({ label: 'Fizik' })
+  await again.getByRole('button', { name: 'Kaydet' }).click()
+  await expect(page.getByText('Öğretmen güncellendi.')).toBeVisible()
+  expect(await subjectOf()).toBe('physics')
+})

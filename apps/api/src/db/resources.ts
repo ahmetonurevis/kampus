@@ -21,6 +21,7 @@ import {
   normalizeSearchText,
   searchDocument,
   type ContentActor,
+  type ListeningVersionRef,
   type ResourceContent,
   type ResourceLicense,
   type ResourceRecord,
@@ -527,6 +528,9 @@ export async function listVisibleVersionIds(
 
 export const RESOURCE_SORTS = ['-updatedAt', 'updatedAt', 'title', '-title'] as const
 export type ResourceSort = (typeof RESOURCE_SORTS)[number]
+/** Personel satırının sürümü: okunabilir baş sürüm ya da güncel yayındaki sürüm. */
+export const RESOURCE_LIST_VERSIONS = ['head', 'current'] as const
+export type ResourceListVersion = (typeof RESOURCE_LIST_VERSIONS)[number]
 
 export interface ResourceListQuery {
   page: number
@@ -544,6 +548,12 @@ export interface ResourceListQuery {
   gradeLevel?: number | undefined
   status?: ResourceStatus | undefined
   ownerUserId?: string | undefined
+  /**
+   * Personel satırının sürümü ve süzgeçlerin uygulandığı sürüm; verilmezse `head`. `current`
+   * bağı yayındaki sürüme kuran seçici içindir (OG-998): baş sürümle süzülseydi yayındaki sürümü
+   * dinleme becerili, taslağı başka becerili kayıt seçicide görünmezdi.
+   */
+  filterOn?: ResourceListVersion | undefined
   sort: ResourceSort
 }
 
@@ -595,7 +605,8 @@ function listOrder(sort: ResourceSort, v: VersionsTable): SQL[] {
  * Kişinin kütüphane listesi. Personel satırı kaynağın okunabilir "baş" sürümüdür: arşivli
  * olmayanlar önce, en yüksek sürüm numarası (`resource_versions_resource_number_key` ile kaynak
  * başına tek indeks erişimi). Öğrenci ve velide yalnız güncel yayındaki sürüm. Süzgeçler baş
- * sürüme uygulanır; sayım aynı koşulla ayrı sorgudur.
+ * sürüme uygulanır; sayım aynı koşulla ayrı sorgudur. `filterOn: 'current'` personel satırını da
+ * güncel yayındaki sürüme alır (öğrenci ve velideki birleşimin aynısı).
  */
 export async function listVisibleResources(
   db: Database,
@@ -607,7 +618,7 @@ export async function listVisibleResources(
 ): Promise<{ rows: ResourceListRow[]; total: number }> {
   const v = resourceVersions
   let join: SQL
-  if (viewer.kind === 'staff') {
+  if (viewer.kind === 'staff' && query.filterOn !== 'current') {
     // Ham `sql` içinde takma ad tablo yalnız adıyla yazılır; kaynak tablo açıkça verilir.
     const head = headVersions
     join = sql`${v.id} = (select ${head.id} from ${resourceVersions} as ${sql.identifier('head')}
@@ -889,16 +900,8 @@ export async function loadItemVersionRefs(
   db: Database,
   institutionId: string,
   versionIds: readonly string[],
-): Promise<
-  Map<
-    string,
-    Pick<ResourceVersion, 'id' | 'status' | 'tags'> & { contentType: ResourceRecord['contentType'] }
-  >
-> {
-  const map = new Map<
-    string,
-    Pick<ResourceVersion, 'id' | 'status' | 'tags'> & { contentType: ResourceRecord['contentType'] }
-  >()
+): Promise<Map<string, ListeningVersionRef>> {
+  const map = new Map<string, ListeningVersionRef>()
   const ids = uuidsOnly(versionIds)
   if (ids.length === 0) return map
   const rows = await db
@@ -926,9 +929,38 @@ export async function loadItemVersionRefs(
       status: stored.status,
       tags: stored.tags,
       contentType: row.contentType,
+      // Dinleme kaydı bağının yayım koşulu (DOM-BEC-005); döküm metni denetime taşınmaz.
+      hasTranscript: stored.content?.type === 'audio' && stored.content.transcript !== null,
     })
   }
   return map
+}
+
+/**
+ * Yayım denetiminin bağlı sürümleri: quiz/alıştırma setinin soruları, okuma parçası ve dinleme
+ * kaydı (DOM-KYN-013; IST-042, IST-045). Ayrıntıdaki kuru çalıştırma ile durum geçişi aynı
+ * yüklemeyi kullanır; biri bağı görmezse panelde yanlış sorun ve kilitli eylem çıkar (OG-984).
+ */
+export async function loadLinkedVersionRefs(
+  db: Database,
+  institutionId: string,
+  content: ResourceContent | null,
+): Promise<{
+  itemVersions: Map<string, ListeningVersionRef>
+  passageVersion: ListeningVersionRef | undefined
+  listeningVersion: ListeningVersionRef | undefined
+}> {
+  const list = content !== null && (content.type === 'quiz' || content.type === 'exercise_set')
+  const ids = list ? content.items.map((item) => item.questionVersionId) : []
+  const passageId = list ? content.passageVersionId : null
+  const listeningId = list ? content.listeningVersionId : null
+  const linked = [passageId, listeningId].filter((id): id is string => id !== null)
+  const refs = await loadItemVersionRefs(db, institutionId, [...ids, ...linked])
+  return {
+    itemVersions: refs,
+    passageVersion: passageId === null ? undefined : refs.get(passageId),
+    listeningVersion: listeningId === null ? undefined : refs.get(listeningId),
+  }
 }
 
 // --- Yazma uçlarının okumaları ------------------------------------------------------------
@@ -1021,6 +1053,33 @@ export async function listPassageContainerVersions(
         inArray(sql<string>`${resourceVersions.content} ->> 'passageVersionId'`, [
           ...passageVersionIds,
         ]),
+      ),
+    )
+    .orderBy(asc(resourceVersions.id))
+  return rows.flatMap((row) => (row.content === null ? [] : [{ id: row.id, content: row.content }]))
+}
+
+/**
+ * Verilen ses sürümlerini dinleme kaydı olarak bağlayan quiz ve alıştırma seti sürümleri (IST-045;
+ * DOM-BEC-005, DOM-KYN-051). Bağ içerikteki `listeningVersionId`'dir (ayrı tablo yok). Kaldırmada
+ * ve dinleme kaydının dosyası istendiğinde (okuma kuralı ve hak sayımı) çalışır; kurumun sürümleri
+ * `institution_id` indeksiyle daraltılır, `jsonb` alanı ölçümsüz indeks istemez.
+ * TODO(dinleme-bag-indeksi): kurumda sürüm sayısı büyürse ifade indeksi `EXPLAIN` ile eklenir.
+ */
+export async function listListeningContainerVersions(
+  db: Database,
+  institutionId: string,
+  listeningVersionIds: readonly string[],
+): Promise<{ id: string; content: ResourceContent }[]> {
+  const ids = uuidsOnly(listeningVersionIds)
+  if (ids.length === 0) return []
+  const rows = await db
+    .select({ id: resourceVersions.id, content: resourceVersions.content })
+    .from(resourceVersions)
+    .where(
+      and(
+        eq(resourceVersions.institutionId, institutionId),
+        inArray(sql<string>`${resourceVersions.content} ->> 'listeningVersionId'`, ids),
       ),
     )
     .orderBy(asc(resourceVersions.id))

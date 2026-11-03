@@ -33,8 +33,14 @@ async function optional<T>(read: Promise<T>): Promise<T | undefined> {
 type Records = Partial<Record<CollectionName, unknown[]>>
 
 export type DocumentRequest = {
-  /** Tahsilat dekontu, iade kırılımı ve cari ekstre kendi ucundan üretilir (`use-document-pdf.ts`). */
-  type: Exclude<PdfDocumentType, 'payment-receipt' | 'refund-statement' | 'student-statement'>
+  /**
+   * Tahsilat dekontu, iade kırılımı, cari ekstre ve kurum başarı belgesi kendi ucundan üretilir
+   * (`use-document-pdf.ts`).
+   */
+  type: Exclude<
+    PdfDocumentType,
+    'payment-receipt' | 'refund-statement' | 'student-statement' | 'course-certificate'
+  >
   recordId: string
   /** Ödev çalışma kâğıdında belgeyi alan öğrenci; yoksa öğrenci alanları boş bırakılır (öğretmen). */
   studentId?: string

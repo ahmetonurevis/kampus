@@ -12,6 +12,10 @@ import {
   studentPaidCents,
 } from '@/lib/pdf/document-state.ts'
 import { contractDocument } from '@/lib/pdf/templates/contract.ts'
+import {
+  certificateVerificationUrl,
+  courseCertificateDocument,
+} from '@/lib/pdf/templates/course-certificate.ts'
 import { studentStatementDocument } from '@/lib/pdf/templates/finance-statement.ts'
 import { homeworkDocument } from '@/lib/pdf/templates/homework.ts'
 import { materialDocument } from '@/lib/pdf/templates/material.ts'
@@ -83,6 +87,30 @@ export function useDocumentPdf(
             refundStatementDocument(measurer, data, options),
           )
           return { blob, pages, filename: documentFilename(type, recordId) }
+        }
+        if (type === 'course-certificate') {
+          // Belge içeriği düzenleme anının kopyasıdır (DOM-DIL-081); kapsam ayrıntı ucundadır.
+          // QR paketi yalnız bu belgede yüklenir; adres uygulamanın yayınlandığı kökten kurulur.
+          const [{ data }, { qrMatrix }] = await Promise.all([
+            runRequest(() =>
+              client.GET('/api/v1/course-certificates/{certificateId}', {
+                params: { path: { certificateId: recordId } },
+                signal,
+              }),
+            ),
+            import('@/lib/pdf/qr.ts'),
+          ])
+          const verificationUrl = certificateVerificationUrl(
+            new URL(import.meta.env.BASE_URL, window.location.origin).href,
+            data.verificationCode,
+          )
+          const { blob, pages } = await renderPdf((measurer) =>
+            courseCertificateDocument(measurer, data, {
+              verificationUrl,
+              qr: qrMatrix(verificationUrl),
+            }),
+          )
+          return { blob, pages, filename: documentFilename(type, data.number) }
         }
         if (type === 'student-statement') {
           // Kayıt kimliği öğrenci kimliğidir. Bakiye ve satırlar API ekstresinden gelir; burada

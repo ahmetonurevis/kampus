@@ -64,6 +64,7 @@ import { defineFileAttachment } from './file-registry.ts'
 import { listMembershipLinks } from './memberships.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { coordinates, viewerOf, visible, type Viewer } from './task-assignments.ts'
+import { hidesPracticeResult } from './task-attempts.ts'
 import {
   attachVersionFiles,
   bodyFileIds,
@@ -280,7 +281,8 @@ function visibleScoresOf(
  * `scoreResolution`; koordinatörün son puanı dahil) personele her zaman, kursiyer ve veliye yalnız
  * geri bildirim açılınca (`teacherFeedbackReleased`) görünür; açılmadan önce kursiyerin gördüğü,
  * hiç puanlanmamış sürümle aynıdır (`null`). Uyuşmazlıkta puan kesinleşmez, kursiyere kapalı
- * kalır. Kesinleşmemiş puanı yalnız personel görür (`visibleScoresOf`).
+ * kalır. Kesinleşmemiş puanı yalnız personel görür (`visibleScoresOf`). Veli alıştırma puanını
+ * hiç görmez (`hidesPracticeResult`).
  */
 function shownScore(
   viewer: Viewer,
@@ -289,6 +291,9 @@ function shownScore(
   grading: Grading,
   version: VersionRow,
 ): { row: RubricScoreRow; settled: boolean } | null {
+  // Veli alıştırmanın puanını, rubriğini ve geri bildirimini görmez (DOM-BEC-041); teslim
+  // listesi, ayrıntısı ve atama durum özeti bu tek yoldan puan alır.
+  if (hidesPracticeResult(viewer, assignment)) return null
   const resolution = resolutionOf(grading, version)
   if (resolution.status === 'settled') {
     if (viewer.kind !== 'learner' || teacherFeedbackReleased(resolution.settledAt, ctx.now))

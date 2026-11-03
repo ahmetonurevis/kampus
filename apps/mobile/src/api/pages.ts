@@ -16,7 +16,12 @@ import { isModuleOpen, type MemberRole, type MobileSession } from './session-sta
 export type { ApiScreen }
 
 /** Ekran kaydının adları, gezinme yığınındaki sabit ekranlarla çakışamaz (`ApiApp.tsx`). */
-export const RESERVED_SCREENS: readonly string[] = ['ApiHome', 'ApiCategory', 'ApiConversation']
+export const RESERVED_SCREENS: readonly string[] = [
+  'ApiHome',
+  'ApiCategory',
+  'ApiConversation',
+  'ApiNotifications',
+]
 
 /** Öğrenci ödemeleri telefonda gösterilmez; bu modüldeki sayfa öğrenciye kaydedilmez. */
 const STUDENT_HIDDEN_MODULE = 'finance'

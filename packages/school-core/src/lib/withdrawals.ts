@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
+import { isContractInForce } from './contract-status.ts'
 import { daySchema, requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
@@ -145,8 +146,14 @@ function plannedRenewalContractIds(state: State, studentId: string): Set<string>
 /** Yürürlükteki sözleşme: planlanmış yenileme dışındaki en yeni sözleşme. */
 function currentContract(state: State, studentId: string): Contract {
   const planned = plannedRenewalContractIds(state, studentId)
+  // Onaylanmamış ek protokol ve yerini ek protokole bırakan sürüm iadenin tabanı olamaz (DOM-FIN-012).
   const contract = state.contracts
-    .filter((item) => item.studentId === studentId && !planned.has(item.id))
+    .filter(
+      (item) =>
+        item.studentId === studentId &&
+        !planned.has(item.id) &&
+        isContractInForce(item, state.contracts),
+    )
     .reduce<Contract | undefined>(
       (latest, item) =>
         latest === undefined || Date.parse(item.date) >= Date.parse(latest.date) ? item : latest,
@@ -157,7 +164,8 @@ function currentContract(state: State, studentId: string): Contract {
   return contract
 }
 
-function invoicesOf(state: State, contract: Contract): Invoice[] {
+/** Sözleşmenin kendi taksitleri (DOM-FIN-012); alanı olmayan eski kayıtta öğrencinin taksitleri. */
+export function invoicesOf(state: State, contract: Contract): Invoice[] {
   return state.invoices.filter((invoice) =>
     contract.invoiceIds
       ? contract.invoiceIds.includes(invoice.id)

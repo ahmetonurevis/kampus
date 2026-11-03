@@ -9,9 +9,18 @@ import type { SubmissionFile, VersionRow } from '@kampus/school-core/skills/subm
 
 import { loadAcademicYears } from '../db/academic-years.ts'
 import type { Database } from '../db/client.ts'
-import { extendFileRetention, loadFilesByIds, type StoredFile } from '../db/files.ts'
+import {
+  extendFileRetention,
+  listAttachedFiles,
+  loadFilesByIds,
+  type StoredFile,
+} from '../db/files.ts'
 import { loadGroups, loadMembershipsOfStudents } from '../db/language-groups.ts'
-import type { StoredAssignment, StoredSubmission } from '../db/skills.ts'
+import {
+  listScoreIdsOfVersion,
+  type StoredAssignment,
+  type StoredSubmission,
+} from '../db/skills.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { attachFile, FileRejectedError, isScanRejected } from './files.ts'
 import { getInstitutionModules } from './modules.ts'
@@ -28,6 +37,9 @@ import { getInstitutionModules } from './modules.ts'
  */
 
 export const SUBMISSION_VERSION_ATTACHMENT = 'task_submission_version'
+
+/** Puan satırına bağlı sesli geri bildirimin bağlama türü (DOM-BEC-056; `files.attached_type`). */
+export const SCORE_ATTACHMENT = 'task_rubric_score'
 
 /** Gövdedeki dosya kimlikleri (sıra korunur). */
 export function bodyFileIds(
@@ -165,6 +177,51 @@ export async function attachVersionFiles(
 }
 
 /**
+ * Puana bağlı sesli geri bildirimi bağlar (DOM-BEC-056). Ses, sürümün öğrencisinin konuşma
+ * kaydıyla aynı veri sahibine (`data_subject_id` = kursiyer) ve aynı saklama kuralına bağlanır:
+ * saklama sonu core `recordingRetentionUntil` ile sürümün takviminden hesaplanır (dönem sonu,
+ * puanlama ve itiraz kapanışı; `announcedAt` sonucu kesinleştiren puanda puanlama anıdır), rıza geri
+ * çekilince ve saklama sonunda konuşma kaydıyla birlikte silinir. Ses öğretmenindir: kayıt rızası
+ * istenmez (`attachFile` yalnız `requiresConsent` amaçlarda sorar).
+ */
+export async function attachFeedbackAudio(
+  tx: Database,
+  ctx: ServiceContext,
+  input: {
+    fileId: string
+    scoreId: string
+    assignment: StoredAssignment
+    submission: StoredSubmission
+    version: VersionRow
+    announcedAt: string | null
+    holidays: readonly string[]
+  },
+): Promise<void> {
+  const { assignment, submission, version } = input
+  const retentionUntil = new Date(
+    recordingRetentionUntil({
+      periodEndDate: await recordingPeriodEndFor(
+        tx,
+        ctx,
+        submission.learnerId,
+        version.submittedAt,
+      ),
+      deadline: deadlineForVersion(assignment.deadline, submission, version.number),
+      submittedAt: version.submittedAt,
+      announcedAt: input.announcedAt,
+      holidays: input.holidays,
+    }),
+  )
+  await attachFile(tx, ctx, {
+    fileId: input.fileId,
+    attachedType: SCORE_ATTACHMENT,
+    attachedId: input.scoreId,
+    dataSubjectId: submission.learnerId,
+    retentionUntil,
+  })
+}
+
+/**
  * Sürümün konuşma kaydının saklama sonunu bilinen olay anlarıyla yeniden hesaplar ve yalnız ileri
  * alır (DOM-BEC-052, DOM-BEC-025; core `recordingRetentionUntil`, `extendedRecordingRetention`):
  * sonuç duyurusu (puanın kesinleşmesi), itiraz açılışı ve itiraz kararı. Olayı yazan işlemin
@@ -185,7 +242,6 @@ export async function extendVersionRecordingRetention(
   },
 ): Promise<void> {
   const { version } = input
-  if (version.fileIds.length === 0) return
   const recordings = (await loadFilesByIds(tx, ctx.institutionId, version.fileIds)).filter(
     (row) =>
       row.purpose === 'speaking_recording' &&
@@ -193,6 +249,16 @@ export async function extendVersionRecordingRetention(
       row.attachedType === SUBMISSION_VERSION_ATTACHMENT &&
       row.attachedId === version.id,
   )
+  // Sürümün puanlarına bağlı sesli geri bildirimler konuşma kaydıyla aynı takvimi izler
+  // (DOM-BEC-056).
+  for (const scoreId of await listScoreIdsOfVersion(tx, ctx.institutionId, version.id))
+    recordings.push(
+      ...(await listAttachedFiles(tx, ctx.institutionId, {
+        type: SCORE_ATTACHMENT,
+        id: scoreId,
+        purpose: 'feedback_audio',
+      })),
+    )
   if (recordings.length === 0) return
   const computed = recordingRetentionUntil({
     periodEndDate: await recordingPeriodEndFor(

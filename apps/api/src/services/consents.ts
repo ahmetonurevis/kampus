@@ -294,7 +294,7 @@ export function giveConsent(
 /**
  * Rızayı ya da itirazı geri çeker (DOM-YTK-059): tek işlem, anında etkili; ikinci geri çekme 409
  * `consent_already_withdrawn`. Kapsam dışı ya da başka kurumun satırı 404. Geri çekilen rıza
- * dosya yüklemesine dayanıyorsa (`speaking_recording`) veri sahibinin o amaçtaki dosyaları aynı
+ * dosya yüklemesine dayanıyorsa (`speaking_recording`) veri sahibinin o amaçtaki ve ona bağlı sesli geri bildirim (`feedback_audio`, DOM-BEC-056) dosyaları aynı
  * işlemde imhaya işaretlenir (ADR 0003 karar 9, 13: `retention_until = now`): kayda bağlanmış
  * dosyalar (`data_subject_id`) ve öğrencinin hesabının yüklediği henüz bağlanmamış dosyalar.
  *
@@ -364,7 +364,8 @@ export function withdrawConsent(
             tx,
             ctx.institutionId,
             {
-              purpose: 'speaking_recording',
+              // Sesli geri bildirim de aynı veri sahibine bağlıdır (DOM-BEC-056).
+              purposes: ['speaking_recording', 'feedback_audio'],
               dataSubjectId: consent.subjectId,
               uploaderUserIds: await listStudentAccountUserIds(
                 tx,

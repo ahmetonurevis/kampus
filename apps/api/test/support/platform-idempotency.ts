@@ -39,6 +39,8 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   'POST /api/v1/classes',
   // Görev atama: sınıfa toplu dağıtım (routes/task-assignments.ts; IST-034).
   'POST /api/v1/task-assignments',
+  // İçeriği birden çok hedefe ayrı son tarihle atama (DOM-BEC-049, IST-034).
+  'POST /api/v1/task-assignments/batches',
   // Görev denemesi başlatma ve teslimi (routes/task-attempts.ts; DOM-BEC-042, 043).
   'POST /api/v1/task-assignments/{assignmentId}/attempts',
   'POST /api/v1/task-attempts/{attemptId}/submit',

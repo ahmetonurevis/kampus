@@ -509,6 +509,17 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'skill-progress',
   ),
 
+  // --- İçerikten toplu atama ve sonuç özeti (OG-089; IST-034, DOM-BEC-049, 036) ---------------
+  'POST /api/v1/task-assignments/batches': govde(
+    'content-assignments.test.ts',
+    'başka kurumun içeriği 404 ve o kurumda atama yazılmaz; öğedeki kurum kimliği etkisiz',
+  ),
+  'GET /api/v1/resources/:resourceId/assignment-results': kayit(
+    'content-assignments.test.ts',
+    'başka kurumun içeriği 404',
+    'assignment-results',
+  ),
+
   // --- Ünite alıştırma seti (OG-085; IST-056, DOM-BEC-047, 048) --------------------------------
   'POST /api/v1/task-attempts/:attemptId/checks': kayit(
     'practice-sets.test.ts',

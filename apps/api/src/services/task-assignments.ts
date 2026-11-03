@@ -1,7 +1,8 @@
 import { randomUUID } from 'node:crypto'
 
 import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
-import { canReadVersion } from '@kampus/school-core/content/visibility.ts'
+import { canReadVersion, type ContentViewer } from '@kampus/school-core/content/visibility.ts'
+import type { State } from '@kampus/school-core/data/seed.ts'
 import type { AuthorizationSource } from '@kampus/school-core/lib/authorize.ts'
 import {
   coordinatesArea,
@@ -13,12 +14,15 @@ import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '@kampus/school-core/lib/sc
 import type { ResourceContent } from '@kampus/school-core/content/resource.ts'
 import {
   planAssignment,
+  planAssignmentBatch,
   planAssignmentChange,
   recordingVersionId,
+  type AssignmentBatchInput,
   type AssignmentInput,
   type AssignmentPlan,
   type ExistingAssignment,
 } from '@kampus/school-core/skills/assignment.ts'
+import type { RubricVersionRow } from '@kampus/school-core/skills/rubric.ts'
 import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 
 import type { Database } from '../db/client.ts'
@@ -488,6 +492,144 @@ function withNotFoundPath(error: unknown): unknown {
   })
 }
 
+type StaffContentViewer = Extract<ContentViewer, { kind: 'staff' }>
+
+/** Atama planlamasının kurum kilidi altında yüklenen girdileri (tek ve toplu atama ortak). */
+interface Planning {
+  institution: NonNullable<Awaited<ReturnType<typeof getInstitutionModules>>>
+  resource: NonNullable<Awaited<ReturnType<typeof findResource>>>
+  version: ReturnType<typeof asCoreVersion>
+  rubricVersions: ReadonlyMap<string, RubricVersionRow>
+  others: StoredAssignment[]
+  countable: boolean
+  actor: Actor
+}
+
+/**
+ * İçerik sürümü, rubrik sürümleri, aynı içeriğin atamaları ve dinleme kaydı; atayanın göremediği
+ * veya olmayan içerik 404 (varlığı sızmaz).
+ */
+async function loadPlanning(
+  tx: Database,
+  ctx: ServiceContext,
+  viewer: StaffContentViewer,
+  resourceVersionId: string,
+  rubricVersionIds: readonly (string | null | undefined)[],
+): Promise<Planning> {
+  const institution = await getInstitutionModules(tx, ctx.institutionId)
+  if (!institution) throw new Error('institution disappeared during assignment command')
+  const links = await listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId)
+  const resourceId = await resourceIdOfVersion(tx, ctx.institutionId, resourceVersionId)
+  const resource =
+    resourceId === null ? null : await findResource(tx, ctx.institutionId, resourceId)
+  const [stored] = resource
+    ? await listResourceVersions(tx, ctx.institutionId, resource.id, [resourceVersionId])
+    : []
+  const version = stored ? asCoreVersion(stored) : null
+  // Kapsam: atayanın göremediği içerik yok sayılır (404, varlığı sızmaz).
+  if (
+    !resource ||
+    !version ||
+    !canReadVersion(viewer, {
+      institutionType: institution.type,
+      resource,
+      version,
+      now: ctx.now,
+    })
+  )
+    throw new NotFoundError()
+  const rubricVersions = new Map<string, RubricVersionRow>()
+  for (const id of new Set(rubricVersionIds)) {
+    if (typeof id !== 'string' || !UUID.test(id)) continue
+    const found = await findRubricVersion(tx, ctx.institutionId, id)
+    if (found) rubricVersions.set(id, found)
+  }
+  const others = await loadResourceAssignments(tx, ctx.institutionId, resource.id)
+  const countable = await hasCountableRecording(tx, ctx.institutionId, version.content)
+  const actor: Actor = { role: ctx.actor.role, links, userId: ctx.actor.userId }
+  return { institution, resource, version, rubricVersions, others, countable, actor }
+}
+
+/**
+ * Hedef kapsamının kaynağı ve aynı içeriğin açık atamaları (kursiyerleri hedeflerden çözülmüş);
+ * ardından lisans (DOM-KYN-021): `isAssignable`'ın lisans koşulu core planından önce denetlenir,
+ * yoksa dolmuş lisans çakışma (`assignment_duplicate`) veya ayar hatasının ardında kalırdı.
+ */
+function planningSource(ctx: ServiceContext, state: State, planning: Planning) {
+  const source: AuthorizationSource = {
+    students: state.students,
+    teachers: state.teachers,
+    classes: state.classes,
+    assignments: state.assignments,
+    clubs: state.clubs,
+    mockExams: state.mockExams,
+    modules: planning.institution.modules,
+  }
+  const byClass = new Map<string, string[]>()
+  for (const student of source.students)
+    byClass.set(student.classId, [...(byClass.get(student.classId) ?? []), student.id])
+  const existing: ExistingAssignment[] = planning.others.map((other) => ({
+    id: other.id,
+    resourceId: other.resourceId,
+    deadline: other.deadline,
+    archivedAt: other.archivedAt,
+    learnerIds: other.targets.flatMap((target) =>
+      target.kind === 'student' ? [target.id] : (byClass.get(target.id) ?? []),
+    ),
+  }))
+  if (licenseExpired(planning.version.license, ctx.now))
+    throw new AppError(
+      409,
+      'resource_license_expired',
+      'Bu içeriğin lisans süresi dolmuş; atanamaz.',
+    )
+  return {
+    resource: planning.resource,
+    version: planning.version,
+    actor: planning.actor,
+    source,
+    institutionType: planning.institution.type,
+    existing,
+    now: ctx.now,
+  }
+}
+
+const ASSIGNMENT_AUDIT_FIELDS = (plan: AssignmentPlan) => [
+  'resourceVersionId',
+  'scoringVersionId',
+  ...(plan.assignment.rubricVersionId === null ? [] : ['rubricVersionId']),
+  'settings',
+  'targets',
+]
+
+async function writeAssignment(
+  tx: Database,
+  ctx: ServiceContext,
+  assignmentId: string,
+  plan: AssignmentPlan,
+) {
+  await insertAssignment(
+    tx,
+    ctx.institutionId,
+    {
+      id: assignmentId,
+      assignedByUserId: ctx.actor.userId,
+      assignment: plan.assignment,
+      targets: plan.targets,
+    },
+    ctx.now,
+  )
+  await audit(tx, ctx, 'task_assignment.create', assignmentId, ASSIGNMENT_AUDIT_FIELDS(plan))
+}
+
+/** Atayanın içerik görünümü; personel değilse 403. */
+async function staffContentViewer(ctx: ServiceContext): Promise<StaffContentViewer> {
+  // Kişinin içerik görünümü transaction'dan önce: PGlite tek bağlantılıdır (resource-commands.ts).
+  const reader = await contentReader(ctx)
+  if (reader.viewer.kind !== 'staff') throw new ForbiddenError()
+  return reader.viewer
+}
+
 /**
  * Yeni atama (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042; IST-034): içerik sürümü, ayarlar ve
  * rubrik sürümü sabitlenir; `scoringVersionId` başta içerik sürümüdür. Hedefler ve kursiyer
@@ -498,10 +640,7 @@ export async function createTaskAssignment(
   input: AssignmentInput,
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
-  // Kişinin içerik görünümü transaction'dan önce: PGlite tek bağlantılıdır (resource-commands.ts).
-  const reader = await contentReader(ctx)
-  if (reader.viewer.kind !== 'staff') throw new ForbiddenError()
-  const viewer = reader.viewer
+  const viewer = await staffContentViewer(ctx)
   const assignmentId = randomUUID()
   const out: { body?: unknown } = {}
   return runCommand<AssignmentPlan>(
@@ -512,110 +651,33 @@ export async function createTaskAssignment(
       collections: SCOPE_SOURCE_COLLECTIONS,
       entity: { type: 'task_assignment', id: assignmentId },
       load: async (tx) => {
-        const institution = await getInstitutionModules(tx, ctx.institutionId)
-        if (!institution) throw new Error('institution disappeared during assignment command')
-        const links = await listMembershipLinks(tx, ctx.institutionId, ctx.actor.membershipId)
-        const resourceId = await resourceIdOfVersion(tx, ctx.institutionId, input.resourceVersionId)
-        const resource =
-          resourceId === null ? null : await findResource(tx, ctx.institutionId, resourceId)
-        const [stored] = resource
-          ? await listResourceVersions(tx, ctx.institutionId, resource.id, [
-              input.resourceVersionId,
-            ])
-          : []
-        const version = stored ? asCoreVersion(stored) : null
-        // Kapsam: atayanın göremediği içerik yok sayılır (404, varlığı sızmaz).
-        if (
-          !resource ||
-          !version ||
-          !canReadVersion(viewer, {
-            institutionType: institution.type,
-            resource,
-            version,
-            now: ctx.now,
-          })
-        )
-          throw new NotFoundError()
-        const rubricVersionId = input.settings?.rubricVersionId ?? null
-        const rubricVersion =
-          rubricVersionId !== null && UUID.test(rubricVersionId)
-            ? await findRubricVersion(tx, ctx.institutionId, rubricVersionId)
-            : null
-        const others = await loadResourceAssignments(tx, ctx.institutionId, resource.id)
-        const countable = await hasCountableRecording(tx, ctx.institutionId, version.content)
-        const actor: Actor = { role: ctx.actor.role, links, userId: ctx.actor.userId }
+        const planning = await loadPlanning(tx, ctx, viewer, input.resourceVersionId, [
+          input.settings?.rubricVersionId,
+        ])
         return {
           run: (state) => {
-            const source: AuthorizationSource = {
-              students: state.students,
-              teachers: state.teachers,
-              classes: state.classes,
-              assignments: state.assignments,
-              clubs: state.clubs,
-              mockExams: state.mockExams,
-              modules: institution.modules,
-            }
-            const byClass = new Map<string, string[]>()
-            for (const student of source.students)
-              byClass.set(student.classId, [...(byClass.get(student.classId) ?? []), student.id])
-            const existing: ExistingAssignment[] = others.map((other) => ({
-              id: other.id,
-              resourceId: other.resourceId,
-              deadline: other.deadline,
-              archivedAt: other.archivedAt,
-              learnerIds: other.targets.flatMap((target) =>
-                target.kind === 'student' ? [target.id] : (byClass.get(target.id) ?? []),
-              ),
-            }))
-            // Lisans (DOM-KYN-021): `isAssignable`'ın lisans koşulu core planından önce denetlenir;
-            // yoksa dolmuş lisans çakışma (`assignment_duplicate`) veya ayar hatasının ardında
-            // kalırdı. Yayın ve güncel sürüm koşulunu core `planAssignment` hedeften sonra denetler.
-            if (licenseExpired(version.license, ctx.now))
-              throw new AppError(
-                409,
-                'resource_license_expired',
-                'Bu içeriğin lisans süresi dolmuş; atanamaz.',
-              )
+            const common = planningSource(ctx, state, planning)
+            const rubricVersionId = input.settings?.rubricVersionId ?? null
             let plan: AssignmentPlan
             try {
               plan = planAssignment({
-                resource,
-                version,
-                actor,
-                source,
-                institutionType: institution.type,
-                rubricVersion,
-                existing,
-                input: listeningInput(input, countable),
-                now: ctx.now,
+                ...common,
+                rubricVersion:
+                  rubricVersionId === null
+                    ? null
+                    : (planning.rubricVersions.get(rubricVersionId) ?? null),
+                input: listeningInput(input, planning.countable),
               })
             } catch (error) {
               throw withNotFoundPath(error)
             }
-            assertListeningCountable(plan, countable)
+            assertListeningCountable(plan, planning.countable)
             return plan
           },
         }
       },
       after: async (tx, plan) => {
-        await insertAssignment(
-          tx,
-          ctx.institutionId,
-          {
-            id: assignmentId,
-            assignedByUserId: ctx.actor.userId,
-            assignment: plan.assignment,
-            targets: plan.targets,
-          },
-          ctx.now,
-        )
-        await audit(tx, ctx, 'task_assignment.create', assignmentId, [
-          'resourceVersionId',
-          'scoringVersionId',
-          ...(plan.assignment.rubricVersionId === null ? [] : ['rubricVersionId']),
-          'settings',
-          'targets',
-        ])
+        await writeAssignment(tx, ctx, assignmentId, plan)
         out.body = { data: await readBack(tx, ctx, assignmentId) }
       },
     },
@@ -625,6 +687,94 @@ export async function createTaskAssignment(
     },
     idempotency,
   )
+}
+
+/**
+ * Toplu atama (DOM-BEC-049, IST-034): aynı içerik sürümü her öğede kendi hedefleri ve son tarihiyle
+ * ayrı atama olur. Bütün öğeler tek atamanın kurallarıyla (core `planAssignmentBatch`) tek
+ * transaction'da planlanır; bir öğe reddedilirse hata o öğenin yoluyla (`items.<sıra>.…`) döner ve
+ * hiçbir atama yazılmaz. Dinleme hakkı kuralı (IST-045) her öğede ayrı uygulanır. Denetim kaydı
+ * atama başınadır (`task_assignment.create`).
+ */
+export async function createTaskAssignmentBatch(
+  ctx: ServiceContext,
+  input: AssignmentBatchInput,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const viewer = await staffContentViewer(ctx)
+  const [first] = input.items
+  if (first === undefined) throw new Error('empty batch passed schema validation')
+  const assignmentIds = input.items.map(() => randomUUID())
+  const out: { body?: unknown } = {}
+  return runCommand<AssignmentPlan[]>(
+    ctx,
+    {
+      action: 'task_assignment.create_batch',
+      collections: SCOPE_SOURCE_COLLECTIONS,
+      entity: { type: 'task_assignment', id: assignmentIds[0] ?? '' },
+      load: async (tx) => {
+        const planning = await loadPlanning(
+          tx,
+          ctx,
+          viewer,
+          first.resourceVersionId,
+          input.items.map((item) => item.settings?.rubricVersionId),
+        )
+        return {
+          run: (state) => {
+            const common = planningSource(ctx, state, planning)
+            let plans: AssignmentPlan[]
+            try {
+              plans = planAssignmentBatch({
+                ...common,
+                rubricVersions: planning.rubricVersions,
+                input: {
+                  items: input.items.map((item) => listeningInput(item, planning.countable)),
+                },
+              })
+            } catch (error) {
+              throw withNotFoundPath(error)
+            }
+            plans.forEach((plan, index) => {
+              try {
+                assertListeningCountable(plan, planning.countable)
+              } catch (error) {
+                throw inBatchIssues(error, index)
+              }
+            })
+            return plans
+          },
+        }
+      },
+      after: async (tx, plans) => {
+        const data = []
+        for (const [index, plan] of plans.entries()) {
+          const id = assignmentIds[index]
+          if (id === undefined) throw new Error('batch assignment id missing')
+          await writeAssignment(tx, ctx, id, plan)
+          data.push(await readBack(tx, ctx, id))
+        }
+        out.body = { data }
+      },
+    },
+    () => {
+      if (out.body === undefined) throw new Error('task assignment batch was not written')
+      return { statusCode: 201, body: out.body }
+    },
+    idempotency,
+  )
+}
+
+/** Toplu atamada API kuralının `issues` yolu öğenin yerine taşınır (`items.<sıra>.…`). */
+function inBatchIssues(error: unknown, index: number): unknown {
+  if (!(error instanceof AppError) || error.issues === undefined) return error
+  return new AppError(error.statusCode, error.code, error.message, {
+    issues: error.issues.map((issue) => ({
+      ...issue,
+      path: ['items', String(index), ...issue.path],
+    })),
+    cause: error,
+  })
 }
 
 /**

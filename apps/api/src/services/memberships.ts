@@ -36,7 +36,14 @@ export async function findMembership(
       role: memberships.role,
     })
     .from(memberships)
-    .where(and(eq(memberships.institutionId, institutionId), eq(memberships.userId, userId)))
+    .where(
+      and(
+        eq(memberships.institutionId, institutionId),
+        eq(memberships.userId, userId),
+        // Pasifleştirilen üyelik yok sayılır (DOM-YTK-070): istek 403 `no_active_institution`.
+        isNull(memberships.deactivatedAt),
+      ),
+    )
     .limit(1)
   return row ?? null
 }
@@ -151,7 +158,7 @@ export async function listUserMemberships(db: Database, userId: string) {
     })
     .from(memberships)
     .innerJoin(institutions, eq(institutions.id, memberships.institutionId))
-    .where(eq(memberships.userId, userId))
+    .where(and(eq(memberships.userId, userId), isNull(memberships.deactivatedAt)))
     .orderBy(asc(memberships.createdAt), asc(memberships.id))
 }
 

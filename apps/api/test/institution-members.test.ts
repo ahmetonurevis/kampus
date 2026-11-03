@@ -200,6 +200,7 @@ describe('GET /api/v1/institution-members (DOM-YTK-020)', () => {
     for (const row of body.data)
       assert.deepEqual(Object.keys(row).sort(), [
         'createdAt',
+        'deactivatedAt',
         'email',
         'id',
         'links',

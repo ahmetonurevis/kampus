@@ -30,6 +30,7 @@ const member = (
   role: 'ogretmen',
   status: 'active',
   links: [{ kind: 'teacher', name }],
+  deactivatedAt: null,
   createdAt: '2026-10-01T08:00:00.000Z',
   ...overrides,
 })

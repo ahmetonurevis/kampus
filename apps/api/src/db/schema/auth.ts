@@ -99,6 +99,7 @@ export const memberships = pgTable(
       .references(() => users.id, { onDelete: 'cascade' }),
     role: text('role').default('member').notNull(),
     createdAt: timestamp('created_at').notNull(),
+    deactivatedAt: timestamp('deactivated_at'),
   },
   (table) => [
     index('memberships_institutionId_idx').on(table.institutionId),
@@ -121,6 +122,10 @@ export const invitations = pgTable(
     inviterId: text('inviter_id')
       .notNull()
       .references(() => users.id, { onDelete: 'cascade' }),
+    name: text('name'),
+    membershipId: text('membership_id').references(() => memberships.id, {
+      onDelete: 'set null',
+    }),
   },
   (table) => [
     index('invitations_institutionId_idx').on(table.institutionId),
@@ -154,7 +159,7 @@ export const institutionsRelations = relations(institutions, ({ many }) => ({
   invitations: many(invitations),
 }))
 
-export const membershipsRelations = relations(memberships, ({ one }) => ({
+export const membershipsRelations = relations(memberships, ({ one, many }) => ({
   institution: one(institutions, {
     fields: [memberships.institutionId],
     references: [institutions.id],
@@ -163,6 +168,7 @@ export const membershipsRelations = relations(memberships, ({ one }) => ({
     fields: [memberships.userId],
     references: [users.id],
   }),
+  invitations: many(invitations),
 }))
 
 export const invitationsRelations = relations(invitations, ({ one }) => ({
@@ -173,5 +179,9 @@ export const invitationsRelations = relations(invitations, ({ one }) => ({
   user: one(users, {
     fields: [invitations.inviterId],
     references: [users.id],
+  }),
+  membership: one(memberships, {
+    fields: [invitations.membershipId],
+    references: [memberships.id],
   }),
 }))

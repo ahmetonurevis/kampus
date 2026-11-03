@@ -61,6 +61,11 @@ import { timingOf } from './task-work.ts'
  *   istekleri imzalı bağlantının kendisine gider ve hiç sayılmaz.
  * - Eşzamanlılık: deneme satırı `for update` ile kilitlenir; aynı denemenin sayımları ve teslimi
  *   sıraya girer. `(institution_id, attempt_id, file_id, play_number)` tekil indeksi son güvencedir.
+ * - Bilinen sınır (ADR 0004 OG-052 notu): sayım dosyaya bağlıdır. Kursiyere paylaşılmış ses
+ *   kaynağının yeni sürümü yeni dosya yüklediyse o dosyayı bağlayan etkinlik yoktur ve kütüphaneden
+ *   sınırsız dinlenir; etkinlik eski sürümün dosyasını sayar. Bilinçli kabuldür.
+ *   TODO(dinleme-kaynak-sayimi): hakkı kaynak düzeyinde (aynı ses kaynağının bütün sürümlerinin
+ *   dosyaları) saymak ya da süren sınırlı denemede kaynağın diğer dosyalarını kapatmak.
  * - TODO(dinleme-teslim-sayisi): DOM-BEC-005 "dinleme sayısı teslimle birlikte kaydedilir" der;
  *   sayım `attempt_media_plays`'te kalır ve deneme ayrıntısında okunur, teslimin kendisine
  *   yazılmaz (deneme kapanınca sabitlenmiş bir dinleme sayısı yoktur).

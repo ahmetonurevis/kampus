@@ -26,7 +26,7 @@ import {
   findResource,
   listResourceVersions,
   listVisibleResources,
-  loadItemVersionRefs,
+  loadLinkedVersionRefs,
   type ResourceListQuery,
   type StoredResource,
   type StoredResourceVersion,
@@ -321,17 +321,14 @@ async function issuesOf(
   version: StoredResourceVersion,
 ): Promise<(PublicationIssue & { path: string[] })[]> {
   if (!OPEN.includes(version.status) || version.content === null) return []
-  const content = version.content
-  const itemIds =
-    content.type === 'quiz' || content.type === 'exercise_set'
-      ? content.items.map((item) => item.questionVersionId)
-      : []
-  const itemVersions = await loadItemVersionRefs(ctx.db, ctx.institutionId, itemIds)
+  // Bağlı soru, okuma parçası ve dinleme kaydı geçişteki yüklemeyle aynıdır (IST-042, IST-045);
+  // biri eksik kalırsa core her bağlı etkinlikte `passage_missing`/`listening_missing` sayardı.
+  const linked = await loadLinkedVersionRefs(ctx.db, ctx.institutionId, version.content)
   return publicationIssues({
     institutionType,
     version: asCoreVersion(version),
     now: ctx.now,
-    itemVersions,
+    ...linked,
   }).map((issue) => ({ ...issue, path: [...issue.path] }))
 }
 

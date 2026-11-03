@@ -31,6 +31,7 @@ import {
   RootError,
   useEditConflict,
 } from '../management/FormParts.tsx'
+import { ItemSetFields } from './ReadingActivityFields.tsx'
 import { isNewTarget, NEW_MATERIAL } from './content-form-targets.ts'
 import {
   ContentFields,
@@ -44,10 +45,12 @@ import {
   defaultDraft,
   draftFormSchema,
   draftFromHead,
+  isItemSetType,
   patchFromDraft,
   type DraftFormOutput,
   type DraftFormValues,
 } from './content-pool-model.ts'
+import { linkedFieldMessage, linkedHints } from './reading-activity-model.ts'
 
 type FormModalProps = {
   /** `''` kapalı, `yeni` oluşturma, aksi hâlde düzenlenen içeriğin kimliği. */
@@ -60,8 +63,10 @@ type FormModalProps = {
 }
 
 /**
- * Taslak formu (geniş pencere): okuma parçası, tek çoktan seçmeli soru ya da materyal dosyası
- * (DOM-KYN-006). Doğrulama core `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası
+ * Taslak formu (geniş pencere): okuma parçası, tek çoktan seçmeli soru, materyal dosyası
+ * (DOM-KYN-006) ya da quiz/alıştırma seti (okuma parçasına bağlanınca okuma-anlama etkinliği;
+ * OG-984, IST-042, DOM-BEC-006). Bağlı parça ve soru hataları (`passage_*`, `quiz_item_*`) ortak
+ * Türkçe iletiyle alanın altına yazılır. Doğrulama core `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası
  * (400 ya da 422 iş kuralı) alan yoluyla gelirse yalnız alanın altında, yoksa toast olarak görünür
  * (`exclusive`). Dosya yüklemesi ve güvenlik taraması sürerken kaydet kilitlidir; yolsuz bağlama
  * hatası (422 `file_not_ready`, `file_rejected`) da dosya alanında görünür (`FILE_FIELD`, OG-987).
@@ -182,6 +187,18 @@ function DraftEditor({
   })
   // Yükleme sürerken alanlar açık kalır (iptal, başka alan); yalnız kaydet ve tür seçimi kilitli.
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
+  // Sunucu alan hatası: bağlı içerik kodu ortak Türkçe iletiyi alır (`LINKED_CONTENT_MESSAGES`).
+  const setServerError: DraftForm['setError'] = (name, error, options) =>
+    form.setError(
+      name,
+      { ...error, message: linkedFieldMessage(error.type ?? '', error.message ?? '') },
+      options,
+    )
+  // Yayım sorunları kayıtlı sürümündür; kayıtlı bağlar başlangıç değerlerinden okunur.
+  const hints = linkedHints(detail?.publicationIssues ?? [], {
+    passageVersionId: initial?.content.passageVersionId ?? null,
+    itemIds: (initial?.content.items ?? []).map((item) => item.questionVersionId),
+  })
 
   function changeType(next: AuthorableType) {
     setType(next)
@@ -198,7 +215,7 @@ function DraftEditor({
           version: conflict.version,
           patch: patchFromDraft(values),
         },
-        { setError: form.setError, silent: isVersionConflict, fieldFor: FILE_FIELD },
+        { setError: setServerError, silent: isVersionConflict, fieldFor: FILE_FIELD },
       )
       if (outcome.status === 'success') {
         notify.success('Taslak güncellendi.')
@@ -209,7 +226,7 @@ function DraftEditor({
       return
     }
     const outcome = await create.submit(patchFromDraft(values), {
-      setError: form.setError,
+      setError: setServerError,
       fieldFor: FILE_FIELD,
     })
     if (outcome.status === 'success') {
@@ -273,13 +290,17 @@ function DraftEditor({
         </div>
       </div>
 
-      <ContentFields
-        form={form}
-        type={type}
-        busy={busy}
-        onUploadingChange={setUploading}
-        onScanBlockedChange={setScanBlocked}
-      />
+      {isItemSetType(type) ? (
+        <ItemSetFields form={form} busy={busy} languageSchool={languageSchool} hints={hints} />
+      ) : (
+        <ContentFields
+          form={form}
+          type={type}
+          busy={busy}
+          onUploadingChange={setUploading}
+          onScanBlockedChange={setScanBlocked}
+        />
+      )}
       <TagFields form={form} type={type} languageSchool={languageSchool} busy={busy} />
       <LicenseFields form={form} busy={busy} />
 

@@ -120,7 +120,15 @@ export const AUTHORABLE_OPTIONS: { value: AuthorableType; label: string }[] = [
   { value: 'reading_passage', label: CONTENT_TYPES.reading_passage.label },
   { value: 'question', label: `${CONTENT_TYPES.question.label} (çoktan seçmeli)` },
   { value: 'file', label: MATERIAL_TYPE_LABEL },
+  // Okuma-anlama etkinliği (IST-042, DOM-BEC-006): okuma parçasına bağlanabilen soru setleri.
+  { value: 'quiz', label: CONTENT_TYPES.quiz.label },
+  { value: 'exercise_set', label: CONTENT_TYPES.exercise_set.label },
 ]
+
+/** Soru listesi taşıyan türler (quiz ve alıştırma seti; okuma etkinliği formu, OG-984). */
+export type ItemSetType = Extract<AuthorableType, 'quiz' | 'exercise_set'>
+export const isItemSetType = (type: AuthorableType): type is ItemSetType =>
+  type === 'quiz' || type === 'exercise_set'
 
 // TODO(F3c2): lisanslı yayın (sözleşme, kapsam, bitiş günü) ve Kampüs örnek içeriğinden
 // türetilen menşe, kütüphane ve kopya akışıyla birlikte eklenir.
@@ -150,11 +158,14 @@ export const LICENSE_NOTES: Record<(typeof FORM_LICENSE_KINDS)[number], string> 
 export const requiresAttribution = (kind: LicenseKind | undefined) =>
   kind !== undefined && LICENSE_KINDS[kind].requiresAttribution
 
-/** Primary beceri seçenekleri: aracılık bu dilimde yok; okuma parçasında dil kullanımı birincil olamaz. */
+/**
+ * Birincil beceri seçenekleri: aracılık bu dilimde yok; dil kullanımı yalnız soru, quiz ve alıştırma
+ * setinde birincil olur (DOM-KYN-012), okuma parçası ve materyalde olmaz.
+ */
 export function skillOptionsFor(type: AuthorableType) {
+  const languageUse = type === 'question' || isItemSetType(type)
   return SKILL_OPTIONS.filter(
-    (option) =>
-      option.value !== 'mediation' && (type === 'question' || option.value !== 'language_use'),
+    (option) => option.value !== 'mediation' && (languageUse || option.value !== 'language_use'),
   )
 }
 
@@ -237,6 +248,15 @@ export type DraftFormValues = Omit<DraftFormInput, 'content' | 'answerKey'> & {
     glossary?: GlossaryEntry[]
     /** Materyal dosyasının ana dosyası; çözümleyici listenin ilkiyle doldurur. */
     fileId?: string | null
+    /**
+     * Quiz/alıştırma setinin soruları, sırasıyla (DOM-KYN-013): yayındaki soru sürümleri. Seçici
+     * ekler, form sıralar ve çıkarır; puan madde başınadır.
+     */
+    items?: { questionVersionId: string; points: number }[]
+    /** Okuma-anlama etkinliğinin parçası (IST-042, DOM-BEC-006): yayındaki parça sürümü. */
+    passageVersionId?: string | null
+    timeLimitMinutes?: number | null
+    shuffleItems?: boolean
     question?: {
       questionType: 'multiple_choice'
       stem: string
@@ -288,6 +308,24 @@ const emptyTags = {
 } satisfies NonNullable<DraftFormInput['tags']>
 
 export function defaultDraft(type: AuthorableType): DraftFormValues {
+  if (isItemSetType(type)) {
+    // Okuma etkinliği varsayılanı: birincil beceri okuma; parça isteğe bağlıdır (dil kullanımı seti).
+    return {
+      title: '',
+      content: {
+        type,
+        items: [],
+        passageVersionId: null,
+        timeLimitMinutes: null,
+        shuffleItems: false,
+      },
+      answerKey: null,
+      tags: { ...emptyTags, primarySkill: 'reading' },
+      license: null,
+      attributions: [],
+      files: [],
+    }
+  }
   if (type === 'reading_passage') {
     return {
       title: '',
@@ -364,6 +402,14 @@ export function draftFromHead(head: StaffResourceVersion): DraftFormValues | nul
     }
   if (content.type === 'file')
     return { ...rest, content: { type: 'file', fileId: content.fileId }, answerKey: null }
+  // Quiz/alıştırma seti içeriği bütün olarak taşınır: formun yazmadığı alan (ör. ileride eklenen
+  // bağlı kayıtlar) yamada aynen geri gider, kaybolmaz.
+  if (content.type === 'quiz' || content.type === 'exercise_set')
+    return {
+      ...rest,
+      content: { ...content, items: content.items.map((item) => ({ ...item })) },
+      answerKey: null,
+    }
   if (content.type === 'question' && content.question.questionType === 'multiple_choice') {
     const key = answerKey?.questionType === 'multiple_choice' ? answerKey : null
     return {
@@ -419,6 +465,13 @@ export type ContentPreview =
       explanation: string
     }
   | { kind: 'file' }
+  | {
+      kind: 'set'
+      itemCount: number
+      /** Okuma-anlama etkinliği mi (bağlı okuma parçası var). */
+      reading: boolean
+      timeLimitMinutes: number | null
+    }
   | { kind: 'other' }
   | { kind: 'removed' }
 
@@ -438,6 +491,13 @@ export function previewFromHead(head: StaffResourceVersion): ContentPreview {
   if (content.type === 'reading_passage') return { kind: 'reading', body: content.body }
   // Materyal dosyasının içeriği dosyalarıdır; panel onları ayrı listeler.
   if (content.type === 'file') return { kind: 'file' }
+  if (content.type === 'quiz' || content.type === 'exercise_set')
+    return {
+      kind: 'set',
+      itemCount: content.items.length,
+      reading: content.passageVersionId !== null,
+      timeLimitMinutes: content.timeLimitMinutes,
+    }
   if (content.type === 'question' && content.question.questionType === 'multiple_choice') {
     const correct = answerKey?.questionType === 'multiple_choice' ? answerKey.correctOptionId : null
     return {

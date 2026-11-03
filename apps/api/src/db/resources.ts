@@ -926,6 +926,33 @@ export async function loadItemVersionRefs(
   return map
 }
 
+/**
+ * Yayım denetiminin bağlı sürümleri: quiz/alıştırma setinin soruları, okuma parçası ve dinleme
+ * kaydı (DOM-KYN-013; IST-042, IST-045). Ayrıntıdaki kuru çalıştırma ile durum geçişi aynı
+ * yüklemeyi kullanır; biri bağı görmezse panelde yanlış sorun ve kilitli eylem çıkar (OG-984).
+ */
+export async function loadLinkedVersionRefs(
+  db: Database,
+  institutionId: string,
+  content: ResourceContent | null,
+): Promise<{
+  itemVersions: Map<string, ListeningVersionRef>
+  passageVersion: ListeningVersionRef | undefined
+  listeningVersion: ListeningVersionRef | undefined
+}> {
+  const list = content !== null && (content.type === 'quiz' || content.type === 'exercise_set')
+  const ids = list ? content.items.map((item) => item.questionVersionId) : []
+  const passageId = list ? content.passageVersionId : null
+  const listeningId = list ? content.listeningVersionId : null
+  const linked = [passageId, listeningId].filter((id): id is string => id !== null)
+  const refs = await loadItemVersionRefs(db, institutionId, [...ids, ...linked])
+  return {
+    itemVersions: refs,
+    passageVersion: passageId === null ? undefined : refs.get(passageId),
+    listeningVersion: listeningId === null ? undefined : refs.get(listeningId),
+  }
+}
+
 // --- Yazma uçlarının okumaları ------------------------------------------------------------
 
 /**

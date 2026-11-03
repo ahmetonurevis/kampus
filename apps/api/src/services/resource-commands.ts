@@ -32,7 +32,7 @@ import {
   listPassageContainerVersions,
   listCopies,
   listResourceVersions,
-  loadItemVersionRefs,
+  loadLinkedVersionRefs,
   loadVersionPairs,
   type StoredResource,
   type StoredResourceVersion,
@@ -283,22 +283,6 @@ async function assertItemsReadable(
   })
   if (issues.length > 0)
     throw new RuleViolationError('quiz_item_missing', 'Seçilen soru bulunamadı.', { issues })
-}
-
-/** Yayım denetiminin soru sürümleri, okuma parçası ve dinleme kaydı (DOM-KYN-013; IST-042, 045). */
-async function itemRefs(tx: Database, ctx: ServiceContext, version: StoredResourceVersion) {
-  const content = version.content
-  const list = content && (content.type === 'quiz' || content.type === 'exercise_set')
-  const ids = list ? content.items.map((item) => item.questionVersionId) : []
-  const passageId = list ? content.passageVersionId : null
-  const listeningId = list ? content.listeningVersionId : null
-  const linked = [passageId, listeningId].filter((id): id is string => id !== null)
-  const refs = await loadItemVersionRefs(tx, ctx.institutionId, [...ids, ...linked])
-  return {
-    itemVersions: refs,
-    passageVersion: passageId === null ? undefined : refs.get(passageId),
-    listeningVersion: listeningId === null ? undefined : refs.get(listeningId),
-  }
 }
 
 /** Kopyada miras alınan menşe: türetildiği sürümün lisansı ve kaynak gösterimleri (DOM-KYN-050). */
@@ -569,7 +553,11 @@ export async function transitionVersion(
         const target = await loadTarget(tx, ctx, staff, input.resourceId)
         const version = readableVersion(ctx, staff, target, input.versionId)
         assertExpected(version.rowVersion, input.expectedVersion)
-        const { itemVersions, passageVersion, listeningVersion } = await itemRefs(tx, ctx, version)
+        const { itemVersions, passageVersion, listeningVersion } = await loadLinkedVersionRefs(
+          tx,
+          ctx.institutionId,
+          version.content,
+        )
         return () => ({
           target,
           version,

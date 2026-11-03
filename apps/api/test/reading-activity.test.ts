@@ -496,6 +496,37 @@ describe('okuma-anlama etkinliği', () => {
     assert.deepEqual(await versionRows(t.institution.id), before)
   })
 
+  test('IST-042, DOM-BEC-006, OG-984: ayrıntıdaki yayım sorunları bağlı parçayı okur; yayındaki parça sorun değildir, taslak parça passage_not_published', async () => {
+    const t = await tenant()
+    const create = async (passageVersionId: string) =>
+      ok(
+        await call('POST', '/resources', t.cookies.teacher, {
+          title: 'Yayım denetimli etkinlik',
+          content: {
+            type: 'quiz',
+            items: [{ questionVersionId: t.items.main }],
+            passageVersionId,
+          },
+          license: { kind: 'institution_original' },
+          tags: TAGS,
+        }),
+        201,
+      )
+    const issuesOf = async (resourceId: string) =>
+      (
+        (await ok(await call('GET', `/resources/${resourceId}`, t.cookies.teacher), 200))
+          .publicationIssues as { code: string; path: string[] }[]
+      ).map((issue) => `${issue.code}:${issue.path.join('.')}`)
+
+    const published = await create(t.passage.versionId)
+    assert.deepEqual(await issuesOf(published.resource.id), [])
+    const draft = await t.seed(passage(), 'draft')
+    const pending = await create(draft.versionId)
+    assert.deepEqual(await issuesOf(pending.resource.id), [
+      'passage_not_published:content.passageVersionId',
+    ])
+  })
+
   test('IST-042, DOM-KYN-002: parça yerine soru sürümü bağlanan etkinlik onaya gönderilemez (422 passage_not_reading); kayıt değişmez', async () => {
     const t = await tenant()
     const created = await ok(

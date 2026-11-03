@@ -44,7 +44,7 @@ Klasöre özgü kurallar `.claude/rules/` altındadır ve ilgili dosyalara dokun
 - İş başlamadan kapsam, adımlar ve etkilenecek dosyalar belirlenir. Tamamlanmış geçici planlar bu dosyada biriktirilmez; kalıcı kararlar ADR'ye, kurallar `.claude/rules/`'a yazılır.
 - Doğrulama merdiveni `dogrula` skill'indedir; değişiklik ilgili testler ve lint/format/typecheck geçmeden bitmiş sayılmaz.
 - Yeni modül `yeni-modul`, API ucu `api-ucu`, TypeScript taşıma `ts-tasima`, görsel kontrol `ekran-kontrol` skill'iyle yapılır. Diff incelemesi `inceleyici`, uzun test koşusu `dogrulayici`, görev uygulama `kampus-gelistirici` ajanıyla yapılabilir.
-- Commit mesajı standardı `docs/muhendislik/git-ve-surum.md` §2'dedir ve `commit-msg` hook'u denetler: başlık Türkçe, emir kipinde, en çok 72 karakter, noktasız ve öneksiz; görev ID'si başlık sonunda ("Hedef ve gelişim planı modülünü ekle (OG-004)"); sonda `Co-Authored-By`. Bir commit tek mantıksal değişikliktir ve yeşildir.
+- Commit mesajı standardı `docs/muhendislik/git-ve-surum.md` §2'dedir ve `commit-msg` hook'u denetler: başlık Türkçe, emir kipinde, büyük harfle, en çok 72 karakter, noktasız ve öneksiz; görev ID'si başlık sonunda parantezde ya da gövdede ("Hedef ve gelişim planı modülünü ekle (OG-004)"); gövdede neden ve etki; sonda `Co-Authored-By`. Bir commit tek mantıksal değişikliktir ve yeşildir.
 - Mimari, komut veya klasör yapısı değişince bu dosya, ilgili `.claude/rules/` dosyası ve README aynı committe güncellenir.
 
 ## Komutlar ve teslimler

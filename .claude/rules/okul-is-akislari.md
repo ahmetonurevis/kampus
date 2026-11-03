@@ -17,6 +17,7 @@ paths:
   - 'apps/api/src/routes/assessment*.ts'
   - 'apps/api/src/services/assessment.ts'
   - 'apps/web-react/src/pages/workflows/**'
+  - 'apps/web-react/src/pages/management/**'
   - 'apps/web-react/src/pages/assessment/**'
   - 'apps/web-react/src/pages/academic/**'
   - 'apps/mobile/src/screens/WorkflowScreen.tsx'

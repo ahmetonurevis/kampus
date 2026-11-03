@@ -5,6 +5,8 @@ paths:
   - 'apps/mobile/**'
   - 'packages/react-shared/**'
   - 'packages/school-core/src/lib/document-data.ts'
+  - 'packages/school-core/src/modules/full-navigation.ts'
+  - 'packages/school-core/src/platform/navigation.ts'
 ---
 
 # Tasarım ve davranış kuralları

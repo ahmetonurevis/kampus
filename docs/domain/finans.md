@@ -160,7 +160,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Gerçek tahsilatta taksit tutarı ile ödeme tutarı her zaman eşleşmez; durum alanını elle tutmak tutarsızlık üretir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — API `POST /api/v1/payments` ayrı kayıt, kısmi ödeme ve mahsup yapar (`lib/payments.ts`, ADR 0006). Taksitin `paidAt` alanı geçiş önbelleğidir; liste durumu henüz `Kısmi` üretmez, kısmi tutar `GET /api/v1/payments` dağılımından okunur. Tahsilat kaydı aynı transaction'da `payment_received` bildirimi yazar (IST-106, `lib/finance-notifications.ts`): yalnız tahsilat kimliği, tutar, yöntem ve referans yok; alıcı kuralı `DOM-FIN-035`'teki gibidir; `Idempotency-Key` tekrarı yazmaz, işlem geri alınırsa bildirim de kalmaz, iptal bildirim üretmez. Çevrimdışı demo `payInvoice` ile tam ödeme işaretler.
+- **Kodda:** kısmen — API `POST /api/v1/payments` ayrı kayıt, kısmi ödeme ve mahsup yapar (`lib/payments.ts`, ADR 0006). Taksitin `paidAt` alanı geçiş önbelleğidir; liste durumu henüz `Kısmi` üretmez, kısmi tutar `GET /api/v1/payments` dağılımından okunur. Tahsilat kaydı aynı transaction'da `payment_received` bildirimi yazar (IST-106, `lib/finance-notifications.ts`): yalnız tahsilat kimliği, tutar, yöntem ve referans yok; alıcı kuralı `DOM-FIN-035`'teki gibidir; `Idempotency-Key` tekrarı yazmaz, işlem geri alınırsa bildirim de kalmaz, iptal bildirim üretmez. Çevrimdışı demo ayrı `lib/payments-demo.ts` `payInvoice` ile tam ödeme işaretler; API, React, `api-client` ve `react-shared` bu yola ulaşmaz (`tests/payments-demo.test.ts`, ON-037). Yol Vue silinince (OG-072) ve mobil yalnız API'ye geçince (OG-074) kalkar.
 
 ### DOM-FIN-031 · Mükerrer tahsilat engeli
 

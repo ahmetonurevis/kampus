@@ -125,19 +125,19 @@ export function matchesSearch(fields: readonly string[], search: string): boolea
 }
 
 /**
- * Telefondaki teslim bilgisi: teslim yazma web'dedir. Ödev hâlâ teslim alıyorsa (son tarih
- * gelmedi ya da geç teslim kabul ediliyor) web'e yönlendirilir; kapalı ve geç teslime kapalı
- * ödevde süre doldu bilgisi verilir; değerlendirilmiş teslimde bilgi yoktur (değiştirilemez).
+ * Öğrencinin teslim durumu: ödev hâlâ teslim alıyorsa (son tarih gelmedi ya da geç teslim kabul
+ * ediliyor) teslim formu çıkar (`submit`); kapalı ve geç teslime kapalı ödevde süre doldu bilgisi
+ * verilir; değerlendirilmiş teslimde bilgi yoktur (değiştirilemez).
  * Karar core `isHomeworkClosed`/`acceptsLate` ile verilir; kesin ret yine sunucudadır.
  */
 export function submissionHint(
   homework: Pick<HomeworkListItem, 'dueDate' | 'allowLate'>,
   status: HomeworkStatus,
   now: Date,
-): 'web' | 'closed' | null {
+): 'submit' | 'closed' | null {
   if (status === 'Değerlendirildi') return null
   if (isHomeworkClosed(homework, now.toISOString()) && !acceptsLate(homework)) return 'closed'
-  return 'web'
+  return 'submit'
 }
 
 /** Teslim dosyası özeti: tek dosyada adı, birden çok dosyada sayısı. */
@@ -149,3 +149,29 @@ export function fileSummary(
   if (submission.fileName) return submission.fileName
   return submission.fileIds.length ? '1 dosya' : '—'
 }
+
+/** Öğrenci kendi ödevlerini, veli seçili çocuğun ödevlerini görür; ikisi de salt okunurdur. */
+export type HomeworkAudience = 'student' | 'parent'
+
+/**
+ * Ödev ekranının kitleye göre farkları: teslim yönlendirmesi yalnız öğrencidir (veli teslim
+ * yapamaz, yalnız durumu görür); teslim bölümü başlığı da kitleye göredir.
+ */
+export function homeworkAudienceView(
+  audience: HomeworkAudience,
+  homework: Pick<HomeworkListItem, 'dueDate' | 'allowLate'>,
+  status: HomeworkStatus,
+  now: Date,
+) {
+  const student = audience === 'student'
+  return {
+    hint: student ? submissionHint(homework, status, now) : null,
+    submissionTitle: student ? 'Teslimin' : 'Teslim açıklaması',
+  }
+}
+
+/** Ödev listesi boşken gösterilen metin. */
+export const homeworkEmptyText = (audience: HomeworkAudience) =>
+  audience === 'student'
+    ? 'Öğretmenlerin ödev verdiğinde burada görünür.'
+    : 'Öğretmenler ödev verdiğinde burada görünür.'

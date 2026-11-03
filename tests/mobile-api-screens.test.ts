@@ -47,7 +47,7 @@ describe('API modu sayfaları', () => {
     assert.deepEqual(
       apiPages({ role: 'veli', modules: open }).map((page) => [page.title, page.screen]),
       [
-        ['Akademik Takip', 'ParentGrades'],
+        ['Akademik Takip', 'ParentTracking'],
         ['Mesajlar', 'Messages'],
         ['Duyurular', 'Announcements'],
       ],
@@ -105,7 +105,7 @@ describe('API modu sayfaları', () => {
     assert.equal(canOpenScreen({ role: 'ogretmen', modules: closed }, 'TeacherAttendance'), false)
     assert.equal(canOpenScreen({ role: 'ogrenci', modules: open }, 'TeacherAttendance'), false)
     // Başka rolün ekranı açılmaz.
-    assert.equal(canOpenScreen({ role: 'ogretmen', modules: open }, 'ParentGrades'), false)
+    assert.equal(canOpenScreen({ role: 'ogretmen', modules: open }, 'ParentTracking'), false)
   })
 
   test('IST-124 öğrenci Ödevlerim ve Notlarım ekranlarını menü sırasıyla görür', () => {
@@ -298,8 +298,8 @@ describe('öğrenci notları ve ödevleri (IST-124)', () => {
     const now = new Date('2026-10-10T09:00:00.000Z')
     const past = '2026-10-01T09:00:00.000Z'
     const future = '2026-10-20T09:00:00.000Z'
-    assert.equal(submissionHint({ dueDate: future, allowLate: false }, 'Bekliyor', now), 'web')
-    assert.equal(submissionHint({ dueDate: past, allowLate: true }, 'Gecikmiş', now), 'web')
+    assert.equal(submissionHint({ dueDate: future, allowLate: false }, 'Bekliyor', now), 'submit')
+    assert.equal(submissionHint({ dueDate: past, allowLate: true }, 'Gecikmiş', now), 'submit')
     assert.equal(submissionHint({ dueDate: past, allowLate: false }, 'Gecikmiş', now), 'closed')
     // Teslim edilmiş ama puanlanmamış ödev kapalıysa yeniden teslim de yapılamaz.
     assert.equal(

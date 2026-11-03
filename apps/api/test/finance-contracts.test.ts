@@ -236,11 +236,12 @@ describe('sözleşme onayı ve ek protokol uçları', () => {
     const b = await tenant()
     await sign(b)
     const before = await contractOf(b.id)
+    // Uç adları envanter testinin aradığı biçimde (`/signatory`) yazılır.
     const bodies = [
-      ['signatory', SIGNATORY],
-      ['approve', ACCEPT],
-      ['amendments', AMEND],
-      ['cancel-amendment', { reason: 'Vazgeçildi.' }],
+      ['/signatory', SIGNATORY],
+      ['/approve', ACCEPT],
+      ['/amendments', AMEND],
+      ['/cancel-amendment', { reason: 'Vazgeçildi.' }],
     ] as const
     // A'nın kendi kaydı aynı kimliği taşımasın diye B'ye özgü bir kopya açılır.
     await insertMissingRecords(
@@ -255,7 +256,8 @@ describe('sözleşme onayı ve ek protokol uçları', () => {
       ],
       FIXED_NOW,
     )
-    for (const [verb, body] of bodies) {
+    for (const [path, body] of bodies) {
+      const verb = path.slice(1)
       const foreign = await post(url('test-contract-b', verb), a.admin, body)
       const missing = await post(url(randomUUID(), verb), a.admin, body)
       assertError(foreign, 404)

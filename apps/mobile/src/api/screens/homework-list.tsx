@@ -5,7 +5,7 @@ import { acceptsLate } from '@kampus/school-core/lib/homework.ts'
 import type { HomeworkSubmission } from '@kampus/react-shared/homework.ts'
 import { useAllHomework, useHomework } from '@kampus/react-shared/use-homework.ts'
 import { useCollectionAll } from '@kampus/react-shared/use-collection.ts'
-import { Badge, Empty, SearchField, Sheet, T } from '../../ui/components.tsx'
+import { Badge, Button, Empty, SearchField, Sheet, T } from '../../ui/components.tsx'
 import {
   DetailPair,
   EmptyResults,
@@ -27,6 +27,12 @@ import {
 } from '../presentation.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { useListMemory } from '../view-memory.tsx'
+import {
+  canSubmitHomework,
+  submissionAvailability,
+  type SubmissionAvailability,
+} from '../homework-submission.ts'
+import { SubmissionForm } from './homework-submission.tsx'
 
 function Paragraph({ text, empty }: { text: string; empty: string }) {
   return <T size={15}>{text.trim() ? text : empty}</T>
@@ -35,7 +41,7 @@ function Paragraph({ text, empty }: { text: string; empty: string }) {
 /**
  * Ödev ayrıntısı (web "Ödev ayrıntısı" paneli). Tek kayıt ucu kapsamı uygular: kapsam dışı ödev
  * 404 döner ve Türkçe "bulunamadı" görünür. Teslimler okuyanın gördükleridir; öğrencide yalnız
- * kendisininki (DOM-AKD-074). Teslim formu telefonda yoktur, salt okunur.
+ * kendisininki (DOM-AKD-074). Teslim formu yalnız öğrencide ve teslim açıkken çıkar (veli salt okur).
  */
 function HomeworkSheet({
   homeworkId,
@@ -57,6 +63,7 @@ function HomeworkSheet({
   const view = homework ? homeworkView(homework, homework.submissions, studentId, now) : undefined
   const text = homework && view ? homeworkAudienceView(audience, homework, view.status, now) : null
   const hint = text?.hint ?? null
+  const availability = homework ? submissionAvailability(homework, submission, now) : 'closed'
   return (
     <Sheet visible title={view?.title ?? 'Ödev ayrıntısı'} onClose={onClose}>
       {item.error ? (
@@ -98,10 +105,17 @@ function HomeworkSheet({
               <Paragraph text={submission.note} empty="Açıklama yazılmadı." />
             </Section>
           )}
-          {hint === 'web' && (
+          {hint === 'submit' && canSubmitHomework(availability) && (
+            <SubmissionPanel
+              homeworkId={homework.id}
+              submission={submission}
+              availability={availability}
+            />
+          )}
+          {audience === 'student' && availability === 'graded' && (
             <Notice
-              title="Teslim web'de"
-              text="Ödevini şimdilik Kampüs web uygulamasından teslim edebilirsin."
+              title="Teslimin değerlendirildi"
+              text="Değerlendirilmiş teslim değiştirilemez."
             />
           )}
           {hint === 'closed' && (
@@ -110,6 +124,36 @@ function HomeworkSheet({
         </>
       )}
     </Sheet>
+  )
+}
+
+/**
+ * Teslim bölümü: ilk teslimde form doğrudan açılır; teslim varsa "Teslimi güncelle" düğmesiyle
+ * açılır. Başarılı gönderimden sonra form kapanır; güncel teslim sunucu verisinden gelir.
+ */
+function SubmissionPanel({
+  homeworkId,
+  submission,
+  availability,
+}: {
+  homeworkId: string
+  submission: HomeworkSubmission | undefined
+  availability: SubmissionAvailability
+}) {
+  const [open, setOpen] = useState(submission === undefined)
+  if (!open)
+    return (
+      <Button icon="Upload" label="Teslimi güncelle" onPress={() => setOpen(true)}>
+        Teslimi güncelle
+      </Button>
+    )
+  return (
+    <SubmissionForm
+      homeworkId={homeworkId}
+      submission={submission}
+      availability={availability}
+      onDone={() => setOpen(false)}
+    />
   )
 }
 

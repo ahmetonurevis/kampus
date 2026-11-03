@@ -247,12 +247,50 @@ describe('toplu personel aktarımı (IST-007, DOM-YTK-070)', () => {
       codes(
         csv(
           'ad;e-posta;rol;branş;kampüs',
-          'Selin Kaya;selin@okul.example;ogretmen;;',
-          'Selin Kaya;baska@okul.example;ogretmen;Matematik;Kadıköy Kampüsü',
+          'Mert Ak;mert@okul.example;ogretmen;science;b2',
+          'Mert Ak;mert.ak@okul.example;ogretmen;Fen Bilimleri;Beşiktaş Kampüsü',
         ),
       ),
       ['3:-:duplicate_teacher'],
     )
+  })
+
+  test('DOM-YTK-070: ad, branş ve kampüsle eşleşme yalnız e-postasız kayda bağlanır', () => {
+    // Selin Kaya kaydının e-postası selin@: başka e-postalı adaşı o kayda bağlanmaz.
+    const result = plan(
+      csv(
+        'ad;e-posta;rol;branş;kampüs',
+        'Selin Kaya;baska@okul.example;ogretmen;Matematik;Kadıköy Kampüsü',
+        'Mert Ak;mert@okul.example;ogretmen;Fen Bilimleri;Beşiktaş Kampüsü',
+      ),
+    )
+    assert.deepEqual(
+      result.issues.map((issue) => `${issue.line}:${issue.field ?? '-'}:${issue.code}`),
+      ['2:-:teacher_email_mismatch'],
+    )
+    assert.match(result.issues[0]?.message ?? '', /başka bir e-posta/)
+    assert.deepEqual(result.invitations, [])
+    // Aynı ad, branş ve kampüste e-postalı ve e-postasız iki kayıt: e-postasız olana bağlanır.
+    const mixed = planStaffImport(
+      parseStaffImport(
+        csv('ad;e-posta;rol;branş;kampüs', 'Mert Ak;mert@okul.example;ogretmen;science;b2'),
+      ),
+      {
+        ...context,
+        teachers: [
+          ...context.teachers,
+          {
+            id: 't-f',
+            name: 'Mert Ak',
+            email: 'mert.baska@okul.example',
+            subjectId: 'science',
+            branchId: 'b2',
+          },
+        ],
+      },
+    )
+    assert.deepEqual(mixed.issues, [])
+    assert.equal(mixed.invitations[0]?.teacherId, 't-b')
   })
 
   test('IST-007: gövde şeması dryRun varsayılanı false; boş ve fazladan alan reddedilir', () => {

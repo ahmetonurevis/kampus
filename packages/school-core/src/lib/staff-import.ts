@@ -17,7 +17,8 @@ import {
  * (`lib/staff-accounts.ts`); ek olarak dosya içinde yinelenen e-posta ve öğretmen kaydı reddedilir.
  *
  * Öğretmen satırı kurumun var olan öğretmen kaydına bağlanır: önce aynı e-postalı etkin kayıt,
- * yoksa (branş ve kampüs girildiyse) aynı ad, branş ve kampüsteki tek kayıt. Branş ve kampüs
+ * yoksa (branş ve kampüs girildiyse) aynı ad, branş ve kampüsteki e-postasız tek kayıt; kayıtta
+ * başka bir e-posta varsa satır reddedilir (adaşı başka kişinin kaydına bağlanmasın). Branş ve kampüs
  * yalnız öğretmen satırında girilir ve bulunan kaydın branşı/kampüsüyle uyuşmalıdır; aktarım
  * öğretmen kaydı açmaz (kayıt telefon ister, kadro ekranından açılır). Saf fonksiyonlardır: API
  * kurum kilidi altında okuduğu bağlamı verir.
@@ -107,6 +108,8 @@ export const STAFF_IMPORT_MESSAGES = {
     'Bu e-posta ya da ad, branş ve kampüsle öğretmen kaydı bulunamadı. Önce kadroya öğretmen kaydını ekleyin ya da branş ve kampüsü boş bırakın.',
   teacher_ambiguous:
     'Bu bilgilerle birden çok öğretmen kaydı var. Bu kişiyi tek tek davet edip öğretmen kaydını seçin.',
+  teacher_email_mismatch:
+    'Bu ad, branş ve kampüsteki öğretmen kaydında başka bir e-posta var. Kadrodaki e-postayı düzeltin ya da branş ve kampüsü boş bırakın.',
   subject_mismatch: 'Öğretmen kaydının branşı dosyadakiyle uyuşmuyor.',
   campus_mismatch: 'Öğretmen kaydının kampüsü dosyadakiyle uyuşmuyor.',
 } as const
@@ -207,15 +210,23 @@ export function planStaffImport(
         add('campus', 'campus_unknown', STAFF_IMPORT_MESSAGES.campus_unknown)
       const unknown = (row.subject && !subject) || (row.campus && !campus)
       let candidates = email.success ? (teachersByEmail.get(email.data) ?? []) : []
-      if (candidates.length === 0 && subject && campus && name.success)
-        candidates = context.teachers.filter(
+      // Adla eşleşme yalnız e-postasız kayda bağlanır; e-postası farklı kayıt başka kişidir.
+      let otherEmail = false
+      if (candidates.length === 0 && subject && campus && name.success) {
+        const named = context.teachers.filter(
           (teacher) =>
             sameText(teacher.name, name.data) &&
             teacher.subjectId === subject.id &&
             teacher.branchId === campus.id,
         )
+        candidates = named.filter((teacher) => !teacher.email.trim())
+        otherEmail = candidates.length === 0 && named.length > 0
+      }
       const [teacher, ...others] = candidates
-      if (others.length > 0) add(null, 'teacher_ambiguous', STAFF_IMPORT_MESSAGES.teacher_ambiguous)
+      if (otherEmail)
+        add(null, 'teacher_email_mismatch', STAFF_IMPORT_MESSAGES.teacher_email_mismatch)
+      else if (others.length > 0)
+        add(null, 'teacher_ambiguous', STAFF_IMPORT_MESSAGES.teacher_ambiguous)
       else if (teacher !== undefined) {
         if (subject && teacher.subjectId !== subject.id)
           add('subject', 'subject_mismatch', STAFF_IMPORT_MESSAGES.subject_mismatch)

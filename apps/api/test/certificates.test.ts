@@ -11,6 +11,7 @@ import { findProgressionDecision, saveProgressionReview } from '../src/db/cefr.t
 import { findCertificate, insertCertificate } from '../src/db/certificates.ts'
 import type { Database } from '../src/db/client.ts'
 import { databaseErrorInfo } from '../src/errors.ts'
+import { verificationRateKey } from '../src/routes/certificates.ts'
 import { insertLessonHourAttendances } from '../src/db/progression.ts'
 import { progressionDecisions } from '../src/db/schema/cefr.ts'
 import { courseCertificates, mebbisCertificateRecords } from '../src/db/schema/certificates.ts'
@@ -523,6 +524,8 @@ describe('kurum başarı belgesi uçları', () => {
     const replacing = { decisionId: t.decisionId, replacesCertificateId: certificate.id }
     const second = await ok(await issue(t, t.cookies.admin, replacing), 201)
     await ok(await cancel(second, t.cookies.admin))
+    // İptal edilmiş ve yerine belge düzenlenmemiş belge varken yeni belge onun yerine düzenlenir.
+    fails(await issue(t), 422, 'certificate_replacement_required')
     fails(await issue(t, t.cookies.admin, replacing), 409, 'certificate_already_replaced')
     fails(
       await issue(t, t.cookies.admin, {
@@ -587,6 +590,31 @@ describe('kurum başarı belgesi uçları', () => {
     assert.ok(Number(limited.headers['retry-after']) > 0)
     // Başka istemci etkilenmez.
     clientIp = '10.88.253.1'
+    fails(await verify('BOZUK-32'), 404, 'not_found')
+  })
+
+  test('DOM-DIL-082 doğrulama sınırı IPv6 /64 öneki başınadır; IPv4 adresi aynen sayılır', async () => {
+    for (const [ip, expected] of [
+      ['10.88.1.7', '10.88.1.7'],
+      ['::ffff:10.88.1.7', '10.88.1.7'],
+      ['2001:db8:aa:bb:1:2:3:4', '2001:db8:aa:bb::/64'],
+      ['2001:0DB8:00aa:00bb::9', '2001:db8:aa:bb::/64'],
+      ['2001:db8::1', '2001:db8:0:0::/64'],
+      ['::1', '0:0:0:0::/64'],
+      ['fe80::1%eth0', 'fe80:0:0:0::/64'],
+      ['64:ff9b::192.0.2.1', '64:ff9b:0:0::/64'],
+      ['bozuk', 'bozuk'],
+    ] as const)
+      assert.equal(verificationRateKey(ip), expected, ip)
+
+    // Aynı /64 önekinin farklı adresleri tek sayacı paylaşır; komşu önek etkilenmez.
+    for (let index = 0; index < 30; index += 1) {
+      clientIp = `2001:db8:88:1::${(index + 1).toString(16)}`
+      fails(await verify(`BOZUK-${index}`), 404, 'not_found')
+    }
+    clientIp = '2001:db8:88:1:ffff::1'
+    fails(await verify('BOZUK-31'), 429, 'rate_limited')
+    clientIp = '2001:db8:88:2::1'
     fails(await verify('BOZUK-32'), 404, 'not_found')
   })
 
@@ -705,6 +733,11 @@ describe('kurum başarı belgesi uçları', () => {
     await ok(await approve(correction, t.cookies.coordinator))
 
     const replacing = { decisionId: correction.id, replacesCertificateId: certificate.id }
+    fails(
+      await issue(t, t.cookies.admin, { decisionId: correction.id }),
+      422,
+      'certificate_replacement_required',
+    )
     fails(
       await issue(t, t.cookies.admin, { ...replacing, decisionId: t.decisionId }),
       422,

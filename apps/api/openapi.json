@@ -96337,7 +96337,7 @@
         "tags": [
           "learning"
         ],
-        "description": "Kimlik gerektirmez ve modülden bağımsızdır: düzenlenmiş belge modül kapansa da doğrulanır (DOM-DIL-082, Sabah kararı 85). Yanıt yalnız durum (`valid` ya da `cancelled`), kursiyerin baş harfleri, kur adı, düzenleme günü ve kurum adıdır; belge numarası ve puanlar yoktur. Biçimi bozuk ve bulunamayan kod aynı 404 `not_found`. IP başına dakikada 30 istek; aşılırsa 429 `rate_limited` ve `Retry-After`.",
+        "description": "Kimlik gerektirmez ve modülden bağımsızdır: düzenlenmiş belge modül kapansa da doğrulanır (DOM-DIL-082, Sabah kararı 85). Yanıt yalnız durum (`valid` ya da `cancelled`), kursiyerin baş harfleri, kur adı, düzenleme günü ve kurum adıdır; belge numarası ve puanlar yoktur. Biçimi bozuk ve bulunamayan kod aynı 404 `not_found`. IP başına (IPv6'da /64 öneki başına) dakikada 30 istek; aşılırsa 429 `rate_limited` ve `Retry-After`.",
         "parameters": [
           {
             "schema": {

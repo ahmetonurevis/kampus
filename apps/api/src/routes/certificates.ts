@@ -1,3 +1,5 @@
+import { isIPv4, isIPv6 } from 'node:net'
+
 import type {
   FastifyInstance,
   FastifyReply,
@@ -52,7 +54,7 @@ import { readErrors } from './communication.schemas.ts'
  *
  * Kimliksiz doğrulama ucu (`GET /api/v1/certificate-verifications/:code`) oturumsuz ve modülden
  * bağımsızdır (Sabah kararı 85): düzenlenmiş belge, kurum modülü kapatsa da üçüncü kişiye
- * doğrulanabilmelidir. IP başına dakikada 30 istek; kod 140 bit rastgele olduğu için tahmin
+ * doğrulanabilmelidir. IP başına (IPv6'da /64) dakikada 30 istek; kod 140 bit rastgele olduğu için tahmin
  * edilemez, hız sınırı taramayı ayrıca yavaşlatır. Yoldaki kod loglanmaz (`app.ts` `req`).
  */
 
@@ -60,6 +62,38 @@ const MODULE = 'academic'
 const STAFF: readonly Role[] = ['yonetici', 'ogretmen']
 const READERS: readonly Role[] = ['yonetici', 'ogretmen', 'ogrenci', 'veli']
 const VERIFICATION_RATE_PER_MINUTE = 30
+
+/**
+ * Kimliksiz doğrulamanın hız sınırı anahtarı: IPv4 adresi aynen; IPv6 adresi /64 önekine indirilir
+ * (`2001:db8:1:2::/64`). Tek bir IPv6 abonesi genellikle bütün /64'ü kullanır; tam adresle sayılırsa
+ * her istek yeni adresten gelip sınırı aşar. IPv4'e eşlenmiş IPv6 (`::ffff:a.b.c.d`) IPv4
+ * sayılır. Sayaç `@fastify/rate-limit`'in süreç içi deposundadır; birden çok API süreci arasında
+ * ortak sayaç deposu (Redis vb.) bu görevin kapsamı dışındadır.
+ */
+export function verificationRateKey(ip: string): string {
+  const mapped = /^::ffff:(\d{1,3}(?:\.\d{1,3}){3})$/i.exec(ip)
+  if (mapped?.[1] !== undefined && isIPv4(mapped[1])) return mapped[1]
+  const address = ip.split('%')[0] ?? ip
+  if (!isIPv6(address)) return ip
+  // Sondaki IPv4 gösterimi (`::1.2.3.4`) iki onaltılık gruba çevrilir.
+  const hex = address.replace(/(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/, (_, a, b, c, d) =>
+    [((Number(a) << 8) | Number(b)).toString(16), ((Number(c) << 8) | Number(d)).toString(16)].join(
+      ':',
+    ),
+  )
+  const [head = '', tail] = hex.split('::')
+  const split = (part: string) => (part === '' ? [] : part.split(':'))
+  const groups =
+    tail === undefined
+      ? split(head)
+      : [
+          ...split(head),
+          ...Array.from<string>({ length: 8 - split(head).length - split(tail).length }).fill('0'),
+          ...split(tail),
+        ]
+  const prefix = groups.slice(0, 4).map((group) => Number.parseInt(group, 16).toString(16))
+  return `${prefix.join(':')}::/64`
+}
 const SCOPE =
   'Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).'
 const ISSUER =
@@ -235,13 +269,17 @@ export function registerCertificateRoutes(app: FastifyInstance) {
     '/api/v1/certificate-verifications/:code',
     {
       config: {
-        rateLimit: { max: VERIFICATION_RATE_PER_MINUTE, timeWindow: '1 minute' },
+        rateLimit: {
+          max: VERIFICATION_RATE_PER_MINUTE,
+          timeWindow: '1 minute',
+          keyGenerator: (request: FastifyRequest) => verificationRateKey(request.ip),
+        },
       },
       schema: {
         operationId: 'verifyCourseCertificate',
         tags: ['learning'],
         summary: 'Kurum başarı belgesini doğrula',
-        description: `Kimlik gerektirmez ve modülden bağımsızdır: düzenlenmiş belge modül kapansa da doğrulanır (DOM-DIL-082, Sabah kararı 85). Yanıt yalnız durum (\`valid\` ya da \`cancelled\`), kursiyerin baş harfleri, kur adı, düzenleme günü ve kurum adıdır; belge numarası ve puanlar yoktur. Biçimi bozuk ve bulunamayan kod aynı 404 \`not_found\`. IP başına dakikada ${VERIFICATION_RATE_PER_MINUTE} istek; aşılırsa 429 \`rate_limited\` ve \`Retry-After\`.`,
+        description: `Kimlik gerektirmez ve modülden bağımsızdır: düzenlenmiş belge modül kapansa da doğrulanır (DOM-DIL-082, Sabah kararı 85). Yanıt yalnız durum (\`valid\` ya da \`cancelled\`), kursiyerin baş harfleri, kur adı, düzenleme günü ve kurum adıdır; belge numarası ve puanlar yoktur. Biçimi bozuk ve bulunamayan kod aynı 404 \`not_found\`. IP başına (IPv6'da /64 öneki başına) dakikada ${VERIFICATION_RATE_PER_MINUTE} istek; aşılırsa 429 \`rate_limited\` ve \`Retry-After\`.`,
         params: certificateVerificationParamsSchema,
         response: { 200: certificateVerificationResponseSchema, ...verificationErrors },
       },

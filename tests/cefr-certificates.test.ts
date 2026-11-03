@@ -145,6 +145,10 @@ describe('kurum başarı belgesi içeriği (DOM-DIL-081)', () => {
     assert.equal(containsForbiddenPhrase(JSON.stringify(issue().content)), false)
     assert.equal(containsForbiddenPhrase('Kampüs CEFR  Sertifikası Programı'), true)
     assert.equal(containsForbiddenPhrase('AVRUPA KONSEYİ onaylı'), true)
+    // Türkçe küçültmede ASCII `I` `ı` olur; yine yakalanır.
+    for (const text of ['AVRUPA KONSEYI', 'COUNCIL OF EUROPE', 'CEFR CERTIFICATE'])
+      assert.equal(containsForbiddenPhrase(text), true, text)
+    assert.equal(containsForbiddenPhrase('CEFR SERTIFIKASI'), true)
     assert.ok(FORBIDDEN_CERTIFICATE_PHRASES.includes('avrupa konseyi'))
   })
 
@@ -361,6 +365,38 @@ describe('belge numarası, iptal ve yeniden düzenleme (DOM-DIL-082)', () => {
     assert.throws(
       () => issue({ input: { decisionId: 'test-pd1', replacesCertificateId: 'test-cert-yok' } }),
       isDomainError('certificate_not_found', 'not_found'),
+    )
+  })
+
+  test('DOM-DIL-082 iptal edilmiş ve yerine belge düzenlenmemiş belge varken replacesCertificateId zorunlu (422)', () => {
+    const cancelled = stored({ status: 'cancelled' })
+    assert.throws(
+      () => issue({ certificates: [cancelled] }),
+      isDomainError('certificate_replacement_required'),
+    )
+    // Yerine belge düzenlenmiş iptal zinciri yeni belgeyi serbest bırakmaz: son iptal edilen
+    // belgenin yerine düzenlenir.
+    const replacement = stored({
+      id: 'test-cert2',
+      status: 'cancelled',
+      replacesCertificateId: 'test-cert1',
+    })
+    assert.throws(
+      () => issue({ certificates: [cancelled, replacement] }),
+      isDomainError('certificate_replacement_required'),
+    )
+    assert.equal(
+      issue({
+        certificates: [cancelled, replacement],
+        input: { decisionId: 'test-pd1', replacesCertificateId: 'test-cert2' },
+      }).replacesCertificateId,
+      'test-cert2',
+    )
+    // Başka kaydın iptal edilmiş belgesi sayılmaz.
+    assert.equal(
+      issue({ certificates: [stored({ status: 'cancelled', enrollmentId: 'test-enr-baska' })] })
+        .replacesCertificateId,
+      null,
     )
   })
 })

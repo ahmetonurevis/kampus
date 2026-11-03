@@ -63,7 +63,7 @@ export const CERTIFICATE_TITLE = 'Kurum başarı belgesi'
 
 /**
  * Belgede yer alamayacak ifadeler (DOM-DIL-081): CEFR bir sertifika değildir, Avrupa Konseyi
- * kurum onaylamaz. Karşılaştırma Türkçe küçük harfle yapılır.
+ * kurum onaylamaz. Karşılaştırma Türkçe küçük harfle ve noktasız `ı` `i` sayılarak yapılır.
  */
 export const FORBIDDEN_CERTIFICATE_PHRASES = [
   'cefr sertifikası',
@@ -73,10 +73,20 @@ export const FORBIDDEN_CERTIFICATE_PHRASES = [
   'council of europe',
 ] as const
 
-/** Metin yasak ifade içeriyor mu (büyük/küçük harf ve boşluk farkı gözetilmez). */
+/**
+ * Karşılaştırma biçimi: Türkçe küçük harf, `ı` → `i`, tek boşluk. Türkçe küçültme ASCII `I`'yı
+ * `ı` yapar; "AVRUPA KONSEYI", "COUNCIL OF EUROPE" ve "CEFR CERTIFICATE" bu yüzden `i`'ye
+ * çevrilmeden yakalanmazdı.
+ */
+function phraseKey(text: string): string {
+  return text.toLocaleLowerCase('tr').replaceAll('ı', 'i').replace(/\s+/g, ' ')
+}
+const FORBIDDEN_PHRASE_KEYS = FORBIDDEN_CERTIFICATE_PHRASES.map(phraseKey)
+
+/** Metin yasak ifade içeriyor mu (büyük/küçük harf, `I`/`ı`/`İ` ve boşluk farkı gözetilmez). */
 export function containsForbiddenPhrase(text: string): boolean {
-  const normalized = text.toLocaleLowerCase('tr').replace(/\s+/g, ' ')
-  return FORBIDDEN_CERTIFICATE_PHRASES.some((phrase) => normalized.includes(phrase))
+  const normalized = phraseKey(text)
+  return FORBIDDEN_PHRASE_KEYS.some((phrase) => normalized.includes(phrase))
 }
 
 /** Seviye ifadesi: "kurum değerlendirmesine göre CEFR B1 düzeyinde" (DOM-DIL-081). */
@@ -371,6 +381,9 @@ function contentOf(subject: CertificateSubject, decision: ProgressionDecisionRec
  * - `decisionId` kaydın geçerli kararı olmalı ve onaylı `passed` olmalıdır (422).
  * - `replacesCertificateId` verilirse aynı kaydın iptal edilmiş ve henüz yerine belge
  *   düzenlenmemiş belgesi olmalıdır; aksi halde 422/409.
+ * - Kaydın iptal edilmiş ve yerine belge düzenlenmemiş belgesi varsa yeni belge onun yerine
+ *   düzenlenir: `replacesCertificateId` zorunludur (422 `certificate_replacement_required`), iptal
+ *   zinciri kopmaz.
  * - Kaydın (hangi karardan olursa olsun) geçerli belgesi varsa 409 `certificate_already_issued`
  *   (Sabah kararı 86; veritabanında da kayıt başına kısmi tekil indeks). Kararı düzeltilen kayıtta
  *   da tek geçerli belge olur: düzeltmenin onayı belge iptal edilmeden geçmez (core
@@ -443,6 +456,19 @@ export function planCertificateIssue(input: {
       'certificate_already_issued',
       'Bu kayıt için geçerli bir belge var; hata varsa belge iptal edilip yeniden düzenlenir.',
       { kind: 'conflict', path: ['decisionId'] },
+    )
+  }
+  if (
+    data.replacesCertificateId === null &&
+    certificates.some(
+      (c) =>
+        c.status === 'cancelled' && !certificates.some((n) => n.replacesCertificateId === c.id),
+    )
+  ) {
+    throw new DomainError(
+      'certificate_replacement_required',
+      'Kaydın iptal edilmiş belgesi var; yeni belge iptal edilen belgenin yerine düzenlenir.',
+      { path: ['replacesCertificateId'] },
     )
   }
   return {

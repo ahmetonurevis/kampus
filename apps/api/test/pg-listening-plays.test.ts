@@ -110,7 +110,7 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
       {},
     )
     assert.equal(started.statusCode, 201, started.body)
-    return { institution, student, fileId: activity.fileId }
+    return { institution, student, fileId: activity.fileId, attemptId: started.json().data.id }
   }
 
   const playRows = (institutionId: string) =>
@@ -120,8 +120,8 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
       .where(eq(attemptMediaPlays.institutionId, institutionId))
 
   test('IST-045: hak 1 iken eşzamanlı beş bağlantı isteği: hepsi 200, biri sayar, tek satır; pencere sonrası hepsi 422', async () => {
-    const { institution, student, fileId } = await setup(1)
-    const request = () => call('GET', `/files/${fileId}/url`, student)
+    const { institution, student, fileId, attemptId } = await setup(1)
+    const request = () => call('GET', `/files/${fileId}/url?attemptId=${attemptId}`, student)
     const responses = await Promise.all(Array.from({ length: 5 }, request))
     for (const response of responses) assert.equal(response.statusCode, 200, response.body)
     const counted = responses.filter((response) => response.json().data.listening.counted)
@@ -138,8 +138,8 @@ describe('PostgreSQL 16: eşzamanlı dinleme sayımı', { skip: PG_SKIP }, () =>
   })
 
   test('IST-045: hak 2 iken pencere dışında eşzamanlı iki istek ikinci hakkı bir kez tüketir', async () => {
-    const { institution, student, fileId } = await setup(2)
-    const request = () => call('GET', `/files/${fileId}/url`, student)
+    const { institution, student, fileId, attemptId } = await setup(2)
+    const request = () => call('GET', `/files/${fileId}/url?attemptId=${attemptId}`, student)
     assert.equal((await request()).statusCode, 200)
     now = new Date(FIXED_NOW.getTime() + WINDOW)
     const responses = await Promise.all([request(), request()])

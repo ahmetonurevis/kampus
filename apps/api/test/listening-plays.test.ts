@@ -210,7 +210,7 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
       media: [{ fileId: t.fileId, used: 0, remaining: 2 }],
     })
 
-    const first = await ok(await url(t, t.cookies.student))
+    const first = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.deepEqual(first.listening, {
       attemptId: attempt.id,
       limit: 2,
@@ -223,22 +223,29 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
 
     // Sayfa yenileme: pencere içinde yeni bağlantı sayılmaz, bitiş ilk sayımın bitişidir.
     at(WINDOW - 1000)
-    const replay = await ok(await url(t, t.cookies.student))
+    const replay = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.equal(replay.listening.counted, false)
     assert.equal(replay.listening.used, 1)
     assert.equal(replay.expiresAt, expiresAt)
     assert.equal((await playsOf(t.institution.id)).length, 1)
 
     at(WINDOW)
-    const second = await ok(await url(t, t.cookies.student))
+    const second = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.deepEqual([second.listening.used, second.listening.remaining], [2, 0])
     assert.equal(second.listening.counted, true)
 
     // Son dinlemenin penceresinde yeniden bağlantı hâlâ verilir, sonra hak biter.
     at(2 * WINDOW - 1)
-    assert.equal((await ok(await url(t, t.cookies.student))).listening.counted, false)
+    assert.equal(
+      (await ok(await url(t, t.cookies.student, t.fileId, attempt.id))).listening.counted,
+      false,
+    )
     at(2 * WINDOW)
-    const exhausted = fails(await url(t, t.cookies.student), 422, 'listening_plays_exhausted')
+    const exhausted = fails(
+      await url(t, t.cookies.student, t.fileId, attempt.id),
+      422,
+      'listening_plays_exhausted',
+    )
     assert.match(exhausted.message, /dinleme hakkı doldu/)
     assert.deepEqual(await playsOf(t.institution.id), [
       { attemptId: attempt.id, playNumber: 1 },
@@ -264,13 +271,19 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     const t = await tenant()
     const assignmentId = await assign(t, 1)
     const attempt = await start(t, assignmentId)
-    const responses = await Promise.all([url(t, t.cookies.student), url(t, t.cookies.student)])
+    const responses = await Promise.all([
+      url(t, t.cookies.student, t.fileId, attempt.id),
+      url(t, t.cookies.student, t.fileId, attempt.id),
+    ])
     const bodies = await Promise.all(responses.map((response) => ok(response)))
     assert.deepEqual(bodies.map((body) => body.listening.counted).sort(), [false, true])
     assert.equal(bodies[0].expiresAt, bodies[1].expiresAt)
     assert.equal((await playsOf(t.institution.id)).length, 1)
     at(WINDOW)
-    const late = await Promise.all([url(t, t.cookies.student), url(t, t.cookies.student)])
+    const late = await Promise.all([
+      url(t, t.cookies.student, t.fileId, attempt.id),
+      url(t, t.cookies.student, t.fileId, attempt.id),
+    ])
     for (const response of late) fails(response, 422, 'listening_plays_exhausted')
     assert.equal((await playsOf(t.institution.id)).length, 1)
 
@@ -331,9 +344,57 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     assert.equal(detail.listening, null)
 
     const attempt = await start(t, limited)
-    const counted = await ok(await url(t, t.cookies.student))
+    const counted = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.equal(counted.listening.attemptId, attempt.id)
     assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: attempt.id, playNumber: 1 }])
+  })
+
+  test('IST-045, DOM-BEC-005 (Sabah kararı 56): sınırsız A ve sınırlı B aynı kaydı bağlar; B sürerken A sonucundan deneme kimliksiz istek 422 listening_attempt_running, sayım yazılmaz; kapanmış A kimliği 422 listening_attempt_closed; personel ve veli etkilenmez', async () => {
+    const t = await tenant()
+    const unlimited = await assign(t, null)
+    const finished = await start(t, unlimited)
+    await submit(t, finished)
+    const limited = await start(t, await assign(t, 2, await secondQuiz(t)))
+
+    const running = fails(await url(t, t.cookies.student), 422, 'listening_attempt_running')
+    assert.match(running.message, /o denemenin ekranından/)
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    // Kapanmış A denemesinin kimliği de sayım yazmaz: deneme sona ermiştir.
+    fails(await url(t, t.cookies.student, t.fileId, finished.id), 422, 'listening_attempt_closed')
+    assert.deepEqual(await playsOf(t.institution.id), [])
+    const detail = await ok(await call('GET', `/task-attempts/${limited.id}`, t.cookies.student))
+    assert.deepEqual(detail.listening.media, [{ fileId: t.fileId, used: 0, remaining: 2 }])
+
+    // Personel ve veli etkilenmez: bağlantı sayılmadan verilir.
+    for (const cookie of [t.cookies.teacher, t.cookies.admin, t.cookies.parent])
+      assert.equal((await ok(await url(t, cookie))).listening, null)
+    assert.deepEqual(await playsOf(t.institution.id), [])
+
+    // B'nin kendi ekranı kimliği gönderir; hak yalnız oradan düşer.
+    const counted = await ok(await url(t, t.cookies.student, t.fileId, limited.id))
+    assert.equal(counted.listening.attemptId, limited.id)
+    assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: limited.id, playNumber: 1 }])
+  })
+
+  test('IST-045, DOM-BEC-005 (Sabah kararı 56): aynı görevin ikinci denemesi sürerken ilk denemenin sonucundan kimliksiz istek 422 listening_attempt_running; sayım yazılmaz', async () => {
+    const t = await tenant()
+    const practice = await ok(
+      await call('POST', '/task-assignments', t.cookies.teacher, {
+        resourceVersionId: t.versionId,
+        settings: { attempts: { kind: 'practice' }, deadline: { dueAt: DUE }, listeningPlays: 1 },
+        targets: [{ kind: 'class', id: '9-A' }],
+      }),
+      201,
+    )
+    const first = await start(t, practice.id as string)
+    await ok(await url(t, t.cookies.student, t.fileId, first.id))
+    await submit(t, first)
+    const second = await start(t, practice.id as string)
+    at(WINDOW)
+    fails(await url(t, t.cookies.student), 422, 'listening_attempt_running')
+    assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: first.id, playNumber: 1 }])
+    const detail = await ok(await call('GET', `/task-attempts/${second.id}`, t.cookies.student))
+    assert.deepEqual(detail.listening.media, [{ fileId: t.fileId, used: 0, remaining: 1 }])
   })
 
   test('IST-045, DOM-KYN-006 (OG-052): kaydın yeni sürümü ya da kopyası aynı dosyayı taşır; ona bağlı etkinlikte hak yine sayılır', async () => {
@@ -359,7 +420,7 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
       limit: 1,
       media: [{ fileId: t.fileId, used: 0, remaining: 1 }],
     })
-    const counted = await ok(await url(t, t.cookies.student))
+    const counted = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.equal(counted.listening.attemptId, attempt.id)
     assert.equal(counted.listening.remaining, 0)
     assert.deepEqual(await playsOf(t.institution.id), [{ attemptId: attempt.id, playNumber: 1 }])
@@ -384,14 +445,17 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     const measured = await ok(await url(t, t.cookies.teacher))
     assert.equal(measured.expiresAt, new Date(FIXED_NOW.getTime() + 11 * 60_000).toISOString())
 
-    await start(t, await assign(t, 1))
-    const first = await ok(await url(t, t.cookies.student))
+    const attempt = await start(t, await assign(t, 1))
+    const first = await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     assert.equal(first.listening.counted, true)
     assert.equal(first.expiresAt, measured.expiresAt)
     at(11 * 60_000 - 1)
-    assert.equal((await ok(await url(t, t.cookies.student))).listening.counted, false)
+    assert.equal(
+      (await ok(await url(t, t.cookies.student, t.fileId, attempt.id))).listening.counted,
+      false,
+    )
     at(11 * 60_000)
-    fails(await url(t, t.cookies.student), 422, 'listening_plays_exhausted')
+    fails(await url(t, t.cookies.student, t.fileId, attempt.id), 422, 'listening_plays_exhausted')
   })
 
   test('IST-045: süren deneme yokken açık görevde 422 listening_attempt_required; teslim edilmiş deneme sayılmaz; teslim kapanınca bağlantı sayılmadan verilir', async () => {
@@ -399,7 +463,8 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     const assignmentId = await assign(t)
     fails(await url(t, t.cookies.student), 422, 'listening_attempt_required')
     const attempt = await start(t, assignmentId)
-    await ok(await url(t, t.cookies.student))
+    fails(await url(t, t.cookies.student), 422, 'listening_attempt_running')
+    await ok(await url(t, t.cookies.student, t.fileId, attempt.id))
     const submitted = await app.inject({
       method: 'POST',
       url: `/api/v1/task-attempts/${attempt.id}/submit`,
@@ -443,7 +508,7 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     assert.deepEqual(await playsOf(t.institution.id), [])
     assert.deepEqual(await playsOf(other.institution.id), [])
     // Kendi kurumunda sayım kendi denemesine düşer.
-    const own = await ok(await url(other, other.cookies.student))
+    const own = await ok(await url(other, other.cookies.student, other.fileId, otherAttempt.id))
     assert.equal(own.listening.attemptId, otherAttempt.id)
   })
 
@@ -480,14 +545,14 @@ describe('dinleme hakkı sayım altyapısı (altyapı birimi)', () => {
     assert.deepEqual((await ok(await detail(practice.id))).listening.media, [
       { fileId: t.fileId, used: 0, remaining: 2 },
     ])
-    // Kimlik verilmezse (geri uyumluluk) hak en erken başlayan süren denemeden düşer.
-    const legacy = await ok(await url(t, t.cookies.student))
-    assert.equal(legacy.listening.attemptId, practice.id)
+    // Kimlik verilmezse hak hiç sayılmaz; süren sınırlı deneme varken bağlantı da verilmez
+    // (Sabah kararı 56): önceki alıştırma denemesinin hakkı yanmaz.
+    fails(await url(t, t.cookies.student), 422, 'listening_attempt_running')
     const plays = await playsOf(t.institution.id)
     const numbersOf = (attemptId: string) =>
       plays.filter((play) => play.attemptId === attemptId).map((play) => play.playNumber)
     assert.deepEqual(numbersOf(assessment.id), [1, 2])
-    assert.deepEqual(numbersOf(practice.id), [1])
+    assert.deepEqual(numbersOf(practice.id), [])
   })
 
   test('IST-002, IST-045 (Sabah kararı 54): yabancı deneme 404, kaydı bağlamayan deneme 422 listening_attempt_mismatch, kapanmış deneme 422 listening_attempt_closed; sayım yazılmaz; personel ve velide attemptId sayılmaz', async () => {

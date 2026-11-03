@@ -49,12 +49,15 @@ import { timingOf } from './task-work.ts'
  *   istekte sayım yazılmaz. Deneme sınırsız atamadaysa bağlantı sayılmadan verilir. Aynı sesi
  *   bağlayan iki atamanın denemesi birlikte sürerken doğru deneme ancak böyle seçilir; web her
  *   dinlemede gönderir. Personel ve velide kimlik yok sayılır (sayılmaz).
- * - Deneme kimliği verilmezse (geri uyumluluk) karar öğrencinin bu atamalardaki süren
- *   denemelerinden verilir: sınırlı atamanın süren denemesi varsa hak ondan düşer (birden çoksa en
- *   erken başlayan); yalnız sınırsız atamanın süren denemesi varsa bağlantı sayılmadan verilir.
- *   Süren deneme hiç yokken sınırlı atama kursiyere açık ve teslim penceresi kapanmamışsa bağlantı
- *   verilmez (422 `listening_attempt_required`): deneme dışından sınırsız dinleme hakkı anlamsız
- *   kılardı. Teslim kapandıktan sonra bağlantı sayılmadan verilir.
+ * - Deneme kimliği verilmezse hak hiç sayılmaz, `attempt_media_plays` yazılmaz (Sabah kararı 56):
+ *   istek hangi denemeden geldiğini söylemez; sonuç ekranından ya da başka bir görevden yapılan
+ *   dinleme süren başka bir denemenin hakkını yakmamalı. Öğrencinin bu kaydı bağlayan sınırlı
+ *   atamada süren denemesi varsa bağlantı da verilmez (422 `listening_attempt_running`): sayılmadan
+ *   vermek sınırı atlatmaya kapı açardı; dinleme o denemenin ekranından açılır. Yalnız sınırsız
+ *   atamanın süren denemesi varsa bağlantı sayılmadan verilir. Süren deneme hiç yokken sınırlı
+ *   atama kursiyere açık ve teslim penceresi kapanmamışsa bağlantı verilmez (422
+ *   `listening_attempt_required`): deneme dışından sınırsız dinleme hakkı anlamsız kılardı. Teslim
+ *   kapandıktan sonra bağlantı sayılmadan verilir.
  * - Bir dinleme bir bağlantı ömrüdür (`listeningWindowMs`): son sayılan dinlemenin penceresinde
  *   aynı deneme ve dosya için yeni bağlantı istenirse hak yeniden sayılmaz, aynı bitiş anıyla yeni
  *   imzalı bağlantı döner (sayfa yenileme, oynatıcının yeniden bağlanması). Aralık (`Range`)
@@ -79,6 +82,8 @@ export const LISTENING_MESSAGES = {
   listening_attempt_required: 'Dinleme kaydı görevin denemesi içinde açılır; önce görevi başlatın.',
   listening_attempt_mismatch: 'Bu dinleme kaydı bu göreve ait değil.',
   listening_attempt_closed: 'Bu deneme sona erdi; dinleme kaydı yalnız süren denemede açılır.',
+  listening_attempt_running:
+    'Bu kayıt süren bir denemenizde sınırlı; dinlemeyi o denemenin ekranından açın.',
 } as const
 
 /** Kaydın sonundaki pay: yükleme ve oynatıcı gecikmesi. */
@@ -180,8 +185,9 @@ async function recordingAssignments(
 
 /**
  * Dinleme kaydının bağlantısı için hak kararı ve sayım (`getFileUrl` transaction'ında, dosyanın
- * okuma kuralından sonra). `attemptId` verilirse hak yalnız o denemeden düşer (kurallar yukarıda).
- * Sayılmayan durumda (personel, sınırsız veya kapanmış görev) `null`.
+ * okuma kuralından sonra). `attemptId` verilirse hak yalnız o denemeden düşer; verilmezse hiç
+ * sayılmaz, süren sınırlı denemede bağlantı reddedilir (kurallar yukarıda). Sayılmayan durumda
+ * (personel, sınırsız, deneme kimliksiz ya da kapanmış görev) `null`.
  */
 export async function grantListeningPlay(
   tx: Database,
@@ -201,33 +207,27 @@ export async function grantListeningPlay(
   if (learnerId === null) return null
   const byId = new Map(assignments.map((assignment) => [assignment.id, assignment]))
   const attempts = await loadAttemptsAmong(tx, ctx.institutionId, [...byId.keys()], [learnerId])
-  const runningAttempts = attempts
-    .filter((attempt) => {
-      const assignment = byId.get(attempt.assignmentId)
-      return assignment !== undefined && running(assignment, attempt, ctx.now)
-    })
-    .sort((a, b) => a.startedAt.localeCompare(b.startedAt))
-  const candidate = runningAttempts.find(
-    (attempt) => byId.get(attempt.assignmentId)?.listeningPlays !== null,
-  )
-  // Yalnız sınırsız atamanın denemesi sürüyorsa hak düşülecek deneme yoktur, bağlantı sayılmaz.
-  if (candidate === undefined && runningAttempts.length > 0) return null
-  // Kilitten sonra yeniden okunur: bu arada teslim edilmiş deneme sayılmaz.
-  const locked =
-    candidate && (await findAttempt(tx, ctx.institutionId, candidate.id, { lock: true }))
-  const assignment = locked ? byId.get(locked.assignmentId) : undefined
-  if (!locked || !assignment || !running(assignment, locked, ctx.now)) {
-    const open = limited.some(
-      (item) => visible(viewer, item) && !isClosed(item.deadline, ctx.now.toISOString()),
+  const runningAssignments = attempts.flatMap((attempt) => {
+    const assignment = byId.get(attempt.assignmentId)
+    return assignment !== undefined && running(assignment, attempt, ctx.now) ? [assignment] : []
+  })
+  // Sayım yazılmadığı için kilit gerekmez; eşzamanlı teslimde en kötü durumda istek reddedilir.
+  if (runningAssignments.some((assignment) => assignment.listeningPlays !== null))
+    throw new RuleViolationError(
+      'listening_attempt_running',
+      LISTENING_MESSAGES.listening_attempt_running,
     )
-    if (open)
-      throw new RuleViolationError(
-        'listening_attempt_required',
-        LISTENING_MESSAGES.listening_attempt_required,
-      )
-    return null
-  }
-  return countPlay(tx, ctx, file, assignment, locked)
+  // Yalnız sınırsız atamanın denemesi sürüyorsa hak düşülecek deneme yoktur, bağlantı sayılmaz.
+  if (runningAssignments.length > 0) return null
+  const open = limited.some(
+    (item) => visible(viewer, item) && !isClosed(item.deadline, ctx.now.toISOString()),
+  )
+  if (open)
+    throw new RuleViolationError(
+      'listening_attempt_required',
+      LISTENING_MESSAGES.listening_attempt_required,
+    )
+  return null
 }
 
 /**

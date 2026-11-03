@@ -459,13 +459,14 @@ export async function getFile(ctx: ServiceContext, fileId: string) {
  * Dinleme kaydının bağlantısı kayıt süresi + 60 sn yaşar, en az 5 dk; süre ölçülmemişse 16 dk
  * (`listeningWindowMs`). Dinleme hakkı (IST-045, DOM-BEC-005) burada, bağlantıyla aynı
  * transaction'da sayılır (`grantListeningPlay`): hak bitince 422 `listening_plays_exhausted`, süren
- * deneme yokken açık görevde 422 `listening_attempt_required`. Yeniden bağlantı penceresinde bitiş
+ * deneme yokken açık görevde 422 `listening_attempt_required`, deneme kimliği verilmeden süren sınırlı
+ * denemede 422 `listening_attempt_running`. Yeniden bağlantı penceresinde bitiş
  * anı ilk sayımın bitişidir; imzalama başarısız olursa sayım da yazılmaz. Kayıt atanan
  * quiz/alıştırma setine `listeningVersionId` ile bağlıdır (OG-052).
  */
 /**
  * İmzalı bağlantı. `attemptId` öğrencinin dinleme hakkının düşeceği denemedir (Sabah kararı 54,
- * `grantListeningPlay`); verilmezse süren denemelerden seçilir, personel ve velide yok sayılır.
+ * `grantListeningPlay`); verilmezse hak sayılmaz (Sabah kararı 56), personel ve velide yok sayılır.
  */
 export async function getFileUrl(
   ctx: ServiceContext,

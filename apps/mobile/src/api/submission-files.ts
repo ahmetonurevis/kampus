@@ -1,4 +1,5 @@
-// Ödev teslimi için dosya seçimi ve yükleme (`POST /files`, amaç `submission`; ADR 0003). Seçilen
+// Ödev teslimi için dosya seçimi ve yükleme (`POST /files`, amaç `submission`; konuşma görevinde
+// `speaking_recording`; ADR 0003). Seçilen
 // dosya yalnız uygulama önbelleğinde (`copyToCacheDirectory`) durur; AsyncStorage'a hiçbir şey
 // yazılmaz. Yükleme `useApiCommand` üzerindedir: her yükleme yeni `Idempotency-Key` taşır, ağ
 // hatasından sonra aynı dosya aynı anahtarla yeniden gönderilir.
@@ -31,17 +32,22 @@ export async function pickSubmissionFiles(): Promise<PickedFile[]> {
   }))
 }
 
+/** Yükleme amacı: ödev dosyası ya da konuşma kaydı (`speaking_recording`, rıza ister). */
+export type UploadPurpose = 'submission' | 'speaking_recording'
+
 export type SubmissionUploadInput = {
   file: PickedFile
+  /** Varsayılan `submission`. */
+  purpose?: UploadPurpose
   /** Yüklemeyi durdurur (pencere kapandı); durdurulan istek hata olarak döner. */
   signal?: AbortSignal
 }
 
-async function uploadBody(file: PickedFile): Promise<FormData> {
+async function uploadBody(file: PickedFile, purpose: UploadPurpose): Promise<FormData> {
   const type = resolveMimeType(file) ?? 'application/octet-stream'
   const form = new FormData()
   // Sunucu önce `purpose`, sonra `file` alanını okur; sıra önemlidir.
-  form.append('purpose', 'submission')
+  form.append('purpose', purpose)
   if (Platform.OS === 'web') {
     // Webde `uri` blob adresidir; çok parçalı gövde gerçek bir Blob ister.
     const blob = await (await fetch(file.uri)).blob()
@@ -60,7 +66,7 @@ async function uploadRequest(
 ) {
   let form: FormData
   try {
-    form = await uploadBody(input.file)
+    form = await uploadBody(input.file, input.purpose ?? 'submission')
   } catch (cause) {
     throw new ApiError({
       status: 0,

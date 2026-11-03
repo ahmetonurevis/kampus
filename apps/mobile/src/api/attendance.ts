@@ -220,21 +220,24 @@ export function unsavedCount(
 
 /**
  * Gönderim yükü (`POST /classes/:classId/attendance`): bugünün tarihi, bütün öğrencilerin işareti
- * ve sınıfın okunan sürümü (`If-Match`). Geç kalma dakikası telefonda girilmez; `lateMinutes`
- * gönderilmediği için kayıtlı dakikalar korunur (DOM-AKD-036). Aynı gün ikinci gönderim kaydı
- * günceller, yinelemez (DOM-AKD-035).
+ * ve sınıfın okunan sürümü (`If-Match`). `lateMinutes` verilirse (boş nesne dahil) yoklamadaki bütün
+ * geç gelenlerin dakikasını belirler: ekran kayıtlı dakikaları da alanda gösterip gönderir, böylece
+ * düzeltmede dakika korunur ya da boşaltılır; verilmezse sunucu kayıtlı dakikalara dokunmaz
+ * (DOM-AKD-036). Aynı gün ikinci gönderim kaydı günceller, yinelemez (DOM-AKD-035).
  */
 export function attendancePayload(input: {
   classId: string
   today: string
   marks: Readonly<Record<string, AttendanceMark>>
   classVersion: number | undefined
+  lateMinutes?: Readonly<Record<string, number>>
 }): RecordAttendanceInput {
   return {
     classId: input.classId,
     date: input.today,
     marks: { ...input.marks },
     classVersion: input.classVersion ?? null,
+    ...(input.lateMinutes ? { lateMinutes: { ...input.lateMinutes } } : {}),
   }
 }
 

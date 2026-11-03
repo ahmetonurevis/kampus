@@ -6,6 +6,7 @@ import { LATE_MINUTES_MIN, lateMinutesSchema } from '@kampus/school-core/lib/dom
 import {
   attendanceMarks,
   bulkMark,
+  lateMinutesIssueErrors,
   lateMinutesPayload,
   markCounts,
   savedLateMinutes,
@@ -90,4 +91,19 @@ test('DOM-AKD-036: şemanın ürettiği dakika sınırı alanın min değeriyle 
   assert.equal(LATE_MINUTES_MIN, 1)
   assert.equal(lateMinutesSchema.safeParse(LATE_MINUTES_MIN).success, true)
   assert.equal(lateMinutesSchema.safeParse(LATE_MINUTES_MIN - 1).success, false)
+})
+
+test('DOM-AKD-036: sunucunun dakika maddesi o öğrencinin alanına eşlenir', () => {
+  const limit = 'Geç kalma süresi 1 ile 40 dakika arasında olmalıdır (ders süresi).'
+  assert.deepEqual(
+    lateMinutesIssueErrors([
+      { path: ['lateMinutes', 's1'], message: limit },
+      { path: ['lateMinutes', 's1'], message: 'ikinci madde ilkini ezmez' },
+      { path: ['marks', 's2'], message: 'başka alan' },
+      { path: ['lateMinutes'], message: 'öğrencisiz' },
+      { path: [], message: 'yolsuz' },
+    ]),
+    { s1: limit },
+  )
+  assert.deepEqual(lateMinutesIssueErrors([]), {})
 })

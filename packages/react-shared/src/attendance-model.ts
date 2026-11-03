@@ -92,3 +92,21 @@ export function lateMinutesPayload(
   }
   return { minutes, errors }
 }
+
+/**
+ * Sunucunun dakika hatalarını (`422 late_minutes_out_of_range` / `late_minutes_without_late`,
+ * `issues[].path = ['lateMinutes', öğrenciKimliği]`) o öğrencinin alanına eşler. Üst sınır (günün
+ * ders süresi) istemcide bilinmez; ileti sunucudan gelir ve sınırı içerir (DOM-AKD-036). Yolu
+ * `lateMinutes` altında olmayan madde yok sayılır.
+ */
+export function lateMinutesIssueErrors(
+  issues: readonly { path: readonly (string | number)[]; message: string }[],
+): Record<string, string> {
+  const errors: Record<string, string> = {}
+  for (const issue of issues) {
+    const [field, studentId] = issue.path
+    if (field === 'lateMinutes' && typeof studentId === 'string')
+      errors[studentId] ??= issue.message
+  }
+  return errors
+}

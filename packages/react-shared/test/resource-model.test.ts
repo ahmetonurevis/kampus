@@ -5,11 +5,15 @@ import { ApiError } from '@kampus/api-client/errors.ts'
 
 import { createCommandSession, runCommand } from '../src/commands.ts'
 import {
+  assumedLinkedRefs,
   availableActions,
   canEditDraft,
   canOpenNewVersion,
   coreVersion,
+  isAuthorableType,
+  isLinkedIssueCode,
   isVersionConflict,
+  LINKED_CONTENT_MESSAGES,
   RESOURCE_FILE_GONE_MESSAGE,
   RESOURCE_FILE_NOT_READY_MESSAGE,
   RESOURCE_MESSAGES,
@@ -218,6 +222,87 @@ describe('İçerik havuzu eylemleri (DOM-KYN-030, 031, 025)', () => {
       canOpenNewVersion({ detail: draft, actor: TEACHER, institutionType: 'school' }),
       false,
     )
+  })
+})
+
+describe('Okuma-anlama etkinliği eylemleri (OG-984; IST-042, DOM-BEC-006, DOM-KYN-013)', () => {
+  const quiz = (publicationIssues: StaffResourceDetail['publicationIssues'] = []) => ({
+    ...detail(
+      {
+        title: 'Feribot etkinliği',
+        content: {
+          type: 'quiz',
+          items: [
+            { questionVersionId: 'q1', points: 1 },
+            { questionVersionId: 'q2', points: 2 },
+          ],
+          timeLimitMinutes: null,
+          shuffleItems: false,
+          passageVersionId: 'p1',
+        },
+      },
+      { contentType: 'quiz' },
+    ),
+    publicationIssues,
+  })
+
+  test('IST-042: bağlı parça ve sorular sunucuda sorunsuzsa quiz onaya gönderilir ve yayımlanır (istemci bağlı sürümü bilmez)', () => {
+    assert.deepEqual(
+      labels(
+        availableActions({ detail: quiz(), actor: TEACHER, institutionType: 'school', now: NOW }),
+      ),
+      ['submit', 'publish', 'archive'],
+    )
+  })
+
+  test('DOM-BEC-006: sunucunun parça sorunu (passage_not_published) gönderi ve yayımı Türkçe nedenle engeller; arşiv açık', () => {
+    const actions = availableActions({
+      detail: quiz([
+        {
+          code: 'passage_not_published',
+          message: 'Okuma parçası yayında olmalıdır.',
+          path: ['content', 'passageVersionId'],
+        },
+      ]),
+      actor: TEACHER,
+      institutionType: 'school',
+      now: NOW,
+    })
+    assert.deepEqual(labels(actions), ['submit!', 'publish!', 'archive'])
+    assert.equal(actions[0]?.blockedReason, LINKED_CONTENT_MESSAGES.passage_not_published)
+  })
+
+  test('DOM-KYN-013: core eksiği (lisans) bağlı sürüm sorunundan önce gelir; bağlı sürüm varsayımı kalıcı değildir', () => {
+    const base = quiz([
+      { code: 'quiz_item_missing', message: 'x', path: ['content', 'items', '0'] },
+    ])
+    const actions = availableActions({
+      detail: { ...base, head: { ...base.head, license: null, licenseKind: null } },
+      actor: TEACHER,
+      institutionType: 'school',
+      now: NOW,
+    })
+    assert.equal(actions[0]?.blockedReason, 'Menşe ve lisans türünü seçin.')
+    const version = coreVersion(base.head, base.resource.id)
+    assert.ok(version)
+    const refs = assumedLinkedRefs(version)
+    assert.deepEqual([...(refs.itemVersions?.keys() ?? [])], ['q1', 'q2'])
+    assert.equal(refs.passageVersion?.contentType, 'reading_passage')
+    assert.deepEqual(assumedLinkedRefs(coreVersion(detail().head, 'r1')!), {})
+  })
+
+  test('IST-042: bağlı içerik kodları ortak Türkçe iletiyle eşlenir; quiz ve alıştırma seti formda yazılır', () => {
+    for (const code of Object.keys(LINKED_CONTENT_MESSAGES)) {
+      assert.equal(isLinkedIssueCode(code), true)
+      assert.equal(
+        RESOURCE_MESSAGES[code as keyof typeof RESOURCE_MESSAGES],
+        LINKED_CONTENT_MESSAGES[code as keyof typeof LINKED_CONTENT_MESSAGES],
+      )
+    }
+    assert.equal(isLinkedIssueCode('license_required'), false)
+    assert.equal(isAuthorableType('quiz'), true)
+    assert.equal(isAuthorableType('exercise_set'), true)
+    assert.equal(isAuthorableType('audio'), false)
   })
 })
 

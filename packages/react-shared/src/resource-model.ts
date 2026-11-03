@@ -13,12 +13,15 @@ import {
   RESOURCE_ACTIONS,
   EDITABLE_STATUSES,
   type ContentActor,
+  type ItemVersionRef,
+  type PublicationContext,
   type ResourceAction,
   type ResourceRecord,
   type ResourceStatus,
   type ResourceVersion,
 } from '@kampus/school-core/content/resource.ts'
 import { planCopy } from '@kampus/school-core/content/copy.ts'
+import type { ContentType } from '@kampus/school-core/content/taxonomy.ts'
 import { RESOURCE_FILE_MESSAGES } from '@kampus/school-core/content/resource-files.ts'
 import { planShareChange } from '@kampus/school-core/content/visibility.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
@@ -51,9 +54,16 @@ export type LearnerResourceDetail = Schemas['LearnerResourceDetail']
 
 /**
  * Web formunda oluşturulup düzenlenebilen içerik türleri: okuma parçası, çoktan seçmeli soru
- * (F3c1) ve materyal dosyası (`file`, OG-250; DOM-KYN-006).
+ * (F3c1), materyal dosyası (`file`, OG-250; DOM-KYN-006) ve okuma parçasına bağlanabilen quiz ile
+ * alıştırma seti (okuma-anlama etkinliği, OG-984; IST-042, DOM-BEC-006).
  */
-export const AUTHORABLE_TYPES = ['reading_passage', 'question', 'file'] as const
+export const AUTHORABLE_TYPES = [
+  'reading_passage',
+  'question',
+  'file',
+  'quiz',
+  'exercise_set',
+] as const
 export type AuthorableType = (typeof AUTHORABLE_TYPES)[number]
 
 export function isAuthorableType(type: string): type is AuthorableType {
@@ -112,6 +122,27 @@ export function resourceListQuery(input: {
   }
 }
 
+/**
+ * Quiz/alıştırma setinin bağlı sürümlerine (sorular, okuma parçası) dayanan yayım kodları (core
+ * `publicationIssues`; DOM-KYN-013, DOM-BEC-006). Bağlı sürümün durumunu yalnız sunucu bilir: istemci
+ * bu kodları kuru çalıştırmada üretmez, ayrıntının `publicationIssues` listesinden okur.
+ */
+export const LINKED_CONTENT_MESSAGES = {
+  passage_missing:
+    'Seçilen okuma parçası bulunamadı ya da artık açılamıyor; başka bir parça seçin.',
+  passage_not_reading: 'Bağlanan içerik okuma parçası değil; bir okuma parçası seçin.',
+  passage_not_published:
+    'Okuma parçası yayında değil; önce parçayı yayımlayın ya da yayındaki bir parça seçin.',
+  quiz_item_missing: 'Seçilen soru bulunamadı ya da artık açılamıyor; listeden çıkarın.',
+  quiz_item_not_question: 'Listeye yalnız soru eklenebilir.',
+  quiz_item_not_published: 'Soru yayında değil; yayındaki bir soru seçin.',
+  quiz_item_untagged: 'Kazanım veya beceri etiketi olmayan soru eklenemez.',
+} as const satisfies CommandMessages
+export type LinkedIssueCode = keyof typeof LINKED_CONTENT_MESSAGES
+
+export const isLinkedIssueCode = (code: string): code is LinkedIssueCode =>
+  Object.hasOwn(LINKED_CONTENT_MESSAGES, code)
+
 export const RESOURCE_CHANGED_MESSAGE =
   'İçerik siz bakarken başkası tarafından değiştirildi. Güncel hali yüklendi; değişikliğinizi gözden geçirip yeniden deneyin.'
 
@@ -135,6 +166,8 @@ export const RESOURCE_MESSAGES = {
   // reddedilen dosya (Sabah kararı 42) kaldırılıp başkası yüklenir.
   file_not_ready: RESOURCE_FILE_NOT_READY_MESSAGE,
   file_rejected: FILE_REJECTED_MESSAGE,
+  // Okuma-anlama etkinliğinin bağlı parçası ve soruları (onaya gönderme, yayım, onay; OG-984).
+  ...LINKED_CONTENT_MESSAGES,
 } as const satisfies CommandMessages
 
 export const RESOURCE_FILE_GONE_MESSAGE =
@@ -292,10 +325,45 @@ function coreResource(detail: StaffResourceDetail): ResourceRecord {
   }
 }
 
+/** Yayım denetiminden geçen geçişler (core `planVersionTransition` `assertPublishable`). */
+const PUBLISHING_ACTIONS: ReadonlySet<ActionKind> = new Set(['submit', 'publish', 'approve'])
+
+/**
+ * Kuru çalıştırmada bağlı sürümler (sorular, okuma parçası) geçerli varsayılır: istemcide yüklü
+ * değildirler ve verilmezse core her quiz'de `quiz_item_missing` üretirdi. Gerçek durumları
+ * sunucunun ayrıntıda döndürdüğü yayım sorunlarındadır (`LINKED_CONTENT_MESSAGES`).
+ */
+export function assumedLinkedRefs(
+  version: ResourceVersion,
+): Pick<PublicationContext, 'itemVersions' | 'passageVersion'> {
+  const { content } = version
+  if (content.type !== 'quiz' && content.type !== 'exercise_set') return {}
+  const tags = { ...version.tags, primarySkill: version.tags.primarySkill ?? 'reading' }
+  const ref = (id: string, contentType: ContentType): ItemVersionRef => ({
+    id,
+    status: 'published',
+    tags,
+    contentType,
+  })
+  return {
+    itemVersions: new Map(
+      content.items.map((item) => [
+        item.questionVersionId,
+        ref(item.questionVersionId, 'question'),
+      ]),
+    ),
+    passageVersion:
+      content.passageVersionId === null
+        ? undefined
+        : ref(content.passageVersionId, 'reading_passage'),
+  }
+}
+
 /**
  * Baş sürümde kullanıcıya sunulacak durum geçişleri. Core kuralı kuru çalıştırılır: izinsiz veya
  * geçersiz geçiş görünmez; yalnız yayım eksiği yüzünden uygulanamayan geçiş görünür ve nedeni
- * taşır. Zümre başkanı/koordinatör verisi yanıtta olmadığından onay yöneticiye gösterilir
+ * taşır. Bağlı sürümlerin eksiği (`LINKED_CONTENT_MESSAGES`) sunucunun yayım sorunlarından gelir.
+ * Zümre başkanı/koordinatör verisi yanıtta olmadığından onay yöneticiye gösterilir
  * (`TODO(content-reviewer)`); sunucu aynı kuralı yeniden uygular.
  */
 export function availableActions({
@@ -307,9 +375,11 @@ export function availableActions({
   const version = coreVersion(detail.head, detail.resource.id)
   if (!version) return []
   const resource = coreResource(detail)
+  const refs = assumedLinkedRefs(version)
   const issueCodes = new Set(
-    publicationIssues({ institutionType, version, now }).map((i) => i.code),
+    publicationIssues({ institutionType, version, now, ...refs }).map((i) => i.code),
   )
+  const linkedCode = detail.publicationIssues.map((issue) => issue.code).find(isLinkedIssueCode)
   const states: ActionState[] = []
   for (const action of SHOWN_ACTIONS) {
     let blockedReason: string | null = null
@@ -323,6 +393,7 @@ export function availableActions({
         now,
         // Ret gerekçesi formda alınır; kuru çalıştırmada geçerli bir metin verilir.
         reason: 'gerekçe',
+        ...refs,
       })
     } catch (error) {
       if (!(error instanceof DomainError) || HIDDEN_CODES.has(error.code)) continue
@@ -331,6 +402,8 @@ export function availableActions({
       if (action === 'publish' && requiresReview(version.license, resource.shareScope)) continue
       blockedReason = error.message
     }
+    if (blockedReason === null && linkedCode && PUBLISHING_ACTIONS.has(action))
+      blockedReason = LINKED_CONTENT_MESSAGES[linkedCode]
     states.push({
       action,
       label: RESOURCE_ACTIONS[action].label,

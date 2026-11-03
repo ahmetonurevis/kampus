@@ -20,10 +20,10 @@ import { RootError } from '../management/FormParts.tsx'
 import {
   assignmentBody,
   assignmentFormSchema,
+  assignmentListening,
   COUNT_POLICY_OPTIONS,
   defaultAssignment,
   formFieldFor,
-  hasListeningRecording,
   isTeacherScored,
   KIND_OPTIONS,
   LISTENING_PLAY_OPTIONS,
@@ -79,7 +79,6 @@ function AssignmentEditor({ onClose, onCreated }: Omit<Props, 'open'>) {
   const rubricVersionId = useWatch({ control: form.control, name: 'rubricVersionId' })
   const resourceId = useWatch({ control: form.control, name: 'resourceId' })
   const teacher = isTeacherScored(taskType)
-  const busy = create.isPending || form.formState.isSubmitting
 
   const resources = useResourceList({ page: 1, pageSize: 100, contentType: taskType })
   const assignable = useMemo(
@@ -98,10 +97,17 @@ function AssignmentEditor({ onClose, onCreated }: Omit<Props, 'open'>) {
     itemList ? (chosen?.currentVersionId ?? '') : '',
   )
   const versionData = chosenVersion.data?.data
-  const listening =
-    versionData?.view === 'staff' &&
-    versionData.version.id === chosen?.currentVersionId &&
-    hasListeningRecording(versionData.version.content)
+  // İçerik değişince yeni sürüm yüklenene kadar gönderim kilitlidir; hak seçimi form değerinde kalır.
+  const { listening, pending: listeningPending } = assignmentListening({
+    itemList,
+    selected: chosen?.currentVersionId != null,
+    loaded:
+      versionData?.view === 'staff' && versionData.version.id === chosen?.currentVersionId
+        ? { content: versionData.version.content }
+        : null,
+    failed: chosenVersion.isError,
+  })
+  const busy = create.isPending || form.formState.isSubmitting
   const rubrics = useRubrics({ page: 1, pageSize: 100 })
   const rubricOptions = useMemo(
     () =>
@@ -112,6 +118,7 @@ function AssignmentEditor({ onClose, onCreated }: Omit<Props, 'open'>) {
   )
 
   const submit = form.handleSubmit(async (values) => {
+    if (listeningPending) return
     const item = assignable.find((candidate) => candidate.id === values.resourceId)
     if (!item?.currentVersionId) return
     const outcome = await create.submit(
@@ -421,7 +428,11 @@ function AssignmentEditor({ onClose, onCreated }: Omit<Props, 'open'>) {
         <Button type="button" variant="outline" onClick={onClose} disabled={busy}>
           Vazgeç
         </Button>
-        <Button type="submit" disabled={busy} aria-busy={busy || undefined}>
+        <Button
+          type="submit"
+          disabled={busy || listeningPending}
+          aria-busy={busy || listeningPending || undefined}
+        >
           <Icon name="Check" size={17} aria-hidden="true" />
           Görevi ata
         </Button>

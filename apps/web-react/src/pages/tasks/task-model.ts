@@ -397,6 +397,28 @@ export function hasListeningRecording(content: Record<string, unknown> | null | 
   return typeof content.listeningVersionId === 'string' && content.listeningVersionId !== ''
 }
 
+/**
+ * Atama formunda seçilen içeriğin dinleme kaydı durumu (IST-045, DOM-BEC-005). Bağ yayındaki
+ * sürümün içeriğindedir ve ayrı sorguyla okunur (`loaded` yalnız seçili içeriğin yayındaki
+ * sürümüyse dolar; önceki içeriğin sürümü sayılmaz): içerik değişince yeni sürüm yüklenene kadar
+ * `pending` olur ve gönderim kilitlenir; yoksa hak seçimi gövdeye girmeden atama yapılır ve
+ * sunucu varsayılanı (2) seçimin yerine geçerdi. Seçim form değerinde kalır; alan gizlenip
+ * yeniden açılınca korunur. Sürüm okunamazsa (`failed`) kilit kalkar, hak gönderilmez.
+ */
+export function assignmentListening(input: {
+  /** Görev türü quiz ya da alıştırma seti mi (bağ yalnız onlarda okunur). */
+  itemList: boolean
+  /** Yayındaki sürümü olan bir içerik seçildi mi. */
+  selected: boolean
+  /** Seçili içeriğin yayındaki sürümü okunduysa içeriği (personel görünümü); okunmadıysa `null`. */
+  loaded: { content: Record<string, unknown> | null } | null
+  failed: boolean
+}): { listening: boolean; pending: boolean } {
+  if (!input.itemList || !input.selected) return { listening: false, pending: false }
+  if (input.loaded === null) return { listening: false, pending: !input.failed }
+  return { listening: hasListeningRecording(input.loaded.content), pending: false }
+}
+
 const LISTENING_PLAYS = { '1': 1, '2': 2, unlimited: null } as const
 
 /**

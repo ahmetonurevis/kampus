@@ -6,6 +6,7 @@ import { rubricScoreInputSchema } from '@kampus/school-core/skills/rubric.ts'
 import {
   assignmentBody,
   assignmentFormSchema,
+  assignmentListening,
   assignmentScopeNote,
   ATTEMPT_LIST_PARAMS,
   ATTEMPT_LIST_PREFIX,
@@ -136,6 +137,41 @@ describe('görev atama formu (DOM-KYN-032, DOM-BEC-041, 042, 044)', () => {
     assert.equal(hasListeningRecording({ type: 'audio', listeningVersionId: 'a1' }), false)
     assert.equal(hasListeningRecording(null), false)
     assert.equal(hasListeningRecording(undefined), false)
+  })
+
+  test('IST-045, DOM-BEC-005: içerik değişince yeni sürüm yüklenene kadar gönderim kilitlenir; hak alanı yalnız kayda bağlı sürümde açılır', () => {
+    const withRecording = { content: { type: 'quiz', listeningVersionId: 'a1' } }
+    const withoutRecording = { content: { type: 'quiz' } }
+    const state = (loaded: { content: Record<string, unknown> | null } | null, failed = false) =>
+      assignmentListening({ itemList: true, selected: true, loaded, failed })
+    assert.deepEqual(state(withRecording), { listening: true, pending: false })
+    // Kaynak değişti, yeni sürüm henüz okunmadı (önceki sürüm sayılmaz): kilitli, alan gizli.
+    assert.deepEqual(state(null), { listening: false, pending: true })
+    assert.deepEqual(state(withoutRecording), { listening: false, pending: false })
+    assert.deepEqual(state({ content: null }), { listening: false, pending: false })
+    // Sürüm okunamazsa kilit kalkar, hak gönderilmez (sunucu kendi varsayılanını uygular).
+    assert.deepEqual(state(null, true), { listening: false, pending: false })
+    // İçerik seçilmemiş ya da öğretmen puanlı görev: bağ okunmaz.
+    assert.deepEqual(
+      assignmentListening({ itemList: true, selected: false, loaded: null, failed: false }),
+      { listening: false, pending: false },
+    )
+    assert.deepEqual(
+      assignmentListening({ itemList: false, selected: true, loaded: null, failed: false }),
+      { listening: false, pending: false },
+    )
+  })
+
+  test('IST-045: kaynak değişip alan gizlense de hak seçimi form değerinde kalır ve kayda bağlı içerikte gönderilir', () => {
+    const values = assignmentFormSchema.parse({
+      ...teacherForm({ taskType: 'quiz', rubricVersionId: '' }),
+      listeningPlays: '1',
+    })
+    assert.equal(assignmentBody(values, 'v1', 'class', true).settings?.listeningPlays, 1)
+    assert.equal(
+      'listeningPlays' in (assignmentBody(values, 'v2', 'class', false).settings ?? {}),
+      false,
+    )
   })
 
   test('sunucu hata yolu form alanına çevrilir, bilinmeyen yol form düzeyi olur', () => {

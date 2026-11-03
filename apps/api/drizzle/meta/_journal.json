@@ -365,6 +365,13 @@
       "when": 1793706786426,
       "tag": "0051_add_submission_version_draft_revision",
       "breakpoints": true
+    },
+    {
+      "idx": 52,
+      "version": "7",
+      "when": 1793708732672,
+      "tag": "0052_create_course_assessments",
+      "breakpoints": true
     }
   ]
 }

@@ -265,6 +265,13 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'GET /api/v1/learning-outcomes': ['learning'],
   'POST /api/v1/learning-outcomes': ['learning'],
   'POST /api/v1/learning-outcomes/:code/archive': ['learning'],
+  // Kur sonu değerlendirme ve geçiş kararı (OG-086; IST-062): yalnız dil okulunda, okulda 404.
+  'POST /api/v1/course-assessments': ['academic'],
+  'POST /api/v1/progression-decisions': ['academic'],
+  'POST /api/v1/progression-decisions/:decisionId/approve': ['academic'],
+  'POST /api/v1/progression-decisions/:decisionId/reject': ['academic'],
+  'GET /api/v1/groups/:groupId/progression': ['academic'],
+  'GET /api/v1/students/:studentId/progression-decisions': ['academic'],
   'GET /api/v1/rubrics': ['learning'],
   'GET /api/v1/rubrics/:rubricId': ['learning'],
   'GET /api/v1/rubric-versions/:versionId': ['learning'],

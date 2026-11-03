@@ -3,7 +3,7 @@ import { DomainError } from '../lib/errors.ts'
 import { isCalendarDay, isUnderAdultAge } from '../lib/age.ts'
 import type { Role } from '../modules/navigation.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
-import { enumKeys, type CefrLevel } from '../content/taxonomy.ts'
+import { CEFR_LEVELS, enumKeys, type CefrLevel } from '../content/taxonomy.ts'
 import {
   CORE_SKILLS,
   evidenceSnapshotOf,
@@ -888,4 +888,70 @@ export function planProgressionReview(input: {
     throw outcomeError(evaluation, decision.outcome)
   }
   return { ...decision, ...reviewed, status: 'approved' }
+}
+
+// --- Karardan sonraki adım (IST-062) ------------------------------------------------------
+
+/**
+ * Onaylı `geçti` kararının üst kur çıktısı (IST-062: "üst kur kaydı ve yenileme teklifi karardan
+ * başlatılır"). Kayıt ve yenileme akışı (ON-030) bu çıktıyı okur; burada kayıt açılmaz.
+ * `decisionId` kaydın geçerli kararıdır: yenileme teklifi hangi karardan başladığını taşır.
+ */
+export type ProgressionNextStep = {
+  decisionId: string
+  enrollmentId: string
+  learnerId: string
+  fromCourseId: string
+  fromLevel: CefrLevel
+  /** Kurun sonraki kuru (DOM-DIL-007); zincir yoksa `null`. */
+  nextCourseId: string | null
+  /**
+   * Sonraki kurun seviyesi; kur zincirsizse CEFR sırasındaki bir üst seviye, C2'de ya da sonraki
+   * kur okunamadıysa `null`.
+   */
+  nextLevel: CefrLevel | null
+}
+
+const LEVELS_BY_RANK = enumKeys(CEFR_LEVELS).toSorted(
+  (a, b) => CEFR_LEVELS[a].rank - CEFR_LEVELS[b].rank,
+)
+
+/**
+ * Kaydın üst kur çıktısı (DOM-DIL-070, DOM-DIL-007): yalnız geçerli karar (düzeltilmemiş en son
+ * onaylı karar) `passed` ise döner; bekleyen, reddedilmiş ya da düzeltilmiş karar sayılmaz,
+ * `tekrar` ve `devamsızlıktan tamamlamadı` kararında `null`. Sonraki kur kurun `nextCourseId`
+ * zinciridir; kur zincirsizse seviye CEFR sırasındaki bir üst seviyedir ve kur seçimi kayıt
+ * akışına kalır. Saftır.
+ */
+// TODO(cefr-zincirsiz-ust-seviye): Zincirsiz kurda bir üst seviye artı seviyeyi de sayar (A2 → A2+);
+// domain artı seviyenin atlanıp atlanmayacağını söylemiyor.
+export function progressionNextStep(input: {
+  decisions: readonly ProgressionDecisionRecord[]
+  course: { id: string; level: CefrLevel; nextCourseId: string | null }
+  /** Kurun sonraki kuru (zincir varsa); seviyesi çıktıya yazılır. */
+  nextCourse?: { id: string; level: CefrLevel } | null
+}): ProgressionNextStep | null {
+  const effective = effectiveProgressionDecision(input.decisions)
+  if (effective === null || effective.outcome !== 'passed') return null
+  if (effective.courseId !== input.course.id) {
+    throw new DomainError('progression_course_mismatch', 'Karar bu kura ait değil.', {
+      path: ['courseId'],
+    })
+  }
+  const { nextCourseId } = input.course
+  let nextLevel: CefrLevel | null
+  if (nextCourseId === null) {
+    nextLevel = LEVELS_BY_RANK[CEFR_LEVELS[input.course.level].rank + 1] ?? null
+  } else {
+    nextLevel = input.nextCourse?.id === nextCourseId ? input.nextCourse.level : null
+  }
+  return {
+    decisionId: effective.id,
+    enrollmentId: effective.enrollmentId,
+    learnerId: effective.learnerId,
+    fromCourseId: input.course.id,
+    fromLevel: input.course.level,
+    nextCourseId,
+    nextLevel,
+  }
 }

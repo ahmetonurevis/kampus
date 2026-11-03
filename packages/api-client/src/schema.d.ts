@@ -5072,6 +5072,126 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/course-assessments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kur içi ölçme sonucunu gir
+         * @description Başlangıç, ara ya da kur sonu ölçmesi (DOM-DIL-013): dört becerinin puanı ve geri bildirimi zorunlu. Yalnız grubun öğretmeni (diğer öğretmen 403); nokta kayıt başına bir kez (409 `assessment_already_recorded`), ölçme değişmez. Başarı 201. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        post: operations["recordCourseAssessment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/progression-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kur sonu kararını öner
+         * @description Grubun öğretmeni kur sonu kararını önerir (DOM-DIL-070, DOM-DIL-060): `passed` için devam şartı, kur sonu eşiği ve dört becerinin her biri 50; koşulları sağlamayan sonuç 422. Kayıtta açık karar varken 409 `progression_pending`; onaylı karar varken değişiklik `correctsDecisionId` ile düzeltme kararıdır. Devam ders saati yoklamasındandır; yoklaması alınmamış saat varken devam belli değildir ve karar 409 `attendance_pending` olur (yoklama alma ucu OG-269). Başarı 201, durum `pending`. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        post: operations["proposeProgressionDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/progression-decisions/{decisionId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kur sonu kararını onayla
+         * @description Koşullar güncel devam ve ölçmelerle yeniden hesaplanır; dayanak değiştiyse 409 `progression_basis_changed`. Onaylı `passed` kararında `next` üst kur çıktısıdır. Yalnız kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi; diğer öğretmen 403, yönetici 403). Kararı veren onaylayamaz (403 `progression_self_review`); sonuçlanmış karar 409 `progression_already_reviewed`. `If-Match` kararın satır sürümü (`rowVersion`; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Olmayan ya da başka kurumun kararı 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        post: operations["approveProgressionDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/progression-decisions/{decisionId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kur sonu kararını reddet
+         * @description Ret gerekçesi zorunlu; öğretmen yeniden önerebilir. Yalnız kurun seviyesinin akademik koordinatörü (öğretmen + `academic_coordinator` görevi; diğer öğretmen 403, yönetici 403). Kararı veren onaylayamaz (403 `progression_self_review`); sonuçlanmış karar 409 `progression_already_reviewed`. `If-Match` kararın satır sürümü (`rowVersion`; yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Olmayan ya da başka kurumun kararı 404. `Idempotency-Key` isteğe bağlı; aynı anahtarla tekrar aynı yanıtı verir. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        post: operations["rejectProgressionDecision"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/groups/{groupId}/progression": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Grubun kur sonu tablosu
+         * @description Kursiyer başına devam özeti, ölçmeler, kur geçme koşulları, verilebilir sonuçlar ve engel (hesaplanır, saklanmaz), kararlar ve üst kur çıktısı (IST-062). Roller: `yonetici`, `ogretmen` (grubun öğretmeni ya da kurun seviyesinin akademik koordinatörü); diğer roller 403. Olmayan ya da başka kurumun grubu 404. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        get: operations["getGroupProgression"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/students/{studentId}/progression-decisions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kursiyerin kur sonu kararları
+         * @description Öğrenci kendisinin, veli 18 yaş altı çocuğunun yalnız onaylı kararlarını görür; gerekçe, karar veren ve inceleyen gösterilmez, onaylanmamış öneri görünmez. Personel (yönetici; öğretmen yalnız okuyabildiği grupların kararları) bütün kararları görür. Ön büro 403; kapsam dışı ya da başka kurumun öğrencisi 404. Modül `academic` (kapalıysa 403 `module_disabled`); yalnız dil okulunda, okulda 404. Grubu okuyamayan öğretmen için kayıt yoktur (404).
+         */
+        get: operations["getStudentProgressionDecisions"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -44990,6 +45110,1022 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    recordCourseAssessment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    enrollmentId: string;
+                    /** @enum {string} */
+                    point: "baseline" | "midterm" | "final";
+                    score: number;
+                    skills: {
+                        /** @enum {string} */
+                        skill: "reading" | "listening" | "writing" | "speaking";
+                        score: number;
+                        feedback: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            enrollmentId: string;
+                            /** @enum {string} */
+                            point: "baseline" | "midterm" | "final";
+                            score: number;
+                            skills: {
+                                skill: string;
+                                score: number;
+                                feedback: string | null;
+                            }[];
+                            /** Format: date-time */
+                            assessedAt: string;
+                            assessedByUserId: string;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    proposeProgressionDecision: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    enrollmentId: string;
+                    /** @enum {string} */
+                    outcome: "passed" | "repeat" | "incomplete_attendance";
+                    rationale: string;
+                    /** @default null */
+                    correctsDecisionId?: string | null;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            enrollmentId: string;
+                            groupId: string;
+                            learnerId: string;
+                            courseId: string;
+                            /** @enum {string} */
+                            outcome: "passed" | "repeat" | "incomplete_attendance";
+                            /** @enum {string} */
+                            status: "pending" | "approved" | "rejected";
+                            rationale: string;
+                            correctsDecisionId: string | null;
+                            decidedByUserId: string;
+                            /** Format: date-time */
+                            decidedAt: string;
+                            reviewedByUserId: string | null;
+                            reviewedAt: string | null;
+                            rejectionReason: string | null;
+                            basis: {
+                                /** @enum {number} */
+                                schemaVersion: 1;
+                                attendance: {
+                                    totalHours: number;
+                                    attendedHours: number;
+                                    absentHours: number;
+                                    unrecordedHours: number;
+                                    requiredHours: number;
+                                    minAttendancePermille: number;
+                                    met: boolean;
+                                };
+                                finalPassScore: number;
+                                assessments: {
+                                    /** @enum {string} */
+                                    point: "midterm" | "final";
+                                    score: number;
+                                    skills: {
+                                        /** @enum {string} */
+                                        skill: "reading" | "listening" | "writing" | "speaking";
+                                        score: number;
+                                    }[];
+                                }[];
+                                conditions: {
+                                    attendance: boolean;
+                                    finalScore: boolean;
+                                    skills: boolean;
+                                };
+                            };
+                            /** @description Karar anının genel seviye önerisi (gerekçe) */
+                            suggestedLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                            /** @description Kararın satır sürümü (`If-Match`) */
+                            rowVersion: number;
+                            /** @description Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`. */
+                            next: {
+                                decisionId: string;
+                                enrollmentId: string;
+                                learnerId: string;
+                                fromCourseId: string;
+                                /** @enum {string} */
+                                fromLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                nextCourseId: string | null;
+                                nextLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveProgressionDecision: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Karar kimliği */
+                decisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            enrollmentId: string;
+                            groupId: string;
+                            learnerId: string;
+                            courseId: string;
+                            /** @enum {string} */
+                            outcome: "passed" | "repeat" | "incomplete_attendance";
+                            /** @enum {string} */
+                            status: "pending" | "approved" | "rejected";
+                            rationale: string;
+                            correctsDecisionId: string | null;
+                            decidedByUserId: string;
+                            /** Format: date-time */
+                            decidedAt: string;
+                            reviewedByUserId: string | null;
+                            reviewedAt: string | null;
+                            rejectionReason: string | null;
+                            basis: {
+                                /** @enum {number} */
+                                schemaVersion: 1;
+                                attendance: {
+                                    totalHours: number;
+                                    attendedHours: number;
+                                    absentHours: number;
+                                    unrecordedHours: number;
+                                    requiredHours: number;
+                                    minAttendancePermille: number;
+                                    met: boolean;
+                                };
+                                finalPassScore: number;
+                                assessments: {
+                                    /** @enum {string} */
+                                    point: "midterm" | "final";
+                                    score: number;
+                                    skills: {
+                                        /** @enum {string} */
+                                        skill: "reading" | "listening" | "writing" | "speaking";
+                                        score: number;
+                                    }[];
+                                }[];
+                                conditions: {
+                                    attendance: boolean;
+                                    finalScore: boolean;
+                                    skills: boolean;
+                                };
+                            };
+                            /** @description Karar anının genel seviye önerisi (gerekçe) */
+                            suggestedLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                            /** @description Kararın satır sürümü (`If-Match`) */
+                            rowVersion: number;
+                            /** @description Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`. */
+                            next: {
+                                decisionId: string;
+                                enrollmentId: string;
+                                learnerId: string;
+                                fromCourseId: string;
+                                /** @enum {string} */
+                                fromLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                nextCourseId: string | null;
+                                nextLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectProgressionDecision: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Karar kimliği */
+                decisionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            enrollmentId: string;
+                            groupId: string;
+                            learnerId: string;
+                            courseId: string;
+                            /** @enum {string} */
+                            outcome: "passed" | "repeat" | "incomplete_attendance";
+                            /** @enum {string} */
+                            status: "pending" | "approved" | "rejected";
+                            rationale: string;
+                            correctsDecisionId: string | null;
+                            decidedByUserId: string;
+                            /** Format: date-time */
+                            decidedAt: string;
+                            reviewedByUserId: string | null;
+                            reviewedAt: string | null;
+                            rejectionReason: string | null;
+                            basis: {
+                                /** @enum {number} */
+                                schemaVersion: 1;
+                                attendance: {
+                                    totalHours: number;
+                                    attendedHours: number;
+                                    absentHours: number;
+                                    unrecordedHours: number;
+                                    requiredHours: number;
+                                    minAttendancePermille: number;
+                                    met: boolean;
+                                };
+                                finalPassScore: number;
+                                assessments: {
+                                    /** @enum {string} */
+                                    point: "midterm" | "final";
+                                    score: number;
+                                    skills: {
+                                        /** @enum {string} */
+                                        skill: "reading" | "listening" | "writing" | "speaking";
+                                        score: number;
+                                    }[];
+                                }[];
+                                conditions: {
+                                    attendance: boolean;
+                                    finalScore: boolean;
+                                    skills: boolean;
+                                };
+                            };
+                            /** @description Karar anının genel seviye önerisi (gerekçe) */
+                            suggestedLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                            /** @description Kararın satır sürümü (`If-Match`) */
+                            rowVersion: number;
+                            /** @description Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`. */
+                            next: {
+                                decisionId: string;
+                                enrollmentId: string;
+                                learnerId: string;
+                                fromCourseId: string;
+                                /** @enum {string} */
+                                fromLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                nextCourseId: string | null;
+                                nextLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                            } | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getGroupProgression: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Dil grubu kimliği */
+                groupId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            groupId: string;
+                            courseId: string;
+                            /** @enum {string} */
+                            level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                            /** @description Oturumdaki kişi grubun öğretmeni mi (ölçme ve karar) */
+                            canDecide: boolean;
+                            /** @description Oturumdaki kişi kurun akademik koordinatörü mü (onay) */
+                            canReview: boolean;
+                            learners: {
+                                enrollmentId: string;
+                                studentId: string;
+                                /** @enum {string} */
+                                memberStatus: "active" | "frozen";
+                                attendance: {
+                                    totalHours: number;
+                                    recordedHours: number;
+                                    attendedHours: number;
+                                    absentHours: number;
+                                    unrecordedHours: number;
+                                    requiredHours: number;
+                                    /** @enum {string} */
+                                    status: "eligible" | "ineligible" | "pending";
+                                };
+                                assessments: {
+                                    id: string;
+                                    enrollmentId: string;
+                                    /** @enum {string} */
+                                    point: "baseline" | "midterm" | "final";
+                                    score: number;
+                                    skills: {
+                                        skill: string;
+                                        score: number;
+                                        feedback: string | null;
+                                    }[];
+                                    /** Format: date-time */
+                                    assessedAt: string;
+                                    assessedByUserId: string;
+                                }[];
+                                conditions: {
+                                    attendance: boolean;
+                                    finalScore: boolean;
+                                    skills: boolean;
+                                };
+                                failingSkills: string[];
+                                allowedOutcomes: ("passed" | "repeat" | "incomplete_attendance")[];
+                                blocker: ("attendance_pending" | "assessments_incomplete") | null;
+                                decisions: {
+                                    id: string;
+                                    enrollmentId: string;
+                                    groupId: string;
+                                    learnerId: string;
+                                    courseId: string;
+                                    /** @enum {string} */
+                                    outcome: "passed" | "repeat" | "incomplete_attendance";
+                                    /** @enum {string} */
+                                    status: "pending" | "approved" | "rejected";
+                                    rationale: string;
+                                    correctsDecisionId: string | null;
+                                    decidedByUserId: string;
+                                    /** Format: date-time */
+                                    decidedAt: string;
+                                    reviewedByUserId: string | null;
+                                    reviewedAt: string | null;
+                                    rejectionReason: string | null;
+                                    basis: {
+                                        /** @enum {number} */
+                                        schemaVersion: 1;
+                                        attendance: {
+                                            totalHours: number;
+                                            attendedHours: number;
+                                            absentHours: number;
+                                            unrecordedHours: number;
+                                            requiredHours: number;
+                                            minAttendancePermille: number;
+                                            met: boolean;
+                                        };
+                                        finalPassScore: number;
+                                        assessments: {
+                                            /** @enum {string} */
+                                            point: "midterm" | "final";
+                                            score: number;
+                                            skills: {
+                                                /** @enum {string} */
+                                                skill: "reading" | "listening" | "writing" | "speaking";
+                                                score: number;
+                                            }[];
+                                        }[];
+                                        conditions: {
+                                            attendance: boolean;
+                                            finalScore: boolean;
+                                            skills: boolean;
+                                        };
+                                    };
+                                    /** @description Karar anının genel seviye önerisi (gerekçe) */
+                                    suggestedLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    /** @description Kararın satır sürümü (`If-Match`) */
+                                    rowVersion: number;
+                                }[];
+                                /** @description Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`. */
+                                next: {
+                                    decisionId: string;
+                                    enrollmentId: string;
+                                    learnerId: string;
+                                    fromCourseId: string;
+                                    /** @enum {string} */
+                                    fromLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                    nextCourseId: string | null;
+                                    nextLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStudentProgressionDecisions: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            decisions: ({
+                                id: string;
+                                enrollmentId: string;
+                                groupId: string;
+                                learnerId: string;
+                                courseId: string;
+                                /** @enum {string} */
+                                outcome: "passed" | "repeat" | "incomplete_attendance";
+                                /** @enum {string} */
+                                status: "pending" | "approved" | "rejected";
+                                rationale: string;
+                                correctsDecisionId: string | null;
+                                decidedByUserId: string;
+                                /** Format: date-time */
+                                decidedAt: string;
+                                reviewedByUserId: string | null;
+                                reviewedAt: string | null;
+                                rejectionReason: string | null;
+                                basis: {
+                                    /** @enum {number} */
+                                    schemaVersion: 1;
+                                    attendance: {
+                                        totalHours: number;
+                                        attendedHours: number;
+                                        absentHours: number;
+                                        unrecordedHours: number;
+                                        requiredHours: number;
+                                        minAttendancePermille: number;
+                                        met: boolean;
+                                    };
+                                    finalPassScore: number;
+                                    assessments: {
+                                        /** @enum {string} */
+                                        point: "midterm" | "final";
+                                        score: number;
+                                        skills: {
+                                            /** @enum {string} */
+                                            skill: "reading" | "listening" | "writing" | "speaking";
+                                            score: number;
+                                        }[];
+                                    }[];
+                                    conditions: {
+                                        attendance: boolean;
+                                        finalScore: boolean;
+                                        skills: boolean;
+                                    };
+                                };
+                                /** @description Karar anının genel seviye önerisi (gerekçe) */
+                                suggestedLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                /** @description Kararın satır sürümü (`If-Match`) */
+                                rowVersion: number;
+                                /** @description Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`. */
+                                next: {
+                                    decisionId: string;
+                                    enrollmentId: string;
+                                    learnerId: string;
+                                    fromCourseId: string;
+                                    /** @enum {string} */
+                                    fromLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                    nextCourseId: string | null;
+                                    nextLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                } | null;
+                            } | {
+                                id: string;
+                                courseId: string;
+                                /** @enum {string} */
+                                outcome: "passed" | "repeat" | "incomplete_attendance";
+                                correctsDecisionId: string | null;
+                                /** Format: date-time */
+                                approvedAt: string;
+                                basis: {
+                                    /** @enum {number} */
+                                    schemaVersion: 1;
+                                    attendance: {
+                                        totalHours: number;
+                                        attendedHours: number;
+                                        absentHours: number;
+                                        unrecordedHours: number;
+                                        requiredHours: number;
+                                        minAttendancePermille: number;
+                                        met: boolean;
+                                    };
+                                    finalPassScore: number;
+                                    assessments: {
+                                        /** @enum {string} */
+                                        point: "midterm" | "final";
+                                        score: number;
+                                        skills: {
+                                            /** @enum {string} */
+                                            skill: "reading" | "listening" | "writing" | "speaking";
+                                            score: number;
+                                        }[];
+                                    }[];
+                                    conditions: {
+                                        attendance: boolean;
+                                        finalScore: boolean;
+                                        skills: boolean;
+                                    };
+                                };
+                                /** @description Onaylı ve geçerli `passed` kararının üst kur çıktısı (core `progressionNextStep`); yenileme teklifi bunu okur. Diğer kararlarda `null`. */
+                                next: {
+                                    decisionId: string;
+                                    enrollmentId: string;
+                                    learnerId: string;
+                                    fromCourseId: string;
+                                    /** @enum {string} */
+                                    fromLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                                    nextCourseId: string | null;
+                                    nextLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                } | null;
+                            })[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -460,8 +460,8 @@ export async function getFile(ctx: ServiceContext, fileId: string) {
  * (`listeningWindowMs`). Dinleme hakkı (IST-045, DOM-BEC-005) burada, bağlantıyla aynı
  * transaction'da sayılır (`grantListeningPlay`): hak bitince 422 `listening_plays_exhausted`, süren
  * deneme yokken açık görevde 422 `listening_attempt_required`. Yeniden bağlantı penceresinde bitiş
- * anı ilk sayımın bitişidir; imzalama başarısız olursa sayım da yazılmaz. Sayım bugün devrede
- * değildir: atama dolu hakkı reddeder (`TODO(dinleme-icerik-bagi)`).
+ * anı ilk sayımın bitişidir; imzalama başarısız olursa sayım da yazılmaz. Kayıt atanan
+ * quiz/alıştırma setine `listeningVersionId` ile bağlıdır (OG-052).
  */
 export async function getFileUrl(ctx: ServiceContext, storage: StorageDriver, fileId: string) {
   return ctx.db.transaction(async (tx) => {

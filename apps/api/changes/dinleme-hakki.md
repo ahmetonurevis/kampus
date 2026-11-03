@@ -2,10 +2,11 @@
 etki: minor
 ---
 
-Dinleme hakkı sayım altyapısı (OG-049; IST-045; DOM-BEC-005; ADR 0003 karar 6). Altyapı devrede değildir: core içerik modeli dinleme kaydını atanabilen türlere bağlamaz (`TODO(dinleme-icerik-bagi)`).
+Dinleme hakkı sayımı (OG-049, OG-052; IST-045; DOM-BEC-005; ADR 0003 karar 6). Altyapı OG-049'da kuruldu, OG-052'de dinleme etkinliğiyle devreye girdi: kayıt quiz/alıştırma setine `listeningVersionId` ile bağlıdır.
 
-- Migration `0030_create_attempt_media_plays`: deneme × dosya × sıra tekil, değişmez sayım satırları.
-- `POST /api/v1/task-assignments`: değişmedi; dinleme hakkı gönderilmezse sınırsız, 1 veya 2 için 422 `listening_plays_unavailable`.
-- `GET /api/v1/files/:fileId/url`: dinleme kaydının (`listening_audio`) bağlantısı kayıt süresi + 60 sn yaşar (en az 5 dk; süre ölçülmemişse 16 dk). Yanıtta yeni `listening` alanı (`attemptId`, `limit`, `used`, `remaining`, `counted`); hakkı sınırlı süren deneme olmadıkça `null`. Altyapı devreye girince hak bitince 422 `listening_plays_exhausted`, süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`; son sayımın penceresinde yeni istek sayılmaz.
-- `GET /api/v1/task-attempts/:attemptId` ve deneme yazma yanıtları `listening` özetini döner (`limit`, kayıt başına `used`/`remaining`); sınırsızda ya da sayacak kayıt yoksa `null`.
+- Migration `0030_create_attempt_media_plays`: deneme × dosya × sıra tekil, değişmez sayım satırları. Kayıt bağı içerik jsonb'sindedir, OG-052 migration eklemez.
+- `POST /api/v1/task-assignments`: gövde şeması core `assignmentInputSchema`'dır. Sayılabilir kayda bağlı içerikte (bağlı ses sürümü + `listening_audio` dosyası) gönderilmeyen hak 2 olur; 1, 2 veya sınırsız (`null`) seçilebilir. Kaydı olmayan dinleme görevinde gönderilmeyen hak sınırsız saklanır, açık 1 veya 2 422 `listening_plays_unavailable` (alan yolu `settings.listeningPlays`).
+- İçerik komutları: kayda bağlı quiz/alıştırma setinin okunamayan kaydı 422 `listening_missing`; core yayım kodları (`listening_not_audio`, `listening_skill_required`, `listening_not_published`, `listening_transcript_required`) aynı yoldan döner. Ses kaynağının kaldırılması bağlı etkinlikleri etkilenenlere katar.
+- `GET /api/v1/files/:fileId/url`: dinleme kaydının (`listening_audio`) bağlantısı kayıt süresi + 60 sn yaşar (en az 5 dk; süre ölçülmemişse 16 dk). Ses kursiyere özel kalsa da sesi bağlayan quiz'in atamasıyla açılır. Yanıtta `listening` alanı (`attemptId`, `limit`, `used`, `remaining`, `counted`); hakkı sınırlı süren deneme olmadıkça `null`. Hak bitince 422 `listening_plays_exhausted`, süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`; son sayımın penceresinde yeni istek sayılmaz.
+- `GET /api/v1/task-attempts/:attemptId` ve deneme yazma yanıtları: yeni `listeningRecording` (`versionId`, `title`, `fileId`, `cefrLevel`, `transcript`, `captionsVtt`, `transcriptShown`, `attributions`; döküm personelde hep, kursiyer ve velide görev kapanınca ya da alıştırmada `showTranscript` ile; kayıt yoksa ya da içerik kapalıysa `null`) ve kayıt dosyasına göre `listening` özeti (`limit`, kayıt başına `used`/`remaining`); sınırsızda ya da sayacak kayıt yoksa `null`.
 - OpenAPI ve api-client şeması yeniden üretildi.

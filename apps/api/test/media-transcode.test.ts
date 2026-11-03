@@ -100,8 +100,9 @@ describe('ses dönüştürme (media.transcode)', () => {
     t: Tenant,
     target: App = app,
     key = `test-media-${String(++serial).padStart(6, '0')}`,
+    purpose: 'listening_audio' | 'feedback_audio' = 'listening_audio',
   ) {
-    const body = multipart(uploadParts('listening_audio', MP3, FILE_NAME, 'audio/mpeg'))
+    const body = multipart(uploadParts(purpose, MP3, FILE_NAME, 'audio/mpeg'))
     const response = await target.inject({
       method: 'POST',
       url: '/api/v1/files',
@@ -210,6 +211,28 @@ describe('ses dönüştürme (media.transcode)', () => {
     assert.ok(log.includes('"event":"media.transcoded"'))
     assert.equal(log.includes(FILE_NAME), false)
     transcoder.result = { durationMs: 30_000, silent: false }
+  })
+
+  test('DOM-BEC-056, migration 0054: sesli geri bildirim de dönüşür; içerik değişmezliği tetikleyicisi geçişe izin verir, profil 64 kbps, çıktı 3 dk + 1 sn', async () => {
+    const t = await tenant()
+    const response = await upload(t, app, undefined, 'feedback_audio')
+    const id = response.json().data.id as string
+    assert.equal(response.json().data.status, 'processing')
+    transcoder.result = { durationMs: 20_000, silent: false }
+    try {
+      const result = await transcodeAudioFile(deps(), job(t, id), now)
+      assert.deepEqual(result, { outcome: 'ready', durationMs: 20_000 })
+    } finally {
+      transcoder.result = { durationMs: 30_000, silent: false }
+    }
+    const call = transcoder.calls.at(-1)
+    assert.equal(call?.bitrateKbps, AUDIO_TRANSCODE_PROFILES.feedback_audio.bitrateKbps)
+    assert.equal(call?.bitrateKbps, 64)
+    assert.equal(call?.maxOutputSeconds, 3 * 60 + 1)
+    const row = await rowOf(t, id)
+    assert.equal(row.status, 'ready')
+    assert.equal(row.durationMs, 20_000)
+    assert.equal(row.contentType, TRANSCODED_CONTENT_TYPE)
   })
 
   test('OG-262: sessiz, boş, çözülemeyen ve sınırı aşan kayıt rejected olur; nesne silinir, bağlantı 404, denetime file.reject düşer', async () => {

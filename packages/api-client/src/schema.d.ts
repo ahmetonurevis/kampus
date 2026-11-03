@@ -4720,6 +4720,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/students/{studentId}/skill-progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Beceri ilerleme panosu
+         * @description Öğrencinin okuma, dinleme, yazma ve konuşma eğrileri (IST-057, DOM-BEC-035): her nokta bir değerlendirme görevinin sayılan denemesi ya da kesinleşmiş puanlı teslimidir ve atama ile deneme/teslim kimliğini taşır. Alıştırma, puanı kişiye açılmamış sonuç (DOM-BEC-045), içeriği kaldırılmış görev (DOM-KYN-051) ve arşivlenmiş atama girmez. Son değer ve eğilim her okumada hesaplanır, saklanmaz. Roller: `yonetici` herkesi, `ogretmen` ders verdiği sınıftaki ya da grubunu okuyabildiği öğrenciyi (yalnız atamasını gördüğü görevler), `ogrenci` kendisini, `veli` bağlı çocuğunu görür; ön büro 403. Göremediği, olmayan ya da başka kurumun öğrencisi 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getSkillProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -8140,6 +8160,42 @@ export interface components {
             }[];
         };
         CefrProfileInput: components["schemas"]["CefrProfileStaffInput"] | components["schemas"]["CefrProfileLearnerInput"];
+        SkillProgressInput: {
+            studentId: string;
+            /** Format: date-time */
+            computedAt: string;
+            /** @description Okuma, dinleme, yazma ve konuşma; her zaman dördü */
+            skills: {
+                /** @enum {string} */
+                skill: "reading" | "listening" | "writing" | "speaking";
+                label: string;
+                /** @description Tarih sırasıyla noktalar */
+                points: {
+                    /**
+                     * Format: uuid
+                     * @description Görev ataması
+                     */
+                    assignmentId: string;
+                    /** @description Otomatik puanlı görevde sayılan deneme */
+                    attemptId: string | null;
+                    /** @description Öğretmen puanlı görevde teslim kaydı */
+                    submissionId: string | null;
+                    /** @description Atanan içeriğin başlığı */
+                    title: string;
+                    /**
+                     * Format: date-time
+                     * @description Denemenin tamamlandığı ya da puanlanan sürümün gönderildiği an
+                     */
+                    performedAt: string;
+                    /** @description Puan yüzdesi */
+                    percent: number;
+                }[];
+                /** @description Son noktanın yüzdesi */
+                latest: number | null;
+                /** @description Eğilim: son nokta, önceki en çok üç noktanın ortalamasına göre (±5 puan) */
+                trend: ("up" | "down" | "steady") | null;
+            }[];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -11475,6 +11531,42 @@ export interface components {
             }[];
         };
         CefrProfile: components["schemas"]["CefrProfileStaff"] | components["schemas"]["CefrProfileLearner"];
+        SkillProgress: {
+            studentId: string;
+            /** Format: date-time */
+            computedAt: string;
+            /** @description Okuma, dinleme, yazma ve konuşma; her zaman dördü */
+            skills: {
+                /** @enum {string} */
+                skill: "reading" | "listening" | "writing" | "speaking";
+                label: string;
+                /** @description Tarih sırasıyla noktalar */
+                points: {
+                    /**
+                     * Format: uuid
+                     * @description Görev ataması
+                     */
+                    assignmentId: string;
+                    /** @description Otomatik puanlı görevde sayılan deneme */
+                    attemptId: string | null;
+                    /** @description Öğretmen puanlı görevde teslim kaydı */
+                    submissionId: string | null;
+                    /** @description Atanan içeriğin başlığı */
+                    title: string;
+                    /**
+                     * Format: date-time
+                     * @description Denemenin tamamlandığı ya da puanlanan sürümün gönderildiği an
+                     */
+                    performedAt: string;
+                    /** @description Puan yüzdesi */
+                    percent: number;
+                }[];
+                /** @description Son noktanın yüzdesi */
+                latest: number | null;
+                /** @description Eğilim: son nokta, önceki en çok üç noktanın ortalamasına göre (±5 puan) */
+                trend: ("up" | "down" | "steady") | null;
+            }[];
+        };
     };
     responses: never;
     parameters: never;
@@ -41716,6 +41808,85 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["CefrProfile"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSkillProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kaydı kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SkillProgress"];
                     };
                 };
             };

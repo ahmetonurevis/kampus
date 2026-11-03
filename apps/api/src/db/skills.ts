@@ -719,6 +719,26 @@ export async function findAssignment(
   return stored ?? null
 }
 
+/** Kimlikleri verilen atamalar (arşivli dahil; başka kurumun kimliği dönmez). */
+export async function loadAssignmentsByIds(
+  db: Database,
+  institutionId: string,
+  assignmentIds: readonly string[],
+): Promise<StoredAssignment[]> {
+  if (assignmentIds.length === 0) return []
+  const rows = await db
+    .select()
+    .from(taskAssignments)
+    .where(
+      and(
+        eq(taskAssignments.institutionId, institutionId),
+        inArray(taskAssignments.id, [...new Set(assignmentIds)]),
+      ),
+    )
+    .orderBy(asc(taskAssignments.createdAt), asc(taskAssignments.id))
+  return withTargets(db, institutionId, rows)
+}
+
 /**
  * Aynı içeriğin arşivlenmemiş atamaları (core `assertNoOverlappingAssignment` girdisi; IST-034).
  * Kursiyer listesi hedeflerden servisçe çözülür.
@@ -1132,6 +1152,29 @@ export async function loadAttemptsAmong(
       asc(taskAttempts.learnerId),
       asc(taskAttempts.attemptNumber),
     )
+  return rows.map(toAttempt)
+}
+
+/**
+ * Kursiyerin bütün atamalardaki arşivlenmemiş denemeleri (beceri ilerleme panosu, DOM-BEC-035):
+ * deneme okuması kayıt sahipliğine bakar, sınıf değiştiren öğrencinin eski denemeleri de gelir.
+ */
+export async function loadLearnerAttempts(
+  db: Database,
+  institutionId: string,
+  learnerId: string,
+): Promise<StoredAttempt[]> {
+  const rows = await db
+    .select()
+    .from(taskAttempts)
+    .where(
+      and(
+        eq(taskAttempts.institutionId, institutionId),
+        eq(taskAttempts.learnerId, learnerId),
+        isNull(taskAttempts.archivedAt),
+      ),
+    )
+    .orderBy(asc(taskAttempts.assignmentId), asc(taskAttempts.attemptNumber))
   return rows.map(toAttempt)
 }
 
@@ -1592,6 +1635,26 @@ export async function loadSubmissionsAmong(
       ),
     )
     .orderBy(asc(taskSubmissions.assignmentId), asc(taskSubmissions.learnerId))
+  return withVersions(db, institutionId, rows)
+}
+
+/** Kursiyerin bütün atamalardaki arşivlenmemiş teslimleri, sürümleriyle (DOM-BEC-035). */
+export async function loadLearnerSubmissions(
+  db: Database,
+  institutionId: string,
+  learnerId: string,
+): Promise<StoredSubmissionWork[]> {
+  const rows = await db
+    .select()
+    .from(taskSubmissions)
+    .where(
+      and(
+        eq(taskSubmissions.institutionId, institutionId),
+        eq(taskSubmissions.learnerId, learnerId),
+        isNull(taskSubmissions.archivedAt),
+      ),
+    )
+    .orderBy(asc(taskSubmissions.assignmentId))
   return withVersions(db, institutionId, rows)
 }
 

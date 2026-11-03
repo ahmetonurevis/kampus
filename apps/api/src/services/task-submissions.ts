@@ -531,6 +531,37 @@ export function learnerSubmissionProgress(
   }
 }
 
+/**
+ * Teslimin kesinleşmiş puanı olan en son sürümü ve puanı (beceri ilerleme panosu, DOM-BEC-035).
+ * Kesinleşmemiş (ikinci puan ya da koordinatör bekleyen, uyuşmazlıklı) puan girmez. Kursiyer ve
+ * veliye yalnız geri bildirimi açılmış puan döner (DOM-BEC-045): daha yeni sürümün puanı açılmamışsa
+ * önceki sürümün açılmış puanı gösterilir, bu yüzden yanıt yeni sürümün puanlanıp puanlanmadığını
+ * belli etmez.
+ */
+export function settledSubmissionResult(
+  ctx: ServiceContext,
+  viewer: Viewer,
+  book: GradingBook,
+  work: StoredSubmissionWork,
+): { versionId: string; submittedAt: string; percent: number } | null {
+  const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
+  for (const version of [...work.versions].reverse()) {
+    const resolution =
+      viewer.kind === 'learner'
+        ? releasedResolution(grading, version, ctx.now)
+        : resolutionOf(grading, version)
+    if (resolution === null || resolution.status !== 'settled') continue
+    const rubric = book.rubrics.get(resolution.score.rubricVersionId)
+    if (rubric === undefined) {
+      ctx.log.warn({ event: 'task_submission.rubric_missing' })
+      return null
+    }
+    const { percent } = rubricScore(rubric, resolution.score.criteria)
+    return { versionId: version.id, submittedAt: version.submittedAt, percent }
+  }
+  return null
+}
+
 const LOCKED_MESSAGE = 'Bu teslim için şu an yeni sürüm gönderilemez.'
 
 export async function detailView(

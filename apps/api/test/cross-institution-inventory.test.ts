@@ -430,6 +430,13 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'cefr-profile',
   ),
 
+  // --- Beceri ilerleme panosu (OG-080; IST-057, DOM-BEC-035) -----------------------------------
+  'GET /api/v1/students/:studentId/skill-progress': kayit(
+    'skill-progress.test.ts',
+    'kapsam dışı, olmayan ve başka kurum 404',
+    'skill-progress',
+  ),
+
   // --- Ders programı ---------------------------------------------------------------------------
   'GET /api/v1/lessons': LESSON_READ,
   'GET /api/v1/lessons/:lessonId': LESSON_READ,

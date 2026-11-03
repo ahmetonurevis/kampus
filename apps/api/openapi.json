@@ -13568,6 +13568,146 @@
           }
         ]
       },
+      "SkillProgressInput": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "computedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "skill": {
+                  "type": "string",
+                  "enum": [
+                    "reading",
+                    "listening",
+                    "writing",
+                    "speaking"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "points": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "assignmentId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "description": "Görev ataması"
+                      },
+                      "attemptId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Otomatik puanlı görevde sayılan deneme"
+                      },
+                      "submissionId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Öğretmen puanlı görevde teslim kaydı"
+                      },
+                      "title": {
+                        "type": "string",
+                        "description": "Atanan içeriğin başlığı"
+                      },
+                      "performedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                        "description": "Denemenin tamamlandığı ya da puanlanan sürümün gönderildiği an"
+                      },
+                      "percent": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "Puan yüzdesi"
+                      }
+                    },
+                    "required": [
+                      "assignmentId",
+                      "attemptId",
+                      "submissionId",
+                      "title",
+                      "performedAt",
+                      "percent"
+                    ]
+                  },
+                  "description": "Tarih sırasıyla noktalar"
+                },
+                "latest": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Son noktanın yüzdesi"
+                },
+                "trend": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "up",
+                        "down",
+                        "steady"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Eğilim: son nokta, önceki en çok üç noktanın ortalamasına göre (±5 puan)"
+                }
+              },
+              "required": [
+                "skill",
+                "label",
+                "points",
+                "latest",
+                "trend"
+              ]
+            },
+            "description": "Okuma, dinleme, yazma ve konuşma; her zaman dördü"
+          }
+        },
+        "required": [
+          "studentId",
+          "computedAt",
+          "skills"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -27454,6 +27594,149 @@
             "$ref": "#/components/schemas/CefrProfileLearner"
           }
         ]
+      },
+      "SkillProgress": {
+        "type": "object",
+        "properties": {
+          "studentId": {
+            "type": "string"
+          },
+          "computedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "skills": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "skill": {
+                  "type": "string",
+                  "enum": [
+                    "reading",
+                    "listening",
+                    "writing",
+                    "speaking"
+                  ]
+                },
+                "label": {
+                  "type": "string"
+                },
+                "points": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "assignmentId": {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                        "description": "Görev ataması"
+                      },
+                      "attemptId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Otomatik puanlı görevde sayılan deneme"
+                      },
+                      "submissionId": {
+                        "anyOf": [
+                          {
+                            "type": "string",
+                            "format": "uuid",
+                            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Öğretmen puanlı görevde teslim kaydı"
+                      },
+                      "title": {
+                        "type": "string",
+                        "description": "Atanan içeriğin başlığı"
+                      },
+                      "performedAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                        "description": "Denemenin tamamlandığı ya da puanlanan sürümün gönderildiği an"
+                      },
+                      "percent": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 100,
+                        "description": "Puan yüzdesi"
+                      }
+                    },
+                    "required": [
+                      "assignmentId",
+                      "attemptId",
+                      "submissionId",
+                      "title",
+                      "performedAt",
+                      "percent"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Tarih sırasıyla noktalar"
+                },
+                "latest": {
+                  "anyOf": [
+                    {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 100
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Son noktanın yüzdesi"
+                },
+                "trend": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "up",
+                        "down",
+                        "steady"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Eğilim: son nokta, önceki en çok üç noktanın ortalamasına göre (±5 puan)"
+                }
+              },
+              "required": [
+                "skill",
+                "label",
+                "points",
+                "latest",
+                "trend"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Okuma, dinleme, yazma ve konuşma; her zaman dördü"
+          }
+        },
+        "required": [
+          "studentId",
+          "computedAt",
+          "skills"
+        ],
+        "additionalProperties": false
       }
     }
   },
@@ -83552,6 +83835,110 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/CefrProfile"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{studentId}/skill-progress": {
+      "get": {
+        "operationId": "getSkillProgress",
+        "summary": "Beceri ilerleme panosu",
+        "tags": [
+          "learning"
+        ],
+        "description": "Öğrencinin okuma, dinleme, yazma ve konuşma eğrileri (IST-057, DOM-BEC-035): her nokta bir değerlendirme görevinin sayılan denemesi ya da kesinleşmiş puanlı teslimidir ve atama ile deneme/teslim kimliğini taşır. Alıştırma, puanı kişiye açılmamış sonuç (DOM-BEC-045), içeriği kaldırılmış görev (DOM-KYN-051) ve arşivlenmiş atama girmez. Son değer ve eğilim her okumada hesaplanır, saklanmaz. Roller: `yonetici` herkesi, `ogretmen` ders verdiği sınıftaki ya da grubunu okuyabildiği öğrenciyi (yalnız atamasını gördüğü görevler), `ogrenci` kendisini, `veli` bağlı çocuğunu görür; ön büro 403. Göremediği, olmayan ya da başka kurumun öğrencisi 404. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kaydı kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SkillProgress"
                     }
                   },
                   "required": [

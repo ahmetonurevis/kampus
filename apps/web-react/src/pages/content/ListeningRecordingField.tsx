@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useWatch } from 'react-hook-form'
 import { useResourceList, useResourceVersion } from '@kampus/react-shared/use-resources.ts'
 import { Icon } from '@/components/Icon.tsx'
@@ -41,6 +41,7 @@ export function ListeningRecordingField({ form, busy, languageSchool, hint }: Pr
   const versionId = useWatch({ control: form.control, name: 'content.listeningVersionId' }) ?? null
   const [pickerOpen, setPickerOpen] = useState(false)
   const [picked, setPicked] = useState<LinkedSummary | null>(null)
+  const pickButton = useRef<HTMLButtonElement>(null)
 
   const known = picked !== null && picked.versionId === versionId ? picked : null
   // Kayıtlı bağın kaynağı: ses kayıtlarının ilk sayfası taranır (beceri süzgeci yok; becerisi
@@ -72,6 +73,8 @@ export function ListeningRecordingField({ form, busy, languageSchool, hint }: Pr
   function clear() {
     form.clearErrors('content.listeningVersionId')
     form.setValue('content.listeningVersionId', null, { shouldDirty: true })
+    // Kaldır düğmesi DOM'dan kalkar; odak `body`'ye düşmesin (WCAG 2.4.3), seçim düğmesine geçer.
+    pickButton.current?.focus()
   }
 
   const alert = error?.message ?? selectionIssue
@@ -118,6 +121,7 @@ export function ListeningRecordingField({ form, busy, languageSchool, hint }: Pr
       ) : null}
       <div>
         <Button
+          ref={pickButton}
           type="button"
           variant="secondary"
           size="sm"

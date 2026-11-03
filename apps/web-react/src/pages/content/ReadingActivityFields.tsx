@@ -71,6 +71,7 @@ export function ItemSetFields({ form, busy, languageSchool, hints = NO_HINTS }: 
   const [pickerOpen, setPickerOpen] = useState(false)
   const [picked, setPicked] = useState<ReadonlyMap<string, LinkedSummary>>(() => new Map())
   const addButton = useRef<HTMLButtonElement>(null)
+  const passageButton = useRef<HTMLButtonElement>(null)
   const pendingFocus = useRef<string | null>(null)
 
   const itemIds = watchedItems.map((item) => item.questionVersionId)
@@ -178,6 +179,8 @@ export function ItemSetFields({ form, busy, languageSchool, hints = NO_HINTS }: 
               onClick={() => {
                 form.clearErrors('content.passageVersionId')
                 form.setValue('content.passageVersionId', null, { shouldDirty: true })
+                // Kaldır düğmesi DOM'dan kalkar; odak `body`'ye düşmesin (WCAG 2.4.3).
+                passageButton.current?.focus()
               }}
               disabled={busy}
             >
@@ -197,6 +200,7 @@ export function ItemSetFields({ form, busy, languageSchool, hints = NO_HINTS }: 
         ) : null}
         <div>
           <Button
+            ref={passageButton}
             type="button"
             variant="secondary"
             size="sm"

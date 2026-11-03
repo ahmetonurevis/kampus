@@ -1093,7 +1093,12 @@ test.describe('Finans: liste', () => {
     await expectEveryRow(bodyRows(page).locator('.person-cell small'), '7-B', true)
 
     // Tahsilat tarihi aralığı ödenmemiş taksiti dışarıda bırakır (paidAt günü).
+    const totalOf = async () =>
+      Number(((await resultCount(page).textContent()) ?? '').match(/\/ (\d+) kayıt/)?.[1])
+    const classTotal = await totalOf()
     await page.getByLabel('Tahsilat tarihi başlangıç').fill('2000-01-01')
+    // Eski sayfa yeni yanıta kadar ekranda kalır; sayaç süzülmüş toplama geçene kadar beklenir.
+    await expect.poll(totalOf).toBeLessThan(classTotal)
     await expectEveryRow(bodyRows(page), 'Ödendi')
     await expect
       .poll(() =>
@@ -1103,9 +1108,7 @@ test.describe('Finans: liste', () => {
         ),
       )
       .toBe(true)
-    const shown = Number(
-      ((await resultCount(page).textContent()) ?? '').match(/\/ (\d+) kayıt/)?.[1],
-    )
+    const shown = await totalOf()
     expect(shown).toBeGreaterThan(0)
 
     const pending = page.waitForEvent('download')

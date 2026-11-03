@@ -142,7 +142,7 @@ Genel güvenlik ağı: `onRoute` kancasıyla toplanan bütün rotalar tek testte
 
 ### React web + API düzeni (`tests/e2e-react/`)
 
-Vue demosunun e2e'sinden (`tests/e2e/`, `pnpm test:e2e`, `playwright.config.ts`) ayrıdır; komut `pnpm test:e2e:react` (`playwright.react.config.ts`). Yerelde `docker compose up -d` (PostgreSQL 16, 5433) gerekir; CI'da `e2e-react` işinin her parçası (`--shard`) aynı bilgilerle kendi PostgreSQL 16 servisini açar.
+Vue demosunun e2e'sinden (`tests/e2e/`, `pnpm test:e2e`, `playwright.config.ts`) ayrıdır; komut `pnpm test:e2e:react` (`playwright.react.config.ts`). İki proje vardır: `masaustu` (1440×1000, bütün spec'ler) ve `dar-ekran` (360×740, yalnız `dar-ekran-*.spec.ts`); tek proje `--project=<ad>` ile koşulur. Yerelde `docker compose up -d` (PostgreSQL 16, 5433) gerekir; CI'da `e2e-react` işinin her parçası (`--shard`) aynı bilgilerle kendi PostgreSQL 16 servisini açar.
 
 - **Global kurulum** (`support/global-setup.ts`): `kampus_e2e` veritabanı düşürülüp sıfırdan oluşturulur (yalnız `kampus_e2e` önekli adlar; `kampus` ve diğer veritabanlarına dokunulmaz) → `db:migrate` → `db:seed` → API `NODE_ENV=test`, port 3020 → web-react derlenir ve `vite preview` 4180'de açılır (`/api` vekil hedefi `KAMPUS_API_URL` ile 3020) → beş rol için oturum önbelleği yazılır. Bitince API ve önizleme kapanır. Gizli anahtar her koşuda rastgele üretilir, yalnız alt sürecin ortamına verilir. Günlükler `artifacts/e2e-react/*.log`.
 - **Ortam değişkenleri**: `E2E_API_PORT`, `E2E_WEB_PORT`, `E2E_DB_NAME` (`kampus_e2e…` önekli), `E2E_ADMIN_DATABASE_URL`, `E2E_SKIP_BUILD=1` (derleme güncelse atla).

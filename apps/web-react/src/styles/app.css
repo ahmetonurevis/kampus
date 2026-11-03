@@ -3,6 +3,9 @@
 @import './tokens.css';
 
 @custom-variant dark (&:is([data-theme='dark'] *));
+/* Yatay telefon: kısa ve dar pencere. Masaüstünün kısa penceresi etkilenmez. DataTable kart düzeni
+   aynı sorguyu kullanır (`TABLE_CARD_QUERY`, components/DataTable.tsx). */
+@custom-variant short (@media (max-height: 480px) and (max-width: 960px));
 
 @layer base {
   *,
@@ -97,6 +100,24 @@
   }
   .skip-link:focus {
     top: 12px;
+  }
+
+  /*
+   * Dokunma hedefi en az 24×24 px (WCAG 2.2, 2.5.8). Kayıt bağlantısı ve tablo sıralama düğmesi
+   * metin satırı kadar (17–20 px) kalıyordu; küçük onay kutusu, radyo ve anahtarın görünümü
+   * değişmez, tıklanabilir alanı görünmez bir katmanla 24 px'e büyür.
+   */
+  .record-link,
+  .table-sort {
+    min-height: var(--target-min);
+  }
+  :is([data-slot='checkbox'], [data-slot='radio-group-item'], [data-slot='switch']) {
+    position: relative;
+  }
+  :is([data-slot='checkbox'], [data-slot='radio-group-item'], [data-slot='switch'])::after {
+    content: '';
+    position: absolute;
+    inset: min(0px, calc((100% - var(--target-min)) / 2));
   }
 }
 

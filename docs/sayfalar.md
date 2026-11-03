@@ -10,6 +10,8 @@ Sayfa rehberi iki yerdedir: Oğuzhan'ın alanındaki React sayfaları (dashboard
 
 Vue–React sayfa eşitliği denetimi (Oğuzhan'ın alanı, OG-072 ön koşulu): [sayfalar/vue-esitlik.md](sayfalar/vue-esitlik.md).
 
+Dar ekran (React web, IST-127): veli ve öğrencinin bütün menü sayfaları ve Güvenlik sayfası 360 px'te yatay taşmadan açılır; üst çubuk tek satırda kalır, uzun başlık iki satıra kırılır. Tablolar dikey telefonda (≤ 650 px) ve yatay telefonda (≤ 480 px yükseklik, ≤ 960 px genişlik) temel bilgiler + "Diğer bilgiler" kartına geçer; yatay telefonda üst çubuk yapışmaz, menü çekmecesi bütünüyle kayar. Dokunma hedefi en az 24×24 px'tir. Kalıcı test `tests/e2e-react/dar-ekran-aile.spec.ts` (`dar-ekran` projesi, 360×740): rota listesi menü kaydından türetilir, kayıt bağlantısı olmayan yeni sayfa testteki etkileşim tablosuna eklenmeden geçmez.
+
 <!-- Onur: kayıt ve finans -->
 
 ## React web: kayıt ve finans

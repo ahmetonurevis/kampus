@@ -10,6 +10,7 @@ import { ITEM_CHECK_LIMIT } from '@kampus/school-core/skills/practice.ts'
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
+import { institutions } from '../src/db/schema/auth.ts'
 import {
   attemptItemChecks,
   taskAssignments,
@@ -335,6 +336,59 @@ describe('ünite alıştırma seti uçları', () => {
     assert.deepEqual(await checkRows(t.institution.id), [])
     const row = await attemptRow(attempt.id)
     assert.equal(row?.version, 1)
+    assert.deepEqual(row?.answers, {})
+  })
+
+  test('DOM-BEC-047: aynı maddeye aynı If-Match ile eşzamanlı iki kontrolden yalnız biri kabul edilir, diğeri 409 çakışır; tek kontrol satırı kalır', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    const attempt = await ok(await start(assignmentId, t.cookies.student), 201)
+    const [first, second] = await Promise.all(
+      ['a', 'c'].map((optionId) =>
+        check(
+          attempt.id,
+          t.cookies.student,
+          { questionVersionId: t.reading, response: choice(optionId) },
+          attempt.rowVersion,
+        ),
+      ),
+    )
+    const responses = [first!, second!]
+    assert.deepEqual(responses.map((r) => r.statusCode).sort(), [200, 409])
+    const loser = responses.find((r) => r.statusCode === 409)!
+    // Sürüm kilidi ya da (sürüm artmadan çakışan) birincil anahtar: ikisi de 409'dur.
+    assert.ok(['version_conflict', 'item_check_conflict'].includes(loser.json().code), loser.body)
+    const winner = responses.find((r) => r.statusCode === 200)!.json().data as Json
+    assert.equal(feedbackOf(winner, t.reading).used, 1)
+    const rows = await checkRows(t.institution.id)
+    assert.deepEqual(
+      rows.map((row) => [row.attemptId, row.questionVersionId, row.checkNumber]),
+      [[attempt.id, t.reading, 1]],
+    )
+    assert.equal((await attemptRow(attempt.id))?.version, winner.rowVersion)
+  })
+
+  test('DOM-BEC-047: modül kapalıyken kontrol ucu 403 module_disabled; kontrol satırı yazılmaz, deneme değişmez', async () => {
+    const t = await tenant()
+    const assignmentId = await assign(t)
+    const attempt = await ok(await start(assignmentId, t.cookies.student), 201)
+    await db
+      .update(institutions)
+      .set({ enabledModules: { learning: false } })
+      .where(eq(institutions.id, t.institution.id))
+    fails(
+      await check(
+        attempt.id,
+        t.cookies.student,
+        { questionVersionId: t.reading, response: choice('a') },
+        attempt.rowVersion,
+      ),
+      403,
+      'module_disabled',
+    )
+    assert.deepEqual(await checkRows(t.institution.id), [])
+    const row = await attemptRow(attempt.id)
+    assert.equal(row?.version, attempt.rowVersion)
     assert.deepEqual(row?.answers, {})
   })
 

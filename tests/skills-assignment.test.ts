@@ -12,12 +12,15 @@ import {
 import type { AuthorizationSource } from '../packages/school-core/src/lib/authorize.ts'
 import type { Actor } from '../packages/school-core/src/lib/scope.ts'
 import {
+  ASSIGNMENT_BATCH_MAX,
   LISTENING_PLAYS_DEFAULT,
   RESUBMISSION_MAX_DAYS,
   assertNoOverlappingAssignment,
+  assignmentBatchInputSchema,
   assignmentSettingsSchema,
   deadlineForVersion,
   planAssignment,
+  planAssignmentBatch,
   planAssignmentChange,
   planRescore,
   planResubmissionRequest,
@@ -636,6 +639,85 @@ describe('atama işlemi (IST-034)', () => {
     const local = istanbulLocalToUtc('2026-11-12T23:59')
     const result = plan({}, { settings: { deadline: { dueAt: local } } })
     assert.equal(result.assignment.deadline.dueAt, '2026-11-12T20:59:00.000Z')
+  })
+})
+
+describe('toplu atama (DOM-BEC-049, IST-034)', () => {
+  const later = plusMs(due, 2 * DAY)
+  const item = (classId: string, dueAt = due): AssignmentInput =>
+    planInput({ targets: [{ kind: 'class', id: classId }], settings: { deadline: { dueAt } } })
+  const batch = (
+    items: AssignmentInput[],
+    input: Partial<Parameters<typeof planAssignmentBatch>[0]> = {},
+  ) =>
+    planAssignmentBatch({
+      ...quiz,
+      actor: teacher,
+      source,
+      institutionType: 'school',
+      rubricVersions: new Map(),
+      existing: [],
+      input: { items },
+      now,
+      ...input,
+    })
+
+  test('DOM-BEC-049 aynı içerik iki sınıfa her birine ayrı son tarihle ayrı atama olur', () => {
+    const plans = batch([item('test-c7a'), item('test-c8a', later)])
+    assert.deepEqual(
+      plans.map((p) => [p.targets[0]?.id, p.assignment.deadline.dueAt, p.learnerIds]),
+      [
+        ['test-c7a', due, ['test-s1', 'test-s2']],
+        ['test-c8a', later, ['test-s4']],
+      ],
+    )
+  })
+
+  test('DOM-BEC-049 öğe reddedilirse hata öğenin yoluyla döner, plan çıkmaz', () => {
+    assert.throws(
+      () => batch([item('test-c7a'), item('test-c7b', later)]),
+      (error: unknown) =>
+        isDomainError('target_scope_denied', 'forbidden')(error) &&
+        (error as { path: string[] }).path.slice(0, 2).join('.') === 'items.1',
+    )
+  })
+
+  test('DOM-BEC-049 aynı kursiyer iki öğeden aynı içeriği alamaz', () => {
+    const student = (id: string, dueAt: string): AssignmentInput =>
+      planInput({ targets: [{ kind: 'student', id }], settings: { deadline: { dueAt } } })
+    assert.throws(
+      () => batch([item('test-c7a'), student('test-s1', later)]),
+      isDomainError('assignment_overlap', 'conflict'),
+    )
+  })
+
+  test('DOM-BEC-049 gövde: farklı içerik, yinelenen hedef ve sınır reddedilir (Zod)', () => {
+    const parse = (items: AssignmentInput[]) => assignmentBatchInputSchema.safeParse({ items })
+    assert.equal(parse([item('test-c7a'), item('test-c8a', later)]).success, true)
+    assert.equal(parse([]).success, false)
+    assert.equal(parse([item('test-c7a'), item('test-c7a', later)]).success, false)
+    assert.equal(
+      parse([item('test-c7a'), { ...item('test-c8a'), resourceVersionId: 'test-rv-0' }]).success,
+      false,
+    )
+    const many = Array.from({ length: ASSIGNMENT_BATCH_MAX + 1 }, (_, i) => item(`test-c${i}`))
+    assert.equal(parse(many).success, false)
+    assert.throws(() => batch([]), ZodError)
+  })
+
+  test('DOM-BEC-049 öğenin rubrik sürümü haritadan okunur', () => {
+    const body = planInput({
+      settings: {
+        deadline: { dueAt: due },
+        submission: { submissionKind: 'text' },
+        rubricVersionId: 'test-rbv1',
+      },
+    })
+    const [result] = batch([body], {
+      ...homework,
+      rubricVersions: new Map([['test-rbv1', rubric()]]),
+    })
+    assert.equal(result?.assignment.rubricVersionId, 'test-rbv1')
   })
 })
 

@@ -171,6 +171,14 @@
 - **Kurum türü:** ikisi
 - **Kodda:** core kuralı `packages/school-core/src/skills/progress.ts` (`skillProgress`, `countsForProgress`, `trendOf`, `PROGRESS_SKILLS`); API `GET /api/v1/students/:studentId/skill-progress` (`apps/api/src/services/skill-progress.ts`, `routes/skill-progress.ts`; puanlar `countedAttemptResult`, `settledSubmissionResult`); kanca `packages/react-shared/src/use-skill-progress.ts`; web Akademik Gelişim beceri gelişimi kartı (`apps/web-react/src/pages/academic/SkillProgressPanel.tsx`, `skill-progress-model.ts`); testler `tests/skills-progress.test.ts`, `apps/api/test/skill-progress.test.ts`, `apps/web-react/tests/skill-progress-model.test.ts`, e2e `tests/e2e-react/beceri-panosu.spec.ts`.
 
+### DOM-BEC-036 · İçeriğe bağlı sonuç özeti
+
+- **Kural:** Bir içeriğin atamalarının sonuçları içeriğe bağlı raporlanır (IST-034): atama ve hedef (sınıf/şube, dil grubu, öğrenci) başına hedefteki kursiyer sayısı, tamamlayan sayısı ve puan ortalaması, ayrıca bütün atamaların toplamı. Tamamlandı: tamamlanmış deneme ya da gönderilmiş teslim sürümü. Puan deneme ve teslim kurallarıyla seçilir: değerlendirmede sayılan deneme (`DOM-BEC-042`), alıştırmada son tamamlanan deneme (`DOM-BEC-048`), öğretmen puanlı görevde kesinleşmiş puanı olan son sürüm (`DOM-BEC-021`, `DOM-BEC-024`). Ortalama yalnız puanı olanlardan, bir ondalıkla hesaplanır; özet saklanmaz. Yalnız personel görür; öğretmen atama okuma kapsamıyla (`DOM-YTK-028`) ve atayan değilse yalnız kendi sınıflarının hedefleriyle görür. Sınıf hedefinin kursiyerleri sınıfın güncel öğrencileridir.
+- **Gerekçe:** Aynı içerik birden çok sınıfa ayrı son tarihle verildiğinde öğretmen içeriğin işe yarayıp yaramadığını sınıflar arasında karşılaştırabilmeli; kişi puanı başka sınıfın öğretmenine açılmamalı.
+- **Kaynak:** İşletme kuralı; proje kuralı (hesaplanabilen değer saklanmaz).
+- **Kurum türü:** ikisi
+- **Kodda:** core `packages/school-core/src/skills/content-results.ts` (`tallyOutcomes`); API `GET /api/v1/resources/:resourceId/assignment-results` (`apps/api/src/services/content-results.ts`, `routes/task-assignments.ts`); kanca `packages/react-shared/src/use-content-assignments.ts`; web içerik ayrıntısı "Atamalar ve sonuçlar" bölümü (`apps/web-react/src/pages/content/ContentAssignmentResults.tsx`).
+
 ## Teslim kuralları
 
 ### DOM-BEC-040 · Tek teslim, değişmez sürümler
@@ -244,6 +252,14 @@
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
 - **Kodda:** core kuralı `packages/school-core/src/skills/practice.ts` (`practiceShownAttempt`, `practiceGradebook`); madde becerisi ve kazanımı `skills/assignment.ts` `scoringItemsFor` (`skill`, `outcomes`); API `GET /practice-gradebook` (`apps/api/src/routes/practice-gradebook.ts`, servis `services/practice-gradebook.ts`; yönetici, öğretmen, öğrenci; veli 403); kanca `usePracticeGradebook` (`packages/react-shared/src/use-practice-gradebook.ts`); ekran öğretmenin `/ogretmen/odevler?sekme=alistirma` sekmesi `apps/web-react/src/pages/tasks/PracticeGradebookView.tsx` (genel, ünite, beceri, kazanım kırılımı, arama, sıralama, sayfa, CSV); testler `tests/skills-practice.test.ts`, `apps/api/test/practice-sets.test.ts`, `tests/e2e-react/alistirma-seti.spec.ts`. Alıştırmanın son tamamlanan denemesi alınır, en yükseği değil (Sabah kararı 70); not defteri veliye kapalıdır (Sabah kararı 70). Yönetici sayfasında not defteri henüz yok.
+
+### DOM-BEC-049 · İçeriği birden çok hedefe ayrı son tarihle atama
+
+- **Kural:** Aynı içerik tek işlemde birden çok sınıfa, gruba ya da kişiye atanabilir; her hedef grubu kendi son tarihiyle ayrı atama olur (IST-034). Her atama tek atamanın kurallarına uyar (sabitlenen sürüm `DOM-KYN-032`, ayarlar `DOM-BEC-041`, `042`, `044`, hedef kapsamı `DOM-YTK-022`). İşlem bütündür: bir hedef reddedilirse (kapsam dışı, olmayan, çakışan) hiçbir atama açılmaz ve hata o hedefi gösterir. Aynı işlemde bir kursiyer aynı içeriği iki hedeften birden alamaz; bir hedef iki kez seçilemez. Tek işlemde en çok 20 ayrı atama açılır.
+- **Gerekçe:** Öğretmen aynı içeriği farklı sınıflara farklı ders günlerine göre verir; yarım kalan toplu atama sınıflar arasında tutarsızlık bırakır.
+- **Kaynak:** İşletme kuralı (20 sınırı: ürün kararı, tek ekranda yönetilebilir hedef sayısı).
+- **Kurum türü:** ikisi
+- **Kodda:** core `packages/school-core/src/skills/assignment.ts` (`assignmentBatchInputSchema`, `planAssignmentBatch`, `ASSIGNMENT_BATCH_MAX`); API `POST /api/v1/task-assignments/batches` (`apps/api/src/services/task-assignments.ts` `createTaskAssignmentBatch`; `Idempotency-Key` zorunlu); kanca `packages/react-shared/src/use-content-assignments.ts`; web içerik havuzu "Ata" paneli (`apps/web-react/src/pages/content/ContentAssignPanel.tsx`); testler `tests/skills-assignment.test.ts`, `apps/api/test/content-assignments.test.ts`.
 
 ## Ses kaydı ve kişisel veri
 

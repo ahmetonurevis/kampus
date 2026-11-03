@@ -5,13 +5,22 @@ import type { Role } from '../auth.ts'
 import { AppError, MESSAGES } from '../errors.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
-import { createTaskAssignment, updateTaskAssignment } from '../services/task-assignments.ts'
+import { getContentAssignmentResults } from '../services/content-results.ts'
+import {
+  createTaskAssignment,
+  createTaskAssignmentBatch,
+  updateTaskAssignment,
+} from '../services/task-assignments.ts'
 import { getTaskAssignment, listTaskAssignments } from '../services/task-progress.ts'
 import { idempotencyOf, ifMatchVersion } from './command-support.ts'
 import { requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import { readErrors } from './communication.schemas.ts'
 import {
+  contentResultsParamsSchema,
+  contentResultsResponseSchema,
+  taskAssignmentBatchBodySchema,
+  taskAssignmentBatchResponseSchema,
   taskAssignmentBodySchema,
   taskAssignmentDetailResponseSchema,
   taskAssignmentListQuerySchema,
@@ -110,6 +119,49 @@ export function registerTaskAssignmentRoutes(app: FastifyInstance) {
       reply.header('location', `/api/v1/task-assignments/${body.data.id}`)
       return body
     },
+  )
+
+  typed.post(
+    '/api/v1/task-assignments/batches',
+    {
+      preValidation: write,
+      schema: {
+        operationId: 'createTaskAssignmentBatch',
+        tags: ['task-assignments'],
+        summary: 'İçeriği birden çok hedefe ayrı son tarihle ata',
+        description: `Aynı içerik sürümünü her öğede kendi hedefleri ve son tarihiyle ayrı atama olarak açar (DOM-BEC-049, IST-034); öğe gövdesi tek atamanınkiyle aynıdır, kurallar ve hata sırası \`POST /task-assignments\` ile aynıdır. Bütün öğeler tek transaction'da planlanır: bir öğe reddedilirse hiçbir atama yazılmaz ve hatanın \`issues\` yolu öğeyi gösterir (\`items.<sıra>.…\`). Önceki öğenin kursiyeri sonrakine çakışma sayılır (409 \`assignment_overlap\`). Bütün öğelerde içerik sürümü aynı, bir hedef tek öğede, en çok 20 öğe (400). \`Idempotency-Key\` zorunludur. Başarı 201, \`data\` gövde sırasıyla açılan atamalar. ${WRITE_ACCESS}`,
+        body: taskAssignmentBatchBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: false }),
+        response: { 201: taskAssignmentBatchResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      ifMatchVersion(request, false)
+      const idempotency = idempotencyOf(request, true)
+      const result = await createTaskAssignmentBatch(contextOf(request), request.body, idempotency)
+      if (result.replayed) reply.header('idempotent-replayed', 'true')
+      reply.status(201)
+      return taskAssignmentBatchResponseSchema.parse(result.body)
+    },
+  )
+
+  typed.get(
+    '/api/v1/resources/:resourceId/assignment-results',
+    {
+      preValidation: [app.requireModule(MODULE), app.requireRole(WRITERS)],
+      schema: {
+        operationId: 'getContentAssignmentResults',
+        tags: ['task-assignments'],
+        summary: 'İçeriğe bağlı sonuç özeti',
+        description:
+          'İçeriğin atamalarında hedef başına kursiyer, tamamlayan ve puan ortalaması (DOM-BEC-036, IST-034); her okumada hesaplanır, saklanmaz. Puan deneme ve teslim uçlarının kuralıyla çıkar: değerlendirmede sayılan deneme, alıştırmada son tamamlanan deneme, öğretmen puanlıda kesinleşmiş puan. Roller: `yonetici` bütün atamalar; `ogretmen` atama listesinin kapsamı (DOM-YTK-028), atayan değilse yalnız kendi kapsamındaki hedefler; öğrenci, veli ve ön büro 403. Olmayan ya da başka kurumun içeriği 404. En yeni 100 atama okunur (`truncated`). Modül `learning`; kapalıysa 403 `module_disabled`.',
+        params: contentResultsParamsSchema,
+        response: { 200: contentResultsResponseSchema, ...readErrors },
+      },
+    },
+    async (request) => ({
+      data: await getContentAssignmentResults(contextOf(request), request.params.resourceId),
+    }),
   )
 
   typed.patch(

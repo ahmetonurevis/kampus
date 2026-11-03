@@ -3464,6 +3464,46 @@ export interface paths {
         patch: operations["updateTaskAssignment"];
         trace?: never;
     };
+    "/api/v1/task-assignments/batches": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İçeriği birden çok hedefe ayrı son tarihle ata
+         * @description Aynı içerik sürümünü her öğede kendi hedefleri ve son tarihiyle ayrı atama olarak açar (DOM-BEC-049, IST-034); öğe gövdesi tek atamanınkiyle aynıdır, kurallar ve hata sırası `POST /task-assignments` ile aynıdır. Bütün öğeler tek transaction'da planlanır: bir öğe reddedilirse hiçbir atama yazılmaz ve hatanın `issues` yolu öğeyi gösterir (`items.<sıra>.…`). Önceki öğenin kursiyeri sonrakine çakışma sayılır (409 `assignment_overlap`). Bütün öğelerde içerik sürümü aynı, bir hedef tek öğede, en çok 20 öğe (400). `Idempotency-Key` zorunludur. Başarı 201, `data` gövde sırasıyla açılan atamalar. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["createTaskAssignmentBatch"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/resources/{resourceId}/assignment-results": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * İçeriğe bağlı sonuç özeti
+         * @description İçeriğin atamalarında hedef başına kursiyer, tamamlayan ve puan ortalaması (DOM-BEC-036, IST-034); her okumada hesaplanır, saklanmaz. Puan deneme ve teslim uçlarının kuralıyla çıkar: değerlendirmede sayılan deneme, alıştırmada son tamamlanan deneme, öğretmen puanlıda kesinleşmiş puan. Roller: `yonetici` bütün atamalar; `ogretmen` atama listesinin kapsamı (DOM-YTK-028), atayan değilse yalnız kendi kapsamındaki hedefler; öğrenci, veli ve ön büro 403. Olmayan ya da başka kurumun içeriği 404. En yeni 100 atama okunur (`truncated`). Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getContentAssignmentResults"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/task-attempts": {
         parameters: {
             query?: never;
@@ -7023,6 +7063,58 @@ export interface components {
         };
         TaskAssignmentInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerInput"];
         TaskAssignmentDetailInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerDetailInput"];
+        ContentResultTallyInput: {
+            /** @description Hedefteki kursiyer sayısı */
+            learners: number;
+            /** @description Tamamlanmış denemesi ya da gönderilmiş teslimi olan kursiyer */
+            completed: number;
+            /** @description Puanı olan kursiyer */
+            scored: number;
+            /** @description Puanı olanların ortalama yüzdesi, bir ondalık; puan yoksa `null` */
+            averagePercent: number | null;
+        };
+        ContentAssignmentResultsInput: {
+            /** Format: uuid */
+            resourceId: string;
+            /** Format: date-time */
+            computedAt: string;
+            assignments: {
+                /** Format: uuid */
+                assignmentId: string;
+                /** @description Atanan sürümün başlığı */
+                title: string;
+                /** @enum {string} */
+                kind: "evaluation" | "practice";
+                /** @enum {string} */
+                scoringMode: "auto" | "teacher";
+                deadline: {
+                    /** @default null */
+                    dueAt: string | null;
+                    /** @default 0 */
+                    lateAcceptanceDays: number;
+                };
+                /** Format: date-time */
+                createdAt: string;
+                targets: {
+                    /** @enum {string} */
+                    kind: "class" | "group" | "student";
+                    id: string;
+                    /** @description Hedefteki kursiyer sayısı */
+                    learners: number;
+                    /** @description Tamamlanmış denemesi ya da gönderilmiş teslimi olan kursiyer */
+                    completed: number;
+                    /** @description Puanı olan kursiyer */
+                    scored: number;
+                    /** @description Puanı olanların ortalama yüzdesi, bir ondalık; puan yoksa `null` */
+                    averagePercent: number | null;
+                }[];
+                totals: components["schemas"]["ContentResultTallyInput"];
+            }[];
+            /** @description Bütün atamaların atama-kursiyer çiftleri üzerinden toplamı */
+            totals: components["schemas"]["ContentResultTallyInput"];
+            /** @description En yeni 100 atamadan fazlası var */
+            truncated: boolean;
+        };
         TaskAttemptItemFeedbackInput: {
             questionVersionId: string;
             /** @description Kullanılan kontrol hakkı */
@@ -10776,6 +10868,58 @@ export interface components {
         };
         TaskAssignment: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearner"];
         TaskAssignmentDetail: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearnerDetail"];
+        ContentResultTally: {
+            /** @description Hedefteki kursiyer sayısı */
+            learners: number;
+            /** @description Tamamlanmış denemesi ya da gönderilmiş teslimi olan kursiyer */
+            completed: number;
+            /** @description Puanı olan kursiyer */
+            scored: number;
+            /** @description Puanı olanların ortalama yüzdesi, bir ondalık; puan yoksa `null` */
+            averagePercent: number | null;
+        };
+        ContentAssignmentResults: {
+            /** Format: uuid */
+            resourceId: string;
+            /** Format: date-time */
+            computedAt: string;
+            assignments: {
+                /** Format: uuid */
+                assignmentId: string;
+                /** @description Atanan sürümün başlığı */
+                title: string;
+                /** @enum {string} */
+                kind: "evaluation" | "practice";
+                /** @enum {string} */
+                scoringMode: "auto" | "teacher";
+                deadline: {
+                    /** @default null */
+                    dueAt: string | null;
+                    /** @default 0 */
+                    lateAcceptanceDays: number;
+                };
+                /** Format: date-time */
+                createdAt: string;
+                targets: {
+                    /** @enum {string} */
+                    kind: "class" | "group" | "student";
+                    id: string;
+                    /** @description Hedefteki kursiyer sayısı */
+                    learners: number;
+                    /** @description Tamamlanmış denemesi ya da gönderilmiş teslimi olan kursiyer */
+                    completed: number;
+                    /** @description Puanı olan kursiyer */
+                    scored: number;
+                    /** @description Puanı olanların ortalama yüzdesi, bir ondalık; puan yoksa `null` */
+                    averagePercent: number | null;
+                }[];
+                totals: components["schemas"]["ContentResultTally"];
+            }[];
+            /** @description Bütün atamaların atama-kursiyer çiftleri üzerinden toplamı */
+            totals: components["schemas"]["ContentResultTally"];
+            /** @description En yeni 100 atamadan fazlası var */
+            truncated: boolean;
+        };
         TaskAttemptItemFeedback: {
             questionVersionId: string;
             /** @description Kullanılan kontrol hakkı */
@@ -34326,6 +34470,261 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    createTaskAssignmentBatch: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    items: {
+                        resourceVersionId: string;
+                        /** @default {} */
+                        settings?: {
+                            /**
+                             * @default {
+                             *       "kind": "evaluation"
+                             *     }
+                             */
+                            attempts?: {
+                                /** @enum {string} */
+                                kind: "evaluation";
+                                /** @default 1 */
+                                maxAttempts?: number;
+                                /**
+                                 * @default first
+                                 * @enum {string}
+                                 */
+                                countPolicy?: "first" | "highest";
+                            } | {
+                                /** @enum {string} */
+                                kind: "practice";
+                            };
+                            /** @default {} */
+                            deadline?: {
+                                /** @default null */
+                                dueAt?: string | null;
+                                /** @default 0 */
+                                lateAcceptanceDays?: number;
+                            };
+                            timeLimitMinutes?: number | null;
+                            listeningPlays?: (1 | 2) | null;
+                            /** @default false */
+                            showTranscript?: boolean;
+                            /** @default null */
+                            submission?: ({
+                                /** @enum {string} */
+                                submissionKind: "text";
+                                /** @default 3 */
+                                maxVersions?: number;
+                                /** @default null */
+                                minWords?: number | null;
+                                /** @default null */
+                                maxWords?: number | null;
+                            } | {
+                                /** @enum {string} */
+                                submissionKind: "file";
+                                /** @default 3 */
+                                maxVersions?: number;
+                            } | {
+                                /** @enum {string} */
+                                submissionKind: "audio";
+                                /** @default 3 */
+                                maxVersions?: number;
+                                /** @default 1 */
+                                speakingAttempts?: number;
+                                /** @default 0 */
+                                preparationSeconds?: number;
+                                /** @default 180 */
+                                speakingSeconds?: number;
+                            }) | null;
+                            /** @default false */
+                            highStakes?: boolean;
+                            secondRatingPercent?: number;
+                            /** @default null */
+                            rubricVersionId?: string | null;
+                        };
+                        targets: {
+                            /** @enum {string} */
+                            kind: "class" | "group" | "student";
+                            id: string;
+                        }[];
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        /** @description Açılan atamalar, gövdedeki öğe sırasıyla */
+                        data: components["schemas"]["TaskAssignmentStaff"][];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getContentAssignmentResults: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description İçerik kimliği */
+                resourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ContentAssignmentResults"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

@@ -566,6 +566,112 @@ export function planAssignment(
   }
 }
 
+// --- Toplu atama --------------------------------------------------------------------------
+
+/** Tek istekte açılabilecek ayrı atama sayısı (DOM-BEC-049). */
+export const ASSIGNMENT_BATCH_MAX = 20
+
+/**
+ * Toplu atama gövdesi (DOM-BEC-049, IST-034): aynı içerik sürümünün her hedef grubu için ayrı
+ * son tarihli ayrı ataması. Her öğe tek atamanın gövdesidir; içerik sürümü bütün öğelerde aynıdır
+ * ve bir hedef iki öğede birden bulunamaz. Kökte `items` dışında alan kabul edilmez (ör. kurum
+ * kimliği).
+ */
+export const assignmentBatchInputSchema = z
+  .strictObject({
+    items: z
+      .array(assignmentInputSchema)
+      .min(1, 'En az bir hedef seçin.')
+      .max(
+        ASSIGNMENT_BATCH_MAX,
+        `Tek seferde en fazla ${ASSIGNMENT_BATCH_MAX} ayrı atama yapılır.`,
+      ),
+  })
+  .superRefine((batch, ctx) => {
+    const [first] = batch.items
+    const seen = new Set<string>()
+    batch.items.forEach((item, index) => {
+      if (first !== undefined && item.resourceVersionId !== first.resourceVersionId)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['items', index, 'resourceVersionId'],
+          message: 'Toplu atamada bütün hedefler aynı içeriği alır.',
+        })
+      item.targets.forEach((target, targetIndex) => {
+        const key = `${target.kind}:${target.id}`
+        if (seen.has(key))
+          ctx.addIssue({
+            code: 'custom',
+            path: ['items', index, 'targets', targetIndex],
+            message: 'Aynı hedef iki kez seçilemez.',
+          })
+        seen.add(key)
+      })
+    })
+  })
+export type AssignmentBatchInput = z.input<typeof assignmentBatchInputSchema>
+
+/** Öğe hatasının alanı toplu gövdedeki yerine taşınır (`items.<sıra>.<alan>`). */
+function inBatchItem(error: unknown, index: number): unknown {
+  if (!(error instanceof DomainError)) return error
+  return new DomainError(error.code, error.message, {
+    kind: error.kind,
+    path: ['items', String(index), ...(error.path ?? [])],
+    cause: error,
+  })
+}
+
+/**
+ * Toplu atama planı (DOM-BEC-049, IST-034): her öğe `planAssignment` kurallarıyla planlanır; önceki
+ * öğelerin kursiyerleri sonrakilerin çakışma denetimine girer, böylece aynı kursiyer aynı içeriği
+ * iki öğeden birden almaz. Bir öğe reddedilirse hata o öğenin yoluyla döner ve hiçbir plan çıkmaz
+ * (çağıran hepsini tek işlemde yazar). Rubrik sürümü öğenin `settings.rubricVersionId`'siyle
+ * `rubricVersions`'tan okunur.
+ */
+export function planAssignmentBatch(
+  input: AssignedContent & {
+    actor: Actor
+    source: AuthorizationSource
+    institutionType: InstitutionType
+    rubricVersions: ReadonlyMap<string, RubricVersionRow>
+    existing: readonly ExistingAssignment[]
+    input: unknown
+    now: Instant
+  },
+): AssignmentPlan[] {
+  const { items } = assignmentBatchInputSchema.parse(input.input)
+  const plans: AssignmentPlan[] = []
+  items.forEach((item, index) => {
+    const planned: ExistingAssignment[] = plans.map((plan, plannedIndex) => ({
+      id: `batch:${plannedIndex}`,
+      resourceId: plan.assignment.resourceId,
+      deadline: plan.assignment.deadline,
+      learnerIds: plan.learnerIds,
+      archivedAt: null,
+    }))
+    const rubricVersionId = item.settings.rubricVersionId
+    try {
+      plans.push(
+        planAssignment({
+          resource: input.resource,
+          version: input.version,
+          actor: input.actor,
+          source: input.source,
+          institutionType: input.institutionType,
+          rubricVersion:
+            rubricVersionId === null ? null : (input.rubricVersions.get(rubricVersionId) ?? null),
+          existing: [...input.existing, ...planned],
+          input: item,
+          now: input.now,
+        }),
+      )
+    } catch (error) {
+      throw inBatchItem(error, index)
+    }
+  })
+  return plans
+}
+
 // --- Yayım sonrası değişiklik -------------------------------------------------------------
 
 /** Atamadan sonra değişebilen tek ayar son teslimdir; o da yalnız uzar. */

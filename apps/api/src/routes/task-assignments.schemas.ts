@@ -2,6 +2,7 @@ import { z } from 'zod'
 
 import { CONTENT_TYPES, enumKeys, SUBMISSION_KINDS } from '@kampus/school-core/content/taxonomy.ts'
 import {
+  assignmentBatchInputSchema,
   assignmentInputSchema,
   assignmentSettingsSchema,
   TARGET_KINDS,
@@ -275,3 +276,57 @@ const taskAssignmentDetailSchema = z
 export const taskAssignmentListResponseSchema = pageResponse(taskAssignmentSchema)
 export const taskAssignmentDetailResponseSchema = dataResponse(taskAssignmentDetailSchema)
 export const taskAssignmentWriteResponseSchema = dataResponse(staffAssignmentSchema)
+
+/**
+ * Toplu atama gövdesi (DOM-BEC-049, IST-034): core `assignmentBatchInputSchema`. Her öğe tek
+ * atamanın gövdesidir; içerik sürümü bütün öğelerde aynı, hedef öğeler arasında tekil, en çok
+ * `ASSIGNMENT_BATCH_MAX` öğe.
+ */
+export const taskAssignmentBatchBodySchema = assignmentBatchInputSchema
+export const taskAssignmentBatchResponseSchema = dataResponse(
+  z.array(staffAssignmentSchema).describe('Açılan atamalar, gövdedeki öğe sırasıyla'),
+)
+
+export const contentResultsParamsSchema = z.object({
+  resourceId: id.describe('İçerik kimliği'),
+})
+
+const resultTallyShape = {
+  learners: z.number().int().min(0).describe('Hedefteki kursiyer sayısı'),
+  completed: z
+    .number()
+    .int()
+    .min(0)
+    .describe('Tamamlanmış denemesi ya da gönderilmiş teslimi olan kursiyer'),
+  scored: z.number().int().min(0).describe('Puanı olan kursiyer'),
+  averagePercent: z
+    .number()
+    .nullable()
+    .describe('Puanı olanların ortalama yüzdesi, bir ondalık; puan yoksa `null`'),
+}
+const resultTally = z.object(resultTallyShape).meta({ id: 'ContentResultTally' })
+
+const contentResultsSchema = z
+  .object({
+    resourceId: id,
+    computedAt: instant,
+    assignments: z.array(
+      z.object({
+        assignmentId: id,
+        title: z.string().describe('Atanan sürümün başlığı'),
+        kind: taskKind,
+        scoringMode: z.enum(['auto', 'teacher']),
+        deadline: deadlineSchema,
+        createdAt: instant,
+        targets: z.array(
+          z.object({ kind: z.enum(enumKeys(TARGET_KINDS)), id: z.string(), ...resultTallyShape }),
+        ),
+        totals: resultTally,
+      }),
+    ),
+    totals: resultTally.describe('Bütün atamaların atama-kursiyer çiftleri üzerinden toplamı'),
+    truncated: z.boolean().describe('En yeni 100 atamadan fazlası var'),
+  })
+  .meta({ id: 'ContentAssignmentResults' })
+
+export const contentResultsResponseSchema = dataResponse(contentResultsSchema)

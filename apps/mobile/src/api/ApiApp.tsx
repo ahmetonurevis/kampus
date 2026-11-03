@@ -14,22 +14,25 @@ import { ErrorBoundary } from '../ui/ErrorBoundary.tsx'
 import { ApiHeader } from './ApiHeader.tsx'
 import { ApiAuthProvider, useApiAuth } from './auth.tsx'
 import { createApiClients } from './clients.ts'
-import Announcements from './screens/Announcements.tsx'
+import { registeredScreen } from './registered-screen.tsx'
+import { SCREEN_REGISTRY } from './screen-registry.ts'
 import ApiCategory from './screens/ApiCategory.tsx'
 import ApiHome from './screens/ApiHome.tsx'
 import ApiLogin from './screens/ApiLogin.tsx'
 import Conversation from './screens/Conversation.tsx'
-import Messages from './screens/Messages.tsx'
-import ParentGrades from './screens/ParentGrades.tsx'
-import StudentGrades from './screens/StudentGrades.tsx'
-import StudentHomework from './screens/StudentHomework.tsx'
-import TeacherClasses from './screens/TeacherClasses.tsx'
 import { sessionScopeKey, type MobileSession } from './session-state.ts'
 import { ToastProvider, useNotify } from './toast.tsx'
 import { useApiAppearance } from './use-api-appearance.ts'
 import { ViewMemoryProvider } from './view-memory.tsx'
 
 const Stack = createNativeStackNavigator<ApiStackParamList>()
+
+// Menü ekranları ekran kaydından gelir (`screen-registry.ts`); her biri ilk açılışta yüklenir ve
+// kendi hata sınırındadır. Bileşenler bir kez kurulur ki yığın her çizimde yeniden bağlanmasın.
+const MENU_SCREENS = SCREEN_REGISTRY.map((entry) => ({
+  name: entry.screen,
+  component: registeredScreen(entry),
+}))
 
 function SignedIn({ session }: { session: MobileSession }) {
   const c = useColors()
@@ -70,12 +73,9 @@ function SignedIn({ session }: { session: MobileSession }) {
           <Stack.Group navigationKey={sessionScopeKey(session)}>
             <Stack.Screen name="ApiHome" component={ApiHome} />
             <Stack.Screen name="ApiCategory" component={ApiCategory} />
-            <Stack.Screen name="TeacherClasses" component={TeacherClasses} />
-            <Stack.Screen name="ParentGrades" component={ParentGrades} />
-            <Stack.Screen name="StudentGrades" component={StudentGrades} />
-            <Stack.Screen name="StudentHomework" component={StudentHomework} />
-            <Stack.Screen name="Announcements" component={Announcements} />
-            <Stack.Screen name="Messages" component={Messages} />
+            {MENU_SCREENS.map((screen) => (
+              <Stack.Screen key={screen.name} name={screen.name} component={screen.component} />
+            ))}
             <Stack.Screen name="ApiConversation" component={Conversation} />
           </Stack.Group>
         </Stack.Navigator>

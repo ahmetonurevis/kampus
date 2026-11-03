@@ -837,6 +837,10 @@ export interface AssignmentListQuery {
   learnerTargets?: { studentIds: readonly string[]; classIds: readonly string[] } | undefined
   resourceId?: string | undefined
   kind?: FixedAssignment['kind'] | undefined
+  /** Puanlama kipi süzgeci (not defteri yalnız `auto`). */
+  scoringMode?: FixedAssignment['scoringMode'] | undefined
+  /** Arşivlenmemiş bir hedefi bu kimlikte olan atamalar (sınıf/grup/öğrenci; not defteri süzgeci). */
+  targetId?: string | undefined
 }
 
 /**
@@ -884,6 +888,24 @@ function assignmentScopeFilter(
     : (ownerFilter ?? learnerFilter)
 }
 
+/** Atamanın arşivlenmemiş hedeflerinden biri bu kimlikte (`task_assignment_targets_target_idx`). */
+function hasTarget(db: Database, targetId: string) {
+  const t = taskAssignmentTargets
+  return exists(
+    db
+      .select({ one: sql`1` })
+      .from(t)
+      .where(
+        and(
+          eq(t.institutionId, taskAssignments.institutionId),
+          eq(t.assignmentId, taskAssignments.id),
+          isNull(t.archivedAt),
+          eq(t.targetId, targetId),
+        ),
+      ),
+  )
+}
+
 /**
  * Kurumun arşivlenmemiş atamaları, en yeni önce (IST-034). Kursiyer süzgeci arşivlenmemiş hedefler
  * üzerinde `exists` alt sorgusudur (`task_assignment_targets_target_idx`); boş kimlik listesi hiçbir
@@ -902,6 +924,8 @@ export async function listAssignments(
     ...(scopeFilter === undefined ? [] : [scopeFilter]),
     ...(query.resourceId === undefined ? [] : [eq(a.resourceId, query.resourceId)]),
     ...(query.kind === undefined ? [] : [eq(a.kind, query.kind)]),
+    ...(query.scoringMode === undefined ? [] : [eq(a.scoringMode, query.scoringMode)]),
+    ...(query.targetId === undefined ? [] : [hasTarget(db, query.targetId)]),
   )
   const [rows, [totals]] = await Promise.all([
     db

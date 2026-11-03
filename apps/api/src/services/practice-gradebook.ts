@@ -3,7 +3,7 @@ import {
   practiceShownAttempt,
   type PracticeResult,
 } from '@kampus/school-core/skills/practice.ts'
-import type { ContentUnit } from '@kampus/school-core/content/resource.ts'
+import type { ContentUnit, ResourceContent } from '@kampus/school-core/content/resource.ts'
 
 import { loadAssignmentsAttempts, loadAttemptsAmong, type StoredAttempt } from '../db/skills.ts'
 import { ForbiddenError } from '../errors.ts'
@@ -17,10 +17,11 @@ import { loadWorkPairs, scoringContexts, workPairsOf } from './task-work.ts'
 /**
  * Alıştırma not defteri (OG-085, IST-056; docs/domain/beceri-gelisimi.md DOM-BEC-048). Kişinin
  * gördüğü arşivsiz, otomatik puanlı alıştırma atamalarından (atama listesinin rol kapsamı;
- * DOM-YTK-028) kursiyer başına son tamamlanan deneme alınır; ünite, beceri ve kazanım kırılımı core
- * `practiceGradebook` ile her okumada hesaplanır, saklanmaz. Veli göremez (DOM-BEC-041): rota 403
- * verir, servis de reddeder. İçeriği kaldırılmış ya da puanlama bağlamı kurulamayan atama girmez
- * (DOM-KYN-051). En yeni `GRADEBOOK_ASSIGNMENT_LIMIT` atama okunur; fazlası `truncated` ile söylenir.
+ * DOM-YTK-028; tür, puanlama kipi ve hedef süzgeci sorgudadır) kursiyer başına son tamamlanan
+ * deneme alınır; ünite, beceri ve kazanım kırılımı core `practiceGradebook` ile her okumada
+ * hesaplanır, saklanmaz. Veli göremez (DOM-BEC-041): rota 403 verir, servis de reddeder. İçeriği
+ * kaldırılmış ya da puanlama bağlamı kurulamayan atama girmez (DOM-KYN-051). Süzülmüş kümenin en
+ * yeni `GRADEBOOK_ASSIGNMENT_LIMIT` ataması okunur; fazlası `truncated` ile söylenir.
  */
 
 export const GRADEBOOK_ASSIGNMENT_LIMIT = 100
@@ -30,10 +31,8 @@ export interface PracticeGradebookInput {
   targetId?: string | undefined
 }
 
-function unitOf(content: unknown): ContentUnit | null {
-  if (typeof content !== 'object' || content === null || !('type' in content)) return null
-  const typed = content as { type: string; unit?: ContentUnit | null }
-  return typed.type === 'quiz' || typed.type === 'exercise_set' ? (typed.unit ?? null) : null
+function unitOf(content: ResourceContent | null | undefined): ContentUnit | null {
+  return content?.type === 'quiz' || content?.type === 'exercise_set' ? content.unit : null
 }
 
 export async function getPracticeGradebook(ctx: ServiceContext, input: PracticeGradebookInput) {
@@ -41,13 +40,11 @@ export async function getPracticeGradebook(ctx: ServiceContext, input: PracticeG
     page: 1,
     pageSize: GRADEBOOK_ASSIGNMENT_LIMIT,
     kind: 'practice',
+    scoringMode: 'auto',
+    targetId: input.targetId,
   })
   if (viewer.kind === 'learner' && viewer.role === 'veli') throw new ForbiddenError()
-  const assignments = rows.filter(
-    (row) =>
-      row.scoringMode === 'auto' &&
-      (input.targetId === undefined || row.targets.some((target) => target.id === input.targetId)),
-  )
+  const assignments = rows
   const pairs = await loadWorkPairs(ctx.db, ctx.institutionId, assignments)
   const contexts = scoringContexts(assignments, pairs)
   const ids = assignments.map((row) => row.id)

@@ -492,7 +492,7 @@ export const attemptMediaPlays = pgTable(
  * - `check_number` deneme × madde içinde 1'den başlar; tekil indeks eşzamanlı iki kontrolden birini
  *   reddeder, kontrol kısıtı core hakkını (`ITEM_CHECK_LIMIT`) aşan satırı reddeder.
  * - `question_version_id` puanlama sürümündeki soru sürümüdür (cevap anahtarı gibi metin kimlik).
- * - Satır değişmezdir: migration 0046'daki tetikleyici her `update`/`delete`/`truncate`'i reddeder.
+ * - Satır değişmezdir: `attempt_item_checks_immutable_trigger` tetikleyicisi her `update`/`delete`/`truncate`'i reddeder.
  */
 export const attemptItemChecks = pgTable(
   'attempt_item_checks',

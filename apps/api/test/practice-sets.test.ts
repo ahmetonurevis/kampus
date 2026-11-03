@@ -10,7 +10,13 @@ import { ITEM_CHECK_LIMIT } from '@kampus/school-core/skills/practice.ts'
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
-import { attemptItemChecks, taskAttempts } from '../src/db/schema/skills.ts'
+import {
+  attemptItemChecks,
+  taskAssignments,
+  taskAssignmentTargets,
+  taskAttempts,
+} from '../src/db/schema/skills.ts'
+import { GRADEBOOK_ASSIGNMENT_LIMIT } from '../src/services/practice-gradebook.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -707,6 +713,42 @@ describe('ünite alıştırma seti uçları', () => {
       student.assignments.map((row: Json) => [row.id, row.learners]),
       [[practice, 1]],
     )
+  })
+
+  test('DOM-BEC-048: not defteri hedef ve otomatik puan süzgecini sınırdan önce uygular; süzgeç dışı çok sayıda yeni atama eski hedef setini gizlemez', async () => {
+    const t = await tenant()
+    const old = await assign(t, {}, [{ kind: 'class', id: '9-B' }], t.setId, t.cookies.admin)
+    const attempt = await ok(await start(old, t.cookies.otherStudent), 201)
+    await ok(await submit(attempt.id, t.cookies.otherStudent, attempt.rowVersion))
+    // Daha yeni, 9-A hedefli ve sınırı aşan alıştırmalar (aynı içerik kopyaları, doğrudan yazılır).
+    const [source] = await db.select().from(taskAssignments).where(eq(taskAssignments.id, old))
+    const fillers = Array.from({ length: GRADEBOOK_ASSIGNMENT_LIMIT + 1 }, (_, index) => ({
+      ...source!,
+      id: randomUUID(),
+      createdAt: new Date(FIXED_NOW.getTime() + (index + 1) * MINUTE),
+    }))
+    await db.insert(taskAssignments).values(fillers)
+    await db.insert(taskAssignmentTargets).values(
+      fillers.map((row) => ({
+        institutionId: t.institution.id,
+        assignmentId: row.id,
+        targetKind: 'class' as const,
+        targetId: '9-A',
+      })),
+    )
+
+    const filtered = await ok(await gradebook(t.cookies.admin, '?targetId=9-B'))
+    assert.deepEqual(
+      filtered.assignments.map((row: Json) => [row.id, row.learners]),
+      [[old, 1]],
+    )
+    assert.equal(filtered.totals.sets, 1)
+    assert.equal(filtered.truncated, false)
+    // Süzgeçsiz okuma yalnız en yeni sınır kadar atamayı alır ve bunu söyler.
+    const all = await ok(await gradebook(t.cookies.admin))
+    assert.equal(all.truncated, true)
+    assert.equal(all.assignments.length, GRADEBOOK_ASSIGNMENT_LIMIT)
+    assert.ok(!all.assignments.some((row: Json) => row.id === old))
   })
 
   test('DOM-BEC-048: başka kurumun alıştırma sonuçları not defterine girmez', async () => {

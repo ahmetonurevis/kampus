@@ -124,6 +124,10 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'staff-accounts.test.ts',
     'başka kurumun öğretmen kaydı 404',
   ),
+  'POST /api/v1/institution-members/imports': govde(
+    'staff-import.test.ts',
+    'başka kurumun üyesi ve öğretmen kaydı bu kurumu etkilemez',
+  ),
   'POST /api/v1/institution-members/invitations/:invitationId/cancel': kayit(
     'staff-accounts.test.ts',
     'başka kurumun davetini iptal edemez',

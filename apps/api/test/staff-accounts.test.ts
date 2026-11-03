@@ -20,7 +20,7 @@ import {
 import { membershipLinks } from '../src/db/schema/membership-links.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
-import { MemoryMailer } from '../src/services/mailer.ts'
+import { MemoryMailer, type Mailer } from '../src/services/mailer.ts'
 import { changeStaffRole, setStaffActive } from '../src/services/staff-accounts.ts'
 import {
   buildTestApp,
@@ -62,12 +62,14 @@ describe('personel hesapları (DOM-YTK-070)', () => {
     await close()
   })
 
-  function post(
+  // Parola bağlantıları yanıttan sonra arka planda gider; ileti denetiminden önce beklenir.
+  async function post(
     url: string,
     options: { cookie?: string; payload?: object; key?: string | null; target?: App } = {},
   ) {
     const key = options.key === undefined ? randomUUID() : options.key
-    return (options.target ?? app).inject({
+    const target = options.target ?? app
+    const response = await target.inject({
       method: 'POST',
       url,
       headers: {
@@ -78,6 +80,8 @@ describe('personel hesapları (DOM-YTK-070)', () => {
       },
       ...(options.payload === undefined ? {} : { payload: options.payload }),
     })
+    await target.staffLinks.inline.idle()
+    return response
   }
 
   const invite = (cookie: string | undefined, payload: object, key?: string | null) =>
@@ -382,11 +386,28 @@ describe('personel hesapları (DOM-YTK-070)', () => {
           ),
         )
       assert.equal(links.length, 0)
+      // Öğretmen bağı kaybolmaz: davette saklanır, kabulde bağlanır.
       const [stored] = await db
-        .select({ membershipId: invitations.membershipId, name: invitations.name })
+        .select({
+          membershipId: invitations.membershipId,
+          name: invitations.name,
+          teacherId: invitations.teacherId,
+        })
         .from(invitations)
         .where(eq(invitations.id, data.id))
-      assert.deepEqual(stored, { membershipId: null, name: 'Farklı Ad' })
+      assert.deepEqual(stored, { membershipId: null, name: 'Farklı Ad', teacherId: 't-a' })
+      assert.ok(!response.body.includes('t-a'), 'öğretmen kaydı yanıtta yok')
+
+      // Bekleyen davetin tuttuğu öğretmen kaydı başka davete bağlanamaz (yeni e-posta da olsa).
+      const held = await invite(cookie, {
+        email: email(),
+        name: 'İkinci Davet',
+        role: 'ogretmen',
+        teacherId: 't-a',
+      })
+      assert.equal(held.statusCode, 409, held.body)
+      assert.equal(held.json().code, 'teacher_invitation_pending')
+      assert.match(held.json().message, /bekleyen bir davete/)
 
       // Parola sıfırlama iletisi ve belirteci yok; yalnız yeni hesaba bağlantı gitti.
       assert.equal(mailer.lastTo(existing.email), undefined)
@@ -443,6 +464,92 @@ describe('personel hesapları (DOM-YTK-070)', () => {
         (await audits(institution.id, 'staff.invitation_cancel')).map((row) => row.changes),
         [{ fields: ['status'] }],
       )
+
+      // İptal edilen davet öğretmen kaydını bırakır.
+      const released = await invite(cookie, {
+        email: email(),
+        name: 'Serbest',
+        role: 'ogretmen',
+        teacherId: 't-a',
+      })
+      assert.equal(released.statusCode, 201, released.body)
+    })
+
+    test('DOM-YTK-070: başka kurumun bekleyen daveti bu kurumun öğretmen kaydını tutmaz', async () => {
+      const { cookie } = await kurum()
+      const other = await kurum()
+      // Öteki kurumda aynı kimlikli (t-a) kayda bekleyen davet var: bu kurumun kaydı serbesttir.
+      const foreign = await invite(other.cookie, {
+        email: email(),
+        name: 'Öteki',
+        role: 'ogretmen',
+        teacherId: 't-a',
+      })
+      assert.equal(foreign.statusCode, 201, foreign.body)
+      const own = await invite(cookie, {
+        email: email(),
+        name: 'Kendi',
+        role: 'ogretmen',
+        teacherId: 't-a',
+      })
+      assert.equal(own.statusCode, 201, own.body)
+    })
+  })
+
+  describe('parola bağlantısı yanıtı beklemez (karar 73)', () => {
+    test('DOM-YTK-070: yeni hesap ve başka kurumdaki hesap için yanıt gönderimi beklemez; bağlantı yalnız yeni hesaba gider', async () => {
+      // Gönderimi elle açılana kadar bekleyen posta kutusu: yanıt gönderimi bekleseydi dönmezdi.
+      let release: () => void = () => undefined
+      const gate = new Promise<void>((resolve) => {
+        release = resolve
+      })
+      const delivered: string[] = []
+      const gated: Mailer = {
+        configured: true,
+        async sendPasswordReset(mail) {
+          await gate
+          delivered.push(mail.to)
+        },
+      }
+      const gatedApp = await buildTestApp(db, { mailer: gated })
+      try {
+        const { cookie } = await kurum()
+        const other = await createInstitution(app)
+        const existing = await createMember(app, other.id, 'onburo')
+        const fresh = email()
+        const within = <T>(work: Promise<T>) =>
+          Promise.race([
+            work,
+            new Promise<never>((_, reject) =>
+              setTimeout(() => reject(new Error('yanıt gönderimi bekledi')), 5000),
+            ),
+          ])
+        const send = (address: string) =>
+          within(
+            gatedApp.inject({
+              method: 'POST',
+              url: '/api/v1/institution-members/invitations',
+              headers: {
+                origin: TEST_ORIGIN,
+                cookie,
+                'content-type': 'application/json',
+                'idempotency-key': randomUUID(),
+              },
+              payload: { email: address, name: 'Bekleyen Kişi', role: 'onburo' },
+            }),
+          )
+        const created = await send(fresh)
+        const elsewhere = await send(existing.email)
+        assert.equal(created.statusCode, 201, created.body)
+        assert.equal(elsewhere.statusCode, 201, elsewhere.body)
+        assert.deepEqual(delivered, [])
+        release()
+        await gatedApp.staffLinks.inline.idle()
+        assert.deepEqual(delivered, [fresh])
+      } finally {
+        release()
+        await gatedApp.close()
+      }
     })
   })
 

@@ -52,6 +52,7 @@ const INVITE_ROUTES = {
     member_exists: 'email',
     invitation_exists: 'email',
     teacher_already_linked: 'teacherId',
+    teacher_invitation_pending: 'teacherId',
     not_found: 'teacherId',
   }),
   silent: isReauthenticationRequired,

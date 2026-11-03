@@ -84,4 +84,6 @@ export const PLATFORM_IDEMPOTENT_ENDPOINTS: string[] = [
   // Personel daveti: yeniden denemede ikinci hesap, üyelik ya da parola bağlantısı açılmaz
   // (routes/institution-members.ts; DOM-YTK-070).
   'POST /api/v1/institution-members/invitations',
+  // Toplu personel aktarımı: yeniden denemede davetler ikinci kez açılmaz (IST-007).
+  'POST /api/v1/institution-members/imports',
 ]

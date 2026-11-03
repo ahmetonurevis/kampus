@@ -1,10 +1,16 @@
 import type { KampusClient } from '@kampus/api-client/client.ts'
+import type { ApiError } from '@kampus/api-client/errors.ts'
 import type { components } from '@kampus/api-client/schema.d.ts'
 import {
   STAFF_ACCOUNT_MESSAGES,
   type StaffInvitationInput,
   type StaffRole,
 } from '@kampus/school-core/lib/staff-accounts.ts'
+import {
+  staffImportIssueSchema,
+  type StaffImportInput,
+  type StaffImportIssue,
+} from '@kampus/school-core/lib/staff-import.ts'
 
 import type { CommandHeaders, CommandMessages } from './commands.ts'
 import { INSTITUTION_MEMBERS_KEY_ROOT } from './institution-lists.ts'
@@ -87,4 +93,45 @@ export function setStaffActiveRequest(
   return input.active
     ? client.POST('/api/v1/institution-members/{membershipId}/reactivate', options)
     : client.POST('/api/v1/institution-members/{membershipId}/deactivate', options)
+}
+
+export type StaffImportResult = components['schemas']['StaffImportResult']
+
+/** Toplu personel aktarımı ya da önizlemesi (`dryRun`; IST-007). */
+export function importStaffRequest(
+  client: KampusClient,
+  body: StaffImportInput,
+  headers: CommandHeaders,
+) {
+  return client.POST('/api/v1/institution-members/imports', {
+    params: { header: { 'idempotency-key': headers['idempotency-key'] } },
+    body,
+  })
+}
+
+/** Aktarımın satır hatası yanıtı: 422 `staff_import_invalid` (önizlemeden sonra değişen kurum). */
+export const STAFF_IMPORT_INVALID = 'staff_import_invalid'
+
+/**
+ * 422 `staff_import_invalid` maddelerini (`['rows', satır, alan?]`, ileti "N. satır: …") önizleme
+ * tablosunun satır hatalarına çevirir; başka hata `null` (dosya düzeyindeki sorun, yetki …).
+ */
+export function staffImportIssuesOf(error: ApiError): StaffImportIssue[] | null {
+  if (error.status !== 422 || error.code !== STAFF_IMPORT_INVALID) return null
+  return error.issues.flatMap((issue) => {
+    const [root, line, field = null] = issue.path
+    if (root !== 'rows' || typeof line !== 'number') return []
+    const parsed = staffImportIssueSchema.safeParse({
+      line,
+      field,
+      code: issue.code,
+      message: issue.message.replace(/^\d+\. satır: /, ''),
+    })
+    return parsed.success ? [parsed.data] : []
+  })
+}
+
+/** Önizleme ve aktarımda toast yerine pencerede gösterilen hatalar (dosya ve satır sorunları). */
+export function isStaffImportFileError(error: ApiError): boolean {
+  return error.status === 422 && error.code !== 'idempotency_key_reused'
 }

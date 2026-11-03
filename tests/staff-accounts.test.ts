@@ -219,6 +219,7 @@ describe('personel hesapları (DOM-YTK-070)', () => {
           alreadyMember: false,
           pendingInvitation: false,
           teacherLinked: false,
+          teacherInvitationPending: false,
         }),
       ),
       undefined,
@@ -229,6 +230,7 @@ describe('personel hesapları (DOM-YTK-070)', () => {
           alreadyMember: true,
           pendingInvitation: false,
           teacherLinked: false,
+          teacherInvitationPending: false,
         }),
       ),
       'conflict:member_exists',
@@ -239,6 +241,7 @@ describe('personel hesapları (DOM-YTK-070)', () => {
           alreadyMember: false,
           pendingInvitation: true,
           teacherLinked: false,
+          teacherInvitationPending: false,
         }),
       ),
       'conflict:invitation_exists',
@@ -249,9 +252,21 @@ describe('personel hesapları (DOM-YTK-070)', () => {
           alreadyMember: false,
           pendingInvitation: false,
           teacherLinked: true,
+          teacherInvitationPending: false,
         }),
       ),
       'conflict:teacher_already_linked',
+    )
+    assert.equal(
+      code(() =>
+        assertStaffInvitation({
+          alreadyMember: false,
+          pendingInvitation: false,
+          teacherLinked: false,
+          teacherInvitationPending: true,
+        }),
+      ),
+      'conflict:teacher_invitation_pending',
     )
     assert.equal(
       code(() => assertInvitationPending('pending')),

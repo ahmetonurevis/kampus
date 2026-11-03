@@ -24,22 +24,28 @@ export function isStaffRole(role: string): role is StaffRole {
   return (STAFF_ROLES as readonly string[]).includes(role)
 }
 
+/** Personel e-postası: kırpılır, küçük harfe çevrilir, en çok 254 karakter. */
+export const staffEmailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(254, 'E-posta en çok 254 karakter olabilir.')
+  .pipe(z.email('Geçerli bir e-posta adresi girin.'))
+
+/** Personel adı (davette girilen): 2–120 karakter. */
+export const staffNameSchema = z
+  .string()
+  .trim()
+  .min(2, 'Ad en az 2 karakter olmalı.')
+  .max(120, 'Ad en çok 120 karakter olabilir.')
+
 /** Ad 2–120, e-posta en çok 254 karakter; öğretmen kaydı yalnız öğretmen rolünde bağlanır. */
 export const staffInvitationInputSchema = z
   .strictObject({
     // kvkk: K
-    email: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .max(254, 'E-posta en çok 254 karakter olabilir.')
-      .pipe(z.email('Geçerli bir e-posta adresi girin.')),
+    email: staffEmailSchema,
     // kvkk: K
-    name: z
-      .string()
-      .trim()
-      .min(2, 'Ad en az 2 karakter olmalı.')
-      .max(120, 'Ad en çok 120 karakter olabilir.'),
+    name: staffNameSchema,
     role: staffRoleSchema,
     teacherId: z.string().trim().min(1).max(200).optional(),
   })
@@ -71,6 +77,8 @@ export const STAFF_ACCOUNT_MESSAGES = {
   invitation_exists: 'Bu e-posta adresine bekleyen bir davet var.',
   invitation_not_pending: 'Bu davet artık beklemede değil.',
   teacher_already_linked: 'Bu öğretmen kaydı başka bir hesaba bağlı.',
+  teacher_invitation_pending:
+    'Bu öğretmen kaydı bekleyen bir davete bağlı. Önce o daveti iptal edin.',
 } as const satisfies Record<string, string>
 
 export type StaffAccountErrorCode = keyof typeof STAFF_ACCOUNT_MESSAGES
@@ -127,16 +135,19 @@ export function planStaffActivation(input: {
 
 /**
  * Davet ön koşulları: e-posta kurumda üye değil, bekleyen davet yok, bağlanacak öğretmen kaydı
- * başka hesaba bağlı değil (kayıt varlığını çağıran denetler, yoksa 404).
+ * başka hesaba bağlı değil ve kurumun bekleyen başka bir davetinde tutulmuyor (kayıt varlığını
+ * çağıran denetler, yoksa 404).
  */
 export function assertStaffInvitation(input: {
   alreadyMember: boolean
   pendingInvitation: boolean
   teacherLinked: boolean
+  teacherInvitationPending: boolean
 }): void {
   if (input.alreadyMember) reject('member_exists', 'conflict')
   if (input.pendingInvitation) reject('invitation_exists', 'conflict')
   if (input.teacherLinked) reject('teacher_already_linked', 'conflict')
+  if (input.teacherInvitationPending) reject('teacher_invitation_pending', 'conflict')
 }
 
 /** Davet iptali: yalnız bekleyen davet. */

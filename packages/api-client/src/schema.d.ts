@@ -99,9 +99,29 @@ export interface paths {
         put?: never;
         /**
          * Personel davet et
-         * @description Yönetici, öğretmen ya da ön büro hesabı açar (DOM-YTK-070, IST-007): kullanıcı (parolasız), üyelik ve isteğe bağlı öğretmen kaydı bağlantısı (`teacherId`, yalnız öğretmen rolünde) aynı işlemde yazılır; Better Auth daveti kişi ilk girişini yapana kadar `pending` kalır. İşlemden sonra kişiye parola belirleme bağlantısı (parola sıfırlama akışı) gönderilir. E-posta başka kurumda hesaplıysa üyelik açılmaz, öğretmen kaydı bağlanmaz ve ileti gitmez; yalnız bekleyen davet yazılır. Yanıtın durum kodu ve alanları iki durumda aynıdır, ad yöneticinin girdiğidir: e-postanın başka kurumda hesabı olup olmadığı yanıttan anlaşılmaz. Kurumda kayıtlı e-posta 409 `member_exists`, bekleyen davet 409 `invitation_exists`, kurumda olmayan öğretmen kaydı 404, başka hesaba bağlı öğretmen kaydı 409 `teacher_already_linked`. Öğrenci ve veli hesapları kayıt aktarımıyla açılır (400). `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
+         * @description Yönetici, öğretmen ya da ön büro hesabı açar (DOM-YTK-070, IST-007): kullanıcı (parolasız), üyelik ve isteğe bağlı öğretmen kaydı bağlantısı (`teacherId`, yalnız öğretmen rolünde) aynı işlemde yazılır; Better Auth daveti kişi ilk girişini yapana kadar `pending` kalır. Kişiye parola belirleme bağlantısı (parola sıfırlama akışı) yanıtı beklemeden gönderilir (kuyruk açıkken `staff.password-link` işi). E-posta başka kurumda hesaplıysa üyelik açılmaz ve ileti gitmez; yalnız bekleyen davet yazılır, öğretmen kaydı davette saklanır ve kabulde bağlanır. Yanıtın durum kodu ve alanları iki durumda aynıdır, ad yöneticinin girdiğidir: e-postanın başka kurumda hesabı olup olmadığı yanıttan anlaşılmaz. Kurumda kayıtlı e-posta 409 `member_exists`, bekleyen davet 409 `invitation_exists`, kurumda olmayan öğretmen kaydı 404, başka hesaba bağlı öğretmen kaydı 409 `teacher_already_linked`, kurumun bekleyen başka bir davetinin tuttuğu öğretmen kaydı 409 `teacher_invitation_pending`. Öğrenci ve veli hesapları kayıt aktarımıyla açılır (400). `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
          */
         post: operations["inviteStaffMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/institution-members/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personeli toplu aktar (CSV)
+         * @description Yönetici, öğretmen ve ön büro hesaplarını CSV dosyasıyla toplu davet eder (IST-007, DOM-YTK-070). Başlık satırı zorunludur; sütunlar `ad`, `e-posta`, `rol` ve öğretmen için isteğe bağlı `branş`, `kampüs` (ayraç `;`, sekme ya da `,`; sıra serbest). En çok 1.000 veri satırı. Bütün satırlar kurum kilidi altında doğrulanmadan hiçbir kayıt yazılmaz: geçersiz ad/e-posta/rol, dosyada yinelenen e-posta, kurumda kayıtlı e-posta (`member_exists`), bekleyen davet (`invitation_exists`), bulunamayan ya da uyuşmayan branş/kampüs başka hesaba bağlı (`teacher_already_linked`) ya da bekleyen bir davetin tuttuğu (`teacher_invitation_pending`) öğretmen kaydı satır numarasıyla raporlanır. Öğretmen satırı aynı e-postalı (yoksa aynı ad, branş ve kampüslü e-postasız) öğretmen kaydına bağlanır; kayıtta başka bir e-posta varsa satır `teacher_email_mismatch`; aktarım öğretmen kaydı açmaz. `dryRun: true` önizlemedir: 200 ve `issues` döner, hiçbir şey yazmaz. Aktarımda hata varsa 422 `staff_import_invalid` (`issues` yolu `['rows', satır, alan]`); başarı 201. Dosya düzeyindeki sorun (başlık, satır sınırı, tırnak) 422 ve sorunun kodu (ör. `csv_too_many_rows`). Her satır tek davetle aynı biçimde yazılır (başka kurumda hesabı olan e-postada yalnız bekleyen davet; yanıt ayırt etmez); parola belirleme bağlantıları yanıtı beklemeden yeni hesaplara gider; yanıt süresi de hesabın varlığını belli etmez. `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
+         */
+        post: operations["importStaffMembers"];
         delete?: never;
         options?: never;
         head?: never;
@@ -5806,6 +5826,22 @@ export interface components {
              */
             expiresAt: string;
         };
+        StaffImportIssueInput: {
+            line: number;
+            field: ("name" | "email" | "role" | "subject" | "campus") | null;
+            code: string;
+            message: string;
+        };
+        StaffImportResultInput: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Davet edilen (önizlemede edilecek) personel; hata varsa 0 */
+            invitedCount: number;
+            /** @description Satır hataları: dosyadaki satır (başlık 1. satır), alan, kod ve Türkçe ileti */
+            issues: components["schemas"]["StaffImportIssueInput"][];
+        };
         InstitutionMembershipInput: {
             /** @description Üyelik kimliği */
             id: string;
@@ -9494,6 +9530,22 @@ export interface components {
              */
             expiresAt: string;
         };
+        StaffImportIssue: {
+            line: number;
+            field: ("name" | "email" | "role" | "subject" | "campus") | null;
+            code: string;
+            message: string;
+        };
+        StaffImportResult: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Davet edilen (önizlemede edilecek) personel; hata varsa 0 */
+            invitedCount: number;
+            /** @description Satır hataları: dosyadaki satır (başlık 1. satır), alan, kod ve Türkçe ileti */
+            issues: components["schemas"]["StaffImportIssue"][];
+        };
         InstitutionMembership: {
             /** @description Üyelik kimliği */
             id: string;
@@ -12788,6 +12840,122 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["StaffInvitation"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    importStaffMembers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    csv: string;
+                    /** @default false */
+                    dryRun?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StaffImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StaffImportResult"];
                     };
                 };
             };

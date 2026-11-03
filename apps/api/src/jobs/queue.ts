@@ -31,6 +31,13 @@ import {
   transcodeSummary,
 } from './media-transcode.ts'
 import { INSTITUTION_JOBS, RETIRED_JOBS } from './registry.ts'
+import {
+  queuedStaffLinkScheduler,
+  runStaffLinkJob,
+  STAFF_LINK_QUEUE_OPTIONS,
+  STAFF_LINK_WORK_OPTIONS,
+  STAFF_PASSWORD_LINK_JOB,
+} from './staff-password-link.ts'
 import { institutionJobDataSchema, type AnyInstitutionJob, type JobDeps } from './types.ts'
 import type { SessionLock } from './media-transcode.ts'
 
@@ -317,6 +324,14 @@ export async function startJobs(
       { perJobResults: true, ...MEDIA_WORK_OPTIONS },
       async (batch) => Promise.all(batch.map((job) => runTranscodeJob(app, mediaDeps, job))),
     )
+    // Personel davetinin parola bağlantısı: davet işi kendi transaction'ında ekler (OG-060).
+    await boss.createQueue(STAFF_PASSWORD_LINK_JOB, STAFF_LINK_QUEUE_OPTIONS)
+    const linkDeps = { db: app.db, auth: app.auth, log }
+    await boss.work<unknown>(
+      STAFF_PASSWORD_LINK_JOB,
+      { perJobResults: true, ...STAFF_LINK_WORK_OPTIONS },
+      async (batch) => Promise.all(batch.map((job) => runStaffLinkJob(linkDeps, job))),
+    )
     // Olaya bağlı dosya taraması (tarayıcı kapalıysa kuyruk kurulmaz, dosyalar `pending` kalır).
     const scanner = app.fileScan.scanner
     if (scanner !== null) {
@@ -372,6 +387,7 @@ export async function startJobs(
   // Kuyruk tümüyle kurulduktan sonra yükleme dönüşümü ve taramayı kuyruğa koyar (kurulum düşerse
   // süreç içi yol kalır).
   app.media.scheduler = queuedTranscodeScheduler(boss)
+  app.staffLinks.scheduler = queuedStaffLinkScheduler(boss)
   const scanning = app.fileScan.scanner !== null
   if (scanning) app.fileScan.scheduler = queuedScanScheduler(boss)
   try {
@@ -392,6 +408,7 @@ export async function startJobs(
     jobs: [
       ...jobs.map((job) => job.name),
       MEDIA_TRANSCODE_JOB,
+      STAFF_PASSWORD_LINK_JOB,
       ...(scanning ? [FILE_SCAN_JOB, FILE_SCAN_REQUEUE_JOB] : []),
     ],
   })

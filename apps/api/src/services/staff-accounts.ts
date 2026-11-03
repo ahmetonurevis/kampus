@@ -1,4 +1,4 @@
-import { and, asc, count, desc, eq, isNull } from 'drizzle-orm'
+import { and, asc, count, desc, eq, inArray, isNotNull, isNull } from 'drizzle-orm'
 
 import {
   assertInvitationPending,
@@ -23,6 +23,7 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { authTransaction } from './auth-transaction.ts'
 import { getInstitutionMember } from './institution-members.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
+import type { StaffLinkJobData, StaffLinkScheduler } from './staff-password-links.ts'
 import { auditWork } from './task-work.ts'
 
 /**
@@ -129,6 +130,31 @@ export async function listStaffInvitations(
   }
 }
 
+/**
+ * Kurumun bekleyen davetlerinin tuttuğu öğretmen kayıtları (`invitations.teacher_id`). Yalnız bu
+ * kurumun davetleri okunur: başka kurumun daveti bu kurumun kaydını tutamaz ve sonucu etkilemez.
+ * `teacherIds` verilirse yalnız onlar sorulur.
+ */
+export async function pendingTeacherInvitations(
+  db: Database,
+  institutionId: string,
+  teacherIds?: readonly string[],
+): Promise<Set<string>> {
+  const rows = await db
+    .select({ teacherId: invitations.teacherId })
+    .from(invitations)
+    .where(
+      and(
+        eq(invitations.institutionId, institutionId),
+        eq(invitations.status, 'pending'),
+        teacherIds === undefined
+          ? isNotNull(invitations.teacherId)
+          : inArray(invitations.teacherId, [...teacherIds]),
+      ),
+    )
+  return new Set(rows.flatMap((row) => (row.teacherId === null ? [] : [row.teacherId])))
+}
+
 async function findUserByEmail(db: Database, email: string) {
   const [row] = await db.select({ id: users.id }).from(users).where(eq(users.email, email)).limit(1)
   return row ?? null
@@ -171,7 +197,7 @@ function assertActorAdmin(ctx: ServiceContext, members: readonly StaffMember[]):
     throw new ForbiddenError()
 }
 
-async function loadActorAdmin(tx: Database, ctx: ServiceContext): Promise<void> {
+export async function loadActorAdmin(tx: Database, ctx: ServiceContext): Promise<void> {
   const rows = await tx
     .select({
       id: memberships.id,
@@ -206,33 +232,99 @@ function respondWith(out: { body?: unknown }, statusCode: number) {
   }
 }
 
-/** Davetin sonucu: yanıt ve parola bağlantısının gönderilip gönderilmeyeceği (yalnız yeni hesap). */
-export interface StaffInvitationOutcome {
-  response: CommandResponse
-  sendPasswordLink: boolean
+export type BoundAuth = Awaited<ReturnType<typeof authTransaction>>
+export type Inviter = NonNullable<Awaited<ReturnType<BoundAuth['internalAdapter']['findUserById']>>>
+
+/**
+ * Tek davetin yazımı (tek davet ve toplu aktarım ortak): e-postanın hesabı yoksa kullanıcı
+ * (parolasız), üyelik ve öğretmen bağlantısı açılır; varsa (karar 73) yalnız bekleyen davet yazılır.
+ * Öğretmen kaydı iki durumda da davette (`invitations.teacher_id`) saklanır: mevcut hesabın
+ * davetinde bağ kaybolmaz, kabulde açılır; bekleyen davetin tuttuğu kayıt başka davete bağlanamaz.
+ * Denetim alanları iki durumda aynıdır: denetim listesi de hesabın varlığını belli etmez.
+ */
+export async function writeStaffInvitation(
+  tx: Database,
+  ctx: ServiceContext,
+  bound: BoundAuth,
+  inviter: Inviter,
+  write: {
+    input: StaffInvitationInput
+    existingUserId: string | null
+    action: string
+    links: StaffLinkScheduler
+  },
+): Promise<StaffLinkJobData> {
+  const { input, existingUserId } = write
+  let membershipId: string | null = null
+  if (existingUserId === null) {
+    const user = await bound.internalAdapter.createUser(
+      { name: input.name, email: input.email, emailVerified: false },
+      { method: 'email-password' },
+    )
+    const member = await bound.organization.createMember({
+      organizationId: ctx.institutionId,
+      userId: user.id,
+      role: input.role,
+    })
+    membershipId = member.id
+    if (input.teacherId !== undefined)
+      await tx.insert(membershipLinks).values({
+        institutionId: ctx.institutionId,
+        membershipId: member.id,
+        kind: 'teacher',
+        recordId: input.teacherId,
+      })
+  }
+  const invitation = await bound.organization.createInvitation({
+    invitation: {
+      email: input.email,
+      role: input.role,
+      organizationId: ctx.institutionId,
+      teamIds: [],
+      name: input.name,
+      membershipId,
+      teacherId: input.teacherId ?? null,
+    },
+    user: inviter,
+  })
+  await auditWork(tx, ctx, write.action, { type: INVITATION, id: invitation.id }, [
+    'email',
+    'name',
+    'role',
+    ...(input.teacherId === undefined ? [] : ['teacherId']),
+  ])
+  // Bağlantı işi her davette aynı yoldan kurulur; yeni hesap ayrımı gönderimde yapılır (karar 73).
+  const link = { institutionId: ctx.institutionId, invitationId: invitation.id }
+  await write.links.enqueue(tx, link)
+  return link
 }
 
 /**
  * Personel daveti (DOM-YTK-070). Kurumda kayıtlı e-posta 409 `member_exists`, bekleyen davet 409
  * `invitation_exists`; öğretmen kaydı kurumda yoksa 404, başka hesaba bağlıysa 409
- * `teacher_already_linked`. Başarı 201; parola bağlantısı işlemden sonra yalnız yeni hesaba gider.
+ * `teacher_already_linked`, kurumun bekleyen başka bir davetinde tutuluyorsa 409
+ * `teacher_invitation_pending`. Başarı 201; parola bağlantısı yanıtı beklemeden yalnız yeni hesaba
+ * gider (`services/staff-password-links.ts`; tekrarlanan yanıtta gitmez).
  *
- * E-posta başka kurumda hesaplıysa (karar 73) üyelik açılmaz, öğretmen kaydı bağlanmaz, parola
- * bağlantısı gitmez; yalnız bekleyen davet (girilen adla) yazılır. Yanıtın durum kodu, alanları ve
+ * E-posta başka kurumda hesaplıysa (karar 73) üyelik açılmaz, parola bağlantısı gitmez; yalnız
+ * bekleyen davet (girilen adla ve öğretmen kaydıyla) yazılır. Yanıtın durum kodu, alanları ve
  * denetim alanları yeni hesaptakiyle aynıdır: yönetici e-postanın başka kurumda hesabı olduğunu
  * öğrenemez. Kişinin bu daveti oturumla kabul ettiği akış henüz yok.
  */
-// TODO(staff-invite-accept): Mevcut hesabın daveti kendi oturumuyla kabul ettiği akış (üyeliği ve
-// öğretmen bağlantısını o an açar); o zamana kadar davet bekler ya da yönetici iptal eder.
+// TODO(staff-invite-accept): Mevcut hesabın daveti kendi oturumuyla kabul ettiği akış (üyeliği o an
+// açar). Kabulde davetin `teacherId`'si (`invitations.teacher_id`) aynı işlemde
+// `membership_links`'e `teacher` bağlantısı olarak yazılır; kayıt arada arşivlendiyse ya da başka
+// hesaba bağlandıysa bağlantı açılmaz. O zamana kadar davet bekler ya da yönetici iptal eder.
 export async function inviteStaffMember(
   ctx: ServiceContext,
   auth: Auth,
+  links: StaffLinkScheduler,
   input: StaffInvitationInput,
   idempotency: IdempotencyRequest | null,
-): Promise<StaffInvitationOutcome> {
+): Promise<CommandResponse> {
   const out: { body?: unknown } = {}
   let existingUserId: string | null = null
-  let createdAccount = false
+  const written: StaffLinkJobData[] = []
   const response = await runCommand<void>(
     ctx,
     {
@@ -259,6 +351,7 @@ export async function inviteStaffMember(
           )
           .limit(1)
         let teacherLinked = false
+        let teacherInvitationPending = false
         if (input.teacherId !== undefined) {
           if ((await findRecord(tx, ctx.institutionId, 'teachers', input.teacherId)) === null)
             throw new NotFoundError()
@@ -275,6 +368,8 @@ export async function inviteStaffMember(
             )
             .limit(1)
           teacherLinked = link !== undefined
+          teacherInvitationPending =
+            (await pendingTeacherInvitations(tx, ctx.institutionId, [input.teacherId])).size > 0
         }
         return {
           run: () =>
@@ -282,6 +377,7 @@ export async function inviteStaffMember(
               alreadyMember,
               pendingInvitation: pending !== undefined,
               teacherLinked,
+              teacherInvitationPending,
             }),
         }
       },
@@ -289,47 +385,14 @@ export async function inviteStaffMember(
         const bound = await authTransaction(auth, tx)
         const inviter = await bound.internalAdapter.findUserById(ctx.actor.userId)
         if (inviter === null) throw new Error('inviter not found')
-        let membershipId: string | null = null
-        if (existingUserId === null) {
-          // Yeni hesap: kullanıcı (parolasız), üyelik ve öğretmen bağlantısı davetle açılır.
-          const user = await bound.internalAdapter.createUser(
-            { name: input.name, email: input.email, emailVerified: false },
-            { method: 'email-password' },
-          )
-          const member = await bound.organization.createMember({
-            organizationId: ctx.institutionId,
-            userId: user.id,
-            role: input.role,
-          })
-          membershipId = member.id
-          if (input.teacherId !== undefined)
-            await tx.insert(membershipLinks).values({
-              institutionId: ctx.institutionId,
-              membershipId: member.id,
-              kind: 'teacher',
-              recordId: input.teacherId,
-            })
-          createdAccount = true
-        }
-        const invitation = await bound.organization.createInvitation({
-          invitation: {
-            email: input.email,
-            role: input.role,
-            organizationId: ctx.institutionId,
-            teamIds: [],
-            name: input.name,
-            membershipId,
-          },
-          user: inviter,
+        const link = await writeStaffInvitation(tx, ctx, bound, inviter, {
+          input,
+          existingUserId,
+          action: 'staff.invite',
+          links,
         })
-        // Denetim alanları iki durumda aynıdır: denetim listesi de hesabın varlığını belli etmez.
-        await auditWork(tx, ctx, 'staff.invite', { type: INVITATION, id: invitation.id }, [
-          'email',
-          'name',
-          'role',
-          ...(input.teacherId === undefined ? [] : ['teacherId']),
-        ])
-        const row = await findInvitation(tx, ctx.institutionId, invitation.id)
+        written.push(link)
+        const row = await findInvitation(tx, ctx.institutionId, link.invitationId)
         const view = row ? toInvitationView(row) : null
         if (view === null) throw new Error('invitation disappeared after write')
         out.body = { data: view }
@@ -338,25 +401,8 @@ export async function inviteStaffMember(
     respondWith(out, 201),
     idempotency,
   )
-  return { response, sendPasswordLink: !response.replayed && createdAccount }
-}
-
-/**
- * Davet sonrası parola belirleme bağlantısı: mevcut sıfırlama akışı (`request-password-reset`,
- * `services/password-reset.ts`) kullanılır; belirteç, soğuma, saatlik sınır ve denetim kaydı
- * oradadır. Gönderim davetin sonucunu değiştirmez: hata loglanır (e-posta yazılmaz), yönetici
- * daveti iptal edip yeniden gönderebilir ya da kişi "Parolamı unuttum" ile bağlantı ister.
- */
-export async function sendStaffPasswordLink(
-  ctx: Pick<ServiceContext, 'log'>,
-  auth: Auth,
-  email: string,
-): Promise<void> {
-  try {
-    await auth.api.requestPasswordReset({ body: { email } })
-  } catch (error) {
-    ctx.log.warn({ event: 'staff.invite_link_failed', err: error })
-  }
+  if (!response.replayed) links.afterCommit(written)
+  return response
 }
 
 /**

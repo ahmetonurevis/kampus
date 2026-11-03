@@ -70,6 +70,7 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   'question.answer': 'Soru yanıtlandı',
   'question.withdraw': 'Soru geri çekildi',
   'staff.invite': 'Personel davet edildi',
+  'staff.import': 'Personel toplu aktarımla davet edildi',
   'staff.invitation_cancel': 'Personel daveti iptal edildi',
   'staff.role_change': 'Personel rolü değiştirildi',
   'staff.deactivate': 'Personel hesabı pasifleştirildi',

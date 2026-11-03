@@ -337,6 +337,13 @@
       "when": 1793689772862,
       "tag": "0047_add_attempt_item_checks",
       "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793696399301,
+      "tag": "0048_invitation_teacher",
+      "breakpoints": true
     }
   ]
 }

@@ -30,6 +30,7 @@ import {
   STATUS_OPTIONS,
   type MemberRow,
 } from './settings-rows.ts'
+import { StaffImportDialog } from './StaffImportDialog.tsx'
 import { PendingInvitations, StaffInviteForm, StaffMemberActions } from './StaffPanels.tsx'
 
 const URL_FILTERS = { role: 'rol', status: 'durum' }
@@ -43,6 +44,7 @@ const SORTABLE = Object.keys(SORT_FIELDS)
 const MOBILE_COLUMNS = ['roleLabel', 'status']
 const ALL = 'all'
 const NEW_INVITATION = 'yeni'
+const NEW_IMPORT = 'yeni'
 
 const filterValue = (value: unknown) => (typeof value === 'string' ? value : '')
 
@@ -50,8 +52,9 @@ const filterValue = (value: unknown) => (typeof value === 'string' ? value : '')
  * "Kullanıcı & Yetkiler" (yalnız yönetici): kurumun üyeleri; rol ve durum süzgeci, ad/rol/tarih
  * sıralaması, arama (en az 2 karakter) ve CSV. Satırdan açılan sağ panel yalnız bulunduğu
  * sayfadaki kaydı gösterir (tek kayıt ucu yok). "Pasif": yöneticinin pasifleştirdiği hesap ya da
- * bağlı kişi kaydı arşivde olan üyelik. Ana işlem personel daveti (sağ panel); rol değiştirme ve
- * pasifleştirme ayrıntı panelinde, bekleyen davetler tablonun altında (DOM-YTK-070).
+ * bağlı kişi kaydı arşivde olan üyelik. Ana işlem personel daveti (sağ panel); toplu aktarım geniş
+ * pencerede (`?aktarim=yeni`, IST-007); rol değiştirme ve pasifleştirme ayrıntı panelinde, bekleyen
+ * davetler tablonun altında (DOM-YTK-070).
  */
 export function UsersSection() {
   const list = useListState('kullanicilar', {
@@ -81,6 +84,7 @@ export function UsersSection() {
   const panel = useDetailPanel('kullanici')
   const openMember = panel.open
   const invitePanel = useDetailPanel('davet')
+  const importDialog = useDetailPanel('aktarim')
   const selfUserId = useMe().data?.user.id ?? null
   const fetchAll = useInstitutionMembersFetchAll()
   const csv = useCsvExport()
@@ -186,6 +190,10 @@ export function UsersSection() {
               <Icon name="Download" size={17} aria-hidden="true" />
               Listeyi indir
             </Button>
+            <Button variant="secondary" onClick={() => importDialog.open(NEW_IMPORT)}>
+              <Icon name="Upload" size={17} aria-hidden="true" />
+              Toplu aktar
+            </Button>
             <Button onClick={() => invitePanel.open(NEW_INVITATION)}>
               <Icon name="UserRoundPlus" size={17} aria-hidden="true" />
               Personel davet et
@@ -252,6 +260,10 @@ export function UsersSection() {
         />
       </section>
       <PendingInvitations />
+      <StaffImportDialog
+        open={importDialog.selectedId === NEW_IMPORT}
+        onClose={importDialog.close}
+      />
       <SidePanel
         open={invitePanel.selectedId === NEW_INVITATION}
         onOpenChange={(open) => (open ? undefined : invitePanel.close())}

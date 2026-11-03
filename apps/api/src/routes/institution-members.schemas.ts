@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { staffRoleSchema } from '@kampus/school-core/lib/staff-accounts.ts'
+import { staffImportIssueSchema } from '@kampus/school-core/lib/staff-import.ts'
 
 import { roleSchema } from '../auth.ts'
 import { MEMBERSHIP_LINK_KINDS } from '../db/schema/membership-links.ts'
@@ -92,3 +93,25 @@ export const staffInvitationSchema = z
 
 export const staffInvitationResponseSchema = dataResponse(staffInvitationSchema)
 export const staffInvitationListResponseSchema = pageResponse(staffInvitationSchema)
+
+/**
+ * Toplu personel aktarımının sonucu (IST-007). Önizlemede (`dryRun`) satır hataları `issues`'tadır
+ * ve hiçbir şey yazılmaz; aktarımda hata varsa yanıt 422 `staff_import_invalid` olur, burası
+ * yalnız başarıyı taşır (`issues` boş). Davet başına ayrıntı dönmez: yeni hesap ile başka kurumda
+ * hesabı olan e-posta ayırt edilemez (DOM-YTK-070, karar 73).
+ */
+export const staffImportResultSchema = z
+  .object({
+    dryRun: z.boolean().describe('`true`: yalnız doğrulandı, hiçbir kayıt yazılmadı'),
+    rowCount: z.number().int().describe('Dosyadaki veri satırı sayısı'),
+    invitedCount: z
+      .number()
+      .int()
+      .describe('Davet edilen (önizlemede edilecek) personel; hata varsa 0'),
+    issues: z
+      .array(staffImportIssueSchema.meta({ id: 'StaffImportIssue' }))
+      .describe('Satır hataları: dosyadaki satır (başlık 1. satır), alan, kod ve Türkçe ileti'),
+  })
+  .meta({ id: 'StaffImportResult' })
+
+export const staffImportResponseSchema = dataResponse(staffImportResultSchema)

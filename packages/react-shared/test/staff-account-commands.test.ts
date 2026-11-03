@@ -11,11 +11,14 @@ import { isReauthenticationRequired } from '../src/reauthentication.ts'
 import {
   cancelStaffInvitationRequest,
   changeStaffRoleRequest,
+  importStaffRequest,
   inviteStaffRequest,
+  isStaffImportFileError,
   setStaffActiveRequest,
   STAFF_ACCOUNT_COMMAND_MESSAGES,
   STAFF_ACCOUNTS_INVALIDATES,
   STAFF_INVITATIONS_KEY,
+  staffImportIssuesOf,
 } from '../src/staff-accounts.ts'
 
 // IST-007 (DOM-YTK-070): personel daveti, rol ve pasifleştirme istekleri; Türkçe hata metinleri.
@@ -128,6 +131,7 @@ describe('personel hesabı istekleri (DOM-YTK-070)', () => {
       ['self_reactivate', 'Kendi hesabınızı etkinleştiremezsiniz'],
       ['member_exists', 'zaten kayıtlı'],
       ['teacher_already_linked', 'başka bir hesaba'],
+      ['teacher_invitation_pending', 'bekleyen bir davete'],
     ] as const
     for (const [code, expected] of cases) {
       const feedback = commandFeedback(
@@ -157,5 +161,43 @@ describe('personel hesabı istekleri (DOM-YTK-070)', () => {
     assert.deepEqual(prefix, [INSTITUTION_MEMBERS_KEY_ROOT])
     assert.equal(memberListKey('u-1', { page: 1, pageSize: 25 })[0], prefix[0])
     assert.equal(STAFF_INVITATIONS_KEY[0], prefix[0])
+  })
+
+  test('IST-007: toplu aktarım Idempotency-Key ve CSV gövdesiyle gider; önizleme dryRun taşır', async () => {
+    const result = { data: { dryRun: true, rowCount: 1, invitedCount: 1, issues: [] } }
+    const { client, sent } = fakeClient(() => json(200, result))
+    const body = { csv: 'ad;e-posta;rol\nAli Can;ali@kampus.example;onburo', dryRun: true }
+    const data = await runRequest(() =>
+      importStaffRequest(client, body, commandHeaders('key-import-1', undefined)),
+    )
+    assert.deepEqual(data, result)
+    assert.equal(sent[0]?.path, '/api/v1/institution-members/imports')
+    assert.equal(sent[0]?.headers.get('idempotency-key'), 'key-import-1')
+    assert.deepEqual(sent[0]?.body, body)
+  })
+
+  test('IST-007: 422 staff_import_invalid satır hatalarına çevrilir; başka hata null', () => {
+    const error = new ApiError({
+      status: 422,
+      code: 'staff_import_invalid',
+      message: 'Dosyada düzeltilmesi gereken satırlar var.',
+      issues: [
+        { path: ['rows', 3, 'email'], code: 'member_exists', message: '3. satır: Zaten kayıtlı.' },
+        { path: ['rows', 4], code: 'teacher_ambiguous', message: '4. satır: Birden çok kayıt.' },
+        { path: ['csv'], code: 'other', message: 'Yok sayılır.' },
+      ],
+    })
+    assert.deepEqual(staffImportIssuesOf(error), [
+      { line: 3, field: 'email', code: 'member_exists', message: 'Zaten kayıtlı.' },
+      { line: 4, field: null, code: 'teacher_ambiguous', message: 'Birden çok kayıt.' },
+    ])
+    const fileError = new ApiError({ status: 422, code: 'csv_too_many_rows', message: 'x' })
+    assert.equal(staffImportIssuesOf(fileError), null)
+    assert.equal(isStaffImportFileError(fileError), true)
+    assert.equal(isStaffImportFileError(error), true)
+    assert.equal(
+      isStaffImportFileError(new ApiError({ status: 403, code: 'forbidden', message: 'x' })),
+      false,
+    )
   })
 })

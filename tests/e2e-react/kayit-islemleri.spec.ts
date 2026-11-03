@@ -822,6 +822,161 @@ test.describe('Kayıt İşlemleri', () => {
   })
 })
 
+// ON-038: kural core ve API testlerindedir; burada form açıkken başka biri aynı sınıfı ya da aynı
+// kimliği kullanınca sunucunun reddinin ekranda nereye döndüğü kanıtlanır.
+test.describe('Kayıt İşlemleri: sunucu retleri', () => {
+  test('DOM-KAY-010, class_capacity_full: dolu sınıf seçilemez; form açıkken dolan sınıfta sınıf adımına dönülür, ileti alanda', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      tariffYears: ['current'],
+      records: [
+        prospect('e2e-kyt-kont-a', 'Kontenjan Adayı'),
+        prospect('e2e-kyt-kont-b', 'Önce Gelen Aday'),
+        classRecord('e2e-kont', 'K'),
+        classRecord('e2e-dolu', 'D'),
+        studentRecord('e2e-dolu-ogr', 'e2e-dolu'),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    const admin = await api(school.user('yonetici'))
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-kont-a`)
+    const classes = page.getByLabel('Sınıf', { exact: true })
+    await expect(classes.getByRole('option', { name: '7-D (1/1)' })).toBeDisabled()
+    await expect(classes.getByRole('option', { name: '7-K (0/1)' })).toBeEnabled()
+    await classes.selectOption('e2e-kont')
+    await fillToReview(page, '10000000146', '05559990091')
+
+    // Form açıkken başka bir kullanıcı son yeri doldurdu.
+    await enrollThroughApi(admin, 'e2e-kyt-kont-b', { classId: 'e2e-kont' })
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+
+    await expect(page.getByRole('heading', { name: 'Aday ve sınıf seçimi' })).toBeVisible()
+    await expect(classes).toHaveAttribute('aria-invalid', 'true')
+    await expect(classes).toBeFocused()
+    await expect(page.getByText('Seçilen sınıfın kontenjanı dolu.')).toBeVisible()
+    await expect(toast(page, 'Seçilen sınıfın kontenjanı dolu.')).toHaveCount(0)
+    // Doluluk tazelenir: sınıf artık seçilemez.
+    await expect(classes.getByRole('option', { name: '7-K (1/1)' })).toBeDisabled()
+    expect((await prospectOf(admin, 'e2e-kyt-kont-a')).record.studentId).toBeNull()
+  })
+
+  test('DOM-KAY-012, student_identity_duplicate: aktif kayıtta kullanılan kimlik numarası kimlik adımına döner, ileti alanda', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      tariffYears: ['current'],
+      records: [
+        prospect('e2e-kyt-kimlik-a', 'İkinci Başvuru'),
+        prospect('e2e-kyt-kimlik-b', 'Kayıtlı Öğrenci'),
+      ],
+    })
+    const admin = await api(school.user('yonetici'))
+    await enrollThroughApi(admin, 'e2e-kyt-kimlik-b', {
+      identity: { kind: 'tc', number: '10000000214', birthDate: '2013-03-01' },
+    })
+    await loginAs(school.user('onburo'))
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-kimlik-a`)
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+    await fillToReview(page, '10000000214', '05559990092')
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+
+    await expect(page.getByRole('heading', { name: 'Kimlik ve veli bilgileri' })).toBeVisible()
+    const identity = page.getByLabel('Kimlik numarası')
+    await expect(identity).toHaveAttribute('aria-invalid', 'true')
+    await expect(identity).toBeFocused()
+    await expect(page.getByText('Bu kimlik numarasıyla aktif bir kayıt var.')).toBeVisible()
+    expect((await prospectOf(admin, 'e2e-kyt-kimlik-a')).record.studentId).toBeNull()
+  })
+})
+
+/** Kadıköy (b1) kampüsünde tek kişilik 7. sınıf şubesi. */
+function classRecord(id: string, section: string) {
+  return {
+    collection: 'classes' as const,
+    data: {
+      id,
+      name: `7-${section}`,
+      grade: 7,
+      section,
+      level: '7. Sınıf',
+      branchId: 'b1',
+      teacherId: 't1',
+      capacity: 1,
+      room: `K-${section}`,
+      isActive: true,
+      deletedAt: null,
+    },
+  }
+}
+
+function studentRecord(id: string, classId: string) {
+  return {
+    collection: 'students' as const,
+    data: {
+      id,
+      name: 'Dolu Sınıf Öğrencisi',
+      classId,
+      parentId: 'p1',
+      email: `${id}@kampus.example`,
+      phone: '05550109999',
+      joinedAt: new Date(Date.now() - 30 * DAY).toISOString(),
+      isActive: true,
+      progress: 0,
+      number: '2026999',
+    },
+  }
+}
+
+/** Sınıf seçilmiş ilk adımdan kontrol adımına: T.C. kimlik, yeni veli, varsayılan taksit. */
+async function fillToReview(page: Page, identity: string, guardianPhone: string) {
+  const proceed = page.getByRole('button', { name: 'Devam et' })
+  await proceed.click()
+  await page.getByLabel('Kimlik numarası').fill(identity)
+  await page.getByLabel('Doğum tarihi').fill('2013-03-01')
+  await page.getByLabel('Veli adı soyadı').fill('Ret Senaryosu Velisi')
+  await page.getByLabel('Veli telefonu').fill(guardianPhone)
+  await proceed.click()
+  await proceed.click()
+  await expect(
+    page.getByRole('heading', { name: 'Kaydı tamamlamadan önce kontrol edin' }),
+  ).toBeVisible()
+}
+
+/** Başka bir kullanıcının arayüzden geçmeden yaptığı kesin kayıt (yayındaki tarifeyle). */
+async function enrollThroughApi(
+  client: ApiClient,
+  prospectId: string,
+  overrides: Partial<ReturnType<typeof enrollBody>>,
+) {
+  const tariffs = await client.get('/api/v1/fee-tariffs?pageSize=100')
+  expect(tariffs.status).toBe(200)
+  const published = (tariffs.body as { data: { id: string; status: string }[] }).data.find(
+    (row) => row.status === 'published',
+  )
+  expect(published).toBeDefined()
+  const current = await prospectOf(client, prospectId)
+  const result = await client.post(
+    `/api/v1/prospects/${prospectId}/enroll`,
+    {
+      ...enrollBody(),
+      tariffId: published!.id,
+      identity: { kind: 'tc', number: '10000000382', birthDate: '2013-03-01' },
+      ...overrides,
+    },
+    { 'idempotency-key': randomUUID(), 'if-match': `"${current.version}"` },
+  )
+  expect(result.status, JSON.stringify(result.body)).toBe(201)
+}
+
 /** Aynı kurumda iki öğrenci aynı kimlikle kaydedilemez; veli telefonuna göre geçerli T.C. no. */
 const TC_NUMBERS: Readonly<Record<string, string>> = {
   '05559990082': '10000000214',

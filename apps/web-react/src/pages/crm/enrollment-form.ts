@@ -8,8 +8,8 @@ import {
 } from '@kampus/school-core/lib/enrollment.ts'
 
 // Kesin kayıt formunun (`EnrollmentPage`) saf yardımcıları: veli seçiminin doğum tarihine uyumu,
-// aday değişiminde sıfırlanan alanlar ve sunucu hatasının forma bağlanması (DOM-KAY-012, -013,
-// class_campus_mismatch).
+// aday değişiminde sıfırlanan alanlar ve sunucu hatasının forma bağlanması (DOM-KAY-010, -012,
+// -013, class_campus_mismatch).
 
 /**
  * Doğum tarihi ya da aday değişince veli seçimi: geçerli seçim kalır, değilse kurala uyan ilk
@@ -61,6 +61,7 @@ type FormField = keyof EnrollmentFormValues
 
 /** Sunucu yolu → form alanı ve alanın adımı (`ENROLLMENT_STEP_FIELDS` sırası). */
 const SERVER_FIELDS: Readonly<Record<string, { field: FormField; step: number }>> = {
+  classId: { field: 'classId', step: 0 },
   guardian: { field: 'guardianMode', step: 1 },
   'identity.birthDate': { field: 'birthDate', step: 1 },
   'identity.number': { field: 'identityNumber', step: 1 },
@@ -75,14 +76,27 @@ const SERVER_MESSAGES: Readonly<Partial<Record<string, string>>> = {
   guardian_not_applicable: GUARDIAN_NOT_APPLICABLE_FORM_MESSAGE,
 }
 
+/**
+ * Yolsuz iş kuralı hatası, formun alanına koduyla bağlanır (`useApiCommand` `fieldFor`): form
+ * açıkken sınıf dolarsa (`class_capacity_full`) ileti toast yerine sınıf alanında görünür.
+ */
+const CODE_FIELDS: Readonly<Partial<Record<string, string>>> = {
+  class_capacity_full: 'classId',
+}
+
+export function enrollmentFieldForCode(code: string): string | undefined {
+  return CODE_FIELDS[code]
+}
+
 export type EnrollmentServerError =
   | { field: FormField; step: number; type: string; message: string }
   | { field: 'root.server'; step: null; type: string; message: string }
 
 /**
- * Sunucunun yollu hatası (`setError(name, …)`) formda nereye yazılır: veli (`guardian_required`,
- * `guardian_not_applicable`, `parent_not_guardian`), doğum tarihi ve kimlik hataları ilgili alana
- * ve o alanın adımına; diğerleri formun genel hatasına (`root.server`).
+ * Sunucunun yollu hatası (`setError(name, …)`) formda nereye yazılır: sınıf (`class_campus_mismatch`,
+ * `class_capacity_full`), veli (`guardian_required`, `guardian_not_applicable`,
+ * `parent_not_guardian`), doğum tarihi ve kimlik hataları ilgili alana ve o alanın adımına;
+ * diğerleri formun genel hatasına (`root.server`).
  */
 export function enrollmentServerError(
   name: string,

@@ -7466,7 +7466,7 @@
           },
           "contentRemoved": {
             "type": "boolean",
-            "description": "Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri ya da okuma parçası) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz \"Bu içerik kaldırıldı\" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)"
+            "description": "Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz \"Bu içerik kaldırıldı\" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)"
           },
           "rowVersion": {
             "type": "integer",
@@ -7761,7 +7761,7 @@
           },
           "contentRemoved": {
             "type": "boolean",
-            "description": "Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri ya da okuma parçası) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz \"Bu içerik kaldırıldı\" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)"
+            "description": "Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz \"Bu içerik kaldırıldı\" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)"
           },
           "rowVersion": {
             "type": "integer",
@@ -8187,6 +8187,91 @@
             ],
             "description": "Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner"
           },
+          "listeningRecording": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "versionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Dinleme kaydının ses sürümü"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "fileId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Kaydın dosyası (`listening_audio`); bağlantısı `GET /files/:fileId/url` ile açılır ve süren denemede hak sayılır"
+                  },
+                  "cefrLevel": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "transcript": {
+                    "description": "Döküm; `transcriptShown` `false` iken `null` (DOM-BEC-005)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "captionsVtt": {
+                    "description": "Zaman kodlu altyazı; dökümle aynı kural",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "transcriptShown": {
+                    "type": "boolean",
+                    "description": "Döküm bu yanıtta açık mı: personelde hep; kursiyer ve velide görev kapanınca (son teslim ve geç kabul geçti) ya da alıştırmada `showTranscript` ayarıyla (DOM-BEC-005)"
+                  },
+                  "attributions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ResourceAttributionInput"
+                    },
+                    "description": "Kaynak gösterimi (DOM-KYN-024)"
+                  }
+                },
+                "required": [
+                  "versionId",
+                  "title",
+                  "fileId",
+                  "cefrLevel",
+                  "transcript",
+                  "captionsVtt",
+                  "transcriptShown",
+                  "attributions"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dinleme etkinliğinin kaydı (IST-045): quiz/alıştırma seti dinleme kaydına bağlı değilse, kayıt kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Kalan hak `listening`tedir"
+          },
           "contentUnavailable": {
             "anyOf": [
               {
@@ -8243,7 +8328,7 @@
                         "remaining"
                       ]
                     },
-                    "description": "İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla"
+                    "description": "Dinleme kaydının dosyası ve bu denemede sayılmış dinlemeler (kayıt kaldırıldıysa da), kimlik sırasıyla"
                   }
                 },
                 "required": [
@@ -8255,7 +8340,7 @@
                 "type": "null"
               }
             ],
-            "description": "Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`"
+            "description": "Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`. Hak bitince kaydın bağlantısı 422 `listening_plays_exhausted`, süren deneme yokken açık görevde 422 `listening_attempt_required`"
           }
         },
         "required": [
@@ -8277,6 +8362,7 @@
           "rowVersion",
           "questions",
           "passage",
+          "listeningRecording",
           "contentUnavailable",
           "listening"
         ]
@@ -21108,7 +21194,7 @@
           },
           "contentRemoved": {
             "type": "boolean",
-            "description": "Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri ya da okuma parçası) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz \"Bu içerik kaldırıldı\" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)"
+            "description": "Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz \"Bu içerik kaldırıldı\" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)"
           },
           "rowVersion": {
             "type": "integer",
@@ -21412,7 +21498,7 @@
           },
           "contentRemoved": {
             "type": "boolean",
-            "description": "Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri ya da okuma parçası) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz \"Bu içerik kaldırıldı\" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)"
+            "description": "Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz \"Bu içerik kaldırıldı\" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)"
           },
           "rowVersion": {
             "type": "integer",
@@ -21849,6 +21935,92 @@
             ],
             "description": "Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner"
           },
+          "listeningRecording": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "versionId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Dinleme kaydının ses sürümü"
+                  },
+                  "title": {
+                    "type": "string"
+                  },
+                  "fileId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+                    "description": "Kaydın dosyası (`listening_audio`); bağlantısı `GET /files/:fileId/url` ile açılır ve süren denemede hak sayılır"
+                  },
+                  "cefrLevel": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "transcript": {
+                    "description": "Döküm; `transcriptShown` `false` iken `null` (DOM-BEC-005)",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "captionsVtt": {
+                    "description": "Zaman kodlu altyazı; dökümle aynı kural",
+                    "type": [
+                      "string",
+                      "null"
+                    ]
+                  },
+                  "transcriptShown": {
+                    "type": "boolean",
+                    "description": "Döküm bu yanıtta açık mı: personelde hep; kursiyer ve velide görev kapanınca (son teslim ve geç kabul geçti) ya da alıştırmada `showTranscript` ayarıyla (DOM-BEC-005)"
+                  },
+                  "attributions": {
+                    "type": "array",
+                    "items": {
+                      "$ref": "#/components/schemas/ResourceAttribution"
+                    },
+                    "description": "Kaynak gösterimi (DOM-KYN-024)"
+                  }
+                },
+                "required": [
+                  "versionId",
+                  "title",
+                  "fileId",
+                  "cefrLevel",
+                  "transcript",
+                  "captionsVtt",
+                  "transcriptShown",
+                  "attributions"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Dinleme etkinliğinin kaydı (IST-045): quiz/alıştırma seti dinleme kaydına bağlı değilse, kayıt kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Kalan hak `listening`tedir"
+          },
           "contentUnavailable": {
             "anyOf": [
               {
@@ -21906,7 +22078,7 @@
                       ],
                       "additionalProperties": false
                     },
-                    "description": "İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla"
+                    "description": "Dinleme kaydının dosyası ve bu denemede sayılmış dinlemeler (kayıt kaldırıldıysa da), kimlik sırasıyla"
                   }
                 },
                 "required": [
@@ -21919,7 +22091,7 @@
                 "type": "null"
               }
             ],
-            "description": "Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`"
+            "description": "Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`. Hak bitince kaydın bağlantısı 422 `listening_plays_exhausted`, süren deneme yokken açık görevde 422 `listening_attempt_required`"
           }
         },
         "required": [
@@ -21941,6 +22113,7 @@
           "rowVersion",
           "questions",
           "passage",
+          "listeningRecording",
           "contentUnavailable",
           "listening"
         ],
@@ -56873,7 +57046,7 @@
         "tags": [
           "resources"
         ],
-        "description": "Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`; bağlanan okuma parçası (`passageVersionId`, IST-042) için 422 `passage_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_rejected` (yazarın taramada reddedilmiş dosyası), `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
+        "description": "Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`; bağlanan okuma parçası (`passageVersionId`, IST-042) için 422 `passage_missing`, bağlanan dinleme kaydı (`listeningVersionId`, IST-045) için 422 `listening_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_rejected` (yazarın taramada reddedilmiş dosyası), `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.",
         "requestBody": {
           "required": true,
           "content": {
@@ -57609,6 +57782,19 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "listeningVersionId": {
+                            "default": null,
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -57667,6 +57853,19 @@
                             "type": "boolean"
                           },
                           "passageVersionId": {
+                            "default": null,
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "listeningVersionId": {
                             "default": null,
                             "anyOf": [
                               {
@@ -59539,6 +59738,19 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "listeningVersionId": {
+                            "default": null,
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -59597,6 +59809,19 @@
                             "type": "boolean"
                           },
                           "passageVersionId": {
+                            "default": null,
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "listeningVersionId": {
                             "default": null,
                             "anyOf": [
                               {
@@ -64357,7 +64582,7 @@
         "tags": [
           "task-assignments"
         ],
-        "description": "İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Dosyalı (el yazısı) ve sesli (konuşma kaydı) teslim türü atanabilir (OG-048; DOM-BEC-046, 050). Dinleme görevinde hak core varsayılanıyla 2'dir; 1, 2 veya sınırsız (`null`) seçilebilir ve öğrencinin denemesinde sayılır (IST-045, DOM-BEC-005). Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "description": "İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Dosyalı (el yazısı) ve sesli (konuşma kaydı) teslim türü atanabilir (OG-048; DOM-BEC-046, 050). Dinleme görevinde hak core varsayılanıyla 2'dir; 1, 2 veya sınırsız (`null`) seçilebilir ve öğrencinin denemesinde sayılır (IST-045, DOM-BEC-005). Hak yalnız dinleme kaydına bağlı (`listeningVersionId`, `listening_audio` dosyalı ses sürümü) quiz/alıştırma setinde sayılır; kaydı olmayan dinleme görevinde gönderilmeyen hak sınırsız saklanır, 1 veya 2 için 422 `listening_plays_unavailable`. Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.",
         "requestBody": {
           "required": true,
           "content": {
@@ -64461,8 +64686,7 @@
                         ]
                       },
                       "listeningPlays": {
-                        "default": null,
-                        "description": "Dinleme hakkı; gönderilmezse sınırsız. Dinleme sayımı açılana kadar yalnız sınırsız kabul edilir.",
+                        "description": "Dinleme hakkı (DOM-BEC-005, IST-045): 1, 2 veya `null` (sınırsız). Gönderilmezse kayda bağlı etkinlikte (quiz/alıştırma seti `listeningVersionId` → `listening_audio` dosyalı ses sürümü) 2, kaydı olmayanda sınırsız; kaydı olmayanda 1 veya 2 422 `listening_plays_unavailable`.",
                         "anyOf": [
                           {
                             "anyOf": [
@@ -65217,7 +65441,7 @@
         "tags": [
           "task-attempts"
         ],
-        "description": "Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Kaldırılan içerikte 404 değil: kayıt ve cevaplar döner, `contentRemoved: true`, soru ve parça metni ve anahtar gelmez (DOM-KYN-051). Roller: `yonetici` kurumun bütün denemeleri; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün denemeleri, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.",
+        "description": "Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Dinleme etkinliğinde `listeningRecording` kaydın dosyasını ve (personelde hep, kursiyer ve velide görev kapanınca ya da alıştırmada açık ayarla) dökümünü, `listening` kalan hakkı taşır (IST-045, DOM-BEC-005). Kaldırılan içerikte 404 değil: kayıt ve cevaplar döner, `contentRemoved: true`, soru, parça ve kayıt ve anahtar gelmez (DOM-KYN-051). Roller: `yonetici` kurumun bütün denemeleri; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün denemeleri, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.",
         "parameters": [
           {
             "schema": {
@@ -83450,7 +83674,7 @@
         "tags": [
           "files"
         ],
-        "description": "Dosyanın meta verisi ve durumu (ADR 0003 karar 4). Taramada reddedilen dosyada yükleyen 422 `file_rejected` alır (başkası 404). Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Kaynak sürümüne bağlı dosyayı (materyal, dinleme kaydı, soru görseli; DOM-KYN-006) dosyaya bağ açan sürümlerden birini okuyabilen görür: öğrenci ve veli yalnız kendisine paylaşılmış yayındaki sürümün dosyasını. O sürümlerden birine (soru görselinde soruyu içeren quize) atanmış görevi gören de açar (DOM-YTK-028). Kaldırılan kaynağa bağlı dosya kopyalar ve görevler dahil hiçbir yoldan açılmaz (DOM-KYN-051). Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.",
+        "description": "Dosyanın meta verisi ve durumu (ADR 0003 karar 4). Taramada reddedilen dosyada yükleyen 422 `file_rejected` alır (başkası 404). Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Kaynak sürümüne bağlı dosyayı (materyal, dinleme kaydı, soru görseli; DOM-KYN-006) dosyaya bağ açan sürümlerden birini okuyabilen görür: öğrenci ve veli yalnız kendisine paylaşılmış yayındaki sürümün dosyasını. O sürümlerden birine (soru görselinde soruyu içeren quize, dinleme kaydında ses sürümünü `listeningVersionId` ile bağlayan quiz/alıştırma setine) atanmış görevi gören de açar (DOM-YTK-028, IST-045): ses kursiyere özel kalsa da etkinliğin atamasıyla açılır. Kaldırılan kaynağa bağlı dosya kopyalar ve görevler dahil hiçbir yoldan açılmaz (DOM-KYN-051). Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.",
         "parameters": [
           {
             "schema": {
@@ -83564,8 +83788,19 @@
         "tags": [
           "files"
         ],
-        "description": "Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk, dinleme kaydında kayıt süresi + 60 sn (en az 5 dk; süre ölçülmemişse 16 dk). Tür ve `Content-Disposition` (belge `attachment`, görsel/ses/görüntü `inline`) imzaya dahildir. Dosya işlenirken 409 `file_processing`; taramada reddedilen dosyada yükleyen 422 `file_rejected` alır (başkası 404). Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına `file.access` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Dinleme hakkı altyapısı (IST-045, DOM-BEC-005; bugün devrede değil, atama dolu hakkı 422 `listening_plays_unavailable` ile reddeder): öğrenci, hakkı sınırlı atamanın içerik sürümüne bağlı `listening_audio` kaydını süren denemesinde istediğinde hak deneme × kayıt başına sayılır ve yanıtın `listening` alanında döner; hak bitince 422 `listening_plays_exhausted`, süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`. Son sayımın bağlantısı geçerliyken yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner; aralık istekleri sayılmaz. Öğretmen, yönetici ve veli bağlantısı, sınırsız atamanın denemesi ve teslim kapandıktan sonraki bağlantı sayılmaz. Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Kaynak sürümüne bağlı dosyayı (materyal, dinleme kaydı, soru görseli; DOM-KYN-006) dosyaya bağ açan sürümlerden birini okuyabilen görür: öğrenci ve veli yalnız kendisine paylaşılmış yayındaki sürümün dosyasını. O sürümlerden birine (soru görselinde soruyu içeren quize) atanmış görevi gören de açar (DOM-YTK-028). Kaldırılan kaynağa bağlı dosya kopyalar ve görevler dahil hiçbir yoldan açılmaz (DOM-KYN-051). Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.",
+        "description": "Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk, dinleme kaydında kayıt süresi + 60 sn (en az 5 dk; süre ölçülmemişse 16 dk). Tür ve `Content-Disposition` (belge `attachment`, görsel/ses/görüntü `inline`) imzaya dahildir. Dosya işlenirken 409 `file_processing`; taramada reddedilen dosyada yükleyen 422 `file_rejected` alır (başkası 404). Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına `file.access` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Dinleme hakkı (IST-045, DOM-BEC-005): öğrenci, hakkı sınırlı atamanın quiz/alıştırma setinin `listeningVersionId` ile bağladığı ses sürümünün `listening_audio` kaydını süren denemesinde istediğinde hak deneme × kayıt başına sayılır ve yanıtın `listening` alanında döner; hak bitince 422 `listening_plays_exhausted`. `attemptId` verilirse hak o denemeden düşer: öğrencinin kendi denemesi değilse 404, ataması bu kaydı bağlamıyorsa 422 `listening_attempt_mismatch`, deneme teslim edilmiş ya da süresi dolmuşsa 422 `listening_attempt_closed`; reddedilen istekte sayım yazılmaz. Verilmezse (geri uyumluluk) hak öğrencinin bu kaydı bağlayan sınırlı atamalardaki süren denemelerinin en erken başlayanından düşer; süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`. Son sayımın bağlantısı geçerliyken yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner; aralık istekleri sayılmaz. Öğretmen, yönetici ve veli bağlantısı, sınırsız atamanın denemesi ve teslim kapandıktan sonraki bağlantı sayılmaz. Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Kaynak sürümüne bağlı dosyayı (materyal, dinleme kaydı, soru görseli; DOM-KYN-006) dosyaya bağ açan sürümlerden birini okuyabilen görür: öğrenci ve veli yalnız kendisine paylaşılmış yayındaki sürümün dosyasını. O sürümlerden birine (soru görselinde soruyu içeren quize, dinleme kaydında ses sürümünü `listeningVersionId` ile bağlayan quiz/alıştırma setine) atanmış görevi gören de açar (DOM-YTK-028, IST-045): ses kursiyere özel kalsa da etkinliğin atamasıyla açılır. Kaldırılan kaynağa bağlı dosya kopyalar ve görevler dahil hiçbir yoldan açılmaz (DOM-KYN-051). Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.",
         "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "attemptId",
+            "required": false,
+            "description": "Dinleme hakkının düşeceği deneme (öğrenci; Sabah kararı 54). Kendi denemesi değilse 404, ataması bu kaydı bağlamıyorsa 422 `listening_attempt_mismatch`, deneme sürmüyorsa 422 `listening_attempt_closed`. Verilmezse süren denemelerden seçilir; personel ve velide yok sayılır."
+          },
           {
             "schema": {
               "type": "string",

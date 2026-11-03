@@ -120,7 +120,7 @@ const attemptShape = {
   contentRemoved: z
     .boolean()
     .describe(
-      'Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri ya da okuma parçası) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)',
+      'Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)',
     ),
   rowVersion: z
     .number()
@@ -164,6 +164,30 @@ const taskAttemptDetailSchema = z
       .describe(
         'Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner',
       ),
+    listeningRecording: z
+      .object({
+        versionId: id.describe('Dinleme kaydının ses sürümü'),
+        title: z.string(),
+        fileId: id.describe(
+          'Kaydın dosyası (`listening_audio`); bağlantısı `GET /files/:fileId/url` ile açılır ve süren denemede hak sayılır',
+        ),
+        cefrLevel: z.enum(enumKeys(CEFR_LEVELS)).nullable(),
+        transcript: z
+          .string()
+          .nullable()
+          .describe('Döküm; `transcriptShown` `false` iken `null` (DOM-BEC-005)'),
+        captionsVtt: z.string().nullable().describe('Zaman kodlu altyazı; dökümle aynı kural'),
+        transcriptShown: z
+          .boolean()
+          .describe(
+            'Döküm bu yanıtta açık mı: personelde hep; kursiyer ve velide görev kapanınca (son teslim ve geç kabul geçti) ya da alıştırmada `showTranscript` ayarıyla (DOM-BEC-005)',
+          ),
+        attributions: z.array(attributionSchema).describe('Kaynak gösterimi (DOM-KYN-024)'),
+      })
+      .nullable()
+      .describe(
+        'Dinleme etkinliğinin kaydı (IST-045): quiz/alıştırma seti dinleme kaydına bağlı değilse, kayıt kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Kalan hak `listening`tedir',
+      ),
     contentUnavailable: z
       .enum(['license_expired', 'unavailable'])
       .nullable()
@@ -181,11 +205,13 @@ const taskAttemptDetailSchema = z
               remaining: z.number().int().min(0).describe('Kalan dinleme hakkı'),
             }),
           )
-          .describe('İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla'),
+          .describe(
+            'Dinleme kaydının dosyası ve bu denemede sayılmış dinlemeler (kayıt kaldırıldıysa da), kimlik sırasıyla',
+          ),
       })
       .nullable()
       .describe(
-        'Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`',
+        'Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`. Hak bitince kaydın bağlantısı 422 `listening_plays_exhausted`, süren deneme yokken açık görevde 422 `listening_attempt_required`',
       ),
   })
   .meta({ id: 'TaskAttemptDetail' })

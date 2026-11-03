@@ -300,6 +300,12 @@ const itemList = <T extends 'quiz' | 'exercise_set'>(type: T) =>
        * kimliğiyle bağlanır; parçanın yeni sürümü etkinliği değiştirmez (karar 3).
        */
       passageVersionId: identifier.nullable().default(null),
+      /**
+       * Dinleme etkinliğinin kaydı (IST-045; DOM-BEC-005): yayında, birincil becerisi dinleme olan
+       * ve dökümü bulunan bir ses (`audio`) sürümü. Sürüm kimliğiyle bağlanır; kaydın yeni sürümü
+       * etkinliği değiştirmez (karar 3). Dosya ses sürümündedir; quiz dosya bağlamaz.
+       */
+      listeningVersionId: identifier.nullable().default(null),
     })
     .refine((c) => new Set(c.items.map((i) => i.questionVersionId)).size === c.items.length, {
       message: 'Aynı soru iki kez eklenemez.',
@@ -660,7 +666,15 @@ export type PublicationContext = {
   itemVersions?: ReadonlyMap<string, ItemVersionRef> | undefined
   /** Quiz/alıştırma setinin bağlı okuma parçası (`passageVersionId`); bulunmazsa yayım olmaz. */
   passageVersion?: ItemVersionRef | undefined
+  /** Quiz/alıştırma setinin bağlı dinleme kaydı (`listeningVersionId`); bulunmazsa yayım olmaz. */
+  listeningVersion?: ListeningVersionRef | undefined
 }
+
+/**
+ * Dinleme kaydının yayım denetimi için gereken alanları (DOM-BEC-005): soru gibi tür, durum ve
+ * etiket, ayrıca sesin dökümü var mı. Döküm metni denetime girmez.
+ */
+export type ListeningVersionRef = ItemVersionRef & { hasTranscript: boolean }
 
 const ENGLISH_SUBJECT_ID = 'english'
 /** Birincil becerisi dil kullanımı olabilen türler (ürün kararı; DOM-KYN-012 istisnası). */
@@ -810,6 +824,10 @@ export function publicationIssues(context: PublicationContext): PublicationIssue
         const issue = passageIssue(context.passageVersion, content.passageVersionId)
         if (issue) add(issue.code, issue.message, 'content', 'passageVersionId')
       }
+      if (content.listeningVersionId !== null) {
+        const issue = listeningIssue(context.listeningVersion, content.listeningVersionId)
+        if (issue) add(issue.code, issue.message, 'content', 'listeningVersionId')
+      }
       break
     case 'text':
     case 'worksheet':
@@ -855,6 +873,40 @@ function passageIssue(
   }
   if (ref.status !== 'published') {
     return { code: 'passage_not_published', message: 'Okuma parçası yayında olmalıdır.' }
+  }
+  return null
+}
+
+/**
+ * Dinleme etkinliğinin kaydı yayında, birincil becerisi dinleme olan bir ses sürümü olmalı ve
+ * dökümü bulunmalı (IST-045; DOM-BEC-005: transkript olmadan görev yayımlanmaz). Sesin kendi
+ * yayımı döküm ya da altyazıyla yetinir (DOM-KYN-003); dinleme görevi dökümü ister: öğretmen
+ * kontrolü ve kapanıştan sonra kursiyere gösterim dökümle yapılır.
+ */
+function listeningIssue(
+  ref: ListeningVersionRef | undefined,
+  listeningVersionId: string,
+): Omit<PublicationIssue, 'path'> | null {
+  if (!ref || ref.id !== listeningVersionId) {
+    return { code: 'listening_missing', message: 'Dinleme kaydı bulunamadı.' }
+  }
+  if (ref.contentType !== 'audio') {
+    return { code: 'listening_not_audio', message: 'Bağlanan içerik ses kaydı olmalıdır.' }
+  }
+  if (ref.tags.primarySkill !== 'listening') {
+    return {
+      code: 'listening_skill_required',
+      message: 'Bağlanan ses kaydının birincil becerisi dinleme olmalıdır.',
+    }
+  }
+  if (ref.status !== 'published') {
+    return { code: 'listening_not_published', message: 'Dinleme kaydı yayında olmalıdır.' }
+  }
+  if (!ref.hasTranscript) {
+    return {
+      code: 'listening_transcript_required',
+      message: 'Dinleme kaydının dökümü olmadan etkinlik yayımlanamaz.',
+    }
   }
   return null
 }
@@ -1016,6 +1068,7 @@ export type TransitionInput = {
   reason?: string | undefined
   itemVersions?: PublicationContext['itemVersions']
   passageVersion?: PublicationContext['passageVersion']
+  listeningVersion?: PublicationContext['listeningVersion']
 }
 
 export type VersionTransition = {
@@ -1088,6 +1141,7 @@ export function planVersionTransition(input: TransitionInput): VersionTransition
       now: input.now,
       itemVersions: input.itemVersions,
       passageVersion: input.passageVersion,
+      listeningVersion: input.listeningVersion,
     })
   }
   if (action === 'publish' && requiresReview(version.license, resource.shareScope)) {
@@ -1194,7 +1248,10 @@ export type ResourceRemovalInput = {
   versions: readonly ResourceVersion[]
   /** Servisin bildiği kopyalar (`derived_from_version_id` dolu kaynaklar); süzme burada yapılır. */
   copies?: readonly Pick<ResourceRecord, 'id' | 'derivedFromVersionId'>[] | undefined
-  /** Bu kaynağın soru sürümlerini içerebilecek quiz ve alıştırma seti sürümleri. */
+  /**
+   * Bu kaynağın soru sürümlerini içerebilecek ya da onu okuma parçası veya dinleme kaydı olarak
+   * bağlayan quiz ve alıştırma seti sürümleri.
+   */
   containers?: readonly Pick<ResourceVersion, 'id' | 'content'>[] | undefined
   reason: string
   now: Date | string
@@ -1208,7 +1265,10 @@ export type ResourceRemovalPlan = {
   fileIds: string[]
   /** Kaldırılan sürümlerden türetilmiş kopyalar; yönetici bunları ayrıca inceler (DOM-KYN-050). */
   affectedCopyIds: string[]
-  /** Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri; geçmiş görevde "kaldırıldı" görünür. */
+  /**
+   * Kaldırılan soruyu içeren ya da kaldırılan parçayı veya dinleme kaydını bağlayan quiz/alıştırma
+   * seti sürümleri; geçmiş görevde "kaldırıldı" görünür.
+   */
   affectedContainerVersionIds: string[]
   /** Başlık, menşe, gerekçe ve tarih kalır; içerik ve dosyalar silinir (DOM-KYN-051). */
   clearContent: true
@@ -1252,7 +1312,8 @@ export function planResourceRemoval(input: ResourceRemovalInput): ResourceRemova
       ({ content }) =>
         (content.type === 'quiz' || content.type === 'exercise_set') &&
         (content.items.some((item) => removedIds.has(item.questionVersionId)) ||
-          (content.passageVersionId !== null && removedIds.has(content.passageVersionId))),
+          (content.passageVersionId !== null && removedIds.has(content.passageVersionId)) ||
+          (content.listeningVersionId !== null && removedIds.has(content.listeningVersionId))),
     )
     .map((container) => container.id)
   return {
@@ -1720,6 +1781,46 @@ export function passageView(
     wordCount: wordCount(content.body),
     cefrLevel: version.tags.cefrLevel,
     glossary: content.glossary,
+    attributions: version.attributions,
+  }
+}
+
+/** Dinleme etkinliğinde kursiyerin dinlediği kayıt (IST-045; DOM-BEC-005, DOM-KYN-003). */
+export type ListeningView = {
+  versionId: string
+  title: string
+  /** Dinleme kaydının dosyası; bağlantısı `GET /files/:fileId/url` ile, hak sayılarak açılır. */
+  fileId: string
+  cefrLevel: CefrLevel | null
+  /** Döküm ve altyazı `showTranscript` verilmedikçe `null` (DOM-BEC-005). */
+  transcript: string | null
+  captionsVtt: string | null
+  /** Döküm bu görünümde açık mı; kapalıyken `transcript` ve `captionsVtt` `null`. */
+  transcriptShown: boolean
+  /** Kaynak gösterimi kursiyer ekranında korunur (DOM-KYN-024). */
+  attributions: Attribution[]
+}
+
+/**
+ * Ses sürümünün dinleme etkinliğindeki görünümü: dosya, seviye ve kaynak gösterimi; döküm ve
+ * altyazı yalnız `showTranscript` ile (kural `skills/assignment.ts` `transcriptShown`; personel
+ * hep görür). Lisans ayrıntısı ve etiketlerin geri kalanı girmez. Ses değilse `null`.
+ */
+export function listeningView(
+  version: Pick<ResourceVersion, 'id' | 'title' | 'content' | 'tags' | 'attributions'>,
+  options: { showTranscript: boolean },
+): ListeningView | null {
+  const { content } = version
+  if (content.type !== 'audio') return null
+  const shown = options.showTranscript
+  return {
+    versionId: version.id,
+    title: version.title,
+    fileId: content.fileId,
+    cefrLevel: version.tags.cefrLevel,
+    transcript: shown ? content.transcript : null,
+    captionsVtt: shown ? content.captionsVtt : null,
+    transcriptShown: shown,
     attributions: version.attributions,
   }
 }

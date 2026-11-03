@@ -21,6 +21,7 @@ import {
   normalizeSearchText,
   searchDocument,
   type ContentActor,
+  type ListeningVersionRef,
   type ResourceContent,
   type ResourceLicense,
   type ResourceRecord,
@@ -889,16 +890,8 @@ export async function loadItemVersionRefs(
   db: Database,
   institutionId: string,
   versionIds: readonly string[],
-): Promise<
-  Map<
-    string,
-    Pick<ResourceVersion, 'id' | 'status' | 'tags'> & { contentType: ResourceRecord['contentType'] }
-  >
-> {
-  const map = new Map<
-    string,
-    Pick<ResourceVersion, 'id' | 'status' | 'tags'> & { contentType: ResourceRecord['contentType'] }
-  >()
+): Promise<Map<string, ListeningVersionRef>> {
+  const map = new Map<string, ListeningVersionRef>()
   const ids = uuidsOnly(versionIds)
   if (ids.length === 0) return map
   const rows = await db
@@ -926,6 +919,8 @@ export async function loadItemVersionRefs(
       status: stored.status,
       tags: stored.tags,
       contentType: row.contentType,
+      // Dinleme kaydı bağının yayım koşulu (DOM-BEC-005); döküm metni denetime taşınmaz.
+      hasTranscript: stored.content?.type === 'audio' && stored.content.transcript !== null,
     })
   }
   return map
@@ -1021,6 +1016,33 @@ export async function listPassageContainerVersions(
         inArray(sql<string>`${resourceVersions.content} ->> 'passageVersionId'`, [
           ...passageVersionIds,
         ]),
+      ),
+    )
+    .orderBy(asc(resourceVersions.id))
+  return rows.flatMap((row) => (row.content === null ? [] : [{ id: row.id, content: row.content }]))
+}
+
+/**
+ * Verilen ses sürümlerini dinleme kaydı olarak bağlayan quiz ve alıştırma seti sürümleri (IST-045;
+ * DOM-BEC-005, DOM-KYN-051). Bağ içerikteki `listeningVersionId`'dir (ayrı tablo yok). Kaldırmada
+ * ve dinleme kaydının dosyası istendiğinde (okuma kuralı ve hak sayımı) çalışır; kurumun sürümleri
+ * `institution_id` indeksiyle daraltılır, `jsonb` alanı ölçümsüz indeks istemez.
+ * TODO(dinleme-bag-indeksi): kurumda sürüm sayısı büyürse ifade indeksi `EXPLAIN` ile eklenir.
+ */
+export async function listListeningContainerVersions(
+  db: Database,
+  institutionId: string,
+  listeningVersionIds: readonly string[],
+): Promise<{ id: string; content: ResourceContent }[]> {
+  const ids = uuidsOnly(listeningVersionIds)
+  if (ids.length === 0) return []
+  const rows = await db
+    .select({ id: resourceVersions.id, content: resourceVersions.content })
+    .from(resourceVersions)
+    .where(
+      and(
+        eq(resourceVersions.institutionId, institutionId),
+        inArray(sql<string>`${resourceVersions.content} ->> 'listeningVersionId'`, ids),
       ),
     )
     .orderBy(asc(resourceVersions.id))

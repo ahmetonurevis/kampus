@@ -371,7 +371,11 @@ export async function getResource(ctx: ServiceContext, resourceId: string) {
   return {
     view: 'staff' as const,
     resource: staffResource(resource),
-    versions: readable.map(versionSummary),
+    versions: readable.map((version) => ({
+      ...versionSummary(version),
+      license: version.license,
+      reviewedByUserId: version.reviewedByUserId,
+    })),
     head: fullVersion(head, files),
     publicationIssues: await issuesOf(ctx, institutionType, head),
   }

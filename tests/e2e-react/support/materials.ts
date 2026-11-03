@@ -75,16 +75,21 @@ export interface SharedMaterial {
   fileId: string
 }
 
+export interface PublishedMaterial extends SharedMaterial {
+  /** Kaynağın yayından sonraki `rowVersion` değeri (paylaşımın `If-Match`'i). */
+  rowVersion: number
+}
+
 /**
- * Öğretmen materyal dosyasını yükler, içerik havuzunda kurum özgün materyal açar, onaysız
- * yayımlar (kendi kapsamlı özgün içerik onaya girmez, DOM-KYN-031) ve ders verdiği sınıflarla
- * paylaşır (DOM-KYN-040). Dosya bağlanmadan önce `ready` yapılır.
+ * Öğretmen materyal dosyasını yükler, içerik havuzunda kurum özgün materyal açar ve onaysız
+ * yayımlar (kendi kapsamlı özgün içerik onaya girmez, DOM-KYN-031); kapsam `Yalnız ben` kalır.
+ * Dosya bağlanmadan önce `ready` yapılır.
  */
-export async function publishSharedMaterial(
+export async function publishMaterial(
   teacher: ApiClient,
   institutionId: string,
-  input: { title: string; file: UploadFile; gradeLevel: number; classIds: readonly string[] },
-): Promise<SharedMaterial> {
+  input: { title: string; file: UploadFile; gradeLevel: number },
+): Promise<PublishedMaterial> {
   const fileId = await uploadMaterialFile(teacher, input.file)
   await markFilesReady(institutionId)
   const created = await ok(
@@ -116,11 +121,23 @@ export async function publishSharedMaterial(
     ),
     200,
   )
+  return { resourceId, fileId, rowVersion: published.resource.rowVersion as number }
+}
+
+/**
+ * `publishMaterial` ve ardından öğretmenin ders verdiği sınıflarla paylaşım (DOM-KYN-040).
+ */
+export async function publishSharedMaterial(
+  teacher: ApiClient,
+  institutionId: string,
+  input: { title: string; file: UploadFile; gradeLevel: number; classIds: readonly string[] },
+): Promise<SharedMaterial> {
+  const { resourceId, fileId, rowVersion } = await publishMaterial(teacher, institutionId, input)
   await ok(
     await teacher.post(
       `/api/v1/resources/${resourceId}/share`,
       { scope: 'classes', classIds: [...input.classIds] },
-      versioned(published.resource.rowVersion as number),
+      versioned(rowVersion),
     ),
     200,
   )

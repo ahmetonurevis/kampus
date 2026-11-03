@@ -3,9 +3,12 @@ import type { components, operations } from '@kampus/api-client/schema.d.ts'
 import {
   canManage,
   OPEN_STATUSES,
+  planResourceRemoval,
   planVersionTransition,
   requiresReview,
   publicationIssues,
+  resourceLicenseSchema,
+  resourceTagsSchema,
   resourceVersionInputSchema,
   RESOURCE_ACTIONS,
   EDITABLE_STATUSES,
@@ -15,7 +18,9 @@ import {
   type ResourceStatus,
   type ResourceVersion,
 } from '@kampus/school-core/content/resource.ts'
+import { planCopy } from '@kampus/school-core/content/copy.ts'
 import { RESOURCE_FILE_MESSAGES } from '@kampus/school-core/content/resource-files.ts'
+import { planShareChange } from '@kampus/school-core/content/visibility.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import type { Role } from '@kampus/school-core/modules/navigation.ts'
@@ -364,4 +369,147 @@ export function canOpenNewVersion({
     { tags: detail.head.tags },
     institutionType,
   )
+}
+
+// --- Kaynak düzeyindeki eylemler: paylaş, kopyala, telif bildirimi, kaldır (OG-217) -------------
+
+export type ResourceCommandState = {
+  /** Paylaşım kapsamını değiştirebilir (DOM-KYN-040). */
+  share: boolean
+  /** Kopyalanabilir; `blockedReason` doluysa görünür ama lisans nedeniyle uygulanamaz (DOM-KYN-050). */
+  copy: { blockedReason: string | null } | null
+  /** Telif bildirimi yapılacak yayın sürümü (DOM-KYN-025); yoksa `null`. */
+  report: { versionId: string; rowVersion: number | undefined } | null
+  /** Kaynak kaldırılabilir (DOM-KYN-051; yalnız yönetici). */
+  remove: boolean
+}
+
+/** Kopya yalnız lisans yüzünden engelliyse eylem görünür kalır, nedeni yazılır. */
+const COPY_BLOCKED_CODES = new Set(['license_forbids_copy', 'license_expired'])
+
+/**
+ * Ayrıntıdaki sürüm geçmişi satırını core sürüm şekline çevirir. Kararın dayandığı alanlar (durum,
+ * etiketler, lisans, onaylayan) satırın kendisinden gelir: baş sürüm açık taslakken kopya ve
+ * yönetim kararı yayın sürümünün gerçek verisiyle verilir (DOM-KYN-050). Satır içerik taşımaz;
+ * içerik baş sürümden doldurulur ve hiçbir eylem kararında kullanılmaz. Lisans çözülemezse
+ * `undefined` döner: o sürüme bağlı kararı sunucu verir.
+ */
+export function versionFromSummary(
+  base: ResourceVersion,
+  summary: StaffResourceDetail['versions'][number],
+): ResourceVersion | undefined {
+  const license = resourceLicenseSchema.nullable().safeParse(summary.license)
+  const tags = resourceTagsSchema.safeParse(summary.tags)
+  if (!license.success || !tags.success) return undefined
+  return {
+    ...base,
+    id: summary.id,
+    versionNumber: summary.versionNumber,
+    status: summary.status,
+    authorUserId: summary.authorUserId,
+    tags: tags.data,
+    license: license.data,
+    reviewedByUserId: summary.reviewedByUserId,
+    publishedAt: summary.publishedAt,
+    archivedAt: summary.archivedAt,
+    removedAt: summary.removedAt,
+  }
+}
+
+const passes = (plan: () => unknown): boolean => {
+  try {
+    plan()
+    return true
+  } catch (error) {
+    if (error instanceof DomainError) return false
+    throw error
+  }
+}
+
+/**
+ * Panelde sunulacak kaynak düzeyindeki eylemler. Karar istemcide yeniden yazılmaz: core
+ * `planShareChange`, `planCopy`, `planVersionTransition` (`report`) ve `planResourceRemoval` kuru
+ * çalıştırılır; sunucu aynı işlevleri yazarken gerçek kayıtla yeniden uygular. Kaldırılmış
+ * (içeriksiz) kaynakta hiçbir eylem yoktur.
+ */
+export function resourceCommands({
+  detail,
+  actor,
+  institutionType,
+  now,
+}: ActionContext): ResourceCommandState {
+  const none: ResourceCommandState = { share: false, copy: null, report: null, remove: false }
+  const head = coreVersion(detail.head, detail.resource.id)
+  if (!head || detail.versions.some((v) => v.status === 'removed')) return none
+  const resource = coreResource(detail)
+  const contentActor = asActor(actor)
+  const converted = detail.versions.map((summary) =>
+    summary.id === head.id ? head : versionFromSummary(head, summary),
+  )
+  const versions = converted.filter((v): v is ResourceVersion => v !== undefined)
+  const currentSummary = detail.versions.find((v) => v.id === resource.currentVersionId)
+  const current = versions.find((v) => v.id === resource.currentVersionId) ?? null
+  // Yayın sürümü çözülemediyse (beklenmez) kopya ve bildirim açık kalır; kararı sunucu verir.
+  const currentUnknown = currentSummary !== undefined && current === null
+
+  // Mevcut hedeflerle kuru çalıştırma yalnız "paylaşımı yönetebilir mi" sorusunu sınar; seçilen
+  // yeni hedefin kapsamını (öğretmenin sınıfları) sunucu denetler.
+  const share = passes(() =>
+    planShareChange({
+      actor: contentActor,
+      institutionType,
+      resource,
+      currentVersion: current,
+      targets: {
+        scope: resource.shareScope,
+        studentIds: [...resource.sharedStudentIds],
+        classIds: [...resource.sharedClassIds],
+      },
+      teaching: {
+        studentIds: new Set(resource.sharedStudentIds),
+        classIds: new Set(resource.sharedClassIds),
+      },
+    }),
+  )
+
+  let copy: ResourceCommandState['copy'] = currentUnknown ? { blockedReason: null } : null
+  if (current) {
+    try {
+      planCopy({
+        actor: contentActor,
+        institutionType,
+        source: { origin: 'institution', resource, version: current },
+        ids: { resourceId: 'kuru-kaynak', versionId: 'kuru-surum' },
+        now,
+      })
+      copy = { blockedReason: null }
+    } catch (error) {
+      if (!(error instanceof DomainError)) throw error
+      if (COPY_BLOCKED_CODES.has(error.code)) copy = { blockedReason: error.message }
+    }
+  }
+
+  const report =
+    current &&
+    passes(() =>
+      planVersionTransition({
+        action: 'report',
+        actor: contentActor,
+        institutionType,
+        resource,
+        version: current,
+        now,
+        reason: 'gerekçe',
+      }),
+    )
+      ? {
+          versionId: current.id,
+          rowVersion: current.id === detail.head.id ? detail.head.rowVersion : undefined,
+        }
+      : null
+
+  const remove = passes(() =>
+    planResourceRemoval({ actor: contentActor, resource, versions, reason: 'gerekçe', now }),
+  )
+  return { share, copy, report, remove }
 }

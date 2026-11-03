@@ -18,6 +18,7 @@ import {
 import {
   canReadVersion,
   planShareChange,
+  shareTargetDelta,
   type ShareTargetsInput,
 } from '@kampus/school-core/content/visibility.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
@@ -722,7 +723,8 @@ export async function removeResource(
 
 /**
  * Paylaşım kapsamını ve hedeflerini değiştirir (DOM-KYN-021, 031, 040). Öğretmen yalnız ders
- * verdiği sınıf ve öğrencilerle paylaşır; yöneticinin seçtiği kimlikler kurumda bulunmalıdır.
+ * verdiği sınıf ve öğrencileri ekler ya da çıkarır; kapsamı dışındaki kayıtlı hedef değişmeden
+ * korunur. Eklenen kimlikler kurumda bulunmalıdır.
  */
 export async function shareResource(
   ctx: ServiceContext,
@@ -758,6 +760,12 @@ export async function shareResource(
             targets: input.targets,
             teaching: { studentIds: scope.studentIds, classIds: scope.classIds },
           })
+          // Yalnız eklenen hedef kurumda aranır; kayıtlı (arşivlenmiş sınıf gibi) hedef korunur.
+          const delta = shareTargetDelta(target.resource, {
+            studentIds: plan.sharedStudentIds,
+            classIds: plan.sharedClassIds,
+          })
+          const added = new Set([...delta.addedStudentIds, ...delta.addedClassIds])
           const issues = [
             ...plan.sharedStudentIds
               .map((id, index) => ({ id, index, field: 'studentIds', set: known.studentIds }))
@@ -769,7 +777,7 @@ export async function shareResource(
                   set: known.classIds,
                 })),
               )
-              .filter(({ id, set }) => !set.has(id))
+              .filter(({ id, set }) => added.has(id) && !set.has(id))
               .map(({ index, field }) => ({
                 path: [field, index],
                 code: 'share_target_not_found',

@@ -3035,7 +3035,7 @@ export interface paths {
         put?: never;
         /**
          * Paylaşımı değiştir
-         * @description Paylaşım kapsamı ve hedefleri (DOM-KYN-021, 031, 040): `private`, `students` (`studentIds`), `classes` (`classIds`), `department`, `institution`. Sahip, zümre başkanı veya yönetici (403). Öğretmen yalnız ders verdiği sınıf ve öğrencilerle paylaşır (403 `share_target_out_of_scope`); kurumda olmayan kimlik 422 `share_target_not_found`. Kitap sahibiyle sınırlı lisans sınıf/kurum kapsamına açılmaz (422 `license_restricts_share`); onaysız yayın zümre/kuruma açılırken 409 `share_scope_review_required`. `If-Match` isteğe bağlı: kaynağın `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         * @description Paylaşım kapsamı ve hedefleri (DOM-KYN-021, 031, 040): `private`, `students` (`studentIds`), `classes` (`classIds`), `department`, `institution`. Sahip, zümre başkanı veya yönetici (403). Öğretmen yalnız ders verdiği sınıf ve öğrencileri ekler ya da çıkarır (403 `share_target_out_of_scope`); kapsamı dışındaki kayıtlı hedef değişmeden korunur. Eklenen kimlik kurumda yoksa 422 `share_target_not_found`. Kitap sahibiyle sınırlı lisans sınıf/kurum kapsamına açılmaz (422 `license_restricts_share`); onaysız yayın zümre/kuruma açılırken 409 `share_scope_review_required`. `If-Match` isteğe bağlı: kaynağın `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
          */
         post: operations["shareResource"];
         delete?: never;
@@ -5644,6 +5644,31 @@ export interface components {
             archivedAt: string | null;
             removedAt: string | null;
         };
+        ResourceVersionHistoryItemInput: {
+            /** Format: uuid */
+            id: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+            title: string;
+            authorUserId: string;
+            tags: components["schemas"]["ResourceTagsInput"];
+            /** @description Lisans türü; seçilmemişse `null` */
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
+            archivedAt: string | null;
+            removedAt: string | null;
+            /** @description Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel */
+            license: {
+                [key: string]: unknown;
+            } | null;
+            reviewedByUserId: string | null;
+        };
         ResourceVersionInput: {
             /** Format: uuid */
             id: string;
@@ -5766,7 +5791,7 @@ export interface components {
             view: "staff";
             resource: components["schemas"]["StaffResourceInput"];
             /** @description Okunabilir sürümler, numaraya göre artan */
-            versions: components["schemas"]["ResourceVersionSummaryInput"][];
+            versions: components["schemas"]["ResourceVersionHistoryItemInput"][];
             head: components["schemas"]["ResourceVersionInput"];
             /** @description Açık sürümde (taslak, incelemede, reddedildi) yayım eksikleri; diğerlerinde boş */
             publicationIssues: {
@@ -8941,6 +8966,31 @@ export interface components {
             archivedAt: string | null;
             removedAt: string | null;
         };
+        ResourceVersionHistoryItem: {
+            /** Format: uuid */
+            id: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+            title: string;
+            authorUserId: string;
+            tags: components["schemas"]["ResourceTags"];
+            /** @description Lisans türü; seçilmemişse `null` */
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
+            archivedAt: string | null;
+            removedAt: string | null;
+            /** @description Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel */
+            license: {
+                [key: string]: unknown;
+            } | null;
+            reviewedByUserId: string | null;
+        };
         ResourceVersion: {
             /** Format: uuid */
             id: string;
@@ -9063,7 +9113,7 @@ export interface components {
             view: "staff";
             resource: components["schemas"]["StaffResource"];
             /** @description Okunabilir sürümler, numaraya göre artan */
-            versions: components["schemas"]["ResourceVersionSummary"][];
+            versions: components["schemas"]["ResourceVersionHistoryItem"][];
             head: components["schemas"]["ResourceVersion"];
             /** @description Açık sürümde (taslak, incelemede, reddedildi) yayım eksikleri; diğerlerinde boş */
             publicationIssues: {

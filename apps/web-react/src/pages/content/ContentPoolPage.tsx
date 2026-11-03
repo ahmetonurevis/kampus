@@ -93,7 +93,10 @@ export function ContentPoolPage({ page }: { page: NavPage }) {
   const form = useDetailPanel('icerik-form')
   const openPanel = panel.open
   const navigate = useNavigate()
-  /** Yeni içerik kaydedilince form kapanır, yeni kaydın ayrıntısı açılır (tek geçmiş adımı). */
+  /**
+   * Yeni içerik kaydedilince (form ya da kopya) form kapanır, yeni kaydın ayrıntısı açık panelin
+   * yerine geçer (tek geçmiş adımı; kapatınca listeye dönülür).
+   */
   const showCreated = (id: string) => {
     const next = new URLSearchParams(window.location.search)
     next.delete('icerik-form')
@@ -240,6 +243,7 @@ export function ContentPoolPage({ page }: { page: NavPage }) {
         resourceId={panel.selectedId}
         onClose={panel.close}
         onEdit={form.open}
+        onOpen={showCreated}
         subjectNames={subjectNames}
       />
       <ContentDraftForm

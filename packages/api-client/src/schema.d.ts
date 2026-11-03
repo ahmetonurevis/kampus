@@ -5017,7 +5017,7 @@ export interface paths {
         };
         /**
          * CEFR profili
-         * @description Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi (en yeniden eskiye, aynı becerinin önceki seviyesi ve değişim yönüyle) ve tespit oturumları. Öneri karar değildir ve saklanmaz. Personel çizelgesinde kararı veren (ad) ve gerekçe ile kararın değişmez kanıt kopyasından özet (karar anındaki öneri, kanıt görevleri, dayanak işareti) bulunur; öğrenci ve veli çizelgesinde bunlar yoktur (OG-079). Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         * @description Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi (en yeniden eskiye, aynı becerinin önceki seviyesi ve değişim yönüyle) ve tespit oturumları. Öneri değerlendirme görevlerinin sonuçlarından (otomatik görevde sayılan deneme, öğretmen puanlıda kesinleşmiş puan; öğrenci ve veliye yalnız geri bildirimi açılmış puan; alıştırma girmez) ve bitmiş tespit oturumlarından hesaplanır; görev kanıtı ve dışarıda kalan görev sonucu `task` ile atamasına bağlanır (OG-247, DOM-BEC-031). Öneri karar değildir ve saklanmaz. Personel çizelgesinde kararı veren (ad) ve gerekçe ile kararın değişmez kanıt kopyasından özet (karar anındaki öneri, kanıt görevleri, dayanak işareti) bulunur; öğrenci ve veli çizelgesinde bunlar yoktur (OG-079). Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
          */
         get: operations["getCefrProfile"];
         put?: never;
@@ -8861,6 +8861,12 @@ export interface components {
                     title: string;
                     /** @enum {string} */
                     source: "task" | "placement";
+                    /** @description Görev kanıtının ataması; seviye tespiti bölümünde boş */
+                    task: {
+                        assignmentId: string;
+                        /** @enum {string} */
+                        scoring: "auto" | "rubric";
+                    } | null;
                     /** @enum {string} */
                     skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
                     /** @enum {string} */
@@ -8877,6 +8883,12 @@ export interface components {
                     title: string;
                     /** @enum {string} */
                     reason: "practice" | "preliminary" | "no_skill" | "no_target_level" | "unscored" | "appeal_pending" | "not_yet" | "expired";
+                    /** @description Görev kanıtının ataması; seviye tespiti bölümünde boş */
+                    task: {
+                        assignmentId: string;
+                        /** @enum {string} */
+                        scoring: "auto" | "rubric";
+                    } | null;
                 }[];
             };
             /** @description Beceri başına güncel seviye: en yeni insan kararı */
@@ -9003,6 +9015,12 @@ export interface components {
                     title: string;
                     /** @enum {string} */
                     source: "task" | "placement";
+                    /** @description Görev kanıtının ataması; seviye tespiti bölümünde boş */
+                    task: {
+                        assignmentId: string;
+                        /** @enum {string} */
+                        scoring: "auto" | "rubric";
+                    } | null;
                     /** @enum {string} */
                     skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
                     /** @enum {string} */
@@ -9019,6 +9037,12 @@ export interface components {
                     title: string;
                     /** @enum {string} */
                     reason: "practice" | "preliminary" | "no_skill" | "no_target_level" | "unscored" | "appeal_pending" | "not_yet" | "expired";
+                    /** @description Görev kanıtının ataması; seviye tespiti bölümünde boş */
+                    task: {
+                        assignmentId: string;
+                        /** @enum {string} */
+                        scoring: "auto" | "rubric";
+                    } | null;
                 }[];
             };
             /** @description Beceri başına güncel seviye: en yeni insan kararı */
@@ -12666,6 +12690,12 @@ export interface components {
                     title: string;
                     /** @enum {string} */
                     source: "task" | "placement";
+                    /** @description Görev kanıtının ataması; seviye tespiti bölümünde boş */
+                    task: {
+                        assignmentId: string;
+                        /** @enum {string} */
+                        scoring: "auto" | "rubric";
+                    } | null;
                     /** @enum {string} */
                     skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
                     /** @enum {string} */
@@ -12682,6 +12712,12 @@ export interface components {
                     title: string;
                     /** @enum {string} */
                     reason: "practice" | "preliminary" | "no_skill" | "no_target_level" | "unscored" | "appeal_pending" | "not_yet" | "expired";
+                    /** @description Görev kanıtının ataması; seviye tespiti bölümünde boş */
+                    task: {
+                        assignmentId: string;
+                        /** @enum {string} */
+                        scoring: "auto" | "rubric";
+                    } | null;
                 }[];
             };
             /** @description Beceri başına güncel seviye: en yeni insan kararı */
@@ -12808,6 +12844,12 @@ export interface components {
                     title: string;
                     /** @enum {string} */
                     source: "task" | "placement";
+                    /** @description Görev kanıtının ataması; seviye tespiti bölümünde boş */
+                    task: {
+                        assignmentId: string;
+                        /** @enum {string} */
+                        scoring: "auto" | "rubric";
+                    } | null;
                     /** @enum {string} */
                     skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
                     /** @enum {string} */
@@ -12824,6 +12866,12 @@ export interface components {
                     title: string;
                     /** @enum {string} */
                     reason: "practice" | "preliminary" | "no_skill" | "no_target_level" | "unscored" | "appeal_pending" | "not_yet" | "expired";
+                    /** @description Görev kanıtının ataması; seviye tespiti bölümünde boş */
+                    task: {
+                        assignmentId: string;
+                        /** @enum {string} */
+                        scoring: "auto" | "rubric";
+                    } | null;
                 }[];
             };
             /** @description Beceri başına güncel seviye: en yeni insan kararı */

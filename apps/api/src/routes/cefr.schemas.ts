@@ -219,6 +219,15 @@ const learnerDecisionSchema = decisionSchema
   .omit({ rationale: true, decidedByUserId: true })
   .extend(changeShape)
 
+/**
+ * Görev kanıtının ataması ve puanlama türü (OG-247): ekran kanıt görevine bununla bağlanır
+ * (otomatik puanlı görevde deneme, öğretmen puanlıda teslim). Seviye tespiti bölümünde `null`.
+ */
+const evidenceTask = z
+  .object({ assignmentId: z.string(), scoring: z.enum(['auto', 'rubric']) })
+  .nullable()
+  .describe('Görev kanıtının ataması; seviye tespiti bölümünde boş')
+
 const profileShape = {
   studentId: z.string(),
   title: z.string(),
@@ -229,6 +238,7 @@ const profileShape = {
         id: z.string(),
         title: z.string(),
         source: z.enum(enumKeys(EVIDENCE_SOURCES)),
+        task: evidenceTask,
         skill,
         targetLevel: level,
         performedAt: instant,
@@ -242,6 +252,7 @@ const profileShape = {
         id: z.string(),
         title: z.string(),
         reason: z.enum(enumKeys(EXCLUSION_REASONS)),
+        task: evidenceTask,
       }),
     ),
   }),

@@ -37,8 +37,9 @@ export type SpeakingLimits = {
 }
 
 /** Bellekteki kayıt; yalnız bu sayfada yaşar, kalıcı depoya yazılmaz (DOM-BEC-054). */
-export type Take = {
-  blob: Blob
+export type Take<TMedia = Blob> = {
+  /** Kaydın içeriği: web `Blob`, mobil kayıt dosyasının adresi (`{ uri }`). */
+  blob: TMedia
   durationMs: number
   mimeType: string
 }
@@ -46,32 +47,32 @@ export type Take = {
 export type BlockReason = 'unsupported' | 'denied' | 'no_device' | 'failed' | 'consent'
 export type SendStep = 'uploading' | 'processing' | 'submitting'
 
-export type RecorderPhase =
+export type RecorderPhase<TMedia = Blob> =
   | { kind: 'idle'; notice: string | null }
   | { kind: 'requesting' }
   | { kind: 'blocked'; reason: BlockReason }
   | { kind: 'preparing'; endsAt: number }
   | { kind: 'starting' }
   | { kind: 'recording'; startedAt: number; stopAt: number; stop: 'user' | 'limit' | null }
-  | { kind: 'recorded'; take: Take; autoStopped: boolean }
-  | { kind: 'sending'; take: Take; step: SendStep; fileId: string | null }
-  | { kind: 'send_failed'; take: Take; fileId: string | null; message: string }
+  | { kind: 'recorded'; take: Take<TMedia>; autoStopped: boolean }
+  | { kind: 'sending'; take: Take<TMedia>; step: SendStep; fileId: string | null }
+  | { kind: 'send_failed'; take: Take<TMedia>; fileId: string | null; message: string }
   | { kind: 'submitted' }
 
-export type RecorderState = {
-  phase: RecorderPhase
+export type RecorderState<TMedia = Blob> = {
+  phase: RecorderPhase<TMedia>
   /** Bu sayfada alınıp gönderilmeden atılan kayıt sayısı (hak sayımı). */
   discarded: number
 }
 
-export type RecorderEvent =
+export type RecorderEvent<TMedia = Blob> =
   | { type: 'start'; remaining: number }
   | { type: 'granted'; now: number; preparationSeconds: number }
   | { type: 'blocked'; reason: BlockReason }
   | { type: 'preparation_over' }
   | { type: 'recorder_started'; now: number; speakingSeconds: number }
   | { type: 'stop'; by: 'user' | 'limit' }
-  | { type: 'recorded'; take: Take }
+  | { type: 'recorded'; take: Take<TMedia> }
   | { type: 'rerecord'; remaining: number }
   | { type: 'send' }
   | { type: 'uploaded'; fileId: string }
@@ -82,7 +83,7 @@ export type RecorderEvent =
   | { type: 'submitted' }
   | { type: 'reset' }
 
-export const initialRecorderState: RecorderState = {
+export const initialRecorderState: RecorderState<never> = {
   phase: { kind: 'idle', notice: null },
   discarded: 0,
 }
@@ -92,19 +93,19 @@ export const TOO_SHORT_NOTICE =
 export const REJECTED_NOTICE =
   'Kaydınız işlenemedi: boş, sessiz ya da bozuk olabilir veya süre sınırını aşıyor olabilir. Deneme hakkınızdan düşülmedi; yeniden kaydedin.'
 
-const holdsTake = (phase: RecorderPhase) =>
+const holdsTake = (phase: RecorderPhase<unknown>) =>
   phase.kind === 'recorded' || phase.kind === 'sending' || phase.kind === 'send_failed'
 
 /**
  * Yeni kayıt için kalan hak: sunucunun kalan hakkından bu sayfada atılan kayıtlar ve elde tutulan
  * (henüz gönderilmemiş) kayıt düşülür.
  */
-export function takesLeft(state: RecorderState, remaining: number): number {
+export function takesLeft(state: RecorderState<unknown>, remaining: number): number {
   return Math.max(0, remaining - state.discarded - (holdsTake(state.phase) ? 1 : 0))
 }
 
 /** İzin istenip kayda başlanabilir mi (boşta ya da izin/mikrofon sorunu sonrası yeniden deneme). */
-export function canStart(state: RecorderState, remaining: number): boolean {
+export function canStart(state: RecorderState<unknown>, remaining: number): boolean {
   const { kind } = state.phase
   const retryable =
     kind === 'blocked' && state.phase.reason !== 'unsupported' && state.phase.reason !== 'consent'
@@ -112,12 +113,15 @@ export function canStart(state: RecorderState, remaining: number): boolean {
 }
 
 /** Elde tutulan kayıt atılıp yenisi alınabilir mi (atılan kayıt bir hak düşürür). */
-export const canRerecord = (state: RecorderState, remaining: number): boolean =>
+export const canRerecord = (state: RecorderState<unknown>, remaining: number): boolean =>
   state.phase.kind === 'recorded' && takesLeft(state, remaining) >= 1
 
-export function recorderReducer(state: RecorderState, event: RecorderEvent): RecorderState {
+export function recorderReducer<TMedia = Blob>(
+  state: RecorderState<TMedia>,
+  event: RecorderEvent<TMedia>,
+): RecorderState<TMedia> {
   const { phase } = state
-  const to = (next: RecorderPhase, discarded = state.discarded): RecorderState => ({
+  const to = (next: RecorderPhase<TMedia>, discarded = state.discarded): RecorderState<TMedia> => ({
     phase: next,
     discarded,
   })
@@ -206,14 +210,14 @@ export function recorderReducer(state: RecorderState, event: RecorderEvent): Rec
 // --- Gösterim ---------------------------------------------------------------------------------
 
 /** Kalan süre (ms): hazırlıkta kayda, kayıtta durmaya kadar; diğer evrelerde `null`. */
-export function phaseRemainingMs(phase: RecorderPhase, now: number): number | null {
+export function phaseRemainingMs(phase: RecorderPhase<unknown>, now: number): number | null {
   if (phase.kind === 'preparing') return Math.max(0, phase.endsAt - now)
   if (phase.kind === 'recording') return Math.max(0, phase.stopAt - now)
   return null
 }
 
 /** Kayıtta geçen süre (ms). */
-export const elapsedMs = (phase: RecorderPhase, now: number): number =>
+export const elapsedMs = (phase: RecorderPhase<unknown>, now: number): number =>
   phase.kind === 'recording' ? Math.max(0, now - phase.startedAt) : 0
 
 /** "dk:sn" saati; yukarı yuvarlanır (geri sayım 0'a inmeden biter). */
@@ -253,7 +257,7 @@ const SEND_MESSAGES: Record<SendStep, string> = {
  * Canlı bölgenin (`aria-live`) metni: yalnız evre değişince ve eşik geçilince değişir; her saniye
  * duyurulmaz (geri sayım saati ayrı ve sessizdir).
  */
-export function liveMessage(phase: RecorderPhase, now: number): string {
+export function liveMessage(phase: RecorderPhase<unknown>, now: number): string {
   switch (phase.kind) {
     case 'idle':
       return phase.notice ?? ''

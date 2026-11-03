@@ -156,7 +156,29 @@ export const TEACHER_ERROR_FIELDS = {
   subject_invalid: 'subjectId',
   teacher_has_assignments: 'subjectId',
   teacher_has_future_tutoring: 'branchId',
+  // Yeni branşın dışında kalan zümre başkanlığı (DOM-YTK-027): hata Branş alanının altındadır.
+  coordinator_duty_outside_branch: 'subjectId',
 } as const
+
+/** Görevi kaldırmak için koordinatör görevleri sayfası (yönetici rotası, menü "Zümre & Koordinatörler"). */
+export const COORDINATOR_DUTIES_PATH = '/yonetici/koordinator-gorevleri'
+export const COORDINATOR_BRANCH_ERROR = 'coordinator_duty_outside_branch'
+
+/**
+ * Branş reddinde görev sayfasına bağlantı yalnız Akademik modül açıkken verilir (sayfa modül
+ * kapalıyken kapalıdır); kapalıyken yönetici ne yapacağını metinden öğrenir.
+ */
+export function coordinatorBranchHint(
+  modules: Readonly<Record<string, boolean>> | undefined,
+): { kind: 'link'; to: string; label: string } | { kind: 'text'; text: string } {
+  return modules?.academic === true
+    ? {
+        kind: 'link',
+        to: COORDINATOR_DUTIES_PATH,
+        label: 'Koordinatör görevlerini aç ve görevi kaldır',
+      }
+    : { kind: 'text', text: 'Görevi kaldırmak için önce Akademik modülünü açın.' }
+}
 export const CLASS_ERROR_FIELDS = {
   campus_required: 'branchId',
   advisor_required: 'teacherId',

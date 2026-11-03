@@ -425,3 +425,35 @@ test('Mevcut ders öğretmeni pasifse derslik değişikliği açık Türkçe mes
       (error as Error).message.includes('uygun branş öğretmeni seçin'),
   )
 })
+
+test('DOM-YTK-027: branşı değişen öğretmenin yeni branş dışı zümre başkanlığı kaydı reddeder; görevsiz, aynı branş ve akademik koordinatör serbest', () => {
+  const state = seed()
+  // Ders ataması engelini aşmak için yeni öğretmen (ataması yok).
+  const teacherId = saveTeacher(state, NEW_TEACHER, id, null, now)
+  const head = [{ kind: 'subject_head' as const, scopeId: 'math' }]
+  unchanged(
+    state,
+    () =>
+      updateTeacher(state, teacherId, { subjectId: 'turkish' }, id, now, {
+        coordinatorDuties: head,
+      }),
+    (error) =>
+      isDomainError('coordinator_duty_outside_branch')(error) &&
+      (error as Error).message.includes('Matematik') &&
+      (error as { path?: unknown }).path?.toString() === 'subjectId',
+  )
+  // Aynı branşa kaydetme (başka alan değişir) görevi bozmaz.
+  updateTeacher(state, teacherId, { phone: '05559990003' }, id, now, { coordinatorDuties: head })
+  assert.equal(state.teachers.find((t) => t.id === teacherId)?.subjectId, 'math')
+  // Dil okulu koordinatörlüğü seviyeye bağlıdır, branşla ilgisizdir.
+  updateTeacher(state, teacherId, { subjectId: 'english' }, id, now, {
+    coordinatorDuties: [{ kind: 'academic_coordinator', scopeId: 'B1' }],
+  })
+  assert.equal(state.teachers.find((t) => t.id === teacherId)?.subjectId, 'english')
+  // Görev kalkınca (ya da demoda hiç görev yokken) branş değişir.
+  updateTeacher(state, teacherId, { subjectId: 'turkish' }, id, now)
+  assert.equal(state.teachers.find((t) => t.id === teacherId)?.subjectId, 'turkish')
+  // Görev yeni branşın kendisindeyse reddedilmez.
+  updateTeacher(state, teacherId, { subjectId: 'math' }, id, now, { coordinatorDuties: head })
+  assert.equal(state.teachers.find((t) => t.id === teacherId)?.subjectId, 'math')
+})

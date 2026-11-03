@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
 import { CEFR_LEVELS, type CefrLevel } from '../content/taxonomy.ts'
+import { subjectById } from '../data/curriculum.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { DomainError } from './errors.ts'
 import type { Role } from '../modules/navigation.ts'
@@ -140,5 +141,28 @@ export function coordinatesArea(
   return (
     (area.subjectId !== null && scope.subjectIds.includes(area.subjectId)) ||
     (area.cefrLevel !== null && (scope.cefrLevels as readonly string[]).includes(area.cefrLevel))
+  )
+}
+
+/**
+ * Öğretmenin branşı değişirken koordinatör görevinin kapsamı tutarlı kalır (DOM-YTK-027):
+ * zümre başkanlığı öğretmenin kendi branşında verilir, yeni branşın dışında kalan etkin görev
+ * kaydetmeyi reddeder (`coordinator_duty_outside_branch`). Görev sessizce kesilmez ya da arşive
+ * alınmaz; yönetici önce görevi kaldırır. Akademik koordinatörlük CEFR seviyesine bağlıdır, branşa
+ * değil; bu yüzden yalnız `subject_head` görevleri denetlenir. `duties` öğretmenin etkin görevleridir.
+ */
+export function assertDutiesFitBranch(
+  duties: readonly Pick<CoordinatorDutyRow, 'kind' | 'scopeId'>[],
+  newSubjectId: string,
+): void {
+  const outside = duties.find(
+    (duty) => duty.kind === 'subject_head' && duty.scopeId !== newSubjectId,
+  )
+  if (outside === undefined) return
+  const area = subjectById(outside.scopeId)?.name ?? outside.scopeId
+  throw new DomainError(
+    'coordinator_duty_outside_branch',
+    `Öğretmenin ${area} koordinatör görevi yeni branşla uyuşmuyor; önce görevi kaldırın.`,
+    { path: ['subjectId'] },
   )
 }

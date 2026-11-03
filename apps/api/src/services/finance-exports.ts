@@ -24,6 +24,12 @@ import {
   type StudentBalance,
 } from '@kampus/school-core/lib/finance-export.ts'
 import {
+  profiledInvoicesCsv,
+  profiledPaymentsCsv,
+  profiledRefundsCsv,
+  setFinanceExportProfileSchema,
+} from '@kampus/school-core/lib/finance-export-profile.ts'
+import {
   studentStatement,
   type StudentStatement,
 } from '@kampus/school-core/lib/finance-statement.ts'
@@ -35,11 +41,21 @@ import {
   paymentsTouchingPeriod,
 } from '../db/payments.ts'
 import { loadRecords } from '../db/records.ts'
+import {
+  loadFinanceExportProfile,
+  saveFinanceExportProfile,
+  type StoredFinanceExportProfile,
+} from '../db/finance-export-profiles.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { refundsPaidInPeriod } from '../db/withdrawals.ts'
-import { NotFoundError } from '../errors.ts'
+import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
-import { runReadOnly } from './operation-runner.ts'
+import {
+  runCommand,
+  runReadOnly,
+  type CommandResponse,
+  type IdempotencyRequest,
+} from './operation-runner.ts'
 import { assertReadable, readScope } from './read-scope.ts'
 
 /**
@@ -217,12 +233,19 @@ export async function financeExportFor(
   query: FinancePeriod & { kind: FinanceExportKind },
 ): Promise<string> {
   const lines = await linesOf(ctx, query)
+  const { profile } = await loadFinanceExportProfile(ctx.db, ctx.institutionId)
   const csv =
     query.kind === 'payments'
-      ? paymentsCsv(lines.payments)
+      ? profile
+        ? profiledPaymentsCsv(lines.payments, profile)
+        : paymentsCsv(lines.payments)
       : query.kind === 'refunds'
-        ? refundsCsv(lines.refunds)
-        : invoicesCsv(lines.invoices)
+        ? profile
+          ? profiledRefundsCsv(lines.refunds, profile)
+          : refundsCsv(lines.refunds)
+        : profile
+          ? profiledInvoicesCsv(lines.invoices, profile)
+          : invoicesCsv(lines.invoices)
   await ctx.db.insert(auditLog).values({
     institutionId: ctx.institutionId,
     actorUserId: ctx.actor.userId,
@@ -234,4 +257,59 @@ export async function financeExportFor(
     createdAt: ctx.now,
   })
   return csv
+}
+
+export function financeExportProfileFor(ctx: ServiceContext): Promise<StoredFinanceExportProfile> {
+  return loadFinanceExportProfile(ctx.db, ctx.institutionId)
+}
+
+/**
+ * Aktarım profilini yazar (ON-024). Denetime yalnız alan adı düşer; sabit değerler hesap kodu
+ * olabilir. Profil dosya satırlarını ve toplamları değiştirmez.
+ */
+export function setFinanceExportProfile(
+  ctx: ServiceContext,
+  input: unknown,
+  expectedVersion: number,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const { profile } = setFinanceExportProfileSchema.parse(input)
+  let result: StoredFinanceExportProfile | undefined
+  return runCommand(
+    ctx,
+    {
+      action: 'finance.export_profile',
+      collections: [],
+      entity: { type: 'finance_export_profiles', id: ctx.institutionId },
+      load: async (tx) => {
+        const row = await loadFinanceExportProfile(tx, ctx.institutionId)
+        if (row.version !== expectedVersion) throw new ConflictError()
+        return { run: () => profile }
+      },
+      after: async (tx) => {
+        const saved = await saveFinanceExportProfile(tx, ctx.institutionId, {
+          profile,
+          expectedVersion,
+          now: ctx.now,
+        })
+        if (saved === null) throw new ConflictError()
+        await tx.insert(auditLog).values({
+          institutionId: ctx.institutionId,
+          actorUserId: ctx.actor.userId,
+          actorRole: ctx.actor.role,
+          action: 'finance.export_profile',
+          entityType: 'finance_export_profiles',
+          entityId: ctx.institutionId,
+          changes: { fields: ['profile'] },
+          createdAt: ctx.now,
+        })
+        result = saved
+      },
+    },
+    () => {
+      if (result === undefined) throw new Error('export profile was not written')
+      return { statusCode: 200, body: { data: result } }
+    },
+    idempotency,
+  )
 }

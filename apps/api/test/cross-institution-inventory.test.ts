@@ -727,6 +727,14 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'cross-institution-finance.test.ts',
     'GET /api/v1/bank-accounts ve POST /bank-accounts: başka kurumun hesabı',
   ),
+  'GET /api/v1/finance/export-profile': liste(
+    'cross-institution-finance.test.ts',
+    'GET ve PATCH /api/v1/finance/export-profile: başka kurumun profili',
+  ),
+  'PATCH /api/v1/finance/export-profile': govde(
+    'cross-institution-finance.test.ts',
+    'GET ve PATCH /api/v1/finance/export-profile: başka kurumun profili',
+  ),
   'GET /api/v1/payment-settings': liste(
     'cross-institution-finance.test.ts',
     'GET ve PATCH /api/v1/payment-settings: başka kurumun ayarı',

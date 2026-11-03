@@ -2,8 +2,6 @@ import type { FastifyInstance, FastifyReply } from 'fastify'
 import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import type { z } from 'zod'
 
-import { WRITE_ACTION_ROLES } from '@kampus/school-core/lib/authorize.ts'
-import { guardianInvitationInputSchema } from '@kampus/school-core/lib/guardian-invitations.ts'
 import {
   staffInvitationInputSchema,
   staffRoleChangeInputSchema,
@@ -11,7 +9,6 @@ import {
 import { staffImportInputSchema } from '@kampus/school-core/lib/staff-import.ts'
 
 import { contextOf } from '../plugins/authenticate.ts'
-import { inviteGuardianAccount } from '../services/guardian-invitations.ts'
 import { listInstitutionMembers } from '../services/institution-members.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import {
@@ -26,7 +23,6 @@ import { idempotencyOf, ifMatchVersion } from './command-support.ts'
 import { commandErrors, commandHeadersSchema } from './commands.schemas.ts'
 import { authenticatedErrors } from './common.schemas.ts'
 import {
-  guardianInvitationResponseSchema,
   institutionMemberListQuerySchema,
   institutionMemberListResponseSchema,
   institutionMemberParamsSchema,
@@ -55,15 +51,13 @@ function send<T>(reply: FastifyReply, response: CommandResponse, schema: z.ZodTy
  * Ayarlar → Kullanıcı & Yetkiler (DOM-YTK-020, DOM-YTK-070). Yalnız yönetici; kurum oturumdan
  * gelir, sorguda kurum kimliği kabul edilmez. Okuma: üyeler ve bekleyen davetler. Yazma: personel
  * daveti ve iptali, rol değiştirme, pasifleştirme ve geri alma (`services/staff-accounts.ts`),
- * toplu personel aktarımı (`services/staff-import.ts`, IST-007). Veli hesabı daveti
- * (`services/guardian-invitations.ts`, DOM-YTK-071) yönetici ve ön büroya açıktır.
+ * toplu personel aktarımı (`services/staff-import.ts`, IST-007). Veli hesabı daveti, listesi ve
+ * iptali yönetici ve ön büroya açıktır: `routes/guardian-invitations.ts` (DOM-YTK-071).
  */
 export function registerInstitutionMemberRoutes(app: FastifyInstance) {
   const typed = app.withTypeProvider<ZodTypeProvider>()
   const admin = app.requireRole(['yonetici'])
   const write = [admin, app.requireFreshSession]
-  const guardianRoles = WRITE_ACTION_ROLES['guardian.invite']
-  const guardianWrite = [app.requireRole(guardianRoles), app.requireFreshSession]
 
   typed.get(
     '/api/v1/institution-members',
@@ -139,34 +133,6 @@ export function registerInstitutionMemberRoutes(app: FastifyInstance) {
       )
       reply.header('location', '/api/v1/institution-members/invitations')
       return send(reply, response, staffInvitationResponseSchema)
-    },
-  )
-
-  typed.post(
-    '/api/v1/institution-members/guardian-invitations',
-    {
-      preValidation: guardianWrite,
-      schema: {
-        operationId: 'inviteGuardianAccount',
-        tags: ['institution'],
-        summary: 'Veli hesabı davet et',
-        description: `Kesin kayıttan sonra velinin hesabını açar (DOM-YTK-071): kullanıcı (parolasız), \`veli\` üyeliği ve seçilen her öğrenci (\`studentIds\`, 1–10, benzersiz) için çocuk bağlantısı aynı işlemde yazılır. \`parentId\` verilirse o veli kaydının seçilen öğrencilerdeki velayet bağları hesaba bağlanır; kayıt seçilen bir öğrencinin velisi değilse 422 \`guardian_record_not_linked\`, bağı başka hesaba bağlıysa ya da kayıt bekleyen bir veli davetinde tutuluyorsa 409 \`guardian_link_exists\`, kayıt başka öğrencide başka hesapla eşlenmişse 422 \`guardian_identity_mismatch\`. \`parentId\` verilmezse velayet bağı kurulmaz ve hesap öğrencinin verisini görmez: velayet ve yakınlık \`POST /api/v1/students/{studentId}/guardians\` (\`membershipId\` ile) girilir. Better Auth daveti kişi ilk girişini yapana kadar \`pending\` kalır; parola belirleme bağlantısı personel davetindeki gibi yanıtı beklemeden gider (kuyruk açıkken \`staff.password-link\` işi). E-posta başka kurumda hesaplıysa üyelik, bağlantı ve bağ yazılmaz, ileti gitmez; öğrenciler ve veli kaydı davette saklanır ve kabulde bağlanır. Yanıtın durum kodu ve alanları iki durumda aynıdır (karar 73). Kurumda kayıtlı e-posta 409 \`member_exists\` (kardeş kaydındaki mevcut veli hesabı bağ ucuyla bağlanır), bekleyen davet 409 \`invitation_exists\`; olmayan, arşivli ya da başka kurumun öğrencisi veya veli kaydı 404. \`Idempotency-Key\` zorunlu; başarı 201 ve \`Location\`. Yalnız ${guardianRoles.map((role) => `\`${role}\``).join(', ')} (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 \`reauthentication_required\`). Kurum oturumdan gelir. Yazma ve denetim kaydı (\`audit_log\`, yalnız alan adları) tek transaction’dadır.`,
-        body: guardianInvitationInputSchema,
-        headers: commandHeadersSchema('required', { ifMatch: false }),
-        response: { 201: guardianInvitationResponseSchema, ...commandErrors },
-      },
-    },
-    async (request, reply) => {
-      ifMatchVersion(request, false)
-      const response = await inviteGuardianAccount(
-        contextOf(request),
-        app.auth,
-        app.staffLinks.scheduler,
-        request.body,
-        idempotencyOf(request, true),
-      )
-      reply.header('location', '/api/v1/institution-members/guardian-invitations')
-      return send(reply, response, guardianInvitationResponseSchema)
     },
   )
 

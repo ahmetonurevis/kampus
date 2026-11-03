@@ -168,10 +168,12 @@ describe('veli hesabı daveti (DOM-YTK-071)', () => {
     return rows.sort((a, b) => a.recordId.localeCompare(b.recordId))
   }
 
-  /** Kurumun yazma izi: üyelik, davet, bağ ve denetim sayıları (kayıt değişmedi denetimi). */
+  /** Yazma izi: kullanıcı, üyelik, davet, bağ ve denetim sayıları (kayıt değişmedi denetimi). */
   async function snapshot(institutionId: string) {
     const count = async (rows: Promise<unknown[]>) => (await rows).length
     return {
+      // Kullanıcılar kuruma bağlı değildir: reddedilen istek yetim kullanıcı bırakmamalıdır.
+      users: await count(db.select().from(users)),
       memberships: await count(
         db.select().from(memberships).where(eq(memberships.institutionId, institutionId)),
       ),
@@ -222,8 +224,8 @@ describe('veli hesabı daveti (DOM-YTK-071)', () => {
     assert.equal(stale.json().code, 'reauthentication_required')
     assert.equal(await membershipOf(institution.id, payload.email), null)
     const after = await snapshot(institution.id)
-    // Rol testi için açılan üyelikler dışında hiçbir şey yazılmadı.
-    assert.deepEqual({ ...after, memberships: before.memberships }, before)
+    // Rol testi için açılan kullanıcı ve üyelikler dışında hiçbir şey yazılmadı.
+    assert.deepEqual({ ...after, users: before.users, memberships: before.memberships }, before)
   })
 
   test('DOM-YTK-071: anahtarsız 400, geçersiz gövde 400 ve hiçbir kayıt değişmez', async () => {
@@ -510,5 +512,285 @@ describe('veli hesabı daveti (DOM-YTK-071)', () => {
     const payload = body({ studentIds: ['s-1'] })
     assert.equal((await invite(cookie, payload)).statusCode, 201)
     assert.notEqual((await signIn(app, payload.email, 'Ayse-Veli-Parolasi-7')).statusCode, 200)
+  })
+
+  test('DOM-YTK-071: velayeti olmayan ya da iletişim kısıtlı bağa hesap bağlanınca davet edilen veli öğrenciyi okuyamaz (404); velayetli ve kısıtsız bağ okur', async () => {
+    const { institution, cookie } = await kurum()
+    const patchBond = (studentId: string, patch: Partial<typeof studentGuardians.$inferInsert>) =>
+      db
+        .update(studentGuardians)
+        .set(patch)
+        .where(
+          and(
+            eq(studentGuardians.institutionId, institution.id),
+            eq(studentGuardians.studentId, studentId),
+          ),
+        )
+    // Kısıtlı bağ velayetsiz olmak zorundadır (`student_guardians_restriction_check`).
+    await patchBond('s-1', { custody: 'none', isContactRestricted: true })
+    await patchBond('s-2', { custody: 'none' })
+    // Ayşe'nin kaydı Deniz'de iletişim kısıtlı, Ece'de velayetsizdir; Kemal'in bağı sağlamdır.
+    const ayse = body({ studentIds: ['s-1', 's-2'] })
+    const kemal = body({ studentIds: ['s-3'], parentId: 'p-kemal' })
+    for (const payload of [ayse, kemal]) {
+      const response = await invite(cookie, payload)
+      assert.equal(response.statusCode, 201, response.body)
+    }
+    const [bound] = (await bonds(institution.id)).filter((row) => row.studentId === 's-1')
+    assert.ok(bound?.membershipId, 'hesap kısıtlı bağa da bağlandı')
+
+    const aysePage = await firstLogin(ayse.email, 'Ayse-Veli-Parolasi-7')
+    for (const id of ['s-1', 's-2', 's-3'])
+      assert.equal((await read(aysePage, `/api/v1/collections/students/${id}`)).statusCode, 404, id)
+    const kemalPage = await firstLogin(kemal.email, 'Kemal-Veli-Parolasi-7')
+    assert.equal((await read(kemalPage, '/api/v1/collections/students/s-3')).statusCode, 200)
+  })
+
+  describe('bekleyen veli davetleri: liste, iptal ve süre (DOM-YTK-071)', () => {
+    const base = ENDPOINT
+    const list = (cookie: string | undefined, query = '') =>
+      app.inject({
+        method: 'GET',
+        url: `${base}${query}`,
+        headers: { origin: TEST_ORIGIN, ...(cookie ? { cookie } : {}) },
+      })
+    async function cancel(
+      cookie: string | undefined,
+      id: string,
+      options: { key?: string | null; target?: App } = {},
+    ) {
+      const target = options.target ?? app
+      return target.inject({
+        method: 'POST',
+        url: `/api/v1/institution-members/guardian-invitations/${id}/cancel`,
+        headers: {
+          origin: TEST_ORIGIN,
+          ...(cookie ? { cookie } : {}),
+          ...(options.key ? { 'idempotency-key': options.key } : {}),
+        },
+      })
+    }
+    const expire = (id: string) =>
+      db
+        .update(invitations)
+        .set({ expiresAt: new Date(FIXED_NOW.getTime() - 24 * 60 * 60 * 1000) })
+        .where(eq(invitations.id, id))
+
+    /** Başka kurumda hesabı olan e-postaya yazılmış bekleyen davet (üyelik açılmaz; karar 73). */
+    async function elsewhereInvite(cookie: string, patch: object = {}) {
+      const other = await createInstitution(app)
+      const account = await createMember(app, other.id, 'ogretmen')
+      const response = await invite(cookie, body({ email: account.email, ...patch }))
+      assert.equal(response.statusCode, 201, response.body)
+      return { id: response.json().data.id as string, email: account.email }
+    }
+
+    test('DOM-YTK-071: liste ve iptal oturumsuz 401; öğretmen, veli ve öğrenci 403; iptalde eski oturum 403 reauthentication_required', async () => {
+      const { institution, cookie } = await kurum()
+      const { id } = await elsewhereInvite(cookie, { parentId: undefined })
+      assert.equal((await list(undefined)).statusCode, 401)
+      assert.equal((await cancel(undefined, id)).statusCode, 401)
+      for (const role of ['ogretmen', 'veli', 'ogrenci'] as const) {
+        const cookieOf = await signInAs(app, await createMember(app, institution.id, role))
+        const denied = await list(cookieOf)
+        assert.equal(denied.statusCode, 403, role)
+        assert.equal(denied.json().code, 'forbidden')
+        assert.equal((await cancel(cookieOf, id)).statusCode, 403, role)
+      }
+      const stale = await cancel(await signInAs(app, institution.admin), id, { target: staleApp })
+      assert.equal(stale.statusCode, 403)
+      assert.equal(stale.json().code, 'reauthentication_required')
+      const [row] = await db
+        .select({ status: invitations.status })
+        .from(invitations)
+        .where(eq(invitations.id, id))
+      assert.equal(row?.status, 'pending')
+    })
+
+    test('DOM-YTK-071: başka kurumun veli daveti listede yok; liste yeni önce, sayfalı ve personel davetlerini içermez', async () => {
+      const { institution, cookie } = await kurum()
+      const other = await kurum()
+      await elsewhereInvite(other.cookie, { parentId: undefined })
+      assert.equal((await list(cookie)).json().meta.total, 0)
+
+      const first = await elsewhereInvite(cookie, { parentId: undefined })
+      const second = await elsewhereInvite(cookie, { studentIds: ['s-3'], parentId: 'p-kemal' })
+      // Aynı saniyede yazılan davetlerde sıra yeni önce; açık yazım zamanı verilir.
+      await db
+        .update(invitations)
+        .set({ createdAt: new Date(FIXED_NOW.getTime() - 60_000) })
+        .where(eq(invitations.id, first.id))
+      // Personel daveti bu listede görünmez.
+      const staff = await app.inject({
+        method: 'POST',
+        url: '/api/v1/institution-members/invitations',
+        headers: {
+          origin: TEST_ORIGIN,
+          'content-type': 'application/json',
+          cookie,
+          'idempotency-key': randomUUID(),
+        },
+        payload: { email: email(), name: 'Personel', role: 'onburo' },
+      })
+      assert.equal(staff.statusCode, 201, staff.body)
+      await app.staffLinks.inline.idle()
+
+      const page = await list(cookie)
+      assert.equal(page.statusCode, 200, page.body)
+      const body = page.json()
+      assert.deepEqual(body.meta, { page: 1, pageSize: 25, total: 2 })
+      assert.deepEqual(
+        body.data.map((row: { id: string }) => row.id),
+        [second.id, first.id],
+      )
+      assert.deepEqual(Object.keys(body.data[0]).sort(), [
+        'createdAt',
+        'email',
+        'expiresAt',
+        'id',
+        'name',
+        'parentId',
+        'role',
+        'status',
+        'studentIds',
+      ])
+      assert.ok(body.data.every((row: { role: string }) => row.role === 'veli'))
+      const paged = (await list(cookie, '?page=2&pageSize=1')).json()
+      assert.deepEqual(paged.meta, { page: 2, pageSize: 1, total: 2 })
+      assert.deepEqual(
+        paged.data.map((row: { id: string }) => row.id),
+        [first.id],
+      )
+      assert.equal((await list(cookie, '?pageSize=0')).statusCode, 400)
+      assert.equal((await list(cookie, `?institutionId=${institution.id}`)).statusCode, 400)
+      // Ön büro da listeler.
+      const frontDesk = await signInAs(app, await createMember(app, institution.id, 'onburo'))
+      assert.equal((await list(frontDesk)).json().meta.total, 2)
+    })
+
+    test('DOM-YTK-071: başka kurumun veli davetini iptal edemez (404); personel daveti bu uçla bulunmaz; kayıt değişmez', async () => {
+      const { cookie } = await kurum()
+      const other = await kurum()
+      const { id } = await elsewhereInvite(other.cookie, { parentId: undefined })
+      const before = await snapshot(other.institution.id)
+      const denied = await cancel(cookie, id)
+      assert.equal(denied.statusCode, 404, denied.body)
+      assert.equal(denied.json().code, 'not_found')
+      assert.deepEqual(await snapshot(other.institution.id), before)
+
+      const staff = await app.inject({
+        method: 'POST',
+        url: '/api/v1/institution-members/invitations',
+        headers: {
+          origin: TEST_ORIGIN,
+          'content-type': 'application/json',
+          cookie,
+          'idempotency-key': randomUUID(),
+        },
+        payload: { email: email(), name: 'Personel', role: 'onburo' },
+      })
+      await app.staffLinks.inline.idle()
+      assert.equal((await cancel(cookie, staff.json().data.id)).statusCode, 404)
+      assert.equal((await cancel(cookie, 'yok')).statusCode, 404)
+    })
+
+    test('DOM-YTK-071: başka kurumda hesaplı e-postanın bekleyen daveti listelenir ve iptal edilir; e-posta ve veli kaydı yeniden davet edilebilir, ikinci iptal 409', async () => {
+      const { institution, cookie } = await kurum()
+      const { id, email: address } = await elsewhereInvite(cookie)
+      // Bekleyen davet e-postayı ve veli kaydını tutar.
+      assert.equal((await invite(cookie, body({ email: address }))).statusCode, 409)
+      const held = await invite(cookie, body({ studentIds: ['s-1'] }))
+      assert.equal(held.statusCode, 409)
+      assert.equal(held.json().code, 'guardian_link_exists')
+      assert.deepEqual(
+        (await list(cookie)).json().data.map((row: { id: string }) => row.id),
+        [id],
+      )
+
+      const before = await snapshot(institution.id)
+      const key = randomUUID()
+      const response = await cancel(cookie, id, { key })
+      assert.equal(response.statusCode, 200, response.body)
+      assert.equal(response.json().data.status, 'canceled')
+      assert.equal(response.json().data.email, address)
+      const after = await snapshot(institution.id)
+      assert.deepEqual({ ...after, audits: before.audits }, before)
+      const cancelAudit = await db
+        .select({ changes: auditLog.changes })
+        .from(auditLog)
+        .where(
+          and(
+            eq(auditLog.institutionId, institution.id),
+            eq(auditLog.action, 'guardian.invite_cancel'),
+          ),
+        )
+      assert.deepEqual(
+        cancelAudit.map((row) => row.changes),
+        [{ fields: ['status'] }],
+      )
+      assert.equal((await list(cookie)).json().meta.total, 0)
+
+      // Aynı anahtarla yeniden deneme ilk yanıtı döndürür; ikinci denetim yazılmaz.
+      const replay = await cancel(cookie, id, { key })
+      assert.equal(replay.statusCode, 200)
+      assert.equal(replay.headers['idempotent-replayed'], 'true')
+      const twice = await cancel(cookie, id)
+      assert.equal(twice.statusCode, 409)
+      assert.equal(twice.json().code, 'invitation_not_pending')
+
+      // E-posta ve veli kaydı yeni davete açıldı.
+      const again = await invite(cookie, body({ email: address }))
+      assert.equal(again.statusCode, 201, again.body)
+    })
+
+    test('DOM-YTK-071: hesabı açılmış davetin iptali yalnız daveti kapatır; hesap, üyelik, çocuk bağlantıları ve velayet bağı korunur', async () => {
+      const { institution, cookie } = await kurum()
+      const payload = body()
+      const created = await invite(cookie, payload)
+      assert.equal(created.statusCode, 201, created.body)
+      const member = await membershipOf(institution.id, payload.email)
+      assert.ok(member)
+      const bondsBefore = await bonds(institution.id)
+
+      const response = await cancel(cookie, created.json().data.id)
+      assert.equal(response.statusCode, 200, response.body)
+      assert.equal(response.json().data.status, 'canceled')
+      assert.deepEqual(await membershipOf(institution.id, payload.email), member)
+      assert.deepEqual(await childLinks(member.id), [
+        { kind: 'child', recordId: 's-1' },
+        { kind: 'child', recordId: 's-2' },
+      ])
+      assert.deepEqual(await bonds(institution.id), bondsBefore)
+      assert.equal((await bonds(institution.id))[0]?.membershipId, member.id)
+      assert.equal((await list(cookie)).json().meta.total, 0)
+      // Hesap hâlâ bu e-postayla kurumda kayıtlıdır.
+      const again = await invite(cookie, body({ email: payload.email, parentId: undefined }))
+      assert.equal(again.statusCode, 409)
+      assert.equal(again.json().code, 'member_exists')
+    })
+
+    test('DOM-YTK-071: süresi dolmuş bekleyen davet yeni daveti engellemez ama listede görünür ve iptal edilir', async () => {
+      const { cookie } = await kurum()
+      const { id, email: address } = await elsewhereInvite(cookie)
+      assert.equal((await invite(cookie, body({ email: address }))).statusCode, 409)
+      await expire(id)
+
+      const listed = (await list(cookie)).json().data
+      assert.deepEqual(
+        listed.map((row: { id: string }) => row.id),
+        [id],
+      )
+      assert.ok(new Date(listed[0].expiresAt) < FIXED_NOW)
+      // E-posta ve veli kaydı artık tutulmaz.
+      const fresh = await invite(cookie, body({ email: address }))
+      assert.equal(fresh.statusCode, 201, fresh.body)
+      assert.equal((await list(cookie)).json().meta.total, 2)
+      // Süresi dolmuş satır temizlenir; yenisi bekler.
+      assert.equal((await cancel(cookie, id)).statusCode, 200)
+      assert.deepEqual(
+        (await list(cookie)).json().data.map((row: { id: string }) => row.id),
+        [fresh.json().data.id],
+      )
+    })
   })
 })

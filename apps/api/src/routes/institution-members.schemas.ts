@@ -120,6 +120,7 @@ export const guardianInvitationSchema = z
   .meta({ id: 'GuardianInvitation' })
 
 export const guardianInvitationResponseSchema = dataResponse(guardianInvitationSchema)
+export const guardianInvitationListResponseSchema = pageResponse(guardianInvitationSchema)
 
 /**
  * Toplu personel aktarımının sonucu (IST-007). Önizlemede (`dryRun`) satır hataları `issues`'tadır

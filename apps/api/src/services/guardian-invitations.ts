@@ -1,4 +1,4 @@
-import { and, eq } from 'drizzle-orm'
+import { and, asc, count, desc, eq } from 'drizzle-orm'
 import { z } from 'zod'
 
 import { WRITE_ACTION_ROLES } from '@kampus/school-core/lib/authorize.ts'
@@ -7,6 +7,10 @@ import {
   type GuardianInvitationInput,
   type GuardianInvitationPlan,
 } from '@kampus/school-core/lib/guardian-invitations.ts'
+import {
+  assertInvitationPending,
+  STAFF_ACCOUNT_MESSAGES,
+} from '@kampus/school-core/lib/staff-accounts.ts'
 import type { Role } from '@kampus/school-core/modules/navigation.ts'
 
 import type { Auth } from '../auth.ts'
@@ -19,11 +23,12 @@ import {
   loadParentGuardians,
   loadStudentGuardians,
 } from '../db/student-guardians.ts'
-import { ConflictError, ForbiddenError, NotFoundError } from '../errors.ts'
+import { AppError, ConflictError, ForbiddenError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { authTransaction } from './auth-transaction.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import type { StaffLinkJobData, StaffLinkScheduler } from './staff-password-links.ts'
+import { holdingInvitation } from './staff-accounts.ts'
 import { auditWork } from './task-work.ts'
 
 /**
@@ -49,6 +54,7 @@ import { auditWork } from './task-work.ts'
 
 const INVITATION = 'guardian_invitation'
 const ACTION = 'guardian.invite'
+const CANCEL_ACTION = 'guardian.invite_cancel'
 const MANAGER_ROLES: readonly Role[] = WRITE_ACTION_ROLES[ACTION]
 
 /** Davet satırı (sınır: `student_ids` JSON kolonu). Görünüm şeması rota şemasındadır. */
@@ -64,29 +70,74 @@ const storedSchema = z.object({
   expiresAt: z.date(),
 })
 
-async function invitationView(tx: Database, institutionId: string, invitationId: string) {
-  const [row] = await tx
-    .select({
-      id: invitations.id,
-      name: invitations.name,
-      email: invitations.email,
-      role: invitations.role,
-      status: invitations.status,
-      studentIds: invitations.studentIds,
-      parentId: invitations.parentId,
-      createdAt: invitations.createdAt,
-      expiresAt: invitations.expiresAt,
-    })
-    .from(invitations)
-    .where(and(eq(invitations.institutionId, institutionId), eq(invitations.id, invitationId)))
-    .limit(1)
-  if (row === undefined) throw new Error('guardian invitation disappeared after write')
+const viewColumns = {
+  id: invitations.id,
+  name: invitations.name,
+  email: invitations.email,
+  role: invitations.role,
+  status: invitations.status,
+  studentIds: invitations.studentIds,
+  parentId: invitations.parentId,
+  createdAt: invitations.createdAt,
+  expiresAt: invitations.expiresAt,
+}
+
+function toView(row: unknown) {
   const stored = storedSchema.parse(row)
   return {
     ...stored,
     createdAt: stored.createdAt.toISOString(),
     expiresAt: stored.expiresAt.toISOString(),
   }
+}
+
+async function findInvitation(tx: Database, institutionId: string, invitationId: string) {
+  const [row] = await tx
+    .select(viewColumns)
+    .from(invitations)
+    .where(
+      and(
+        eq(invitations.institutionId, institutionId),
+        eq(invitations.id, invitationId),
+        eq(invitations.role, 'veli'),
+      ),
+    )
+    .limit(1)
+  return row ?? null
+}
+
+async function invitationView(tx: Database, institutionId: string, invitationId: string) {
+  const row = await findInvitation(tx, institutionId, invitationId)
+  if (row === null) throw new Error('guardian invitation disappeared after write')
+  return toView(row)
+}
+
+/**
+ * Kurumun bekleyen veli davetleri, yeni önce; sayfalı. Süresi dolmuş ama hâlâ `pending` olan davet
+ * de listelenir (`expiresAt` görünür): yeni davetleri engellemez, ama satır iptalle temizlenir.
+ * Personel davetleri bu listede değildir (`listStaffInvitations`).
+ */
+export async function listGuardianInvitations(
+  db: Database,
+  institutionId: string,
+  query: { page: number; pageSize: number },
+) {
+  const where = and(
+    eq(invitations.institutionId, institutionId),
+    eq(invitations.status, 'pending'),
+    eq(invitations.role, 'veli'),
+  )
+  const [rows, [totals]] = await Promise.all([
+    db
+      .select(viewColumns)
+      .from(invitations)
+      .where(where)
+      .orderBy(desc(invitations.createdAt), asc(invitations.id))
+      .limit(query.pageSize)
+      .offset((query.page - 1) * query.pageSize),
+    db.select({ total: count() }).from(invitations).where(where),
+  ])
+  return { items: rows.map(toView), total: totals?.total ?? 0 }
 }
 
 /**
@@ -113,6 +164,7 @@ async function requireActorManager(tx: Database, ctx: ServiceContext): Promise<v
     throw new ForbiddenError()
 }
 
+/** Süresi dolmamış bekleyen davet var mı (süresi dolmuş davet e-postayı ve veli kaydını tutmaz). */
 async function hasPending(
   tx: Database,
   ctx: ServiceContext,
@@ -124,8 +176,7 @@ async function hasPending(
     .from(invitations)
     .where(
       and(
-        eq(invitations.institutionId, ctx.institutionId),
-        eq(invitations.status, 'pending'),
+        holdingInvitation(ctx.institutionId, ctx.now),
         filter === 'email' ? eq(invitations.email, value) : eq(invitations.parentId, value),
       ),
     )
@@ -279,4 +330,56 @@ export async function inviteGuardianAccount(
   )
   if (!response.replayed) links.afterCommit(written)
   return response
+}
+
+/**
+ * Bekleyen veli davetini iptal eder (DOM-YTK-071): davet `canceled` olur, e-posta ve veli kaydı
+ * yeni davetlere açılır. Davetle açılmış hesap, `veli` üyeliği, çocuk bağlantıları ve velayet
+ * bağının hesabı (`student_guardians.membership_id`) korunur: üyelik silinse velayet bağı da
+ * silinirdi (personel iptalinden fark), bağ ve geçmiş belgeye dayanır (DOM-ILT-071). Başka kurumda
+ * hesabı olan e-postaya yazılmış davette (karar 73) hiç hesap yazılmadığından yalnız davet kapanır.
+ * Olmayan, başka kurumun ya da personel daveti 404; bekleyen değilse 409 `invitation_not_pending`.
+ */
+export function cancelGuardianInvitation(
+  ctx: ServiceContext,
+  auth: Auth,
+  invitationId: string,
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const out: { body?: unknown } = {}
+  return runCommand<void>(
+    ctx,
+    {
+      action: CANCEL_ACTION,
+      collections: [],
+      entity: { type: INVITATION, id: invitationId },
+      load: async (tx) => {
+        await requireActorManager(tx, ctx)
+        const row = await findInvitation(tx, ctx.institutionId, invitationId)
+        if (row === null) throw new NotFoundError()
+        return { run: () => assertInvitationPending(row.status) }
+      },
+      after: async (tx) => {
+        const bound = await authTransaction(auth, tx)
+        const canceled = await bound.organization.updateInvitation({
+          invitationId,
+          status: 'canceled',
+          fromStatus: 'pending',
+        })
+        if (canceled === null)
+          throw new AppError(
+            409,
+            'invitation_not_pending',
+            STAFF_ACCOUNT_MESSAGES.invitation_not_pending,
+          )
+        await auditWork(tx, ctx, CANCEL_ACTION, { type: INVITATION, id: invitationId }, ['status'])
+        out.body = { data: await invitationView(tx, ctx.institutionId, invitationId) }
+      },
+    },
+    () => {
+      if (out.body === undefined) throw new Error('guardian invitation was not canceled')
+      return { statusCode: 200, body: out.body }
+    },
+    idempotency,
+  )
 }

@@ -1,6 +1,6 @@
 # ADR 0001 · Çevrimdışı demodan çok kurumlu platforma geçiş
 
-- Durum: Kabul edildi (2026-10-30); karar 6 kimlik tabloları ve karar 7 ADR 0002 ile değişti
+- Durum: Kabul edildi (2026-10-30); karar 6 kimlik tabloları ve karar 7 ADR 0002 ile değişti; karar 4'ün kurum türleri ADR 0008 ile `course_center` (kurs) türüyle genişledi
 - Karar veren: Oğuzhan Demirci
 
 ## Bağlam

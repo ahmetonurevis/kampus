@@ -1,8 +1,10 @@
 import type { StaffInvitationInput, StaffRole } from '@kampus/school-core/lib/staff-accounts.ts'
+import type { StaffImportInput } from '@kampus/school-core/lib/staff-import.ts'
 
 import {
   cancelStaffInvitationRequest,
   changeStaffRoleRequest,
+  importStaffRequest,
   inviteStaffRequest,
   setStaffActiveRequest,
   STAFF_ACCOUNT_COMMAND_MESSAGES,
@@ -64,6 +66,17 @@ export function useSetStaffActive() {
   return useApiCommand({
     request: (client, input: StaffMemberTarget & { active: boolean }, headers) =>
       setStaffActiveRequest(client, input, headers),
+    ...base,
+  })
+}
+
+/**
+ * Toplu personel aktarımı (IST-007): önizleme (`dryRun: true`) ve onay aynı kancadır; her çağrı
+ * yeni istek anahtarıyla gider. Önizleme yazmaz, tazeleme zararsızdır.
+ */
+export function useImportStaff() {
+  return useApiCommand({
+    request: (client, body: StaffImportInput, headers) => importStaffRequest(client, body, headers),
     ...base,
   })
 }

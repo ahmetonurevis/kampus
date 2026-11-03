@@ -210,17 +210,18 @@ export const toneSoft = (c: Palette, tone: Tone) => c[`${tone}Soft` as const]
 export function Badge({ text }: { text?: string }) {
   const c = useColors()
   if (!text) return null
-  const tone: Tone = /Gecik|Süre aşıldı|Teslim süresi geçti|Yüksek risk|Gelmedi|Reddedildi/.test(
-    text,
-  )
-    ? 'red'
-    : /Ödendi|Yanıtlandı|Tamamlandı|Teslim edildi|Başarılı|Geldi|Onaylandı|Aktif|Değerlendirildi/.test(
-          text,
-        )
-      ? 'green'
-      : /Bekli|Yaklaş|azalıyor|Takip|Geç geldi/.test(text)
-        ? 'amber'
-        : 'primary'
+  const tone: Tone =
+    /Gecik|Süre aşıldı|Teslim süresi geçti|Yüksek risk|Gelmedi|Reddedildi|Süresi (doldu|geçti)/.test(
+      text,
+    )
+      ? 'red'
+      : /Ödendi|Yanıtlandı|Tamamlandı|Teslim edildi|Başarılı|Geldi|Onaylandı|Aktif|Değerlendirildi|Çözüldü/.test(
+            text,
+          )
+        ? 'green'
+        : /Bekli|Yaklaş|azalıyor|Takip|Geç geldi|Henüz çözülmedi/.test(text)
+          ? 'amber'
+          : 'primary'
   return (
     <View
       style={{

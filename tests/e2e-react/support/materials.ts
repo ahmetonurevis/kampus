@@ -31,15 +31,20 @@ export const pdf = (name: string): UploadFile => ({
 /**
  * E2E API'si tarayıcısız koşar (`FILE_SCANNER=off`, clamd yok): yüklenen dosya `pending` kalır;
  * test kendi kurumunun dosyalarını doğrudan `ready` yapar (taramadan geçmiş gibi;
- * `sorular.spec.ts` ile aynı).
+ * `sorular.spec.ts` ile aynı). Ses (`listening_audio`) iş kuyruğu kapalıyken dönüşüm bekleyerek
+ * `processing` kalır; `processing: true` onları da dönüştürülmüş gibi `ready` yapar (OG-052).
  */
-export async function markFilesReady(institutionId: string): Promise<void> {
+export async function markFilesReady(
+  institutionId: string,
+  options: { processing?: boolean } = {},
+): Promise<void> {
+  const statuses = options.processing ? ['pending', 'processing'] : ['pending']
   const client = new pg.Client({ connectionString: e2e.databaseUrl })
   await client.connect()
   try {
     const result = await client.query(
-      "update files set status = 'ready' where institution_id = $1 and status = 'pending'",
-      [institutionId],
+      "update files set status = 'ready' where institution_id = $1 and status = any($2::text[])",
+      [institutionId, statuses],
     )
     expect(result.rowCount).toBeGreaterThan(0)
   } finally {

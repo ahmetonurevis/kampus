@@ -1,11 +1,10 @@
 import { randomUUID } from 'node:crypto'
 
 import type { Page } from '@playwright/test'
-import pg from 'pg'
 
 import type { ApiClient } from './support/api.ts'
-import { e2e } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
+import { markFilesReady } from './support/materials.ts'
 import { expectOk, idempotent, type Json } from './support/reading-activity.ts'
 import { expectNoHorizontalOverflow } from './support/ui.ts'
 
@@ -35,24 +34,6 @@ const MP3 = Buffer.concat([
 
 const versioned = (version: number) => ({ ...idempotent(), 'if-match': `"${version}"` })
 
-/**
- * E2E API'si tarayıcısız ve iş kuyruğusuz koşar: dinleme sesi `pending`/`processing` kalır; test
- * kendi kurumunun dosyalarını taranmış ve dönüştürülmüş gibi `ready` yapar.
- */
-async function markAudioReady(institutionId: string): Promise<void> {
-  const client = new pg.Client({ connectionString: e2e.databaseUrl })
-  await client.connect()
-  try {
-    const result = await client.query(
-      "update files set status = 'ready' where institution_id = $1 and status in ('pending', 'processing')",
-      [institutionId],
-    )
-    expect(result.rowCount).toBeGreaterThan(0)
-  } finally {
-    await client.end()
-  }
-}
-
 async function uploadAudio(teacher: ApiClient, institutionId: string, name: string) {
   const response = await teacher.context.fetch('/api/v1/files', {
     method: 'POST',
@@ -65,7 +46,7 @@ async function uploadAudio(teacher: ApiClient, institutionId: string, name: stri
   })
   const body = (await response.json()) as { data: { id: string } }
   expect(response.status(), JSON.stringify(body)).toBe(201)
-  await markAudioReady(institutionId)
+  await markFilesReady(institutionId, { processing: true })
   return body.data.id
 }
 
@@ -223,7 +204,7 @@ test.describe('dinleme etkinliği formu', () => {
     ).toEqual([ids.reads.versionId, ids.plays.versionId].sort())
   })
 
-  test('DOM-BEC-005: dökümsüz kayıt seçilince Türkçe alan hatası; gönderi kapalı; düzenlemede kayıt değiştirilir ve sorular korunur', async ({
+  test('DOM-BEC-005: dökümsüz kayıt seçilince Türkçe alan hatası; gönderi kapalı; düzenlemede kayıt değiştirilir, kaldırılınca bağ null yazılır ve sorular korunur', async ({
     page,
     loginAs,
     tenant,
@@ -271,5 +252,27 @@ test.describe('dinleme etkinliği formu', () => {
     const detail = await quizDetail(teacher, title)
     expect(detail.head.content.listeningVersionId).toBe(ids.week.versionId)
     expect(detail.head.content.items).toHaveLength(2)
+
+    // Kayıt kaldırılır: odak seçim düğmesine geçer; bağ kalıcı olarak `null` yazılır.
+    await panel.getByRole('button', { name: 'Düzenle' }).click()
+    await expect(saved).toContainText("Tom's week")
+    await saved.getByRole('button', { name: 'Kaydı kaldır' }).click()
+    await expect(edit.getByRole('button', { name: 'Dinleme kaydı seç' })).toBeFocused()
+    await expect(saved).toHaveCount(0)
+    await edit.getByLabel(/Bu içeriği kullanma hakkım var/).check()
+    await edit.getByRole('button', { name: 'Değişiklikleri kaydet' }).click()
+    await expect(edit).toBeHidden()
+    await expect(panel.getByRole('region', { name: 'İçerik önizlemesi' })).not.toContainText(
+      'dinleme kaydına bağlı',
+    )
+    // Yeniden açılan düzenleme sunucudaki hali okur: kayıt yok, sorular duruyor.
+    await panel.getByRole('button', { name: 'Düzenle' }).click()
+    await expect(edit.getByText('Dinleme kaydı seçilmedi.')).toBeVisible()
+    await expect(
+      edit.getByRole('list', { name: 'Seçili sorular' }).getByRole('listitem'),
+    ).toHaveCount(2)
+    const cleared = await quizDetail(teacher, title)
+    expect(cleared.head.content.listeningVersionId).toBeNull()
+    expect(cleared.head.content.items).toHaveLength(2)
   })
 })

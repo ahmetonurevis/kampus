@@ -3,13 +3,10 @@ import { readFile } from 'node:fs/promises'
 
 import type { Download, Page } from '@playwright/test'
 
-import { createSeed } from '../../packages/school-core/src/data/seed.ts'
-import {
-  exampleOpticalFile,
-  runAssessment,
-} from '../../packages/school-core/src/lib/assessment-automation.ts'
 import type { ApiClient } from './support/api.ts'
+import { istanbulDay } from './support/commands.ts'
 import { expect, test } from './support/fixtures.ts'
+import { evaluatedRecords, tutorSession, TUTORING_DATA } from './support/tutoring.ts'
 import { expectEveryRow } from './support/ui.ts'
 
 // Optik değerlendirme ve otomatik etüt. Veri yazan testler kendi kurumunu `tenant()` ile kurar.
@@ -557,78 +554,12 @@ test.describe('optik değerlendirme', () => {
 // geçer. Ders programı/randevu/etkinlik konmaz: çakışma kaynağı boştur. Plan önizlemesi ve onayı
 // sunucudadır (`/assessment/plan[/preview]`); uygunluk saati `/assessment/slot[-remove]` ile.
 
-const TUTORING_DATA = ['mockExams', 'opticalProfiles', 'availability'] as const
 const SESSIONS = '/api/v1/collections/tutorSessions?pageSize=100'
 
 interface SessionRow {
   id: string
   version: number
   record: { status: string; attendance: Record<string, string>; cancelReason?: string }
-}
-
-function istanbulDay(offsetDays: number): string {
-  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(
-    new Date(Date.now() + offsetDays * 86_400_000),
-  )
-}
-
-/** s1 için optik analiz: Deniz matematik kazanımlarında zayıftır (etüt adayı). */
-function evaluatedRecords(now: Date) {
-  const state = createSeed(now)
-  const profile = state.opticalProfiles[0]
-  if (!profile) throw new Error('Seed optik profili yok.')
-  const text = exampleOpticalFile(state, profile)
-  let counter = 0
-  runAssessment(
-    state,
-    { role: 'yonetici' },
-    'evaluate',
-    { profileId: profile.id, text },
-    (prefix) => `${prefix}-e2e-${++counter}`,
-    '',
-    now.toISOString(),
-  )
-  return [
-    ...state.opticalEvaluations
-      .filter((item) => item.studentId === 's1')
-      .map((data) => ({ collection: 'opticalEvaluations' as const, data })),
-    ...state.mockResults
-      .filter((item) => item.studentId === 's1')
-      .map((data) => ({ collection: 'mockResults' as const, data })),
-  ]
-}
-
-/** s1'in sınıfında, öğretmen t1'in matematik etüdü (yoklama/iptal testleri için hazır kayıt). */
-function tutorSession(id: string, date: Date) {
-  const state = createSeed(new Date())
-  const student = state.students.find((item) => item.id === 's1')
-  const room = state.classes.find((item) => item.id === student?.classId)
-  if (!student || !room) throw new Error('Seed öğrenci/sınıf yok.')
-  const stamp = new Date().toISOString()
-  return {
-    collection: 'tutorSessions' as const,
-    data: {
-      id,
-      examId: 'exam-7-1',
-      branchId: room.branchId,
-      grade: 7,
-      subjectId: 'math',
-      topic: 'Denklemler',
-      studentIds: ['s1'],
-      scores: [{ studentId: 's1', percent: 25 }],
-      teacherId: 't1',
-      date: date.toISOString(),
-      duration: 30,
-      room: room.room,
-      roomClassId: room.id,
-      capacity: 6,
-      status: 'Planlandı',
-      attendance: {},
-      threshold: 70,
-      createdAt: stamp,
-      updatedAt: stamp,
-    },
-  }
 }
 
 async function sessionsOf(client: ApiClient): Promise<SessionRow[]> {

@@ -32102,6 +32102,8 @@ export interface operations {
                 page?: number;
                 /** @description Sayfa boyutu (≤ 100) */
                 pageSize?: number;
+                /** @description Baş sürümün başlığında arama (IST-048). Türkçe harf ve büyük/küçük harf duyarsız, joker yok */
+                q?: string;
                 /** @description Baş sürümün becerisi */
                 skill?: "writing" | "speaking" | "mediation";
                 /** @description Baş sürümün türü: analitik veya bütüncül */

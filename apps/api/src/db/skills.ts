@@ -61,6 +61,7 @@ import {
   type SecondRatingSource,
   type TaskAssignmentRow,
 } from './schema/skills.ts'
+import { foldSearch, foldSql } from './text-search.ts'
 
 /**
  * Beceri görevi deposu (ADR 0004 karar 4–7; şema `schema/skills.ts`). Her fonksiyonun ilk
@@ -258,6 +259,8 @@ export async function findRubricVersion(
 export interface RubricListQuery {
   page: number
   pageSize: number
+  /** Baş sürümün başlığında Türkçe harf duyarsız arama. */
+  q?: string | undefined
   skill?: RubricVersionRow['skill'] | undefined
   kind?: RubricVersionRow['kind'] | undefined
   status?: RubricVersionRow['status'] | undefined
@@ -292,6 +295,7 @@ export async function listRubrics(
     // Ham `sql` içinde takma ad tablo yalnız adıyla yazılır; kaynak tablo açıkça verilir.
     sql`${v.versionNumber} = (select max(${head.versionNumber}) from ${rubricVersions} as ${sql.identifier('head')}
       where ${head.institutionId} = ${rubrics.institutionId} and ${head.rubricId} = ${rubrics.id})`,
+    ...(query.q ? [sql`strpos(${foldSql(v.title)}, ${foldSearch(query.q)}) > 0`] : []),
     ...(query.skill ? [eq(v.skill, query.skill)] : []),
     ...(query.kind ? [eq(v.kind, query.kind)] : []),
     ...(query.status ? [eq(v.status, query.status)] : []),

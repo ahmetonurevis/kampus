@@ -502,7 +502,7 @@ describe('rubrik uçları', () => {
     fails(await call('GET', '/rubric-versions/yok', t.cookies.admin), 400, 'validation_failed')
   })
 
-  test('IST-048: liste sayfalı ve baş sürüme göre süzülür; sahip süzgeci; bilinmeyen parametre 400', async () => {
+  test('IST-048: liste sayfalı ve baş sürüme göre süzülür; başlık araması ve sahip süzgeci; bilinmeyen parametre 400', async () => {
     const t = await tenant()
     const mine = await create(t.cookies.teacher, body('Benim yazma rubriğim'))
     await ok(await command(`${versionUrl(mine)}/publish`, t.cookies.teacher, 1))
@@ -547,7 +547,19 @@ describe('rubrik uçları', () => {
       owned.map((item: Json) => item.rubric.id),
       [mine.rubric.id],
     )
-    fails(await call('GET', '/rubrics?q=yazma', t.cookies.teacher), 400, 'validation_failed')
+    // Başlık araması Türkçe harf ve büyük/küçük harf duyarsızdır; tek harf 400.
+    const searched = await ok(await call('GET', '/rubrics?q=YAZMA%20RUBRI', t.cookies.teacher))
+    assert.deepEqual(
+      searched.map((item: Json) => item.rubric.id),
+      [mine.rubric.id],
+    )
+    const folded = await ok(await call('GET', '/rubrics?q=konusma', t.cookies.teacher))
+    assert.deepEqual(
+      folded.map((item: Json) => item.rubric.id),
+      [theirs.rubric.id],
+    )
+    fails(await call('GET', '/rubrics?q=y', t.cookies.teacher), 400, 'validation_failed')
+    fails(await call('GET', '/rubrics?sort=title', t.cookies.teacher), 400, 'validation_failed')
     fails(await call('GET', '/rubrics?pageSize=101', t.cookies.teacher), 400, 'validation_failed')
     fails(await call('GET', '/rubrics/yok', t.cookies.teacher), 400, 'validation_failed')
     fails(await call('GET', `/rubrics/${randomUUID()}`, t.cookies.teacher), 404, 'not_found')

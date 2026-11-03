@@ -1,6 +1,8 @@
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { RecordingPlayer } from './RecordingPlayer.tsx'
+import { recordingTitle, versionRecording } from './recording-review-model.ts'
 import { submittedTextLabel, type ResultAudience } from './student-task-model.ts'
 
 type Version = TaskSubmissionDetail['versions'][number]
@@ -12,6 +14,8 @@ const stamp = (iso: string) => `${dateLabel(iso, { year: 'numeric' })} ${timeLab
  * açtıysa (`score` dolu ve kesinleşmiş) çizilir; aksi hâlde sürümde puana dair hiçbir ifade yoktur
  * (DOM-BEC-045). Kriter adları öğrenciye açık olmadığından kriterler sıra numarasıyla anılır.
  * Veli (`audience="parent"`) aynı alanları okur; itiraz ve puanlama iç ayrıntısı çizilmez.
+ * Konuşma sürümünde kayıt dinlenebilir (IST-052; DOM-BEC-052, 053): bağlantıyı sunucu yalnız
+ * kaydın sahibine ve 18 yaş altında velisine verir; açılmayan kayıt "erişilemiyor" der.
  */
 export function SubmissionVersions({
   versions,
@@ -30,6 +34,7 @@ export function SubmissionVersions({
     <ol aria-label="Gönderilen sürümler" className="grid gap-4">
       {[...versions].reverse().map((version) => {
         const score = version.score?.settled ? version.score : null
+        const recording = versionRecording(version)
         return (
           <li key={version.id} className="rounded-card border p-4">
             <div className="flex flex-wrap items-center gap-2">
@@ -43,6 +48,14 @@ export function SubmissionVersions({
             </div>
             {version.wordCount?.warning ? (
               <p className="mt-2 text-sm text-warning">{version.wordCount.warning}</p>
+            ) : null}
+            {recording ? (
+              <div className="mt-3">
+                <RecordingPlayer
+                  file={recording}
+                  title={recordingTitle(audience, version.number)}
+                />
+              </div>
             ) : null}
             {version.body ? (
               <details className="mt-3">

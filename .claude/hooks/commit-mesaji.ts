@@ -9,7 +9,9 @@ import { fileURLToPath } from 'node:url'
 export const MAX_SUBJECT_LENGTH = 72
 const INTEGRATION_BRANCH = 'feature/platform-gecisi'
 
-const TASK_REF = /\b(?:OG|ON)-\d{3}\b|#\d+\b/
+// Görev numarası üç ya da (999'dan sonra) dört hanelidir.
+const TASK_ID = /\b(?:OG|ON)-\d{3,4}\b/
+const TASK_REF = new RegExp(`${TASK_ID.source}|#\\d+\\b`)
 const STATUS_SUBJECT = 'Görev durumunu güncelle'
 const STATUSES = ['bekliyor', 'çalışılıyor', 'revizyon', 'engelli', 'bitti', 'iptal', 'eklendi']
 const CONVENTIONAL_PREFIX = /^[a-z]+(?:\([^)]*\))?!?:\s/
@@ -132,7 +134,7 @@ export function checkCommitMessage(raw: string): string[] {
 
   if (subject.startsWith(STATUS_SUBJECT)) {
     const rest = subject.slice(STATUS_SUBJECT.length)
-    const hasId = /\b(?:OG|ON)-\d{3}\b/.test(rest)
+    const hasId = TASK_ID.test(rest)
     const hasStatus = STATUSES.some((status) => rest.includes(status))
     if (!rest.startsWith(': ') || !hasId || !hasStatus) {
       errors.push(

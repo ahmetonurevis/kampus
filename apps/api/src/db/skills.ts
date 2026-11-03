@@ -27,6 +27,7 @@ import {
   type RubricVersionData,
   type RubricVersionRow,
 } from '@kampus/school-core/skills/rubric.ts'
+import type { ItemCheckRow } from '@kampus/school-core/skills/practice.ts'
 import type { Answers, AttemptRow, AttemptRules } from '@kampus/school-core/skills/scoring.ts'
 import type { DraftRow, VersionRow } from '@kampus/school-core/skills/submission.ts'
 
@@ -41,6 +42,7 @@ import {
 import type { Database } from './client.ts'
 import { resources, resourceVersions } from './schema/resources.ts'
 import {
+  attemptItemChecks,
   attemptMediaPlays,
   resubmissionRequests,
   rubrics,
@@ -835,6 +837,10 @@ export interface AssignmentListQuery {
   learnerTargets?: { studentIds: readonly string[]; classIds: readonly string[] } | undefined
   resourceId?: string | undefined
   kind?: FixedAssignment['kind'] | undefined
+  /** Puanlama kipi süzgeci (not defteri yalnız `auto`). */
+  scoringMode?: FixedAssignment['scoringMode'] | undefined
+  /** Arşivlenmemiş bir hedefi bu kimlikte olan atamalar (sınıf/grup/öğrenci; not defteri süzgeci). */
+  targetId?: string | undefined
 }
 
 /**
@@ -882,6 +888,24 @@ function assignmentScopeFilter(
     : (ownerFilter ?? learnerFilter)
 }
 
+/** Atamanın arşivlenmemiş hedeflerinden biri bu kimlikte (`task_assignment_targets_target_idx`). */
+function hasTarget(db: Database, targetId: string) {
+  const t = taskAssignmentTargets
+  return exists(
+    db
+      .select({ one: sql`1` })
+      .from(t)
+      .where(
+        and(
+          eq(t.institutionId, taskAssignments.institutionId),
+          eq(t.assignmentId, taskAssignments.id),
+          isNull(t.archivedAt),
+          eq(t.targetId, targetId),
+        ),
+      ),
+  )
+}
+
 /**
  * Kurumun arşivlenmemiş atamaları, en yeni önce (IST-034). Kursiyer süzgeci arşivlenmemiş hedefler
  * üzerinde `exists` alt sorgusudur (`task_assignment_targets_target_idx`); boş kimlik listesi hiçbir
@@ -900,6 +924,8 @@ export async function listAssignments(
     ...(scopeFilter === undefined ? [] : [scopeFilter]),
     ...(query.resourceId === undefined ? [] : [eq(a.resourceId, query.resourceId)]),
     ...(query.kind === undefined ? [] : [eq(a.kind, query.kind)]),
+    ...(query.scoringMode === undefined ? [] : [eq(a.scoringMode, query.scoringMode)]),
+    ...(query.targetId === undefined ? [] : [hasTarget(db, query.targetId)]),
   )
   const [rows, [totals]] = await Promise.all([
     db
@@ -1156,6 +1182,34 @@ export async function loadAttemptsAmong(
 }
 
 /**
+ * Verilen atamaların bütün kursiyerlerinin arşivlenmemiş denemeleri, tek sorguda (alıştırma not
+ * defteri, DOM-BEC-048; personel görünümü). Atama yabancı anahtarının tekil indeksini kullanır.
+ */
+export async function loadAssignmentsAttempts(
+  db: Database,
+  institutionId: string,
+  assignmentIds: readonly string[],
+): Promise<StoredAttempt[]> {
+  if (assignmentIds.length === 0) return []
+  const rows = await db
+    .select()
+    .from(taskAttempts)
+    .where(
+      and(
+        eq(taskAttempts.institutionId, institutionId),
+        inArray(taskAttempts.assignmentId, [...new Set(assignmentIds)]),
+        isNull(taskAttempts.archivedAt),
+      ),
+    )
+    .orderBy(
+      asc(taskAttempts.assignmentId),
+      asc(taskAttempts.learnerId),
+      asc(taskAttempts.attemptNumber),
+    )
+  return rows.map(toAttempt)
+}
+
+/**
  * Kursiyerin bütün atamalardaki arşivlenmemiş denemeleri (beceri ilerleme panosu, DOM-BEC-035):
  * deneme okuması kayıt sahipliğine bakar, sınıf değiştiren öğrencinin eski denemeleri de gelir.
  */
@@ -1270,6 +1324,71 @@ export function insertMediaPlay(
       attempt_media_plays_attempt_file_number_key: conflict(
         'listening_play_conflict',
         'Dinleme aynı anda iki kez başlatıldı; yeniden deneyin.',
+      ),
+    },
+  )
+}
+
+/**
+ * Denemelerin madde kontrolleri (DOM-BEC-047; `attempt_item_checks`), deneme kimliğiyle, madde ve
+ * sıra numarasıyla dizili. Doğruluk ve kilit saklanmaz; core `itemFeedback` hesaplar.
+ */
+export async function loadItemChecks(
+  db: Database,
+  institutionId: string,
+  attemptIds: readonly string[],
+): Promise<Map<string, ItemCheckRow[]>> {
+  const byAttempt = new Map<string, ItemCheckRow[]>()
+  if (attemptIds.length === 0) return byAttempt
+  const rows = await db
+    .select({
+      attemptId: attemptItemChecks.attemptId,
+      questionVersionId: attemptItemChecks.questionVersionId,
+      checkNumber: attemptItemChecks.checkNumber,
+      response: attemptItemChecks.response,
+      checkedAt: attemptItemChecks.checkedAt,
+    })
+    .from(attemptItemChecks)
+    .where(
+      and(
+        eq(attemptItemChecks.institutionId, institutionId),
+        inArray(attemptItemChecks.attemptId, [...new Set(attemptIds)]),
+      ),
+    )
+    .orderBy(
+      asc(attemptItemChecks.attemptId),
+      asc(attemptItemChecks.questionVersionId),
+      asc(attemptItemChecks.checkNumber),
+    )
+  for (const { attemptId, checkedAt, ...row } of rows) {
+    const list = byAttempt.get(attemptId) ?? []
+    list.push({ ...row, checkedAt: iso(checkedAt) })
+    byAttempt.set(attemptId, list)
+  }
+  return byAttempt
+}
+
+/**
+ * Yeni madde kontrolü (core `planItemCheck`). Aynı deneme × madde × sıra ikinci kez 409
+ * `item_check_conflict` (eşzamanlı ikinci kontrol; servis deneme satırının sürümünü aynı işlemde
+ * artırdığı için olağan akışta oluşmaz).
+ */
+export function insertItemCheck(
+  tx: Database,
+  institutionId: string,
+  attemptId: string,
+  check: ItemCheckRow,
+): Promise<void> {
+  const at = new Date(check.checkedAt)
+  return constraintAs(
+    tx
+      .insert(attemptItemChecks)
+      .values({ institutionId, attemptId, ...check, checkedAt: at, createdAt: at, updatedAt: at })
+      .then(() => undefined),
+    {
+      attempt_item_checks_pkey: conflict(
+        'item_check_conflict',
+        'Cevap aynı anda iki kez kontrol edildi; yeniden deneyin.',
       ),
     },
   )

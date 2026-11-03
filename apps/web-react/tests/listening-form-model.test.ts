@@ -162,7 +162,11 @@ describe('Dinleme etkinliği form değeri (IST-045, DOM-BEC-005)', () => {
     const values = draftFromHead(head)
     assert.ok(values)
     assert.equal(values.content.listeningVersionId, 'a-1')
-    assert.deepEqual(patchFromDraft(draftFormSchema.parse(values)).content, head.content)
+    // Eski sürümde `unit` yoktur; çekirdek şema `null` ile tamamlar (DOM-BEC-047).
+    assert.deepEqual(patchFromDraft(draftFormSchema.parse(values)).content, {
+      ...head.content,
+      unit: null,
+    })
     const cleared = patchFromDraft(
       draftFormSchema.parse({
         ...values,

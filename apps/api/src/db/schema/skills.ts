@@ -45,7 +45,9 @@ import {
   type Answers,
   type CountPolicy,
   type TaskKind,
+  type TaskResponse,
 } from '@kampus/school-core/skills/scoring.ts'
+import { ITEM_CHECK_LIMIT } from '@kampus/school-core/skills/practice.ts'
 import {
   submissionSettingsSchema,
   type SubmissionSettings,
@@ -76,6 +78,7 @@ import { resources, resourceVersions } from './resources.ts'
  * - Tablolar yeni ve boştur; kısıtlar `not valid` adımına gerek olmadan tek adımda eklenir.
  *
  * - Dinleme hakkı `attempt_media_plays` satırlarıyla sayılır (migration 0030, OG-049).
+ * - Alıştırmanın madde kontrolleri `attempt_item_checks` satırlarıdır (migration 0047, OG-085).
  * - Dosyalı ve sesli teslim sürümü dosya kimliklerini sırasıyla `submission_versions.file_ids`'te
  *   taşır (migration 0031, OG-048); dosya satırı aynı işlemde sürüme bağlanır
  *   (`files.attached_type = 'task_submission_version'`). İmhadan sonra kimlik kalır, dosya satırı
@@ -478,6 +481,50 @@ export const attemptMediaPlays = pgTable(
     ),
     // Dosya yabancı anahtarının indeksi.
     index('attempt_media_plays_file_idx').on(table.institutionId, table.fileId),
+  ],
+)
+
+/**
+ * Alıştırmada madde kontrolü (OG-085, IST-056; DOM-BEC-047): kursiyerin süren denemede bir maddeyi
+ * kontrol ettirdiği cevap. Doğruluk, kalan hak ve kilit saklanmaz; core `itemFeedback` son satırın
+ * cevabından ve puanlama anahtarından hesaplar (DOM-BEC-010).
+ *
+ * - `check_number` deneme × madde içinde 1'den başlar; tekil indeks eşzamanlı iki kontrolden birini
+ *   reddeder, kontrol kısıtı core hakkını (`ITEM_CHECK_LIMIT`) aşan satırı reddeder.
+ * - `question_version_id` puanlama sürümündeki soru sürümüdür (cevap anahtarı gibi metin kimlik).
+ * - Satır değişmezdir: `attempt_item_checks_immutable_trigger` tetikleyicisi her `update`/`delete`/`truncate`'i reddeder.
+ */
+export const attemptItemChecks = pgTable(
+  'attempt_item_checks',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    attemptId: uuid('attempt_id').notNull(),
+    questionVersionId: text('question_version_id').notNull(),
+    checkNumber: integer('check_number').notNull(),
+    // kvkk: K
+    response: jsonb('response').$type<TaskResponse>().notNull(),
+    checkedAt: timestamp('checked_at', { withTimezone: true }).notNull(),
+    ...required(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'attempt_item_checks_pkey',
+      columns: [table.institutionId, table.attemptId, table.questionVersionId, table.checkNumber],
+    }),
+    // Birincil anahtar deneme yabancı anahtarının da indeksidir (ilk kolonları).
+    foreignKey({
+      name: 'attempt_item_checks_attempt_fkey',
+      columns: [table.institutionId, table.attemptId],
+      foreignColumns: [taskAttempts.institutionId, taskAttempts.id],
+    }),
+    check(
+      'attempt_item_checks_number_check',
+      sql`${table.checkNumber} between 1 and ${sql.raw(String(ITEM_CHECK_LIMIT))}`,
+    ),
+    check('attempt_item_checks_response_check', sql`jsonb_typeof(${table.response}) = 'object'`),
+    check('attempt_item_checks_version_check', firstVersion(table)),
   ],
 )
 

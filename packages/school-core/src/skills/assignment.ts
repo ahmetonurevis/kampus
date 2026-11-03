@@ -739,7 +739,8 @@ export function deadlineForVersion(
 /** Puanlanan sorunun sürümü (`content.type === 'question'`). */
 export type QuestionVersionRef = {
   id: string
-  tags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill' | 'skills' | 'subskill'>
+  tags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill' | 'skills' | 'subskill'> &
+    Partial<Pick<ResourceTags, 'outcomes'>>
   content: ResourceContent
   answerKey: AnswerKey | null
 }
@@ -750,7 +751,8 @@ export type QuestionVersionRef = {
  * (DOM-BEC-010, `answerLocaleForTags`). Eksik soru, anahtarsız soru `not_found`/`rule` reddidir.
  */
 export function scoringItemsFor(input: {
-  parentTags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill' | 'skills'>
+  parentTags: Pick<ResourceTags, 'cefrLevel' | 'primarySkill' | 'skills'> &
+    Partial<Pick<ResourceTags, 'outcomes'>>
   items: readonly { questionVersionId: string; points: number }[]
   questions: ReadonlyMap<string, QuestionVersionRef>
 }): ScoringItem[] {
@@ -778,6 +780,12 @@ export function scoringItemsFor(input: {
       answerKey: question.answerKey,
       locale,
       subskill: question.tags.subskill,
+      // Not defteri kırılımı (DOM-BEC-048): soru etiketlenmemişse setin becerisi ve kazanımları.
+      skill: question.tags.primarySkill ?? input.parentTags.primarySkill,
+      outcomes:
+        (question.tags.outcomes ?? []).length > 0
+          ? (question.tags.outcomes ?? [])
+          : (input.parentTags.outcomes ?? []),
     }
   })
 }

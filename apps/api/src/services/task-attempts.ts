@@ -17,14 +17,23 @@ import {
   type CompletedAttempt,
 } from '@kampus/school-core/skills/scoring.ts'
 import { transcriptShown } from '@kampus/school-core/skills/assignment.ts'
+import {
+  itemFeedback,
+  planItemCheck,
+  withLockedAnswers,
+  type ItemCheckInput,
+  type ItemCheckRow,
+} from '@kampus/school-core/skills/practice.ts'
 
 import type { Database } from '../db/client.ts'
 import {
   findAssignment,
   findAttempt,
   insertAttempt,
+  insertItemCheck,
   listAttempts,
   loadAttempts,
+  loadItemChecks,
   loadLearnersAttempts,
   saveAttemptAnswers,
   submitAttempt,
@@ -75,8 +84,8 @@ import {
 
 const ENTITY = 'task_attempt'
 
-/** Tamamlanmış denemeler ve puanları (sayılan deneme seçimi için; DOM-BEC-042). */
-function completedOf(
+/** Tamamlanmış denemeler ve puanları (sayılan ve gösterilen deneme seçimi; DOM-BEC-042, 048). */
+export function completedOf(
   assignment: StoredAssignment,
   context: ScoringContext,
   attempts: readonly StoredAttempt[],
@@ -128,6 +137,15 @@ export function attemptScoring(
 }
 
 /**
+ * Veli alıştırma puanını, madde sonucunu ve anında geri bildirimi görmez (DOM-BEC-041, 047, 048):
+ * alıştırma ölçme değildir, sonuç yalnız kursiyere ve öğretmene ilerlemedir. Deneme görünümü ve
+ * atama listesindeki durum özeti (`services/task-progress.ts`) aynı yüklemi kullanır.
+ */
+export function hidesPracticeResult(viewer: Viewer, assignment: Pick<StoredAssignment, 'kind'>) {
+  return viewer.kind === 'learner' && viewer.role === 'veli' && assignment.kind === 'practice'
+}
+
+/**
  * Denemenin görünümü. Kursiyer ve veli core `learnerResultLevel`'ı alır: süren denemede sonuç
  * yok, tamamlanınca yalnız toplam puan, anahtar açılınca madde sonuçları ve anahtar (DOM-BEC-045).
  * Personel tamamlanan denemenin madde sonuçlarını görür; anahtar ona da yalnız açılınca döner.
@@ -142,6 +160,7 @@ function attemptView(
   learnerAttempts: readonly StoredAttempt[],
   now: string,
   learnerName: string | null,
+  checks: readonly ItemCheckRow[],
 ) {
   const { context } = scoring
   const timing = timingOf(assignment)
@@ -170,7 +189,8 @@ function attemptView(
         : released
           ? 'full'
           : 'items'
-  const items = level === 'none' ? null : (context?.items ?? null)
+  const parentPractice = hidesPracticeResult(viewer, assignment)
+  const items = level === 'none' || parentPractice ? null : (context?.items ?? null)
   const score = items === null ? null : scoreAttempt(items, attempt.answers)
   return {
     id: attempt.id,
@@ -206,6 +226,12 @@ function attemptView(
                   }))
                 : null,
           },
+    // Anında geri bildirim (DOM-BEC-047): alıştırmada kontrol edilen maddeler; anahtar yalnız kilitli
+    // maddede. Veli görmez; değerlendirmede ve puanlama bağlamı yoksa `null`.
+    feedback:
+      assignment.kind !== 'practice' || parentPractice || context === null
+        ? null
+        : itemFeedback(context.items, checks),
     contentRemoved: scoring.removed,
     rowVersion: attempt.rowVersion,
   }
@@ -220,6 +246,7 @@ type StartBlock = 'in_progress' | 'license_expired' | 'locked' | 'limit' | 'unav
  * deneme sayılan deneme (DOM-BEC-042), alıştırmada ya da sayılan yoksa son tamamlanan; puan core
  * `learnerResultLevel` izin verdiğinde (tamamlanınca toplam; DOM-BEC-045). Başlatma engeli
  * `startTaskAttempt` sırasıyla aynıdır, yalnız süren deneme önce gelir (kursiyer ona devam eder).
+ * `hideScore` velinin alıştırma satırında puanı kapatır (`hidesPracticeResult`, DOM-BEC-041).
  * Puanlama bağlamı kurulamadıysa (`Error`; veri bütünlüğü) puan yoktur ve başlatma kapalıdır.
  */
 export function learnerAttemptProgress(
@@ -227,6 +254,7 @@ export function learnerAttemptProgress(
   context: ScoringContext | Error,
   attempts: readonly StoredAttempt[],
   now: Date,
+  hideScore: boolean,
 ) {
   const at = now.toISOString()
   const timing = timingOf(assignment)
@@ -264,7 +292,7 @@ export function learnerAttemptProgress(
           now: at,
         })
   const score =
-    scorable && shown !== null && level !== 'none'
+    scorable && shown !== null && level !== 'none' && !hideScore
       ? scoreAttempt(context.items, shown.attempt.answers)
       : null
   const latest = running ?? shown
@@ -329,9 +357,13 @@ function hasRunning(assignment: StoredAssignment, attempts: readonly StoredAttem
 
 /** Anahtar ve açıklaması içeriğin parçasıdır: kapalı içerikte dönmez; madde sonucu ve puan kalır. */
 function withoutKey<V extends ReturnType<typeof attemptView>>(view: V, open: boolean): V {
-  return open || view.result === null
-    ? view
-    : { ...view, result: { ...view.result, answerKey: null } }
+  if (open) return view
+  return {
+    ...view,
+    result: view.result === null ? null : { ...view.result, answerKey: null },
+    feedback:
+      view.feedback === null ? null : view.feedback.map((entry) => ({ ...entry, answerKey: null })),
+  }
 }
 
 /**
@@ -354,9 +386,10 @@ async function detailView(
   const pairs = await loadWorkPairs(db, ctx.institutionId, [assignment])
   const scoring = attemptScoring(assignment, pairs)
   const { context } = scoring
-  const [learnerAttempts, names] = await Promise.all([
+  const [learnerAttempts, names, checks] = await Promise.all([
     loadAttempts(db, ctx.institutionId, assignment.id, attempt.learnerId),
     loadLearnerNames({ ...ctx, db }, viewer, [attempt.learnerId]),
+    loadItemChecks(db, ctx.institutionId, [attempt.id]),
   ])
   const learnerName = names.get(attempt.learnerId) ?? null
   const now = ctx.now.toISOString()
@@ -372,7 +405,16 @@ async function detailView(
   const open = contentUnavailable === null && context !== null
   return {
     ...withoutKey(
-      attemptView(viewer, assignment, scoring, attempt, learnerAttempts, now, learnerName),
+      attemptView(
+        viewer,
+        assignment,
+        scoring,
+        attempt,
+        learnerAttempts,
+        now,
+        learnerName,
+        checks.get(attempt.id) ?? [],
+      ),
       open,
     ),
     questions: open ? questionsFor(context, attempt.id) : [],
@@ -448,11 +490,18 @@ export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptLi
     rows.map((row) => row.learnerId),
   )
   const now = ctx.now.toISOString()
-  const learnerNames = await loadLearnerNames(
-    ctx,
-    viewer,
-    rows.map((row) => row.learnerId),
-  )
+  const [learnerNames, checks] = await Promise.all([
+    loadLearnerNames(
+      ctx,
+      viewer,
+      rows.map((row) => row.learnerId),
+    ),
+    loadItemChecks(
+      ctx.db,
+      ctx.institutionId,
+      rows.map((row) => row.id),
+    ),
+  ])
   const ownOf = (learnerId: string) => all.filter((other) => other.learnerId === learnerId)
   // Anahtar ayrıntıdaki kapıyla gizlenir (`attemptContentGate`): personelde atama başına bir,
   // öğrenci ve velide kursiyer başına bir sınama (kendisi ya da çocukları).
@@ -481,6 +530,7 @@ export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptLi
           ownOf(row.learnerId),
           now,
           learnerNames.get(row.learnerId) ?? null,
+          checks.get(row.id) ?? [],
         ),
         gates.get(viewer.kind === 'learner' ? row.learnerId : '') ?? false,
       ),
@@ -598,7 +648,13 @@ export async function startTaskAttempt(
   )
 }
 
-type Owned = { attempt: StoredAttempt; assignment: StoredAssignment; context: ScoringContext }
+type Owned = {
+  attempt: StoredAttempt
+  assignment: StoredAssignment
+  context: ScoringContext
+  /** Denemenin madde kontrolleri (DOM-BEC-047); kilitli maddenin cevabı değişmez. */
+  checks: ItemCheckRow[]
+}
 
 /**
  * Yazılacak deneme: öğrencinin kendi denemesi ve arşivsiz atama; değilse 404 (kapsam), veli 403,
@@ -624,7 +680,13 @@ async function ownedAttempt(
   if (attempt.rowVersion !== input.expectedVersion) throw new ConflictError()
   const pairs = await loadWorkPairs(tx, ctx.institutionId, [assignment])
   await assertWorkOpen(tx, ctx, assignment, pairs, attempt.learnerId, () => Promise.resolve(true))
-  return { attempt, assignment, context: pairsScoringContext(assignment, pairs) }
+  const checks = await loadItemChecks(tx, ctx.institutionId, [attempt.id])
+  return {
+    attempt,
+    assignment,
+    context: pairsScoringContext(assignment, pairs),
+    checks: checks.get(attempt.id) ?? [],
+  }
 }
 
 export interface AttemptWriteInput {
@@ -633,7 +695,10 @@ export interface AttemptWriteInput {
   expectedVersion: number
 }
 
-/** Süren denemeye cevap kaydı (DOM-BEC-043; core `planAnswerSave`). Denetime yazılmaz. */
+/**
+ * Süren denemeye cevap kaydı (DOM-BEC-043; core `planAnswerSave`). Denetime yazılmaz. Alıştırmada
+ * kilitli maddenin cevabı değişmez (DOM-BEC-047; core `withLockedAnswers`).
+ */
 export async function saveTaskAttemptAnswers(
   ctx: ServiceContext,
   input: AttemptWriteInput & { answers: Answers },
@@ -652,13 +717,17 @@ export async function saveTaskAttemptAnswers(
         const owned = await ownedAttempt(tx, ctx, viewer, input)
         return {
           run: (_state, tools) => {
-            const answers = planAnswerSave({
-              attempt: owned.attempt,
-              timing: timingOf(owned.assignment),
-              items: owned.context.items,
-              answers: input.answers,
-              now: tools.now,
-            })
+            const answers = withLockedAnswers(
+              planAnswerSave({
+                attempt: owned.attempt,
+                timing: timingOf(owned.assignment),
+                items: owned.context.items,
+                answers: input.answers,
+                now: tools.now,
+              }),
+              owned.context.items,
+              owned.checks,
+            )
             return { owned, answers }
           },
         }
@@ -696,13 +765,18 @@ export async function submitTaskAttempt(
         const owned = await ownedAttempt(tx, ctx, viewer, input)
         return {
           run: (_state, tools) => {
-            const plan = planAttemptSubmit({
+            const planned = planAttemptSubmit({
               attempt: owned.attempt,
               timing: timingOf(owned.assignment),
               items: owned.context.items,
               ...(input.answers === undefined ? {} : { answers: input.answers }),
               now: tools.now,
             })
+            // Kilitli maddenin cevabı teslimde de değişmez (DOM-BEC-047).
+            const plan = {
+              ...planned,
+              answers: withLockedAnswers(planned.answers, owned.context.items, owned.checks),
+            }
             return { owned, plan }
           },
         }
@@ -713,6 +787,57 @@ export async function submitTaskAttempt(
           'answers',
           'submittedAt',
         ])
+        out.body = await readBack(tx, ctx, viewer, owned.assignment, owned.attempt.id)
+      },
+    },
+    written(out, 200),
+    idempotency,
+  )
+}
+
+/**
+ * Alıştırmada madde kontrolü (OG-085, IST-056; DOM-BEC-047; core `planItemCheck`). Cevap denemeye
+ * kaydedilir ve kontrol satırı açılır; yanıt denemenin ayrıntısıdır, `feedback` o maddenin
+ * sonucunu ve (kilitlendiyse) yalnız onun anahtarını taşır. Son kontrolle aynı cevap mükerrerdir:
+ * hiçbir şey yazılmaz, hak tüketilmez, aynı ayrıntı döner. Denetime yazılmaz (cevap kaydı gibi sık
+ * ve otomatiktir). Sıra cevap kaydıyla aynıdır: kapsam 404 → rol 403 → sürüm 409 → içerik → core.
+ */
+export async function checkTaskAttemptItem(
+  ctx: ServiceContext,
+  input: { attemptId: string; expectedVersion: number; check: ItemCheckInput },
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
+  const viewer = await viewerOf(ctx)
+  const out: { body?: unknown } = {}
+  type Check = { owned: Owned; plan: ReturnType<typeof planItemCheck> }
+  return runCommand<Check>(
+    ctx,
+    {
+      action: 'task_attempt.check',
+      collections: [],
+      entity: { type: ENTITY, id: input.attemptId },
+      load: async (tx) => {
+        const owned = await ownedAttempt(tx, ctx, viewer, input)
+        return {
+          run: (_state, tools) => ({
+            owned,
+            plan: planItemCheck({
+              kind: owned.assignment.kind,
+              attempt: owned.attempt,
+              timing: timingOf(owned.assignment),
+              items: owned.context.items,
+              checks: owned.checks,
+              check: input.check,
+              now: tools.now,
+            }),
+          }),
+        }
+      },
+      after: async (tx, { owned, plan }) => {
+        if (plan.kind === 'new') {
+          await insertItemCheck(tx, ctx.institutionId, owned.attempt.id, plan.check)
+          await saveAttemptAnswers(tx, ctx.institutionId, owned.attempt, plan.answers, ctx.now)
+        }
         out.body = await readBack(tx, ctx, viewer, owned.assignment, owned.attempt.id)
       },
     },

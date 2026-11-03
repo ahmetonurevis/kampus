@@ -89,6 +89,7 @@ const attempt = (overrides: Partial<TaskAttempt> = {}): TaskAttempt => ({
   counted: true,
   answers: {},
   result: { earned: 3, possible: 4, percent: 75, items: null, subskills: null, answerKey: null },
+  feedback: null,
   contentRemoved: false,
   rowVersion: 3,
   ...overrides,

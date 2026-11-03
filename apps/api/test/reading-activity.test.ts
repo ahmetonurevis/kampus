@@ -698,15 +698,21 @@ describe('okuma-anlama etkinliği', () => {
     assert.deepEqual(ongoing.gate, [0, null, 'unavailable'])
     assert.equal(ongoing.leaked, false)
     assert.deepEqual(ongoing.read.answers, { [t.items.main]: choice('a') })
-    // Tamamlanmış deneme sonucu: öğrenci ve veli puanı görür, metni görmez.
+    // Tamamlanmış deneme sonucu: öğrenci puanı görür, metni görmez. Veli alıştırma puanını hiç
+    // görmez (DOM-BEC-041, OG-085); cevaplar ve metin kapısı aynıdır.
     for (const cookie of [t.cookies.student, t.cookies.parent]) {
       const result = await textOf(first.id, cookie)
       assert.deepEqual(result.gate, [0, null, 'unavailable'])
       assert.equal(result.leaked, false)
-      assert.deepEqual([result.read.result.earned, result.read.answers], [2, answers])
+      assert.deepEqual(result.read.answers, answers)
+      assert.equal(JSON.stringify(result.read).includes(SECRET_EXPLANATION), false)
+      if (cookie === t.cookies.parent) {
+        assert.equal(result.read.result, null)
+        continue
+      }
+      assert.equal(result.read.result.earned, 2)
       // Anahtar (açıklamasıyla) içeriğin parçasıdır: kapalı içerikte dönmez; madde sonucu kalır.
       assert.deepEqual([result.read.result.answerKey, result.read.result.items.length], [null, 3])
-      assert.equal(JSON.stringify(result.read).includes(SECRET_EXPLANATION), false)
     }
     // Personel kaynak ayrıntısıyla tutarlı: kaldırılan içerik ona da gösterilmez; cevaplar ve
     // madde sonuçları görünür.

@@ -2,6 +2,7 @@ import { useEffect, useState } from 'react'
 import { SUBSKILLS } from '@kampus/school-core/content/taxonomy.ts'
 import { TASK_CONTENT_UNAVAILABLE_MESSAGE } from '@kampus/react-shared/use-task-assignments.ts'
 import {
+  useCheckTaskAttemptItem,
   useSubmitTaskAttempt,
   type TaskAttemptDetail,
 } from '@kampus/react-shared/use-task-attempts.ts'
@@ -12,9 +13,15 @@ import { Button } from '@/components/ui/button'
 import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
 import { ListeningRecording } from './ListeningRecording.tsx'
+import {
+  checkView,
+  feedbackFor,
+  shownFeedback,
+  type CheckedFeedback,
+} from './practice-check-model.ts'
 import { QuestionInput } from './QuestionInput.tsx'
 import { ReadingPassage } from './ReadingPassage.tsx'
-import { answeredCount, attemptClock, isAnswered } from './student-task-model.ts'
+import { answeredCount, attemptClock, describeKey, isAnswered } from './student-task-model.ts'
 import { useAttemptAnswers, type SaveState } from './use-attempt-answers.ts'
 
 type Props = {
@@ -45,6 +52,9 @@ const SAVE_TEXT: Record<SaveState, string> = {
  * geniş ekranda soruların solunda kendi içinde kayar, dar ekranda üstte durur; soru başında alt
  * beceri etiketi (DOM-BEC-006) yazılır. Dinleme etkinliğinde (IST-045, DOM-BEC-005) kayıt
  * soruların üstündedir; bağlantı bu denemenin kimliğiyle istenir ve hak burada sayılır.
+ * Alıştırmada (`feedback` dizi; OG-085, DOM-BEC-047) her soruda "Kontrol et" vardır: cevap önce
+ * kaydedilir, sonuç ve kalan hak `aria-live` bölgesinde okunur; kilitli sorunun girdisi kapanır ve
+ * yalnız onun doğru cevabı ile açıklaması görünür.
  */
 export function AttemptPlayer({
   title,
@@ -57,8 +67,12 @@ export function AttemptPlayer({
 }: Props) {
   const answers = useAttemptAnswers(attempt)
   const submit = useSubmitTaskAttempt()
+  const check = useCheckTaskAttemptItem()
   const [index, setIndex] = useState(0)
   const [confirming, setConfirming] = useState(false)
+  // Son kontrol yanıtı; yalnız tazelenen ayrıntı gelene kadar ekranın doğrusudur (sürüm karşılaştırılır).
+  const [checked, setChecked] = useState<CheckedFeedback | null>(null)
+  const feedback = shownFeedback(attempt, checked)
 
   const questions = attempt.questions
   const question = questions[index]
@@ -95,6 +109,29 @@ export function AttemptPlayer({
     }
   }
 
+  async function checkItem(questionVersionId: string) {
+    const response = answers.answers[questionVersionId]
+    if (response === undefined) return
+    const saved = await answers.flush()
+    if (!saved) {
+      notify.error('Cevabınız kaydedilemedi. Bağlantınızı kontrol edip yeniden deneyin.')
+      return
+    }
+    const outcome = await check.submit({
+      attemptId: attempt.id,
+      version: answers.currentVersion(),
+      questionVersionId,
+      response,
+    })
+    if (outcome.status === 'success') {
+      answers.adoptVersion(outcome.data.data.rowVersion)
+      setChecked({
+        rowVersion: outcome.data.data.rowVersion,
+        feedback: outcome.data.data.feedback,
+      })
+    } else setChecked(null)
+  }
+
   async function leave() {
     await answers.flush()
     onLeave()
@@ -107,6 +144,13 @@ export function AttemptPlayer({
         {TASK_CONTENT_UNAVAILABLE_MESSAGE}
       </p>
     ) : null
+  const entry = feedbackFor(feedback, question.questionVersionId)
+  const practice = feedback !== null
+  const view = checkView({
+    entry,
+    answered: isAnswered(question, answers.answers[question.questionVersionId]),
+    timeOver,
+  })
   const player = (
     <section
       aria-labelledby="deneme-baslik"
@@ -148,8 +192,57 @@ export function AttemptPlayer({
         question={question}
         response={answers.answers[question.questionVersionId]}
         onChange={(response) => answers.setAnswer(question.questionVersionId, response)}
-        disabled={timeOver || submit.isPending}
+        disabled={timeOver || submit.isPending || check.isPending || view.locked}
       />
+
+      {practice ? (
+        <div className="mt-4 rounded-md border bg-surface-soft p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!view.canCheck || check.isPending || submit.isPending}
+              aria-busy={check.isPending}
+              aria-describedby="kontrol-hakki"
+              onClick={() => void checkItem(question.questionVersionId)}
+            >
+              <Icon name="CheckCheck" size={16} aria-hidden="true" />
+              Kontrol et
+            </Button>
+            <span id="kontrol-hakki" className="text-xs text-muted-foreground">
+              {view.remainingText}
+            </span>
+          </div>
+          <div
+            role="status"
+            aria-live="polite"
+            aria-label="Kontrol sonucu"
+            className="mt-2 text-sm"
+          >
+            {view.result ? (
+              <>
+                <p className="flex flex-wrap items-center gap-2">
+                  <StatusBadge text={view.result.label} tone={view.result.tone} />
+                  <span>{view.result.detail}</span>
+                </p>
+                {entry?.answerKey ? (
+                  <>
+                    <p className="mt-2">
+                      <span className="text-muted-foreground">Doğru cevap: </span>
+                      <span lang="en">{describeKey(question.question, entry.answerKey)}</span>
+                    </p>
+                    {entry.answerKey.explanation ? (
+                      <p className="mt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                        {entry.answerKey.explanation}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <p role="status" className="mt-4 text-xs text-muted-foreground">
         {SAVE_TEXT[answers.state]}

@@ -169,6 +169,9 @@ export const OUTCOME_SOURCES = {
 } as const
 export type OutcomeSource = keyof typeof OUTCOME_SOURCES
 
+/** Ünite numarası aralığı (IST-056; DOM-BEC-047): kitap ve MEB programı ünitesi. */
+export const UNIT_RANGE = { min: 1, max: 40 } as const
+
 /** Sınıf düzeyi aralığı (DOM-KYN-010: ortaokul ve lise, 5–12). */
 export const GRADE_LEVEL_RANGE = { min: 5, max: 12 } as const
 

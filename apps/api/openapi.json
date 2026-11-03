@@ -6936,6 +6936,262 @@
           }
         ]
       },
+      "TaskAttemptItemFeedbackInput": {
+        "type": "object",
+        "properties": {
+          "questionVersionId": {
+            "type": "string"
+          },
+          "used": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kullanılan kontrol hakkı"
+          },
+          "remaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2,
+            "description": "Kalan kontrol hakkı (madde başına 2)"
+          },
+          "correct": {
+            "type": "boolean",
+            "description": "Son kontrol edilen cevap tam doğru mu"
+          },
+          "correctParts": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "parts": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Çok maddeli soruda madde sayısı; diğerlerinde 1"
+          },
+          "locked": {
+            "type": "boolean",
+            "description": "Doğru cevap ya da hak bitti: cevap bu denemede değişmez, anahtar açılır"
+          },
+          "answerKey": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "multiple_choice"
+                      },
+                      "correctOptionId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "correctOptionId",
+                      "explanation"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "true_false"
+                      },
+                      "answer": {
+                        "type": "string",
+                        "enum": [
+                          "true",
+                          "false",
+                          "not_given"
+                        ]
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "answer",
+                      "explanation"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "matching"
+                      },
+                      "pairs": {
+                        "minItems": 1,
+                        "maxItems": 20,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "promptId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                            },
+                            "choiceId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                            }
+                          },
+                          "required": [
+                            "promptId",
+                            "choiceId"
+                          ]
+                        }
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "pairs",
+                      "explanation"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "gap_fill"
+                      },
+                      "gaps": {
+                        "minItems": 1,
+                        "maxItems": 20,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "gapId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                            },
+                            "accepted": {
+                              "minItems": 1,
+                              "maxItems": 20,
+                              "type": "array",
+                              "items": {
+                                "type": "string",
+                                "minLength": 1,
+                                "maxLength": 200
+                              }
+                            }
+                          },
+                          "required": [
+                            "gapId",
+                            "accepted"
+                          ]
+                        }
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "gaps",
+                      "explanation"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "ordering"
+                      },
+                      "order": {
+                        "minItems": 2,
+                        "maxItems": 20,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        }
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "order",
+                      "explanation"
+                    ]
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "short_answer"
+                      },
+                      "accepted": {
+                        "minItems": 1,
+                        "maxItems": 20,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "minLength": 1,
+                          "maxLength": 200
+                        }
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "accepted",
+                      "explanation"
+                    ]
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yalnız kilitli maddenin doğru cevabı ve açıklaması; diğer maddeler `null` (DOM-BEC-045, 047). İçerik kapalıysa `null`"
+          }
+        },
+        "required": [
+          "questionVersionId",
+          "used",
+          "remaining",
+          "correct",
+          "correctParts",
+          "parts",
+          "locked",
+          "answerKey"
+        ]
+      },
       "TaskAttemptItemScoreInput": {
         "type": "object",
         "properties": {
@@ -7559,6 +7815,20 @@
             ],
             "description": "Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010)"
           },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TaskAttemptItemFeedbackInput"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null`"
+          },
           "contentRemoved": {
             "type": "boolean",
             "description": "Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz \"Bu içerik kaldırıldı\" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)"
@@ -7586,6 +7856,7 @@
           "counted",
           "answers",
           "result",
+          "feedback",
           "contentRemoved",
           "rowVersion"
         ]
@@ -7861,6 +8132,20 @@
               }
             ],
             "description": "Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010)"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TaskAttemptItemFeedbackInput"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null`"
           },
           "contentRemoved": {
             "type": "boolean",
@@ -8462,6 +8747,7 @@
           "counted",
           "answers",
           "result",
+          "feedback",
           "contentRemoved",
           "rowVersion",
           "questions",
@@ -13992,6 +14278,482 @@
           "studentId",
           "computedAt",
           "skills"
+        ]
+      },
+      "PracticeGradebookInput": {
+        "type": "object",
+        "properties": {
+          "assignments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "unit": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "number": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "title": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "number",
+                        "title"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "learners": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Tamamlanmış denemesi olan kursiyer sayısı"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "unit",
+                "learners"
+              ]
+            },
+            "description": "Not defterine giren alıştırma atamaları, en yeni önce"
+          },
+          "learners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "learnerId": {
+                  "type": "string"
+                },
+                "learnerName": {
+                  "description": "Öğrencinin adı: yöneticide her öğrenci, öğretmende kapsamındakiler",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sets": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı"
+                },
+                "overall": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Madde sayısı (deneme × madde)"
+                    },
+                    "earned": {
+                      "type": "number",
+                      "description": "Kazanılan puan (iki ondalık)"
+                    },
+                    "possible": {
+                      "type": "number"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "100 üzerinden puan"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "earned",
+                    "possible",
+                    "percent"
+                  ],
+                  "description": "Bütün maddeler"
+                },
+                "units": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "number": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "title": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "sets": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Madde sayısı (deneme × madde)"
+                      },
+                      "earned": {
+                        "type": "number",
+                        "description": "Kazanılan puan (iki ondalık)"
+                      },
+                      "possible": {
+                        "type": "number"
+                      },
+                      "percent": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "100 üzerinden puan"
+                      }
+                    },
+                    "required": [
+                      "number",
+                      "title",
+                      "sets",
+                      "items",
+                      "earned",
+                      "possible",
+                      "percent"
+                    ]
+                  },
+                  "description": "Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır"
+                },
+                "skills": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "skill": {
+                        "type": "string",
+                        "enum": [
+                          "reading",
+                          "listening",
+                          "writing",
+                          "speaking",
+                          "mediation",
+                          "language_use"
+                        ]
+                      },
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Madde sayısı (deneme × madde)"
+                      },
+                      "earned": {
+                        "type": "number",
+                        "description": "Kazanılan puan (iki ondalık)"
+                      },
+                      "possible": {
+                        "type": "number"
+                      },
+                      "percent": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "100 üzerinden puan"
+                      }
+                    },
+                    "required": [
+                      "skill",
+                      "items",
+                      "earned",
+                      "possible",
+                      "percent"
+                    ]
+                  },
+                  "description": "Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …)"
+                },
+                "outcomes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "outcomeSource": {
+                        "type": "string",
+                        "enum": [
+                          "platform",
+                          "institution"
+                        ]
+                      },
+                      "outcomeId": {
+                        "type": "string"
+                      },
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Madde sayısı (deneme × madde)"
+                      },
+                      "earned": {
+                        "type": "number",
+                        "description": "Kazanılan puan (iki ondalık)"
+                      },
+                      "possible": {
+                        "type": "number"
+                      },
+                      "percent": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "100 üzerinden puan"
+                      }
+                    },
+                    "required": [
+                      "outcomeSource",
+                      "outcomeId",
+                      "items",
+                      "earned",
+                      "possible",
+                      "percent"
+                    ]
+                  },
+                  "description": "Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla"
+                }
+              },
+              "required": [
+                "learnerId",
+                "learnerName",
+                "sets",
+                "overall",
+                "units",
+                "skills",
+                "outcomes"
+              ]
+            },
+            "description": "Kursiyer başına kırılım, kimlik sırasıyla"
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "sets": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı"
+              },
+              "overall": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Madde sayısı (deneme × madde)"
+                  },
+                  "earned": {
+                    "type": "number",
+                    "description": "Kazanılan puan (iki ondalık)"
+                  },
+                  "possible": {
+                    "type": "number"
+                  },
+                  "percent": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "100 üzerinden puan"
+                  }
+                },
+                "required": [
+                  "items",
+                  "earned",
+                  "possible",
+                  "percent"
+                ],
+                "description": "Bütün maddeler"
+              },
+              "units": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "number": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "sets": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Madde sayısı (deneme × madde)"
+                    },
+                    "earned": {
+                      "type": "number",
+                      "description": "Kazanılan puan (iki ondalık)"
+                    },
+                    "possible": {
+                      "type": "number"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "100 üzerinden puan"
+                    }
+                  },
+                  "required": [
+                    "number",
+                    "title",
+                    "sets",
+                    "items",
+                    "earned",
+                    "possible",
+                    "percent"
+                  ]
+                },
+                "description": "Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır"
+              },
+              "skills": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Madde sayısı (deneme × madde)"
+                    },
+                    "earned": {
+                      "type": "number",
+                      "description": "Kazanılan puan (iki ondalık)"
+                    },
+                    "possible": {
+                      "type": "number"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "100 üzerinden puan"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "items",
+                    "earned",
+                    "possible",
+                    "percent"
+                  ]
+                },
+                "description": "Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …)"
+              },
+              "outcomes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "outcomeSource": {
+                      "type": "string",
+                      "enum": [
+                        "platform",
+                        "institution"
+                      ]
+                    },
+                    "outcomeId": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Madde sayısı (deneme × madde)"
+                    },
+                    "earned": {
+                      "type": "number",
+                      "description": "Kazanılan puan (iki ondalık)"
+                    },
+                    "possible": {
+                      "type": "number"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "100 üzerinden puan"
+                    }
+                  },
+                  "required": [
+                    "outcomeSource",
+                    "outcomeId",
+                    "items",
+                    "earned",
+                    "possible",
+                    "percent"
+                  ]
+                },
+                "description": "Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla"
+              }
+            },
+            "required": [
+              "sets",
+              "overall",
+              "units",
+              "skills",
+              "outcomes"
+            ],
+            "description": "Bütün kursiyerlerin toplamı"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "Görülen alıştırma ataması sınırı (100) aştı; en yeniler okundu"
+          }
+        },
+        "required": [
+          "assignments",
+          "learners",
+          "totals",
+          "truncated"
         ]
       },
       "ErrorResponse": {
@@ -21141,6 +21903,253 @@
           }
         ]
       },
+      "TaskAttemptItemFeedback": {
+        "type": "object",
+        "properties": {
+          "questionVersionId": {
+            "type": "string"
+          },
+          "used": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kullanılan kontrol hakkı"
+          },
+          "remaining": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 2,
+            "description": "Kalan kontrol hakkı (madde başına 2)"
+          },
+          "correct": {
+            "type": "boolean",
+            "description": "Son kontrol edilen cevap tam doğru mu"
+          },
+          "correctParts": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          },
+          "parts": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Çok maddeli soruda madde sayısı; diğerlerinde 1"
+          },
+          "locked": {
+            "type": "boolean",
+            "description": "Doğru cevap ya da hak bitti: cevap bu denemede değişmez, anahtar açılır"
+          },
+          "answerKey": {
+            "anyOf": [
+              {
+                "oneOf": [
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "multiple_choice"
+                      },
+                      "correctOptionId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "correctOptionId",
+                      "explanation"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "true_false"
+                      },
+                      "answer": {
+                        "type": "string",
+                        "enum": [
+                          "true",
+                          "false",
+                          "not_given"
+                        ]
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "answer",
+                      "explanation"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "matching"
+                      },
+                      "pairs": {
+                        "minItems": 1,
+                        "maxItems": 20,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "promptId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                            },
+                            "choiceId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                            }
+                          },
+                          "required": [
+                            "promptId",
+                            "choiceId"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "pairs",
+                      "explanation"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "gap_fill"
+                      },
+                      "gaps": {
+                        "minItems": 1,
+                        "maxItems": 20,
+                        "type": "array",
+                        "items": {
+                          "type": "object",
+                          "properties": {
+                            "gapId": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                            },
+                            "accepted": {}
+                          },
+                          "required": [
+                            "gapId",
+                            "accepted"
+                          ],
+                          "additionalProperties": false
+                        }
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "gaps",
+                      "explanation"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "ordering"
+                      },
+                      "order": {
+                        "minItems": 2,
+                        "maxItems": 20,
+                        "type": "array",
+                        "items": {
+                          "type": "string",
+                          "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                        }
+                      },
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "order",
+                      "explanation"
+                    ],
+                    "additionalProperties": false
+                  },
+                  {
+                    "type": "object",
+                    "properties": {
+                      "questionType": {
+                        "type": "string",
+                        "const": "short_answer"
+                      },
+                      "accepted": {},
+                      "explanation": {
+                        "type": "string",
+                        "minLength": 1,
+                        "maxLength": 5000
+                      }
+                    },
+                    "required": [
+                      "questionType",
+                      "accepted",
+                      "explanation"
+                    ],
+                    "additionalProperties": false
+                  }
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Yalnız kilitli maddenin doğru cevabı ve açıklaması; diğer maddeler `null` (DOM-BEC-045, 047). İçerik kapalıysa `null`"
+          }
+        },
+        "required": [
+          "questionVersionId",
+          "used",
+          "remaining",
+          "correct",
+          "correctParts",
+          "parts",
+          "locked",
+          "answerKey"
+        ],
+        "additionalProperties": false
+      },
       "TaskAttemptItemScore": {
         "type": "object",
         "properties": {
@@ -21766,6 +22775,20 @@
             ],
             "description": "Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010)"
           },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TaskAttemptItemFeedback"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null`"
+          },
           "contentRemoved": {
             "type": "boolean",
             "description": "Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz \"Bu içerik kaldırıldı\" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)"
@@ -21793,6 +22816,7 @@
           "counted",
           "answers",
           "result",
+          "feedback",
           "contentRemoved",
           "rowVersion"
         ],
@@ -22077,6 +23101,20 @@
               }
             ],
             "description": "Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010)"
+          },
+          "feedback": {
+            "anyOf": [
+              {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/TaskAttemptItemFeedback"
+                }
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null`"
           },
           "contentRemoved": {
             "type": "boolean",
@@ -22692,6 +23730,7 @@
           "counted",
           "answers",
           "result",
+          "feedback",
           "contentRemoved",
           "rowVersion",
           "questions",
@@ -28310,6 +29349,495 @@
           "studentId",
           "computedAt",
           "skills"
+        ],
+        "additionalProperties": false
+      },
+      "PracticeGradebook": {
+        "type": "object",
+        "properties": {
+          "assignments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "format": "uuid",
+                  "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "unit": {
+                  "anyOf": [
+                    {
+                      "type": "object",
+                      "properties": {
+                        "number": {
+                          "type": "integer",
+                          "minimum": 1,
+                          "maximum": 9007199254740991
+                        },
+                        "title": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "number",
+                        "title"
+                      ],
+                      "additionalProperties": false
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ]
+                },
+                "learners": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Tamamlanmış denemesi olan kursiyer sayısı"
+                }
+              },
+              "required": [
+                "id",
+                "title",
+                "unit",
+                "learners"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Not defterine giren alıştırma atamaları, en yeni önce"
+          },
+          "learners": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "learnerId": {
+                  "type": "string"
+                },
+                "learnerName": {
+                  "description": "Öğrencinin adı: yöneticide her öğrenci, öğretmende kapsamındakiler",
+                  "type": [
+                    "string",
+                    "null"
+                  ]
+                },
+                "sets": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı"
+                },
+                "overall": {
+                  "type": "object",
+                  "properties": {
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Madde sayısı (deneme × madde)"
+                    },
+                    "earned": {
+                      "type": "number",
+                      "description": "Kazanılan puan (iki ondalık)"
+                    },
+                    "possible": {
+                      "type": "number"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "100 üzerinden puan"
+                    }
+                  },
+                  "required": [
+                    "items",
+                    "earned",
+                    "possible",
+                    "percent"
+                  ],
+                  "additionalProperties": false,
+                  "description": "Bütün maddeler"
+                },
+                "units": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "number": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "title": {
+                        "type": [
+                          "string",
+                          "null"
+                        ]
+                      },
+                      "sets": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991
+                      },
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Madde sayısı (deneme × madde)"
+                      },
+                      "earned": {
+                        "type": "number",
+                        "description": "Kazanılan puan (iki ondalık)"
+                      },
+                      "possible": {
+                        "type": "number"
+                      },
+                      "percent": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "100 üzerinden puan"
+                      }
+                    },
+                    "required": [
+                      "number",
+                      "title",
+                      "sets",
+                      "items",
+                      "earned",
+                      "possible",
+                      "percent"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır"
+                },
+                "skills": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "skill": {
+                        "type": "string",
+                        "enum": [
+                          "reading",
+                          "listening",
+                          "writing",
+                          "speaking",
+                          "mediation",
+                          "language_use"
+                        ]
+                      },
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Madde sayısı (deneme × madde)"
+                      },
+                      "earned": {
+                        "type": "number",
+                        "description": "Kazanılan puan (iki ondalık)"
+                      },
+                      "possible": {
+                        "type": "number"
+                      },
+                      "percent": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "100 üzerinden puan"
+                      }
+                    },
+                    "required": [
+                      "skill",
+                      "items",
+                      "earned",
+                      "possible",
+                      "percent"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …)"
+                },
+                "outcomes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "outcomeSource": {
+                        "type": "string",
+                        "enum": [
+                          "platform",
+                          "institution"
+                        ]
+                      },
+                      "outcomeId": {
+                        "type": "string"
+                      },
+                      "items": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Madde sayısı (deneme × madde)"
+                      },
+                      "earned": {
+                        "type": "number",
+                        "description": "Kazanılan puan (iki ondalık)"
+                      },
+                      "possible": {
+                        "type": "number"
+                      },
+                      "percent": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991,
+                        "description": "100 üzerinden puan"
+                      }
+                    },
+                    "required": [
+                      "outcomeSource",
+                      "outcomeId",
+                      "items",
+                      "earned",
+                      "possible",
+                      "percent"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla"
+                }
+              },
+              "required": [
+                "learnerId",
+                "learnerName",
+                "sets",
+                "overall",
+                "units",
+                "skills",
+                "outcomes"
+              ],
+              "additionalProperties": false
+            },
+            "description": "Kursiyer başına kırılım, kimlik sırasıyla"
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "sets": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı"
+              },
+              "overall": {
+                "type": "object",
+                "properties": {
+                  "items": {
+                    "type": "integer",
+                    "minimum": 0,
+                    "maximum": 9007199254740991,
+                    "description": "Madde sayısı (deneme × madde)"
+                  },
+                  "earned": {
+                    "type": "number",
+                    "description": "Kazanılan puan (iki ondalık)"
+                  },
+                  "possible": {
+                    "type": "number"
+                  },
+                  "percent": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991,
+                    "description": "100 üzerinden puan"
+                  }
+                },
+                "required": [
+                  "items",
+                  "earned",
+                  "possible",
+                  "percent"
+                ],
+                "additionalProperties": false,
+                "description": "Bütün maddeler"
+              },
+              "units": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "number": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "title": {
+                      "type": [
+                        "string",
+                        "null"
+                      ]
+                    },
+                    "sets": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991
+                    },
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Madde sayısı (deneme × madde)"
+                    },
+                    "earned": {
+                      "type": "number",
+                      "description": "Kazanılan puan (iki ondalık)"
+                    },
+                    "possible": {
+                      "type": "number"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "100 üzerinden puan"
+                    }
+                  },
+                  "required": [
+                    "number",
+                    "title",
+                    "sets",
+                    "items",
+                    "earned",
+                    "possible",
+                    "percent"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır"
+              },
+              "skills": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking",
+                        "mediation",
+                        "language_use"
+                      ]
+                    },
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Madde sayısı (deneme × madde)"
+                    },
+                    "earned": {
+                      "type": "number",
+                      "description": "Kazanılan puan (iki ondalık)"
+                    },
+                    "possible": {
+                      "type": "number"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "100 üzerinden puan"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "items",
+                    "earned",
+                    "possible",
+                    "percent"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …)"
+              },
+              "outcomes": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "outcomeSource": {
+                      "type": "string",
+                      "enum": [
+                        "platform",
+                        "institution"
+                      ]
+                    },
+                    "outcomeId": {
+                      "type": "string"
+                    },
+                    "items": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Madde sayısı (deneme × madde)"
+                    },
+                    "earned": {
+                      "type": "number",
+                      "description": "Kazanılan puan (iki ondalık)"
+                    },
+                    "possible": {
+                      "type": "number"
+                    },
+                    "percent": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991,
+                      "description": "100 üzerinden puan"
+                    }
+                  },
+                  "required": [
+                    "outcomeSource",
+                    "outcomeId",
+                    "items",
+                    "earned",
+                    "possible",
+                    "percent"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla"
+              }
+            },
+            "required": [
+              "sets",
+              "overall",
+              "units",
+              "skills",
+              "outcomes"
+            ],
+            "additionalProperties": false,
+            "description": "Bütün kursiyerlerin toplamı"
+          },
+          "truncated": {
+            "type": "boolean",
+            "description": "Görülen alıştırma ataması sınırı (100) aştı; en yeniler okundu"
+          }
+        },
+        "required": [
+          "assignments",
+          "learners",
+          "totals",
+          "truncated"
         ],
         "additionalProperties": false
       }
@@ -60097,6 +61625,38 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "unit": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "number": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 40
+                                  },
+                                  "title": {
+                                    "default": null,
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "maxLength": 120
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "number"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -60174,6 +61734,38 @@
                                 "type": "string",
                                 "minLength": 1,
                                 "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "unit": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "number": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 40
+                                  },
+                                  "title": {
+                                    "default": null,
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "maxLength": 120
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "number"
+                                ]
                               },
                               {
                                 "type": "null"
@@ -62053,6 +63645,38 @@
                                 "type": "null"
                               }
                             ]
+                          },
+                          "unit": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "number": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 40
+                                  },
+                                  "title": {
+                                    "default": null,
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "maxLength": 120
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "number"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
                           }
                         },
                         "required": [
@@ -62130,6 +63754,38 @@
                                 "type": "string",
                                 "minLength": 1,
                                 "maxLength": 200
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "unit": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "number": {
+                                    "type": "integer",
+                                    "minimum": 1,
+                                    "maximum": 40
+                                  },
+                                  "title": {
+                                    "default": null,
+                                    "anyOf": [
+                                      {
+                                        "type": "string",
+                                        "maxLength": 120
+                                      },
+                                      {
+                                        "type": "null"
+                                      }
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "number"
+                                ]
                               },
                               {
                                 "type": "null"
@@ -68552,6 +70208,348 @@
             "name": "idempotency-key",
             "required": true,
             "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskAttemptDetail"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-attempts/{attemptId}/checks": {
+      "post": {
+        "operationId": "checkTaskAttemptItem",
+        "summary": "Alıştırma maddesini kontrol et",
+        "tags": [
+          "task-attempts"
+        ],
+        "description": "Alıştırmada anında geri bildirim (IST-056, DOM-BEC-047; core `planItemCheck`): cevap denemeye kaydedilir, yanıt denemenin ayrıntısıdır ve `feedback` maddenin doğru/yanlış sonucunu, kalan hakkı ve yalnız kilitli maddenin anahtarını taşır. Madde başına 2 hak; doğru cevap ya da hakkın bitmesi maddeyi kilitler, kilitli maddenin cevabı kayıt ve teslimde değişmez. Son kontrolle aynı cevap mükerrerdir: hak tüketmez, hiçbir şey yazılmaz. Değerlendirme 422 `instant_feedback_unavailable`; kilitli madde 422 `item_check_locked`; görevde olmayan soru ya da uyuşmayan cevap 422 `answer_invalid`; süre dolduysa 422 `attempt_time_over`; teslim edilmiş deneme 409 `attempt_already_submitted`. İçerik kuralı cevap kaydıyla aynıdır (422 `content_unavailable`). `If-Match` zorunlu (denemenin `rowVersion`'ı; tutmazsa 409 `version_conflict`). Denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "questionVersionId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  },
+                  "response": {
+                    "oneOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "questionType": {
+                            "type": "string",
+                            "enum": [
+                              "multiple_choice"
+                            ]
+                          },
+                          "optionId": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "questionType",
+                          "optionId"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "questionType": {
+                            "type": "string",
+                            "enum": [
+                              "true_false"
+                            ]
+                          },
+                          "answer": {
+                            "anyOf": [
+                              {
+                                "type": "string",
+                                "enum": [
+                                  "true",
+                                  "false",
+                                  "not_given"
+                                ]
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "questionType",
+                          "answer"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "questionType": {
+                            "type": "string",
+                            "enum": [
+                              "matching"
+                            ]
+                          },
+                          "pairs": {
+                            "maxItems": 20,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "promptId": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                },
+                                "choiceId": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                }
+                              },
+                              "required": [
+                                "promptId",
+                                "choiceId"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "questionType",
+                          "pairs"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "questionType": {
+                            "type": "string",
+                            "enum": [
+                              "gap_fill"
+                            ]
+                          },
+                          "gaps": {
+                            "maxItems": 20,
+                            "type": "array",
+                            "items": {
+                              "type": "object",
+                              "properties": {
+                                "gapId": {
+                                  "type": "string",
+                                  "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                                },
+                                "value": {
+                                  "type": "string",
+                                  "maxLength": 200
+                                }
+                              },
+                              "required": [
+                                "gapId",
+                                "value"
+                              ]
+                            }
+                          }
+                        },
+                        "required": [
+                          "questionType",
+                          "gaps"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "questionType": {
+                            "type": "string",
+                            "enum": [
+                              "ordering"
+                            ]
+                          },
+                          "order": {
+                            "maxItems": 20,
+                            "type": "array",
+                            "items": {
+                              "type": "string",
+                              "pattern": "^[A-Za-z0-9_-]{1,40}$"
+                            }
+                          }
+                        },
+                        "required": [
+                          "questionType",
+                          "order"
+                        ]
+                      },
+                      {
+                        "type": "object",
+                        "properties": {
+                          "questionType": {
+                            "type": "string",
+                            "enum": [
+                              "short_answer"
+                            ]
+                          },
+                          "value": {
+                            "type": "string",
+                            "maxLength": 500
+                          }
+                        },
+                        "required": [
+                          "questionType",
+                          "value"
+                        ]
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "questionVersionId",
+                  "response"
+                ],
+                "additionalProperties": false,
+                "description": "Kontrol edilecek madde (puanlama sürümündeki soru sürümü) ve cevabı; cevap denemeye de kaydedilir"
+              }
+            }
+          },
+          "description": "Kontrol edilecek madde (puanlama sürümündeki soru sürümü) ve cevabı; cevap denemeye de kaydedilir"
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "attemptId",
+            "required": true,
+            "description": "Deneme kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
           },
           {
             "schema": {
@@ -85840,6 +87838,110 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/SkillProgress"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/practice-gradebook": {
+      "get": {
+        "operationId": "getPracticeGradebook",
+        "summary": "Alıştırma not defteri",
+        "tags": [
+          "learning"
+        ],
+        "description": "Alıştırma sonuçlarının ünite, beceri ve kazanım kırılımı (IST-056, DOM-BEC-048): kişinin gördüğü arşivsiz, otomatik puanlı alıştırma atamalarından kursiyer başına son tamamlanan deneme alınır. Hücre madde puanlarının toplamıdır (kazanılan / olası × 100); ünite setin, beceri ve kazanım maddenin etiketidir (soru etiketsizse setin). Her okumada hesaplanır, saklanmaz; not aktarımına, not ortalamasına, seviye önerisine ve beceri panosuna girmez. İçeriği kaldırılmış atama girmez (DOM-KYN-051). En yeni 100 alıştırma ataması okunur (`truncated`). `targetId` hedefi o sınıf/grup/öğrenci olan atamalara daraltır. Roller: `yonetici` bütün atamalar, `ogretmen` atadığı ya da kapsamındaki hedefi yüzünden gördüğü atamalar (DOM-YTK-028), `ogrenci` yalnız kendi sonucu; `veli` (DOM-BEC-041) ve ön büro 403. Bilinmeyen parametre 400. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "targetId",
+            "required": false,
+            "description": "Hedef süzgeci: sınıf/şube, dil grubu ya da öğrenci hedefi kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/PracticeGradebook"
                     }
                   },
                   "required": [

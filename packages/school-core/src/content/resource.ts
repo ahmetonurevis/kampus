@@ -19,6 +19,7 @@ import {
   SKILLS,
   SUBMISSION_KINDS,
   SUBSKILLS,
+  UNIT_RANGE,
   enumKeys,
   licenseExpired,
   type CefrLevel,
@@ -279,6 +280,26 @@ const media = <T extends 'audio' | 'video'>(type: T) =>
     transcript: transcript.nullable().default(null),
     captionsVtt: webVtt.nullable().default(null),
   })
+/**
+ * Ünite etiketi (IST-056; DOM-BEC-047): sıra numarası (1–40) ve isteğe bağlı başlık. Numara not
+ * defterinde ünite sütununu belirler; boş başlık `null` olur.
+ */
+export const contentUnitSchema = z.object({
+  number: z
+    .number('Ünite numarasını girin.')
+    .int('Ünite numarası tam sayı olmalıdır.')
+    .min(UNIT_RANGE.min, `Ünite numarası en az ${UNIT_RANGE.min} olmalıdır.`)
+    .max(UNIT_RANGE.max, `Ünite numarası en fazla ${UNIT_RANGE.max} olabilir.`),
+  title: z
+    .string()
+    .trim()
+    .max(120, 'En fazla 120 karakter girebilirsiniz.')
+    .nullable()
+    .default(null)
+    .transform((value) => (value === '' ? null : value)),
+})
+export type ContentUnit = z.output<typeof contentUnitSchema>
+
 const itemList = <T extends 'quiz' | 'exercise_set'>(type: T) =>
   z
     .object({
@@ -306,6 +327,11 @@ const itemList = <T extends 'quiz' | 'exercise_set'>(type: T) =>
        * etkinliği değiştirmez (karar 3). Dosya ses sürümündedir; quiz dosya bağlamaz.
        */
       listeningVersionId: identifier.nullable().default(null),
+      /**
+       * Ünite (IST-056; DOM-BEC-047): alıştırma seti ve quiz bir üniteyi paketler; not defteri
+       * sonuçları ünite bazında toplar (DOM-BEC-048). İçeriğin parçasıdır, süzgeç kolonu değildir.
+       */
+      unit: contentUnitSchema.nullable().default(null),
     })
     .refine((c) => new Set(c.items.map((i) => i.questionVersionId)).size === c.items.length, {
       message: 'Aynı soru iki kez eklenemez.',

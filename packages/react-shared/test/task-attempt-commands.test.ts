@@ -17,6 +17,8 @@ import {
 } from '../src/commands.ts'
 import { institutionKey } from '../src/query-keys.ts'
 import {
+  checkTaskAttemptItemCommand,
+  checkTaskAttemptItemRequest,
   saveTaskAttemptAnswersCommand,
   saveTaskAttemptAnswersRequest,
   startTaskAttemptCommand,
@@ -156,6 +158,79 @@ describe('görev denemesi komutları', () => {
       submitTaskAttemptCommand,
     ])
       assert.equal(command.exclusive, true)
+  })
+})
+
+describe('alıştırma madde kontrolü komutu', () => {
+  test('DOM-BEC-047: kontrol POST /checks; okunan sürümü If-Match taşır, gövde yalnız madde ve cevap', async () => {
+    const { client, sent } = fakeClient()
+    const input = {
+      attemptId: 'at-1',
+      version: 6,
+      questionVersionId: 'qv-1',
+      response: answers['qv-1'],
+    }
+    await runRequest(() =>
+      checkTaskAttemptItemRequest(
+        client,
+        input,
+        commandHeaders('key-12345', checkTaskAttemptItemCommand.version(input)),
+      ),
+    )
+    assert.deepEqual(
+      sent.map((s) => [s.method, s.path, s.headers.get('if-match'), s.body]),
+      [
+        [
+          'POST',
+          '/api/v1/task-attempts/at-1/checks',
+          '"6"',
+          { questionVersionId: 'qv-1', response: answers['qv-1'] },
+        ],
+      ],
+    )
+    assert.equal(sent[0]?.headers.get('idempotency-key'), 'key-12345')
+  })
+
+  test('DOM-BEC-047: sürüm yoksa istek atılmaz; kilit ve değerlendirme Türkçe; 422 denemeyi tazeler, atama listesini değil', async () => {
+    const { client, sent } = fakeClient()
+    await assert.rejects(
+      runRequest(() =>
+        checkTaskAttemptItemRequest(
+          client,
+          { attemptId: 'at-1', version: 1, questionVersionId: 'qv-1', response: answers['qv-1'] },
+          commandHeaders('key-12345'),
+        ),
+      ),
+      isMissing,
+    )
+    assert.equal(sent.length, 0)
+    const feedback = (code: string, status = 422) =>
+      commandFeedback(
+        new ApiError({ status, code, message: 'Sunucu mesajı.' }),
+        checkTaskAttemptItemCommand.messages,
+      ).message
+    assert.equal(feedback('item_check_locked'), 'Bu sorunun kontrol hakkı bitti; cevap kilitlendi.')
+    assert.equal(
+      feedback('instant_feedback_unavailable'),
+      'Anında kontrol yalnız alıştırmada kullanılır.',
+    )
+    assert.equal(feedback('version_conflict', 409), TASK_ATTEMPT_CHANGED_MESSAGE)
+    // Eşzamanlı ikinci kontrol: teknik ayrıntı yok, 409 olduğu için deneme tazelenir.
+    const conflict = commandFeedback(
+      new ApiError({ status: 409, code: 'item_check_conflict', message: 'Sunucu mesajı.' }),
+      checkTaskAttemptItemCommand.messages,
+    )
+    assert.equal(
+      conflict.message,
+      'Bu soru başka bir sekmede kontrol edildi. Sayfa yenilendi, tekrar deneyin.',
+    )
+    assert.equal(conflict.refresh, true)
+    assert.equal(
+      checkTaskAttemptItemCommand.refreshOn(new ApiError({ status: 422, code: 'x', message: '' })),
+      true,
+    )
+    assert.deepEqual(checkTaskAttemptItemCommand.invalidates, TASK_ATTEMPT_ANSWER_INVALIDATES)
+    assert.equal(checkTaskAttemptItemCommand.exclusive, true)
   })
 })
 

@@ -23,6 +23,7 @@ import {
   LISTENING_TAGS,
   LISTENING_TRANSCRIPT,
   listeningAudio,
+  linkVersionFile,
   listeningQuiz,
   seedListeningActivity,
   seedListeningFile,
@@ -464,6 +465,143 @@ describe('dinleme etkinliği', () => {
     const counted = await ok(await fileUrl(t, t.cookies.student))
     assert.equal(counted.listening.counted, true)
     assert.equal((await playRows(t.institution.id)).length, 1)
+  })
+
+  test('IST-045, DOM-YTK-028: kapsam dışı veli (başka çocuğun velisi) ve atamayı görmeyen öğretmen kaydın dosyasını ve deneme ayrıntısını 404 alır; deneme kimliği verilse de; sayım yazılmaz', async () => {
+    const t = await tenant()
+    const assignment = await assign(t)
+    const attempt = await ok(await start(assignment.id as string, t.cookies.student), 201)
+    // Can (`s-3`, 9-B) velisi Deniz'in görevini görmez; `t-mat` görevi atamadı, 9-A'ya ders vermez.
+    const otherParent = await signInAs(
+      app,
+      await createMember(app, t.institution.id, 'veli', [
+        { kind: 'child', recordId: 's-3' } as never,
+      ]),
+    )
+    for (const cookie of [otherParent, t.cookies.otherTeacher]) {
+      fails(await fileUrl(t, cookie), 404, 'not_found')
+      fails(
+        await call('GET', `/files/${t.activity.fileId}/url?attemptId=${attempt.id}`, cookie),
+        404,
+        'not_found',
+      )
+      fails(await detail(attempt.id, cookie), 404, 'not_found')
+    }
+    assert.deepEqual(await playRows(t.institution.id), [])
+    // Deniz'in velisi ve öğretmeni açar; sayılmaz.
+    for (const cookie of [t.cookies.parent, t.cookies.teacher])
+      assert.equal((await ok(await fileUrl(t, cookie))).listening, null)
+    assert.deepEqual(await playRows(t.institution.id), [])
+  })
+
+  test('DOM-KYN-025, IST-045 (Sabah kararı 40): kayıt telif bildirimiyle askıya alınınca yeni deneme 422 content_unavailable; süren deneme kaydedilir ve teslim edilir; askıdaki kaydın dosyası süren denemeye de açılmaz, sayım yazılmaz', async () => {
+    const t = await tenant()
+    const assignment = await assign(t, { attempts: { kind: 'practice' } })
+    const attempt = await ok(await start(assignment.id as string, t.cookies.student), 201)
+    await ok(await fileUrl(t, t.cookies.student))
+    await ok(
+      await call(
+        'POST',
+        `/resources/${t.activity.audio.resourceId}/versions/${t.activity.audio.versionId}/report`,
+        t.cookies.teacher,
+        { reason: 'Telif ihlali şüphesi' },
+        key(),
+      ),
+    )
+    const before = await attemptRows(t.institution.id)
+    fails(await start(assignment.id as string, t.cookies.student), 422, 'content_unavailable')
+    assert.deepEqual(await attemptRows(t.institution.id), before)
+    fails(await fileUrl(t, t.cookies.student), 404, 'not_found')
+    fails(
+      await call(
+        'GET',
+        `/files/${t.activity.fileId}/url?attemptId=${attempt.id}`,
+        t.cookies.student,
+      ),
+      404,
+      'not_found',
+    )
+    assert.equal((await playRows(t.institution.id)).length, 1, 'askıdaki kayıtta sayım yazılmaz')
+    const answers = {
+      [t.activity.questionVersionId]: { questionType: 'multiple_choice', optionId: 'b' },
+    }
+    const saved = await ok(
+      await call(
+        'PATCH',
+        `/task-attempts/${attempt.id}`,
+        t.cookies.student,
+        { answers },
+        { 'if-match': `"${attempt.rowVersion}"` },
+      ),
+    )
+    const done = await ok(
+      await call(
+        'POST',
+        `/task-attempts/${attempt.id}/submit`,
+        t.cookies.student,
+        { answers },
+        { ...key(), 'if-match': `"${saved.rowVersion}"` },
+      ),
+    )
+    assert.equal(done.status, 'submitted')
+    assert.equal(done.result.earned, 1)
+  })
+
+  test('DOM-KYN-051, IST-045: atası kaldırılan kopya kaydın dosyası kopyayı bağlayan etkinliğin atamasıyla da açılmaz; süren denemede sayım yazılmaz', async () => {
+    const t = await tenant()
+    // Kopya ses atanın dosyasını taşır (DOM-KYN-006); etkinlik kopyayı bağlar.
+    const copy = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      derivedFromVersionId: t.activity.audio.versionId,
+      versions: [{ status: 'published', input: listeningAudio(t.activity.fileId) }],
+    })
+    const copyVersionId = copy.versions[0]!.id
+    await linkVersionFile(db, t.institution.id, copyVersionId, t.activity.fileId)
+    const quiz = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      versions: [
+        {
+          status: 'published',
+          input: listeningQuiz(t.activity.questionVersionId, copyVersionId),
+        },
+      ],
+    })
+    const assignment = await ok(
+      await createAssignment(t, assignBody(quiz.versions[0]!.id, { listeningPlays: 2 })),
+      201,
+    )
+    const attempt = await ok(await start(assignment.id as string, t.cookies.student), 201)
+    const counted = await ok(
+      await call(
+        'GET',
+        `/files/${t.activity.fileId}/url?attemptId=${attempt.id}`,
+        t.cookies.student,
+      ),
+    )
+    assert.equal(counted.listening.attemptId, attempt.id)
+
+    await ok(
+      await call(
+        'POST',
+        `/resources/${t.activity.audio.resourceId}/remove`,
+        t.cookies.admin,
+        { reason: 'Telif bildirimi doğrulandı.' },
+        key(),
+      ),
+    )
+    now = new Date(FIXED_NOW.getTime() + 60 * 60_000)
+    for (const cookie of [t.cookies.student, t.cookies.teacher, t.cookies.admin])
+      fails(await fileUrl(t, cookie), 404, 'not_found')
+    fails(
+      await call(
+        'GET',
+        `/files/${t.activity.fileId}/url?attemptId=${attempt.id}`,
+        t.cookies.student,
+      ),
+      404,
+      'not_found',
+    )
+    assert.equal((await playRows(t.institution.id)).length, 1, 'kapalı kayıtta sayım yazılmaz')
   })
 
   test('DOM-KYN-051, DOM-KYN-025, IST-045: kayıt kaldırılınca etkinlik etkilenen içerik olur; yeni deneme 422 content_unavailable; süren denemenin ayrıntısı kaydı ve soruları göstermez, sayılmış dinleme görünür; dosya kursiyere kapanır; kayıt değişmez', async () => {

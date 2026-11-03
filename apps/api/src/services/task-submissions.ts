@@ -540,11 +540,18 @@ export async function detailView(
   assignment: StoredAssignment,
   work: StoredSubmissionWork,
 ) {
-  const [book, files, learnerNames] = await Promise.all([
+  const [book, files] = await Promise.all([
     loadGrading(db, ctx, [work.submission.id]),
     loadVersionFiles(db, ctx.institutionId, work.versions),
-    loadLearnerNames({ ...ctx, db }, viewer, [work.submission.learnerId]),
   ])
+  const learnerNames = await namesOf(
+    db,
+    ctx,
+    viewer,
+    book,
+    new Map([[assignment.id, assignment]]),
+    [work],
+  )
   const grading = book.bySubmission.get(work.submission.id) ?? NO_GRADING
   return {
     ...summaryView(viewer, ctx, book, assignment, work, learnerNames),
@@ -666,6 +673,33 @@ function appealView(viewer: Viewer, grading: Grading, version: VersionRow) {
 }
 
 /**
+ * Satırların öğrenci adları (OG-213): öğretmende kapsamındaki öğrenciler; koordinatörde ayrıca
+ * uyuşmazlıklı ve okuduğu teslimlerin öğrencisi (`coordinatorReaches`, DOM-YTK-027).
+ */
+async function namesOf(
+  db: Database,
+  ctx: ServiceContext,
+  viewer: Viewer,
+  book: GradingBook,
+  assignments: ReadonlyMap<string, StoredAssignment>,
+  rows: readonly StoredSubmissionWork[],
+) {
+  const coordinated = new Set<string>()
+  for (const work of rows) {
+    const assignment = assignments.get(work.submission.assignmentId)
+    const grading = book.bySubmission.get(work.submission.id)
+    if (assignment && grading && coordinatorReaches(viewer, assignment, work, grading))
+      coordinated.add(work.submission.learnerId)
+  }
+  return loadLearnerNames(
+    { ...ctx, db },
+    viewer,
+    rows.map((work) => work.submission.learnerId),
+    coordinated,
+  )
+}
+
+/**
  * Teslim özetleri (liste ve puanlama kuyruğu): puanlar tek seferde yüklenir. Her satırın ataması
  * `assignments`'ta olmalıdır.
  */
@@ -676,18 +710,12 @@ export async function listSummaries(
   assignments: ReadonlyMap<string, StoredAssignment>,
   rows: readonly StoredSubmissionWork[],
 ) {
-  const [book, learnerNames] = await Promise.all([
-    loadGrading(
-      db,
-      ctx,
-      rows.map((work) => work.submission.id),
-    ),
-    loadLearnerNames(
-      { ...ctx, db },
-      viewer,
-      rows.map((work) => work.submission.learnerId),
-    ),
-  ])
+  const book = await loadGrading(
+    db,
+    ctx,
+    rows.map((work) => work.submission.id),
+  )
+  const learnerNames = await namesOf(db, ctx, viewer, book, assignments, rows)
   return rows.map((work) => {
     const assignment = assignments.get(work.submission.assignmentId)
     if (assignment === undefined) throw new Error('submission summary without its assignment')

@@ -133,7 +133,7 @@ const summaryShape = {
     .string()
     .nullable()
     .describe(
-      'Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)',
+      'Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213)',
     ),
   status: z
     .enum(['pending', 'submitted', 'late', 'not_submitted'])

@@ -104,7 +104,7 @@ const attemptShape = {
     .string()
     .nullable()
     .describe(
-      'Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213)',
+      'Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213)',
     ),
   attemptNumber: z.number().int().min(1),
   status: z

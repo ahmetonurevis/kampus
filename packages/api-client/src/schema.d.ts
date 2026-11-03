@@ -6558,7 +6558,7 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
-            /** @description Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
             learnerName: string | null;
             attemptNumber: number;
             /**
@@ -6624,7 +6624,7 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
-            /** @description Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
             learnerName: string | null;
             attemptNumber: number;
             /**
@@ -6868,7 +6868,7 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
-            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
             learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
@@ -6964,7 +6964,7 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
-            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
             learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
@@ -7040,7 +7040,7 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
-            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
             learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
@@ -9892,7 +9892,7 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
-            /** @description Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
             learnerName: string | null;
             attemptNumber: number;
             /**
@@ -9958,7 +9958,7 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
-            /** @description Öğrencinin adı; yalnız satırı okuyan personele. Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
             learnerName: string | null;
             attemptNumber: number;
             /**
@@ -10201,7 +10201,7 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
-            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
             learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
@@ -10297,7 +10297,7 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
-            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
             learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
@@ -10373,7 +10373,7 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
-            /** @description Öğrencinin adı; yalnız satırı okuyan personele (yönetici, öğretmen, uyuşmazlığı okuyan koordinatör). Öğrenci ve veliye `null`; öğrenci bulunamazsa `null` (OG-213) */
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
             learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)

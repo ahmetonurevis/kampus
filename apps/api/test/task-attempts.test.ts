@@ -566,6 +566,48 @@ describe('görev deneme uçları', () => {
     fails(await start(assignmentId, t.cookies.student), 422, 'submission_closed')
   })
 
+  test('OG-213, DOM-YTK-028: deneme listesi ve ayrıntısı öğrenci adını yönetici ve kendi öğrencisi için öğretmene taşır; kapsam dışı öğrenci, öğrenci ve veli null alır; atamayı görmeyen öğretmen ve başka kurum 404', async () => {
+    const t = await tenant()
+    const both = await assignAsAdmin(t, [
+      { kind: 'class', id: '9-A' },
+      { kind: 'class', id: '9-B' },
+    ])
+    const deniz = await ok(await start(both, t.cookies.student), 201)
+    const can = await ok(await start(both, t.cookies.otherStudent), 201)
+    const nameOf = async (cookie: string, attemptId: string) =>
+      (await ok(await call('GET', `/task-attempts/${attemptId}`, cookie))).learnerName
+    const listed = async (cookie: string) =>
+      new Map(
+        ((await ok(await list(both, cookie))) as Json[]).map((row) => [row.id, row.learnerName]),
+      )
+    // Atamayı gören her öğretmen bütün denemeleri okur; ad yalnız kendi öğrencisininki gelir.
+    const teacher = await listed(t.cookies.teacher)
+    assert.deepEqual([teacher.get(deniz.id), teacher.get(can.id)], ['Deniz Yılmaz', null])
+    assert.equal(await nameOf(t.cookies.teacher, deniz.id), 'Deniz Yılmaz')
+    assert.equal(await nameOf(t.cookies.teacher, can.id), null)
+    const other = await listed(t.cookies.otherTeacher)
+    assert.deepEqual([other.get(deniz.id), other.get(can.id)], [null, 'Can Arslan'])
+    const admin = await listed(t.cookies.admin)
+    assert.deepEqual([admin.get(deniz.id), admin.get(can.id)], ['Deniz Yılmaz', 'Can Arslan'])
+    // Öğrenci ve veli kendi/çocuğunun denemesini okur; ad gelmez.
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      assert.deepEqual([...(await listed(cookie)).values()], [null])
+      assert.equal(await nameOf(cookie, deniz.id), null)
+    }
+    // Atamayı görmeyen 9-B öğretmeni (yalnız 9-A'ya atama) ve başka kurumun yöneticisi 404.
+    const only9a = await assign(t, { attempts: { kind: 'practice' } }, t.quizId)
+    const lonely = await ok(await start(only9a, t.cookies.student), 201)
+    fails(await list(only9a, t.cookies.otherTeacher), 404, 'not_found')
+    fails(
+      await call('GET', `/task-attempts/${lonely.id}`, t.cookies.otherTeacher),
+      404,
+      'not_found',
+    )
+    const otherAdmin = await signInAs(app, (await createInstitution(app)).admin)
+    fails(await list(both, otherAdmin), 404, 'not_found')
+    fails(await call('GET', `/task-attempts/${deniz.id}`, otherAdmin), 404, 'not_found')
+  })
+
   test('DOM-BEC-042: değerlendirme hakkı dolunca 422; "en yüksek" politikasında sayılan deneme en iyisi; eşzamanlı başlatma tek satır', async () => {
     const t = await tenant()
     const assignmentId = await assign(t, {

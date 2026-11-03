@@ -333,16 +333,12 @@ async function detailView(
   const pairs = await loadWorkPairs(db, ctx.institutionId, [assignment])
   const scoring = attemptScoring(assignment, pairs)
   const { context } = scoring
-  const learnerAttempts = await loadAttempts(
-    db,
-    ctx.institutionId,
-    assignment.id,
-    attempt.learnerId,
-  )
+  const [learnerAttempts, names] = await Promise.all([
+    loadAttempts(db, ctx.institutionId, assignment.id, attempt.learnerId),
+    loadLearnerNames({ ...ctx, db }, viewer, [attempt.learnerId]),
+  ])
+  const learnerName = names.get(attempt.learnerId) ?? null
   const now = ctx.now.toISOString()
-  const learnerName =
-    (await loadLearnerNames({ ...ctx, db }, viewer, [attempt.learnerId])).get(attempt.learnerId) ??
-    null
   const running = hasRunning(assignment, learnerAttempts, now)
   const contentUnavailable = await attemptContentGate(
     { ...ctx, db },

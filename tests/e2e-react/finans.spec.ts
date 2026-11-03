@@ -340,6 +340,41 @@ test.describe('Finans: tahsilat', () => {
     )
   })
 
+  test('ON-036, DOM-FIN-030: tahsilat geçmişi ödeme yöntemine göre sunucuda süzülür', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s19'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s19-5', 'Kredi kartı')
+    await payThroughApi(client, 'inv-s19-6', 'Banka havalesi')
+    const requests: string[] = []
+    page.on('request', (request) => {
+      const url = new URL(request.url())
+      if (url.pathname === '/api/v1/payments') requests.push(url.search)
+    })
+    await loginAs(school.user('yonetici'))
+
+    await page.goto(`${ADMIN_URL}?gorunum=tahsilatlar`)
+    const table = page.getByRole('table', { name: 'Tahsilat geçmişi' })
+    const rows = table.locator('tbody tr')
+    await expect(table).toContainText('Kredi kartı')
+    await expect(table).toContainText('Banka havalesi')
+    await page.getByLabel('Ödeme yöntemi').selectOption({ label: 'Kredi kartı' })
+    await expectEveryRow(rows, 'Kredi kartı')
+    await page.getByLabel('Ödeme yöntemi').selectOption({ label: 'Banka havalesi' })
+    await expectEveryRow(rows, 'Banka havalesi')
+    expect(
+      requests.some((search) => new URLSearchParams(search).get('method') === 'Kredi kartı'),
+    ).toBe(true)
+
+    await page.getByLabel('Ödeme yöntemi').selectOption({ label: 'Tüm yöntemler' })
+    await expect(table).toContainText('Kredi kartı')
+    await expect(table).toContainText('Banka havalesi')
+  })
+
   test('DOM-FIN-033: yönetici tahsilatı gerekçeyle iptal eder, taksit açılır, satır kalır', async ({
     page,
     loginAs,
@@ -684,6 +719,39 @@ test.describe('Finans: tahsilat', () => {
     const client = await api('ogretmen')
     expect((await client.get('/api/v1/collections/invoices')).status).toBe(403)
   })
+
+  test('ON-036, DOM-YTK-040: finans modülü kapalıyken menü, adresler, pano kartları ve uçlar kapanır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['veli'] })
+    const admin = await api(school.user('yonetici'))
+    const settings = await admin.get('/api/v1/modules')
+    expect(settings.status).toBe(200)
+    const { version } = (settings.body as { data: { version: number } }).data
+    const closed = await admin.context.patch('/api/v1/modules/finance', {
+      data: { enabled: false },
+      headers: { 'if-match': `"${String(version)}"`, 'idempotency-key': randomUUID() },
+    })
+    expect(closed.status()).toBe(200)
+
+    await loginAs(school.user('yonetici'))
+    await page.goto(ADMIN_URL)
+    await expect(page).toHaveURL(/\/yonetici\/dashboard$/)
+    await expect(page.getByText('Bu modül kurum ayarlarından kapatılmış.')).toBeVisible()
+    const menu = page.getByRole('navigation', { name: 'Menü' })
+    await expect(menu.getByRole('link', { name: 'Finans & Tahsilat' })).toHaveCount(0)
+    await expect(page.getByRole('article', { name: 'Tahsilat oranı', exact: true })).toHaveCount(0)
+    await expect(page.getByRole('region', { name: 'Yaklaşan ödemeler & takip' })).toHaveCount(0)
+    const denied = await admin.get('/api/v1/payments')
+    expect(denied.status).toBe(403)
+    expect((denied.body as { code: string }).code).toBe('module_disabled')
+
+    const parent = await api(school.user('veli'))
+    expect((await parent.get('/api/v1/collections/invoices')).status).toBe(403)
+  })
 })
 
 /** Kartın kuruş değeri: "24.500,00 ₺" biçimindeki metnin rakamları. */
@@ -751,6 +819,83 @@ test.describe('Finans: liste', () => {
     await page.goto('/yonetici/dashboard?sube=b2')
     await expect(page.getByRole('article', { name: 'Bekleyen tahsilat' })).toBeVisible()
     await expect(card).toHaveCount(0)
+  })
+
+  test('ON-036: pano "Tahsilat oranı" ödenen tutarın ödeme planına oranıdır, kampüse daralır', async ({
+    page,
+    api,
+  }) => {
+    const client = await api('yonetici')
+    /** Sunucu sayımından beklenen oran: ödenmiş taksit tutarı / ödeme planı toplamı. */
+    async function expectedRate(query = ''): Promise<string> {
+      const result = await client.get(
+        `/api/v1/collections/invoices/counts?groupBy=status&sum=amount${query}`,
+      )
+      expect(result.status).toBe(200)
+      const body = result.body as {
+        data: { value: string | null; sum?: number }[]
+        meta: { sum?: number }
+      }
+      const total = body.meta.sum ?? 0
+      const paid = body.data.find((group) => group.value === 'Ödendi')?.sum ?? 0
+      return total > 0 ? `%${String(Math.round((paid / total) * 100))}` : '—'
+    }
+    const value = () =>
+      page
+        .getByRole('article', { name: 'Tahsilat oranı', exact: true })
+        .locator('.stat-value')
+        .innerText()
+
+    await page.goto('/yonetici/dashboard')
+    const card = page.getByRole('article', { name: 'Tahsilat oranı', exact: true })
+    await expect(card).toContainText('Tüm ödeme planına göre')
+    await expect
+      .poll(async () => {
+        const [shown, expected] = [await value(), await expectedRate()]
+        return shown === expected ? 'eşit' : `${shown} != ${expected}`
+      })
+      .toBe('eşit')
+
+    // Kampüs seçilince oran o kampüsün sınıflarındaki taksitlerden hesaplanır.
+    const classes = await client.get('/api/v1/collections/classes?pageSize=100&branchId=b2')
+    const ids = (classes.body as { data: { id: string }[] }).data.map((row) => row.id)
+    await page.goto('/yonetici/dashboard?sube=b2')
+    await expect
+      .poll(async () => {
+        const expected = await expectedRate(ids.map((id) => `&classId=${id}`).join(''))
+        const shown = await value()
+        return shown === expected ? 'eşit' : `${shown} != ${expected}`
+      })
+      .toBe('eşit')
+
+    await card.getByRole('link', { name: 'Tahsilat oranı' }).click()
+    await expect(page).toHaveURL(/\/yonetici\/finans\?durum=odendi/)
+  })
+
+  test('ON-036: pano "Yaklaşan ödemeler & takip" vadesi en erken dört ödenmemiş taksittir', async ({
+    page,
+    api,
+  }) => {
+    const client = await api('yonetici')
+    const result = await client.get(
+      `/api/v1/collections/invoices?page=1&pageSize=4&sort=dueDate,id&status=${encodeURIComponent('Gecikmiş')}&status=${encodeURIComponent('Yaklaşan')}`,
+    )
+    expect(result.status).toBe(200)
+    const expected = (result.body as { data: { joined?: { studentName?: string } }[] }).data.map(
+      (row) => row.joined?.studentName ?? '—',
+    )
+    expect(expected).toHaveLength(4)
+
+    await page.goto('/yonetici/dashboard')
+    const section = page.getByRole('region', { name: 'Yaklaşan ödemeler & takip' })
+    const items = section.getByRole('list', { name: 'Öncelikli tahsilatlar' }).getByRole('listitem')
+    await expect(items).toHaveCount(4)
+    for (const [index, name] of expected.entries()) {
+      await expect(items.nth(index)).toContainText(name)
+      await expect(items.nth(index)).toContainText(/Gecikmiş|Yaklaşan|Kısmi ödendi/)
+    }
+    await section.getByRole('link', { name: 'Tümünü gör' }).click()
+    await expect(page).toHaveURL(/\/yonetici\/finans$/)
   })
 
   test('durum filtresi sunucuda sayfalanır; ikinci sayfa aynı durumu verir', async ({ page }) => {
@@ -895,6 +1040,87 @@ test.describe('Finans: liste', () => {
 
     await page.getByLabel('Tabloda ara').fill('zzzz-yok')
     await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
+  })
+
+  test('ON-036: hazır ödeme filtreleri durum süzgecidir; seçili çip işaretli, adres taşır', async ({
+    page,
+  }) => {
+    await page.goto(ADMIN_URL)
+    const presets = page.getByRole('group', { name: 'Hazır ödeme filtreleri' })
+    const chip = (name: string) => presets.getByRole('button', { name, exact: true })
+    await expect(chip('Tüm ödemeler')).toHaveAttribute('aria-pressed', 'true')
+
+    await chip('Yaklaşan taksitler').click()
+    await expect(page).toHaveURL(/[?&]durum=yaklasan/)
+    await expect(chip('Yaklaşan taksitler')).toHaveAttribute('aria-pressed', 'true')
+    await expect(chip('Tüm ödemeler')).toHaveAttribute('aria-pressed', 'false')
+    await expect(page.getByLabel('Ödeme durumu')).toHaveValue('yaklasan')
+    await expectEveryRow(bodyRows(page), 'Yaklaşan')
+
+    await chip('Ödenenler').click()
+    await expect(page).toHaveURL(/[?&]durum=odendi/)
+    await expectEveryRow(bodyRows(page), 'Ödendi')
+    // Açılır seçimden değişen durum çipe yansır.
+    await page.getByLabel('Ödeme durumu').selectOption({ label: 'Yaklaşan' })
+    await expect(chip('Yaklaşan taksitler')).toHaveAttribute('aria-pressed', 'true')
+
+    await chip('Tüm ödemeler').click()
+    await expect(page).not.toHaveURL(/[?&]durum=/)
+    await expect(resultCount(page)).toContainText('/ 1920 kayıt')
+  })
+
+  test('ON-036: kampüs, sınıf ve tahsilat tarihi süzgeci sunucuda uygulanır; CSV aynı sonucu içerir', async ({
+    page,
+  }) => {
+    const requests: URLSearchParams[] = []
+    page.on('request', (request) => {
+      const url = new URL(request.url())
+      if (url.pathname === '/api/v1/collections/invoices') requests.push(url.searchParams)
+    })
+    await page.goto(ADMIN_URL)
+    await page.getByRole('button', { name: 'Filtreler', exact: true }).click()
+
+    // Seed: Beşiktaş Kampüsü (b2) sınıfları "-B" ile biter; taksitte kampüs yoktur, sınıfa çevrilir.
+    await page.getByLabel('Kampüs', { exact: true }).selectOption({ label: 'Beşiktaş Kampüsü' })
+    await expect(page).toHaveURL(/[?&]kampus=b2/)
+    await expectEveryRow(bodyRows(page).locator('.person-cell small'), '-B')
+    await expect
+      .poll(() => requests.some((params) => params.getAll('classId').length === 8))
+      .toBe(true)
+
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ label: '7-B' })
+    await expect(page).toHaveURL(/[?&]sinif=c9/)
+    await expectEveryRow(bodyRows(page).locator('.person-cell small'), '7-B', true)
+
+    // Tahsilat tarihi aralığı ödenmemiş taksiti dışarıda bırakır (paidAt günü).
+    const totalOf = async () =>
+      Number(((await resultCount(page).textContent()) ?? '').match(/\/ (\d+) kayıt/)?.[1])
+    const classTotal = await totalOf()
+    await page.getByLabel('Tahsilat tarihi başlangıç').fill('2000-01-01')
+    // Eski sayfa yeni yanıta kadar ekranda kalır; sayaç süzülmüş toplama geçene kadar beklenir.
+    await expect.poll(totalOf).toBeLessThan(classTotal)
+    await expectEveryRow(bodyRows(page), 'Ödendi')
+    await expect
+      .poll(() =>
+        requests.some(
+          (params) =>
+            params.get('dateField') === 'paidAt' && params.get('dateFrom') === '2000-01-01',
+        ),
+      )
+      .toBe(true)
+    const shown = await totalOf()
+    expect(shown).toBeGreaterThan(0)
+
+    const pending = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Raporu indir' }).click()
+    const csv = (await readCsv(await pending)).filter((row) => row.length > 1)
+    expect(csv).toHaveLength(1 + shown)
+    for (const row of csv.slice(1)) expect(row[5]).toBe('Ödendi')
+
+    // Kampüs ve sınıf adreste kalır; yenilemede süzgeç korunur.
+    await page.reload()
+    await expect(page).toHaveURL(/[?&]kampus=b2/)
+    await expectEveryRow(bodyRows(page).locator('.person-cell small'), '7-B', true)
   })
 
   test('taksit detayı URLde açılır; geri kapatır, ileri açar', async ({ page }) => {

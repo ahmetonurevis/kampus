@@ -17,6 +17,7 @@ export const paymentListQuerySchema = z.strictObject({
     .enum(['pending'])
     .optional()
     .describe("Yalnız MEBBİS'e işlenmemiş geçerli tahsilatlar (personel)"),
+  method: z.enum(PAYMENT_METHODS).optional().describe('Yalnız bu ödeme yöntemiyle alınanlar'),
 })
 
 const paymentSchema = z.object({

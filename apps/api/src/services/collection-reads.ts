@@ -1,3 +1,7 @@
+import {
+  ANNOUNCEMENT_STATUSES,
+  type AnnouncementStatus,
+} from '@kampus/school-core/lib/communication.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   isQuizStaff,
@@ -36,6 +40,8 @@ import {
   type Joiner,
 } from './collection-joins.ts'
 import {
+  announcementStatusFilter,
+  candidateMatchesRecordFilter,
   dayRange,
   invoiceStatusFilter,
   invoiceStatusOf,
@@ -137,6 +143,10 @@ const CLASS_OWN_OR_VIA: ReadonlySet<CollectionName> = new Set<CollectionName>(['
  * kullanır; kayıttaki aynı adlı alan yok sayılır.
  */
 const DERIVED_STATUS: ReadonlySet<CollectionName> = new Set<CollectionName>(['invoices'])
+
+function isAnnouncementStatus(value: string): value is AnnouncementStatus {
+  return ANNOUNCEMENT_STATUSES.some((status) => status === value)
+}
 
 function isInvoiceStatus(value: string): value is InvoiceStatusLabel {
   return INVOICE_STATUS_LABELS.some((label) => label === value)
@@ -523,6 +533,21 @@ async function listFilters(
         viaField: 'studentId',
         viaValues: students,
       })
+    } else if (field === 'status' && collection === 'announcements') {
+      // Durum okuyucuya göre türetilir (`myReadAt`); SQL yalnız aday, karar ayıklanmış kayıtta.
+      // TODO(duyuru-sql-suzgec): karar bellekte verildiği için durum süzgecinde (liste ve sayım)
+      // kapsamdaki tüm duyurular okunup ayıklanır; kurum başına duyuru sayısı büyürse `reads`
+      // ve `recipients`'tan okuyucuya göre SQL koşulu üretilip aday kümesi daraltılmalıdır.
+      const statuses = values.filter(isAnnouncementStatus)
+      if (statuses.length !== values.length)
+        throw new ValidationError([
+          {
+            path: ['status'],
+            code: 'invalid_value',
+            message: `Duyuru durumu ${ANNOUNCEMENT_STATUSES.join(', ')} değerlerinden biri olmalıdır.`,
+          },
+        ])
+      filters.push(announcementStatusFilter(statuses))
     } else if (field === 'status' && DERIVED_STATUS.has(collection)) {
       const statuses = values.filter(isInvoiceStatus)
       if (statuses.length !== values.length)
@@ -544,6 +569,7 @@ async function listFilters(
   const hidden = scope.hiddenFields(collection)
   const fieldOf = (filter: RecordFilter): string[] => {
     if (filter.kind === 'invoiceStatus') return ['paidAt', 'dueDate']
+    if (filter.kind === 'announcementStatus') return ['withdrawnAt', 'revisedAt']
     if (filter.kind === 'any') return filter.matches.map((match) => match.field)
     if (filter.kind === 'ownOrVia') return [filter.field, filter.viaField]
     if (filter.kind === 'settled') return ['status', 'expiresAt']
@@ -729,7 +755,7 @@ async function readRows(
   // eşleşmez. Ham eşleşme yalnız adaydır; karar ayıklanmış kayıtta verilir.
   // Bağlı kimlik alanları ayıklanmaz; ham kayıttaki bağlı eşleşme de yalnız adaydır.
   const candidate = (record: RecordData) =>
-    passes(record) &&
+    filters.every((filter) => candidateMatchesRecordFilter(record, filter)) &&
     (needle === null ||
       matchesSearch(record, needle, unsearchable) ||
       (joinedSearch && joiner !== null && joinedMatch(joiner.values(record))))

@@ -14,6 +14,7 @@ import {
 } from '@kampus/school-core/lib/communication.ts'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { FormField } from '@/components/FormField.tsx'
+import { QueryError } from '@/components/QueryError.tsx'
 import { Modal } from '@/components/Modal.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -22,6 +23,7 @@ import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
+import type { DetailPanelState } from './announcement-list.ts'
 import {
   canManageAnnouncement,
   hasText,
@@ -43,8 +45,11 @@ type Props = {
   /** Açık panelin duyurusu; `undefined` ve `announcementId` doluysa liste yüklenirken/bulunamadı. */
   row: AnnouncementRow | undefined
   announcementId: string
-  /** Liste yüklendi mi (yüklenmişse ve satır yoksa duyuru görülemiyor demektir). */
-  listReady: boolean
+  /** Ayrıntı sorgusunun durumu (`detailPanelState`). */
+  state: DetailPanelState
+  /** Satır yokken ayrıntı sorgusunun hatası (404 dışı). */
+  error?: unknown
+  onRetry?: () => void
   viewer: Viewer
   audience: string
   onClose: () => void
@@ -59,7 +64,9 @@ type Props = {
 export function AnnouncementPanel({
   row,
   announcementId,
-  listReady,
+  state,
+  error,
+  onRetry,
   viewer,
   audience,
   onClose,
@@ -72,9 +79,13 @@ export function AnnouncementPanel({
     >
       {row ? (
         <AnnouncementDetail key={row.id} row={row} viewer={viewer} audience={audience} />
+      ) : state === 'error' ? (
+        <QueryError error={error} {...(onRetry ? { onRetry } : {})} />
       ) : (
         <p role="status" className="text-sm text-muted-foreground">
-          {listReady ? 'Duyuru bulunamadı veya görüntüleme yetkiniz yok.' : 'Duyuru yükleniyor…'}
+          {state === 'notFound'
+            ? 'Duyuru bulunamadı veya görüntüleme yetkiniz yok.'
+            : 'Duyuru yükleniyor…'}
         </p>
       )}
     </SidePanel>

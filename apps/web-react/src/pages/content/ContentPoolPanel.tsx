@@ -7,6 +7,7 @@ import {
   canEditDraft,
   canOpenNewVersion,
   isStaffDetail,
+  resourceCommands,
   type ActionKind,
   type ActionState,
   type StaffResourceDetail,
@@ -28,6 +29,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
 import { ConflictNotice, isVersionConflict } from '../management/FormParts.tsx'
+import { ContentResourceActions } from './ContentResourceActions.tsx'
 import { ResourceFileList } from './ResourceFileList.tsx'
 import {
   draftFromHead,
@@ -70,6 +72,8 @@ type PanelProps = {
   onClose: () => void
   /** Taslak düzenleme penceresini açar. */
   onEdit: (resourceId: string) => void
+  /** Başka bir kaynağın ayrıntısını açar (kopya oluşunca yeni kayıt). */
+  onOpen: (resourceId: string) => void
   /** Ders kimliği → ad (okul kurumunda etiket özeti için). */
   subjectNames: ReadonlyMap<string, string>
 }
@@ -80,7 +84,13 @@ type PanelProps = {
  * (`availableActions`); sunucu aynı kuralı yeniden uygular. Başkası içeriği değiştirmişse (409)
  * uyarı bandı ve "Güncel kaydı yükle" çıkar.
  */
-export function ContentPoolPanel({ resourceId, onClose, onEdit, subjectNames }: PanelProps) {
+export function ContentPoolPanel({
+  resourceId,
+  onClose,
+  onEdit,
+  onOpen,
+  subjectNames,
+}: PanelProps) {
   const detail = useResourceDetail(resourceId)
   const data = detail.data?.data
   const staff = data && isStaffDetail(data) ? data : null
@@ -99,6 +109,7 @@ export function ContentPoolPanel({ resourceId, onClose, onEdit, subjectNames }: 
           detail={staff}
           reload={async () => void (await detail.refetch())}
           onEdit={onEdit}
+          onOpen={onOpen}
           onClose={onClose}
           subjectNames={subjectNames}
         />
@@ -119,12 +130,14 @@ function PanelBody({
   detail,
   reload,
   onEdit,
+  onOpen,
   onClose,
   subjectNames,
 }: {
   detail: StaffResourceDetail
   reload: () => Promise<void>
   onEdit: (resourceId: string) => void
+  onOpen: (resourceId: string) => void
   onClose: () => void
   subjectNames: ReadonlyMap<string, string>
 }) {
@@ -137,6 +150,8 @@ function PanelBody({
   const [reloading, setReloading] = useState(false)
   const [rejecting, setRejecting] = useState(false)
   const [archiving, setArchiving] = useState(false)
+  // Kaynak eylemlerinden biri (kopya, bildirim, kaldırma) sürerken durum geçişleri de kilitli.
+  const [commandPending, setCommandPending] = useState(false)
   const { head, resource } = detail
   if (!session) return null
   const actor = { role: session.role, userId: session.user.id }
@@ -147,9 +162,12 @@ function PanelBody({
     institutionType,
     now: new Date(now),
   })
+  const commands = resourceCommands({ detail, actor, institutionType, now: new Date(now) })
+  const hasCommands =
+    commands.share || commands.copy !== null || commands.report !== null || commands.remove
   const editable = canEditDraft(head, actor.userId) && draftFromHead(head) !== null
   const newVersion = canOpenNewVersion({ detail, actor, institutionType })
-  const busy = transition.isPending || openVersion.isPending
+  const busy = transition.isPending || openVersion.isPending || commandPending
 
   async function run(action: ActionKind, reason?: string) {
     const outcome = await transition.submit(
@@ -307,8 +325,17 @@ function PanelBody({
             Yeni sürüm aç
           </Button>
         ) : null}
+        <ContentResourceActions
+          detail={detail}
+          commands={commands}
+          busy={busy}
+          onConflict={() => setConflict(true)}
+          onCopied={onOpen}
+          onRemoved={onClose}
+          onPendingChange={setCommandPending}
+        />
       </div>
-      {actions.length === 0 && !editable && !newVersion ? (
+      {actions.length === 0 && !editable && !newVersion && !hasCommands ? (
         <p className="text-sm text-muted-foreground">Bu içerik için yapılabilecek işlem yok.</p>
       ) : null}
 
@@ -429,31 +456,53 @@ function Preview({ preview, english }: { preview: ContentPreview; english: boole
         </p>
       </section>
     )
+  if (preview.kind === 'set')
+    return (
+      <section aria-label="İçerik önizlemesi" className="rounded-card border bg-surface p-4">
+        <p className="text-sm">
+          {preview.itemCount} soru
+          {preview.reading ? ' · okuma parçasına bağlı (okuma-anlama etkinliği)' : ''}
+          {preview.listening ? ' · dinleme kaydına bağlı (dinleme etkinliği)' : ''}
+          {preview.timeLimitMinutes ? ` · ${preview.timeLimitMinutes} dakika` : ''}
+        </p>
+      </section>
+    )
+  const { summary } = preview
   return (
     <section
       aria-label="İçerik önizlemesi"
       className="grid gap-3 rounded-card border bg-surface p-4"
     >
+      <p className="text-xs font-medium text-muted-foreground">{summary.typeLabel}</p>
       <p lang={lang} className="text-sm font-medium [overflow-wrap:anywhere] whitespace-pre-wrap">
-        {preview.stem}
+        {summary.stem}
       </p>
-      <ul className="grid gap-1.5 text-sm">
-        {preview.options.map((option) => (
-          <li
-            key={option.id}
-            lang={lang}
-            className="flex items-start gap-2 rounded-xl border px-3 py-1.5 [overflow-wrap:anywhere]"
-          >
-            <span className="font-medium uppercase">{option.id}.</span>
-            <span className="flex-1">{option.text}</span>
-            {option.correct ? <StatusBadge text="Doğru cevap" tone="green" /> : null}
-          </li>
-        ))}
-      </ul>
-      {preview.explanation ? (
+      {summary.lines.length > 0 ? (
+        <ul className="grid gap-1.5 text-sm">
+          {summary.lines.map((line) => (
+            <li
+              key={line.key}
+              className="flex items-start gap-2 rounded-xl border px-3 py-1.5 [overflow-wrap:anywhere]"
+            >
+              <span className="font-medium">{line.marker}</span>
+              <span lang={lang} className="flex-1">
+                {line.text}
+              </span>
+              {line.correct ? <StatusBadge text="Doğru cevap" tone="green" /> : null}
+            </li>
+          ))}
+        </ul>
+      ) : null}
+      {summary.answer ? (
+        <p className="text-sm [overflow-wrap:anywhere]">
+          <strong className="font-medium">Doğru cevap: </strong>
+          <span lang={lang}>{summary.answer}</span>
+        </p>
+      ) : null}
+      {summary.explanation ? (
         <p lang={lang} className="text-sm text-muted-foreground [overflow-wrap:anywhere]">
           <strong className="font-medium">Çözüm: </strong>
-          {preview.explanation}
+          {summary.explanation}
         </p>
       ) : null}
     </section>

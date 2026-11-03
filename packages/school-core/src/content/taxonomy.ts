@@ -169,6 +169,9 @@ export const OUTCOME_SOURCES = {
 } as const
 export type OutcomeSource = keyof typeof OUTCOME_SOURCES
 
+/** Ünite numarası aralığı (IST-056; DOM-BEC-047): kitap ve MEB programı ünitesi. */
+export const UNIT_RANGE = { min: 1, max: 40 } as const
+
 /** Sınıf düzeyi aralığı (DOM-KYN-010: ortaokul ve lise, 5–12). */
 export const GRADE_LEVEL_RANGE = { min: 5, max: 12 } as const
 
@@ -379,6 +382,15 @@ export const FILE_PURPOSES = {
     requiresConsent: true,
   },
   document: { label: 'Kurum belgesi', mimeTypes: [MIME.pdf], maxBytes: 20 * MB },
+  // kvkk: Ö — velinin izin/mazeret bildirimine eklediği özür belgesi (sağlık raporu, resmi yazı);
+  // sağlık verisi olabilir. Yalnız bildirimin okuma kapsamına açılır, her bağlantı denetimdedir
+  // (DOM-ILT-053). Bildirim başına en çok 3.
+  absence_document: {
+    label: 'Özür belgesi',
+    mimeTypes: [MIME.pdf, MIME.jpeg, MIME.png],
+    maxBytes: 10 * MB,
+    maxFiles: 3,
+  },
 } as const satisfies Record<string, FilePurposeRule>
 export type FilePurpose = keyof typeof FILE_PURPOSES
 

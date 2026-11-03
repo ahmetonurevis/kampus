@@ -32,18 +32,19 @@ export const pageAvailableFor = (
 ) => page.institutionTypes === undefined || page.institutionTypes.includes(type)
 
 /**
- * ÖĞRENME kategorisi varsa onun sonuna, yoksa RAPORLAR'dan (o da yoksa SİSTEM'den) önce; hiçbiri
- * yoksa sona eklenir.
+ * Öğrenme sayfaları kendi kategorisinin (personelde ÖĞRENME, velide AKADEMİK) sonuna; kategori
+ * yoksa RAPORLAR'dan (o da yoksa SİSTEM'den) önce, hiçbiri yoksa sona eklenir.
  */
 function withLearning(role: Role, pages: NavigationPage[]): NavigationPage[] {
-  const extra = API_LEARNING_PAGES[role].filter(
-    (added) => !pages.some((p) => p.path === added.path),
-  )
-  if (!extra.length) return pages
-  const lastLearning = pages.findLastIndex((page) => page.group === 'ÖĞRENME')
-  const before = pages.findIndex((page) => page.group === 'RAPORLAR' || page.group === 'SİSTEM')
-  const at = lastLearning >= 0 ? lastLearning + 1 : before >= 0 ? before : pages.length
-  return [...pages.slice(0, at), ...extra, ...pages.slice(at)]
+  let result = pages
+  for (const added of API_LEARNING_PAGES[role]) {
+    if (result.some((p) => p.path === added.path)) continue
+    const lastOfGroup = result.findLastIndex((page) => page.group === added.group)
+    const before = result.findIndex((page) => page.group === 'RAPORLAR' || page.group === 'SİSTEM')
+    const at = lastOfGroup >= 0 ? lastOfGroup + 1 : before >= 0 ? before : result.length
+    result = [...result.slice(0, at), added, ...result.slice(at)]
+  }
+  return result
 }
 
 /**

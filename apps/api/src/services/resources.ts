@@ -26,7 +26,7 @@ import {
   findResource,
   listResourceVersions,
   listVisibleResources,
-  loadItemVersionRefs,
+  loadLinkedVersionRefs,
   type ResourceListQuery,
   type StoredResource,
   type StoredResourceVersion,
@@ -215,14 +215,41 @@ function learnerVersion(
 
 // --- Liste --------------------------------------------------------------------------------
 
-export type ResourceListInput = Omit<ResourceListQuery, 'terms'> & { q?: string | undefined }
+export type ResourceListInput = Omit<ResourceListQuery, 'terms'> & {
+  q?: string | undefined
+  studentId?: string | undefined
+}
 
 /** Personele özgü süzgeçler: öğrenci ve veli taslak görmez, sahip kimliğini bilmez. */
 const STAFF_FILTERS = ['status', 'ownerUserId'] as const
 
+/**
+ * Seçili öğrencinin gördüğü (DOM-KYN-041): velide görünüm o çocuğa daralır, öğrencide yalnız
+ * kendi kaydı geçerlidir. Çocuklar `contentReader`'dan, yani okuma kapsamından (velayetli ve
+ * kısıtsız bağ) gelir; kapsam dışı öğrenci 404 (varlık sızdırılmaz, DOM-YTK-011). Personelde 400.
+ */
+function narrowToStudent(viewer: ContentViewer, studentId: string): ContentViewer {
+  if (viewer.kind === 'staff')
+    throw new ValidationError([
+      {
+        path: ['studentId'],
+        code: 'learner_only_filter',
+        message: 'Öğrenci seçimi yalnız öğrenci ve veli için kullanılabilir.',
+      },
+    ])
+  if (viewer.kind === 'student') {
+    if (viewer.learner.studentId !== studentId) throw new NotFoundError()
+    return viewer
+  }
+  const children = viewer.children.filter((child) => child.studentId === studentId)
+  if (children.length === 0) throw new NotFoundError()
+  return { kind: 'parent', children }
+}
+
 export async function listResources(ctx: ServiceContext, input: ResourceListInput) {
-  const { viewer, institutionType } = await contentReader(ctx)
-  if (viewer.kind !== 'staff') {
+  const reader = await contentReader(ctx)
+  const { institutionType } = reader
+  if (reader.viewer.kind !== 'staff') {
     const issues = STAFF_FILTERS.filter((field) => input[field] !== undefined).map((field) => ({
       path: [field],
       code: 'staff_only_filter',
@@ -230,7 +257,8 @@ export async function listResources(ctx: ServiceContext, input: ResourceListInpu
     }))
     if (issues.length > 0) throw new ValidationError(issues)
   }
-  const { q, ...rest } = input
+  const { q, studentId, ...rest } = input
+  const viewer = studentId === undefined ? reader.viewer : narrowToStudent(reader.viewer, studentId)
   // Normalleşince terim kalmayan arama (`q=!!!`) boş sonuçtur, 400 değil: kullanıcı yazarken
   // hata görmez (`ResourceListQuery.terms`).
   const terms = q === undefined ? null : searchQueryTerms(q)
@@ -258,7 +286,14 @@ export async function listResources(ctx: ServiceContext, input: ResourceListInpu
     ctx.log.warn({ event: 'resource.visibility_mismatch', dropped: page.rows.length - rows.length })
   const items = rows.map(({ resource, version }) =>
     viewer.kind === 'staff'
-      ? { view: 'staff' as const, ...resourceSummary(resource), version: versionSummary(version) }
+      ? {
+          view: 'staff' as const,
+          ...resourceSummary(resource),
+          version: versionSummary(version),
+          // Dinleme kaydı seçicisi dökümsüz kaydı seçmeden gösterir (DOM-BEC-005); metin gitmez.
+          hasTranscript:
+            version.content?.type === 'audio' ? version.content.transcript !== null : null,
+        }
       : {
           view: 'learner' as const,
           id: resource.id,
@@ -293,17 +328,14 @@ async function issuesOf(
   version: StoredResourceVersion,
 ): Promise<(PublicationIssue & { path: string[] })[]> {
   if (!OPEN.includes(version.status) || version.content === null) return []
-  const content = version.content
-  const itemIds =
-    content.type === 'quiz' || content.type === 'exercise_set'
-      ? content.items.map((item) => item.questionVersionId)
-      : []
-  const itemVersions = await loadItemVersionRefs(ctx.db, ctx.institutionId, itemIds)
+  // Bağlı soru, okuma parçası ve dinleme kaydı geçişteki yüklemeyle aynıdır (IST-042, IST-045);
+  // biri eksik kalırsa core her bağlı etkinlikte `passage_missing`/`listening_missing` sayardı.
+  const linked = await loadLinkedVersionRefs(ctx.db, ctx.institutionId, version.content)
   return publicationIssues({
     institutionType,
     version: asCoreVersion(version),
     now: ctx.now,
-    itemVersions,
+    ...linked,
   }).map((issue) => ({ ...issue, path: [...issue.path] }))
 }
 
@@ -343,7 +375,11 @@ export async function getResource(ctx: ServiceContext, resourceId: string) {
   return {
     view: 'staff' as const,
     resource: staffResource(resource),
-    versions: readable.map(versionSummary),
+    versions: readable.map((version) => ({
+      ...versionSummary(version),
+      license: version.license,
+      reviewedByUserId: version.reviewedByUserId,
+    })),
     head: fullVersion(head, files),
     publicationIssues: await issuesOf(ctx, institutionType, head),
   }

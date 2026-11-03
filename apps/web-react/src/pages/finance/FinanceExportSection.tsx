@@ -6,6 +6,7 @@ import {
   type FinanceExportKind,
 } from '@kampus/react-shared/use-finance-exports.ts'
 import { REAUTHENTICATION_CODE } from '@kampus/react-shared/use-withdrawals.ts'
+import { ReauthModal } from '@/auth/ReauthModal.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -14,7 +15,6 @@ import { Input } from '@/components/ui/input'
 import { saveBlob } from '@/lib/download.ts'
 import { notify } from '@/lib/notify.ts'
 import { StatGrid } from '../academic/AcademicParts.tsx'
-import { ReauthModal } from './ReauthModal.tsx'
 
 const FILES: readonly { kind: FinanceExportKind; label: string; name: string }[] = [
   { kind: 'payments', label: 'Tahsilat dosyası', name: 'tahsilatlar' },

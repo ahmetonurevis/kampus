@@ -7,7 +7,7 @@ import { SidePanel } from '@/components/SidePanel.tsx'
 import { Input } from '@/components/ui/input'
 import type { CoreRecord } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
-import { FormActions, RootError } from '../management/FormParts.tsx'
+import { FormActions, RootError, useFocusAfterSubmit } from '../management/FormParts.tsx'
 import {
   editBody,
   editDefaults,
@@ -64,6 +64,7 @@ function EditForm({
     defaultValues: editDefaults(prospect),
   })
   const busy = update.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const errors = form.formState.errors
   const adult = prospect.minor === false
   const contact = CONTACT_LABELS[prospectContactOwner(prospect)]
@@ -72,17 +73,13 @@ function EditForm({
     const result = editBody(values, prospect)
     if (!result.ok) {
       if (result.field === 'root') form.setError('root.server', { message: result.message })
-      else
-        form.setError(
-          result.field,
-          { type: 'manual', message: result.message },
-          { shouldFocus: true },
-        )
+      else form.setError(result.field, { type: 'manual', message: result.message })
+      focusAfterSubmit(result.field)
       return
     }
     const outcome = await update.submit(
       { prospectId: prospect.id, version, body: result.body },
-      { setError: fieldErrors(FIELDS, form.setError) },
+      { setError: fieldErrors(FIELDS, form.setError, focusAfterSubmit) },
     )
     if (outcome.status === 'success') {
       notify.success('Aday bilgileri güncellendi.')

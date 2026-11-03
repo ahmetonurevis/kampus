@@ -73,11 +73,135 @@ export interface paths {
         };
         /**
          * Kurum kullanıcıları
-         * @description Etkin kurumun üyelerini görünen ad, rol, durum, bağlı kişi ve oluşturulma tarihiyle sayfalı döndürür. E-posta yalnız yöneticiye döner; telefon, parola, oturum ve IP dönmez. Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.
+         * @description Etkin kurumun üyelerini görünen ad, rol, durum, bağlı kişi, pasifleştirme anı ve oluşturulma tarihiyle sayfalı döndürür. E-posta yalnız yöneticiye döner; telefon, parola, oturum ve IP dönmez. Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.
          */
         get: operations["listInstitutionMembers"];
         put?: never;
         post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/institution-members/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bekleyen personel davetleri
+         * @description Etkin kurumun bekleyen (kişinin henüz giriş yapmadığı) personel davetleri, yeni önce (DOM-YTK-070). Yalnız yönetici (diğer roller 403). Okuma denetim kaydı üretmez.
+         */
+        get: operations["listStaffInvitations"];
+        put?: never;
+        /**
+         * Personel davet et
+         * @description Yönetici, öğretmen ya da ön büro hesabı açar (DOM-YTK-070, IST-007): kullanıcı (parolasız), üyelik ve isteğe bağlı öğretmen kaydı bağlantısı (`teacherId`, yalnız öğretmen rolünde) aynı işlemde yazılır; Better Auth daveti kişi ilk girişini yapana kadar `pending` kalır. Kişiye parola belirleme bağlantısı (parola sıfırlama akışı) yanıtı beklemeden gönderilir (kuyruk açıkken `staff.password-link` işi). E-posta başka kurumda hesaplıysa üyelik açılmaz ve ileti gitmez; yalnız bekleyen davet yazılır, öğretmen kaydı davette saklanır ve kabulde bağlanır. Yanıtın durum kodu ve alanları iki durumda aynıdır, ad yöneticinin girdiğidir: e-postanın başka kurumda hesabı olup olmadığı yanıttan anlaşılmaz. Kurumda kayıtlı e-posta 409 `member_exists`, bekleyen davet 409 `invitation_exists`, kurumda olmayan öğretmen kaydı 404, başka hesaba bağlı öğretmen kaydı 409 `teacher_already_linked`, kurumun bekleyen başka bir davetinin tuttuğu öğretmen kaydı 409 `teacher_invitation_pending`. Öğrenci ve veli hesapları kayıt aktarımıyla açılır (400). `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
+         */
+        post: operations["inviteStaffMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/institution-members/imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personeli toplu aktar (CSV)
+         * @description Yönetici, öğretmen ve ön büro hesaplarını CSV dosyasıyla toplu davet eder (IST-007, DOM-YTK-070). Başlık satırı zorunludur; sütunlar `ad`, `e-posta`, `rol` ve öğretmen için isteğe bağlı `branş`, `kampüs` (ayraç `;`, sekme ya da `,`; sıra serbest). En çok 1.000 veri satırı. Bütün satırlar kurum kilidi altında doğrulanmadan hiçbir kayıt yazılmaz: geçersiz ad/e-posta/rol, dosyada yinelenen e-posta, kurumda kayıtlı e-posta (`member_exists`), bekleyen davet (`invitation_exists`), bulunamayan ya da uyuşmayan branş/kampüs başka hesaba bağlı (`teacher_already_linked`) ya da bekleyen bir davetin tuttuğu (`teacher_invitation_pending`) öğretmen kaydı satır numarasıyla raporlanır. Öğretmen satırı aynı e-postalı (yoksa aynı ad, branş ve kampüslü e-postasız) öğretmen kaydına bağlanır; kayıtta başka bir e-posta varsa satır `teacher_email_mismatch`; aktarım öğretmen kaydı açmaz. `dryRun: true` önizlemedir: 200 ve `issues` döner, hiçbir şey yazmaz. Aktarımda hata varsa 422 `staff_import_invalid` (`issues` yolu `['rows', satır, alan]`); başarı 201. Dosya düzeyindeki sorun (başlık, satır sınırı, tırnak) 422 ve sorunun kodu (ör. `csv_too_many_rows`). Her satır tek davetle aynı biçimde yazılır (başka kurumda hesabı olan e-postada yalnız bekleyen davet; yanıt ayırt etmez); parola belirleme bağlantıları yanıtı beklemeden yeni hesaplara gider; yanıt süresi de hesabın varlığını belli etmez. `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
+         */
+        post: operations["importStaffMembers"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/institution-members/invitations/{invitationId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personel davetini iptal et
+         * @description Bekleyen daveti iptal eder (DOM-YTK-070): davet `canceled` olur, davetle açılan üyelik ve öğretmen bağlantısı silinir (mevcut hesaba yazılmış davette yalnız davet iptal edilir); kişinin başka kurumda üyeliği yoksa açık parola bağlantısı geçersizleşir, hiç parola koymadıysa hesabı da silinir. Bekleyen olmayan davet 409 `invitation_not_pending`. `Idempotency-Key` isteğe bağlı. Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
+         */
+        post: operations["cancelStaffInvitation"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/institution-members/{membershipId}/role": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personel rolünü değiştir
+         * @description Yönetici, öğretmen ve ön büro arasında rol değiştirir (DOM-YTK-070). Aynı rol yazmaz (200, denetim yok). Kendi rolü 422 `self_role_change`; kurumdaki son etkin yönetici 422 `last_admin`; pasif hesap 422 `member_deactivated`; öğrenci ve veli hesabı 422 `member_not_staff`. Rol her istekte okunur; değişiklik kişinin bir sonraki isteğinde geçerlidir. `Idempotency-Key` isteğe bağlı. Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
+         */
+        post: operations["changeStaffRole"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/institution-members/{membershipId}/deactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personel hesabını pasifleştir
+         * @description Personel hesabını pasifleştirir (DOM-YTK-070): üyelik kimlik doğrulamada yok sayılır, kişinin bu kurumdaki oturumları kapatılır; kayıtları ve geçmişi korunur. Pasif hesap yazılmaz (200, denetim yok). Kendi hesabı 422 `self_deactivate`; kurumdaki son etkin yönetici 422 `last_admin`; öğrenci ve veli hesabı 422 `member_not_staff`. `Idempotency-Key` isteğe bağlı. Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
+         */
+        post: operations["deactivateStaffMember"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/institution-members/{membershipId}/reactivate": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Personel hesabını etkinleştir
+         * @description Pasifleştirilen personel hesabını geri alır (DOM-YTK-070); kişi yeniden giriş yapabilir. Etkin hesap yazılmaz (200, denetim yok). Kendi hesabı 422 `self_reactivate`. Öğrenci ve veli hesabı 422 `member_not_staff`. `Idempotency-Key` isteğe bağlı. Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; başka kurumun kaydı 404. Yazma ve denetim kaydı (`audit_log`, yalnız alan adları) tek transaction’dadır.
+         */
+        post: operations["reactivateStaffMember"];
         delete?: never;
         options?: never;
         head?: never;
@@ -1239,7 +1363,7 @@ export interface paths {
         head?: never;
         /**
          * Öğretmen düzenle
-         * @description Öğretmen kaydını kısmi gövdeyle düzenler: gönderilmeyen alan güncel değerinde kalır, sonuç kayıt şemasıyla bütün olarak doğrulanır. Yetki core `authorize('teacher.save')`. Yalnız core `teachers` kaydını yazar; hesap ve üyelik kurum üyeleri ucundadır. Aktif öğretmen e-postası tekildir (409 `teacher_email_taken`); kampüs aktif (422 `campus_required`), branş müfredatta olmalıdır (422 `subject_invalid`). Ders ataması olan öğretmenin branşı değişmez (422 `teacher_has_assignments`); ileri tarihli etüdü olan öğretmenin kampüs/branşı değişmez (422 `teacher_has_future_tutoring`). Rehberlik görevi bu uçtan verilmez. Arşivli, olmayan veya başka kurumun kaydı 404. `If-Match` zorunludur (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Denetim kaydına değer değil alan adı yazılır. Roller: `yonetici`.
+         * @description Öğretmen kaydını kısmi gövdeyle düzenler: gönderilmeyen alan güncel değerinde kalır, sonuç kayıt şemasıyla bütün olarak doğrulanır. Yetki core `authorize('teacher.save')`. Yalnız core `teachers` kaydını yazar; hesap ve üyelik kurum üyeleri ucundadır. Aktif öğretmen e-postası tekildir (409 `teacher_email_taken`); kampüs aktif (422 `campus_required`), branş müfredatta olmalıdır (422 `subject_invalid`). Ders ataması olan öğretmenin branşı değişmez (422 `teacher_has_assignments`); ileri tarihli etüdü olan öğretmenin kampüs/branşı değişmez (422 `teacher_has_future_tutoring`). Rehberlik görevi bu uçtan verilmez. Yeni branşın dışında kalan etkin zümre başkanlığı görevi varsa branş değişmez (422 `coordinator_duty_outside_branch`, `subjectId` yolu; görev sessizce kesilmez, önce `DELETE /coordinator-duties/:dutyId`). Arşivli, olmayan veya başka kurumun kaydı 404. `If-Match` zorunludur (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Denetim kaydına değer değil alan adı yazılır. Roller: `yonetici`.
          */
         patch: operations["updateTeacher"];
         trace?: never;
@@ -1783,9 +1907,69 @@ export interface paths {
         put?: never;
         /**
          * İzin veya mazeret bildir
-         * @description Veli bağlı çocuğu için ileri tarihli izin veya geçmiş tarihli mazeret bildirir (core `notifyAbsence`, DOM-ILT-053). Geçmiş tarih devamsızlığın bitiminden itibaren ortaokulda 3, lisede 5 iş günü içinde kabul edilir, aksi 422 `absence_notice_late`. Aynı öğrencinin örtüşen bildirimi 409 `absence_overlap`; belge eki (`files`) henüz 422 `absence_files_unsupported`; başka velinin çocuğu 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Gerekçe yalnız kategoridir (`reasonCategory`: `health`, `family`, `official`, `other`); serbest açıklama (`reason`) ve bilinmeyen alan 400 `validation_failed`, sağlık ayrıntısı alınmaz (KVKK md. 6, en az veri). Bildirim yoklamayı değiştirmez ve talep kaydı açmaz; ön büro bildirimleri göremez. Modül `academic`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `veli`.
+         * @description Veli bağlı çocuğu için ileri tarihli izin veya geçmiş tarihli mazeret bildirir (core `notifyAbsence`, DOM-ILT-053). Geçmiş tarih devamsızlığın bitiminden itibaren ortaokulda 3, lisede 5 iş günü içinde kabul edilir, aksi 422 `absence_notice_late`. Aynı öğrencinin örtüşen bildirimi 409 `absence_overlap`; başka velinin çocuğu 403 `student_scope_denied`, pasif öğrenci 422 `student_inactive`. Gerekçe yalnız kategoridir (`reasonCategory`: `health`, `family`, `official`, `other`); serbest açıklama (`reason`) ve bilinmeyen alan 400 `validation_failed`, sağlık ayrıntısı alınmaz (KVKK md. 6, en az veri). Özür belgesi (`fileIds`, en çok 3; dosya ucundan `absence_document` amacıyla yüklenmiş, velinin kendi `ready` dosyaları; PDF, JPEG, PNG, en çok 10 MB) aynı transaction'da bildirime bağlanır: 3'ten fazlası 422 `absence_document_limit`, başkasının ya da olmayan dosya 422 `absence_document_unavailable`, başka amaç 422 `absence_document_purpose`, hazır olmayan 422 `file_not_ready`, başka kayda bağlı 409 `file_already_attached`; hiçbir kayıt değişmez. Bildirim `approvalStatus: pending` ile açılır (idare onayı `POST /absences/{absenceId}/approve`). Bildirim yoklamayı değiştirmez ve talep kaydı açmaz; ön büro bildirimleri göremez. Modül `academic`. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `veli`.
          */
         post: operations["notifyAbsence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/absences/{absenceId}/documents": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Bildirime özür belgesi ekle
+         * @description Veli, bağlı çocuğunun karar bekleyen bildirimine özür belgesi ekler (core `attachAbsenceDocuments`, DOM-ILT-053, IST-072). Belgeler aynı transaction'da bildirime bağlanır; bildirim başına toplam en çok 3 (422 `absence_document_limit`), aynı belge ikinci kez 409 `absence_document_duplicate`. Belge süresi geçen bildirim (devamsızlığın bitiminden itibaren ortaokulda 3, lisede 5 iş günü) 422 `absence_document_late`. Dosya hataları `POST /absences` ile aynıdır. Belgeyi bildirimi okuyabilen (yönetici, sınıf rehber öğretmeni, veli, öğrenci) `GET /files/{fileId}/url` ile açar; her bağlantı denetim kaydına `file.access` olarak yazılır. Olmayan, başka kurumun ya da kapsam dışı bildirim 404 `absence_not_found`; karar verilmiş bildirim 409 `absence_already_decided`. `If-Match` zorunludur (bildirimin sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Modül `academic`. Roller: `veli`.
+         */
+        post: operations["attachAbsenceDocuments"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/absences/{absenceId}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin/mazeret bildirimini onayla
+         * @description Yönetici bildirimi onaylar (core `approveAbsence`, DOM-ILT-053): `approvalStatus` `approved` olur, karar kaydedilir. Günlerin yoklamada ve risk listesinde özürlü gösterilmesi (core `attendanceExcuse`) henüz bağlı değildir; yoklama kaydı değişmez. Belge zorunlu değildir. Gövde boş nesnedir, bilinmeyen alan 400. Veliye (yetişkin kursiyerde kendisine) `absence_decided` bildirimi aynı transaction'da yazılır; sonuç bildirimde yoktur. Durumu olmayan eski bildirim `pending` sayılır. Olmayan, başka kurumun ya da kapsam dışı bildirim 404 `absence_not_found`; karar verilmiş bildirim 409 `absence_already_decided`. `If-Match` zorunludur (bildirimin sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Modül `academic`. Roller: `yonetici`.
+         */
+        post: operations["approveAbsence"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/absences/{absenceId}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * İzin/mazeret bildirimini reddet
+         * @description Yönetici bildirimi gerekçeyle reddeder (core `rejectAbsence`, DOM-ILT-053): `approvalStatus` `rejected` olur, günler özürsüz kalır. Gerekçe (`reason`, 2–500 karakter) bildirim kaydına yazılmaz, yalnız denetim kaydının gerekçesine (`audit_log.reason`) girer ve loglanmaz. Veliye `absence_decided` bildirimi aynı transaction'da yazılır; sonuç ve gerekçe bildirimde yoktur. Olmayan, başka kurumun ya da kapsam dışı bildirim 404 `absence_not_found`; karar verilmiş bildirim 409 `absence_already_decided`. `If-Match` zorunludur (bildirimin sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Modül `academic`. Roller: `yonetici`.
+         */
+        post: operations["rejectAbsence"];
         delete?: never;
         options?: never;
         head?: never;
@@ -2765,13 +2949,13 @@ export interface paths {
         };
         /**
          * İçerik havuzu
-         * @description Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve `view: 'staff'` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü `view: 'learner'` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Baş sürümü arşivli veya kaldırılmış kaynak varsayılan olarak listede ve aramada yoktur; yalnız `status=archived` / `status=removed` ile gelir (DOM-KYN-051). Normalleşince terim kalmayan `q` (ör. `!!!`) boş sonuç döner. Süzgeçler baş sürüme uygulanır; bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve `view: 'staff'` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü `view: 'learner'` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Baş sürümü arşivli veya kaldırılmış kaynak varsayılan olarak listede ve aramada yoktur; yalnız `status=archived` / `status=removed` ile gelir (DOM-KYN-051). Velide `studentId` görünümü seçili çocuğa daraltır (veli materyal sayfası; bağlı olmayan çocuk 404). Normalleşince terim kalmayan `q` (ör. `!!!`) boş sonuç döner. Süzgeçler baş sürüme uygulanır; `filterOn=current` personel satırını ve süzgeçleri güncel yayındaki sürüme alır (bağı yayındaki sürüme kuran seçici). Ses satırı döküm var/yok bilgisini (`hasTranscript`) taşır, metni taşımaz. Bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         get: operations["listResources"];
         put?: never;
         /**
          * Kaynak oluştur
-         * @description Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`; bağlanan okuma parçası (`passageVersionId`, IST-042) için 422 `passage_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_rejected` (yazarın taramada reddedilmiş dosyası), `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         * @description Yeni kaynak ve ilk taslak sürüm (DOM-KYN-001): sahip ve yazar işlemi yapan kişi, kapsam `private`. Gövde core `resourceVersionInputSchema` (taslak eksik kaydedilebilir; yayım koşulları onaya gönderirken denetlenir). Quiz/alıştırma sorusu kurumda yoksa veya okunamıyorsa 422 `quiz_item_missing`; bağlanan okuma parçası (`passageVersionId`, IST-042) için 422 `passage_missing`, bağlanan dinleme kaydı (`listeningVersionId`, IST-045) için 422 `listening_missing`. Dosya listesi `fileIds` (DOM-KYN-006): içerik türüne göre amaç ve sayı sınırı (fazlası 422 `resource_files_limit`, dosya almayan tür 422 `resource_files_not_allowed`); yeni dosya aynı kurumda, işlemi yapanın yüklediği, `ready` ve bağsız olmalı (422 `file_unavailable`, `file_purpose_mismatch`, `file_already_attached`, `file_not_ready`, `file_rejected` (yazarın taramada reddedilmiş dosyası), `file_too_large`, `file_type_not_allowed`); içerikteki dosya listede bulunmalı (422 `resource_file_unlinked`). Aynı kaynağın eski sürümündeki dosya geri eklenebilir; başka kaynağa bağlı dosya 422 `file_already_attached`. Dosyalar sürümle aynı işlemde bağlanır; hata yolu `fileIds.<sıra>`. Eşzamanlı bir istekle arada başka kayda bağlanan dosya, öteki dosya bağlayan uçlar gibi 409 `file_already_attached` alır. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
          */
         post: operations["createResource"];
         delete?: never;
@@ -3035,7 +3219,7 @@ export interface paths {
         put?: never;
         /**
          * Paylaşımı değiştir
-         * @description Paylaşım kapsamı ve hedefleri (DOM-KYN-021, 031, 040): `private`, `students` (`studentIds`), `classes` (`classIds`), `department`, `institution`. Sahip, zümre başkanı veya yönetici (403). Öğretmen yalnız ders verdiği sınıf ve öğrencilerle paylaşır (403 `share_target_out_of_scope`); kurumda olmayan kimlik 422 `share_target_not_found`. Kitap sahibiyle sınırlı lisans sınıf/kurum kapsamına açılmaz (422 `license_restricts_share`); onaysız yayın zümre/kuruma açılırken 409 `share_scope_review_required`. `If-Match` isteğe bağlı: kaynağın `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
+         * @description Paylaşım kapsamı ve hedefleri (DOM-KYN-021, 031, 040): `private`, `students` (`studentIds`), `classes` (`classIds`), `department`, `institution`. Sahip, zümre başkanı veya yönetici (403). Öğretmen yalnız ders verdiği sınıf ve öğrencileri ekler ya da çıkarır (403 `share_target_out_of_scope`); kapsamı dışındaki kayıtlı hedef değişmeden korunur. Eklenen kimlik kurumda yoksa 422 `share_target_not_found`. Kitap sahibiyle sınırlı lisans sınıf/kurum kapsamına açılmaz (422 `license_restricts_share`); onaysız yayın zümre/kuruma açılırken 409 `share_scope_review_required`. `If-Match` isteğe bağlı: kaynağın `rowVersion`'ı. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Okunamayan veya başka kurumun kaynağı 404.
          */
         post: operations["shareResource"];
         delete?: never;
@@ -3223,7 +3407,7 @@ export interface paths {
         put?: never;
         /**
          * Görev ata
-         * @description İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Dosyalı (el yazısı) ve sesli (konuşma kaydı) teslim türü atanabilir (OG-048; DOM-BEC-046, 050). Dinleme görevinde hak core varsayılanıyla 2'dir; 1, 2 veya sınırsız (`null`) seçilebilir ve öğrencinin denemesinde sayılır (IST-045, DOM-BEC-005). Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description İçeriğin güncel yayındaki sürümünü, ayarları ve (varsa) yayındaki rubrik sürümünü atamaya sabitler (ADR 0004 karar 4; DOM-KYN-032, DOM-BEC-041, 042); `scoringVersionId` başta içerik sürümüdür. Hedefler sınıf/şube (okul), dil grubu (dil okulu) veya öğrencidir; öğretmen yalnız ders verdiği sınıfa ve içeriğin dersine atar, yönetici kurumda atar. Aynı içerik farklı son tarihle ayrı atamadır (IST-034); açık atamadaki kursiyere ikinci kez 409 `assignment_duplicate`/`assignment_overlap`. Sıra: atayanın göremediği veya olmayan içerik 404 → lisansı dolmuş içerik 409 `resource_license_expired` → kapsam dışı hedef 403 `target_scope_denied` (olmayan hedef veya rubrik sürümü 404 `not_found`, mesaj ve `issues` yoluyla) → yayında olmayan veya güncel olmayan sürüm 409 `resource_version_not_assignable`, taslak veya arşivli rubrik sürümü 409 `rubric_version_not_assignable`. Dosyalı (el yazısı) ve sesli (konuşma kaydı) teslim türü atanabilir (OG-048; DOM-BEC-046, 050). Dinleme görevinde hak core varsayılanıyla 2'dir; 1, 2 veya sınırsız (`null`) seçilebilir ve öğrencinin denemesinde sayılır (IST-045, DOM-BEC-005). Hak yalnız dinleme kaydına bağlı (`listeningVersionId`, `listening_audio` dosyalı ses sürümü) quiz/alıştırma setinde sayılır; kaydı olmayan dinleme görevinde gönderilmeyen hak sınırsız saklanır, 1 veya 2 için 422 `listening_plays_unavailable`. Sınıf/şube hedefli atama o sınıfın güncel öğrencilerine görünür. `Idempotency-Key` zorunludur (sınıfa toplu dağıtım). Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`; öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["createTaskAssignment"];
         delete?: never;
@@ -3265,7 +3449,7 @@ export interface paths {
         };
         /**
          * Görev denemeleri
-         * @description Atamanın arşivlenmemiş denemeleri, kursiyer ve deneme numarası sırasıyla, sayfalı (DOM-BEC-042). `assignmentId` zorunlu; `learnerId` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün denemeleri; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün denemeleri, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
+         * @description Atamanın arşivlenmemiş denemeleri, kursiyer ve deneme numarası sırasıyla, sayfalı (DOM-BEC-042). `assignmentId` zorunlu; `learnerId` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. Kaldırılan içerikte de döner (`contentRemoved`; DOM-KYN-051): kayıt ve cevaplar korunur, anahtar silindiyse puan `null`. Roller: `yonetici` kurumun bütün denemeleri; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün denemeleri, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
          */
         get: operations["listTaskAttempts"];
         put?: never;
@@ -3285,7 +3469,7 @@ export interface paths {
         };
         /**
          * Görev denemesi ayrıntısı
-         * @description Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Roller: `yonetici` kurumun bütün denemeleri; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün denemeleri, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
+         * @description Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Dinleme etkinliğinde `listeningRecording` kaydın dosyasını ve (personelde hep, kursiyer ve velide görev kapanınca ya da alıştırmada açık ayarla) dökümünü, `listening` kalan hakkı taşır (IST-045, DOM-BEC-005). Kaldırılan içerikte 404 değil: kayıt ve cevaplar döner, `contentRemoved: true`, soru, parça ve kayıt ve anahtar gelmez (DOM-KYN-051). Roller: `yonetici` kurumun bütün denemeleri; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün denemeleri, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
          */
         get: operations["getTaskAttempt"];
         put?: never;
@@ -3295,7 +3479,7 @@ export interface paths {
         head?: never;
         /**
          * Deneme cevaplarını kaydet
-         * @description Süren denemeye cevap kaydı (DOM-BEC-043; core `planAnswerSave`): yalnız gönderilen sorular güncellenir. Süre dolduysa 422 `attempt_time_over`, teslim edilmiş deneme 409 `attempt_already_submitted`, soruyla uyuşmayan cevap 422 `answer_invalid`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). `If-Match` zorunlu: denemenin `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Süren denemeye cevap kaydı (DOM-BEC-043; core `planAnswerSave`): yalnız gönderilen sorular güncellenir. Süre dolduysa 422 `attempt_time_over`, teslim edilmiş deneme 409 `attempt_already_submitted`, soruyla uyuşmayan cevap 422 `answer_invalid`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). `If-Match` zorunlu: denemenin `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`; sürüm içerik kuralından önce sınanır). Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         patch: operations["saveTaskAttemptAnswers"];
         trace?: never;
@@ -3331,9 +3515,29 @@ export interface paths {
         put?: never;
         /**
          * Denemeyi teslim et
-         * @description Denemeyi teslim eder (DOM-BEC-010, 043; core `planAttemptSubmit`). Puan sunucuda cevaplardan hesaplanır; gövdede puan veya bilinmeyen alan 400. Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (`autoSubmitted`). Son teslimden sonra geç kabul süresinde teslim `late` işaretlenir. İkinci teslim 409 `attempt_already_submitted`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). `If-Match` zorunlu (denemenin `rowVersion`'ı); `Idempotency-Key` zorunlu. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Denemeyi teslim eder (DOM-BEC-010, 043; core `planAttemptSubmit`). Puan sunucuda cevaplardan hesaplanır; gövdede puan veya bilinmeyen alan 400. Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (`autoSubmitted`). Son teslimden sonra geç kabul süresinde teslim `late` işaretlenir. İkinci teslim 409 `attempt_already_submitted`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). `If-Match` zorunlu (denemenin `rowVersion`'ı; tutmazsa 409 `version_conflict`, içerik kuralından önce); `Idempotency-Key` zorunlu. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["submitTaskAttempt"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/task-attempts/{attemptId}/checks": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Alıştırma maddesini kontrol et
+         * @description Alıştırmada anında geri bildirim (IST-056, DOM-BEC-047; core `planItemCheck`): cevap denemeye kaydedilir, yanıt denemenin ayrıntısıdır ve `feedback` maddenin doğru/yanlış sonucunu, kalan hakkı ve yalnız kilitli maddenin anahtarını taşır. Madde başına 2 hak; doğru cevap ya da hakkın bitmesi maddeyi kilitler, kilitli maddenin cevabı kayıt ve teslimde değişmez. Son kontrolle aynı cevap mükerrerdir: hak tüketmez, hiçbir şey yazılmaz. Değerlendirme 422 `instant_feedback_unavailable`; kilitli madde 422 `item_check_locked`; görevde olmayan soru ya da uyuşmayan cevap 422 `answer_invalid`; süre dolduysa 422 `attempt_time_over`; teslim edilmiş deneme 409 `attempt_already_submitted`. İçerik kuralı cevap kaydıyla aynıdır (422 `content_unavailable`). `If-Match` zorunlu (denemenin `rowVersion`'ı; tutmazsa 409 `version_conflict`). Denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        post: operations["checkTaskAttemptItem"];
         delete?: never;
         options?: never;
         head?: never;
@@ -4640,6 +4844,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/placement-sessions/{sessionId}/form": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Seviye tespiti formu
+         * @description Oturumun formundaki otomatik bölümlerin (dil kullanımı, okuma, dinleme) soruları; personel kursiyerin cevaplarını bununla girer (OG-078, IST-058). Soru gövdesi anahtarsızdır: doğru cevap ve açıklama gönderilmez. Formda sorusu olmayan bölüm listede yoktur. Olmayan ya da başka kurumun oturumu 404. Roller: `yonetici`, `ogretmen` (öğretmen veya akademik koordinatör); diğer roller 403. Öğretmen yalnız kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki öğrenciye ulaşır, kapsam dışı öğrenci ve oturumu 404; aday gruba bağlı olmadığından her öğretmene açıktır. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         */
+        get: operations["getPlacementForm"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/placement-sessions/{sessionId}/score": {
         parameters: {
             query?: never;
@@ -4709,9 +4933,49 @@ export interface paths {
         };
         /**
          * CEFR profili
-         * @description Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi ve tespit oturumları. Öneri karar değildir ve saklanmaz. Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         * @description Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi (en yeniden eskiye, aynı becerinin önceki seviyesi ve değişim yönüyle) ve tespit oturumları. Öneri karar değildir ve saklanmaz. Personel çizelgesinde kararı veren (ad) ve gerekçe ile kararın değişmez kanıt kopyasından özet (karar anındaki öneri, kanıt görevleri, dayanak işareti) bulunur; öğrenci ve veli çizelgesinde bunlar yoktur (OG-079). Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
          */
         get: operations["getCefrProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/students/{studentId}/skill-progress": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Beceri ilerleme panosu
+         * @description Öğrencinin okuma, dinleme, yazma ve konuşma eğrileri (IST-057, DOM-BEC-035): her nokta bir değerlendirme görevinin sayılan denemesi ya da kesinleşmiş puanlı teslimidir ve atama ile deneme/teslim kimliğini taşır. Alıştırma, puanı kişiye açılmamış sonuç (DOM-BEC-045), içeriği kaldırılmış görev (DOM-KYN-051) ve arşivlenmiş atama girmez. Son değer ve eğilim her okumada hesaplanır, saklanmaz. Roller: `yonetici` herkesi, `ogretmen` ders verdiği sınıftaki ya da grubunu okuyabildiği öğrenciyi (yalnız atamasını gördüğü görevler), `ogrenci` kendisini, `veli` bağlı çocuğunu görür; ön büro 403. Göremediği, olmayan ya da başka kurumun öğrencisi 404. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getSkillProgress"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/practice-gradebook": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Alıştırma not defteri
+         * @description Alıştırma sonuçlarının ünite, beceri ve kazanım kırılımı (IST-056, DOM-BEC-048): kişinin gördüğü arşivsiz, otomatik puanlı alıştırma atamalarından kursiyer başına son tamamlanan deneme alınır. Hücre madde puanlarının toplamıdır (kazanılan / olası × 100); ünite setin, beceri ve kazanım maddenin etiketidir (soru etiketsizse setin). Her okumada hesaplanır, saklanmaz; not aktarımına, not ortalamasına, seviye önerisine ve beceri panosuna girmez. İçeriği kaldırılmış atama girmez (DOM-KYN-051). En yeni 100 alıştırma ataması okunur (`truncated`). `targetId` hedefi o sınıf/grup/öğrenci olan atamalara daraltır. Roller: `yonetici` bütün atamalar, `ogretmen` atadığı ya da kapsamındaki hedefi yüzünden gördüğü atamalar (DOM-YTK-028), `ogrenci` yalnız kendi sonucu; `veli` (DOM-BEC-041) ve ön büro 403. Bilinmeyen parametre 400. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getPracticeGradebook"];
         put?: never;
         post?: never;
         delete?: never;
@@ -4731,7 +4995,7 @@ export interface paths {
         put?: never;
         /**
          * Dosya yükle
-         * @description Tek dosya, `multipart/form-data`: önce `purpose`, sonra `file` alanı (DOM-KYN-004; ADR 0003 karar 2, 3). Dosya akışla depoya yazılır; boyut ve SHA-256 aynı geçişte hesaplanır. Tür içerikten (sihirli bayt) bulunur: amaçta olmayan tür 422 `file_type_not_allowed`, bildirilen tür veya ad uzantısı içerikle çelişirse 422 `file_type_mismatch`, boş dosya 422 `file_empty`. Amacın (türe özel) boyut sınırı aşılırsa akış kesilir, nesne silinir, 413 `file_too_large`. Kurum kotası aşılırsa 422 `storage_quota_exceeded`. Konuşma kaydı yükleyen öğrencinin kendi kaydı için geçerli rıza ister (18 yaş altında velayet sahibi velinin, 18 ve üstünde kendi rızası; geri çekilmiş, süresi dolmuş ya da itirazlı rıza sayılmaz): yoksa 403 `consent_required` (DOM-BEC-050, DOM-YTK-061). Multipart olmayan gövde 415. Tarayıcı açıkken (üretimde zorunlu) ses dışı dosya `processing` başlar: `file.scan` işi ClamAV ile tarar, temiz dosya `ready` olur, zararlı ya da tarama sınırını aşan dosya `rejected` olur ve silinir (yükleyen okumada ve bağlamada 422 `file_rejected` alır); tarayıcıya ulaşılamazsa dosya `processing` kalır ve tarama yeniden denenir, denemeleri biten tarama 15 dakikada bir yeniden kuyruğa girer (ADR 0003 karar 8). Tarayıcı kapalıyken (`FILE_SCANNER=off`, yalnız üretim dışı) dosya `pending` kalır ve bağlanamaz. Bağlanmayan dosya 24 saat sonra silinir; işlenmeyi bekleyen (`processing`) dosya 7 gün sonra. Ses (`speaking_recording`, `listening_audio`) `processing` başlar: `media.transcode` işi AAC-LC/M4A'ya (mono, 48 kHz) çevirir, süreyi (`durationMs`) ölçer ve dosyayı `ready` yapar (tür `audio/mp4` olur); boş, tamamen sessiz, çözülemeyen ya da sınırı aşan kayıt `rejected` olur (ADR 0003 karar 10). İşlenirken bağlantı 409 `file_processing`; istemci durumu `GET /files/{fileId}` ile izler. Kurum kimliği oturumdan gelir. `Idempotency-Key` zorunlu (aynı anahtar + aynı içerik ilk yanıtı tekrarlar); `If-Match` desteklenmez. Başarı 201 ve dosyanın `Location`'ı. Özgün ad log ve denetim kaydına yazılmaz. Roller amaca göre: `submission` ve `speaking_recording` öğrenci; `material`, `question_image`, `listening_audio` yönetici ve öğretmen (modül `learning`, kapalıysa 403 `module_disabled`); `document` yönetici ve ön büro. Diğer roller 403.
+         * @description Tek dosya, `multipart/form-data`: önce `purpose`, sonra `file` alanı (DOM-KYN-004; ADR 0003 karar 2, 3). Dosya akışla depoya yazılır; boyut ve SHA-256 aynı geçişte hesaplanır. Tür içerikten (sihirli bayt) bulunur: amaçta olmayan tür 422 `file_type_not_allowed`, bildirilen tür veya ad uzantısı içerikle çelişirse 422 `file_type_mismatch`, boş dosya 422 `file_empty`. Amacın (türe özel) boyut sınırı aşılırsa akış kesilir, nesne silinir, 413 `file_too_large`. Kurum kotası aşılırsa 422 `storage_quota_exceeded`. Konuşma kaydı yükleyen öğrencinin kendi kaydı için geçerli rıza ister (18 yaş altında velayet sahibi velinin, 18 ve üstünde kendi rızası; geri çekilmiş, süresi dolmuş ya da itirazlı rıza sayılmaz): yoksa 403 `consent_required` (DOM-BEC-050, DOM-YTK-061). Multipart olmayan gövde 415. Tarayıcı açıkken (üretimde zorunlu) dosya `processing` başlar: `file.scan` işi ClamAV ile tarar, temiz dosya `ready` olur, zararlı ya da tarama sınırını aşan dosya `rejected` olur ve silinir (ses dışı dosyada yükleyen okumada ve bağlamada 422 `file_rejected` alır); tarayıcıya ulaşılamazsa dosya `processing` kalır ve tarama yeniden denenir, denemeleri biten tarama 15 dakikada bir yeniden kuyruğa girer (ADR 0003 karar 8). Tarayıcı kapalıyken (`FILE_SCANNER=off`, yalnız üretim dışı) dosya `pending` kalır ve bağlanamaz. Bağlanmayan dosya 24 saat sonra (`ready` dosyada `ready` olduğu andan) silinir; işlenmeyi bekleyen (`processing`) dosya yüklemeden 7 gün sonra. Ses (`speaking_recording`, `listening_audio`) `processing` başlar: `media.transcode` işi AAC-LC/M4A'ya (mono, 48 kHz) çevirir, süreyi (`durationMs`) ölçer ve dosyayı `ready` yapar (tür `audio/mp4` olur); boş, tamamen sessiz, çözülemeyen ya da sınırı aşan kayıt `rejected` olur (ADR 0003 karar 10). Tarayıcı açıkken ses de taranır: dönüşüm taramayı beklemez, dosya dönüşüm bitip tarama temiz çıkınca `ready` olur; zararlı ses `rejected` olur, özgün ve dönüşmüş nesne silinir. İşlenirken bağlantı 409 `file_processing`; istemci durumu `GET /files/{fileId}` ile izler. Kurum kimliği oturumdan gelir. `Idempotency-Key` zorunlu (aynı anahtar + aynı içerik ilk yanıtı tekrarlar); `If-Match` desteklenmez. Başarı 201 ve dosyanın `Location`'ı. Özgün ad log ve denetim kaydına yazılmaz. Roller amaca göre: `submission` ve `speaking_recording` öğrenci; `material`, `question_image`, `listening_audio` yönetici ve öğretmen (modül `learning`, kapalıysa 403 `module_disabled`); `absence_document` veli (modül `academic`; DOM-ILT-053); `document` yönetici ve ön büro. Diğer roller 403.
          */
         post: operations["uploadFile"];
         delete?: never;
@@ -4749,7 +5013,7 @@ export interface paths {
         };
         /**
          * Dosya bilgisi
-         * @description Dosyanın meta verisi ve durumu (ADR 0003 karar 4). Taramada reddedilen dosyada yükleyen 422 `file_rejected` alır (başkası 404). Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Kaynak sürümüne bağlı dosyayı (materyal, dinleme kaydı, soru görseli; DOM-KYN-006) dosyaya bağ açan sürümlerden birini okuyabilen görür: öğrenci ve veli yalnız kendisine paylaşılmış yayındaki sürümün dosyasını. O sürümlerden birine (soru görselinde soruyu içeren quize) atanmış görevi gören de açar (DOM-YTK-028). Kaldırılan kaynağa bağlı dosya kopyalar ve görevler dahil hiçbir yoldan açılmaz (DOM-KYN-051). Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.
+         * @description Dosyanın meta verisi ve durumu (ADR 0003 karar 4). Taramada reddedilen dosyada yükleyen 422 `file_rejected` alır (başkası 404). Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Kaynak sürümüne bağlı dosyayı (materyal, dinleme kaydı, soru görseli; DOM-KYN-006) dosyaya bağ açan sürümlerden birini okuyabilen görür: öğrenci ve veli yalnız kendisine paylaşılmış yayındaki sürümün dosyasını. O sürümlerden birine (soru görselinde soruyu içeren quize, dinleme kaydında ses sürümünü `listeningVersionId` ile bağlayan quiz/alıştırma setine) atanmış görevi gören de açar (DOM-YTK-028, IST-045): ses kursiyere özel kalsa da etkinliğin atamasıyla açılır. Kaldırılan kaynağa bağlı dosya kopyalar ve görevler dahil hiçbir yoldan açılmaz (DOM-KYN-051). Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.
          */
         get: operations["getFile"];
         put?: never;
@@ -4769,7 +5033,7 @@ export interface paths {
         };
         /**
          * İmzalı indirme bağlantısı
-         * @description Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk, dinleme kaydında kayıt süresi + 60 sn (en az 5 dk; süre ölçülmemişse 16 dk). Tür ve `Content-Disposition` (belge `attachment`, görsel/ses/görüntü `inline`) imzaya dahildir. Dosya işlenirken 409 `file_processing`; taramada reddedilen dosyada yükleyen 422 `file_rejected` alır (başkası 404). Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına `file.access` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Dinleme hakkı altyapısı (IST-045, DOM-BEC-005; bugün devrede değil, atama dolu hakkı 422 `listening_plays_unavailable` ile reddeder): öğrenci, hakkı sınırlı atamanın içerik sürümüne bağlı `listening_audio` kaydını süren denemesinde istediğinde hak deneme × kayıt başına sayılır ve yanıtın `listening` alanında döner; hak bitince 422 `listening_plays_exhausted`, süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`. Son sayımın bağlantısı geçerliyken yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner; aralık istekleri sayılmaz. Öğretmen, yönetici ve veli bağlantısı, sınırsız atamanın denemesi ve teslim kapandıktan sonraki bağlantı sayılmaz. Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Kaynak sürümüne bağlı dosyayı (materyal, dinleme kaydı, soru görseli; DOM-KYN-006) dosyaya bağ açan sürümlerden birini okuyabilen görür: öğrenci ve veli yalnız kendisine paylaşılmış yayındaki sürümün dosyasını. O sürümlerden birine (soru görselinde soruyu içeren quize) atanmış görevi gören de açar (DOM-YTK-028). Kaldırılan kaynağa bağlı dosya kopyalar ve görevler dahil hiçbir yoldan açılmaz (DOM-KYN-051). Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.
+         * @description Kısa ömürlü imzalı GET bağlantısı (ADR 0003 karar 6): varsayılan 5 dk, konuşma kaydında 2 dk, dinleme kaydında kayıt süresi + 60 sn (en az 5 dk; süre ölçülmemişse 16 dk). Tür ve `Content-Disposition` (belge `attachment`, görsel/ses/görüntü `inline`) imzaya dahildir. Dosya işlenirken 409 `file_processing`; taramada reddedilen dosyada yükleyen 422 `file_rejected` alır (başkası 404). Teslim ve konuşma kaydında her bağlantı üretimi denetim kaydına `file.access` olarak yazılır (DOM-BEC-053, DOM-YTK-052). Dinleme hakkı (IST-045, DOM-BEC-005): öğrenci, hakkı sınırlı atamanın quiz/alıştırma setinin `listeningVersionId` ile bağladığı ses sürümünün `listening_audio` kaydını süren denemesinde istediğinde hak deneme × kayıt başına sayılır ve yanıtın `listening` alanında döner; hak bitince 422 `listening_plays_exhausted`. `attemptId` verilirse hak o denemeden düşer: öğrencinin kendi denemesi değilse 404, ataması bu kaydı bağlamıyorsa 422 `listening_attempt_mismatch`, deneme teslim edilmiş ya da süresi dolmuşsa 422 `listening_attempt_closed`; reddedilen istekte sayım yazılmaz. Verilmezse hak hiç sayılmaz (Sabah kararı 56): öğrencinin bu kaydı bağlayan sınırlı atamada süren denemesi varsa 422 `listening_attempt_running` (dinleme o denemenin ekranından açılır), süren deneme yokken teslimi açık görevde 422 `listening_attempt_required`. Son sayımın bağlantısı geçerliyken yeni istek sayılmaz, aynı bitiş anıyla bağlantı döner; aralık istekleri sayılmaz. Öğretmen, yönetici ve veli bağlantısı, sınırsız atamanın denemesi ve teslim kapandıktan sonraki bağlantı sayılmaz. Bağlı dosya bağlı kaydın okuma kuralından geçer (ADR 0003 karar 6); bağlanmamış dosyayı yalnız yükleyen görür. Kaynak sürümüne bağlı dosyayı (materyal, dinleme kaydı, soru görseli; DOM-KYN-006) dosyaya bağ açan sürümlerden birini okuyabilen görür: öğrenci ve veli yalnız kendisine paylaşılmış yayındaki sürümün dosyasını. O sürümlerden birine (soru görselinde soruyu içeren quize, dinleme kaydında ses sürümünü `listeningVersionId` ile bağlayan quiz/alıştırma setine) atanmış görevi gören de açar (DOM-YTK-028, IST-045): ses kursiyere özel kalsa da etkinliğin atamasıyla açılır. Kaldırılan kaynağa bağlı dosya kopyalar ve görevler dahil hiçbir yoldan açılmaz (DOM-KYN-051). Yok, başka kurum, silinmiş veya kapsam dışı 404; amacın modülü kapalıysa 403 `module_disabled`.
          */
         get: operations["getFileUrl"];
         put?: never;
@@ -4834,6 +5098,8 @@ export interface components {
             className?: string;
             /** @description Kaydın kampüsünün adı */
             branchName?: string;
+            /** @description Yalnız `questions` ve `appointments`: kaydın öğretmeninin adı. Kapsam okumasından bağımsız, kimlikle çözülür; öğretmen kadrodan ayrılmış (arşivli ya da pasif) olsa da döner. İletişim ve diğer öğretmen alanları dönmez */
+            teacherName?: string;
         };
         CollectionItemInput: {
             /** @description Kayıt kimliği */
@@ -5333,7 +5599,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /**
              * Format: binary
              * @description Tek dosya; alan adı `file`
@@ -5347,7 +5613,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /**
              * @description `pending` yüklendi, denetim bekliyor; `processing` taranıyor/dönüştürülüyor (bağlantı verilmez); `ready` kullanıma hazır; `rejected`/`deleted` görünmez
              * @enum {string}
@@ -5530,11 +5796,51 @@ export interface components {
             status: "active" | "passive";
             /** @description Bağlı öğrenci, çocuk veya öğretmen */
             links: components["schemas"]["InstitutionMemberLinkInput"][];
+            /** @description Yöneticinin hesabı pasifleştirdiği an (UTC); etkin hesapta `null` (DOM-YTK-070) */
+            deactivatedAt: string | null;
             /**
              * Format: date-time
              * @description Üyeliğin açıldığı an (UTC)
              */
             createdAt: string;
+        };
+        StaffInvitationInput: {
+            /** @description Davet kimliği */
+            id: string;
+            /** @description Yöneticinin davette girdiği ad */
+            name: string | null;
+            /** @description Davet e-postası; yalnız yöneticiye döner */
+            email: string;
+            /** @enum {string} */
+            role: "yonetici" | "ogretmen" | "onburo";
+            /**
+             * @description `pending`: kişi henüz giriş yapmadı; `accepted`: ilk girişini yaptı
+             * @enum {string}
+             */
+            status: "pending" | "accepted" | "canceled" | "rejected";
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Davet işaretinin süresi; davetle açılan hesap ve üyelik süreden bağımsızdır
+             */
+            expiresAt: string;
+        };
+        StaffImportIssueInput: {
+            line: number;
+            field: ("name" | "email" | "role" | "subject" | "campus") | null;
+            code: string;
+            message: string;
+        };
+        StaffImportResultInput: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Davet edilen (önizlemede edilecek) personel; hata varsa 0 */
+            invitedCount: number;
+            /** @description Satır hataları: dosyadaki satır (başlık 1. satır), alan, kod ve Türkçe ileti */
+            issues: components["schemas"]["StaffImportIssueInput"][];
         };
         InstitutionMembershipInput: {
             /** @description Üyelik kimliği */
@@ -5615,7 +5921,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /** @description Ses/video süresi; ölçülmediyse `null` */
             durationMs: number | null;
             /**
@@ -5643,6 +5949,31 @@ export interface components {
             /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
             archivedAt: string | null;
             removedAt: string | null;
+        };
+        ResourceVersionHistoryItemInput: {
+            /** Format: uuid */
+            id: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+            title: string;
+            authorUserId: string;
+            tags: components["schemas"]["ResourceTagsInput"];
+            /** @description Lisans türü; seçilmemişse `null` */
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
+            archivedAt: string | null;
+            removedAt: string | null;
+            /** @description Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel */
+            license: {
+                [key: string]: unknown;
+            } | null;
+            reviewedByUserId: string | null;
         };
         ResourceVersionInput: {
             /** Format: uuid */
@@ -5743,8 +6074,10 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
-            /** @description Okunabilir baş sürüm */
+            /** @description Okunabilir baş sürüm; `filterOn=current` ile güncel yayındaki sürüm */
             version: components["schemas"]["ResourceVersionSummaryInput"];
+            /** @description Satır sürümü ses içeriğiyse dökümü var mı (dinleme kaydı yayım koşulu, DOM-BEC-005); ses değilse ya da içerik kaldırıldıysa `null`. Döküm metni listede yoktur */
+            hasTranscript: boolean | null;
         };
         LearnerResourceListItemInput: {
             /** @constant */
@@ -5766,7 +6099,7 @@ export interface components {
             view: "staff";
             resource: components["schemas"]["StaffResourceInput"];
             /** @description Okunabilir sürümler, numaraya göre artan */
-            versions: components["schemas"]["ResourceVersionSummaryInput"][];
+            versions: components["schemas"]["ResourceVersionHistoryItemInput"][];
             head: components["schemas"]["ResourceVersionInput"];
             /** @description Açık sürümde (taslak, incelemede, reddedildi) yayım eksikleri; diğerlerinde boş */
             publicationIssues: {
@@ -5808,7 +6141,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -6191,8 +6524,8 @@ export interface components {
             canAct: boolean;
             /** @description Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045) */
             actionableUntil: string | null;
-            /** @description `canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
-            blockedBy: ("in_progress" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
+            /** @description `canAct` değilse neden: süren deneme, içerik kursiyere kapalı (yazma uçlarının 422 `content_unavailable` vereceği durum: kaldırılmış içerik, süren işi olmayana telif askısı, kitap sahibi olmayan; DOM-KYN-021, 025, 051; diğer engellerden önce gelir), içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
+            blockedBy: ("in_progress" | "content_unavailable" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
             /** @description Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045) */
             score: {
                 earned: number;
@@ -6448,11 +6781,64 @@ export interface components {
             /** @description `learnerIds` sırasıyla her kişinin durumu */
             progress: components["schemas"]["TaskAssignmentLearnerProgressInput"][];
             content: components["schemas"]["TaskAssignmentLearnerContentInput"] | null;
-            /** @description `content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil */
+            /** @description `content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya içerik kapalı: sürüm kaldırıldı/yayında değil, kitap sahibi değil ya da telif bildirimiyle incelemede ve süren iş (süren deneme, taslak, teslim) yok (DOM-KYN-025, Sabah kararı 47) */
             contentUnavailable: ("license_expired" | "unavailable") | null;
         };
         TaskAssignmentInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerInput"];
         TaskAssignmentDetailInput: components["schemas"]["TaskAssignmentStaffInput"] | components["schemas"]["TaskAssignmentLearnerDetailInput"];
+        TaskAttemptItemFeedbackInput: {
+            questionVersionId: string;
+            /** @description Kullanılan kontrol hakkı */
+            used: number;
+            /** @description Kalan kontrol hakkı (madde başına 2) */
+            remaining: number;
+            /** @description Son kontrol edilen cevap tam doğru mu */
+            correct: boolean;
+            correctParts: number;
+            /** @description Çok maddeli soruda madde sayısı; diğerlerinde 1 */
+            parts: number;
+            /** @description Doğru cevap ya da hak bitti: cevap bu denemede değişmez, anahtar açılır */
+            locked: boolean;
+            /** @description Yalnız kilitli maddenin doğru cevabı ve açıklaması; diğer maddeler `null` (DOM-BEC-045, 047). İçerik kapalıysa `null` */
+            answerKey: ({
+                /** @constant */
+                questionType: "multiple_choice";
+                correctOptionId: string;
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "true_false";
+                /** @enum {string} */
+                answer: "true" | "false" | "not_given";
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "matching";
+                pairs: {
+                    promptId: string;
+                    choiceId: string;
+                }[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "gap_fill";
+                gaps: {
+                    gapId: string;
+                    accepted: string[];
+                }[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "ordering";
+                order: string[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "short_answer";
+                accepted: string[];
+                explanation: string;
+            }) | null;
+        };
         TaskAttemptItemScoreInput: {
             questionVersionId: string;
             parts: number;
@@ -6482,7 +6868,7 @@ export interface components {
             items: components["schemas"]["TaskAttemptItemScoreInput"][] | null;
             /** @description Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır */
             subskills: components["schemas"]["TaskAttemptSubskillScoreInput"][] | null;
-            /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) */
+            /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) ve içerik kapalı değilse (DOM-KYN-025, 051; ayrıntıdaki `contentUnavailable` kuralı) */
             answerKey: {
                 questionVersionId: string;
                 answerKey: {
@@ -6531,6 +6917,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
+            learnerName: string | null;
             attemptNumber: number;
             /**
              * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
@@ -6582,8 +6970,12 @@ export interface components {
                     value: string;
                 };
             };
-            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResultInput"] | null;
+            /** @description Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null` */
+            feedback: components["schemas"]["TaskAttemptItemFeedbackInput"][] | null;
+            /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
+            contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
         };
@@ -6593,6 +6985,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
+            learnerName: string | null;
             attemptNumber: number;
             /**
              * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
@@ -6644,11 +7038,15 @@ export interface components {
                     value: string;
                 };
             };
-            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResultInput"] | null;
+            /** @description Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null` */
+            feedback: components["schemas"]["TaskAttemptItemFeedbackInput"][] | null;
+            /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
+            contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
-            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık */
+            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş */
             questions: {
                 questionVersionId: string;
                 points: number;
@@ -6711,7 +7109,7 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
-            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner */
+            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner */
             passage: {
                 /**
                  * Format: uuid
@@ -6732,11 +7130,36 @@ export interface components {
                 /** @description Kaynak gösterimi (DOM-KYN-024) */
                 attributions: components["schemas"]["ResourceAttributionInput"][];
             } | null;
-            /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
+            /** @description Dinleme etkinliğinin kaydı (IST-045): quiz/alıştırma seti dinleme kaydına bağlı değilse, kayıt kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Kalan hak `listening`tedir */
+            listeningRecording: {
+                /**
+                 * Format: uuid
+                 * @description Dinleme kaydının ses sürümü
+                 */
+                versionId: string;
+                title: string;
+                /**
+                 * Format: uuid
+                 * @description Kaydın dosyası (`listening_audio`); bağlantısı `GET /files/:fileId/url` ile açılır ve süren denemede hak sayılır
+                 */
+                fileId: string;
+                cefrLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @description Döküm; `transcriptShown` `false` iken `null` (DOM-BEC-005) */
+                transcript: string | null;
+                /** @description Zaman kodlu altyazı; dökümle aynı kural */
+                captionsVtt: string | null;
+                /** @description Döküm bu yanıtta açık mı: personelde hep; kursiyer ve velide görev kapanınca (son teslim ve geç kabul geçti) ya da alıştırmada `showTranscript` ayarıyla (DOM-BEC-005) */
+                transcriptShown: boolean;
+                /** @description Kaynak gösterimi (DOM-KYN-024) */
+                attributions: components["schemas"]["ResourceAttributionInput"][];
+            } | null;
+            /** @description Soru ve parça metni gösterilmiyorsa neden (DOM-KYN-021, 025, 051): kaldırılmış içerik herkese ve her denemede; öğrenci ve velide ayrıca telif bildirimiyle incelemedeki içerik ya da lisansı dolmuş içerik (yalnız kursiyerin bu görevde süren denemesi yoksa; Sabah kararı 47) ve kitap sahibi sınırı. Kapalıyken `result.answerKey` de `null`; cevaplar, madde sonucu ve puan görünür kalır */
+            contentUnavailable: ("license_expired" | "unavailable") | null;
+            /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`. Hak bitince kaydın bağlantısı 422 `listening_plays_exhausted`, süren deneme yokken açık görevde 422 `listening_attempt_required` */
             listening: {
                 /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
                 limit: number;
-                /** @description İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla */
+                /** @description Dinleme kaydının dosyası ve bu denemede sayılmış dinlemeler (kayıt kaldırıldıysa da), kimlik sırasıyla */
                 media: {
                     /**
                      * Format: uuid
@@ -6808,6 +7231,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -6902,6 +7327,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -6976,6 +7403,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -7853,6 +8282,80 @@ export interface components {
              */
             studentStatus: "pending" | "approved" | "rejected";
         };
+        PlacementFormInput: {
+            /** Format: uuid */
+            sessionId: string;
+            /** Format: uuid */
+            formVersionId: string;
+            /** @description Formda sorusu olan otomatik bölümler, ekrandaki sırayla */
+            sections: {
+                /** @enum {string} */
+                section: "language_use" | "reading" | "listening";
+                /** @description Bölüm sorularının ortak CEFR seviyesi */
+                targetLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                items: {
+                    questionVersionId: string;
+                    points: number;
+                    subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
+                    question: {
+                        /** @constant */
+                        questionType: "multiple_choice";
+                        stem: string;
+                        options: {
+                            id: string;
+                            text: string;
+                        }[];
+                        /** @default null */
+                        imageFileId: string | null;
+                    } | {
+                        /** @constant */
+                        questionType: "true_false";
+                        stem: string;
+                        /** @default false */
+                        allowNotGiven: boolean;
+                        /** @default null */
+                        imageFileId: string | null;
+                    } | {
+                        /** @constant */
+                        questionType: "matching";
+                        stem: string;
+                        prompts: {
+                            id: string;
+                            text: string;
+                        }[];
+                        choices: {
+                            id: string;
+                            text: string;
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "gap_fill";
+                        stem: string;
+                        gaps: {
+                            id: string;
+                            /** @default [] */
+                            options: string[];
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "ordering";
+                        stem: string;
+                        items: {
+                            id: string;
+                            text: string;
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "short_answer";
+                        stem: string;
+                        /** @default 100 */
+                        maxLength: number;
+                        /** @default null */
+                        imageFileId: string | null;
+                    };
+                }[];
+            }[];
+        };
         CefrProfileStaffInput: {
             /**
              * @description Yönetici ve öğretmen görünümü
@@ -7961,11 +8464,43 @@ export interface components {
                 /** Format: date-time */
                 decidedAt: string;
                 placementSessionId: string | null;
+                /** @description Kararı verenin adı */
+                decidedByName: string | null;
+                /** @description Aynı becerideki bir önceki kararın seviyesi */
+                previousLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @enum {string} */
+                change: "first" | "up" | "down" | "same";
+                /** @description Karar anındaki kanıt özeti: beceri kararında o becerinin, genel kararda hepsinin */
+                evidence: {
+                    /** @enum {string} */
+                    context: "general" | "placement";
+                    /** @description Karar anındaki öneri; kanıt yetersizse boş */
+                    suggestedLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                    followsSuggestion: boolean | null;
+                    successful: number;
+                    items: {
+                        id: string;
+                        taskId: string;
+                        title: string;
+                        /** @enum {string} */
+                        source: "task" | "placement";
+                        /** @enum {string} */
+                        skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                        /** @enum {string} */
+                        targetLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                        /** Format: date-time */
+                        performedAt: string;
+                        successful: boolean;
+                        percent: number;
+                        /** @description Karar anındaki önerinin dayandığı kanıt */
+                        basis: boolean;
+                    }[];
+                };
             }[];
         };
         CefrProfileLearnerInput: {
             /**
-             * @description Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur
+             * @description Öğrenci ve veli görünümü: kararın gerekçesi, vereni ve kanıtı yoktur
              * @constant
              */
             view: "learner";
@@ -8069,9 +8604,174 @@ export interface components {
                 /** Format: date-time */
                 decidedAt: string;
                 placementSessionId: string | null;
+                /** @description Aynı becerideki bir önceki kararın seviyesi */
+                previousLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @enum {string} */
+                change: "first" | "up" | "down" | "same";
             }[];
         };
         CefrProfileInput: components["schemas"]["CefrProfileStaffInput"] | components["schemas"]["CefrProfileLearnerInput"];
+        SkillProgressInput: {
+            studentId: string;
+            /** Format: date-time */
+            computedAt: string;
+            /** @description Okuma, dinleme, yazma ve konuşma; her zaman dördü */
+            skills: {
+                /** @enum {string} */
+                skill: "reading" | "listening" | "writing" | "speaking";
+                label: string;
+                /** @description Tarih sırasıyla noktalar */
+                points: {
+                    /**
+                     * Format: uuid
+                     * @description Görev ataması
+                     */
+                    assignmentId: string;
+                    /** @description Otomatik puanlı görevde sayılan deneme */
+                    attemptId: string | null;
+                    /** @description Öğretmen puanlı görevde teslim kaydı */
+                    submissionId: string | null;
+                    /** @description Atanan içeriğin başlığı */
+                    title: string;
+                    /**
+                     * Format: date-time
+                     * @description Denemenin tamamlandığı ya da puanlanan sürümün gönderildiği an
+                     */
+                    performedAt: string;
+                    /** @description Puan yüzdesi */
+                    percent: number;
+                }[];
+                /** @description Son noktanın yüzdesi */
+                latest: number | null;
+                /** @description Eğilim: son nokta, önceki en çok üç noktanın ortalamasına göre (±5 puan) */
+                trend: ("up" | "down" | "steady") | null;
+            }[];
+        };
+        PracticeGradebookInput: {
+            /** @description Not defterine giren alıştırma atamaları, en yeni önce */
+            assignments: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                unit: {
+                    number: number;
+                    title: string | null;
+                } | null;
+                /** @description Tamamlanmış denemesi olan kursiyer sayısı */
+                learners: number;
+            }[];
+            /** @description Kursiyer başına kırılım, kimlik sırasıyla */
+            learners: {
+                learnerId: string;
+                /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende kapsamındakiler */
+                learnerName: string | null;
+                /** @description Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı */
+                sets: number;
+                /** @description Bütün maddeler */
+                overall: {
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                };
+                /** @description Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır */
+                units: {
+                    number: number;
+                    title: string | null;
+                    sets: number;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …) */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla */
+                outcomes: {
+                    /** @enum {string} */
+                    outcomeSource: "platform" | "institution";
+                    outcomeId: string;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+            }[];
+            /** @description Bütün kursiyerlerin toplamı */
+            totals: {
+                /** @description Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı */
+                sets: number;
+                /** @description Bütün maddeler */
+                overall: {
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                };
+                /** @description Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır */
+                units: {
+                    number: number;
+                    title: string | null;
+                    sets: number;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …) */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla */
+                outcomes: {
+                    /** @enum {string} */
+                    outcomeSource: "platform" | "institution";
+                    outcomeId: string;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+            };
+            /** @description Görülen alıştırma ataması sınırı (100) aştı; en yeniler okundu */
+            truncated: boolean;
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -8102,6 +8802,8 @@ export interface components {
             className?: string;
             /** @description Kaydın kampüsünün adı */
             branchName?: string;
+            /** @description Yalnız `questions` ve `appointments`: kaydın öğretmeninin adı. Kapsam okumasından bağımsız, kimlikle çözülür; öğretmen kadrodan ayrılmış (arşivli ya da pasif) olsa da döner. İletişim ve diğer öğretmen alanları dönmez */
+            teacherName?: string;
         };
         CollectionItem: {
             /** @description Kayıt kimliği */
@@ -8601,7 +9303,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /**
              * Format: binary
              * @description Tek dosya; alan adı `file`
@@ -8615,7 +9317,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /**
              * @description `pending` yüklendi, denetim bekliyor; `processing` taranıyor/dönüştürülüyor (bağlantı verilmez); `ready` kullanıma hazır; `rejected`/`deleted` görünmez
              * @enum {string}
@@ -8798,11 +9500,51 @@ export interface components {
             status: "active" | "passive";
             /** @description Bağlı öğrenci, çocuk veya öğretmen */
             links: components["schemas"]["InstitutionMemberLink"][];
+            /** @description Yöneticinin hesabı pasifleştirdiği an (UTC); etkin hesapta `null` (DOM-YTK-070) */
+            deactivatedAt: string | null;
             /**
              * Format: date-time
              * @description Üyeliğin açıldığı an (UTC)
              */
             createdAt: string;
+        };
+        StaffInvitation: {
+            /** @description Davet kimliği */
+            id: string;
+            /** @description Yöneticinin davette girdiği ad */
+            name: string | null;
+            /** @description Davet e-postası; yalnız yöneticiye döner */
+            email: string;
+            /** @enum {string} */
+            role: "yonetici" | "ogretmen" | "onburo";
+            /**
+             * @description `pending`: kişi henüz giriş yapmadı; `accepted`: ilk girişini yaptı
+             * @enum {string}
+             */
+            status: "pending" | "accepted" | "canceled" | "rejected";
+            /** Format: date-time */
+            createdAt: string;
+            /**
+             * Format: date-time
+             * @description Davet işaretinin süresi; davetle açılan hesap ve üyelik süreden bağımsızdır
+             */
+            expiresAt: string;
+        };
+        StaffImportIssue: {
+            line: number;
+            field: ("name" | "email" | "role" | "subject" | "campus") | null;
+            code: string;
+            message: string;
+        };
+        StaffImportResult: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Davet edilen (önizlemede edilecek) personel; hata varsa 0 */
+            invitedCount: number;
+            /** @description Satır hataları: dosyadaki satır (başlık 1. satır), alan, kod ve Türkçe ileti */
+            issues: components["schemas"]["StaffImportIssue"][];
         };
         InstitutionMembership: {
             /** @description Üyelik kimliği */
@@ -8883,7 +9625,7 @@ export interface components {
              * @description Dosyanın amacı; tür ve boyut sınırı amaca göredir (ADR 0003 karar 3)
              * @enum {string}
              */
-            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document";
+            purpose: "submission" | "material" | "question_image" | "student_question_photo" | "listening_audio" | "speaking_recording" | "document" | "absence_document";
             /** @description Ses/video süresi; ölçülmediyse `null` */
             durationMs: number | null;
             /**
@@ -8911,6 +9653,31 @@ export interface components {
             /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
             archivedAt: string | null;
             removedAt: string | null;
+        };
+        ResourceVersionHistoryItem: {
+            /** Format: uuid */
+            id: string;
+            versionNumber: number;
+            /** @enum {string} */
+            status: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
+            title: string;
+            authorUserId: string;
+            tags: components["schemas"]["ResourceTags"];
+            /** @description Lisans türü; seçilmemişse `null` */
+            licenseKind: ("institution_original" | "contains_quotation" | "platform_derived" | "open_license" | "public_domain" | "licensed_publication" | "external_reference") | null;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            publishedAt: string | null;
+            /** @description Arşivlendiği an; arşivli sürüm geçmişte okunur */
+            archivedAt: string | null;
+            removedAt: string | null;
+            /** @description Lisans ayrıntısı (school-core `resourceLicenseSchema`); yalnız personel */
+            license: {
+                [key: string]: unknown;
+            } | null;
+            reviewedByUserId: string | null;
         };
         ResourceVersion: {
             /** Format: uuid */
@@ -9011,8 +9778,10 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
-            /** @description Okunabilir baş sürüm */
+            /** @description Okunabilir baş sürüm; `filterOn=current` ile güncel yayındaki sürüm */
             version: components["schemas"]["ResourceVersionSummary"];
+            /** @description Satır sürümü ses içeriğiyse dökümü var mı (dinleme kaydı yayım koşulu, DOM-BEC-005); ses değilse ya da içerik kaldırıldıysa `null`. Döküm metni listede yoktur */
+            hasTranscript: boolean | null;
         };
         LearnerResourceListItem: {
             /** @constant */
@@ -9034,7 +9803,7 @@ export interface components {
             view: "staff";
             resource: components["schemas"]["StaffResource"];
             /** @description Okunabilir sürümler, numaraya göre artan */
-            versions: components["schemas"]["ResourceVersionSummary"][];
+            versions: components["schemas"]["ResourceVersionHistoryItem"][];
             head: components["schemas"]["ResourceVersion"];
             /** @description Açık sürümde (taslak, incelemede, reddedildi) yayım eksikleri; diğerlerinde boş */
             publicationIssues: {
@@ -9076,7 +9845,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -9459,8 +10228,8 @@ export interface components {
             canAct: boolean;
             /** @description Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045) */
             actionableUntil: string | null;
-            /** @description `canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
-            blockedBy: ("in_progress" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
+            /** @description `canAct` değilse neden: süren deneme, içerik kursiyere kapalı (yazma uçlarının 422 `content_unavailable` vereceği durum: kaldırılmış içerik, süren işi olmayana telif askısı, kitap sahibi olmayan; DOM-KYN-021, 025, 051; diğer engellerden önce gelir), içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor */
+            blockedBy: ("in_progress" | "content_unavailable" | "license_expired" | "locked" | "limit" | "graded" | "unavailable") | null;
             /** @description Açılmış puan: otomatik puanlıda gösterilen denemenin toplamı, öğretmen puanlıda geri bildirimi açılmış son sürümün rubrik toplamı (DOM-BEC-045) */
             score: {
                 earned: number;
@@ -9716,11 +10485,64 @@ export interface components {
             /** @description `learnerIds` sırasıyla her kişinin durumu */
             progress: components["schemas"]["TaskAssignmentLearnerProgress"][];
             content: components["schemas"]["TaskAssignmentLearnerContent"] | null;
-            /** @description `content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil */
+            /** @description `content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya içerik kapalı: sürüm kaldırıldı/yayında değil, kitap sahibi değil ya da telif bildirimiyle incelemede ve süren iş (süren deneme, taslak, teslim) yok (DOM-KYN-025, Sabah kararı 47) */
             contentUnavailable: ("license_expired" | "unavailable") | null;
         };
         TaskAssignment: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearner"];
         TaskAssignmentDetail: components["schemas"]["TaskAssignmentStaff"] | components["schemas"]["TaskAssignmentLearnerDetail"];
+        TaskAttemptItemFeedback: {
+            questionVersionId: string;
+            /** @description Kullanılan kontrol hakkı */
+            used: number;
+            /** @description Kalan kontrol hakkı (madde başına 2) */
+            remaining: number;
+            /** @description Son kontrol edilen cevap tam doğru mu */
+            correct: boolean;
+            correctParts: number;
+            /** @description Çok maddeli soruda madde sayısı; diğerlerinde 1 */
+            parts: number;
+            /** @description Doğru cevap ya da hak bitti: cevap bu denemede değişmez, anahtar açılır */
+            locked: boolean;
+            /** @description Yalnız kilitli maddenin doğru cevabı ve açıklaması; diğer maddeler `null` (DOM-BEC-045, 047). İçerik kapalıysa `null` */
+            answerKey: ({
+                /** @constant */
+                questionType: "multiple_choice";
+                correctOptionId: string;
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "true_false";
+                /** @enum {string} */
+                answer: "true" | "false" | "not_given";
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "matching";
+                pairs: {
+                    promptId: string;
+                    choiceId: string;
+                }[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "gap_fill";
+                gaps: {
+                    gapId: string;
+                    accepted: unknown;
+                }[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "ordering";
+                order: string[];
+                explanation: string;
+            } | {
+                /** @constant */
+                questionType: "short_answer";
+                accepted: unknown;
+                explanation: string;
+            }) | null;
+        };
         TaskAttemptItemScore: {
             questionVersionId: string;
             parts: number;
@@ -9750,7 +10572,7 @@ export interface components {
             items: components["schemas"]["TaskAttemptItemScore"][] | null;
             /** @description Alt beceri dökümü (IST-042, DOM-BEC-006): madde puanlarından hesaplanır, saklanmaz; yalnız etiketli alt beceriler, sözlük sırasıyla. Madde sonuçlarıyla aynı anda açılır */
             subskills: components["schemas"]["TaskAttemptSubskillScore"][] | null;
-            /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) */
+            /** @description Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) ve içerik kapalı değilse (DOM-KYN-025, 051; ayrıntıdaki `contentUnavailable` kuralı) */
             answerKey: {
                 questionVersionId: string;
                 answerKey: {
@@ -9799,6 +10621,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
+            learnerName: string | null;
             attemptNumber: number;
             /**
              * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
@@ -9850,8 +10674,12 @@ export interface components {
                     value: string;
                 };
             };
-            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResult"] | null;
+            /** @description Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null` */
+            feedback: components["schemas"]["TaskAttemptItemFeedback"][] | null;
+            /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
+            contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
         };
@@ -9861,6 +10689,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
+            learnerName: string | null;
             attemptNumber: number;
             /**
              * @description Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)
@@ -9912,11 +10742,15 @@ export interface components {
                     value: string;
                 };
             };
-            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResult"] | null;
+            /** @description Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null` */
+            feedback: components["schemas"]["TaskAttemptItemFeedback"][] | null;
+            /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
+            contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
-            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık */
+            /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş */
             questions: {
                 questionVersionId: string;
                 points: number;
@@ -9978,7 +10812,7 @@ export interface components {
                     imageFileId: string | null;
                 };
             }[];
-            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner */
+            /** @description Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner */
             passage: {
                 /**
                  * Format: uuid
@@ -9999,11 +10833,36 @@ export interface components {
                 /** @description Kaynak gösterimi (DOM-KYN-024) */
                 attributions: components["schemas"]["ResourceAttribution"][];
             } | null;
-            /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null` */
+            /** @description Dinleme etkinliğinin kaydı (IST-045): quiz/alıştırma seti dinleme kaydına bağlı değilse, kayıt kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Kalan hak `listening`tedir */
+            listeningRecording: {
+                /**
+                 * Format: uuid
+                 * @description Dinleme kaydının ses sürümü
+                 */
+                versionId: string;
+                title: string;
+                /**
+                 * Format: uuid
+                 * @description Kaydın dosyası (`listening_audio`); bağlantısı `GET /files/:fileId/url` ile açılır ve süren denemede hak sayılır
+                 */
+                fileId: string;
+                cefrLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @description Döküm; `transcriptShown` `false` iken `null` (DOM-BEC-005) */
+                transcript: string | null;
+                /** @description Zaman kodlu altyazı; dökümle aynı kural */
+                captionsVtt: string | null;
+                /** @description Döküm bu yanıtta açık mı: personelde hep; kursiyer ve velide görev kapanınca (son teslim ve geç kabul geçti) ya da alıştırmada `showTranscript` ayarıyla (DOM-BEC-005) */
+                transcriptShown: boolean;
+                /** @description Kaynak gösterimi (DOM-KYN-024) */
+                attributions: components["schemas"]["ResourceAttribution"][];
+            } | null;
+            /** @description Soru ve parça metni gösterilmiyorsa neden (DOM-KYN-021, 025, 051): kaldırılmış içerik herkese ve her denemede; öğrenci ve velide ayrıca telif bildirimiyle incelemedeki içerik ya da lisansı dolmuş içerik (yalnız kursiyerin bu görevde süren denemesi yoksa; Sabah kararı 47) ve kitap sahibi sınırı. Kapalıyken `result.answerKey` de `null`; cevaplar, madde sonucu ve puan görünür kalır */
+            contentUnavailable: ("license_expired" | "unavailable") | null;
+            /** @description Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`. Hak bitince kaydın bağlantısı 422 `listening_plays_exhausted`, süren deneme yokken açık görevde 422 `listening_attempt_required` */
             listening: {
                 /** @description Atamanın dinleme hakkı (DOM-BEC-005) */
                 limit: number;
-                /** @description İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla */
+                /** @description Dinleme kaydının dosyası ve bu denemede sayılmış dinlemeler (kayıt kaldırıldıysa da), kimlik sırasıyla */
                 media: {
                     /**
                      * Format: uuid
@@ -10075,6 +10934,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -10169,6 +11030,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -10243,6 +11106,8 @@ export interface components {
             /** Format: uuid */
             assignmentId: string;
             learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler ve okuduğu uyuşmazlıklı teslimin öğrencisi (koordinatör). Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213) */
+            learnerName: string | null;
             /**
              * @description Son sürüme göre teslim durumu (DOM-BEC-044)
              * @enum {string}
@@ -11120,6 +11985,79 @@ export interface components {
              */
             studentStatus: "pending" | "approved" | "rejected";
         };
+        PlacementForm: {
+            /** Format: uuid */
+            sessionId: string;
+            /** Format: uuid */
+            formVersionId: string;
+            /** @description Formda sorusu olan otomatik bölümler, ekrandaki sırayla */
+            sections: {
+                /** @enum {string} */
+                section: "language_use" | "reading" | "listening";
+                /** @description Bölüm sorularının ortak CEFR seviyesi */
+                targetLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                items: {
+                    questionVersionId: string;
+                    points: number;
+                    subskill: ("main_idea" | "detail" | "inference" | "vocabulary") | null;
+                    question: {
+                        /** @constant */
+                        questionType: "multiple_choice";
+                        stem: string;
+                        options: {
+                            id: string;
+                            text: string;
+                        }[];
+                        /** @default null */
+                        imageFileId: string | null;
+                    } | {
+                        /** @constant */
+                        questionType: "true_false";
+                        stem: string;
+                        /** @default false */
+                        allowNotGiven: boolean;
+                        /** @default null */
+                        imageFileId: string | null;
+                    } | {
+                        /** @constant */
+                        questionType: "matching";
+                        stem: string;
+                        prompts: {
+                            id: string;
+                            text: string;
+                        }[];
+                        choices: {
+                            id: string;
+                            text: string;
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "gap_fill";
+                        stem: string;
+                        gaps: {
+                            id: string;
+                            options: unknown;
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "ordering";
+                        stem: string;
+                        items: {
+                            id: string;
+                            text: string;
+                        }[];
+                    } | {
+                        /** @constant */
+                        questionType: "short_answer";
+                        stem: string;
+                        /** @default 100 */
+                        maxLength: number;
+                        /** @default null */
+                        imageFileId: string | null;
+                    };
+                }[];
+            }[];
+        };
         CefrProfileStaff: {
             /**
              * @description Yönetici ve öğretmen görünümü
@@ -11228,11 +12166,43 @@ export interface components {
                 /** Format: date-time */
                 decidedAt: string;
                 placementSessionId: string | null;
+                /** @description Kararı verenin adı */
+                decidedByName: string | null;
+                /** @description Aynı becerideki bir önceki kararın seviyesi */
+                previousLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @enum {string} */
+                change: "first" | "up" | "down" | "same";
+                /** @description Karar anındaki kanıt özeti: beceri kararında o becerinin, genel kararda hepsinin */
+                evidence: {
+                    /** @enum {string} */
+                    context: "general" | "placement";
+                    /** @description Karar anındaki öneri; kanıt yetersizse boş */
+                    suggestedLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                    followsSuggestion: boolean | null;
+                    successful: number;
+                    items: {
+                        id: string;
+                        taskId: string;
+                        title: string;
+                        /** @enum {string} */
+                        source: "task" | "placement";
+                        /** @enum {string} */
+                        skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                        /** @enum {string} */
+                        targetLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                        /** Format: date-time */
+                        performedAt: string;
+                        successful: boolean;
+                        percent: number;
+                        /** @description Karar anındaki önerinin dayandığı kanıt */
+                        basis: boolean;
+                    }[];
+                };
             }[];
         };
         CefrProfileLearner: {
             /**
-             * @description Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur
+             * @description Öğrenci ve veli görünümü: kararın gerekçesi, vereni ve kanıtı yoktur
              * @constant
              */
             view: "learner";
@@ -11336,9 +12306,174 @@ export interface components {
                 /** Format: date-time */
                 decidedAt: string;
                 placementSessionId: string | null;
+                /** @description Aynı becerideki bir önceki kararın seviyesi */
+                previousLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @enum {string} */
+                change: "first" | "up" | "down" | "same";
             }[];
         };
         CefrProfile: components["schemas"]["CefrProfileStaff"] | components["schemas"]["CefrProfileLearner"];
+        SkillProgress: {
+            studentId: string;
+            /** Format: date-time */
+            computedAt: string;
+            /** @description Okuma, dinleme, yazma ve konuşma; her zaman dördü */
+            skills: {
+                /** @enum {string} */
+                skill: "reading" | "listening" | "writing" | "speaking";
+                label: string;
+                /** @description Tarih sırasıyla noktalar */
+                points: {
+                    /**
+                     * Format: uuid
+                     * @description Görev ataması
+                     */
+                    assignmentId: string;
+                    /** @description Otomatik puanlı görevde sayılan deneme */
+                    attemptId: string | null;
+                    /** @description Öğretmen puanlı görevde teslim kaydı */
+                    submissionId: string | null;
+                    /** @description Atanan içeriğin başlığı */
+                    title: string;
+                    /**
+                     * Format: date-time
+                     * @description Denemenin tamamlandığı ya da puanlanan sürümün gönderildiği an
+                     */
+                    performedAt: string;
+                    /** @description Puan yüzdesi */
+                    percent: number;
+                }[];
+                /** @description Son noktanın yüzdesi */
+                latest: number | null;
+                /** @description Eğilim: son nokta, önceki en çok üç noktanın ortalamasına göre (±5 puan) */
+                trend: ("up" | "down" | "steady") | null;
+            }[];
+        };
+        PracticeGradebook: {
+            /** @description Not defterine giren alıştırma atamaları, en yeni önce */
+            assignments: {
+                /** Format: uuid */
+                id: string;
+                title: string;
+                unit: {
+                    number: number;
+                    title: string | null;
+                } | null;
+                /** @description Tamamlanmış denemesi olan kursiyer sayısı */
+                learners: number;
+            }[];
+            /** @description Kursiyer başına kırılım, kimlik sırasıyla */
+            learners: {
+                learnerId: string;
+                /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende kapsamındakiler */
+                learnerName: string | null;
+                /** @description Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı */
+                sets: number;
+                /** @description Bütün maddeler */
+                overall: {
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                };
+                /** @description Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır */
+                units: {
+                    number: number;
+                    title: string | null;
+                    sets: number;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …) */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla */
+                outcomes: {
+                    /** @enum {string} */
+                    outcomeSource: "platform" | "institution";
+                    outcomeId: string;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+            }[];
+            /** @description Bütün kursiyerlerin toplamı */
+            totals: {
+                /** @description Sonuç sayısı (kursiyer × alıştırma); kursiyer satırında sonuç giren alıştırma sayısı */
+                sets: number;
+                /** @description Bütün maddeler */
+                overall: {
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                };
+                /** @description Ünite kırılımı, numara sırasıyla; ünitesiz set yalnız genel toplamdadır */
+                units: {
+                    number: number;
+                    title: string | null;
+                    sets: number;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Beceri kırılımı (madde etiketi, yoksa setin), taksonomi sırasıyla (okuma, dinleme, …) */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+                /** @description Kazanım kırılımı (madde etiketi, yoksa setin), kaynak ve kimlik sırasıyla */
+                outcomes: {
+                    /** @enum {string} */
+                    outcomeSource: "platform" | "institution";
+                    outcomeId: string;
+                    /** @description Madde sayısı (deneme × madde) */
+                    items: number;
+                    /** @description Kazanılan puan (iki ondalık) */
+                    earned: number;
+                    possible: number;
+                    /** @description 100 üzerinden puan */
+                    percent: number;
+                }[];
+            };
+            /** @description Görülen alıştırma ataması sınırı (100) aştı; en yeniler okundu */
+            truncated: boolean;
+        };
     };
     responses: never;
     parameters: never;
@@ -11532,7 +12667,7 @@ export interface operations {
                 q?: string;
                 /** @description Role göre süz */
                 role?: "yonetici" | "onburo" | "ogretmen" | "ogrenci" | "veli";
-                /** @description Duruma göre süz. `passive`: bağlı kişi kaydı (öğrenci, çocuk, öğretmen) olan ve hepsi pasif ya da arşivli üyelik */
+                /** @description Duruma göre süz. `passive`: yöneticinin pasifleştirdiği üyelik ya da bağlı kişi kaydı (öğrenci, çocuk, öğretmen) olan ve hepsi pasif ya da arşivli üyelik */
                 status?: "active" | "passive";
                 /** @description Sıralama; eksi azalan. Eşitlikte üyelik kimliği */
                 sort?: "name" | "-name" | "role" | "-role" | "createdAt" | "-createdAt";
@@ -11575,6 +12710,709 @@ export interface operations {
             };
             /** @description Default Response */
             403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listStaffInvitations: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StaffInvitation"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    inviteStaffMember: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    email: string;
+                    name: string;
+                    /** @enum {string} */
+                    role: "yonetici" | "ogretmen" | "onburo";
+                    teacherId?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StaffInvitation"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    importStaffMembers: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    csv: string;
+                    /** @default false */
+                    dryRun?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StaffImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StaffImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelStaffInvitation: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Davet kimliği */
+                invitationId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StaffInvitation"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    changeStaffRole: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Üyelik kimliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    /** @enum {string} */
+                    role: "yonetici" | "ogretmen" | "onburo";
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["InstitutionMember"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    deactivateStaffMember: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Üyelik kimliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["InstitutionMember"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reactivateStaffMember: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Üyelik kimliği */
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["InstitutionMember"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -12286,7 +14124,7 @@ export interface operations {
                 homeworkId?: string | string[];
                 /** @description `videoId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 videoId?: string | string[];
-                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla. `invoices`'ta durum saklanmaz, core `invoiceStatus` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: `Ödendi`, `Gecikmiş`, `Yaklaşan`; başka değer 400 */
+                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla. `invoices`'ta durum saklanmaz, core `invoiceStatus` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: `Ödendi`, `Gecikmiş`, `Yaklaşan`; başka değer 400. `announcements`ta durum okuyucuya göre türetilir (core `announcementStatusOf`: geri çekildi > okunmadı > güncellendi > yayında; DOM-ILT-003, -004): `Okunmadı`, `Güncellendi`, `Geri çekildi`, `Yayında`; başka değer 400. `meta.total` süzülmüş sayıdır */
                 status?: string | string[];
                 /** @description `stage` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 stage?: string | string[];
@@ -12423,7 +14261,7 @@ export interface operations {
                 homeworkId?: string | string[];
                 /** @description `videoId` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 videoId?: string | string[];
-                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla. `invoices`'ta durum saklanmaz, core `invoiceStatus` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: `Ödendi`, `Gecikmiş`, `Yaklaşan`; başka değer 400 */
+                /** @description `status` eşitlik filtresi; çoklu değer parametre tekrarıyla. `invoices`'ta durum saklanmaz, core `invoiceStatus` ile ödeme, vade ve isteğin saatinden (Europe/Istanbul günü) türetilir: `Ödendi`, `Gecikmiş`, `Yaklaşan`; başka değer 400. `announcements`ta durum okuyucuya göre türetilir (core `announcementStatusOf`: geri çekildi > okunmadı > güncellendi > yayında; DOM-ILT-003, -004): `Okunmadı`, `Güncellendi`, `Geri çekildi`, `Yayında`; başka değer 400. `meta.total` süzülmüş sayıdır */
                 status?: string | string[];
                 /** @description `stage` eşitlik filtresi; çoklu değer parametre tekrarıyla */
                 stage?: string | string[];
@@ -21450,13 +23288,335 @@ export interface operations {
                     endDate: string;
                     /** @enum {string} */
                     reasonCategory: "health" | "family" | "official" | "other";
-                    files?: string[];
+                    fileIds?: string[];
                 };
             };
         };
         responses: {
             /** @description Default Response */
             201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    attachAbsenceDocuments: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin/mazeret bildirimi kimliği */
+                absenceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileIds: string[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    approveAbsence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin/mazeret bildirimi kimliği */
+                absenceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    rejectAbsence: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin/mazeret bildirimi kimliği */
+                absenceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
                 headers: {
                     [name: string]: unknown;
                 };
@@ -27903,6 +30063,10 @@ export interface operations {
                 status?: "draft" | "in_review" | "published" | "rejected" | "archived" | "removed";
                 /** @description Kaynak sahibi. Yalnız personel; öğrenci ve velide 400 `staff_only_filter` */
                 ownerUserId?: string;
+                /** @description Yalnız öğrenci ve velide: bu öğrencinin gördüğü kaynaklar (DOM-KYN-041). Velide seçili çocuk (velayetli ve kısıtsız bağlı); öğrencide yalnız kendi kaydı. Kapsam dışı öğrenci 404; personelde 400 `learner_only_filter` */
+                studentId?: string;
+                /** @description Personel satırının sürümü ve süzgeçlerin uygulandığı sürüm: `head` okunabilir baş sürüm, `current` güncel yayındaki sürüm (hiç yayımlanmamış kaynak listelenmez). Bağ yayındaki sürüme kurulan seçicide kullanılır (dinleme kaydı, DOM-BEC-005). Öğrenci ve velide satır zaten yayındaki sürümdür, etkisizdir */
+                filterOn?: "head" | "current";
                 /** @description Sıralama; eksi azalan. Eşitlikte kaynak kimliği */
                 sort?: "-updatedAt" | "updatedAt" | "title" | "-title";
             };
@@ -28130,6 +30294,13 @@ export interface operations {
                         shuffleItems?: boolean;
                         /** @default null */
                         passageVersionId?: string | null;
+                        /** @default null */
+                        listeningVersionId?: string | null;
+                        unit?: {
+                            number: number;
+                            /** @default null */
+                            title?: string | null;
+                        } | null;
                     } | {
                         /** @enum {string} */
                         type: "exercise_set";
@@ -28144,6 +30315,13 @@ export interface operations {
                         shuffleItems?: boolean;
                         /** @default null */
                         passageVersionId?: string | null;
+                        /** @default null */
+                        listeningVersionId?: string | null;
+                        unit?: {
+                            number: number;
+                            /** @default null */
+                            title?: string | null;
+                        } | null;
                     } | {
                         /** @enum {string} */
                         type: "homework_template";
@@ -28687,6 +30865,13 @@ export interface operations {
                         shuffleItems?: boolean;
                         /** @default null */
                         passageVersionId?: string | null;
+                        /** @default null */
+                        listeningVersionId?: string | null;
+                        unit?: {
+                            number: number;
+                            /** @default null */
+                            title?: string | null;
+                        } | null;
                     } | {
                         /** @enum {string} */
                         type: "exercise_set";
@@ -28701,6 +30886,13 @@ export interface operations {
                         shuffleItems?: boolean;
                         /** @default null */
                         passageVersionId?: string | null;
+                        /** @default null */
+                        listeningVersionId?: string | null;
+                        unit?: {
+                            number: number;
+                            /** @default null */
+                            title?: string | null;
+                        } | null;
                     } | {
                         /** @enum {string} */
                         type: "homework_template";
@@ -30245,6 +32437,8 @@ export interface operations {
                 page?: number;
                 /** @description Sayfa boyutu (≤ 100) */
                 pageSize?: number;
+                /** @description Baş sürümün başlığında arama (IST-048). Türkçe harf ve büyük/küçük harf duyarsız, joker yok */
+                q?: string;
                 /** @description Baş sürümün becerisi */
                 skill?: "writing" | "speaking" | "mediation";
                 /** @description Baş sürümün türü: analitik veya bütüncül */
@@ -31238,10 +33432,7 @@ export interface operations {
                             lateAcceptanceDays?: number;
                         };
                         timeLimitMinutes?: number | null;
-                        /**
-                         * @description Dinleme hakkı; gönderilmezse sınırsız. Dinleme sayımı açılana kadar yalnız sınırsız kabul edilir.
-                         * @default null
-                         */
+                        /** @description Dinleme hakkı (DOM-BEC-005, IST-045): 1, 2 veya `null` (sınırsız). Gönderilmezse kayda bağlı etkinlikte (quiz/alıştırma seti `listeningVersionId` → `listening_audio` dosyalı ses sürümü) 2, kaydı olmayanda sınırsız; kaydı olmayanda 1 veya 2 422 `listening_plays_unavailable`. */
                         listeningPlays?: (1 | 2) | null;
                         /** @default false */
                         showTranscript?: boolean;
@@ -32028,6 +34219,146 @@ export interface operations {
                             questionType: "short_answer";
                             value: string;
                         };
+                    };
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAttemptDetail"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    checkTaskAttemptItem: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Deneme kimliği */
+                attemptId: string;
+            };
+            cookie?: never;
+        };
+        /** @description Kontrol edilecek madde (puanlama sürümündeki soru sürümü) ve cevabı; cevap denemeye de kaydedilir */
+        requestBody: {
+            content: {
+                "application/json": {
+                    questionVersionId: string;
+                    response: {
+                        /** @enum {string} */
+                        questionType: "multiple_choice";
+                        optionId: string | null;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "true_false";
+                        answer: ("true" | "false" | "not_given") | null;
+                    } | {
+                        /** @enum {string} */
+                        questionType: "matching";
+                        pairs: {
+                            promptId: string;
+                            choiceId: string;
+                        }[];
+                    } | {
+                        /** @enum {string} */
+                        questionType: "gap_fill";
+                        gaps: {
+                            gapId: string;
+                            value: string;
+                        }[];
+                    } | {
+                        /** @enum {string} */
+                        questionType: "ordering";
+                        order: string[];
+                    } | {
+                        /** @enum {string} */
+                        questionType: "short_answer";
+                        value: string;
                     };
                 };
             };
@@ -40909,6 +43240,85 @@ export interface operations {
             };
         };
     };
+    getPlacementForm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Tespit oturumu kimliği */
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PlacementForm"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     scorePlacementSection: {
         parameters: {
             query?: never;
@@ -41630,6 +44040,164 @@ export interface operations {
             };
         };
     };
+    getSkillProgress: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kaydı kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SkillProgress"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getPracticeGradebook: {
+        parameters: {
+            query?: {
+                /** @description Hedef süzgeci: sınıf/şube, dil grubu ya da öğrenci hedefi kimliği */
+                targetId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PracticeGradebook"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     uploadFile: {
         parameters: {
             query?: never;
@@ -41839,7 +44407,10 @@ export interface operations {
     };
     getFileUrl: {
         parameters: {
-            query?: never;
+            query?: {
+                /** @description Dinleme hakkının düşeceği deneme (öğrenci; Sabah kararı 54). Kendi denemesi değilse 404, ataması bu kaydı bağlamıyorsa 422 `listening_attempt_mismatch`, deneme sürmüyorsa 422 `listening_attempt_closed`. Verilmezse hak sayılmaz; sınırlı atamada süren deneme varsa 422 `listening_attempt_running` (Sabah kararı 56). Personel ve velide yok sayılır. */
+                attemptId?: string;
+            };
             header?: never;
             path: {
                 /** @description Dosya kimliği */

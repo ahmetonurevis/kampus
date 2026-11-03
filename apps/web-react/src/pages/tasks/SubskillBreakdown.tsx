@@ -10,19 +10,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table'
+import { formatPoints } from './student-task-model.ts'
 
 type Props = { subskills: readonly TaskAttemptSubskillScore[] | null }
-
-/** Puan gösterimi: tamsayıysa ondalıksız, değilse iki ondalık (sunucu iki ondalığa yuvarlar). */
-const points = (value: number) =>
-  value.toLocaleString('tr-TR', { maximumFractionDigits: 2, minimumFractionDigits: 0 })
 
 /**
  * Alt beceri dökümü (IST-042, DOM-BEC-006): her satır sunucunun madde puanlarından hesapladığı
  * gerçek veridir (yüzde, kazanılan / olası puan, madde sayısı). Döküm madde sonuçlarıyla aynı anda
  * açılır (DOM-BEC-045); sunucu `null` döndürdüyse bileşen hiçbir şey çizmez ve nedenine dair ipucu
- * vermez. Bugün yalnız kursiyerin sonuç ekranı (`AttemptResult`) kullanır; personelin deneme görünümü
- * eklendiğinde aynı bileşen kullanılmalıdır (takip).
+ * vermez. Kursiyerin sonuç ekranı ve personelin deneme görünümü aynı bileşeni `AttemptResult`
+ * üzerinden kullanır (OG-983).
  */
 export function SubskillBreakdown({ subskills }: Props) {
   const headingId = useId()
@@ -65,7 +62,7 @@ export function SubskillBreakdown({ subskills }: Props) {
                 <TableCell className="font-medium">{SUBSKILLS[row.subskill].label}</TableCell>
                 <TableCell className="text-right tabular-nums">{row.items}</TableCell>
                 <TableCell className="text-right whitespace-nowrap tabular-nums">
-                  {points(row.earned)} / {points(row.possible)}
+                  {formatPoints(row.earned)} / {formatPoints(row.possible)}
                 </TableCell>
                 <TableCell>
                   <span className="flex items-center gap-2">

@@ -226,7 +226,8 @@ export const WITHDRAWN_CONTENT_FIELDS: readonly string[] = ['text']
 
 /**
  * Duyurunun role göre biçimi: yönetici ve yayınlayan okundu ve alıcı sayısını
- * (`readCount`, `recipientCount`), diğer okuyucular kendi ilk açılış anını (`myReadAt`) alır;
+ * (`readCount`, `recipientCount`), alıcı okuyucular kendi ilk açılış anını (`myReadAt`, açılmadıysa
+ * `null`) alır; alıcı olmayan okuyucuda (ör. ön büro) `myReadAt` hiç yoktur;
  * düzeltme geçmişi, geri çekme gerekçesi ve yayınlayanın kişi kimliği yalnız yetkiliye döner.
  * Geri çekilen duyurunun metni (`WITHDRAWN_CONTENT_FIELDS`) yetkili olmayana dönmez
  * (DOM-ILT-004). Geri çekilmemiş eski kayıt (alıcı listesi yok) değişmeden döner.
@@ -253,7 +254,8 @@ export function narrowAnnouncement(
   const hidden = withdrawn ? [...PRIVILEGED_FIELDS, ...WITHDRAWN_CONTENT_FIELDS] : PRIVILEGED_FIELDS
   const narrowed = Object.fromEntries(Object.entries(copy).filter(([key]) => !hidden.includes(key)))
   if (!recipients) return narrowed
-  const mine = readerKeysFor(viewer, recipients)
+  const keys = readerKeysFor(viewer, recipients)
+  const mine = keys
     .map((key) => reads[key])
     .filter((at): at is string => typeof at === 'string')
     .sort()
@@ -261,7 +263,9 @@ export function narrowAnnouncement(
   return {
     ...narrowed,
     ...(publisher ? { publishedBy: { role: publisher.role } } : {}),
-    myReadAt: mine[0] ?? null,
+    // Alıcı olmayan okuyucuda (ör. ön büro) alan yoktur: okunacak bir duyurusu olmadığından
+    // hiçbir duyuru "Okunmadı" sayılmaz (Sabah kararı 55).
+    ...(keys.length > 0 ? { myReadAt: mine[0] ?? null } : {}),
   }
 }
 

@@ -20,9 +20,6 @@ import {
   LICENSE_NOTES,
   LICENSE_OPTIONS,
   MATERIAL_FILE_RULE,
-  MAX_OPTIONS,
-  MIN_OPTIONS,
-  nextOptionId,
   OPEN_LICENSE_OPTIONS,
   OUTCOME_SOURCE_OPTIONS,
   requiresAttribution,
@@ -31,6 +28,7 @@ import {
   type DraftFormOutput,
   type DraftFormValues,
 } from './content-pool-model.ts'
+import { QuestionFields } from './QuestionFields.tsx'
 
 export type DraftForm = UseFormReturn<DraftFormValues, unknown, DraftFormOutput>
 
@@ -74,13 +72,21 @@ export function filesError(form: DraftForm): { message: string } | undefined {
 type ContentProps = Omit<FieldsProps, 'languageSchool'> & {
   /** Dosya yüklemesi sürerken `true`; form kaydet düğmesini kilitler. */
   onUploadingChange: (uploading: boolean) => void
+  /** Taranan dosya kaydı engelliyor (OG-987): yalnız kaydet kilitlenir. */
+  onScanBlockedChange: (blocked: boolean) => void
 }
 
 /**
- * İçerik gövdesi: okuma metni ve sözlükçesi, çoktan seçmeli soru (kök, seçenekler, doğru cevap,
- * çözüm) ya da materyal dosyaları.
+ * İçerik gövdesi: okuma metni ve sözlükçesi, soru (altı tür, IST-033; `QuestionFields`) ya da
+ * materyal dosyaları.
  */
-export function ContentFields({ form, type, busy, onUploadingChange }: ContentProps) {
+export function ContentFields({
+  form,
+  type,
+  busy,
+  onUploadingChange,
+  onScanBlockedChange,
+}: ContentProps) {
   return (
     <div className="grid gap-5">
       {type === 'reading_passage' ? (
@@ -93,7 +99,12 @@ export function ContentFields({ form, type, busy, onUploadingChange }: ContentPr
           <GlossaryFields form={form} busy={busy} />
         </>
       ) : type === 'file' ? (
-        <MaterialFileFields form={form} busy={busy} onUploadingChange={onUploadingChange} />
+        <MaterialFileFields
+          form={form}
+          busy={busy}
+          onUploadingChange={onUploadingChange}
+          onScanBlockedChange={onScanBlockedChange}
+        />
       ) : (
         <QuestionFields form={form} busy={busy} />
       )}
@@ -223,10 +234,12 @@ function MaterialFileFields({
   form,
   busy,
   onUploadingChange,
+  onScanBlockedChange,
 }: {
   form: DraftForm
   busy: boolean
   onUploadingChange: (uploading: boolean) => void
+  onScanBlockedChange: (blocked: boolean) => void
 }) {
   const files = useWatch({ control: form.control, name: 'files' }) ?? []
   const clear = () => {
@@ -262,128 +275,8 @@ function MaterialFileFields({
         onUploadingChange(uploading)
         if (uploading) clear()
       }}
+      onBlockedChange={onScanBlockedChange}
     />
-  )
-}
-
-function QuestionFields({ form, busy }: { form: DraftForm; busy: boolean }) {
-  const options = useFieldArray({ control: form.control, name: 'content.question.options' })
-  const watched = useWatch({ control: form.control, name: 'content.question.options' }) ?? []
-  const correct = useWatch({ control: form.control, name: 'answerKey.correctOptionId' })
-  const ids = watched.map((option) => option.id)
-
-  function remove(index: number) {
-    const removed = ids[index]
-    options.remove(index)
-    // Silinen seçenek doğru cevapsa işaret ilk kalan seçeneğe geçer (geçerli kalsın).
-    if (removed === correct) {
-      const rest = ids.filter((_, position) => position !== index)
-      form.setValue('answerKey.correctOptionId', rest[0] ?? 'a')
-    }
-  }
-  function add() {
-    const id = nextOptionId(ids)
-    if (id) options.append({ id, text: '' })
-  }
-  return (
-    <>
-      <FormField
-        id="icerik-kok"
-        label="Soru kökü"
-        error={fieldError(form, 'content.question.stem')}
-      >
-        {(control) => (
-          <Textarea
-            {...control}
-            {...form.register('content.question.stem')}
-            rows={3}
-            disabled={busy}
-          />
-        )}
-      </FormField>
-      <fieldset className="grid gap-2" aria-describedby="icerik-secenek-ipucu">
-        <legend className="mb-1 text-sm font-medium">Seçenekler</legend>
-        <p id="icerik-secenek-ipucu" className="text-xs text-muted-foreground">
-          En az {MIN_OPTIONS}, en çok {MAX_OPTIONS} seçenek girin; doğru cevabı işaretleyin.
-        </p>
-        {options.fields.map((field, index) => {
-          const id = ids[index] ?? ''
-          const letter = id.toLocaleUpperCase('en')
-          return (
-            <div key={field.id} className="flex items-start gap-2">
-              <input
-                type="radio"
-                value={id}
-                aria-label={`${letter} seçeneği doğru cevap`}
-                {...form.register('answerKey.correctOptionId')}
-                disabled={busy}
-                className="mt-3 size-5 accent-primary"
-              />
-              <div className="min-w-0 flex-1">
-                <FormField
-                  id={`icerik-secenek-${index}`}
-                  label={`${letter} seçeneği`}
-                  error={fieldError(form, `content.question.options.${index}.text`)}
-                >
-                  {(control) => (
-                    <Input
-                      {...control}
-                      {...form.register(`content.question.options.${index}.text`)}
-                      disabled={busy}
-                    />
-                  )}
-                </FormField>
-              </div>
-              {options.fields.length > MIN_OPTIONS ? (
-                <Button
-                  type="button"
-                  variant="outline"
-                  size="icon"
-                  className="mt-7"
-                  aria-label={`${letter} seçeneğini sil`}
-                  onClick={() => remove(index)}
-                  disabled={busy}
-                >
-                  <Icon name="Trash2" size={16} aria-hidden="true" />
-                </Button>
-              ) : null}
-            </div>
-          )
-        })}
-        {fieldError(form, 'content.question.options') ? (
-          <p role="alert" className="text-sm text-destructive">
-            {fieldError(form, 'content.question.options')?.message}
-          </p>
-        ) : null}
-        {fieldError(form, 'answerKey.correctOptionId') ? (
-          <p role="alert" className="text-sm text-destructive">
-            {fieldError(form, 'answerKey.correctOptionId')?.message}
-          </p>
-        ) : null}
-        {options.fields.length < MAX_OPTIONS ? (
-          <div>
-            <Button type="button" variant="secondary" size="sm" onClick={add} disabled={busy}>
-              <Icon name="Plus" size={15} aria-hidden="true" />
-              Seçenek ekle
-            </Button>
-          </div>
-        ) : null}
-      </fieldset>
-      <FormField
-        id="icerik-cozum"
-        label="Çözüm açıklaması"
-        error={fieldError(form, 'answerKey.explanation')}
-      >
-        {(control) => (
-          <Textarea
-            {...control}
-            {...form.register('answerKey.explanation')}
-            rows={3}
-            disabled={busy}
-          />
-        )}
-      </FormField>
-    </>
   )
 }
 

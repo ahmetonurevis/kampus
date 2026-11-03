@@ -13,6 +13,8 @@ import {
   decidePlacementRequest,
   fetchAllPlacements,
   fetchCefrProfile,
+  fetchPlacementForm,
+  fetchPlacementPage,
   isStaffProfile,
   openPlacementRequest,
   PLACEMENT_CHANGED_MESSAGE,
@@ -95,6 +97,8 @@ const timelineBase = {
   level: 'B1',
   decidedAt: '2026-11-01T10:00:00.000Z',
   placementSessionId: SESSION_ID,
+  previousLevel: null,
+  change: 'first',
 } as const
 
 const learnerProfile: CefrProfile = {
@@ -110,7 +114,21 @@ const learnerProfile: CefrProfile = {
 const staffProfile: CefrProfile = {
   ...learnerProfile,
   view: 'staff',
-  timeline: [{ ...timelineBase, rationale: 'Tespit sonucu', decidedByUserId: 'user-1' }],
+  timeline: [
+    {
+      ...timelineBase,
+      rationale: 'Tespit sonucu',
+      decidedByUserId: 'user-1',
+      decidedByName: 'Selin Kaya',
+      evidence: {
+        context: 'placement',
+        suggestedLevel: 'B1',
+        followsSuggestion: true,
+        successful: 0,
+        items: [],
+      },
+    },
+  ],
 }
 
 describe('CEFR profili', () => {
@@ -137,6 +155,37 @@ describe('CEFR profili', () => {
     assert.equal(sent[0]?.search.get('learnerKind'), 'student')
     assert.equal(sent[0]?.search.get('learnerId'), STUDENT_ID)
     assert.equal(sent[0]?.search.get('page'), '1')
+  })
+})
+
+describe('tespit ekranı okumaları', () => {
+  test('OG-078 IST-058: tek sayfa kişi ve sayfayla gider; meta satırlarla döner', async () => {
+    const { client, sent } = fakeClient(() =>
+      json(200, { data: [{ id: 'o1' }], meta: { page: 2, pageSize: 8, total: 9 } }),
+    )
+    const page = await fetchPlacementPage(client, {
+      learnerKind: 'prospect',
+      learnerId: 'p1',
+      page: 2,
+      pageSize: 8,
+    })
+    assert.deepEqual(page, { rows: [{ id: 'o1' }], page: 2, pageSize: 8, total: 9 })
+    assert.equal(sent[0]?.path, '/api/v1/placement-sessions')
+    assert.equal(sent[0]?.search.get('learnerKind'), 'prospect')
+    assert.equal(sent[0]?.search.get('page'), '2')
+  })
+
+  test('OG-078 IST-058: form oturum yolundan okunur', async () => {
+    const { client, sent } = fakeClient(() =>
+      json(200, { data: { sessionId: 'o1', formVersionId: 'f1', sections: [] } }),
+    )
+    const body = await fetchPlacementForm(client, '00000000-0000-4000-8000-000000000001')
+    assert.equal(body.data.sessionId, 'o1')
+    assert.equal(
+      sent[0]?.path,
+      '/api/v1/placement-sessions/00000000-0000-4000-8000-000000000001/form',
+    )
+    assert.equal(sent[0]?.method, 'GET')
   })
 })
 

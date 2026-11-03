@@ -34,8 +34,10 @@ const TABLE_NAME = 'Bildirim geçmişi'
  * koleksiyonu okuyamaz (DOM-ILT-053).
  * Tür sütunu gerekçe kategorisidir; yeni bildirim serbest açıklama taşımaz, Açıklama sütunu
  * yalnız eski kayıtların metnini gösterir (DOM-ILT-053, KVKK md. 6).
- * "İzin veya mazeret bildir" sağ panelde açılır (`?bildirim-form=yeni`): çocuk, tarih aralığı ve
- * gerekçe kategorisi; serbest açıklama yoktur.
+ * "İzin veya mazeret bildir" sağ panelde açılır (`?bildirim-form=yeni`): çocuk, tarih aralığı,
+ * gerekçe kategorisi ve isteğe bağlı özür belgesi; serbest açıklama yoktur. Durum idare onayıdır:
+ * Onay bekliyor, Onaylandı, Onaylanmadı; red gerekçesi veliye gösterilmez (Sabah kararı 72).
+ * Belge, karar verilmemiş bildirimin panelinden sonradan da eklenir (DOM-ILT-053).
  */
 export function AbsenceNoticesPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -56,7 +58,10 @@ export function AbsenceNoticesPage({ page }: { page: NavPage }) {
     withScope(collectionQueryFromList(list.state, ABSENCE_LIST, search)),
     { enabled: childId !== '' },
   )
-  const rows = useMemo(() => records.data?.rows.map(absenceRow), [records.data])
+  const rows = useMemo(
+    () => records.data?.rows.map((item) => absenceRow(item, 'parent')),
+    [records.data],
+  )
 
   const columns = useMemo<DataColumn<AbsenceRow>[]>(
     () => [
@@ -74,7 +79,16 @@ export function AbsenceNoticesPage({ page }: { page: NavPage }) {
         ),
       },
       { key: 'range', label: 'Tarih aralığı' },
-      { key: 'status', label: 'Durum', cell: (row) => <StatusBadge text={row.status} /> },
+      {
+        key: 'documents',
+        label: 'Belge',
+        cell: (row) => (row.fileIds.length > 0 ? String(row.fileIds.length) : '—'),
+      },
+      {
+        key: 'status',
+        label: 'Durum',
+        cell: (row) => <StatusBadge text={row.status} tone={row.tone} />,
+      },
       {
         key: 'sentAt',
         label: 'Gönderildi',
@@ -88,7 +102,7 @@ export function AbsenceNoticesPage({ page }: { page: NavPage }) {
   function download() {
     const query = withScope(exportQueryFromList(list.state, ABSENCE_LIST, search))
     void csv.download(page.title, columns, async () =>
-      (await fetchAll(query)).map((item) => absenceCsvRow(absenceRow(item))),
+      (await fetchAll(query)).map((item) => absenceCsvRow(absenceRow(item, 'parent'))),
     )
   }
 

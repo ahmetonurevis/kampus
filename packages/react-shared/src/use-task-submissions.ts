@@ -11,7 +11,7 @@ import { institutionKey } from './query-keys.ts'
 import { useActiveInstitutionId } from './use-active-institution.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
-import { TASK_ASSIGNMENTS_KEY } from './use-task-assignments.ts'
+import { LEARNER_CONTENT_MESSAGES, TASK_ASSIGNMENTS_KEY } from './use-task-assignments.ts'
 
 /**
  * Yazma ve konuşma görevinin taslak ve teslim kancaları (`/api/v1/task-submissions`, taslak ve
@@ -65,6 +65,7 @@ export const TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE =
  * teknik ayrıntısız yazılır (DOM-BEC-050, 054).
  */
 export const TASK_SUBMISSION_MESSAGES = {
+  ...LEARNER_CONTENT_MESSAGES,
   not_found: 'Görev bulunamadı.',
   draft_conflict: TASK_DRAFT_CHANGED_MESSAGE,
   submission_closed: 'Bu görevin teslim süresi doldu.',

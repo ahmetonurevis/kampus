@@ -6,6 +6,7 @@ import {
   SUBSKILLS,
   enumKeys,
   type ContentType,
+  type PrimarySkill,
   type QuestionType,
   type Subskill,
 } from '../content/taxonomy.ts'
@@ -270,7 +271,16 @@ export type ScoringItem = {
   locale: AnswerLocale
   /** Sorunun alt becerisi (DOM-BEC-006; soru etiketinden); dökümde kullanılır, puanı değiştirmez. */
   subskill?: Subskill | null
+  /**
+   * Maddenin birincil becerisi ve kazanımları (DOM-BEC-048): sorunun etiketi, yoksa quiz/alıştırma
+   * setininki. Not defteri kırılımında kullanılır, puanı değiştirmez.
+   */
+  skill?: PrimarySkill | null
+  outcomes?: readonly OutcomeRef[]
 }
+
+/** Kazanım bağlantısı (`ResourceTags['outcomes']` satırı). */
+export type OutcomeRef = ResourceTags['outcomes'][number]
 
 function responseIssue(question: QuestionBody, response: TaskResponse): string | null {
   if (question.questionType !== response.questionType) return 'Cevap soru türüyle uyuşmuyor.'

@@ -29,6 +29,8 @@ export type ApiStackParamList = {
   ApiCategory: { category: string }
   /** Yazışma akışı; menü sayfası değildir, Mesajlar listesinden açılır. */
   ApiConversation: { conversationId: string }
+  /** Bildirim merkezi; menü sayfası değildir, üst başlıktaki zilden açılır. */
+  ApiNotifications: undefined
 } & Record<ApiScreen, undefined>
 export type ApiScreenProps<Name extends keyof ApiStackParamList> = NativeStackScreenProps<
   ApiStackParamList,

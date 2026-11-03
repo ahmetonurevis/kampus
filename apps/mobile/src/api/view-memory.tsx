@@ -1,9 +1,9 @@
 import { createContext, useContext, useRef, useState, type ReactNode } from 'react'
-import { EMPTY_LIST_STATE, withSearch, type ListState } from './list-state.ts'
+import { EMPTY_LIST_STATE, withFilter, withSearch, type ListState } from './list-state.ts'
 
 /**
- * Oturum süresince bellekte tutulan görünüm durumu: velinin seçtiği çocuk ve liste başına arama
- * + sayfa. Cihaza yazılmaz (kişisel veri); oturum veya kurum değişince sağlayıcıyla silinir.
+ * Oturum süresince bellekte tutulan görünüm durumu: velinin seçtiği çocuk ve liste başına arama,
+ * süzgeç ve sayfa. Cihaza yazılmaz (kişisel veri); oturum veya kurum değişince sağlayıcıyla silinir.
  */
 type ViewMemory = {
   childId: string | null
@@ -34,7 +34,7 @@ export function useSelectedChild() {
   return [childId, setChildId] as const
 }
 
-/** Liste (ve veli için çocuk) başına arama metni ve sayfa; ekrana dönünce geri gelir. */
+/** Liste (ve veli için çocuk) başına arama metni, süzgeç ve sayfa; ekrana dönünce geri gelir. */
 export function useListMemory(key: string) {
   const { lists } = useViewMemory()
   const [state, setState] = useState<ListState>(() => lists.get(key) ?? EMPTY_LIST_STATE)
@@ -53,6 +53,9 @@ export function useListMemory(key: string) {
   return {
     state: current,
     setSearch: (search: string) => update(withSearch(current, search)),
+    setFilter: (filter: string) => update(withFilter(current, filter)),
+    /** Arama ve süzgeci birlikte temizler (iki ayrı güncelleme birbirini ezmesin). */
+    clear: () => update(EMPTY_LIST_STATE),
     setIndex: (index: number) => update({ ...current, index }),
   }
 }

@@ -2,6 +2,11 @@ import { z } from 'zod'
 
 import { answerKeySchema, questionBodySchema } from '@kampus/school-core/content/resource.ts'
 import { CEFR_LEVELS, enumKeys, SUBSKILLS } from '@kampus/school-core/content/taxonomy.ts'
+import {
+  ITEM_CHECK_LIMIT,
+  itemCheckInputSchema,
+  type ItemFeedback,
+} from '@kampus/school-core/skills/practice.ts'
 import { answersSchema } from '@kampus/school-core/skills/scoring.ts'
 
 import { attributionSchema } from './resources.schemas.ts'
@@ -49,6 +54,47 @@ export const taskAttemptSubmitBodySchema = z.strictObject({
     .describe('Teslimle birlikte kaydedilecek son cevaplar; süre dolduysa alınmaz'),
 })
 
+export const taskAttemptCheckBodySchema = itemCheckInputSchema.describe(
+  'Kontrol edilecek madde (puanlama sürümündeki soru sürümü) ve cevabı; cevap denemeye de kaydedilir',
+)
+
+/**
+ * Madde geri bildiriminin tek kaynağı core `ItemFeedback` tipidir (`skills/practice.ts`): kuralı
+ * core üretir ve core API şemasını içe aktaramaz (bağımlılık core → api olamaz). API şeması telde
+ * açıklamalı ve OpenAPI'ye giren karşılığıdır; `conformsTo` tip denetimiyle çıktısının core tipine
+ * uymasını zorlar, alan eklenip çıkarılırsa derleme kırılır.
+ */
+const conformsTo =
+  <T>() =>
+  <S extends z.ZodType<T>>(schema: S): S =>
+    schema
+
+const itemFeedbackSchema = conformsTo<ItemFeedback>()(
+  z
+    .object({
+      questionVersionId: z.string(),
+      used: z.number().int().min(1).describe('Kullanılan kontrol hakkı'),
+      remaining: z
+        .number()
+        .int()
+        .min(0)
+        .max(ITEM_CHECK_LIMIT)
+        .describe(`Kalan kontrol hakkı (madde başına ${ITEM_CHECK_LIMIT})`),
+      correct: z.boolean().describe('Son kontrol edilen cevap tam doğru mu'),
+      correctParts: z.number().int().min(0),
+      parts: z.number().int().min(0).describe('Çok maddeli soruda madde sayısı; diğerlerinde 1'),
+      locked: z
+        .boolean()
+        .describe('Doğru cevap ya da hak bitti: cevap bu denemede değişmez, anahtar açılır'),
+      answerKey: answerKeySchema
+        .nullable()
+        .describe(
+          'Yalnız kilitli maddenin doğru cevabı ve açıklaması; diğer maddeler `null` (DOM-BEC-045, 047). İçerik kapalıysa `null`',
+        ),
+    })
+    .meta({ id: 'TaskAttemptItemFeedback' }),
+)
+
 const itemScoreSchema = z
   .object({
     questionVersionId: z.string(),
@@ -90,7 +136,9 @@ const resultSchema = z
     answerKey: z
       .array(z.object({ questionVersionId: z.string(), answerKey: answerKeySchema }))
       .nullable()
-      .describe('Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045)'),
+      .describe(
+        'Doğru cevaplar ve açıklamalar; yalnız anahtar açılınca (DOM-BEC-045) ve içerik kapalı değilse (DOM-KYN-025, 051; ayrıntıdaki `contentUnavailable` kuralı)',
+      ),
   })
   .meta({ id: 'TaskAttemptResult' })
 
@@ -98,6 +146,12 @@ const attemptShape = {
   id,
   assignmentId: id,
   learnerId: z.string(),
+  learnerName: z
+    .string()
+    .nullable()
+    .describe(
+      'Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler. Kapsam dışı öğrenci, öğrenci, veli ve bulunamayan kayıtta `null` (OG-213)',
+    ),
   attemptNumber: z.number().int().min(1),
   status: z
     .enum(['in_progress', 'submitted', 'expired'])
@@ -112,7 +166,20 @@ const attemptShape = {
   answers: answersSchema,
   result: resultSchema
     .nullable()
-    .describe('Süren denemede ve kursiyer görünümünde tamamlanmadan `null`'),
+    .describe(
+      'Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010)',
+    ),
+  feedback: z
+    .array(itemFeedbackSchema)
+    .nullable()
+    .describe(
+      'Anında geri bildirim (IST-056, DOM-BEC-047): alıştırmada kontrol edilen maddeler, madde sırasıyla. Değerlendirmede, velide (DOM-BEC-041) ve puanlama bağlamı yoksa `null`',
+    ),
+  contentRemoved: z
+    .boolean()
+    .describe(
+      'Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri, okuma parçası ya da dinleme kaydı) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`)',
+    ),
   rowVersion: z
     .number()
     .int()
@@ -134,7 +201,9 @@ const taskAttemptDetailSchema = z
           question: questionBodySchema,
         }),
       )
-      .describe('Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık'),
+      .describe(
+        'Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş',
+      ),
     passage: z
       .object({
         versionId: id.describe('Okuma parçası sürümü'),
@@ -151,7 +220,37 @@ const taskAttemptDetailSchema = z
       })
       .nullable()
       .describe(
-        'Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse ya da parça kaldırıldıysa `null`. Sorular gibi yalnız denemede döner',
+        'Okuma-anlama etkinliğinin metni (IST-042): quiz/alıştırma seti okuma parçasına bağlı değilse, parça kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Sorular gibi yalnız denemede döner',
+      ),
+    listeningRecording: z
+      .object({
+        versionId: id.describe('Dinleme kaydının ses sürümü'),
+        title: z.string(),
+        fileId: id.describe(
+          'Kaydın dosyası (`listening_audio`); bağlantısı `GET /files/:fileId/url` ile açılır ve süren denemede hak sayılır',
+        ),
+        cefrLevel: z.enum(enumKeys(CEFR_LEVELS)).nullable(),
+        transcript: z
+          .string()
+          .nullable()
+          .describe('Döküm; `transcriptShown` `false` iken `null` (DOM-BEC-005)'),
+        captionsVtt: z.string().nullable().describe('Zaman kodlu altyazı; dökümle aynı kural'),
+        transcriptShown: z
+          .boolean()
+          .describe(
+            'Döküm bu yanıtta açık mı: personelde hep; kursiyer ve velide görev kapanınca (son teslim ve geç kabul geçti) ya da alıştırmada `showTranscript` ayarıyla (DOM-BEC-005)',
+          ),
+        attributions: z.array(attributionSchema).describe('Kaynak gösterimi (DOM-KYN-024)'),
+      })
+      .nullable()
+      .describe(
+        'Dinleme etkinliğinin kaydı (IST-045): quiz/alıştırma seti dinleme kaydına bağlı değilse, kayıt kaldırıldıysa ya da içerik kapalıysa (`contentUnavailable`) `null`. Kalan hak `listening`tedir',
+      ),
+    contentUnavailable: z
+      .enum(['license_expired', 'unavailable'])
+      .nullable()
+      .describe(
+        'Soru ve parça metni gösterilmiyorsa neden (DOM-KYN-021, 025, 051): kaldırılmış içerik herkese ve her denemede; öğrenci ve velide ayrıca telif bildirimiyle incelemedeki içerik ya da lisansı dolmuş içerik (yalnız kursiyerin bu görevde süren denemesi yoksa; Sabah kararı 47) ve kitap sahibi sınırı. Kapalıyken `result.answerKey` de `null`; cevaplar, madde sonucu ve puan görünür kalır',
       ),
     listening: z
       .object({
@@ -164,11 +263,13 @@ const taskAttemptDetailSchema = z
               remaining: z.number().int().min(0).describe('Kalan dinleme hakkı'),
             }),
           )
-          .describe('İçerik sürümünün dinleme kayıtları ve sayılmış dinlemeler, kimlik sırasıyla'),
+          .describe(
+            'Dinleme kaydının dosyası ve bu denemede sayılmış dinlemeler (kayıt kaldırıldıysa da), kimlik sırasıyla',
+          ),
       })
       .nullable()
       .describe(
-        'Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`',
+        'Dinleme hakkı (IST-045): hak deneme × kayıt başına sayılır; sınırsız, dinleme görevi değil ya da sayacak dinleme kaydı yoksa `null`. Hak bitince kaydın bağlantısı 422 `listening_plays_exhausted`, süren deneme yokken açık görevde 422 `listening_attempt_required`',
       ),
   })
   .meta({ id: 'TaskAttemptDetail' })

@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { SUBSKILLS } from '@kampus/school-core/content/taxonomy.ts'
+import { TASK_CONTENT_UNAVAILABLE_MESSAGE } from '@kampus/react-shared/use-task-assignments.ts'
 import {
+  useCheckTaskAttemptItem,
   useSubmitTaskAttempt,
   type TaskAttemptDetail,
 } from '@kampus/react-shared/use-task-attempts.ts'
@@ -10,14 +12,25 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
+import { ListeningRecording } from './ListeningRecording.tsx'
+import {
+  checkView,
+  feedbackFor,
+  shownFeedback,
+  type CheckedFeedback,
+} from './practice-check-model.ts'
 import { QuestionInput } from './QuestionInput.tsx'
 import { ReadingPassage } from './ReadingPassage.tsx'
-import { answeredCount, formatRemaining, isAnswered } from './student-task-model.ts'
+import { answeredCount, attemptClock, describeKey, isAnswered } from './student-task-model.ts'
 import { useAttemptAnswers, type SaveState } from './use-attempt-answers.ts'
 
 type Props = {
   title: string
   attempt: TaskAttemptDetail
+  /** Atamanın süre sınırı (dk); `null` ise geri sayım yerine son teslim yazılır (DOM-BEC-043). */
+  timeLimitMinutes: number | null
+  /** Atamanın son teslimi; yoksa `null`. */
+  dueAt: string | null
   /** Detayın okunduğu an (ms): `remainingMs` bu ana göredir; istemci saati kayması etkisizdir. */
   fetchedAt: number
   /** Süre dolduysa sunucudan güncel durumu ister (deneme kaydedilmiş cevaplarla teslim sayılır). */
@@ -37,22 +50,41 @@ const SAVE_TEXT: Record<SaveState, string> = {
  * süre sunucu saatinden gelir. Çözüm sırasında doğru cevap ya da puan yoktur; teslimden sonra
  * sonuç ekranı sunucunun açtığı kadarını gösterir. Okuma-anlama etkinliğinde (IST-042) metin
  * geniş ekranda soruların solunda kendi içinde kayar, dar ekranda üstte durur; soru başında alt
- * beceri etiketi (DOM-BEC-006) yazılır.
+ * beceri etiketi (DOM-BEC-006) yazılır. Dinleme etkinliğinde (IST-045, DOM-BEC-005) kayıt
+ * soruların üstündedir; bağlantı bu denemenin kimliğiyle istenir ve hak burada sayılır.
+ * Alıştırmada (`feedback` dizi; OG-085, DOM-BEC-047) her soruda "Kontrol et" vardır: cevap önce
+ * kaydedilir, sonuç ve kalan hak `aria-live` bölgesinde okunur; kilitli sorunun girdisi kapanır ve
+ * yalnız onun doğru cevabı ile açıklaması görünür.
  */
-export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }: Props) {
+export function AttemptPlayer({
+  title,
+  attempt,
+  timeLimitMinutes,
+  dueAt,
+  fetchedAt,
+  onExpired,
+  onLeave,
+}: Props) {
   const answers = useAttemptAnswers(attempt)
   const submit = useSubmitTaskAttempt()
+  const check = useCheckTaskAttemptItem()
   const [index, setIndex] = useState(0)
   const [confirming, setConfirming] = useState(false)
+  // Son kontrol yanıtı; yalnız tazelenen ayrıntı gelene kadar ekranın doğrusudur (sürüm karşılaştırılır).
+  const [checked, setChecked] = useState<CheckedFeedback | null>(null)
+  const feedback = shownFeedback(attempt, checked)
 
   const questions = attempt.questions
   const question = questions[index]
   const total = questions.length
   const done = answeredCount(questions, answers.answers)
   const remainingAt = attempt.remainingMs === null ? null : fetchedAt + attempt.remainingMs
-  const now = useNow(remainingAt !== null)
+  const timed = timeLimitMinutes !== null
+  // Süresiz denemede saat yalnız teslim penceresinin kapanışını yakalar; saniyelik tık gerekmez.
+  const now = useNow(remainingAt !== null, timed ? 1000 : 15_000)
   const remaining = remainingAt === null ? null : remainingAt - now
   const timeOver = remaining !== null && remaining <= 0
+  const clock = attemptClock({ timeLimitMinutes, dueAt, remainingMs: remaining })
 
   useEffect(() => {
     if (!timeOver) return
@@ -77,12 +109,48 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
     }
   }
 
+  async function checkItem(questionVersionId: string) {
+    const response = answers.answers[questionVersionId]
+    if (response === undefined) return
+    const saved = await answers.flush()
+    if (!saved) {
+      notify.error('Cevabınız kaydedilemedi. Bağlantınızı kontrol edip yeniden deneyin.')
+      return
+    }
+    const outcome = await check.submit({
+      attemptId: attempt.id,
+      version: answers.currentVersion(),
+      questionVersionId,
+      response,
+    })
+    if (outcome.status === 'success') {
+      answers.adoptVersion(outcome.data.data.rowVersion)
+      setChecked({
+        rowVersion: outcome.data.data.rowVersion,
+        feedback: outcome.data.data.feedback,
+      })
+    } else setChecked(null)
+  }
+
   async function leave() {
     await answers.flush()
     onLeave()
   }
 
-  if (!question) return null
+  // Kapalı içerikte soru gelmez (`contentUnavailable`; DOM-KYN-025, 051): çözme ekranı çizilmez.
+  if (!question)
+    return attempt.contentUnavailable ? (
+      <p role="status" className="text-sm text-muted-foreground">
+        {TASK_CONTENT_UNAVAILABLE_MESSAGE}
+      </p>
+    ) : null
+  const entry = feedbackFor(feedback, question.questionVersionId)
+  const practice = feedback !== null
+  const view = checkView({
+    entry,
+    answered: isAnswered(question, answers.answers[question.questionVersionId]),
+    timeOver,
+  })
   const player = (
     <section
       aria-labelledby="deneme-baslik"
@@ -94,12 +162,7 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
         </h2>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge text={`${index + 1} / ${total} soru`} tone="purple" />
-          {remaining !== null ? (
-            <StatusBadge
-              text={timeOver ? 'Süre doldu' : `Kalan süre ${formatRemaining(remaining)}`}
-              tone={timeOver || remaining < 60_000 ? 'red' : 'gray'}
-            />
-          ) : null}
+          {clock ? <StatusBadge text={clock.text} tone={clock.tone} /> : null}
         </div>
       </header>
 
@@ -129,8 +192,57 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
         question={question}
         response={answers.answers[question.questionVersionId]}
         onChange={(response) => answers.setAnswer(question.questionVersionId, response)}
-        disabled={timeOver || submit.isPending}
+        disabled={timeOver || submit.isPending || check.isPending || view.locked}
       />
+
+      {practice ? (
+        <div className="mt-4 rounded-md border bg-surface-soft p-3">
+          <div className="flex flex-wrap items-center gap-3">
+            <Button
+              type="button"
+              variant="secondary"
+              disabled={!view.canCheck || check.isPending || submit.isPending}
+              aria-busy={check.isPending}
+              aria-describedby="kontrol-hakki"
+              onClick={() => void checkItem(question.questionVersionId)}
+            >
+              <Icon name="CheckCheck" size={16} aria-hidden="true" />
+              Kontrol et
+            </Button>
+            <span id="kontrol-hakki" className="text-xs text-muted-foreground">
+              {view.remainingText}
+            </span>
+          </div>
+          <div
+            role="status"
+            aria-live="polite"
+            aria-label="Kontrol sonucu"
+            className="mt-2 text-sm"
+          >
+            {view.result ? (
+              <>
+                <p className="flex flex-wrap items-center gap-2">
+                  <StatusBadge text={view.result.label} tone={view.result.tone} />
+                  <span>{view.result.detail}</span>
+                </p>
+                {entry?.answerKey ? (
+                  <>
+                    <p className="mt-2">
+                      <span className="text-muted-foreground">Doğru cevap: </span>
+                      <span lang="en">{describeKey(question.question, entry.answerKey)}</span>
+                    </p>
+                    {entry.answerKey.explanation ? (
+                      <p className="mt-1 text-xs text-muted-foreground [overflow-wrap:anywhere]">
+                        {entry.answerKey.explanation}
+                      </p>
+                    ) : null}
+                  </>
+                ) : null}
+              </>
+            ) : null}
+          </div>
+        </div>
+      ) : null}
 
       <p role="status" className="mt-4 text-xs text-muted-foreground">
         {SAVE_TEXT[answers.state]}
@@ -198,7 +310,7 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
           </Button>
         ) : null}
       </div>
-      {remaining !== null ? (
+      {timed && remaining !== null ? (
         <p className="mt-2 text-xs text-muted-foreground">
           Süre sunucu saatiyle işler; ekranı kapatsanız da durmaz.
         </p>
@@ -238,14 +350,27 @@ export function AttemptPlayer({ title, attempt, fetchedAt, onExpired, onLeave }:
       </Modal>
     </section>
   )
-  if (!attempt.passage) return player
-  return (
+  const body = attempt.passage ? (
     <div className="grid items-start gap-5 lg:grid-cols-2">
       <ReadingPassage
         passage={attempt.passage}
         className="min-w-0 lg:sticky lg:top-(--topbar-clearance) lg:max-h-[calc(100dvh-var(--topbar-clearance)-16px)] lg:overflow-y-auto"
       />
       {player}
+    </div>
+  ) : (
+    player
+  )
+  if (!attempt.listeningRecording) return body
+  return (
+    <div className="grid gap-5">
+      <ListeningRecording
+        recording={attempt.listeningRecording}
+        listening={attempt.listening}
+        mode="attempt"
+        attemptId={attempt.id}
+      />
+      {body}
     </div>
   )
 }

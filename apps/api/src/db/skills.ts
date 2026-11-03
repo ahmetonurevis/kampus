@@ -27,6 +27,7 @@ import {
   type RubricVersionData,
   type RubricVersionRow,
 } from '@kampus/school-core/skills/rubric.ts'
+import type { ItemCheckRow } from '@kampus/school-core/skills/practice.ts'
 import type { Answers, AttemptRow, AttemptRules } from '@kampus/school-core/skills/scoring.ts'
 import type { DraftRow, VersionRow } from '@kampus/school-core/skills/submission.ts'
 
@@ -41,6 +42,7 @@ import {
 import type { Database } from './client.ts'
 import { resources, resourceVersions } from './schema/resources.ts'
 import {
+  attemptItemChecks,
   attemptMediaPlays,
   resubmissionRequests,
   rubrics,
@@ -59,6 +61,7 @@ import {
   type SecondRatingSource,
   type TaskAssignmentRow,
 } from './schema/skills.ts'
+import { foldSearch, foldSql } from './text-search.ts'
 
 /**
  * Beceri görevi deposu (ADR 0004 karar 4–7; şema `schema/skills.ts`). Her fonksiyonun ilk
@@ -256,6 +259,8 @@ export async function findRubricVersion(
 export interface RubricListQuery {
   page: number
   pageSize: number
+  /** Baş sürümün başlığında Türkçe harf duyarsız arama. */
+  q?: string | undefined
   skill?: RubricVersionRow['skill'] | undefined
   kind?: RubricVersionRow['kind'] | undefined
   status?: RubricVersionRow['status'] | undefined
@@ -290,6 +295,7 @@ export async function listRubrics(
     // Ham `sql` içinde takma ad tablo yalnız adıyla yazılır; kaynak tablo açıkça verilir.
     sql`${v.versionNumber} = (select max(${head.versionNumber}) from ${rubricVersions} as ${sql.identifier('head')}
       where ${head.institutionId} = ${rubrics.institutionId} and ${head.rubricId} = ${rubrics.id})`,
+    ...(query.q ? [sql`strpos(${foldSql(v.title)}, ${foldSearch(query.q)}) > 0`] : []),
     ...(query.skill ? [eq(v.skill, query.skill)] : []),
     ...(query.kind ? [eq(v.kind, query.kind)] : []),
     ...(query.status ? [eq(v.status, query.status)] : []),
@@ -719,6 +725,26 @@ export async function findAssignment(
   return stored ?? null
 }
 
+/** Kimlikleri verilen atamalar (arşivli dahil; başka kurumun kimliği dönmez). */
+export async function loadAssignmentsByIds(
+  db: Database,
+  institutionId: string,
+  assignmentIds: readonly string[],
+): Promise<StoredAssignment[]> {
+  if (assignmentIds.length === 0) return []
+  const rows = await db
+    .select()
+    .from(taskAssignments)
+    .where(
+      and(
+        eq(taskAssignments.institutionId, institutionId),
+        inArray(taskAssignments.id, [...new Set(assignmentIds)]),
+      ),
+    )
+    .orderBy(asc(taskAssignments.createdAt), asc(taskAssignments.id))
+  return withTargets(db, institutionId, rows)
+}
+
 /**
  * Aynı içeriğin arşivlenmemiş atamaları (core `assertNoOverlappingAssignment` girdisi; IST-034).
  * Kursiyer listesi hedeflerden servisçe çözülür.
@@ -815,6 +841,10 @@ export interface AssignmentListQuery {
   learnerTargets?: { studentIds: readonly string[]; classIds: readonly string[] } | undefined
   resourceId?: string | undefined
   kind?: FixedAssignment['kind'] | undefined
+  /** Puanlama kipi süzgeci (not defteri yalnız `auto`). */
+  scoringMode?: FixedAssignment['scoringMode'] | undefined
+  /** Arşivlenmemiş bir hedefi bu kimlikte olan atamalar (sınıf/grup/öğrenci; not defteri süzgeci). */
+  targetId?: string | undefined
 }
 
 /**
@@ -862,6 +892,24 @@ function assignmentScopeFilter(
     : (ownerFilter ?? learnerFilter)
 }
 
+/** Atamanın arşivlenmemiş hedeflerinden biri bu kimlikte (`task_assignment_targets_target_idx`). */
+function hasTarget(db: Database, targetId: string) {
+  const t = taskAssignmentTargets
+  return exists(
+    db
+      .select({ one: sql`1` })
+      .from(t)
+      .where(
+        and(
+          eq(t.institutionId, taskAssignments.institutionId),
+          eq(t.assignmentId, taskAssignments.id),
+          isNull(t.archivedAt),
+          eq(t.targetId, targetId),
+        ),
+      ),
+  )
+}
+
 /**
  * Kurumun arşivlenmemiş atamaları, en yeni önce (IST-034). Kursiyer süzgeci arşivlenmemiş hedefler
  * üzerinde `exists` alt sorgusudur (`task_assignment_targets_target_idx`); boş kimlik listesi hiçbir
@@ -880,6 +928,8 @@ export async function listAssignments(
     ...(scopeFilter === undefined ? [] : [scopeFilter]),
     ...(query.resourceId === undefined ? [] : [eq(a.resourceId, query.resourceId)]),
     ...(query.kind === undefined ? [] : [eq(a.kind, query.kind)]),
+    ...(query.scoringMode === undefined ? [] : [eq(a.scoringMode, query.scoringMode)]),
+    ...(query.targetId === undefined ? [] : [hasTarget(db, query.targetId)]),
   )
   const [rows, [totals]] = await Promise.all([
     db
@@ -1136,6 +1186,57 @@ export async function loadAttemptsAmong(
 }
 
 /**
+ * Verilen atamaların bütün kursiyerlerinin arşivlenmemiş denemeleri, tek sorguda (alıştırma not
+ * defteri, DOM-BEC-048; personel görünümü). Atama yabancı anahtarının tekil indeksini kullanır.
+ */
+export async function loadAssignmentsAttempts(
+  db: Database,
+  institutionId: string,
+  assignmentIds: readonly string[],
+): Promise<StoredAttempt[]> {
+  if (assignmentIds.length === 0) return []
+  const rows = await db
+    .select()
+    .from(taskAttempts)
+    .where(
+      and(
+        eq(taskAttempts.institutionId, institutionId),
+        inArray(taskAttempts.assignmentId, [...new Set(assignmentIds)]),
+        isNull(taskAttempts.archivedAt),
+      ),
+    )
+    .orderBy(
+      asc(taskAttempts.assignmentId),
+      asc(taskAttempts.learnerId),
+      asc(taskAttempts.attemptNumber),
+    )
+  return rows.map(toAttempt)
+}
+
+/**
+ * Kursiyerin bütün atamalardaki arşivlenmemiş denemeleri (beceri ilerleme panosu, DOM-BEC-035):
+ * deneme okuması kayıt sahipliğine bakar, sınıf değiştiren öğrencinin eski denemeleri de gelir.
+ */
+export async function loadLearnerAttempts(
+  db: Database,
+  institutionId: string,
+  learnerId: string,
+): Promise<StoredAttempt[]> {
+  const rows = await db
+    .select()
+    .from(taskAttempts)
+    .where(
+      and(
+        eq(taskAttempts.institutionId, institutionId),
+        eq(taskAttempts.learnerId, learnerId),
+        isNull(taskAttempts.archivedAt),
+      ),
+    )
+    .orderBy(asc(taskAttempts.assignmentId), asc(taskAttempts.attemptNumber))
+  return rows.map(toAttempt)
+}
+
+/**
  * İçerik sürümüne sabitlenmiş, arşivlenmemiş atamalar, sınırlı ve sınırsız dinleme hakkıyla
  * (DOM-BEC-005). Dinleme kaydının bağlantısı istendiğinde hakkın hangi denemeden düşeceği bunlardan
  * bulunur; sınırsız atamanın süren denemesi de karara girer (`services/listening-plays.ts`).
@@ -1227,6 +1328,71 @@ export function insertMediaPlay(
       attempt_media_plays_attempt_file_number_key: conflict(
         'listening_play_conflict',
         'Dinleme aynı anda iki kez başlatıldı; yeniden deneyin.',
+      ),
+    },
+  )
+}
+
+/**
+ * Denemelerin madde kontrolleri (DOM-BEC-047; `attempt_item_checks`), deneme kimliğiyle, madde ve
+ * sıra numarasıyla dizili. Doğruluk ve kilit saklanmaz; core `itemFeedback` hesaplar.
+ */
+export async function loadItemChecks(
+  db: Database,
+  institutionId: string,
+  attemptIds: readonly string[],
+): Promise<Map<string, ItemCheckRow[]>> {
+  const byAttempt = new Map<string, ItemCheckRow[]>()
+  if (attemptIds.length === 0) return byAttempt
+  const rows = await db
+    .select({
+      attemptId: attemptItemChecks.attemptId,
+      questionVersionId: attemptItemChecks.questionVersionId,
+      checkNumber: attemptItemChecks.checkNumber,
+      response: attemptItemChecks.response,
+      checkedAt: attemptItemChecks.checkedAt,
+    })
+    .from(attemptItemChecks)
+    .where(
+      and(
+        eq(attemptItemChecks.institutionId, institutionId),
+        inArray(attemptItemChecks.attemptId, [...new Set(attemptIds)]),
+      ),
+    )
+    .orderBy(
+      asc(attemptItemChecks.attemptId),
+      asc(attemptItemChecks.questionVersionId),
+      asc(attemptItemChecks.checkNumber),
+    )
+  for (const { attemptId, checkedAt, ...row } of rows) {
+    const list = byAttempt.get(attemptId) ?? []
+    list.push({ ...row, checkedAt: iso(checkedAt) })
+    byAttempt.set(attemptId, list)
+  }
+  return byAttempt
+}
+
+/**
+ * Yeni madde kontrolü (core `planItemCheck`). Aynı deneme × madde × sıra ikinci kez 409
+ * `item_check_conflict` (eşzamanlı ikinci kontrol; servis deneme satırının sürümünü aynı işlemde
+ * artırdığı için olağan akışta oluşmaz).
+ */
+export function insertItemCheck(
+  tx: Database,
+  institutionId: string,
+  attemptId: string,
+  check: ItemCheckRow,
+): Promise<void> {
+  const at = new Date(check.checkedAt)
+  return constraintAs(
+    tx
+      .insert(attemptItemChecks)
+      .values({ institutionId, attemptId, ...check, checkedAt: at, createdAt: at, updatedAt: at })
+      .then(() => undefined),
+    {
+      attempt_item_checks_pkey: conflict(
+        'item_check_conflict',
+        'Cevap aynı anda iki kez kontrol edildi; yeniden deneyin.',
       ),
     },
   )
@@ -1595,6 +1761,26 @@ export async function loadSubmissionsAmong(
   return withVersions(db, institutionId, rows)
 }
 
+/** Kursiyerin bütün atamalardaki arşivlenmemiş teslimleri, sürümleriyle (DOM-BEC-035). */
+export async function loadLearnerSubmissions(
+  db: Database,
+  institutionId: string,
+  learnerId: string,
+): Promise<StoredSubmissionWork[]> {
+  const rows = await db
+    .select()
+    .from(taskSubmissions)
+    .where(
+      and(
+        eq(taskSubmissions.institutionId, institutionId),
+        eq(taskSubmissions.learnerId, learnerId),
+        isNull(taskSubmissions.archivedAt),
+      ),
+    )
+    .orderBy(asc(taskSubmissions.assignmentId))
+  return withVersions(db, institutionId, rows)
+}
+
 /**
  * Teslim kaydının satır sürümünü artırır: puan ve yeniden teslim isteği teslimi değiştirir, böylece
  * `If-Match` ile gelen eşzamanlı ikinci istek 409 `version_conflict` alır. Sürümler, puanlar ve
@@ -1805,6 +1991,32 @@ export async function listAwaitingScore(
 
 /** Core `planDraftSave`'in çakışma mesajı (`draft_conflict`). */
 const DRAFT_CONFLICT = 'Taslak başka bir pencerede değişti; sayfayı yenileyip devam edin.'
+
+/**
+ * Verilen kursiyerlerin verilen atamalarda arşivlenmemiş taslağı olan çiftleri (`atama:kursiyer`),
+ * tek sorguda; metin okunmaz (kursiyerin görev listesindeki içerik kapısı, süren iş;
+ * `services/task-progress.ts`).
+ */
+export async function draftKeysAmong(
+  db: Database,
+  institutionId: string,
+  assignmentIds: readonly string[],
+  learnerIds: readonly string[],
+): Promise<Set<string>> {
+  if (assignmentIds.length === 0 || learnerIds.length === 0) return new Set()
+  const rows = await db
+    .select({ assignmentId: submissionDrafts.assignmentId, learnerId: submissionDrafts.learnerId })
+    .from(submissionDrafts)
+    .where(
+      and(
+        eq(submissionDrafts.institutionId, institutionId),
+        inArray(submissionDrafts.assignmentId, [...new Set(assignmentIds)]),
+        inArray(submissionDrafts.learnerId, [...new Set(learnerIds)]),
+        isNull(submissionDrafts.archivedAt),
+      ),
+    )
+  return new Set(rows.map((row) => `${row.assignmentId}:${row.learnerId}`))
+}
 
 /** Kursiyerin arşivlenmemiş taslağı; satır sürümü core `revision`'dır. */
 export async function loadDraft(

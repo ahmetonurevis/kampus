@@ -372,7 +372,6 @@ export const trialBody = (
 type FieldSetter<TName extends string> = (
   name: TName | `root.${string}`,
   error: { type: string; message: string },
-  options?: { shouldFocus: boolean },
 ) => void
 
 /**
@@ -382,12 +381,15 @@ type FieldSetter<TName extends string> = (
 export function fieldErrors<TName extends string>(
   known: readonly TName[],
   setError: FieldSetter<TName>,
+  focus: (name: TName) => void,
 ) {
   const isKnown = (name: string): name is TName => (known as readonly string[]).includes(name)
   let focused = false
   return (name: string, error: { type: string; message: string }) => {
     if (!isKnown(name)) return setError('root.server', error)
-    setError(name, error, { shouldFocus: !focused })
+    setError(name, error)
+    // Gönderim sürerken alan kilitlidir; odağı `useFocusAfterSubmit` alan açılınca verir.
+    if (!focused) focus(name)
     focused = true
   }
 }

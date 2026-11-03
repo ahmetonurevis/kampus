@@ -18,7 +18,7 @@ import { Label } from '@/components/ui/label'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll, type CoreRecord } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
-import { FormActions, RootError } from '../management/FormParts.tsx'
+import { FormActions, RootError, useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import {
   fieldErrors,
@@ -89,6 +89,7 @@ function MeetingForm({ prospect, version, canPickTeacher, onClose }: Omit<PanelP
     defaultValues: meetingDefaults(),
   })
   const busy = schedule.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const errors = form.formState.errors
   const campusTeachers = (teachers.data ?? []).filter(
     (item) => item.record.isActive && item.record.branchId === prospect.branchId,
@@ -97,16 +98,19 @@ function MeetingForm({ prospect, version, canPickTeacher, onClose }: Omit<PanelP
   const onSubmit = form.handleSubmit(async (values) => {
     const result = meetingBody(values, clockNow())
     if (!result.ok) {
-      form.setError(
-        result.field,
-        { type: 'manual', message: result.message },
-        { shouldFocus: true },
-      )
+      form.setError(result.field, { type: 'manual', message: result.message })
+      focusAfterSubmit(result.field)
       return
     }
     const outcome = await schedule.submit(
       { prospectId: prospect.id, version, body: result.body },
-      { setError: fieldErrors(['date', 'time', 'duration', 'room', 'teacherId'], form.setError) },
+      {
+        setError: fieldErrors(
+          ['date', 'time', 'duration', 'room', 'teacherId'],
+          form.setError,
+          focusAfterSubmit,
+        ),
+      },
     )
     if (outcome.status === 'success') {
       notify.success('Tanışma görüşmesi planlandı.')
@@ -234,12 +238,13 @@ function TrialForm({ prospect, version, onClose }: Omit<PanelProps, 'kind' | 'ca
     defaultValues: trialDefaults(),
   })
   const busy = schedule.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const errors = form.formState.errors
 
   const onSubmit = form.handleSubmit(async (values) => {
     const outcome = await schedule.submit(
       { prospectId: prospect.id, version, body: trialBody(values, minor) },
-      { setError: fieldErrors(['lessonId', 'guardianConsent'], form.setError) },
+      { setError: fieldErrors(['lessonId', 'guardianConsent'], form.setError, focusAfterSubmit) },
     )
     if (outcome.status === 'success') {
       notify.success('Deneme dersi planlandı.')

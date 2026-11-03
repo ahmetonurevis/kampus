@@ -36,25 +36,35 @@ const sharedRow = (
   tags: tagSummary(item.version.tags, subjectNames),
 })
 
+/** Boş liste metni kime gösterildiğine göre değişir; kalan davranış aynıdır. */
+const EMPTY_TEXT = {
+  student: 'Öğretmenleriniz henüz dosya paylaşmadı.',
+  parent: 'Öğretmenler henüz çocuğunuzla dosya paylaşmadı.',
+} as const
+
 /**
- * Paylaşılan dosyalar (öğrenci; DOM-KYN-006, 040, 041): öğretmenin paylaştığı, yayındaki materyal
- * dosyaları sunucu sayfalı listede. Kapsam, düzey ve lisans süzgecini sunucu uygular; satırdan
- * sağ panelde dosyalar açılır. Yalnız okuma.
+ * Paylaşılan dosyalar (öğrenci ve veli; DOM-KYN-006, 040, 041): öğretmenin paylaştığı, yayındaki
+ * materyal dosyaları sunucu sayfalı listede. Kapsam, düzey ve lisans süzgecini sunucu uygular;
+ * satırdan sağ panelde dosyalar açılır. Yalnız okuma. Velide `studentId` seçili çocuktur: liste
+ * sunucuda o çocuğun gördüğüne daralır (OG-982); dosya bağlantısı da sunucunun kararıdır.
  */
-export function SharedMaterialsView() {
+export function SharedMaterialsView({ studentId }: { studentId?: string }) {
   const { session } = useAuth()
   const languageSchool = session?.institution.type === 'language_school'
   const list = useListState('paylasilan-materyaller', { urlPrefix: 'dosya-' })
   const search = useDebouncedValue(list.state.query)
-  const query = resourceListQuery({
-    page: list.state.page,
-    pageSize: list.state.pageSize,
-    q: search,
-    filters: MATERIAL_FILTER,
-    sortKey: list.state.sortKey,
-    sortDirection: list.state.sortDirection,
-    userId: '',
-  })
+  const query = {
+    ...resourceListQuery({
+      page: list.state.page,
+      pageSize: list.state.pageSize,
+      q: search,
+      filters: MATERIAL_FILTER,
+      sortKey: list.state.sortKey,
+      sortDirection: list.state.sortDirection,
+      userId: '',
+    }),
+    ...(studentId ? { studentId } : {}),
+  }
   const resources = useResourceList(query)
   const subjects = useCoreAll('subjects', {}, { enabled: !languageSchool })
   const subjectNames = useMemo(
@@ -131,7 +141,7 @@ export function SharedMaterialsView() {
           caption="Paylaşılan dosyalar"
           loading={resources.isPending}
           fetching={resources.isFetching && !resources.isPending}
-          empty="Öğretmenleriniz henüz dosya paylaşmadı."
+          empty={EMPTY_TEXT[studentId ? 'parent' : 'student']}
           emptyFiltered="Aramanızla eşleşen dosya bulunamadı."
           error={
             resources.error ? (

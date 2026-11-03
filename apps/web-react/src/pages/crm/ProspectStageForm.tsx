@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { notify } from '@/lib/notify.ts'
-import { RootError } from '../management/FormParts.tsx'
+import { RootError, useFocusAfterSubmit } from '../management/FormParts.tsx'
 import {
   fieldErrors,
   stageBody,
@@ -60,6 +60,7 @@ export function ProspectStageForm({
     { enabled: askSibling },
   )
   const busy = change.isPending || form.formState.isSubmitting
+  const focusAfterSubmit = useFocusAfterSubmit(form, busy)
   const errors = form.formState.errors
 
   if (stage === 'Kayıt oldu')
@@ -72,16 +73,13 @@ export function ProspectStageForm({
   const onSubmit = form.handleSubmit(async (values) => {
     const result = stageBody(values, { reopening })
     if (!result.ok) {
-      form.setError(
-        result.field,
-        { type: 'manual', message: result.message },
-        { shouldFocus: true },
-      )
+      form.setError(result.field, { type: 'manual', message: result.message })
+      focusAfterSubmit(result.field)
       return
     }
     const outcome = await change.submit(
       { prospectId, version, body: result.body },
-      { setError: fieldErrors(FIELDS, form.setError) },
+      { setError: fieldErrors(FIELDS, form.setError, focusAfterSubmit) },
     )
     if (outcome.status === 'success') {
       notify.success('Aday aşaması güncellendi.')

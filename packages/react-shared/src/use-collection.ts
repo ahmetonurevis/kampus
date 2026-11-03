@@ -115,10 +115,14 @@ export function useCollectionCounts(
   })
 }
 
-/** Tek kayıt (detay paneli); `id` boşken istek atılmaz. */
+/**
+ * Tek kayıt (detay paneli); `id` boşken istek atılmaz. `placeholder` (ör. listeden açılan satır)
+ * istek sürerken gösterilir; hata olursa veri `undefined` kalır, hata gizlenmez.
+ */
 export function useCollectionItem<TRecord>(
   collection: string,
   id: string | null | undefined,
+  options: { placeholder?: CollectionRow<TRecord> | undefined } = {},
 ): UseQueryResult<CollectionRow<TRecord>, ApiError> {
   const client = useKampusClient()
   const institutionId = useActiveInstitutionId()
@@ -126,6 +130,7 @@ export function useCollectionItem<TRecord>(
     queryKey: institutionKey(institutionId, ...collectionItemKey(collection, id ?? '')),
     queryFn: ({ signal }) => fetchCollectionItem<TRecord>(client, collection, id ?? '', signal),
     enabled: institutionId !== null && Boolean(id),
+    ...(options.placeholder ? { placeholderData: options.placeholder } : {}),
   })
 }
 

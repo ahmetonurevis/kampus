@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, type Resolver } from 'react-hook-form'
 import {
@@ -5,6 +6,7 @@ import {
   useUpdateTaskAssignment,
 } from '@kampus/react-shared/use-task-assignments.ts'
 import type { TaskAssignmentStaff } from '@kampus/react-shared/use-task-assignments.ts'
+import { useTaskAttempts } from '@kampus/react-shared/use-task-attempts.ts'
 import { useTaskSubmissions } from '@kampus/react-shared/use-task-submissions.ts'
 import { istanbulLocalToUtc, LATE_ACCEPTANCE_MAX_DAYS } from '@kampus/school-core/skills/scoring.ts'
 import { useAuth } from '@/auth/use-auth.ts'
@@ -15,21 +17,27 @@ import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { Pagination } from '@/components/Pagination.tsx'
+import { pageCount } from '@/lib/list-query.ts'
+import { useListState } from '@/hooks/use-list-state.ts'
 import { notify } from '@/lib/notify.ts'
 import { SummaryLoading, SummaryMetrics, SummarySection } from '../management/SummaryParts.tsx'
 import { RootError } from '../management/FormParts.tsx'
 import {
+  ATTEMPT_LIST_PREFIX,
   canChangeAssignment,
   dateTimeLabel,
   deadlineFormSchema,
   instantToLocal,
   isStaffAssignment,
+  learnerLabel,
   scoreState,
   submissionStatus,
   targetsLabel,
   type DeadlineFormOutput,
   type DeadlineFormValues,
 } from './task-model.ts'
+import { attemptStatusBadge, scoreLabel } from './student-task-model.ts'
 import { useTaskLookups } from './use-task-lookups.ts'
 import { TASK_KINDS } from '@kampus/school-core/skills/scoring.ts'
 
@@ -37,26 +45,42 @@ type Props = {
   assignmentId: string
   onClose: () => void
   onGrade: (submissionId: string) => void
+  /** Otomatik puanlı görevde denemenin ayrıntısını açar (`?deneme=`). */
+  onReview: (attemptId: string) => void
+  /**
+   * Panelin üstünde açılan pencereler (deneme ayrıntısı, teslim puanlama). React ağacında panelin içinde durmaları
+   * gerekir: Radix yığını, ağaç dışındaki pencereye geçen odağı "dışarı" sayıp paneli kapatırdı
+   * (adresle ikisi birlikte açıldığında).
+   */
+  children?: ReactNode
 }
 
 /**
- * Atama özeti (sağ panel, `?gorev=`): sabitlenen ayarlar, hedefler ve öğretmen puanlı görevde
- * teslim listesi (puanlamaya geçiş). Atamayı atayan ve yönetici değiştirir; atayan olmayan ama
- * kapsamındaki sınıf yüzünden gören öğretmen salt okur görür (DOM-YTK-028) ve puanlayabilir.
+ * Atama özeti (sağ panel, `?gorev=`): sabitlenen ayarlar, hedefler; öğretmen puanlı görevde
+ * teslim listesi (puanlamaya geçiş), otomatik puanlı görevde kursiyerlerin denemeleri (OG-983;
+ * ayrıntı `?deneme=`). Atamayı atayan ve yönetici değiştirir; atayan olmayan ama kapsamındaki
+ * sınıf yüzünden gören öğretmen salt okur görür (DOM-YTK-028) ve puanlayabilir.
  */
-export function TaskAssignmentPanel({ assignmentId, onClose, onGrade }: Props) {
+export function TaskAssignmentPanel({ assignmentId, onClose, onGrade, onReview, children }: Props) {
   return (
     <SidePanel
       open={assignmentId !== ''}
       onOpenChange={(open) => (open ? undefined : onClose())}
       title="Görev ayrıntısı"
     >
-      {assignmentId ? <AssignmentDetail assignmentId={assignmentId} onGrade={onGrade} /> : null}
+      {assignmentId ? (
+        <AssignmentDetail assignmentId={assignmentId} onGrade={onGrade} onReview={onReview} />
+      ) : null}
+      {children}
     </SidePanel>
   )
 }
 
-function AssignmentDetail({ assignmentId, onGrade }: Omit<Props, 'onClose'>) {
+function AssignmentDetail({
+  assignmentId,
+  onGrade,
+  onReview,
+}: Omit<Props, 'onClose' | 'children'>) {
   const { session } = useAuth()
   const detail = useTaskAssignment(assignmentId)
   const { names } = useTaskLookups()
@@ -92,7 +116,11 @@ function AssignmentDetail({ assignmentId, onGrade }: Omit<Props, 'onClose'>) {
           </p>
         </SummarySection>
       )}
-      {teacher ? <SubmissionList assignmentId={item.id} onGrade={onGrade} /> : null}
+      {teacher ? (
+        <SubmissionList assignmentId={item.id} onGrade={onGrade} />
+      ) : (
+        <AttemptList key={item.id} assignmentId={item.id} onReview={onReview} />
+      )}
     </>
   )
 }
@@ -187,7 +215,6 @@ function SubmissionList({
   onGrade: (submissionId: string) => void
 }) {
   const submissions = useTaskSubmissions({ assignmentId, page: 1, pageSize: 100 })
-  const { names } = useTaskLookups()
   return (
     <SummarySection title="Teslimler">
       {submissions.error ? (
@@ -203,7 +230,7 @@ function SubmissionList({
           {submissions.data.data.map((submission) => {
             const status = submissionStatus(submission.status)
             const score = scoreState(submission)
-            const learner = names.studentName(submission.learnerId)
+            const learner = learnerLabel(submission)
             return (
               <li
                 key={submission.id}
@@ -232,6 +259,108 @@ function SubmissionList({
             )
           })}
         </ul>
+      )}
+    </SummarySection>
+  )
+}
+
+/** Deneme listesi sayfa boyutları; panel dar olduğu için küçük tutulur. */
+const ATTEMPT_PAGE_SIZES = [10, 20, 50] as const
+
+/**
+ * Atamanın denemeleri (OG-983; DOM-BEC-042, 045; DOM-YTK-028): `GET /task-attempts` sunucu
+ * sayfalı ve rol kapsamlıdır; satır başına istek yok. Puan, tamamlanan denemede sunucunun
+ * cevaplardan hesapladığı yüzdedir; süren denemede puan yoktur. Sayfa adreste tutulur (OG-994):
+ * deneme penceresinden geri dönünce ya da bağlantı paylaşılınca aynı sayfa açılır; sayfa boyutu
+ * değişince sayfa başa döner, veri azalınca geçersiz sayfada kalınmaz.
+ */
+function AttemptList({
+  assignmentId,
+  onReview,
+}: {
+  assignmentId: string
+  onReview: (attemptId: string) => void
+}) {
+  const list = useListState(`deneme-${assignmentId}`, {
+    pageSize: ATTEMPT_PAGE_SIZES[0],
+    urlPrefix: ATTEMPT_LIST_PREFIX,
+  })
+  const paging = { page: list.state.page, pageSize: list.state.pageSize }
+  const attempts = useTaskAttempts({ assignmentId, ...paging })
+  const total = attempts.data?.meta.total ?? 0
+  const pages = pageCount(total, paging.pageSize)
+  if (total > 0 && paging.page > pages) list.dispatch({ type: 'clamp', pageCount: pages })
+  return (
+    <SummarySection title="Denemeler">
+      {attempts.error ? (
+        <QueryError error={attempts.error} onRetry={() => void attempts.refetch()} />
+      ) : !attempts.data ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          Denemeler yükleniyor…
+        </p>
+      ) : total === 0 ? (
+        <p className="text-sm text-muted-foreground">Henüz deneme yok.</p>
+      ) : (
+        <>
+          <ul aria-label="Denemeler" className="grid gap-2">
+            {attempts.data.data.map((attempt) => {
+              const status = attemptStatusBadge(attempt)
+              const learner = learnerLabel(attempt)
+              const label = `${learner}, ${attempt.attemptNumber}. deneme`
+              return (
+                <li
+                  key={attempt.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded-xl border px-3.5 py-2.5 text-sm"
+                >
+                  <span className="min-w-0 [overflow-wrap:anywhere]">
+                    <span className="font-medium">{learner}</span>
+                    <span className="text-muted-foreground">
+                      {' '}
+                      · {attempt.attemptNumber}. deneme
+                    </span>
+                    <span className="mt-1 flex flex-wrap items-center gap-1.5">
+                      <StatusBadge text={status.label} tone={status.tone} />
+                      {attempt.result ? (
+                        <StatusBadge
+                          text={`Puan ${scoreLabel(attempt.result.percent)}`}
+                          tone="purple"
+                        />
+                      ) : null}
+                      {attempt.contentRemoved ? (
+                        // Kaldırılan içerikte kayıt kalır, metin ve anahtar gelmez (DOM-KYN-051).
+                        <StatusBadge text="İçerik kaldırıldı" tone="gray" />
+                      ) : null}
+                      {attempt.completedAt ? (
+                        <span className="text-xs text-muted-foreground">
+                          {dateTimeLabel(attempt.completedAt)}
+                        </span>
+                      ) : null}
+                    </span>
+                  </span>
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    aria-label={`${label} ayrıntısını aç`}
+                    onClick={() => onReview(attempt.id)}
+                  >
+                    Ayrıntı
+                  </Button>
+                </li>
+              )
+            })}
+          </ul>
+          {total > ATTEMPT_PAGE_SIZES[0] ? (
+            <Pagination
+              total={total}
+              page={paging.page}
+              pageSize={paging.pageSize}
+              sizes={ATTEMPT_PAGE_SIZES}
+              onPageChange={(page) => list.dispatch({ type: 'page', page })}
+              onPageSizeChange={(pageSize) => list.dispatch({ type: 'pageSize', pageSize })}
+              className="mt-3 px-0"
+            />
+          ) : null}
+        </>
       )}
     </SummarySection>
   )

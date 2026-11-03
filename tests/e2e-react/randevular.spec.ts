@@ -23,13 +23,18 @@ interface Fixtures {
 }
 
 const DAY = 86_400_000
-/** Bugünden `days` gün sonra, UTC `hour`:00. Test kurulumunda hesaplanır; gelecekte kalır. */
-const at = (days: number, hour: number) => {
-  const base = new Date(Date.now() + days * DAY)
-  return new Date(
-    Date.UTC(base.getUTCFullYear(), base.getUTCMonth(), base.getUTCDate(), hour),
-  ).toISOString()
-}
+/** Bugünden `days` gün sonraki İstanbul takvim günü (`YYYY-MM-DD`). */
+const istanbulDay = (days: number) =>
+  new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(
+    new Date(Date.now() + days * DAY),
+  )
+/**
+ * Bugünden `days` gün sonraki İstanbul gününde, UTC `hour`:00 (İstanbul `hour`+3). Gün İstanbul
+ * takviminden alınır: 21:00–24:00 UTC arasında UTC günü bir geride kalır ve `local()` ile
+ * kurulan beklentiler (çakışan saat) kayardı. Test kurulumunda hesaplanır; gelecekte kalır.
+ */
+const at = (days: number, hour: number) =>
+  new Date(`${istanbulDay(days)}T${String(hour).padStart(2, '0')}:00:00Z`).toISOString()
 
 const NOTE = 'Denklem kurma problemlerini tekrar etmek istiyorum.'
 const REASON = 'O gün okul gezisi nedeniyle müsait değilim.'
@@ -755,8 +760,7 @@ test.describe('çocuk değişimi ve panel', () => {
 
 test.describe('öğretmen müsaitlik saatleri', () => {
   /** `datetime-local` değeri: bugünden `days` gün sonra, İstanbul saatiyle `time` (SS:DD). */
-  const local = (days: number, time: string) =>
-    `${new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(new Date(Date.now() + days * DAY))}T${time}`
+  const local = (days: number, time: string) => `${istanbulDay(days)}T${time}`
   const section = (page: Page) => page.getByRole('region', { name: 'Müsaitlik saatlerim' })
   const slotTable = (page: Page) => page.getByRole('table', { name: 'Müsaitlik saatlerim' })
 

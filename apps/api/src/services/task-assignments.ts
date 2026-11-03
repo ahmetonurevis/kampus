@@ -10,9 +10,11 @@ import {
 } from '@kampus/school-core/lib/coordinator-duties.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '@kampus/school-core/lib/scope.ts'
+import type { ResourceContent } from '@kampus/school-core/content/resource.ts'
 import {
   planAssignment,
   planAssignmentChange,
+  recordingVersionId,
   type AssignmentInput,
   type AssignmentPlan,
   type ExistingAssignment,
@@ -21,7 +23,13 @@ import { isClosed } from '@kampus/school-core/skills/scoring.ts'
 
 import type { Database } from '../db/client.ts'
 import { activeDutiesOf } from '../db/coordinator-duties.ts'
-import { asCoreVersion, findResource, listResourceVersions } from '../db/resources.ts'
+import { loadFilesByIds } from '../db/files.ts'
+import {
+  asCoreVersion,
+  findResource,
+  listResourceVersions,
+  loadVersionPairs,
+} from '../db/resources.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
   assignmentContentRefs,
@@ -419,31 +427,51 @@ async function audit(
   })
 }
 
+const LISTENING_UNAVAILABLE_MESSAGE =
+  'Dinleme hakkı yalnız dinleme kaydına bağlı quiz ve alıştırma setinde sınırlanır; dinleme hakkını boş bırakın.'
+
 /**
- * Geçici API sınırı (ADR 0004 karar 6 uygulama notu, OG-049): dinleme hakkı sayılamaz, çünkü sayım
- * altyapısı (`services/listening-plays.ts`) hazır olsa da core içerik modeli dinleme kaydını
- * atanabilen türlere bağlamaz. Aksi hâlde kursiyerin hakkı sessizce sınırsız olurdu. Dinleme
- * görevi yine atanır: gövde şeması gönderilmeyen hakkı sınırsız (`null`) yapar; yalnız açıkça
- * seçilen 1 veya 2 reddedilir. Dosyalı ve sesli teslim OG-048 ile açıktır
- * (`services/task-submission-files.ts`).
+ * Atanan içeriğin hakkı sayılabilen dinleme kaydı var mı (IST-045; ADR 0004 karar 6 uygulama
+ * notu): quiz/alıştırma seti `listeningVersionId` ile içeriği silinmemiş bir ses sürümüne bağlı ve
+ * sesin dosyası dinleme kaydı amacıyla (`listening_audio`) yüklenmiş. Hak yalnız bu dosyanın
+ * bağlantısında sayılır (`services/listening-plays.ts`); `material` amaçlı ses sayılmaz.
  */
-function assertSupportedByApi(plan: AssignmentPlan): void {
-  // TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türe bağlayınca bu sınır kalkar.
-  if (plan.assignment.listeningPlays !== null)
-    throw new RuleViolationError(
-      'listening_plays_unavailable',
-      'Dinleme hakkı sınırı henüz uygulanamıyor; dinleme hakkını boş bırakın, görev sınırsız dinlemeyle atanır.',
+async function hasCountableRecording(
+  tx: Database,
+  institutionId: string,
+  content: ResourceContent | null,
+): Promise<boolean> {
+  const recordingId = recordingVersionId(content)
+  if (recordingId === null) return false
+  const recording = (await loadVersionPairs(tx, institutionId, [recordingId])).get(recordingId)
+  const audio = recording?.version.content
+  if (audio?.type !== 'audio') return false
+  const [file] = await loadFilesByIds(tx, institutionId, [audio.fileId])
+  return file?.purpose === 'listening_audio'
+}
+
+/**
+ * Dinleme hakkı (DOM-BEC-005) yalnız sayılabilir kayda bağlı içerikte sınırlanır. Hak
+ * gönderilmezse kayda bağlı etkinlikte core varsayılanı (2) uygulanır, kaydı olmayan içerikte
+ * sınırsız (`null`) saklanır: sayılacak kayıt yokken sınır kursiyeri sessizce sınırsız bırakırdı.
+ */
+function listeningInput(input: AssignmentInput, countable: boolean): AssignmentInput {
+  if (countable || input.settings?.listeningPlays !== undefined) return input
+  return { ...input, settings: { ...input.settings, listeningPlays: null } }
+}
+
+/** Kaydı olmayan dinleme görevine açıkça seçilen 1 veya 2 hak 422 `listening_plays_unavailable`. */
+function assertListeningCountable(plan: AssignmentPlan, countable: boolean): void {
+  if (countable || plan.assignment.listeningPlays === null) return
+  throw new RuleViolationError('listening_plays_unavailable', LISTENING_UNAVAILABLE_MESSAGE, {
+    issues: [
       {
-        issues: [
-          {
-            path: ['settings', 'listeningPlays'],
-            code: 'listening_plays_unavailable',
-            message:
-              'Dinleme hakkı sınırı henüz uygulanamıyor; dinleme hakkını boş bırakın, görev sınırsız dinlemeyle atanır.',
-          },
-        ],
+        path: ['settings', 'listeningPlays'],
+        code: 'listening_plays_unavailable',
+        message: LISTENING_UNAVAILABLE_MESSAGE,
       },
-    )
+    ],
+  })
 }
 
 /**
@@ -514,6 +542,7 @@ export async function createTaskAssignment(
             ? await findRubricVersion(tx, ctx.institutionId, rubricVersionId)
             : null
         const others = await loadResourceAssignments(tx, ctx.institutionId, resource.id)
+        const countable = await hasCountableRecording(tx, ctx.institutionId, version.content)
         const actor: Actor = { role: ctx.actor.role, links, userId: ctx.actor.userId }
         return {
           run: (state) => {
@@ -557,13 +586,13 @@ export async function createTaskAssignment(
                 institutionType: institution.type,
                 rubricVersion,
                 existing,
-                input,
+                input: listeningInput(input, countable),
                 now: ctx.now,
               })
             } catch (error) {
               throw withNotFoundPath(error)
             }
-            assertSupportedByApi(plan)
+            assertListeningCountable(plan, countable)
             return plan
           },
         }

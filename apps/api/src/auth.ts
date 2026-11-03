@@ -2,7 +2,7 @@ import { expo } from '@better-auth/expo'
 import { betterAuth, getCurrentAdapter } from 'better-auth'
 import { drizzleAdapter } from 'better-auth/adapters/drizzle'
 import { createAccessControl } from 'better-auth/plugins/access'
-import { organization } from 'better-auth/plugins/organization'
+import { organization, type OrganizationOptions } from 'better-auth/plugins/organization'
 import { defaultStatements } from 'better-auth/plugins/organization/access'
 import { z } from 'zod'
 
@@ -116,6 +116,64 @@ export interface AuthOptions {
   background?: boolean
 }
 
+/**
+ * Organization eklentisinin ayarları. Personel hesabı servisi (`services/staff-accounts.ts`)
+ * eklentinin `getOrgAdapter`'ını aynı ayarlarla kurar.
+ */
+export const ORGANIZATION_OPTIONS = {
+  ac,
+  roles,
+  creatorRole: 'yonetici',
+  allowUserToCreateOrganization: false,
+  disableOrganizationDeletion: true,
+  membershipLimit: 100_000,
+  schema: {
+    organization: {
+      modelName: 'institution',
+      additionalFields: {
+        type: { type: [...INSTITUTION_TYPES], required: true, defaultValue: 'school' },
+        // Modül anahtarı → açık mı. Kurum oluşturma ve güncelleme HTTP uçları kapalıdır.
+        enabledModules: { type: 'json', required: true, defaultValue: () => ({}) },
+      },
+    },
+    member: {
+      modelName: 'membership',
+      fields: { organizationId: 'institutionId' },
+      additionalFields: {
+        // Pasifleştirilen üyelik (IST-007, DOM-YTK-070): dolu iken üyelik kimlik
+        // doğrulamada yok sayılır. Yalnız sunucu yazar (`services/staff-accounts.ts`).
+        deactivatedAt: { type: 'date', required: false, input: false },
+      },
+    },
+    invitation: {
+      fields: { organizationId: 'institutionId' },
+      additionalFields: {
+        // Personel daveti (DOM-YTK-070): yöneticinin girdiği ad. Bekleyen davet görünümü yalnız
+        // bunu gösterir; kullanıcı tablosundaki gerçek ad hiçbir yanıta girmez (karar 73).
+        name: { type: 'string', required: false, input: false },
+        // Davetin açtığı üyelik; yalnız kurumun açtığı yeni hesapta dolu. İlk girişte kabul ve
+        // iptalde üyelik silme yalnız bu üyeliğe uygulanır. Yalnız sunucu yazar.
+        membershipId: {
+          type: 'string',
+          required: false,
+          input: false,
+          references: { model: 'member', field: 'id', onDelete: 'set null' },
+        },
+        // Davetin tuttuğu öğretmen kaydı (`records`, koleksiyon `teachers`). Yeni hesapta bağlantı
+        // davette `membership_links`'e de yazılır; başka kurumda hesabı olan e-postada (karar 73)
+        // yalnız burada durur ve kabulde bağlanır. Bekleyen davetin tuttuğu kayıt başka davete ya
+        // da aktarıma bağlanamaz. Kayıtlar bileşik anahtarlı `records`'ta olduğundan yabancı anahtar
+        // yoktur (üretilen kimlik şeması koleksiyon kolonu taşıyamaz); kayıtlar silinmez, arşivlenir.
+        // Yalnız sunucu yazar.
+        teacherId: { type: 'string', required: false, input: false },
+      },
+    },
+    session: { fields: { activeOrganizationId: 'activeInstitutionId' } },
+  },
+  // Davet yalnız "bekliyor" işaretidir; hesap ve üyelik davette açılır (DOM-YTK-070).
+  invitationExpiresIn: 7 * DAY,
+} satisfies OrganizationOptions
+
 export function createAuth(config: Config, db: Database, options: AuthOptions = {}) {
   const log = options.log ?? SILENT_MAIL_LOG
   const reset = {
@@ -228,30 +286,7 @@ export function createAuth(config: Config, db: Database, options: AuthOptions = 
       before: authBeforeHook({ db, secret: config.BETTER_AUTH_SECRET, passwordReset }),
       after: authAfterHook({ db, secret: config.BETTER_AUTH_SECRET, passwordReset }),
     },
-    plugins: [
-      organization({
-        ac,
-        roles,
-        creatorRole: 'yonetici',
-        allowUserToCreateOrganization: false,
-        disableOrganizationDeletion: true,
-        membershipLimit: 100_000,
-        schema: {
-          organization: {
-            modelName: 'institution',
-            additionalFields: {
-              type: { type: [...INSTITUTION_TYPES], required: true, defaultValue: 'school' },
-              // Modül anahtarı → açık mı. Kurum oluşturma ve güncelleme HTTP uçları kapalıdır.
-              enabledModules: { type: 'json', required: true, defaultValue: () => ({}) },
-            },
-          },
-          member: { modelName: 'membership', fields: { organizationId: 'institutionId' } },
-          invitation: { fields: { organizationId: 'institutionId' } },
-          session: { fields: { activeOrganizationId: 'activeInstitutionId' } },
-        },
-      }),
-      expo(),
-    ],
+    plugins: [organization(ORGANIZATION_OPTIONS), expo()],
   })
   return Object.assign(auth, {
     /** Bekleyen arka plan gönderimlerini bitirir (sunucu kapanışı, testler). */

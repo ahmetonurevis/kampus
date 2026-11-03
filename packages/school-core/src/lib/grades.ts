@@ -135,6 +135,20 @@ export function subjectAverages(
     .sort((left, right) => left.name.localeCompare(right.name, 'tr'))
 }
 
+/**
+ * `subjectAverages` sonucunda ders adını güncel ders kaydından gösterir (ders sonradan yeniden
+ * adlandırıldıysa not kaydındaki eski ad yerine); eşlemede yoksa kaydın adı kalır. Ad
+ * değişebildiği için sıra yeniden Türkçe ad sırasına konur. Web ve mobil aynı eşlemeyi kullanır.
+ */
+export function withSubjectNames(
+  averages: readonly SubjectAverage[],
+  subjects: ReadonlyMap<string, { name: string }>,
+): SubjectAverage[] {
+  return averages
+    .map((item) => ({ ...item, name: subjects.get(item.subjectId)?.name ?? item.name }))
+    .sort((left, right) => left.name.localeCompare(right.name, 'tr'))
+}
+
 function requireSchool(options: GradeOptions) {
   if ((options.institutionType ?? 'school') !== 'school')
     throw new DomainError(

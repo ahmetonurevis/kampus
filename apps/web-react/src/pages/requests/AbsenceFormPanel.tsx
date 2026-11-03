@@ -1,8 +1,10 @@
 import { zodResolver } from '@hookform/resolvers/zod'
+import { useState } from 'react'
 import { useForm } from 'react-hook-form'
 import type { z } from 'zod'
 import { notifyAbsenceSchema } from '@kampus/school-core/lib/requests.ts'
 import { useNotifyAbsence } from '@kampus/react-shared/use-request-commands.ts'
+import { FileUploadField, type FileUploadItem } from '@/components/FileUploadField.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { Input } from '@/components/ui/input'
@@ -10,6 +12,7 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { notify } from '@/lib/notify.ts'
 import { FormActions, RootError } from '../management/FormParts.tsx'
 import { ChildrenGate, ChildSelectField, type ChildOption } from './ChildSelectField.tsx'
+import { ABSENCE_DOCUMENT_LIMIT, addAbsenceDocument, documentIds } from './absence-forms.ts'
 import { ABSENCE_REASON_OPTIONS, focusFirstError } from './request-forms.ts'
 
 type Values = z.input<typeof notifyAbsenceSchema>
@@ -19,9 +22,11 @@ type Output = z.output<typeof notifyAbsenceSchema>
 export const NEW_NOTICE = 'yeni'
 
 /**
- * İzin/mazeret bildirimi (veli): çocuk, tarih aralığı ve gerekçe kategorisi. Serbest açıklama
- * alanı yoktur; gerekçe yalnız kategoridir (DOM-ILT-053, KVKK md. 6). Geç mazeret ve örtüşen
- * bildirim hatası ilgili tarih alanının altında görünür (toast çıkmaz).
+ * İzin/mazeret bildirimi (veli): çocuk, tarih aralığı, gerekçe kategorisi ve isteğe bağlı özür
+ * belgesi (PDF/JPEG/PNG, en çok 3; dosya seçilince yüklenir, bildirimle aynı işlemde bağlanır).
+ * Serbest açıklama alanı yoktur; gerekçe yalnız kategoridir (DOM-ILT-053, KVKK md. 6). Geç mazeret
+ * ve örtüşen bildirim hatası ilgili tarih alanının altında, belge hatası belge alanının altında
+ * görünür (toast çıkmaz). Belge sonradan da eklenebilir (bildirim paneli).
  */
 export function AbsenceFormPanel({ open, onClose }: { open: boolean; onClose: () => void }) {
   return (
@@ -56,11 +61,19 @@ function AbsenceForm({
     // Gerekçe boş başlar: kullanıcı bilerek seçer, seçmezse şema mesajı alanın altında çıkar.
     defaultValues: { studentId: defaultId, startDate: '', endDate: '' },
   })
+  const [files, setFiles] = useState<readonly FileUploadItem[]>([])
+  const [uploading, setUploading] = useState(false)
+  // Taranan belge yalnız gönder düğmesini kilitler; alanlar açık kalır (OG-987).
+  const [scanBlocked, setScanBlocked] = useState(false)
   const busy = notice.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
 
   const onSubmit = form.handleSubmit(async (values) => {
-    const outcome = await notice.submit(values, { setError: focusFirstError(form.setError) })
+    const fileIds = documentIds(files)
+    const outcome = await notice.submit(
+      { ...values, ...(fileIds ? { fileIds } : {}) },
+      { setError: focusFirstError(form.setError) },
+    )
     if (outcome.status === 'success') {
       notify.success('Bildiriminiz kuruma iletildi.')
       onClose()
@@ -71,12 +84,15 @@ function AbsenceForm({
     <form
       noValidate
       aria-label="İzin veya mazeret bildir"
-      onSubmit={(event) => void onSubmit(event)}
+      onSubmit={(event) => {
+        if (scanBlocked || uploading) return event.preventDefault()
+        void onSubmit(event)
+      }}
       className="grid gap-5"
     >
       <p className="text-sm text-muted-foreground">
-        Gerekçe yalnız kategori olarak alınır; sağlık veya özel bilgi yazmanıza gerek yoktur.
-        Belgeyi okula ayrıca iletin.
+        Gerekçe yalnız kategori olarak alınır; sağlık veya özel bilgi yazmanıza gerek yoktur. Özür
+        belgesi isteğe bağlıdır ve sonradan da eklenebilir.
       </p>
       <ChildSelectField
         id="bildirim-ogrenci"
@@ -123,8 +139,30 @@ function AbsenceForm({
           </NativeSelect>
         )}
       </FormField>
+      <FileUploadField
+        id="bildirim-belge"
+        label="Özür belgesi"
+        purpose="absence_document"
+        multiple
+        maxFiles={ABSENCE_DOCUMENT_LIMIT}
+        description={`İsteğe bağlı. PDF, JPEG veya PNG; en çok ${ABSENCE_DOCUMENT_LIMIT} belge.`}
+        listLabel="Eklenen belgeler"
+        items={files}
+        error={errors.fileIds}
+        disabled={busy}
+        onUploaded={(item) => setFiles((current) => addAbsenceDocument(current, item))}
+        onRemoved={(id) => setFiles((current) => current.filter((file) => file.id !== id))}
+        onBusyChange={setUploading}
+        onBlockedChange={setScanBlocked}
+      />
       <RootError message={errors.root?.server?.message} />
-      <FormActions busy={busy} onCancel={onClose} submitLabel="Bildir" icon="ArrowRight" />
+      <FormActions
+        busy={busy}
+        disabled={uploading || scanBlocked}
+        onCancel={onClose}
+        submitLabel="Bildir"
+        icon="ArrowRight"
+      />
     </form>
   )
 }

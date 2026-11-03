@@ -41,6 +41,7 @@ import type { Mailer } from './services/mailer.ts'
 import type { FileScanRuntime, FileScanScheduler } from './services/file-scan.ts'
 import { createFileScanner, type FileScanner } from './services/file-scanner.ts'
 import type { MediaRuntime, MediaTranscodeScheduler } from './services/media-transcode.ts'
+import { InlineStaffLinkScheduler, type StaffLinkRuntime } from './services/staff-password-links.ts'
 import { createStorage } from './storage/create.ts'
 import type { DiskStorage } from './storage/disk.ts'
 
@@ -135,6 +136,9 @@ export const REDACTED_PATHS = [
   '*.rationale',
   'rejectionReason',
   '*.rejectionReason',
+  // kvkk: K — toplu personel aktarımının CSV içeriği: ad ve e-posta satırları (IST-007).
+  'csv',
+  '*.csv',
   '*.cookie',
   '*.authorization',
 ]
@@ -191,6 +195,8 @@ declare module 'fastify' {
     media: MediaRuntime
     /** Dosya tarayıcısı ve tarama kuyruğu (`null`: tarama kapalı); kuyruk açılınca değişir. */
     fileScan: FileScanRuntime
+    /** Personel davetinin parola bağlantıları; kuyruk açılınca `scheduler` değişir (`startJobs`). */
+    staffLinks: StaffLinkRuntime
   }
 }
 
@@ -269,6 +275,12 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
     app.addHook('onClose', () => scanScheduler.close())
   const fileScan: FileScanRuntime = { scanner, scheduler: scanScheduler }
   app.decorate('fileScan', fileScan)
+
+  // Kuyruksuz parola bağlantıları yanıttan sonra gider; kapanışta bitmeleri beklenir.
+  const inlineLinks = new InlineStaffLinkScheduler({ db, auth, log: app.log })
+  app.addHook('onClose', () => inlineLinks.close())
+  const staffLinks: StaffLinkRuntime = { scheduler: inlineLinks, inline: inlineLinks }
+  app.decorate('staffLinks', staffLinks)
 
   registerErrorHandler(app)
   registerRequestContext(app)

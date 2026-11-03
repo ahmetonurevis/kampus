@@ -952,6 +952,8 @@ describe('Sürüm durum geçişleri', () => {
             timeLimitMinutes: null,
             shuffleItems: false,
             passageVersionId: null,
+            listeningVersionId: null,
+            unit: null,
           },
         },
         {
@@ -962,6 +964,8 @@ describe('Sürüm durum geçişleri', () => {
             timeLimitMinutes: null,
             shuffleItems: false,
             passageVersionId: null,
+            listeningVersionId: null,
+            unit: null,
           },
         },
         { id: 'test-text-v1', content: { type: 'text', body: 'x', fileId: null } },

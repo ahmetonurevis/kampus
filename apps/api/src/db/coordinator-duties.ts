@@ -4,6 +4,7 @@ import type { CoordinatorDutyDraft } from '@kampus/school-core/lib/coordinator-d
 
 import type { Database } from './client.ts'
 import { memberships } from './schema/auth.ts'
+import { membershipLinks } from './schema/membership-links.ts'
 import { coordinatorDuties } from './schema/coordinator-duties.ts'
 
 /**
@@ -48,6 +49,38 @@ export async function activeDutiesOf(
     .where(and(active(institutionId), eq(coordinatorDuties.membershipId, membershipId)))
     .orderBy(asc(coordinatorDuties.kind), asc(coordinatorDuties.scopeId))
   return rows.map(toDuty)
+}
+
+/**
+ * Öğretmen kaydına (`teacher` bağlantısı) bağlı üyeliklerin etkin görevleri. Öğretmen kaydı
+ * değişirken (branş) görev kapsamının tutarlı kalması için okunur (DOM-YTK-027); arşivli
+ * bağlantı ve arşivli görev sayılmaz.
+ */
+export async function activeDutiesOfTeacherRecord(
+  db: Database,
+  institutionId: string,
+  teacherRecordId: string,
+): Promise<StoredCoordinatorDuty[]> {
+  const rows = await db
+    .select({ duty: coordinatorDuties })
+    .from(coordinatorDuties)
+    .innerJoin(
+      membershipLinks,
+      and(
+        eq(membershipLinks.institutionId, coordinatorDuties.institutionId),
+        eq(membershipLinks.membershipId, coordinatorDuties.membershipId),
+      ),
+    )
+    .where(
+      and(
+        active(institutionId),
+        eq(membershipLinks.kind, 'teacher'),
+        eq(membershipLinks.recordId, teacherRecordId),
+        isNull(membershipLinks.archivedAt),
+      ),
+    )
+    .orderBy(asc(coordinatorDuties.kind), asc(coordinatorDuties.scopeId))
+  return rows.map((row) => toDuty(row.duty))
 }
 
 export async function listCoordinatorDuties(

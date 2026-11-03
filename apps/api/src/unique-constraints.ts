@@ -21,9 +21,10 @@
  *
  * Depoda kısıt adına göre çevrilen ihlaller (`constraintAs`, `insertNewVersion`) buraya gelmeden
  * `AppError` olur. Buradaki `rule` karşılıkları depodakiyle aynı kod ve iletidedir; depoda kendi
- * koduyla dönen üç sıra numarası kısıtı (`rubric_versions_rubric_number_key` →
+ * koduyla dönen dört sıra numarası kısıtı (`rubric_versions_rubric_number_key` →
  * `rubric_version_exists`, `attempt_media_plays_attempt_file_number_key` →
- * `listening_play_conflict`, `submission_versions_submission_number_key` → `version_conflict`)
+ * `listening_play_conflict`, `attempt_item_checks_pkey` → `item_check_conflict`,
+ * `submission_versions_submission_number_key` → `version_conflict`)
  * burada `retry`'dır: depo dışından gelen ihlal 409 `conflict` olur.
  */
 
@@ -192,6 +193,7 @@ export const UNIQUE_CONSTRAINTS = {
   ),
   attempt_media_plays_pkey: RETRY,
   attempt_media_plays_attempt_file_number_key: RETRY,
+  attempt_item_checks_pkey: RETRY,
   task_submissions_pkey: RETRY,
   task_submissions_assignment_learner_key: rule(
     'submission_exists',

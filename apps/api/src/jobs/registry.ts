@@ -1,6 +1,7 @@
 import { filesPurgeExpiredJob } from './files-purge-expired.ts'
 import { filesPurgeJob } from './files-purge.ts'
 import { idempotencyPurgeJob } from './idempotency-purge.ts'
+import { installmentRemindersJob } from './installment-reminders.ts'
 import { permissionRemindersJob } from './permission-reminders.ts'
 import type { AnyInstitutionJob } from './types.ts'
 
@@ -12,6 +13,8 @@ export const INSTITUTION_JOBS: readonly AnyInstitutionJob[] = [
   filesPurgeJob,
   filesPurgeExpiredJob,
   permissionRemindersJob,
+  // Onur (ON-026, #29): taksit vade ve gecikme bildirimi taraması.
+  installmentRemindersJob,
 ]
 
 /**

@@ -275,7 +275,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Resmî belge yalnız MEB sisteminde düzenlenir.
 - **Kaynak:** ÖÖKY md. 46/4 (EK-6), md. 10/8.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/certificates.ts` `planMebbisRecord` (yalnız kaydın geçerli onaylı `passed` kararı; karar başına bir iz, 409 `mebbis_already_recorded`; tarih Europe/Istanbul gününden ileri olamaz, 422 `mebbis_date_in_future`; yönetici ya da kurun seviyesinin akademik koordinatörü) ve `mebbisEligibleDecisionId` (devamsızlık, tekrar ve onaysız karar listeye girmez). Platform resmî belgeyi üretmez. API (OG-088): tablo `mebbis_certificate_records` (değişmez satır, migration 0053), `GET /api/v1/groups/:groupId/mebbis-certificates` (hak kazananlar ve iz; yönetici, grubu okuyan öğretmen), `POST /api/v1/progression-decisions/:decisionId/mebbis-record` (belge no ve tarih); modül `academic`, okulda 404. Ekran sonraki adımdır.
 
 ### DOM-DIL-081 · Kurum başarı belgesi
 
@@ -283,7 +283,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** CEFR bir sınav veya sertifika değildir; Avrupa Konseyi kurumları onaylamaz. Resmî belge görünümü yanıltıcıdır.
 - **Kaynak:** CEFR-CV; Cambridge English, "Using the CEFR: Principles of Good Practice" (CEFR bir onay mührü değildir). Belge PDF şablonu kuralları proje `CLAUDE.md`'dedir.
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/certificates.ts` `planCertificateIssue` (yalnız kaydın geçerli onaylı `passed` kararıyla; onay bekleyen 422 `certificate_decision_pending`, tekrar ve devamsızlık 422 `certificate_not_eligible`), içerik `certificateContentSchema` düzenleme anının kopyasıdır (kur adı, toplam ders saati, devam binde, `certificateLevelStatement` "kurum değerlendirmesine göre CEFR B1 düzeyinde", kur sonu beceri puanları) ve `FORBIDDEN_CERTIFICATE_PHRASES` ("CEFR sertifikası", "Avrupa Konseyi" …) reddedilir. Belgeyi kurum yöneticisi ya da kurun seviyesinin akademik koordinatörü düzenler (`canIssueCertificate`; Sabah kararı 85), düz öğretmen 403 `permission_denied`. API (OG-088): `apps/api/src/services/certificates.ts`, `routes/certificates.ts`; tablo `course_certificates` (migration 0053); `POST /api/v1/course-certificates` (`Idempotency-Key` zorunlu), `GET /api/v1/course-certificates` ve `/:certificateId` (öğrenci ve 18 yaş altı kursiyerin velisi yalnız geçerli belgeyi, düzenleyen ve iptal izi olmadan görür). PDF şablonu ve ekran sonraki adımdır.
 
 ### DOM-DIL-082 · Belge numarası ve iptal
 
@@ -291,7 +291,7 @@ Mevzuat notu: MEB izinli bir yabancı dil kursu ÖÖKY md. 4/1-s tanımında "ki
 - **Gerekçe:** Belge sahteciliğine ve sessiz değişikliğe karşı iz bırakılır; doğrulama sayfası kişisel veri sızdırmamalı.
 - **Kaynak:** İşletme kuralı; KVKK md. 4 (ölçülülük).
 - **Kurum türü:** `language_school`
-- **Kodda:** yok.
+- **Kodda:** core kuralı — `packages/school-core/src/cefr/certificates.ts` `formatCertificateNumber` (`KB-<İstanbul yılı>-<6+ hane sıra>`), `formatVerificationCode` (140 bit Crockford base32, numaradan bağımsız), `normalizeVerificationCode`, `planCertificateCancellation` (gerekçeli, bir kez; 409 `certificate_already_cancelled`) ve `certificateVerificationView` (yalnız durum, baş harfler, kur, gün, kurum adı). API (OG-088): sıra kurum sayacından kilitli artırmayla alınır (`certificate_counters`, yalnız artar; tetikleyici `kampus_certificate_counter_guard`), belge yalnız geçerliden iptale bir kez değişir (`kampus_certificate_guard`); karar başına tek geçerli belge (409 `certificate_already_issued`), iptalin yerine `replacesCertificateId` ile tek belge (409 `certificate_already_replaced`). `POST /api/v1/course-certificates/:certificateId/cancel` (`If-Match`). Kimliksiz `GET /api/v1/certificate-verifications/:code` modülden bağımsızdır (Sabah kararı 85), bozuk ve bulunamayan kod aynı 404, IP başına dakikada 30 istek; kod indeksi kurumsuz tekildir (belgelenmiş istisna, `schema/certificates.ts`) ve kod loglanmaz. Eşzamanlı düzenleme `test:pg` takımında sınanır (`pg-certificates.test.ts`).
 
 ## Kursiyer türleri
 

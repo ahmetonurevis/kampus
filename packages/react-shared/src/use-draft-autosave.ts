@@ -100,8 +100,7 @@ export function useDraftAutosave({
    * uygulama arka plana geçerken çağrılır.
    */
   const saveNow = useCallback(() => {
-    if (!enabledRef.current) return
-    void saver.saveIfPending(bodyRef.current)
+    void saver.saveIfPending(bodyRef.current, enabledRef.current)
   }, [saver])
 
   useEffect(

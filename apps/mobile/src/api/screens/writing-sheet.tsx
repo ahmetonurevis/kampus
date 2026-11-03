@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState, type RefObject } from 'react'
-import { AppState, View } from 'react-native'
+import { Alert, AppState, View } from 'react-native'
 import { isApiError } from '@kampus/api-client/errors.ts'
 import { learnerSubmissionsQuery } from '@kampus/react-shared/use-learner-task-progress.ts'
 import {
@@ -26,20 +26,24 @@ import { liveWordCount } from '@kampus/react-shared/writing-model.ts'
 import { Badge, Button, Field, Sheet, T } from '../../ui/components.tsx'
 import { DetailPair, Notice, Section, TextAction } from '../../ui/SchoolLayout.tsx'
 import { useNow } from '../../ui/use-now.ts'
-import { createFieldCollector, type CommandFailure } from '../command-failure.ts'
+import type { CommandFailure } from '../command-failure.ts'
 import { submissionVersions } from '../parent-learning.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import {
   SUBMIT_CONFIRM_TEXT,
   SUBMIT_DONE_TEXT,
+  UNSAVED_CLOSE_TEXT,
+  UNSAVED_CLOSE_TITLE,
+  autosaveEnabled,
   checkWritingBody,
+  closeNeedsConfirm,
   draftStatusText,
-  flushFailureText,
   initialWritingMode,
   mobileTone,
   newVersionText,
+  submitWriting,
   writingFieldFor,
-  writingSubmitFailure,
+  writingSheetReady,
   type WritingMode,
 } from '../student-writing.ts'
 import { useNotify } from '../toast.tsx'
@@ -151,9 +155,20 @@ export function WritingSheet({
   const missing = isNotFoundError(assignmentQuery.error)
   // Teslim listesi `useQuery` ile okunur (hata tipi genel); istek katmanı yalnız `ApiError` fırlatır.
   const listError = isApiError(listQuery.error) ? listQuery.error : null
-  const error = missing ? null : (assignmentQuery.error ?? listError ?? detailQuery.error)
+  // Taslak sorgusu yüklenemediyse (henüz verisi yokken) editör ve otomatik kayıt açılmaz; sonradan
+  // başarısız olan arka plan tazelemesi açık editörü kapatmaz.
+  const draftError = draftQuery.data ? null : draftQuery.error
+  const error = missing
+    ? null
+    : (assignmentQuery.error ?? listError ?? detailQuery.error ?? draftError)
   const waitingDetail = summary !== undefined && !detail && !detailQuery.error
-  const loaded = !!assignment && !!listQuery.data && !draftQuery.isPending && !waitingDetail
+  const loaded = writingSheetReady({
+    hasAssignment: !!assignment,
+    hasList: !!listQuery.data,
+    draftPending: draftQuery.isPending,
+    draftFailed: !!draftError,
+    waitingDetail,
+  })
   const textKind = assignment?.submission?.submissionKind === 'text'
   const progress = assignment ? writingProgress(assignment, detail ?? summary ?? null, now) : null
   const canAct = (progress?.canAct ?? false) && textKind
@@ -212,36 +227,37 @@ export function WritingSheet({
     if (busy || !current) return
     setFailure(null)
     setFlushing(true)
-    const hadConflict = current.conflict
-    let revision: number | null
+    let result: Awaited<ReturnType<typeof submitWriting>>
     try {
-      revision = await current.flush(body)
+      // Kayıt başarısızsa teslim gitmez, metin ekranda kalır (karar `submitWriting`'dedir).
+      result = await submitWriting({
+        text: body,
+        hadConflict: current.conflict,
+        flush: current.flush,
+        send: (revision, collector) =>
+          submitDraft.submit(
+            { assignmentId, revision },
+            {
+              setError: collector.setError,
+              fieldFor: writingFieldFor,
+              // Hata pencerenin içinde gösterilir; toast aynı hatayı ikinci kez söylemesin.
+              silent: () => true,
+            },
+          ),
+      })
     } finally {
       setFlushing(false)
     }
-    // Kayıt başarısızsa teslim gitmez, metin ekranda kalır; başka pencerenin kaydı varsa ilk basış
-    // yalnız uyarır, ikinci basış metni kaydedip teslim eder (web ile aynı).
-    if (revision === null) {
+    if (result.kind === 'busy') return
+    if (result.kind === 'not-saved') {
       setConfirming(false)
-      setFailure({ message: flushFailureText(hadConflict), fields: {}, retryable: false })
+      setFailure(result.failure)
       return
     }
-    const collector = createFieldCollector()
-    const outcome = await submitDraft.submit(
-      { assignmentId, revision },
-      {
-        setError: collector.setError,
-        fieldFor: writingFieldFor,
-        // Hata pencerenin içinde gösterilir; toast aynı hatayı ikinci kez söylemesin.
-        silent: () => true,
-      },
-    )
-    if (outcome.status === 'busy') return
-    if (outcome.status === 'failed') {
-      const next = writingSubmitFailure(outcome.error, collector.fields)
-      setFieldError(next.fields.body ?? null)
-      setFailure(next.message ? next : null)
-      if (!next.retryable) setConfirming(false)
+    if (result.kind === 'failed') {
+      setFieldError(result.fieldError)
+      setFailure(result.failure.message ? result.failure : null)
+      if (!result.failure.retryable) setConfirming(false)
       return
     }
     setConfirming(false)
@@ -249,14 +265,33 @@ export function WritingSheet({
     notify(SUBMIT_DONE_TEXT)
   }
 
+  /**
+   * Kaydedilmemiş metin varken (kayıt hatası ya da çakışma) kapatmadan önce sorar: metin cihaza
+   * yazılmadığı için kapatınca kaybolur (KVKK).
+   */
+  function confirmLoss(proceed: () => void) {
+    if (!closeNeedsConfirm({ editing, state: status.state, conflict: status.conflict })) {
+      proceed()
+      return
+    }
+    Alert.alert(UNSAVED_CLOSE_TITLE, UNSAVED_CLOSE_TEXT, [
+      { text: 'Vazgeç', style: 'cancel' },
+      { text: 'Yine de kapat', style: 'destructive', onPress: proceed },
+    ])
+  }
+
   function leaveEditor() {
     // Kaldırılan oturum bekleyen değişikliği kaydeder; metin taslakta kalır.
-    setConfirming(false)
-    setMode('readonly')
+    confirmLoss(() => {
+      setConfirming(false)
+      setMode('readonly')
+    })
   }
 
   const title = assignment?.title ?? 'Yazma görevi'
   const retry = failure?.retryable === true
+  // Alt bilgi kısa kalır (sayaç, durum, düğmeler): büyük yazı ve açık klavyede alan ezilmesin. Onay
+  // ve hata bildirimleri kaydırılabilir gövdededir.
   const editorFooter = (
     <View style={{ gap: 8 }}>
       <T muted size={13}>
@@ -271,14 +306,12 @@ export function WritingSheet({
         </T>
       )}
       {!!failure?.message && (
-        <Notice tone="red" title="Teslim edilemedi" text={failure.message}>
-          {retry && (
-            <T size={13}>Metin iletilmiş olabilir; yeniden denemek mükerrer sürüm açmaz.</T>
-          )}
-        </Notice>
+        <T size={13} accessibilityLiveRegion="polite">
+          Teslim edilemedi; ayrıntı metnin altında.
+        </T>
       )}
       {confirming ? (
-        <Notice title="Teslim edilsin mi?" text={SUBMIT_CONFIRM_TEXT}>
+        <View style={{ gap: 8 }}>
           <Button
             primary
             icon="Send"
@@ -291,7 +324,7 @@ export function WritingSheet({
           <Button disabled={busy} onPress={() => setConfirming(false)}>
             Vazgeç
           </Button>
-        </Notice>
+        </View>
       ) : (
         <Button primary icon="Send" disabled={!canAct || busy} onPress={askConfirm}>
           Teslim et
@@ -310,7 +343,7 @@ export function WritingSheet({
     <Sheet
       visible
       title={title}
-      onClose={onClose}
+      onClose={() => confirmLoss(onClose)}
       footer={editing ? editorFooter : readonlyFooter}
       pinFooter
     >
@@ -323,6 +356,7 @@ export function WritingSheet({
             if (assignmentQuery.error) void assignmentQuery.refetch()
             if (listQuery.error) void listQuery.refetch()
             if (detailQuery.error) void detailQuery.refetch()
+            if (draftError) void draftQuery.refetch()
           }}
         />
       ) : !loaded || !assignment || !progress ? (
@@ -344,6 +378,14 @@ export function WritingSheet({
                 error={fieldError ?? undefined}
                 placeholder="Metnini buraya yaz"
               />
+              {!!failure?.message && (
+                <Notice tone="red" title="Teslim edilemedi" text={failure.message}>
+                  {retry && (
+                    <T size={13}>Metin iletilmiş olabilir; yeniden denemek mükerrer sürüm açmaz.</T>
+                  )}
+                </Notice>
+              )}
+              {confirming && <Notice title="Teslim edilsin mi?" text={SUBMIT_CONFIRM_TEXT} />}
               {versionCount > 0 && (
                 <TextAction disabled={busy} onPress={leaveEditor}>
                   Gönderdiklerime dön
@@ -355,7 +397,7 @@ export function WritingSheet({
                 draft={draft}
                 initialBody={initialBody}
                 body={body}
-                enabled={canAct && !busy}
+                enabled={autosaveEnabled({ ready: loaded, canAct, busy })}
                 onAdopt={setBody}
                 onStatus={setStatus}
                 control={control}

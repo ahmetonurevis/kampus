@@ -334,6 +334,15 @@ describe('taslak otomatik kaydı: bekleyeni hemen kaydet (arka plan ve unmount)'
     assert.equal(t.calls.length, 0)
   })
 
+  test('IST-124: kayıt kapalıyken (teslim kapalı ya da sürüyor) yazılmaz, açılınca yazılır', async () => {
+    const t = setup(snap(1, 'Old.'))
+    assert.equal(await t.saver.saveIfPending('New.', false), null)
+    assert.equal(t.calls.length, 0)
+    assert.equal(t.saver.isDirty('New.'), true, 'metin kirli kalır, kayıt kaybolmaz')
+    assert.equal(await t.saver.saveIfPending('New.', true), true)
+    assert.deepEqual(t.calls, [{ revision: 1, body: 'New.' }])
+  })
+
   test('IST-124: çakışmada başka pencerenin metninin üstüne yazılmaz', async () => {
     const t = setup(snap(3, 'X'))
     t.saver.sync(snap(4, 'Y'), 'X plus edit')

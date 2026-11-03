@@ -19,7 +19,12 @@ import {
 import type { DraftSaveState } from '@kampus/react-shared/use-draft-autosave.ts'
 import { submissionVersionInputSchema } from '@kampus/school-core/skills/submission.ts'
 import { timeLabel } from '@kampus/school-core/lib/format.ts'
-import { commandFailure, type CommandFailure, type FieldErrors } from './command-failure.ts'
+import {
+  commandFailure,
+  createFieldCollector,
+  type CommandFailure,
+  type FieldErrors,
+} from './command-failure.ts'
 
 /** Mobil rozet tonları (`ui/components.tsx` `Tone`); gri ton telefonda sakin birincil tondur. */
 export type MobileTone = 'primary' | 'green' | 'amber' | 'red'
@@ -184,3 +189,103 @@ export const writingSubmitFailure = (error: ApiError, collected: FieldErrors): C
 export function flushFailureText(hadConflict: boolean): string {
   return hadConflict ? TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE : DRAFT_NOT_SAVED_TEXT
 }
+
+/** Teslim komutunun sonucu (`CommandOutcome`'un bu akışın kullandığı kısmı). */
+export type WritingSendOutcome =
+  { status: 'success' } | { status: 'busy' } | { status: 'failed'; error: ApiError }
+
+export type WritingSubmitResult =
+  /** Başka bir teslim sürüyor; ekran değişmez. */
+  | { kind: 'busy' }
+  /** Bekleyen taslak kaydedilemedi: teslim gitmedi, metin ekranda ve taslakta kalır. */
+  | { kind: 'not-saved'; failure: CommandFailure }
+  /** Teslim isteği hata verdi: alan maddesi metnin altında, diğerleri tek mesaj. */
+  | { kind: 'failed'; failure: CommandFailure; fieldError: string | null }
+  | { kind: 'done' }
+
+/**
+ * Teslim karar akışı (pencere ve test aynı fonksiyonu kullanır): önce bekleyen taslak kaydedilir
+ * (`flush`); kayıt başarısızsa teslim gitmez. Başka pencerenin kaydı varsa ilk basış yalnız uyarır
+ * (`flush` `null` döner), ikinci basış metni kaydedip teslim eder. Kaydedilen revizyon `send` ile
+ * teslim edilir; `send` alan hatalarını verilen toplayıcıya yazar.
+ */
+export async function submitWriting({
+  text,
+  hadConflict,
+  flush,
+  send,
+}: {
+  text: string
+  /** `flush` öncesindeki çakışma durumu (hata metnini belirler). */
+  hadConflict: boolean
+  flush: (text: string) => Promise<number | null>
+  send: (
+    revision: number,
+    collector: ReturnType<typeof createFieldCollector>,
+  ) => Promise<WritingSendOutcome>
+}): Promise<WritingSubmitResult> {
+  const revision = await flush(text)
+  if (revision === null) {
+    return {
+      kind: 'not-saved',
+      failure: { message: flushFailureText(hadConflict), fields: {}, retryable: false },
+    }
+  }
+  const collector = createFieldCollector()
+  const outcome = await send(revision, collector)
+  if (outcome.status === 'busy') return { kind: 'busy' }
+  if (outcome.status === 'failed') {
+    const failure = writingSubmitFailure(outcome.error, collector.fields)
+    return { kind: 'failed', failure, fieldError: failure.fields.body ?? null }
+  }
+  return { kind: 'done' }
+}
+
+// --- Yükleme, kayıt ve kapatma kararları ---------------------------------------------------
+
+/**
+ * Pencere içeriği hazır mı: görev, teslim listesi, (varsa) ayrıntı ve taslak sorgusu tamamlanmış
+ * olmalıdır. Taslak sorgusu düştüyse editör açılmaz: boş editör ilk otomatik kayıtta sunucudaki
+ * taslağın üstüne yazmaya çalışırdı.
+ */
+export const writingSheetReady = ({
+  hasAssignment,
+  hasList,
+  draftPending,
+  draftFailed,
+  waitingDetail,
+}: {
+  hasAssignment: boolean
+  hasList: boolean
+  draftPending: boolean
+  draftFailed: boolean
+  waitingDetail: boolean
+}) => hasAssignment && hasList && !draftPending && !draftFailed && !waitingDetail
+
+/** Otomatik taslak kaydı yalnız hazır pencerede, teslim açıkken ve teslim sürmüyorken çalışır. */
+export const autosaveEnabled = ({
+  ready,
+  canAct,
+  busy,
+}: {
+  ready: boolean
+  canAct: boolean
+  busy: boolean
+}) => ready && canAct && !busy
+
+export const UNSAVED_CLOSE_TITLE = 'Kaydedilmemiş metin'
+export const UNSAVED_CLOSE_TEXT = 'Kaydedilmemiş metin kaybolur. Yine de kapatılsın mı?'
+
+/**
+ * Editörden çıkarken onay gerekir mi: taslak kaydı hatalıysa ya da başka pencerenin kaydıyla
+ * çakışıyorsa metin sunucuda değildir; metin cihaza yazılmadığı için kapatınca kaybolur.
+ */
+export const closeNeedsConfirm = ({
+  editing,
+  state,
+  conflict,
+}: {
+  editing: boolean
+  state: DraftSaveState
+  conflict: boolean
+}) => editing && (state === 'error' || conflict)

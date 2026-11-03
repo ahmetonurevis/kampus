@@ -22,20 +22,24 @@ import {
   DRAFT_NOT_SAVED_TEXT,
   SUBMIT_CONFIRM_TEXT,
   SUBMIT_DONE_TEXT,
+  UNSAVED_CLOSE_TEXT,
+  autosaveEnabled,
   checkWritingBody,
+  closeNeedsConfirm,
   draftStatusText,
   flushFailureText,
   initialWritingMode,
   isWritingTask,
   mobileTone,
   newVersionText,
+  submitWriting,
   teacherTasks,
   writingFieldFor,
+  writingSheetReady,
   writingSubmitFailure,
   writingTaskMatches,
   writingTaskRow,
 } from '../apps/mobile/src/api/student-writing.ts'
-import { createFieldCollector } from '../apps/mobile/src/api/command-failure.ts'
 
 // Mobil öğrenci yazma görevi (OG-061; IST-124, IST-047; DOM-BEC-040, 044, 045, 046): liste satırı,
 // pencere kipi, durum metinleri, teslim onayı ve hata görünümü. Taslak metni cihaza yazılmaz.
@@ -361,10 +365,7 @@ describe('IST-124: teslim hatası görünümü (DOM-BEC-044, 046)', () => {
 describe('IST-124: teslim akışı, taslak ve yeniden deneme (IST-047)', () => {
   type Step = 'ok' | ApiError
 
-  /**
-   * Pencerenin `submit()` akışının eşi: önce bekleyen taslak kaydedilir, başarısızsa teslim
-   * gitmez; sonra revizyonla teslim komutu çalışır. Kayıt ve teslim istekleri kaydedilir.
-   */
+  /** Kayıt ve teslim istekleri kaydedilir; karar akışı `submitWriting`'indir. */
   function sheet(options: { saveFails?: boolean; submitScript?: Step[] }) {
     const saves: Array<{ revision: number | null; body: string }> = []
     const keys: Array<string | undefined> = []
@@ -395,33 +396,31 @@ describe('IST-124: teslim akışı, taslak ve yeniden deneme (IST-047)', () => {
       },
     } as unknown as KampusClient
     const session = createCommandSession()
-    async function submit(body: string) {
-      const hadConflict = saver.hasConflict()
-      const revision = await saver.flush(body)
-      if (revision === null) return { sent: false, failureText: flushFailureText(hadConflict) }
-      const collector = createFieldCollector()
-      const outcome = await runCommand(
-        session,
-        {
-          execute: (input, headers) =>
-            runRequest(() => submitTaskDraftCommand.request(client, input, headers)),
-          version: submitTaskDraftCommand.version,
-          messages: submitTaskDraftCommand.messages,
-          exclusive: true,
-          refresh: async () => {},
-        },
-        { assignmentId: 'a1', revision },
-        routeCommandErrors(
-          { setError: collector.setError, notifyError: (message) => toasts.push(message) },
-          { fieldFor: writingFieldFor, silent: () => true },
-        ),
-      )
-      if (outcome.status !== 'failed') return { sent: true, outcome, failure: null }
-      return {
-        sent: true,
-        outcome,
-        failure: writingSubmitFailure(outcome.error, collector.fields),
-      }
+    // Pencerenin kullandığı aynı karar fonksiyonu (`submitWriting`); yalnız teslim komutu gerçek
+    // `runCommand` ile sahte istemciye bağlanır.
+    function submit(body: string) {
+      return submitWriting({
+        text: body,
+        hadConflict: saver.hasConflict(),
+        flush: (text) => saver.flush(text),
+        send: (revision, collector) =>
+          runCommand(
+            session,
+            {
+              execute: (input, headers) =>
+                runRequest(() => submitTaskDraftCommand.request(client, input, headers)),
+              version: submitTaskDraftCommand.version,
+              messages: submitTaskDraftCommand.messages,
+              exclusive: true,
+              refresh: async () => {},
+            },
+            { assignmentId: 'a1', revision },
+            routeCommandErrors(
+              { setError: collector.setError, notifyError: (message) => toasts.push(message) },
+              { fieldFor: writingFieldFor, silent: () => true },
+            ),
+          ),
+      })
     }
     return {
       saver,
@@ -438,8 +437,7 @@ describe('IST-124: teslim akışı, taslak ve yeniden deneme (IST-047)', () => {
     const t = sheet({})
     const result = await t.submit('New text.')
     assert.deepEqual(t.saves, [{ revision: 1, body: 'New text.' }])
-    assert.equal(result.sent, true)
-    assert.equal(result.outcome?.status, 'success')
+    assert.equal(result.kind, 'done')
     assert.deepEqual(t.ifMatch, ['2'])
     assert.equal(t.keys.length, 1)
   })
@@ -454,24 +452,23 @@ describe('IST-124: teslim akışı, taslak ve yeniden deneme (IST-047)', () => {
   test('kayıt başarısızsa teslim gitmez ve metin kirli kalır: taslak kaybolmaz', async () => {
     const t = sheet({ saveFails: true })
     const result = await t.submit('New text.')
-    assert.equal(result.sent, false)
-    assert.equal(result.failureText, DRAFT_NOT_SAVED_TEXT)
+    assert.equal(result.kind, 'not-saved')
+    assert.equal(result.kind === 'not-saved' && result.failure.message, DRAFT_NOT_SAVED_TEXT)
     assert.equal(t.keys.length, 0, 'teslim isteği gitmedi')
     assert.equal(t.saver.isDirty('New text.'), true)
     // Bağlantı düzelince aynı metin yeniden kaydedilir ve teslim edilir.
     t.setSaveFails(false)
     const retry = await t.submit('New text.')
-    assert.equal(retry.sent, true)
-    assert.equal(retry.outcome?.status, 'success')
+    assert.equal(retry.kind, 'done')
     assert.deepEqual(t.ifMatch, ['2'])
   })
 
   test('ağ hatasında teslim belirsizdir: yeniden denemede aynı Idempotency-Key gider', async () => {
     const t = sheet({ submitScript: [networkError(), 'ok'] })
     const first = await t.submit('New text.')
-    assert.equal(first.failure?.retryable, true)
+    assert.equal(first.kind === 'failed' && first.failure.retryable, true)
     const second = await t.submit('New text.')
-    assert.equal(second.outcome?.status, 'success')
+    assert.equal(second.kind, 'done')
     assert.equal(t.keys.length, 2)
     assert.equal(t.keys[0], t.keys[1])
     // Metin değişmedi: ikinci basış yeni kayıt atmaz, aynı revizyonu gönderir.
@@ -483,11 +480,13 @@ describe('IST-124: teslim akışı, taslak ve yeniden deneme (IST-047)', () => {
     const t = sheet({
       submitScript: ['ok', apiError(409, 'draft_already_submitted', 'Zaten gönderildi')],
     })
-    assert.equal((await t.submit('Final text.')).outcome?.status, 'success')
+    assert.equal((await t.submit('Final text.')).kind, 'done')
     const again = await t.submit('Final text.')
-    assert.equal(again.failure?.fields.body, TASK_DRAFT_ALREADY_SUBMITTED_MESSAGE)
-    assert.equal(again.failure?.message, null)
-    assert.equal(again.failure?.retryable, false)
+    assert.equal(again.kind, 'failed')
+    if (again.kind !== 'failed') return
+    assert.equal(again.fieldError, TASK_DRAFT_ALREADY_SUBMITTED_MESSAGE)
+    assert.equal(again.failure.message, null)
+    assert.equal(again.failure.retryable, false)
     assert.deepEqual(t.toasts, [], 'aynı hata ikinci kez toast olmaz')
     assert.equal(t.saver.isDirty('Final text.'), false)
   })
@@ -495,16 +494,57 @@ describe('IST-124: teslim akışı, taslak ve yeniden deneme (IST-047)', () => {
   test('teslim kapanmışsa mesaj gösterilir ve metin taslakta kalır', async () => {
     const t = sheet({ submitScript: [apiError(409, 'submission_closed')] })
     const result = await t.submit('Late text.')
-    assert.equal(result.failure?.message, 'Bu görevin teslim süresi doldu.')
+    assert.equal(
+      result.kind === 'failed' && result.failure.message,
+      'Bu görevin teslim süresi doldu.',
+    )
     assert.equal(t.saver.isDirty('Late text.'), false, 'metin sunucudaki taslakta kayıtlı')
   })
 
   test('çift dokunma tek teslim isteği atar', async () => {
     const t = sheet({})
     const [first, second] = await Promise.all([t.submit('New text.'), t.submit('New text.')])
-    const statuses = [first, second].map((item) => item.outcome?.status)
     assert.equal(t.keys.length, 1)
-    assert.ok(statuses.includes('success'))
+    assert.deepEqual([first.kind, second.kind].sort(), ['busy', 'done'])
+  })
+})
+
+describe('IST-124: taslak yüklenemediğinde ve kapatırken karar', () => {
+  const ready = {
+    hasAssignment: true,
+    hasList: true,
+    draftPending: false,
+    draftFailed: false,
+    waitingDetail: false,
+  }
+
+  test('taslak sorgusu düşerse pencere hazır olmaz ve otomatik kayıt kapalı kalır', () => {
+    assert.equal(writingSheetReady(ready), true)
+    const failed = writingSheetReady({ ...ready, draftFailed: true })
+    assert.equal(failed, false)
+    assert.equal(autosaveEnabled({ ready: failed, canAct: true, busy: false }), false)
+  })
+
+  test('taslak bekleyen, ayrıntı bekleyen ya da eksik görev hazır sayılmaz', () => {
+    assert.equal(writingSheetReady({ ...ready, draftPending: true }), false)
+    assert.equal(writingSheetReady({ ...ready, waitingDetail: true }), false)
+    assert.equal(writingSheetReady({ ...ready, hasAssignment: false }), false)
+    assert.equal(writingSheetReady({ ...ready, hasList: false }), false)
+  })
+
+  test('otomatik kayıt yalnız hazır, teslim açık ve meşgul değilken çalışır', () => {
+    assert.equal(autosaveEnabled({ ready: true, canAct: true, busy: false }), true)
+    assert.equal(autosaveEnabled({ ready: true, canAct: false, busy: false }), false)
+    assert.equal(autosaveEnabled({ ready: true, canAct: true, busy: true }), false)
+  })
+
+  test('kayıt hatasında ya da çakışmada editörden çıkarken onay sorulur', () => {
+    assert.equal(closeNeedsConfirm({ editing: true, state: 'error', conflict: false }), true)
+    assert.equal(closeNeedsConfirm({ editing: true, state: 'saved', conflict: true }), true)
+    assert.equal(closeNeedsConfirm({ editing: true, state: 'saved', conflict: false }), false)
+    assert.equal(closeNeedsConfirm({ editing: true, state: 'saving', conflict: false }), false)
+    assert.equal(closeNeedsConfirm({ editing: false, state: 'error', conflict: true }), false)
+    assert.equal(UNSAVED_CLOSE_TEXT, 'Kaydedilmemiş metin kaybolur. Yine de kapatılsın mı?')
   })
 })
 
@@ -530,5 +570,12 @@ describe('IST-124: taslak cihaza yazılmaz, arka planda kaydedilir', () => {
     assert.match(sheetSource, /next !== 'active'/)
     assert.match(sheetSource, /control\.current\?\.saveNow\(\)/)
     assert.match(sheetSource, /subscription\.remove\(\)/)
+  })
+
+  test('pencere taslak hatasını gösterir, yeniden dener ve kapatmadan önce sorar', () => {
+    assert.match(sheetSource, /draftQuery\.refetch\(\)/)
+    assert.match(sheetSource, /Alert\.alert\(UNSAVED_CLOSE_TITLE, UNSAVED_CLOSE_TEXT/)
+    assert.match(sheetSource, /onClose=\{\(\) => confirmLoss\(onClose\)\}/)
+    assert.match(sheetSource, /submitWriting\(/)
   })
 })

@@ -44,6 +44,7 @@ import { FinanceExportSection } from './FinanceExportSection.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 import { PaymentPanel } from './PaymentPanel.tsx'
 import { PaymentsSection } from './PaymentsSection.tsx'
+import { ContractsSection } from './ContractsSection.tsx'
 import { WithdrawalsSection } from './WithdrawalsSection.tsx'
 import { LookupError, StatGrid } from '../academic/AcademicParts.tsx'
 
@@ -56,6 +57,7 @@ const VIEW_PARAM = 'gorunum'
 const VIEWS = {
   invoices: { label: 'Taksitler', param: '' },
   payments: { label: 'Tahsilat geçmişi', param: 'tahsilatlar' },
+  contracts: { label: 'Sözleşmeler', param: 'sozlesmeler' },
   tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
   scholarships: { label: 'Burslar', param: 'burs' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
@@ -277,6 +279,7 @@ export function FinancePage({ page }: { page: NavPage }) {
         }
       />
       {tab === 'payments' ? <PaymentsSection canReverse={isManager} /> : null}
+      {tab === 'contracts' ? <ContractsSection /> : null}
       {tab === 'tariffs' ? (
         <FeeTariffsSection
           canManage={isManager}

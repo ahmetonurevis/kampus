@@ -1,6 +1,10 @@
 import { use, type ReactNode } from 'react'
 import { Link } from 'react-router'
-import { CONTRACT_STATUS_LABELS, contractStatus } from '@kampus/school-core/lib/contract-status.ts'
+import {
+  CONTRACT_APPROVAL_METHOD_LABELS,
+  CONTRACT_STATUS_LABELS,
+  contractStatus,
+} from '@kampus/school-core/lib/contract-status.ts'
 import { dateLabel, dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { hasScholarshipContract } from '@kampus/school-core/lib/payments.ts'
 import { useAuth } from '@/auth/use-auth.ts'
@@ -10,11 +14,15 @@ import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
+import { Button } from '@/components/ui/button'
 import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
+import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useMediaQuery } from '@/hooks/use-media-query.ts'
 import { ViewScopeContext } from '@/layout/view-scope.ts'
 import type { NavPage } from '@/lib/navigation.ts'
+import { ContractApprovalPanel } from './ContractApprovalPanel.tsx'
+import { contractVersionLabel } from './ContractParts.tsx'
 import { FamilyInvoicesView } from './FamilyInvoicesView.tsx'
 import { StudentStatementSection } from './StudentStatementSection.tsx'
 import { invoiceRow } from './finance-rows.ts'
@@ -174,7 +182,11 @@ function NextInstallment({ childId }: { childId: string }) {
   )
 }
 
-/** Veli Sözleşmeler (`sozlesmeler`): seçili çocuğun sözleşmesi ve taksit taahhütnamesi PDF'leri. */
+/**
+ * Veli Sözleşmeler (`sozlesmeler`): seçili çocuğun sözleşme sürümleri ve taksit taahhütnamesi
+ * PDF'leri. Ödeyici onayı bekleyen sürüm "İncele ve onayla" ile sağ panelde açılır (`?onay=`,
+ * IST-092); onaylı sürüm onayın biçimini ve gününü gösterir.
+ */
 export function ParentContractsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const childId = use(ViewScopeContext)
@@ -183,12 +195,32 @@ export function ParentContractsPage({ page }: { page: NavPage }) {
     <>
       <PageHeading title={page.title} description={page.description} />
       <ChildSummary childId={childId} />
-      <Contracts childId={childId} />
+      <ContractsWithApproval childId={childId} />
     </>
   )
 }
 
-function Contracts({ childId }: { childId: string }) {
+/**
+ * Onay paneli listenin yükleme dalının dışındadır: parola doğrulaması sorguları baştan yükler,
+ * panel bu sırada sökülürse bekleyen onay vazgeçilmiş sayılırdı (`useContractApproval`).
+ */
+function ContractsWithApproval({ childId }: { childId: string }) {
+  const approval = useDetailPanel('onay')
+  return (
+    <>
+      <Contracts childId={childId} onApprove={approval.open} />
+      <ContractApprovalPanel contractId={approval.selectedId} onClose={approval.close} />
+    </>
+  )
+}
+
+function Contracts({
+  childId,
+  onApprove,
+}: {
+  childId: string
+  onApprove: (contractId: string) => void
+}) {
   const contracts = useCoreAll('contracts', { filters: { studentId: childId } })
   if (contracts.error)
     return <QueryError error={contracts.error} onRetry={() => void contracts.refetch()} />
@@ -204,29 +236,46 @@ function Contracts({ childId }: { childId: string }) {
   const shown = all.filter((contract) => contract.cancelledAt === undefined)
   return (
     <ul aria-label="Belgeler" className="grid grid-cols-[repeat(auto-fit,minmax(260px,1fr))] gap-4">
-      {shown.map((contract) => (
-        <li
-          key={contract.id}
-          className="panel document-card grid content-start gap-2 rounded-card border bg-surface p-6"
-        >
-          <h2 className="text-lg font-semibold">{contract.title}</h2>
-          <p className="text-sm text-muted-foreground">
-            {dateLabel(contract.date, { year: 'numeric' })} ·{' '}
-            {CONTRACT_STATUS_LABELS[contractStatus(contract, all)]}
-          </p>
-          <p className="text-sm">
-            Eğitim bedeli: <strong>{money(contract.amount)}</strong>
-          </p>
-          <div>
-            <PdfButton
-              type="contract"
-              recordId={contract.id}
-              label="Sözleşmeyi görüntüle"
-              size="default"
-            />
-          </div>
-        </li>
-      ))}
+      {shown.map((contract) => {
+        const status = contractStatus(contract, all)
+        return (
+          <li
+            key={contract.id}
+            className="panel document-card grid content-start gap-2 rounded-card border bg-surface p-6"
+          >
+            <h2 className="text-lg font-semibold">{contract.title}</h2>
+            <p className="text-sm text-muted-foreground">
+              {dateLabel(contract.date, { year: 'numeric' })} · {contractVersionLabel(contract)} ·{' '}
+              {CONTRACT_STATUS_LABELS[status]}
+            </p>
+            <p className="text-sm">
+              Eğitim bedeli: <strong>{money(contract.amount)}</strong>
+            </p>
+            {contract.approval ? (
+              <p className="text-sm text-muted-foreground">
+                {CONTRACT_APPROVAL_METHOD_LABELS[contract.approval.method]} ·{' '}
+                {dateLabel(contract.approval.approvedAt, { year: 'numeric' })}
+              </p>
+            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {status === 'awaiting_approval' ? (
+                <Button
+                  aria-label={`${contract.title} ${contractVersionLabel(contract)} incele ve onayla`}
+                  onClick={() => onApprove(contract.id)}
+                >
+                  İncele ve onayla
+                </Button>
+              ) : null}
+              <PdfButton
+                type="contract"
+                recordId={contract.id}
+                label="Sözleşmeyi görüntüle"
+                size="default"
+              />
+            </div>
+          </li>
+        )
+      })}
       {hasScholarshipContract(all, childId) ? null : (
         <li className="panel document-card grid content-start gap-2 rounded-card border bg-surface p-6">
           <h2 className="text-lg font-semibold">Taksit taahhütnamesi</h2>

@@ -1,6 +1,11 @@
 import test, { describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { apiCategories, apiPages, canOpenScreen } from '../apps/mobile/src/api/pages.ts'
+import {
+  apiCategories,
+  apiPages as allApiPages,
+  canOpenScreen,
+} from '../apps/mobile/src/api/pages.ts'
+import { OGUZHAN_SCREENS } from '../apps/mobile/src/api/screen-registry.ts'
 import {
   clampPageIndex,
   withFilter,
@@ -17,6 +22,13 @@ import {
   matchesSearch,
   submissionHint,
 } from '../apps/mobile/src/api/presentation.ts'
+
+// Bu dosya platform ekranlarının tam listesini sabitler; Onur bloğuna eklenen kayıt ve finans
+// ekranları (`screen-registry.ts`) burada süzülür; kayıt kuralları
+// `mobile-screen-registry.test.ts` içindedir.
+const PLATFORM_SCREENS = new Set<string>(OGUZHAN_SCREENS.map((entry) => entry.screen))
+const apiPages = (session: Parameters<typeof allApiPages>[0]) =>
+  allApiPages(session).filter((page) => PLATFORM_SCREENS.has(page.screen))
 
 const open = { academic: true }
 const closed = { academic: false }

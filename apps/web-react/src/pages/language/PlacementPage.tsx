@@ -12,6 +12,7 @@ import { SearchField } from '@/components/SearchField.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
+import { useAuth } from '@/auth/use-auth.ts'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
@@ -20,10 +21,10 @@ import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { OpenPlacementPanel, parseAction, PlacementDetailPanel } from './PlacementPanels.tsx'
 import {
-  isLearnerKind,
-  LEARNER_KIND_OPTIONS,
+  learnerKindOptions,
   learnerOptions,
   placementListRow,
+  resolveLearnerKind,
   type PlacementListRow,
 } from './placement-model.ts'
 
@@ -49,13 +50,26 @@ const NO_SORT: readonly string[] = []
 export function PlacementPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const [params, setParams] = useSearchParams()
-  const kindParam = params.get(KIND_PARAM)
-  const kind: LearnerKind = isLearnerKind(kindParam) ? kindParam : 'student'
+  const { session } = useAuth()
+  const crmOpen = session?.modules.crm === true
+  const kind = resolveLearnerKind(params.get(KIND_PARAM), crmOpen)
+  const kindOptions = learnerKindOptions(crmOpen)
   const learnerId = params.get(LEARNER_PARAM) ?? ''
   const [search, setSearch] = useState('')
 
+  const panel = useDetailPanel(DETAIL_PARAM, [ACTION_PARAM])
+  const actionPanel = useDetailPanel(ACTION_PARAM)
+  const openPanel = useDetailPanel(OPEN_PARAM)
+  const openSession = panel.open
+
   const students = useCoreAll('students')
-  const prospects = useCoreAll('prospects')
+  // Adaylar CRM modülündedir: yalnız modül açıkken ve aday türü seçilince (sayfada ya da oturum
+  // açma panelinde) çekilir; kapalı modülün hatası öğrenci akışını etkilemez.
+  const prospects = useCoreAll(
+    'prospects',
+    {},
+    { enabled: crmOpen && (kind === 'prospect' || openPanel.selectedId === NEW) },
+  )
   const records = useMemo(
     () => ({
       student: (students.data ?? []).map((row) => row.record),
@@ -79,11 +93,6 @@ export function PlacementPage({ page }: { page: NavPage }) {
     pageSize: list.state.pageSize,
   })
   const rows = useMemo(() => sessions.data?.rows.map(placementListRow), [sessions.data])
-
-  const panel = useDetailPanel(DETAIL_PARAM, [ACTION_PARAM])
-  const actionPanel = useDetailPanel(ACTION_PARAM)
-  const openPanel = useDetailPanel(OPEN_PARAM)
-  const openSession = panel.open
 
   function selectLearner(next: { kind?: LearnerKind; learnerId?: string }) {
     setParams(
@@ -143,7 +152,7 @@ export function PlacementPage({ page }: { page: NavPage }) {
     [openSession],
   )
 
-  const lookupError = students.error ?? prospects.error
+  const lookupError = students.error ?? (kind === 'prospect' ? prospects.error : null)
   const selectedName = learnerId ? learnerName(learnerId) : ''
   return (
     <>
@@ -171,10 +180,13 @@ export function PlacementPage({ page }: { page: NavPage }) {
               value={kind}
               onChange={(event) => {
                 setSearch('')
-                selectLearner({ kind: event.target.value as LearnerKind, learnerId: '' })
+                selectLearner({
+                  kind: resolveLearnerKind(event.target.value, crmOpen),
+                  learnerId: '',
+                })
               }}
             >
-              {LEARNER_KIND_OPTIONS.map((option) => (
+              {kindOptions.map((option) => (
                 <NativeSelectOption key={option.value} value={option.value}>
                   {option.label}
                 </NativeSelectOption>
@@ -209,7 +221,7 @@ export function PlacementPage({ page }: { page: NavPage }) {
             error={lookupError}
             onRetry={() => {
               void students.refetch()
-              void prospects.refetch()
+              if (kind === 'prospect') void prospects.refetch()
             }}
           />
         ) : null}
@@ -266,6 +278,7 @@ export function PlacementPage({ page }: { page: NavPage }) {
         open={openPanel.selectedId === NEW}
         defaults={{ learnerKind: kind, learnerId }}
         learners={learners}
+        kindOptions={kindOptions}
         onClose={openPanel.close}
         onOpened={opened}
       />

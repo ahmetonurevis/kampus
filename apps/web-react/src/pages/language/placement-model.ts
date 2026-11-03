@@ -42,6 +42,16 @@ export const SECTION_KEYS = enumKeys(PLACEMENT_SECTIONS)
 
 export const isLearnerKind = (value: string | null): value is LearnerKind =>
   value !== null && value in LEARNER_KINDS
+/**
+ * Adaylar CRM modülündedir (`prospects` koleksiyonu); modül kapalıysa aday türü seçilemez ve
+ * adreste `?tur=prospect` olsa bile öğrenciye dönülür.
+ */
+export const learnerKindOptions = (crmOpen: boolean) =>
+  crmOpen
+    ? LEARNER_KIND_OPTIONS
+    : LEARNER_KIND_OPTIONS.filter((option) => option.value !== 'prospect')
+export const resolveLearnerKind = (value: string | null, crmOpen: boolean): LearnerKind =>
+  isLearnerKind(value) && (crmOpen || value !== 'prospect') ? value : 'student'
 export const isPlacementSection = (value: string): value is PlacementSection =>
   value in PLACEMENT_SECTIONS
 

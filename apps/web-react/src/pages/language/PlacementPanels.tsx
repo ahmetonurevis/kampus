@@ -43,7 +43,6 @@ import {
   decisionFormSchema,
   decisionRows,
   formOptionValue,
-  LEARNER_KIND_OPTIONS,
   LEVEL_OPTIONS,
   MODE_OPTIONS,
   openBody,
@@ -723,12 +722,14 @@ export function OpenPlacementPanel({
   open,
   defaults,
   learners,
+  kindOptions,
   onClose,
   onOpened,
 }: {
   open: boolean
   defaults: Pick<OpenFormValues, 'learnerKind' | 'learnerId'>
   learners: (kind: OpenFormValues['learnerKind']) => readonly LearnerOption[]
+  kindOptions: readonly { value: OpenFormValues['learnerKind']; label: string }[]
   onClose: () => void
   onOpened: (session: PlacementSession) => void
 }) {
@@ -742,6 +743,7 @@ export function OpenPlacementPanel({
         <OpenPlacementForm
           defaults={defaults}
           learners={learners}
+          kindOptions={kindOptions}
           onClose={onClose}
           onOpened={onOpened}
         />
@@ -753,11 +755,13 @@ export function OpenPlacementPanel({
 function OpenPlacementForm({
   defaults,
   learners,
+  kindOptions,
   onClose,
   onOpened,
 }: {
   defaults: Pick<OpenFormValues, 'learnerKind' | 'learnerId'>
   learners: (kind: OpenFormValues['learnerKind']) => readonly LearnerOption[]
+  kindOptions: readonly { value: OpenFormValues['learnerKind']; label: string }[]
   onClose: () => void
   onOpened: (session: PlacementSession) => void
 }) {
@@ -812,7 +816,7 @@ function OpenPlacementForm({
             className="w-full"
             disabled={busy}
           >
-            {LEARNER_KIND_OPTIONS.map((option) => (
+            {kindOptions.map((option) => (
               <NativeSelectOption key={option.value} value={option.value}>
                 {option.label}
               </NativeSelectOption>

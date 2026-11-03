@@ -8,12 +8,14 @@ import {
   decisionBody,
   decisionDefaults,
   decisionFormSchema,
+  learnerKindOptions,
   learnerOptions,
   openBody,
   openFormSchema,
   placedLevel,
   placementListRow,
   rubricSectionBody,
+  resolveLearnerKind,
   rubricSectionSchema,
   sectionRows,
   skillSuggestionRows,
@@ -431,4 +433,20 @@ test('DOM-BEC-020 rubrikli bölüm: hedefin altındaki banda yorum gerekir, bant
       { criterionId: 'c2', band: 1, comment: 'Sınırlı söz varlığı' },
     ],
   })
+})
+
+test('IST-058 kişi türü: CRM kapalıyken aday seçilemez, adresteki aday öğrenciye döner', () => {
+  assert.deepEqual(
+    learnerKindOptions(true).map((option) => option.value),
+    ['student', 'prospect'],
+  )
+  assert.deepEqual(
+    learnerKindOptions(false).map((option) => option.value),
+    ['student'],
+  )
+  assert.equal(resolveLearnerKind('prospect', true), 'prospect')
+  assert.equal(resolveLearnerKind('prospect', false), 'student')
+  assert.equal(resolveLearnerKind('student', false), 'student')
+  assert.equal(resolveLearnerKind('bilinmeyen', true), 'student')
+  assert.equal(resolveLearnerKind(null, true), 'student')
 })

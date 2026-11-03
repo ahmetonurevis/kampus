@@ -6,12 +6,18 @@ import {
   auditCsvRow,
   auditRow,
   formatInstant,
+  INVITE_DEFAULTS,
+  invitationRow,
+  inviteBody,
+  inviteFormSchema,
   isDay,
   memberCsvRow,
   memberRow,
   memberSort,
   reversedRange,
   ROLE_OPTIONS,
+  STAFF_ROLE_OPTIONS,
+  staffActions,
 } from '../src/pages/settings/settings-rows.ts'
 
 const member = (patch: Partial<InstitutionMember> = {}): InstitutionMember => ({
@@ -25,6 +31,7 @@ const member = (patch: Partial<InstitutionMember> = {}): InstitutionMember => ({
     { kind: 'child', name: 'Deniz Yılmaz' },
     { kind: 'child', name: null },
   ],
+  deactivatedAt: null,
   createdAt: '2026-10-30T21:30:00.000Z',
   ...patch,
 })
@@ -92,6 +99,93 @@ describe('kullanıcı satırı', () => {
       ROLE_OPTIONS.map((option) => option.label),
       ['Yönetici', 'Ön Büro & Satış', 'Öğretmen', 'Öğrenci', 'Veli'],
     )
+  })
+})
+
+describe('personel hesabı (DOM-YTK-070)', () => {
+  test('DOM-YTK-070: satır pasifleştirilmiş ve personel bilgisini taşır', () => {
+    const teacher = memberRow(
+      member({ role: 'ogretmen', status: 'passive', deactivatedAt: '2026-11-02T08:00:00.000Z' }),
+    )
+    assert.equal(teacher.deactivated, true)
+    assert.equal(teacher.staff, true)
+    assert.equal(teacher.status, 'Pasif')
+    const parent = memberRow(member())
+    assert.equal(parent.deactivated, false)
+    assert.equal(parent.staff, false)
+  })
+
+  test('DOM-YTK-070: işlemler yalnız başkasının personel hesabında; pasif hesapta yalnız geri alma', () => {
+    const active = memberRow(member({ role: 'onburo', userId: 'u2' }))
+    assert.deepEqual(staffActions(active, 'u1'), {
+      changeRole: true,
+      deactivate: true,
+      reactivate: false,
+    })
+    assert.deepEqual(staffActions({ ...active, deactivated: true }, 'u1'), {
+      changeRole: false,
+      deactivate: false,
+      reactivate: true,
+    })
+    const none = { changeRole: false, deactivate: false, reactivate: false }
+    assert.deepEqual(staffActions(active, 'u2'), none, 'kendi hesabı')
+    assert.deepEqual(staffActions(memberRow(member()), 'u9'), none, 'veli hesabı')
+  })
+
+  test('DOM-YTK-070: davet satırı adı yoksa e-postayı gösterir, rol Türkçe', () => {
+    const row = invitationRow({
+      id: 'inv-1',
+      membershipId: 'm-1',
+      name: null,
+      email: 'selin@kampus.example',
+      role: 'ogretmen',
+      status: 'pending',
+      createdAt: '2026-10-30T21:30:00.000Z',
+      expiresAt: '2026-11-06T21:30:00.000Z',
+    })
+    assert.equal(row.name, 'selin@kampus.example')
+    assert.equal(row.roleLabel, 'Öğretmen')
+    assert.equal(row.createdLabel, formatInstant('2026-10-30T21:30:00.000Z'))
+  })
+
+  test('DOM-YTK-070: davet gövdesi öğretmen kaydını yalnız öğretmen rolünde taşır', () => {
+    assert.deepEqual(
+      inviteBody({ email: 'a@b.test', name: 'Ali', role: 'ogretmen', teacherId: 't1' }),
+      { email: 'a@b.test', name: 'Ali', role: 'ogretmen', teacherId: 't1' },
+    )
+    assert.deepEqual(
+      inviteBody({ email: 'a@b.test', name: 'Ali', role: 'onburo', teacherId: 't1' }),
+      {
+        email: 'a@b.test',
+        name: 'Ali',
+        role: 'onburo',
+      },
+    )
+    assert.equal('teacherId' in inviteBody({ ...INVITE_DEFAULTS, teacherId: '  ' }), false)
+  })
+
+  test('DOM-YTK-070: form e-postayı küçültür, geçersiz e-posta ve kısa adı Türkçe reddeder', () => {
+    const ok = inviteFormSchema.safeParse({
+      email: ' Selin@Kampus.Example ',
+      name: 'Selin Kaya',
+      role: 'ogretmen',
+      teacherId: '',
+    })
+    assert.equal(ok.success && ok.data.email, 'selin@kampus.example')
+    const bad = inviteFormSchema.safeParse({ ...INVITE_DEFAULTS, email: 'yok', name: 'A' })
+    assert.equal(bad.success, false)
+    const messages = bad.error?.issues.map((issue) => issue.message) ?? []
+    assert.ok(messages.includes('Geçerli bir e-posta adresi girin.'))
+    assert.ok(messages.includes('Ad en az 2 karakter olmalı.'))
+    assert.deepEqual(
+      STAFF_ROLE_OPTIONS.map((option) => option.value),
+      ['yonetici', 'ogretmen', 'onburo'],
+    )
+  })
+
+  test('DOM-YTK-070: işlem geçmişinde personel işlemleri Türkçe', () => {
+    assert.equal(actionLabel('staff.deactivate'), 'Personel hesabı pasifleştirildi')
+    assert.equal(entityLabel('staff_invitation'), 'Personel daveti')
   })
 })
 

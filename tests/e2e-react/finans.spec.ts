@@ -273,8 +273,13 @@ test.describe('Finans: tahsilat', () => {
     await expect(method).toBeVisible()
     await expect(method.getByRole('option', { name: 'Nakit' })).toHaveCount(0)
 
+    // Ödeme ayarı "Kurum & Modüller"in altında değil, kendi sekmesindedir; seçim adreste kalır.
     await page.goto('/yonetici/ayarlar')
     const toggle = page.getByRole('switch', { name: 'Nakit tahsilat' })
+    await expect(page.getByRole('button', { name: 'Kurum & Modüller' })).toBeVisible()
+    await expect(toggle).toHaveCount(0)
+    await page.getByRole('button', { name: 'Ödeme & Banka' }).click()
+    await expect(page).toHaveURL(/[?&]sekme=odeme(&|$)/)
     await expect(toggle).not.toBeChecked()
     await toggle.click()
     const confirm = page.getByRole('dialog', { name: 'Nakit tahsilatı aç' })
@@ -299,7 +304,7 @@ test.describe('Finans: tahsilat', () => {
     const school = await tenant({ roles: [], students: ['s16'] })
     await loginAs(school.user('yonetici'))
 
-    await page.goto('/yonetici/ayarlar')
+    await page.goto('/yonetici/ayarlar?sekme=odeme')
     const accountForm = page.getByRole('form', { name: 'Banka hesabı ekle' })
     await accountForm.getByLabel('Banka adı').fill('Örnek Bankası')
     await accountForm.getByLabel('IBAN').fill('TR33 0006 1005 1978 6457 8413 27')
@@ -459,6 +464,39 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: /yeni sürüm aç/ })).toHaveCount(0)
     await page.getByRole('button', { name: /tarifesini görüntüle/ }).click()
     await expect(page.getByRole('dialog')).toContainText('Öğrenim ücreti')
+  })
+
+  test('ON-024: yönetici dosya sütunlarını eşler, dosya yeni başlıkla iner; ön büroda düğme yok', async ({
+    page,
+    loginAs,
+    tenant,
+    api,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s21'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s21-5', 'Kredi kartı')
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
+    await page.getByRole('button', { name: 'Dosya sütunları' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Dosya sütunları' })
+    await dialog.getByLabel('Tahsilat dosyası 1. sütun başlığı').fill('')
+    await dialog.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(dialog.getByText('Sütun başlığını girin.')).toBeVisible()
+    await dialog.getByLabel('Tahsilat dosyası 1. sütun başlığı').fill('Fiş Tarihi')
+    await dialog.getByLabel('Tarih biçimi').selectOption('tr')
+    await dialog.getByRole('button', { name: 'Kaydet' }).click()
+    await expect(page.getByText('Dosya sütunları kaydedildi.')).toBeVisible()
+
+    const downloading = page.waitForEvent('download')
+    await page.getByRole('button', { name: 'Tahsilat dosyası' }).click()
+    const body = await readFile(await (await downloading).path(), 'utf8')
+    expect(body).toContain('"Fiş Tarihi"')
+    expect(body).toMatch(/"\d{2}\.\d{2}\.\d{4}"/)
+
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/tahsilat-takip?gorunum=aktarim')
+    await expect(page.getByLabel('Dönem toplamları').or(page.getByRole('main'))).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Dosya sütunları' })).toHaveCount(0)
   })
 
   test('IST-111: dönem toplamı dosya toplamına eşittir; dosya yöneticiye iner, ön büro indiremez', async ({
@@ -690,6 +728,29 @@ test.describe('Finans: liste', () => {
     expect(cents(await card('Toplam eğitim bedeli').textContent())).toBeGreaterThanOrEqual(
       1920 * 2_450_000,
     )
+  })
+
+  test('IST-116: pano "Gecikmiş tutar" Finans toplamıyla aynıdır, kampüs seçilince çizilmez', async ({
+    page,
+    api,
+  }) => {
+    const client = await api('yonetici')
+    await page.goto('/yonetici/dashboard')
+    const card = page.getByRole('article', { name: 'Gecikmiş tutar', exact: true })
+    await expect
+      .poll(async () => {
+        const result = await client.get('/api/v1/finance/totals')
+        expect(result.status).toBe(200)
+        const { data } = result.body as { data: { overdueCents: number } }
+        const shown = cents(await card.locator('.stat-value').textContent())
+        return shown === data.overdueCents ? 'eşit' : `${shown} != ${data.overdueCents}`
+      })
+      .toBe('eşit')
+
+    // Uç kurum genelidir: seçili kampüsün rakamı sanılmasın diye kart çizilmez.
+    await page.goto('/yonetici/dashboard?sube=b2')
+    await expect(page.getByRole('article', { name: 'Bekleyen tahsilat' })).toBeVisible()
+    await expect(card).toHaveCount(0)
   })
 
   test('durum filtresi sunucuda sayfalanır; ikinci sayfa aynı durumu verir', async ({ page }) => {

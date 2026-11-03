@@ -15,6 +15,7 @@ import { Input } from '@/components/ui/input'
 import { saveBlob } from '@/lib/download.ts'
 import { notify } from '@/lib/notify.ts'
 import { StatGrid } from '../academic/AcademicParts.tsx'
+import { FinanceExportProfileButton } from './FinanceExportProfilePanel.tsx'
 
 const FILES: readonly { kind: FinanceExportKind; label: string; name: string }[] = [
   { kind: 'payments', label: 'Tahsilat dosyası', name: 'tahsilatlar' },
@@ -128,6 +129,7 @@ export function FinanceExportSection({ canDownload }: { canDownload: boolean }) 
               {file.label}
             </Button>
           ))}
+          <FinanceExportProfileButton />
         </div>
       ) : (
         <p className="text-sm text-muted-foreground">Aktarım dosyalarını yönetici indirir.</p>

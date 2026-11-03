@@ -272,6 +272,14 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Kurum türü:** ikisi
 - **Kodda:** çelişiyor — denetim kaydı son 200 kayıtla kesilir (`packages/school-core/src/lib/school-workflows.js:1334`).
 
+### DOM-FIN-055 · Muhasebe aktarım profili
+
+- **Kural:** Kurum muhasebe dosyasının sütun adını, sırasını, ayırıcısını, tarih ve tutar biçimini ve sabit hesap kodlarını kendisi eşler. Profil yalnız biçimdir: satırlar ve toplamlar değişmez. Profil yoksa standart dosya iner. Yalnız yönetici düzenler.
+- **Gerekçe:** Kurumlar farklı muhasebe programı kullanır; dosya bağlanan programa göre gelmelidir (IST-111).
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** var — `lib/finance-export-profile.ts`, `GET`/`PATCH /api/v1/finance/export-profile`, `FinanceExportProfilePanel.tsx`. Programa özel hazır profil örnek dosya gelince eklenir; doğrudan API bağlantısı kapsam dışıdır.
+
 ### DOM-FIN-054 · Cari ekstre
 
 - **Kural:** Öğrencinin ekstresi taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle gösterir. Borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat silinmez, iptal gününe ters kayıt olarak yazılır. Taksite dağıtılmayan tutar iade alacağıdır, bakiyeyi düşürmez.

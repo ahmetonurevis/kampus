@@ -348,8 +348,15 @@
     {
       "idx": 49,
       "version": "7",
-      "when": 1793702358163,
-      "tag": "0049_protect_approved_contracts",
+      "when": 1793702412744,
+      "tag": "0049_create_finance_export_profiles",
+      "breakpoints": true
+    },
+    {
+      "idx": 50,
+      "version": "7",
+      "when": 1793703178279,
+      "tag": "0050_protect_approved_contracts",
       "breakpoints": true
     }
   ]

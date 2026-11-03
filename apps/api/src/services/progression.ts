@@ -28,6 +28,7 @@ import {
   saveProgressionReview,
   type StoredProgressionDecision,
 } from '../db/cefr.ts'
+import { listEnrollmentCertificates } from '../db/certificates.ts'
 import type { Database } from '../db/client.ts'
 import { activeDutiesOf, findInstitutionMembership } from '../db/coordinator-duties.ts'
 import { loadCourses, type StoredCourse } from '../db/courses.ts'
@@ -69,13 +70,13 @@ import { auditWork } from './task-work.ts'
 // TODO(cefr-kur-ayari): Kurum kur geçme eşiği ayarı (`progressionSettingsSchema`) saklanmıyor;
 // core varsayılanı (kur sonu 60, devam binde 800) kullanılır.
 
-const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
+export const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
 const assessmentEntity = (id: string) => ({ type: 'course_assessment', id })
 const decisionEntity = (id: string) => ({ type: 'progression_decision', id })
 
 /** Kur kaydının bağlamı: grup, kur, core `CourseEnrollment` ve kişinin rolü. */
-type EnrollmentContext = {
+export type EnrollmentContext = {
   stored: StoredEnrollment
   group: StoredGroup
   course: StoredCourse
@@ -84,13 +85,13 @@ type EnrollmentContext = {
   actor: ProgressionActor
 }
 
-async function languageSchool(db: Database, ctx: ServiceContext) {
+export async function languageSchool(db: Database, ctx: ServiceContext) {
   const institution = await getInstitution(db, ctx.institutionId)
   if (institution === null) throw new NotFoundError()
   return institution.type
 }
 
-async function coordinationOf(db: Database, ctx: ServiceContext) {
+export async function coordinationOf(db: Database, ctx: ServiceContext) {
   if (ctx.actor.role !== 'ogretmen') return NO_COORDINATOR_SCOPE
   const duties = await activeDutiesOf(db, ctx.institutionId, ctx.actor.membershipId)
   return duties.length === 0 ? NO_COORDINATOR_SCOPE : coordinatorScopeOf(duties)
@@ -100,7 +101,7 @@ async function coordinationOf(db: Database, ctx: ServiceContext) {
  * Grubun bağlamı; grup ya da kuru yoksa veya personel grubu okuyamıyorsa (core `canReadGroup`:
  * yönetici her grubu, öğretmen kendi grubunu ya da koordinatörü olduğu seviyenin grubunu) 404.
  */
-async function groupContext(db: Database, ctx: ServiceContext, groupId: string) {
+export async function groupContext(db: Database, ctx: ServiceContext, groupId: string) {
   const [groups, courses, coordination] = await Promise.all([
     loadGroups(db, ctx.institutionId),
     loadCourses(db, ctx.institutionId),
@@ -154,7 +155,7 @@ function toCourseEnrollment(
 }
 
 /** Kur kaydının bağlamı; kayıt yoksa, başka kurumunsa ya da kapsam dışıysa 404. */
-async function enrollmentContext(
+export async function enrollmentContext(
   db: Database,
   ctx: ServiceContext,
   enrollmentId: string,
@@ -379,7 +380,10 @@ export type ProgressionReviewBody = { action: 'approve' } | { action: 'reject'; 
  * seviyesinin akademik koordinatörü (403); kararı veren onaylayamaz (403
  * `progression_self_review`); sonuçlanmış karar 409 `progression_already_reviewed`. `If-Match`
  * kararın satır sürümüdür (tutmazsa 409, rol ve plan denetiminden sonra); eşzamanlı ikinci onay 409. Onaylı `passed`
- * kararında yanıt üst kur çıktısını (`next`, core `progressionNextStep`) taşır.
+ * kararında yanıt üst kur çıktısını (`next`, core `progressionNextStep`) taşır. Kaydın geçerli
+ * kurum başarı belgesi varken onay 422 `certificate_cancel_first`'tür (Sabah kararı 86): belgeler
+ * `runCommand`'ın kurum kilidi altında, aynı transaction'da okunur; belge düzenleme de aynı kilidi
+ * aldığından onay ile düzenleme arasında yarış kalmaz.
  */
 export function reviewProgressionDecision(
   ctx: ServiceContext,
@@ -401,7 +405,10 @@ export function reviewProgressionDecision(
         if (decision === null) throw new NotFoundError()
         const institutionType = await languageSchool(tx, ctx)
         const scope = await enrollmentContext(tx, ctx, decision.enrollmentId)
-        const evidence = await evidenceOf(tx, ctx, scope.stored.id)
+        const [evidence, certificates] = await Promise.all([
+          evidenceOf(tx, ctx, scope.stored.id),
+          listEnrollmentCertificates(tx, ctx.institutionId, scope.stored.id),
+        ])
         return {
           run: () => {
             const reviewed = planProgressionReview({
@@ -409,6 +416,7 @@ export function reviewProgressionDecision(
               enrollment: scope.enrollment,
               ...evidence,
               decision,
+              certificates,
               actor: scope.actor,
               input: { ...command.body, decisionId: decision.id },
               now: ctx.now,

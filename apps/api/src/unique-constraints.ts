@@ -167,6 +167,28 @@ export const UNIQUE_CONSTRAINTS = {
     'attendance_duplicate',
     'Bu ders saatinin yoklaması zaten alındı.',
   ),
+  // Kurum başarı belgesi ve MEBBİS izi (OG-088, migration 0053). Sıra numarası, belge numarası
+  // ve doğrulama kodu kurum sayacından ve rastgele üretilir; yarış yeniden denemeyle düzelir.
+  certificate_counters_pkey: RETRY,
+  course_certificates_pkey: RETRY,
+  course_certificates_enrollment_id_key: RETRY,
+  course_certificates_serial_key: RETRY,
+  course_certificates_number_key: RETRY,
+  course_certificates_verification_code_key: RETRY,
+  // Kur kaydı başına tek geçerli belge (Sabah kararı 86).
+  course_certificates_valid_enrollment_key: rule(
+    'certificate_already_issued',
+    'Bu kayıt için geçerli bir belge var; hata varsa belge iptal edilip yeniden düzenlenir.',
+  ),
+  course_certificates_replaces_key: rule(
+    'certificate_already_replaced',
+    'Bu belgenin yerine yeni belge zaten düzenlendi.',
+  ),
+  mebbis_certificate_records_pkey: RETRY,
+  mebbis_certificate_records_decision_key: rule(
+    'mebbis_already_recorded',
+    'Bu kursiyerin MEBBİS belgesi zaten işaretlendi.',
+  ),
 
   // --- İçerik havuzu --------------------------------------------------------------------------
   resources_pkey: RETRY,

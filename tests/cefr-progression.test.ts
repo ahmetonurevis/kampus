@@ -121,6 +121,7 @@ const review = (over: Partial<Parameters<typeof planProgressionReview>[0]> = {})
     attendance: hours(36, 4),
     assessments: fullAssessments(),
     decision: record(),
+    certificates: [],
     actor: coordinator,
     input: { action: 'approve', decisionId: 'test-pd1' },
     now: '2026-11-05T09:00:00.000Z',
@@ -883,6 +884,34 @@ describe('onay ve düzeltme (DOM-DIL-070)', () => {
     // Onaylanmamış düzeltme öncekinin yerine geçmez.
     const pendingFix = record({ ...correction, id: 'test-pd3' })
     assert.equal(effectiveProgressionDecision([d1, pendingFix])?.id, 'test-pd1')
+  })
+
+  test('DOM-DIL-070 DOM-DIL-082 kaydın geçerli belgesi varken düzeltme onaylanmaz; ret ve iptal edilmiş belge engellemez', () => {
+    const correction = record({ id: 'test-pd2', correctsDecisionId: 'test-pd1' })
+    const input = { action: 'approve', decisionId: 'test-pd2' } as const
+    const valid = { enrollmentId: 'test-enr1', status: 'valid' } as const
+    assert.throws(
+      () => review({ decision: correction, input, certificates: [valid] }),
+      (error: Error & { code?: string; kind?: string }) =>
+        error.code === 'certificate_cancel_first' &&
+        error.kind === 'rule' &&
+        error.message === 'Önce düzenlenmiş belge iptal edilmeli.',
+    )
+    // Ret belgeyi dayanaksız bırakmaz; engellenmez.
+    assert.equal(
+      review({
+        decision: correction,
+        input: { action: 'reject', decisionId: 'test-pd2', reason: 'Düzeltmeye gerek yok.' },
+        certificates: [valid],
+      }).status,
+      'rejected',
+    )
+    // İptal edilmiş belge ya da başka kaydın belgesi onayı engellemez.
+    for (const certificates of [
+      [{ ...valid, status: 'cancelled' as const }],
+      [{ ...valid, enrollmentId: 'test-enr-baska' }],
+    ])
+      assert.equal(review({ decision: correction, input, certificates }).status, 'approved')
   })
 })
 

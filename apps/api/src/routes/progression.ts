@@ -147,7 +147,7 @@ export function registerProgressionRoutes(app: FastifyInstance) {
         operationId: 'approveProgressionDecision',
         tags: ['learning'],
         summary: 'Kur sonu kararını onayla',
-        description: `Koşullar güncel devam ve ölçmelerle yeniden hesaplanır; dayanak değiştiyse 409 \`progression_basis_changed\`. Onaylı \`passed\` kararında \`next\` üst kur çıktısıdır. ${REVIEW}`,
+        description: `Koşullar güncel devam ve ölçmelerle yeniden hesaplanır; dayanak değiştiyse 409 \`progression_basis_changed\`. Kaydın geçerli kurum başarı belgesi varken onay 422 \`certificate_cancel_first\` (önce belge iptal edilir). Onaylı \`passed\` kararında \`next\` üst kur çıktısıdır. ${REVIEW}`,
         params: progressionDecisionParamsSchema,
         body: approveProgressionBodySchema,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),

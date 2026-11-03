@@ -241,6 +241,10 @@ test.describe('dinleme etkinliği formu', () => {
     await edit.getByRole('button', { name: 'Kaydı değiştir' }).click()
     const picker = page.getByRole('dialog', { name: 'Dinleme kaydı seç' })
     await expect(picker.getByRole('button', { name: 'Captions only seç' })).toBeDisabled()
+    // Satır döküm durumunu seçmeden gösterir (OG-998).
+    const rows = picker.getByRole('list', { name: 'Dinleme kayıtları' }).getByRole('listitem')
+    await expect(rows.filter({ hasText: 'Captions only' })).toContainText('Döküm yok')
+    await expect(rows.filter({ hasText: "Tom's week" })).toContainText('Döküm var')
     await picker.getByRole('button', { name: "Tom's week seç" }).click()
     await expect(saved).toContainText('Döküm var')
     await expect(edit.getByText(TRANSCRIPT_REQUIRED, { exact: true })).toHaveCount(0)

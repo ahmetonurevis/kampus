@@ -2765,7 +2765,7 @@ export interface paths {
         };
         /**
          * İçerik havuzu
-         * @description Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve `view: 'staff'` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü `view: 'learner'` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Baş sürümü arşivli veya kaldırılmış kaynak varsayılan olarak listede ve aramada yoktur; yalnız `status=archived` / `status=removed` ile gelir (DOM-KYN-051). Velide `studentId` görünümü seçili çocuğa daraltır (veli materyal sayfası; bağlı olmayan çocuk 404). Normalleşince terim kalmayan `q` (ör. `!!!`) boş sonuç döner. Süzgeçler baş sürüme uygulanır; bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Kişinin görebildiği kaynaklar, sayfalı (DOM-KYN-030, 040, 041). Personel satırı kaynağın okunabilir baş sürümüdür (arşivli olmayan, en yüksek numara) ve `view: 'staff'` taşır; öğrenci ve veli yalnız paylaşım kapsamındaki, düzey/seviyesine uyan, lisansı geçerli güncel yayın sürümünü `view: 'learner'` olarak görür (cevap anahtarı ve lisans ayrıntısı yok). Baş sürümü arşivli veya kaldırılmış kaynak varsayılan olarak listede ve aramada yoktur; yalnız `status=archived` / `status=removed` ile gelir (DOM-KYN-051). Velide `studentId` görünümü seçili çocuğa daraltır (veli materyal sayfası; bağlı olmayan çocuk 404). Normalleşince terim kalmayan `q` (ör. `!!!`) boş sonuç döner. Süzgeçler baş sürüme uygulanır; `filterOn=current` personel satırını ve süzgeçleri güncel yayındaki sürüme alır (bağı yayındaki sürüme kuran seçici). Ses satırı döküm var/yok bilgisini (`hasTranscript`) taşır, metni taşımaz. Bilinmeyen parametre 400. Roller: `yonetici`, `ogretmen`, `ogrenci`, `veli`; ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         get: operations["listResources"];
         put?: never;
@@ -5770,8 +5770,10 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
-            /** @description Okunabilir baş sürüm */
+            /** @description Okunabilir baş sürüm; `filterOn=current` ile güncel yayındaki sürüm */
             version: components["schemas"]["ResourceVersionSummaryInput"];
+            /** @description Satır sürümü ses içeriğiyse dökümü var mı (dinleme kaydı yayım koşulu, DOM-BEC-005); ses değilse ya da içerik kaldırıldıysa `null`. Döküm metni listede yoktur */
+            hasTranscript: boolean | null;
         };
         LearnerResourceListItemInput: {
             /** @constant */
@@ -9094,8 +9096,10 @@ export interface components {
             createdAt: string;
             /** Format: date-time */
             updatedAt: string;
-            /** @description Okunabilir baş sürüm */
+            /** @description Okunabilir baş sürüm; `filterOn=current` ile güncel yayındaki sürüm */
             version: components["schemas"]["ResourceVersionSummary"];
+            /** @description Satır sürümü ses içeriğiyse dökümü var mı (dinleme kaydı yayım koşulu, DOM-BEC-005); ses değilse ya da içerik kaldırıldıysa `null`. Döküm metni listede yoktur */
+            hasTranscript: boolean | null;
         };
         LearnerResourceListItem: {
             /** @constant */
@@ -28017,6 +28021,8 @@ export interface operations {
                 ownerUserId?: string;
                 /** @description Yalnız öğrenci ve velide: bu öğrencinin gördüğü kaynaklar (DOM-KYN-041). Velide seçili çocuk (velayetli ve kısıtsız bağlı); öğrencide yalnız kendi kaydı. Kapsam dışı öğrenci 404; personelde 400 `learner_only_filter` */
                 studentId?: string;
+                /** @description Personel satırının sürümü ve süzgeçlerin uygulandığı sürüm: `head` okunabilir baş sürüm, `current` güncel yayındaki sürüm (hiç yayımlanmamış kaynak listelenmez). Bağ yayındaki sürüme kurulan seçicide kullanılır (dinleme kaydı, DOM-BEC-005). Öğrenci ve velide satır zaten yayındaki sürümdür, etkisizdir */
+                filterOn?: "head" | "current";
                 /** @description Sıralama; eksi azalan. Eşitlikte kaynak kimliği */
                 sort?: "-updatedAt" | "updatedAt" | "title" | "-title";
             };

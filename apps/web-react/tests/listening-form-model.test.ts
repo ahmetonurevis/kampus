@@ -91,9 +91,14 @@ const quizHead = (content: Record<string, unknown>) =>
     },
   })
 
-function audioItem(id: string, currentVersionId: string | null = `${id}-v1`) {
+function audioItem(
+  id: string,
+  currentVersionId: string | null = `${id}-v1`,
+  hasTranscript: boolean | null = true,
+) {
   return {
     view: 'staff',
+    hasTranscript,
     id,
     contentType: 'audio',
     ownerUserId: 'u1',
@@ -190,6 +195,7 @@ describe('Dinleme kaydı seçicisi (OG-052, DOM-BEC-005)', () => {
         contentType: 'audio',
         sort: 'title',
         primarySkill: 'listening',
+        filterOn: 'current',
         q: 'tom',
         cefrLevel: 'A2',
       },
@@ -202,6 +208,36 @@ describe('Dinleme kaydı seçicisi (OG-052, DOM-BEC-005)', () => {
       page: 1,
     })
     assert.equal('primarySkill' in passage, false)
+    // Parça ve soru seçicisinde liste baş sürüm süzgeciyle kalır (OG-998 yalnız dinleme kaydı).
+    assert.equal('filterOn' in passage, false)
+  })
+
+  test('IST-045, DOM-BEC-005 (OG-998): dinleme kaydı yayındaki sürüme göre süzülür; satır döküm var/yok gösterir, dökümsüz kayıt seçmeden görülür', () => {
+    assert.equal(
+      pickerQuery({ kind: 'audio', q: '', cefrLevel: '', gradeLevel: '', page: 1 }).filterOn,
+      'current',
+    )
+    const rows = pickerRows(
+      [audioItem('r1'), audioItem('r2', 'r2-v1', false), audioItem('r3', 'r3-v1', null)],
+      { versionIds: new Set(), resourceIds: new Set() },
+    )
+    assert.deepEqual(
+      rows.map((row) => [row.versionId, row.transcript]),
+      [
+        ['r1-v1', TRANSCRIPT_LABEL.yes],
+        ['r2-v1', TRANSCRIPT_LABEL.no],
+        ['r3-v1', null],
+      ],
+    )
+    // Satır bağlanacak yayındaki sürüm değilse (baş sürüm taslak) döküm durumu gösterilmez.
+    const draftHead = { ...audioItem('r4'), currentVersionId: 'r4-v0' } as StaffResourceListItem
+    const [draft] = pickerRows([draftHead], { versionIds: new Set(), resourceIds: new Set() })
+    assert.equal(draft?.transcript, null)
+    assert.equal(
+      pickerRows([audioItem('r5', null)], { versionIds: new Set(), resourceIds: new Set() })[0]
+        ?.transcript,
+      null,
+    )
   })
 
   test('DOM-BEC-005: yayımlanmamış kayıt seçilemez; seçili kayıt "Zaten seçili"; satır yayındaki sürümü seçer', () => {

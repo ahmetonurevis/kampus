@@ -38,7 +38,7 @@ type PickerProps = {
 /**
  * Bağlı içerik seçici (OG-984): içerik havuzundan yayındaki sürümü seçtiren iç içe pencere. Tür
  * `LINKED_KINDS`'ten gelir: okuma parçası, dinleme kaydı (dinleme becerili ses; OG-052) ve
- * soru. Liste sunucu sayfalıdır (`useResourceList`), arama ve CEFR/sınıf düzeyi
+ * soru; dinleme kaydı satırı döküm var/yok bilgisini taşır (OG-998). Liste sunucu sayfalıdır (`useResourceList`), arama ve CEFR/sınıf düzeyi
  * süzgeci sayfayı başa alır. Pencere her açılışta temiz başlar.
  */
 export function LinkedContentPicker({ open, onOpenChange, kind, ...rest }: PickerProps) {
@@ -179,7 +179,7 @@ function PickerBody({
                   <p className="text-sm font-medium [overflow-wrap:anywhere]">{row.title}</p>
                 )}
                 <p id={`secici-${row.resourceId}-kunye`} className="text-xs text-muted-foreground">
-                  {[row.meta, row.subskill, row.note, row.disabledReason]
+                  {[row.meta, row.subskill, row.transcript, row.note, row.disabledReason]
                     .filter(Boolean)
                     .join(' · ') || 'Etiket yok'}
                 </p>

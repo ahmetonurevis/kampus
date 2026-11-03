@@ -4709,7 +4709,7 @@ export interface paths {
         };
         /**
          * CEFR profili
-         * @description Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi ve tespit oturumları. Öneri karar değildir ve saklanmaz. Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
+         * @description Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi (en yeniden eskiye, aynı becerinin önceki seviyesi ve değişim yönüyle) ve tespit oturumları. Öneri karar değildir ve saklanmaz. Personel çizelgesinde kararı veren (ad) ve gerekçe ile kararın değişmez kanıt kopyasından özet (karar anındaki öneri, kanıt görevleri, dayanak işareti) bulunur; öğrenci ve veli çizelgesinde bunlar yoktur (OG-079). Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. Yalnız dil okulunda (`language_school`); okulda her rol için 404, rol denetiminden önce.
          */
         get: operations["getCefrProfile"];
         put?: never;
@@ -8029,11 +8029,43 @@ export interface components {
                 /** Format: date-time */
                 decidedAt: string;
                 placementSessionId: string | null;
+                /** @description Kararı verenin adı */
+                decidedByName: string | null;
+                /** @description Aynı becerideki bir önceki kararın seviyesi */
+                previousLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @enum {string} */
+                change: "first" | "up" | "down" | "same";
+                /** @description Karar anındaki kanıt özeti: beceri kararında o becerinin, genel kararda hepsinin */
+                evidence: {
+                    /** @enum {string} */
+                    context: "general" | "placement";
+                    /** @description Karar anındaki öneri; kanıt yetersizse boş */
+                    suggestedLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                    followsSuggestion: boolean | null;
+                    successful: number;
+                    items: {
+                        id: string;
+                        taskId: string;
+                        title: string;
+                        /** @enum {string} */
+                        source: "task" | "placement";
+                        /** @enum {string} */
+                        skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                        /** @enum {string} */
+                        targetLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                        /** Format: date-time */
+                        performedAt: string;
+                        successful: boolean;
+                        percent: number;
+                        /** @description Karar anındaki önerinin dayandığı kanıt */
+                        basis: boolean;
+                    }[];
+                };
             }[];
         };
         CefrProfileLearnerInput: {
             /**
-             * @description Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur
+             * @description Öğrenci ve veli görünümü: kararın gerekçesi, vereni ve kanıtı yoktur
              * @constant
              */
             view: "learner";
@@ -8137,6 +8169,10 @@ export interface components {
                 /** Format: date-time */
                 decidedAt: string;
                 placementSessionId: string | null;
+                /** @description Aynı becerideki bir önceki kararın seviyesi */
+                previousLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @enum {string} */
+                change: "first" | "up" | "down" | "same";
             }[];
         };
         CefrProfileInput: components["schemas"]["CefrProfileStaffInput"] | components["schemas"]["CefrProfileLearnerInput"];
@@ -11364,11 +11400,43 @@ export interface components {
                 /** Format: date-time */
                 decidedAt: string;
                 placementSessionId: string | null;
+                /** @description Kararı verenin adı */
+                decidedByName: string | null;
+                /** @description Aynı becerideki bir önceki kararın seviyesi */
+                previousLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @enum {string} */
+                change: "first" | "up" | "down" | "same";
+                /** @description Karar anındaki kanıt özeti: beceri kararında o becerinin, genel kararda hepsinin */
+                evidence: {
+                    /** @enum {string} */
+                    context: "general" | "placement";
+                    /** @description Karar anındaki öneri; kanıt yetersizse boş */
+                    suggestedLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                    followsSuggestion: boolean | null;
+                    successful: number;
+                    items: {
+                        id: string;
+                        taskId: string;
+                        title: string;
+                        /** @enum {string} */
+                        source: "task" | "placement";
+                        /** @enum {string} */
+                        skill: "reading" | "listening" | "writing" | "speaking" | "mediation" | "language_use";
+                        /** @enum {string} */
+                        targetLevel: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                        /** Format: date-time */
+                        performedAt: string;
+                        successful: boolean;
+                        percent: number;
+                        /** @description Karar anındaki önerinin dayandığı kanıt */
+                        basis: boolean;
+                    }[];
+                };
             }[];
         };
         CefrProfileLearner: {
             /**
-             * @description Öğrenci ve veli görünümü: kararın gerekçesi ve vereni yoktur
+             * @description Öğrenci ve veli görünümü: kararın gerekçesi, vereni ve kanıtı yoktur
              * @constant
              */
             view: "learner";
@@ -11472,6 +11540,10 @@ export interface components {
                 /** Format: date-time */
                 decidedAt: string;
                 placementSessionId: string | null;
+                /** @description Aynı becerideki bir önceki kararın seviyesi */
+                previousLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @enum {string} */
+                change: "first" | "up" | "down" | "same";
             }[];
         };
         CefrProfile: components["schemas"]["CefrProfileStaff"] | components["schemas"]["CefrProfileLearner"];

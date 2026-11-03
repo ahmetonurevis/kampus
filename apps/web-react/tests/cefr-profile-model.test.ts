@@ -1,16 +1,19 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
-import type { CefrProfile } from '@kampus/react-shared/cefr.ts'
+import type { CefrProfile, CefrStaffTimelineEntry } from '@kampus/react-shared/cefr.ts'
 import {
   currentLevelRows,
   estimateSkillRows,
   estimateSummary,
   GENERAL_LEVEL_LABEL,
+  levelChart,
   placementRows,
+  resolveTimelineFilter,
+  timelineFilterOptions,
   timelineRows,
 } from '../src/pages/language/cefr-profile-model.ts'
 
-// OG-054 (IST-060; DOM-DIL-010…012, DOM-BEC-034): CEFR profilinin sunumu.
+// OG-054, OG-079 (IST-060; DOM-DIL-010…012, DOM-BEC-034): CEFR profilinin sunumu.
 
 const SESSION_ID = '00000000-0000-4000-8000-0000e0000001'
 
@@ -88,6 +91,8 @@ const base: CefrProfile = {
       level: 'B1',
       decidedAt: '2026-10-01T09:00:00.000Z',
       placementSessionId: SESSION_ID,
+      previousLevel: null,
+      change: 'first',
     },
   ],
 }
@@ -135,14 +140,188 @@ test('DOM-DIL-011, DOM-DIL-012: tespitler en yeniden eskiye, geçerlilik ve ön 
   assert.equal(rows[1]?.until, '')
 })
 
-test('IST-060: gerekçe yalnız personel görünümünde gösterilir', () => {
-  assert.equal(timelineRows(base)[0]?.rationale, null)
-  assert.equal(timelineRows(base)[0]?.title, `${GENERAL_LEVEL_LABEL}: B1`)
-  assert.equal(timelineRows(base)[0]?.kind, 'Yerleştirme')
-  const staff: CefrProfile = {
-    ...base,
-    view: 'staff',
-    timeline: [{ ...base.timeline[0]!, rationale: 'Tespit sonucu', decidedByUserId: 'user-1' }],
+test('IST-060: gerekçe, kararı veren ve kanıt yalnız personel görünümünde gösterilir', () => {
+  const [row] = timelineRows(base)
+  assert.equal(row?.rationale, null)
+  assert.equal(row?.decidedBy, null)
+  assert.equal(row?.evidence, null)
+  assert.equal(row?.title, `${GENERAL_LEVEL_LABEL}: B1`)
+  assert.equal(row?.kind, 'Yerleştirme')
+  assert.equal(row?.dateTime, '2026-10-01T09:00:00.000Z')
+  assert.deepEqual(row?.change, { label: 'İlk karar', detail: '', tone: 'gray' })
+  const [staffRow] = timelineRows(staff)
+  assert.equal(staffRow?.rationale, 'Tespit sonucu')
+  assert.equal(staffRow?.decidedBy, 'Selin Kaya')
+})
+
+// OG-079 (IST-060): çizelge süzgeci, değişim, kanıt özeti ve mini grafik.
+
+const decision = (
+  id: string,
+  skill: CefrStaffTimelineEntry['skill'],
+  level: CefrStaffTimelineEntry['level'],
+  decidedAt: string,
+  previousLevel: CefrStaffTimelineEntry['previousLevel'] = null,
+  change: CefrStaffTimelineEntry['change'] = 'first',
+): CefrStaffTimelineEntry => ({
+  id,
+  kind: previousLevel === null ? 'placement' : 'correction',
+  skill,
+  level,
+  decidedAt,
+  placementSessionId: null,
+  rationale: 'Tespit sonucu',
+  decidedByUserId: 'user-1',
+  decidedByName: 'Selin Kaya',
+  previousLevel,
+  change,
+  evidence: {
+    context: 'placement',
+    suggestedLevel: 'A2+',
+    followsSuggestion: level === 'A2+',
+    successful: 1,
+    items: [
+      {
+        id: 'ev-1',
+        taskId: 'task-1',
+        title: 'Konuşma bölümü',
+        source: 'placement',
+        skill: 'speaking',
+        targetLevel: 'B1',
+        performedAt: '2026-09-30T09:00:00.000Z',
+        successful: true,
+        percent: 75,
+        basis: true,
+      },
+      {
+        id: 'ev-2',
+        taskId: 'task-2',
+        title: 'Eski görev',
+        source: 'task',
+        skill: 'speaking',
+        targetLevel: 'B2',
+        performedAt: '2026-09-20T09:00:00.000Z',
+        successful: false,
+        percent: 40,
+        basis: false,
+      },
+    ],
+  },
+})
+
+const staff: CefrProfile = {
+  ...base,
+  view: 'staff',
+  timeline: [
+    decision('d4', 'speaking', 'B1', '2026-11-01T09:00:00.000Z', 'A2', 'up'),
+    decision('d3', null, 'A2', '2026-10-15T09:00:00.000Z', 'B1', 'down'),
+    decision('d2', 'speaking', 'A2', '2026-10-01T09:00:00.000Z'),
+    decision('d1', null, 'B1', '2026-10-01T09:00:00.000Z'),
+  ],
+}
+
+test('IST-060: süzgeç "Tümü" ve kararı olan beceriler; tek becerili çizelgede süzgeç yok', () => {
+  assert.deepEqual(
+    timelineFilterOptions(staff).map((option) => [option.value, option.label, option.count]),
+    [
+      ['all', 'Tümü', 4],
+      ['general', GENERAL_LEVEL_LABEL, 2],
+      ['speaking', 'Konuşma', 2],
+    ],
+  )
+  assert.deepEqual(timelineFilterOptions(base), [])
+})
+
+test('IST-060: süzgeç satırları daraltır; değişim önceki seviyeyle yazılır', () => {
+  assert.deepEqual(
+    timelineRows(staff).map((row) => row.key),
+    ['d4', 'd3', 'd2', 'd1'],
+  )
+  const speaking = timelineRows(staff, 'speaking')
+  assert.deepEqual(
+    speaking.map((row) => [row.key, row.change.label, row.change.detail, row.change.tone]),
+    [
+      ['d4', 'Yükseldi', 'A2 → B1', 'green'],
+      ['d2', 'İlk karar', '', 'gray'],
+    ],
+  )
+  assert.deepEqual(
+    timelineRows(staff, 'general').map((row) => [row.key, row.change.label]),
+    [
+      ['d3', 'Düştü'],
+      ['d1', 'İlk karar'],
+    ],
+  )
+})
+
+test('IST-060: kanıt özeti karar anının önerisini ve görevlerini anlatır', () => {
+  const evidence = timelineRows(staff, 'speaking')[0]?.evidence
+  assert.equal(evidence?.summary, '2 kanıt görevi, 1 başarılı')
+  assert.equal(evidence?.suggestion, 'Seviye tespiti önerisi: A2+ (karar öneriden farklı)')
+  assert.deepEqual(
+    evidence?.items.map((item) => [item.title, item.note]),
+    [
+      ['Konuşma bölümü', 'Konuşma · hedef B1 · %75 · başarılı · öneriye dayanak'],
+      ['Eski görev', 'Konuşma · hedef B2 · %40 · başarısız'],
+    ],
+  )
+  const empty = timelineRows({
+    ...staff,
+    timeline: [
+      {
+        ...decision('d9', null, 'A2+', '2026-10-01T09:00:00.000Z'),
+        evidence: {
+          context: 'general',
+          suggestedLevel: null,
+          followsSuggestion: null,
+          successful: 0,
+          items: [],
+        },
+      },
+    ],
+  })[0]?.evidence
+  assert.equal(empty?.summary, 'Karar anında kayıtlı kanıt yok')
+  assert.equal(empty?.suggestion, 'Genel öneri: kanıt yetersizdi')
+})
+
+test('IST-060: mini grafik yalnız seçili becerinin gerçek kararlarından; "Tümü"nde ve tek kararda yok', () => {
+  const chart = levelChart(staff, 'speaking')
+  assert.ok(chart)
+  assert.equal(chart.label, 'Konuşma seviye grafiği')
+  assert.deepEqual(
+    chart.points.map((point) => [point.key, point.x, point.level]),
+    [
+      ['d2', 0, 'A2'],
+      ['d4', 1, 'B1'],
+    ],
+  )
+  assert.ok(chart.points[1]!.y > chart.points[0]!.y)
+  assert.match(chart.summary, /^2 karar: A2 \(.+\) → B1 \(.+\)$/)
+  assert.equal(levelChart(staff, 'all'), null)
+  assert.equal(levelChart(base, 'general'), null)
+  assert.equal(levelChart(staff, 'reading'), null)
+})
+
+test('IST-060: kararlar tek becerideyse süzgeç çıkmaz, grafik "Tümü"nde o beceriyle çizilir', () => {
+  const single: CefrProfile = {
+    ...staff,
+    timeline: staff.timeline.filter((row) => row.skill === 'speaking'),
   }
-  assert.equal(timelineRows(staff)[0]?.rationale, 'Tespit sonucu')
+  assert.deepEqual(timelineFilterOptions(single), [])
+  const chart = levelChart(single, 'all')
+  assert.equal(chart?.label, 'Konuşma seviye grafiği')
+  assert.deepEqual(
+    chart?.points.map((point) => point.key),
+    ['d2', 'd4'],
+  )
+  // Tek beceride tek karar: grafik yok.
+  assert.equal(levelChart({ ...single, timeline: [single.timeline[0]!] }, 'all'), null)
+})
+
+test('IST-060: süzgeç yeni kursiyerin seçeneklerinde yoksa "Tümü"ne döner', () => {
+  const options = timelineFilterOptions(staff)
+  assert.equal(resolveTimelineFilter(options, 'speaking'), 'speaking')
+  assert.equal(resolveTimelineFilter(options, 'reading'), 'all')
+  // Süzgeci çıkmayan (tek becerili) kursiyere geçince eski seçim kalmaz.
+  assert.equal(resolveTimelineFilter(timelineFilterOptions(base), 'speaking'), 'all')
 })

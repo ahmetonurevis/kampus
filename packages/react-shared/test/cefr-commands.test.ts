@@ -95,6 +95,8 @@ const timelineBase = {
   level: 'B1',
   decidedAt: '2026-11-01T10:00:00.000Z',
   placementSessionId: SESSION_ID,
+  previousLevel: null,
+  change: 'first',
 } as const
 
 const learnerProfile: CefrProfile = {
@@ -110,7 +112,21 @@ const learnerProfile: CefrProfile = {
 const staffProfile: CefrProfile = {
   ...learnerProfile,
   view: 'staff',
-  timeline: [{ ...timelineBase, rationale: 'Tespit sonucu', decidedByUserId: 'user-1' }],
+  timeline: [
+    {
+      ...timelineBase,
+      rationale: 'Tespit sonucu',
+      decidedByUserId: 'user-1',
+      decidedByName: 'Selin Kaya',
+      evidence: {
+        context: 'placement',
+        suggestedLevel: 'B1',
+        followsSuggestion: true,
+        successful: 0,
+        items: [],
+      },
+    },
+  ],
 }
 
 describe('CEFR profili', () => {

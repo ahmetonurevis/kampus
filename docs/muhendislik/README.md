@@ -81,7 +81,7 @@ Bu bölüm öneri listesidir; uygulanmadı. Mevcut taban (`chore/ts-arac-zinciri
 
 - Push tetikleyicisine `docs/**` ve `chore/**` dalları eklenmeli (şu an yalnız `main`, `feature/**`, `fix/**`).
 - Yapıldı (OG-012): `concurrency` ile eski koşu iptali, pnpm ve Playwright önbelleği, paralel işler (`statik`, `birim`, `api` parçalı, `api-pg`, `build`, `e2e-vue` ve `e2e-react` parçalı), başarısızlıkta rapor/trace artefaktı; ayrıntı [test-stratejisi.md §8](test-stratejisi.md#8-ci-süre-bütçesi).
-- Yapıldı (OG-197): `web-budget` işi (React build → `pnpm size` → `lhci autorun`); ayrıntı [erişilebilirlik-performans.md §2 Ölçüm yöntemi](erisilebilirlik-performans.md).
+- Yapıldı (OG-197): `web-budget` işi (React build → `pnpm size` → `pnpm dlx @lhci/cli@0.15.1 autorun`); ayrıntı [erişilebilirlik-performans.md §2 Ölçüm yöntemi](erisilebilirlik-performans.md).
 - Güvenlik ve sözleşme adımları: `pnpm audit --prod --audit-level high`, `pnpm licenses list --prod` ile izinli lisans kontrolü betiği, gitleaks ile sır taraması, `drizzle-kit check` + migration farkı, `openapi:check` ve `api-client generate:check`, Better Auth şeması üretim farkı.
 - Eylemler commit SHA'sına sabitlenmeli; `permissions: contents: read` korunur.
 - Gece işi: pg-boss eşzamanlılığı (`test:pg` artık her CI koşusunda), dar ekran, koyu tema ve azaltılmış saydamlık e2e projesi.

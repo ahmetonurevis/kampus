@@ -130,23 +130,23 @@ Referans cihaz: orta seviye Android (4 GB RAM), release derlemesi.
 
 ### Ölçüm yöntemi
 
-| Alan  | Laboratuvar                                                                                                                               | Sürekli                                                                                                                                                      |
-| ----- | ----------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Web   | `vite build` + `vite preview` üzerinde Lighthouse (giriş, panel, öğrenci listesi; CI'da yalnız giriş); Chrome DevTools Performans ile INP | CI'da paket boyutu kontrolü (`pnpm size`, gzip, bütçe aşımında kırmızı) ve Lighthouse (`lhci autorun`); saha ölçümü için `web-vitals` + kendi ucumuz (öneri) |
-| API   | Örnek ölçekli seed üzerinde `autocannon` yük testi (öneri), `EXPLAIN (ANALYZE, BUFFERS)`                                                  | pino `responseTime` alanından uç bazlı p95; 100 ms üstü sorgu logu                                                                                           |
-| Mobil | `adb shell am start -W` ile `TotalTime` (5 ölçümün ortancası); Android Studio profiler / Perfetto ile kare süresi                         | Her sürüm notunda (`docs/mobile-release.md`) açılış süresi ve APK boyutu                                                                                     |
+| Alan  | Laboratuvar                                                                                                                               | Sürekli                                                                                                                                                                                                                                 |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Web   | `vite build` + `vite preview` üzerinde Lighthouse (giriş, panel, öğrenci listesi; CI'da yalnız giriş); Chrome DevTools Performans ile INP | CI'da paket boyutu kontrolü (`pnpm size`, gzip, bütçe aşımında kırmızı) ve Lighthouse (`pnpm dlx @lhci/cli@0.15.1 autorun`; kök bağımlılık değildir, sürüm `checks.yml`'de sabit); saha ölçümü için `web-vitals` + kendi ucumuz (öneri) |
+| API   | Örnek ölçekli seed üzerinde `autocannon` yük testi (öneri), `EXPLAIN (ANALYZE, BUFFERS)`                                                  | pino `responseTime` alanından uç bazlı p95; 100 ms üstü sorgu logu                                                                                                                                                                      |
+| Mobil | `adb shell am start -W` ile `TotalTime` (5 ölçümün ortancası); Android Studio profiler / Perfetto ile kare süresi                         | Her sürüm notunda (`docs/mobile-release.md`) açılış süresi ve APK boyutu                                                                                                                                                                |
 
 - Ölçüm her zaman üretim derlemesinde yapılır; geliştirme sunucusu ölçümü sayılmaz.
 - Bütçeyi aşan değişiklik ya düzeltilir ya da commit gövdesinde ölçümle gerekçelendirilip bütçe bu belgede açıkça güncellenir.
 
 #### Web: CI'da paket bütçesi ve Lighthouse (OG-197)
 
-CI'daki `web-budget` işi sırasıyla React derlemesini, `pnpm size` ve `lhci autorun` komutlarını koşar. Yerelde aynısı:
+CI'daki `web-budget` işi sırasıyla React derlemesini, `pnpm size` ve `pnpm dlx @lhci/cli@0.15.1 autorun` komutlarını koşar. Yerelde aynısı:
 
 ```bash
 pnpm --filter @kampus/web-react build
 pnpm size                                  # size-limit, gzip; bütçe aşımında çıkış kodu 1
-CHROME_PATH=<chrome yolu> pnpm exec lhci autorun   # vite preview 4174, 3 koşu, ortanca
+CHROME_PATH=<chrome yolu> pnpm dlx @lhci/cli@0.15.1 autorun   # vite preview 4174, 3 koşu, ortanca
 ```
 
 - Paket bütçesi `.size-limit.json` içindedir (`size-limit` + `@size-limit/file`; gzip; 1 kB = 1000 bayt). Parça adları yalnız hash kısmıyla değişir, glob'lar bunu karşılar; yeni ağır tembel parça çıkarsa girdi eklenir.

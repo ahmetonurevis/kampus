@@ -193,8 +193,10 @@ jobs:
       - run: pnpm --filter @kampus/web-react build
       - run: pnpm size
       # Runner'daki hazır Chrome kullanılır (chrome-launcher bulur); `vite preview` 4174'te açılır.
-      # Rapor yalnız artifact olarak saklanır, dış depoya yüklenmez.
-      - run: pnpm exec lhci autorun
+      # Rapor yalnız artifact olarak saklanır, dış depoya yüklenmez. lhci kök bağımlılığa alınmaz:
+      # lighthouse + puppeteer ağacı her kurulumu büyütür ve yalnız geliştirme aracında yamasız
+      # yüksek açıklar getirir (tmp, extract-zip, basic-ftp); sürüm burada sabittir.
+      - run: pnpm dlx @lhci/cli@0.15.1 autorun
       - if: always()
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:

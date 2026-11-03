@@ -67,7 +67,7 @@ export function AppLayout({ session, title, child, children }: AppLayoutProps) {
             side="left"
             showCloseButton={false}
             aria-describedby={undefined}
-            className="sidebar glass-sidebar w-[268px] max-w-[85vw] gap-0 border-0 p-0 text-sidebar-foreground [&_:is(a,button):focus-visible]:outline-brand"
+            className="sidebar glass-sidebar w-[268px] max-w-[85vw] gap-0 border-0 p-0 text-sidebar-foreground short:overflow-y-auto [&_:is(a,button):focus-visible]:outline-brand"
           >
             <SheetTitle className="sr-only">Ana gezinme</SheetTitle>
             <button
@@ -84,7 +84,7 @@ export function AppLayout({ session, title, child, children }: AppLayoutProps) {
       ) : (
         <aside
           aria-label="Ana gezinme"
-          className="sidebar glass-sidebar fixed top-3 bottom-3 left-3 z-30 flex w-sidebar flex-col overflow-hidden rounded-card text-sidebar-foreground [&_:is(a,button):focus-visible]:outline-brand"
+          className="sidebar glass-sidebar fixed top-3 bottom-3 left-3 z-30 flex w-sidebar flex-col overflow-hidden rounded-card short:overflow-y-auto text-sidebar-foreground [&_:is(a,button):focus-visible]:outline-brand"
         >
           {sidebar}
         </aside>

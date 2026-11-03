@@ -389,7 +389,12 @@ describe('dosya taraması (file.scan)', () => {
     assert.equal((await rowOf(t, id)).scanPending, true)
     // Ses dışı dosyanın tarama durumu `status`'tadır; kolon `false` kalır.
     assert.equal((await rowOf(t, await uploaded(t))).scanPending, false)
-    assert.deepEqual([...SCAN_PENDING_PURPOSES].sort(), ['listening_audio', 'speaking_recording'])
+    // Sesli geri bildirim de dönüşen ses amacıdır (DOM-BEC-056).
+    assert.deepEqual([...SCAN_PENDING_PURPOSES].sort(), [
+      'feedback_audio',
+      'listening_audio',
+      'speaking_recording',
+    ])
   })
 
   test('FILE_SCANNER=off: bugünkü davranış; yükleme pending kalır, tarama işi açılmaz', async () => {

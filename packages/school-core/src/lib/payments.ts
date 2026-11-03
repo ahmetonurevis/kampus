@@ -10,7 +10,8 @@ import { isValidTurkishIban } from './withdrawals.ts'
 /**
  * Tahsilat kuralları (docs/domain/finans.md DOM-FIN-030…033, ADR 0006). Tahsilat ve dağılımı API
  * tablolarındadır; bu dosya dağılımı hesaplar ve taksitin `paidAt` geçiş önbelleğini günceller.
- * Yetkiyi kendisi denetlemez (`payInvoice` gibi); API önce `requireAuthorized` çalıştırır.
+ * Yetkiyi kendisi denetlemez; API önce `requireAuthorized` çalıştırır. Çevrimdışı demonun tek
+ * seferlik ödeme yolu ayrıdır (`payments-demo.ts`, ON-037).
  */
 
 // --- Taksit bölme ve tahsilat yöntemleri (kesin kayıt, tahsilat ve çevrimdışı demo ortak çekirdeği) ---
@@ -42,32 +43,14 @@ export const paymentInputSchema = z.object({
   method: z.enum(PAYMENT_METHODS, 'Ödeme yöntemini seçin.'),
 })
 export type PaymentInput = z.input<typeof paymentInputSchema>
-// Çevrimdışı demo (Vue "Demo Sanal POS", mobil "Kredi kartı (demo)") bu değerleri yazar; demo kalıcılığı
-// silinene kadar `payInvoice` bunları da kabul eder. API ve yeni formlar `paymentInputSchema` kullanır.
-const LEGACY_DEMO_PAYMENT_METHODS = ['Demo Sanal POS', 'Kredi kartı (demo)'] as const
-const payInvoiceInputSchema = z.object({
-  method: z.enum([...PAYMENT_METHODS, ...LEGACY_DEMO_PAYMENT_METHODS], 'Ödeme yöntemini seçin.'),
-})
-export function payInvoice(
-  state: State,
-  invoiceId: string,
-  method: string,
-  now = new Date().toISOString(),
-) {
-  const input = payInvoiceInputSchema.safeParse({ method })
-  if (!input.success)
-    throw new DomainError('invalid_payment_method', 'Ödeme yöntemini seçin.', {
-      path: ['method'],
-    })
-  const invoice = state.invoices.find((i) => i.id === invoiceId)
-  if (!invoice)
-    throw new DomainError('invoice_not_found', 'Ödeme kaydı bulunamadı.', { kind: 'not_found' })
-  if (invoice.paidAt)
-    throw new DomainError('invoice_already_paid', 'Bu taksit zaten ödenmiş.', { kind: 'conflict' })
-  invoice.paidAt = now
-  invoice.method = input.data.method
-  return invoice
-}
+/**
+ * @deprecated Yalnız çevrimdışı demo; yeni kod `planPayment` ve `recordPaymentSchema` kullanır.
+ * Demo yolu `payments-demo.ts`'tedir; bu köprü Oğuzhan'ın alanındaki tüketiciler (mobil
+ * `apps/mobile/src/model/operations.ts`, API işlem koşucusu testleri, `tests/commands.test.ts`) bu
+ * yoldan içe aktardığı için durur.
+ * TODO(demo-kalicilik): OG-074 (mobil yalnız API) ve köprü tüketicileri `payments-demo.ts`'e geçince silinir.
+ */
+export { payInvoice } from './payments-demo.ts'
 
 const CASH: PaymentMethod = 'Nakit'
 const PROMISSORY_NOTE: PaymentMethod = 'Senet'
@@ -220,7 +203,10 @@ export interface PaymentPlan {
 type Invoice = State['invoices'][number]
 
 /** Taksitin açık tutarı. Tahsilat kaydı olmadan ödenmiş eski taksit tam ödenmiş sayılır. */
-export function openAmount(invoice: Invoice, allocated: ReadonlyMap<string, number>): number {
+export function openAmount(
+  invoice: Pick<Invoice, 'id' | 'amount' | 'paidAt'>,
+  allocated: ReadonlyMap<string, number>,
+): number {
   if (invoice.paidAt) return 0
   return Math.max(invoice.amount - (allocated.get(invoice.id) ?? 0), 0)
 }

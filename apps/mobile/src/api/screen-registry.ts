@@ -31,7 +31,10 @@ export type MenuScreen = ComponentType<never>
 export type ScreenEntry = {
   /** Gezinme adı (PascalCase, tek). `ApiHome`, `ApiCategory`, `ApiConversation`, `ApiNotifications` ayrılmıştır. */
   screen: string
-  /** Menü sayfası olduğundan parametre almaz; oturumu `useApiSession()` ile okur. */
+  /**
+   * Menü sayfasıdır, parametre zorunlu değildir; yalnız bildirimden açılan sekmeli ekranlar isteğe
+   * bağlı `tab` alır (`route-types.ts`, `use-route-tab.ts`). Oturumu `useApiSession()` ile okur.
+   */
   getComponent: () => MenuScreen
   pages: readonly ScreenPlacement[]
 }
@@ -64,13 +67,14 @@ export const OGUZHAN_SCREENS = [
   {
     screen: 'StudentHomework',
     getComponent: (): MenuScreen => require('./screens/StudentHomework.tsx').default,
-    // Öğrenci ödevi telefonda okur; teslim şimdilik web'dedir.
+    // İki sekme: sınıf ödevleri (okuma ve teslim) ve öğretmen puanlı görevler (yazma görevi
+    // telefonda yazılır ve teslim edilir; konuşma görevi yalnız listelenir).
     pages: [
       {
         role: 'ogrenci',
         path: 'odevler',
         title: 'Ödevlerim',
-        description: 'Ödevlerini, son tarihlerini ve değerlendirmelerini takip et.',
+        description: 'Ödevlerini ve yazma görevlerini takip et, teslim et.',
       },
     ],
   },
@@ -120,12 +124,52 @@ export const OGUZHAN_SCREENS = [
   {
     screen: 'TeacherAttendance',
     getComponent: (): MenuScreen => require('./screens/TeacherAttendance.tsx').default,
-    // Telefonda yalnız bugünkü yoklama alınır; yoklama geçmişi web'dedir.
+    // İki sekme: bugünkü yoklamayı alma ve yoklama geçmişi (salt okunur; geçmiş günü yalnız yönetici
+    // düzeltir). Devamsızlık bildirimi geçmiş sekmesini `route.params.tab` ile açar.
     pages: [
       {
         role: 'ogretmen',
         path: 'yoklama',
-        description: 'Bugünkü derslerinizin yoklamasını alın.',
+        description: 'Bugünkü yoklamayı alın, yoklama geçmişini görün.',
+      },
+    ],
+  },
+  {
+    screen: 'StudentQuizzes',
+    getComponent: (): MenuScreen => require('./screens/StudentQuizzes.tsx').default,
+    // Telefonda sınıf quizleri çözülür (`/quizzes`); soru bankası görevleri, soru sor/çöz ve
+    // yazma/konuşma görevleri web'dedir.
+    pages: [
+      {
+        role: 'ogrenci',
+        path: 'soru-coz',
+        description: 'Sınıf quizlerini çöz, sonuçlarını gör.',
+      },
+    ],
+  },
+  {
+    screen: 'StudentQuestions',
+    getComponent: (): MenuScreen => require('./screens/StudentQuestions.tsx').default,
+    // Telefonda soru sorma, yanıtı okuma ve yanıtlanmamış soruyu geri çekme vardır; soru
+    // fotoğrafı (DOM-ILT-094) web'dedir.
+    pages: [
+      {
+        role: 'ogrenci',
+        path: 'soru-sor',
+        description: 'Ders öğretmenine soru sor, yanıtı oku.',
+      },
+    ],
+  },
+  {
+    screen: 'StudentAppointments',
+    getComponent: (): MenuScreen => require('./screens/StudentAppointments.tsx').default,
+    // Telefonda öğrenci randevu talep eder, bekleyen talebi geri çeker ve onaylı randevuyu iptal
+    // eder; öğretmen ve veli tarafı ayrı adımlardır.
+    pages: [
+      {
+        role: 'ogrenci',
+        path: 'randevu-talep',
+        description: 'Öğretmenlerinin müsait saatlerinden randevu al.',
       },
     ],
   },

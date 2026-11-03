@@ -34,7 +34,7 @@ import { seedResource } from './support/resources-sample.ts'
 
 type Json = ReturnType<typeof JSON.parse>
 
-const outcomes = [{ outcomeId: 'M.9.1.1', outcomeSource: 'platform' as const }]
+const outcomes = [{ outcomeId: 'MAT.9.1.1', outcomeSource: 'platform' as const }]
 /** Okul türünde yayım koşullarını karşılayan metin; dosyalar `fileIds`, ana dosya `fileId`. */
 const text = (fileIds: string[], fileId: string | null = fileIds[0] ?? null) => ({
   title: 'Kesirler çalışma notu',

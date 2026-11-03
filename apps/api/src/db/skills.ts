@@ -6,6 +6,7 @@ import {
   eq,
   exists,
   getTableColumns,
+  gte,
   inArray,
   isNull,
   max,
@@ -15,7 +16,11 @@ import {
 } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
-import type { AssignmentTarget, FixedAssignment } from '@kampus/school-core/skills/assignment.ts'
+import type {
+  AssignmentTarget,
+  FixedAssignment,
+  ResubmissionRound,
+} from '@kampus/school-core/skills/assignment.ts'
 import {
   DISAGREEMENT_BAND_GAP,
   GRADING_DAYS,
@@ -1213,15 +1218,60 @@ export async function loadAssignmentsAttempts(
   return rows.map(toAttempt)
 }
 
+/** `loadLearnerAttempts` süzgecinin alt sorgusu: atamanın yakın tarihli denemesi. */
+const recentAttempts = alias(taskAttempts, 'recent_attempts')
+
 /**
  * Kursiyerin bütün atamalardaki arşivlenmemiş denemeleri (beceri ilerleme panosu, DOM-BEC-035):
  * deneme okuması kayıt sahipliğine bakar, sınıf değiştiren öğrencinin eski denemeleri de gelir.
+ *
+ * `activeSince` verilirse yalnız tamamlanma anı bu andan önce olamayacak denemesi bulunan
+ * atamaların denemeleri gelir; böyle atamanın bütün denemeleri gelir, böylece sayılan deneme
+ * (ilk ya da en iyi) süzgeçsiz okumayla aynıdır (CEFR önerisi, `services/cefr-evidence.ts`).
+ * Deneme teslim anında, teslim edilmemişse süre (başlangıç + süre sınırı) ya da teslim penceresi
+ * (son teslim + geç kabul) dolunca tamamlanır (core `attemptState`); süre sınırı en çok 300 dakika
+ * olduğundan başlangıç anı süre sınırlı denemenin alt sınırıdır (çağıran payı bunu karşılar).
  */
 export async function loadLearnerAttempts(
   db: Database,
   institutionId: string,
   learnerId: string,
+  options: { activeSince?: Date } = {},
 ): Promise<StoredAttempt[]> {
+  const since = options.activeSince
+  const recent =
+    since === undefined
+      ? undefined
+      : inArray(
+          taskAttempts.assignmentId,
+          db
+            .select({ id: recentAttempts.assignmentId })
+            .from(recentAttempts)
+            .innerJoin(
+              taskAssignments,
+              and(
+                eq(taskAssignments.institutionId, recentAttempts.institutionId),
+                eq(taskAssignments.id, recentAttempts.assignmentId),
+              ),
+            )
+            .where(
+              and(
+                eq(recentAttempts.institutionId, institutionId),
+                eq(recentAttempts.learnerId, learnerId),
+                isNull(recentAttempts.archivedAt),
+                or(
+                  gte(recentAttempts.submittedAt, since),
+                  and(
+                    isNull(recentAttempts.submittedAt),
+                    or(
+                      gte(recentAttempts.startedAt, since),
+                      sql`${taskAssignments.dueAt} + make_interval(days => ${taskAssignments.lateAcceptanceDays}) >= ${since.toISOString()}::timestamptz`,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+        )
   const rows = await db
     .select()
     .from(taskAttempts)
@@ -1230,6 +1280,7 @@ export async function loadLearnerAttempts(
         eq(taskAttempts.institutionId, institutionId),
         eq(taskAttempts.learnerId, learnerId),
         isNull(taskAttempts.archivedAt),
+        recent,
       ),
     )
     .orderBy(asc(taskAttempts.assignmentId), asc(taskAttempts.attemptNumber))
@@ -1467,13 +1518,18 @@ export async function submitAttempt(
 
 // --- Teslim -------------------------------------------------------------------------------
 
-/** Teslim kaydı: core `ResubmittableSubmission`; yeniden teslim alanları son istekten okunur. */
+/**
+ * Teslim kaydı: core `ResubmittableSubmission`; yeniden teslim alanları son istekten okunur.
+ * `resubmissionRounds` bütün turlardır (sürüm sırasıyla): core `deadlineForVersion` her sürümü
+ * kendi turunun son tarihiyle okur (DOM-BEC-040, IST-047).
+ */
 export type StoredSubmission = {
   id: string
   assignmentId: string
   learnerId: string
   resubmissionRequestedForVersion: number | null
   resubmissionDueAt: string | null
+  resubmissionRounds: ResubmissionRound[]
   rowVersion: number
 }
 
@@ -1516,6 +1572,8 @@ export async function insertSubmissionVersion(
   submissionId: string,
   version: VersionRow,
   now: Date,
+  /** Taslaktan teslimde teslim edilen taslak revizyonu (IST-047); diğer teslimlerde `null`. */
+  draftRevision: number | null = null,
 ): Promise<unknown> {
   return constraintAs(
     tx.insert(submissionVersions).values({
@@ -1526,6 +1584,7 @@ export async function insertSubmissionVersion(
       submittedAt: new Date(version.submittedAt),
       body: version.body,
       fileIds: [...version.fileIds],
+      draftRevision,
       createdAt: now,
       updatedAt: now,
     }),
@@ -1536,6 +1595,29 @@ export async function insertSubmissionVersion(
       ),
     },
   )
+}
+
+/**
+ * Kursiyerin taslağından teslim edilmiş en yüksek revizyon (IST-047); taslaktan hiç teslim yoksa
+ * `null`. Taslak satırı kursiyer × atama başına tektir ve revizyonu yalnız artar; bu yüzden taslağın
+ * revizyonu bundan büyük değilse o metin zaten teslim edilmiştir. Metin, dosya ve ses teslimi
+ * taslağı tüketmez.
+ */
+export async function lastSubmittedDraftRevision(
+  db: Database,
+  institutionId: string,
+  submissionId: string,
+): Promise<number | null> {
+  const [row] = await db
+    .select({ revision: max(submissionVersions.draftRevision) })
+    .from(submissionVersions)
+    .where(
+      and(
+        eq(submissionVersions.institutionId, institutionId),
+        eq(submissionVersions.submissionId, submissionId),
+      ),
+    )
+  return row?.revision ?? null
 }
 
 /** Yeniden teslim isteği (`planResubmissionRequest`); aynı sürüm için ikinci istek 409. */
@@ -1621,6 +1703,10 @@ async function withVersions(
         learnerId: row.learnerId,
         resubmissionRequestedForVersion: latest?.versionNumber ?? null,
         resubmissionDueAt: latest?.dueAt ?? null,
+        resubmissionRounds: resubmissions.map(({ versionNumber, dueAt }) => ({
+          versionNumber,
+          dueAt,
+        })),
         rowVersion: row.version,
       },
       versions: versions
@@ -1684,6 +1770,43 @@ export async function findSubmissionOfVersion(
     )
     .limit(1)
   return row ? findSubmission(db, institutionId, row.submissionId) : null
+}
+
+/**
+ * Puanın sürüm kimliği (puana bağlı sesli geri bildirimin okuma kuralı; DOM-BEC-056). Başka
+ * kurumun veya olmayan puan `null`.
+ */
+export async function findScoreVersionId(
+  db: Database,
+  institutionId: string,
+  scoreId: string,
+): Promise<string | null> {
+  if (!UUID.test(scoreId)) return null
+  const [row] = await db
+    .select({ versionId: rubricScores.submissionVersionId })
+    .from(rubricScores)
+    .where(and(eq(rubricScores.institutionId, institutionId), eq(rubricScores.id, scoreId)))
+    .limit(1)
+  return row?.versionId ?? null
+}
+
+/** Sürümün puan satırlarının kimlikleri (puana bağlı sesli geri bildirimin saklama takvimi). */
+export async function listScoreIdsOfVersion(
+  db: Database,
+  institutionId: string,
+  versionId: string,
+): Promise<string[]> {
+  const rows = await db
+    .select({ id: rubricScores.id })
+    .from(rubricScores)
+    .where(
+      and(
+        eq(rubricScores.institutionId, institutionId),
+        eq(rubricScores.submissionVersionId, versionId),
+      ),
+    )
+    .orderBy(asc(rubricScores.id))
+  return rows.map((row) => row.id)
 }
 
 /** Teslim kaydı kimliğiyle (arşivli, başka kurumun veya olmayan kimlik `null`). */
@@ -1761,12 +1884,18 @@ export async function loadSubmissionsAmong(
   return withVersions(db, institutionId, rows)
 }
 
-/** Kursiyerin bütün atamalardaki arşivlenmemiş teslimleri, sürümleriyle (DOM-BEC-035). */
+/**
+ * Kursiyerin bütün atamalardaki arşivlenmemiş teslimleri, sürümleriyle (DOM-BEC-035). `activeSince`
+ * verilirse yalnız bu andan sonra teslim edilmiş sürümü olan teslimler gelir, bütün sürümleriyle
+ * (CEFR önerisi, `services/cefr-evidence.ts`): eski sürümün puanı da en yeni sürümden eskidir.
+ */
 export async function loadLearnerSubmissions(
   db: Database,
   institutionId: string,
   learnerId: string,
+  options: { activeSince?: Date } = {},
 ): Promise<StoredSubmissionWork[]> {
+  const since = options.activeSince
   const rows = await db
     .select()
     .from(taskSubmissions)
@@ -1775,6 +1904,21 @@ export async function loadLearnerSubmissions(
         eq(taskSubmissions.institutionId, institutionId),
         eq(taskSubmissions.learnerId, learnerId),
         isNull(taskSubmissions.archivedAt),
+        since === undefined
+          ? undefined
+          : exists(
+              db
+                .select({ id: submissionVersions.id })
+                .from(submissionVersions)
+                .where(
+                  and(
+                    eq(submissionVersions.institutionId, taskSubmissions.institutionId),
+                    eq(submissionVersions.submissionId, taskSubmissions.id),
+                    isNull(submissionVersions.archivedAt),
+                    gte(submissionVersions.submittedAt, since),
+                  ),
+                ),
+            ),
       ),
     )
     .orderBy(asc(taskSubmissions.assignmentId))
@@ -1930,11 +2074,12 @@ export async function listAwaitingScore(
       : coordinated === undefined
         ? scopeFilter
         : or(scopeFilter, and(coordinated, disputed))
-  // Core `deadlineForVersion`: yeniden teslim istenen sürümden sonrakiler isteğin son tarihine bağlı.
-  const resubmissionDue = sql`(select case when rr.version_number < ${latestNumber}
-      then rr.due_at end from ${resubmissionRequests} rr
+  // Core `deadlineForVersion`: son sürüm kendisinden önceki en son isteğin son tarihine bağlıdır;
+  // son sürüm için sonradan açılan istek onun süresini değiştirmez (her tur kendi tarihiyle).
+  const resubmissionDue = sql`(select rr.due_at from ${resubmissionRequests} rr
     where rr.institution_id = ${s.institutionId} and rr.submission_id = ${s.id}
-      and rr.archived_at is null order by rr.version_number desc limit 1)`
+      and rr.archived_at is null and rr.version_number < ${latestNumber}
+    order by rr.version_number desc limit 1)`
   // Servis `gradingDeadlineOf`: örneklemli görevde (oran > 0 ve son tarih var) süre örneklem
   // anından başlar, örneklem seçilmeden süre yoktur (`null`, gecikmiş sayılmaz). `greatest` NULL'u
   // atladığı için örneklem bekleyen durum ayrıca `case` ile `null` yapılır.

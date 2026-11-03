@@ -21,6 +21,7 @@ import {
   getTaskSubmission,
   listTaskSubmissions,
   saveTaskDraft,
+  submitTaskDraft,
   submitTaskSubmission,
 } from '../services/task-submissions.ts'
 import { idempotencyOf, ifMatchVersion } from './command-support.ts'
@@ -33,6 +34,7 @@ import {
   taskDraftBodySchema,
   taskDraftReadResponseSchema,
   taskDraftResponseSchema,
+  taskDraftSubmitBodySchema,
   taskSubmissionAssignmentParamsSchema,
   taskSubmissionBodySchema,
   taskSubmissionDetailResponseSchema,
@@ -210,6 +212,38 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
   )
 
   typed.post(
+    '/api/v1/task-assignments/:assignmentId/draft/submit',
+    {
+      preValidation: [...write, requireIfMatch()],
+      schema: {
+        operationId: 'submitTaskDraft',
+        tags: ['task-submissions'],
+        summary: 'Taslağı teslim et',
+        description: `Kaydedilmiş yazma taslağını yeni değişmez teslim sürümü yapar (IST-047; DOM-BEC-040, 044, 046). Teslim edilen metin \`If-Match\` ile verilen taslak revizyonudur; böylece kursiyerin son gördüğü metin teslim edilir. Sıra: kapsam dışı atama 404 → taslak yoksa 404 \`not_found\` → eski revizyon 409 \`draft_conflict\` → bu revizyon taslaktan zaten teslim edildiyse 409 \`draft_already_submitted\` (zamanla değil revizyonla ölçülür: teslimden sonra yazılan otomatik kayıt yeni revizyondur; metinle teslim taslağı tüketmez) → yazma dışı görev 422 \`draft_not_supported\` → boş taslak 422 \`draft_empty\` → içerik kuralı (metin teslimiyle aynı) → core \`planSubmissionVersion\`: sürüm sınırı 422 \`version_limit_reached\`, puanlanmış teslimde öğretmen yeniden teslim istemeden 409 \`resubmission_not_requested\` (geri bildirim açılmadan genel 409 \`submission_locked\`), teslim kapandıysa 422 \`submission_closed\`; yeniden teslim istendiyse pencere isteğin son tarihidir (geç kabulsüz), geç kabuldeki sürüm \`late\`. Taslak silinmez. Gövde boş nesnedir. \`If-Match\` (taslağın \`revision\`'ı) ve \`Idempotency-Key\` zorunlu; istek özeti \`If-Match\` revizyonunu da kapsar (aynı anahtarla başka revizyon 422 \`idempotency_key_reused\`). Başarı 201 ve teslim kaydının \`Location\`'ı. Denetime \`task_submission.submit_draft\` alan adlarıyla yazılır; metin loglanmaz. ${WRITE_ACCESS}`,
+        params: taskSubmissionAssignmentParamsSchema,
+        body: taskDraftSubmitBodySchema,
+        headers: commandHeadersSchema('required', { ifMatch: 'required' }),
+        response: { 201: taskSubmissionDetailResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const expectedRevision = requiredVersion(request)
+      // Gövde boş: teslim edilen metni `If-Match` seçer; aynı anahtarla başka revizyon 422
+      // `idempotency_key_reused` alsın diye revizyon istek özetine girer.
+      const result = await submitTaskDraft(
+        contextOf(request),
+        { assignmentId: request.params.assignmentId, expectedRevision },
+        idempotencyOf(request, true, { ifMatch: expectedRevision }),
+      )
+      const body = sendWith(reply, result, (value) =>
+        taskSubmissionDetailResponseSchema.parse(value),
+      )
+      reply.header('location', `/api/v1/task-submissions/${body.data.id}`)
+      return body
+    },
+  )
+
+  typed.post(
     '/api/v1/task-assignments/:assignmentId/submissions',
     {
       preValidation: write,
@@ -249,7 +283,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         operationId: 'scoreTaskSubmission',
         tags: ['task-submissions'],
         summary: 'Teslimi rubrikle puanla',
-        description: `Öğretmen yazma teslimi sürümünü rubrikle puanlar ve geri bildirim yazar (DOM-BEC-020…023; core \`planRubricScore\`). Rubrik atamanın sabitlediği sürümdür (DOM-BEC-022), gövdede seçilmez; rubriksiz görev 422 \`rubric_not_assigned\`. Her kritere bir bant (0–5) verilir: eksik kriter 422 \`rubric_criterion_missing\`, rubrikte olmayan veya tekrar eden kriter 422 \`rubric_criterion_invalid\`, hedefin altındaki (0–2) bantta kriter yorumu yoksa 422 \`criterion_comment_required\`. Toplam ve yüzde sunucuda hesaplanır, saklanmaz; gövdedeki toplam/yüzde/rol 400. Yalnız son sürüm puanlanır (409 \`version_not_latest\`; bilinmeyen sürüm 404); aynı sürümün ikinci puanı 409 \`rubric_score_exists\` (puan değişmez; yeniden puanlama ve ikinci puanlayıcı ayrı iştir). Puan kesinleşince geri bildirim kursiyere ve veliye açılır (DOM-BEC-045). ${GRADE_ACCESS}`,
+        description: `Öğretmen yazma teslimi sürümünü rubrikle puanlar ve geri bildirim yazar (DOM-BEC-020…023; core \`planRubricScore\`). Rubrik atamanın sabitlediği sürümdür (DOM-BEC-022), gövdede seçilmez; rubriksiz görev 422 \`rubric_not_assigned\`. Her kritere bir bant (0–5) verilir: eksik kriter 422 \`rubric_criterion_missing\`, rubrikte olmayan veya tekrar eden kriter 422 \`rubric_criterion_invalid\`, hedefin altındaki (0–2) bantta kriter yorumu yoksa 422 \`criterion_comment_required\`. Toplam ve yüzde sunucuda hesaplanır, saklanmaz; gövdedeki toplam/yüzde/rol 400. Yalnız son sürüm puanlanır (409 \`version_not_latest\`; bilinmeyen sürüm 404); aynı sürümün ikinci puanı 409 \`rubric_score_exists\` (puan değişmez; yeniden puanlama ve ikinci puanlayıcı ayrı iştir). Puan kesinleşince geri bildirim kursiyere ve veliye açılır (DOM-BEC-045).  Sesli geri bildirim (DOM-BEC-056): \`feedbackAudioFileId\` puanlayanın \`feedback_audio\` amacıyla yüklediği hazır dosyadır ve puanla aynı işlemde puana bağlanır; başkasının ya da olmayan dosyası 422 \`file_unavailable\`, başka amaç 422 \`file_purpose_mismatch\`, hazır olmayan 422 \`file_not_ready\`, başka kayda bağlı 409 \`file_already_attached\`; ret hiçbir kaydı değiştirmez. Ses puanı görenlere açılır (kursiyer ve veli geri bildirim açılınca). ${GRADE_ACCESS}`,
         params: taskSubmissionParamsSchema,
         body: taskScoreBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
@@ -258,10 +292,16 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const expectedVersion = requiredVersion(request)
-      const { versionNumber, ...score } = request.body
+      const { versionNumber, feedbackAudioFileId, ...score } = request.body
       const result = await scoreTaskSubmission(
         contextOf(request),
-        { submissionId: request.params.submissionId, expectedVersion, versionNumber, score },
+        {
+          submissionId: request.params.submissionId,
+          expectedVersion,
+          versionNumber,
+          score,
+          feedbackAudioFileId,
+        },
         idempotencyOf(request, true),
       )
       const body = sendWith(reply, result, (value) =>
@@ -280,7 +320,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         operationId: 'requestTaskResubmission',
         tags: ['task-submissions'],
         summary: 'Yeniden teslim iste',
-        description: `Öğretmen puanlanan son sürüm için kursiyerden yeni sürüm ister (DOM-BEC-040; core \`planResubmissionRequest\`). Son tarih ileri ve en çok 14 gün sonradır (422 \`resubmission_due_invalid\`), geç kabul yoktur. Son olmayan sürüm 409 \`version_not_latest\`, puanı kesinleşmemiş sürüm 409 \`resubmission_not_graded\`, aynı sürüme ikinci istek 409 \`resubmission_exists\`. Kursiyer sonra yeni sürüm gönderebilir; bu sürüm hakka sayılmaz. ${GRADE_ACCESS}`,
+        description: `Öğretmen puanlanan son sürüm için kursiyerden yeni sürüm ister (DOM-BEC-040; core \`planResubmissionRequest\`). Son tarih ileri ve en çok 14 gün sonradır (422 \`resubmission_due_invalid\`), geç kabul yoktur. Son olmayan sürüm 409 \`version_not_latest\`, puanı kesinleşmemiş sürüm 409 \`resubmission_not_graded\`, aynı sürüme ikinci istek 409 \`resubmission_exists\`. Kursiyer sonra yeni sürüm gönderebilir; bu sürüm hakka sayılmaz.  ${GRADE_ACCESS}`,
         params: taskSubmissionParamsSchema,
         body: taskResubmissionBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
@@ -310,7 +350,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         operationId: 'secondScoreTaskSubmission',
         tags: ['task-submissions'],
         summary: 'İkinci puanı ver',
-        description: `İkinci puanlayıcı son sürümü ilk puanı görmeden rubrikle puanlar (DOM-BEC-024; core \`planRubricScore\`, \`scoresVisibleToRater\`). Gövde ilk puanınkiyle aynıdır. Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında değilse 409 \`second_rating_not_requested\`; ilk puanı veren kişi 409 \`rater_not_independent\`; aynı sürümün ikinci ikinci puanı 409 \`rubric_score_exists\`. Herhangi bir kriterde iki puan arasında birden fazla bant fark varsa sonuç uyuşmazlıktır: son puanı kapsamındaki koordinatör verir (\`final-scores\`), o zamana kadar sonuç kursiyere ve veliye kapalıdır. Uyuşmazlık yoksa ilk puan geçerlidir ve geri bildirim açılır (DOM-BEC-045). ${GRADE_ACCESS}`,
+        description: `İkinci puanlayıcı son sürümü ilk puanı görmeden rubrikle puanlar (DOM-BEC-024; core \`planRubricScore\`, \`scoresVisibleToRater\`). Gövde ilk puanınkiyle aynıdır. Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında değilse 409 \`second_rating_not_requested\`; ilk puanı veren kişi 409 \`rater_not_independent\`; aynı sürümün ikinci ikinci puanı 409 \`rubric_score_exists\`. Herhangi bir kriterde iki puan arasında birden fazla bant fark varsa sonuç uyuşmazlıktır: son puanı kapsamındaki koordinatör verir (\`final-scores\`), o zamana kadar sonuç kursiyere ve veliye kapalıdır. Uyuşmazlık yoksa ilk puan geçerlidir ve geri bildirim açılır (DOM-BEC-045).  Sesli geri bildirim (DOM-BEC-056): \`feedbackAudioFileId\` puanlayanın \`feedback_audio\` amacıyla yüklediği hazır dosyadır ve puanla aynı işlemde puana bağlanır; başkasının ya da olmayan dosyası 422 \`file_unavailable\`, başka amaç 422 \`file_purpose_mismatch\`, hazır olmayan 422 \`file_not_ready\`, başka kayda bağlı 409 \`file_already_attached\`; ret hiçbir kaydı değiştirmez. Ses puanı görenlere açılır (kursiyer ve veli geri bildirim açılınca). ${GRADE_ACCESS}`,
         params: taskSubmissionParamsSchema,
         body: taskScoreBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
@@ -319,10 +359,16 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const expectedVersion = requiredVersion(request)
-      const { versionNumber, ...score } = request.body
+      const { versionNumber, feedbackAudioFileId, ...score } = request.body
       const result = await secondScoreTaskSubmission(
         contextOf(request),
-        { submissionId: request.params.submissionId, expectedVersion, versionNumber, score },
+        {
+          submissionId: request.params.submissionId,
+          expectedVersion,
+          versionNumber,
+          score,
+          feedbackAudioFileId,
+        },
         idempotencyOf(request, true),
       )
       const body = sendWith(reply, result, (value) =>
@@ -342,7 +388,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         tags: ['task-submissions'],
         summary: 'Uyuşmazlıkta son puanı ver',
         description:
-          "İlk ve ikinci puan herhangi bir kriterde birden fazla bant ayrıştığında (DOM-BEC-024) atamanın içerik dersinin zümre başkanı (`school`) veya seviyesinin akademik koordinatörü (`language_school`) son sürümü rubrikle puanlar (DOM-YTK-027; core `planRubricScore`, `final`). Gövde ilk puanınkiyle aynıdır. Son puan sonucu kesinleştirir; kursiyer ve veli puanı ve geri bildirimi DOM-BEC-045 kuralıyla görür. Uyuşmazlık yoksa veya son puan zaten verildiyse 409 `final_score_not_needed`; koordinatör o sürümün iki puanlayıcısından biriyse 409 `rater_not_independent`. Roller: yalnız `ogretmen`; yönetici koordinatör sayılmaz, öğrenci, veli ve ön büro 403. Sıra: başka kurumun, arşivli veya kapsam dışı teslim 404 (atamayı görmeyen ve alanının koordinatörü olmayan öğretmen) → atamayı gören ama dersin/seviyenin koordinatörü olmayan öğretmen 403 `coordinator_required` → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. Eşzamanlı iki son puandan yalnız biri yazılır. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.",
+          "İlk ve ikinci puan herhangi bir kriterde birden fazla bant ayrıştığında (DOM-BEC-024) atamanın içerik dersinin zümre başkanı (`school`) veya seviyesinin akademik koordinatörü (`language_school`) son sürümü rubrikle puanlar (DOM-YTK-027; core `planRubricScore`, `final`). Gövde ilk puanınkiyle aynıdır. Son puan sonucu kesinleştirir; kursiyer ve veli puanı ve geri bildirimi DOM-BEC-045 kuralıyla görür. Uyuşmazlık yoksa veya son puan zaten verildiyse 409 `final_score_not_needed`; koordinatör o sürümün iki puanlayıcısından biriyse 409 `rater_not_independent`. Roller: yalnız `ogretmen`; yönetici koordinatör sayılmaz, öğrenci, veli ve ön büro 403. Sıra: başka kurumun, arşivli veya kapsam dışı teslim 404 (atamayı görmeyen ve alanının koordinatörü olmayan öğretmen) → atamayı gören ama dersin/seviyenin koordinatörü olmayan öğretmen 403 `coordinator_required` → `If-Match` (teslimin `rowVersion`'ı, zorunlu) 409 `version_conflict` → core kuralı. Eşzamanlı iki son puandan yalnız biri yazılır. Sesli geri bildirim (DOM-BEC-056): `feedbackAudioFileId` koordinatörün `feedback_audio` amacıyla yüklediği hazır dosyadır ve son puanla aynı işlemde puana bağlanır; başkasının ya da olmayan dosyası 422 `file_unavailable`, başka amaç 422 `file_purpose_mismatch`, hazır olmayan 422 `file_not_ready`, başka kayda bağlı 409 `file_already_attached`; ret hiçbir kaydı değiştirmez. Ses kursiyerin konuşma kaydıyla aynı veri sahibine ve saklama kuralına bağlanır. `Idempotency-Key` zorunlu. Başarı 201, teslimin güncel ayrıntısı ve teslim kaydının `Location`'ı. Geri bildirim metni ve öğrenci kimliği loglanmaz; denetime yalnız alan adları. Modül `learning`; kapalıysa 403 `module_disabled`.",
         params: taskSubmissionParamsSchema,
         body: taskScoreBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
@@ -351,10 +397,16 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
     },
     async (request, reply) => {
       const expectedVersion = requiredVersion(request)
-      const { versionNumber, ...score } = request.body
+      const { versionNumber, feedbackAudioFileId, ...score } = request.body
       const result = await finalScoreTaskSubmission(
         contextOf(request),
-        { submissionId: request.params.submissionId, expectedVersion, versionNumber, score },
+        {
+          submissionId: request.params.submissionId,
+          expectedVersion,
+          versionNumber,
+          score,
+          feedbackAudioFileId,
+        },
         idempotencyOf(request, true),
       )
       const body = sendWith(reply, result, (value) =>
@@ -373,7 +425,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         operationId: 'requestSecondRating',
         tags: ['task-submissions'],
         summary: 'İkinci puanlama iste',
-        description: `Öğretmen veya yönetici son teslim sürümü için ikinci puanlama ister (DOM-BEC-024: diğer görevlerde isteğe bağlı). İstek, kursiyer yeni sürüm gönderemezken yapılır: sıradaki sürümün teslim penceresi (geç kabul dahil) kapandı ya da sürüm hakkı doldu, aksi 409 \`second_rating_window_open\`. Böylece kursiyerin yanıtı ve yazma hakkı istekten ve sonraki puanlamadan etkilenmez (DOM-BEC-045). Puanı kesinleşen sürüm 409 \`second_rating_too_late\` (açılmış sonuç geri alınmaz); teslim başına tek istek 409 \`second_rating_exists\`; son olmayan sürüm 409 \`version_not_latest\`, bilinmeyen sürüm 404; rubriksiz görev 422 \`rubric_not_assigned\`. ${GRADE_ACCESS}`,
+        description: `Öğretmen veya yönetici son teslim sürümü için ikinci puanlama ister (DOM-BEC-024: diğer görevlerde isteğe bağlı). İstek, kursiyer yeni sürüm gönderemezken yapılır: sıradaki sürümün teslim penceresi (geç kabul dahil) kapandı ya da sürüm hakkı doldu, aksi 409 \`second_rating_window_open\`. Böylece kursiyerin yanıtı ve yazma hakkı istekten ve sonraki puanlamadan etkilenmez (DOM-BEC-045). Puanı kesinleşen sürüm 409 \`second_rating_too_late\` (açılmış sonuç geri alınmaz); teslim başına tek istek 409 \`second_rating_exists\`; son olmayan sürüm 409 \`version_not_latest\`, bilinmeyen sürüm 404; rubriksiz görev 422 \`rubric_not_assigned\`.  ${GRADE_ACCESS}`,
         params: taskSubmissionParamsSchema,
         body: secondRatingRequestBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),

@@ -10,7 +10,8 @@ import type { ScreenEntry } from './screen-registry.ts'
 type MenuScreenProps = ApiScreenProps<ApiScreen>
 
 function LoadedScreen({ entry, props }: { entry: ScreenEntry; props: MenuScreenProps }) {
-  // Kayıt parametresiz ekran tutar; prop tipi ekran adına göre daraltılamadığı için genişletilir.
+  // Menü ekranları parametresizdir; yalnız `ParentTracking` ve `TeacherAttendance` isteğe bağlı `tab`
+  // alır (bildirim). Prop tipi ekran adına göre daraltılamadığı için genişletilir.
   const Screen = loadScreenComponent(entry) as ComponentType<MenuScreenProps>
   return <Screen {...props} />
 }

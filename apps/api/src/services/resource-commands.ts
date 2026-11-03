@@ -49,6 +49,7 @@ import {
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, ForbiddenError, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { assertOutcomesSelectable } from './learning-outcomes.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { readScope, readSource } from './read-scope.ts'
 import {
@@ -318,6 +319,8 @@ export async function createResource(
       status: 201,
       load: async (tx) => {
         await assertItemsReadable(tx, ctx, staff, input.content)
+        // Kazanım katalogdan seçilir (DOM-KYN-011): yeni kaynakta her kod etkin olmalı.
+        await assertOutcomesSelectable(tx, ctx.institutionId, input.tags.outcomes, [])
         const files = await loadVersionFileRows(
           tx,
           ctx.institutionId,
@@ -384,6 +387,15 @@ export async function updateDraftVersion(
           ...input.patch,
         }
         if (input.patch.content) await assertItemsReadable(tx, ctx, staff, input.patch.content)
+        // Yeni seçilen kazanım katalogda ve etkin olmalı; kaynağın sürümlerinde zaten bulunan kod
+        // (arşivlenmiş ya da katalog öncesi serbest girilmiş) korunur (DOM-KYN-011).
+        if (input.patch.tags)
+          await assertOutcomesSelectable(
+            tx,
+            ctx.institutionId,
+            input.patch.tags.outcomes,
+            target.versions.flatMap((item) => item.tags.outcomes),
+          )
         // İçerik ya da dosya listesi değişince dosyalar yeniden denetlenir; kaynağın sürümlerine
         // zaten bağlı olanlar (`kept`: taslağınkiler ve eski sürümden geri eklenenler) yeniden
         // bağlanmaz, yalnız silinmiş olmadıkları denetlenir.

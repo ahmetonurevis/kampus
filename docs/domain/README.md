@@ -6,16 +6,17 @@ Temel mimari çerçeve [ADR 0001](../adr/0001-platform-mimarisi.md): çok kuruml
 
 ## Dizin
 
-| Dosya                                      | Önek      | Konu                                                                                                       |
-| ------------------------------------------ | --------- | ---------------------------------------------------------------------------------------------------------- |
-| [kayit-ve-crm.md](kayit-ve-crm.md)         | `DOM-KAY` | Aday, tanışma görüşmesi/deneme dersi, kesin kayıt, kontenjan, yenileme, mezuniyet, KVKK ve ticari ileti    |
-| [finans.md](finans.md)                     | `DOM-FIN` | Ücret ilanı, taksit, indirim/burs/kardeş, gecikme, iade, tahsilat mükerrerliği, dekont, sözleşme           |
-| [akademik-olcme.md](akademik-olcme.md)     | `DOM-AKD` | MEB not sistemi, dönem/yılsonu puanı, karne, devamsızlık, sınıf geçme, ödül belgeleri, deneme ve optik     |
-| [dil-okulu.md](dil-okulu.md)               | `DOM-DIL` | Kur/seviye, seviye tespit, kur atlama, devam şartı, sertifika, paket satışı, deneme dersi, grup kapasitesi |
-| [beceri-gelisimi.md](beceri-gelisimi.md)   | `DOM-BEC` | Okuma, dinleme, yazma, konuşma görevleri; puanlama, CEFR rubrikleri, seviye önerisi, teslim/deneme hakkı   |
-| [kaynak-platformu.md](kaynak-platformu.md) | `DOM-KYN` | İçerik türleri, etiket taksonomisi, lisans/telif, onay akışı, sürüm, paylaşım kapsamı, arşiv               |
-| [iletisim-ve-veli.md](iletisim-ve-veli.md) | `DOM-ILT` | Duyuru, mesaj, bildirim tercihi, sessiz saat, okundu bilgisi, veli onayı, acil durum, rehberlik gizliliği  |
-| [yetki-ve-kapsam.md](yetki-ve-kapsam.md)   | `DOM-YTK` | Rol × kaynak × işlem matrisi; öğretmen/öğrenci/veli kapsamı; yetişkin kursiyer                             |
+| Dosya                                                              | Önek      | Konu                                                                                                                   |
+| ------------------------------------------------------------------ | --------- | ---------------------------------------------------------------------------------------------------------------------- |
+| [kayit-ve-crm.md](kayit-ve-crm.md)                                 | `DOM-KAY` | Aday, tanışma görüşmesi/deneme dersi, kesin kayıt, kontenjan, yenileme, mezuniyet, KVKK ve ticari ileti                |
+| [finans.md](finans.md)                                             | `DOM-FIN` | Ücret ilanı, taksit, indirim/burs/kardeş, gecikme, iade, tahsilat mükerrerliği, dekont, sözleşme                       |
+| [finance-dogrulanacak-sorular.md](finance-dogrulanacak-sorular.md) | —         | Kayıt ve finanstaki **doğrulanmalı** varsayımların hukukçu ve mali müşavir soruları (H-, M-), kullanıcı kararları (K-) |
+| [akademik-olcme.md](akademik-olcme.md)                             | `DOM-AKD` | MEB not sistemi, dönem/yılsonu puanı, karne, devamsızlık, sınıf geçme, ödül belgeleri, deneme ve optik                 |
+| [dil-okulu.md](dil-okulu.md)                                       | `DOM-DIL` | Kur/seviye, seviye tespit, kur atlama, devam şartı, sertifika, paket satışı, deneme dersi, grup kapasitesi             |
+| [beceri-gelisimi.md](beceri-gelisimi.md)                           | `DOM-BEC` | Okuma, dinleme, yazma, konuşma görevleri; puanlama, CEFR rubrikleri, seviye önerisi, teslim/deneme hakkı               |
+| [kaynak-platformu.md](kaynak-platformu.md)                         | `DOM-KYN` | İçerik türleri, etiket taksonomisi, lisans/telif, onay akışı, sürüm, paylaşım kapsamı, arşiv                           |
+| [iletisim-ve-veli.md](iletisim-ve-veli.md)                         | `DOM-ILT` | Duyuru, mesaj, bildirim tercihi, sessiz saat, okundu bilgisi, veli onayı, acil durum, rehberlik gizliliği              |
+| [yetki-ve-kapsam.md](yetki-ve-kapsam.md)                           | `DOM-YTK` | Rol × kaynak × işlem matrisi; öğretmen/öğrenci/veli kapsamı; yetişkin kursiyer                                         |
 
 ## Kural biçimi
 

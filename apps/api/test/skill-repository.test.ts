@@ -853,6 +853,10 @@ describe('beceri görevi deposu', () => {
       learnerId: LEARNER,
       resubmissionRequestedForVersion: 2,
       resubmissionDueAt: iso(secondDue),
+      resubmissionRounds: [
+        { versionNumber: 1, dueAt: iso(firstDue) },
+        { versionNumber: 2, dueAt: iso(secondDue) },
+      ],
       rowVersion: 1,
     })
     assert.deepEqual(

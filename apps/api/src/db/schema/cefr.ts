@@ -1,6 +1,8 @@
 import { sql, type SQL } from 'drizzle-orm'
 import {
+  boolean,
   check,
+  doublePrecision,
   foreignKey,
   index,
   jsonb,
@@ -23,11 +25,16 @@ import {
   type PlacementSectionEntry,
 } from '@kampus/school-core/cefr/placement.ts'
 import {
+  ASSESSMENT_POINTS,
+  LESSON_ATTENDANCE_STATUSES,
   PROGRESSION_DECISION_STATUSES,
   PROGRESSION_OUTCOMES,
   progressionBasisSchema,
   progressionDecisionInputSchema,
   progressionReviewInputSchema,
+  type AssessmentPoint,
+  type CourseAssessmentRow,
+  type LessonAttendanceStatus,
   type ProgressionBasis,
   type ProgressionDecisionStatus,
   type ProgressionOutcome,
@@ -438,5 +445,145 @@ export const progressionDecisions = pgTable(
     ),
     index('progression_decisions_decided_by_idx').on(table.institutionId, table.decidedByUserId),
     index('progression_decisions_reviewed_by_idx').on(table.institutionId, table.reviewedByUserId),
+  ],
+)
+
+/**
+ * Kur içi ölçme sonucu (DOM-DIL-013, IST-062; core `CourseAssessmentRow`, OG-086). Kayıt kursiyerin
+ * dil grubu kaydıdır: `(institution_id, enrollment_id, group_id, learner_id)` → `language_group_members`
+ * bileşik yabancı anahtarı, kur sonu kararıyla aynı kilit. Nokta (`baseline`, `midterm`, `final`)
+ * kayıt başına bir kezdir (`assessment_already_recorded`). Puan değişmez satırdır:
+ * `kampus_reject_immutable_change()` tetikleyicileri (migration 0052, elle) her `update`/`delete`/
+ * `truncate`'i 55000 ile reddeder; düzeltme modeli yok (`TODO(cefr-olcme-duzeltme)`). Beceri
+ * puanları ve geri bildirimler `skills` jsonb'sindedir (dört beceri, core sırası); yapı core
+ * şemasıyla doğrulanır.
+ */
+export const courseAssessments = pgTable(
+  'course_assessments',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    id: uuid('id').notNull(),
+    enrollmentId: uuid('enrollment_id').notNull(),
+    groupId: uuid('group_id').notNull(),
+    // kvkk: K (school-core öğrenci kaydı kimliği)
+    learnerId: text('learner_id').notNull(),
+    point: text('point').$type<AssessmentPoint>().notNull(),
+    // kvkk: Ç (kursiyerin ölçme puanı)
+    score: doublePrecision('score').notNull(),
+    // kvkk: Ç (beceri puanları ve öğretmenin yazılı geri bildirimi; loglanmaz)
+    skills: jsonb('skills').$type<CourseAssessmentRow['skills']>().notNull(),
+    // kvkk: K
+    assessedByUserId: text('assessed_by_user_id').notNull(),
+    assessedAt: timestamp('assessed_at', { withTimezone: true }).notNull(),
+    ...required(),
+  },
+  (table) => [
+    primaryKey({ name: 'course_assessments_pkey', columns: [table.institutionId, table.id] }),
+    foreignKey({
+      name: 'course_assessments_enrollment_fkey',
+      columns: [table.institutionId, table.enrollmentId, table.groupId, table.learnerId],
+      foreignColumns: [
+        languageGroupMembers.institutionId,
+        languageGroupMembers.id,
+        languageGroupMembers.groupId,
+        languageGroupMembers.studentId,
+      ],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'course_assessments_assessed_by_fkey',
+      columns: [table.institutionId, table.assessedByUserId],
+      foreignColumns: [memberships.institutionId, memberships.userId],
+    }).onDelete('restrict'),
+    check('course_assessments_point_check', oneOf(table.point, keys(ASSESSMENT_POINTS))),
+    check('course_assessments_score_check', sql`${table.score} >= 0 and ${table.score} <= 100`),
+    check(
+      'course_assessments_skills_check',
+      sql`jsonb_typeof(${table.skills}) = 'array' and jsonb_array_length(${table.skills}) = 4`,
+    ),
+    check('course_assessments_version_check', firstVersion(table)),
+    // Kayıt başına nokta başına tek ölçme (core `assessment_already_recorded`); kayıt yabancı
+    // anahtarının indeksi.
+    uniqueIndex('course_assessments_enrollment_point_key')
+      .on(table.institutionId, table.enrollmentId, table.point)
+      .where(sql`${table.archivedAt} is null`),
+    index('course_assessments_group_idx').on(table.institutionId, table.groupId),
+    index('course_assessments_learner_idx').on(table.institutionId, table.learnerId),
+    index('course_assessments_assessed_by_idx').on(table.institutionId, table.assessedByUserId),
+  ],
+)
+
+/**
+ * Ders saati yoklaması (DOM-DIL-060, 061; core `LessonHourAttendance`, OG-086). Devam oranının
+ * girdisidir: kur sonu kararı devamı bu satırlardan hesaplar, oran saklanmaz. Satır kayda aynı
+ * bileşik yabancı anahtarla bağlıdır; aynı ders saatinin kayıtta tek arşivlenmemiş satırı olur.
+ * Özür yalnız devamsızlıkta işaretlenir ve devamsızlık sayılır (DOM-DIL-060).
+ *
+ * Bu görevde yalnız okunur: yazma ucu, ders saati kimliğinin grubun oturum takviminden üretimi ve
+ * düzeltme geçmişi ders saati yoklamasıyla gelir (`TODO(cefr-ders-saati-yoklamasi)`, OG-269).
+ * O zamana kadar satır olmayan kayıtta devam belirsizdir ve karar verilmez (core
+ * `attendance_pending`).
+ */
+export const lessonHourAttendances = pgTable(
+  'lesson_hour_attendances',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    id: uuid('id').notNull(),
+    enrollmentId: uuid('enrollment_id').notNull(),
+    groupId: uuid('group_id').notNull(),
+    // kvkk: K (school-core öğrenci kaydı kimliği)
+    learnerId: text('learner_id').notNull(),
+    lessonHourId: text('lesson_hour_id').notNull(),
+    // kvkk: K (devam bilgisi)
+    status: text('status').$type<LessonAttendanceStatus>().notNull(),
+    excused: boolean('excused').notNull().default(false),
+    // kvkk: K
+    recordedByUserId: text('recorded_by_user_id').notNull(),
+    recordedAt: timestamp('recorded_at', { withTimezone: true }).notNull(),
+    ...required(),
+  },
+  (table) => [
+    primaryKey({ name: 'lesson_hour_attendances_pkey', columns: [table.institutionId, table.id] }),
+    foreignKey({
+      name: 'lesson_hour_attendances_enrollment_fkey',
+      columns: [table.institutionId, table.enrollmentId, table.groupId, table.learnerId],
+      foreignColumns: [
+        languageGroupMembers.institutionId,
+        languageGroupMembers.id,
+        languageGroupMembers.groupId,
+        languageGroupMembers.studentId,
+      ],
+    }).onDelete('restrict'),
+    foreignKey({
+      name: 'lesson_hour_attendances_recorded_by_fkey',
+      columns: [table.institutionId, table.recordedByUserId],
+      foreignColumns: [memberships.institutionId, memberships.userId],
+    }).onDelete('restrict'),
+    check(
+      'lesson_hour_attendances_status_check',
+      oneOf(table.status, keys(LESSON_ATTENDANCE_STATUSES)),
+    ),
+    check(
+      'lesson_hour_attendances_lesson_hour_check',
+      sql`char_length(${table.lessonHourId}) between 1 and 200`,
+    ),
+    check(
+      'lesson_hour_attendances_excused_check',
+      sql`not ${table.excused} or ${table.status} = 'absent'`,
+    ),
+    // Kayıtta ders saati başına tek satır (core `attendance_duplicate`); kayıt yabancı anahtarının
+    // indeksi.
+    uniqueIndex('lesson_hour_attendances_enrollment_hour_key')
+      .on(table.institutionId, table.enrollmentId, table.lessonHourId)
+      .where(sql`${table.archivedAt} is null`),
+    index('lesson_hour_attendances_group_idx').on(table.institutionId, table.groupId),
+    index('lesson_hour_attendances_learner_idx').on(table.institutionId, table.learnerId),
+    index('lesson_hour_attendances_recorded_by_idx').on(
+      table.institutionId,
+      table.recordedByUserId,
+    ),
   ],
 )

@@ -23,15 +23,27 @@ const PARENT_TASKS_PATH = '/veli/akademik-takip'
  * puanlı görevde (teslim) yazma/konuşma çalışma alanı; ikisi de atamanın sonucunu gösterir.
  */
 export function pointHref(point: SkillProgressPoint, audience: ProgressAudience): string {
+  return taskResultHref(point.assignmentId, point.attemptId !== null, audience)
+}
+
+/**
+ * Atamanın sonucunu açan adres: `quiz` otomatik puanlı görevdir (quiz çalışma alanı), değilse
+ * yazma/konuşma çalışma alanı; veli takip sekmesinde atamayı açar. CEFR profilindeki kanıt
+ * görevleri de bunu kullanır (OG-247).
+ */
+export function taskResultHref(
+  assignmentId: string,
+  quiz: boolean,
+  audience: ProgressAudience,
+): string {
   const params = new URLSearchParams()
   if (audience.kind === 'parent') {
     params.set('cocuk', audience.childId)
     params.set('sekme', 'gorevler')
-    params.set('gorev', point.assignmentId)
+    params.set('gorev', assignmentId)
     return `${PARENT_TASKS_PATH}?${params.toString()}`
   }
-  const quiz = point.attemptId !== null
-  params.set(quiz ? 'coz' : 'yaz', point.assignmentId)
+  params.set(quiz ? 'coz' : 'yaz', assignmentId)
   return `${quiz ? STUDENT_QUIZ_PATH : STUDENT_WRITING_PATH}?${params.toString()}`
 }
 

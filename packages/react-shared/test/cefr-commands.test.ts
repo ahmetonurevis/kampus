@@ -80,6 +80,7 @@ const session = (version = 2) => ({
   version,
 })
 
+// Kanıt sayılmayan sonuçlar (`excluded`) yalnız personel yanıtındadır (OG-247, DOM-BEC-045).
 const estimate: CefrProfile['estimate'] = {
   context: 'general',
   computedAt: '2026-11-02T09:00:00.000Z',
@@ -87,7 +88,6 @@ const estimate: CefrProfile['estimate'] = {
   skills: [],
   label: 'Tahmini seviye',
   evidence: [],
-  excluded: [],
 }
 
 const timelineBase = {
@@ -114,6 +114,7 @@ const learnerProfile: CefrProfile = {
 const staffProfile: CefrProfile = {
   ...learnerProfile,
   view: 'staff',
+  estimate: { ...estimate, excluded: [] },
   timeline: [
     {
       ...timelineBase,

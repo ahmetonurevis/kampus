@@ -188,7 +188,7 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
   type Tenant = Awaited<ReturnType<typeof tenant>>
 
   function call(
-    method: 'GET' | 'POST',
+    method: 'GET' | 'POST' | 'PATCH',
     url: string,
     cookie?: string,
     payload?: unknown,
@@ -881,6 +881,109 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       .from(submissionVersions)
       .where(eq(submissionVersions.institutionId, t.institution.id))
     assert.equal(versions.length, 2)
+  })
+
+  test('DOM-BEC-040, DOM-BEC-044, IST-047: yeniden teslim geçmişi: her sürüm kendi turunun son tarihiyle okunur (sonraki istek eski sürümü geç yapmaz); atamanın son tarihi geçse de istenen sürümün taslağı kaydedilir ve taslaktan teslim edilir; her sürüm kendi geri bildirimini ve turunu taşır; tur kapanınca taslak ve teslim 422', async () => {
+    const { t, assignmentId, submission } = await setup()
+    const id = submission.id as string
+    const HOUR = 3_600_000
+    const DAY = 24 * HOUR
+    const readRowVersion = async () =>
+      (await ok(await detail(id, t.cookies.teacher))).rowVersion as number
+    now = new Date(new Date(DUE).getTime() - HOUR)
+    const firstRequestedAt = now.toISOString()
+    await ok(await score(id, t.cookies.teacher, await readRowVersion()), 201)
+    const firstDue = new Date(new Date(DUE).getTime() + 5 * DAY).toISOString()
+    await ok(
+      await requestResubmission(id, t.cookies.teacher, await readRowVersion(), {
+        versionNumber: 1,
+        dueAt: firstDue,
+      }),
+      201,
+    )
+
+    // Atamanın son tarihi geçti, yeniden teslim süresi sürüyor.
+    now = new Date(new Date(DUE).getTime() + 2 * DAY)
+    const draft = await ok(
+      await call('PATCH', `/task-assignments/${assignmentId}/draft`, t.cookies.student, {
+        body: 'Second version from the draft.',
+      }),
+    )
+    const second = await ok(
+      await call(
+        'POST',
+        `/task-assignments/${assignmentId}/draft/submit`,
+        t.cookies.student,
+        {},
+        { ...match(draft.revision), ...key() },
+      ),
+      201,
+    )
+    assert.equal(second.status, 'submitted')
+    assert.equal(second.versions[1].late, false)
+
+    await ok(
+      await score(id, t.cookies.teacher, await readRowVersion(), scoreBody({ versionNumber: 2 })),
+      201,
+    )
+    const secondRequestedAt = now.toISOString()
+    const secondDue = new Date(now.getTime() + 3 * DAY).toISOString()
+    await ok(
+      await requestResubmission(id, t.cookies.teacher, await readRowVersion(), {
+        versionNumber: 2,
+        dueAt: secondDue,
+      }),
+      201,
+    )
+    const expected = [
+      [1, false, { dueAt: firstDue, requestedAt: firstRequestedAt }],
+      [2, false, { dueAt: secondDue, requestedAt: secondRequestedAt }],
+    ]
+    for (const cookie of [t.cookies.student, t.cookies.parent, t.cookies.teacher]) {
+      const history = await ok(await detail(id, cookie))
+      assert.deepEqual(
+        history.versions.map((v: Json) => [v.number, v.late, v.resubmissionRequest]),
+        expected,
+      )
+      // Her sürümün geri bildirimi geçmişte kalır; son istek ayrıca özette.
+      assert.deepEqual(
+        history.versions.map((v: Json) => v.score?.overallComment ?? null),
+        [FEEDBACK, FEEDBACK],
+      )
+      assert.deepEqual(history.resubmission, { versionNumber: 2, dueAt: secondDue })
+    }
+
+    // Üçüncü sürüm ikinci turun penceresinde; kuyruk ve ayrıntı aynı puanlama süresini verir.
+    now = new Date(now.getTime() + DAY)
+    const third = await ok(await resubmit(assignmentId, 'Third version.'), 201)
+    assert.equal(third.versions[2].late, false)
+    assert.equal(third.versions[2].resubmissionRequest, null)
+    const teacherView = await ok(await detail(id, t.cookies.teacher))
+    const queued = (await ok(await queue(t.cookies.teacher))).find((row: Json) => row.id === id)
+    assert.equal(queued.grading.dueAt, teacherView.versions[2].grading.dueAt)
+    assert.equal(
+      queued.grading.dueAt,
+      new Date(new Date(secondDue).getTime() + 7 * DAY).toISOString(),
+    )
+
+    // İkinci tur kapandı: sıradaki sürümün taslağı ve teslimi kapanır (geç kabul yok).
+    now = new Date(new Date(secondDue).getTime() + 1)
+    const before = await storedRows(t.institution.id)
+    fails(
+      await call(
+        'PATCH',
+        `/task-assignments/${assignmentId}/draft`,
+        t.cookies.student,
+        {
+          body: 'Late draft.',
+        },
+        match(draft.revision),
+      ),
+      422,
+      'submission_closed',
+    )
+    fails(await resubmit(assignmentId, 'Fourth.'), 422, 'submission_closed')
+    assert.deepEqual(await storedRows(t.institution.id), before)
   })
 
   test('IST-051, DOM-BEC-040, DOM-BEC-045: kursiyer ve veli atama listesinde ve ayrıntısında kendi durum özetini görür (hak, son teslim, yeni sürüm hakkı, özetin eskiyeceği an, açılmış puan); veli yalnız kendi çocuğu, başka çocuğun ataması 404; özet satır sürümü taşımaz', async () => {

@@ -21,8 +21,10 @@ const iconButton =
 export function Topbar({ session, title, narrow, menuOpen, onOpenMenu, onSignOut }: TopbarProps) {
   const { theme, toggleTheme } = useTheme()
   return (
-    <header className="topbar glass sticky top-shell z-20 mx-3 mt-shell flex min-h-topbar items-center justify-between gap-3 rounded-card px-5 py-2.5 max-[860px]:px-3 max-[650px]:flex-wrap">
-      <div className="flex min-w-0 items-center gap-2">
+    // Dar ekranda çubuk tek satırda kalır; uzun başlık iki satıra kırılır (sayfa başlığı h1'de tamdır).
+    // Yatay telefonda çubuk yapışmaz: 360 px yükseklikte içeriğin dörtte birini kapatırdı.
+    <header className="topbar glass sticky top-shell z-20 mx-3 mt-shell flex min-h-topbar items-center justify-between gap-3 rounded-card px-5 py-2.5 max-[860px]:px-3 short:static">
+      <div className="flex min-w-0 flex-1 items-center gap-2">
         {narrow ? (
           <button
             type="button"
@@ -37,7 +39,9 @@ export function Topbar({ session, title, narrow, menuOpen, onOpenMenu, onSignOut
         <span className="breadcrumb flex min-w-0 items-center gap-[13px] text-sm text-muted-foreground">
           <span className="max-[650px]:hidden">{getRole(session.role).label} Paneli</span>
           <Icon name="ChevronRight" size={14} className="max-[650px]:hidden" />
-          <strong className="truncate font-medium text-foreground">{title}</strong>
+          <strong className="truncate font-medium text-foreground max-[650px]:line-clamp-2 max-[650px]:whitespace-normal">
+            {title}
+          </strong>
         </span>
       </div>
       <div className="topbar-actions flex items-center gap-1.5 rounded-[14px] border border-topbar-border bg-topbar p-[5px]">

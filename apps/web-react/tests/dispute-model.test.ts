@@ -34,6 +34,7 @@ const score = (bands: Record<string, number>): TaskScore => ({
     comment: null,
   })),
   overallComment: 'Genel yorum',
+  feedbackAudio: null,
 })
 
 const grading = (extra: Partial<TaskVersionGrading> = {}): TaskVersionGrading => ({

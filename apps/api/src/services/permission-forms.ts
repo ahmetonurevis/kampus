@@ -7,14 +7,19 @@ import { isCustodial } from '@kampus/school-core/lib/guardianship.ts'
 import { notificationEnabled, type LearnerAgeFacts } from '@kampus/school-core/lib/notifications.ts'
 import {
   archivePermissionForm,
+  cancelPermissionForm,
   closePermissionForm,
   createPermissionForm,
+  currentDecisions,
   decidePermission,
   decidePermissionSchema,
+  isCurrentDecision,
   isPermissionFormOpen,
+  permissionCancelStudents,
   permissionCounts,
   permissionDeadlineEndsAt,
   permissionDecider,
+  permissionReaskStudents,
   permissionReminders,
   permissionStatus,
   PERMISSION_FORM_TOPIC_KEYS,
@@ -105,6 +110,10 @@ type FormStatus = 'open' | 'closed'
 const topicOf = (value: unknown): PermissionFormTopic =>
   PERMISSION_FORM_TOPIC_KEYS.find((topic) => topic === value) ?? 'other'
 const deadlineOf = (record: RecordData) => text(record.deadline) ?? ''
+/** Etkinlik ayrıntısı sürümü (core `permissionFormRevision`); alanı olmayan kayıt 0. */
+const revisionOf = (record: RecordData) =>
+  typeof record.detailsRevision === 'number' ? record.detailsRevision : 0
+const fee = (value: unknown) => (typeof value === 'number' ? value : null)
 const storedStatus = (record: RecordData): FormStatus =>
   record.status === 'closed' ? 'closed' : 'open'
 const accepting = (record: RecordData, now: Date) =>
@@ -144,6 +153,13 @@ function formView(
     description: text(record.description) ?? '',
     deadline,
     deadlineEndsAt: permissionDeadlineEndsAt(deadline),
+    // Etkinlik ayrıntısı (DOM-ILT-032): karar bu ayrıntıya verilir, karar verenler de görür.
+    eventDate: text(record.eventDate),
+    eventTime: text(record.eventTime),
+    location: text(record.location),
+    transport: text(record.transport),
+    fee: fee(record.fee),
+    detailsRevision: revisionOf(record),
     ...(view.personal ? {} : { classIds: texts(record.classIds) }),
     studentIds: view.visible ? studentIds.filter(view.visible) : studentIds,
     ...(view.manage
@@ -155,6 +171,7 @@ function formView(
     ...(view.personal ? {} : { teacherId: text(record.teacherId) }),
     status: open ? ('open' as const) : ('closed' as const),
     closedAt: text(record.closedAt),
+    cancelledAt: text(record.cancelledAt),
     acceptingDecisions: open,
     createdAt: text(record.createdAt) ?? meta.updatedAt,
     updatedAt: meta.updatedAt,
@@ -354,13 +371,14 @@ async function decisionsOf(
 type DecisionFacts = Pick<
   PermissionDecisionRecord,
   'decidedByUserId' | 'decidedAt' | 'decision' | 'relation'
->
+> & { formRevision: number }
 
 const factsOf = (data: RecordData): DecisionFacts => ({
   decidedByUserId: text(data.decidedByUserId) ?? '',
   decidedAt: text(data.decidedAt) ?? '',
   decision: data.decision === 'rejected' ? 'rejected' : 'approved',
   relation: data.relation === 'self' ? 'self' : 'guardian',
+  formRevision: typeof data.formRevision === 'number' ? data.formRevision : 0,
 })
 
 interface FormSummary {
@@ -401,7 +419,11 @@ async function summarize(
       visibleStudents.map((studentId) => [
         studentId,
         permissionStatus(
-          formDecisions.filter((d) => d.data.studentId === studentId).map((d) => factsOf(d.data)),
+          // Etkinlik ayrıntısı değişince düşen (eski sürüm) karar sayılmaz (DOM-ILT-032).
+          currentDecisions(
+            { detailsRevision: revisionOf(row.data) },
+            formDecisions.filter((d) => d.data.studentId === studentId).map((d) => factsOf(d.data)),
+          ),
           deciders.get(studentId) ?? NOBODY,
         ),
       ]),
@@ -461,6 +483,11 @@ function studentEntries(ctx: ServiceContext, reader: Reader, summary: FormSummar
           note: text(shown.note) ?? '',
           relation: factsOf(decision.data).relation,
           decidedAt: text(decision.data.decidedAt) ?? '',
+          // Düşmüş karar (eski sürüm) satır olarak görünür ama durumu etkilemez (DOM-ILT-032).
+          current: isCurrentDecision(
+            { detailsRevision: revisionOf(summary.record) },
+            factsOf(decision.data),
+          ),
           // Ham kayıttan: kimlik yanıtta yöneticiye döner, `mine` herkese.
           mine: text(decision.data.decidedByUserId) === ctx.actor.userId,
           decidedByUserId: text(shown.decidedByUserId),
@@ -551,6 +578,7 @@ type PermissionAction =
   | 'permissionForm.create'
   | 'permissionForm.update'
   | 'permissionForm.close'
+  | 'permissionForm.cancel'
   | 'permissionForm.archive'
   | 'permissionForm.decide'
 
@@ -561,6 +589,13 @@ type Outcome =
       statusCode: 200 | 201
       /** Bildirim gidecek öğrenciler (açılış ya da hedefe yeni giren). */
       notifyStudentIds: readonly string[]
+      /**
+       * İzni düşüren değişiklik (DOM-ILT-032): kararı düşenlere yeniden izin bildirimi gider.
+       * `decisions` değişiklikten önceki sürümün karar satırlarıdır (satırlar silinmez).
+       */
+      dropped?: { revision: number; decisions: readonly PermissionDecisionRecord[] }
+      /** İptal (DOM-ILT-032): izin vermiş ve bekleyen öğrencilere iptal bildirimi gider. */
+      cancelled?: { decisions: readonly PermissionDecisionRecord[] }
       /** Formda karar satırı var mı (yanıttaki `hasDecisions`). */
       hasDecisions: boolean
     }
@@ -640,6 +675,66 @@ function respond(ctx: ServiceContext, outcome: OperationResult<Outcome>, fallbac
 }
 
 /**
+ * Etkinlik değişikliği ve iptal bildirimleri (DOM-ILT-032), yazmayla aynı transaction'da. Durum
+ * bugün velayetli ve kısıtsız veliler üzerinden hesaplanır (`decidersOf`, DOM-ILT-037): velayeti
+ * kalkan velinin kararı sayılmadığı için o öğrenci "kararı düştü" sayılmaz. Düşen karar:
+ * onay ya da ret vermiş öğrenciye `permission_form_reconsent`; iptal: izin vermiş ve bekleyen
+ * öğrenciye `permission_form_cancelled`, reddedene gitmez. Bildirim kitlesi (veli ya da
+ * kursiyer) kararı veren taraftan gelir; yalnız form kimliği taşınır (DOM-ILT-023). `dedupeKey`
+ * sürüm ya da iptale bağlıdır: aynı olay aynı alıcıya ikinci kez yazılmaz.
+ */
+async function notifyChange(
+  tx: Database,
+  ctx: ServiceContext,
+  institutionType: InstitutionType,
+  outcome: Extract<Outcome, { collection: 'permissionForms' }>,
+): Promise<void> {
+  const { dropped, cancelled } = outcome
+  if (!dropped && !cancelled) return
+  const formId = outcome.record.id
+  const studentIds = texts(outcome.record.studentIds)
+  const deciders = await decidersOf(tx, ctx.institutionId, institutionType, studentIds, ctx.now)
+  const minor = new Map(
+    [...deciders].map(([id, entry]) => [id, entry.decider === 'guardians'] as const),
+  )
+  const statuses = (decisions: readonly PermissionDecisionRecord[], revision: number) =>
+    new Map(
+      studentIds.map((studentId) => [
+        studentId,
+        permissionStatus(
+          currentDecisions(
+            { detailsRevision: revision },
+            decisions.filter((d) => d.studentId === studentId),
+          ),
+          deciders.get(studentId) ?? NOBODY,
+        ),
+      ]),
+    )
+  if (dropped) {
+    const recipients = permissionReaskStudents(statuses(dropped.decisions, dropped.revision))
+    if (recipients.length > 0)
+      await notify(tx, ctx, {
+        type: 'permission_form_reconsent',
+        recipients: { studentIds: recipients, minor },
+        data: { formId },
+        dedupeKey: `${formId}:rev${dropped.revision + 1}`,
+      })
+  }
+  if (cancelled) {
+    const recipients = permissionCancelStudents(
+      statuses(cancelled.decisions, revisionOf(outcome.record)),
+    )
+    if (recipients.length > 0)
+      await notify(tx, ctx, {
+        type: 'permission_form_cancelled',
+        recipients: { studentIds: recipients, minor },
+        data: { formId },
+        dedupeKey: `${formId}:cancelled`,
+      })
+  }
+}
+
+/**
  * İzin formu işlemini tek transaction'da çalıştırır (`runCommand`: kurum kilidi, fark, sürüm
  * koşullu yazma, denetim kaydı, `Idempotency-Key`). Sıra: olmayan hedef 404 → core yetki ve
  * kapsam (403/404) → sürüm 409 `version_conflict` → core kuralı (422, 409) → bildirim (aynı
@@ -678,8 +773,9 @@ function execute(
         }
       },
       after: async (tx, outcome) => {
-        if (outcome.collection !== 'permissionForms' || outcome.notifyStudentIds.length === 0)
-          return
+        if (outcome.collection !== 'permissionForms') return
+        await notifyChange(tx, ctx, institutionType, outcome)
+        if (outcome.notifyStudentIds.length === 0) return
         // Kitle kararı verenle aynı kaynaktan (`permissionDecider`): 18 yaş altında veliye,
         // kendisi karar veren öğrenciye; yetişkin öğrencinin formu veliye bildirilmez. İletişim
         // modülü kapalıysa `notify` yazmadan döner (DOM-YTK-040). Aynı form aynı öğrenciye ikinci
@@ -716,13 +812,18 @@ const formOutcome = (
   form: { id: string },
   statusCode: 200 | 201,
   notifyStudentIds: readonly string[] = [],
+  extra: Pick<Extract<Outcome, { collection: 'permissionForms' }>, 'dropped' | 'cancelled'> = {},
 ): Outcome => ({
   collection: 'permissionForms',
   record: stored(form),
   statusCode,
   notifyStudentIds,
   hasDecisions: state.permissionDecisions.some((decision) => decision.formId === form.id),
+  ...extra,
 })
+
+const decisionsInState = (state: State, formId: string) =>
+  state.permissionDecisions.filter((decision) => decision.formId === formId)
 
 const decisionsOfForm = (formId: string): LoadScope => ({
   match: [{ kind: 'equals', field: 'formId', values: [formId] }],
@@ -763,7 +864,9 @@ export function createPermissionFormCommand(
 
 /**
  * İzin formunu düzenler (core `updatePermissionForm`, DOM-ILT-038); hedefe yeni giren öğrencilere
- * bildirim. Kararı olan formun daraltılması kararlara bakar: formun kararları yüklenir.
+ * bildirim. Etkinlik ayrıntısı (gün, saat, yer, ulaşım, ücret) değişirse alınmış kararlar düşer ve
+ * kararı düşen öğrencilere aynı işlemde `permission_form_reconsent` yazılır (DOM-ILT-032). Kararı
+ * olan formun daraltılması kararlara bakar: formun kararları yüklenir.
  */
 export function editPermissionForm(
   ctx: ServiceContext,
@@ -781,7 +884,7 @@ export function editPermissionForm(
       },
       expected: expectedForm(target),
       run: (state, by, { now }, { institutionType }) => {
-        const { form, addedStudentIds } = updatePermissionForm(
+        const { form, addedStudentIds, droppedFields, previousRevision } = updatePermissionForm(
           state,
           by,
           target.formId,
@@ -789,7 +892,20 @@ export function editPermissionForm(
           now,
           { institutionType },
         )
-        return formOutcome(state, form, 200, addedStudentIds)
+        return formOutcome(
+          state,
+          form,
+          200,
+          addedStudentIds,
+          droppedFields.length > 0
+            ? {
+                dropped: {
+                  revision: previousRevision,
+                  decisions: decisionsInState(state, form.id),
+                },
+              }
+            : {},
+        )
       },
     },
     idempotency,
@@ -818,6 +934,36 @@ export function closePermissionFormCommand(
           closePermissionForm(state, by, target.formId, now, { institutionType }),
           200,
         ),
+    },
+    idempotency,
+  )
+}
+
+/**
+ * Etkinliği iptal eder (core `cancelPermissionForm`, DOM-ILT-032): form kapanır, kararlar
+ * korunur; izin vermiş ve bekleyen öğrencilere aynı işlemde `permission_form_cancelled` yazılır.
+ */
+export function cancelPermissionFormCommand(
+  ctx: ServiceContext,
+  target: PermissionFormTarget,
+  idempotency: IdempotencyRequest | null,
+) {
+  return execute(
+    ctx,
+    {
+      action: 'permissionForm.cancel',
+      // Kararlar iptal bildiriminin kitlesi (izin vermiş ve bekleyen) için okunur.
+      loadScope: {
+        permissionForms: { ids: [target.formId] },
+        permissionDecisions: decisionsOfForm(target.formId),
+      },
+      expected: expectedForm(target),
+      run: (state, by, { now }, { institutionType }) => {
+        const form = cancelPermissionForm(state, by, target.formId, now, { institutionType })
+        return formOutcome(state, form, 200, [], {
+          cancelled: { decisions: decisionsInState(state, form.id) },
+        })
+      },
     },
     idempotency,
   )
@@ -887,8 +1033,14 @@ export function decidePermissionCommand(
           learner: learner ?? {},
         })
         const { studentId, relation } = outcome.decision
+        const form = state.permissionForms.find((item) => item.id === formId)
         const studentStatus = permissionStatus(
-          state.permissionDecisions.filter((d) => d.formId === formId && d.studentId === studentId),
+          currentDecisions(
+            { detailsRevision: form?.detailsRevision },
+            state.permissionDecisions.filter(
+              (d) => d.formId === formId && d.studentId === studentId,
+            ),
+          ),
           {
             decider: relation === 'self' ? 'self' : 'guardians',
             guardianUserIds: guardianUserIds ?? new Set<string>(),
@@ -959,6 +1111,7 @@ export async function sendPermissionReminders(input: {
       deadline: deadlineOf(row.data),
       status: storedStatus(row.data),
       studentIds: texts(row.data.studentIds),
+      detailsRevision: revisionOf(row.data),
     }))
     const due = permissionReminders({ forms, decisions: [], deciders: () => NOBODY, now: at })
     result.forms = due.length

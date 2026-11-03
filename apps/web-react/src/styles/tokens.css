@@ -88,6 +88,8 @@
   --space-section: 24px;
   --space-card: 24px;
   --shell-inset: 12px;
+  /* Web dokunma hedefinin en küçük kenarı (WCAG 2.2, 2.5.8); 44/48 dp yalnız mobil uygulamadadır. */
+  --target-min: 24px;
   /* Yüzen üst çubuğun en az yüksekliği; çubuk (Topbar) ve altında yapışan paneller aynı değeri kullanır. */
   --topbar-height: 72px;
   /* Üst çubuğun altında yapışan panelin üst boşluğu: kabuk boşluğu + çubuk + 16 px aralık. */

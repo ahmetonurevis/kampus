@@ -6,9 +6,17 @@ import {
 } from '@kampus/react-shared/use-task-submissions.ts'
 import { useRubricVersion, type RubricVersion } from '@kampus/react-shared/use-rubrics.ts'
 import type { TaskScore } from '@kampus/react-shared/use-task-grading.ts'
+import { resubmissionRoundText } from '@kampus/react-shared/writing-model.ts'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { FeedbackAudioPlayer, RecordingPlayer } from './RecordingPlayer.tsx'
+import {
+  gradedVersionNote,
+  isSpeakingSubmission,
+  recordingTitle,
+  versionRecording,
+} from './recording-review-model.ts'
 import { ResubmissionForm } from './ResubmissionForm.tsx'
 import { RubricScoreForm } from './RubricScoreForm.tsx'
 import {
@@ -20,6 +28,7 @@ import {
   staleNoticeText,
   submissionStatus,
 } from './task-model.ts'
+import { VersionComparison } from './VersionComparison.tsx'
 
 type Props = {
   /** `''` kapalı; aksi hâlde puanlanan teslimin kimliği. */
@@ -28,10 +37,14 @@ type Props = {
 }
 
 /**
- * Teslim puanlama penceresi (`?puanla=`): değişmez sürümler (metin, geç bayrağı, sözcük sayısı),
+ * Teslim puanlama penceresi (`?puanla=`): iki ya da daha çok sürümde iki sürümün yan yana
+ * karşılaştırması (varsayılan son ikisi; IST-047), değişmez sürümler (metin, geç bayrağı, sözcük
+ * sayısı, sürüm için istenen yeniden teslim turu),
  * verilmiş rubrik puanı, puanlanmamış son sürüm için rubrik formu ve puanı kesinleşen son sürüm
  * için yeniden teslim isteği. Kapsam, yetki ve sürüm sunucudadır; başka kurumun ya da kapsam
- * dışı teslim 404 verir ve "bulunamadı" görünür.
+ * dışı teslim 404 verir ve "bulunamadı" görünür. Konuşma tesliminde (IST-052) metin
+ * karşılaştırması yerine her sürümün kaydı dinlenir (`RecordingPlayer`; imzalı bağlantı yalnız
+ * dinleyince istenir, DOM-BEC-053) ve birden çok denemede hangi kaydın puanlandığı yazılır.
  */
 export function SubmissionGradingModal({ submissionId, onClose }: Props) {
   return (
@@ -73,6 +86,8 @@ function GradingBody({ submissionId }: { submissionId: string }) {
   const status = submissionStatus(submission.status)
   const latest = submission.versions[submission.versions.length - 1] ?? null
   const latestScore = latest?.score ?? null
+  const speaking = isSpeakingSubmission(submission.versions)
+  const gradedNote = speaking ? gradedVersionNote(submission.versions) : null
   const resubmission =
     submission.resubmission && latest && submission.resubmission.versionNumber === latest.number
       ? submission.resubmission
@@ -101,36 +116,59 @@ function GradingBody({ submissionId }: { submissionId: string }) {
         </p>
       ) : null}
 
+      {speaking ? null : <VersionComparison key={submission.id} versions={submission.versions} />}
+
       <section aria-labelledby="teslim-surumleri" className="grid gap-3">
         <h3 id="teslim-surumleri" className="text-md font-semibold">
-          Teslim sürümleri
+          {speaking ? 'Konuşma kayıtları' : 'Teslim sürümleri'}
         </h3>
+        {gradedNote ? <p className="text-sm text-muted-foreground">{gradedNote}</p> : null}
         {submission.versions.length === 0 ? (
           <p className="text-sm text-muted-foreground">Henüz gönderilmiş sürüm yok.</p>
         ) : (
-          [...submission.versions].reverse().map((version) => (
-            <article
-              key={version.id}
-              aria-label={`Sürüm ${version.number}`}
-              className="grid gap-3 rounded-card border p-4"
-            >
-              <div className="flex flex-wrap items-center gap-2 text-sm">
-                <strong>Sürüm {version.number}</strong>
-                <span className="text-muted-foreground">{dateTimeLabel(version.submittedAt)}</span>
-                {version.late ? <StatusBadge text="Geç teslim" tone="red" /> : null}
-                {version.wordCount ? (
-                  <span className="text-muted-foreground">{version.wordCount.count} sözcük</span>
+          [...submission.versions].reverse().map((version) => {
+            const recording = versionRecording(version)
+            return (
+              <article
+                key={version.id}
+                aria-label={`Sürüm ${version.number}`}
+                className="grid gap-3 rounded-card border p-4"
+              >
+                <div className="flex flex-wrap items-center gap-2 text-sm">
+                  <strong>Sürüm {version.number}</strong>
+                  <span className="text-muted-foreground">
+                    {dateTimeLabel(version.submittedAt)}
+                  </span>
+                  {version.late ? <StatusBadge text="Geç teslim" tone="red" /> : null}
+                  {speaking && version.id === latest?.id && latestScore === null ? (
+                    <StatusBadge text="Puanlanacak kayıt" tone="purple" />
+                  ) : null}
+                  {version.wordCount ? (
+                    <span className="text-muted-foreground">{version.wordCount.count} sözcük</span>
+                  ) : null}
+                </div>
+                {version.resubmissionRequest ? (
+                  <p className="text-sm text-muted-foreground">
+                    {resubmissionRoundText(version.resubmissionRequest)}
+                  </p>
                 ) : null}
-              </div>
-              {version.wordCount?.warning ? (
-                <p className="text-sm text-warning">{version.wordCount.warning}</p>
-              ) : null}
-              <p className="text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
-                {version.body ?? ''}
-              </p>
-              {version.score ? <ScoreCard score={version.score} rubric={rubric.version} /> : null}
-            </article>
-          ))
+                {version.wordCount?.warning ? (
+                  <p className="text-sm text-warning">{version.wordCount.warning}</p>
+                ) : null}
+                {recording ? (
+                  <RecordingPlayer
+                    file={recording}
+                    title={recordingTitle('staff', version.number)}
+                  />
+                ) : (
+                  <p className="text-sm leading-relaxed whitespace-pre-wrap [overflow-wrap:anywhere]">
+                    {version.body ?? ''}
+                  </p>
+                )}
+                {version.score ? <ScoreCard score={version.score} rubric={rubric.version} /> : null}
+              </article>
+            )
+          })
         )}
       </section>
 
@@ -273,6 +311,7 @@ export function ScoreCard({ score, rubric }: { score: TaskScore; rubric: RubricV
         <span className="font-medium">Genel geri bildirim: </span>
         {score.overallComment}
       </p>
+      {score.feedbackAudio ? <FeedbackAudioPlayer file={score.feedbackAudio} /> : null}
     </div>
   )
 }

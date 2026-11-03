@@ -1,3 +1,5 @@
+import { z } from 'zod'
+import { FILE_PURPOSES } from '../content/taxonomy.ts'
 import { isCalendarDay, isUnderAdultAge } from '../lib/age.ts'
 import { dayKey } from '../lib/format.ts'
 import type { Actor } from '../lib/scope.ts'
@@ -59,6 +61,38 @@ export function canAccessRecording(reader: RecordingReader, now: Date | string):
     default:
       return false
   }
+}
+
+// --- Sesli geri bildirim ---------------------------------------------------------------------
+
+/** Sesli geri bildirimin süre sınırı (DOM-BEC-056): `feedback_audio` amacının sınırı, 3 dakika. */
+export const FEEDBACK_AUDIO_SECONDS = FILE_PURPOSES.feedback_audio.maxDurationSeconds
+
+/**
+ * Puan gövdesindeki sesli geri bildirim (DOM-BEC-056): puanlayanın `feedback_audio` amacıyla
+ * yüklediği hazır dosyanın kimliği; verilmezse `null` (yazılı geri bildirim her zaman zorunludur).
+ */
+export const feedbackAudioFileIdSchema = z
+  .uuid('Sesli geri bildirim dosyası geçersiz.')
+  .nullable()
+  .default(null)
+
+export type FeedbackAudioReader = {
+  role: Actor['role']
+  /** Bağlı olduğu puan bu kişiye gösteriliyor (personelde görünür puan, kursiyer ve velide açılmış). */
+  scoreShown: boolean
+}
+
+/**
+ * Sesli geri bildirimi dinleyebilir mi (DOM-BEC-056): puanın kendisini gören herkes ve yalnız
+ * onlar. Kursiyer ve bağlı veli geri bildirim açılınca (DOM-BEC-045), puanlayan öğretmen, teslimi
+ * okuyan öğretmen ve yönetici görünür puanla; ikinci puanlayıcı ilk puanı görmediğinden onun
+ * sesini de duymaz (DOM-BEC-024). Ses öğretmenindir: kursiyerin kaydındaki 18 yaş kuralı
+ * (DOM-BEC-053) burada yoktur, yazılı geri bildirim gibi açılır. Ön büro hiç dinlemez.
+ */
+export function canHearFeedbackAudio(reader: FeedbackAudioReader): boolean {
+  if (reader.role === 'onburo') return false
+  return reader.scoreShown
 }
 
 // --- Saklama ------------------------------------------------------------------------------

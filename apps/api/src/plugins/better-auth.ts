@@ -1,6 +1,8 @@
+import { createHash } from 'node:crypto'
+
 import type { FastifyInstance, FastifyReply, FastifyRequest } from 'fastify'
 
-import { AUTH_BASE_PATH, isOpenAuthPath, type Auth } from '../auth.ts'
+import { AUTH_BASE_PATH, isOpenAuthPath, SIGN_IN_ATTEMPT_LIMIT, type Auth } from '../auth.ts'
 import { MESSAGES } from '../errors.ts'
 import { narrowSessionList } from '../lib/session-device.ts'
 import {
@@ -96,6 +98,26 @@ export function translateAuthError(status: number, text: string): Record<string,
 }
 
 const LIST_SESSIONS_PATH = `${AUTH_BASE_PATH}/list-sessions`
+const SIGN_IN_PATH = `${AUTH_BASE_PATH}/sign-in/email`
+
+/**
+ * Giriş gövdesindeki e-postanın hesap sayacı anahtarı (IST-025). Bellekte ham e-posta tutulmaz;
+ * hesap olsun olmasın aynı anahtar üretilir. E-posta yoksa sayaç uygulanmaz (Better Auth reddeder).
+ */
+export function signInAccountKey(body: unknown): string | null {
+  if (typeof body !== 'string' || body.length === 0) return null
+  let email: unknown
+  try {
+    const parsed: unknown = JSON.parse(body)
+    email = typeof parsed === 'object' && parsed !== null ? Reflect.get(parsed, 'email') : null
+  } catch {
+    return null
+  }
+  if (typeof email !== 'string') return null
+  const normalized = email.trim().toLowerCase()
+  if (!normalized) return null
+  return `sign-in:${createHash('sha256').update(normalized).digest('hex')}`
+}
 
 /**
  * `/list-sessions` yanıtı daraltılır (KVKK, `lib/session-device.ts`): ham IP ve kullanıcı ajanı
@@ -109,6 +131,14 @@ async function narrowSessions(auth: Auth, request: Request, response: Response) 
   const headers = new Headers(response.headers)
   headers.set('content-type', 'application/json')
   return new Response(JSON.stringify(narrowed), { status: response.status, headers })
+}
+
+/** Better Auth'un IP sınırı yanıtının aynısı (gövde, başlıklar); iki sınır birbirinden ayırt edilmez. */
+function tooManyRequests(retryAfterSeconds: number): Response {
+  return new Response(JSON.stringify({ message: 'Too many requests. Please try again later.' }), {
+    status: 429,
+    headers: { 'Content-Type': 'application/json', 'X-Retry-After': String(retryAfterSeconds) },
+  })
 }
 
 async function relayResponse(reply: FastifyReply, response: Response) {
@@ -142,6 +172,15 @@ export async function registerBetterAuth(app: FastifyInstance, auth: Auth, base:
 }
 
 function registerAuthRoute(app: FastifyInstance, auth: Auth, base: string) {
+  // Hesap başına giriş sınırı (`SIGN_IN_ATTEMPT_LIMIT`): sayaç Better Auth'a gitmeden artar, her
+  // deneme (başarılı giriş dahil) sayılır. Artış eşzamanlı isteklerde de tek tek işlenir; parola
+  // özeti hesaplanırken gelen istekler eşiği aşamaz. Sınır dolunca doğru parola da 429 alır; yanıt
+  // Better Auth'un IP sınırıyla aynıdır, hesabın varlığı ve parolanın doğruluğu belli olmaz.
+  const signInAttempts = app.createRateLimit({
+    max: SIGN_IN_ATTEMPT_LIMIT.max,
+    timeWindow: SIGN_IN_ATTEMPT_LIMIT.windowSeconds * 1000,
+    keyGenerator: (request) => signInAccountKey(request.body) ?? '',
+  })
   app.route({
     method: ['GET', 'POST'],
     url: `${AUTH_BASE_PATH}/*`,
@@ -152,6 +191,12 @@ function registerAuthRoute(app: FastifyInstance, auth: Auth, base: string) {
       // İzin listesi, Better Auth'un yönlendireceği normalleştirilmiş yol üzerinde denetlenir.
       const pathname = new URL(fetchRequest.url).pathname
       if (!isOpenAuthPath(pathname)) return reply.callNotFound()
+      if (pathname === SIGN_IN_PATH && signInAccountKey(request.body)) {
+        const status = await signInAttempts(request)
+        // `isAllowed: true` yalnız izin listesindedir; bu sayaçta izin listesi yok.
+        if (!status.isAllowed && status.isExceeded)
+          return relayResponse(reply, tooManyRequests(Math.max(1, status.ttlInSeconds)))
+      }
       const response = await auth.handler(fetchRequest)
       if (pathname === LIST_SESSIONS_PATH && response.status === 200)
         return relayResponse(reply, await narrowSessions(auth, fetchRequest, response))

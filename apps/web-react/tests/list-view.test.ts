@@ -13,6 +13,7 @@ import {
   presetActive,
   tableFields,
   tableSearchKeys,
+  usesCardLayout,
 } from '../src/lib/list-view.ts'
 
 const columns = [
@@ -203,4 +204,15 @@ test('boş liste: araç çubuğunda temizleme düğmesi varsa boş durum ikinci 
   assert.equal(emptyListView(state, false, {}, true).text, 'Aramanızla eşleşen kayıt bulunamadı.')
   assert.equal(emptyListView(state, false, {}, false).showClear, true)
   assert.equal(emptyListView(idle, false, {}, true).showClear, false)
+})
+
+test('kart düzeni dikey ve yatay telefonda, tablo tablet ve masaüstünde (IST-127)', () => {
+  assert.equal(usesCardLayout({ width: 360, height: 740 }), true)
+  assert.equal(usesCardLayout({ width: 390, height: 844 }), true)
+  assert.equal(usesCardLayout({ width: 740, height: 360 }), true)
+  assert.equal(usesCardLayout({ width: 932, height: 430 }), true)
+  assert.equal(usesCardLayout({ width: 768, height: 1024 }), false)
+  assert.equal(usesCardLayout({ width: 1440, height: 1000 }), false)
+  // Masaüstünün kısa penceresi tabloda kalır.
+  assert.equal(usesCardLayout({ width: 1280, height: 420 }), false)
 })

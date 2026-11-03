@@ -52,7 +52,11 @@ function LanguageProgress({ page }: { page: NavPage }) {
       {error ? <LookupError error={error} onRetry={retry} /> : null}
       {student ? (
         <>
-          <CefrProfileCards key={student.id} studentId={student.id} />
+          <CefrProfileCards
+            key={student.id}
+            studentId={student.id}
+            audience={childId ? { kind: 'parent', childId } : { kind: 'student' }}
+          />
           <SkillProgress studentId={student.id} childId={childId} />
         </>
       ) : pending ? (

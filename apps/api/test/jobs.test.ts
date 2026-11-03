@@ -15,6 +15,7 @@ import { dispatchInstitutionJobs, dispatchQueueName, type JobSender } from '../s
 import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
 import { filesPurgeJob } from '../src/jobs/files-purge.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
+import { installmentRemindersJob } from '../src/jobs/installment-reminders.ts'
 import { bootJobs } from '../src/jobs/boot.ts'
 import { jobErrorInfo } from '../src/jobs/job-error.ts'
 import { permissionRemindersJob } from '../src/jobs/permission-reminders.ts'
@@ -108,6 +109,19 @@ describe('arka plan işleri', () => {
       assert.equal(job.cron.split(' ').length, 5, job.name)
       assert.ok(job.slotSeconds >= 3600, job.name)
     }
+  })
+
+  test('zamanlanan işler: kurum bakımı, izin ve taksit vade hatırlatmaları kuyruğa kurulur (#29)', () => {
+    assert.deepEqual(
+      INSTITUTION_JOBS.map((job) => job.name),
+      [
+        idempotencyPurgeJob.name,
+        filesPurgeJob.name,
+        filesPurgeExpiredJob.name,
+        permissionRemindersJob.name,
+        installmentRemindersJob.name,
+      ],
+    )
   })
 
   test('dağıtım her kuruma doğru yük ve tekil anahtarla bir iş gönderir; sahte gönderici tekilliği uyguladığı için ikinci dağıtım 0 sayar', async () => {

@@ -32,7 +32,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 
 - **Kural:** Ses ve video kaynağı, döküm (transcript) veya zaman kodlu altyazı (WebVTT) eklenmeden yayına alınamaz. Dinleme becerisi görevinde döküm öğrenciye görev tamamlanana kadar gösterilmez ama kayıtta bulunur.
 - **Gerekçe:** İşitme engelli öğrenci ve sessiz ortam erişimi; dinleme görevinde dökümün erken görünmesi ölçmeyi bozar.
-- **Kaynak:** İşletme kuralı (CLAUDE.md erişilebilirlik zorunluluğu).
+- **Kaynak:** İşletme kuralı (`.claude/rules/tasarim.md` erişilebilirlik zorunluluğu).
 - **Kurum türü:** ikisi
 - **Kodda:** kısmen — örnek videolar `captions` ve `transcript` taşır (`packages/school-core/src/data/seed.js:457-502`); yüklenen videoda altyazı zorunlu değil (`apps/web/src/views/Learning.vue:286-298`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`publicationIssues`, `learnerView`: dinleme dökümü varsayılan gizli, `showTranscript` ile açılır).
 
@@ -90,7 +90,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 - **Gerekçe:** Optik analiz, deneme eksikleri ve kaynak önerisi aynı kazanım kimliğiyle eşleşmezse "eksik kazanıma uygun kaynak" önerilemez.
 - **Kaynak:** MEB öğretim programları; 2024 sonrası programlarda "öğrenme çıktısı" kodlaması ve geçiş takvimi **doğrulanmalı**.
 - **Kurum türü:** `school`
-- **Kodda:** çelişiyor — konular serbest metin dizisidir (`packages/school-core/src/data/curriculum.js:9`); soru bankasında konu adı metin olarak tutulur (`packages/school-core/src/data/question-bank.js:3`). Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`resourceTagsSchema`: `outcomeId` + `outcomeSource`); katalog ve program sürümü yok.
+- **Kodda:** kısmen — katalog ve seçim kuralı `packages/school-core/src/content/outcomes.ts` (`outcomeSelectionIssues`: yeni seçilen kod katalogda ve etkin olmalı, sürümde zaten bulunan arşivli kod korunur); tablolar `platform_learning_outcomes` (program sürümüyle) ve `learning_outcomes` (kurum kodları, migration 0050); uç `GET/POST /api/v1/learning-outcomes`, `POST …/:code/archive` (`apps/api/src/routes/learning-outcomes.ts`); kaynak yazımı `apps/api/src/services/resource-commands.ts` (`assertOutcomesSelectable`); web içerik/soru formu katalogdan seçer (`apps/web-react/src/pages/content/OutcomePicker.tsx`). Eksik: platform kataloğu örnek veridir (müfredat konularından türetilir), resmî MEB kodları ve kurumun etkin program sürümü, program değişince "program güncellemesi bekliyor" işareti yok (OG-132); rubrik bandının kazanım hizası (`packages/school-core/src/skills/rubric.ts` `bandAlignmentSchema`, `kind: 'outcome'`) katalogla doğrulanmaz, serbest kod kabul edilir (`TODO(rubrik-kazanim-katalog)`); kurum kazanımının `subjectId`'si kurumun ders kaydıyla doğrulanmaz, serbest kimliktir (kaynak etiketindeki ders de doğrulanmıyor; ders kataloğu kurumda kayıt olarak tutulduğunda birlikte bağlanır, `TODO(kazanim-ders-dogrulama)`); platform senkronu kurum koduyla çakışan yeni kodu eklemez, raporlar (çözüm OG-132); eski demo konuları serbest metindir (`packages/school-core/src/data/curriculum.ts`).
 
 ### DOM-KYN-012 · CEFR seviyesi ve beceri sözlüğü
 
@@ -104,7 +104,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 
 - **Kural:** Kazanım (veya beceri) etiketi olmayan soru quiz'e, ödev şablonuna ya da deneme cevap anahtarına eklenemez. Etiket değişikliği yeni soru sürümü açar (`DOM-KYN-032`).
 - **Gerekçe:** Kazanım bazlı eksik analizi ve etüt yerleştirmesi soru etiketine dayanır.
-- **Kaynak:** İşletme kuralı; CLAUDE.md "cevap anahtarının her sorusu ders/kazanıma bağlıdır".
+- **Kaynak:** İşletme kuralı; `.claude/rules/okul-is-akislari.md` "cevap anahtarının her sorusu ders/kazanıma bağlıdır".
 - **Kurum türü:** ikisi
 - **Kodda:** kısmen — optik cevap anahtarı soru başına ders/kazanım ister (`packages/school-core/src/lib/assessment-automation.js`); soru bankası ve quiz için zorunlu değil. Core kuralı (ADR 0004; API ve ekran sonra): `packages/school-core/src/content/resource.ts` (`publicationIssues`: soru ve quiz öğeleri).
 
@@ -201,7 +201,7 @@ Bugünkü kodda kaynaklar `materials`, `videos`, `bank` (soru bankası), `quizze
 
 - **Kural:** `Yayında` olan kaynak düzenlenemez; düzenleme aynı kaynağın yeni sürümünü `Taslak` olarak açar. Yeni sürüm yayına girince önceki sürüm yeni atamalarda kullanılmaz ama silinmez. Öğrenciye verilmiş ödev, quiz veya okuma görevi atandığı sürüme bağlı kalır; puanlar ve teslimler o sürümle hesaplanmış kalır.
 - **Gerekçe:** Öğrenci bir soruyu cevapladıktan sonra sorunun değişmesi puanı geriye dönük anlamsızlaştırır.
-- **Kaynak:** İşletme kuralı; CLAUDE.md "anahtar revizyonu eski optik analizin kullanımını engeller" ilkesinin kaynak platformuna genellemesi.
+- **Kaynak:** İşletme kuralı; `.claude/rules/okul-is-akislari.md` "anahtar revizyonu eski optik analizin kullanımını engeller" ilkesinin kaynak platformuna genellemesi.
 - **Kurum türü:** ikisi
 - **Kodda:** yok. Core kuralı (ADR 0004; ekran sonra): `packages/school-core/src/content/resource.ts` (`planDraftUpdate`, `planNewVersion`); atama yalnız güncel yayındaki sürüme bağlanır ve onu sabitler: `packages/school-core/src/skills/assignment.ts` `resolveAssignmentSettings` (`resourceVersionId`, başta ona eşit `scoringVersionId`, `rubricVersionId`). API: `PATCH /api/v1/resources/:id/versions/:versionId` (`If-Match` zorunlu; yayındaki sürüm 409 `version_immutable`), `POST /api/v1/resources/:id/versions` (ikinci açık sürüm 409 `open_version_exists`); yeni yayın önceki sürümü aynı işlemde arşivler. Atama: `POST /api/v1/task-assignments` içeriğin güncel yayındaki sürümünü sabitler (taslak, arşivli veya güncel olmayan sürüm 409 `resource_version_not_assignable`); atanmış sürüm, puanlama ve rubrik sürümü `PATCH` ile değişmez (409 `assignment_setting_frozen`).
 

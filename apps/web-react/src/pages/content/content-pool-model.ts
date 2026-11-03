@@ -24,7 +24,6 @@ import {
   GRADE_LEVEL_RANGE,
   LICENSE_KINDS,
   OPEN_LICENSES,
-  OUTCOME_SOURCES,
   PRIMARY_SKILLS,
   RESOURCE_FILE_RULES,
   SHARE_SCOPES,
@@ -156,7 +155,6 @@ export const LICENSE_OPTIONS = FORM_LICENSE_KINDS.map((value) => ({
   label: LICENSE_KINDS[value].label,
 }))
 export const OPEN_LICENSE_OPTIONS = options(OPEN_LICENSES)
-export const OUTCOME_SOURCE_OPTIONS = options(OUTCOME_SOURCES)
 
 /** Telif notu: lisans türünün ne istediği (DOM-KYN-020, 022, 024). */
 export const LICENSE_NOTES: Record<(typeof FORM_LICENSE_KINDS)[number], string> = {

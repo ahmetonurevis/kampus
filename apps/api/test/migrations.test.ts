@@ -66,21 +66,22 @@ type MigrationTarget = Parameters<typeof migrate>[0]
 /**
  * Better Auth her okumada şemadaki bütün kolonları seçer. Sonraki migration'ların kimlik
  * tablolarına eklediği kolonlar (0046 `memberships.deactivated_at`, `invitations.name` ve
- * `invitations.membership_id`; 0048 `invitations.teacher_id`) eski şemada yoksa test uygulaması üye ya da davet açamaz; kolonlar
+ * `invitations.membership_id`; 0048 `invitations.teacher_id`; 0055 `invitations.student_ids`,
+ * `invitations.parent_id`) eski şemada yoksa test uygulaması üye ya da davet açamaz; kolonlar
  * kısmi şemaya geçici eklenir ve kalan migration'lardan önce kaldırılır.
  */
 async function migratePartial(db: MigrationTarget, folder: string): Promise<void> {
   await migrate(db, { migrationsFolder: folder })
   await db.execute(sql`alter table memberships add column if not exists deactivated_at timestamp`)
   await db.execute(
-    sql`alter table invitations add column if not exists name text, add column if not exists membership_id text, add column if not exists teacher_id text`,
+    sql`alter table invitations add column if not exists name text, add column if not exists membership_id text, add column if not exists teacher_id text, add column if not exists student_ids jsonb, add column if not exists parent_id text`,
   )
 }
 
 async function migrateRest(db: MigrationTarget): Promise<void> {
   await db.execute(sql`alter table memberships drop column if exists deactivated_at`)
   await db.execute(
-    sql`alter table invitations drop column if exists name, drop column if exists membership_id, drop column if exists teacher_id`,
+    sql`alter table invitations drop column if exists name, drop column if exists membership_id, drop column if exists teacher_id, drop column if exists student_ids, drop column if exists parent_id`,
   )
   await migrate(db, { migrationsFolder: MIGRATIONS_FOLDER })
 }
@@ -1288,5 +1289,88 @@ describe('0029: dil okulu grup tabloları', SLOW, () => {
       sql`select institution_id, teacher_membership_id from language_groups where id = ${groupId}`,
     )
     assert.deepEqual(row, { institution_id: a.id, teacher_membership_id: null })
+  })
+})
+
+describe('0050: kazanım kataloğu tabloları', SLOW, () => {
+  const client = newPGlite()
+  const pglite = drizzle({ client, schema })
+  const db: Database = pglite
+  let folder: string
+
+  before(async () => {
+    folder = await migrationsUpTo('0049_create_finance_export_profiles')
+    // 0049'a kadar kimlik kolonlarının hepsi vardır: geçici kolon gerekmez (`migratePartial` değil).
+    await migrate(pglite, { migrationsFolder: folder })
+  })
+  after(async () => {
+    await client.close()
+    await rm(folder, { recursive: true, force: true })
+  })
+
+  const rows = async <T>(query: ReturnType<typeof sql>) =>
+    ((await db.execute(query)) as unknown as { rows: T[] }).rows
+
+  test('DOM-KYN-011: katalog öncesi serbest kodlu içerik bağlantısı korunur; kurum kodu kurumda tekil, düzey 5–12', async () => {
+    const app = await buildTestApp(db)
+    try {
+      const a = await createInstitution(app)
+      const { versions } = await seedResource(db, a.id, {
+        ownerUserId: a.admin.id,
+        versions: [
+          {
+            status: 'published',
+            input: {
+              tags: {
+                subjectId: 'math',
+                gradeLevels: [7],
+                outcomes: [{ outcomeId: 'SERBEST-KOD', outcomeSource: 'institution' }],
+              },
+            },
+          },
+        ],
+      })
+      const linked = () =>
+        rows<{ outcome_id: string; outcome_source: string }>(
+          sql`select outcome_id, outcome_source from resource_version_outcomes
+              where institution_id = ${a.id} and version_id = ${versions[0]!.id}`,
+        )
+      const before = await linked()
+
+      await migrate(pglite, { migrationsFolder: MIGRATIONS_FOLDER })
+
+      assert.deepEqual(await linked(), before)
+      assert.deepEqual(before, [{ outcome_id: 'SERBEST-KOD', outcome_source: 'institution' }])
+      // Migration platform kataloğuna veri yazmaz; örnek kodları bakım betiği (seed) yazar.
+      assert.deepEqual(
+        await rows<{ total: number }>(
+          sql`select count(*)::int as total from platform_learning_outcomes`,
+        ),
+        [{ total: 0 }],
+      )
+
+      const outcome = (institutionId: string, code: string, gradeLevel = 7) =>
+        sql`insert into learning_outcomes (institution_id, code, subject_id, grade_level, name,
+            created_by_user_id) values (${institutionId}, ${code}, 'math', ${gradeLevel}, 'Ad', 'u1')`
+      const violates = async (query: ReturnType<typeof sql>, constraint: string) => {
+        await assert.rejects(db.execute(query), (error: unknown) => {
+          const cause = (error as { cause?: { constraint?: string } }).cause
+          assert.equal(
+            cause?.constraint ?? (error as { constraint?: string }).constraint,
+            constraint,
+          )
+          return true
+        })
+      }
+      await db.execute(outcome(a.id, 'K.7.1'))
+      await violates(outcome(a.id, 'K.7.1'), 'learning_outcomes_pkey')
+      await violates(outcome(a.id, 'K.4.1', 4), 'learning_outcomes_grade_level_check')
+      await violates(outcome(a.id, ''), 'learning_outcomes_code_check')
+      // Aynı kod başka kurumda serbesttir.
+      const b = await createInstitution(app)
+      await db.execute(outcome(b.id, 'K.7.1'))
+    } finally {
+      await app.close()
+    }
   })
 })

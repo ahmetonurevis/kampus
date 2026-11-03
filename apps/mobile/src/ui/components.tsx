@@ -207,20 +207,21 @@ export function Card({ children, onPress, style, label, soft = false }: CardProp
 export type Tone = 'primary' | 'green' | 'amber' | 'red'
 // Rozet rengi metne göre seçilir; her ton için `<ton>Soft` zemin rengi vardır.
 export const toneSoft = (c: Palette, tone: Tone) => c[`${tone}Soft` as const]
-export function Badge({ text }: { text?: string }) {
+/** `tone` verilirse metinden tahmin edilmez (ekran kendi durum rengini bilir). */
+export function Badge({ text, tone: given }: { text?: string; tone?: Tone }) {
   const c = useColors()
   if (!text) return null
-  const tone: Tone = /Gecik|Süre aşıldı|Teslim süresi geçti|Yüksek risk|Gelmedi|Reddedildi/.test(
-    text,
-  )
-    ? 'red'
-    : /Ödendi|Yanıtlandı|Tamamlandı|Teslim edildi|Başarılı|Geldi|Onaylandı|Aktif|Değerlendirildi/.test(
-          text,
-        )
-      ? 'green'
-      : /Bekli|Yaklaş|azalıyor|Takip|Geç geldi/.test(text)
-        ? 'amber'
-        : 'primary'
+  const inferred: Tone =
+    /Gecik|Süre aşıldı|Teslim süresi geçti|Yüksek risk|Gelmedi|Reddedildi/.test(text)
+      ? 'red'
+      : /Ödendi|Yanıtlandı|Tamamlandı|Teslim edildi|Başarılı|Geldi|Onaylandı|Aktif|Değerlendirildi/.test(
+            text,
+          )
+        ? 'green'
+        : /Bekli|Yaklaş|azalıyor|Takip|Geç geldi/.test(text)
+          ? 'amber'
+          : 'primary'
+  const tone = given ?? inferred
   return (
     <View
       style={{
@@ -318,6 +319,11 @@ type FieldProps = {
   error?: string
   autoComplete?: TextInputProps['autoComplete']
   onSubmit?: () => void
+  /**
+   * Uzun metin (yazma görevi): çok satırlı alan daha yüksek açılır ve kendi içinde kayar; düğme
+   * alanın altında değil pencerenin sabit alt bilgisinde kalır.
+   */
+  tall?: boolean
 }
 export function Field({
   label,
@@ -335,6 +341,7 @@ export function Field({
   error,
   autoComplete,
   onSubmit,
+  tall = false,
 }: FieldProps) {
   const c = useColors()
   const [focused, setFocused] = useState(false)
@@ -373,7 +380,11 @@ export function Field({
           color: c.text,
           backgroundColor: focused ? c.surface : c.soft,
           textAlignVertical: multiline ? 'top' : 'center',
-          ...(multiline ? { minHeight: compact ? 52 : 120, maxHeight: compact ? 120 : 180 } : {}),
+          ...(multiline
+            ? tall
+              ? { minHeight: 200, maxHeight: 320 }
+              : { minHeight: compact ? 52 : 120, maxHeight: compact ? 120 : 180 }
+            : {}),
         }}
       />
       {!!hint && (

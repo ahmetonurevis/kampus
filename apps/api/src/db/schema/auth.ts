@@ -127,6 +127,8 @@ export const invitations = pgTable(
       onDelete: 'set null',
     }),
     teacherId: text('teacher_id'),
+    studentIds: jsonb('student_ids'),
+    parentId: text('parent_id'),
   },
   (table) => [
     index('invitations_institutionId_idx').on(table.institutionId),

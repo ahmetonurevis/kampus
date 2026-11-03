@@ -1,42 +1,16 @@
-// Öğretmen Genel Bakışı'nın "Yanıt bekleyen sorular" sayacı ve listesinin saf hesabı. Girdi öğretmen
-// soru kuyruğunun okuduğu koleksiyon yanıtıdır (`GET /collections/questions`, kapsamı sunucu
-// uygular: yalnız kendisine atanan sorular; DOM-ILT-093). Durum saklanmaz, her okumada hesaplanır
-// (`questionStatus`); sunucuda türetilmiş durum süzgeci yoktur, bu yüzden sayı satırlardan sayılır.
-import type { CoreRow } from '@/hooks/use-core-collection.ts'
-import {
-  orderQuestions,
-  questionRow,
-  type QuestionLookups,
-  type QuestionRow,
-} from '../learning/question-rows.ts'
+// Öğretmen Genel Bakışı'nın "Yanıt bekleyen sorular" sayacı ve listesinin saf gösterim hesabı.
+// Girdi özet yanıtının `questions` bölümüdür (`GET /dashboard`): sayı, süre aşımı ve en eski üç
+// soru sunucuda `questions?answered=false&withdrawn=false` okumasından hesaplanır (kapsam yalnız
+// öğretmene atanan sorular, DOM-ILT-093; süre core `questionResponse`). Burada yalnız metin türer.
+import type { components } from '@kampus/api-client/schema.d.ts'
+import { number } from '@kampus/school-core/lib/format.ts'
 
-/** Kartta listelenen en çok soru sayısı (Vue ilk üç soruyu gösterir). */
-export const QUESTION_LIMIT = 3
+export type OpenQuestions = components['schemas']['DashboardOpenQuestions']
 
-/** Dashboard'da ders ve öğretmen adı gösterilmez; boş eşleme `questionRow` için yeterlidir. */
-const NO_LOOKUPS: QuestionLookups = { subjects: new Map(), teachers: new Map() }
-
-export type OpenQuestions = {
-  /** Yanıt bekleyen (yanıtsız ve geri çekilmemiş) soru sayısı. */
-  total: number
-  /** Süresi aşılmış olanlar (`total` içinde). */
-  overdue: number
-  /** En eski `QUESTION_LIMIT` soru; kuyruktaki sırayla (hedefe en yakın önce). */
-  items: QuestionRow[]
-}
-
-export function openQuestions(
-  rows: readonly CoreRow<'questions'>[],
-  now: string,
-  limit = QUESTION_LIMIT,
-): OpenQuestions {
-  const pending = orderQuestions(
-    rows.map((row) => questionRow(row, NO_LOOKUPS, now)),
-    'teacher',
-  ).filter((row) => row.state === 'pending')
-  return {
-    total: pending.length,
-    overdue: pending.filter((row) => row.overdue).length,
-    items: pending.slice(0, limit),
-  }
+/** Sayacın notu: süresi aşılan soru varsa sayısı, yoksa sakin metin. */
+export function openQuestionsNote(questions: OpenQuestions | null | undefined): string {
+  const overdue = questions?.overdue ?? 0
+  return overdue > 0
+    ? `${number(overdue)} sorunun yanıt süresi aşıldı`
+    : 'Yanıt süresi aşılan soru yok'
 }

@@ -76,9 +76,13 @@ export default function Notifications({ navigation }: ApiScreenProps<'ApiNotific
     // Arka plan işlemi: başarısızlık sayfaya gitmeyi engellemez, kısa Türkçe uyarı gösterilir.
     if (press.markRead)
       readOne.mutate(item.id, { onError: (error) => notify(error.message, 'error') })
-    if (press.screen) {
+    const { route } = press
+    if (route) {
+      // Çocuk bildirimin öğrencisiyse seçili açılır; değilse (bildirim çocuğu taşımıyor) yalnız sekme.
       if (press.childId) setChild(press.childId)
-      navigation.navigate(press.screen)
+      if (route.screen === 'ParentTracking') navigation.navigate(route.screen, route.params)
+      else if (route.screen === 'TeacherAttendance') navigation.navigate(route.screen, route.params)
+      else navigation.navigate(route.screen)
     } else setSelected(notificationDetail(item))
   }
 

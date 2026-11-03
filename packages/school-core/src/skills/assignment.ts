@@ -566,6 +566,112 @@ export function planAssignment(
   }
 }
 
+// --- Toplu atama --------------------------------------------------------------------------
+
+/** Tek istekte açılabilecek ayrı atama sayısı (DOM-BEC-049). */
+export const ASSIGNMENT_BATCH_MAX = 20
+
+/**
+ * Toplu atama gövdesi (DOM-BEC-049, IST-034): aynı içerik sürümünün her hedef grubu için ayrı
+ * son tarihli ayrı ataması. Her öğe tek atamanın gövdesidir; içerik sürümü bütün öğelerde aynıdır
+ * ve bir hedef iki öğede birden bulunamaz. Kökte `items` dışında alan kabul edilmez (ör. kurum
+ * kimliği).
+ */
+export const assignmentBatchInputSchema = z
+  .strictObject({
+    items: z
+      .array(assignmentInputSchema)
+      .min(1, 'En az bir hedef seçin.')
+      .max(
+        ASSIGNMENT_BATCH_MAX,
+        `Tek seferde en fazla ${ASSIGNMENT_BATCH_MAX} ayrı atama yapılır.`,
+      ),
+  })
+  .superRefine((batch, ctx) => {
+    const [first] = batch.items
+    const seen = new Set<string>()
+    batch.items.forEach((item, index) => {
+      if (first !== undefined && item.resourceVersionId !== first.resourceVersionId)
+        ctx.addIssue({
+          code: 'custom',
+          path: ['items', index, 'resourceVersionId'],
+          message: 'Toplu atamada bütün hedefler aynı içeriği alır.',
+        })
+      item.targets.forEach((target, targetIndex) => {
+        const key = `${target.kind}:${target.id}`
+        if (seen.has(key))
+          ctx.addIssue({
+            code: 'custom',
+            path: ['items', index, 'targets', targetIndex],
+            message: 'Aynı hedef iki kez seçilemez.',
+          })
+        seen.add(key)
+      })
+    })
+  })
+export type AssignmentBatchInput = z.input<typeof assignmentBatchInputSchema>
+
+/** Öğe hatasının alanı toplu gövdedeki yerine taşınır (`items.<sıra>.<alan>`). */
+function inBatchItem(error: unknown, index: number): unknown {
+  if (!(error instanceof DomainError)) return error
+  return new DomainError(error.code, error.message, {
+    kind: error.kind,
+    path: ['items', String(index), ...(error.path ?? [])],
+    cause: error,
+  })
+}
+
+/**
+ * Toplu atama planı (DOM-BEC-049, IST-034): her öğe `planAssignment` kurallarıyla planlanır; önceki
+ * öğelerin kursiyerleri sonrakilerin çakışma denetimine girer, böylece aynı kursiyer aynı içeriği
+ * iki öğeden birden almaz. Bir öğe reddedilirse hata o öğenin yoluyla döner ve hiçbir plan çıkmaz
+ * (çağıran hepsini tek işlemde yazar). Rubrik sürümü öğenin `settings.rubricVersionId`'siyle
+ * `rubricVersions`'tan okunur.
+ */
+export function planAssignmentBatch(
+  input: AssignedContent & {
+    actor: Actor
+    source: AuthorizationSource
+    institutionType: InstitutionType
+    rubricVersions: ReadonlyMap<string, RubricVersionRow>
+    existing: readonly ExistingAssignment[]
+    input: unknown
+    now: Instant
+  },
+): AssignmentPlan[] {
+  const { items } = assignmentBatchInputSchema.parse(input.input)
+  const plans: AssignmentPlan[] = []
+  items.forEach((item, index) => {
+    const planned: ExistingAssignment[] = plans.map((plan, plannedIndex) => ({
+      id: `batch:${plannedIndex}`,
+      resourceId: plan.assignment.resourceId,
+      deadline: plan.assignment.deadline,
+      learnerIds: plan.learnerIds,
+      archivedAt: null,
+    }))
+    const rubricVersionId = item.settings.rubricVersionId
+    try {
+      plans.push(
+        planAssignment({
+          resource: input.resource,
+          version: input.version,
+          actor: input.actor,
+          source: input.source,
+          institutionType: input.institutionType,
+          rubricVersion:
+            rubricVersionId === null ? null : (input.rubricVersions.get(rubricVersionId) ?? null),
+          existing: [...input.existing, ...planned],
+          input: item,
+          now: input.now,
+        }),
+      )
+    } catch (error) {
+      throw inBatchItem(error, index)
+    }
+  })
+  return plans
+}
+
 // --- Yayım sonrası değişiklik -------------------------------------------------------------
 
 /** Atamadan sonra değişebilen tek ayar son teslimdir; o da yalnız uzar. */
@@ -711,27 +817,46 @@ export function planResubmissionRequest(input: {
   return { resubmissionRequestedForVersion: latest.number, resubmissionDueAt: toIso(due) }
 }
 
+/** Bir yeniden teslim turu: istenen (puanlanan) sürüm ve turun kendi son tarihi (DOM-BEC-040). */
+export type ResubmissionRound = { versionNumber: number; dueAt: string }
+
 /**
- * Sürümün tabi olduğu son teslim (DOM-BEC-040, 044): yeniden teslim istenen sürümden sonraki
- * sürümler isteğin kendi son tarihine (geç kabulsüz), diğerleri atamanınkine bağlıdır. Yeni sürüm
- * için `versionNumber` son sürümün bir fazlasıdır. `planSubmissionVersion` ve `versionIsLate` bunu alır.
+ * Sürümün tabi olduğu son teslim (DOM-BEC-040, 044; IST-047): yeniden teslim istenen sürümden
+ * sonraki sürüm, kendisinden önceki en son isteğin son tarihine (geç kabulsüz), istek yoksa
+ * atamanınkine bağlıdır. Her tur kendi tarihiyle okunur: v1 için istenip v2 gönderildikten sonra
+ * v2 için yeni istek gelse de v2 ilk turun tarihine bağlı kalır (geç bayrağı sonradan değişmez).
+ * `resubmissionRounds` verilmezse yalnız son istek bilinir ve önceki turların sürümleri atamanın
+ * son tarihiyle okunur. Yeni sürüm için `versionNumber` son sürümün bir fazlasıdır.
+ * `planSubmissionVersion`, `planDraftSave` ve `versionIsLate` bunu alır.
  */
-// TODO(beceri-yeniden-teslim-gecmisi): Satırda yalnız son istek tutulduğu için önceki turların
-// sürümleri atama son tarihiyle okunur; istek geçmişi ayrı satır olunca (F4b) her tur kendi
-// tarihiyle okunur.
 export function deadlineForVersion(
   assignmentDeadline: Deadline,
-  submission: Pick<
-    ResubmittableSubmission,
-    'resubmissionRequestedForVersion' | 'resubmissionDueAt'
-  > | null,
+  submission:
+    | (Pick<ResubmittableSubmission, 'resubmissionRequestedForVersion' | 'resubmissionDueAt'> & {
+        resubmissionRounds?: readonly ResubmissionRound[]
+      })
+    | null,
   versionNumber: number,
 ): Deadline {
-  const requested = submission?.resubmissionRequestedForVersion ?? null
-  if (requested === null || submission?.resubmissionDueAt == null || versionNumber <= requested) {
-    return assignmentDeadline
-  }
-  return { dueAt: submission.resubmissionDueAt, lateAcceptanceDays: 0 }
+  const rounds: readonly ResubmissionRound[] =
+    submission?.resubmissionRounds ??
+    (submission?.resubmissionRequestedForVersion != null && submission.resubmissionDueAt != null
+      ? [
+          {
+            versionNumber: submission.resubmissionRequestedForVersion,
+            dueAt: submission.resubmissionDueAt,
+          },
+        ]
+      : [])
+  const governing = rounds.reduce<ResubmissionRound | null>(
+    (best, round) =>
+      round.versionNumber < versionNumber &&
+      (best === null || round.versionNumber > best.versionNumber)
+        ? round
+        : best,
+    null,
+  )
+  return governing === null ? assignmentDeadline : { dueAt: governing.dueAt, lateAcceptanceDays: 0 }
 }
 
 // --- Puanlama maddeleri -------------------------------------------------------------------

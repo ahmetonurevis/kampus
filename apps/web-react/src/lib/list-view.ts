@@ -43,6 +43,26 @@ export function tableSearchKeys(columns: readonly ListColumn[], extra: readonly 
 }
 
 /**
+ * Kart düzeni (temel bilgiler + "Diğer bilgiler") dikey telefonda (≤ 650 px) ve yatay telefonda
+ * (≤ 480 px yükseklik, ≤ 960 px genişlik) kullanılır. Yatay telefonda tablo kendi kaydırma alanıyla
+ * ekranın tamamını kaplıyor, başlık ve satırlar iki iç içe kaydırmaya bölünüyordu. Masaüstünün kısa
+ * penceresi tabloda kalır. Aynı sınırlar `app.css` `short` varyantındadır.
+ */
+const CARD_MAX_WIDTH = 650
+const SHORT_MAX_HEIGHT = 480
+const SHORT_MAX_WIDTH = 960
+
+export const TABLE_CARD_QUERY = `(max-width: ${CARD_MAX_WIDTH}px), (max-height: ${SHORT_MAX_HEIGHT}px) and (max-width: ${SHORT_MAX_WIDTH}px)`
+
+/** `TABLE_CARD_QUERY`'nin saf karşılığı (CSS piksel). */
+export function usesCardLayout(viewport: { width: number; height: number }): boolean {
+  return (
+    viewport.width <= CARD_MAX_WIDTH ||
+    (viewport.height <= SHORT_MAX_HEIGHT && viewport.width <= SHORT_MAX_WIDTH)
+  )
+}
+
+/**
  * Dar ekran kartı: ilk işlem dışı sütun başlık, `mobileColumns` (yoksa sonraki üç sütun) temel
  * bilgiler, kalanlar "Diğer bilgiler" içinde.
  */

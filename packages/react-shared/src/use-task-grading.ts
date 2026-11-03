@@ -10,6 +10,7 @@ import { useKampusClient } from './kampus-context.ts'
 import { institutionKey } from './query-keys.ts'
 import { useActiveInstitutionId } from './use-active-institution.ts'
 import { useApiCommand } from './use-api-command.ts'
+import { CONTENT_RESULTS_PREFIX } from './use-content-assignments.ts'
 import { TASK_ASSIGNMENTS_KEY } from './use-task-assignments.ts'
 import { TASK_SUBMISSIONS_KEY } from './use-task-submissions.ts'
 
@@ -30,8 +31,11 @@ import { TASK_SUBMISSIONS_KEY } from './use-task-submissions.ts'
  * kuyrukta `awaiting: 'resolution'` süzgeci. Kapsam ve puanlayıcı bağımsızlığı sunucudadır.
  */
 
-/** Puan ve istek teslimi, listeyi ve kuyruğu değiştirir. */
-export const TASK_GRADING_INVALIDATES = [[TASK_SUBMISSIONS_KEY]] as const
+/**
+ * Puan ve istek teslimi, listeyi ve kuyruğu değiştirir; içeriğe bağlı sonuç özeti de (puan
+ * ortalaması) puana bağlıdır.
+ */
+export const TASK_GRADING_INVALIDATES = [[TASK_SUBMISSIONS_KEY], CONTENT_RESULTS_PREFIX] as const
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -97,6 +101,10 @@ export const TASK_GRADING_MESSAGES = {
     'Son puan yalnız iki puanlayıcı arasında uyuşmazlık varsa verilir; sonuç zaten kesinleşmiş olabilir.',
   coordinator_required:
     'Uyuşmazlıkta son puanı dersin zümre başkanı veya seviyenin akademik koordinatörü verir.',
+  // Sesli geri bildirim (DOM-BEC-056): puanla birlikte bağlanamadıysa puan da yazılmaz.
+  file_unavailable: 'Sesli geri bildirim bulunamadı; yeniden kaydedin.',
+  file_not_ready: 'Sesli geri bildirim hâlâ işleniyor; birazdan yeniden kaydedin.',
+  file_purpose_mismatch: 'Bu dosya sesli geri bildirim olarak eklenemez; yeniden kaydedin.',
 } as const satisfies CommandMessages
 
 /** İtiraz hata metinleri (kursiyer ve veli; DOM-BEC-025). */

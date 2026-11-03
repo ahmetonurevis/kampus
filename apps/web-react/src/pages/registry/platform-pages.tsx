@@ -26,6 +26,9 @@ const StaffPage = lazy(async () => ({
 const ContentPoolPage = lazy(async () => ({
   default: (await import('../content/ContentPoolPage.tsx')).ContentPoolPage,
 }))
+const RubricLibraryPage = lazy(async () => ({
+  default: (await import('../rubrics/RubricLibraryPage.tsx')).RubricLibraryPage,
+}))
 const TeacherClassesPage = lazy(async () => ({
   default: (await import('../academic/TeacherClassesPage.tsx')).TeacherClassesPage,
 }))
@@ -166,6 +169,9 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
     case 'yonetici/icerik-havuzu':
     case 'ogretmen/icerik-havuzu':
       return <ContentPoolPage page={page} />
+    case 'yonetici/rubrik-kutuphanesi':
+    case 'ogretmen/rubrik-kutuphanesi':
+      return <RubricLibraryPage page={page} />
     case 'yonetici/kurlar':
     case 'onburo/kurlar':
     case 'ogretmen/kurlar':

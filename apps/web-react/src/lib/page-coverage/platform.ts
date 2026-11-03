@@ -36,6 +36,8 @@ export const PLATFORM_MIGRATED: readonly string[] = [
   'ogretmen/gruplar',
   'yonetici/icerik-havuzu',
   'ogretmen/icerik-havuzu',
+  'yonetici/rubrik-kutuphanesi',
+  'ogretmen/rubrik-kutuphanesi',
   'yonetici/ayarlar',
   'ogrenci/ayarlar',
   'veli/ayarlar',

@@ -102,6 +102,21 @@ const contentPoolPage = (description: string): NavigationPage => ({
   apiOnly: true,
 })
 
+// Rubrik kütüphanesi (OG-083; IST-048, DOM-BEC-020, DOM-BEC-022): kurumun ortak rubrikleri tek
+// listede; aynı rubrik birçok görevde kullanılır, bu yüzden tek göreve bağlı Ödevler sekmesi değil
+// içerik havuzunun yanında ayrı sayfadır. Uçlar yalnız içerik personeline (yönetici, öğretmen;
+// koordinatör öğretmen rolündedir) açıktır; modül `learning` kapalıysa menüden ve rotadan kalkar.
+const rubricLibraryPage = (description: string): NavigationPage => ({
+  path: 'rubrik-kutuphanesi',
+  title: 'Rubrik Kütüphanesi',
+  icon: 'Table2',
+  module: 'learning',
+  view: 'RubricLibrary',
+  description,
+  group: 'ÖĞRENME',
+  apiOnly: true,
+})
+
 export const API_LEARNING_PAGES: Record<Role, readonly NavigationPage[]> = {
   yonetici: [
     contentPoolPage('Kurumun okuma parçası ve soru havuzunu inceleyin, onaylayın ve yönetin.'),
@@ -119,10 +134,12 @@ export const API_LEARNING_PAGES: Record<Role, readonly NavigationPage[]> = {
       group: 'ÖĞRENME',
       apiOnly: true,
     },
+    rubricLibraryPage('Kurumun yazma ve konuşma rubriklerini inceleyin, yayımlayın ve arşivleyin.'),
   ],
   onburo: [],
   ogretmen: [
     contentPoolPage('Okuma parçası ve soru hazırlayın, onaya gönderin, yayındaki içeriği izleyin.'),
+    rubricLibraryPage('Yazma ve konuşma rubriklerini hazırlayın, yayımlayın ve yeni sürüm açın.'),
   ],
   ogrenci: [],
   // Veli Materyaller (OG-982; DOM-KYN-041): öğrencinin "Paylaşılan dosyalar" sekmesinin karşılığı,

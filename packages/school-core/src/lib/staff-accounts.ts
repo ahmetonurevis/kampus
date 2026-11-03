@@ -24,22 +24,28 @@ export function isStaffRole(role: string): role is StaffRole {
   return (STAFF_ROLES as readonly string[]).includes(role)
 }
 
+/** Personel e-postası: kırpılır, küçük harfe çevrilir, en çok 254 karakter. */
+export const staffEmailSchema = z
+  .string()
+  .trim()
+  .toLowerCase()
+  .max(254, 'E-posta en çok 254 karakter olabilir.')
+  .pipe(z.email('Geçerli bir e-posta adresi girin.'))
+
+/** Personel adı (davette girilen): 2–120 karakter. */
+export const staffNameSchema = z
+  .string()
+  .trim()
+  .min(2, 'Ad en az 2 karakter olmalı.')
+  .max(120, 'Ad en çok 120 karakter olabilir.')
+
 /** Ad 2–120, e-posta en çok 254 karakter; öğretmen kaydı yalnız öğretmen rolünde bağlanır. */
 export const staffInvitationInputSchema = z
   .strictObject({
     // kvkk: K
-    email: z
-      .string()
-      .trim()
-      .toLowerCase()
-      .max(254, 'E-posta en çok 254 karakter olabilir.')
-      .pipe(z.email('Geçerli bir e-posta adresi girin.')),
+    email: staffEmailSchema,
     // kvkk: K
-    name: z
-      .string()
-      .trim()
-      .min(2, 'Ad en az 2 karakter olmalı.')
-      .max(120, 'Ad en çok 120 karakter olabilir.'),
+    name: staffNameSchema,
     role: staffRoleSchema,
     teacherId: z.string().trim().min(1).max(200).optional(),
   })

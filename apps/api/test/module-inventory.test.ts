@@ -55,6 +55,7 @@ const MODULELESS: Readonly<Record<string, string>> = {
   // Personel hesabı yönetimi kapatılamaz: kurumun yönetimsiz kalmaması için (DOM-YTK-070).
   'GET /api/v1/institution-members/invitations': 'personel hesabı',
   'POST /api/v1/institution-members/invitations': 'personel hesabı',
+  'POST /api/v1/institution-members/imports': 'personel hesabı',
   'POST /api/v1/institution-members/invitations/:invitationId/cancel': 'personel hesabı',
   'POST /api/v1/institution-members/:membershipId/role': 'personel hesabı',
   'POST /api/v1/institution-members/:membershipId/deactivate': 'personel hesabı',

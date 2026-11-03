@@ -171,7 +171,7 @@ function assertActorAdmin(ctx: ServiceContext, members: readonly StaffMember[]):
     throw new ForbiddenError()
 }
 
-async function loadActorAdmin(tx: Database, ctx: ServiceContext): Promise<void> {
+export async function loadActorAdmin(tx: Database, ctx: ServiceContext): Promise<void> {
   const rows = await tx
     .select({
       id: memberships.id,
@@ -204,6 +204,62 @@ function respondWith(out: { body?: unknown }, statusCode: number) {
     if (out.body === undefined) throw new Error('staff account command produced no body')
     return { statusCode, body: out.body }
   }
+}
+
+export type BoundAuth = Awaited<ReturnType<typeof authTransaction>>
+export type Inviter = NonNullable<Awaited<ReturnType<BoundAuth['internalAdapter']['findUserById']>>>
+
+/**
+ * Tek davetin yazımı (tek davet ve toplu aktarım ortak): e-postanın hesabı yoksa kullanıcı
+ * (parolasız), üyelik ve öğretmen bağlantısı açılır; varsa (karar 73) yalnız bekleyen davet yazılır.
+ * Denetim alanları iki durumda aynıdır: denetim listesi de hesabın varlığını belli etmez.
+ */
+export async function writeStaffInvitation(
+  tx: Database,
+  ctx: ServiceContext,
+  bound: BoundAuth,
+  inviter: Inviter,
+  write: { input: StaffInvitationInput; existingUserId: string | null; action: string },
+): Promise<{ invitationId: string; createdAccount: boolean }> {
+  const { input, existingUserId } = write
+  let membershipId: string | null = null
+  if (existingUserId === null) {
+    const user = await bound.internalAdapter.createUser(
+      { name: input.name, email: input.email, emailVerified: false },
+      { method: 'email-password' },
+    )
+    const member = await bound.organization.createMember({
+      organizationId: ctx.institutionId,
+      userId: user.id,
+      role: input.role,
+    })
+    membershipId = member.id
+    if (input.teacherId !== undefined)
+      await tx.insert(membershipLinks).values({
+        institutionId: ctx.institutionId,
+        membershipId: member.id,
+        kind: 'teacher',
+        recordId: input.teacherId,
+      })
+  }
+  const invitation = await bound.organization.createInvitation({
+    invitation: {
+      email: input.email,
+      role: input.role,
+      organizationId: ctx.institutionId,
+      teamIds: [],
+      name: input.name,
+      membershipId,
+    },
+    user: inviter,
+  })
+  await auditWork(tx, ctx, write.action, { type: INVITATION, id: invitation.id }, [
+    'email',
+    'name',
+    'role',
+    ...(input.teacherId === undefined ? [] : ['teacherId']),
+  ])
+  return { invitationId: invitation.id, createdAccount: existingUserId === null }
 }
 
 /** Davetin sonucu: yanıt ve parola bağlantısının gönderilip gönderilmeyeceği (yalnız yeni hesap). */
@@ -289,47 +345,13 @@ export async function inviteStaffMember(
         const bound = await authTransaction(auth, tx)
         const inviter = await bound.internalAdapter.findUserById(ctx.actor.userId)
         if (inviter === null) throw new Error('inviter not found')
-        let membershipId: string | null = null
-        if (existingUserId === null) {
-          // Yeni hesap: kullanıcı (parolasız), üyelik ve öğretmen bağlantısı davetle açılır.
-          const user = await bound.internalAdapter.createUser(
-            { name: input.name, email: input.email, emailVerified: false },
-            { method: 'email-password' },
-          )
-          const member = await bound.organization.createMember({
-            organizationId: ctx.institutionId,
-            userId: user.id,
-            role: input.role,
-          })
-          membershipId = member.id
-          if (input.teacherId !== undefined)
-            await tx.insert(membershipLinks).values({
-              institutionId: ctx.institutionId,
-              membershipId: member.id,
-              kind: 'teacher',
-              recordId: input.teacherId,
-            })
-          createdAccount = true
-        }
-        const invitation = await bound.organization.createInvitation({
-          invitation: {
-            email: input.email,
-            role: input.role,
-            organizationId: ctx.institutionId,
-            teamIds: [],
-            name: input.name,
-            membershipId,
-          },
-          user: inviter,
+        const written = await writeStaffInvitation(tx, ctx, bound, inviter, {
+          input,
+          existingUserId,
+          action: 'staff.invite',
         })
-        // Denetim alanları iki durumda aynıdır: denetim listesi de hesabın varlığını belli etmez.
-        await auditWork(tx, ctx, 'staff.invite', { type: INVITATION, id: invitation.id }, [
-          'email',
-          'name',
-          'role',
-          ...(input.teacherId === undefined ? [] : ['teacherId']),
-        ])
-        const row = await findInvitation(tx, ctx.institutionId, invitation.id)
+        createdAccount = written.createdAccount
+        const row = await findInvitation(tx, ctx.institutionId, written.invitationId)
         const view = row ? toInvitationView(row) : null
         if (view === null) throw new Error('invitation disappeared after write')
         out.body = { data: view }

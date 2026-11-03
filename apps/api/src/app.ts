@@ -135,6 +135,9 @@ export const REDACTED_PATHS = [
   '*.rationale',
   'rejectionReason',
   '*.rejectionReason',
+  // kvkk: K — toplu personel aktarımının CSV içeriği: ad ve e-posta satırları (IST-007).
+  'csv',
+  '*.csv',
   '*.cookie',
   '*.authorization',
 ]

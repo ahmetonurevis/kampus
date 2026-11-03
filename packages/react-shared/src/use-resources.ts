@@ -73,6 +73,23 @@ export function useResourceDetail(resourceId: string) {
   })
 }
 
+/**
+ * Tek sürüm (`GET /resources/:id/versions/:versionId`): bağlı kaydın bağlanan sürümünü okur (ör.
+ * dinleme etkinliği formunda kaydın dökümü var mı; IST-045, DOM-BEC-005). Kimliklerden biri boşken
+ * istek atılmaz.
+ */
+export function useResourceVersion(resourceId: string, versionId: string) {
+  return useApiQuery({
+    key: [RESOURCES_KEY, 'version', resourceId, versionId],
+    request: (client, signal) =>
+      client.GET('/api/v1/resources/{resourceId}/versions/{versionId}', {
+        params: { path: { resourceId, versionId } },
+        signal,
+      }),
+    enabled: resourceId !== '' && versionId !== '',
+  })
+}
+
 export type ResourceListError = ApiError
 
 interface CommandOptions {

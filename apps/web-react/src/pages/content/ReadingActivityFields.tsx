@@ -11,6 +11,7 @@ import { Label } from '@/components/ui/label'
 import { notify } from '@/lib/notify.ts'
 import { fieldError, type DraftForm } from './ContentDraftFields.tsx'
 import { LinkedContentPicker } from './LinkedContentPicker.tsx'
+import { ListeningRecordingField } from './ListeningRecordingField.tsx'
 import { glossaryFocusAfterRemove } from './content-pool-model.ts'
 import {
   appendItems,
@@ -36,7 +37,7 @@ type Props = {
   hints?: LinkedHints
 }
 
-const NO_HINTS: LinkedHints = { passage: null, items: new Map() }
+const NO_HINTS: LinkedHints = { passage: null, listening: null, items: new Map() }
 /** Düzenlemede kayıtlı bağların özetleri için okunan liste boyu (sunucu sınırı). */
 const LOOKUP_PAGE_SIZE = 100
 
@@ -55,8 +56,9 @@ function useLinkedLookup(kind: LinkedKind, enabled: boolean) {
 }
 
 /**
- * Quiz ve alıştırma seti içeriği (OG-984; IST-042, DOM-BEC-006, DOM-KYN-013): bağlı okuma parçası
- * (isteğe bağlı; seçilince set okuma-anlama etkinliği olur), sıralı soru listesi ve süre/karıştırma
+ * Quiz ve alıştırma seti içeriği (OG-984, OG-052; IST-042, IST-045, DOM-BEC-005, DOM-BEC-006,
+ * DOM-KYN-013): bağlı okuma parçası (isteğe bağlı; seçilince set okuma-anlama etkinliği olur), bağlı
+ * dinleme kaydı (isteğe bağlı; `ListeningRecordingField`), sıralı soru listesi ve süre/karıştırma
  * ayarı. Parça ve sorular bağlı içerik seçicisiyle (`LinkedContentPicker`) yayındaki sürümden
  * seçilir; sıra düğmelerle değişir (sürükle-bırak yok), satırda alt beceri etiketi görünür.
  */
@@ -207,6 +209,13 @@ export function ItemSetFields({ form, busy, languageSchool, hints = NO_HINTS }: 
           </Button>
         </div>
       </fieldset>
+
+      <ListeningRecordingField
+        form={form}
+        busy={busy}
+        languageSchool={languageSchool}
+        hint={hints.listening}
+      />
 
       <fieldset className="grid gap-3" aria-describedby="icerik-sorular-ipucu">
         <legend className="mb-1 text-sm font-medium">Sorular</legend>

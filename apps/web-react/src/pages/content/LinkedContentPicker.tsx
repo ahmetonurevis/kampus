@@ -37,8 +37,8 @@ type PickerProps = {
 
 /**
  * Bağlı içerik seçici (OG-984): içerik havuzundan yayındaki sürümü seçtiren iç içe pencere. Tür
- * `LINKED_KINDS`'ten gelir; okuma parçası ve soru bugün, dinleme kaydı gibi bağlar ileride aynı
- * bileşenle seçilir. Liste sunucu sayfalıdır (`useResourceList`), arama ve CEFR/sınıf düzeyi
+ * `LINKED_KINDS`'ten gelir: okuma parçası, dinleme kaydı (dinleme becerili ses; OG-052) ve
+ * soru. Liste sunucu sayfalıdır (`useResourceList`), arama ve CEFR/sınıf düzeyi
  * süzgeci sayfayı başa alır. Pencere her açılışta temiz başlar.
  */
 export function LinkedContentPicker({ open, onOpenChange, kind, ...rest }: PickerProps) {

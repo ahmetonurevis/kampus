@@ -462,6 +462,7 @@ function Preview({ preview, english }: { preview: ContentPreview; english: boole
         <p className="text-sm">
           {preview.itemCount} soru
           {preview.reading ? ' · okuma parçasına bağlı (okuma-anlama etkinliği)' : ''}
+          {preview.listening ? ' · dinleme kaydına bağlı (dinleme etkinliği)' : ''}
           {preview.timeLimitMinutes ? ` · ${preview.timeLimitMinutes} dakika` : ''}
         </p>
       </section>

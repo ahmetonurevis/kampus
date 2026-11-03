@@ -65,8 +65,9 @@ type FormModalProps = {
 /**
  * Taslak formu (geniş pencere): okuma parçası, tek çoktan seçmeli soru, materyal dosyası
  * (DOM-KYN-006) ya da quiz/alıştırma seti (okuma parçasına bağlanınca okuma-anlama etkinliği;
- * OG-984, IST-042, DOM-BEC-006). Bağlı parça ve soru hataları (`passage_*`, `quiz_item_*`) ortak
- * Türkçe iletiyle alanın altına yazılır. Doğrulama core `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası
+ * OG-984, IST-042, DOM-BEC-006; dinleme kaydına bağlanınca dinleme etkinliği, OG-052, IST-045,
+ * DOM-BEC-005). Bağlı parça, kayıt ve soru hataları (`passage_*`, `listening_*`, `quiz_item_*`)
+ * ortak Türkçe iletiyle alanın altına yazılır. Doğrulama core `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası
  * (400 ya da 422 iş kuralı) alan yoluyla gelirse yalnız alanın altında, yoksa toast olarak görünür
  * (`exclusive`). Dosya yüklemesi ve güvenlik taraması sürerken kaydet kilitlidir; yolsuz bağlama
  * hatası (422 `file_not_ready`, `file_rejected`) da dosya alanında görünür (`FILE_FIELD`, OG-987).
@@ -197,6 +198,7 @@ function DraftEditor({
   // Yayım sorunları kayıtlı sürümündür; kayıtlı bağlar başlangıç değerlerinden okunur.
   const hints = linkedHints(detail?.publicationIssues ?? [], {
     passageVersionId: initial?.content.passageVersionId ?? null,
+    listeningVersionId: initial?.content.listeningVersionId ?? null,
     itemIds: (initial?.content.items ?? []).map((item) => item.questionVersionId),
   })
 

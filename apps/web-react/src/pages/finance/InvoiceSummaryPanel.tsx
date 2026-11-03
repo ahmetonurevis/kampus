@@ -78,7 +78,7 @@ function InvoiceDetail({ invoiceId, actions }: Omit<Props, 'onClose'>) {
           actions?.(row)
         )}
         <PaymentPlanButton studentId={row.studentId} />
-        <StudentStatementDownload studentId={row.studentId} studentName={row.studentName} />
+        <StudentStatementDownload studentId={row.studentId} />
       </div>
     </>
   )

@@ -180,7 +180,7 @@ export function registerRequestRoutes(app: FastifyInstance) {
         operationId: 'approveAbsence',
         tags: ['requests'],
         summary: 'İzin/mazeret bildirimini onayla',
-        description: `Yönetici bildirimi onaylar (core \`approveAbsence\`, DOM-ILT-053): \`approvalStatus\` \`approved\` olur, bildirimin günleri yoklamada özürlü sayılır (core \`attendanceExcuse\`); yoklama kaydı değişmez. Belge zorunlu değildir. Gövde boş nesnedir, bilinmeyen alan 400. Veliye (yetişkin kursiyerde kendisine) \`absence_decided\` bildirimi aynı transaction'da yazılır; sonuç bildirimde yoktur. Durumu olmayan eski bildirim \`pending\` sayılır. ${decisionErrors} Roller: ${rolesOf('absence.approve')}.`,
+        description: `Yönetici bildirimi onaylar (core \`approveAbsence\`, DOM-ILT-053): \`approvalStatus\` \`approved\` olur, karar kaydedilir. Günlerin yoklamada ve risk listesinde özürlü gösterilmesi (core \`attendanceExcuse\`) henüz bağlı değildir; yoklama kaydı değişmez. Belge zorunlu değildir. Gövde boş nesnedir, bilinmeyen alan 400. Veliye (yetişkin kursiyerde kendisine) \`absence_decided\` bildirimi aynı transaction'da yazılır; sonuç bildirimde yoktur. Durumu olmayan eski bildirim \`pending\` sayılır. ${decisionErrors} Roller: ${rolesOf('absence.approve')}.`,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: absenceParamsSchema,
         body: approveAbsenceSchema,

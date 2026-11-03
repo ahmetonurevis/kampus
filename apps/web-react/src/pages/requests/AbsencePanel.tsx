@@ -1,7 +1,9 @@
+import { useMemo, useState } from 'react'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
+import { useAuth } from '@/auth/use-auth.ts'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
-import { useCoreItem } from '@/hooks/use-core-collection.ts'
+import { useCoreAll, useCoreItem } from '@/hooks/use-core-collection.ts'
 import {
   SummaryHeader,
   SummaryIcon,
@@ -12,7 +14,12 @@ import {
 import { AbsenceAttachForm } from './AbsenceAttachForm.tsx'
 import { AbsenceDecision } from './AbsenceDecision.tsx'
 import { AbsenceDocuments } from './AbsenceDocuments.tsx'
-import { absenceActions, type AbsenceViewer } from './absence-forms.ts'
+import {
+  ABSENCE_DOCUMENT_CLOSED_TEXT,
+  absenceActions,
+  absenceDocumentsClosed,
+  type AbsenceViewer,
+} from './absence-forms.ts'
 import { absenceRow } from './request-rows.ts'
 
 type Props = {
@@ -42,11 +49,33 @@ export function AbsencePanel({ recordId, onClose, viewer = 'parent' }: Props) {
 }
 
 function AbsenceDetail({ recordId, viewer }: { recordId: string; viewer: AbsenceViewer }) {
+  const { session } = useAuth()
+  const [now] = useState(() => new Date().toISOString())
   const item = useCoreItem('absences', recordId)
+  const parent = viewer === 'parent'
+  // Belge süresi kademeye bağlıdır (3 ya da 5 iş günü); yalnız veli formu için okunur.
+  const students = useCoreAll('students', {}, { enabled: parent })
+  const classes = useCoreAll('classes', {}, { enabled: parent })
+  const lookup = useMemo(
+    () => ({
+      students: students.data?.map((student) => student.record) ?? [],
+      classes: classes.data?.map((classroom) => classroom.record) ?? [],
+    }),
+    [students.data, classes.data],
+  )
   if (item.error) return <QueryError error={item.error} onRetry={() => void item.refetch()} />
   if (!item.data) return <SummaryLoading />
   const row = absenceRow(item.data, viewer === 'parent' ? 'parent' : 'staff')
-  const actions = absenceActions(row, viewer)
+  const documentsClosed = absenceDocumentsClosed(
+    row,
+    lookup,
+    now,
+    session?.institution.type ?? 'school',
+  )
+  // Kademe verisi gelmeden form gösterilmez (süresi dolmuş bildirimde yanıp sönmesin); okunamazsa
+  // core varsayılanıyla (3 iş günü) devam edilir, karar sunucudadır.
+  const ready = !parent || (!students.isPending && !classes.isPending)
+  const actions = absenceActions(row, viewer, documentsClosed || !ready)
   return (
     <>
       <SummaryHeader
@@ -74,6 +103,11 @@ function AbsenceDetail({ recordId, viewer }: { recordId: string; viewer: Absence
       <AbsenceDocuments row={row} />
       {actions.attach ? (
         <AbsenceAttachForm key={row.fileIds.length} row={row} remaining={actions.remaining} />
+      ) : null}
+      {actions.documentsClosed && ready ? (
+        <SummarySection title="Belge ekle">
+          <p className="text-muted-foreground text-sm">{ABSENCE_DOCUMENT_CLOSED_TEXT}</p>
+        </SummarySection>
       ) : null}
       {actions.decide ? <AbsenceDecision key={row.version} row={row} /> : null}
     </>

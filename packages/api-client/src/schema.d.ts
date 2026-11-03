@@ -1823,7 +1823,7 @@ export interface paths {
         put?: never;
         /**
          * İzin/mazeret bildirimini onayla
-         * @description Yönetici bildirimi onaylar (core `approveAbsence`, DOM-ILT-053): `approvalStatus` `approved` olur, bildirimin günleri yoklamada özürlü sayılır (core `attendanceExcuse`); yoklama kaydı değişmez. Belge zorunlu değildir. Gövde boş nesnedir, bilinmeyen alan 400. Veliye (yetişkin kursiyerde kendisine) `absence_decided` bildirimi aynı transaction'da yazılır; sonuç bildirimde yoktur. Durumu olmayan eski bildirim `pending` sayılır. Olmayan, başka kurumun ya da kapsam dışı bildirim 404 `absence_not_found`; karar verilmiş bildirim 409 `absence_already_decided`. `If-Match` zorunludur (bildirimin sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Modül `academic`. Roller: `yonetici`.
+         * @description Yönetici bildirimi onaylar (core `approveAbsence`, DOM-ILT-053): `approvalStatus` `approved` olur, karar kaydedilir. Günlerin yoklamada ve risk listesinde özürlü gösterilmesi (core `attendanceExcuse`) henüz bağlı değildir; yoklama kaydı değişmez. Belge zorunlu değildir. Gövde boş nesnedir, bilinmeyen alan 400. Veliye (yetişkin kursiyerde kendisine) `absence_decided` bildirimi aynı transaction'da yazılır; sonuç bildirimde yoktur. Durumu olmayan eski bildirim `pending` sayılır. Olmayan, başka kurumun ya da kapsam dışı bildirim 404 `absence_not_found`; karar verilmiş bildirim 409 `absence_already_decided`. `If-Match` zorunludur (bildirimin sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Modül `academic`. Roller: `yonetici`.
          */
         post: operations["approveAbsence"];
         delete?: never;

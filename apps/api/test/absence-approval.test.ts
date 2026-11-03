@@ -327,6 +327,60 @@ describe('izin/mazeret belgesi ve idare onayı', () => {
     assertError(await attach(cookie, id, decided, [second]), 409, 'absence_already_decided')
   })
 
+  test('DOM-ILT-053: belge süresi dolan bildirime belge eklenemez; 422 absence_document_late, kayıt ve dosya değişmez', async () => {
+    const a = await institution()
+    const cookie = await parent(a.id)
+    // Bitiş 2026-09-25 cuma: ortaokulda 3 iş günü 30 Eylül'de bitti, bugün 6 Ekim.
+    await insertMissingRecords(
+      db,
+      a.id,
+      [
+        {
+          collection: 'absences',
+          id: 'absence-late',
+          data: {
+            id: 'absence-late',
+            studentId: 's1',
+            startDate: '2026-09-24',
+            endDate: '2026-09-25',
+            reasonCategory: 'health',
+            category: 'Sağlık',
+            status: 'Onay bekliyor',
+            approvalStatus: 'pending',
+            fileIds: [],
+            date: '2026-09-26T09:00:00.000Z',
+            createdAt: '2026-09-26T09:00:00.000Z',
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const version = (await findRecord(db, a.id, 'absences', 'absence-late'))?.version ?? 0
+    const fileId = await upload(a.id, cookie)
+    const before = await snapshot(a.id)
+    const filesBefore = await fileRows(a.id)
+    const response = await attach(cookie, 'absence-late', version, [fileId])
+    assertError(response, 422, 'absence_document_late')
+    assert.equal(await snapshot(a.id), before)
+    assert.equal(await fileRows(a.id), filesBefore)
+  })
+
+  test('DOM-ILT-053: aynı belge bildirime ikinci kez eklenemez; 409 absence_document_duplicate, kayıt değişmez', async () => {
+    const a = await institution()
+    const cookie = await parent(a.id)
+    const { id, version } = await notified(cookie)
+    const first = await upload(a.id, cookie)
+    const added = await attach(cookie, id, version, [first])
+    assert.equal(added.statusCode, 200, added.body)
+    const next = added.json().data.records[0].version as number
+    const before = await snapshot(a.id)
+    const filesBefore = await fileRows(a.id)
+    assertError(await attach(cookie, id, next, [first]), 409, 'absence_document_duplicate')
+    assert.equal(await snapshot(a.id), before)
+    assert.equal(await fileRows(a.id), filesBefore)
+    assert.deepEqual((await findRecord(db, a.id, 'absences', id))?.data.fileIds, [first])
+  })
+
   test('DOM-ILT-053: yönetici onaylar; kalıcı, denetim kaydında, veliye sonuçsuz bildirim gider', async () => {
     const a = await institution()
     const cookie = await parent(a.id)

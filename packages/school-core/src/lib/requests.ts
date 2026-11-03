@@ -35,7 +35,7 @@ import { dayKey } from './format.ts'
  *   yoklamada "Mazeret bildirildi" görünür, özürlü sayılması belge ve idare onayıyla kesinleşir.
  *   Özür belgesi (`absence_document`, en çok 3) bildirimle ya da sonradan, karar verilmeden ve
  *   belge süresi içinde eklenir; kayda yalnız dosya kimlikleri girer. Yönetici bildirimi onaylar
- *   (`approved`, yoklamada özürlü) ya da gerekçeyle reddeder (`rejected`, özürsüz kalır); karar
+ *   (`approved`; yoklamada özürlü gösterimi `attendanceExcuse` ile hesaplanır, henüz bağlı değil) ya da gerekçeyle reddeder (`rejected`, özürsüz kalır); karar
  *   bir kez verilir. Durumu olmayan eski kayıt `pending` okunur, yeniden yazılmaz.
  *   Mazeret metni sağlık bilgisi içerebileceği için ayrıca talep kaydı açılmaz; ön büro
  *   `absences`'ı okuyamaz (DOM-ILT-053, DOM-YTK-021).
@@ -401,7 +401,7 @@ export function addBusinessDays(
 
 /** Öğrencinin kademesine göre özür belgesi süresi (iş günü). */
 export function excuseBusinessDays(
-  state: Pick<State, 'classes'>,
+  state: Pick<AbsenceWindowLookup, 'classes'>,
   student: Pick<StudentRecord, 'classId'>,
   institutionType: InstitutionType = 'school',
 ): number {
@@ -535,6 +535,39 @@ const alreadyDecided = () =>
     kind: 'conflict',
   })
 
+/** Belge süresi hesabının okuduğu kademe verisi: öğrenci sınıfı ve sınıf düzeyi. */
+export type AbsenceWindowLookup = {
+  students: readonly Pick<StudentRecord, 'id' | 'classId'>[]
+  classes: readonly Pick<State['classes'][number], 'id' | 'grade'>[]
+}
+
+function absenceDocumentDays(
+  state: AbsenceWindowLookup,
+  notice: Pick<AbsenceRecord, 'studentId'>,
+  institutionType?: InstitutionType,
+): number {
+  const student = state.students.find((s) => s.id === notice.studentId)
+  return student
+    ? excuseBusinessDays(state, student, institutionType)
+    : ABSENCE_EXCUSE_BUSINESS_DAYS.middle
+}
+
+/**
+ * Bildirime belge ekleme süresi doldu mu (DOM-ILT-053): `attachAbsenceDocuments` ile aynı hesap
+ * (kademeye göre iş günü, tatil takvimi); arayüz süresi dolmuş bildirimde formu göstermez.
+ * Karar yine sunucudadır (422 `absence_document_late`).
+ */
+export function absenceDocumentWindowClosed(
+  state: AbsenceWindowLookup,
+  notice: Pick<AbsenceRecord, 'studentId' | 'endDate'>,
+  now: string,
+  institutionType?: InstitutionType,
+  calendar: WorkingCalendar = DEFAULT_WORKING_CALENDAR,
+): boolean {
+  const days = absenceDocumentDays(state, notice, institutionType)
+  return excuseWindowClosed(notice.endDate, days, now, calendar)
+}
+
 /**
  * Veli, bildirimine sonradan özür belgesi ekler (DOM-ILT-053): yalnız karar verilmeden ve belge
  * süresi içinde (bildirimdeki süre); toplam en çok `ABSENCE_DOCUMENT_LIMIT`. Kararlı bildirim
@@ -555,10 +588,7 @@ export function attachAbsenceDocuments(
   requireAuthorized(by, 'absence.attach', { studentId: notice?.studentId }, state, options)
   if (!notice) throw absenceNotFound()
   if (absenceApprovalStatus(notice) !== 'pending') throw alreadyDecided()
-  const student = state.students.find((s) => s.id === notice.studentId)
-  const days = student
-    ? excuseBusinessDays(state, student, options.institutionType)
-    : ABSENCE_EXCUSE_BUSINESS_DAYS.middle
+  const days = absenceDocumentDays(state, notice, options.institutionType)
   if (excuseWindowClosed(notice.endDate, days, now, calendar))
     throw new DomainError(
       'absence_document_late',
@@ -600,8 +630,9 @@ function decideAbsence(
 }
 
 /**
- * Yönetici bildirimi onaylar (DOM-ILT-053): bildirimin günleri yoklamada özürlü sayılır
- * (`attendanceExcuse`), yoklama kaydı değişmez. Karar bir kez verilir: ikinci karar 409
+ * Yönetici bildirimi onaylar (DOM-ILT-053): karar kaydedilir; günlerin yoklamada özürlü
+ * gösterimi `attendanceExcuse` ile hesaplanır ama yoklama ekranına ve risk listesine henüz bağlı
+ * değildir (`TODO(absence-excuse-display)`). Yoklama kaydı değişmez. Karar bir kez verilir: ikinci karar 409
  * `absence_already_decided`. Belge zorunlu değildir; belgeyi kâğıtta alan idare de onaylar.
  */
 export function approveAbsence(
@@ -656,6 +687,7 @@ export function absenceNotices<
  * "Mazeret bildirildi", onaylanan "Özürlü" (`excused`), reddedilen "Mazeret reddedildi" ve
  * özürsüz. Hesap `absenceNotices` bağlantısıyladır; yoklama kaydı değişmez.
  */
+// TODO(absence-excuse-display): yoklama ve risk listesine bağlanacak
 export function attendanceExcuse(
   absences: readonly Pick<
     AbsenceRecord,

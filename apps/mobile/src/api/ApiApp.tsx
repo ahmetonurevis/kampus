@@ -21,6 +21,8 @@ import ApiLogin from './screens/ApiLogin.tsx'
 import Conversation from './screens/Conversation.tsx'
 import Messages from './screens/Messages.tsx'
 import ParentGrades from './screens/ParentGrades.tsx'
+import StudentGrades from './screens/StudentGrades.tsx'
+import StudentHomework from './screens/StudentHomework.tsx'
 import TeacherClasses from './screens/TeacherClasses.tsx'
 import { sessionScopeKey, type MobileSession } from './session-state.ts'
 import { ToastProvider, useNotify } from './toast.tsx'
@@ -70,6 +72,8 @@ function SignedIn({ session }: { session: MobileSession }) {
             <Stack.Screen name="ApiCategory" component={ApiCategory} />
             <Stack.Screen name="TeacherClasses" component={TeacherClasses} />
             <Stack.Screen name="ParentGrades" component={ParentGrades} />
+            <Stack.Screen name="StudentGrades" component={StudentGrades} />
+            <Stack.Screen name="StudentHomework" component={StudentHomework} />
             <Stack.Screen name="Announcements" component={Announcements} />
             <Stack.Screen name="Messages" component={Messages} />
             <Stack.Screen name="ApiConversation" component={Conversation} />

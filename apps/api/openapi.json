@@ -8059,7 +8059,7 @@
                 "type": "null"
               }
             ],
-            "description": "Süre ve teslim kapanışından erken olanı; yoksa `null`"
+            "description": "Süre (bireysel ek süre dahil) ve teslim kapanışından erken olanı; yoksa `null` (DOM-BEC-043)"
           },
           "remainingMs": {
             "anyOf": [
@@ -8072,6 +8072,12 @@
                 "type": "null"
               }
             ]
+          },
+          "extraMinutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Bu denemeye uygulanan bireysel ek süre, dakika (DOM-BEC-043); kayıt geçmişinden hesaplanır, süresiz görevde 0. Gerekçe hiçbir deneme görünümünde yoktur"
           },
           "completedAt": {
             "anyOf": [
@@ -8313,6 +8319,7 @@
           "startedAt",
           "endsAt",
           "remainingMs",
+          "extraMinutes",
           "completedAt",
           "autoSubmitted",
           "late",
@@ -8377,7 +8384,7 @@
                 "type": "null"
               }
             ],
-            "description": "Süre ve teslim kapanışından erken olanı; yoksa `null`"
+            "description": "Süre (bireysel ek süre dahil) ve teslim kapanışından erken olanı; yoksa `null` (DOM-BEC-043)"
           },
           "remainingMs": {
             "anyOf": [
@@ -8390,6 +8397,12 @@
                 "type": "null"
               }
             ]
+          },
+          "extraMinutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Bu denemeye uygulanan bireysel ek süre, dakika (DOM-BEC-043); kayıt geçmişinden hesaplanır, süresiz görevde 0. Gerekçe hiçbir deneme görünümünde yoktur"
           },
           "completedAt": {
             "anyOf": [
@@ -9204,6 +9217,7 @@
           "startedAt",
           "endsAt",
           "remainingMs",
+          "extraMinutes",
           "completedAt",
           "autoSubmitted",
           "late",
@@ -16039,6 +16053,170 @@
           "programVersion",
           "archivedAt",
           "rowVersion"
+        ]
+      },
+      "TaskExtraTimeHistoryEntryInput": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kayıt sırası; son kaydınki ek sürenin sürümüdür"
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Ek süre, dakika; 0 kaldırmadır"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "accommodation",
+                  "technical_issue",
+                  "other"
+                ],
+                "description": "Gerekçe kategorisi: `accommodation` (bireysel uyarlama), `technical_issue`, `other`"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Gerekçe; kaldırmada `null`"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "grantedByUserId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sequence",
+          "minutes",
+          "reason",
+          "grantedAt",
+          "grantedByUserId"
+        ]
+      },
+      "TaskExtraTimeLearnerInput": {
+        "type": "object",
+        "properties": {
+          "learnerId": {
+            "type": "string"
+          },
+          "learnerName": {
+            "description": "Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "minutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "accommodation",
+                      "technical_issue",
+                      "other"
+                    ],
+                    "description": "Gerekçe kategorisi: `accommodation` (bireysel uyarlama), `technical_issue`, `other`"
+                  },
+                  "grantedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "grantedByUserId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "minutes",
+                  "reason",
+                  "grantedAt",
+                  "grantedByUserId"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Güncel ek süre; hiç verilmediyse ya da kaldırıldıysa `null`"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Ek sürenin sürümü (`If-Match`): son kaydın sırası, kayıt yoksa 0"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskExtraTimeHistoryEntryInput"
+            },
+            "description": "Kayıt geçmişi, yeniden eskiye (DOM-BEC-043: gerekçesiyle görünür)"
+          }
+        },
+        "required": [
+          "learnerId",
+          "learnerName",
+          "current",
+          "version",
+          "history"
+        ]
+      },
+      "TaskExtraTimeListInput": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "timeLimitMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Atamanın süresi; `null` süresiz (ek süre tanımlanamaz)"
+          },
+          "canManage": {
+            "type": "boolean",
+            "description": "Kişi ek süre verebilir mi (atayan öğretmen veya yönetici)"
+          },
+          "learners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskExtraTimeLearnerInput"
+            }
+          }
+        },
+        "required": [
+          "assignmentId",
+          "timeLimitMinutes",
+          "canManage",
+          "learners"
         ]
       },
       "ErrorResponse": {
@@ -24311,7 +24489,7 @@
                 "type": "null"
               }
             ],
-            "description": "Süre ve teslim kapanışından erken olanı; yoksa `null`"
+            "description": "Süre (bireysel ek süre dahil) ve teslim kapanışından erken olanı; yoksa `null` (DOM-BEC-043)"
           },
           "remainingMs": {
             "anyOf": [
@@ -24324,6 +24502,12 @@
                 "type": "null"
               }
             ]
+          },
+          "extraMinutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Bu denemeye uygulanan bireysel ek süre, dakika (DOM-BEC-043); kayıt geçmişinden hesaplanır, süresiz görevde 0. Gerekçe hiçbir deneme görünümünde yoktur"
           },
           "completedAt": {
             "anyOf": [
@@ -24573,6 +24757,7 @@
           "startedAt",
           "endsAt",
           "remainingMs",
+          "extraMinutes",
           "completedAt",
           "autoSubmitted",
           "late",
@@ -24638,7 +24823,7 @@
                 "type": "null"
               }
             ],
-            "description": "Süre ve teslim kapanışından erken olanı; yoksa `null`"
+            "description": "Süre (bireysel ek süre dahil) ve teslim kapanışından erken olanı; yoksa `null` (DOM-BEC-043)"
           },
           "remainingMs": {
             "anyOf": [
@@ -24651,6 +24836,12 @@
                 "type": "null"
               }
             ]
+          },
+          "extraMinutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Bu denemeye uygulanan bireysel ek süre, dakika (DOM-BEC-043); kayıt geçmişinden hesaplanır, süresiz görevde 0. Gerekçe hiçbir deneme görünümünde yoktur"
           },
           "completedAt": {
             "anyOf": [
@@ -25487,6 +25678,7 @@
           "startedAt",
           "endsAt",
           "remainingMs",
+          "extraMinutes",
           "completedAt",
           "autoSubmitted",
           "late",
@@ -32439,6 +32631,174 @@
           "programVersion",
           "archivedAt",
           "rowVersion"
+        ],
+        "additionalProperties": false
+      },
+      "TaskExtraTimeHistoryEntry": {
+        "type": "object",
+        "properties": {
+          "sequence": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Kayıt sırası; son kaydınki ek sürenin sürümüdür"
+          },
+          "minutes": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Ek süre, dakika; 0 kaldırmadır"
+          },
+          "reason": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "accommodation",
+                  "technical_issue",
+                  "other"
+                ],
+                "description": "Gerekçe kategorisi: `accommodation` (bireysel uyarlama), `technical_issue`, `other`"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Gerekçe; kaldırmada `null`"
+          },
+          "grantedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "grantedByUserId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sequence",
+          "minutes",
+          "reason",
+          "grantedAt",
+          "grantedByUserId"
+        ],
+        "additionalProperties": false
+      },
+      "TaskExtraTimeLearner": {
+        "type": "object",
+        "properties": {
+          "learnerId": {
+            "type": "string"
+          },
+          "learnerName": {
+            "description": "Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "current": {
+            "anyOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "minutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 9007199254740991
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "accommodation",
+                      "technical_issue",
+                      "other"
+                    ],
+                    "description": "Gerekçe kategorisi: `accommodation` (bireysel uyarlama), `technical_issue`, `other`"
+                  },
+                  "grantedAt": {
+                    "type": "string",
+                    "format": "date-time",
+                    "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                  },
+                  "grantedByUserId": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "minutes",
+                  "reason",
+                  "grantedAt",
+                  "grantedByUserId"
+                ],
+                "additionalProperties": false
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Güncel ek süre; hiç verilmediyse ya da kaldırıldıysa `null`"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Ek sürenin sürümü (`If-Match`): son kaydın sırası, kayıt yoksa 0"
+          },
+          "history": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskExtraTimeHistoryEntry"
+            },
+            "description": "Kayıt geçmişi, yeniden eskiye (DOM-BEC-043: gerekçesiyle görünür)"
+          }
+        },
+        "required": [
+          "learnerId",
+          "learnerName",
+          "current",
+          "version",
+          "history"
+        ],
+        "additionalProperties": false
+      },
+      "TaskExtraTimeList": {
+        "type": "object",
+        "properties": {
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "timeLimitMinutes": {
+            "anyOf": [
+              {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Atamanın süresi; `null` süresiz (ek süre tanımlanamaz)"
+          },
+          "canManage": {
+            "type": "boolean",
+            "description": "Kişi ek süre verebilir mi (atayan öğretmen veya yönetici)"
+          },
+          "learners": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TaskExtraTimeLearner"
+            }
+          }
+        },
+        "required": [
+          "assignmentId",
+          "timeLimitMinutes",
+          "canManage",
+          "learners"
         ],
         "additionalProperties": false
       }
@@ -99121,6 +99481,614 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/GuardianInvitation"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-assignments/{assignmentId}/extra-times": {
+      "get": {
+        "operationId": "listTaskExtraTimes",
+        "summary": "Kursiyerlerin bireysel ek süresi",
+        "tags": [
+          "task-assignments"
+        ],
+        "description": "Atamanın kursiyerleri (güncel hedefler ve ek süre kaydı olanlar), güncel ek süreleri, sürümleri ve gerekçeli kayıt geçmişi (DOM-BEC-043). Roller: `yonetici` her atamada; `ogretmen` gördüğü atamada okur (atayan değilse yalnız kendi kapsamındaki kursiyerler), yalnız kendi atamasında yazar (atayan olmayan öğretmen 403 `forbidden`); öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan, arşivli, kapsam dışı ya da başka kurumun ataması 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true,
+            "description": "Atama kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskExtraTimeList"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "grantTaskExtraTime",
+        "summary": "Kursiyere ek süre ver",
+        "tags": [
+          "task-assignments"
+        ],
+        "description": "Kursiyere bu atamada ek süre tanımlar. Ek süresi olan kursiyere ikinci verme 409 `extra_time_exists` (değiştirme `PATCH`). Yalnız süreli görevde (422 `extra_time_untimed`), teslim penceresi açıkken (422 `submission_closed`), 1–300 dakika ve görevin süresini aşmadan (422 `extra_time_too_long`); süren denemeyi şimdiden önce bitirecek kısaltma 422 `extra_time_below_elapsed`. Kursiyer atamanın güncel hedefinde değilse 404. Süren deneme yeni ek süreyle uzar, biten deneme yeniden açılmaz (DOM-BEC-043). Kayıt değişmez, her değişiklik yeni kayıttır; denetime yalnız alan adları yazılır. `Idempotency-Key` isteğe bağlı. Başarı 201. Roller: `yonetici` her atamada; `ogretmen` gördüğü atamada okur (atayan değilse yalnız kendi kapsamındaki kursiyerler), yalnız kendi atamasında yazar (atayan olmayan öğretmen 403 `forbidden`); öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan, arşivli, kapsam dışı ya da başka kurumun ataması 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "minutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 300
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "accommodation",
+                      "technical_issue",
+                      "other"
+                    ]
+                  },
+                  "learnerId": {
+                    "type": "string",
+                    "minLength": 1,
+                    "maxLength": 200
+                  }
+                },
+                "required": [
+                  "minutes",
+                  "reason",
+                  "learnerId"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true,
+            "description": "Atama kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskExtraTimeLearner"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-assignments/{assignmentId}/extra-times/{learnerId}": {
+      "patch": {
+        "operationId": "changeTaskExtraTime",
+        "summary": "Kursiyerin ek süresini değiştir",
+        "tags": [
+          "task-assignments"
+        ],
+        "description": "Güncel ek süreyi yeni süre ve gerekçeyle değiştirir; ek süresi yoksa 404. `If-Match` zorunlu: ek sürenin `version`'ı (tutmazsa 409 `version_conflict`). Yalnız süreli görevde (422 `extra_time_untimed`), teslim penceresi açıkken (422 `submission_closed`), 1–300 dakika ve görevin süresini aşmadan (422 `extra_time_too_long`); süren denemeyi şimdiden önce bitirecek kısaltma 422 `extra_time_below_elapsed`. Kursiyer atamanın güncel hedefinde değilse 404. Süren deneme yeni ek süreyle uzar, biten deneme yeniden açılmaz (DOM-BEC-043). Kayıt değişmez, her değişiklik yeni kayıttır; denetime yalnız alan adları yazılır. Roller: `yonetici` her atamada; `ogretmen` gördüğü atamada okur (atayan değilse yalnız kendi kapsamındaki kursiyerler), yalnız kendi atamasında yazar (atayan olmayan öğretmen 403 `forbidden`); öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan, arşivli, kapsam dışı ya da başka kurumun ataması 404.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "minutes": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 300
+                  },
+                  "reason": {
+                    "type": "string",
+                    "enum": [
+                      "accommodation",
+                      "technical_issue",
+                      "other"
+                    ]
+                  }
+                },
+                "required": [
+                  "minutes",
+                  "reason"
+                ]
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true,
+            "description": "Atama kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "learnerId",
+            "required": true,
+            "description": "Kursiyerin (öğrenci) kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskExtraTimeLearner"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "removeTaskExtraTime",
+        "summary": "Kursiyerin ek süresini kaldır",
+        "tags": [
+          "task-assignments"
+        ],
+        "description": "Ek süreyi kaldırır (geçmişte kalan yeni kayıt, `minutes: 0`); ek süresi yoksa 404. `If-Match` zorunlu: ek sürenin `version`'ı (tutmazsa 409 `version_conflict`). Yalnız süreli görevde (422 `extra_time_untimed`), teslim penceresi açıkken (422 `submission_closed`), 1–300 dakika ve görevin süresini aşmadan (422 `extra_time_too_long`); süren denemeyi şimdiden önce bitirecek kısaltma 422 `extra_time_below_elapsed`. Kursiyer atamanın güncel hedefinde değilse 404. Süren deneme yeni ek süreyle uzar, biten deneme yeniden açılmaz (DOM-BEC-043). Kayıt değişmez, her değişiklik yeni kayıttır; denetime yalnız alan adları yazılır. Yanıt kursiyerin güncel satırıdır (`current: null`). Roller: `yonetici` her atamada; `ogretmen` gördüğü atamada okur (atayan değilse yalnız kendi kapsamındaki kursiyerler), yalnız kendi atamasında yazar (atayan olmayan öğretmen 403 `forbidden`); öğrenci, veli ve ön büro 403. Modül `learning`; kapalıysa 403 `module_disabled`. Olmayan, arşivli, kapsam dışı ya da başka kurumun ataması 404.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "assignmentId",
+            "required": true,
+            "description": "Atama kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "learnerId",
+            "required": true,
+            "description": "Kursiyerin (öğrenci) kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/TaskExtraTimeLearner"
                     }
                   },
                   "required": [

@@ -61,6 +61,12 @@ export const extraTimeSchema = z.object({
 export type ExtraTimeInput = z.input<typeof extraTimeSchema>
 export type ExtraTime = z.output<typeof extraTimeSchema>
 
+/** İlk verme gövdesi: kursiyer (atamanın hedeflediği öğrenci) ve ek süre. */
+export const extraTimeGrantSchema = extraTimeSchema.extend({
+  learnerId: z.string().trim().min(1, 'Bir kursiyer seçin.').max(200),
+})
+export type ExtraTimeGrantInput = z.input<typeof extraTimeGrantSchema>
+
 /** Ek süreyi veren roller; öğretmen yalnız kendi atamasında (`canManageExtraTime`). */
 export const EXTRA_TIME_ROLES = ['yonetici', 'ogretmen'] as const
 

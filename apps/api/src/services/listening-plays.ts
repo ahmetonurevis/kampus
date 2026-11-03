@@ -148,7 +148,8 @@ export type ListeningGrant = {
 }
 
 const running = (assignment: StoredAssignment, attempt: StoredAttempt, now: Date) =>
-  attemptState(attempt, timingOf(assignment), now.toISOString()).status === 'in_progress'
+  attemptState(attempt, timingOf(assignment, attempt.learnerId), now.toISOString()).status ===
+  'in_progress'
 
 /** Öğrencinin kendi kursiyer kimliği; öğrenci bağlantısı yoksa `null` (sayılacak deneme yok). */
 function learnerOf(viewer: Viewer): string | null {

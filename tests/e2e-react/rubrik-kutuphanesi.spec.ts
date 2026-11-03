@@ -111,8 +111,9 @@ test('IST-048, DOM-BEC-022: öğretmen rubrik oluşturur, yayımlar, yeni sürü
   expect(detail.data.versions[1].criteria[0].weight).toBe(3)
 
   // Liste baş sürümü gösterir; arama ve durum süzgeci sunucuda.
-  await panel.getByRole('button', { name: 'Pencereyi kapat' }).click()
+  await page.keyboard.press('Escape')
   await expect(panel).toBeHidden()
+  await expect(page).not.toHaveURL(/rubrik=/)
   const rows = page.getByRole('table', { name: 'Rubrik kütüphanesi' }).locator('tbody tr')
   await expectEveryRow(rows, [TITLE, 'v2', 'Taslak'])
   await page.getByRole('searchbox').fill('paragraf yazma')

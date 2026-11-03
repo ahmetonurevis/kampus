@@ -353,10 +353,87 @@ export function isUncertainFailure(error: ApiError): boolean {
 
 /** Öğrenci başına kayıt sonucu; ekran yalnız sunucu yanıtından sonra yazar. */
 export type GradeSaveResult =
-  | { status: 'saved'; kind: 'create' | 'update' }
-  | { status: 'failed'; message: string }
+  /** `score`: sunucunun kabul ettiği puan; liste tazelenemese de alanda doğru puan görünür. */
+  | { status: 'saved'; kind: 'create' | 'update'; score: number }
+  /** `conflict`: not başka yerde değişti (409 `version_conflict`, `If-Match` tutmadı). */
+  | { status: 'failed'; message: string; conflict: boolean }
   /** Önceki öğrencide belirsiz hata olduğundan gönderilmedi. */
   | { status: 'skipped' }
+
+/** `send` işlevinin döndürdüğü, kanca sonucundan (`CommandOutcome`) süzülmüş biçim. */
+export type SendOutcome =
+  { status: 'success' } | { status: 'failed'; error: ApiError } | { status: 'busy' }
+
+export type SendableItem = Extract<GradeSaveItem, { kind: 'create' | 'update' }>
+
+const isSendable = (item: GradeSaveItem): item is SendableItem =>
+  item.kind === 'create' || item.kind === 'update'
+
+const isVersionConflict = (error: ApiError) =>
+  error.status === 409 && error.code === 'version_conflict'
+
+/**
+ * Kayıt turu: gönderilecek notlar sırayla, her biri tek istekle gider. Belirsiz hatada (ağ, 5xx)
+ * ve oturum hatasında (401) durulur; kalan öğrenciler `skipped` işaretlenir ve hiç gönderilmez
+ * (aynı anahtarla yeniden denenir). Kural hatasında (403, 409, 422) sıradakine geçilir. `send` hata
+ * fırlatmaz, sonucu döndürür (`submit` sözleşmesi).
+ */
+export async function runGradeSave(
+  items: readonly GradeSaveItem[],
+  send: (item: SendableItem) => Promise<SendOutcome>,
+): Promise<Record<string, GradeSaveResult>> {
+  const results: Record<string, GradeSaveResult> = {}
+  let stopped = false
+  for (const item of items) {
+    if (!isSendable(item)) continue
+    if (stopped) {
+      results[item.studentId] = { status: 'skipped' }
+      continue
+    }
+    const outcome = await send(item)
+    if (outcome.status === 'success')
+      results[item.studentId] = { status: 'saved', kind: item.kind, score: item.score }
+    else if (outcome.status === 'failed') {
+      results[item.studentId] = {
+        status: 'failed',
+        message: gradeFailureText(outcome.error) ?? 'Oturum sona erdi; yeniden giriş yapın.',
+        conflict: isVersionConflict(outcome.error),
+      }
+      if (isUncertainFailure(outcome.error) || outcome.error.status === 401) stopped = true
+    } else results[item.studentId] = { status: 'skipped' }
+  }
+  return results
+}
+
+/**
+ * Kayıt turundan sonraki durum. `fresh` tazelenen listeden okunan notlardır (tazeleme başarısızsa
+ * `null`). Sürümler yalnız kaydedilen ve çakışma (409) alan notlar için yeniden sabitlenir; gönderilmeyen
+ * (`skipped`) ya da başka nedenle başarısız notun sabit sürümü korunur, böylece başka cihazın
+ * düzeltmesi sonraki denemede 409 ile yakalanır. Çakışan notun iletisine sunucudaki güncel puan eklenir.
+ */
+export function settleSave(input: {
+  items: readonly GradeSaveItem[]
+  results: Readonly<Record<string, GradeSaveResult>>
+  pins: VersionPins | null
+  fresh: ReadonlyMap<string, ExistingGrade> | null
+}): { results: Record<string, GradeSaveResult>; pins: VersionPins | null } {
+  const results: Record<string, GradeSaveResult> = { ...input.results }
+  if (input.fresh === null) return { results, pins: input.pins }
+  const pins: Record<string, number> = { ...input.pins }
+  for (const item of input.items) {
+    const result = results[item.studentId]
+    const current = input.fresh.get(item.studentId)
+    if (!result || !current) continue
+    if (result.status === 'saved' || (result.status === 'failed' && result.conflict))
+      pins[current.id] = current.version
+    if (result.status === 'failed' && result.conflict)
+      results[item.studentId] = {
+        ...result,
+        message: `${result.message} Sunucuda ${current.score} olarak değişti.`,
+      }
+  }
+  return { results, pins }
+}
 
 export const SKIPPED_MESSAGE = 'Bağlantı sorunu nedeniyle gönderilmedi; yeniden deneyin.'
 

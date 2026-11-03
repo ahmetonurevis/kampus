@@ -23,13 +23,13 @@ import {
   GRADE_TERM_CHOICES,
   gradeClassIds,
   gradeCreateInput,
-  gradeFailureText,
   gradeTypeChoices,
   gradeUpdateInput,
-  isUncertainFailure,
   knownEvaluations,
   defaultGradeTerm,
   pinVersions,
+  runGradeSave,
+  settleSave,
   planGradeSave,
   withPinnedVersions,
   saveSummary,
@@ -106,9 +106,16 @@ function GradeEntrySheet({ evaluation, className, subjectName, onClose }: SheetP
   const plan = planGradeSave({ studentIds: ids, existing, edits, reason })
   const planBy = new Map(plan.items.map((item) => [item.studentId, item]))
   const loading = !students.data || !grades.data
-  const error = students.error ?? grades.error
+  const loadError = students.error ?? grades.error
+  // Veri varken (kayıttan sonra tazeleme koptu) hata listenin üstünde uyarıdır; liste ve alt bilgi kalır.
+  const blocking = loading ? loadError : undefined
   const failed = Object.values(results).filter((item) => item.status !== 'saved').length
   const hasNew = active.some((student) => !existing.has(student.id))
+
+  const retry = () => {
+    if (students.error) void students.refetch()
+    if (grades.error) void grades.refetch()
+  }
 
   const setScore = (studentId: string, text: string) => {
     setEdits((current) => ({ ...current, [studentId]: text }))
@@ -121,42 +128,25 @@ function GradeEntrySheet({ evaluation, className, subjectName, onClose }: SheetP
     setAttempted(true)
     if (!plan.ready || saving) return
     setSaving(true)
-    const outcome: Record<string, GradeSaveResult> = {}
-    let stopped = false
-    for (const item of plan.items) {
-      if (item.kind !== 'create' && item.kind !== 'update') continue
-      if (stopped) {
-        outcome[item.studentId] = { status: 'skipped' }
-        continue
-      }
-      // Hata öğrencinin altında gösterilir; aynı mesaj toast olarak da çıkmaz.
-      const result =
-        item.kind === 'create'
-          ? await record.submit(gradeCreateInput(evaluation, item, topic), { silent: () => true })
-          : await update.submit(gradeUpdateInput(item, reason), { silent: () => true })
-      if (result.status === 'success')
-        outcome[item.studentId] = { status: 'saved', kind: item.kind }
-      else if (result.status === 'failed') {
-        outcome[item.studentId] = {
-          status: 'failed',
-          message: gradeFailureText(result.error) ?? 'Oturum sona erdi; yeniden giriş yapın.',
-        }
-        // Sonucu belirsiz hatada (ağ, 5xx) kalanlar gönderilmez: aynı anahtarla yeniden denenir.
-        if (isUncertainFailure(result.error) || result.error.status === 401) stopped = true
-      } else outcome[item.studentId] = { status: 'skipped' }
-    }
+    // Hata öğrencinin altında gösterilir; aynı mesaj toast olarak da çıkmaz.
+    const outcome = await runGradeSave(plan.items, async (item) =>
+      item.kind === 'create'
+        ? await record.submit(gradeCreateInput(evaluation, item, topic), { silent: () => true })
+        : await update.submit(gradeUpdateInput(item, reason), { silent: () => true }),
+    )
     // Liste sunucudan tazelenmeden kayıtlı puan eski görünürdü; tazelenene kadar kilit açılmaz.
-    await grades.refetch()
-    // Sürümler tazelenen listeden yeniden sabitlenir (çakışmadan sonra güncel hâlle kontrol edilir).
-    setPins(null)
-    const remaining = withoutSaved(edits, outcome)
-    setEdits(remaining)
-    setResults(outcome)
+    // Tazeleme ağ hatasıyla biterse eldeki liste kalır (hata listenin üstünde uyarı olur).
+    const refreshed = await grades.refetch()
+    const fresh =
+      refreshed.isError || !refreshed.data ? null : existingGrades(refreshed.data, evaluation)
+    const settled = settleSave({ items: plan.items, results: outcome, pins, fresh })
+    setPins(settled.pins)
+    setEdits(withoutSaved(edits, outcome))
+    setResults(settled.results)
     setSaving(false)
-    const summary = saveSummary(outcome)
-    const allSaved = Object.values(outcome).every((item) => item.status === 'saved')
-    if (allSaved) {
-      if (summary) notify(summary)
+    if (Object.values(outcome).every((item) => item.status === 'saved')) {
+      const done = saveSummary(outcome)
+      if (done) notify(done)
       onClose()
     }
   }
@@ -173,7 +163,7 @@ function GradeEntrySheet({ evaluation, className, subjectName, onClose }: SheetP
       title={`${className} · ${subjectName}`}
       onClose={onClose}
       footer={
-        !loading && !error && active.length > 0 ? (
+        !loading && active.length > 0 ? (
           <View style={{ gap: 10 }}>
             <T muted size={14} accessibilityLiveRegion="polite">
               {counts.length > 0 ? counts.join(' · ') : 'Kaydedilecek değişiklik yok.'}
@@ -208,20 +198,25 @@ function GradeEntrySheet({ evaluation, className, subjectName, onClose }: SheetP
           {active.length > 0 ? ` · ${active.length} öğrenci` : ''}
         </T>
       </View>
-      {error ? (
-        <QueryError
-          error={error}
-          onRetry={() => {
-            if (students.error) void students.refetch()
-            if (grades.error) void grades.refetch()
-          }}
-        />
+      {blocking ? (
+        <QueryError error={blocking} onRetry={retry} />
       ) : loading ? (
         <ListLoading label="Öğrenci listesi yükleniyor…" />
       ) : active.length === 0 ? (
         <Empty title="Aktif öğrenci yok" text="Bu sınıfta not girilecek öğrenci bulunmuyor." />
       ) : (
         <>
+          {loadError && (
+            <Notice
+              tone="amber"
+              title="Liste güncellenemedi"
+              text="Bağlantı sorunu nedeniyle sunucudaki son durum alınamadı. Girdiğiniz puanlar duruyor; bağlantı gelince yeniden deneyin."
+            >
+              <Button icon="RefreshCw" label="Listeyi yeniden yükle" onPress={retry}>
+                Yeniden dene
+              </Button>
+            </Notice>
+          )}
           {existing.size > 0 && (
             <Notice
               title="Bu değerlendirmenin notları kayıtlı"
@@ -269,11 +264,13 @@ function GradeEntrySheet({ evaluation, className, subjectName, onClose }: SheetP
                   ? 'Yeni not'
                   : item?.kind === 'update'
                     ? 'Düzeltilecek'
-                    : current
-                      ? current.fromQuiz
-                        ? 'Quizden aktarıldı; düzeltilemez'
-                        : `Kayıtlı puan: ${current.score}`
-                      : 'Not girilmedi'
+                    : result?.status === 'saved'
+                      ? `Kaydedildi: ${result.score}`
+                      : current
+                        ? current.fromQuiz
+                          ? 'Quizden aktarıldı; düzeltilemez'
+                          : `Kayıtlı puan: ${current.score}`
+                        : 'Not girilmedi'
               return (
                 <View
                   key={student.id}
@@ -295,7 +292,11 @@ function GradeEntrySheet({ evaluation, className, subjectName, onClose }: SheetP
                   <Field
                     label={`${student.name} puanı, 0 ile 100 arası`}
                     hideLabel
-                    value={displayScore(current, edits[student.id])}
+                    value={displayScore(
+                      current,
+                      edits[student.id] ??
+                        (result?.status === 'saved' ? String(result.score) : undefined),
+                    )}
                     onChange={(text) => setScore(student.id, text)}
                     keyboard="number-pad"
                     maxLength={3}

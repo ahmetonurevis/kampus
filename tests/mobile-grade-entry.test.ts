@@ -354,23 +354,23 @@ describe('OG-062 mobil not girişi: hata eşleme ve sonuç', () => {
   test('özet kaydedilen ve düzeltilen notları sayar; başarısız ve atlananı saymaz', () => {
     assert.equal(
       saveSummary({
-        s1: { status: 'saved', kind: 'create' },
-        s2: { status: 'saved', kind: 'create' },
-        s3: { status: 'saved', kind: 'update' },
-        s4: { status: 'failed', message: 'x' },
+        s1: { status: 'saved', kind: 'create', score: 80 },
+        s2: { status: 'saved', kind: 'create', score: 80 },
+        s3: { status: 'saved', kind: 'update', score: 80 },
+        s4: { status: 'failed', message: 'x', conflict: false },
         s5: { status: 'skipped' },
       }),
       '2 not kaydedildi, 1 not düzeltildi.',
     )
-    assert.equal(saveSummary({ s1: { status: 'failed', message: 'x' } }), null)
+    assert.equal(saveSummary({ s1: { status: 'failed', message: 'x', conflict: false } }), null)
   })
 
   test('başarılı öğrencinin işareti düşer; başarısız ve atlanan girilen puanla kalır', () => {
     const edits = { s1: '90', s2: '80', s3: '70', s4: '60' }
     assert.deepEqual(
       withoutSaved(edits, {
-        s1: { status: 'saved', kind: 'create' },
-        s2: { status: 'failed', message: 'x' },
+        s1: { status: 'saved', kind: 'create', score: 80 },
+        s2: { status: 'failed', message: 'x', conflict: false },
         s3: { status: 'skipped' },
       }),
       { s2: '80', s3: '70', s4: '60' },

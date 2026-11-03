@@ -13,9 +13,10 @@ import {
 } from 'drizzle-orm'
 import { alias } from 'drizzle-orm/pg-core'
 
-import type {
-  NotificationAudience,
-  NotificationRecord,
+import {
+  NOTIFICATION_AUDIENCES,
+  type NotificationAudience,
+  type NotificationRecord,
 } from '@kampus/school-core/lib/notifications.ts'
 
 import type { Database } from './client.ts'
@@ -41,7 +42,13 @@ const NOTIFICATIONS = 'notifications'
 const READS = 'notificationReads'
 const reads = alias(records, 'notification_reads')
 
-export type AudienceIds = Readonly<Record<NotificationAudience, readonly string[]>>
+/**
+ * Aktörün görebildiği bildirimler: kitle başına öğrenciler ve ödeyici velinin finans bildirimi
+ * (`payer`: yalnız `kinds` türlerinin veli bildirimi; K-04, DOM-ILT-074).
+ */
+export type AudienceIds = Readonly<Record<NotificationAudience, readonly string[]>> & {
+  readonly payer?: { readonly studentIds: readonly string[]; readonly kinds: readonly string[] }
+}
 
 const field = (name: 'audience' | 'studentId' | 'kind') =>
   sql`(${records.data} ->> ${sql.raw(`'${name}'`)})`
@@ -55,11 +62,21 @@ export function visibleTo(
   audience: AudienceIds,
   hiddenKinds: readonly string[] = [],
 ): SQL | null {
-  const parts = Object.entries(audience)
-    .filter(([, ids]) => ids.length > 0)
-    .map(
-      ([kind, ids]) =>
-        and(sql`${field('audience')} = ${kind}`, inArray(field('studentId'), [...ids])) as SQL,
+  const parts = NOTIFICATION_AUDIENCES.filter((kind) => audience[kind].length > 0).map(
+    (kind) =>
+      and(
+        sql`${field('audience')} = ${kind}`,
+        inArray(field('studentId'), [...audience[kind]]),
+      ) as SQL,
+  )
+  const payer = audience.payer
+  if (payer && payer.studentIds.length > 0 && payer.kinds.length > 0)
+    parts.push(
+      and(
+        sql`${field('audience')} = 'parent'`,
+        inArray(field('studentId'), [...payer.studentIds]),
+        inArray(field('kind'), [...payer.kinds]),
+      ) as SQL,
     )
   if (parts.length === 0) return null
   return and(

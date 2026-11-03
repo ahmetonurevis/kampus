@@ -14,7 +14,7 @@ import { loadRecords, type RecordFilter } from '../db/records.ts'
 import { ForbiddenError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { ModuleDisabledError } from '../plugins/modules.ts'
-import { listMembershipLinks } from './memberships.ts'
+import { listActorLinks } from './memberships.ts'
 import { getInstitutionModules } from './modules.ts'
 
 /**
@@ -103,7 +103,7 @@ interface ScopeState {
 async function buildScope(ctx: ServiceContext): Promise<ScopeState> {
   const [institution, links, rows] = await Promise.all([
     getInstitutionModules(ctx.db, ctx.institutionId),
-    listMembershipLinks(ctx.db, ctx.institutionId, ctx.actor.membershipId),
+    listActorLinks(ctx.db, ctx.institutionId, ctx.actor.membershipId),
     loadRecords(ctx.db, ctx.institutionId, SCOPE_SOURCE_COLLECTIONS),
   ])
   const byCollection = new Map<string, RecordData[]>(
@@ -272,7 +272,9 @@ const PREFILTER: Partial<Record<CollectionName, Partial<Record<Role, readonly Sc
 function keyValues(scope: Scope, key: ScopeKey): string[] {
   switch (key) {
     case 'studentId':
-      return [...scope.studentIds]
+      // Ödeyici velinin finans satırları (K-04): ön süzgeç yalnız adayları genişletir, satırı
+      // akademik koleksiyonda core kuralı yine `studentIds` ile reddeder.
+      return [...new Set([...scope.studentIds, ...scope.payerStudentIds])]
     case 'classId':
       return [...scope.classIds]
     case 'homeworkId':

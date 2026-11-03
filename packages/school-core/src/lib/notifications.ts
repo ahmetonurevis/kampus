@@ -11,6 +11,7 @@ import { requireAuthorized } from './authorize.ts'
 import type { Participant } from './communication.ts'
 import type { MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
+import { isPayerNotificationKind } from './guardianship.ts'
 import {
   NOTIFICATION_AUDIENCES,
   NOTIFICATION_TOPICS,
@@ -52,7 +53,10 @@ import type { Actor } from './scope.ts'
 // bildirimi (IST-072, DOM-ILT-052) yoklamadan üretilir (`lib/attendance-alerts.ts`).
 // Veli kitlesi (`parent`) aktörün çocuk bağlantılarından çözülür; velayeti olmayan ya da
 // iletişim kısıtlı velinin bağlantısı aktör kurulurken düştüğü için bildirim ona ulaşmaz
-// (`lib/guardianship.ts` `guardedActorLinks`; DOM-ILT-070, -074).
+// (`lib/guardianship.ts` `guardedActorLinks`; DOM-ILT-070, -074). İstisna finans türleridir
+// (K-04): ödeyici veli `payer` bağlantısıyla ödediği öğrencinin finans bildirimini de görür
+// (`payerNotificationStudentIds`, `PAYER_NOTIFICATION_KINDS`); kısıtlı veli ödeyici olamaz ve
+// bağlantısı kurulmaz. Diğer türlerin alıcısı değişmez.
 
 export {
   NOTIFICATION_AUDIENCES,
@@ -248,12 +252,31 @@ export function notificationAudienceOf(
   }
 }
 
-/** Aktör bu bildirimi görür mü (`notificationAudienceOf`). */
+/**
+ * Velinin ödeyici olarak finans bildirimini gördüğü öğrenciler (`payer` bağlantısı; K-04,
+ * DOM-ILT-074). Yalnız finans türlerinin (`PAYER_NOTIFICATION_KINDS`) veli bildirimine açılır;
+ * veli dışı rolde boş.
+ */
+export function payerNotificationStudentIds(actor: Pick<Actor, 'role' | 'links'>): string[] {
+  if (actor.role !== 'veli') return []
+  return [...new Set(actor.links.filter((l) => l.kind === 'payer').map((l) => l.recordId))].sort()
+}
+
+/**
+ * Aktör bu bildirimi görür mü: kitlesinde (`notificationAudienceOf`) ya da ödeyicisi olduğu
+ * öğrencinin finans türü veli bildirimi (`payerNotificationStudentIds`).
+ */
 export function canSeeNotification(
   actor: Pick<Actor, 'role' | 'links'>,
-  notification: Pick<NotificationRecord, 'audience' | 'studentId'>,
+  notification: Pick<NotificationRecord, 'audience' | 'studentId' | 'kind'>,
 ): boolean {
-  return notificationAudienceOf(actor)[notification.audience].includes(notification.studentId)
+  if (notificationAudienceOf(actor)[notification.audience].includes(notification.studentId))
+    return true
+  return (
+    notification.audience === 'parent' &&
+    isPayerNotificationKind(notification.kind) &&
+    payerNotificationStudentIds(actor).includes(notification.studentId)
+  )
 }
 
 type Reader = Pick<Actor, 'role' | 'links'> & { userId: string }

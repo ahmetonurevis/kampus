@@ -11,11 +11,9 @@ import {
   studentDisplayName,
   studentPaidCents,
 } from '@/lib/pdf/document-state.ts'
+import { certificateVerificationUrl } from '@/lib/certificate-verification.ts'
 import { contractDocument } from '@/lib/pdf/templates/contract.ts'
-import {
-  certificateVerificationUrl,
-  courseCertificateDocument,
-} from '@/lib/pdf/templates/course-certificate.ts'
+import { courseCertificateDocument } from '@/lib/pdf/templates/course-certificate.ts'
 import { studentStatementDocument } from '@/lib/pdf/templates/finance-statement.ts'
 import { homeworkDocument } from '@/lib/pdf/templates/homework.ts'
 import { materialDocument } from '@/lib/pdf/templates/material.ts'

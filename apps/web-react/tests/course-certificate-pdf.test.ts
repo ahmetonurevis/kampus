@@ -5,11 +5,11 @@ import {
   certificateLevelStatement,
   containsForbiddenPhrase,
 } from '@kampus/school-core/cefr/certificates.ts'
+import { certificateVerificationUrl } from '../src/lib/certificate-verification.ts'
 import { COLORS, PAGE } from '../src/lib/pdf/layout.ts'
 import { qrMatrix } from '../src/lib/pdf/qr.ts'
 import {
   attendanceLabel,
-  certificateVerificationUrl,
   courseCertificateDocument,
   documentTexts,
 } from '../src/lib/pdf/templates/course-certificate.ts'

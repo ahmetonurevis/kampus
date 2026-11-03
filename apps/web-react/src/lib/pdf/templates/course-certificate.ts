@@ -28,17 +28,6 @@ export type CourseCertificateOptions = {
   qr: QrModules
 }
 
-/** Doğrulama sayfasının yolu: web uygulamasının kimliksiz rotası (`/belge-dogrula/:kod`). */
-export const VERIFICATION_PATH = 'belge-dogrula'
-
-/**
- * Doğrulama adresi: kök adres uygulamanın yayınlandığı yerden gelir (`origin` + Vite `BASE_URL`);
- * sabit alan adı yazılmaz. Kod tirelidir; yol parçası olarak kaçışlanır.
- */
-export function certificateVerificationUrl(base: string, code: string): string {
-  return new URL(`${VERIFICATION_PATH}/${encodeURIComponent(code)}`, base).href
-}
-
 /** Devam oranı binde tamsayıdan: "%91,6". */
 export function attendanceLabel(permille: number): string {
   return `%${(permille / 10).toLocaleString('tr-TR', { maximumFractionDigits: 1 })}`

@@ -4787,7 +4787,7 @@ export interface paths {
         put?: never;
         /**
          * İzin formu aç
-         * @description Yeni izin formu (core `createPermissionForm`, DOM-ILT-036): konu (`trip`, `event`, `photo`, `club`, `other`), başlık, açıklama, son gün (`YYYY-MM-DD`, Europe/Istanbul; o günün sonuna kadar) ve hedef (`classIds` ve/veya `studentIds`). Hedef öğrenciler açılışta çözülür ve saklanır. Öğretmen yalnız rehberi olduğu sınıflara ve onların öğrencilerine (403 `permission_form_scope_denied`). Son gün bugünden önce 422 `permission_form_deadline_in_past`; olmayan sınıf ya da öğrenci 404, pasif sınıf 422 `record_inactive`, pasif öğrenci 422 `student_inactive`, öğrencisiz hedef 422 `permission_form_no_students`. Aynı işlemde 18 yaş altında velilere, yetişkin öğrencide kendisine `permission_form_opened` bildirimi yazılır. `Idempotency-Key` zorunlu; `If-Match` 400. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`.
+         * @description Yeni izin formu (core `createPermissionForm`, DOM-ILT-036): konu (`trip`, `event`, `photo`, `club`, `other`), başlık, açıklama, son gün (`YYYY-MM-DD`, Europe/Istanbul; o günün sonuna kadar) ve hedef (`classIds` ve/veya `studentIds`). Hedef öğrenciler açılışta çözülür ve saklanır. Öğretmen yalnız rehberi olduğu sınıflara ve onların öğrencilerine (403 `permission_form_scope_denied`). Son gün bugünden önce 422 `permission_form_deadline_in_past`; olmayan sınıf ya da öğrenci 404, pasif sınıf 422 `record_inactive`, pasif öğrenci 422 `student_inactive`, öğrencisiz hedef 422 `permission_form_no_students`. Etkinlik ayrıntısı (`eventDate`, `eventTime`, `location`, `transport`, `fee` kuruş) isteğe bağlıdır; geçmiş etkinlik günü 422 `permission_form_event_in_past`. Aynı işlemde 18 yaş altında velilere, yetişkin öğrencide kendisine `permission_form_opened` bildirimi yazılır. `Idempotency-Key` zorunlu; `If-Match` 400. Başarı 201 ve `Location`. Roller: `yonetici`, `ogretmen`.
          */
         post: operations["createPermissionForm"];
         delete?: never;
@@ -4819,7 +4819,7 @@ export interface paths {
         head?: never;
         /**
          * İzin formunu düzenle
-         * @description Başlık, açıklama, son gün ve hedef (core `updatePermissionForm`, DOM-ILT-038); konu değişmez (gövdede 400). Kapalı form 422 `permission_form_closed`; son günü geçmiş formun son günü 422 `permission_form_deadline_passed`; kararı olan formun hedefinden sınıf ya da öğrenci çıkarılamaz (422 `permission_form_scope_locked`). Hedefe yeni giren öğrencilere aynı işlemde `permission_form_opened` bildirimi yazılır. `If-Match` formun `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Formu gören başka öğretmen 403 `permission_form_not_owner`, görmeyen ve başka kurumun formu 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
+         * @description Başlık, açıklama, son gün, hedef ve etkinlik ayrıntısı (`eventDate`, `eventTime`, `location`, `transport`, `fee` kuruş; `null` kaldırır; core `updatePermissionForm`, DOM-ILT-038); konu değişmez (gövdede 400). Etkinlik günü, saati, yeri, ulaşım biçimi ya da ücreti değişirse alınmış kararlar düşer (DOM-ILT-032): form `detailsRevision` bir artar, karar satırları silinmez (`current: false`), kararı düşen öğrencilerin kararı veren tarafına aynı işlemde `permission_form_reconsent` bildirimi yazılır; başlık, açıklama ve son gün düzeltmesi ile aynı değerin yeniden yazılması izni düşürmez. Geçmiş etkinlik günü 422 `permission_form_event_in_past`. Kapalı form 422 `permission_form_closed`; son günü geçmiş formun son günü 422 `permission_form_deadline_passed`; kararı olan formun hedefinden sınıf ya da öğrenci çıkarılamaz (422 `permission_form_scope_locked`). Hedefe yeni giren öğrencilere aynı işlemde `permission_form_opened` bildirimi yazılır. `If-Match` formun `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Formu gören başka öğretmen 403 `permission_form_not_owner`, görmeyen ve başka kurumun formu 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
          */
         patch: operations["updatePermissionForm"];
         trace?: never;
@@ -4838,6 +4838,26 @@ export interface paths {
          * @description Son günden önce karar almayı bitirir (core `closePermissionForm`, DOM-ILT-038); kararlar korunur. Kapalı form 409 `permission_form_closed`. `If-Match` formun `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Formu gören başka öğretmen 403 `permission_form_not_owner`, görmeyen ve başka kurumun formu 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
          */
         post: operations["closePermissionForm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/permission-forms/{formId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Etkinliği iptal et
+         * @description İzin istenen etkinliği iptal eder (core `cancelPermissionForm`, DOM-ILT-032): form kapanır ve `cancelledAt` işaretlenir; kararlar korunur. Aynı işlemde izin vermiş ve karar bekleyen öğrencilerin kararı veren tarafına (18 yaş altında bugün velayetli veliler, yetişkinde kendisi) `permission_form_cancelled` bildirimi yazılır; etkinliği reddedene gitmez. Son günü geçmiş ya da kapatılmış form da iptal edilir (kapanış zamanı korunur); iptal edilmiş form 409 `permission_form_cancelled`. `If-Match` formun `version`'ı (zorunlu; yoksa 400 `if_match_required`), tutmazsa 409 `version_conflict`. Formu gören başka öğretmen 403 `permission_form_not_owner`, görmeyen ve başka kurumun formu 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `ogretmen`.
+         */
+        post: operations["cancelPermissionForm"];
         delete?: never;
         options?: never;
         head?: never;
@@ -6542,7 +6562,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -8585,6 +8605,18 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
+            /** @description Etkinlik günü (Europe/Istanbul, `YYYY-MM-DD`); belirtilmemişse `null` */
+            eventDate: string | null;
+            /** @description Etkinlik saati (`SS:DD`); belirtilmemişse `null` */
+            eventTime: string | null;
+            /** @description Etkinlik yeri; belirtilmemişse `null` */
+            location: string | null;
+            /** @description Ulaşım biçimi; belirtilmemişse `null` */
+            transport: string | null;
+            /** @description Katılım ücreti, tamsayı kuruş; belirtilmemişse `null` */
+            fee: number | null;
+            /** @description Etkinlik ayrıntısı sürümü: gün, saat, yer, ulaşım ya da ücret her değiştiğinde bir artar ve o ana kadar verilen kararlar düşer (DOM-ILT-032) */
+            detailsRevision: number;
             /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
@@ -8601,6 +8633,8 @@ export interface components {
              */
             status: "open" | "closed";
             closedAt: string | null;
+            /** @description Etkinliğin iptal edildiği an (iptal formu da kapatır); iptal değilse `null` */
+            cancelledAt: string | null;
             /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
             acceptingDecisions: boolean;
             /** @description ISO 8601 UTC */
@@ -8627,6 +8661,8 @@ export interface components {
             relation: "guardian" | "self";
             /** @description ISO 8601 UTC */
             decidedAt: string;
+            /** @description `false`: etkinlik ayrıntısı bu karardan sonra değişti ve karar düştü; satır ispat olarak kalır, durumu etkilemez (DOM-ILT-032) */
+            current: boolean;
             /** @description Kararı okuyan kişi mi verdi */
             mine: boolean;
             /** @description Kararı veren kullanıcı; yalnız yöneticiye */
@@ -8659,6 +8695,18 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
+            /** @description Etkinlik günü (Europe/Istanbul, `YYYY-MM-DD`); belirtilmemişse `null` */
+            eventDate: string | null;
+            /** @description Etkinlik saati (`SS:DD`); belirtilmemişse `null` */
+            eventTime: string | null;
+            /** @description Etkinlik yeri; belirtilmemişse `null` */
+            location: string | null;
+            /** @description Ulaşım biçimi; belirtilmemişse `null` */
+            transport: string | null;
+            /** @description Katılım ücreti, tamsayı kuruş; belirtilmemişse `null` */
+            fee: number | null;
+            /** @description Etkinlik ayrıntısı sürümü: gün, saat, yer, ulaşım ya da ücret her değiştiğinde bir artar ve o ana kadar verilen kararlar düşer (DOM-ILT-032) */
+            detailsRevision: number;
             /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
@@ -8675,6 +8723,8 @@ export interface components {
              */
             status: "open" | "closed";
             closedAt: string | null;
+            /** @description Etkinliğin iptal edildiği an (iptal formu da kapatır); iptal değilse `null` */
+            cancelledAt: string | null;
             /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
             acceptingDecisions: boolean;
             /** @description ISO 8601 UTC */
@@ -8700,6 +8750,18 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
+            /** @description Etkinlik günü (Europe/Istanbul, `YYYY-MM-DD`); belirtilmemişse `null` */
+            eventDate: string | null;
+            /** @description Etkinlik saati (`SS:DD`); belirtilmemişse `null` */
+            eventTime: string | null;
+            /** @description Etkinlik yeri; belirtilmemişse `null` */
+            location: string | null;
+            /** @description Ulaşım biçimi; belirtilmemişse `null` */
+            transport: string | null;
+            /** @description Katılım ücreti, tamsayı kuruş; belirtilmemişse `null` */
+            fee: number | null;
+            /** @description Etkinlik ayrıntısı sürümü: gün, saat, yer, ulaşım ya da ücret her değiştiğinde bir artar ve o ana kadar verilen kararlar düşer (DOM-ILT-032) */
+            detailsRevision: number;
             /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
@@ -8716,6 +8778,8 @@ export interface components {
              */
             status: "open" | "closed";
             closedAt: string | null;
+            /** @description Etkinliğin iptal edildiği an (iptal formu da kapatır); iptal değilse `null` */
+            cancelledAt: string | null;
             /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
             acceptingDecisions: boolean;
             /** @description ISO 8601 UTC */
@@ -10367,7 +10431,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -12409,6 +12473,18 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
+            /** @description Etkinlik günü (Europe/Istanbul, `YYYY-MM-DD`); belirtilmemişse `null` */
+            eventDate: string | null;
+            /** @description Etkinlik saati (`SS:DD`); belirtilmemişse `null` */
+            eventTime: string | null;
+            /** @description Etkinlik yeri; belirtilmemişse `null` */
+            location: string | null;
+            /** @description Ulaşım biçimi; belirtilmemişse `null` */
+            transport: string | null;
+            /** @description Katılım ücreti, tamsayı kuruş; belirtilmemişse `null` */
+            fee: number | null;
+            /** @description Etkinlik ayrıntısı sürümü: gün, saat, yer, ulaşım ya da ücret her değiştiğinde bir artar ve o ana kadar verilen kararlar düşer (DOM-ILT-032) */
+            detailsRevision: number;
             /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
@@ -12425,6 +12501,8 @@ export interface components {
              */
             status: "open" | "closed";
             closedAt: string | null;
+            /** @description Etkinliğin iptal edildiği an (iptal formu da kapatır); iptal değilse `null` */
+            cancelledAt: string | null;
             /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
             acceptingDecisions: boolean;
             /** @description ISO 8601 UTC */
@@ -12451,6 +12529,8 @@ export interface components {
             relation: "guardian" | "self";
             /** @description ISO 8601 UTC */
             decidedAt: string;
+            /** @description `false`: etkinlik ayrıntısı bu karardan sonra değişti ve karar düştü; satır ispat olarak kalır, durumu etkilemez (DOM-ILT-032) */
+            current: boolean;
             /** @description Kararı okuyan kişi mi verdi */
             mine: boolean;
             /** @description Kararı veren kullanıcı; yalnız yöneticiye */
@@ -12483,6 +12563,18 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
+            /** @description Etkinlik günü (Europe/Istanbul, `YYYY-MM-DD`); belirtilmemişse `null` */
+            eventDate: string | null;
+            /** @description Etkinlik saati (`SS:DD`); belirtilmemişse `null` */
+            eventTime: string | null;
+            /** @description Etkinlik yeri; belirtilmemişse `null` */
+            location: string | null;
+            /** @description Ulaşım biçimi; belirtilmemişse `null` */
+            transport: string | null;
+            /** @description Katılım ücreti, tamsayı kuruş; belirtilmemişse `null` */
+            fee: number | null;
+            /** @description Etkinlik ayrıntısı sürümü: gün, saat, yer, ulaşım ya da ücret her değiştiğinde bir artar ve o ana kadar verilen kararlar düşer (DOM-ILT-032) */
+            detailsRevision: number;
             /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
@@ -12499,6 +12591,8 @@ export interface components {
              */
             status: "open" | "closed";
             closedAt: string | null;
+            /** @description Etkinliğin iptal edildiği an (iptal formu da kapatır); iptal değilse `null` */
+            cancelledAt: string | null;
             /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
             acceptingDecisions: boolean;
             /** @description ISO 8601 UTC */
@@ -12524,6 +12618,18 @@ export interface components {
             deadline: string;
             /** @description Son günün bittiği an, ISO 8601 UTC */
             deadlineEndsAt: string;
+            /** @description Etkinlik günü (Europe/Istanbul, `YYYY-MM-DD`); belirtilmemişse `null` */
+            eventDate: string | null;
+            /** @description Etkinlik saati (`SS:DD`); belirtilmemişse `null` */
+            eventTime: string | null;
+            /** @description Etkinlik yeri; belirtilmemişse `null` */
+            location: string | null;
+            /** @description Ulaşım biçimi; belirtilmemişse `null` */
+            transport: string | null;
+            /** @description Katılım ücreti, tamsayı kuruş; belirtilmemişse `null` */
+            fee: number | null;
+            /** @description Etkinlik ayrıntısı sürümü: gün, saat, yer, ulaşım ya da ücret her değiştiğinde bir artar ve o ana kadar verilen kararlar düşer (DOM-ILT-032) */
+            detailsRevision: number;
             /** @description Hedef sınıflar; yalnız yönetici ve öğretmene döner */
             classIds?: string[];
             /** @description Hedef öğrencilerden okuyanın gördükleri: yönetici ve formun öğretmeni hepsini, öbür öğretmen kapsamındakileri, veli 18 yaş altındaki çocuğunu, öğrenci kendisini görür */
@@ -12540,6 +12646,8 @@ export interface components {
              */
             status: "open" | "closed";
             closedAt: string | null;
+            /** @description Etkinliğin iptal edildiği an (iptal formu da kapatır); iptal değilse `null` */
+            cancelledAt: string | null;
             /** @description Form karar alıyor mu (açık ve son gün geçmemiş) */
             acceptingDecisions: boolean;
             /** @description ISO 8601 UTC */
@@ -43306,6 +43414,12 @@ export interface operations {
                     deadline: string;
                     classIds?: string[];
                     studentIds?: string[];
+                    /** Format: date */
+                    eventDate?: string;
+                    eventTime?: string;
+                    location?: string;
+                    transport?: string;
+                    fee?: number;
                 };
             };
         };
@@ -43600,6 +43714,11 @@ export interface operations {
                     deadline?: string;
                     classIds?: string[];
                     studentIds?: string[];
+                    eventDate?: string | null;
+                    eventTime?: string | null;
+                    location?: string | null;
+                    transport?: string | null;
+                    fee?: number | null;
                 };
             };
         };
@@ -43690,6 +43809,108 @@ export interface operations {
         };
     };
     closePermissionForm: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description İzin formu kimliği */
+                formId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["PermissionForm"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    cancelPermissionForm: {
         parameters: {
             query?: never;
             header: {

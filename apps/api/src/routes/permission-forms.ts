@@ -15,6 +15,7 @@ import { contextOf } from '../plugins/authenticate.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
 import {
   archivePermissionFormCommand,
+  cancelPermissionFormCommand,
   closePermissionFormCommand,
   createPermissionFormCommand,
   decidePermissionCommand,
@@ -139,7 +140,7 @@ export function registerPermissionFormRoutes(app: FastifyInstance) {
         operationId: 'createPermissionForm',
         tags: ['permission-forms'],
         summary: 'İzin formu aç',
-        description: `Yeni izin formu (core \`createPermissionForm\`, DOM-ILT-036): konu (\`trip\`, \`event\`, \`photo\`, \`club\`, \`other\`), başlık, açıklama, son gün (\`YYYY-MM-DD\`, Europe/Istanbul; o günün sonuna kadar) ve hedef (\`classIds\` ve/veya \`studentIds\`). Hedef öğrenciler açılışta çözülür ve saklanır. Öğretmen yalnız rehberi olduğu sınıflara ve onların öğrencilerine (403 \`permission_form_scope_denied\`). Son gün bugünden önce 422 \`permission_form_deadline_in_past\`; olmayan sınıf ya da öğrenci 404, pasif sınıf 422 \`record_inactive\`, pasif öğrenci 422 \`student_inactive\`, öğrencisiz hedef 422 \`permission_form_no_students\`. Aynı işlemde 18 yaş altında velilere, yetişkin öğrencide kendisine \`permission_form_opened\` bildirimi yazılır. \`Idempotency-Key\` zorunlu; \`If-Match\` 400. Başarı 201 ve \`Location\`. Roller: ${rolesOf('permissionForm.create')}.`,
+        description: `Yeni izin formu (core \`createPermissionForm\`, DOM-ILT-036): konu (\`trip\`, \`event\`, \`photo\`, \`club\`, \`other\`), başlık, açıklama, son gün (\`YYYY-MM-DD\`, Europe/Istanbul; o günün sonuna kadar) ve hedef (\`classIds\` ve/veya \`studentIds\`). Hedef öğrenciler açılışta çözülür ve saklanır. Öğretmen yalnız rehberi olduğu sınıflara ve onların öğrencilerine (403 \`permission_form_scope_denied\`). Son gün bugünden önce 422 \`permission_form_deadline_in_past\`; olmayan sınıf ya da öğrenci 404, pasif sınıf 422 \`record_inactive\`, pasif öğrenci 422 \`student_inactive\`, öğrencisiz hedef 422 \`permission_form_no_students\`. Etkinlik ayrıntısı (\`eventDate\`, \`eventTime\`, \`location\`, \`transport\`, \`fee\` kuruş) isteğe bağlıdır; geçmiş etkinlik günü 422 \`permission_form_event_in_past\`. Aynı işlemde 18 yaş altında velilere, yetişkin öğrencide kendisine \`permission_form_opened\` bildirimi yazılır. \`Idempotency-Key\` zorunlu; \`If-Match\` 400. Başarı 201 ve \`Location\`. Roller: ${rolesOf('permissionForm.create')}.`,
         body: createPermissionFormBodySchema,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         response: { 201: permissionFormResponseSchema, ...commandErrors },
@@ -168,7 +169,7 @@ export function registerPermissionFormRoutes(app: FastifyInstance) {
         operationId: 'updatePermissionForm',
         tags: ['permission-forms'],
         summary: 'İzin formunu düzenle',
-        description: `Başlık, açıklama, son gün ve hedef (core \`updatePermissionForm\`, DOM-ILT-038); konu değişmez (gövdede 400). Kapalı form 422 \`permission_form_closed\`; son günü geçmiş formun son günü 422 \`permission_form_deadline_passed\`; kararı olan formun hedefinden sınıf ya da öğrenci çıkarılamaz (422 \`permission_form_scope_locked\`). Hedefe yeni giren öğrencilere aynı işlemde \`permission_form_opened\` bildirimi yazılır. ${FORM_VERSION} Roller: ${rolesOf('permissionForm.update')}.`,
+        description: `Başlık, açıklama, son gün, hedef ve etkinlik ayrıntısı (\`eventDate\`, \`eventTime\`, \`location\`, \`transport\`, \`fee\` kuruş; \`null\` kaldırır; core \`updatePermissionForm\`, DOM-ILT-038); konu değişmez (gövdede 400). Etkinlik günü, saati, yeri, ulaşım biçimi ya da ücreti değişirse alınmış kararlar düşer (DOM-ILT-032): form \`detailsRevision\` bir artar, karar satırları silinmez (\`current: false\`), kararı düşen öğrencilerin kararı veren tarafına aynı işlemde \`permission_form_reconsent\` bildirimi yazılır; başlık, açıklama ve son gün düzeltmesi ile aynı değerin yeniden yazılması izni düşürmez. Geçmiş etkinlik günü 422 \`permission_form_event_in_past\`. Kapalı form 422 \`permission_form_closed\`; son günü geçmiş formun son günü 422 \`permission_form_deadline_passed\`; kararı olan formun hedefinden sınıf ya da öğrenci çıkarılamaz (422 \`permission_form_scope_locked\`). Hedefe yeni giren öğrencilere aynı işlemde \`permission_form_opened\` bildirimi yazılır. ${FORM_VERSION} Roller: ${rolesOf('permissionForm.update')}.`,
         params: permissionFormParamsSchema,
         body: updatePermissionFormBodySchema,
         headers: versionedHeaders,
@@ -206,6 +207,32 @@ export function registerPermissionFormRoutes(app: FastifyInstance) {
       send(
         reply,
         await closePermissionFormCommand(
+          contextOf(request),
+          target(request),
+          idempotencyOf(request, false),
+        ),
+        permissionFormResponseSchema,
+      ),
+  )
+
+  typed.post(
+    '/api/v1/permission-forms/:formId/cancel',
+    {
+      preValidation: write('permissionForm.cancel', 'required'),
+      schema: {
+        operationId: 'cancelPermissionForm',
+        tags: ['permission-forms'],
+        summary: 'Etkinliği iptal et',
+        description: `İzin istenen etkinliği iptal eder (core \`cancelPermissionForm\`, DOM-ILT-032): form kapanır ve \`cancelledAt\` işaretlenir; kararlar korunur. Aynı işlemde izin vermiş ve karar bekleyen öğrencilerin kararı veren tarafına (18 yaş altında bugün velayetli veliler, yetişkinde kendisi) \`permission_form_cancelled\` bildirimi yazılır; etkinliği reddedene gitmez. Son günü geçmiş ya da kapatılmış form da iptal edilir (kapanış zamanı korunur); iptal edilmiş form 409 \`permission_form_cancelled\`. ${FORM_VERSION} Roller: ${rolesOf('permissionForm.cancel')}.`,
+        params: permissionFormParamsSchema,
+        headers: versionedHeaders,
+        response: { 200: permissionFormResponseSchema, ...commandErrors },
+      },
+    },
+    async (request, reply) =>
+      send(
+        reply,
+        await cancelPermissionFormCommand(
           contextOf(request),
           target(request),
           idempotencyOf(request, false),

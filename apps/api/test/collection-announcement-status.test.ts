@@ -207,6 +207,46 @@ describe('duyuru listesi: durum süzgeci', () => {
     assert.deepEqual(await titles(admin, q('Geri çekildi').join('&')), ['D geri çekildi'])
   })
 
+  test('DOM-ILT-003: alıcı olmayan ön büro hiçbir duyuruyu okunmadı görmez; liste ve sayım 0', async () => {
+    const { institutionId } = await setup()
+    const front = await member(institutionId, 'onburo')
+    // Ön büro bütün duyuruları görür ama alıcı değildir: `Okunmadı` boştur, kalan ayrım sürer.
+    assert.equal((await titles(front, '')).length, 6)
+    assert.deepEqual(await titles(front, q('Okunmadı').join('&')), [])
+    assert.deepEqual(await titles(front, q('Güncellendi').join('&')), [
+      'C düzeltildi okundu',
+      'E düzeltildi okunmadı',
+    ])
+    assert.deepEqual(await titles(front, q('Yayında').join('&')), [
+      'A okunmadı',
+      'B okundu',
+      'F 8-B duyurusu',
+    ])
+    assert.deepEqual(await titles(front, q('Geri çekildi').join('&')), ['D geri çekildi'])
+    const counts = await app.inject({
+      method: 'GET',
+      url: '/api/v1/collections/announcements/counts?groupBy=category&status=Okunmad%C4%B1',
+      headers: { origin: TEST_ORIGIN, cookie: front },
+    })
+    assert.equal(counts.statusCode, 200, counts.body)
+    assert.equal(counts.json().meta.total, 0)
+  })
+
+  test('DOM-ILT-004: geri çekilmiş duyuru alıcıya yalnız geri çekildi süzgecinde görünür, metni gelmez', async () => {
+    const { mother } = await setup()
+    // Veli D'yi hiç okumadı; geri çekilmiş olduğu için okunmadı ya da yayında sayılmaz.
+    for (const status of ['Okunmadı', 'Yayında', 'Güncellendi'])
+      assert.ok(!(await titles(mother, q(status).join('&'))).includes('D geri çekildi'), status)
+    const response = await get(mother, 'pageSize=100&status=Geri%20%C3%A7ekildi')
+    assert.equal(response.statusCode, 200, response.body)
+    const body = response.json()
+    assert.equal(body.meta.total, 1)
+    const [row] = body.data as { record: Record<string, unknown> }[]
+    assert.equal(row?.record.title, 'D geri çekildi')
+    assert.ok(row?.record.withdrawnAt)
+    assert.equal(row?.record.text, undefined)
+  })
+
   test('kapsam: süzgeç başka sınıfın duyurusunu göstermez', async () => {
     const { mother, other } = await setup()
     for (const status of ['Okunmadı', 'Güncellendi', 'Yayında', 'Geri çekildi']) {

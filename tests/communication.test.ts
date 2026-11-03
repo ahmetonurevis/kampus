@@ -1387,6 +1387,32 @@ test('Eski demo kaydındaki yazışma mesajları yüklenirken ayrı koleksiyona 
   assert.deepEqual(rewritten.conversationMessages, state.conversationMessages)
 })
 
+test('DOM-ILT-003, DOM-ILT-004: alıcı olmayan ön büro hiçbir duyuruyu okunmadı görmez', () => {
+  const state = seed()
+  const created = publishAnnouncement(state, people.ogretmen, announcement(), id, now)
+  const statusFor = (by: Participant) => {
+    const view = visibleRecords(state, by, 'announcements').find((a) => a.id === created.id)!
+    return { view, status: announcementStatusOf(view) }
+  }
+  // Alıcı veli okumadıkça okunmadıdır; ön büro duyuruyu görür ama alıcı değildir.
+  assert.equal(statusFor(people.veli).status, 'Okunmadı')
+  const front = statusFor(people.onburo)
+  assert.equal(Reflect.has(front.view, 'myReadAt'), false)
+  assert.equal(front.status, 'Yayında')
+  // Düzeltme ve geri çekme ayrımı kalır.
+  reviseAnnouncement(state, people.ogretmen, created.id, { title: 'Güncel toplantı' }, later)
+  assert.equal(statusFor(people.onburo).status, 'Güncellendi')
+  assert.equal(statusFor(people.veli).status, 'Okunmadı')
+  withdrawAnnouncement(
+    state,
+    people.ogretmen,
+    created.id,
+    { reason: 'Hatalı bilgi içeriyor' },
+    later,
+  )
+  assert.equal(statusFor(people.onburo).status, 'Geri çekildi')
+})
+
 test('DOM-ILT-003, DOM-ILT-004: duyuru durumu geri çekildi > okunmadı > güncellendi > yayında', () => {
   assert.deepEqual(ANNOUNCEMENT_STATUSES, ['Okunmadı', 'Güncellendi', 'Geri çekildi', 'Yayında'])
   const read = '2026-10-01T08:00:00.000Z'

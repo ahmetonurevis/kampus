@@ -28,7 +28,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Kritik idari duyurunun ulaşıp ulaşmadığı ölçülmeli; okuma kaydı ise rıza değildir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — core `markAnnouncementRead` (veli anahtarı çocuk başına), alıcıya `myReadAt`, yayınlayan ve yöneticiye `readCount`/`recipientCount`; API `apps/api/src/routes/communication.ts` `POST /announcements/:id/read`. Okumayanlar listesi ve hatırlatma yok.
+- **Kodda:** var — core `markAnnouncementRead` (veli anahtarı çocuk başına), alıcıya `myReadAt` (alıcı olmayan okuyucuda, ör. ön büro, alan yoktur; hiçbir duyuru "Okunmadı" sayılmaz), yayınlayan ve yöneticiye `readCount`/`recipientCount`; API `apps/api/src/routes/communication.ts` `POST /announcements/:id/read`. Okumayanlar listesi ve hatırlatma yok.
 
 ### DOM-ILT-004 · Duyuru düzeltme ve geri çekme
 

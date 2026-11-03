@@ -95,7 +95,8 @@ export const ANNOUNCEMENT_STATUSES: readonly AnnouncementStatus[] = [
 
 /**
  * Daraltılmış duyuru kaydının tek durumu: geri çekildi > okunmadı (yalnız alıcıda `myReadAt`
- * `null`) > güncellendi > yayında.
+ * `null`; alıcı olmayan okuyucuda alan yoktur, hiçbir duyuru okunmadı sayılmaz) > güncellendi >
+ * yayında.
  */
 export function announcementStatusOf(record: {
   withdrawnAt?: unknown

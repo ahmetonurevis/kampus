@@ -535,6 +535,9 @@ async function listFilters(
       })
     } else if (field === 'status' && collection === 'announcements') {
       // Durum okuyucuya göre türetilir (`myReadAt`); SQL yalnız aday, karar ayıklanmış kayıtta.
+      // TODO(duyuru-sql-suzgec): karar bellekte verildiği için durum süzgecinde (liste ve sayım)
+      // kapsamdaki tüm duyurular okunup ayıklanır; kurum başına duyuru sayısı büyürse `reads`
+      // ve `recipients`'tan okuyucuya göre SQL koşulu üretilip aday kümesi daraltılmalıdır.
       const statuses = values.filter(isAnnouncementStatus)
       if (statuses.length !== values.length)
         throw new ValidationError([

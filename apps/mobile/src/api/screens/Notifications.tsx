@@ -12,12 +12,15 @@ import type { ApiScreenProps } from '../../route-types.ts'
 import { Button, Empty, Sheet, T, useColors } from '../../ui/components.tsx'
 import { DetailPair, Screen, Tabs, TextAction } from '../../ui/SchoolLayout.tsx'
 import { useApiSession } from '../auth.tsx'
+import { useSelectedChild } from '../view-memory.tsx'
 import {
   displayUnread,
   emptyNotificationsText,
   NO_SCREEN_NOTICE,
   notificationBellVisible,
+  notificationDetail,
   notificationPress,
+  type NotificationDetail,
   notificationRowLabel,
   notificationTopicLabel,
   unreadSummary,
@@ -45,7 +48,11 @@ export default function Notifications({ navigation }: ApiScreenProps<'ApiNotific
   const c = useColors()
   const open = notificationBellVisible(session)
   const [filter, setFilter] = useState<Filter>('all')
-  const [selectedId, setSelectedId] = useState<string | null>(null)
+  // Seçili bildirim anlık görüntüdür (kimlik değil): okundu işareti listeyi tazeleyip kaydı
+  // süzgeçten düşürse de ayrıntı penceresi açık kalır.
+  const [selected, setSelected] = useState<NotificationDetail | null>(null)
+  const [pulling, setPulling] = useState(false)
+  const [, setChild] = useSelectedChild()
   const list = useNotifications({ unreadOnly: filter === 'unread' }, { enabled: open })
   const count = useUnreadNotificationCount({ enabled: open })
   const readOne = useReadNotification()
@@ -53,8 +60,6 @@ export default function Notifications({ navigation }: ApiScreenProps<'ApiNotific
     onSuccess: () => notify('Bildirimler okundu işaretlendi.'),
   })
   const unread = displayUnread(count.data?.data.unread, list.data ? list.notifications : undefined)
-  const selected = list.notifications.find((item) => item.id === selectedId)
-  const refreshing = (list.isRefetching && !list.isFetchingNextPage) || count.isRefetching
 
   if (!open)
     return (
@@ -71,13 +76,21 @@ export default function Notifications({ navigation }: ApiScreenProps<'ApiNotific
     // Arka plan işlemi: başarısızlık sayfaya gitmeyi engellemez, kısa Türkçe uyarı gösterilir.
     if (press.markRead)
       readOne.mutate(item.id, { onError: (error) => notify(error.message, 'error') })
-    if (press.screen) navigation.navigate(press.screen)
-    else setSelectedId(item.id)
+    if (press.screen) {
+      if (press.childId) setChild(press.childId)
+      navigation.navigate(press.screen)
+    } else setSelected(notificationDetail(item))
   }
 
   function refresh() {
     void list.refetch()
     void count.refetch()
+  }
+
+  // Gösterge yalnız kullanıcının aşağı çekmesinde döner; odak ve otomatik tazeleme sessizdir.
+  function pull() {
+    setPulling(true)
+    void Promise.allSettled([list.refetch(), count.refetch()]).then(() => setPulling(false))
   }
 
   const header = (
@@ -97,13 +110,12 @@ export default function Notifications({ navigation }: ApiScreenProps<'ApiNotific
   )
 
   const sheet = selected ? (
-    <Sheet visible title="Bildirim" onClose={() => setSelectedId(null)}>
+    <Sheet visible title="Bildirim" onClose={() => setSelected(null)}>
       <T bold size={18}>
         {selected.title}
       </T>
-      <DetailPair label="Konu" value={notificationTopicLabel(selected.topic)} />
-      <DetailPair label="Zaman" value={messageStamp(selected.createdAt)} />
-      <DetailPair label="Durum" value={selected.readAt === null ? 'Okunmamış' : 'Okundu'} />
+      <DetailPair label="Konu" value={selected.topicLabel} />
+      <DetailPair label="Zaman" value={selected.time} />
       <T muted size={14}>
         {NO_SCREEN_NOTICE}
       </T>
@@ -135,8 +147,8 @@ export default function Notifications({ navigation }: ApiScreenProps<'ApiNotific
         contentContainerStyle={{ padding: 20, gap: 10, flexGrow: 1 }}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
-            onRefresh={refresh}
+            refreshing={pulling}
+            onRefresh={pull}
             colors={[c.primary]}
             tintColor={c.primary}
           />

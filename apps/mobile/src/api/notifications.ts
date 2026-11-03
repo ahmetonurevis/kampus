@@ -7,6 +7,7 @@ import {
   NOTIFICATION_RECIPIENT_ROLES,
   notificationTopicPath,
 } from '@kampus/react-shared/notification-model.ts'
+import { messageStamp } from '@kampus/react-shared/conversation-model.ts'
 import type { NotificationView } from '@kampus/react-shared/use-notifications.ts'
 import { apiPages, type ApiScreen } from './pages.ts'
 import { isModuleOpen, type MobileSession } from './session-state.ts'
@@ -39,18 +40,56 @@ export function notificationTarget(session: SessionScope, topic: Topic): ApiScre
   return apiPages(session).find((page) => page.path === path)?.screen ?? null
 }
 
+/** Çocuğa özgü konular: hedef ekran bildirimin çocuğu seçili açılır (veli çocuk seçicisi). */
+const CHILD_SCOPED_TOPICS: readonly Topic[] = ['homework', 'grade', 'attendance']
+
 export type NotificationPress = {
   /** Dokununca okundu yazılsın mı (zaten okunmuşsa yazılmaz). */
   markRead: boolean
   /** Gidilecek ekran; `null` ise ayrıntı sayfa içinde açılır. */
   screen: ApiScreen | null
+  /** Hedef ekranda seçilecek çocuk (yalnız veli, çocuğa özgü konu ve hesabın çocuğuysa). */
+  childId: string | null
 }
 
 export function notificationPress(
-  session: SessionScope,
-  item: Pick<NotificationView, 'topic' | 'readAt'>,
+  session: SessionScope & { childIds?: readonly string[] },
+  item: Pick<NotificationView, 'topic' | 'readAt'> & { studentId?: string },
 ): NotificationPress {
-  return { markRead: item.readAt === null, screen: notificationTarget(session, item.topic) }
+  const screen = notificationTarget(session, item.topic)
+  const childId =
+    screen !== null &&
+    session.role === 'veli' &&
+    CHILD_SCOPED_TOPICS.includes(item.topic) &&
+    item.studentId !== undefined &&
+    session.childIds?.includes(item.studentId) === true
+      ? item.studentId
+      : null
+  return { markRead: item.readAt === null, screen, childId }
+}
+
+/**
+ * Ayrıntı penceresinin içeriği: dokunma anındaki bildirimin anlık görüntüsüdür. Okundu işareti
+ * listeyi tazeleyip kaydı (ör. "Okunmamış" süzgecinde) düşürse de pencere açık kalır; okunma
+ * durumu anlık görüntüde olmadığı için eskimiş durum gösterilmez.
+ */
+export type NotificationDetail = {
+  id: string
+  title: string
+  topicLabel: string
+  time: string
+}
+
+export function notificationDetail(
+  item: Pick<NotificationView, 'id' | 'title' | 'topic' | 'createdAt'>,
+  now: Date = new Date(),
+): NotificationDetail {
+  return {
+    id: item.id,
+    title: item.title,
+    topicLabel: notificationTopicLabel(item.topic),
+    time: messageStamp(item.createdAt, now),
+  }
 }
 
 /** Yüklü bildirimler arasında okunmamış olanların sayısı (yalnız sunucu sayısı yokken yedek). */

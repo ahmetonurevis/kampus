@@ -142,15 +142,21 @@ function NotificationButton({ active, onPress }: { active: boolean; onPress: () 
             top: 4,
             right: 2,
             minWidth: 20,
-            height: 20,
+            minHeight: 20,
             paddingHorizontal: 5,
+            paddingVertical: 1,
             borderRadius: 10,
             alignItems: 'center',
             justifyContent: 'center',
             backgroundColor: c.accent,
           }}
         >
-          <T bold size={11} style={{ color: c.onAccent, lineHeight: 14 }}>
+          <T
+            bold
+            size={11}
+            maxFontSizeMultiplier={1.3}
+            style={{ color: c.onAccent, lineHeight: 14 }}
+          >
             {badge}
           </T>
         </View>

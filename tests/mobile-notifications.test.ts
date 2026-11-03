@@ -7,6 +7,7 @@ import {
   displayUnread,
   emptyNotificationsText,
   notificationBellVisible,
+  notificationDetail,
   notificationPress,
   notificationRowLabel,
   notificationTarget,
@@ -95,11 +96,32 @@ describe('IST-065 hedef ekran eşleme', () => {
     assert.deepEqual(notificationPress(session, { topic: 'homework', readAt: null }), {
       markRead: true,
       screen: 'StudentHomework',
+      childId: null,
     })
     assert.deepEqual(notificationPress(session, { topic: 'attendance', readAt: READ }), {
       markRead: false,
       screen: null,
+      childId: null,
     })
+  })
+
+  test('veli çocuğa özgü bildirimde hedef ekran o çocuk seçili açılır', () => {
+    const session = { role: 'veli', modules: allOpen, childIds: ['s-deniz', 's-ece'] } as const
+    const press = (topic: 'grade' | 'announcement', studentId: string) =>
+      notificationPress(session, { topic, readAt: null, studentId })
+    assert.equal(press('grade', 's-ece').childId, 's-ece')
+    assert.equal(press('grade', 's-ece').screen, 'ParentTracking')
+    // Çocuğa özgü olmayan konuda ya da hesabın çocuğu değilse seçim değişmez.
+    assert.equal(press('announcement', 's-ece').childId, null)
+    assert.equal(press('grade', 's-baska').childId, null)
+    // Öğrencide çocuk seçimi yoktur.
+    assert.equal(
+      notificationPress(
+        { role: 'ogrenci', modules: allOpen, childIds: ['s-deniz'] },
+        { topic: 'homework', readAt: null, studentId: 's-deniz' },
+      ).childId,
+      null,
+    )
   })
 })
 
@@ -147,6 +169,39 @@ describe('IST-065 metin biçimi', () => {
   test('boş liste metni süzgece göre değişir', () => {
     assert.equal(emptyNotificationsText(true).title, 'Okunmamış bildirim yok')
     assert.equal(emptyNotificationsText(false).title, 'Henüz bildirim yok')
+  })
+})
+
+describe('IST-065 ayrıntı penceresi', () => {
+  test('ayrıntı dokunma anındaki bildirimin anlık görüntüsüdür (okundu listeyi değiştirse de)', () => {
+    const now = new Date('2026-11-02T12:00:00Z')
+    const item = {
+      id: 'n1',
+      title: 'Deniz için yeni kayıt bildirimi',
+      topic: 'enrollment',
+      createdAt: '2026-11-02T11:05:00Z',
+    } as const
+    const detail = notificationDetail(item, now)
+    assert.deepEqual(detail, {
+      id: 'n1',
+      title: 'Deniz için yeni kayıt bildirimi',
+      topicLabel: 'Kayıt',
+      time: '14:05',
+    })
+    // Anlık görüntü kaynak kayıtla paylaşılmaz: listeden düşen kayıt pencereyi etkilemez.
+    assert.notEqual(detail, item)
+    assert.ok(!('readAt' in detail))
+  })
+
+  test('ekran seçili bildirimi nesne olarak tutar; gösterge yalnız kullanıcı çekince döner', () => {
+    const screen = readFileSync(
+      new URL('../apps/mobile/src/api/screens/Notifications.tsx', import.meta.url),
+      'utf8',
+    )
+    assert.match(screen, /useState<NotificationDetail \| null>/)
+    assert.doesNotMatch(screen, /selectedId/)
+    assert.match(screen, /refreshing=\{pulling\}/)
+    assert.doesNotMatch(screen, /isRefetching/)
   })
 })
 

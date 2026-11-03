@@ -37,7 +37,7 @@ export function bellLabel(count: number | undefined): string {
  * kaydının kimliği), bu yüzden bildirim ilgili listenin sayfasına gider; bağlanamayan konu
  * (ör. kayıt) için yol yoktur.
  */
-const TOPIC_PAGES: Readonly<Record<string, Readonly<Record<string, string>>>> = {
+const TOPIC_PAGES: Readonly<Record<string, Readonly<Partial<Record<Topic, string>>>>> = {
   ogrenci: {
     homework: 'odevler',
     grade: 'notlarim',

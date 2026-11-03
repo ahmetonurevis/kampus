@@ -3265,7 +3265,7 @@ export interface paths {
         };
         /**
          * Görev denemeleri
-         * @description Atamanın arşivlenmemiş denemeleri, kursiyer ve deneme numarası sırasıyla, sayfalı (DOM-BEC-042). `assignmentId` zorunlu; `learnerId` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. Roller: `yonetici` kurumun bütün denemeleri; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün denemeleri, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
+         * @description Atamanın arşivlenmemiş denemeleri, kursiyer ve deneme numarası sırasıyla, sayfalı (DOM-BEC-042). `assignmentId` zorunlu; `learnerId` süzgeci okuma kapsamıyla kesişir. Bilinmeyen parametre 400. Kaldırılan içerikte de döner (`contentRemoved`; DOM-KYN-051): kayıt ve cevaplar korunur, anahtar silindiyse puan `null`. Roller: `yonetici` kurumun bütün denemeleri; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün denemeleri, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
          */
         get: operations["listTaskAttempts"];
         put?: never;
@@ -3285,7 +3285,7 @@ export interface paths {
         };
         /**
          * Görev denemesi ayrıntısı
-         * @description Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Roller: `yonetici` kurumun bütün denemeleri; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün denemeleri, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
+         * @description Deneme, durumu, süresi, cevapları, sonucu ve soruları (anahtar ve açıklama yok). Kaldırılan içerikte 404 değil: kayıt ve cevaplar döner, `contentRemoved: true`, soru ve parça metni ve anahtar gelmez (DOM-KYN-051). Roller: `yonetici` kurumun bütün denemeleri; atamayı gören `ogretmen` (atayan veya kapsamındaki sınıf/öğrenci hedefi yüzünden gören) atamanın bütün denemeleri, kursiyerin güncel sınıfına bakılmaz (görünürlük atamayı izler; DOM-YTK-028); `ogrenci` kendi, `veli` çocuklarının denemelerini (sınıf değiştirse de eski sınıfta yaptığı denemeyi ve puanı görür); ön büro 403. Kursiyer ve veli süren denemede sonuç görmez, tamamlanınca yalnız toplam puanı, cevap anahtarı açılınca (alıştırmada deneme bitince, değerlendirmede teslim kapanınca) madde sonuçlarını ve anahtarı görür (DOM-BEC-045); personel tamamlanan denemenin madde sonuçlarını görür, anahtar ona da açılınca döner. Puan saklanmaz, her okumada cevaplardan hesaplanır (DOM-BEC-010). Modül `learning`; kapalıysa 403 `module_disabled`. Kapsam dışı veya başka kurumun kaydı 404.
          */
         get: operations["getTaskAttempt"];
         put?: never;
@@ -3295,7 +3295,7 @@ export interface paths {
         head?: never;
         /**
          * Deneme cevaplarını kaydet
-         * @description Süren denemeye cevap kaydı (DOM-BEC-043; core `planAnswerSave`): yalnız gönderilen sorular güncellenir. Süre dolduysa 422 `attempt_time_over`, teslim edilmiş deneme 409 `attempt_already_submitted`, soruyla uyuşmayan cevap 422 `answer_invalid`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). `If-Match` zorunlu: denemenin `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`). Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Süren denemeye cevap kaydı (DOM-BEC-043; core `planAnswerSave`): yalnız gönderilen sorular güncellenir. Süre dolduysa 422 `attempt_time_over`, teslim edilmiş deneme 409 `attempt_already_submitted`, soruyla uyuşmayan cevap 422 `answer_invalid`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). `If-Match` zorunlu: denemenin `rowVersion`'ı (yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`; sürüm içerik kuralından önce sınanır). Otomatik kayıt denetim kaydına yazılmaz. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         patch: operations["saveTaskAttemptAnswers"];
         trace?: never;
@@ -3331,7 +3331,7 @@ export interface paths {
         put?: never;
         /**
          * Denemeyi teslim et
-         * @description Denemeyi teslim eder (DOM-BEC-010, 043; core `planAttemptSubmit`). Puan sunucuda cevaplardan hesaplanır; gövdede puan veya bilinmeyen alan 400. Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (`autoSubmitted`). Son teslimden sonra geç kabul süresinde teslim `late` işaretlenir. İkinci teslim 409 `attempt_already_submitted`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). `If-Match` zorunlu (denemenin `rowVersion`'ı); `Idempotency-Key` zorunlu. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
+         * @description Denemeyi teslim eder (DOM-BEC-010, 043; core `planAttemptSubmit`). Puan sunucuda cevaplardan hesaplanır; gövdede puan veya bilinmeyen alan 400. Süre dolduysa gönderilen cevaplar alınmaz, deneme kaydedilmiş cevaplarla bitiş anında teslim edilir (`autoSubmitted`). Son teslimden sonra geç kabul süresinde teslim `late` işaretlenir. İkinci teslim 409 `attempt_already_submitted`. Kaldırılan ya da öğrencinin kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 051); lisansı dolan ve telif bildirimiyle incelemeye alınan içerikte süren deneme sürer (DOM-KYN-021, 025). `If-Match` zorunlu (denemenin `rowVersion`'ı; tutmazsa 409 `version_conflict`, içerik kuralından önce); `Idempotency-Key` zorunlu. Roller: yalnız `ogrenci` (kendi denemesi; rota ve servis ayrı denetler); yönetici, öğretmen, veli ve ön büro 403. Sıra: kapsam dışı 404 → rol 403 → sürüm 409 → kural. Modül `learning`; kapalıysa 403 `module_disabled`.
          */
         post: operations["submitTaskAttempt"];
         delete?: never;
@@ -6582,8 +6582,10 @@ export interface components {
                     value: string;
                 };
             };
-            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResultInput"] | null;
+            /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri ya da okuma parçası) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
+            contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
         };
@@ -6644,8 +6646,10 @@ export interface components {
                     value: string;
                 };
             };
-            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResultInput"] | null;
+            /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri ya da okuma parçası) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
+            contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
             /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş */
@@ -9852,8 +9856,10 @@ export interface components {
                     value: string;
                 };
             };
-            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResult"] | null;
+            /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri ya da okuma parçası) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
+            contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
         };
@@ -9914,8 +9920,10 @@ export interface components {
                     value: string;
                 };
             };
-            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null` */
+            /** @description Süren denemede ve kursiyer görünümünde tamamlanmadan `null`; kaldırılan içerikte cevap anahtarı silindiği için puan hesaplanamıyorsa da `null` (puan saklanmaz, DOM-BEC-010) */
             result: components["schemas"]["TaskAttemptResult"] | null;
+            /** @description Görevin içeriği (sabitlenen sürüm, puanlama sürümü, sorularından biri ya da okuma parçası) kaldırıldı (DOM-KYN-051): deneme kaydı ve cevaplar korunur, metin ve anahtar dönmez; arayüz "Bu içerik kaldırıldı" der. Telif askısı ve lisans bitişi kaldırma değildir (`contentUnavailable`) */
+            contentRemoved: boolean;
             /** @description Deneme satırının iyimser kilit sürümü (cevap kaydı ve teslimde `If-Match`) */
             rowVersion: number;
             /** @description Denemenin soruları; anahtar ve açıklama yoktur, seçenekler denemeye göre karışık. İçerik kapalıysa (`contentUnavailable`) boş */

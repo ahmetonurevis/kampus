@@ -218,8 +218,8 @@ function contentBlocks(
 }
 
 /**
- * Satıra içerik engelini işler. İçerik kuralı yazma uçlarında (`assertWorkOpen`) her kuraldan önce
- * çalışır: kapalı içerik (`content_unavailable`) ve lisans engeli (`license_expired`) süren deneme,
+ * Satıra içerik engelini işler. İçerik kuralı yazma uçlarında (`assertWorkOpen`) kapsam ve sürüm
+ * denetiminden sonra, her core kuralından önce çalışır: kapalı içerik (`content_unavailable`) ve lisans engeli (`license_expired`) süren deneme,
  * hak ve pencere engellerinin yerine geçer. Süren işi olana lisans engeli dönmez; dolayısıyla
  * lisans engeli yalnız yeni iş açan satırda pencere ya da hak engelini örter (yazma ucu da önce 409
  * `resource_license_expired` döner). İçerik kapalıyken yeni işlem penceresi (`actionableUntil`)

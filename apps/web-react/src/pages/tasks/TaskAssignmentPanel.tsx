@@ -327,6 +327,10 @@ function AttemptList({
                           tone="purple"
                         />
                       ) : null}
+                      {attempt.contentRemoved ? (
+                        // Kaldırılan içerikte kayıt kalır, metin ve anahtar gelmez (DOM-KYN-051).
+                        <StatusBadge text="İçerik kaldırıldı" tone="gray" />
+                      ) : null}
                       {attempt.completedAt ? (
                         <span className="text-xs text-muted-foreground">
                           {dateTimeLabel(attempt.completedAt)}

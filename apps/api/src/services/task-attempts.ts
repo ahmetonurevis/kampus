@@ -30,9 +30,9 @@ import {
   type StoredAssignment,
   type StoredAttempt,
 } from '../db/skills.ts'
-import { ConflictError, NotFoundError } from '../errors.ts'
+import { ConflictError, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
-import { attemptContentGate } from './learner-content.ts'
+import { attemptContentGate, contentRemoved } from './learner-content.ts'
 import { listeningSummary } from './listening-plays.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { viewerOf, visible, type Viewer } from './task-assignments.ts'
@@ -47,8 +47,8 @@ import {
   pairsScoringContext,
   passageFor,
   questionsFor,
+  type WorkPairs,
   readableLearners,
-  scoringContext,
   scoringLicenseExpired,
   targetedLearner,
   timingOf,
@@ -61,8 +61,9 @@ import {
  * Otomatik puanlı görev denemeleri: başlatma, cevap kaydı, teslim ve okuma (F4b3a; ADR 0004
  * karar 5, 6; docs/domain/beceri-gelisimi.md DOM-BEC-010, 042…045; yetki-ve-kapsam.md DOM-YTK-028).
  * Kurallar core `skills/scoring.ts`'tedir; burada kapsam, sıra (kapsam 404 → rol 403, rotada ve
- * serviste → sürüm 409 → core kuralı) ve tek transaction vardır. Puan saklanmaz: her okumada cevaplardan ve
- * puanlama sürümünün anahtarından hesaplanır (DOM-BEC-010). Yazmalar `runCommand` ile kurum
+ * serviste → sürüm 409 → içerik kuralı → core kuralı) ve tek transaction vardır. Puan
+ * saklanmaz: her okumada cevaplardan ve puanlama sürümünün anahtarından hesaplanır (DOM-BEC-010).
+ * Yazmalar `runCommand` ile kurum
  * kilidi altında çalışır; eşzamanlı iki başlatma hakkı aşamaz, eşzamanlı iki tesliminden biri 409
  * alır. Denetime yalnız başlatma ve teslim yazılır, yalnız alan adlarıyla; cevap kaydı sık ve
  * otomatik olduğu için denetlenmez (cevap içeriği hiçbir kayıtta ve logda yoktur).
@@ -87,25 +88,64 @@ function completedOf(
 }
 
 /**
+ * Kaldırmanın beklenen sonucu olan bağlam hatası: içerik ya da soru okunamıyor (`NotFoundError`)
+ * veya anahtarı silinmiş (`answer_key_missing`). Başka hata (otomatik puanlanmayan tür, anahtar
+ * uyuşmazlığı, programlama hatası) kaldırmayla açıklanamaz; veri bütünlüğü sinyalidir.
+ */
+function removalExplains(error: unknown): boolean {
+  return (
+    error instanceof NotFoundError ||
+    (error instanceof RuleViolationError && error.code === 'answer_key_missing')
+  )
+}
+
+/**
+ * Denemenin puanlama bağlamı ve kaldırılma durumu (DOM-KYN-051, DOM-BEC-010). Kaldırma içeriği ve
+ * cevap anahtarını siler; puan saklanmadığı için (her okumada anahtardan hesaplanır) bağlam
+ * kurulamazsa deneme kaydı ve cevaplar puansız döner (`context: null`), 404 değil. Yalnız
+ * kaldırmanın beklenen sonucu olan hatalar yutulur (`removalExplains`); kaldırılmamış içerikte
+ * ya da başka sınıf bir hata (veri bütünlüğü) eskisi gibi fırlar. Okuma parçası kaldırıldığında
+ * soruların anahtarı durur: bağlam kurulur, puan görünür.
+ */
+// TODO(kaldirilan-puan): quizin kendisi ya da bağlı sorusu kaldırılınca geçmiş puan kaybolur;
+// DOM-KYN-051 geçmiş notu korumak ister, DOM-BEC-010 puanı saklamaz. Kaldırma anında puanın
+// saklanması (migration) ürün kararı bekler.
+export function attemptScoring(
+  assignment: StoredAssignment,
+  pairs: WorkPairs,
+): { context: ScoringContext | null; removed: boolean } {
+  const removed = contentRemoved(workPairsOf(assignment, pairs))
+  try {
+    return { context: pairsScoringContext(assignment, pairs), removed }
+  } catch (error) {
+    if (removed && removalExplains(error)) return { context: null, removed }
+    throw error
+  }
+}
+
+/**
  * Denemenin görünümü. Kursiyer ve veli core `learnerResultLevel`'ı alır: süren denemede sonuç
  * yok, tamamlanınca yalnız toplam puan, anahtar açılınca madde sonuçları ve anahtar (DOM-BEC-045).
  * Personel tamamlanan denemenin madde sonuçlarını görür; anahtar ona da yalnız açılınca döner.
+ * Puanlama bağlamı yoksa (kaldırılmış içerik, `attemptScoring`) sonuç ve sayılan deneme yoktur;
+ * `contentRemoved` kaldırmayı söyler.
  */
 function attemptView(
   viewer: Viewer,
   assignment: StoredAssignment,
-  context: ScoringContext,
+  scoring: { context: ScoringContext | null; removed: boolean },
   attempt: StoredAttempt,
   learnerAttempts: readonly StoredAttempt[],
   now: string,
 ) {
+  const { context } = scoring
   const timing = timingOf(assignment)
   const state = attemptState(attempt, timing, now)
   const completed = state.completedAt !== null
-  const counted = countedAttempt(
-    assignment.attempts,
-    completedOf(assignment, context, learnerAttempts, now),
-  )
+  const counted =
+    context === null
+      ? null
+      : countedAttempt(assignment.attempts, completedOf(assignment, context, learnerAttempts, now))
   const released = answerKeyReleased({
     kind: assignment.kind,
     deadline: assignment.deadline,
@@ -125,7 +165,8 @@ function attemptView(
         : released
           ? 'full'
           : 'items'
-  const score = level === 'none' ? null : scoreAttempt(context.items, attempt.answers)
+  const items = level === 'none' ? null : (context?.items ?? null)
+  const score = items === null ? null : scoreAttempt(items, attempt.answers)
   return {
     id: attempt.id,
     assignmentId: attempt.assignmentId,
@@ -141,7 +182,7 @@ function attemptView(
     counted: counted?.id === attempt.id,
     answers: attempt.answers,
     result:
-      score === null
+      score === null || items === null
         ? null
         : {
             earned: score.earned,
@@ -150,15 +191,16 @@ function attemptView(
             items: level === 'score' ? null : score.items,
             // Alt beceri dökümü madde sonuçlarıyla aynı anda açılır: tek maddeli alt beceri
             // maddenin doğruluğunu verir (DOM-BEC-006, DOM-BEC-045).
-            subskills: level === 'score' ? null : subskillBreakdown(context.items, score),
+            subskills: level === 'score' ? null : subskillBreakdown(items, score),
             answerKey:
               level === 'full'
-                ? context.items.map((item) => ({
+                ? items.map((item) => ({
                     questionVersionId: item.questionVersionId,
                     answerKey: item.answerKey,
                   }))
                 : null,
           },
+    contentRemoved: scoring.removed,
     rowVersion: attempt.rowVersion,
   }
 }
@@ -271,7 +313,9 @@ function withoutKey<V extends ReturnType<typeof attemptView>>(view: V, open: boo
  * tamamlanmış hiçbir denemede, telif askısında süren denemesi olmayan kursiyerde, lisansı dolmuş
  * içerikte süren denemesi olmayan kursiyerde metin ve cevap anahtarı (açıklamasıyla) dönmez
  * (`questions: []`, `passage: null`, `result.answerKey: null`) ve `contentUnavailable` nedeni
- * söyler. Cevaplar, puan ve madde sonuçları görünür kalır.
+ * söyler. Cevaplar, puan ve madde sonuçları görünür kalır. Kaldırılmış içerikte deneme 404 değil:
+ * kayıt ve cevaplar döner, `contentRemoved: true`; anahtar silindiği için puanlama bağlamı
+ * kurulamıyorsa sonuç da yoktur (`result: null`; DOM-KYN-051, DOM-BEC-010).
  */
 async function detailView(
   db: Database,
@@ -281,7 +325,8 @@ async function detailView(
   attempt: StoredAttempt,
 ) {
   const pairs = await loadWorkPairs(db, ctx.institutionId, [assignment])
-  const context = pairsScoringContext(assignment, pairs)
+  const scoring = attemptScoring(assignment, pairs)
+  const { context } = scoring
   const learnerAttempts = await loadAttempts(
     db,
     ctx.institutionId,
@@ -297,9 +342,10 @@ async function detailView(
     workPairsOf(assignment, pairs),
     () => Promise.resolve(running),
   )
-  const open = contentUnavailable === null
+  // Kaldırılmış içerikte kapı her bakana kapalıdır; bağlamın olmaması da aynı yüzü kapatır.
+  const open = contentUnavailable === null && context !== null
   return {
-    ...withoutKey(attemptView(viewer, assignment, context, attempt, learnerAttempts, now), open),
+    ...withoutKey(attemptView(viewer, assignment, scoring, attempt, learnerAttempts, now), open),
     questions: open ? questionsFor(context, attempt.id) : [],
     passage: open ? passageFor(context) : null,
     contentUnavailable,
@@ -336,7 +382,8 @@ export interface TaskAttemptListInput {
 
 /**
  * Atamanın denemeleri, okuma kapsamında (DOM-YTK-028); kapalı atama 404. Kapalı içerikte cevap
- * anahtarı ayrıntıdaki gibi dönmez (DOM-KYN-025, 051).
+ * anahtarı ayrıntıdaki gibi dönmez (DOM-KYN-025, 051); kaldırılmış içerikte liste döner,
+ * satırlar `contentRemoved` taşır (puanlama bağlamı yoksa puansız).
  */
 export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptListInput) {
   const viewer = await viewerOf(ctx)
@@ -353,7 +400,7 @@ export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptLi
   })
   if (rows.length === 0) return { items: [], total }
   const pairs = await loadWorkPairs(ctx.db, ctx.institutionId, [assignment])
-  const context = pairsScoringContext(assignment, pairs)
+  const scoring = attemptScoring(assignment, pairs)
   const all = await loadLearnersAttempts(
     ctx.db,
     ctx.institutionId,
@@ -381,7 +428,7 @@ export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptLi
     total,
     items: rows.map((row) =>
       withoutKey(
-        attemptView(viewer, assignment, context, row, ownOf(row.learnerId), now),
+        attemptView(viewer, assignment, scoring, row, ownOf(row.learnerId), now),
         gates.get(viewer.kind === 'learner' ? row.learnerId : '') ?? false,
       ),
     ),
@@ -453,10 +500,11 @@ export async function startTaskAttempt(
         // Kapsam (404): olmayan, başka kurumun, arşivli veya öğrenciyi hedeflemeyen atama.
         if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
         const learnerId = targetedLearner(viewer, assignment)
-        await assertWorkOpen(tx, ctx, assignment, learnerId, () => Promise.resolve(false))
+        const pairs = await loadWorkPairs(tx, ctx.institutionId, [assignment])
+        await assertWorkOpen(tx, ctx, assignment, pairs, learnerId, () => Promise.resolve(false))
         // Otomatik puanlanmayan görev (yazma) 422 `not_auto_scored`. Bağlam yalnız sıra için
         // kurulur: puanlanamayan atamada deneme açılmaz.
-        await scoringContext(tx, ctx.institutionId, assignment)
+        pairsScoringContext(assignment, pairs)
         const attempts = await loadAttempts(tx, ctx.institutionId, assignment.id, learnerId)
         return {
           run: (_state, tools) => ({
@@ -500,25 +548,30 @@ export async function startTaskAttempt(
 type Owned = { attempt: StoredAttempt; assignment: StoredAssignment; context: ScoringContext }
 
 /**
- * Yazılacak deneme: öğrencinin kendi denemesi ve arşivsiz atama; değilse 404 (kapsam), veli 403.
- * Teslim ve cevap kaydı hedefe bakmaz: sınıf değiştiren öğrenci süren denemesini bitirir. İçerik
- * kuralında deneme süren iştir (`assertWorkOpen`): lisansı bu arada dolan ve telif bildirimiyle
- * incelemeye alınan içerikte süren deneme bitirilir; kaldırılan ya da kursiyerin kitap sahibi
- * olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 025, 051).
+ * Yazılacak deneme: öğrencinin kendi denemesi ve arşivsiz atama; değilse 404 (kapsam), veli 403,
+ * eski sürüm 409 `version_conflict`. Teslim ve cevap kaydı hedefe bakmaz: sınıf değiştiren öğrenci
+ * süren denemesini bitirir. Sürüm içerik kuralından önce sınanır (taslakla aynı sıra; api-tasarimi
+ * §6): eski sürümle gelen istek içerik kaldırılmış olsa da 409 alır, istemci tazeleyince kapalı
+ * içeriği görür. İçerik kuralında deneme süren iştir (`assertWorkOpen`): lisansı bu arada dolan ve
+ * telif bildirimiyle incelemeye alınan içerikte süren deneme bitirilir; kaldırılan ya da kursiyerin
+ * kitap sahibi olmadığı içerikte 422 `content_unavailable` (DOM-KYN-021, 025, 051). İçerik kapısı
+ * ve puanlama bağlamı aynı sürüm okumasını kullanır.
  */
 async function ownedAttempt(
   tx: Database,
   ctx: ServiceContext,
   viewer: Viewer,
-  attemptId: string,
+  input: { attemptId: string; expectedVersion: number },
 ): Promise<Owned> {
-  const attempt = await findAttempt(tx, ctx.institutionId, attemptId)
+  const attempt = await findAttempt(tx, ctx.institutionId, input.attemptId)
   if (!attempt) throw new NotFoundError()
   const assignment = await findAssignment(tx, ctx.institutionId, attempt.assignmentId)
   if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
   ownRecord(viewer, attempt.learnerId)
-  await assertWorkOpen(tx, ctx, assignment, attempt.learnerId, () => Promise.resolve(true))
-  return { attempt, assignment, context: await scoringContext(tx, ctx.institutionId, assignment) }
+  if (attempt.rowVersion !== input.expectedVersion) throw new ConflictError()
+  const pairs = await loadWorkPairs(tx, ctx.institutionId, [assignment])
+  await assertWorkOpen(tx, ctx, assignment, pairs, attempt.learnerId, () => Promise.resolve(true))
+  return { attempt, assignment, context: pairsScoringContext(assignment, pairs) }
 }
 
 export interface AttemptWriteInput {
@@ -543,10 +596,9 @@ export async function saveTaskAttemptAnswers(
       collections: [],
       entity: { type: ENTITY, id: input.attemptId },
       load: async (tx) => {
-        const owned = await ownedAttempt(tx, ctx, viewer, input.attemptId)
+        const owned = await ownedAttempt(tx, ctx, viewer, input)
         return {
           run: (_state, tools) => {
-            if (owned.attempt.rowVersion !== input.expectedVersion) throw new ConflictError()
             const answers = planAnswerSave({
               attempt: owned.attempt,
               timing: timingOf(owned.assignment),
@@ -588,10 +640,9 @@ export async function submitTaskAttempt(
       collections: [],
       entity: { type: ENTITY, id: input.attemptId },
       load: async (tx) => {
-        const owned = await ownedAttempt(tx, ctx, viewer, input.attemptId)
+        const owned = await ownedAttempt(tx, ctx, viewer, input)
         return {
           run: (_state, tools) => {
-            if (owned.attempt.rowVersion !== input.expectedVersion) throw new ConflictError()
             const plan = planAttemptSubmit({
               attempt: owned.attempt,
               timing: timingOf(owned.assignment),

@@ -159,6 +159,16 @@ export async function attemptContentGate(
   return [...withdrawn.values()].includes('removed') ? 'unavailable' : null
 }
 
+/**
+ * Görevin sürümlerinden biri kaldırıldı mı (DOM-KYN-051; bellekte, sorgusuz). Kaldırma kaynağın
+ * bütün sürümlerini `removed` yapar, içeriğini ve cevap anahtarını siler: sabitlenen ya da bağlı
+ * sürümün durumu yeterlidir. Geçmiş deneme kaydı ve cevaplar korunur; arayüz "Bu içerik kaldırıldı"
+ * der. Telif askısı ve kitap sahibi sınırı kaldırma değildir (`attemptContentGate` söyler).
+ */
+export function contentRemoved(pairs: readonly (VersionPair | undefined)[]): boolean {
+  return pairs.some((pair) => pair?.version.status === 'removed' || pair?.version.content === null)
+}
+
 export const CONTENT_MESSAGES = {
   content_unavailable: 'Bu içerik şu an kullanılamıyor; görev üzerinde çalışılamaz.',
   resource_license_expired:

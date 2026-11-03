@@ -157,22 +157,11 @@ export interface ScoringContext {
 }
 
 /**
- * Atamanın puanlama sürümünün maddeleri (DOM-BEC-010; core `scoringItemsFor`). Puan her okumada
- * bu sürümün anahtarından hesaplanır (ADR 0004 karar 5); yeniden puanlama sürümü değiştirince
- * aynı cevaplar yeni anahtarla okunur. Tek soru atanmışsa soru kendi maddesidir (1 puan).
- * Okunamayan veya anahtarsız soru core'un 404/422'sidir.
- */
-export function scoringContext(
-  db: Database,
-  institutionId: string,
-  assignment: StoredAssignment,
-): Promise<ScoringContext> {
-  return versionScoringContext(db, institutionId, assignment.scoringVersionId)
-}
-
-/**
- * Bir içerik sürümünün puanlama bağlamı (seviye tespit formu da; `services/cefr.ts`). Kurallar
- * `scoringContext` ile aynıdır.
+ * Bir içerik sürümünün puanlama maddeleri (DOM-BEC-010; core `scoringItemsFor`; seviye tespit
+ * formu, `services/cefr.ts`). Puan her okumada bu sürümün anahtarından hesaplanır (ADR 0004 karar
+ * 5); yeniden puanlama sürümü değiştirince aynı cevaplar yeni anahtarla okunur. Tek soru atanmışsa
+ * soru kendi maddesidir (1 puan). Okunamayan veya anahtarsız soru core'un 404/422'sidir. Görev
+ * atamasında bağlam içerik kapısının okuduğu sürümlerden kurulur (`pairsScoringContext`).
  */
 export async function versionScoringContext(
   db: Database,
@@ -250,8 +239,8 @@ export function scoringContexts(
 }
 
 /**
- * Atamanın puanlama bağlamı, okunmuş sürümlerden (`loadWorkPairs`); kurallar `scoringContext` ile
- * aynıdır, kurulamazsa aynı hatayı fırlatır. Deneme ayrıntısı içerik kapısını aynı okumayla sınar.
+ * Atamanın puanlama bağlamı, okunmuş sürümlerden (`loadWorkPairs`); kurallar `versionScoringContext`
+ * ile aynıdır, kurulamazsa aynı hatayı fırlatır. Deneme ayrıntısı içerik kapısını aynı okumayla sınar.
  */
 export function pairsScoringContext(
   assignment: StoredAssignment,
@@ -338,17 +327,20 @@ export const scoringLicenseExpired = (context: ScoringContext, now: Date) =>
  * Kursiyerin görevin içeriğinde çalışabilmesi (DOM-KYN-021, 025, 051; IST-036): okumayla aynı kural
  * (`services/learner-content.ts` `assertLearnerWork`). Sınanan sürümler kursiyerin denemede veya
  * teslimde gördükleridir: atamanın sabitlediği sürüm, puanlama sürümü ve onun soruları ve okuma parçası
- * (bulunmayan soru ya da parça da kapalıdır). Yazma transaction'ında çalışır: kapsam işlemin bağlantısıyla okunur.
+ * (bulunmayan soru ya da parça da kapalıdır). `pairs` çağıranın aynı yazma transaction'ında
+ * `loadWorkPairs` ile okuduğu sürümlerdir (puanlama bağlamı da onlardan kurulur; ikinci okuma yok):
+ * kapı kurum kilidinden sonra okunan veriyle sınanır. Hata sırasında sürüm 409'undan sonra, core
+ * kuralından önce gelir (`docs/muhendislik/api-tasarimi.md` §6).
  */
 export async function assertWorkOpen(
   tx: Database,
   ctx: ServiceContext,
   assignment: StoredAssignment,
+  pairs: WorkPairs,
   learnerId: string,
   hasWork: () => Promise<boolean>,
 ): Promise<void> {
   // Sorular ve okuma parçası (IST-042): parça kaldırılmış ya da askıdaysa etkinlik de kapalıdır.
-  const pairs = await loadWorkPairs(tx, ctx.institutionId, [assignment])
   await assertLearnerWork({ ...ctx, db: tx }, learnerId, workPairsOf(assignment, pairs), hasWork)
 }
 

@@ -1,8 +1,9 @@
-import { TASK_CONTENT_UNAVAILABLE_MESSAGE } from '@kampus/react-shared/use-task-assignments.ts'
 import type { TaskAttemptDetail } from '@kampus/react-shared/use-task-attempts.ts'
 import { Icon } from '@/components/Icon.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import {
+  attemptContentNote,
+  attemptResultHeading,
   describeKey,
   describeResponse,
   formatPoints,
@@ -27,13 +28,31 @@ type Props = {
  * madde sonuçlarını anahtar açılmadan da alır (OG-983): soru başına cevap ve madde sonucu çizilir,
  * doğru cevap yalnız anahtar geldiyse. İçerik kapalıysa (`contentUnavailable`; kaldırma, askı ya da
  * lisans) soru metni ve anahtar gelmez: soru listesi yerine sakin not çizilir, puan kalır.
+ * Kaldırılmış içerikte (`contentRemoved`; DOM-KYN-051) not "Bu içerik kaldırıldı" der; cevap
+ * anahtarı silindiği için puan hesaplanamıyorsa (`result: null`) başlık ve not çizilir.
  */
 export function AttemptResult({ attempt, title, audience = 'learner' }: Props) {
   const result = attempt.result
   const items = result?.items ?? null
   const keys = result?.answerKey ?? null
+  const note = attemptContentNote(attempt)
+  const heading = (
+    <div>
+      <h3 id="sonuc-baslik" className="text-lg font-semibold">
+        {attemptResultHeading(attempt)}
+      </h3>
+      <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{title}</p>
+    </div>
+  )
   if (!result)
-    return (
+    return attempt.contentRemoved ? (
+      <section aria-labelledby="sonuc-baslik" className="grid gap-3">
+        {heading}
+        <p role="status" className="text-sm text-muted-foreground">
+          {note}
+        </p>
+      </section>
+    ) : (
       <p role="status" className="text-sm text-muted-foreground">
         Sonuç yükleniyor…
       </p>
@@ -44,12 +63,7 @@ export function AttemptResult({ attempt, title, audience = 'learner' }: Props) {
         <span className="grid size-14 place-items-center rounded-full bg-primary-soft text-primary">
           <Icon name="Award" size={28} aria-hidden="true" />
         </span>
-        <div>
-          <h3 id="sonuc-baslik" className="text-lg font-semibold">
-            {attempt.attemptNumber}. deneme sonucu
-          </h3>
-          <p className="text-sm text-muted-foreground [overflow-wrap:anywhere]">{title}</p>
-        </div>
+        {heading}
         <p
           className="ml-auto text-3xl font-semibold"
           aria-label={`Puan 100 üzerinden ${result.percent}`}
@@ -66,10 +80,10 @@ export function AttemptResult({ attempt, title, audience = 'learner' }: Props) {
         ) : null}
       </div>
       <SubskillBreakdown subskills={result.subskills} />
-      {attempt.contentUnavailable ? (
+      {note ? (
         // Kapalı içerikte soru metni ve anahtar gelmez (DOM-KYN-025, 051); puan ve döküm kalır.
         <p role="status" className="text-sm text-muted-foreground">
-          {TASK_CONTENT_UNAVAILABLE_MESSAGE}
+          {note}
         </p>
       ) : items ? (
         <ol aria-label="Soru soru sonuç" className="grid gap-3">

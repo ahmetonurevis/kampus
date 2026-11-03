@@ -972,6 +972,33 @@ describe('yazma görevi taslak ve teslim uçları', () => {
     assert.deepEqual(await snapshot(t.institution.id), before)
   })
 
+  test('DOM-KYN-051, OG-996: kaldırılmış içerikte eski revizyonla taslak 409 draft_conflict (sürüm içerik kuralından önce), güncel revizyonla 422 content_unavailable; kayıt değişmez', async () => {
+    const t = await tenant()
+    const { resourceId, versionId } = await seedOwned(t)
+    const assignmentId = await assign(t, {}, versionId)
+    const first = await ok(await saveDraft(assignmentId, t.cookies.student, DRAFT_TEXT))
+    const draft = await ok(
+      await saveDraft(assignmentId, t.cookies.student, 'İkinci satır', revision(first.revision)),
+    )
+    await ok(
+      await call('POST', `/resources/${resourceId}/remove`, t.cookies.admin, {
+        reason: 'Telif ihlali kabul edildi',
+      }),
+    )
+    const before = await snapshot(t.institution.id)
+    fails(
+      await saveDraft(assignmentId, t.cookies.student, 'Eski pencere', revision(first.revision)),
+      409,
+      'draft_conflict',
+    )
+    fails(
+      await saveDraft(assignmentId, t.cookies.student, 'Güncel', revision(draft.revision)),
+      422,
+      'content_unavailable',
+    )
+    assert.deepEqual(await snapshot(t.institution.id), before)
+  })
+
   test('DOM-KYN-025, IST-036: telif bildirimiyle incelemedeki kaynakta taslağı ve teslimi olmayan öğrenci taslak açamaz ve teslim edemez (422 content_unavailable); taslağı olan teslimini tamamlar; yeniden yayında açılır', async () => {
     const t = await tenant()
     const { resourceId, versionId } = await seedOwned(t)

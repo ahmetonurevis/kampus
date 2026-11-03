@@ -5,7 +5,7 @@ import { Button, T } from './components.tsx'
 
 type ErrorBoundaryProps = {
   children: ReactNode
-  /** Yapılandırılmış logdaki bağlam (ör. `screen:ParentGrades`); varsayılan `render`. */
+  /** Yapılandırılmış logdaki bağlam (ör. `screen:ParentTracking`); varsayılan `render`. */
   context?: string
   /** Verilirse "Geri dön" düğmesi görünür (ekran düzeyi sınır: kabuk ayakta kalır). */
   onBack?: () => void

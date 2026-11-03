@@ -47,7 +47,7 @@ describe('API modu sayfaları', () => {
     assert.deepEqual(
       apiPages({ role: 'veli', modules: open }).map((page) => [page.title, page.screen]),
       [
-        ['Akademik Takip', 'ParentGrades'],
+        ['Akademik Takip', 'ParentTracking'],
         ['Mesajlar', 'Messages'],
         ['Duyurular', 'Announcements'],
       ],
@@ -105,7 +105,7 @@ describe('API modu sayfaları', () => {
     assert.equal(canOpenScreen({ role: 'ogretmen', modules: closed }, 'TeacherAttendance'), false)
     assert.equal(canOpenScreen({ role: 'ogrenci', modules: open }, 'TeacherAttendance'), false)
     // Başka rolün ekranı açılmaz.
-    assert.equal(canOpenScreen({ role: 'ogretmen', modules: open }, 'ParentGrades'), false)
+    assert.equal(canOpenScreen({ role: 'ogretmen', modules: open }, 'ParentTracking'), false)
   })
 
   test('IST-124 öğrenci Ödevlerim ve Notlarım ekranlarını menü sırasıyla görür', () => {

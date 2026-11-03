@@ -44,8 +44,8 @@ export const OGUZHAN_SCREENS = [
     pages: [{ role: 'ogretmen', path: 'siniflarim' }],
   },
   {
-    screen: 'ParentGrades',
-    getComponent: (): MenuScreen => require('./screens/ParentGrades.tsx').default,
+    screen: 'ParentTracking',
+    getComponent: (): MenuScreen => require('./screens/ParentTracking.tsx').default,
     pages: [{ role: 'veli', path: 'akademik-takip' }],
   },
   {

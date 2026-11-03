@@ -81,6 +81,7 @@ const task = (extra: Partial<TaskAssignmentLearner> = {}): TaskAssignmentLearner
   deadline: { dueAt: '2026-11-20T20:59:00.000Z', lateAcceptanceDays: 0 },
   timeLimitMinutes: 20,
   listeningPlays: null,
+  hasListening: false,
   showTranscript: false,
   submission: null,
   createdAt: '2026-11-01T09:00:00.000Z',
@@ -88,6 +89,13 @@ const task = (extra: Partial<TaskAssignmentLearner> = {}): TaskAssignmentLearner
   progress: [progress()],
   ...extra,
 })
+
+/** Alanı taşımayan eski yanıt (API `hasListening`'i eklemeden önce). */
+const legacy = (extra: Partial<TaskAssignmentLearner> = {}) => {
+  const full: Partial<TaskAssignmentLearner> = task(extra)
+  delete full.hasListening
+  return full as Omit<TaskAssignmentLearner, 'hasListening'>
+}
 
 describe('OG-061: quiz görevi açılabilirliği (Sabah kararı 92; DOM-BEC-005)', () => {
   test('yalnız otomatik puanlı soru, quiz ve alıştırma seti deneme görevidir', () => {
@@ -110,11 +118,36 @@ describe('OG-061: quiz görevi açılabilirliği (Sabah kararı 92; DOM-BEC-005)
     assert.equal(quizTaskAccess(task({ contentType: 'question', listeningPlays: 1 })).open, false)
   })
 
-  test('listeningPlays boşken quiz belirsizdir: sınırsız hakla dinleme kaydı olabilir, açılmaz', () => {
-    const access = quizTaskAccess(task())
+  test('hasListening true (sunucu hesabı): quiz ve alıştırma seti listeningPlays boş olsa da açılmaz', () => {
+    for (const contentType of ['quiz', 'exercise_set'] as const) {
+      const access = quizTaskAccess(task({ contentType, hasListening: true }))
+      assert.deepEqual(access, { open: false, reason: 'listening', text: WEB_ONLY_LISTENING_TEXT })
+    }
+    const state = quizTaskState(task({ hasListening: true }))
+    assert.equal(state.open, null)
+    assert.match(state.note ?? '', /web'den çözülür/)
+    // Önceki denemeden kanıt ya da süren deneme sunucunun kararını değiştirmez.
+    const running = task({ hasListening: true, progress: [progress({ status: 'in_progress' })] })
+    assert.equal(quizTaskAccess(running, { noListeningRecording: true }).open, false)
+  })
+
+  test('hasListening false (sunucu hesabı): ilk denemesi olmayan quiz ve alıştırma seti açılır', () => {
+    for (const contentType of ['quiz', 'exercise_set'] as const) {
+      const first = task({ contentType, hasListening: false, progress: [progress({ used: 0 })] })
+      assert.deepEqual(quizTaskAccess(first), { open: true, via: 'server' })
+    }
+    const state = quizTaskState(task({ hasListening: false }))
+    assert.equal(state.open, 'quiz')
+    assert.equal(state.note, null)
+    // Dolu hak ile çelişen alan güvenli tarafta kalır: açılmaz.
+    assert.equal(quizTaskAccess(task({ hasListening: false, listeningPlays: 2 })).open, false)
+  })
+
+  test('alan yoksa (eski yanıt) listeningPlays boş quiz belirsizdir: sınırsız hakla dinleme kaydı olabilir, açılmaz', () => {
+    const access = quizTaskAccess(legacy())
     assert.deepEqual(access, { open: false, reason: 'unknown', text: WEB_ONLY_UNKNOWN_TEXT })
-    assert.equal(quizTaskAccess(task({ contentType: 'exercise_set' })).open, false)
-    const state = quizTaskState(task())
+    assert.equal(quizTaskAccess(legacy({ contentType: 'exercise_set' })).open, false)
+    const state = quizTaskState(legacy())
     assert.equal(state.open, null)
     assert.match(state.note ?? '', /web'den çözülür/)
   })
@@ -133,7 +166,7 @@ describe('OG-061: quiz görevi açılabilirliği (Sabah kararı 92; DOM-BEC-005)
     const base = { listeningRecording: null, contentRemoved: false, contentUnavailable: null }
     const evidence = listeningEvidence(base)
     assert.equal(evidence.noListeningRecording, true)
-    assert.deepEqual(quizTaskAccess(task(), evidence), { open: true, via: 'evidence' })
+    assert.deepEqual(quizTaskAccess(legacy(), evidence), { open: true, via: 'evidence' })
     assert.equal(listeningEvidence({ ...base, contentRemoved: true }).noListeningRecording, false)
     assert.equal(
       listeningEvidence({ ...base, contentUnavailable: 'unavailable' }).noListeningRecording,
@@ -147,11 +180,11 @@ describe('OG-061: quiz görevi açılabilirliği (Sabah kararı 92; DOM-BEC-005)
       false,
     )
     // Kanıt dinleme hakkı sabitlenmiş görevi açmaz.
-    assert.equal(quizTaskAccess(task({ listeningPlays: 2 }), evidence).open, false)
+    assert.equal(quizTaskAccess(legacy({ listeningPlays: 2 }), evidence).open, false)
   })
 
   test('süren deneme açılır (hak zaten işlemiş); dinleme kaydı çıkarsa çözme kapısı kapatır', () => {
-    const running = task({ progress: [progress({ status: 'in_progress', canAct: true })] })
+    const running = legacy({ progress: [progress({ status: 'in_progress', canAct: true })] })
     assert.deepEqual(quizTaskAccess(running), { open: true, via: 'running' })
     // Süren denemede de hak sabitlenmiş dinleme görevi açılmaz.
     assert.equal(quizTaskAccess({ ...running, listeningPlays: 1 }).open, false)

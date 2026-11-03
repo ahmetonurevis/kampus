@@ -6,8 +6,9 @@
 //
 // Dinleme: mobilde ses oynatıcı yoktur ve dinleme hakkı deneme başlayınca işler. Dinleme kaydı
 // içerebilecek görev telefonda başlatılmaz; hak boşa gitmesin diye karar deneme başlamadan önce
-// eldeki bilgiyle kesinleşmelidir (Sabah kararı 92). Belirsiz görev listede "Bu görev web'den
-// çözülür" bilgisiyle kalır.
+// eldeki bilgiyle kesinleşmelidir (Sabah kararı 92). Kesin bilgi atamadaki sunucu hesabı
+// `hasListening`'dir (false açar, true "Bu görev web'den çözülür"). Alanı taşımayan eski yanıtta
+// önceki denemeden kanıt ya da süren deneme aranır; yoksa görev listede aynı bilgiyle kalır.
 import { keepsIdempotencyKey } from '@kampus/react-shared/commands.ts'
 import {
   answeredCount,
@@ -31,7 +32,9 @@ import type { ApiError } from '@kampus/api-client/errors.ts'
 import { mobileTone, type MobileTone } from './student-writing.ts'
 
 type Fields = Pick<TaskAssignmentLearner, 'scoringMode' | 'contentType' | 'listeningPlays'> &
-  Partial<Pick<TaskAssignmentLearner, 'progress' | 'timeLimitMinutes' | 'attempts'>>
+  Partial<
+    Pick<TaskAssignmentLearner, 'progress' | 'timeLimitMinutes' | 'attempts' | 'hasListening'>
+  >
 
 // --- Açılabilirlik -------------------------------------------------------------------------
 
@@ -72,27 +75,31 @@ export type QuizTaskAccess =
   | {
       open: true
       /**
-       * `question` tek soru (dinleme kaydı bağlanamaz), `evidence` önceki denemede kayıt yok,
-       * `running` süren deneme var (hak zaten işlemiş; ayrıntı açılınca `solveGate` yine bakar).
+       * `question` tek soru (dinleme kaydı bağlanamaz), `server` sunucu `hasListening: false`
+       * dedi, `evidence` önceki denemede kayıt yok (alansız eski yanıt), `running` süren deneme
+       * var (hak zaten işlemiş; ayrıntı açılınca `solveGate` yine bakar).
        */
-      via: 'question' | 'evidence' | 'running'
+      via: 'question' | 'server' | 'evidence' | 'running'
     }
   | { open: false; reason: 'unsupported' | 'listening' | 'unknown'; text: string }
 
 /**
  * Görev telefonda açılır mı (karar yalnız atama alanlarından):
- * - `listeningPlays` dolu: dinleme görevi (DOM-BEC-005), açılmaz.
+ * - `hasListening` true ya da `listeningPlays` dolu: dinleme kaydı içerebilir (DOM-BEC-005),
+ *   açılmaz.
  * - tek `question`: dinleme kaydı yalnız quiz/alıştırma setine bağlanır, açılır.
- * - quiz/alıştırma seti: `listeningPlays` boşluğu "sınırsız hakla dinleme" de olabilir (atama
- *   formundaki "Sınırsız" seçeneği); açılması için önceki denemeden kanıt gerekir ya da süren bir
- *   deneme olmalıdır. Aksi hâlde belirsizdir ve açılmaz.
+ * - `hasListening` false: sunucu kayıt ve dinleme içeriği olmadığını hesapladı, açılır.
+ * - alan yoksa (eski yanıt) quiz/alıştırma seti: `listeningPlays` boşluğu "sınırsız hakla
+ *   dinleme" de olabilir (atama formundaki "Sınırsız" seçeneği); açılması için önceki denemeden
+ *   kanıt gerekir ya da süren bir deneme olmalıdır. Aksi hâlde belirsizdir ve açılmaz.
  */
 export function quizTaskAccess(assignment: Fields, evidence?: ListeningEvidence): QuizTaskAccess {
   if (!isQuizTask(assignment))
     return { open: false, reason: 'unsupported', text: 'Bu görev telefonda açılmaz.' }
-  if (assignment.listeningPlays !== null)
+  if (assignment.hasListening === true || assignment.listeningPlays !== null)
     return { open: false, reason: 'listening', text: WEB_ONLY_LISTENING_TEXT }
   if (assignment.contentType === 'question') return { open: true, via: 'question' }
+  if (assignment.hasListening === false) return { open: true, via: 'server' }
   if (assignment.progress?.[0]?.status === 'in_progress') return { open: true, via: 'running' }
   if (evidence?.noListeningRecording === true) return { open: true, via: 'evidence' }
   return { open: false, reason: 'unknown', text: WEB_ONLY_UNKNOWN_TEXT }

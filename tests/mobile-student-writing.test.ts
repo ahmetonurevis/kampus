@@ -82,6 +82,7 @@ const task = (extra: Partial<TaskAssignmentLearner> = {}): TaskAssignmentLearner
   deadline: { dueAt: '2026-11-20T20:59:00.000Z', lateAcceptanceDays: 0 },
   timeLimitMinutes: null,
   listeningPlays: null,
+  hasListening: false,
   showTranscript: false,
   submission: { submissionKind: 'text', maxVersions: 3, minWords: null, maxWords: null },
   createdAt: '2026-11-01T09:00:00.000Z',

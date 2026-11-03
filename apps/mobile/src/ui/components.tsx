@@ -207,20 +207,21 @@ export function Card({ children, onPress, style, label, soft = false }: CardProp
 export type Tone = 'primary' | 'green' | 'amber' | 'red'
 // Rozet rengi metne göre seçilir; her ton için `<ton>Soft` zemin rengi vardır.
 export const toneSoft = (c: Palette, tone: Tone) => c[`${tone}Soft` as const]
-export function Badge({ text }: { text?: string }) {
+/** `tone` verilirse metinden tahmin edilmez (ekran kendi durum rengini bilir). */
+export function Badge({ text, tone: given }: { text?: string; tone?: Tone }) {
   const c = useColors()
   if (!text) return null
-  const tone: Tone = /Gecik|Süre aşıldı|Teslim süresi geçti|Yüksek risk|Gelmedi|Reddedildi/.test(
-    text,
-  )
-    ? 'red'
-    : /Ödendi|Yanıtlandı|Tamamlandı|Teslim edildi|Başarılı|Geldi|Onaylandı|Aktif|Değerlendirildi/.test(
-          text,
-        )
-      ? 'green'
-      : /Bekli|Yaklaş|azalıyor|Takip|Geç geldi/.test(text)
-        ? 'amber'
-        : 'primary'
+  const inferred: Tone =
+    /Gecik|Süre aşıldı|Teslim süresi geçti|Yüksek risk|Gelmedi|Reddedildi/.test(text)
+      ? 'red'
+      : /Ödendi|Yanıtlandı|Tamamlandı|Teslim edildi|Başarılı|Geldi|Onaylandı|Aktif|Değerlendirildi/.test(
+            text,
+          )
+        ? 'green'
+        : /Bekli|Yaklaş|azalıyor|Takip|Geç geldi/.test(text)
+          ? 'amber'
+          : 'primary'
+  const tone = given ?? inferred
   return (
     <View
       style={{

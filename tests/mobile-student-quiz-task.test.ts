@@ -14,6 +14,7 @@ import {
   NOT_SAVED_TEXT,
   TIME_OVER_ENDED_TEXT,
   WEB_ONLY_LISTENING_TEXT,
+  WEB_ONLY_TEXT,
   WEB_ONLY_UNKNOWN_TEXT,
   attemptResultView,
   chooseMatch,
@@ -35,6 +36,7 @@ import {
   solveGate,
   solveReducer,
   startDescription,
+  studentTaskRow,
   submitAttempt,
   submitButtonText,
   withAnswer,
@@ -188,6 +190,58 @@ describe('OG-061: quiz görevi açılabilirliği (Sabah kararı 92; DOM-BEC-005)
     assert.deepEqual(quizTaskAccess(running), { open: true, via: 'running' })
     // Süren denemede de hak sabitlenmiş dinleme görevi açılmaz.
     assert.equal(quizTaskAccess({ ...running, listeningPlays: 1 }).open, false)
+  })
+})
+
+describe('OG-061: görev satırı hangi pencereyi açar (IST-124; Sabah kararı 92)', () => {
+  const now = new Date('2026-11-05T09:00:00.000Z')
+  const teacher = (extra: Partial<TaskAssignmentLearner> = {}) =>
+    task({
+      scoringMode: 'teacher',
+      contentType: 'homework_template',
+      submission: {
+        submissionKind: 'text',
+        minWords: null,
+        maxWords: null,
+      } as TaskAssignmentLearner['submission'],
+      ...extra,
+    })
+
+  test('yazma görevi yazma penceresini, dinlemesiz quiz quiz penceresini açar', () => {
+    const writing = studentTaskRow(teacher(), now)
+    assert.equal(writing.open, 'writing')
+    assert.equal(writing.note, null)
+    assert.match(writing.label, /Görevi aç$/)
+    const quiz = studentTaskRow(task(), now)
+    assert.equal(quiz.open, 'quiz')
+    assert.equal(quiz.note, null)
+    assert.match(quiz.label, /Unit 3 quiz, .*\. Görevi aç$/)
+  })
+
+  test('dinlemeli quiz açılmaz; neden satırda ve erişilebilir adda görünür', () => {
+    for (const extra of [{ hasListening: true }, { listeningPlays: 2 }] as const) {
+      const row = studentTaskRow(task(extra), now)
+      assert.equal(row.open, null)
+      assert.equal(row.note, WEB_ONLY_LISTENING_TEXT)
+      assert.ok(row.label.endsWith(WEB_ONLY_LISTENING_TEXT))
+    }
+  })
+
+  test('konuşma ve el yazısı görevi web notuyla listelenir, açılmaz', () => {
+    const row = studentTaskRow(
+      teacher({ submission: { submissionKind: 'audio' } as TaskAssignmentLearner['submission'] }),
+      now,
+    )
+    assert.equal(row.open, null)
+    assert.equal(row.note, WEB_ONLY_TEXT)
+  })
+
+  test('durum ve puan atama özetinden gelir; satır başına istek yoktur', () => {
+    const row = studentTaskRow(
+      task({ progress: [progress({ status: 'in_progress', canAct: true })] }),
+      now,
+    )
+    assert.equal(row.status, 'Sürüyor')
   })
 })
 

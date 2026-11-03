@@ -29,7 +29,12 @@ import {
   type TaskAttemptDetail,
 } from '@kampus/react-shared/use-task-attempts.ts'
 import type { ApiError } from '@kampus/api-client/errors.ts'
-import { mobileTone, type MobileTone } from './student-writing.ts'
+import {
+  mobileTone,
+  writingTaskRow,
+  type MobileTone,
+  type WritingTaskRow,
+} from './student-writing.ts'
 
 type Fields = Pick<TaskAssignmentLearner, 'scoringMode' | 'contentType' | 'listeningPlays'> &
   Partial<
@@ -122,6 +127,29 @@ export function quizTaskState(assignment: Fields, evidence?: ListeningEvidence):
   return access.open
     ? { open: 'quiz', note: null, hint: 'Görevi aç', tone: 'primary' }
     : { open: null, note: access.text, hint: access.text, tone: 'amber' }
+}
+
+/** Ödevlerim > Görevler satırı: hangi pencerenin açılacağı ve açılmayanın nedeni. */
+export type StudentTaskRow = Omit<WritingTaskRow, 'writable'> & {
+  open: 'writing' | 'quiz' | null
+  /** Açılmayan görevin satır altı bilgisi; açılıyorsa `null`. */
+  note: string | null
+}
+
+/**
+ * Öğrenci görev satırı (öğretmen puanlı yazma + otomatik puanlı quiz görevleri tek listede).
+ * Yazma görevi ve açılabilir quiz görevi dokununca açılır; konuşma, el yazısı ve dinlemeli görev
+ * satırda "web'den çözülür" notuyla kalır (Sabah kararı 92). Durum ve puan atama özetindendir.
+ */
+export function studentTaskRow(assignment: TaskAssignmentLearner, now: Date): StudentTaskRow {
+  const { writable, ...row } = writingTaskRow(assignment, now)
+  const named = (hint: string) => `${assignment.title}, ${row.status}. ${hint}`
+  if (writable) return { ...row, open: 'writing', note: null, label: named('Görevi aç') }
+  const state =
+    assignment.scoringMode === 'auto'
+      ? quizTaskState(assignment)
+      : { open: null, note: WEB_ONLY_TEXT, hint: WEB_ONLY_TEXT }
+  return { ...row, open: state.open, note: state.note, label: named(state.hint) }
 }
 
 // --- Başlatma ------------------------------------------------------------------------------

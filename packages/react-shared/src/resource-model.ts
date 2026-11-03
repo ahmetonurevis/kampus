@@ -123,8 +123,8 @@ export function resourceListQuery(input: {
 }
 
 /**
- * Quiz/alıştırma setinin bağlı sürümlerine (sorular, okuma parçası) dayanan yayım kodları (core
- * `publicationIssues`; DOM-KYN-013, DOM-BEC-006). Bağlı sürümün durumunu yalnız sunucu bilir: istemci
+ * Quiz/alıştırma setinin bağlı sürümlerine (sorular, okuma parçası, dinleme kaydı) dayanan yayım
+ * kodları (core `publicationIssues`; DOM-KYN-013, DOM-BEC-005, DOM-BEC-006). Bağlı sürümün durumunu yalnız sunucu bilir: istemci
  * bu kodları kuru çalıştırmada üretmez, ayrıntının `publicationIssues` listesinden okur.
  */
 export const LINKED_CONTENT_MESSAGES = {
@@ -137,6 +137,16 @@ export const LINKED_CONTENT_MESSAGES = {
   quiz_item_not_question: 'Listeye yalnız soru eklenebilir.',
   quiz_item_not_published: 'Soru yayında değil; yayındaki bir soru seçin.',
   quiz_item_untagged: 'Kazanım veya beceri etiketi olmayan soru eklenemez.',
+  // Dinleme etkinliğinin bağlı kaydı (IST-045; DOM-BEC-005).
+  listening_missing:
+    'Seçilen dinleme kaydı bulunamadı ya da artık açılamıyor; başka bir kayıt seçin.',
+  listening_not_audio: 'Bağlanan içerik ses kaydı değil; bir dinleme kaydı seçin.',
+  listening_skill_required:
+    'Bağlanan ses kaydının birincil becerisi dinleme değil; dinleme becerili bir kayıt seçin.',
+  listening_not_published:
+    'Dinleme kaydı yayında değil; önce kaydı yayımlayın ya da yayındaki bir kayıt seçin.',
+  listening_transcript_required:
+    'Dinleme kaydının dökümü yok; kayda döküm ekleyip yayımlayın ya da dökümlü bir kayıt seçin.',
 } as const satisfies CommandMessages
 export type LinkedIssueCode = keyof typeof LINKED_CONTENT_MESSAGES
 
@@ -166,7 +176,7 @@ export const RESOURCE_MESSAGES = {
   // reddedilen dosya (Sabah kararı 42) kaldırılıp başkası yüklenir.
   file_not_ready: RESOURCE_FILE_NOT_READY_MESSAGE,
   file_rejected: FILE_REJECTED_MESSAGE,
-  // Okuma-anlama etkinliğinin bağlı parçası ve soruları (onaya gönderme, yayım, onay; OG-984).
+  // Okuma/dinleme etkinliğinin bağlı parçası, kaydı ve soruları (onaya gönderme, yayım, onay; OG-984).
   ...LINKED_CONTENT_MESSAGES,
 } as const satisfies CommandMessages
 
@@ -329,13 +339,13 @@ function coreResource(detail: StaffResourceDetail): ResourceRecord {
 const PUBLISHING_ACTIONS: ReadonlySet<ActionKind> = new Set(['submit', 'publish', 'approve'])
 
 /**
- * Kuru çalıştırmada bağlı sürümler (sorular, okuma parçası) geçerli varsayılır: istemcide yüklü
+ * Kuru çalıştırmada bağlı sürümler (sorular, okuma parçası, dinleme kaydı) geçerli varsayılır: istemcide yüklü
  * değildirler ve verilmezse core her quiz'de `quiz_item_missing` üretirdi. Gerçek durumları
  * sunucunun ayrıntıda döndürdüğü yayım sorunlarındadır (`LINKED_CONTENT_MESSAGES`).
  */
 export function assumedLinkedRefs(
   version: ResourceVersion,
-): Pick<PublicationContext, 'itemVersions' | 'passageVersion'> {
+): Pick<PublicationContext, 'itemVersions' | 'passageVersion' | 'listeningVersion'> {
   const { content } = version
   if (content.type !== 'quiz' && content.type !== 'exercise_set') return {}
   const tags = { ...version.tags, primarySkill: version.tags.primarySkill ?? 'reading' }
@@ -356,6 +366,15 @@ export function assumedLinkedRefs(
       content.passageVersionId === null
         ? undefined
         : ref(content.passageVersionId, 'reading_passage'),
+    // Dinleme kaydı verilmezse core her dinleme etkinliğinde `listening_missing` sayardı (IST-045).
+    listeningVersion:
+      content.listeningVersionId === null
+        ? undefined
+        : {
+            ...ref(content.listeningVersionId, 'audio'),
+            tags: { ...version.tags, primarySkill: 'listening' },
+            hasTranscript: true,
+          },
   }
 }
 

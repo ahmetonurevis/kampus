@@ -318,6 +318,35 @@ describe('dinleme etkinliği', () => {
     assert.notEqual(submitted.version.status, 'draft')
   })
 
+  test('IST-045, DOM-BEC-005, OG-984: ayrıntıdaki yayım sorunları bağlı dinleme kaydını okur; dökümlü yayındaki kayıt sorun değildir, dökümsüz kayıt listening_transcript_required', async () => {
+    const t = await tenant()
+    const issuesOf = async (listeningVersionId: string) => {
+      const created = await ok(
+        await call(
+          'POST',
+          '/resources',
+          t.cookies.teacher,
+          quizBody(listeningVersionId, t.activity.questionVersionId),
+        ),
+        201,
+      )
+      const detail = await ok(
+        await call('GET', `/resources/${created.resource.id}`, t.cookies.teacher),
+      )
+      return (detail.publicationIssues as { code: string; path: string[] }[]).map(
+        (issue) => `${issue.code}:${issue.path.join('.')}`,
+      )
+    }
+    assert.deepEqual(await issuesOf(t.activity.audio.versionId), [])
+    const bare = await seedListeningActivity(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      transcript: null,
+    })
+    assert.deepEqual(await issuesOf(bare.audio.versionId), [
+      'listening_transcript_required:content.listeningVersionId',
+    ])
+  })
+
   test('IST-045, DOM-BEC-005: kayda bağlı etkinlikte hak gönderilmezse 2, seçilirse 1 ya da sınırsız; kaydı olmayan ya da sayılamayan (material) kayıtta 1/2 hak 422 listening_plays_unavailable, gönderilmeyen hak sınırsız; hatada atama yazılmaz', async () => {
     const t = await tenant()
     fails(

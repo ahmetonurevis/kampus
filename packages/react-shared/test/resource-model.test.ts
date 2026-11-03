@@ -291,6 +291,40 @@ describe('Okuma-anlama etkinliği eylemleri (OG-984; IST-042, DOM-BEC-006, DOM-K
     assert.deepEqual(assumedLinkedRefs(coreVersion(detail().head, 'r1')!), {})
   })
 
+  test('IST-045, DOM-BEC-005: dinleme kaydına bağlı quiz kuru çalıştırmada kilitlenmez; sunucunun kayıt sorunu Türkçe nedenle engeller', () => {
+    const base = quiz()
+    const listening = (publicationIssues: StaffResourceDetail['publicationIssues'] = []) => ({
+      ...base,
+      head: {
+        ...base.head,
+        content: { ...base.head.content, passageVersionId: null, listeningVersionId: 'a1' },
+      },
+      publicationIssues,
+    })
+    const version = coreVersion(listening().head, base.resource.id)
+    assert.ok(version)
+    const refs = assumedLinkedRefs(version)
+    assert.equal(refs.passageVersion, undefined)
+    assert.equal(refs.listeningVersion?.id, 'a1')
+    assert.equal(refs.listeningVersion?.contentType, 'audio')
+    assert.equal(refs.listeningVersion?.tags.primarySkill, 'listening')
+    assert.equal(refs.listeningVersion?.hasTranscript, true)
+    const act = (detail: StaffResourceDetail) =>
+      availableActions({ detail, actor: TEACHER, institutionType: 'school', now: NOW })
+    assert.deepEqual(labels(act(listening())), ['submit', 'publish', 'archive'])
+    const blocked = act(
+      listening([
+        {
+          code: 'listening_transcript_required',
+          message: 'Dinleme kaydının dökümü olmadan etkinlik yayımlanamaz.',
+          path: ['content', 'listeningVersionId'],
+        },
+      ]),
+    )
+    assert.deepEqual(labels(blocked), ['submit!', 'publish!', 'archive'])
+    assert.equal(blocked[0]?.blockedReason, LINKED_CONTENT_MESSAGES.listening_transcript_required)
+  })
+
   test('IST-042: bağlı içerik kodları ortak Türkçe iletiyle eşlenir; quiz ve alıştırma seti formda yazılır', () => {
     for (const code of Object.keys(LINKED_CONTENT_MESSAGES)) {
       assert.equal(isLinkedIssueCode(code), true)
@@ -299,6 +333,14 @@ describe('Okuma-anlama etkinliği eylemleri (OG-984; IST-042, DOM-BEC-006, DOM-K
         LINKED_CONTENT_MESSAGES[code as keyof typeof LINKED_CONTENT_MESSAGES],
       )
     }
+    for (const code of [
+      'listening_missing',
+      'listening_not_audio',
+      'listening_skill_required',
+      'listening_not_published',
+      'listening_transcript_required',
+    ])
+      assert.equal(isLinkedIssueCode(code), true, code)
     assert.equal(isLinkedIssueCode('license_required'), false)
     assert.equal(isAuthorableType('quiz'), true)
     assert.equal(isAuthorableType('exercise_set'), true)

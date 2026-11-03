@@ -319,6 +319,11 @@ type FieldProps = {
   error?: string
   autoComplete?: TextInputProps['autoComplete']
   onSubmit?: () => void
+  /**
+   * Uzun metin (yazma görevi): çok satırlı alan daha yüksek açılır ve kendi içinde kayar; düğme
+   * alanın altında değil pencerenin sabit alt bilgisinde kalır.
+   */
+  tall?: boolean
 }
 export function Field({
   label,
@@ -336,6 +341,7 @@ export function Field({
   error,
   autoComplete,
   onSubmit,
+  tall = false,
 }: FieldProps) {
   const c = useColors()
   const [focused, setFocused] = useState(false)
@@ -374,7 +380,11 @@ export function Field({
           color: c.text,
           backgroundColor: focused ? c.surface : c.soft,
           textAlignVertical: multiline ? 'top' : 'center',
-          ...(multiline ? { minHeight: compact ? 52 : 120, maxHeight: compact ? 120 : 180 } : {}),
+          ...(multiline
+            ? tall
+              ? { minHeight: 200, maxHeight: 320 }
+              : { minHeight: compact ? 52 : 120, maxHeight: compact ? 120 : 180 }
+            : {}),
         }}
       />
       {!!hint && (

@@ -1,6 +1,4 @@
 import { useState } from 'react'
-import { StatusBadge } from '@/components/StatusBadge.tsx'
-import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import {
   chooseCompareVersion,
   findVersion,
@@ -10,7 +8,9 @@ import {
   wordDifference,
   type ComparePair,
   type SubmissionVersion,
-} from './writing-model.ts'
+} from '@kampus/react-shared/writing-model.ts'
+import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 
 const SIDES = [
   { side: 'left', label: 'Birinci sürüm' },

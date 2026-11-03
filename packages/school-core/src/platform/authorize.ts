@@ -122,6 +122,10 @@ export type PlatformWriteTargets = {
   // Veli hesabı daveti (DOM-YTK-071): öğrenci ve veli kaydı gövdeden gelir, kurumda varlığı ve
   // bağ kuralı işlemdedir (`lib/guardian-invitations.ts`).
   'guardian.invite': Record<string, never>
+  // Bekleyen veli davetlerinin listesi ve iptali (DOM-YTK-071): davetin kurumda varlığı ve
+  // bekleyen olması işlemdedir.
+  'guardian.invite_list': Record<string, never>
+  'guardian.invite_cancel': Record<string, never>
   // Dil okulu kur programı (DOM-DIL-005…007): kural `lib/courses.ts`. Koordinatörün seviye kapsamı
   // (`assertCourseManager`) ve öğrenci/veli görünümü (`courseView`) orada çözülür.
   'course.read': Record<string, never>
@@ -245,6 +249,9 @@ export const PLATFORM_WRITE_ACTION_ROLES = {
   'guardian.manage': ['yonetici', 'onburo'],
   // Veli hesabını kesin kayıttan sonra yönetici ya da ön büro davet eder (DOM-YTK-071).
   'guardian.invite': ['yonetici', 'onburo'],
+  // Daveti açan roller bekleyen davetleri görür ve iptal eder (DOM-YTK-071).
+  'guardian.invite_list': ['yonetici', 'onburo'],
+  'guardian.invite_cancel': ['yonetici', 'onburo'],
   // Kur kataloğunu beş rol okur (öğrenci ve veli yalnız etkin kurları, daraltılmış). Kuru yönetici
   // ve seviyenin akademik koordinatörü (öğretmen + görev, DOM-YTK-027) yönetir; e-Özel kaydını
   // yalnız yönetici işaretler (DOM-DIL-005, -006; IST-076).

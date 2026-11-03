@@ -565,6 +565,8 @@ function decide(
     case 'guardian.read':
     case 'guardian.manage':
     case 'guardian.invite':
+    case 'guardian.invite_list':
+    case 'guardian.invite_cancel':
       return ALLOWED
     // Kur kurum geneli katalogdur; koordinatörün seviye kapsamı `lib/courses.ts`
     // `assertCourseManager`'da, öğrenci/veli daraltması `courseView`'dadır (DOM-DIL-005).

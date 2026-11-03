@@ -129,6 +129,19 @@ export const OGUZHAN_SCREENS = [
       },
     ],
   },
+  {
+    screen: 'StudentQuizzes',
+    getComponent: (): MenuScreen => require('./screens/StudentQuizzes.tsx').default,
+    // Telefonda sınıf quizleri çözülür (`/quizzes`); soru bankası görevleri, soru sor/çöz ve
+    // yazma/konuşma görevleri web'dedir.
+    pages: [
+      {
+        role: 'ogrenci',
+        path: 'soru-coz',
+        description: 'Sınıf quizlerini çöz, sonuçlarını gör.',
+      },
+    ],
+  },
 ] as const satisfies readonly ScreenEntry[]
 // Oğuzhan: platform, akademik ve iletişim sonu
 

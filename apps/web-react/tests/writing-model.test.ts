@@ -2,9 +2,18 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import { wordCountCheck } from '@kampus/school-core/skills/submission.ts'
 import {
+  chooseCompareVersion,
+  defaultComparePair,
+  findVersion,
   liveWordCount,
+  resolveComparePair,
+  resubmissionRoundText,
   sameAsLastVersion,
+  type SubmissionVersion,
+  versionFacts,
+  versionOptionLabel,
   WORD_LIMIT_WARNING,
+  wordDifference,
   wordLimitText,
 } from '../src/pages/tasks/writing-model.ts'
 
@@ -48,5 +57,94 @@ describe('yazma editörü: canlı sözcük sayısı', () => {
     assert.equal(sameAsLastVersion('My weekend, revised.', 'My weekend.'), false)
     assert.equal(sameAsLastVersion('My weekend.', null), false)
     assert.equal(sameAsLastVersion('', '   '), false)
+  })
+})
+
+const version = (
+  number: number,
+  overrides: Partial<SubmissionVersion> = {},
+): SubmissionVersion => ({
+  id: `tv-${number}`,
+  number,
+  submittedAt: `2026-10-0${number}T09:30:00.000Z`,
+  late: false,
+  wordCount: { count: 100 + number * 10, status: 'ok', warning: null },
+  body: `Version ${number} text.`,
+  files: [],
+  score: null,
+  grading: null,
+  appealDeadline: null,
+  appeal: null,
+  resubmissionRequest: null,
+  ...overrides,
+})
+
+describe('öğretmen: iki sürümü yan yana karşılaştırma', () => {
+  test('IST-047: varsayılan son iki sürümdür; tek sürümde karşılaştırma yoktur', () => {
+    assert.equal(defaultComparePair([]), null)
+    assert.equal(defaultComparePair([version(1)]), null)
+    assert.equal(resolveComparePair([version(1)], { left: 1, right: 2 }), null)
+    // Sıra API'nin sırasından bağımsız: sol eski, sağ yeni.
+    assert.deepEqual(defaultComparePair([version(3), version(1), version(2)]), {
+      left: 2,
+      right: 3,
+    })
+  })
+
+  test('IST-047: geçerli seçim korunur; bilinmeyen ya da aynı sürüm varsayılana döner', () => {
+    const versions = [version(1), version(2), version(3)]
+    assert.deepEqual(resolveComparePair(versions, null), { left: 2, right: 3 })
+    assert.deepEqual(resolveComparePair(versions, { left: 1, right: 3 }), { left: 1, right: 3 })
+    assert.deepEqual(resolveComparePair(versions, { left: 1, right: 9 }), { left: 2, right: 3 })
+    assert.deepEqual(resolveComparePair(versions, { left: 2, right: 2 }), { left: 2, right: 3 })
+    // Yeni sürüm gelince öğretmenin seçimi değişmez.
+    assert.deepEqual(resolveComparePair([...versions, version(4)], { left: 1, right: 3 }), {
+      left: 1,
+      right: 3,
+    })
+  })
+
+  test('IST-047: diğer sütundaki sürüm seçilirse sütunlar yer değiştirir', () => {
+    const pair = { left: 2, right: 3 }
+    assert.deepEqual(chooseCompareVersion(pair, 'left', 1), { left: 1, right: 3 })
+    assert.deepEqual(chooseCompareVersion(pair, 'right', 1), { left: 2, right: 1 })
+    assert.deepEqual(chooseCompareVersion(pair, 'left', 3), { left: 3, right: 2 })
+    assert.deepEqual(chooseCompareVersion(pair, 'right', 2), { left: 3, right: 2 })
+    assert.equal(findVersion([version(1), version(2)], 2)?.id, 'tv-2')
+    assert.equal(findVersion([version(1)], 5), null)
+  })
+
+  test('DOM-BEC-040, DOM-BEC-044: sürüm satırları gönderim, sözcük ve yeniden teslim turunu Europe/Istanbul saatiyle verir', () => {
+    const request = {
+      requestedAt: '2026-10-02T21:15:00.000Z',
+      dueAt: '2026-10-05T20:59:00.000Z',
+    }
+    assert.deepEqual(versionFacts(version(1, { resubmissionRequest: request })), [
+      { label: 'Gönderildi', value: '1 Eki 2026 12:30' },
+      { label: 'Sözcük', value: '110' },
+      { label: 'Yeniden teslim istendi', value: '3 Eki 2026 00:15' },
+      { label: 'Yeniden teslim son tarihi', value: '5 Eki 2026 23:59' },
+    ])
+    assert.equal(
+      resubmissionRoundText(request),
+      'Yeniden teslim istendi: 3 Eki 2026 00:15 · Son tarih: 5 Eki 2026 23:59',
+    )
+    // İstenmeyen ve sözcük sayısı olmayan sürümde yalnız gönderim satırı.
+    assert.deepEqual(
+      versionFacts(version(2, { wordCount: null })).map((fact) => fact.label),
+      ['Gönderildi'],
+    )
+  })
+
+  test('DOM-BEC-044, IST-047: geç sürüm seçenekte belirtilir; sözcük farkı soldan sağa yazılır', () => {
+    assert.equal(versionOptionLabel(version(2, { late: true })), 'Sürüm 2 (geç)')
+    assert.equal(versionOptionLabel(version(1)), 'Sürüm 1')
+    assert.equal(wordDifference(version(1), version(3)), 'Sürüm 1 → Sürüm 3: +20 sözcük')
+    assert.equal(wordDifference(version(3), version(1)), 'Sürüm 3 → Sürüm 1: −20 sözcük')
+    assert.equal(
+      wordDifference(version(1), version(2, { wordCount: version(1).wordCount })),
+      'Sürüm 1 → Sürüm 2: sözcük sayısı aynı',
+    )
+    assert.equal(wordDifference(version(1, { wordCount: null }), version(2)), null)
   })
 })

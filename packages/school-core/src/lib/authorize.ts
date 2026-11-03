@@ -560,9 +560,11 @@ function decide(
     case 'academicYear.manage':
       return ALLOWED
     // Veli bağı: öğrencinin varlığı ve velinin kendi bağı serviste denetlenir (kapsam dışı 404);
-    // okuma alanları `lib/guardianship.ts` `guardianLinksView`'da daralır (DOM-ILT-073).
+    // okuma alanları `lib/guardianship.ts` `guardianLinksView`'da daralır (DOM-ILT-073). Veli
+    // davetinde öğrenci ve veli kaydının varlığı ve bağ kuralı işlemdedir (DOM-YTK-071).
     case 'guardian.read':
     case 'guardian.manage':
+    case 'guardian.invite':
       return ALLOWED
     // Kur kurum geneli katalogdur; koordinatörün seviye kapsamı `lib/courses.ts`
     // `assertCourseManager`'da, öğrenci/veli daraltması `courseView`'dadır (DOM-DIL-005).

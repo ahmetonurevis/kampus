@@ -108,6 +108,7 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'academicYear.manage': ['yonetici'],
     'guardian.read': ['yonetici', 'onburo', 'veli'],
     'guardian.manage': ['yonetici', 'onburo'],
+    'guardian.invite': ['yonetici', 'onburo'],
     'course.read': ['yonetici', 'onburo', 'ogretmen', 'ogrenci', 'veli'],
     'course.manage': ['yonetici', 'ogretmen'],
     'course.eozel': ['yonetici'],

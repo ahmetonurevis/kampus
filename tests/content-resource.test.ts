@@ -22,6 +22,7 @@ import {
   searchDocument,
   searchQueryTerms,
   seededRandom,
+  shuffleItemOrder,
   wordCount,
   type ItemVersionRef,
   type QuestionBody,
@@ -1473,5 +1474,63 @@ describe('Dosya, görünüm ve arama', () => {
   test('sözcük sayısı kesme ve tireli sözcükleri tek sayar', () => {
     assert.equal(wordCount("Ankara'da well-known bir şehir."), 4)
     assert.equal(wordCount('   '), 0)
+  })
+})
+
+describe('quiz madde sırası (shuffleItemOrder; shuffleItems, DOM-BEC-010)', () => {
+  const items = Array.from({ length: 12 }, (_, index) => ({
+    questionVersionId: `q-${String(index + 1).padStart(2, '0')}`,
+    points: index + 1,
+  }))
+  const ids = (list: readonly { questionVersionId: string }[]) =>
+    list.map((item) => item.questionVersionId)
+
+  test('aynı tohum aynı sırayı verir', () => {
+    assert.deepEqual(
+      ids(shuffleItemOrder(items, true, seededRandom('d-1:items'))),
+      ids(shuffleItemOrder(items, true, seededRandom('d-1:items'))),
+    )
+  })
+
+  test('farklı tohumlar genelde farklı sıra verir', () => {
+    const orders = new Set(
+      ['a', 'b', 'c', 'd', 'e'].map((seed) =>
+        ids(shuffleItemOrder(items, true, seededRandom(`${seed}:items`))).join(),
+      ),
+    )
+    assert.ok(orders.size > 1)
+  })
+
+  test('öğe kaybolmaz ya da yinelenmez; puanlar maddeyle gider', () => {
+    const result = shuffleItemOrder(items, true, seededRandom('x:items'))
+    assert.deepEqual(ids(result).sort(), ids(items))
+    for (const item of result)
+      assert.equal(
+        item.points,
+        items.find((o) => o.questionVersionId === item.questionVersionId)?.points,
+      )
+  })
+
+  test('yazarın sırası sonuca sızmaz: girdi sırası değişse de sonuç aynıdır', () => {
+    assert.deepEqual(
+      ids(shuffleItemOrder(items, true, seededRandom('s:items'))),
+      ids(shuffleItemOrder([...items].reverse(), true, seededRandom('s:items'))),
+    )
+  })
+
+  test('shuffleItems kapalıyken sıra korunur ve rastgelelik kullanılmaz', () => {
+    const result = shuffleItemOrder([...items].reverse(), false, () => {
+      throw new Error('random çağrılmamalı')
+    })
+    assert.deepEqual(ids(result), ids([...items].reverse()))
+  })
+
+  test('tek öğe ve boş liste sorunsuzdur; girdi değişmez', () => {
+    const one = [{ questionVersionId: 'q-01' }]
+    assert.deepEqual(shuffleItemOrder(one, true, seededRandom('t')), one)
+    assert.deepEqual(shuffleItemOrder([], true, seededRandom('t')), [])
+    const before = ids(items)
+    shuffleItemOrder(items, true, seededRandom('t'))
+    assert.deepEqual(ids(items), before)
   })
 })

@@ -6,6 +6,16 @@ import type {
   MemberRole,
   MemberSort,
 } from '@kampus/react-shared/institution-lists.ts'
+import { z } from 'zod'
+import type { StaffInvitation } from '@kampus/react-shared/staff-accounts.ts'
+import {
+  isStaffRole,
+  STAFF_ROLES,
+  staffInvitationInputSchema,
+  staffRoleSchema,
+  type StaffInvitationInput,
+  type StaffRole,
+} from '@kampus/school-core/lib/staff-accounts.ts'
 import { roles } from '@kampus/school-core/modules/navigation.ts'
 import { actionLabel, entityLabel, fieldsLabel } from './audit-labels.ts'
 
@@ -53,6 +63,10 @@ export type MemberRow = {
   linkNames: string[]
   createdAt: string
   createdLabel: string
+  /** Yöneticinin pasifleştirdiği personel hesabı (DOM-YTK-070); bağlı kişi pasifliği değil. */
+  deactivated: boolean
+  /** Personel rolü (yönetici, öğretmen, ön büro): rol ve pasifleştirme işlemleri yalnız bunlarda. */
+  staff: boolean
 }
 
 export function memberRow(member: InstitutionMember): MemberRow {
@@ -69,6 +83,77 @@ export function memberRow(member: InstitutionMember): MemberRow {
     linkNames,
     createdAt: member.createdAt,
     createdLabel: formatInstant(member.createdAt),
+    deactivated: member.deactivatedAt !== null,
+    staff: isStaffRole(member.role),
+  }
+}
+
+export const STAFF_ROLE_OPTIONS: ReadonlyArray<{ value: StaffRole; label: string }> =
+  STAFF_ROLES.map((value) => ({ value, label: roles[value].label }))
+
+/**
+ * Satırın personel işlemleri (DOM-YTK-070): öğrenci ve veli hesabı kayıttan yönetilir; yönetici
+ * kendi rolünü değiştiremez, kendini pasifleştiremez; pasif hesabın rolü değişmez. Son yönetici
+ * kuralını sunucu uygular (422).
+ */
+export function staffActions(
+  row: Pick<MemberRow, 'userId' | 'deactivated' | 'staff'>,
+  selfUserId: string | null,
+) {
+  const manageable = row.staff && row.userId !== selfUserId
+  return {
+    changeRole: manageable && !row.deactivated,
+    deactivate: manageable && !row.deactivated,
+    reactivate: manageable && row.deactivated,
+  }
+}
+
+export type InvitationRow = {
+  id: string
+  name: string
+  email: string
+  roleLabel: string
+  createdLabel: string
+  expiresLabel: string
+}
+
+export function invitationRow(invitation: StaffInvitation): InvitationRow {
+  return {
+    id: invitation.id,
+    name: invitation.name ?? invitation.email,
+    email: invitation.email,
+    roleLabel: roleLabel(invitation.role),
+    createdLabel: formatInstant(invitation.createdAt),
+    expiresLabel: formatInstant(invitation.expiresAt),
+  }
+}
+
+/** Davet formunun değerleri: öğretmen kaydı seçilmediyse boş metin. */
+export type InviteFormValues = { email: string; name: string; role: StaffRole; teacherId: string }
+
+/** Davet formu doğrulaması: e-posta ve ad kuralları core davet şemasındandır. */
+export const inviteFormSchema = z.object({
+  email: staffInvitationInputSchema.shape.email,
+  name: staffInvitationInputSchema.shape.name,
+  role: staffRoleSchema,
+  teacherId: z.string(),
+})
+
+export const INVITE_DEFAULTS: InviteFormValues = {
+  email: '',
+  name: '',
+  role: 'ogretmen',
+  teacherId: '',
+}
+
+/** Form → istek gövdesi: öğretmen kaydı yalnız öğretmen rolünde ve seçildiyse gider. */
+export function inviteBody(values: InviteFormValues): StaffInvitationInput {
+  const teacherId = values.role === 'ogretmen' ? values.teacherId.trim() : ''
+  return {
+    email: values.email,
+    name: values.name,
+    role: values.role,
+    ...(teacherId ? { teacherId } : {}),
   }
 }
 

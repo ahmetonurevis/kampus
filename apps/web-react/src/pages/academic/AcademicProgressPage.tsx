@@ -13,6 +13,8 @@ import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { LookupError } from './AcademicParts.tsx'
 import { ScoreBars, TrendChart } from './AnalysisParts.tsx'
 import { gradeTrend, studyPriority, subjectScores } from './exam-analysis-model.ts'
+import type { ProgressAudience } from './skill-progress-model.ts'
+import { SkillProgressPanel } from './SkillProgressPanel.tsx'
 import { useAnalysisStudent } from './use-analysis-student.ts'
 
 const NONE: readonly never[] = []
@@ -22,7 +24,9 @@ const NONE: readonly never[] = []
  * başına çalışma önceliği, ders başarısı ve not geçmişi. Öğrencide kendi, velide seçili çocuğun
  * kayıtları. Ders ortalamaları ve eğilim notlardan hesaplanır, saklanmaz. Dil okulunda sayfa CEFR
  * profilini gösterir (OG-054; IST-060): güncel seviye, tahmini seviye, karar geçmişi ve tespitler;
- * öğrenci ve veli görünümünde kararın gerekçesi ve vereni sunucudan gelmez.
+ * öğrenci ve veli görünümünde kararın gerekçesi ve vereni sunucudan gelmez. İki kurum türünde de
+ * `learning` modülü açıksa beceri gelişimi kartı (OG-080; IST-057, DOM-BEC-035) dört beceriyi
+ * değerlendirme görevlerinin puanlarıyla gösterir.
  */
 export function AcademicProgressPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -31,15 +35,26 @@ export function AcademicProgressPage({ page }: { page: NavPage }) {
   return <SchoolProgress page={page} />
 }
 
-/** Dil okulu: seçili öğrencinin (velide çocuğun) CEFR profili. */
+/** Beceri gelişimi kartı; `learning` modülü kapalıysa gösterilmez. */
+function SkillProgress({ studentId, childId }: { studentId: string; childId: string }) {
+  const { session } = useAuth()
+  if (session?.modules.learning !== true) return null
+  const audience: ProgressAudience = childId ? { kind: 'parent', childId } : { kind: 'student' }
+  return <SkillProgressPanel key={studentId} studentId={studentId} audience={audience} />
+}
+
+/** Dil okulu: seçili öğrencinin (velide çocuğun) CEFR profili ve beceri gelişimi. */
 function LanguageProgress({ page }: { page: NavPage }) {
-  const { student, error, retry, pending } = useAnalysisStudent()
+  const { student, childId, error, retry, pending } = useAnalysisStudent()
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
       {error ? <LookupError error={error} onRetry={retry} /> : null}
       {student ? (
-        <CefrProfileCards key={student.id} studentId={student.id} />
+        <>
+          <CefrProfileCards key={student.id} studentId={student.id} />
+          <SkillProgress studentId={student.id} childId={childId} />
+        </>
       ) : pending ? (
         <SummaryLoading />
       ) : !error ? (
@@ -53,7 +68,7 @@ function LanguageProgress({ page }: { page: NavPage }) {
 }
 
 function SchoolProgress({ page }: { page: NavPage }) {
-  const { student, lookups, error, retry, pending } = useAnalysisStudent()
+  const { student, childId, lookups, error, retry, pending } = useAnalysisStudent()
   const grades = useCoreAll(
     'grades',
     { filters: { studentId: student?.id ?? '' } },
@@ -146,6 +161,8 @@ function SchoolProgress({ page }: { page: NavPage }) {
               })}
             </ul>
           </ListCard>
+
+          <SkillProgress studentId={student.id} childId={childId} />
 
           <DashboardGrid>
             <ListCard

@@ -1,8 +1,7 @@
 import { useState, type FormEvent } from 'react'
-import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm } from 'react-hook-form'
-import type { z } from 'zod'
 import { COPYRIGHT_DECLARATION } from '@kampus/school-core/content/taxonomy.ts'
+import { fileAttachField } from '@kampus/react-shared/files.ts'
 import {
   isStaffDetail,
   type AuthorableType,
@@ -30,6 +29,7 @@ import {
   RootError,
   useEditConflict,
 } from '../management/FormParts.tsx'
+import { ItemSetFields } from './ReadingActivityFields.tsx'
 import { isNewTarget, NEW_MATERIAL } from './content-form-targets.ts'
 import {
   ContentFields,
@@ -41,12 +41,16 @@ import {
 import {
   AUTHORABLE_OPTIONS,
   defaultDraft,
-  draftFormSchema,
+  draftResolver,
   draftFromHead,
+  isItemSetType,
   patchFromDraft,
   type DraftFormOutput,
   type DraftFormValues,
+  isDraftFieldPath,
 } from './content-pool-model.ts'
+import { formIssuePath } from './question-form-model.ts'
+import { linkedFieldMessage, linkedHints } from './reading-activity-model.ts'
 
 type FormModalProps = {
   /** `''` kapalı, `yeni` oluşturma, aksi hâlde düzenlenen içeriğin kimliği. */
@@ -59,12 +63,20 @@ type FormModalProps = {
 }
 
 /**
- * Taslak formu (geniş pencere): okuma parçası, tek çoktan seçmeli soru ya da materyal dosyası
- * (DOM-KYN-006). Doğrulama core `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası
+ * Taslak formu (geniş pencere): okuma parçası, soru (altı tür, IST-033), materyal dosyası
+ * (DOM-KYN-006) ya da quiz/alıştırma seti (okuma parçasına bağlanınca okuma-anlama etkinliği;
+ * OG-984, IST-042, DOM-BEC-006; dinleme kaydına bağlanınca dinleme etkinliği, OG-052, IST-045,
+ * DOM-BEC-005). Bağlı parça, kayıt ve soru hataları (`passage_*`, `listening_*`, `quiz_item_*`)
+ * ortak Türkçe iletiyle alanın altına yazılır. Doğrulama core `resourceVersionInputSchema` ile istemcide yapılır; sunucu hatası
  * (400 ya da 422 iş kuralı) alan yoluyla gelirse yalnız alanın altında, yoksa toast olarak görünür
- * (`exclusive`). Dosya yüklemesi sürerken kaydet kilitlidir. Diğer içerik türleri sonraki dilimdedir.
+ * (`exclusive`). Dosya yüklemesi ve güvenlik taraması sürerken kaydet kilitlidir; yolsuz bağlama
+ * hatası (422 `file_not_ready`, `file_rejected`) da dosya alanında görünür (`FILE_FIELD`, OG-987).
+ * Diğer içerik türleri sonraki dilimdedir.
  * TODO(F3c2): ses, video, çalışma kâğıdı ve lisanslı yayın türleri.
  */
+/** Dosya bağlama hatalarının alanı: dosya listesinin altında (`filesError`) okunur. */
+const FILE_FIELD = fileAttachField('fileIds')
+
 export function ContentDraftForm({ target, onClose, onCreated, onSaved }: FormModalProps) {
   const creating = isNewTarget(target)
   return (
@@ -158,13 +170,14 @@ function DraftEditor({
   const update = useUpdateDraft()
   const [type, setType] = useState<AuthorableType>(initial?.content.type ?? initialType)
   const [uploading, setUploading] = useState(false)
+  // Taranan dosya yalnız kaydeti kilitler; tür seçimi dahil alanlar açık kalır (OG-987).
+  const [scanBlocked, setScanBlocked] = useState(false)
   const [declared, setDeclared] = useState(false)
   const [declarationMissing, setDeclarationMissing] = useState(false)
   // Çözümleyici birleşim girdisini (core) doğrular; form değerleri düz tipte tutulur (yollar tipli
-  // kalsın). Ön işlem (`files` → `fileIds`) girdiyi `unknown` yaptığından tip form değerine bağlanır.
+  // kalsın). Core hata yolu form alanına çevrilir (soru formunun türetilen alanları, IST-033).
   const form: DraftForm = useForm<DraftFormValues, unknown, DraftFormOutput>({
-    // TODO(ts): `z.preprocess` girdiyi `unknown` yapar; şema tipi form değerine bağlanır.
-    resolver: zodResolver(draftFormSchema as z.ZodType<DraftFormOutput, DraftFormValues>),
+    resolver: draftResolver,
     defaultValues: initial ?? defaultDraft(initialType),
   })
   const conflict = useEditConflict<DraftFormValues>({
@@ -174,6 +187,23 @@ function DraftEditor({
   })
   // Yükleme sürerken alanlar açık kalır (iptal, başka alan); yalnız kaydet ve tür seçimi kilitli.
   const busy = create.isPending || update.isPending || form.formState.isSubmitting
+  // Sunucu alan hatası: bağlı içerik kodu ortak Türkçe iletiyi alır (`LINKED_CONTENT_MESSAGES`).
+  // Sunucunun core yolu da istemcininki gibi form alanına çevrilir (`formIssuePath`).
+  const setServerError: DraftForm['setError'] = (name, error, options) => {
+    const values = form.getValues()
+    const path = formIssuePath(name.split('.'), values)
+    form.setError(
+      isDraftFieldPath(path, values) ? path : 'root.server',
+      { ...error, message: linkedFieldMessage(error.type ?? '', error.message ?? '') },
+      options,
+    )
+  }
+  // Yayım sorunları kayıtlı sürümündür; kayıtlı bağlar başlangıç değerlerinden okunur.
+  const hints = linkedHints(detail?.publicationIssues ?? [], {
+    passageVersionId: initial?.content.passageVersionId ?? null,
+    listeningVersionId: initial?.content.listeningVersionId ?? null,
+    itemIds: (initial?.content.items ?? []).map((item) => item.questionVersionId),
+  })
 
   function changeType(next: AuthorableType) {
     setType(next)
@@ -190,7 +220,7 @@ function DraftEditor({
           version: conflict.version,
           patch: patchFromDraft(values),
         },
-        { setError: form.setError, silent: isVersionConflict },
+        { setError: setServerError, silent: isVersionConflict, fieldFor: FILE_FIELD },
       )
       if (outcome.status === 'success') {
         notify.success('Taslak güncellendi.')
@@ -200,7 +230,10 @@ function DraftEditor({
       }
       return
     }
-    const outcome = await create.submit(patchFromDraft(values), { setError: form.setError })
+    const outcome = await create.submit(patchFromDraft(values), {
+      setError: setServerError,
+      fieldFor: FILE_FIELD,
+    })
     if (outcome.status === 'success') {
       notify.success('Taslak kaydedildi.')
       onCreated?.(outcome.data.data.resource.id)
@@ -209,7 +242,7 @@ function DraftEditor({
 
   function onSubmit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault()
-    if (uploading) return
+    if (uploading || scanBlocked) return
     // Beyan, form hatalarıyla birlikte görünsün diye doğrulamadan önce işaretlenir.
     setDeclarationMissing(!declared)
     void submit(event)
@@ -262,7 +295,17 @@ function DraftEditor({
         </div>
       </div>
 
-      <ContentFields form={form} type={type} busy={busy} onUploadingChange={setUploading} />
+      {isItemSetType(type) ? (
+        <ItemSetFields form={form} busy={busy} languageSchool={languageSchool} hints={hints} />
+      ) : (
+        <ContentFields
+          form={form}
+          type={type}
+          busy={busy}
+          onUploadingChange={setUploading}
+          onScanBlockedChange={setScanBlocked}
+        />
+      )}
       <TagFields form={form} type={type} languageSchool={languageSchool} busy={busy} />
       <LicenseFields form={form} busy={busy} />
 
@@ -296,7 +339,7 @@ function DraftEditor({
         </Button>
         <Button
           type="submit"
-          disabled={busy || uploading || conflict.conflicted}
+          disabled={busy || uploading || scanBlocked || conflict.conflicted}
           aria-busy={busy || uploading || undefined}
         >
           <Icon name="Check" size={17} aria-hidden="true" />

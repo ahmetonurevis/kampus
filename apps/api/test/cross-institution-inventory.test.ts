@@ -116,6 +116,34 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'institution-members.test.ts',
     'başka kurumun üyeleri listede yok',
   ),
+  'GET /api/v1/institution-members/invitations': liste(
+    'staff-accounts.test.ts',
+    'başka kurumun daveti listede yok',
+  ),
+  'POST /api/v1/institution-members/invitations': govde(
+    'staff-accounts.test.ts',
+    'başka kurumun öğretmen kaydı 404',
+  ),
+  'POST /api/v1/institution-members/imports': govde(
+    'staff-import.test.ts',
+    'başka kurumun üyesi ve öğretmen kaydı bu kurumu etkilemez',
+  ),
+  'POST /api/v1/institution-members/invitations/:invitationId/cancel': kayit(
+    'staff-accounts.test.ts',
+    'başka kurumun davetini iptal edemez',
+  ),
+  'POST /api/v1/institution-members/:membershipId/role': kayit(
+    'staff-accounts.test.ts',
+    '401, 403, başka kurum 404, 400 ve kayıt değişmez',
+  ),
+  'POST /api/v1/institution-members/:membershipId/deactivate': kayit(
+    'staff-accounts.test.ts',
+    '401, 403, başka kurum 404, kendi hesabı ve son yönetici 422',
+  ),
+  'POST /api/v1/institution-members/:membershipId/reactivate': kayit(
+    'staff-accounts.test.ts',
+    'geri alma başka kurumda 404',
+  ),
   'GET /api/v1/coordinator-duties': DUTY,
   'GET /api/v1/coordinator-duties/:dutyId': DUTY,
   'POST /api/v1/coordinator-duties': govde(
@@ -216,6 +244,18 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'PATCH /api/v1/requests/:requestId': kayit(
     'requests.test.ts',
     'başka kurumun talebi 404; o talep değişmez',
+  ),
+  'POST /api/v1/absences/:absenceId/documents': kayit(
+    'absence-approval.test.ts',
+    'veli belgeyi sonradan ekler; If-Match zorunlu, başka kurum 404',
+  ),
+  'POST /api/v1/absences/:absenceId/approve': kayit(
+    'absence-approval.test.ts',
+    'başka kurum 404 ve değişmez',
+  ),
+  'POST /api/v1/absences/:absenceId/reject': kayit(
+    'absence-approval.test.ts',
+    'başka kurum 404 ve değişmez',
   ),
   'GET /api/v1/notifications': kayit('notifications.test.ts', 'başka kurumun bildirimi 404'),
   'POST /api/v1/notifications/:notificationId/read': kayit(
@@ -420,6 +460,11 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   // --- Seviye tespiti ve CEFR profili (yalnız dil okulu; OG-054) ------------------------------
   'GET /api/v1/placement-sessions': PLACEMENT,
   'GET /api/v1/placement-sessions/:sessionId': PLACEMENT,
+  'GET /api/v1/placement-sessions/:sessionId/form': kayit(
+    'cefr.test.ts',
+    'tespit formu: sorular anahtarsız; başka kurumun oturumu 404',
+    'other.cookies.admin',
+  ),
   'POST /api/v1/placement-sessions': PLACEMENT,
   'POST /api/v1/placement-sessions/:sessionId/score': PLACEMENT_COMMAND('score'),
   'POST /api/v1/placement-sessions/:sessionId/complete': PLACEMENT_COMMAND('complete'),
@@ -428,6 +473,25 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'cefr.test.ts',
     'başka kurumun oturumu ve öğrencisi 404',
     'cefr-profile',
+  ),
+
+  // --- Beceri ilerleme panosu (OG-080; IST-057, DOM-BEC-035) -----------------------------------
+  'GET /api/v1/students/:studentId/skill-progress': kayit(
+    'skill-progress.test.ts',
+    'kapsam dışı, olmayan ve başka kurum 404',
+    'skill-progress',
+  ),
+
+  // --- Ünite alıştırma seti (OG-085; IST-056, DOM-BEC-047, 048) --------------------------------
+  'POST /api/v1/task-attempts/:attemptId/checks': kayit(
+    'practice-sets.test.ts',
+    'başkasının ve başka kurumun denemesi',
+    '/checks',
+  ),
+  'GET /api/v1/practice-gradebook': liste(
+    'practice-sets.test.ts',
+    'başka kurumun alıştırma sonuçları',
+    'practice-gradebook',
   ),
 
   // --- Ders programı ---------------------------------------------------------------------------

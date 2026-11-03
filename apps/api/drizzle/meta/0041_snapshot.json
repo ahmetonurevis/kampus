@@ -1,5 +1,5 @@
 {
-  "id": "51aaa0a8-a290-4bb8-bc11-6b4b1ca3a38d",
+  "id": "7145229f-076f-4a7b-8c01-3edd842d3fc9",
   "prevId": "83e5882f-a244-49af-891a-e9263c01503e",
   "version": "7",
   "dialect": "postgresql",
@@ -3112,6 +3112,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "ready_at": {
+          "name": "ready_at",
+          "type": "timestamp with time zone",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -3342,72 +3348,6 @@
           "value": "\"files\".\"superseded_storage_key\" is null or \"files\".\"superseded_storage_key\" <> \"files\".\"storage_key\""
         }
       },
-      "isRLSEnabled": false
-    },
-    "public.finance_export_profiles": {
-      "name": "finance_export_profiles",
-      "schema": "",
-      "columns": {
-        "institution_id": {
-          "name": "institution_id",
-          "type": "text",
-          "primaryKey": true,
-          "notNull": true
-        },
-        "profile": {
-          "name": "profile",
-          "type": "jsonb",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "created_at": {
-          "name": "created_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "updated_at": {
-          "name": "updated_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": true,
-          "default": "now()"
-        },
-        "archived_at": {
-          "name": "archived_at",
-          "type": "timestamp with time zone",
-          "primaryKey": false,
-          "notNull": false
-        },
-        "version": {
-          "name": "version",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": true,
-          "default": 1
-        }
-      },
-      "indexes": {},
-      "foreignKeys": {
-        "finance_export_profiles_institution_id_institutions_id_fk": {
-          "name": "finance_export_profiles_institution_id_institutions_id_fk",
-          "tableFrom": "finance_export_profiles",
-          "tableTo": "institutions",
-          "columnsFrom": [
-            "institution_id"
-          ],
-          "columnsTo": [
-            "id"
-          ],
-          "onDelete": "no action",
-          "onUpdate": "no action"
-        }
-      },
-      "compositePrimaryKeys": {},
-      "uniqueConstraints": {},
-      "policies": {},
-      "checkConstraints": {},
       "isRLSEnabled": false
     },
     "public.scholarship_awards": {

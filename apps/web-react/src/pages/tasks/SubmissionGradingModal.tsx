@@ -16,10 +16,10 @@ import {
   bandMeaningLabel,
   dateTimeLabel,
   isStaffAssignment,
+  learnerLabel,
   staleNoticeText,
   submissionStatus,
 } from './task-model.ts'
-import { useTaskLookups } from './use-task-lookups.ts'
 
 type Props = {
   /** `''` kapalı; aksi hâlde puanlanan teslimin kimliği. */
@@ -60,7 +60,6 @@ function GradingBody({ submissionId }: { submissionId: string }) {
     loading: rubricQuery.isLoading,
     error: rubricQuery.error,
   }
-  const { names } = useTaskLookups()
   const [stale, setStale] = useState(false)
 
   if (detail.error) return <QueryError error={detail.error} onRetry={() => void detail.refetch()} />
@@ -83,7 +82,7 @@ function GradingBody({ submissionId }: { submissionId: string }) {
       <header className="flex flex-wrap items-start justify-between gap-3">
         <div className="min-w-0">
           <h3 className="text-lg font-semibold [overflow-wrap:anywhere]">
-            {names.studentName(submission.learnerId)}
+            {learnerLabel(submission)}
           </h3>
           <p className="text-sm text-muted-foreground">
             {staff?.title ?? 'Görev'}

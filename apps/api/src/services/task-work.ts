@@ -1,4 +1,9 @@
-import { learnerView, passageView, seededRandom } from '@kampus/school-core/content/resource.ts'
+import {
+  learnerView,
+  listeningView,
+  passageView,
+  seededRandom,
+} from '@kampus/school-core/content/resource.ts'
 import { licenseExpired } from '@kampus/school-core/content/taxonomy.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { scoringItemsFor, type QuestionVersionRef } from '@kampus/school-core/skills/assignment.ts'
@@ -10,7 +15,7 @@ import type { StoredAssignment } from '../db/skills.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ForbiddenError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
-import { assertLearnerWork } from './learner-content.ts'
+import { assertLearnerWork, type VersionPair } from './learner-content.ts'
 import { mapOperationError } from './operation-runner.ts'
 import { targetedLearners, visible, type Viewer } from './task-assignments.ts'
 
@@ -145,7 +150,7 @@ export interface ScoringContext {
   /** Soru sürümü kimliği → sürüm satırı; öğrenci görünümü `questionsFor` ile üretilir. */
   versions: ReadonlyMap<string, StoredResourceVersion>
   /**
-   * Puanlama sürümü, soruların ve okuma parçasının lisansları (DOM-KYN-021; `assertLicenseActive`,
+   * Puanlama sürümü, soruların, okuma parçasının ve dinleme kaydının lisansları (DOM-KYN-021; `assertLicenseActive`,
    * kursiyer özetindeki başlatma engeli).
    */
   licenses: readonly StoredResourceVersion['license'][]
@@ -154,25 +159,19 @@ export interface ScoringContext {
    * `passageVersionId`. Bağ yoksa ya da parça okunamıyorsa (kaldırıldı) `null`.
    */
   passage: StoredResourceVersion | null
+  /**
+   * Dinleme etkinliğinin kaydı (IST-045; DOM-BEC-005): puanlama sürümündeki `listeningVersionId`.
+   * Bağ yoksa ya da kayıt okunamıyorsa (kaldırıldı) `null`.
+   */
+  listening: StoredResourceVersion | null
 }
 
 /**
- * Atamanın puanlama sürümünün maddeleri (DOM-BEC-010; core `scoringItemsFor`). Puan her okumada
- * bu sürümün anahtarından hesaplanır (ADR 0004 karar 5); yeniden puanlama sürümü değiştirince
- * aynı cevaplar yeni anahtarla okunur. Tek soru atanmışsa soru kendi maddesidir (1 puan).
- * Okunamayan veya anahtarsız soru core'un 404/422'sidir.
- */
-export function scoringContext(
-  db: Database,
-  institutionId: string,
-  assignment: StoredAssignment,
-): Promise<ScoringContext> {
-  return versionScoringContext(db, institutionId, assignment.scoringVersionId)
-}
-
-/**
- * Bir içerik sürümünün puanlama bağlamı (seviye tespit formu da; `services/cefr.ts`). Kurallar
- * `scoringContext` ile aynıdır.
+ * Bir içerik sürümünün puanlama maddeleri (DOM-BEC-010; core `scoringItemsFor`; seviye tespit
+ * formu, `services/cefr.ts`). Puan her okumada bu sürümün anahtarından hesaplanır (ADR 0004 karar
+ * 5); yeniden puanlama sürümü değiştirince aynı cevaplar yeni anahtarla okunur. Tek soru atanmışsa
+ * soru kendi maddesidir (1 puan). Okunamayan veya anahtarsız soru core'un 404/422'sidir. Görev
+ * atamasında bağlam içerik kapısının okuduğu sürümlerden kurulur (`pairsScoringContext`).
  */
 export async function versionScoringContext(
   db: Database,
@@ -185,34 +184,63 @@ export async function versionScoringContext(
   return buildScoringContext(scoring, questions)
 }
 
+/** Atamaların kursiyerin gördüğü sürüm çiftleri, sürüm kimliğiyle (`loadWorkPairs`). */
+export type WorkPairs = ReadonlyMap<string, VersionPair>
+
 /**
- * Birden çok atamanın puanlama bağlamı, iki toplu okumayla (kursiyerin görev listesindeki durum
- * özeti; `services/task-progress.ts`). Bağlamı kurulamayan atama (okunamayan sürüm, otomatik
- * puanlanmayan içerik, anahtarsız soru) haritada `Error` olarak durur; listenin geri kalanı
- * etkilenmez.
+ * Atamaların kursiyerin denemede veya teslimde gördüğü bütün sürümleri, iki toplu okumayla:
+ * sabitlenen sürüm, puanlama sürümü ve onun soruları ve okuma parçası. İçerik kapısı
+ * (`assertWorkOpen`, görev özeti) ve puanlama bağlamı (`scoringContexts`) aynı okumayı kullanır.
  */
-export async function scoringContexts(
+export async function loadWorkPairs(
   db: Database,
   institutionId: string,
   assignments: readonly StoredAssignment[],
-): Promise<Map<string, ScoringContext | Error>> {
-  const pairs = await loadVersionPairs(
-    db,
-    institutionId,
-    assignments.map((assignment) => assignment.scoringVersionId),
-  )
+): Promise<WorkPairs> {
+  const ids = [
+    ...new Set(assignments.flatMap((item) => [item.resourceVersionId, item.scoringVersionId])),
+  ]
+  const pinned = await loadVersionPairs(db, institutionId, ids)
+  const linked = [
+    ...new Set(
+      assignments.flatMap((item) => linkedIdsOf(pinned.get(item.scoringVersionId)?.version)),
+    ),
+  ]
   const questions = await loadVersionPairs(
     db,
     institutionId,
-    [...pairs.values()].flatMap(({ version }) => linkedIdsOf(version)),
+    linked.filter((id) => !pinned.has(id)),
   )
+  return new Map([...pinned, ...questions])
+}
+
+/**
+ * İçerik kapısından geçmesi gereken sürümler (bulunmayan soru ya da parça `undefined`, kapalıdır):
+ * sabitlenen sürüm, puanlama sürümü, soruları ve okuma parçası.
+ */
+export function workPairsOf(
+  assignment: StoredAssignment,
+  pairs: WorkPairs,
+): (VersionPair | undefined)[] {
+  const ids = [...new Set([assignment.resourceVersionId, assignment.scoringVersionId])]
+  const linked = linkedIdsOf(pairs.get(assignment.scoringVersionId)?.version)
+  return [...ids, ...linked].map((id) => pairs.get(id))
+}
+
+/**
+ * Birden çok atamanın puanlama bağlamı, toplu okunmuş sürümlerden (`loadWorkPairs`; kursiyerin
+ * görev listesindeki durum özeti, `services/task-progress.ts`). Bağlamı kurulamayan atama
+ * (okunamayan sürüm, otomatik puanlanmayan içerik, anahtarsız soru) haritada `Error` olarak durur;
+ * listenin geri kalanı etkilenmez.
+ */
+export function scoringContexts(
+  assignments: readonly StoredAssignment[],
+  pairs: WorkPairs,
+): Map<string, ScoringContext | Error> {
   const contexts = new Map<string, ScoringContext | Error>()
   for (const assignment of assignments) {
     try {
-      contexts.set(
-        assignment.id,
-        buildScoringContext(pairs.get(assignment.scoringVersionId)?.version, questions),
-      )
+      contexts.set(assignment.id, pairsScoringContext(assignment, pairs))
     } catch (error) {
       contexts.set(assignment.id, error instanceof Error ? error : new Error('scoring context'))
     }
@@ -220,12 +248,44 @@ export async function scoringContexts(
   return contexts
 }
 
-/** Quiz ve alıştırma setinin soru sürümleri ve okuma parçası; diğer türlerde okunmaz. */
+/**
+ * Atamanın puanlama bağlamı, okunmuş sürümlerden (`loadWorkPairs`); kurallar `versionScoringContext`
+ * ile aynıdır, kurulamazsa aynı hatayı fırlatır. Deneme ayrıntısı içerik kapısını aynı okumayla sınar.
+ */
+export function pairsScoringContext(
+  assignment: StoredAssignment,
+  pairs: WorkPairs,
+): ScoringContext {
+  return buildScoringContext(pairs.get(assignment.scoringVersionId)?.version, pairs)
+}
+
+/**
+ * Quiz ve alıştırma setinin soru sürümleri, okuma parçası ve dinleme kaydı; diğer türlerde okunmaz.
+ * Bağlı sürümlerin hepsi içerik kapısından geçer (`workPairsOf`): parça ya da kayıt kaldırılınca
+ * etkinlik de kursiyere kapanır (DOM-KYN-025, 051).
+ */
 function linkedIdsOf(scoring: StoredResourceVersion | undefined): string[] {
   const content = scoring?.content ?? null
   if (content?.type !== 'quiz' && content?.type !== 'exercise_set') return []
-  const ids = content.items.map((item) => item.questionVersionId)
-  return content.passageVersionId === null ? ids : [...ids, content.passageVersionId]
+  const links = [content.passageVersionId, content.listeningVersionId]
+  return [
+    ...content.items.map((item) => item.questionVersionId),
+    ...links.filter((id): id is string => id !== null),
+  ]
+}
+
+/**
+ * Atamanın dinleme kaydının dosyası, okunmuş sürümlerden (`loadWorkPairs`): puanlama sürümündeki
+ * `listeningVersionId`'nin ses dosyası. Puanlama bağlamı kurulamasa da (kaldırılmış soru) okunur:
+ * hak özeti dosya kimliğini buradan alır. Bağ yoksa, kayıt ses değilse ya da içeriği silindiyse
+ * `null` (sayılmış dinlemeler özette yine görünür).
+ */
+export function recordingFileOf(assignment: StoredAssignment, pairs: WorkPairs): string | null {
+  const content = pairs.get(assignment.scoringVersionId)?.version.content ?? null
+  if (content?.type !== 'quiz' && content?.type !== 'exercise_set') return null
+  if (content.listeningVersionId === null) return null
+  const linked = pairs.get(content.listeningVersionId)?.version.content
+  return linked?.type === 'audio' ? linked.fileId : null
 }
 
 function buildScoringContext(
@@ -237,6 +297,7 @@ function buildScoringContext(
   let entries: { questionVersionId: string; points: number }[]
   let versions: Map<string, StoredResourceVersion>
   let passage: StoredResourceVersion | null = null
+  let listening: StoredResourceVersion | null = null
   switch (content.type) {
     case 'question':
       entries = [{ questionVersionId: scoring.id, points: 1 }]
@@ -250,6 +311,10 @@ function buildScoringContext(
         // Okunamayan parça metinsiz gelir; kaldırılmış ya da askıdaki parçada yazma kapısı
         // (`assertWorkOpen`) zaten kapalıdır, bu yalnız okuma yüzü içindir.
         passage = linked?.content?.type === 'reading_passage' ? linked : null
+      }
+      if (content.listeningVersionId !== null) {
+        const linked = questionPairs.get(content.listeningVersionId)?.version
+        listening = linked?.content?.type === 'audio' ? linked : null
       }
       versions = new Map()
       for (const item of content.items) {
@@ -282,8 +347,10 @@ function buildScoringContext(
         scoring.license,
         ...[...versions.values()].map((version) => version.license),
         ...(passage === null ? [] : [passage.license]),
+        ...(listening === null ? [] : [listening.license]),
       ],
       passage,
+      listening,
     }
   } catch (error) {
     throw mapOperationError(error)
@@ -298,26 +365,21 @@ export const scoringLicenseExpired = (context: ScoringContext, now: Date) =>
  * Kursiyerin görevin içeriğinde çalışabilmesi (DOM-KYN-021, 025, 051; IST-036): okumayla aynı kural
  * (`services/learner-content.ts` `assertLearnerWork`). Sınanan sürümler kursiyerin denemede veya
  * teslimde gördükleridir: atamanın sabitlediği sürüm, puanlama sürümü ve onun soruları ve okuma parçası
- * (bulunmayan soru ya da parça da kapalıdır). Yazma transaction'ında çalışır: kapsam işlemin bağlantısıyla okunur.
+ * (bulunmayan soru ya da parça da kapalıdır). `pairs` çağıranın aynı yazma transaction'ında
+ * `loadWorkPairs` ile okuduğu sürümlerdir (puanlama bağlamı da onlardan kurulur; ikinci okuma yok):
+ * kapı kurum kilidinden sonra okunan veriyle sınanır. Hata sırasında sürüm 409'undan sonra, core
+ * kuralından önce gelir (`docs/muhendislik/api-tasarimi.md` §6).
  */
 export async function assertWorkOpen(
   tx: Database,
   ctx: ServiceContext,
   assignment: StoredAssignment,
+  pairs: WorkPairs,
   learnerId: string,
   hasWork: () => Promise<boolean>,
 ): Promise<void> {
-  const ids = [...new Set([assignment.resourceVersionId, assignment.scoringVersionId])]
-  const pinned = await loadVersionPairs(tx, ctx.institutionId, ids)
   // Sorular ve okuma parçası (IST-042): parça kaldırılmış ya da askıdaysa etkinlik de kapalıdır.
-  const questionIds = linkedIdsOf(pinned.get(assignment.scoringVersionId)?.version)
-  const questions = await loadVersionPairs(tx, ctx.institutionId, questionIds)
-  await assertLearnerWork(
-    { ...ctx, db: tx },
-    learnerId,
-    [...ids.map((id) => pinned.get(id)), ...questionIds.map((id) => questions.get(id))],
-    hasWork,
-  )
+  await assertLearnerWork({ ...ctx, db: tx }, learnerId, workPairsOf(assignment, pairs), hasWork)
 }
 
 /**
@@ -351,6 +413,18 @@ export function questionsFor(context: ScoringContext, attemptId: string) {
  */
 export function passageFor(context: ScoringContext) {
   return context.passage === null ? null : passageView(asCoreVersion(context.passage))
+}
+
+/**
+ * Denemede dinlenen kayıt (IST-045; core `listeningView`): dosya kimliği, seviye ve kaynak
+ * gösterimi; döküm ve altyazı yalnız `showTranscript` ile (personel hep; kursiyer ve veli core
+ * `transcriptShown`: görev kapandı ya da alıştırmada açık ayar, DOM-BEC-005). Kaydın bağlantısı
+ * `GET /files/:fileId/url` ile, hak sayılarak açılır. Bağ yoksa `null`.
+ */
+export function listeningFor(context: ScoringContext, showTranscript: boolean) {
+  return context.listening === null
+    ? null
+    : listeningView(asCoreVersion(context.listening), { showTranscript })
 }
 
 /** Denetim kaydı: yalnız alan adları (cevap, metin ve öğrenci kimliği yazılmaz). */

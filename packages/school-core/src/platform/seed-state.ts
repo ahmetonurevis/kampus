@@ -5,7 +5,12 @@ import type {
   ConversationFields,
   ConversationMessageFields,
 } from '../lib/communication.ts'
-import type { AbsenceReasonCategory, RequestActor, RequestFields } from '../lib/requests.ts'
+import type {
+  AbsenceApprovalStatus,
+  AbsenceReasonCategory,
+  RequestActor,
+  RequestFields,
+} from '../lib/requests.ts'
 import type { AppointmentFields } from '../lib/appointments.ts'
 import type { QuestionFields } from '../lib/questions.ts'
 import type { HomeworkFields, SubmissionFields } from '../lib/homework.ts'
@@ -94,12 +99,20 @@ export type PlatformStatePatches<S extends Record<SeedCollections, unknown>> = {
     // kvkk: Ç — genel gerekçe kategorisi (`lib/requests.ts`); eski kayıt ve telefon taşımaz.
     reasonCategory?: AbsenceReasonCategory
     // kvkk: Ö — eski kayıtların serbest açıklaması; API bildirimi yazmaz (DOM-ILT-053).
-    // TODO(kvkk-mazeret-notu): Serbest açıklama F2'de şifreli ayrı tabloyla gelir.
+    // TODO(kvkk-mazeret-notu): Serbest açıklama OG-090'ın şifreli Ö tablosuyla gelir.
     reason?: string
     status?: string
     date?: string
     createdAt?: string
+    updatedAt?: string
     notifiedBy?: RequestActor
+    // İdare onayı (DOM-ILT-053); alanı olmayan eski kayıt `pending` okunur (`absenceApprovalStatus`).
+    approvalStatus?: AbsenceApprovalStatus
+    decidedAt?: string
+    // kvkk: K — kararı veren kullanıcı yalnız personele döner (`PLATFORM_HIDDEN_FIELDS`).
+    decidedBy?: RequestActor
+    // kvkk: Ö — özür belgesi dosya kimlikleri; dosya adı ve içerik kayda girmez.
+    fileIds?: string[]
   }[]
   // Talep işlemlerinin alanları; örnek veri ve eski kayıtlar taşımaz (lib/requests.ts).
   requests: (Item<S, 'requests'> & RequestFields)[]

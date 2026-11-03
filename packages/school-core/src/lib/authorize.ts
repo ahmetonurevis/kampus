@@ -359,6 +359,16 @@ function decide(
       return scope.studentIds.has(request.target.studentId)
         ? ALLOWED
         : deny('student_scope_denied', 'Bu öğrenci için işlem yetkiniz bulunmuyor.', 'DOM-YTK-025')
+    case 'absence.attach':
+    case 'absence.approve':
+    case 'absence.reject': {
+      // Bildirim kaydı üzerinde işlem: kapsam dışı (başka velinin çocuğu) bildirim olmayan
+      // kayıtla aynı 404'tür, varlığı sızdırılmaz (DOM-ILT-053).
+      const { studentId } = request.target
+      return studentId !== undefined && scope.studentIds.has(studentId)
+        ? ALLOWED
+        : deny('absence_not_found', 'Bildirim bulunamadı.', 'DOM-ILT-053', 'not_found')
+    }
     case 'appointment.slots':
       // Okumadır: başka velinin çocuğu veya kurumda olmayan öğrenci olmayan kayıtla aynı 404'tür,
       // öğrencinin varlığı sızdırılmaz (DOM-ILT-105). Talepteki 403'ten farkı budur.

@@ -201,12 +201,32 @@
   stroke: var(--chart-bar);
 }
 
+.skill-line .recharts-line-curve {
+  stroke: var(--chart-bar);
+}
+.skill-line .recharts-line-dot {
+  fill: var(--chart-bar);
+  stroke: var(--chart-bar);
+}
+.skill-line .recharts-cartesian-grid line,
+.skill-line .recharts-cartesian-axis-line {
+  stroke: var(--chart-grid);
+}
+.skill-line .recharts-cartesian-axis-tick-value {
+  fill: var(--chart-axis);
+}
+
 @media (forced-colors: active) {
   .trend-bars .recharts-bar-rectangle path,
   .trend-bars .recharts-bar-rectangle rect {
     fill: Highlight;
   }
-  .sparkline .recharts-line-curve {
+  .sparkline .recharts-line-curve,
+  .skill-line .recharts-line-curve {
+    stroke: Highlight;
+  }
+  .skill-line .recharts-line-dot {
+    fill: Highlight;
     stroke: Highlight;
   }
 }

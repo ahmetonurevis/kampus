@@ -1,3 +1,8 @@
+import {
+  ANNOUNCEMENT_STATUS,
+  announcementStatusOf,
+  type AnnouncementStatus,
+} from '@kampus/school-core/lib/communication.ts'
 import { dayKey, invoiceStatus } from '@kampus/school-core/lib/format.ts'
 
 import type { RecordData } from '../db/collections.ts'
@@ -5,6 +10,7 @@ import {
   DAY_PATTERN,
   INSTANT_PATTERN,
   type ActiveMatch,
+  type AnnouncementStatusMatch,
   type DayRangeMatch,
   type EqualsMatch,
   type FieldMatch,
@@ -179,6 +185,52 @@ export function matchesInvoiceStatus(record: RecordData, match: InvoiceStatusMat
   return status !== null && match.statuses.includes(status)
 }
 
+/** Duyuru süzgeci; gün ve okuyucu ayıklanmış kayıttandır (`myReadAt`). */
+export function announcementStatusFilter(
+  statuses: readonly AnnouncementStatus[],
+): AnnouncementStatusMatch {
+  return { kind: 'announcementStatus', statuses }
+}
+
+/** Kesin karar: okuyucuya göre daraltılmış kaydın durumu (`myReadAt` içerir). */
+export function matchesAnnouncementStatus(
+  record: RecordData,
+  match: AnnouncementStatusMatch,
+): boolean {
+  return match.statuses.includes(announcementStatusOf(record))
+}
+
+/**
+ * Ham kayıtta aday kararı (SQL koşuluyla aynı): `myReadAt` ham kayıtta yoktur, bu yüzden okunmadı
+ * ve yayında geri çekilmemiş her kaydı, güncellendi düzeltilmiş olanı da kapsar.
+ */
+export function announcementStatusCandidate(
+  record: RecordData,
+  { statuses }: AnnouncementStatusMatch,
+): boolean {
+  const withdrawn = Boolean(record.withdrawnAt)
+  return statuses.some((status) => {
+    switch (status) {
+      case ANNOUNCEMENT_STATUS.withdrawn:
+        return withdrawn
+      case ANNOUNCEMENT_STATUS.unread:
+      case ANNOUNCEMENT_STATUS.published:
+        return !withdrawn
+      case ANNOUNCEMENT_STATUS.updated:
+        return !withdrawn && Boolean(record.revisedAt)
+      default:
+        return status satisfies never
+    }
+  })
+}
+
+/** Ham (ayıklanmamış) kayıtta aday kararı; okuyucuya özgü süzgeçler dışında `matchesRecordFilter`. */
+export function candidateMatchesRecordFilter(record: RecordData, filter: RecordFilter): boolean {
+  return filter.kind === 'announcementStatus'
+    ? announcementStatusCandidate(record, filter)
+    : matchesRecordFilter(record, filter)
+}
+
 function primitiveText(value: unknown): string | null {
   if (typeof value === 'string') return value
   if (typeof value === 'number' || typeof value === 'boolean') return String(value)
@@ -224,6 +276,8 @@ export function matchesRecordFilter(record: RecordData, filter: RecordFilter): b
       return matchesDayRange(record, filter)
     case 'invoiceStatus':
       return matchesInvoiceStatus(record, filter)
+    case 'announcementStatus':
+      return matchesAnnouncementStatus(record, filter)
     case 'ownOrVia':
       return record[filter.field] !== null && record[filter.field] !== undefined
         ? matchesField(record, { field: filter.field, values: filter.values })

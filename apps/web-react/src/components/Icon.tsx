@@ -95,6 +95,7 @@ import {
   Trash2,
   Copy,
   Library,
+  Table2,
   FileCheck,
   RotateCcw,
   Undo2,
@@ -106,6 +107,8 @@ import {
   Smartphone,
   Mic,
   Square,
+  Share2,
+  Flag,
 } from 'lucide-react'
 
 // Vue `Icon.vue` ile aynı ad listesi: school-core navigasyonu ikonları bu adlarla verir.
@@ -205,6 +208,7 @@ const icons = {
   Trash2,
   Copy,
   Library,
+  Table2,
   FileCheck,
   RotateCcw,
   Undo2,
@@ -216,6 +220,8 @@ const icons = {
   Smartphone,
   Mic,
   Square,
+  Share2,
+  Flag,
 } satisfies Record<string, LucideIcon>
 
 export type IconName = keyof typeof icons

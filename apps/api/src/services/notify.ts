@@ -83,6 +83,11 @@ export interface NotifyInput<T extends NotificationType = NotificationType> {
   data: NotificationData<T>
   /** Olayın tekil anahtarı (ör. taksit kimliği + vade günü); aynı alıcıya ikinci yazmayı önler. */
   dedupeKey?: string | undefined
+  /**
+   * Türün kitlesini daraltır (ör. alıştırma sonucu yalnız kursiyere gider, veliye gitmez;
+   * DOM-BEC-041). Verilmezse türün yaşa göre kitlesi kullanılır; tür dışı kitle eklenemez.
+   */
+  audiences?: readonly NotificationAudience[] | undefined
 }
 
 export interface NotifyResult {
@@ -212,7 +217,8 @@ export async function notify<T extends NotificationType>(
     const minor =
       input.recipients.minor?.get(studentId) ??
       (await learnerMinor(tx, ctx, institution.type, studentId))
-    for (const audience of notificationAudiences(input.type, minor))
+    for (const audience of notificationAudiences(input.type, minor)) {
+      if (input.audiences !== undefined && !input.audiences.includes(audience)) continue
       drafts.push(
         notificationRecordSchema.parse({
           id:
@@ -226,6 +232,7 @@ export async function notify<T extends NotificationType>(
           createdAt,
         }),
       )
+    }
   }
   result.created = await IN_APP.deliver(tx, ctx, drafts)
   result.deduplicated = drafts.length - result.created.length

@@ -292,8 +292,64 @@
     {
       "idx": 41,
       "version": "7",
-      "when": 1793648879734,
-      "tag": "0041_create_finance_export_profiles",
+      "when": 1793651937220,
+      "tag": "0041_add_file_ready_at",
+      "breakpoints": true
+    },
+    {
+      "idx": 42,
+      "version": "7",
+      "when": 1793652844795,
+      "tag": "0042_scan_audio_files",
+      "breakpoints": true
+    },
+    {
+      "idx": 43,
+      "version": "7",
+      "when": 1793672874999,
+      "tag": "0043_make_audit_log_append_only",
+      "breakpoints": true
+    },
+    {
+      "idx": 44,
+      "version": "7",
+      "when": 1793681335594,
+      "tag": "0044_add_task_learner_indexes",
+      "breakpoints": true
+    },
+    {
+      "idx": 45,
+      "version": "7",
+      "when": 1793685261595,
+      "tag": "0045_allow_absence_document",
+      "breakpoints": true
+    },
+    {
+      "idx": 46,
+      "version": "7",
+      "when": 1793688653058,
+      "tag": "0046_deactivate_memberships",
+      "breakpoints": true
+    },
+    {
+      "idx": 47,
+      "version": "7",
+      "when": 1793689772862,
+      "tag": "0047_add_attempt_item_checks",
+      "breakpoints": true
+    },
+    {
+      "idx": 48,
+      "version": "7",
+      "when": 1793696399301,
+      "tag": "0048_invitation_teacher",
+      "breakpoints": true
+    },
+    {
+      "idx": 49,
+      "version": "7",
+      "when": 1793702412744,
+      "tag": "0049_create_finance_export_profiles",
       "breakpoints": true
     }
   ]

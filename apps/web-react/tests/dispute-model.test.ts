@@ -57,17 +57,20 @@ describe('uyuşmazlık kuyruğu ve son puan penceresi (OG-058; DOM-BEC-024, DOM-
       id: 'sub1',
       assignmentId: 'a1',
       learnerId: 's1',
+      learnerName: 'Deniz Yılmaz',
       assignmentTitle: 'Hafta sonu yazısı',
       latestVersion: { submittedAt: '2026-11-01T09:00:00.000Z' },
       grading: { dueAt: '2026-11-08T20:59:59.000Z', overdue: true },
     } as unknown as GradingQueueItem
-    const row = disputeRow(item, (id) => (id === 's1' ? 'Deniz Yılmaz' : 'Öğrenci'))
+    const row = disputeRow(item)
     assert.equal(row.learner, 'Deniz Yılmaz')
     assert.equal(row.assignment, 'Hafta sonu yazısı')
     assert.equal(row.overdue, true)
     assert.notEqual(row.dueAt, '—')
-    const untitled = disputeRow({ ...item, assignmentTitle: null }, () => 'Öğrenci')
+    const untitled = disputeRow({ ...item, assignmentTitle: null })
     assert.equal(untitled.assignment, 'Görev')
+    // OG-213, DOM-YTK-028: ad satırdan gelir; sunucu null verirse genel etiket.
+    assert.equal(disputeRow({ ...item, learnerName: null }).learner, 'Öğrenci')
   })
 
   test('DOM-BEC-024: iki puan kriter bazında rubrik sırasıyla yan yana; uyuşmazlık işareti sunucunun listesidir', () => {

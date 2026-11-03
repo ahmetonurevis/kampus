@@ -1,4 +1,4 @@
-import { and, asc, eq, gt } from 'drizzle-orm'
+import { and, asc, eq, gt, isNull } from 'drizzle-orm'
 
 import type { Database } from '../db/client.ts'
 import { institutions, memberships, verifications } from '../db/schema/auth.ts'
@@ -104,13 +104,16 @@ export async function revokeResetTokens(db: Database, userId: string): Promise<v
   await db.delete(verifications).where(eq(verifications.value, userId))
 }
 
-/** Kullanıcının en eski üyeliğinin kurumu (oturum açılışındaki varsayılan kurumla aynı kural). */
+/**
+ * Kullanıcının en eski etkin üyeliğinin kurumu (oturum açılışındaki varsayılan kurumla aynı kural).
+ * Bütün üyelikleri pasif hesaba sıfırlama iletisi gitmez (DOM-YTK-070).
+ */
 async function defaultInstitution(db: Database, userId: string) {
   const [row] = await db
     .select({ id: institutions.id, name: institutions.name })
     .from(memberships)
     .innerJoin(institutions, eq(institutions.id, memberships.institutionId))
-    .where(eq(memberships.userId, userId))
+    .where(and(eq(memberships.userId, userId), isNull(memberships.deactivatedAt)))
     .orderBy(asc(memberships.createdAt), asc(memberships.id))
     .limit(1)
   return row ?? null

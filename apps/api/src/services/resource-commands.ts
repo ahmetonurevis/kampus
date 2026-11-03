@@ -18,6 +18,7 @@ import {
 import {
   canReadVersion,
   planShareChange,
+  shareTargetDelta,
   type ShareTargetsInput,
 } from '@kampus/school-core/content/visibility.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
@@ -27,10 +28,11 @@ import {
   asCoreVersion,
   findResource,
   listContainerVersions,
+  listListeningContainerVersions,
   listPassageContainerVersions,
   listCopies,
   listResourceVersions,
-  loadItemVersionRefs,
+  loadLinkedVersionRefs,
   loadVersionPairs,
   type StoredResource,
   type StoredResourceVersion,
@@ -247,6 +249,26 @@ async function assertItemsReadable(
         },
       ],
     })
+  // Dinleme etkinliğinin kaydı (IST-045): parça gibi kurumda bulunmalı ve kişi okuyabilmeli; türü,
+  // becerisi, durumu ve dökümü yayımda (`publicationIssues`) denetlenir.
+  const listeningId = content.listeningVersionId
+  const listening =
+    listeningId === null
+      ? null
+      : (await loadVersionPairs(tx, ctx.institutionId, [listeningId])).get(listeningId)
+  if (
+    listeningId !== null &&
+    !(listening && readable(staff, listening.resource, listening.version, ctx.now))
+  )
+    throw new RuleViolationError('listening_missing', 'Seçilen dinleme kaydı bulunamadı.', {
+      issues: [
+        {
+          path: ['content', 'listeningVersionId'],
+          code: 'listening_missing',
+          message: 'Seçilen dinleme kaydı bulunamadı.',
+        },
+      ],
+    })
   const issues = content.items.flatMap((item, index) => {
     const pair = pairs.get(item.questionVersionId)
     return pair && readable(staff, pair.resource, pair.version, ctx.now)
@@ -261,23 +283,6 @@ async function assertItemsReadable(
   })
   if (issues.length > 0)
     throw new RuleViolationError('quiz_item_missing', 'Seçilen soru bulunamadı.', { issues })
-}
-
-/** Yayım denetiminin soru sürümleri ve okuma parçası (DOM-KYN-013; IST-042). */
-async function itemRefs(tx: Database, ctx: ServiceContext, version: StoredResourceVersion) {
-  const content = version.content
-  const list = content && (content.type === 'quiz' || content.type === 'exercise_set')
-  const ids = list ? content.items.map((item) => item.questionVersionId) : []
-  const passageId = list ? content.passageVersionId : null
-  const refs = await loadItemVersionRefs(
-    tx,
-    ctx.institutionId,
-    passageId === null ? ids : [...ids, passageId],
-  )
-  return {
-    itemVersions: refs,
-    passageVersion: passageId === null ? undefined : refs.get(passageId),
-  }
 }
 
 /** Kopyada miras alınan menşe: türetildiği sürümün lisansı ve kaynak gösterimleri (DOM-KYN-050). */
@@ -548,7 +553,11 @@ export async function transitionVersion(
         const target = await loadTarget(tx, ctx, staff, input.resourceId)
         const version = readableVersion(ctx, staff, target, input.versionId)
         assertExpected(version.rowVersion, input.expectedVersion)
-        const { itemVersions, passageVersion } = await itemRefs(tx, ctx, version)
+        const { itemVersions, passageVersion, listeningVersion } = await loadLinkedVersionRefs(
+          tx,
+          ctx.institutionId,
+          version.content,
+        )
         return () => ({
           target,
           version,
@@ -562,6 +571,7 @@ export async function transitionVersion(
             reason: input.reason,
             itemVersions,
             passageVersion,
+            listeningVersion,
           }),
         })
       },
@@ -643,14 +653,17 @@ export async function removeResource(
         const target = await loadTarget(tx, ctx, staff, input.resourceId)
         assertExpected(target.resource.rowVersion, input.expectedVersion)
         const versionIds = target.versions.map((version) => version.id)
-        const [copies, itemContainers, passageContainers] = await Promise.all([
+        const [copies, itemContainers, passageContainers, listeningContainers] = await Promise.all([
           listCopies(tx, ctx.institutionId, versionIds),
           listContainerVersions(tx, ctx.institutionId, versionIds),
           target.resource.contentType === 'reading_passage'
             ? listPassageContainerVersions(tx, ctx.institutionId, versionIds)
             : [],
+          target.resource.contentType === 'audio'
+            ? listListeningContainerVersions(tx, ctx.institutionId, versionIds)
+            : [],
         ])
-        const containers = [...itemContainers, ...passageContainers]
+        const containers = [...itemContainers, ...passageContainers, ...listeningContainers]
         return () => ({
           target,
           plan: planResourceRemoval({
@@ -698,7 +711,8 @@ export async function removeResource(
 
 /**
  * Paylaşım kapsamını ve hedeflerini değiştirir (DOM-KYN-021, 031, 040). Öğretmen yalnız ders
- * verdiği sınıf ve öğrencilerle paylaşır; yöneticinin seçtiği kimlikler kurumda bulunmalıdır.
+ * verdiği sınıf ve öğrencileri ekler ya da çıkarır; kapsamı dışındaki kayıtlı hedef değişmeden
+ * korunur. Eklenen kimlikler kurumda bulunmalıdır.
  */
 export async function shareResource(
   ctx: ServiceContext,
@@ -734,6 +748,12 @@ export async function shareResource(
             targets: input.targets,
             teaching: { studentIds: scope.studentIds, classIds: scope.classIds },
           })
+          // Yalnız eklenen hedef kurumda aranır; kayıtlı (arşivlenmiş sınıf gibi) hedef korunur.
+          const delta = shareTargetDelta(target.resource, {
+            studentIds: plan.sharedStudentIds,
+            classIds: plan.sharedClassIds,
+          })
+          const added = new Set([...delta.addedStudentIds, ...delta.addedClassIds])
           const issues = [
             ...plan.sharedStudentIds
               .map((id, index) => ({ id, index, field: 'studentIds', set: known.studentIds }))
@@ -745,7 +765,7 @@ export async function shareResource(
                   set: known.classIds,
                 })),
               )
-              .filter(({ id, set }) => !set.has(id))
+              .filter(({ id, set }) => added.has(id) && !set.has(id))
               .map(({ index, field }) => ({
                 path: [field, index],
                 code: 'share_target_not_found',

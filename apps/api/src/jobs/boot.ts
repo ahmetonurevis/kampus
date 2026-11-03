@@ -41,8 +41,8 @@ export interface BootJobsInput {
  * bitişi `InlineTranscodeScheduler.idle()` ile beklenir.
  *
  * Tarayıcı açıkken (`FILE_SCANNER=clamav`) dosya taraması da aynı biçimde süreç içinde çalışır;
- * yarıda kalmış taramalar (`processing`, ses dışı, 15 dakikadan eski) ayrı bir kilit altında
- * yeniden denenir. Tarama hatası dosyayı reddetmez ve `ready` yapmaz (ADR 0003 karar 8).
+ * yarıda kalmış taramalar (ses dışı `processing` ya da taraması süren ses, 15 dakikadan eski)
+ * ayrı bir kilit altında yeniden denenir. Tarama hatası dosyayı reddetmez ve `ready` yapmaz (ADR 0003 karar 8).
  */
 export async function bootJobs(input: BootJobsInput): Promise<JobQueue | null> {
   const { app, db, log } = input

@@ -5,6 +5,7 @@ import {
   useInstitutionMembersFetchAll,
 } from '@kampus/react-shared/use-institution-lists.ts'
 import type { MemberQuery } from '@kampus/react-shared/institution-lists.ts'
+import { useMe } from '@kampus/react-shared/use-active-institution.ts'
 import { Avatar } from '@/components/Avatar.tsx'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
@@ -29,6 +30,8 @@ import {
   STATUS_OPTIONS,
   type MemberRow,
 } from './settings-rows.ts'
+import { StaffImportDialog } from './StaffImportDialog.tsx'
+import { PendingInvitations, StaffInviteForm, StaffMemberActions } from './StaffPanels.tsx'
 
 const URL_FILTERS = { role: 'rol', status: 'durum' }
 /** Tablo sütun anahtarı → API sıralama alanı. */
@@ -40,14 +43,18 @@ const SORT_FIELDS: Readonly<Record<string, string>> = {
 const SORTABLE = Object.keys(SORT_FIELDS)
 const MOBILE_COLUMNS = ['roleLabel', 'status']
 const ALL = 'all'
+const NEW_INVITATION = 'yeni'
+const NEW_IMPORT = 'yeni'
 
 const filterValue = (value: unknown) => (typeof value === 'string' ? value : '')
 
 /**
  * "Kullanıcı & Yetkiler" (yalnız yönetici): kurumun üyeleri; rol ve durum süzgeci, ad/rol/tarih
  * sıralaması, arama (en az 2 karakter) ve CSV. Satırdan açılan sağ panel yalnız bulunduğu
- * sayfadaki kaydı gösterir (tek kayıt ucu yok). "Pasif" hesap kapatma değil, bağlı kişi
- * kaydının arşivde olmasıdır.
+ * sayfadaki kaydı gösterir (tek kayıt ucu yok). "Pasif": yöneticinin pasifleştirdiği hesap ya da
+ * bağlı kişi kaydı arşivde olan üyelik. Ana işlem personel daveti (sağ panel); toplu aktarım geniş
+ * pencerede (`?aktarim=yeni`, IST-007); rol değiştirme ve pasifleştirme ayrıntı panelinde, bekleyen
+ * davetler tablonun altında (DOM-YTK-070).
  */
 export function UsersSection() {
   const list = useListState('kullanicilar', {
@@ -76,6 +83,9 @@ export function UsersSection() {
   const rows = useMemo(() => members.data?.rows.map(memberRow), [members.data])
   const panel = useDetailPanel('kullanici')
   const openMember = panel.open
+  const invitePanel = useDetailPanel('davet')
+  const importDialog = useDetailPanel('aktarim')
+  const selfUserId = useMe().data?.user.id ?? null
   const fetchAll = useInstitutionMembersFetchAll()
   const csv = useCsvExport()
 
@@ -170,15 +180,25 @@ export function UsersSection() {
               {total} kullanıcı · Rol ve bağlı kişi bilgileri
             </p>
           </div>
-          <Button
-            variant="secondary"
-            onClick={download}
-            disabled={csv.busy}
-            aria-busy={csv.busy || undefined}
-          >
-            <Icon name="Download" size={17} aria-hidden="true" />
-            Listeyi indir
-          </Button>
+          <div className="flex flex-wrap gap-2">
+            <Button
+              variant="secondary"
+              onClick={download}
+              disabled={csv.busy}
+              aria-busy={csv.busy || undefined}
+            >
+              <Icon name="Download" size={17} aria-hidden="true" />
+              Listeyi indir
+            </Button>
+            <Button variant="secondary" onClick={() => importDialog.open(NEW_IMPORT)}>
+              <Icon name="Upload" size={17} aria-hidden="true" />
+              Toplu aktar
+            </Button>
+            <Button onClick={() => invitePanel.open(NEW_INVITATION)}>
+              <Icon name="UserRoundPlus" size={17} aria-hidden="true" />
+              Personel davet et
+            </Button>
+          </div>
         </header>
         <ServerDataTable
           list={list}
@@ -239,13 +259,27 @@ export function UsersSection() {
           }
         />
       </section>
+      <PendingInvitations />
+      <StaffImportDialog
+        open={importDialog.selectedId === NEW_IMPORT}
+        onClose={importDialog.close}
+      />
+      <SidePanel
+        open={invitePanel.selectedId === NEW_INVITATION}
+        onOpenChange={(open) => (open ? undefined : invitePanel.close())}
+        title="Personel davet et"
+      >
+        {invitePanel.selectedId === NEW_INVITATION ? (
+          <StaffInviteForm onClose={invitePanel.close} />
+        ) : null}
+      </SidePanel>
       <SidePanel
         open={panel.selectedId !== ''}
         onOpenChange={(open) => (open ? undefined : panel.close())}
         title="Kullanıcı ayrıntısı"
       >
         {selected ? (
-          <MemberDetail row={selected} />
+          <MemberDetail row={selected} selfUserId={selfUserId} />
         ) : (
           <div className="grid gap-4">
             <p className="text-sm text-muted-foreground">
@@ -261,7 +295,7 @@ export function UsersSection() {
   )
 }
 
-function MemberDetail({ row }: { row: MemberRow }) {
+function MemberDetail({ row, selfUserId }: { row: MemberRow; selfUserId: string | null }) {
   return (
     <>
       <SummaryHeader
@@ -279,6 +313,7 @@ function MemberDetail({ row }: { row: MemberRow }) {
           { label: 'Bağlı kişi', value: row.links },
         ]}
       />
+      <StaffMemberActions key={row.id} row={row} selfUserId={selfUserId} />
       <SummarySection title="İşlem geçmişi">
         <p className="mb-3 text-sm text-muted-foreground">
           Bu kullanıcının kurumda yaptığı işlemleri görün.

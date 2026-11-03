@@ -17,9 +17,11 @@ import { fetchAllPages, type ListPage } from './institution-lists.ts'
 /** Profil yanıtı görünüm birleşimidir: `staff` (yönetici, öğretmen) ve `learner` (öğrenci, veli). */
 export type CefrProfile = components['schemas']['CefrProfile']
 export type CefrProfileStaff = components['schemas']['CefrProfileStaff']
-/** Öğrenci ve veli görünümü: zaman çizelgesinde gerekçe ve kararı veren yoktur. */
+/** Öğrenci ve veli görünümü: zaman çizelgesinde gerekçe, kararı veren ve kanıt özeti yoktur. */
 export type CefrProfileLearner = components['schemas']['CefrProfileLearner']
 export type CefrTimelineEntry = CefrProfile['timeline'][number]
+/** Personel çizelgesinin satırı: kararı veren, gerekçe ve karar anının kanıt özeti (OG-079). */
+export type CefrStaffTimelineEntry = CefrProfileStaff['timeline'][number]
 
 export type PlacementSession =
   operations['getPlacementSession']['responses'][200]['content']['application/json']['data']
@@ -27,6 +29,10 @@ export type PlacementSession =
 export type PlacementSessionRow =
   operations['listPlacementSessions']['responses'][200]['content']['application/json']['data'][number]
 export type PlacementSessionListQuery = operations['listPlacementSessions']['parameters']['query']
+/** Tespit formu: otomatik bölümlerin anahtarsız soruları (OG-078; cevap girişi). */
+export type PlacementForm = components['schemas']['PlacementForm']
+export type PlacementFormSection = PlacementForm['sections'][number]
+export type PlacementFormItem = PlacementFormSection['items'][number]
 
 type JsonBody<TOperation extends keyof operations> =
   NonNullable<operations[TOperation]['requestBody']> extends {
@@ -77,7 +83,7 @@ export const CEFR_MESSAGES = {
 export const placementStale = (error: ApiError) =>
   error.status === 404 || (error.status === 409 && error.code === 'version_conflict')
 
-/** Profil `staff` görünümünde mi (gerekçe ve kararı veren yalnız orada). */
+/** Profil `staff` görünümünde mi (gerekçe, kararı veren ve kanıt özeti yalnız orada). */
 export function isStaffProfile(profile: CefrProfile): profile is CefrProfileStaff {
   return profile.view === 'staff'
 }
@@ -113,6 +119,16 @@ export async function fetchPlacementPage(
     }),
   )
   return { rows: body.data, ...body.meta }
+}
+
+/** Oturumun formu: personel kursiyerin otomatik bölüm cevaplarını bununla girer (OG-078). */
+export function fetchPlacementForm(client: KampusClient, sessionId: string, signal?: AbortSignal) {
+  return runRequest(() =>
+    client.GET('/api/v1/placement-sessions/{sessionId}/form', {
+      params: { path: { sessionId } },
+      ...(signal ? { signal } : {}),
+    }),
+  )
 }
 
 /** Kişinin bütün tespit oturumları (sayfa sayfa). */

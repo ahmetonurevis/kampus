@@ -1,17 +1,24 @@
 import { useMemo, useState } from 'react'
-import { useCollectionAll } from '@kampus/react-shared/use-collection.ts'
+import {
+  useCollectionCounts,
+  useCollectionItem,
+  useCollectionList,
+} from '@kampus/react-shared/use-collection.ts'
 import { dateLabel } from '@kampus/school-core/lib/format.ts'
 import { useAuth } from '@/auth/use-auth.ts'
-import { DataTable, type DataColumn } from '@/components/DataTable.tsx'
+import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
+import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
+import { useListState } from '@/hooks/use-list-state.ts'
+import { collectionQueryFromList } from '@/lib/collection-list.ts'
 import type { NavPage } from '@/lib/navigation.ts'
-import { TableGate } from '../learning/LearningParts.tsx'
 import {
   announcementRow,
   canPublish,
@@ -23,43 +30,60 @@ import {
   type AnnouncementRecord,
   type AnnouncementRow,
 } from '@kampus/react-shared/announcement-model.ts'
+import {
+  ANNOUNCEMENT_FILTERS,
+  ANNOUNCEMENT_LIST,
+  ANNOUNCEMENT_SORTABLE,
+  ANNOUNCEMENT_UNREAD_QUERY,
+  ANNOUNCEMENT_URL_FILTERS,
+  announcementSummary,
+  detailPanelState,
+} from './announcement-list.ts'
 import { AnnouncementFormModal } from './AnnouncementFormModal.tsx'
 import { AnnouncementPanel } from './AnnouncementPanel.tsx'
 
 const NONE: readonly never[] = []
 const MOBILE_COLUMNS = ['category', 'date', 'status']
-const SEARCH_KEYS = ['title', 'text', 'category']
-const NO_FILTER_COLUMNS = ['date']
 const STATUS_TONES = {
   [STATUS_WITHDRAWN]: 'red',
   [STATUS_UNREAD]: 'purple',
   [STATUS_UPDATED]: 'amber',
   [STATUS_PUBLISHED]: 'gray',
 } as const
-const STATUS_OPTIONS = [STATUS_UNREAD, STATUS_UPDATED, STATUS_WITHDRAWN, STATUS_PUBLISHED].map(
-  (value) => ({ value, label: value }),
-)
 
 /**
  * Duyurular (bütün roller, Vue `Communication.vue` duyuru sekmesi): kurum içinde kullanıcının
- * alıcısı olduğu veya yayınladığı duyurular. Arama, kategori ve durum süzgeci ile sayfalama
- * istemcidedir (durum `withdrawnAt`/`revisedAt`/`myReadAt`'ten türetilir; sunucu bu alanlarda
- * süzemez). Satırdan sağ panel açılır ve alıcı için okundu yazılır. Yayınlayabilen roller yeni
- * duyuru yayınlar, kendi duyurusunu düzeltir veya gerekçeyle geri çeker.
- * TODO(api-announcement-status-filter): durum süzgeci sunucuya inince liste sunucu sayfalı olur
- * (şimdi bir kurumun bütün duyurusu, en çok 5000, tek seferde okunur).
+ * alıcısı olduğu veya yayınladığı duyurular. Liste sunucu sayfalıdır: arama, durum süzgeci
+ * (okuyucuya göre türetilir; DOM-ILT-003, DOM-ILT-004), sıralama ve sayfa sunucuda uygulanır,
+ * durum adreste tutulur. Satırdan sağ panel açılır (sayfada olmayan duyuru kimlikle okunur) ve
+ * alıcı için okundu yazılır. Yayınlayabilen roller yeni duyuru yayınlar, kendi duyurusunu
+ * düzeltir veya gerekçeyle geri çeker.
  */
 export function AnnouncementsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const { session } = useAuth()
-  const announcements = useCollectionAll<AnnouncementRecord>('announcements', { sort: ['-date'] })
+  const list = useListState('duyurular', { pageSize: 10, urlFilters: ANNOUNCEMENT_URL_FILTERS })
+  const search = useDebouncedValue(list.state.query)
+  const listQuery = collectionQueryFromList(list.state, ANNOUNCEMENT_LIST, search)
+  const announcements = useCollectionList<AnnouncementRecord>('announcements', listQuery)
+  const filtered = Boolean(listQuery.q) || Object.keys(listQuery.filters ?? {}).length > 0
+  const unreadCount = useCollectionCounts('announcements', ANNOUNCEMENT_UNREAD_QUERY)
   const classes = useCoreAll('classes')
   const branches = useCoreAll('branches')
   const panel = useDetailPanel('duyuru')
   const openAnnouncement = panel.open
   const [creating, setCreating] = useState(false)
 
-  const rows = useMemo(() => announcements.data?.map(announcementRow), [announcements.data])
+  const rows = useMemo(() => announcements.data?.rows.map(announcementRow), [announcements.data])
+  // Açık duyuru sayfada olmayabilir (adres, panodaki kart): kimlikle okunur.
+  // Listeden açılan satır başlangıç verisidir; hata olursa gizlenmez, panel hatayı gösterir.
+  const detail = useCollectionItem<AnnouncementRecord>('announcements', panel.selectedId || null, {
+    placeholder: announcements.data?.rows.find((row) => row.record.id === panel.selectedId),
+  })
+  const selected = useMemo(
+    () => (detail.data ? announcementRow(detail.data) : undefined),
+    [detail.data],
+  )
   const names = useMemo(
     () => ({
       branches: new Map((branches.data ?? NONE).map((row) => [row.record.id, row.record.name])),
@@ -67,7 +91,6 @@ export function AnnouncementsPage({ page }: { page: NavPage }) {
     }),
     [branches.data, classes.data],
   )
-  const selected = rows?.find((row) => row.id === panel.selectedId)
   const showRead = rows?.some((row) => row.read !== '') ?? false
 
   const columns = useMemo<DataColumn<AnnouncementRow>[]>(
@@ -134,7 +157,8 @@ export function AnnouncementsPage({ page }: { page: NavPage }) {
   if (!session) return null
   const viewer = { role: session.role, userId: session.user.id }
   const error = announcements.error ?? classes.error ?? branches.error
-  const unread = rows?.filter((row) => row.unread).length ?? 0
+  const total = announcements.data?.total ?? 0
+  const unread = unreadCount.data?.total ?? 0
 
   return (
     <>
@@ -159,37 +183,46 @@ export function AnnouncementsPage({ page }: { page: NavPage }) {
             Duyuru listesi
           </h2>
           <p className="text-sm text-muted-foreground">
-            {rows?.length ?? 0} duyuru{unread > 0 ? ` · ${unread} okunmamış` : ''}
+            {announcementSummary({ total, unread, filtered })}
           </p>
         </header>
-        <TableGate
-          error={error}
-          onRetry={() => {
-            for (const query of [announcements, classes, branches])
-              if (query.error) void query.refetch()
-          }}
-          loading={rows === undefined}
-        >
-          <DataTable
-            listKey="duyurular"
-            rows={rows ?? NONE}
-            columns={columns}
-            pageSize={10}
-            mobileColumns={MOBILE_COLUMNS}
-            caption="Duyuru listesi"
-            searchKeys={SEARCH_KEYS}
-            excludeFilters={NO_FILTER_COLUMNS}
-            filters={[{ key: 'status', label: 'Durum', options: STATUS_OPTIONS }]}
-            empty="Henüz duyuru yok."
-            emptyFiltered="Aramanızla eşleşen duyuru bulunamadı."
-            onRowClick={(row) => openAnnouncement(row.id)}
-          />
-        </TableGate>
+        <ServerDataTable
+          list={list}
+          rows={rows}
+          total={total}
+          sortable={ANNOUNCEMENT_SORTABLE}
+          filters={ANNOUNCEMENT_FILTERS}
+          columns={columns}
+          mobileColumns={MOBILE_COLUMNS}
+          caption="Duyuru listesi"
+          empty="Henüz duyuru yok."
+          emptyFiltered="Aramanızla eşleşen duyuru bulunamadı."
+          loading={announcements.isPending}
+          fetching={announcements.isFetching && !announcements.isPending}
+          error={
+            error ? (
+              <QueryError
+                error={error}
+                onRetry={() => {
+                  for (const query of [announcements, classes, branches])
+                    if (query.error) void query.refetch()
+                }}
+              />
+            ) : undefined
+          }
+          onRowClick={(row) => openAnnouncement(row.id)}
+        />
       </section>
       <AnnouncementPanel
         row={selected}
         announcementId={panel.selectedId}
-        listReady={rows !== undefined}
+        state={detailPanelState({
+          hasRow: selected !== undefined,
+          error: detail.error,
+          pending: detail.isPending,
+        })}
+        error={detail.error}
+        onRetry={() => void detail.refetch()}
         viewer={viewer}
         audience={selected ? describeTarget(selected.record.target, names) : ''}
         onClose={panel.close}

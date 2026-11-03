@@ -10,7 +10,6 @@ import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { disputeRow, type DisputeRow } from './dispute-model.ts'
 import { FinalScoreModal } from './FinalScoreModal.tsx'
-import { useTaskLookups } from './use-task-lookups.ts'
 
 const URL_FILTERS = { overdue: 'gecikme' }
 const NO_SORT: readonly string[] = []
@@ -37,7 +36,6 @@ export function DisputeQueueView() {
     awaiting: 'resolution',
     ...(overdue ? { overdue } : {}),
   })
-  const { names } = useTaskLookups()
   const finalScore = useDetailPanel('son-puan')
   const openFinal = finalScore.open
 
@@ -50,8 +48,8 @@ export function DisputeQueueView() {
     [queue.data],
   )
   const rows = useMemo<DisputeRow[] | undefined>(
-    () => queue.data?.data.map((item) => disputeRow(item, names.studentName)),
-    [queue.data, names],
+    () => queue.data?.data.map((item) => disputeRow(item)),
+    [queue.data],
   )
 
   const columns = useMemo<DataColumn<DisputeRow>[]>(

@@ -41,10 +41,11 @@ test('DOM-ILT-052: devamsızlık türleri zorunlu hizmet bildirimidir ve akademi
   assert.equal(notificationEnabled('absence_recorded', on), true)
   assert.equal(notificationEnabled('absence_recorded', { ...on, academic: false }), false)
   assert.equal(notificationEnabled('absence_corrected', { ...on, communication: false }), false)
-  // DOM-YTK-040: akademik kapalıyken tür bildirim merkezinde gizlenir.
+  // DOM-YTK-040: akademik kapalıyken tür bildirim merkezinde gizlenir; mazeret kararı
+  // (`absence_decided`, DOM-ILT-053) da akademik modüle bağlıdır.
   assert.deepEqual(
     hiddenNotificationKinds({ communication: true, academic: false, learning: true, crm: true }),
-    ['absence_recorded', 'absence_corrected'],
+    ['absence_recorded', 'absence_corrected', 'absence_decided'],
   )
 })
 

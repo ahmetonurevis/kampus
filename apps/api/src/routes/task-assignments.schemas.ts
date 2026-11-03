@@ -40,24 +40,20 @@ export const taskAssignmentListQuerySchema = pageQuerySchema
   .strict()
 
 /**
- * Yeni atama: core `assignmentInputSchema` (içerik sürümü, ayarlar, hedefler). Tek fark dinleme
- * hakkının varsayılanıdır: core değerlendirmede 2 verir (DOM-BEC-005), ama core içerik modeli
- * dinleme kaydını (`listening_audio`) atanabilen türlere (soru, quiz, alıştırma seti, ödev şablonu)
- * bağlamaz; sayım altyapısı (`attempt_media_plays`, OG-049) sayacak kayıt bulamaz. Gönderilmeyen
- * hak sınırsız (`null`) saklanır; dolu hak (1 veya 2) serviste 422 `listening_plays_unavailable`
- * alır (ADR 0004 karar 6 uygulama notu, OG-049).
+ * Yeni atama: core `assignmentInputSchema` (içerik sürümü, ayarlar, hedefler). Dinleme hakkı
+ * (DOM-BEC-005) gönderilmezse dinleme görevinde core varsayılanı (2) uygulanır; ama hak yalnız
+ * dinleme kaydına (`listening_audio` dosyalı ses sürümü) bağlı quiz/alıştırma setinde sayılabilir
+ * (IST-045). Kaydı olmayan dinleme görevinde gönderilmeyen hak sınırsız (`null`) saklanır, dolu
+ * hak (1 veya 2) serviste 422 `listening_plays_unavailable` alır (ADR 0004 karar 6 uygulama notu).
  */
-// TODO(dinleme-icerik-bagi): core ses kaydını atanabilir türlere bağlayınca core varsayılanına (2) dönülür.
 export const taskAssignmentBodySchema = assignmentInputSchema.extend({
+  // Yalnız OpenAPI açıklaması eklenir; doğrulama core'unkiyle aynıdır (`safeExtend` core'un
+  // `superRefine`'ını korur).
   settings: assignmentSettingsSchema
     .safeExtend({
-      listeningPlays: z
-        .union([z.literal(1), z.literal(2)])
-        .nullable()
-        .default(null)
-        .describe(
-          'Dinleme hakkı; gönderilmezse sınırsız. Dinleme sayımı açılana kadar yalnız sınırsız kabul edilir.',
-        ),
+      listeningPlays: assignmentSettingsSchema.shape.listeningPlays.describe(
+        'Dinleme hakkı (DOM-BEC-005, IST-045): 1, 2 veya `null` (sınırsız). Gönderilmezse kayda bağlı etkinlikte (quiz/alıştırma seti `listeningVersionId` → `listening_audio` dosyalı ses sürümü) 2, kaydı olmayanda sınırsız; kaydı olmayanda 1 veya 2 422 `listening_plays_unavailable`.',
+      ),
     })
     .prefault({}),
 })
@@ -156,10 +152,18 @@ const learnerProgressSchema = z
         'Şu anki işlem durumunun yalnız zamanla değişeceği an: süren denemenin bitişi (süre veya pencere), yoksa `canAct` iken yeni deneme veya sürüm penceresinin kapanışı (istenen yeniden teslimin son tarihi dahil). Bu andan sonra özet eskidir; istemci yeniden okur. Puan açılma anı burada yoktur (DOM-BEC-045)',
       ),
     blockedBy: z
-      .enum(['in_progress', 'license_expired', 'locked', 'limit', 'graded', 'unavailable'])
+      .enum([
+        'in_progress',
+        'content_unavailable',
+        'license_expired',
+        'locked',
+        'limit',
+        'graded',
+        'unavailable',
+      ])
       .nullable()
       .describe(
-        '`canAct` değilse neden: süren deneme, içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor',
+        '`canAct` değilse neden: süren deneme, içerik kursiyere kapalı (yazma uçlarının 422 `content_unavailable` vereceği durum: kaldırılmış içerik, süren işi olmayana telif askısı, kitap sahibi olmayan; DOM-KYN-021, 025, 051; diğer engellerden önce gelir), içerik lisansı doldu (DOM-KYN-021), pencere kapandı, hak doldu, teslim değerlendirildi (yalnız geri bildirim açıldıysa) veya görev okunamıyor',
       ),
     score: z
       .object({
@@ -255,7 +259,7 @@ const learnerAssignmentDetailSchema = z
       .enum(['license_expired', 'unavailable'])
       .nullable()
       .describe(
-        '`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya sürüm kaldırıldı/yayında değil',
+        '`content` boşsa neden: lisans doldu ve süren iş yok (DOM-KYN-021) veya içerik kapalı: sürüm kaldırıldı/yayında değil, kitap sahibi değil ya da telif bildirimiyle incelemede ve süren iş (süren deneme, taslak, teslim) yok (DOM-KYN-025, Sabah kararı 47)',
       ),
   })
   .meta({ id: 'TaskAssignmentLearnerDetail' })

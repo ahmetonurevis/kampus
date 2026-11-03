@@ -395,10 +395,10 @@ export function quizClockLabel(seconds: number): string {
 }
 
 /** Okuyanın (öğrenci ya da velinin seçili çocuğu) bu quizdeki denemesi. */
-export function attemptOf(
-  item: Pick<QuizListItem, 'attempts'>,
+export function attemptOf<A extends Pick<QuizAttempt, 'studentId'>>(
+  item: { attempts: readonly A[] },
   studentId: string,
-): QuizAttempt | undefined {
+): A | undefined {
   return item.attempts.find((attempt) => attempt.studentId === studentId)
 }
 

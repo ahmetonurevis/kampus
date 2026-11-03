@@ -56,6 +56,7 @@ export const CHILD_SCOPED_PANEL_PARAMS = [
   'tahsilat',
   'materyal',
   'video',
+  'gorev',
 ] as const
 
 /**

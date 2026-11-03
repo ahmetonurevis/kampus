@@ -10,6 +10,7 @@ import {
   completePlacementSession,
   decidePlacement,
   getCefrProfile,
+  getPlacementForm,
   getPlacementSession,
   listLearnerPlacementSessions,
   openPlacementSession,
@@ -23,6 +24,7 @@ import {
   completePlacementSessionBodySchema,
   decidePlacementBodySchema,
   openPlacementSessionBodySchema,
+  placementFormResponseSchema,
   placementSessionListQuerySchema,
   placementSessionListResponseSchema,
   placementSessionParamsSchema,
@@ -108,6 +110,24 @@ export function registerCefrRoutes(app: FastifyInstance) {
     },
     async (request) => ({
       data: await getPlacementSession(contextOf(request), request.params.sessionId),
+    }),
+  )
+
+  typed.get(
+    '/api/v1/placement-sessions/:sessionId/form',
+    {
+      preValidation: placement,
+      schema: {
+        operationId: 'getPlacementForm',
+        tags: ['learning'],
+        summary: 'Seviye tespiti formu',
+        description: `Oturumun formundaki otomatik bölümlerin (dil kullanımı, okuma, dinleme) soruları; personel kursiyerin cevaplarını bununla girer (OG-078, IST-058). Soru gövdesi anahtarsızdır: doğru cevap ve açıklama gönderilmez. Formda sorusu olmayan bölüm listede yoktur. Olmayan ya da başka kurumun oturumu 404. ${PLACEMENT_ACCESS}`,
+        params: placementSessionParamsSchema,
+        response: { 200: placementFormResponseSchema, ...readErrors },
+      },
+    },
+    async (request) => ({
+      data: await getPlacementForm(contextOf(request), request.params.sessionId),
     }),
   )
 
@@ -224,7 +244,7 @@ export function registerCefrRoutes(app: FastifyInstance) {
         operationId: 'getCefrProfile',
         tags: ['learning'],
         summary: 'CEFR profili',
-        description: `Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi ve tespit oturumları. Öneri karar değildir ve saklanmaz. Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. ${TYPE_ONLY}`,
+        description: `Kursiyerin CEFR profili (IST-060, DOM-BEC-034): beceri başına güncel seviye (en yeni insan kararı), "Tahmini seviye" önerisi ve dayandığı kanıtlar, karar zaman çizelgesi (en yeniden eskiye, aynı becerinin önceki seviyesi ve değişim yönüyle) ve tespit oturumları. Öneri karar değildir ve saklanmaz. Personel çizelgesinde kararı veren (ad) ve gerekçe ile kararın değişmez kanıt kopyasından özet (karar anındaki öneri, kanıt görevleri, dayanak işareti) bulunur; öğrenci ve veli çizelgesinde bunlar yoktur (OG-079). Öğrenci kendisini, veli bağlı çocuğunu, öğretmen kendi grubundaki ya da akademik koordinatörü olduğu seviyenin grubundaki kursiyeri, yönetici herkesi görür; göremediği ya da olmayan öğrenci 404. Ön büro 403. ${TYPE_ONLY}`,
         params: cefrProfileParamsSchema,
         response: { 200: cefrProfileResponseSchema, ...readErrors },
       },

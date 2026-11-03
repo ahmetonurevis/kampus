@@ -99,9 +99,32 @@ export async function createPgDatabase(): Promise<PgDatabase> {
     url,
     close: async () => {
       await closePool()
+      await waitForBackendsToExit(name)
       await dropDatabase(name)
     },
   }
+}
+
+/**
+ * `pool.end()` istemcileri havuzdan atıp `Terminate` gönderir ama soketlerin kapanmasını beklemeden
+ * çözülür. Hemen ardından `drop database … with (force)` sunucu tarafında hâlâ kapanmakta olan
+ * bağlantıları `pg_terminate_backend` ile keserse istemciye "terminating connection due to
+ * administrator command" hatası döner ve dinleyicisiz olduğundan yakalanmamış istisna olup bir sonraki
+ * testin (ya da `after` kancasının) üstüne yazılır. Backend'ler kendiliğinden çıkana kadar beklenir;
+ * `force` yalnız gerçekten unutulmuş bağlantılar (pg-boss havuzu) için yedek kalır.
+ */
+async function waitForBackendsToExit(name: string): Promise<void> {
+  const deadline = Date.now() + 5000
+  await withAdmin(async (admin) => {
+    for (;;) {
+      const { rows } = await admin.query<{ n: string }>(
+        'select count(*) as n from pg_stat_activity where datname = $1 and pid <> pg_backend_pid()',
+        [name],
+      )
+      if (Number(rows[0]?.n ?? 0) === 0 || Date.now() > deadline) return
+      await new Promise((resolve) => setTimeout(resolve, 10))
+    }
+  })
 }
 
 async function dropDatabase(name: string): Promise<void> {

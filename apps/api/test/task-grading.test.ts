@@ -707,6 +707,51 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     assert.equal((await ok(await detail(id, t.cookies.admin))).versions[0].score.settled, true)
   })
 
+  test('DOM-BEC-041, DOM-BEC-045: öğretmenin puanladığı alıştırma teslimini veli puan, rubrik ve geri bildirimle görmez (ayrıntı, liste, atama özeti); öğrenci ve öğretmen görür; değerlendirmede veli görür', async () => {
+    const practice = await setup({ attempts: { kind: 'practice' } })
+    const { t } = practice
+    const id = practice.submission.id as string
+    await ok(await score(id, t.cookies.teacher, 1), 201)
+    const forbidden = [FEEDBACK, CRITERION_NOTE, 'percent":6', 'rubricVersionId', '"criteria"']
+    const hidden = async (cookie: string) => {
+      const response = await detail(id, cookie)
+      const seen = await ok(response)
+      const listResponse = await call(
+        'GET',
+        `/task-submissions?assignmentId=${practice.assignmentId}`,
+        cookie,
+      )
+      const listed = (await ok(listResponse))[0]
+      assert.equal(seen.versions[0].score, null)
+      assert.equal(seen.latestVersion.score, null)
+      assert.equal(listed.latestVersion.score, null)
+      for (const body of [response.body, listResponse.body])
+        for (const text of forbidden) assert.ok(!body.includes(text), text)
+      const progress = (
+        await ok(await call('GET', `/task-assignments/${practice.assignmentId}`, cookie))
+      ).progress
+      assert.equal(progress[0].score, null)
+    }
+    await hidden(t.cookies.parent)
+    // Öğrenci ve öğretmen puanı ve geri bildirimi görür.
+    for (const cookie of [t.cookies.student, t.cookies.teacher]) {
+      const seen = await ok(await detail(id, cookie))
+      assert.equal(seen.versions[0].score.percent, 60)
+      assert.equal(seen.versions[0].score.overallComment, FEEDBACK)
+      assert.equal(seen.latestVersion.score.percent, 60)
+    }
+    assert.equal(
+      (await ok(await call('GET', `/task-assignments/${practice.assignmentId}`, t.cookies.student)))
+        .progress[0].score.percent,
+      60,
+    )
+    // Aynı teslim değerlendirmede olsaydı veli puanı görürdü (gizleme yalnız alıştırmaya özgü).
+    const evaluation = await setup({ attempts: { kind: 'evaluation', maxAttempts: 1 } })
+    await ok(await score(evaluation.submission.id, evaluation.t.cookies.teacher, 1), 201)
+    const seen = await ok(await detail(evaluation.submission.id, evaluation.t.cookies.parent))
+    assert.equal(seen.versions[0].score.percent, 60)
+  })
+
   test('DOM-BEC-024, DOM-BEC-045: sürüm hakkı kalan teslimde pencere açıkken ikinci puanlama istenmez (409 second_rating_window_open); pencere kapanınca istenir; kursiyerin yanıtı ve yeni sürüm reddi istemden ve puanlamadan önceki ve sonraki hâliyle birebir aynı', async () => {
     const { t, assignmentId, submission } = await setup({
       submission: { submissionKind: 'text', maxVersions: 2 },
@@ -1640,6 +1685,26 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       .filter((n) => n.kind === 'feedback_released')
       .map((n) => [n.audience, n.studentId, n.subject.id] as const)
   }
+
+  test('DOM-BEC-041, DOM-BEC-045: öğretmenin puanladığı alıştırma teslimi için feedback_released yalnız öğrenciye gider, veliye gitmez; aynı puan değerlendirmede öğrenciye ve veliye bildirim üretir', async () => {
+    const practice = await setup({ attempts: { kind: 'practice' } })
+    const practiceId = practice.submission.id as string
+    await ok(await score(practiceId, practice.t.cookies.teacher, 1), 201)
+    assert.deepEqual(await feedbackNotices(practice.t.cookies.student), [
+      ['student', 's-1', practiceId],
+    ])
+    assert.deepEqual(await feedbackNotices(practice.t.cookies.parent), [])
+
+    const evaluation = await setup({ attempts: { kind: 'evaluation', maxAttempts: 1 } })
+    const evaluationId = evaluation.submission.id as string
+    await ok(await score(evaluationId, evaluation.t.cookies.teacher, 1), 201)
+    assert.deepEqual(await feedbackNotices(evaluation.t.cookies.student), [
+      ['student', 's-1', evaluationId],
+    ])
+    assert.deepEqual(await feedbackNotices(evaluation.t.cookies.parent), [
+      ['parent', 's-1', evaluationId],
+    ])
+  })
 
   test('DOM-BEC-045, DOM-ILT-023: puanı kesinleştiren ilk puan öğrenciye ve veliye bildirim üretir; başka öğrenci ve veliye gitmez; bildirimde puan ve geri bildirim metni yok, logda da yok', async () => {
     const { t, submission } = await setup()

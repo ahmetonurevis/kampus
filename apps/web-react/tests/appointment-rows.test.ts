@@ -18,7 +18,7 @@ const PAST = '2026-10-10T10:00:00.000Z'
 
 type Appointment = ReturnType<typeof createSeed>['appointments'][number]
 
-const wrap = (record: Appointment, joined?: { studentName?: string }) => ({
+const wrap = (record: Appointment, joined?: { studentName?: string; teacherName?: string }) => ({
   id: record.id,
   version: 4,
   createdAt: NOW,
@@ -64,6 +64,21 @@ test('DOM-ILT-102: onaylı ve başlamamış randevuyu öğretmen ve talep eden i
   assert.deepEqual(appointmentActions({ ...row, startsAt: PAST }, 'teacher', NOW), [])
   for (const status of ['Reddedildi', 'İptal', 'Geri çekildi'])
     assert.deepEqual(appointmentActions({ ...row, status, mine: true }, 'teacher', NOW), [])
+})
+
+test('OG-221: arşivdeki öğretmenin adı satıra bağlı gelir; öğretmen karşı taraf olarak da görünür', () => {
+  const departed: Appointment = { ...base, teacherId: 't-ayrildi' }
+  const row = appointmentRow(
+    wrap(departed, { teacherName: 'Mehmet Demir' }),
+    lookups,
+    'student',
+    'u-s1',
+    NOW,
+  )
+  assert.equal(row.teacher, 'Mehmet Demir')
+  assert.equal(row.counterpart, 'Mehmet Demir')
+  assert.equal(appointmentRow(wrap(departed), lookups, 'student', 'u-s1', NOW).teacher, '—')
+  assert.equal(appointmentRow(wrap(base), lookups, 'student', 'u-s1', NOW).teacher, 'Selin Kaya')
 })
 
 test('DOM-ILT-102: açanı bilinmeyen eski talep geri çekilemez ve talep eden adına iptal edilemez', () => {

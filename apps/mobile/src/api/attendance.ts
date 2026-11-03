@@ -1,8 +1,8 @@
 // Öğretmen yoklama alma ekranının (`screens/TeacherAttendance.tsx`) saf hesapları. Yetki ve
 // kural sunucudadır (core `authorize('attendance.record')`, `recordAttendance`); buradaki süzgeçler
 // yalnız seçilemeyecek dersi göstermemek ve gönderimi web ile aynı biçimde kurmak içindir. Durum
-// seçenekleri ve işaret hesabı web `pages/academic/academic-rows.ts` / `academic-write.ts` ile
-// aynıdır (TODO(yoklama-ortak-model): ikisi `@kampus/react-shared`'e taşınınca buradaki kopya kalkar).
+// listesi, işaret hesabı ve geç dakika modeli web ile ortaktır (`@kampus/react-shared`
+// `attendance-model.ts`); burada yalnız mobil sunum (ton, ders listesi, sürüm sabitleme) kalır.
 import type { ApiError } from '@kampus/api-client/errors.ts'
 import { dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { commandFeedback } from '@kampus/react-shared/commands.ts'
@@ -25,10 +25,6 @@ export const ATTENDANCE_CHOICES = [
   { value: 'late', label: 'Geç geldi', tone: 'amber' },
   { value: 'excused', label: 'Mazeretli', tone: 'primary' },
 ] as const satisfies readonly { value: AttendanceMark; label: string; tone: ChoiceTone }[]
-
-const MARKS: readonly string[] = ATTENDANCE_CHOICES.map((choice) => choice.value)
-const isMark = (value: string | undefined): value is AttendanceMark =>
-  value !== undefined && MARKS.includes(value)
 
 type LessonFields = Pick<
   Lesson,
@@ -154,24 +150,6 @@ export function teachingClassIds(
   )
 }
 
-/**
- * Ekrandaki işaretler: kullanıcının dokunduğu (`edits`), yoksa kayıtlı durum, o da yoksa "Geldi".
- * Yalnız verilen öğrenciler (sınıfın aktif öğrencileri) döner; sunucu hepsini ister.
- */
-export function attendanceMarks(
-  studentIds: readonly string[],
-  saved: readonly { studentId: string; status: string }[],
-  edits: Readonly<Record<string, AttendanceMark>> = {},
-): Record<string, AttendanceMark> {
-  const savedBy = new Map(saved.map((item) => [item.studentId, item.status]))
-  return Object.fromEntries(
-    studentIds.map((id) => {
-      const stored = savedBy.get(id)
-      return [id, edits[id] ?? (isMark(stored) ? stored : 'present')]
-    }),
-  )
-}
-
 /** Tek öğrencinin durumu; seçili durumun yeniden seçilmesi işareti kaldırmaz. */
 export function markStudent(
   edits: Readonly<Record<string, AttendanceMark>>,
@@ -179,25 +157,6 @@ export function markStudent(
   status: AttendanceMark,
 ): Record<string, AttendanceMark> {
   return { ...edits, [studentId]: status }
-}
-
-/** "Tümünü geldi işaretle": yalnız ekrandaki seçimi hızlandırır, gönderim yine tek istektir (DOM-AKD-036). */
-export function markAll(
-  edits: Readonly<Record<string, AttendanceMark>>,
-  studentIds: readonly string[],
-  status: AttendanceMark,
-): Record<string, AttendanceMark> {
-  const next = { ...edits }
-  for (const id of studentIds) next[id] = status
-  return next
-}
-
-export function markCounts(
-  marks: Readonly<Record<string, AttendanceMark>>,
-): Record<AttendanceMark, number> {
-  const counts: Record<AttendanceMark, number> = { present: 0, absent: 0, late: 0, excused: 0 }
-  for (const status of Object.values(marks)) counts[status] += 1
-  return counts
 }
 
 /**

@@ -3,6 +3,7 @@ import { AppState, Pressable, View, useWindowDimensions } from 'react-native'
 import { toApiError } from '@kampus/api-client/errors.ts'
 import type { State } from '@kampus/school-core/data/seed.ts'
 import { dateLabel, dayKey } from '@kampus/school-core/lib/format.ts'
+import { attendanceMarks, bulkMark, markCounts } from '@kampus/react-shared/attendance-model.ts'
 import { useRecordAttendance } from '@kampus/react-shared/use-academic-commands.ts'
 import { useCollectionAll } from '@kampus/react-shared/use-collection.ts'
 import { useLessonsInRange } from '@kampus/react-shared/use-lessons.ts'
@@ -17,15 +18,12 @@ import {
 import {
   ATTENDANCE_CHOICES,
   attendanceFailureText,
-  attendanceMarks,
   attendancePayload,
   CHANGED_ELSEWHERE_NOTICE,
   changedElsewhere,
   attendanceTargets,
   isStaleDay,
   pinnedClassVersion,
-  markAll,
-  markCounts,
   markStudent,
   teachingClassIds,
   unsavedCount,
@@ -278,7 +276,7 @@ function AttendanceSheet({
           <Button
             icon="CheckCheck"
             disabled={busy}
-            onPress={() => change(markAll(edits, ids, 'present'))}
+            onPress={() => change(bulkMark(edits, ids, 'present'))}
           >
             Tümünü geldi işaretle
           </Button>

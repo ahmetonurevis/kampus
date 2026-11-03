@@ -2,6 +2,10 @@
 // API satırları ve başvuru koleksiyonlarının eşlemeleri girer, tablo/CSV satırı ve özet çıkar.
 // Ortalama ve gün anahtarı school-core `format` işlevleriyle hesaplanır; hiçbiri saklanmaz.
 import { average, dateLabel } from '@kampus/school-core/lib/format.ts'
+import {
+  ATTENDANCE_STATUSES,
+  type AttendanceStatus,
+} from '@kampus/react-shared/attendance-model.ts'
 import type { CoreRecord, CoreRow } from '@/hooks/use-core-collection.ts'
 
 type Subject = CoreRecord<'subjects'>
@@ -96,8 +100,8 @@ export const overallAverage = (grades: readonly Pick<Grade, 'score'>[]) =>
 
 // --- Yoklama ----------------------------------------------------------------
 
-export const ATTENDANCE_STATUSES = ['present', 'absent', 'late', 'excused'] as const
-export type AttendanceStatus = (typeof ATTENDANCE_STATUSES)[number]
+// Durum listesi ortak modeldedir (mobil aynısını kullanır); diğer web dosyaları buradan okur.
+export { ATTENDANCE_STATUSES, type AttendanceStatus }
 
 const STATUS_LABELS = {
   present: 'Geldi',

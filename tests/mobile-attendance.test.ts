@@ -6,16 +6,18 @@ import {
   ATTENDANCE_MESSAGES,
 } from '../packages/react-shared/src/use-academic-commands.ts'
 import {
+  attendanceMarks,
+  bulkMark,
+  markCounts,
+} from '../packages/react-shared/src/attendance-model.ts'
+import {
   ATTENDANCE_CHOICES,
   attendanceFailureText,
-  attendanceMarks,
   attendancePayload,
   attendanceTargets,
   CHANGED_ELSEWHERE_NOTICE,
   changedElsewhere,
   isStaleDay,
-  markAll,
-  markCounts,
   markStudent,
   pendingEdits,
   pinnedClassVersion,
@@ -221,7 +223,7 @@ describe('IST-124 mobil öğretmen yoklaması: durum değişimi', () => {
       'test-s-ece': 'absent',
       'test-s-deniz': 'late',
     })
-    assert.deepEqual(markAll(edits, ids, 'present'), {
+    assert.deepEqual(bulkMark(edits, ids, 'present'), {
       'test-s-deniz': 'present',
       'test-s-ece': 'present',
       'test-s-can': 'present',

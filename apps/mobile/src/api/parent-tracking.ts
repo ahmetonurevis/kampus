@@ -4,7 +4,12 @@
 // `apps/web-react/src/pages/academic/{parent-tracking-tabs,academic-rows,schedule-model}.ts`.
 import { dateLabel, dayKey, timeLabel } from '@kampus/school-core/lib/format.ts'
 import type { Lesson } from '@kampus/react-shared/lessons.ts'
+import type { State } from '@kampus/school-core/data/seed.ts'
 import { isModuleOpen } from './session-state.ts'
+
+/** Modül yalnız açıkça `true` ise açıktır (web ile aynı); anahtar yoksa kapalı sayılır. */
+export const isModuleOn = (modules: Record<string, boolean>, module: string): boolean =>
+  modules[module] === true
 
 // --- Sekmeler -------------------------------------------------------------------------------
 
@@ -151,6 +156,49 @@ export function attendanceRangeFilters(
   return {}
 }
 
+/** Dönem sorgusunun durumu: yüklenirken ve hatada "Bu dönem" sessizce "Tümü"ye düşmez. */
+export type TermStatus = 'loading' | 'error' | 'ready'
+
+export type AttendanceRangeResolution = {
+  range: AttendanceRange
+  /** `loading`/`error`: dönem bilinmeden "Bu dönem" istenemez; liste istekleri bekletilir. */
+  wait: 'loading' | 'error' | null
+}
+
+/**
+ * Seçili aralığın uygulanacak değeri. Yalnız "Bu dönem" dönem bilgisine bağlıdır: bilgi yokken
+ * bekletilir (yükleniyor ya da hata); bilgi geldikten sonra dönem yoksa varsayılana dönülür.
+ */
+export function resolveAttendanceView(
+  range: AttendanceRange,
+  status: TermStatus,
+  term: CurrentTerm,
+): AttendanceRangeResolution {
+  if (range === 'term' && status !== 'ready') return { range, wait: status }
+  return { range: resolveAttendanceRange(range, term), wait: null }
+}
+
+/** Dönem bilinmeden "Bu dönem" düğmesi de sunulur (seçilince bekletilir); bilgi gelince süzülür. */
+export const presentedRanges = (status: TermStatus, term: CurrentTerm): AttendanceRange[] =>
+  status === 'ready' ? attendanceRanges(term) : [...ATTENDANCE_RANGES]
+
+/**
+ * Seçili tarih aralığındaki kayıtlar (Europe/Istanbul günü, iki uç dahil); durum kartları ve liste
+ * aynı aralığı gösterir. Tarihsiz kayıt aralık seçiliyken sayıma girmez.
+ */
+export function attendanceInRange<T extends Pick<AttendanceFields, 'date'>>(
+  records: readonly T[],
+  filters: { dateFrom?: string; dateTo?: string },
+): T[] {
+  const { dateFrom, dateTo } = filters
+  if (!dateFrom && !dateTo) return [...records]
+  return records.filter((record) => {
+    if (!record.date) return false
+    const day = dayKey(record.date)
+    return (!dateFrom || day >= dateFrom) && (!dateTo || day <= dateTo)
+  })
+}
+
 /**
  * Devamsızlık listesinin tek süzgeç alanı (`ListState.filter`) hem durumu hem aralığı taşır;
  * böylece ikisinden biri değişince sayfa `withFilter` ile başa döner. Varsayılan ikili boş metindir.
@@ -238,17 +286,18 @@ export type LessonView = {
 export type ScheduleDay = { day: string; label: string; lessons: LessonView[] }
 
 /** Etüt kaydının program için kullandığı alanlar (`State['tutorSessions']`). */
-export type TutorSessionFields = {
-  id: string
-  date: string
-  duration: number
-  subjectId: string
-  topic: string
-  teacherId: string
-  room: string
-  status: string
-  studentIds: readonly string[]
-}
+export type TutorSessionFields = Pick<
+  State['tutorSessions'][number],
+  | 'id'
+  | 'date'
+  | 'duration'
+  | 'subjectId'
+  | 'topic'
+  | 'teacherId'
+  | 'room'
+  | 'status'
+  | 'studentIds'
+>
 
 export const TUTORING_LABEL = 'Etüt'
 const TUTORING_CANCELLED = 'İptal'
@@ -276,7 +325,7 @@ export function tutoringView(
 ): LessonView | null {
   if (record.status === TUTORING_CANCELLED) return null
   if (!record.studentIds.includes(studentId)) return null
-  const subject = names.subjects.get(record.subjectId) || record.subjectId
+  const subject = names.subjects.get(record.subjectId) || 'Ders'
   const teacher = names.teachers.get(record.teacherId) ?? ''
   return {
     id: record.id,

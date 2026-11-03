@@ -46,6 +46,7 @@ function QuizSheet({
           <T muted size={14}>
             {view.subtitle}
           </T>
+          <DetailPair label="Son tarih" value={view.due} />
           {view.result ? (
             <Section title="Sonuç" panel>
               <View style={{ gap: 12 }}>

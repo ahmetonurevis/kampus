@@ -10,14 +10,16 @@ import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
 import {
   ATTENDANCE_STATUSES,
   attendanceCounts,
+  attendanceInRange,
   attendanceLabel,
   attendanceRangeFilters,
   attendanceRangeLabel,
-  attendanceRanges,
+  presentedRanges,
   attendanceView,
   decodeAttendanceFilter,
   encodeAttendanceFilter,
-  resolveAttendanceRange,
+  resolveAttendanceView,
+  type TermStatus,
   type AttendanceCounts,
   type AttendanceStatus,
   type AttendanceRange,
@@ -30,8 +32,8 @@ type AttendanceRecord = State['attendance'][number]
 
 /**
  * Katılım özeti; kart seçili durumun listesini süzer, aynı karta yeniden dokununca süzgeç kalkar
- * (öğrenci notlarındaki ders kartlarıyla aynı kalıp). Sayılar çocuğun bütün yoklama kayıtlarından
- * hesaplanır, liste süzgecinden etkilenmez.
+ * (öğrenci notlarındaki ders kartlarıyla aynı kalıp). Sayılar seçili tarih aralığındaki kayıtlardan
+ * hesaplanır (liste ile aynı aralık); durum süzgecinden etkilenmez.
  */
 function StatusFilter({
   counts,
@@ -149,45 +151,66 @@ export function ParentAttendance({ childId }: { childId: string }) {
     `veli/akademik-takip/devamsizlik/${childId}`,
   )
   const period = useCurrentAcademicPeriod()
+  const termStatus: TermStatus = period.data ? 'ready' : period.error ? 'error' : 'loading'
   const term: CurrentTerm = period.data?.data.term ?? null
   const decoded = decodeAttendanceFilter(state.filter)
   const status = decoded.status
-  const range = resolveAttendanceRange(decoded.range, term)
+  const { range, wait } = resolveAttendanceView(decoded.range, termStatus, term)
   const rangeFilters = attendanceRangeFilters(range, dayKey(), term)
-  const all = useCollectionAll<AttendanceRecord>('attendance', { filters: { studentId: childId } })
-  const counts = useMemo(
-    () => attendanceCounts((all.data ?? []).map((row) => row.record)),
-    [all.data],
+  const enabled = wait === null
+  const all = useCollectionAll<AttendanceRecord>(
+    'attendance',
+    { filters: { studentId: childId } },
+    { enabled },
   )
-  const records = useCollectionList<AttendanceRecord>('attendance', {
-    page: state.index + 1,
-    pageSize: API_PAGE_SIZE,
-    sort: ['-date'],
-    filters: { studentId: childId, ...rangeFilters, ...(status ? { status } : {}) },
-  })
-  const total = records.isPlaceholderData ? undefined : records.data?.total
+  const counts = useMemo(
+    () =>
+      attendanceCounts(
+        attendanceInRange(
+          (all.data ?? []).map((row) => row.record),
+          rangeFilters.dateFrom || rangeFilters.dateTo ? rangeFilters : {},
+        ),
+      ),
+    [all.data, rangeFilters.dateFrom, rangeFilters.dateTo],
+  )
+  const records = useCollectionList<AttendanceRecord>(
+    'attendance',
+    {
+      page: state.index + 1,
+      pageSize: API_PAGE_SIZE,
+      sort: ['-date'],
+      filters: { studentId: childId, ...rangeFilters, ...(status ? { status } : {}) },
+    },
+    { enabled },
+  )
+  const total = enabled && !records.isPlaceholderData ? records.data?.total : undefined
   const index = clampPageIndex(state.index, total)
   if (index !== state.index) setIndex(index)
 
   return (
     <>
-      {all.error ? (
-        <QueryError error={all.error} onRetry={() => void all.refetch()} />
-      ) : !all.data ? (
-        <ListLoading label="Devam özeti yükleniyor…" />
-      ) : (
-        <StatusFilter
-          counts={counts}
-          value={status}
-          onChange={(next) => setFilter(encodeAttendanceFilter({ status: next, range }))}
-        />
-      )}
+      {wait === null &&
+        (all.error ? (
+          <QueryError error={all.error} onRetry={() => void all.refetch()} />
+        ) : !all.data ? (
+          <ListLoading label="Devam özeti yükleniyor…" />
+        ) : (
+          <StatusFilter
+            counts={counts}
+            value={status}
+            onChange={(next) => setFilter(encodeAttendanceFilter({ status: next, range }))}
+          />
+        ))}
       <RangeFilter
-        ranges={attendanceRanges(term)}
+        ranges={presentedRanges(termStatus, term)}
         value={range}
         onChange={(next) => setFilter(encodeAttendanceFilter({ status, range: next }))}
       />
-      {records.error ? (
+      {wait === 'error' && period.error ? (
+        <QueryError error={period.error} onRetry={() => void period.refetch()} />
+      ) : wait === 'error' ? null : wait === 'loading' ? (
+        <ListLoading label="Dönem bilgisi yükleniyor…" />
+      ) : records.error ? (
         <QueryError error={records.error} onRetry={() => void records.refetch()} />
       ) : !records.data || records.isPlaceholderData ? (
         // Süzgeç değişirken önceki sayfa (placeholder) başka durumun kayıtlarıdır; gösterilmez.

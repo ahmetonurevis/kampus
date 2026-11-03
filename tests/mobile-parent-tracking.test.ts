@@ -1,6 +1,11 @@
 import test, { describe } from 'node:test'
 import assert from 'node:assert/strict'
-import { clampPageIndex, EMPTY_LIST_STATE, withFilter } from '../apps/mobile/src/api/list-state.ts'
+import {
+  clampPageIndex,
+  EMPTY_LIST_STATE,
+  withFilter,
+  withSearch,
+} from '../apps/mobile/src/api/list-state.ts'
 import {
   childSkillAssignments,
   quizDetailView,
@@ -17,6 +22,7 @@ import {
 import {
   addDays,
   attendanceCounts,
+  attendanceInRange,
   attendanceLabel,
   attendanceRangeFilters,
   attendanceRanges,
@@ -24,9 +30,12 @@ import {
   decodeAttendanceFilter,
   encodeAttendanceFilter,
   isAttendanceStatus,
+  isModuleOn,
   NO_REASON,
+  presentedRanges,
   parentTabs,
   resolveAttendanceRange,
+  resolveAttendanceView,
   resolveParentTab,
   tutoringView,
   weekDays,
@@ -560,5 +569,138 @@ describe('IST-051 veli beceri görevleri', () => {
     assert.deepEqual(versions[0]?.criteria, ['1. kriter: 3. bant · Akıcı'])
     assert.equal(versions[1]?.score, null)
     assert.equal(versions[1]?.comment, null)
+  })
+})
+
+describe('OG-063 veli takibi: saf mantık dalları', () => {
+  const tutor = (id: string, date: string, overrides: Record<string, unknown> = {}) => ({
+    id,
+    date,
+    duration: 40,
+    subjectId: 'mat',
+    topic: 'Üslü sayılar',
+    teacherId: 't1',
+    room: '204',
+    status: 'Planlandı',
+    studentIds: ['deniz'],
+    ...overrides,
+  })
+
+  test('etüt modülü yalnız açıkça true ise açıktır; kapalıyken ve anahtar yokken istek gitmez', () => {
+    assert.equal(isModuleOn({ tutoring: true }, 'tutoring'), true)
+    assert.equal(isModuleOn({ tutoring: false }, 'tutoring'), false)
+    assert.equal(isModuleOn({}, 'tutoring'), false)
+  })
+
+  test('pazar 21:30Z İstanbul pazartesi 00:30: etüt yeni haftaya düşer, önceki haftada görünmez', () => {
+    const sunday = tutor('e1', '2026-11-01T21:30:00.000Z')
+    const input = { sessions: [sunday], studentId: 'deniz' }
+    const next = weekSchedule([], '2026-11-02', names, input)
+    assert.deepEqual(
+      next.map((day) => day.day),
+      ['2026-11-02'],
+    )
+    assert.equal(next[0]?.lessons[0]?.time, '00:30–01:10')
+    assert.deepEqual(weekSchedule([], '2026-10-26', names, input), [])
+    // Bir saat önce (20:30Z = pazar 23:30) hâlâ önceki haftanın pazarıdır.
+    const late = { sessions: [tutor('e2', '2026-11-01T20:30:00.000Z')], studentId: 'deniz' }
+    assert.deepEqual(
+      weekSchedule([], '2026-10-26', names, late).map((day) => day.day),
+      ['2026-11-01'],
+    )
+    assert.deepEqual(weekRange('2026-11-02'), { dateFrom: '2026-11-02', dateTo: '2026-11-08' })
+  })
+
+  test('ders adı okunamayan etüt ham ders kimliğini göstermez', () => {
+    const view = tutoringView(
+      tutor('e1', '2026-11-03T11:00:00.000Z', { subjectId: 'ham-id-1' }),
+      'deniz',
+      names,
+    )
+    assert.equal(view?.title, 'Etüt · Ders · Üslü sayılar')
+    assert.equal(view?.tutoring?.subject, 'Ders')
+  })
+
+  test('DOM-BEC-045 settled:false puan yüzdesi dolu olsa da gösterilmez, geri bildirim gelmez', () => {
+    const [version] = submissionVersions([
+      {
+        id: 'v1',
+        number: 1,
+        submittedAt: '2026-11-02T09:00:00.000Z',
+        late: false,
+        body: 'Metin',
+        score: {
+          settled: false,
+          percent: 88,
+          overallComment: 'Gizli yorum',
+          criteria: [{ criterionId: 'c1', band: 4, comment: 'Gizli' }],
+        },
+      },
+    ])
+    assert.equal(version?.score, null)
+    assert.equal(version?.comment, null)
+    assert.deepEqual(version?.criteria, [])
+  })
+
+  test('arama ve süzgeç değişince sayfa sıfırlanır; aynı değerde korunur', () => {
+    const page3 = { ...EMPTY_LIST_STATE, index: 3 }
+    assert.equal(withSearch(page3, 'üslü').index, 0)
+    assert.equal(withSearch(page3, '').index, 3)
+    assert.equal(withFilter(page3, 'absent|all').index, 0)
+  })
+
+  test('dönem yüklenirken ve hatada Bu dönem bekletilir, Tümü ya da Son 30 gün beklemez', () => {
+    assert.deepEqual(resolveAttendanceView('term', 'loading', null), {
+      range: 'term',
+      wait: 'loading',
+    })
+    assert.deepEqual(resolveAttendanceView('term', 'error', null), { range: 'term', wait: 'error' })
+    assert.deepEqual(resolveAttendanceView('all', 'loading', null), { range: 'all', wait: null })
+    assert.deepEqual(resolveAttendanceView('last30', 'error', null), {
+      range: 'last30',
+      wait: null,
+    })
+    assert.deepEqual(resolveAttendanceView('term', 'ready', TERM), { range: 'term', wait: null })
+    // Dönem bilgisi geldi ve dönem yok: gerçekten varsayılana dönülür.
+    assert.deepEqual(resolveAttendanceView('term', 'ready', null), { range: 'all', wait: null })
+    assert.deepEqual(presentedRanges('loading', null), ['term', 'last30', 'all'])
+    assert.deepEqual(presentedRanges('ready', null), ['last30', 'all'])
+  })
+
+  test('durum sayıları seçili tarih aralığındaki kayıtlardan hesaplanır (kart liste ile çelişmez)', () => {
+    const records = [
+      { date: '2026-11-03T06:00:00.000Z', status: 'absent' },
+      { date: '2026-10-01T06:00:00.000Z', status: 'absent' },
+      { date: '2026-09-01T06:00:00.000Z', status: 'late' },
+      // Europe/Istanbul: 22:00Z ertesi günün 01:00'idir (2026-10-05).
+      { date: '2026-10-04T22:00:00.000Z', status: 'present' },
+    ]
+    const last30 = attendanceRangeFilters('last30', '2026-11-03', TERM)
+    assert.deepEqual(attendanceCounts(attendanceInRange(records, last30)), {
+      present: 1,
+      absent: 1,
+      late: 0,
+      excused: 0,
+    })
+    assert.equal(attendanceInRange(records, {}).length, 4)
+    const term = attendanceRangeFilters('term', '2026-11-03', TERM)
+    assert.equal(attendanceInRange(records, term).length, 3)
+  })
+
+  test('quiz ayrıntısı son tarihi yazar; son tarihsiz quiz süresiz açıktır', () => {
+    const detail: QuizDetailFields = {
+      title: 'Üslü sayılar',
+      subject: 'Matematik',
+      questionCount: 5,
+      duration: 20,
+      dueDate: null,
+      questions: null,
+      attempts: [],
+    }
+    assert.equal(quizDetailView(detail, 'deniz').due, 'Süresiz açık')
+    assert.match(
+      quizDetailView({ ...detail, dueDate: '2026-11-10T20:59:00.000Z' }, 'deniz').due,
+      /10 Kas 2026 23:59/,
+    )
   })
 })

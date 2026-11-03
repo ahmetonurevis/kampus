@@ -13,6 +13,7 @@ import type {
   TaskSubmission,
   TaskSubmissionDetail,
 } from '@kampus/react-shared/use-task-submissions.ts'
+import { isSpeakingTask, taskTypeLabel } from '@kampus/react-shared/task-labels.ts'
 import { isApiError } from '@kampus/api-client/errors.ts'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { isClosed } from '@kampus/school-core/skills/scoring.ts'
@@ -32,30 +33,9 @@ export const isLearnerAssignment = <T extends { view: string }>(
   item: T,
 ): item is Extract<T, { view: 'learner' }> => item.view === 'learner'
 
-const CONTENT_LABELS: Record<TaskAssignmentLearner['contentType'], string> = {
-  quiz: 'Quiz',
-  exercise_set: 'Alıştırma seti',
-  question: 'Soru',
-  homework_template: 'Yazma ödevi',
-  text: 'Metin',
-  reading_passage: 'Okuma parçası',
-  audio: 'Dinleme',
-  video: 'Video',
-  worksheet: 'Çalışma kâğıdı',
-  file: 'Dosya',
-  link: 'Bağlantı',
-  book_reference: 'Kitap',
-}
-
 type SubmissionOf = Partial<Pick<TaskAssignmentLearner, 'submission'>>
 
-/** Konuşma görevi: ses kaydıyla teslim edilen öğretmen puanlı görev (IST-051). */
-export const isSpeakingTask = (assignment: SubmissionOf) =>
-  assignment.submission?.submissionKind === 'audio'
-
-export const taskTypeLabel = (
-  assignment: Pick<TaskAssignmentLearner, 'contentType'> & SubmissionOf,
-) => (isSpeakingTask(assignment) ? 'Konuşma görevi' : CONTENT_LABELS[assignment.contentType])
+export { isSpeakingTask, taskTypeLabel }
 
 export const taskKindLabel = (assignment: Pick<TaskAssignmentLearner, 'kind'>) =>
   assignment.kind === 'evaluation' ? 'Değerlendirme' : 'Alıştırma'

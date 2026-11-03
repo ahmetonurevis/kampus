@@ -2,6 +2,7 @@ import { useMemo, useState } from 'react'
 import { View } from 'react-native'
 import { useLearnerAssignments } from '@kampus/react-shared/use-learner-task-progress.ts'
 import { useTaskSubmission } from '@kampus/react-shared/use-task-submissions.ts'
+import { useNow } from '../../ui/use-now.ts'
 import { Badge, Empty, SearchField, Sheet, T } from '../../ui/components.tsx'
 import { DetailPair, EmptyResults, ListRow, Pagination, Section } from '../../ui/SchoolLayout.tsx'
 import { API_PAGE_SIZE, clampPageIndex } from '../list-state.ts'
@@ -55,13 +56,14 @@ function SubmissionVersions({ submissionId }: { submissionId: string }) {
 function SkillSheet({
   assignment,
   childId,
+  now,
   onClose,
 }: {
   assignment: SkillAssignmentFields
   childId: string
+  now: Date
   onClose: () => void
 }) {
-  const now = new Date()
   const source = skillResultSource(
     assignment,
     assignment.progress.find((entry) => entry.learnerId === childId),
@@ -90,6 +92,7 @@ export function ParentSkillTasks({ childId }: { childId: string }) {
   const { state, setSearch, setIndex } = useListMemory(`veli/akademik-takip/gorevler/${childId}`)
   const [selectedId, setSelectedId] = useState<string | null>(null)
   const assignments = useLearnerAssignments()
+  const now = useNow()
   const items = useMemo(
     () =>
       childSkillAssignments(
@@ -103,9 +106,9 @@ export function ParentSkillTasks({ childId }: { childId: string }) {
   const visible = useMemo(
     () =>
       assignments.isReady
-        ? skillRows(items, childId, new Date()).filter((row) => skillMatches(row, state.search))
+        ? skillRows(items, childId, now).filter((row) => skillMatches(row, state.search))
         : undefined,
-    [assignments.isReady, items, childId, state.search],
+    [assignments.isReady, items, childId, state.search, now],
   )
   const total = visible?.length
   const index = clampPageIndex(state.index, total)
@@ -124,7 +127,7 @@ export function ParentSkillTasks({ childId }: { childId: string }) {
       ) : page.length === 0 ? (
         state.search ? (
           <EmptyResults noun="görev" onClear={() => setSearch('')} />
-        ) : (
+        ) : incomplete ? null : (
           <Empty
             title="Atanmış görev yok"
             text="Öğretmenler beceri görevi atadığında burada görünür."
@@ -160,8 +163,13 @@ export function ParentSkillTasks({ childId }: { childId: string }) {
             key={selectedId}
             assignment={selected}
             childId={childId}
+            now={now}
             onClose={() => setSelectedId(null)}
           />
+        ) : assignments.error && !assignments.isReady ? (
+          <Sheet visible title="Görev ayrıntısı" onClose={() => setSelectedId(null)}>
+            <QueryError error={assignments.error} onRetry={() => void assignments.refetch()} />
+          </Sheet>
         ) : !incomplete ? (
           <Sheet visible title="Görev ayrıntısı" onClose={() => setSelectedId(null)}>
             <T muted size={15}>

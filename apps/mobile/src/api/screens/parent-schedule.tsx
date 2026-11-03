@@ -10,6 +10,7 @@ import { DetailPair, ListRow, Section } from '../../ui/SchoolLayout.tsx'
 import { useApiSession } from '../auth.tsx'
 import {
   addDays,
+  isModuleOn,
   TUTORING_LABEL,
   weekRange,
   weekSchedule,
@@ -18,7 +19,6 @@ import {
   type TutoringDetail,
   type TutorSessionFields,
 } from '../parent-tracking.ts'
-import { isModuleOpen } from '../session-state.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 
 type Named = { name: string }
@@ -66,7 +66,7 @@ function TutoringSheet({
  */
 export function ParentSchedule({ classId, childId }: { classId: string; childId: string }) {
   const session = useApiSession()
-  const tutoringOn = isModuleOpen(session.modules, TUTORING_MODULE)
+  const tutoringOn = isModuleOn(session.modules, TUTORING_MODULE)
   const [openTutoring, setOpenTutoring] = useState<{
     title: string
     detail: TutoringDetail
@@ -123,7 +123,9 @@ export function ParentSchedule({ classId, childId }: { classId: string; childId:
       </View>
       {lessons.error ? (
         <QueryError error={toApiError(lessons.error)} onRetry={() => void lessons.refetch()} />
-      ) : !lessons.data || (tutoringOn && tutorSessions.isPending && !tutoringError) ? (
+      ) : !lessons.data ||
+        subjects.isPending ||
+        (tutoringOn && tutorSessions.isPending && !tutoringError) ? (
         <ListLoading label="Program yükleniyor…" />
       ) : days.length === 0 ? (
         <Empty title="Bu hafta ders yok" text="Programa ders eklendiğinde burada görünür." />

@@ -5,6 +5,15 @@
 // Web karşılıkları `apps/web-react/src/pages/{learning/{learning-rows,quiz-forms},tasks/{parent-task-model,student-task-model}}.ts`.
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { isClosed } from '@kampus/school-core/skills/scoring.ts'
+import {
+  attemptOf,
+  type QuizAttempt,
+  type QuizListItem,
+  type QuizPersonalDetail,
+} from '@kampus/react-shared/quizzes.ts'
+import { isSpeakingTask, taskTypeLabel } from '@kampus/react-shared/task-labels.ts'
+import type { TaskAssignmentLearner } from '@kampus/react-shared/use-task-assignments.ts'
+import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 
 // --- Quiz sonuçları -------------------------------------------------------------------------
 
@@ -23,42 +32,22 @@ export const quizDueText = (dueDate: string | null | undefined): string =>
     ? dateLabel(dueDate, { year: 'numeric', hour: '2-digit', minute: '2-digit' })
     : 'Süresiz açık'
 
-type QuizResultFields = {
-  score: number
-  correctCount: number
-  total: number
-  topicScores?: readonly { topic: string; score: number }[]
-}
+export type QuizItemFields = Pick<
+  QuizListItem,
+  'id' | 'title' | 'subject' | 'questionCount' | 'duration' | 'dueDate'
+> & { attempts: readonly QuizAttemptFields[] }
 
-type QuizAttemptFields = {
-  studentId: string
-  status: 'in_progress' | 'expired' | 'completed'
-  submittedAt: string | null
-  expiresAt: string | null
-  answers?: Readonly<Record<string, number>> | undefined
-  result: QuizResultFields | null
-}
-
-export type QuizItemFields = {
-  id: string
-  title: string
-  subject: string
-  questionCount: number
-  duration: number
-  dueDate: string | null
-  attempts: readonly QuizAttemptFields[]
-}
-
-/** Satır yalnız seçili çocuğun denemesinden kurulur: iki çocuk aynı sınıfta olabilir (DOM-AKD-079). */
-const attemptOf = (item: Pick<QuizItemFields, 'attempts'>, studentId: string) =>
-  item.attempts.find((attempt) => attempt.studentId === studentId)
+type QuizAttemptFields = Pick<
+  QuizAttempt,
+  'studentId' | 'status' | 'submittedAt' | 'expiresAt' | 'answers' | 'result'
+>
 
 export type QuizRow = {
   id: string
   title: string
   subtitle: string
   phase: QuizPhase
-  status: string
+  status: (typeof QUIZ_PHASE_TEXT)[QuizPhase]
   /** Sunucunun cevaplardan hesapladığı yüzde puan; sonuç yoksa `undefined`. */
   score: string | undefined
 }
@@ -90,23 +79,18 @@ export const quizMatches = (row: Pick<QuizRow, 'title' | 'subtitle'>, search: st
   return !needle || `${row.title} ${row.subtitle}`.toLocaleLowerCase('tr').includes(needle)
 }
 
-type QuizQuestionFields = { id: string; text: string; topic: string; options: readonly string[] }
-
-export type QuizDetailFields = {
-  title: string
-  subject: string
-  questionCount: number
-  duration: number
-  dueDate: string | null
-  questions: readonly QuizQuestionFields[] | null
-  attempts: readonly QuizAttemptFields[]
-}
+export type QuizDetailFields = Pick<
+  QuizPersonalDetail,
+  'title' | 'subject' | 'questionCount' | 'duration' | 'dueDate' | 'questions'
+> & { attempts: readonly QuizAttemptFields[] }
 
 export type QuizDetailView = {
   title: string
   subtitle: string
   phase: QuizPhase
-  status: string
+  status: (typeof QUIZ_PHASE_TEXT)[QuizPhase]
+  /** "Son tarih" satırı: tarih ya da "Süresiz açık". */
+  due: string
   /** Sonuç yoksa durum açıklaması (çözülmedi, sürüyor). */
   note: string | null
   result: {
@@ -152,6 +136,7 @@ export function quizDetailView(quiz: QuizDetailFields, studentId: string): QuizD
     subtitle: `${quiz.subject} · ${quiz.questionCount} soru · ${quiz.duration} dk`,
     phase,
     status: QUIZ_PHASE_TEXT[phase],
+    due: quizDueText(quiz.dueDate),
     note: result
       ? null
       : phase === 'in_progress'
@@ -203,57 +188,32 @@ export function quizDetailView(quiz: QuizDetailFields, studentId: string): QuizD
 
 // --- Beceri görevleri -----------------------------------------------------------------------
 
-type ProgressStatus = 'pending' | 'in_progress' | 'submitted' | 'late' | 'not_submitted'
+type Learner = TaskAssignmentLearner
+type ProgressStatus = Learner['progress'][number]['status']
 
-export type SkillProgressFields = {
-  learnerId: string
-  status: ProgressStatus
-  resubmissionRequested: boolean
-  attemptId: string | null
-  submissionId: string | null
-  used: number
-  limit: number | null
-  score: { percent: number } | null
-}
+export type SkillProgressFields = Pick<
+  Learner['progress'][number],
+  'learnerId' | 'status' | 'resubmissionRequested' | 'attemptId' | 'submissionId' | 'used' | 'limit'
+> & { score: { percent: number } | null }
 
-export type SkillAssignmentFields = {
-  id: string
-  title: string
-  contentType: string
-  scoringMode: 'auto' | 'teacher'
-  kind: 'evaluation' | 'practice'
-  deadline: { dueAt: string | null; lateAcceptanceDays: number }
-  timeLimitMinutes: number | null
-  submission: { submissionKind: string } | null
-  learnerIds: readonly string[]
+export type SkillAssignmentFields = Pick<
+  Learner,
+  | 'id'
+  | 'title'
+  | 'contentType'
+  | 'scoringMode'
+  | 'kind'
+  | 'deadline'
+  | 'timeLimitMinutes'
+  | 'learnerIds'
+> & {
+  submission: { submissionKind: NonNullable<Learner['submission']>['submissionKind'] } | null
   progress: readonly SkillProgressFields[]
 }
 
-const CONTENT_LABELS: Record<string, string> = {
-  quiz: 'Quiz',
-  exercise_set: 'Alıştırma seti',
-  question: 'Soru',
-  homework_template: 'Yazma ödevi',
-  text: 'Metin',
-  reading_passage: 'Okuma parçası',
-  audio: 'Dinleme',
-  video: 'Video',
-  worksheet: 'Çalışma kâğıdı',
-  file: 'Dosya',
-  link: 'Bağlantı',
-  book_reference: 'Kitap',
-}
+export { isSpeakingTask }
 
-/** Konuşma görevi: ses kaydıyla teslim edilen öğretmen puanlı görev. */
-export const isSpeakingTask = (assignment: Pick<SkillAssignmentFields, 'submission'>): boolean =>
-  assignment.submission?.submissionKind === 'audio'
-
-export const skillTypeLabel = (
-  assignment: Pick<SkillAssignmentFields, 'contentType' | 'submission'>,
-): string =>
-  isSpeakingTask(assignment)
-    ? 'Konuşma görevi'
-    : (CONTENT_LABELS[assignment.contentType] ?? assignment.contentType)
+export const skillTypeLabel = taskTypeLabel
 
 export const skillKindLabel = (assignment: Pick<SkillAssignmentFields, 'kind'>): string =>
   assignment.kind === 'evaluation' ? 'Değerlendirme' : 'Alıştırma'
@@ -398,18 +358,22 @@ export function skillFacts(
   ]
 }
 
-type VersionFields = {
-  id: string
-  number: number
-  submittedAt: string
-  late: boolean
-  body: string | null
-  score: {
-    settled: boolean
-    percent: number
-    overallComment?: string | null
-    criteria: readonly { criterionId: string; band: number; comment?: string | null }[]
-  } | null
+type VersionFields = Pick<
+  TaskSubmissionDetail['versions'][number],
+  'id' | 'number' | 'submittedAt' | 'late' | 'body'
+> & {
+  score:
+    | (Pick<
+        NonNullable<TaskSubmissionDetail['versions'][number]['score']>,
+        'settled' | 'percent'
+      > & {
+        overallComment?: string | undefined
+        criteria: readonly Pick<
+          NonNullable<TaskSubmissionDetail['versions'][number]['score']>['criteria'][number],
+          'criterionId' | 'band' | 'comment'
+        >[]
+      })
+    | null
 }
 
 export type VersionView = {

@@ -187,7 +187,7 @@
 - **Gerekçe:** Pratik yapmayı cezalandırmamak ile ölçmeyi güvenilir tutmak ayrı türler gerektirir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `TASK_KINDS`, `attemptRulesSchema` (alıştırma sınırsız) ve `countedAttempt` (alıştırma sayılan sonuç üretmez); türün yayımdan sonra değişmemesi `packages/school-core/src/skills/assignment.ts` `planAssignmentChange` (atamada yalnız son teslim uzatılır). API: `POST /api/v1/task-assignments` türü atamada sabitler, `PATCH /api/v1/task-assignments/:assignmentId` türü değiştirmeye 409 `assignment_setting_frozen` verir; liste `kind` ile süzülür. Eski demoda her quiz denemesi not üretir.
+- **Kodda:** kısmen — core kuralı `packages/school-core/src/skills/scoring.ts` `TASK_KINDS`, `attemptRulesSchema` (alıştırma sınırsız) ve `countedAttempt` (alıştırma sayılan sonuç üretmez); türün yayımdan sonra değişmemesi `packages/school-core/src/skills/assignment.ts` `planAssignmentChange` (atamada yalnız son teslim uzatılır). API: `POST /api/v1/task-assignments` türü atamada sabitler, `PATCH /api/v1/task-assignments/:assignmentId` türü değiştirmeye 409 `assignment_setting_frozen` verir; liste `kind` ile süzülür. Veli alıştırma puanını görmez: `hidesPracticeResult` (`apps/api/src/services/task-attempts.ts`) deneme görünümünde ve atama durum özetinde, teslim puanı yolunda (`shownScore`, `services/task-submissions.ts`) puan, rubrik ve geri bildirimi `null` yapar (test `apps/api/test/task-grading.test.ts`, `practice-sets.test.ts`). Eski demoda her quiz denemesi not üretir.
 
 ### DOM-BEC-042 · Deneme hakkı
 
@@ -235,7 +235,7 @@
 - **Gerekçe:** Yayınevi çevrimiçi alıştırmasının kurum içi karşılığı: kursiyer hatasını hemen görür ama madde başına sınırlı hak deneme-yanılmayla anahtar toplamayı önler; kilit, anahtarı görülmüş maddenin sonradan düzeltilmesini engeller.
 - **Kaynak:** İşletme kuralı (madde başına 2 hak).
 - **Kurum türü:** ikisi
-- **Kodda:** core kuralı `packages/school-core/src/skills/practice.ts` (`ITEM_CHECK_LIMIT`, `itemCheckInputSchema`, `planItemCheck`, `itemFeedback`, `lockedAnswers`, `withLockedAnswers`); ünite `packages/school-core/src/content/resource.ts` `contentUnitSchema` (quiz/alıştırma seti içeriğinde `unit`, `taxonomy.ts` `UNIT_RANGE`); testler `tests/skills-practice.test.ts`. Hak sayısı kurum ya da öğretmen ayarı değildir (`TODO(alistirma-kontrol-hakki)`).
+- **Kodda:** core kuralı `packages/school-core/src/skills/practice.ts` (`ITEM_CHECK_LIMIT`, `itemCheckInputSchema`, `planItemCheck`, `itemFeedback`, `lockedAnswers`, `withLockedAnswers`); ünite `packages/school-core/src/content/resource.ts` `contentUnitSchema` (quiz/alıştırma seti içeriğinde `unit`, `taxonomy.ts` `UNIT_RANGE`); API `POST /task-attempts/:attemptId/checks` (`apps/api/src/routes/task-attempts.ts`, servis `checkTaskAttemptItem` `services/task-attempts.ts`, kayıt tablosu `attempt_item_checks` migration 0045, kilitli cevaplar PATCH ve teslimde korunur); veliye madde sonucu, puan ve geri bildirim `null` (`hidesPracticeResult`); kanca `useCheckTaskAttemptItem` (`packages/react-shared/src/use-task-attempts.ts`); ekran `apps/web-react/src/pages/tasks/AttemptPlayer.tsx` ve `practice-check-model.ts` (soru başına `Kontrol et`, kalan hak, kilitte girdi kapalı, kilitli maddede doğru cevap ve açıklama); testler `tests/skills-practice.test.ts`, `apps/api/test/practice-sets.test.ts`, `tests/e2e-react/alistirma-seti.spec.ts`. Hak sayısı madde başına sabit 2'dir, kurum ya da öğretmen ayarı değildir (Sabah kararı 69; `TODO(alistirma-kontrol-hakki)`).
 
 ### DOM-BEC-048 · Alıştırma not defteri
 
@@ -243,7 +243,7 @@
 - **Gerekçe:** Ölçme sayılmayan alıştırma resmî notla karışmamalı; ama öğretmen hangi ünite, beceri ve kazanımda sınıfın zorlandığını görmeli. Son deneme kursiyerin güncel durumunu, madde puanı ağırlığı soru büyüklüğünü yansıtır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** core kuralı `packages/school-core/src/skills/practice.ts` (`practiceShownAttempt`, `practiceGradebook`); madde becerisi ve kazanımı `skills/assignment.ts` `scoringItemsFor` (`skill`, `outcomes`); testler `tests/skills-practice.test.ts`.
+- **Kodda:** core kuralı `packages/school-core/src/skills/practice.ts` (`practiceShownAttempt`, `practiceGradebook`); madde becerisi ve kazanımı `skills/assignment.ts` `scoringItemsFor` (`skill`, `outcomes`); API `GET /practice-gradebook` (`apps/api/src/routes/practice-gradebook.ts`, servis `services/practice-gradebook.ts`; yönetici, öğretmen, öğrenci; veli 403); kanca `usePracticeGradebook` (`packages/react-shared/src/use-practice-gradebook.ts`); ekran öğretmenin `/ogretmen/odevler?sekme=alistirma` sekmesi `apps/web-react/src/pages/tasks/PracticeGradebookView.tsx` (genel, ünite, beceri, kazanım kırılımı, arama, sıralama, sayfa, CSV); testler `tests/skills-practice.test.ts`, `apps/api/test/practice-sets.test.ts`, `tests/e2e-react/alistirma-seti.spec.ts`. Alıştırmanın son tamamlanan denemesi alınır, en yükseği değil (Sabah kararı 70); not defteri veliye kapalıdır (Sabah kararı 70). Yönetici sayfasında not defteri henüz yok.
 
 ## Ses kaydı ve kişisel veri
 

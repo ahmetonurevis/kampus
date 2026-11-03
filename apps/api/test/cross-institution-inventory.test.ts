@@ -702,6 +702,24 @@ const ACCESS: Readonly<Record<string, Proof>> = {
  * eşleşmesi, öğrenci kimlik özeti ve deneme dersi.
  */
 const FINANCE: Readonly<Record<string, Proof>> = {
+  // Onur: sözleşme onayı (ON-028, #28); kanıt Onur'un `finance-contracts.test.ts` dosyasındadır.
+  ...Object.fromEntries(
+    (
+      [
+        ['POST /api/v1/finance/contracts/:contractId/signatory', '/signatory'],
+        ['POST /api/v1/finance/contracts/:contractId/approve', '/approve'],
+        ['POST /api/v1/finance/contracts/:contractId/amendments', '/amendments'],
+        ['POST /api/v1/finance/contracts/:contractId/cancel-amendment', '/cancel-amendment'],
+      ] as const
+    ).map(([key, marker]) => [
+      key,
+      kayit(
+        'finance-contracts.test.ts',
+        'başka kurumun sözleşmesi olmayan kimlikle aynı 404',
+        marker,
+      ),
+    ]),
+  ),
   'GET /api/v1/finance/totals': liste(
     'cross-institution-finance.test.ts',
     'GET /api/v1/finance/totals, /finance/summary ve /finance/overview: başka kurumun tahsilatı',

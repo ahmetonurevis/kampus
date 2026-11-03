@@ -118,6 +118,10 @@ test('Rol × eylem matrisi belgedeki varsayılanla aynıdır', () => {
     'quiz.archive': ['yonetici', 'ogretmen'],
     'quiz.start': ['ogrenci'],
     'quiz.submit': ['ogrenci'],
+    // Onur: sözleşme onayı (ON-028, #28).
+    'contract.sign': ['yonetici'],
+    'contract.approve': ['yonetici', 'onburo', 'veli'],
+    'contract.amend': ['yonetici', 'onburo'],
   })
   // Sıra anlamsızdır: komut tablosu iki kaynaktan birleşir (platform ve Onur bloğu).
   assert.deepEqual(Object.keys(WRITE_ACTION_ROLES).sort(), [...WRITE_ACTIONS].sort())

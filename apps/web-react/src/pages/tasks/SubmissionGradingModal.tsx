@@ -20,6 +20,8 @@ import {
   staleNoticeText,
   submissionStatus,
 } from './task-model.ts'
+import { VersionComparison } from './VersionComparison.tsx'
+import { resubmissionRoundText } from './writing-model.ts'
 
 type Props = {
   /** `''` kapalı; aksi hâlde puanlanan teslimin kimliği. */
@@ -28,7 +30,9 @@ type Props = {
 }
 
 /**
- * Teslim puanlama penceresi (`?puanla=`): değişmez sürümler (metin, geç bayrağı, sözcük sayısı),
+ * Teslim puanlama penceresi (`?puanla=`): iki ya da daha çok sürümde iki sürümün yan yana
+ * karşılaştırması (varsayılan son ikisi; IST-047), değişmez sürümler (metin, geç bayrağı, sözcük
+ * sayısı, sürüm için istenen yeniden teslim turu),
  * verilmiş rubrik puanı, puanlanmamış son sürüm için rubrik formu ve puanı kesinleşen son sürüm
  * için yeniden teslim isteği. Kapsam, yetki ve sürüm sunucudadır; başka kurumun ya da kapsam
  * dışı teslim 404 verir ve "bulunamadı" görünür.
@@ -101,6 +105,8 @@ function GradingBody({ submissionId }: { submissionId: string }) {
         </p>
       ) : null}
 
+      <VersionComparison key={submission.id} versions={submission.versions} />
+
       <section aria-labelledby="teslim-surumleri" className="grid gap-3">
         <h3 id="teslim-surumleri" className="text-md font-semibold">
           Teslim sürümleri
@@ -122,6 +128,11 @@ function GradingBody({ submissionId }: { submissionId: string }) {
                   <span className="text-muted-foreground">{version.wordCount.count} sözcük</span>
                 ) : null}
               </div>
+              {version.resubmissionRequest ? (
+                <p className="text-sm text-muted-foreground">
+                  {resubmissionRoundText(version.resubmissionRequest)}
+                </p>
+              ) : null}
               {version.wordCount?.warning ? (
                 <p className="text-sm text-warning">{version.wordCount.warning}</p>
               ) : null}

@@ -364,7 +364,7 @@ export function registerCommandRoutes(app: FastifyInstance) {
       createBody: teacherSchema,
       patchBody: teacherPatchSchema,
       rules:
-        'Yalnız core `teachers` kaydını yazar; hesap ve üyelik kurum üyeleri ucundadır. Aktif öğretmen e-postası tekildir (409 `teacher_email_taken`); kampüs aktif (422 `campus_required`), branş müfredatta olmalıdır (422 `subject_invalid`). Ders ataması olan öğretmenin branşı değişmez (422 `teacher_has_assignments`); ileri tarihli etüdü olan öğretmenin kampüs/branşı değişmez (422 `teacher_has_future_tutoring`). Rehberlik görevi bu uçtan verilmez.',
+        'Yalnız core `teachers` kaydını yazar; hesap ve üyelik kurum üyeleri ucundadır. Aktif öğretmen e-postası tekildir (409 `teacher_email_taken`); kampüs aktif (422 `campus_required`), branş müfredatta olmalıdır (422 `subject_invalid`). Ders ataması olan öğretmenin branşı değişmez (422 `teacher_has_assignments`); ileri tarihli etüdü olan öğretmenin kampüs/branşı değişmez (422 `teacher_has_future_tutoring`). Yeni branşın dışında kalan etkin zümre başkanlığı görevi varsa branş değişmez (422 `coordinator_duty_outside_branch`, `subjectId` yolu; görev sessizce kesilmez, önce `DELETE /coordinator-duties/:dutyId`). Rehberlik görevi bu uçtan verilmez.',
     },
   ] as const satisfies readonly { kind: ArchiveKind; action: WriteAction; [key: string]: unknown }[]
 

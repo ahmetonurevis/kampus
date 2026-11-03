@@ -25,6 +25,7 @@ import {
   updateClass,
   updateTeacher,
   type ArchiveKind,
+  type TeacherSaveOptions,
 } from '@kampus/school-core/lib/school-management.ts'
 import { assertRenewalWithinTariff } from '@kampus/school-core/lib/enrollment.ts'
 import { recordGrade, updateGrade } from '@kampus/school-core/lib/grades.ts'
@@ -43,6 +44,7 @@ import {
 } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
+import { activeDutiesOfTeacherRecord } from '../db/coordinator-duties.ts'
 import { findPublishedTariff } from '../db/fee-tariffs.ts'
 import { isRecordCollection, type CollectionName, type ScalarStateKey } from '../db/collections.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
@@ -422,6 +424,7 @@ function saveRecord(
   input: unknown,
   makeId: MakeId,
   now: string,
+  coordinatorDuties: TeacherSaveOptions['coordinatorDuties'] = [],
 ): string {
   switch (kind) {
     case 'branch':
@@ -431,7 +434,7 @@ function saveRecord(
     case 'teacher':
       return recordId === null
         ? saveTeacher(state, input, makeId, null, now)
-        : updateTeacher(state, recordId, input, makeId, now)
+        : updateTeacher(state, recordId, input, makeId, now, { coordinatorDuties })
     case 'class':
       return recordId === null
         ? createClass(state, input, makeId, now)
@@ -471,11 +474,20 @@ export async function saveRecordCommand(
       entity: recordId === null ? auditEntity(collection) : { type: collection, id: recordId },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        // Branş değişimi koordinatör görevini geçersiz kılabilir (DOM-YTK-027); görevler State
+        // dışındadır, kurum kilidinden sonra bu işlemde okunur.
+        const coordinatorDuties =
+          kind === 'teacher' && recordId !== null
+            ? await activeDutiesOfTeacherRecord(tx, ctx.institutionId, recordId)
+            : []
         return {
           scalars,
           run: (state, { now, makeId }): Entity => {
             requireAuthorized(actor, action, {}, state, { now, institutionType })
-            return { collection, id: saveRecord(state, kind, recordId, input, makeId, now) }
+            return {
+              collection,
+              id: saveRecord(state, kind, recordId, input, makeId, now, coordinatorDuties),
+            }
           },
         }
       },

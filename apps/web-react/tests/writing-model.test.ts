@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
-import { wordCountCheck } from '@kampus/school-core/skills/submission.ts'
 import {
   chooseCompareVersion,
   defaultComparePair,
@@ -8,7 +7,6 @@ import {
   liveWordCount,
   resolveComparePair,
   resubmissionRoundText,
-  sameAsLastVersion,
   type SubmissionVersion,
   versionFacts,
   versionOptionLabel,
@@ -18,13 +16,17 @@ import {
 } from '../src/pages/tasks/writing-model.ts'
 
 describe('yazma editörü: canlı sözcük sayısı', () => {
-  test('IST-047, DOM-BEC-046: sayaç sunucunun sayacıyla aynıdır ve sınırla birlikte yazılır', () => {
+  test('IST-047, DOM-BEC-046: sayaç sözcükleri sabit beklenen değerle sayar ve sınırla birlikte yazılır', () => {
     const body = "I don't like well-known places in Ankara'da, 2026."
     const live = liveWordCount(body, { minWords: 5, maxWords: 60 })
-    assert.equal(live.count, wordCountCheck(body, { minWords: null, maxWords: null }).count)
+    // Sabit beklenen değer: tırnaklı ve tireli sözcükler tek sözcük, "2026." de bir sözcüktür.
     assert.equal(live.count, 8)
     assert.equal(live.label, '8 sözcük · beklenen: 5–60 sözcük')
     assert.equal(live.warning, null)
+    assert.equal(
+      liveWordCount('Hello, world! It is fine.', { minWords: null, maxWords: null }).count,
+      5,
+    )
   })
 
   test('IST-047: sınır yoksa yalnız sayı; tek sınır kendi metniyle', () => {
@@ -50,13 +52,6 @@ describe('yazma editörü: canlı sözcük sayısı', () => {
     assert.match(WORD_LIMIT_WARNING, /Yine de gönderebilirsiniz/)
     assert.equal(liveWordCount('   ', limits).warning, null)
     assert.equal(liveWordCount('   ', limits).label, '0 sözcük · beklenen: 10–12 sözcük')
-  })
-
-  test('IST-047: son teslimle aynı metin (boşluklar dışında) yeni sürüm sayılmaz', () => {
-    assert.equal(sameAsLastVersion(' My weekend. \n', 'My weekend.'), true)
-    assert.equal(sameAsLastVersion('My weekend, revised.', 'My weekend.'), false)
-    assert.equal(sameAsLastVersion('My weekend.', null), false)
-    assert.equal(sameAsLastVersion('', '   '), false)
   })
 })
 

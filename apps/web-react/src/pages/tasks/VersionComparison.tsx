@@ -13,8 +13,8 @@ import {
 } from './writing-model.ts'
 
 const SIDES = [
-  { side: 'left', label: 'Sol sütun' },
-  { side: 'right', label: 'Sağ sütun' },
+  { side: 'left', label: 'Birinci sürüm' },
+  { side: 'right', label: 'İkinci sürüm' },
 ] as const satisfies readonly { side: keyof ComparePair; label: string }[]
 
 /**
@@ -60,11 +60,10 @@ export function VersionComparison({ versions }: { versions: readonly SubmissionV
           ))}
         </div>
       </div>
-      {difference ? (
-        <p aria-live="polite" className="text-sm text-muted-foreground">
-          {difference}
-        </p>
-      ) : null}
+      {/* Bölge hep yerinde: yalnız içeriği değişir, ekran okuyucu değişimi okur. */}
+      <p aria-live="polite" className="text-sm text-muted-foreground">
+        {difference}
+      </p>
       <div className="grid gap-3 md:grid-cols-2">
         <CompareColumn version={left} />
         <CompareColumn version={right} />

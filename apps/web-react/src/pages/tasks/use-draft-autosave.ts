@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSaveTaskDraft, type TaskDraft } from '@kampus/react-shared/use-task-submissions.ts'
-
-const DRAFT_DELAY_MS = 1500
+import { createDraftSaver } from './draft-autosave-model.ts'
 
 export type DraftSaveState = 'idle' | 'saving' | 'saved' | 'error'
 
@@ -13,81 +12,112 @@ type Options = {
   body: string
   /** `false` iken (teslim kapalı ya da teslim sürüyor) otomatik kayıt yapılmaz. */
   enabled: boolean
+  /** Başka pencerenin taslağı ekrana alınır (ekranda kaydedilmemiş değişiklik yokken). */
+  onAdopt: (body: string) => void
 }
 
 /**
- * Yazma taslağının otomatik kaydı (IST-047): metin değişince kısa süre sonra kaydedilir. Kayıtlar
- * sıralıdır; süren kayıt bitmeden ikincisi başlamaz (komut kilidi ikinci isteği düşürürdü).
- * `flush` teslimden önce bekleyen kaydı hemen tamamlar ve kaydedilen revizyonu döndürür; böylece
- * teslim edilen metin kaydedilen revizyondur. Taslağın `revision`'ı sonraki kaydın `If-Match`'idir;
- * başka pencerede kaydedilen taslak (409/400 sonrası tazeleme) revizyonu günceller.
+ * Yazma taslağının otomatik kaydı (IST-047): metin değişince kısa süre sonra kaydedilir. Mantık
+ * `draft-autosave-model.ts`'tedir (sıralı kayıt, revizyon doğrulamalı kısayol, çakışma). Taslak
+ * sorgusu tazelenince (başka pencerede kayıt): ekranda kaydedilmemiş değişiklik yoksa ekran sunucu
+ * metnine geçer; varsa `conflict` açılır ve ilk teslim basışı kayıt atmadan uyarır.
+ * Zamanlayıcı da modeldedir (`schedule`/`cancel`); bekleyen değişiklik unmount'ta kaydedilir.
  */
-export function useDraftAutosave({ assignmentId, draft, initialBody, body, enabled }: Options) {
+export function useDraftAutosave({
+  assignmentId,
+  draft,
+  initialBody,
+  body,
+  enabled,
+  onAdopt,
+}: Options) {
   const saveDraft = useSaveTaskDraft()
-  const saveRef = useRef(saveDraft)
   const [state, setState] = useState<DraftSaveState>(draft ? 'saved' : 'idle')
   const [savedAt, setSavedAt] = useState<string | null>(draft?.savedAt ?? null)
-  const revision = useRef<number | null>(draft?.revision ?? null)
-  const savedBody = useRef(draft?.body ?? initialBody)
-  const running = useRef<Promise<boolean> | null>(null)
-  const timer = useRef<number | undefined>(undefined)
-  const latestRevision = draft?.revision
+  const [conflict, setConflict] = useState(false)
+  const bodyRef = useRef(body)
+  const adoptRef = useRef(onAdopt)
+  const enabledRef = useRef(enabled)
+  // Saver ekran açılışında bir kez kurulur (ekran görev başına `key`lidir); sonraki taslak
+  // değişimleri `sync` ile, her çizimin kayıt komutu `setSubmit` ile işlenir.
+  const [saver] = useState(() =>
+    createDraftSaver({
+      draft: draft ? { revision: draft.revision, body: draft.body, savedAt: draft.savedAt } : null,
+      initialBody,
+    }),
+  )
 
   useEffect(() => {
-    if (latestRevision !== undefined) revision.current = latestRevision
-  }, [latestRevision])
-
-  useEffect(() => {
-    saveRef.current = saveDraft
+    bodyRef.current = body
+    adoptRef.current = onAdopt
+    enabledRef.current = enabled
+    saver.setSubmit(async (input) => {
+      setState('saving')
+      const outcome = await saveDraft.submit({ assignmentId, ...input })
+      if (outcome.status !== 'success' || !outcome.data.data) {
+        setState('error')
+        return { ok: false }
+      }
+      setSavedAt(outcome.data.data.savedAt ?? null)
+      setState('saved')
+      setConflict(false)
+      return {
+        ok: true,
+        revision: outcome.data.data.revision,
+        savedAt: outcome.data.data.savedAt ?? null,
+      }
+    })
   })
 
-  /** Metni kaydeder; zaten kayıtlıysa istek atmaz. Başarıda `true`. */
-  const save = useCallback(
-    async (text: string): Promise<boolean> => {
-      if (running.current) await running.current
-      if (text === savedBody.current && revision.current !== null) return true
-      const run = (async () => {
-        setState('saving')
-        const outcome = await saveRef.current.submit({
-          assignmentId,
-          revision: revision.current,
-          body: text,
-        })
-        if (outcome.status !== 'success') {
-          setState('error')
-          return false
-        }
-        revision.current = outcome.data.data?.revision ?? revision.current
-        savedBody.current = text
-        setSavedAt(outcome.data.data?.savedAt ?? null)
-        setState('saved')
-        return true
-      })()
-      running.current = run
-      try {
-        return await run
-      } finally {
-        if (running.current === run) running.current = null
-      }
-    },
-    [assignmentId],
-  )
+  useEffect(() => {
+    if (!draft) return
+    const outcome = saver.sync(
+      { revision: draft.revision, body: draft.body, savedAt: draft.savedAt },
+      bodyRef.current,
+    )
+    if (outcome.kind === 'adopt') {
+      adoptRef.current(outcome.body)
+      setSavedAt(outcome.savedAt)
+      setState('saved')
+    } else if (outcome.kind === 'conflict') {
+      setConflict(saver.hasConflict())
+    }
+  }, [draft, saver])
 
   useEffect(() => {
-    window.clearTimeout(timer.current)
-    if (!enabled || body === savedBody.current || body.trim() === '') return
-    timer.current = window.setTimeout(() => void save(body), DRAFT_DELAY_MS)
-    return () => window.clearTimeout(timer.current)
-  }, [body, enabled, save])
+    if (!enabled || conflict) {
+      saver.cancel()
+      return
+    }
+    saver.schedule(body)
+    return () => saver.cancel()
+  }, [body, enabled, conflict, saver])
 
-  /** Bekleyen kaydı hemen tamamlar; kaydedilen taslağın revizyonu ya da kayıt olmadıysa `null`. */
-  const flush = useCallback(
-    async (text: string): Promise<number | null> => {
-      window.clearTimeout(timer.current)
-      return (await save(text)) ? revision.current : null
+  useEffect(
+    () => () => {
+      // Seçilen davranış: kaldırılırken bekleyen değişiklik hemen kaydedilir (bildirim değil).
+      // Editör panel kapanınca, teslimden sonra ya da sayfa değişince kaldırılır; öğrenciye
+      // "kaybolacak" uyarısı göstermek yazdığını sormadan kaydetmekten daha kötü bir deneyimdir ve
+      // kayıt zaten geri alınabilir bir taslaktır. Kayıt komutu bileşenden bağımsız sürer; hatası
+      // komutun toast'ıyla bildirilir. Çakışmada (başka pencerenin kaydı onaylanmadı) yazılmaz:
+      // öğrenci görmeden başka pencerenin metninin üstüne yazmak veri kaybıdır.
+      saver.cancel()
+      const text = bodyRef.current
+      if (!enabledRef.current || saver.hasConflict()) return
+      if (saver.isDirty(text) && text.trim() !== '') void saver.save(text)
     },
-    [save],
+    [saver],
   )
 
-  return { state, savedAt, flush }
+  /** Bekleyen kaydı hemen tamamlar; kaydedilen taslağın revizyonu ya da teslim edilemezse `null`. */
+  const flush = useCallback(
+    async (text: string): Promise<number | null> => {
+      const revision = await saver.flush(text)
+      setConflict(saver.hasConflict())
+      return revision
+    },
+    [saver],
+  )
+
+  return { state, savedAt, conflict, flush }
 }

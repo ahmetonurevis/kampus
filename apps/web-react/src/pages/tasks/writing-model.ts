@@ -41,13 +41,6 @@ export function liveWordCount(body: string, limits: WritingLimits): LiveWordCoun
   }
 }
 
-/** Son teslimle aynı metin yeni sürüm sayılmaz: öğrenci önce metni düzenler. */
-export const SAME_AS_LAST_VERSION_MESSAGE =
-  'Bu metin son teslim ettiğinizle aynı. Yeni sürüm göndermek için metninizi düzenleyin.'
-
-export const sameAsLastVersion = (body: string, lastBody: string | null | undefined) =>
-  typeof lastBody === 'string' && lastBody.trim() !== '' && body.trim() === lastBody.trim()
-
 // --- Sürüm karşılaştırması ---------------------------------------------------------------
 
 export type SubmissionVersion = TaskSubmissionDetail['versions'][number]

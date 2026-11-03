@@ -2,7 +2,11 @@ import { useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { useForm, useWatch } from 'react-hook-form'
 import { z } from 'zod'
-import { useSubmitTaskDraft, type TaskDraft } from '@kampus/react-shared/use-task-submissions.ts'
+import {
+  TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE,
+  useSubmitTaskDraft,
+  type TaskDraft,
+} from '@kampus/react-shared/use-task-submissions.ts'
 import { submissionVersionInputSchema } from '@kampus/school-core/skills/submission.ts'
 import { timeLabel } from '@kampus/school-core/lib/format.ts'
 import { FormField } from '@/components/FormField.tsx'
@@ -10,13 +14,17 @@ import { Icon } from '@/components/Icon.tsx'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
+import { RootError } from '../management/FormParts.tsx'
 import { useDraftAutosave } from './use-draft-autosave.ts'
-import { liveWordCount, SAME_AS_LAST_VERSION_MESSAGE, sameAsLastVersion } from './writing-model.ts'
+import { liveWordCount } from './writing-model.ts'
 
 /** Metin teslimi alanı çekirdeğin teslim şemasındandır (boş metin ve 50.000 karakter sınırı). */
 const textBody = submissionVersionInputSchema.options[0].shape.body
 const formSchema = z.object({ body: textBody })
 type FormInput = z.input<typeof formSchema>
+
+/** Formun bilinen alan adları; sunucudan gelen başka ad genel (`root`) hataya düşer. */
+const isFormField = (name: string): name is keyof FormInput => name === 'body'
 
 const FIELD_ID = 'yazma-metni'
 const COUNTER_ID = `${FIELD_ID}-sayac`
@@ -29,8 +37,6 @@ type Props = {
   /** Taslağın ya da (taslak yoksa) yeniden teslim için son sürümün metni. */
   initialBody: string
   draft: TaskDraft | null
-  /** Son gönderilen sürümün metni; aynı metin yeni sürüm olarak gönderilmez. */
-  lastSubmittedBody: string | null
   minWords: number | null
   maxWords: number | null
   /** Sunucunun karar verdiği gönderebilirlik; `false` ise alan salt okunur. */
@@ -48,7 +54,6 @@ export function WritingEditor({
   assignmentId,
   initialBody,
   draft,
-  lastSubmittedBody,
   minWords,
   maxWords,
   canSubmit,
@@ -68,19 +73,13 @@ export function WritingEditor({
     initialBody,
     body,
     enabled: canSubmit && !busy,
+    onAdopt: (text) => form.setValue('body', text, { shouldDirty: false }),
   })
   const words = liveWordCount(body, { minWords, maxWords })
 
   const onSubmit = form.handleSubmit(async (values) => {
-    if (sameAsLastVersion(values.body, lastSubmittedBody)) {
-      form.setError(
-        'body',
-        { type: 'same', message: SAME_AS_LAST_VERSION_MESSAGE },
-        { shouldFocus: true },
-      )
-      return
-    }
     setFlushing(true)
+    const hadConflict = autosave.conflict
     let revision: number | null
     try {
       revision = await autosave.flush(values.body)
@@ -88,7 +87,9 @@ export function WritingEditor({
       setFlushing(false)
     }
     // Kayıt hatası komutun toast'ıyla ve taslak durumunda bildirildi; metin ekranda kalır.
+    // Başka pencerenin kaydı varsa ilk basış yalnız uyarır; ikinci basış metni kaydedip teslim eder.
     if (revision === null) {
+      if (hadConflict) notify.warning(TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE)
       form.setFocus('body')
       return
     }
@@ -96,7 +97,8 @@ export function WritingEditor({
       { assignmentId, revision },
       {
         setError: (name, error) =>
-          form.setError(name as keyof FormInput, error, { shouldFocus: true }),
+          // Bilinmeyen alan adı (ör. sunucu başka alan döndürürse) genel hata mesajına düşer.
+          form.setError(isFormField(name) ? name : 'root.server', error, { shouldFocus: true }),
         fieldFor: (error) => (FIELD_CODES.has(error.code) ? 'body' : undefined),
       },
     )
@@ -111,9 +113,11 @@ export function WritingEditor({
       ? 'Taslak kaydediliyor…'
       : autosave.state === 'error'
         ? 'Taslak kaydedilemedi; yazmaya devam edebilirsiniz.'
-        : autosave.state === 'saved' && autosave.savedAt
-          ? `Taslak kaydedildi (${timeLabel(autosave.savedAt)}).`
-          : 'Taslak otomatik kaydedilir.'
+        : autosave.conflict
+          ? TASK_DRAFT_SAVED_ELSEWHERE_MESSAGE
+          : autosave.state === 'saved' && autosave.savedAt
+            ? `Taslak kaydedildi (${timeLabel(autosave.savedAt)}).`
+            : 'Taslak otomatik kaydedilir.'
 
   return (
     <form noValidate onSubmit={(event) => void onSubmit(event)} className="grid gap-3">
@@ -136,7 +140,10 @@ export function WritingEditor({
         <span id={COUNTER_ID} data-testid="sozcuk-sayaci">
           {words.label}
         </span>
-        <span role="status">{canSubmit ? draftText : 'Teslim şu an açık değil.'}</span>
+        {/* Kayıt durumu kibar canlı bölgedir: "kaydediliyor/kaydedildi" yazmayı kesmeden okunur. */}
+        <span role="status" aria-live="polite" aria-atomic="true">
+          {canSubmit ? draftText : 'Teslim şu an açık değil.'}
+        </span>
       </div>
       {/* Bölge hep yerinde: uyarı belirince ekran okuyucu bir kez okur, her tuşta değil. */}
       <div aria-live="polite">
@@ -147,6 +154,8 @@ export function WritingEditor({
           </p>
         ) : null}
       </div>
+      {/* Alana bağlanamayan sunucu hatası: teknik alan adı değil, yalnız Türkçe ileti görünür. */}
+      <RootError message={form.formState.errors.root?.server?.message} />
       <div>
         <Button type="submit" disabled={!canSubmit || busy} aria-busy={busy}>
           <Icon name="Send" size={16} aria-hidden="true" />

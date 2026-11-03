@@ -242,7 +242,6 @@ export function StudentWritingWorkspace({
                 assignmentId={assignmentId}
                 initialBody={initialBody}
                 draft={draft}
-                lastSubmittedBody={detail?.versions.at(-1)?.body ?? null}
                 minWords={settings?.submissionKind === 'text' ? settings.minWords : null}
                 maxWords={settings?.submissionKind === 'text' ? settings.maxWords : null}
                 canSubmit={progress.canAct}

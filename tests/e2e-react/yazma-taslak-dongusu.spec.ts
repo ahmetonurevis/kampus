@@ -66,6 +66,18 @@ test('IST-047, DOM-BEC-040: kaydedilen taslak teslim edilir; yeniden teslimden s
 
   // 1. Öğrenci yazar: sayaç canlı ve sınırla; taslak kaydolur; teslim kaydedilen taslaktan gider.
   await loginAs(school.user('ogrenci'))
+  // Kaydedilen her taslağın revizyonu izlenir: teslimin If-Match'i son kaydedilen revizyondur.
+  const savedRevisions: number[] = []
+  page.on('response', (response) => {
+    const request = response.request()
+    if (request.method() !== 'PATCH' || !request.url().endsWith(`/${assignmentId}/draft`)) return
+    void response
+      .json()
+      .then((json: { data?: { revision?: number } }) => {
+        if (typeof json.data?.revision === 'number') savedRevisions.push(json.data.revision)
+      })
+      .catch(() => undefined)
+  })
   await page.goto(`/ogrenci/odevler?yaz=${assignmentId}`)
   const editor = page.getByLabel('Metniniz')
   await editor.fill('Too short.')
@@ -80,7 +92,9 @@ test('IST-047, DOM-BEC-040: kaydedilen taslak teslim edilir; yeniden teslimden s
     (request) => request.method() === 'POST' && request.url().endsWith('/draft/submit'),
   )
   await page.getByRole('button', { name: 'Teslim et' }).click()
-  expect((await draftSubmit).headers()['if-match']).toMatch(/^"\d+"$/)
+  const ifMatch = (await draftSubmit).headers()['if-match']
+  expect(savedRevisions.length).toBeGreaterThan(0)
+  expect(ifMatch).toBe(`"${savedRevisions.at(-1)}"`)
   const versions = page.getByRole('list', { name: 'Gönderilen sürümler' })
   await expect(versions.getByRole('heading', { name: '1. sürüm' })).toBeVisible()
   // Odak yeniden kurulan editörde kaybolmaz, sürüm listesine geçer.
@@ -118,13 +132,15 @@ test('IST-047, DOM-BEC-040: kaydedilen taslak teslim edilir; yeniden teslimden s
     /Yeniden teslim istendi: .+ · Son tarih: /,
   )
 
-  // 3. Öğrenci ikinci sürümü gönderir: editör son sürümle açılır, aynı metin yeni sürüm sayılmaz.
+  // 3. Öğrenci ikinci sürümü gönderir: editör son sürümle açılır; yazar yazmaz, "Taslak kaydedildi"yi
+  // beklemeden teslim eder (teslim önce bekleyen kaydı tamamlar, teslim edilen metin ekrandaki metindir).
   await loginAs(school.user('ogrenci'))
   await page.goto(`/ogrenci/odevler?yaz=${assignmentId}`)
   await expect(page.getByText('Öğretmeniniz yeniden teslim istedi')).toBeVisible()
   await expect(page.getByLabel('Metniniz')).toHaveValue(ESSAY)
+  // Değişmemiş metin yeni sürüm olmaz: kaydedilen revizyon zaten teslim edildi (409), ileti alanda.
   await page.getByRole('button', { name: 'Teslim et' }).click()
-  await expect(page.getByText('Bu metin son teslim ettiğinizle aynı.')).toBeVisible()
+  await expect(page.getByText('Bu metin zaten teslim edildi.')).toBeVisible()
   await expect(page.getByLabel('Metniniz')).toBeFocused()
   await page.getByLabel('Metniniz').fill(SECOND_ESSAY)
   await expect(page.getByText('25 sözcük · beklenen: 5–80 sözcük')).toBeVisible()
@@ -141,15 +157,15 @@ test('IST-047, DOM-BEC-040: kaydedilen taslak teslim edilir; yeniden teslimden s
   await expect(right).toContainText(SECOND_ESSAY)
   await expect(left).toContainText('Yeniden teslim son tarihi')
   await expect(compare).toContainText('Sürüm 1 → Sürüm 2: +7 sözcük')
-  await expect(compare.getByLabel('Sol sütun')).toHaveValue('1')
-  await expect(compare.getByLabel('Sağ sütun')).toHaveValue('2')
+  await expect(compare.getByLabel('Birinci sürüm')).toHaveValue('1')
+  await expect(compare.getByLabel('İkinci sürüm')).toHaveValue('2')
   const [wideLeft, wideRight] = [await box(left), await box(right)]
   expect(Math.abs(wideLeft.y - wideRight.y)).toBeLessThan(2)
   expect(wideRight.x).toBeGreaterThan(wideLeft.x)
 
   // Aynı sürüm seçilince sütunlar yer değiştirir.
-  await compare.getByLabel('Sol sütun').selectOption('2')
-  await expect(compare.getByLabel('Sağ sütun')).toHaveValue('1')
+  await compare.getByLabel('Birinci sürüm').selectOption('2')
+  await expect(compare.getByLabel('İkinci sürüm')).toHaveValue('1')
   await expect(compare).toContainText('Sürüm 2 → Sürüm 1: −7 sözcük')
 
   await page.setViewportSize({ width: 390, height: 900 })

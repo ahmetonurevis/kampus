@@ -1,12 +1,13 @@
 # Ortak çalışma kuralları
 
-Her oturumda yüklenir. Ayrıntı: `docs/muhendislik/git-ve-surum.md` §7; zorunlu özet kök `CLAUDE.md` "İki geliştiriciyle çalışma". Skill'ler: `is-baslat`, `entegre-et`. İlk kurulum: `docs/is-bolumu/ilk-kurulum.md`.
+Her oturumda yüklenir; iki geliştiriciyle çalışmanın tek kaynağıdır (kök `CLAUDE.md` yalnız gösterici tutar). Ayrıntı: `docs/muhendislik/git-ve-surum.md` §7. Skill'ler: `is-baslat`, `entegre-et`. İlk kurulum: `docs/is-bolumu/ilk-kurulum.md`.
 
-İlke: izin yok, görünürlük var; hız önce. Kendi alanında sormadan yaz, birleştir, gönder; işi görev tablosunda görünür tut. Hook'lar insan onayı istemeden denetler. Yalnız sahiplik/kural değişikliği ve ürün-hukuk-maliyet kararları birlikte alınır.
+İlke: izin yok, görünürlük var; hız önce. Kendi alanında sormadan yaz, birleştir, gönder; işi görev tablosunda görünür tut. Hook'lar insan onayı istemeden denetler. Yalnız sahiplik/kural değişikliği ve ürün-hukuk-maliyet kararları birlikte alınır. İki geliştirici (Oğuzhan, Onur) paralel çalışır.
 
+- Dal `onur/<konu>` veya `oguzhan/<konu>`, güncel `origin/feature/platform-gecisi`'nden açılır; oturum başında entegrasyon dala birleştirilir. Küçük birim yeşil olunca hemen entegrasyona; uzun yaşayan dal yok.
 - Alan haritası `.claude/alanlar.json`: Onur kayıt ve finans, Oğuzhan geri kalan her şey (haritada sahibi olmayan yol Oğuzhan'ındır), `shared` listesi ortak sıcak dosyalardır. Bir yolun sahibi: `echo <yol> | node .claude/hooks/alan-koruma.ts --classify`.
 - Oturumdaki kullanıcı `git config kampus.sahip` (yoksa `user.name`) ile belirlenir. `alan-koruma` hook'u diğer sahibin dosyasına yazmayı engeller; engel gelirse dosyayı başka yoldan (Bash, `sed`, `cp`) değiştirmeye çalışma.
-- **Görev durumu tabloda tutulur, issue'da değil.** Tablon `docs/is-bolumu/<sahip>.md`, yalnız sahibi düzenler; satır `ID | Görev | … | Durum | Dal / commit | Not`. Durum yalnız `bekliyor`, `çalışılıyor`, `revizyon`, `engelli`, `bitti`, `iptal`. ID kalıcıdır; yeni görev dalga tablosunun sonuna sıradaki numarayla eklenir, silinmez `iptal` olur. Oturum hook'u iki tablonun özetini gösterir.
+- **Görev durumu tabloda tutulur, issue'da değil.** Tablon `docs/is-bolumu/<sahip>.md`, yalnız sahibi düzenler; satır `ID | Görev | … | Durum | Dal / commit | Not`. Durum yalnız `bekliyor`, `çalışılıyor`, `revizyon`, `engelli`, `bitti`, `iptal`. ID kalıcıdır; yeni görev dalga tablosunun sonuna sıradaki numarayla eklenir, silinmez `iptal` olur. Oturum hook'u iki tablonun özetini gösterir. Çakışan iş için karşı tablonun `çalışılıyor` satırlarına bakılır; varsa durulur, kullanıcıya sorulur.
 - Commit mesajı git-ve-surum §2'ye uyar, `commit-msg` hook'u (`.githooks/`, `pnpm install` kurar) denetler: Türkçe emir kipi, ≤ 72 karakter, noktasız ve öneksiz başlık; görev ID'si (`OG-012`, `ON-007`) ya da `#issue` başlık sonunda parantezde ya da gövdede; merge gövdesi "OG-012: <özet>". Engel gelirse mesajı düzelt, `--no-verify` kullanma.
 - Durum değişikliği güncel entegrasyon dalında tek satırlık commit'tir ("Görev durumunu güncelle: OG-012 çalışılıyor") ve hemen gönderilir; iki tarafın oturumu da push'u kendisi yapar.
   - Başlarken (`is-baslat`): sıradaki `bekliyor` görev (önce dalga, sonra bağımlılık) → `çalışılıyor`, Dal sütunu dal adı; sonra dal açılır.
@@ -17,5 +18,7 @@ Her oturumda yüklenir. Ayrıntı: `docs/muhendislik/git-ve-surum.md` §7; zorun
 - Ortak dosyada (`Ortak dosya` hatırlatması) kendi bloğuna yazılır, başkasının satırı yeniden sıralanmaz; blok dışına çıkılırsa görev satırının Not'una "ortak dosya" yazılır, beklenmez.
 - Migration ve ADR numarası (sıradaki ADR 0007) görev satırının Not'una yazılır ve durum commit'iyle duyurulur, onay beklenmez; `DOM-YTK` aralığı Oğuzhan 055–079, Onur 080–099. Çakışmada ikinci giren kendi migration'ını silip yeniden üretir. Bağımlılık eklemek serbest.
 - Sürüm dalda ve entegrasyonda verilmez, yalnız teslimde: davranış değişikliği `packages/school-core/changes/<konu>.md` parçası yazar; iç paketler `workspace:*`. README test sayıları yalnız teslimde. Üretilen dosyalar (`openapi.json`, `schema.d.ts`) elle birleştirilmez: `pnpm install && pnpm gen`.
+- Entegrasyondan önce: fetch + entegrasyonu dala birleştir, `pnpm gen`, dokunulan paketlerin format/lint/typecheck ve ilgili birim/API testleri, `git merge-tree` ölçümü; birleştirme `--no-ff`. Tam set ve e2e CI'da.
 - Push öncesi yalnız dokunulan paketlerin format/lint/typecheck ve ilgili birim/API testleri; tam set ve e2e CI'da. CI kırmızıysa kıran ilk iş düzeltir ya da geri alır (`git revert -m 1`). Küçük, mantıklı birim yeşil olunca hemen entegrasyona; uzun yaşayan dal yok.
 - `push-kontrol` hook'u force push, `+refspec`, `main`'e push ve güncel entegrasyonu birleştirmeden ya da aynı numaralı migration'la entegrasyon dalına push'u engeller. Push reddedilirse: fetch, merge, test, yeniden push; geçmiş yeniden yazılmaz.
+- Yasak: force push; gönderilmiş commit'te amend, rebase veya reset; `main`'e push.

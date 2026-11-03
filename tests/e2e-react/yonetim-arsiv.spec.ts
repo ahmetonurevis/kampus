@@ -5,7 +5,7 @@ import type { Locator, Page } from '@playwright/test'
 import type { ApiClient } from './support/api.ts'
 import { expect, test } from './support/fixtures.ts'
 
-// Dolu arşiv senaryosu (IST-010; CLAUDE.md "Kampüs/sınıf/kadro arşivi"): bağlı kayıtları olan
+// Dolu arşiv senaryosu (IST-010; .claude/rules/okul-is-akislari.md "Kampüs/sınıf/kadro arşivi"): bağlı kayıtları olan
 // sınıf, öğretmen ve kampüs arşivlenirken aktarım hedefi seçilir; uygun olmayan hedefin core
 // mesajı seçimin altında görünür ve hiçbir kayıt değişmez; arşivden geri almak aktarılanları geri
 // taşımaz. Her test kendi kurumunu kurar (seed kimlikleri: 7-A c1 Kadıköy, 7-B c9 Beşiktaş, 7-C

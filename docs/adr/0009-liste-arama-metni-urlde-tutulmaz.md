@@ -1,7 +1,7 @@
 # ADR 0009 · Liste arama metni adreste (URL) tutulmaz
 
 - Durum: Kabul edildi — Sabah kararı 76 ile uygulandı; kullanıcı ve Onur gözden geçirmesi bekleniyor
-- Daralttığı: liste durumu kuralı (CLAUDE.md "Kalıcı tasarım ve davranış kuralları": arama/filtre/sıralama/sayfa liste başına korunur)
+- Daralttığı: liste durumu kuralı (`.claude/rules/tasarim.md`: arama/filtre/sıralama/sayfa liste başına korunur)
 - İster: IST-028 · Görev: OG-066
 - Karar veren: Oğuzhan Demirci (öneri; KVKK açısından güvenli ve geri alınabilir seçenek)
 

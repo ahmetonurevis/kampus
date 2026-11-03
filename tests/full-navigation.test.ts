@@ -67,6 +67,7 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
       'mazeret-bildirimleri',
       'kurlar',
       'gruplar',
+      'seviye-tespiti',
       'icerik-havuzu',
       'duyurular',
       'mesajlar',
@@ -136,14 +137,45 @@ test('Kur ve grup sayfaları yalnız dil okulunda, personelde ve kategorisinin s
         `${role} ${group} kategorisi bölünmedi`,
       )
   }
-  // Okul kurumunda kur ve grup dışındaki her sayfa açıktır.
+  // Okul kurumunda kur, grup ve seviye tespiti dışındaki her sayfa açıktır.
   for (const role of roleKeys)
     assert.ok(
       navigation[role].every(
-        (p) => p.path === 'kurlar' || p.path === 'gruplar' || pageAvailableFor(p, 'school'),
+        (p) =>
+          ['kurlar', 'gruplar', 'seviye-tespiti'].includes(p.path) || pageAvailableFor(p, 'school'),
       ),
       role,
     )
+})
+
+test('OG-078 IST-058: Seviye Tespiti yalnız dil okulunda, yönetici ve öğretmende, kur ve gruptan sonra', () => {
+  const expected: Record<Role, string | null> = {
+    yonetici: 'YÖNETİM',
+    onburo: null,
+    ogretmen: 'AKADEMİK',
+    ogrenci: null,
+    veli: null,
+  }
+  for (const role of roleKeys) {
+    const pages = navigation[role]
+    const page = pages.find((p) => p.path === 'seviye-tespiti')
+    if (expected[role] === null) {
+      assert.equal(page, undefined, role)
+      continue
+    }
+    assert.ok(page, role)
+    assert.equal(page.title, 'Seviye Tespiti')
+    assert.equal(page.group, expected[role])
+    assert.equal(page.module, null)
+    assert.equal(page.apiOnly, true)
+    assert.equal(pageAvailableFor(page, 'school'), false)
+    assert.equal(pageAvailableFor(page, 'language_school'), true)
+    assert.equal(pages.indexOf(page), pages.findIndex((p) => p.path === 'gruplar') + 1, role)
+    assert.equal(
+      demoNavigation[role].some((p: { path: string }) => p.path === 'seviye-tespiti'),
+      false,
+    )
+  }
 })
 
 test('Veli Materyaller sayfası learning modülüne bağlı, AKADEMİK kategorisinin sonunda; Vue demosunda yok (OG-982, DOM-KYN-041)', () => {

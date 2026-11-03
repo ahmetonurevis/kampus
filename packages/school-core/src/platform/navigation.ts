@@ -230,11 +230,16 @@ const coursesPage = (group: string, description: string) =>
   languageSchoolPage('kurlar', 'Kurlar', 'Languages', description, group)
 const groupsPage = (group: string, description: string) =>
   languageSchoolPage('gruplar', 'Gruplar', 'UsersRound', description, group)
+// Seviye tespiti (OG-078; IST-058, DOM-DIL-010…012): uçların rolleri `PLACEMENT_DECIDER_ROLES`
+// (yönetici, öğretmen); ön büro uçlarda 403 aldığından menüde yoktur.
+const placementPage = (group: string, description: string) =>
+  languageSchoolPage('seviye-tespiti', 'Seviye Tespiti', 'ListChecks', description, group)
 
 export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> = {
   yonetici: [
     coursesPage('YÖNETİM', 'Kur programını tanımlayın, etkinleştirin ve e-Özel kaydını izleyin.'),
     groupsPage('YÖNETİM', 'Kurlardan grup açın; öğretmen, derslik ve takvimi planlayın.'),
+    placementPage('YÖNETİM', 'Seviye tespiti açın, bölümleri puanlayın ve yerleştirin.'),
   ],
   onburo: [
     coursesPage('KAYIT & SATIŞ', 'Etkin kurları ve kapasitelerini inceleyin.'),
@@ -243,6 +248,7 @@ export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> 
   ogretmen: [
     coursesPage('AKADEMİK', 'Koordinatörü olduğunuz seviyelerin kurlarını yönetin.'),
     groupsPage('AKADEMİK', 'Gruplarınızın takvimini ve doluluğunu izleyin.'),
+    placementPage('AKADEMİK', 'Kursiyer ve adayların seviye tespitini yürütün.'),
   ],
   ogrenci: [],
   veli: [],

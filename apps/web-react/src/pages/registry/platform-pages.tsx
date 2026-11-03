@@ -41,6 +41,9 @@ const CoursesPage = lazy(async () => ({
 const GroupsPage = lazy(async () => ({
   default: (await import('../language/GroupsPage.tsx')).GroupsPage,
 }))
+const PlacementPage = lazy(async () => ({
+  default: (await import('../language/PlacementPage.tsx')).PlacementPage,
+}))
 const AttendanceCorrectionPage = lazy(async () => ({
   default: (await import('../academic/AttendanceCorrectionPage.tsx')).AttendanceCorrectionPage,
 }))
@@ -174,6 +177,9 @@ export function renderPlatformPage(role: RoleKey, page: NavPage): ReactNode {
     case 'onburo/gruplar':
     case 'ogretmen/gruplar':
       return <GroupsPage page={page} />
+    case 'yonetici/seviye-tespiti':
+    case 'ogretmen/seviye-tespiti':
+      return <PlacementPage page={page} />
     case 'yonetici/yoklama-duzeltme':
       return <AttendanceCorrectionPage page={page} />
     case 'yonetici/koordinator-gorevleri':

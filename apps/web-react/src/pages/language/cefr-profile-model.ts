@@ -89,7 +89,8 @@ export function estimateSkillRows(estimate: CefrProfile['estimate']): LevelRow[]
     }))
 }
 
-const VALIDITY = {
+/** Tespit geçerliliğinin etiketi ve rengi (DOM-DIL-012); seviye tespiti ekranı da kullanır. */
+export const PLACEMENT_VALIDITY = {
   in_progress: { label: 'Sürüyor', tone: 'amber' },
   valid: { label: 'Geçerli', tone: 'green' },
   expired: { label: 'Süresi doldu', tone: 'gray' },
@@ -109,7 +110,7 @@ export function placementRows(profile: CefrProfile): PlacementRow[] {
   return [...profile.placements]
     .sort((left, right) => right.startedAt.localeCompare(left.startedAt))
     .map((row) => {
-      const validity = VALIDITY[row.validity.status]
+      const validity = PLACEMENT_VALIDITY[row.validity.status]
       return {
         key: row.id,
         date: dateLabel(row.completedAt ?? row.startedAt, DATE_OPTIONS),

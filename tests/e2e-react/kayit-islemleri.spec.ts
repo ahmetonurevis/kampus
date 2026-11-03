@@ -631,6 +631,72 @@ test.describe('Kayıt İşlemleri', () => {
     await expect(notice).not.toContainText('velayet sahibi veli')
   })
 
+  // ON-290 (kullanıcı kararı 2026-11-03, K-05): veli hesabını personel kesin kayıttan açar; veli
+  // kaydı ve öğrenci seçili gelir. Uç `POST /institution-members/guardian-invitations` (DOM-YTK-071).
+  test('ON-290, DOM-YTK-071: ön büro kesin kayıttan veli hesabı açar, davet listede görünür, iptal edilir; aynı e-posta 409', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const name = 'Hesap Adayı'
+    const email = 'e2e-kyt-veli@kampus.example'
+    const school = await tenant({
+      roles: ['onburo'],
+      tariffYears: ['current'],
+      records: [prospect('e2e-kyt-veli', name)],
+    })
+    await publishConsentText(await api(school.user('yonetici')))
+    await loginAs(school.user('onburo'))
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-veli`)
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+    await proceed.click()
+    await page.getByLabel('Kimlik numarası').fill('10000000146')
+    await page.getByLabel('Doğum tarihi').fill('2013-03-01')
+    await page.getByLabel('Veli adı soyadı').fill('Hesap Velisi')
+    await page.getByLabel('Veli telefonu').fill('05559990072')
+    await proceed.click()
+    await proceed.click()
+    await page.getByRole('button', { name: 'Kaydı tamamla' }).click()
+    await expect(page.getByRole('heading', { name: `${name} kaydedildi` })).toBeVisible()
+    const notice = page.getByRole('region', { name: 'Açık rıza durumu' })
+    await expect(notice).toContainText('veli rıza veremez')
+
+    // Veli kaydı ve öğrenci seçili, ad ve e-posta veli kaydından dolu gelir.
+    await page.getByRole('button', { name: 'Veli hesabı aç' }).click()
+    const panel = page.getByRole('dialog', { name: 'Veli hesabı aç' })
+    await expect(panel.getByLabel('Veli adı soyadı')).toHaveValue('Hesap Velisi')
+    await expect(panel.getByLabel('Veli e-postası')).toHaveValue(email)
+    await expect(panel.getByRole('checkbox', { name: `${name} (bu kayıt)` })).toBeChecked()
+    await panel.getByRole('button', { name: 'Veli hesabı aç' }).click()
+    await expect(toast(page, 'Hesap Velisi için veli hesabı daveti gönderildi.')).toBeVisible()
+    await expect(panel).toHaveCount(0)
+
+    const invitations = page.getByRole('region', { name: 'Bekleyen veli davetleri' })
+    await expect(invitations.getByText(email, { exact: false })).toBeVisible()
+    await expect(invitations.getByText(name, { exact: false })).toBeVisible()
+    await expect(notice).toContainText('Veli hesabı açıldı')
+
+    await invitations.getByRole('button', { name: 'Hesap Velisi veli davetini iptal et' }).click()
+    const dialog = page.getByRole('alertdialog', { name: 'Veli davetini iptal et' })
+    await dialog.getByRole('button', { name: 'Daveti iptal et' }).click()
+    await expect(toast(page, 'Hesap Velisi veli daveti iptal edildi.')).toBeVisible()
+    await expect(invitations).toHaveCount(0)
+    const client = await api(school.user('onburo'))
+    const pending = await client.get('/api/v1/institution-members/guardian-invitations')
+    expect(pending.status).toBe(200)
+    expect((pending.body as { data: unknown[] }).data).toEqual([])
+
+    // İptal davetle açılan hesabı silmez: aday ayrıntısından aynı e-postayla yeni hesap açılmaz.
+    await page.goto(detailUrl('e2e-kyt-veli'))
+    await page.getByRole('button', { name: 'Veli hesabı aç' }).click()
+    await expect(panel.getByLabel('Veli e-postası')).toHaveValue(email)
+    await panel.getByRole('button', { name: 'Veli hesabı aç' }).click()
+    await expect(panel.getByText('Bu e-posta adresiyle kurumda zaten bir hesap var')).toBeVisible()
+    await expect(panel.getByLabel('Veli e-postası')).toHaveAttribute('aria-invalid', 'true')
+  })
+
   test('DOM-YTK-040: finans modülü kapalıyken aday detayında kesin kayıt devre dışıdır, nedeni yazılır; API 403 verir', async ({
     page,
     loginAs,

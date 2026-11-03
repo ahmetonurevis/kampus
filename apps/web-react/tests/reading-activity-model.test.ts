@@ -69,6 +69,7 @@ function head(overrides: Partial<StaffResourceVersion> = {}): StaffResourceVersi
       timeLimitMinutes: 20,
       shuffleItems: true,
       passageVersionId: 'p-1',
+      listeningVersionId: null,
     },
     answerKey: null,
     license: { kind: 'institution_original' },
@@ -185,6 +186,8 @@ describe('Okuma etkinliği form değeri (IST-042, DOM-BEC-006)', () => {
       type: 'quiz',
       items: [{ questionVersionId: 'q-1', points: 1 }],
       passageVersionId: 'p-1',
+      // Dinleme kaydı bağı (IST-045) formda yazılmaz; verilmeyince core `null` yapar.
+      listeningVersionId: null,
       timeLimitMinutes: null,
       shuffleItems: false,
     })
@@ -202,6 +205,16 @@ describe('Okuma etkinliği form değeri (IST-042, DOM-BEC-006)', () => {
     assert.deepEqual(values.content, head().content)
     const patch = patchFromDraft(draftFormSchema.parse(values))
     assert.deepEqual(patch.content, head().content)
+    // Formun yazmadığı dinleme kaydı bağı (IST-045) düzenlemede kaybolmaz.
+    const listening = head({
+      content: {
+        ...(head().content as object),
+        passageVersionId: null,
+        listeningVersionId: 'a-1',
+      } as never,
+    })
+    const kept = patchFromDraft(draftFormSchema.parse(draftFromHead(listening)))
+    assert.equal(kept.content.type === 'quiz' && kept.content.listeningVersionId, 'a-1')
     const exercise = draftFromHead(
       head({ content: { ...(head().content as object), type: 'exercise_set' } as never }),
     )

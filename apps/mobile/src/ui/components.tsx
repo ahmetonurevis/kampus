@@ -448,11 +448,78 @@ type SheetProps = {
   children?: ReactNode
   footer?: ReactNode
   compact?: boolean
+  /**
+   * Alt bilgi kaydırmanın dışında, pencerenin dibinde sabit durur ve klavye açılınca onunla birlikte
+   * yükselir: alanlar yazılırken kaydet düğmesi görünür kalır.
+   */
+  pinFooter?: boolean
 }
-export function Sheet({ visible, title, onClose, children, footer, compact = false }: SheetProps) {
+export function Sheet({
+  visible,
+  title,
+  onClose,
+  children,
+  footer,
+  compact = false,
+  pinFooter = false,
+}: SheetProps) {
   const c = useColors()
   const insets = useSafeAreaInsets()
   const { reduceMotion } = useAppearance()
+  const panel = (
+    <View
+      style={{
+        flex: compact ? undefined : 1,
+        maxHeight: compact ? '85%' : undefined,
+        backgroundColor: c.background,
+        borderTopLeftRadius: shape.sheet,
+        borderTopRightRadius: shape.sheet,
+      }}
+    >
+      <View
+        style={[
+          styles.between,
+          {
+            paddingHorizontal: 12,
+            paddingVertical: 6,
+            borderBottomWidth: 1,
+            borderColor: c.border,
+          },
+        ]}
+      >
+        <T bold size={19} style={{ flex: 1, paddingLeft: 8 }}>
+          {title}
+        </T>
+        <IconButton name="X" label="Pencereyi kapat" onPress={onClose} />
+      </View>
+      <View style={{ flex: compact ? undefined : 1, flexShrink: 1 }}>
+        <FormScrollView
+          style={compact ? { flexGrow: 0 } : undefined}
+          keyboardShouldPersistTaps="handled"
+          contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 24 }}
+        >
+          {children}
+          {footer && !pinFooter && (
+            <View style={{ paddingTop: 16, borderTopWidth: 1, borderColor: c.border }}>
+              {footer}
+            </View>
+          )}
+        </FormScrollView>
+      </View>
+      {footer && pinFooter && (
+        <View
+          style={{
+            padding: 16,
+            borderTopWidth: 1,
+            borderColor: c.border,
+            backgroundColor: c.background,
+          }}
+        >
+          {footer}
+        </View>
+      )}
+    </View>
+  )
   return (
     <Modal
       visible={visible}
@@ -471,46 +538,12 @@ export function Sheet({ visible, title, onClose, children, footer, compact = fal
           paddingBottom: insets.bottom,
         }}
       >
-        <View
-          style={{
-            flex: compact ? undefined : 1,
-            maxHeight: compact ? '85%' : undefined,
-            backgroundColor: c.background,
-            borderTopLeftRadius: shape.sheet,
-            borderTopRightRadius: shape.sheet,
-          }}
-        >
-          <View
-            style={[
-              styles.between,
-              {
-                paddingHorizontal: 12,
-                paddingVertical: 6,
-                borderBottomWidth: 1,
-                borderColor: c.border,
-              },
-            ]}
-          >
-            <T bold size={19} style={{ flex: 1, paddingLeft: 8 }}>
-              {title}
-            </T>
-            <IconButton name="X" label="Pencereyi kapat" onPress={onClose} />
-          </View>
-          <View style={{ flex: compact ? undefined : 1, flexShrink: 1 }}>
-            <FormScrollView
-              style={compact ? { flexGrow: 0 } : undefined}
-              keyboardShouldPersistTaps="handled"
-              contentContainerStyle={{ padding: 20, gap: 24, paddingBottom: 24 }}
-            >
-              {children}
-              {footer && (
-                <View style={{ paddingTop: 16, borderTopWidth: 1, borderColor: c.border }}>
-                  {footer}
-                </View>
-              )}
-            </FormScrollView>
-          </View>
-        </View>
+        {pinFooter ? (
+          // Sabit alt bilgide klavye açılınca pencere onunla birlikte yükselir.
+          <KeyboardFrame style={{ flex: 1, justifyContent: 'flex-end' }}>{panel}</KeyboardFrame>
+        ) : (
+          panel
+        )}
       </View>
     </Modal>
   )

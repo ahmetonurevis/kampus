@@ -32,6 +32,7 @@ const EXTRA: Partial<Record<CollectionName, readonly Record<string, unknown>[]>>
   prospects: SEED.prospects.slice(0, 8),
   attendance: SEED.attendance.filter((item) => ['s1', 's2'].includes(item.studentId)).slice(0, 60),
   requests: SEED.requests,
+  questions: SEED.questions,
 }
 
 function extraRows() {
@@ -385,6 +386,38 @@ describe('Genel Bakış özeti', () => {
     }
   })
 
+  test('IST-116, DOM-ILT-093: öğretmenin yanıt bekleyen soru sayısı soru listesinin toplamıdır', async () => {
+    const { id } = await institution()
+    const cookie = await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't1' }])
+    const data = await dashboard(cookie)
+    const pending = await listIds(
+      cookie,
+      'questions',
+      'pageSize=100&answered=false&withdrawn=false',
+    )
+    const own = SEED.questions.filter((q) => q.teacherId === 't1' && !q.answeredAt)
+    assert.ok(own.length > 0, 'örnek veride t1 için bekleyen soru var')
+    assert.equal(data.questions.total, pending.total)
+    assert.equal(data.questions.total, own.length)
+    const oldest = own
+      .toSorted((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+      .slice(0, 3)
+      .map((q) => q.id)
+    assert.deepEqual(
+      data.questions.items.map((item: { id: string }) => item.id),
+      oldest,
+    )
+    // Süre aşımı iş takvimiyle hesaplanır; aşılanlar toplamın içindedir ve satırda işaretlidir.
+    assert.ok(data.questions.overdue <= data.questions.total)
+    for (const item of data.questions.items) assert.equal(typeof item.overdue, 'boolean')
+    // Başka öğretmenin sorusu sayılmaz.
+    const other = await dashboard(
+      await memberCookie(id, 'ogretmen', [{ kind: 'teacher', recordId: 't2' }]),
+    )
+    const t2 = SEED.questions.filter((q) => q.teacherId === 't2' && !q.answeredAt).length
+    assert.equal(other.questions.total, t2)
+  })
+
   test('öğrenci: yalnız kendi özeti, ödeme alanı yok; başka öğrenci 404', async () => {
     const { id } = await institution()
     const cookie = await memberCookie(id, 'ogrenci', [{ kind: 'student', recordId: 's1' }])
@@ -504,6 +537,7 @@ describe('Genel Bakış özeti', () => {
     )
     assert.equal(teacher.academic, null)
     assert.equal(teacher.learning, null)
+    assert.equal(teacher.questions, null)
     assert.ok(teacher.students.active > 0)
 
     const parent = await dashboard(

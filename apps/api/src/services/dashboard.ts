@@ -1,4 +1,5 @@
 import { dayKey, INVOICE_STATUS_LABELS } from '@kampus/school-core/lib/format.ts'
+import { questionResponse } from '@kampus/school-core/lib/questions.ts'
 import { REQUEST_STATUSES } from '@kampus/school-core/lib/requests.ts'
 import type { Scope } from '@kampus/school-core/lib/scope.ts'
 
@@ -465,6 +466,51 @@ async function frontDeskDashboard(
 
 // --- Öğretmen --------------------------------------------------------------------------------
 
+/** Öğretmen kartında listelenen en eski yanıt bekleyen soru sayısı (Vue ilk üç soruyu gösterir). */
+const QUESTION_LIST = 3
+
+export interface OpenQuestions {
+  total: number
+  overdue: number
+  items: {
+    id: string
+    title: string
+    createdAt: string
+    studentName?: string | undefined
+    className?: string | undefined
+    overdue: boolean
+  }[]
+}
+
+/**
+ * Yanıt bekleyen sorular (`questions?answered=false&withdrawn=false`; kapsam öğretmene atanan
+ * sorular, DOM-ILT-093). Yanıt süresi saklanmaz: core `questionResponse` isteğin anıyla (`ctx.now`)
+ * iş takvimine göre hesaplar. Sıra Soru Kuyruğu'yla aynıdır: en eski soru önce.
+ */
+async function openQuestions(ctx: ServiceContext): Promise<OpenQuestions> {
+  const pending = await all(ctx, 'questions', { states: { answered: false, withdrawn: false } })
+  const now = ctx.now.toISOString()
+  const rows = pending
+    .map((item) => {
+      const createdAt = text(item.record.createdAt) ?? ''
+      const { overdue } = questionResponse({ createdAt, answeredAt: null }, now)
+      return {
+        id: item.id,
+        title: text(item.record.title) ?? '',
+        createdAt,
+        studentName: item.joined?.studentName,
+        className: item.joined?.className,
+        overdue,
+      }
+    })
+    .toSorted((a, b) => Date.parse(a.createdAt) - Date.parse(b.createdAt))
+  return {
+    total: rows.length,
+    overdue: rows.filter((row) => row.overdue).length,
+    items: rows.slice(0, QUESTION_LIST),
+  }
+}
+
 async function teacherDashboard(ctx: ServiceContext, scope: Scope, today: string) {
   // Öğretmenin kendi kaydı (kapsam yalnız onu döndürür): ders ve ödev süzgecinin kimliği.
   const [self, students, studentsByClass, classes] = await Promise.all([
@@ -475,7 +521,7 @@ async function teacherDashboard(ctx: ServiceContext, scope: Scope, today: string
   ])
   const teacherId = self.items[0]?.id ?? ''
   const own = teacherId ? { teacherId: [teacherId] } : null
-  const [academic, learning] = await Promise.all([
+  const [academic, learning, questions] = await Promise.all([
     section(opens(scope, 'attendance', 'schedule'), async () => {
       const todayRange = { dateFrom: today, dateTo: today }
       const [attendanceToday, lessons, cancelled, recentAbsences] = await Promise.all([
@@ -561,6 +607,7 @@ async function teacherDashboard(ctx: ServiceContext, scope: Scope, today: string
         }),
       }
     }),
+    section(opens(scope, 'questions'), () => openQuestions(ctx)),
   ])
   return {
     role: 'ogretmen' as const,
@@ -569,6 +616,7 @@ async function teacherDashboard(ctx: ServiceContext, scope: Scope, today: string
     classes: { active: countOf(classes, true) },
     academic,
     learning,
+    questions,
   }
 }
 

@@ -50,6 +50,8 @@ type ReadQueryInput = Partial<Record<FilterField, string | string[]>> & {
   isActive?: 'true' | 'false' | undefined
   cancelled?: 'true' | 'false' | undefined
   graded?: 'true' | 'false' | undefined
+  answered?: 'true' | 'false' | undefined
+  withdrawn?: 'true' | 'false' | undefined
   dateField?: string | undefined
   dateFrom?: string | undefined
   dateTo?: string | undefined
@@ -70,6 +72,8 @@ function readQueryOf(query: ReadQueryInput): CollectionReadQuery {
     states: {
       ...(query.cancelled === undefined ? {} : { cancelled: query.cancelled === 'true' }),
       ...(query.graded === undefined ? {} : { graded: query.graded === 'true' }),
+      ...(query.answered === undefined ? {} : { answered: query.answered === 'true' }),
+      ...(query.withdrawn === undefined ? {} : { withdrawn: query.withdrawn === 'true' }),
     },
     dateField: query.dateField,
     dateFrom: query.dateFrom,

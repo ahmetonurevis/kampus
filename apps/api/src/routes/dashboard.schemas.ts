@@ -203,6 +203,30 @@ const teacherSchema = z
       })
       .nullable()
       .describe('`learning` modülü kapalıysa `null`'),
+    questions: z
+      .object({
+        total: count.describe(
+          'Yanıt bekleyen soru (`questions?answered=false&withdrawn=false` toplamı)',
+        ),
+        overdue: count.describe('Yanıt süresi (iş takvimiyle bir iş günü) aşılanlar'),
+        items: z
+          .array(
+            z.object({
+              id: z.string(),
+              title: z.string(),
+              createdAt: instant,
+              studentName: z.string().optional(),
+              className: z.string().optional(),
+              overdue: z.boolean(),
+            }),
+          )
+          .describe('En eski 3 yanıt bekleyen soru'),
+      })
+      .meta({ id: 'DashboardOpenQuestions' })
+      .nullable()
+      .describe(
+        'Öğretmene atanan yanıt bekleyen sorular (DOM-ILT-093); `learning` modülü kapalıysa `null`',
+      ),
   })
   .meta({ id: 'DashboardTeacher' })
 

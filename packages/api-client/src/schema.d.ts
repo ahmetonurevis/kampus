@@ -5496,6 +5496,22 @@ export interface components {
                 resolved: number;
             } | null;
         };
+        DashboardOpenQuestionsInput: {
+            /** @description Yanıt bekleyen soru (`questions?answered=false&withdrawn=false` toplamı) */
+            total: number;
+            /** @description Yanıt süresi (iş takvimiyle bir iş günü) aşılanlar */
+            overdue: number;
+            /** @description En eski 3 yanıt bekleyen soru */
+            items: {
+                id: string;
+                title: string;
+                /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                createdAt: string;
+                studentName?: string;
+                className?: string;
+                overdue: boolean;
+            }[];
+        };
         DashboardTeacherInput: {
             /** @constant */
             role: "ogretmen";
@@ -5553,6 +5569,8 @@ export interface components {
                     expected: number;
                 }[];
             } | null;
+            /** @description Öğretmene atanan yanıt bekleyen sorular (DOM-ILT-093); `learning` modülü kapalıysa `null` */
+            questions: components["schemas"]["DashboardOpenQuestionsInput"] | null;
         };
         DashboardStudentInput: {
             /** @constant */
@@ -9224,6 +9242,22 @@ export interface components {
                 resolved: number;
             } | null;
         };
+        DashboardOpenQuestions: {
+            /** @description Yanıt bekleyen soru (`questions?answered=false&withdrawn=false` toplamı) */
+            total: number;
+            /** @description Yanıt süresi (iş takvimiyle bir iş günü) aşılanlar */
+            overdue: number;
+            /** @description En eski 3 yanıt bekleyen soru */
+            items: {
+                id: string;
+                title: string;
+                /** @description Gün (`YYYY-MM-DD`) veya an (ISO 8601 UTC); kaydın değeri */
+                createdAt: string;
+                studentName?: string;
+                className?: string;
+                overdue: boolean;
+            }[];
+        };
         DashboardTeacher: {
             /** @constant */
             role: "ogretmen";
@@ -9281,6 +9315,8 @@ export interface components {
                     expected: number;
                 }[];
             } | null;
+            /** @description Öğretmene atanan yanıt bekleyen sorular (DOM-ILT-093); `learning` modülü kapalıysa `null` */
+            questions: components["schemas"]["DashboardOpenQuestions"] | null;
         };
         DashboardStudent: {
             /** @constant */
@@ -14210,6 +14246,10 @@ export interface operations {
                 cancelled?: "true" | "false";
                 /** @description Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
                 graded?: "true" | "false";
+                /** @description Yalnız `questions`: `true` yanıtlanmış sorular (`answeredAt` dolu), `false` yanıtlanmamışlar. Yanıt bekleyen soru `answered=false&withdrawn=false`dır (durum saklanmaz). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                answered?: "true" | "false";
+                /** @description Yalnız `questions`: `true` geri çekilen sorular (`withdrawnAt` dolu), `false` geri çekilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                withdrawn?: "true" | "false";
                 /** @description Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir. Bitiş başlangıçtan önceyse 400; `attendance` (yoklama geçmişi) için iki uç da verilmişse aralık en çok 1 yıldır, uzunu 400 `dateTo` (IST-093) */
                 dateField?: "date" | "joinedAt" | "dueDate" | "paidAt" | "createdAt" | "trialAt" | "trialLesson.date" | "submittedAt" | "answeredAt" | "followUp" | "deadline" | "reviewedAt" | "endDate" | "consentDeadline";
                 /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */
@@ -14347,6 +14387,10 @@ export interface operations {
                 cancelled?: "true" | "false";
                 /** @description Yalnız `submissions`: `true` notlanmış teslimler (`score` dolu; `0` puandır), `false` notlanmamışlar (`score` boş). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
                 graded?: "true" | "false";
+                /** @description Yalnız `questions`: `true` yanıtlanmış sorular (`answeredAt` dolu), `false` yanıtlanmamışlar. Yanıt bekleyen soru `answered=false&withdrawn=false`dır (durum saklanmaz). Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                answered?: "true" | "false";
+                /** @description Yalnız `questions`: `true` geri çekilen sorular (`withdrawnAt` dolu), `false` geri çekilmeyenler. Verilmezse ikisi birlikte döner. Başka koleksiyonda 400 */
+                withdrawn?: "true" | "false";
                 /** @description Gün aralığının (`dateFrom`/`dateTo`) tarih alanı; koleksiyon başına izin listesi, dışındaki alan 400. Varsayılan listenin ilk alanıdır: `invoices` `dueDate` (`paidAt`; ödenmemiş taksit eşleşmez), `homework`/`studyTasks` `dueDate`/`createdAt`, `studentGoals` `deadline`/`reviewedAt`/`createdAt`, `schoolEvents` `date`/`endDate`/`consentDeadline`/`createdAt`, `students` `joinedAt`, `submissions` `submittedAt`, `prospects` `createdAt`/`trialAt`, `questions` `createdAt`/`answeredAt`, `guidanceCases` `followUp`/`createdAt`, `mockExams` `date`/`createdAt`, `quizzes`/`materials`/`mockResults` `createdAt`; diğer koleksiyonlarda `date`. Aralık yoksa etkisizdir. Bitiş başlangıçtan önceyse 400; `attendance` (yoklama geçmişi) için iki uç da verilmişse aralık en çok 1 yıldır, uzunu 400 `dateTo` (IST-093) */
                 dateField?: "date" | "joinedAt" | "dueDate" | "paidAt" | "createdAt" | "trialAt" | "trialLesson.date" | "submittedAt" | "answeredAt" | "followUp" | "deadline" | "reviewedAt" | "endDate" | "consentDeadline";
                 /** @description Tarih alanının (`dateField`; varsayılan koleksiyonun ilk alanı, çoğunlukla `date`) Europe/Istanbul günü için başlangıç (`YYYY-MM-DD`, dahil). Gün (`YYYY-MM-DD`) veya an (ISO UTC) değerli kayıtlar eşlenir */

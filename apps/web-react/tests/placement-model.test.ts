@@ -8,6 +8,10 @@ import {
   decisionBody,
   decisionDefaults,
   decisionFormSchema,
+  isAnswerSection,
+  isLearnerKind,
+  isPlacementSection,
+  isRubricSection,
   learnerKindOptions,
   learnerOptions,
   openBody,
@@ -468,4 +472,17 @@ test('DOM-DIL-010 bitirme onayı: formda olup girilmemiş otomatik bölümler ad
     ['reading'],
   )
   assert.deepEqual(unenteredAutoSections(completed()), [])
+})
+
+test('IST-058 bölüm koruyucuları: türler birbirinden ayrılır, nesne anahtarları bölüm sayılmaz', () => {
+  assert.equal(isPlacementSection('reading'), true)
+  assert.equal(isPlacementSection('toString'), false)
+  assert.equal(isPlacementSection('mediation'), false)
+  assert.equal(isAnswerSection('listening'), true)
+  assert.equal(isAnswerSection('writing'), false)
+  assert.equal(isRubricSection('speaking'), true)
+  assert.equal(isRubricSection('reading'), false)
+  assert.equal(isLearnerKind('prospect'), true)
+  assert.equal(isLearnerKind('constructor'), false)
+  assert.equal(isLearnerKind(null), false)
 })

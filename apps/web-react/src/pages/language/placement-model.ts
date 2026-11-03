@@ -1,7 +1,9 @@
 import { z } from 'zod'
 import {
   LEARNER_KINDS,
+  PLACEMENT_ANSWER_SECTIONS,
   PLACEMENT_MODES,
+  PLACEMENT_RUBRIC_SECTIONS,
   PLACEMENT_SECTIONS,
   placementDecisionInputSchema,
   placementSessionInputSchema,
@@ -41,7 +43,7 @@ export const LEVEL_OPTIONS = enumKeys(CEFR_LEVELS)
 export const SECTION_KEYS = enumKeys(PLACEMENT_SECTIONS)
 
 export const isLearnerKind = (value: string | null): value is LearnerKind =>
-  value !== null && value in LEARNER_KINDS
+  value !== null && Object.hasOwn(LEARNER_KINDS, value)
 /**
  * Adaylar CRM modülündedir (`prospects` koleksiyonu); modül kapalıysa aday türü seçilemez ve
  * adreste `?tur=prospect` olsa bile öğrenciye dönülür.
@@ -53,7 +55,15 @@ export const learnerKindOptions = (crmOpen: boolean) =>
 export const resolveLearnerKind = (value: string | null, crmOpen: boolean): LearnerKind =>
   isLearnerKind(value) && (crmOpen || value !== 'prospect') ? value : 'student'
 export const isPlacementSection = (value: string): value is PlacementSection =>
-  value in PLACEMENT_SECTIONS
+  Object.hasOwn(PLACEMENT_SECTIONS, value)
+
+/** Otomatik (cevap girilen) ve rubrikle puanlanan bölümler: giriş gövdesi türe göre ayrılır. */
+export type AnswerSection = (typeof PLACEMENT_ANSWER_SECTIONS)[number]
+export type RubricSection = (typeof PLACEMENT_RUBRIC_SECTIONS)[number]
+export const isAnswerSection = (section: PlacementSection): section is AnswerSection =>
+  PLACEMENT_ANSWER_SECTIONS.some((item) => item === section)
+export const isRubricSection = (section: PlacementSection): section is RubricSection =>
+  PLACEMENT_RUBRIC_SECTIONS.some((item) => item === section)
 
 export const sectionLabel = (section: PlacementSection) => SKILLS[section].label
 
@@ -345,12 +355,19 @@ export function decisionDefaults(
   session: Pick<PlacementSession, 'suggestion'>,
 ): DecisionFormValues {
   const { overall, skills } = session.suggestion
-  const skillLevels = Object.fromEntries(
-    SECTION_KEYS.map((skill) => {
-      const row = skills.find((item) => item.skill === skill)
-      return [skill, row?.status === 'suggested' && row.level ? row.level : '']
-    }),
-  ) as DecisionFormValues['skillLevels']
+  const levelOf = (
+    skill: PlacementSection,
+  ): DecisionFormValues['skillLevels'][PlacementSection] => {
+    const row = skills.find((item) => item.skill === skill)
+    return row?.status === 'suggested' && row.level ? row.level : ''
+  }
+  const skillLevels: DecisionFormValues['skillLevels'] = {
+    language_use: levelOf('language_use'),
+    reading: levelOf('reading'),
+    listening: levelOf('listening'),
+    writing: levelOf('writing'),
+    speaking: levelOf('speaking'),
+  }
   return {
     level: overall.status === 'suggested' ? overall.level : '',
     skillLevels,

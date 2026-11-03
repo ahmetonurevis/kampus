@@ -53,6 +53,9 @@ import {
   decisionFormSchema,
   decisionRows,
   formOptionValue,
+  isAnswerSection,
+  isPlacementSection,
+  isRubricSection,
   LEVEL_OPTIONS,
   MODE_OPTIONS,
   openBody,
@@ -67,6 +70,8 @@ import {
   skillSuggestionRows,
   suggestedLevel,
   validityText,
+  type AnswerSection,
+  type RubricSection,
   type DecisionFormValues,
   type LearnerOption,
   type OpenFormValues,
@@ -86,9 +91,7 @@ export type PlacementAction = { kind: 'score'; section: PlacementSection } | { k
 export function parseAction(value: string): PlacementAction | null {
   if (value === 'karar') return { kind: 'decide' }
   const section = value.startsWith('puan-') ? value.slice('puan-'.length) : ''
-  return (SECTION_KEYS as readonly string[]).includes(section)
-    ? { kind: 'score', section: section as PlacementSection }
-    : null
+  return isPlacementSection(section) ? { kind: 'score', section } : null
 }
 
 export const scoreActionValue = (section: PlacementSection) => `puan-${section}`
@@ -310,15 +313,11 @@ function SectionScoreForm({
         Bu bölüm girilemez: {row?.status === 'scored' ? 'daha önce puanlandı.' : 'formda yok.'}
       </p>
     )
-  return row.scoring === 'auto' ? (
-    <AutoSectionForm session={session} section={section} onDone={onDone} />
-  ) : (
-    <RubricSectionForm
-      session={session}
-      section={section as 'writing' | 'speaking'}
-      onDone={onDone}
-    />
-  )
+  if (isAnswerSection(section))
+    return <AutoSectionForm session={session} section={section} onDone={onDone} />
+  if (isRubricSection(section))
+    return <RubricSectionForm session={session} section={section} onDone={onDone} />
+  return null
 }
 
 function AutoSectionForm({
@@ -327,7 +326,7 @@ function AutoSectionForm({
   onDone,
 }: {
   session: PlacementSession
-  section: PlacementSection
+  section: AnswerSection
   onDone: () => void
 }) {
   const form = usePlacementForm(session.id)
@@ -345,7 +344,7 @@ function AutoSectionForm({
       sessionId: session.id,
       body: {
         version: session.version,
-        section: section as 'language_use' | 'reading' | 'listening',
+        section,
         answers,
       },
     })
@@ -409,7 +408,7 @@ function RubricSectionForm({
   onDone,
 }: {
   session: PlacementSession
-  section: 'writing' | 'speaking'
+  section: RubricSection
   onDone: () => void
 }) {
   const rubrics = useRubrics({ skill: section, status: 'published', pageSize: 100 })
@@ -465,7 +464,7 @@ function RubricBandsForm({
   onDone,
 }: {
   session: PlacementSession
-  section: 'writing' | 'speaking'
+  section: RubricSection
   rubricVersionId: string
   onDone: () => void
 }) {
@@ -495,7 +494,7 @@ function RubricBands({
   onDone,
 }: {
   session: PlacementSession
-  section: 'writing' | 'speaking'
+  section: RubricSection
   rubric: RubricData
   rubricVersionId: string
   onDone: () => void

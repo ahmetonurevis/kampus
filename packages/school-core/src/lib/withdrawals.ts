@@ -121,6 +121,12 @@ export interface WithdrawalBreakdown {
   extras: WithdrawalExtraLine[]
   refundCents: number
   debtCents: number
+  /**
+   * Ayrılışta kalan borç için açılan taksit. Yalnız ayrılış kaydında bulunur (önizlemede yok); eski
+   * kayıtta yoktur. Bu taksite alınan tahsilat ayrılış hesabının dışındadır ve iptal edilebilir
+   * (DOM-FIN-041, `reversePayment`).
+   */
+  debtInvoiceId?: string
 }
 
 export interface WithdrawalContext {
@@ -391,7 +397,7 @@ export function withdrawStudent(
     targetSchool: data.targetSchool,
     withdrawalDate: data.withdrawalDate,
     refundDueDate: refundDueDate(data.withdrawalDate),
-    breakdown,
+    breakdown: debt ? { ...breakdown, debtInvoiceId: debt.id } : breakdown,
   }
 }
 

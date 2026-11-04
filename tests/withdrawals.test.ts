@@ -347,6 +347,26 @@ test('DOM-FIN-040: iade ve borç netleşir; ikisi aynı anda oluşmaz', () => {
   assert.equal(covered.debtCents, 0)
 })
 
+test('DOM-FIN-041: borç kalırsa açılan taksit dökümde saklanır; önizleme ve iadeli ayrılışta yoktur', () => {
+  const { state, studentId } = fixture()
+  const half = { ...WITHDRAW, ...AFTER, attendedUnits: 90 }
+  assert.equal(
+    quoteWithdrawal(state, studentId, AFTER, context()).breakdown.debtInvoiceId,
+    undefined,
+  )
+  const plan = withdrawStudent(state, studentId, half, makeId, context())
+  assert.ok(plan.breakdown.debtCents > 0)
+  const debt = state.invoices.find((invoice) => invoice.id === plan.breakdown.debtInvoiceId)
+  assert.equal(debt?.amount, plan.breakdown.debtCents)
+  assert.deepEqual(state.contracts[0]!.invoiceIds?.at(-1), debt?.id)
+
+  const refunded = fixture()
+  refunded.state.invoices[0]!.paidAt = NOW
+  const refund = withdrawStudent(refunded.state, refunded.studentId, WITHDRAW, makeId, context())
+  assert.equal(refund.breakdown.debtCents, 0)
+  assert.equal(refund.breakdown.debtInvoiceId, undefined)
+})
+
 test('IST-110: ayrılış formu öğrenci ve geçerli birim ister', () => {
   const values = {
     studentId: 's1',

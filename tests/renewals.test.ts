@@ -272,6 +272,31 @@ test('DOM-FIN-020, -021, -022: indirim tarifedeki türden ve ilandan hesaplanır
   unchangedOnFailure(state, withDiscounts(['sibling']), 'sibling_discount_ineligible')
 })
 
+test('DOM-FIN-022: yenilemede kardeş indirimi ücreti düşük kardeşe uygulanır; ilk çocuk alamaz', () => {
+  const state = seeded({ grossCents: 9_000_000 })
+  const student = state.students.find((s) => s.id === 's3')
+  assert.ok(student)
+  state.students.push({ ...student, id: 'test-sibling', name: 'Test Kardeş', isActive: true })
+  state.contracts.push({
+    id: 'test-sibling-contract',
+    studentId: 'test-sibling',
+    date: NOW,
+    amount: 1_000_000,
+    title: 'Özel okul eğitim sözleşmesi',
+    academicYear: 2026,
+    grossCents: 1_000_000,
+  })
+  const withSibling = () =>
+    quoteRenewal(state, ADMIN, { ...QUOTE, discounts: ['sibling'] }, CONTEXT)
+  // Kardeşin ücreti düşükse s3 ilk çocuktur.
+  unchangedOnFailure(state, withSibling, 'sibling_discount_ineligible')
+  state.contracts.at(-1)!.grossCents = 90_000_000
+  assert.deepEqual(
+    withSibling().discounts.map((line) => line.kind),
+    ['sibling'],
+  )
+})
+
 test('DOM-FIN-021: tavanla düşen ücret indirimi karşılayamıyorsa reddedilir', () => {
   const state = seeded({ grossCents: 500_000 })
   unchangedOnFailure(

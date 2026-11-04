@@ -8,9 +8,21 @@ import {
   ENROLLMENT_STATUS_EFFECTS,
   enrollmentStatuses,
   type EnrollmentRecords,
+  type EnrollmentRenewal,
   type EnrollmentStatusEffects,
   type EnrollmentStudent,
 } from './enrollment-status.ts'
+
+/**
+ * Kayıt durumu türetmesinin `renewals` içinden okuduğu tek kayıt türü: uygulanmış mezuniyet
+ * (`enrollment-status.ts`, `isGraduation`). Alan eşitliklerinin birleşimidir (hepsi birden tutar).
+ * API bu komutlarda kurumun bütün yenileme kayıtları yerine yalnız bunları yükler (`loadScope`);
+ * değerin türetmeyle eşit kaldığını `tests/student-roster.test.ts` garanti eder.
+ */
+export const GRADUATION_RENEWAL_MATCH = [
+  { field: 'mode', value: 'graduate' },
+  { field: 'status', value: 'Mezun' },
+] as const satisfies readonly { field: keyof EnrollmentRenewal; value: string }[]
 
 /** Süzgeçte okunan etki bayrakları (durumla `switch` yazılmaz). */
 export type RosterEffect = keyof Pick<

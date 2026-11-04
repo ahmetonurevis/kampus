@@ -13,6 +13,7 @@ import { records } from '../src/db/schema/records.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { WORKFLOW_ROUTES } from '../src/routes/workflows.schemas.ts'
 import { environment } from '../src/services/commands.ts'
+import { GRADUATION_RENEWALS } from '../src/services/roster-scope.ts'
 import { createMember, FIXED_NOW, signInAs, TEST_ORIGIN } from './support/app.ts'
 import {
   app,
@@ -511,6 +512,54 @@ describe('yazma uçları (platform)', () => {
       const rows = await loadRecords(db, a.id, ['attendance'])
       assert.equal(rows.length, students.length)
       assert.equal(rows.find((row) => row.data.studentId === students[0]?.id)?.data.status, 'late')
+    })
+
+    test('DOM-KAY-026: mezun ve ayrılmış öğrenci yoklamada yok; yenileme kayıtları kısmi yüklenir', async () => {
+      const a = await institution()
+      const template = SEED.students.find((item) => item.classId === 'c1' && item.isActive)
+      assert.ok(template)
+      const leaver = (id: string) => ({ ...template, id, isActive: false })
+      const renewal = (id: string, studentId: string, mode: string, status: string) => ({
+        id,
+        studentId,
+        mode,
+        status,
+        year: 2027,
+        fromClassId: 'c1',
+        targetClassId: 'c1',
+        createdAt: FIXED_NOW.toISOString(),
+      })
+      const extra = [
+        { collection: 'students' as const, id: 'test-mezun', data: leaver('test-mezun') },
+        { collection: 'students' as const, id: 'test-ayrildi', data: leaver('test-ayrildi') },
+        ...[
+          renewal('test-r-mezun', 'test-mezun', 'graduate', 'Mezun'),
+          renewal('test-r-plan-mezun', 'test-ayrildi', 'graduate', 'Planlandı'),
+          renewal('test-r-yenile', template.id, 'renew', 'Tamamlandı'),
+          renewal('test-r-planli', template.id, 'renew', 'Planlandı'),
+        ].map((data) => ({ collection: 'renewals' as const, id: data.id, data })),
+      ]
+      await insertMissingRecords(db, a.id, extra, FIXED_NOW)
+      // Süzgeç yalnız uygulanmış mezuniyeti yükler; türetme başka kayıt türüne bakmaz.
+      const loaded = await loadRecords(db, a.id, ['renewals'], {
+        match: GRADUATION_RENEWALS.match,
+      })
+      assert.deepEqual(
+        loaded.map((row) => row.id),
+        ['test-r-mezun'],
+      )
+      const response = await post(url, a.adminCookie, {
+        date: DAY,
+        marks: marksFor('c1'),
+        reason: REASON,
+      })
+      assert.equal(response.statusCode, 200, response.body)
+      assert.equal(response.json().data.changes.inserted, students.length)
+      const marked = (await loadRecords(db, a.id, ['attendance'])).map((row) => row.data.studentId)
+      assert.ok(!marked.includes('test-mezun') && !marked.includes('test-ayrildi'))
+      assert.equal(marked.length, students.length)
+      // Yenileme kayıtları işlemde yazılmadı, silinmedi.
+      assert.equal(await count(a.id, 'renewals'), 4)
     })
 
     test('sınıfın öğretmeni yoklama alır; kapsam dışı öğretmen 403', async () => {

@@ -738,4 +738,81 @@ describe('dinleme etkinliği', () => {
     fails(await fileUrl(t, t.cookies.student), 404, 'not_found')
     assert.equal((await playRows(t.institution.id)).length, 1, 'kapalı kayıtta sayım yazılmaz')
   })
+  test('IST-045, DOM-BEC-005 (OG-061): kursiyer görünümünde hasListening sunucuda hesaplanır; kayda bağlı etkinlik (material kayıtlı da) true, kaydı olmayan quiz false, tek soru false; öğrenci ve veli aynı değeri alır, personel yanıtında alan yok; başka kurumun ataması listede ve değerde sızmaz', async () => {
+    const t = await tenant()
+    const plain = await seedResource(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      versions: [
+        {
+          status: 'published',
+          input: {
+            ...listeningQuiz(t.activity.questionVersionId, null),
+            title: 'Kayıtsız quiz',
+            tags: { ...LISTENING_TAGS, primarySkill: 'reading' },
+          },
+        },
+      ],
+    })
+    const material = await seedListeningActivity(db, t.institution.id, {
+      ownerUserId: t.teacherId,
+      purpose: 'material',
+    })
+    const recorded = await assign(t)
+    const unlimited = await ok(await createAssignment(t, assignBody(material.quiz.versionId)), 201)
+    const unrecorded = await ok(await createAssignment(t, assignBody(plain.versions[0]!.id)), 201)
+    const single = await ok(
+      await createAssignment(t, assignBody(t.activity.questionVersionId)),
+      201,
+    )
+    const expected = new Map<string, boolean>([
+      [recorded.id, true],
+      [unlimited.id, true],
+      [unrecorded.id, false],
+      [single.id, false],
+    ])
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const list = (await ok(await call('GET', '/task-assignments?pageSize=50', cookie))) as Json[]
+      assert.equal(list.length, expected.size)
+      for (const row of list) assert.equal(row.hasListening, expected.get(row.id), row.title)
+      for (const [id, value] of expected) {
+        const one = await ok(await call('GET', `/task-assignments/${id}`, cookie))
+        assert.equal(one.hasListening, value, id)
+      }
+    }
+    // Kayıt bağı sunucuda hesaplanır, atama satırında saklanmaz; personel yanıtı alanı taşımaz.
+    for (const row of await assignmentRows(t.institution.id)) assert.ok(!('hasListening' in row))
+    const staff = await ok(await call('GET', `/task-assignments/${recorded.id}`, t.cookies.teacher))
+    assert.equal(staff.view, 'staff')
+    assert.ok(!('hasListening' in staff))
+    // Başka kurum: kendi kayıtsız ataması false; bizim kayıtlı atamamız onun listesinde yoktur.
+    const other = await tenant()
+    const otherPlain = await seedResource(db, other.institution.id, {
+      ownerUserId: other.teacherId,
+      versions: [
+        {
+          status: 'published',
+          input: {
+            ...listeningQuiz(other.activity.questionVersionId, null),
+            tags: { ...LISTENING_TAGS, primarySkill: 'reading' },
+          },
+        },
+      ],
+    })
+    const mine = await ok(
+      await createAssignment(other, assignBody(otherPlain.versions[0]!.id), other.cookies.teacher),
+      201,
+    )
+    const otherList = (await ok(
+      await call('GET', '/task-assignments', other.cookies.student),
+    )) as Json[]
+    assert.deepEqual(
+      otherList.map((row) => [row.id, row.hasListening]),
+      [[mine.id, false]],
+    )
+    fails(
+      await call('GET', `/task-assignments/${recorded.id}`, other.cookies.student),
+      404,
+      'not_found',
+    )
+  })
 })

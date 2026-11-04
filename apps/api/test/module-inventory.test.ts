@@ -119,6 +119,10 @@ const MODULELESS: Readonly<Record<string, string>> = {
   'POST /api/v1/students/:studentId/guardians': 'çekirdek kayıt',
   'PATCH /api/v1/students/:studentId/guardians/:linkId': 'çekirdek kayıt',
   'DELETE /api/v1/students/:studentId/guardians/:linkId': 'çekirdek kayıt',
+  'GET /api/v1/students/:studentId/health-profile':
+    'çekirdek kayıt; acil bilgi modülle kapanmaz (DOM-ILT-035, Sabah kararı 100)',
+  'PATCH /api/v1/students/:studentId/health-profile':
+    'çekirdek kayıt; acil bilgi modülle kapanmaz (DOM-ILT-035, Sabah kararı 100)',
   // Dosyanın modülü amacından gelir ve serviste denetlenir (yükleme, bilgi ve bağlantı; kurum
   // belgesi modülsüz; `files.test.ts`). İndirme imzalı kısa ömürlü bağlantıdır, oturum istemez.
   'POST /api/v1/files': 'dosya amacına göre serviste',
@@ -208,6 +212,8 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'POST /api/v1/requests': ['communication'],
   'PATCH /api/v1/requests/:requestId': ['communication'],
   'GET /api/v1/notifications': ['communication'],
+  'GET /api/v1/notification-preferences': ['communication'],
+  'PATCH /api/v1/notification-preferences': ['communication'],
   'GET /api/v1/notifications/unread-count': ['communication'],
   'POST /api/v1/notifications/read-all': ['communication'],
   'POST /api/v1/notifications/:notificationId/read': ['communication'],
@@ -300,6 +306,10 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'PATCH /api/v1/task-assignments/:assignmentId': ['learning'],
   'POST /api/v1/task-assignments/batches': ['learning'],
   'GET /api/v1/resources/:resourceId/assignment-results': ['learning'],
+  'GET /api/v1/task-assignments/:assignmentId/extra-times': ['learning'],
+  'POST /api/v1/task-assignments/:assignmentId/extra-times': ['learning'],
+  'PATCH /api/v1/task-assignments/:assignmentId/extra-times/:learnerId': ['learning'],
+  'DELETE /api/v1/task-assignments/:assignmentId/extra-times/:learnerId': ['learning'],
   'GET /api/v1/task-attempts': ['learning'],
   'GET /api/v1/task-attempts/:attemptId': ['learning'],
   'POST /api/v1/task-assignments/:assignmentId/attempts': ['learning'],

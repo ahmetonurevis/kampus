@@ -17,7 +17,6 @@ import {
   attemptState,
   countedAttempt,
   deadlineSchema,
-  extraTimeSchema,
   isClosed,
   isLate,
   istanbulLocalDueSchema,
@@ -670,16 +669,6 @@ describe('süreli görev (DOM-BEC-043)', () => {
         }),
       isDomainError('attempt_already_submitted', 'conflict'),
     )
-  })
-
-  test('DOM-BEC-043 bireysel ek süre gerekçe ister', () => {
-    assert.equal(
-      extraTimeSchema.safeParse({ minutes: 20, reason: 'Okuma güçlüğü raporu' }).success,
-      true,
-    )
-    assert.equal(extraTimeSchema.safeParse({ minutes: 20, reason: ' ' }).success, false)
-    assert.equal(extraTimeSchema.safeParse({ minutes: 0, reason: 'Rapor' }).success, false)
-    assert.equal(extraTimeSchema.safeParse({ minutes: 301, reason: 'Rapor' }).success, false)
   })
 })
 

@@ -5,12 +5,13 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useTheme } from '@/hooks/use-theme.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { useAuth } from '@/auth/use-auth.ts'
+import { ChildNoticeSection } from './ChildNoticeSection.tsx'
 import { ConsentsSection } from './ConsentsSection.tsx'
+import { NotificationPreferencesSection } from './NotificationPreferencesSection.tsx'
 
 /**
- * Öğrenci ve veli Ayarlar sayfası: görünüm (tema) tercihi cihazda saklanır. Bildirim
- * tercihleri için sunucuda depo yoktur; sahte anahtar gösterilmez, durum açıkça yazılır.
- * TODO(bildirim-tercihleri): bildirim merkezi ve tercih ucu gelince kanal/konu seçimi eklenir.
+ * Öğrenci ve veli Ayarlar sayfası: görünüm (tema) tercihi cihazda saklanır; bildirim tercihleri
+ * ve sessiz saatler sunucuda hesaba kaydedilir (OG-107, `NotificationPreferencesSection`).
  */
 export function PersonalSettingsPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
@@ -47,18 +48,8 @@ export function PersonalSettingsPage({ page }: { page: NavPage }) {
             </Button>
           </div>
         </section>
-        <section
-          aria-labelledby="bildirim-baslik"
-          className="panel rounded-card border bg-surface p-6"
-        >
-          <h2 id="bildirim-baslik" className="text-lg font-semibold">
-            Bildirimler
-          </h2>
-          <p className="mt-1 text-sm text-muted-foreground">
-            Bildirim tercihleri bildirim merkeziyle gelecek; şimdilik kanal ve konu seçimi
-            saklanmıyor.
-          </p>
-        </section>
+        {session ? <NotificationPreferencesSection session={session} /> : null}
+        {session?.role === 'ogrenci' ? <ChildNoticeSection session={session} /> : null}
         {session ? <ConsentsSection session={session} /> : null}
       </div>
     </>

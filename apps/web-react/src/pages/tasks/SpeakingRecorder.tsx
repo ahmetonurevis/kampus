@@ -18,6 +18,7 @@ import { useStableCallback } from '@/hooks/use-stable-callback.ts'
 import { notify } from '@/lib/notify.ts'
 import {
   BLOCK_MESSAGES,
+  RECORDING_NOTICE,
   clockLabel,
   durationLabel,
   elapsedMs,
@@ -26,12 +27,8 @@ import {
   takesLeft,
   type RecorderPhase,
   type SpeakingLimits,
-} from './speaking-recorder-model.ts'
+} from '@kampus/react-shared/speaking-recorder-model.ts'
 import { useObjectUrlSource, useSpeakingRecorder } from './use-speaking-recorder.ts'
-
-/** Kayıt öncesi aydınlatma (DOM-BEC-050, 051, 053, 054); kayıt başlamadan her zaman görünür. */
-export const RECORDING_NOTICE =
-  'Kaydınız yalnız bu görevin puanlanması, geri bildirimi ve itirazı için kullanılır. Kaydı siz, 18 yaşından küçükseniz veliniz ve görevi değerlendiren öğretmenler dinleyebilir. Kayıt kurum dışına gönderilmez, ses tanıma yapılmaz ve saklama süresi sonunda silinir. Gönderene kadar yalnız bu sayfada tutulur; sayfadan ayrılırsanız silinir.'
 
 const FAILED_UPLOAD = 'Kaydınız gönderilemedi.'
 const STILL_PROCESSING = 'Kaydınız hâlâ işleniyor; birazdan yeniden deneyin.'

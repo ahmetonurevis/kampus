@@ -565,41 +565,84 @@ export type AttemptRow = {
   answers: Answers
 }
 
-/** Bireysel ek süre (DOM-BEC-043): gerekçesi kayıt geçmişinde görünür. */
-export const extraTimeSchema = z.object({
-  minutes: z
-    .number()
-    .int()
-    .min(1, 'Ek süre en az 1 dakika olmalıdır.')
-    .max(300, 'Ek süre en fazla 300 dakika olabilir.'),
-  reason: z
-    .string()
-    .trim()
-    .min(3, 'Ek süre gerekçesini yazın.')
-    .max(1000, 'Gerekçe en fazla 1.000 karakter olabilir.'),
-})
-export type ExtraTime = z.output<typeof extraTimeSchema>
+/**
+ * Bireysel ek süre kaydı (DOM-BEC-043; `task_extra_times`): kursiyerin atamadaki ek süresinin bir
+ * değişikliği. Kayıtlar değişmez ve yalnız eklenir; güncel ek süre son kayıttır, `minutes: 0`
+ * kaldırmadır. Kural ve gerekçe `skills/extra-time.ts`'tedir.
+ */
+export type ExtraTimeGrant = {
+  minutes: number
+  grantedAt: string
+}
 
-/** Denemenin süre bağlamı: içerik/atamadaki süre, kursiyerin ek süresi ve son teslim ayarı. */
+/**
+ * Denemenin süre bağlamı: içerik/atamadaki süre, kursiyerin ek süresi ve son teslim ayarı.
+ * `extraTime` verilirse (kursiyerin ek süre kayıtları, sıra numarasıyla) her denemenin ek süresi
+ * kayıt geçmişinden hesaplanır (`attemptExtraMinutes`) ve `extraMinutes` yok sayılır.
+ */
 export type AttemptTiming = {
   timeLimitMinutes: number | null
   extraMinutes: number
   deadline: Deadline
+  extraTime?: readonly ExtraTimeGrant[] | undefined
 }
 
-/**
- * Denemenin bittiği an (DOM-BEC-043): başlangıç + süre + bireysel ek süre; teslim kapanışından
- * sonraya taşmaz. Süresiz ve son tarihsiz denemede `null`.
- */
-export function attemptEndsAt(startedAt: Instant, timing: AttemptTiming): string | null {
+function endsWith(startedAt: number, timing: AttemptTiming, extraMinutes: number): number | null {
   const { closesAt } = submissionWindow(timing.deadline)
   const limit =
     timing.timeLimitMinutes === null
       ? null
-      : toMs(startedAt) + (timing.timeLimitMinutes + timing.extraMinutes) * MINUTE
+      : startedAt + (timing.timeLimitMinutes + extraMinutes) * MINUTE
   const close = closesAt === null ? null : toMs(closesAt)
-  if (limit === null) return close === null ? null : toIso(close)
-  return toIso(close === null ? limit : Math.min(limit, close))
+  if (limit === null) return close
+  return close === null ? limit : Math.min(limit, close)
+}
+
+/**
+ * Denemenin ek süresi (DOM-BEC-043), saklanmaz: başlangıçtan önceki son kayıt, ardından deneme
+ * sürerken verilen her kayıt geçerlidir. Deneme bittikten (süre doldu ya da teslim edildi) sonra
+ * verilen kayıt o denemeyi değiştirmez: biten deneme yeniden açılmaz, tamamlanma anı kaymaz.
+ * Süren denemeyi geçmişte bitirecek kısaltma `planExtraTime`'da reddedilir.
+ */
+export function attemptExtraMinutes(
+  attempt: { startedAt: Instant; submittedAt?: Instant | null | undefined },
+  timing: AttemptTiming,
+): number {
+  if (timing.extraTime === undefined) return timing.extraMinutes
+  const start = toMs(attempt.startedAt)
+  const submitted =
+    attempt.submittedAt === null || attempt.submittedAt === undefined
+      ? null
+      : toMs(attempt.submittedAt)
+  let extra = 0
+  for (const grant of timing.extraTime) {
+    const at = toMs(grant.grantedAt)
+    if (at > start) {
+      if (submitted !== null && at >= submitted) break
+      const end = endsWith(start, timing, extra)
+      if (end !== null && at >= end) break
+    }
+    extra = grant.minutes
+  }
+  return extra
+}
+
+/**
+ * Denemenin bittiği an (DOM-BEC-043): başlangıç + süre + bireysel ek süre; teslim kapanışından
+ * sonraya taşmaz. Süresiz ve son tarihsiz denemede `null`. Ek süre kayıt geçmişinden okunur
+ * (`attemptExtraMinutes`); teslim anı verilirse teslimden sonraki kayıt sayılmaz.
+ */
+export function attemptEndsAt(
+  startedAt: Instant,
+  timing: AttemptTiming,
+  submittedAt: Instant | null = null,
+): string | null {
+  const end = endsWith(
+    toMs(startedAt),
+    timing,
+    attemptExtraMinutes({ startedAt, submittedAt }, timing),
+  )
+  return end === null ? null : toIso(end)
 }
 
 export type AttemptStatus = 'in_progress' | 'submitted' | 'expired'
@@ -625,7 +668,7 @@ export function attemptState(
   timing: AttemptTiming,
   now: Instant,
 ): AttemptState {
-  const endsAt = attemptEndsAt(attempt.startedAt, timing)
+  const endsAt = attemptEndsAt(attempt.startedAt, timing, attempt.submittedAt)
   if (attempt.submittedAt !== null) {
     return {
       status: 'submitted',

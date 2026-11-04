@@ -13,7 +13,7 @@
 //   const notify = useNotify()                               // Türkçe toast
 //   sorgu hatası → <QueryError error={…} onRetry={…} />, yükleniyor → <ListLoading label="…" />
 
-/** Oturum: `user`, `role`, `membershipId`, `institution` (`id`, `name`, `type`), `modules`, `childIds`. */
+/** Oturum: `user`, `role`, `membershipId`, `institution` (`id`, `name`, `type`), `modules`, `childIds`, `studentId`. */
 export { useApiSession } from './auth.tsx'
 /** Ekran bu rol ve kurumda açık mı (modül kapalıysa ya da rol eşleşmezse `false`). */
 export { canOpenScreen } from './pages.ts'

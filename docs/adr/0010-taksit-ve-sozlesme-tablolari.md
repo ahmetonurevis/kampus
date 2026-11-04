@@ -1,6 +1,6 @@
 # ADR 0010 · Taksit ve sözleşme ilişkisel tablolarda
 
-- Durum: Kabul edildi (2026-11-04; Onur'un kararı, açık soruların cevaplarıyla). Soru 3 Oğuzhan'a soruldu (#41); cevabı gelene kadar ön denetimde çıkan sözleşmesiz taksit taşınmaz, rapora yazılır.
+- Durum: Kabul edildi (2026-11-04; Onur'un kararı, açık soruların cevaplarıyla). Soru 3'ü Oğuzhan #41'de kabul etti (Sabah kararı 107): sözleşmesiz eski taksit öğrencinin tek sözleşmesine bağlanır, öteki durumda bağ boş kalır ve `contract_id` `not null` olmaz.
 - Hazırlayan: Onur (ON-045); uygulama ON-046
 - Ayrıntılandırdığı: ADR 0001 karar 6 (kademeli normalleştirme), veritabani.md §4
 - Geçersiz kıldığı: ADR 0006 karar 2 ("taksit ve sözleşme `records`'ta kalır"). ADR 0006'nın öteki kararları sürer.
@@ -251,7 +251,7 @@ Her adım ayrı commit ve ayrı birleştirmedir; adım bitince ağaç yeşildir.
 5. **Daralt.** `records`'a yazma durur ve `invoices`/`contracts` satırları silinir. veritabani.md §4 taşımada eski satırların silinmesini öngörür; yine de bu adım denetim kaydına yazılır.
    - 0056 tetikleyicisi kaldırılır.
    - `payment_allocations` ve `student_withdrawals` yabancı anahtarları `not valid` olarak eklenir; ayrı migration'da `validate` edilir.
-   - Ön denetimde çözülen eski kayıtlar için `invoices.contract_id` `not null` olur (açık soru 3).
+   - `invoices.contract_id` `not null` olmaz: taşımada bağı boş kalan eski taksitler kolonu boş tutar (açık soru 3).
    - `db/collections.ts` iki koleksiyonu `records` deposundan çıkarır; depo bu adlara yazmayı reddeder.
    - Bu adımdan sonra geri dönüş ileri yönlü bir migration'dır: tablolardan `records`'a kopyalanır, tetikleyici geri eklenir. Bu yol daralt öncesinde PGlite'ta bir kez denenir.
 
@@ -335,26 +335,26 @@ Alan haritasına göre Oğuzhan'ındır; iş isteği issue'suyla (`sahip:oguzhan
 
 1. **Kurum büyüklüğü.** Belirleyici değil; tasarım kurum büyüklüğünden bağımsız kalır. Ön denetimdeki ölçüm yalnız rapor içindir.
 2. **Çift yazma süresi.** Sıkıştırılmaz: genişlet, kopyala ve çift yaz, okuma geçişi, daralt ayrı migration ve ayrı birleştirmelerdir (veritabani §5).
-3. **Sözleşmesiz eski taksitler.** Oğuzhan'a soruldu (#41). Cevap gelene kadar böyle taksit taşınmaz ve sayısı ön denetim raporuna yazılır; daralt adımı bu soru kapanmadan başlamaz.
+3. **Sözleşmesiz eski taksitler.** Oğuzhan #41'de kabul etti (Sabah kararı 107). Taşımada öğrencinin tek sözleşmesi varsa taksit ona bağlanır. Birden fazla sözleşmesi ya da hiç sözleşmesi yoksa `contract_id` boş kalır; daralt adımında (046h) kolon `not null` olmaz. Bu satırlar için ekranlı düzeltme ya da arşiv sonra ayrı iştir.
 4. **`paid_at` önbelleği.** Zamanlamayı uygulayan belirler. Karar: ON-046 boyunca kolon olarak kalır (karar 5); bütün okumalar dağılımlardan türetmeye geçtikten sonra daralt adımının ardından ayrı görevle kalkar. Eski ödenmiş kayıtlar için yöntem o görevde seçilir.
 5. **Core dizi sırası.** `position` kolonu kalır; core dizi sırası değişmez.
 6. **Onaydan önce taksit düzeltmesi.** İzin verilir. Değişmezlik yalnız onaylı sürüme uygulanır: tetikleyici onaylanmamış sürümün taksitlerini kilitlemez (DOM-FIN-010). Düzeltme işlemi ve ekranı ayrı görevdir.
-7. **Oğuzhan'ın koduna dokunan kısım.** Oğuzhan izin verirse Onur yapar. İzin dosya listesiyle istenir (#42); kullanıcı izin verilen yolları kendi makinesinde `.claude/alan-izni.local` dosyasına ekler (ajan bu dosyayı yazmaz). İzin gelene kadar Onur yalnız kendi alanındaki parçaları yapar.
+7. **Oğuzhan'ın koduna dokunan kısım.** Oğuzhan #42'de izin verdi (Sabah kararı 108); 046b ve 046g'yi Onur yapar. İzin verilen dosyalar `operation-runner.ts`, `db/records.ts`, `collection-reads.ts`, `read-scope.ts`, `dashboard.ts` ve bunların testleridir. Koşullar: `records` varsayılan yolu ve `loadScope` imzası davranış olarak aynı kalır ve bunu regresyon testi gösterir; commit'ler ON-046 kimliğini taşır; görev satırının Not'una "ortak dosya: <yollar>" yazılır. Kullanıcı izin verilen yolları kendi makinesinde `.claude/alan-izni.local` dosyasına ekler (ajan bu dosyayı yazmaz).
 
 ## ON-046 iş listesi
 
 Her parça ayrı görev satırı ya da alt adım olabilir. Migration numarası iş başında sıradaki numaradır, satırın Not'una yazılır.
 
-| Parça | İş                                                                                                                                                                                     | Sahip                             | Bağımlılık              | Boyut |
-| ----- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | ----------------------- | ----- |
-| 046a  | Ön denetim betiği ve `test:pg` ölçümü: sayımlar, ölçüt 4 yükleme süreleri, sonuç Not'a                                                                                                 | Onur                              | —                       | S     |
-| 046b  | Çalıştırıcı ve depo kaydı (`CollectionStore`, bağımlılık sırasıyla yazma), `records` varsayılanı için regresyon testi                                                                  | Oğuzhan (issue) ya da izinle Onur | açık soru 7             | M     |
-| 046c  | Genişlet migration'ı: üç tablo, kısıtlar, indeksler, tetikleyiciler, `COMMENT ON`, Drizzle şeması (`db/schema/invoices.ts`, `contracts.ts`), kısıt testleri                            | Onur                              | 046a                    | M     |
-| 046d  | Depolar (`db/invoice-store.ts`, `db/contract-store.ts`): satır ↔ core kaydı, süzgeç çevirisi, gidiş-dönüş testleri                                                                     | Onur                              | 046b, 046c              | M     |
-| 046e  | Kopyalama migration'ı ve çift yazma; eşlik testi, migration testi                                                                                                                      | Onur                              | 046d, açık soru 3       | M     |
-| 046f  | Okuma geçişi: çalıştırıcı, finans servisleri, hatırlatma işi; `loadScope` daraltması (`invoice.pay`, `payment.reverse`, `student.withdraw`); ölçüm sonrası; `openapi:check` farksız    | Onur                              | 046e                    | M     |
-| 046g  | Genel okuma ve pano depo üzerinden (`collection-reads.ts`, `dashboard.ts`), e2e React                                                                                                  | Oğuzhan (issue) ya da izinle Onur | 046f                    | S     |
-| 046h  | Daralt: `records` yazımını durdur, satırları sil, 0056'yı kaldır, `payment_allocations`/`student_withdrawals` FK `not valid` + `validate`, `not null`; geri dönüş migration'ı denemesi | Onur                              | 046f, 046g, açık soru 2 | M     |
-| 046i  | Belgeler: veritabani.md §4, `.claude/rules/veritabani.md`, DOM-FIN-010/012/030 "Kodda" satırları, `changes/` parçası (yalnız API; core değişmezse gerekmez)                            | Onur                              | 046h                    | S     |
+| Parça | İş                                                                                                                                                                                  | Sahip                             | Bağımlılık              | Boyut |
+| ----- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------- | ----------------------- | ----- |
+| 046a  | Ön denetim betiği ve `test:pg` ölçümü: sayımlar, ölçüt 4 yükleme süreleri, sonuç Not'a                                                                                              | Onur                              | —                       | S     |
+| 046b  | Çalıştırıcı ve depo kaydı (`CollectionStore`, bağımlılık sırasıyla yazma), `records` varsayılanı için regresyon testi                                                               | Oğuzhan (issue) ya da izinle Onur | açık soru 7             | M     |
+| 046c  | Genişlet migration'ı: üç tablo, kısıtlar, indeksler, tetikleyiciler, `COMMENT ON`, Drizzle şeması (`db/schema/invoices.ts`, `contracts.ts`), kısıt testleri                         | Onur                              | 046a                    | M     |
+| 046d  | Depolar (`db/invoice-store.ts`, `db/contract-store.ts`): satır ↔ core kaydı, süzgeç çevirisi, gidiş-dönüş testleri                                                                  | Onur                              | 046b, 046c              | M     |
+| 046e  | Kopyalama migration'ı ve çift yazma; eşlik testi, migration testi                                                                                                                   | Onur                              | 046d, açık soru 3       | M     |
+| 046f  | Okuma geçişi: çalıştırıcı, finans servisleri, hatırlatma işi; `loadScope` daraltması (`invoice.pay`, `payment.reverse`, `student.withdraw`); ölçüm sonrası; `openapi:check` farksız | Onur                              | 046e                    | M     |
+| 046g  | Genel okuma ve pano depo üzerinden (`collection-reads.ts`, `dashboard.ts`), e2e React                                                                                               | Oğuzhan (issue) ya da izinle Onur | 046f                    | S     |
+| 046h  | Daralt: `records` yazımını durdur, satırları sil, 0056'yı kaldır, `payment_allocations`/`student_withdrawals` FK `not valid` + `validate`; geri dönüş migration'ı denemesi          | Onur                              | 046f, 046g, açık soru 2 | M     |
+| 046i  | Belgeler: veritabani.md §4, `.claude/rules/veritabani.md`, DOM-FIN-010/012/030 "Kodda" satırları, `changes/` parçası (yalnız API; core değişmezse gerekmez)                         | Onur                              | 046h                    | S     |
 
 Takip (ON-046 dışı): pano tahsilatının `payments`'tan hesaplanması (Oğuzhan), finans toplamlarının SQL'e indirilmesi (ölçüt 3), `paid_at` önbelleğinin kaldırılması (açık soru 4), sınıf arşivinde ek protokol `classId` tutarsızlığı (Oğuzhan, core), belge verisinde `invoiceIds`'siz düşüşün kaldırılması.

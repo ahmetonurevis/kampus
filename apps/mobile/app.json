@@ -41,6 +41,6 @@
       ]
     ],
     "scheme": "kampus",
-    "description": "Akademi Özel Okulları: beş rol için çevrimdışı okul yönetimi."
+    "description": "Kampüs: okul, veli ve öğrenci uygulaması. Kurumun API adresine bağlanır; adres verilmemiş derleme çevrimdışı demo açar."
   }
 }

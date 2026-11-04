@@ -23,8 +23,7 @@ import {
   TASK_SUBMISSION_MESSAGES,
   type SubmitTaskSubmissionInput,
 } from '@kampus/react-shared/use-task-submissions.ts'
-import { assertFileAllowed, canonicalMimeType } from '@kampus/school-core/content/taxonomy.ts'
-import { DomainError } from '@kampus/school-core/lib/errors.ts'
+import { canonicalMimeType } from '@kampus/school-core/content/taxonomy.ts'
 import type { PickedFile } from './homework-submission.ts'
 
 /** Sunucudaki dosya amacı; rıza (`speaking_recording`) bu amaca bağlıdır. */
@@ -91,28 +90,33 @@ export function recordingFileName(mimeType: string): string {
   return `konusma-kaydi.${extension}`
 }
 
+/**
+ * Elde tutulan kayıt değişince ya da bırakılınca (yeniden kayıt, sıfırlama, ret, teslim) artık
+ * kullanılmayan önceki dosya: silinmesi gereken adres, yoksa `null`.
+ */
+export function staleRecordingUri(previous: string | null, next: string | null): string | null {
+  return previous !== null && previous !== next ? previous : null
+}
+
+/** Pencerenin kapatılma durumu: serbest, gönderilmemiş kayıt var ya da kayıt gönderiliyor. */
+export type LeaveGuard = 'free' | 'unsent' | 'sending'
+
+export function leaveGuard(phase: RecorderPhase<unknown>): LeaveGuard {
+  if (phase.kind === 'sending') return 'sending'
+  return phase.kind === 'preparing' ||
+    phase.kind === 'starting' ||
+    phase.kind === 'recording' ||
+    'take' in phase
+    ? 'unsent'
+    : 'free'
+}
+
 export const recordingPickedFile = (take: PhoneTake): PickedFile => ({
   uri: take.blob.uri,
   name: recordingFileName(take.mimeType),
   size: null,
   mimeType: take.mimeType,
 })
-
-/**
- * Yüklemeden önce amaç kuralı (core `assertFileAllowed`, amaç `speaking_recording`): uymayan
- * kaydın Türkçe iletisi, uyan kayıtta `null`. Boyut ve süre sunucuda ölçülür.
- */
-export function recordingProblem(take: PhoneTake): string | null {
-  const contentType = canonicalMimeType(take.mimeType)
-  if (contentType === null) return 'Kayıt biçimi desteklenmiyor; yeniden kaydedin.'
-  try {
-    assertFileAllowed(SPEAKING_RECORDING_PURPOSE, { contentType, byteSize: 1 })
-    return null
-  } catch (error) {
-    if (error instanceof DomainError) return error.message
-    throw error
-  }
-}
 
 /**
  * Kaydı `speaking_recording` amacıyla yükleyen istek; mevcut yükleyicinin (`submission-files.ts`
@@ -184,7 +188,8 @@ export function settleOutcome(state: FileProcessing): PhoneRecorderEvent | 'subm
  * - `duplicate`: kayıt zaten gönderilmiş; teslim kaybolmadı, ekran tazelenir.
  * - `processing`: kayıt henüz işleniyor; aynı kayıtla yeniden denenir.
  * - `network`: ağ ya da sunucu hatası; istek işlenmiş olabilir, aynı anahtarla yeniden denenir.
- * - `other`: sunucunun Türkçe mesajıyla gösterilir.
+ * - `other`: sunucunun Türkçe mesajıyla gösterilir (kurum dosya kotası dolu dahil: kayıt değil
+ *   kurum sorunudur, yeniden kayıt çözmez).
  */
 export type SpeakingFailureKind =
   'consent' | 'recording' | 'limit' | 'closed' | 'duplicate' | 'processing' | 'network' | 'other'
@@ -192,8 +197,6 @@ export type SpeakingFailureKind =
 export type SpeakingFailure = {
   kind: SpeakingFailureKind
   message: string
-  /** "Yeniden dene" sunulur: aynı kayıt (ve yüklenmişse aynı dosya) yeniden gönderilir. */
-  retryable: boolean
   /** Kayıt makinesine giden olay. */
   event: PhoneRecorderEvent
 }
@@ -229,12 +232,14 @@ export function classifySpeakingError(
   if (error.code === 'file_not_ready') return 'processing'
   if (CLOSED_CODES.has(error.code)) return 'closed'
   if (RECORDING_CODES.has(error.code)) return 'recording'
+  if (error.code === 'storage_quota_exceeded') return 'other'
   if (step === 'upload' && (error.status === 413 || error.status === 422)) return 'recording'
   return 'other'
 }
 
 const EXTRA_MESSAGES = {
   file_too_large: 'Kayıt çok büyük; daha kısa bir kayıt alın.',
+  storage_quota_exceeded: 'Kurumunuzun dosya depolama alanı doldu. Yöneticinize başvurun.',
   file_rejected:
     'Kaydınız işlenemedi: boş, sessiz ya da bozuk olabilir. Deneme hakkınızdan düşülmedi; yeniden kaydedin.',
 } as const
@@ -251,17 +256,17 @@ export function speakingFailure(
   const message = kind === 'network' ? FAILED_UPLOAD_TEXT : known
   switch (kind) {
     case 'consent':
-      return { kind, message, retryable: false, event: { type: 'blocked', reason: 'consent' } }
+      return { kind, message, event: { type: 'blocked', reason: 'consent' } }
     case 'recording':
-      return { kind, message, retryable: false, event: { type: 'recording_rejected', message } }
+      return { kind, message, event: { type: 'recording_rejected', message } }
     case 'limit':
     case 'closed':
     case 'duplicate':
     case 'other':
-      return { kind, message, retryable: false, event: { type: 'send_failed', message } }
+      return { kind, message, event: { type: 'send_failed', message } }
     case 'processing':
     case 'network':
-      return { kind, message, retryable: true, event: { type: 'send_failed', message } }
+      return { kind, message, event: { type: 'send_failed', message } }
     default:
       return kind satisfies never
   }

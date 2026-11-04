@@ -10,15 +10,18 @@ import {
   canRerecord,
   canStart,
   initialRecorderState,
+  RECORDING_MIN_MS,
   recorderReducer,
   type SpeakingLimits,
 } from '@kampus/react-shared/speaking-recorder-model.ts'
 import {
   permissionBlock,
   phoneTake,
+  staleRecordingUri,
   type PhoneRecorderEvent,
   type PhoneRecordingMedia,
 } from './student-speaking-task.ts'
+import { discardRecording } from './recording-file.ts'
 
 /**
  * Konuşma kaydının telefon tarafı (OG-064; DOM-BEC-054): mikrofon izni, hazırlık ve süre sınırı
@@ -26,7 +29,8 @@ import {
  * (`@kampus/react-shared/speaking-recorder-model.ts`; web `use-speaking-recorder.ts` karşılığı).
  *
  * Ses yalnız cihazın önbelleğindeki kayıt dosyasındadır; AsyncStorage'a, loga ya da ağa kayıt
- * adresi yazılmaz. Mikrofon yalnız kayıt sürerken açıktır: kayıt bitince oturum kapatılır; ekran
+ * adresi yazılmaz. Dosya, kayıt atılınca (yeniden kayıt, sıfırlama, ret, çok kısa kayıt), teslimden
+ * sonra ve ekran kapanınca silinir (`recording-file.ts`). Mikrofon yalnız kayıt sürerken açıktır: kayıt bitince oturum kapatılır; ekran
  * kapanınca ya da uygulama arka plana geçince süren kayıt durdurulur.
  */
 export function usePhoneRecorder(limits: SpeakingLimits) {
@@ -38,6 +42,22 @@ export function usePhoneRecorder(limits: SpeakingLimits) {
   const { phase } = state
   const timed = phase.kind === 'preparing' || phase.kind === 'recording'
   const { preparationSeconds, speakingSeconds } = limits
+
+  // Elde tutulan kaydın dosyası; kayıt değişince ya da bırakılınca eskisi silinir.
+  const takeUri = 'take' in phase ? phase.take.blob.uri : null
+  const heldUri = useRef<string | null>(null)
+  useEffect(() => {
+    const stale = staleRecordingUri(heldUri.current, takeUri)
+    heldUri.current = takeUri
+    if (stale !== null) discardRecording(stale)
+  }, [takeUri])
+  useEffect(
+    () => () => {
+      // Ekran kapanırken elde kalan kayıt silinir; ref bilerek son değeriyle okunur.
+      if (heldUri.current !== null) discardRecording(heldUri.current)
+    },
+    [],
+  )
 
   const send = useCallback((event: PhoneRecorderEvent) => {
     if (!disposed.current) dispatch(event)
@@ -60,8 +80,15 @@ export function usePhoneRecorder(limits: SpeakingLimits) {
     disposed.current = false
     return () => {
       disposed.current = true
+      // Süren kayıt durdurulur ve dosyası silinir (kimse teslim etmeyecek); kayıt nesnesi zaten
+      // bırakılmış ya da dosya hiç oluşmamış olabilir, bu durumlar yok sayılır.
       try {
-        void recorder.stop().catch(() => {})
+        void recorder
+          .stop()
+          .then(() => {
+            if (recorder.uri && heldUri.current !== recorder.uri) discardRecording(recorder.uri)
+          })
+          .catch(() => {})
       } catch {
         // Kayıt nesnesi zaten bırakılmış olabilir.
       }
@@ -145,7 +172,11 @@ export function usePhoneRecorder(limits: SpeakingLimits) {
         const uri = recorder.uri
         releaseSession()
         if (!uri) return send({ type: 'blocked', reason: 'failed' })
-        send({ type: 'recorded', take: phoneTake(uri, Date.now() - startedAt.current) })
+        const duration = Date.now() - startedAt.current
+        // Çok kısa kayıt boştur (makine onu atar); ekran bu arada kapandıysa sonuç işlenmez.
+        // İkisinde de dosyayı kimse teslim etmeyecek, burada silinir.
+        if (duration < RECORDING_MIN_MS || disposed.current) discardRecording(uri)
+        send({ type: 'recorded', take: phoneTake(uri, duration) })
       } catch {
         releaseSession()
         send({ type: 'blocked', reason: 'failed' })

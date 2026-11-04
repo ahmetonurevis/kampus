@@ -47,6 +47,8 @@ import {
   speakingSettings,
   speakingSubmitInput,
   speakingUploadInput,
+  leaveGuard,
+  type LeaveGuard,
   type PhoneTake,
 } from '../student-speaking-task.ts'
 import { useApiSession } from '../auth.tsx'
@@ -55,14 +57,16 @@ import { usePhoneRecorder } from '../use-phone-recorder.ts'
 
 const LEAVE_TITLE = 'Kaydın gönderilmedi'
 const LEAVE_TEXT =
-  'Pencereyi kapatırsan kaydın silinir; kayıt cihazına da yazılmaz. Gönderilmeyen kayıt deneme hakkından sayılabilir.'
+  'Kaydın gönderene kadar yalnız bu pencerede tutulur. Pencereyi kapatırsan kaydın cihazdan silinir ve gönderilmez.'
+const SENDING_TITLE = 'Kayıt gönderiliyor'
+const SENDING_TEXT = 'Kaydın sunucuya gönderiliyor. Gönderim bitene kadar pencereyi kapatamazsın.'
 
 /**
  * Öğrencinin konuşma görevi penceresi (web `SpeakingTask`; IST-051, IST-124; DOM-BEC-002, 040, 050,
  * 054): yönerge, aydınlatma metni, rıza yoksa kayıt kapalı, izin, hazırlık geri sayımı, süre
  * sınırında kendiliğinden duran kayıt, dinleme, yeniden kayıt ve onaylı teslim (yükleme, işlenme,
- * teslim). Kural sunucudadır (rıza, süre ölçümü, deneme hakkı). Ses yalnız cihazın önbelleğindedir;
- * AsyncStorage'a hiçbir şey yazılmaz.
+ * teslim). Kural sunucudadır (rıza, süre ölçümü, deneme hakkı). Ses yalnız cihazın önbelleğindedir
+ * (atılınca, teslimden sonra ve pencere kapanınca silinir); AsyncStorage'a hiçbir şey yazılmaz.
  */
 export function SpeakingSheet({
   assignmentId,
@@ -80,8 +84,9 @@ export function SpeakingSheet({
   const studentId = session.studentId
   const consent = useConsentStatus(studentId ?? undefined, { enabled: studentId !== null })
   const now = useNow()
-  // Kayıt açıkken üst pencere kapatılırken sorulur; kayıt bileşeni durumunu buraya bildirir.
-  const [unsent, setUnsent] = useState(false)
+  // Kayıt bileşeni kapatma durumunu buraya bildirir: gönderilmemiş kayıtta sorulur, gönderim
+  // sürerken pencere kapanmaz.
+  const [guard, setGuard] = useState<LeaveGuard>('free')
 
   const assignment =
     assignmentQuery.data && isLearnerAssignment(assignmentQuery.data.data)
@@ -101,7 +106,8 @@ export function SpeakingSheet({
   const error = missing ? null : (assignmentQuery.error ?? listError ?? detailQuery.error)
 
   function close() {
-    if (!unsent) return onClose()
+    if (guard === 'free') return onClose()
+    if (guard === 'sending') return Alert.alert(SENDING_TITLE, SENDING_TEXT, [{ text: 'Tamam' }])
     Alert.alert(LEAVE_TITLE, LEAVE_TEXT, [
       { text: 'Pencerede kal', style: 'cancel' },
       { text: 'Kaydı sil ve kapat', style: 'destructive', onPress: onClose },
@@ -150,7 +156,7 @@ export function SpeakingSheet({
               )}
               canSubmit={progress.canAct}
               blockedReason={progress.blockedReason}
-              onUnsent={setUnsent}
+              onGuard={setGuard}
               onSubmitted={() => {
                 void detailQuery.refetch()
                 void listQuery.refetch()
@@ -242,7 +248,7 @@ type RecorderProps = {
   remaining: number
   canSubmit: boolean
   blockedReason: string | null
-  onUnsent: (unsent: boolean) => void
+  onGuard: (guard: LeaveGuard) => void
   onSubmitted: () => void
   onStale: () => void
 }
@@ -253,7 +259,7 @@ function Recorder({
   remaining,
   canSubmit,
   blockedReason,
-  onUnsent,
+  onGuard,
   onSubmitted,
   onStale,
 }: RecorderProps) {
@@ -267,14 +273,14 @@ function Recorder({
   const processing = useFileProcessing(sending?.step === 'processing' ? (sending.fileId ?? '') : '')
   const abort = useRef<AbortController | null>(null)
   const take = 'take' in phase ? phase.take : null
-  const unsent =
-    phase.kind === 'preparing' ||
-    phase.kind === 'starting' ||
-    phase.kind === 'recording' ||
-    take !== null
+  const guard = leaveGuard(phase)
   const busy = sending !== null
 
-  useEffect(() => onUnsent(unsent), [unsent, onUnsent])
+  useEffect(() => {
+    onGuard(guard)
+    // Kayıt bileşeni kalkınca (ör. rıza engeli) kapatma uyarısı da kalkar.
+    return () => onGuard('free')
+  }, [guard, onGuard])
   useEffect(() => () => abort.current?.abort(), [])
 
   const fail = (error: Parameters<typeof speakingFailure>[0], step: 'upload' | 'submit') => {

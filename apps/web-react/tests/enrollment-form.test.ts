@@ -8,6 +8,9 @@ import {
 } from '@kampus/school-core/lib/enrollment.ts'
 import { navigation } from '@kampus/school-core/modules/full-navigation.ts'
 import {
+  BIRTH_DATE_ADULT_FOR_MINOR_MESSAGE,
+  BIRTH_DATE_MINOR_FOR_ADULT_MESSAGE,
+  birthDateAgeGroupMismatch,
   enrollmentFieldForCode,
   enrollmentServerError,
   guardianModeFor,
@@ -197,4 +200,33 @@ test('DOM-KAY-010, class_campus_mismatch: sınıf hataları sınıf alanına ve 
   )
   // Başka kodlar alana bağlanmaz; toast'ta kalır.
   assert.equal(enrollmentFieldForCode('tariff_changed'), undefined)
+})
+
+test('ON-126, DOM-KAY-012: kurs adayının yaş grubu doğum tarihiyle uyuşmazsa alanda Türkçe uyarı çıkar', () => {
+  // 18 yaş altı seçilmiş kurs adayına yetişkin doğum tarihi ve tersi (sunucuda 422
+  // `birth_date_minor_mismatch`).
+  assert.equal(
+    birthDateAgeGroupMismatch('language_school', true, ADULT, NOW),
+    BIRTH_DATE_ADULT_FOR_MINOR_MESSAGE,
+  )
+  assert.equal(
+    birthDateAgeGroupMismatch('language_school', false, MINOR, NOW),
+    BIRTH_DATE_MINOR_FOR_ADULT_MESSAGE,
+  )
+  // Uyumlu yaş grubunda uyarı yoktur.
+  assert.equal(birthDateAgeGroupMismatch('language_school', true, MINOR, NOW), null)
+  assert.equal(birthDateAgeGroupMismatch('language_school', false, ADULT, NOW), null)
+  // 18. doğum günü İstanbul gününe göre: bugün 18 olan yetişkin, yarın 18 olacak 18 yaş altıdır.
+  assert.equal(birthDateAgeGroupMismatch('language_school', false, '2008-10-06', NOW), null)
+  assert.equal(
+    birthDateAgeGroupMismatch('language_school', false, '2008-10-07', NOW),
+    BIRTH_DATE_MINOR_FOR_ADULT_MESSAGE,
+  )
+  // Okulda yaş grubu sorulmaz ve denetlenmez; yaş grubu seçilmemiş ya da doğum tarihi geçersizse
+  // uyarı yoktur.
+  assert.equal(birthDateAgeGroupMismatch('school', true, ADULT, NOW), null)
+  assert.equal(birthDateAgeGroupMismatch('school', false, MINOR, NOW), null)
+  assert.equal(birthDateAgeGroupMismatch('language_school', undefined, ADULT, NOW), null)
+  assert.equal(birthDateAgeGroupMismatch('language_school', true, '', NOW), null)
+  assert.equal(birthDateAgeGroupMismatch('language_school', true, '2001-02-30', NOW), null)
 })

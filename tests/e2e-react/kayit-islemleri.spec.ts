@@ -588,6 +588,49 @@ test.describe('Kayıt İşlemleri', () => {
     await expect(page.getByLabel('Veli telefonu')).toHaveValue('05551230125')
   })
 
+  test('ON-126, DOM-KAY-012: kurs adayının yaş grubu doğum tarihiyle uyuşmazsa alanda uyarı çıkar, sonraki adıma geçilmez', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const year = new Date().getUTCFullYear()
+    const school = await tenant({
+      type: 'language_school',
+      roles: ['onburo'],
+      tariffYears: ['current'],
+      records: [
+        prospect('e2e-kyt-yasgrubu', 'Yaş Grubu Adayı', {
+          interest: 'A2 İngilizce',
+          minor: true,
+          guardianName: 'Yaş Grubu Velisi',
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    const birthDate = page.getByLabel('Doğum tarihi')
+    const warning = page.getByText('Aday kaydında 18 yaş altı seçili, doğum tarihi ise 18 yaş')
+
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-yasgrubu`)
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+    await proceed.click()
+    await page.getByLabel('Kimlik numarası').fill('10000000146')
+    await birthDate.fill(`${year - 15}-01-15`)
+    await expect(warning).toHaveCount(0)
+    // 18 yaş altı seçilmiş adaya yetişkin doğum tarihi: uyarı gönderimden önce alanda görünür.
+    await birthDate.fill(`${year - 25}-01-15`)
+    await expect(warning).toBeVisible()
+    await expect(birthDate).toHaveAttribute('aria-invalid', 'true')
+    await proceed.click()
+    await expect(birthDate).toBeFocused()
+    await expect(page.getByLabel('Taksit sayısı')).toHaveCount(0)
+
+    await birthDate.fill(`${year - 15}-01-15`)
+    await expect(warning).toHaveCount(0)
+    await expect(birthDate).not.toHaveAttribute('aria-invalid', 'true')
+    await expect(page.getByLabel('Veli adı soyadı')).toHaveValue('Yaş Grubu Velisi')
+  })
+
   test('IST-017, DOM-YTK-057: ön büro rıza almaz, form kilitlenmez; kayıttan sonra beklenen rıza ve yeri yazılır', async ({
     page,
     loginAs,

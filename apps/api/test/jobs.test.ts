@@ -13,6 +13,7 @@ import { files } from '../src/db/schema/files.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { dispatchInstitutionJobs, dispatchQueueName, type JobSender } from '../src/jobs/dispatch.ts'
 import { filesPurgeExpiredJob } from '../src/jobs/files-purge-expired.ts'
+import { filesPurgeOrphansJob } from '../src/jobs/files-purge-orphans.ts'
 import { filesPurgeJob } from '../src/jobs/files-purge.ts'
 import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
 import { installmentRemindersJob } from '../src/jobs/installment-reminders.ts'
@@ -120,6 +121,7 @@ describe('arka plan işleri', () => {
         idempotencyPurgeJob.name,
         filesPurgeJob.name,
         filesPurgeExpiredJob.name,
+        filesPurgeOrphansJob.name,
         permissionRemindersJob.name,
         attendanceWarningsJob.name,
         installmentRemindersJob.name,

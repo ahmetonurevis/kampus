@@ -38,8 +38,10 @@ export type NewFile = Pick<
 
 const UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i
 
-/** Kotayı tüketen durumlar: nesnesi silinmiş (`rejected`, `deleted`) dosya sayılmaz. */
-const QUOTA_EXCLUDED: FileStatus[] = ['rejected', 'deleted']
+/**
+ * Nesnesi silinmiş durumlar: kotaya sayılmaz ve anahtarı nesneyi tutmaz (`findHeldStorageKeys`).
+ */
+const OBJECTLESS_STATUSES: FileStatus[] = ['rejected', 'deleted']
 
 /**
  * Yeni dosya satırı. Dönüşümden geçecek ses (`media.transcode`, ADR 0003 karar 10) `processing`
@@ -96,7 +98,7 @@ export async function listAttachedFiles(
         eq(files.attachedType, attached.type),
         eq(files.attachedId, attached.id),
         eq(files.purpose, attached.purpose),
-        notInArray(files.status, QUOTA_EXCLUDED),
+        notInArray(files.status, OBJECTLESS_STATUSES),
       ),
     )
     .orderBy(asc(files.id))
@@ -124,7 +126,9 @@ export async function usedStorageBytes(tx: Database, institutionId: string): Pro
   const [row] = await tx
     .select({ total: sql<string>`coalesce(sum(${files.byteSize}), 0)` })
     .from(files)
-    .where(and(eq(files.institutionId, institutionId), notInArray(files.status, QUOTA_EXCLUDED)))
+    .where(
+      and(eq(files.institutionId, institutionId), notInArray(files.status, OBJECTLESS_STATUSES)),
+    )
   return Number(row?.total ?? 0)
 }
 
@@ -423,6 +427,40 @@ export async function clearSupersededStorageKey(
         eq(files.supersededStorageKey, key),
       ),
     )
+}
+
+/**
+ * Yetim nesne taraması (OG-093, IST-027; `services/file-orphans.ts`): verilen anahtarlardan hâlâ
+ * bir dosyanın tuttuğu nesnelerinkini döndürür. Tutan: nesnesi yaşayan satırın güncel anahtarı
+ * (`pending`, `processing`, `ready`) ve silinmeyi bekleyen özgün ses nesnesi
+ * (`superseded_storage_key`, her durumda; onu `releaseSupersededObject` izleyip siler).
+ * `rejected` ve `deleted` satırın anahtarı tutmaz: nesnesi silinmiş olmalıdır, silinemeyip
+ * kalmışsa yetimdir. Anahtar araması `files_storage_key_key` indeksini kullanır.
+ */
+export async function findHeldStorageKeys(
+  db: Database,
+  institutionId: string,
+  keys: readonly string[],
+): Promise<Set<string>> {
+  if (keys.length === 0) return new Set()
+  const list = [...keys]
+  const current = await db
+    .select({ key: files.storageKey })
+    .from(files)
+    .where(
+      and(
+        eq(files.institutionId, institutionId),
+        inArray(files.storageKey, list),
+        notInArray(files.status, OBJECTLESS_STATUSES),
+      ),
+    )
+  const superseded = await db
+    .select({ key: files.supersededStorageKey })
+    .from(files)
+    .where(and(eq(files.institutionId, institutionId), inArray(files.supersededStorageKey, list)))
+  const held = new Set(current.map((row) => row.key))
+  for (const row of superseded) if (row.key !== null) held.add(row.key)
+  return held
 }
 
 /** İmha: nesne silindikten sonra satır `deleted` kalır, özgün ad (K) silinir (karar 13). */

@@ -26,10 +26,27 @@ export interface StorageDriver {
   /** Nesneyi siler; olmayan nesne hata değildir (temizlik yeniden denenebilir). */
   delete(key: string): Promise<void>
   /**
+   * Önek (`<kurum>/`, `assertStoragePrefix`) altındaki nesneleri anahtar ve son değişiklik
+   * zamanıyla akışla verir; yetim nesne taraması (OG-093, `services/file-orphans.ts`) kullanır.
+   * Sıra tanımsızdır ve liste bellekte toplanmaz: tüketici erken bırakınca (`break`) sürücü açık
+   * kaynakları kapatır. Yalnız anahtar biçimine (`STORAGE_KEY_PATTERN`) uyan tamamlanmış nesneler
+   * verilir; yazımı süren geçici nesne listeye girmez. Tarama sırasında silinen ya da eklenen nesne
+   * listede görünebilir de görünmeyebilir de.
+   * TODO(F3c2-s3): S3'te `ListObjectsV2` (`Prefix`, `ContinuationToken`, sayfa başına en çok 1000)
+   * sayfa sayfa okunur; `Key` ve `LastModified` verilir.
+   */
+  list(prefix: string): AsyncIterable<StoredObjectInfo>
+  /**
    * Kısa ömürlü, imzalı GET bağlantısı (karar 6); disposition imzaya dahildir. Bağlantı özgün adı
    * taşımaz (KVKK); ad ve tür indirmede `files` satırından gelir.
    */
   signedGetUrl(key: string, options: SignedGetOptions): Promise<string>
+}
+
+/** Listelenen nesne: anahtar ve son değişiklik (yazım) zamanı. */
+export interface StoredObjectInfo {
+  key: string
+  lastModified: Date
 }
 
 export interface SignedGetOptions {
@@ -45,6 +62,16 @@ export const STORAGE_KEY_PATTERN = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+){4}$/
 
 export function assertStorageKey(key: string): void {
   if (!STORAGE_KEY_PATTERN.test(key)) throw new Error('invalid storage key')
+}
+
+/** Anahtarın bir bölümü (kurum, amaç, yıl, ay, kimlik). */
+export const STORAGE_KEY_SEGMENT = /^[A-Za-z0-9_-]+$/
+
+/** Liste öneki: anahtarın ilk 1–4 bölümü ve sonda `/` (`<kurum>/`); öteki kurumun öneki eşleşmez. */
+export const STORAGE_PREFIX_PATTERN = /^[A-Za-z0-9_-]+(?:\/[A-Za-z0-9_-]+){0,3}\/$/
+
+export function assertStoragePrefix(prefix: string): void {
+  if (!STORAGE_PREFIX_PATTERN.test(prefix)) throw new Error('invalid storage prefix')
 }
 
 /** Sunucuda üretilen anahtar (ADR 0003 karar 4); ay ve yıl UTC'dir. */

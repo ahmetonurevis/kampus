@@ -1,13 +1,24 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import { createReadStream, createWriteStream } from 'node:fs'
-import { mkdir, rename, rm, stat } from 'node:fs/promises'
-import { dirname, resolve, sep } from 'node:path'
+import { lstat, mkdir, opendir, rename, rm, stat } from 'node:fs/promises'
+import { dirname, join, resolve, sep } from 'node:path'
 import type { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 
 import { z } from 'zod'
 
-import { assertStorageKey, type SignedGetOptions, type StorageDriver } from './storage.ts'
+import {
+  assertStorageKey,
+  assertStoragePrefix,
+  STORAGE_KEY_PATTERN,
+  STORAGE_KEY_SEGMENT,
+  type SignedGetOptions,
+  type StorageDriver,
+  type StoredObjectInfo,
+} from './storage.ts'
+
+/** Anahtarın bölüm sayısı (`<kurum>/<amaç>/<yyyy>/<mm>/<kimlik>`). */
+const KEY_SEGMENTS = 5
 
 /**
  * `disk` sürücüsü (ADR 0003 karar 1): birim/API testleri ve S3 sunucusu kurmak istemeyen yerel
@@ -100,6 +111,49 @@ export class DiskStorage implements StorageDriver {
 
   async delete(key: string): Promise<void> {
     await rm(this.#path(key), { force: true })
+  }
+
+  /**
+   * Önek klasörünü derinlemesine dolaşır (`opendir`: klasör girdileri parça parça okunur, liste
+   * bellekte toplanmaz). Son değişiklik zamanı dosyanın `mtime`'ıdır: yazım geçici dosyada bitip
+   * yeniden adlandırıldığı için yazımın bittiği andır. Geçici `.part` dosyaları, sembolik bağlar ve
+   * anahtar biçimine uymayan girdiler atlanır; olmayan önek boş listedir.
+   */
+  async *list(prefix: string): AsyncIterable<StoredObjectInfo> {
+    assertStoragePrefix(prefix)
+    const directory = resolve(this.#root, prefix)
+    if (!directory.startsWith(this.#root + sep)) throw new Error('storage prefix escapes root')
+    yield* this.#walk(directory, prefix, prefix.split('/').length - 1)
+  }
+
+  async *#walk(directory: string, prefix: string, depth: number): AsyncIterable<StoredObjectInfo> {
+    let handle
+    try {
+      handle = await opendir(directory)
+    } catch (error) {
+      if (isMissing(error)) return
+      throw error
+    }
+    // `for await` klasör tanıtıcısını bitişte ve erken bırakmada kapatır.
+    for await (const entry of handle) {
+      if (!STORAGE_KEY_SEGMENT.test(entry.name)) continue
+      const key = `${prefix}${entry.name}`
+      const path = join(directory, entry.name)
+      if (depth + 1 < KEY_SEGMENTS) {
+        if (entry.isDirectory()) yield* this.#walk(path, `${key}/`, depth + 1)
+        continue
+      }
+      if (!entry.isFile() || !STORAGE_KEY_PATTERN.test(key)) continue
+      let info
+      try {
+        info = await lstat(path)
+      } catch (error) {
+        // Okuma sırasında silinen nesne listeye girmez.
+        if (isMissing(error)) continue
+        throw error
+      }
+      if (info.isFile()) yield { key, lastModified: info.mtime }
+    }
   }
 
   async signedGetUrl(key: string, options: SignedGetOptions): Promise<string> {

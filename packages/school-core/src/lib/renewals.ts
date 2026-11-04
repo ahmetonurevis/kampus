@@ -81,6 +81,8 @@ export interface RenewalContext {
   priceIndexes: readonly PriceIndexEntry[]
   scholarshipProgram?: ScholarshipProgram | null
   scholarshipAwardedCount?: number
+  /** Öğrencinin yenileme yılında arşivlenmemiş burs ataması var mı; servis yükler (DOM-FIN-025). */
+  scholarshipStudentAwarded?: boolean
 }
 
 export interface RenewalPrice {
@@ -186,6 +188,7 @@ function priceRenewal(
           academicYear: data.academicYear,
           awardedCount: context.scholarshipAwardedCount ?? 0,
           canApprove,
+          studentAwarded: context.scholarshipStudentAwarded ?? false,
         })
   const scholarshipCents =
     program === null ? 0 : scholarshipAmount(program, announcedCents, afterDiscounts)

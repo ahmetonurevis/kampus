@@ -10,6 +10,7 @@ import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
+import { insertScholarshipAward } from '../src/db/finance-scholarships.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { feeTariffs, priceIndexRates } from '../src/db/schema/fee-tariffs.ts'
@@ -408,6 +409,89 @@ describe('IST-100: kayıt yenileme uçları', () => {
       .where(eq(scholarshipAwards.institutionId, a.id))
     // %25 ilan ücretinden (30.000 ₺): 7.500 ₺.
     assert.deepEqual(awards, [{ amountCents: 750_000, year: YEAR }])
+  })
+
+  /** Bildirilmiş burs programı açar; kimliğini döndürür. */
+  async function notifiedProgram(cookie: string, academicYear: number, capacity: number) {
+    const program = await post('/api/v1/finance/scholarship-programs', cookie, {
+      academicYear,
+      name: `Başarı Bursu ${String(academicYear)}`,
+      conditions: 'Sınav puanı 90 ve üstü.',
+      terminationConditions: 'Disiplin cezası alan öğrencinin bursu kesilir.',
+      durationNote: 'Bir eğitim yılı',
+      percentBasisPoints: 2_500,
+      capacity,
+    })
+    assert.equal(program.statusCode, 201, program.body)
+    const programId = program.json().data.id as string
+    const notified = await post(
+      `/api/v1/finance/scholarship-programs/${programId}/notify`,
+      cookie,
+      { notifiedDate: '2026-09-01' },
+      { 'if-match': '"1"' },
+    )
+    assert.equal(notified.statusCode, 200, notified.body)
+    return programId
+  }
+  /** Öğrencinin daha önce yazılmış ataması (ör. iptal edilen yenilemeden kalan). */
+  const existingAward = (institutionId: string, programId: string, academicYear: number) =>
+    insertScholarshipAward(db, institutionId, {
+      id: randomUUID(),
+      programId,
+      studentId: 's3',
+      academicYear,
+      amountCents: 100_000,
+      awardedByUserId: 'test',
+      now: FIXED_NOW,
+    })
+  const awardRows = (institutionId: string) =>
+    db
+      .select({ id: scholarshipAwards.id, year: scholarshipAwards.academicYear })
+      .from(scholarshipAwards)
+      .where(eq(scholarshipAwards.institutionId, institutionId))
+      .orderBy(scholarshipAwards.academicYear)
+
+  test('DOM-FIN-025: öğrenciye aynı yılda ikinci burs 409 scholarship_already_awarded; kayıt değişmez', async () => {
+    const a = await ready()
+    const programId = await notifiedProgram(a.admin, YEAR, 2)
+    await existingAward(a.id, programId, YEAR)
+    const before = {
+      renewals: await count(a.id, 'renewals'),
+      contracts: await count(a.id, 'contracts'),
+      invoices: await count(a.id, 'invoices'),
+      awards: await awardRows(a.id),
+    }
+    const body = { ...(await planBody(a.admin)), scholarshipProgramId: programId }
+    assertError(await post(BASE, a.admin, body, key()), 409, 'scholarship_already_awarded')
+    // Önizleme de aynı kuralı uygular; plan yazılmadan önce görülür.
+    assertError(
+      await post(`${BASE}/quote`, a.admin, { ...QUOTE, scholarshipProgramId: programId }),
+      409,
+      'scholarship_already_awarded',
+    )
+    assert.deepEqual(
+      {
+        renewals: await count(a.id, 'renewals'),
+        contracts: await count(a.id, 'contracts'),
+        invoices: await count(a.id, 'invoices'),
+        awards: await awardRows(a.id),
+      },
+      before,
+    )
+  })
+
+  test('DOM-FIN-025: önceki yılın bursu yenileme yılındaki atamayı engellemez', async () => {
+    const a = await ready()
+    const previousId = await notifiedProgram(a.admin, YEAR - 1, 1)
+    const programId = await notifiedProgram(a.admin, YEAR, 1)
+    await existingAward(a.id, previousId, YEAR - 1)
+    const body = { ...(await planBody(a.admin)), scholarshipProgramId: programId }
+    const made = await post(BASE, a.admin, body, key())
+    assert.equal(made.statusCode, 201, made.body)
+    assert.deepEqual(
+      (await awardRows(a.id)).map((row) => row.year),
+      [YEAR - 1, YEAR],
+    )
   })
 
   test('DOM-KAY-020: sınıf geçişi ayrı uçla uygulanır; ikinci kez 409', async () => {

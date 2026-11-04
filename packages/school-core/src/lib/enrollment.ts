@@ -552,6 +552,8 @@ export function enrollProspectWithTariff(
           academicYear: context.academicYear,
           awardedCount: context.scholarshipAwardedCount ?? 0,
           canApprove: context.canApproveCapException,
+          // Kesin kayıt her zaman yeni öğrenci kimliği açar; bu kimliğin önceki ataması olamaz.
+          studentAwarded: false,
         })
   const scholarshipCents =
     program === null ? 0 : scholarshipAmount(program, price.grossCents, price.netCents)

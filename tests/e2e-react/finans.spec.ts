@@ -1235,6 +1235,27 @@ test.describe('Finans: liste', () => {
   })
 })
 
+// ON-294 (#31, OG-098): veli Ödeme Yap sayfasındaki bağlantılar dar ekranda metin satırı kadar
+// (17 px) kalıyordu; dokunma hedefi en az 24 px olmalı (WCAG 2.2, 2.5.8). Seed oturumu salt okunur.
+test.describe('Finans: veli Ödeme Yap', () => {
+  test('360 px genişlikte iletişim ve ödeme planı bağlantıları en az 24 px yüksektir', async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs('veli')
+    await page.setViewportSize({ width: 360, height: 740 })
+    await page.goto('/veli/odeme-yap?cocuk=s1')
+    await expect(page.getByRole('heading', { name: 'Ödemeler okulda kaydedilir' })).toBeVisible()
+    for (const name of ['Okulla iletişime geçin', 'Ödeme planını görüntüleyin']) {
+      const link = page.getByRole('main').getByRole('link', { name, exact: true })
+      await expect(link).toBeVisible()
+      const box = await link.boundingBox()
+      expect(box?.height ?? 0, name).toBeGreaterThanOrEqual(24)
+    }
+    await expectNoHorizontalOverflow(page)
+  })
+})
+
 // ON-038: tahsilat ve tarife retlerinin ekrandaki yeri. Kural core ve API testlerindedir; burada
 // iletinin hangi alanda göründüğü ve kaydın yazılmadığı kanıtlanır. Her test kendi kurumunu kurar.
 test.describe('Finans: sunucu retleri', () => {

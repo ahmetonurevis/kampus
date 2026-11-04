@@ -1,6 +1,8 @@
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 import { dateLabel, timeLabel } from '@kampus/school-core/lib/format.ts'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { useNow } from '@/hooks/use-now.ts'
+import { AppealSection } from './AppealSection.tsx'
 import { FeedbackAudioPlayer, RecordingPlayer } from './RecordingPlayer.tsx'
 import { recordingTitle, versionRecording } from './recording-review-model.ts'
 import { submittedTextLabel, type ResultAudience } from './student-task-model.ts'
@@ -13,27 +15,34 @@ const stamp = (iso: string) => `${dateLabel(iso, { year: 'numeric' })} ${timeLab
  * Gönderilen değişmez sürümler (DOM-BEC-040), yeniden eskiye. Puan ve geri bildirim yalnız sunucu
  * açtıysa (`score` dolu ve kesinleşmiş) çizilir; aksi hâlde sürümde puana dair hiçbir ifade yoktur
  * (DOM-BEC-045). Kriter adları öğrenciye açık olmadığından kriterler sıra numarasıyla anılır.
- * Veli (`audience="parent"`) aynı alanları okur; itiraz ve puanlama iç ayrıntısı çizilmez.
+ * Veli (`audience="parent"`) aynı alanları okur; puanlama iç ayrıntısı çizilmez. `submissionId`
+ * verilirse sürüm kartında sunucunun açtığı itiraz durumu ve itiraz düğmesi çizilir (OG-211;
+ * DOM-BEC-025: öğrenci ve veli itiraz eder, yalnız son sürümün sonucuna).
  * Konuşma sürümünde kayıt dinlenebilir (IST-052; DOM-BEC-052, 053): bağlantıyı sunucu yalnız
  * kaydın sahibine ve 18 yaş altında velisine verir; açılmayan kayıt "erişilemiyor" der.
  * Öğretmenin sesli geri bildirimi (DOM-BEC-056) yazılı geri bildirimle birlikte açılır.
  */
 export function SubmissionVersions({
+  submissionId,
   versions,
   audience = 'learner',
   headingLevel = 3,
 }: {
+  /** Teslimin kimliği; itiraz açmak için gerekir, verilmezse itiraz bölümü çizilmez. */
+  submissionId?: string
   versions: readonly Version[]
   audience?: ResultAudience
   /** Sürüm başlığı düzeyi; geri bildirim başlığı bir alt düzeydedir. Varsayılan öğrenci ekranıdır. */
   headingLevel?: 3 | 4
 }) {
+  // Süre metni yalnız gösterimdir; dakikada bir tazelenir (kesin karar sunucunundur).
+  const now = useNow(submissionId !== undefined, 60_000)
   if (versions.length === 0) return null
   const VersionHeading = `h${headingLevel}` as const
   const FeedbackHeading = headingLevel === 3 ? 'h4' : 'h5'
   return (
     <ol aria-label="Gönderilen sürümler" className="grid gap-4">
-      {[...versions].reverse().map((version) => {
+      {[...versions].reverse().map((version, index) => {
         const score = version.score?.settled ? version.score : null
         const recording = versionRecording(version)
         return (
@@ -88,6 +97,14 @@ export function SubmissionVersions({
                   ))}
                 </ul>
               </div>
+            ) : null}
+            {submissionId ? (
+              <AppealSection
+                submissionId={submissionId}
+                version={version}
+                isLatest={index === 0}
+                now={now}
+              />
             ) : null}
           </li>
         )

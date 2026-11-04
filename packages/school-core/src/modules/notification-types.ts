@@ -7,7 +7,10 @@ import {
 } from '../lib/notification-type.ts'
 import { PLATFORM_NOTIFICATION_TYPES } from '../platform/notification-types.ts'
 // Onur: kayıt ve finans (içe aktarma)
-import { FINANCE_NOTIFICATION_TYPES } from '../lib/finance-notifications.ts'
+import {
+  CONTRACT_NOTIFICATION_TYPES,
+  FINANCE_NOTIFICATION_TYPES,
+} from '../lib/finance-notifications.ts'
 // Onur: kayıt ve finans (içe aktarma) sonu
 
 /**
@@ -41,6 +44,7 @@ export const ONUR_NOTIFICATION_TYPES = {
     },
   }),
   ...FINANCE_NOTIFICATION_TYPES,
+  ...CONTRACT_NOTIFICATION_TYPES,
 } as const
 // Onur: kayıt ve finans sonu
 

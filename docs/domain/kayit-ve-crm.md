@@ -181,6 +181,14 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Kurum türü:** `school`
 - **Kodda:** yok — yenileme borç denetimi yapmaz.
 
+### DOM-KAY-026 · Kayıt durumu türetilir, geçişler olaydır
+
+- **Kural:** Kesin kayıtlı öğrencinin kayıt durumu `Aktif`, `Ayrıldı` veya `Mezun`'dur. Kesin kayıt (`DOM-KAY-001`) öğrenciyi aktif açar; yenileme planı (`DOM-KAY-020`) durumu değiştirmez; dönem geçişi sınıfı değiştirir ve öğrenciyi aktif bırakır; mezuniyet geçişi (`DOM-KAY-022`) mezun, ayrılış (`DOM-KAY-024`) ayrıldı yapar. Ayrılışla iptal edilen yenileme ve uygulanmamış mezuniyet planı geçiş sayılmaz. Sınıf listesi, kontenjan, yoklama ve akademik bildirim yalnız aktif öğrenci içindir; ayrılan ve mezun öğrencinin finans bildirimi (borç taksiti, iade, sözleşme) sürer. Durum ayrıca saklanmaz, öğrencinin aktiflik bayrağından ve geçiş kayıtlarından okunur. Dil okulunda kayıt dondurma (`DOM-DIL-052`) geldiğinde dördüncü durum olur.
+- **Gerekçe:** Durumu ayrıca saklamak, onu üreten kayıtla (ayrılış, dönem geçişi) ayrışabilen ikinci bir doğruluk kaynağı açar. Ödev, not ve devamsızlık bildirimi ayrılan aileye gitmemeli; borç ve iade bildirimi gitmelidir.
+- **Kaynak:** İşletme kuralı.
+- **Kurum türü:** ikisi
+- **Kodda:** var (core) — `packages/school-core/src/lib/enrollment-status.ts`: `enrollmentStatus(student, { renewals })` ve toplu `enrollmentStatuses(students, { renewals })` (`Map`; mezuniyetler bir kez indekslenir), sonuçlar `ENROLLMENT_STATUS_EFFECTS` (`roster`, `attendance`, `academicNotices`, `financeNotices`), etiketler `ENROLLMENT_STATUS_LABELS`; olaylar `enrollmentEvents(student, { renewals, withdrawals? })` (`enrolled`, `renewed`, `promoted`, `graduated`, `withdrawn`; eskiden yeniye) ve olay → durum tablosu `ENROLLMENT_EVENT_STATUS`. Öğrenciyi yalnız ayrılış (`withdrawStudent`) ve mezuniyet geçişi (`renewal-activate`) pasifleştirdiği için pasif öğrenci uygulanmış mezuniyeti (`renewals`, `Mezun`) varsa mezun, yoksa ayrıldıdır; `isActive` belirleyicidir. Ayrılış olayının günü `student_withdrawals.withdrawal_date`'tir; çevrimdışı State'te ayrılış kaydı yoktur, olay tarihsiz döner. Migration yok. Sınıf listesi, yoklama ve bildirim alıcılarının bu sonuçlara bağlanması Oğuzhan'ın alanındadır; bugün `isActive` okurlar (aynı sonucu verir). Test `tests/enrollment-status.test.ts`.
+
 ## Aday işlemleri (ön büro)
 
 `DOM-KAY-002`, `-005`, `-006` ve `DOM-DIL-030`'un işlem düzeyindeki muhafazakâr yorumu. İşlemleri yalnız `yonetici` ve `onburo` yapar (yetki matrisi "Aday, tanışma görüşmesi"); modül `crm`.

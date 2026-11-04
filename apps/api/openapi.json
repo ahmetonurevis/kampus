@@ -5616,7 +5616,9 @@
               "installment_due",
               "installment_overdue",
               "payment_received",
-              "refund_paid"
+              "refund_paid",
+              "contract_approval_requested",
+              "contract_approved"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },
@@ -22951,7 +22953,9 @@
               "installment_due",
               "installment_overdue",
               "payment_received",
-              "refund_paid"
+              "refund_paid",
+              "contract_approval_requested",
+              "contract_approved"
             ],
             "description": "Bildirim türü (core `NOTIFICATION_KINDS`)"
           },

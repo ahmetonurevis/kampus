@@ -29,6 +29,7 @@ import {
   planAttemptSubmit,
   scoreAttempt,
   scoreItem,
+  SCORING_MODES,
   scoringModeFor,
   submissionWindow,
   teacherFeedbackReleased,
@@ -435,6 +436,8 @@ describe('puanlama yolu (DOM-BEC-023)', () => {
     assert.equal(scoringModeFor('question'), 'auto')
     assert.equal(scoringModeFor('homework_template'), 'teacher')
     assert.equal(scoringModeFor('reading_passage'), null)
+    // Atamaya sabitlenen kip ve API kolon kısıtı aynı listeden gelir.
+    assert.deepEqual([...SCORING_MODES], ['auto', 'teacher'])
     assert.doesNotThrow(() => assertAutoScored('quiz'))
     assert.throws(() => assertAutoScored('homework_template'), isDomainError('not_auto_scored'))
     assert.deepEqual([...AUTO_SCORED_QUESTION_TYPES].sort(), [

@@ -9,19 +9,16 @@ import {
   elapsedMs,
   initialRecorderState,
   liveMessage,
-  mediaErrorReason,
   phaseRemainingMs,
-  pickRecordingMime,
   RECORDING_STOP_MARGIN_MS,
   recorderReducer,
-  recordingFileName,
   REJECTED_NOTICE,
   takesLeft,
   TOO_SHORT_NOTICE,
   type RecorderEvent,
   type RecorderState,
   type Take,
-} from '../src/pages/tasks/speaking-recorder-model.ts'
+} from '../src/speaking-recorder-model.ts'
 
 // Konuşma kaydı durum makinesi (IST-051; DOM-BEC-002, 040, 050, 054): izin, hazırlık, süre sınırı,
 // deneme hakkı, gönderim adımları ve ekran okuyucu metni. Saat sabit `now` ile verilir.
@@ -303,32 +300,5 @@ describe('konuşma kaydı: yardımcılar', () => {
     assert.equal(durationLabel(180), '3 dakika')
     assert.equal(durationLabel(90), '1 dakika 30 saniye')
     assert.equal(phaseRemainingMs({ kind: 'idle', notice: null }, T0), null)
-  })
-
-  test('DOM-BEC-054: kayıt biçimi sunucunun kabul ettiği türlerden seçilir; uzantı tutarlıdır', () => {
-    assert.equal(
-      pickRecordingMime(() => true),
-      'audio/webm;codecs=opus',
-    )
-    assert.equal(
-      pickRecordingMime((type) => type.startsWith('audio/mp4')),
-      'audio/mp4;codecs=mp4a.40.2',
-    )
-    assert.equal(
-      pickRecordingMime(() => false),
-      null,
-    )
-    assert.equal(recordingFileName('audio/webm;codecs=opus'), 'konusma-kaydi.webm')
-    assert.equal(recordingFileName('audio/mp4'), 'konusma-kaydi.m4a')
-    assert.equal(recordingFileName('audio/mpeg'), 'konusma-kaydi.mp3')
-  })
-
-  test('IST-051: mikrofon hataları nedenlere ayrılır', () => {
-    const named = (name: string) => Object.assign(new Error('x'), { name })
-    assert.equal(mediaErrorReason(named('NotAllowedError')), 'denied')
-    assert.equal(mediaErrorReason(new DOMException('x', 'NotAllowedError')), 'denied')
-    assert.equal(mediaErrorReason(named('NotFoundError')), 'no_device')
-    assert.equal(mediaErrorReason(named('NotReadableError')), 'failed')
-    assert.equal(mediaErrorReason('bilinmeyen'), 'failed')
   })
 })

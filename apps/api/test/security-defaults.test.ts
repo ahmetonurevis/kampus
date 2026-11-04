@@ -5,6 +5,7 @@ import { sql } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import { trustedOrigins } from '../src/auth.ts'
+import { DEVELOPMENT_FIELD_ENCRYPTION_KEY } from '../src/config.ts'
 import type { Database } from '../src/db/client.ts'
 import {
   buildTestApp,
@@ -19,6 +20,7 @@ const PRODUCTION = {
   NODE_ENV: 'production',
   BETTER_AUTH_URL: 'https://api.kampus.example',
   BETTER_AUTH_SECRET: 'b4Jx9-uretim-icin-uretilmis-rastgele-deger-Qm2',
+  FIELD_ENCRYPTION_KEY: 'x/Ze81RFCnuwFDAaKuVS9QlX60f17joBtM9H4nyNDso=',
   STORAGE_DIR: '/srv/kampus/storage',
 }
 
@@ -201,6 +203,27 @@ describe('üretim güvenlik varsayılanları', () => {
     }
   })
 
+  test('IST-020: geliştirme anahtarına düşüş başlangıçta bir kez uyarılır, anahtar loga girmez; testte sessiz', async () => {
+    const warnings = async (overrides: Record<string, string>) => {
+      const logs: string[] = []
+      const app = await buildTestApp(db, {
+        logs,
+        config: testConfig({ LOG_LEVEL: 'debug', ...overrides }),
+      })
+      await app.close()
+      return logs
+        .join('')
+        .split('\n')
+        .filter((line) => line.includes('FIELD_ENCRYPTION_KEY verilmedi'))
+    }
+    const fallback = await warnings({ NODE_ENV: 'development', FIELD_ENCRYPTION_KEY: '' })
+    assert.equal(fallback.length, 1)
+    assert.equal(JSON.parse(fallback[0] ?? '{}').level, 40)
+    assert.equal(fallback[0]?.includes(DEVELOPMENT_FIELD_ENCRYPTION_KEY), false)
+    assert.equal((await warnings({ NODE_ENV: 'test', FIELD_ENCRYPTION_KEY: '' })).length, 0)
+    assert.equal((await warnings({ NODE_ENV: 'development' })).length, 0)
+  })
+
   test('DOM-ILT-100, DOM-ILT-102, DOM-ILT-092, DOM-KAY-003, DOM-KAY-012, DOM-KAY-032, DOM-DIL-070: log gizleme üst düzey, iç içe ve geçmiş dizisindeki serbest metni yazmaz', async () => {
     const logs: string[] = []
     const texts = {
@@ -229,6 +252,11 @@ describe('üretim güvenlik varsayılanları', () => {
       decisionRationale: 'Kayıttaki gizli kur kararı gerekçesi.',
       rejectionReason: 'Gizli kur kararı ret gerekçesi.',
       decisionRejectionReason: 'Kayıttaki gizli ret gerekçesi.',
+      healthAllergy: 'Gizli-fıstık-alerjisi',
+      healthNested: 'Gizli-astım-kronik',
+      healthDeep: 'Gizli-insülin-ilacı',
+      healthBody: 'Gizli-adrenalin-talimatı',
+      healthCipher: 'GIZLI-SIFRELI-PAKET==',
     }
     // Uygulamanın gerçek logger yapılandırması (`REDACTED_PATHS`); hem uygulama hem istek logu.
     const app = await buildTestApp(db, {
@@ -291,8 +319,31 @@ describe('üretim güvenlik varsayılanları', () => {
         },
         'kur kararı kaydı',
       )
+      // Sağlık ve acil bilgi (IST-020): iç içe nesnede de maskelenir.
+      app.log.info(
+        { profile: { content: { allergies: [{ name: texts.healthAllergy }] } } },
+        'sağlık içeriği',
+      )
+      app.log.info(
+        { data: { profile: { content: { chronicConditions: [{ name: texts.healthNested }] } } } },
+        'sağlık derin',
+      )
+      app.log.info(
+        { saved: { content: { medications: [{ name: texts.healthDeep }] } } },
+        'sağlık ilaç',
+      )
+      app.log.info(
+        { request: { body: { emergencyInstructions: texts.healthBody } } },
+        'sağlık gövde',
+      )
+      app.log.info({ row: { contentCiphertext: texts.healthCipher } }, 'sağlık paket')
       const lines = logs.join('').split('\n').filter(Boolean)
       for (const message of [
+        'sağlık içeriği',
+        'sağlık derin',
+        'sağlık ilaç',
+        'sağlık gövde',
+        'sağlık paket',
         'kur kararı',
         'kur kararı kaydı',
         'redaksiyon üst düzey',

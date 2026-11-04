@@ -20,7 +20,7 @@ import {
   type RecorderEvent,
   type RecorderState,
   type Take,
-} from '../src/pages/tasks/speaking-recorder-model.ts'
+} from '@kampus/react-shared/speaking-recorder-model.ts'
 
 // Öğretmenin sesli geri bildirimi (IST-052; DOM-BEC-056): konuşma kayıt makinesi hazırlıksız ve
 // hak sınırsız kullanılır; formun değeri evreden türetilir, iletiler öğretmene göredir.

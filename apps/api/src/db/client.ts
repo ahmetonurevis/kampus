@@ -17,11 +17,13 @@ import * as institutionSettingsSchema from './schema/institution-settings.ts'
 import * as languageGroupsSchema from './schema/language-groups.ts'
 import * as learningOutcomesSchema from './schema/learning-outcomes.ts'
 import * as membershipLinksSchema from './schema/membership-links.ts'
+import * as notificationPreferencesSchema from './schema/notification-preferences.ts'
 import * as privacySchema from './schema/privacy.ts'
 import * as recordsSchema from './schema/records.ts'
 import * as resourcesSchema from './schema/resources.ts'
 import * as skillsSchema from './schema/skills.ts'
 import * as studentGuardiansSchema from './schema/student-guardians.ts'
+import * as studentHealthProfilesSchema from './schema/student-health-profiles.ts'
 
 export const schema = {
   ...authSchema,
@@ -42,6 +44,8 @@ export const schema = {
   ...languageGroupsSchema,
   ...cefrSchema,
   ...certificatesSchema,
+  ...notificationPreferencesSchema,
+  ...studentHealthProfilesSchema,
 }
 export type Schema = typeof schema
 

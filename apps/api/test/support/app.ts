@@ -10,7 +10,7 @@ import { samplePlatformOutcomes } from '@kampus/school-core/content/outcomes.ts'
 
 import { buildApp, type App, type BuildAppOptions, type Clock } from '../../src/app.ts'
 import type { InstitutionType, Role } from '../../src/auth.ts'
-import { parseConfig, type Config } from '../../src/config.ts'
+import { parseConfig, TEST_FIELD_ENCRYPTION_KEY, type Config } from '../../src/config.ts'
 import { MIGRATIONS_FOLDER, schema, type Database } from '../../src/db/client.ts'
 import { syncPlatformOutcomes } from '../../src/db/learning-outcomes.ts'
 import type { Mailer } from '../../src/services/mailer.ts'
@@ -40,6 +40,7 @@ export function testConfig(overrides: Record<string, string> = {}): Config {
     LOG_LEVEL: 'silent',
     DATABASE_URL: 'postgres://test@localhost:5432/test',
     BETTER_AUTH_SECRET: 'test-secret-test-secret-test-secret-0123',
+    FIELD_ENCRYPTION_KEY: TEST_FIELD_ENCRYPTION_KEY,
     BETTER_AUTH_URL: 'http://localhost:3000',
     CORS_ORIGINS: TEST_ORIGIN,
     ...overrides,

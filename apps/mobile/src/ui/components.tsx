@@ -567,8 +567,17 @@ type SelectProps = {
   options: readonly SelectOption[]
   onChange: (value: string) => void
   required?: boolean
+  /** Seçim penceresi açılmaz; ekran okuyucuya devre dışı bildirilir. */
+  disabled?: boolean
 }
-export function Select({ label, value, options, onChange, required = false }: SelectProps) {
+export function Select({
+  label,
+  value,
+  options,
+  onChange,
+  required = false,
+  disabled = false,
+}: SelectProps) {
   const c = useColors()
   const insets = useSafeAreaInsets()
   const { reduceMotion } = useAppearance()
@@ -585,6 +594,8 @@ export function Select({ label, value, options, onChange, required = false }: Se
       <Pressable
         accessibilityRole="button"
         accessibilityLabel={`${label}: ${options.find((o) => o.value === value)?.label || 'Seçin'}`}
+        accessibilityState={{ disabled }}
+        disabled={disabled}
         onPress={() => {
           setQuery('')
           setOpen(true)

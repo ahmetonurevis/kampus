@@ -9,7 +9,7 @@ import {
   type RecorderPhase,
   type SendStep,
   type SpeakingLimits,
-} from './speaking-recorder-model.ts'
+} from '@kampus/react-shared/speaking-recorder-model.ts'
 
 /**
  * Öğretmenin sesli geri bildiriminin saf kuralları (IST-052; DOM-BEC-056). Kayıt, konuşma

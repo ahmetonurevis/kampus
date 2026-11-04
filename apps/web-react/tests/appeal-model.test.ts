@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
-import type { TaskAppeal } from '@kampus/react-shared/use-task-grading.ts'
+import type { TaskAppeal, TaskAppealQueueItem } from '@kampus/react-shared/use-task-grading.ts'
 import {
   APPEAL_NOT_INDEPENDENT_TEXT,
   APPEAL_OUTCOME_OPTIONS,
@@ -10,6 +10,9 @@ import {
   appealDecisionFormSchema,
   appealFieldFor,
   appealFormSchema,
+  appealQueueRow,
+  appealQueueSummary,
+  appealScoredByViewer,
   latestAppeal,
   learnerAppealState,
   showsAppealNotIndependent,
@@ -263,5 +266,78 @@ describe('OG-211 / DOM-BEC-025: öğretmen penceresinde gösterilen itiraz', () 
       null,
     )
     assert.equal(latestAppeal({ versions: [] }), null)
+  })
+})
+
+describe('OG-1010 / DOM-BEC-025: puanlayıcı bağımsızlığı ve açık itirazlar sekmesi', () => {
+  const versionOf = (appealId: string, scoredByViewer: boolean | null) =>
+    ({
+      number: 1,
+      appeal: appeal({ id: appealId }),
+      grading: scoredByViewer === null ? null : { scoredByViewer },
+    }) as never
+
+  test('scoredByViewer true: karar formu açılmaz (bilgi metni gösterilir)', () => {
+    assert.equal(appealScoredByViewer({ versions: [versionOf('ap1', true)] }, 'ap1'), true)
+  })
+
+  test('scoredByViewer false: karar formu açılır', () => {
+    assert.equal(appealScoredByViewer({ versions: [versionOf('ap1', false)] }, 'ap1'), false)
+  })
+
+  test('sürüm puan ayrıntısı yoksa form açık kalır; 409 yolu aynı metni gösterir', () => {
+    assert.equal(appealScoredByViewer({ versions: [versionOf('ap1', null)] }, 'ap1'), false)
+    assert.equal(showsAppealNotIndependent({ code: 'rater_not_independent' }), true)
+    assert.equal(
+      APPEAL_NOT_INDEPENDENT_TEXT,
+      'Bu sürümü siz puanladınız; itirazı başka bir öğretmen karara bağlar.',
+    )
+  })
+
+  test('itiraz kimliğiyle eşleşen sürümün bilgisi okunur, başka sürüm karışmaz', () => {
+    const submission = { versions: [versionOf('ap1', true), versionOf('ap2', false)] }
+    assert.equal(appealScoredByViewer(submission, 'ap1'), true)
+    assert.equal(appealScoredByViewer(submission, 'ap2'), false)
+    assert.equal(appealScoredByViewer(submission, 'yok'), false)
+  })
+
+  const item = (extra: Partial<TaskAppealQueueItem> = {}): TaskAppealQueueItem => ({
+    id: 'ap1',
+    submissionId: 's1',
+    assignmentId: 'a1',
+    versionId: 'v1',
+    versionNumber: 2,
+    assignmentTitle: 'Essay: My School',
+    learnerId: 'l1',
+    learnerName: 'Deniz Yılmaz',
+    filedAt: '2026-11-06T09:00:00.000Z',
+    scoredByViewer: false,
+    ...extra,
+  })
+
+  test('satır: görev, öğrenci, sürüm ve İstanbul saatiyle açılma zamanı', () => {
+    const row = appealQueueRow(item())
+    assert.equal(row.id, 'ap1')
+    assert.equal(row.submissionId, 's1')
+    assert.equal(row.assignment, 'Essay: My School')
+    assert.equal(row.learner, 'Deniz Yılmaz')
+    assert.equal(row.version, 'Sürüm 2')
+    assert.equal(row.filedAt, dateTimeLabel('2026-11-06T09:00:00.000Z'))
+    assert.equal(row.scoredByViewer, false)
+  })
+
+  test('öğrenci adı kapsam dışında null ise "—", görev başlığı yoksa "Görev"', () => {
+    const row = appealQueueRow(item({ learnerName: null, assignmentTitle: null }))
+    assert.equal(row.learner, '—')
+    assert.equal(row.assignment, 'Görev')
+  })
+
+  test('"Siz puanladınız" bilgisi satıra taşınır', () => {
+    assert.equal(appealQueueRow(item({ scoredByViewer: true })).scoredByViewer, true)
+  })
+
+  test('başlık özeti sunucu toplamını yazar', () => {
+    assert.ok(appealQueueSummary(0).startsWith('0 açık itiraz'))
+    assert.ok(appealQueueSummary(23).startsWith('23 açık itiraz'))
   })
 })

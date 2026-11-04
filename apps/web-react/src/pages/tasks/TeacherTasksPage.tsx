@@ -5,17 +5,19 @@ import { LineTabs, type LineTabOption } from '@/components/LineTabs.tsx'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { TeacherHomeworkPage } from '../learning/TeacherHomeworkPage.tsx'
+import { AppealQueueView } from './AppealQueueView.tsx'
 import { DisputeQueueView } from './DisputeQueueView.tsx'
 import { GradingQueueView } from './GradingQueueView.tsx'
 import { PracticeGradebookView } from './PracticeGradebookView.tsx'
 import { TaskAssignmentsView } from './TaskAssignmentsView.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 
-type Tab = 'odevler' | 'gorevler' | 'puanlama' | 'alistirma' | 'uyusmazlik'
+type Tab = 'odevler' | 'gorevler' | 'puanlama' | 'itirazlar' | 'alistirma' | 'uyusmazlik'
 const TABS: readonly LineTabOption<Tab>[] = [
   { value: 'odevler', label: 'Ödevler', icon: 'NotebookPen' },
   { value: 'gorevler', label: 'Görevler', icon: 'ListChecks' },
   { value: 'puanlama', label: 'Puanlama kuyruğu', icon: 'ClipboardCheck' },
+  { value: 'itirazlar', label: 'Açık itirazlar', icon: 'MessageCircleQuestion' },
   { value: 'alistirma', label: 'Alıştırma not defteri', icon: 'FileCheck' },
 ]
 const DISPUTE_TAB: LineTabOption<Tab> = {
@@ -28,7 +30,8 @@ const isTab = (value: string | null, options: readonly LineTabOption<Tab>[]): va
 
 /**
  * Ödevler & Değerlendirme (öğretmen, Vue `Learning.vue` `/odevler`): mevcut ödev teslim listesi,
- * API görev atamaları, rubrikle puanlama kuyruğu ve alıştırma not defteri (OG-085, DOM-BEC-048).
+ * API görev atamaları, rubrikle puanlama kuyruğu, açık itirazlar (OG-1010, DOM-BEC-025) ve
+ * alıştırma not defteri (OG-085, DOM-BEC-048).
  * Sekme `?sekme=` ile adreste tutulur.
  * Kapalı `learning` modülünde sayfa menüden ve route'tan kalkar (page-registry); API uçları da
  * 403 `module_disabled` verir.
@@ -72,6 +75,7 @@ export function TeacherTasksPage({ page }: { page: NavPage }) {
       {tab === 'odevler' ? <TeacherHomeworkPage page={page} heading={false} /> : null}
       {tab === 'gorevler' ? <TaskAssignmentsView /> : null}
       {tab === 'puanlama' ? <GradingQueueView /> : null}
+      {tab === 'itirazlar' ? <AppealQueueView /> : null}
       {tab === 'alistirma' ? <PracticeGradebookView /> : null}
       {tab === 'uyusmazlik' && !waiting ? <DisputeQueueView /> : null}
     </>

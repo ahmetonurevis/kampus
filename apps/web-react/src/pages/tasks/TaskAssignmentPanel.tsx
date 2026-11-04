@@ -39,6 +39,7 @@ import {
 } from './task-model.ts'
 import { attemptStatusBadge, scoreLabel } from './student-task-model.ts'
 import { ExtraTimeSection } from './ExtraTimeSection.tsx'
+import { SecondRatingSampleSection } from './SecondRatingSection.tsx'
 import { useTaskLookups } from './use-task-lookups.ts'
 import { TASK_KINDS } from '@kampus/school-core/skills/scoring.ts'
 
@@ -118,6 +119,7 @@ function AssignmentDetail({
         </SummarySection>
       )}
       <ExtraTimeSection key={item.id} item={item} />
+      {teacher ? <SecondRatingSampleSection item={item} /> : null}
       {teacher ? (
         <SubmissionList assignmentId={item.id} onGrade={onGrade} />
       ) : (

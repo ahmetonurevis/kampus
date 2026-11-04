@@ -4,6 +4,7 @@ import { useForm, type Resolver } from 'react-hook-form'
 import {
   useFinalScoreTaskSubmission,
   useScoreTaskSubmission,
+  useSecondScoreTaskSubmission,
 } from '@kampus/react-shared/use-task-grading.ts'
 import type { RubricVersion } from '@kampus/react-shared/use-rubrics.ts'
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
@@ -19,6 +20,7 @@ import {
   feedbackAudioBody,
   type FeedbackAudioValue,
 } from './feedback-audio-model.ts'
+import { SCORE_FORM_COPY } from './second-rating-model.ts'
 import { showsStaleNotice, scoreBody, scoreFormSchema, type ScoreFormValues } from './task-model.ts'
 
 type Props = {
@@ -30,10 +32,11 @@ type Props = {
   /** Teslim eskidi: uyarıyı pencere gösterir (hata tek yerde). */
   onStaleChange: (stale: boolean) => void
   /**
-   * `first` öğretmenin puanı (`scores`), `final` uyuşmazlıkta koordinatörün son puanı
-   * (`final-scores`; DOM-BEC-024, DOM-YTK-027). Gövde ikisinde aynıdır.
+   * `first` öğretmenin puanı (`scores`), `second` ilk puanı görmeyen ikinci değerlendiricinin
+   * puanı (`second-scores`), `final` uyuşmazlıkta koordinatörün son puanı (`final-scores`;
+   * DOM-BEC-024, DOM-YTK-027). Gövde üçünde aynıdır.
    */
-  kind?: 'first' | 'final'
+  kind?: 'first' | 'second' | 'final'
   /** Pencereye taşınan eskime hataları; verilmezse ilk puanınkiler. */
   staleOn?: (error: { code: string }) => boolean
 }
@@ -58,8 +61,10 @@ export function RubricScoreForm({
   staleOn = showsStaleNotice,
 }: Props) {
   const firstScore = useScoreTaskSubmission()
+  const secondScore = useSecondScoreTaskSubmission()
   const finalScore = useFinalScoreTaskSubmission()
-  const score = kind === 'final' ? finalScore : firstScore
+  const score = { first: firstScore, second: secondScore, final: finalScore }[kind]
+  const copy = SCORE_FORM_COPY[kind]
   const form = useForm<ScoreFormValues>({
     resolver: zodResolver(scoreFormSchema) as unknown as Resolver<ScoreFormValues>,
     defaultValues: {
@@ -95,9 +100,7 @@ export function RubricScoreForm({
       },
     )
     if (outcome.status === 'success') {
-      notify.success(
-        kind === 'final' ? 'Son puan kaydedildi; sonuç kesinleşti.' : 'Puan kaydedildi.',
-      )
+      notify.success(copy.success)
       onScored?.()
     } else if (outcome.status === 'failed' && staleOn(outcome.error)) {
       onStaleChange(true)
@@ -107,7 +110,7 @@ export function RubricScoreForm({
   return (
     <form
       noValidate
-      aria-label={kind === 'final' ? 'Son puan' : 'Rubrik puanı'}
+      aria-label={copy.ariaLabel}
       onSubmit={(event) => {
         event.preventDefault()
         void submit(event)
@@ -122,10 +125,7 @@ export function RubricScoreForm({
         busy={busy}
       />
       <FeedbackAudioField disabled={busy} onChange={setAudio} />
-      <p className="text-sm text-muted-foreground">
-        Toplam puan kayıtta sunucuda hesaplanır; puan kesinleşince geri bildirim öğrenciye ve
-        velisine açılır.
-      </p>
+      <p className="text-sm text-muted-foreground">{copy.note}</p>
       <RootError message={errors.root?.server?.message} />
       <div className="flex flex-wrap items-center justify-end gap-3 border-t pt-4">
         {audioPending ? (
@@ -140,7 +140,7 @@ export function RubricScoreForm({
           aria-describedby={audioPending ? audioPendingId : undefined}
         >
           <Icon name="Check" size={17} aria-hidden="true" />
-          {kind === 'final' ? 'Son puanı kaydet' : 'Puanı kaydet'}
+          {copy.submit}
         </Button>
       </div>
     </form>

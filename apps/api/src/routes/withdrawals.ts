@@ -9,6 +9,7 @@ import {
   withdrawalQuoteSchema,
   withdrawStudentSchema,
 } from '@kampus/school-core/lib/withdrawals.ts'
+import { INSTITUTION_TYPES } from '@kampus/school-core/modules/collection-modules.ts'
 
 import { contextOf } from '../plugins/authenticate.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
@@ -32,7 +33,7 @@ import { dataResponse, pageMetaSchema, pageQuerySchema } from './common.schemas.
 const STAFF = ['yonetici', 'onburo'] as const
 
 const breakdownSchema = z.object({
-  institutionType: z.enum(['school', 'language_school']),
+  institutionType: z.enum(INSTITUTION_TYPES),
   withdrawalDate: z.string(),
   termStartDate: z.string(),
   started: z.boolean().describe('Ayrılış dönem başladıktan sonra mı'),

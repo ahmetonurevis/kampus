@@ -219,7 +219,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'İadeyi ödenmiş işaretle',
         description:
-          'Ödeme tarihi, IBAN ve hesap sahibini yazar; ödenen iade değiştirilemez (DOM-FIN-041). Geçersiz IBAN 400; hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`; iade yoksa 409 `refund_not_due`; ödenmişse 409 `refund_already_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `If-Match` ve `Idempotency-Key` zorunludur. Rol: `yonetici`.',
+          'Ödeme tarihi, IBAN ve hesap sahibini yazar; ödenen iade değiştirilemez (DOM-FIN-041). Geçersiz IBAN 400; hesap sahibi sözleşmedeki ödeyici değilse 422 `refund_holder_mismatch`; iade yoksa 409 `refund_not_due`; ödenmişse 409 `refund_already_paid`. Taze oturum ister: eskiyse 403 `reauthentication_required`. `If-Match` ve `Idempotency-Key` zorunludur; anahtar kaydı yanıtı 24 saat saklar ama maskeli IBAN ve hesap sahibini saklamaz, tekrar yanıtı bunları iade kaydından ekler. Rol: `yonetici`.',
         headers: commandHeadersSchema('required', { ifMatch: 'required' }),
         params: withdrawalParams,
         body: payRefundSchema,

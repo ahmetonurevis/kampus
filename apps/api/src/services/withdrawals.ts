@@ -49,6 +49,35 @@ export type WithdrawalView = Omit<StoredWithdrawal, 'refundIban'> & {
   refundStatus: RefundStatus
 }
 
+/** Hedef hesabı tanıtan alanlar: idempotency kaydına girmez (guvenlik-kvkk.md §10, DOM-FIN-041). */
+type RefundAccount = Pick<WithdrawalView, 'maskedIban' | 'refundAccountHolder'>
+
+const ACCOUNT_FIELDS: ReadonlySet<string> = new Set<keyof RefundAccount>([
+  'maskedIban',
+  'refundAccountHolder',
+])
+
+function withoutAccount(row: WithdrawalView): Record<string, unknown> {
+  return Object.fromEntries(Object.entries(row).filter(([field]) => !ACCOUNT_FIELDS.has(field)))
+}
+
+/**
+ * Saklanan yanıta hesap alanlarını kayıttan geri koyar. Ödenen iadenin hesabı değişmediği için
+ * (DOM-FIN-041) tekrar yanıtı ilk yanıtla aynıdır.
+ */
+function withAccount(body: unknown, account: RefundAccount): unknown {
+  const data: unknown =
+    typeof body === 'object' && body !== null ? Reflect.get(body, 'data') : undefined
+  if (typeof data !== 'object' || data === null) throw new Error('refund response has no data')
+  return {
+    data: {
+      ...data,
+      maskedIban: account.maskedIban,
+      refundAccountHolder: account.refundAccountHolder,
+    },
+  }
+}
+
 function view(row: StoredWithdrawal): WithdrawalView {
   const { refundIban, ...rest } = row
   return {
@@ -169,8 +198,12 @@ export function withdrawStudentCommand(
   )
 }
 
-/** İadeyi ödenmiş işaretler; ödenen iade değişmez, hesap sahibi ödeyicidir (DOM-FIN-041). */
-export function payRefundCommand(
+/**
+ * İadeyi ödenmiş işaretler; ödenen iade değişmez, hesap sahibi ödeyicidir (DOM-FIN-041).
+ * `Idempotency-Key` kaydı yanıtı 24 saat saklar; IBAN'ın son haneleri ve hesap sahibi bu kayda
+ * yazılmaz, yanıta iade kaydından eklenir (guvenlik-kvkk.md §10).
+ */
+export async function payRefundCommand(
   ctx: ServiceContext,
   withdrawalId: string,
   input: unknown,
@@ -178,7 +211,7 @@ export function payRefundCommand(
   idempotency: IdempotencyRequest | null,
 ): Promise<CommandResponse> {
   let result: WithdrawalView | undefined
-  return runCommand(
+  const response = await runCommand(
     ctx,
     {
       action: 'student.withdraw.refund',
@@ -234,10 +267,14 @@ export function payRefundCommand(
     },
     () => {
       if (result === undefined) throw new Error('refund was not written')
-      return { statusCode: 200, body: { data: result } }
+      return { statusCode: 200, body: { data: withoutAccount(result) } }
     },
     idempotency,
   )
+  // Tekrarda işlem çalışmadığı için hesap alanları kalıcı kayıttan okunur.
+  const account =
+    !response.replayed && result !== undefined ? result : await getWithdrawalFor(ctx, withdrawalId)
+  return { ...response, body: withAccount(response.body, account) }
 }
 
 export async function listWithdrawalsFor(

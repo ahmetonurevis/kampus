@@ -35,7 +35,7 @@ import {
   type StoredPayment,
   type StoredPaymentSettings,
 } from '../db/payments.ts'
-import { hasWithdrawal } from '../db/withdrawals.ts'
+import { withdrawalsForReversal } from '../db/withdrawals.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -220,7 +220,7 @@ export function reversePaymentCommand(
         const payment = await findPayment(tx, ctx.institutionId, paymentId)
         if (payment === null) throw new NotFoundError()
         if (payment.version !== expectedVersion) throw new ConflictError()
-        const studentWithdrawn = await hasWithdrawal(tx, ctx.institutionId, payment.studentId)
+        const withdrawals = await withdrawalsForReversal(tx, ctx.institutionId, payment.studentId)
         return {
           scalars,
           run: (state, { now }) => {
@@ -230,7 +230,7 @@ export function reversePaymentCommand(
               {
                 reversedAt: payment.reversedAt?.toISOString() ?? null,
                 allocations: payment.allocations,
-                studentWithdrawn,
+                withdrawals,
               },
               input,
             )

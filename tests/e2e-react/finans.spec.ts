@@ -1059,6 +1059,33 @@ test.describe('Finans: liste', () => {
     await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
   })
 
+  test('ON-109: sekme değişimi taksit süzgecini ve sayfasını sıfırlamaz; öteki sekmeye taşınmaz', async ({
+    page,
+  }) => {
+    await page.goto(`${ADMIN_URL}?durum=yaklasan`)
+    await page.getByRole('button', { name: 'Sonraki sayfa' }).click()
+    await expect(page).toHaveURL(/[?&]sayfa=2/)
+    await expect(resultCount(page)).toContainText('9–16 /')
+
+    const tabs = page.getByRole('toolbar', { name: 'Finans görünümü' })
+    await tabs.getByRole('button', { name: 'Tahsilat geçmişi' }).click()
+    await expect(page).toHaveURL(/[?&]gorunum=tahsilatlar/)
+    await expect(page).not.toHaveURL(/[?&](durum|sayfa)=/)
+    await expect(page.getByRole('heading', { name: 'Tahsilat geçmişi' })).toBeVisible()
+
+    await tabs.getByRole('button', { name: 'Taksitler' }).click()
+    await expect(page).toHaveURL(/[?&]durum=yaklasan/)
+    await expect(page).toHaveURL(/[?&]sayfa=2/)
+    await expect(page.getByLabel('Ödeme durumu')).toHaveValue('yaklasan')
+    await expect(resultCount(page)).toContainText('9–16 /')
+    await expectEveryRow(bodyRows(page), 'Yaklaşan')
+
+    // Süzgeç değişince sayfa yine başa döner.
+    await page.getByLabel('Ödeme durumu').selectOption({ label: 'Ödendi' })
+    await expect(page).not.toHaveURL(/[?&]sayfa=/)
+    await expect(resultCount(page)).toContainText('1–8 /')
+  })
+
   test('ON-036: hazır ödeme filtreleri durum süzgecidir; seçili çip işaretli, adres taşır', async ({
     page,
   }) => {

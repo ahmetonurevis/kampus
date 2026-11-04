@@ -1,6 +1,7 @@
 import { and, asc, count, eq, gt, gte, isNotNull, isNull, lte, sql, type SQL } from 'drizzle-orm'
 
 import type { ExportRefund } from '@kampus/school-core/lib/finance-export.ts'
+import type { ReversalWithdrawal } from '@kampus/school-core/lib/payments.ts'
 import type { WithdrawalBreakdown, WithdrawalReason } from '@kampus/school-core/lib/withdrawals.ts'
 
 import type { Database } from './client.ts'
@@ -75,14 +76,17 @@ export async function findWithdrawal(
   return row ? stored(row) : null
 }
 
-/** Öğrencinin ayrılış kaydı var mı. */
-export async function hasWithdrawal(
+/**
+ * Öğrencinin ayrılış kayıtlarından tahsilat iptalinin denetimi (DOM-FIN-041, core `reversePayment`):
+ * borç taksiti dökümde saklanır; eski kayıtta yoktur ve `null` döner.
+ */
+export async function withdrawalsForReversal(
   db: Database,
   institutionId: string,
   studentId: string,
-): Promise<boolean> {
-  const [row] = await db
-    .select({ id: studentWithdrawals.id })
+): Promise<ReversalWithdrawal[]> {
+  const rows = await db
+    .select({ breakdown: studentWithdrawals.breakdown })
     .from(studentWithdrawals)
     .where(
       and(
@@ -90,8 +94,7 @@ export async function hasWithdrawal(
         eq(studentWithdrawals.studentId, studentId),
       ),
     )
-    .limit(1)
-  return row !== undefined
+  return rows.map((row) => ({ debtInvoiceId: row.breakdown.debtInvoiceId ?? null }))
 }
 
 function statusFilter(status: RefundStatus | undefined): SQL | undefined {

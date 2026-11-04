@@ -320,17 +320,39 @@ export function planPayment(state: State, input: unknown, context: PaymentContex
   }
 }
 
+/** Öğrencinin ayrılış kaydından tahsilat iptalinin ihtiyaç duyduğu kısım (DOM-FIN-041). */
+export interface ReversalWithdrawal {
+  /** Ayrılışta kalan borç için açılan taksit; borç yoksa ya da eski kayıtta `null`. */
+  debtInvoiceId: string | null
+}
+
+/**
+ * Tahsilat ayrılış hesabının dışında mı (DOM-FIN-041): yalnız ayrılışta açılan borç taksitlerine
+ * dağıtılmış tahsilat ayrılıştan sonra alınmıştır, çünkü o taksitler ayrılıştan önce yoktu. Ayrılış
+ * öncesi tahsilat dökümdeki ödenen tutara girer; iptali iadeyi ya da borcu geçersiz kılar.
+ */
+function isAfterWithdrawal(
+  allocations: readonly PaymentAllocation[],
+  withdrawals: readonly ReversalWithdrawal[],
+): boolean {
+  const debtIds = new Set(withdrawals.flatMap((item) => item.debtInvoiceId ?? []))
+  return (
+    allocations.length > 0 && allocations.every((allocation) => debtIds.has(allocation.invoiceId))
+  )
+}
+
 /**
  * Tahsilat iptali: dağıtıldığı taksitleri yeniden açar (DOM-FIN-033). Dağılım taksit tutarını
- * aşmadığı için iptalden sonra taksit tam ödenmiş kalamaz.
+ * aşmadığı için iptalden sonra taksit tam ödenmiş kalamaz. Ayrılmış öğrencide yalnız ayrılıştan
+ * sonra kalan borca alınan tahsilat iptal edilir; borç taksiti yeniden açılır (DOM-FIN-041).
  */
 export function reversePayment(
   state: State,
   payment: {
     reversedAt: string | null
     allocations: readonly PaymentAllocation[]
-    /** Ayrılış kaydı var: iade hesabı bu tahsilata dayanır (DOM-FIN-041). */
-    studentWithdrawn?: boolean
+    /** Öğrencinin ayrılış kayıtları; iade ya da borç hesabı ayrılış öncesi tahsilata dayanır. */
+    withdrawals?: readonly ReversalWithdrawal[]
   },
   input: unknown,
 ): { reason: string } {
@@ -339,10 +361,11 @@ export function reversePayment(
     throw new DomainError('payment_already_reversed', 'Bu tahsilat zaten iptal edilmiş.', {
       kind: 'conflict',
     })
-  if (payment.studentWithdrawn === true)
+  const withdrawals = payment.withdrawals ?? []
+  if (withdrawals.length > 0 && !isAfterWithdrawal(payment.allocations, withdrawals))
     throw new DomainError(
       'payment_student_withdrawn',
-      'Ayrılış kaydı olan öğrencinin tahsilatı iptal edilemez.',
+      'Ayrılış hesabına giren tahsilat iptal edilemez; yalnız ayrılıştan sonra kalan borca alınan tahsilat iptal edilebilir.',
       { kind: 'conflict' },
     )
   const ids = new Set(payment.allocations.map((allocation) => allocation.invoiceId))

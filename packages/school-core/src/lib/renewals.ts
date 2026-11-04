@@ -5,6 +5,7 @@ import { daySchema, requiredText, type MakeId, type Session } from './domain.ts'
 import {
   itemFor,
   priceEnrollment,
+  requireSiblingDiscountEligible,
   type DiscountLine,
   type EnrollmentTariff,
   type ExtraLine,
@@ -161,18 +162,15 @@ function priceRenewal(
       path: ['tuitionCents'],
     })
   assertWithinCeiling(tuitionCents, ceiling, ['tuitionCents'])
-  // Kardeş indirimi kesin kayıttakiyle aynı koşula bağlıdır (DOM-FIN-022).
-  if (
-    data.discounts.includes('sibling') &&
-    !state.students.some(
-      (item) => item.id !== student.id && item.parentId === student.parentId && item.isActive,
-    )
-  )
-    throw new DomainError(
-      'sibling_discount_ineligible',
-      'Kardeş indirimi için aynı veliye bağlı aktif bir öğrenci gerekir.',
-      { path: ['discounts'] },
-    )
+  // Kardeş indirimi kesin kayıttakiyle aynı koşula ve sıraya bağlıdır (DOM-FIN-022).
+  if (data.discounts.includes('sibling'))
+    requireSiblingDiscountEligible(state, {
+      studentId: student.id,
+      siblingIds: state.students
+        .filter((item) => Boolean(student.parentId) && item.parentId === student.parentId)
+        .map((item) => item.id),
+      tuitionCents: announcedCents,
+    })
   // İndirim ilan ücretinden hesaplanır (DOM-FIN-020); tavanla düşen ücreti karşılayamaz.
   const discountCents = price.discounts.reduce((sum, line) => sum + line.amountCents, 0)
   if (discountCents >= tuitionCents)

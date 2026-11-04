@@ -4,7 +4,12 @@ import type { State } from '../data/seed.ts'
 import type { Role } from '../modules/navigation.ts'
 import { contractStatus, SIGNATORY_ROLES, type ContractPlanLine } from './contract-status.ts'
 import { daySchema, requiredText, type MakeId } from './domain.ts'
-import { discountLines, installmentDueDate, type EnrollmentTariff } from './enrollment.ts'
+import {
+  discountLines,
+  installmentDueDate,
+  requireSiblingDiscountEligible,
+  type EnrollmentTariff,
+} from './enrollment.ts'
 import { DomainError } from './errors.ts'
 import { FEE_DISCOUNT_KINDS, type FeeDiscountKind } from './fee-tariffs.ts'
 import { dayKey } from './format.ts'
@@ -258,17 +263,15 @@ function repricedTerms(
       { path: ['discounts'] },
     )
   const student = state.students.find((item) => item.id === source.studentId)
-  if (
-    discounts.includes('sibling') &&
-    !state.students.some(
-      (item) => item.id !== student?.id && item.parentId === student?.parentId && item.isActive,
-    )
-  )
-    throw new DomainError(
-      'sibling_discount_ineligible',
-      'Kardeş indirimi için aynı veliye bağlı aktif bir öğrenci gerekir.',
-      { path: ['discounts'] },
-    )
+  // Kardeş indirimi kesin kayıttakiyle aynı koşula ve sıraya bağlıdır (DOM-FIN-022).
+  if (discounts.includes('sibling'))
+    requireSiblingDiscountEligible(state, {
+      studentId: source.studentId,
+      siblingIds: state.students
+        .filter((item) => Boolean(student?.parentId) && item.parentId === student?.parentId)
+        .map((item) => item.id),
+      tuitionCents: source.grossCents,
+    })
   const lines = discountLines(context.tariff.discounts, source.grossCents, discounts, {
     canApproveCapException: context.canApproveCapException,
   })

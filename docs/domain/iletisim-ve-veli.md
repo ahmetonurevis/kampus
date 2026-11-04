@@ -170,7 +170,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Sağlık verisi özel nitelikli veridir; işlenmesi yasaktır, istisnalar sınırlıdır ve Kurul önlemleri zorunludur.
 - **Kaynak:** KVKK md. 6/1, 6/3-a, 6/3-c (hayat ve beden bütünlüğü), 6/4. Kurul'un "yeterli önlemler" kararının güncel metni **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — öğrenci sağlık alanı yok.
+- **Kodda:** kısmen — core kuralı (`packages/school-core/src/lib/health-profile.ts`: yapılandırılmış alanlar, hukuki dayanak, rol ve ilişkiye göre acil/tam erişim düzeyi), şifreli tablo `student_health_profiles` (migration 0060) ve depo `apps/api/src/db/health-profiles.ts`; API ucu, okuma denetimi ve ekran sonraki adımdadır. Yetişkin (18+) öğrencinin velisi sağlık bilgisine erişemez: velayet 18'de biter (`DOM-ILT-037` ile aynı yetişkinlik kuralı).
 
 ### DOM-ILT-036 · İzin formu konu türlüdür ve hedefi açılışta çözülür
 

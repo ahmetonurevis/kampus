@@ -119,6 +119,7 @@ worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame
 - Yeni alan eklerken sınıfı şema dosyasında yorumla belirtilir (`// kvkk: Ö`). Sınıfı belirtilmemiş kişisel alan incelemede reddedilir.
 - En az veri: ihtiyaç gerekçelendirilemeyen alan toplanmaz (ör. yemek modülü için tam sağlık geçmişi değil, yalnız alerji listesi).
 - Ö sınıfı veriler `records.data` içinde tutulmaz; normalleştirme ölçütü 5 gereği ayrı tabloda, uygulama düzeyinde AES-256-GCM ile şifreli kolonda tutulur (anahtar ortamdan, kurum başına türetilmiş).
+- Alan şifreleme `apps/api/src/lib/field-crypto.ts`'tedir: kurum anahtarı `FIELD_ENCRYPTION_KEY` ana anahtarından HKDF ile türetilir (salt kurum kimliği, bilgi alanı `key_version`'ı içerir); AAD satıra bağlıdır (kurum, öğrenci, tablo, kolon), şifreli değer başka satıra kopyalanırsa çözülmez. İlk kullanım `student_health_profiles` (IST-020); okuma ve yazma denetimi `DOM-YTK-052`.
 - Ses ve konuşma kayıtları kimlik tespiti için kullanılmaz; kullanılırsa biyometrik sayılır ve ayrı ADR ister.
 
 ## 9. Açık rıza ve aydınlatma
@@ -155,6 +156,7 @@ worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame
 ## 12. Gizli anahtar yönetimi
 
 - Bütün gizli değerler ortam değişkenindedir: `DATABASE_URL`, `BETTER_AUTH_SECRET`, `BETTER_AUTH_URL`, `FIELD_ENCRYPTION_KEY`, `CORS_ORIGINS`, SMTP bilgileri. `config.ts` başlangıçta doğrular; eksikse süreç başlamaz.
+- `FIELD_ENCRYPTION_KEY` (base64, 32 bayt; `openssl rand -base64 32`) üretimde zorunludur ve `.env.example`/test anahtarı gibi bilinen ya da elle yazılmış değer reddedilir; geliştirme ve testte verilmezse bilinen geliştirme anahtarı kullanılır (`DEVELOPMENT_FIELD_ENCRYPTION_KEY`). Anahtar kaybolursa şifreli satırlar çözülemez: yedeği veritabanı yedeğinden ayrı tutulur.
 - `.env` commit edilmez; `.env.example` yalnız yer tutucu değerle güncel tutulur.
 - Üretim sırları sunucunun sır deposunda/ortamında; nasıl tutulacağı dağıtım ADR'sindedir. Geliştirme ve test sırları üretimden farklıdır.
 - Anahtar döndürme: `BETTER_AUTH_SECRET` yılda bir ve yetkili personel ayrılığında döndürülür (imzalı çerezler geçersizleşir, kullanıcılar yeniden giriş yapar; bu sırla şifrelenmiş değer, ör. iki adım sırrı, varsa etkisi önce test ortamında denenir); alan şifreleme anahtarı sürümlü (`key_version` kolonu) döndürülür.

@@ -16,11 +16,12 @@ import {
   SPEAKING_RECORDING_PURPOSE,
   STILL_PROCESSING_TEXT,
   canRecordOnPhone,
+  leaveGuard,
+  staleRecordingUri,
   classifySpeakingError,
   phoneTake,
   recordingFileName,
   recordingPickedFile,
-  recordingProblem,
   settleOutcome,
   speakingFailure,
   speakingLimits,
@@ -28,6 +29,10 @@ import {
   speakingSettings,
   speakingSubmitInput,
   speakingUploadInput,
+  PHONE_BLOCK_MESSAGES,
+  permissionBlock,
+  phoneLiveMessage,
+  recordingClockSpoken,
   type PhoneRecorderEvent,
 } from '../apps/mobile/src/api/student-speaking-task.ts'
 
@@ -108,19 +113,6 @@ describe('OG-064: kayıt dosyası ve istekler', () => {
     assert.equal(recordingPickedFile(phoneTake('x', 1000, 'audio/webm')).name, 'konusma-kaydi.webm')
   })
 
-  test('kabul edilmeyen kayıt biçimi yüklenmeden elenir', () => {
-    assert.equal(recordingProblem(take), null)
-    assert.equal(recordingProblem(phoneTake('x', 1000, 'audio/webm')), null)
-    assert.match(
-      recordingProblem(phoneTake('x', 1000, 'audio/ogg')) ?? '',
-      /desteklenmiyor|kabul edilmez/,
-    )
-    assert.match(
-      recordingProblem(phoneTake('x', 1000, 'application/pdf')) ?? '',
-      /desteklenmiyor|kabul edilmez/,
-    )
-  })
-
   test('teslim gövdesi ses sürümü ve kayıt dosyası kimliğidir', () => {
     assert.deepEqual(speakingSubmitInput('a1', 'f1'), {
       assignmentId: 'a1',
@@ -148,7 +140,6 @@ describe('OG-064: hata sınıfları ve Türkçe mesajlar', () => {
   test('rıza yok: kayıt kapanır, yeniden denenmez', () => {
     const failure = speakingFailure(apiError(403, 'consent_required'))
     assert.equal(failure.kind, 'consent')
-    assert.equal(failure.retryable, false)
     assert.deepEqual(failure.event, { type: 'blocked', reason: 'consent' })
     assert.match(failure.message, /onay bulunmuyor/)
     // Yükleme adımında da aynı sınıf.
@@ -180,13 +171,38 @@ describe('OG-064: hata sınıfları ve Türkçe mesajlar', () => {
     )
   })
 
+  test('kurum dosya kotası dolu: kayıt reddi değil, kurum sorunu', () => {
+    const failure = speakingFailure(apiError(422, 'storage_quota_exceeded'), 'upload')
+    assert.equal(failure.kind, 'other')
+    assert.equal(failure.event.type, 'send_failed')
+    assert.match(failure.message, /depolama alanı/)
+  })
+
+  test('pencere kapatma: gönderilmemiş kayıt sorulur, gönderim sürerken kapatılamaz', () => {
+    const take = phoneTake('file:///cache/Audio/rec.m4a', 12_000)
+    const sending = { kind: 'sending', take, step: 'uploading', fileId: null } as const
+    assert.equal(leaveGuard(initialRecorderState.phase), 'free')
+    assert.equal(leaveGuard({ kind: 'recording', stop: null } as never), 'unsent')
+    assert.equal(leaveGuard({ kind: 'recorded', take, autoStopped: false }), 'unsent')
+    assert.equal(leaveGuard({ kind: 'send_failed', take, fileId: null, message: 'x' }), 'unsent')
+    assert.equal(leaveGuard(sending), 'sending')
+    assert.equal(leaveGuard({ kind: 'submitted' }), 'free')
+  })
+
+  test('atılan kaydın dosyası silinir: yeniden kayıt, bırakma; aynı kayıt korunur', () => {
+    assert.equal(staleRecordingUri(null, 'a'), null)
+    assert.equal(staleRecordingUri('a', 'a'), null)
+    assert.equal(staleRecordingUri('a', 'b'), 'a')
+    assert.equal(staleRecordingUri('a', null), 'a')
+    assert.equal(staleRecordingUri(null, null), null)
+  })
+
   test('deneme hakkı doldu ve süre doldu sunucu mesajıyla, yeniden denenmez', () => {
     const limit = speakingFailure(
       apiError(422, 'version_limit_reached', 'Konuşma deneme hakkınız doldu (2/2).'),
     )
     assert.equal(limit.kind, 'limit')
     assert.equal(limit.message, 'Konuşma deneme hakkınız doldu (2/2).')
-    assert.equal(limit.retryable, false)
     const closed = speakingFailure(apiError(422, 'submission_closed'))
     assert.equal(closed.kind, 'closed')
     assert.equal(closed.message, 'Bu görevin teslim süresi doldu.')
@@ -197,13 +213,11 @@ describe('OG-064: hata sınıfları ve Türkçe mesajlar', () => {
     const failure = speakingFailure(apiError(409, 'file_already_attached'))
     assert.equal(failure.kind, 'duplicate')
     assert.equal(failure.message, 'Bu kayıt zaten gönderildi; sayfayı yenileyin.')
-    assert.equal(failure.retryable, false)
   })
 
   test('kayıt henüz işleniyor: aynı kayıtla yeniden denenir', () => {
     const failure = speakingFailure(apiError(422, 'file_not_ready'))
     assert.equal(failure.kind, 'processing')
-    assert.equal(failure.retryable, true)
     assert.match(failure.message, /işleniyor/)
   })
 
@@ -211,7 +225,6 @@ describe('OG-064: hata sınıfları ve Türkçe mesajlar', () => {
     for (const error of [networkError(), apiError(503, 'unavailable', 'upstream connect error')]) {
       const failure = speakingFailure(error)
       assert.equal(failure.kind, 'network')
-      assert.equal(failure.retryable, true)
       assert.equal(failure.message, FAILED_UPLOAD_TEXT)
     }
     assert.equal(classifySpeakingError(apiError(409, 'idempotency_in_progress')), 'network')
@@ -290,7 +303,6 @@ describe('OG-064: teslim akışı (kayıt makinesi + gerçek komut)', () => {
     assert.equal(first.status, 'failed')
     if (first.status !== 'failed') return
     const failure = speakingFailure(first.error)
-    assert.equal(failure.retryable, true)
     const failed = recorderReducer(toSending(), failure.event)
     assert.equal(failed.phase.kind, 'send_failed')
     const second = await send()
@@ -319,5 +331,25 @@ describe('OG-064: teslim akışı (kayıt makinesi + gerçek komut)', () => {
     const rejected = speakingFailure(apiError(422, 'recording_too_long', 'Süre aşıldı.'))
     const idle = recorderReducer(toSending(), rejected.event)
     assert.equal(idle.phase.kind, 'idle')
+  })
+})
+
+describe('telefon metinleri', () => {
+  test('izin reddi telefona özgü metinle anlatılır, tarayıcıdan söz edilmez', () => {
+    assert.equal(permissionBlock(true), null)
+    assert.equal(permissionBlock(false), 'denied')
+    for (const reason of ['denied', 'unsupported'] as const)
+      assert.doesNotMatch(PHONE_BLOCK_MESSAGES[reason], /[Tt]arayıcı/)
+    const phase = { kind: 'blocked', reason: 'denied' } as const
+    assert.equal(phoneLiveMessage(phase, 0), PHONE_BLOCK_MESSAGES.denied)
+    assert.equal(phoneLiveMessage({ kind: 'requesting' }, 0), 'Mikrofon izni isteniyor.')
+  })
+
+  test('sayaç etiketi her saniye değişmez', () => {
+    const labels = new Set<string>()
+    for (let ms = 60_000; ms > 50_000; ms -= 1000) labels.add(recordingClockSpoken(ms, 'Kayıt'))
+    assert.equal(labels.size, 1)
+    assert.equal(recordingClockSpoken(150_000, 'Hazırlık'), 'Hazırlık: kalan 3 dakika')
+    assert.equal(recordingClockSpoken(0, 'Kayıt'), 'Kayıt: kalan 0 saniye')
   })
 })

@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { View } from 'react-native'
+import { Platform, View } from 'react-native'
 import { isLearnerAssignment } from '@kampus/react-shared/student-task-model.ts'
 import { useLearnerAssignments } from '@kampus/react-shared/use-learner-task-progress.ts'
 import { Badge, Empty, SearchField, T } from '../../ui/components.tsx'
@@ -11,12 +11,16 @@ import { studentTaskRow, type StudentTaskRow } from '../student-quiz-task.ts'
 import { writingTaskMatches } from '../student-writing.ts'
 import { useListMemory } from '../view-memory.tsx'
 import { TaskQuizSheet } from './task-quiz-sheet.tsx'
+import { SpeakingSheet } from './speaking-sheet.tsx'
 import { WritingSheet } from './writing-sheet.tsx'
+
+/** Telefon ses kaydı alabilir; web dışa aktarımında kayıt yoktur, görev "web'den çözülür" kalır. */
+const CAN_RECORD = Platform.OS !== 'web'
 
 /** Açılabilir satır dokununca ilgili pencereyi seçer; açılmayan satır yalnız bilgidir. */
 const openProps = (
   row: StudentTaskRow,
-  select: (value: { id: string; open: 'writing' | 'quiz' }) => void,
+  select: (value: { id: string; open: 'writing' | 'quiz' | 'speaking' }) => void,
 ) => {
   const open = row.open
   return open ? { onPress: () => select({ id: row.id, open }) } : {}
@@ -26,12 +30,15 @@ const openProps = (
  * Öğrenci: Ödevlerim > Görevler (web `StudentTaskSection`; IST-124). Öğretmen puanlı ve otomatik
  * puanlı görevler tek listededir; durum, hak ve açılmış puan atama listesinin kursiyer özetinden
  * gelir, kapsamı sunucu uygular. Yazma görevi `writing-sheet.tsx`, açılabilir quiz görevi
- * `task-quiz-sheet.tsx` penceresini açar (`studentTaskRow`); konuşma, el yazısı ve dinlemeli görevler
- * satırda "web'den çözülür" notuyla kalır. Arama ve sayfa yalnız bellekte tutulur.
+ * `task-quiz-sheet.tsx`, konuşma görevi `speaking-sheet.tsx` penceresini açar (`studentTaskRow`);
+ * el yazısı, dinlemeli görevler ve kayıt alamayan cihazda konuşma satırda "web'den çözülür" kalır. Arama ve sayfa yalnız bellekte tutulur.
  */
 export function StudentTasks() {
   const { state, setSearch, setIndex } = useListMemory('ogrenci/odevler/gorevler')
-  const [selected, setSelected] = useState<{ id: string; open: 'writing' | 'quiz' } | null>(null)
+  const [selected, setSelected] = useState<{
+    id: string
+    open: 'writing' | 'quiz' | 'speaking'
+  } | null>(null)
   const assignments = useLearnerAssignments()
   const now = useNow()
   const items = useMemo(() => assignments.items.filter(isLearnerAssignment), [assignments.items])
@@ -39,7 +46,7 @@ export function StudentTasks() {
     () =>
       assignments.isReady
         ? items
-            .map((item) => studentTaskRow(item, now))
+            .map((item) => studentTaskRow(item, now, { canRecord: CAN_RECORD }))
             .filter((row) => writingTaskMatches(row, state.search))
         : undefined,
     [assignments.isReady, items, now, state.search],
@@ -98,6 +105,13 @@ export function StudentTasks() {
       )}
       {selected?.open === 'writing' && (
         <WritingSheet
+          key={selected.id}
+          assignmentId={selected.id}
+          onClose={() => setSelected(null)}
+        />
+      )}
+      {selected?.open === 'speaking' && (
+        <SpeakingSheet
           key={selected.id}
           assignmentId={selected.id}
           onClose={() => setSelected(null)}

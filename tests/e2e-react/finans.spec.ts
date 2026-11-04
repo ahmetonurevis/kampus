@@ -94,7 +94,9 @@ test.describe('Finans: tahsilat', () => {
 
     await page.goto(ADMIN_URL)
     await page.getByLabel('Tabloda ara').fill('Emir Kaya')
-    await expect(page).toHaveURL(/[?&]q=Emir/)
+    // Arama metni adreste beklenmez (ADR 0009); etkisi kutu değeri ve süzülmüş satırlarla görülür.
+    await expect(page.getByLabel('Tabloda ara')).toHaveValue('Emir Kaya')
+    await expectEveryRow(bodyRows(page), 'Emir Kaya')
     const row = bodyRows(page).filter({ hasText: '6. taksit' })
     await expect(row).toContainText('Emir Kaya')
     await expect(row).toContainText('Yaklaşan')
@@ -977,7 +979,7 @@ test.describe('Finans: liste', () => {
     await page.getByLabel('Tabloda ara').fill('deniz yilmaz')
     await expect(resultCount(page)).toContainText('/ 8 kayıt')
     await page.getByLabel('Tabloda ara').fill('7-a')
-    await expect(page).toHaveURL(/[?&]q=7-a/)
+    await expect(page.getByLabel('Tabloda ara')).toHaveValue('7-a')
     await expect(resultCount(page)).not.toContainText('/ 8 kayıt')
     await expect(bodyRows(page).first()).toContainText('7-A')
   })
@@ -1023,16 +1025,31 @@ test.describe('Finans: liste', () => {
     await expectEveryRow(bodyRows(page), 'Yaklaşan')
 
     await page.getByLabel('Tabloda ara').fill('Deniz Yılmaz')
-    await expect(page).toHaveURL(/[?&]q=Deniz/)
+    await expect(page.getByLabel('Tabloda ara')).toHaveValue('Deniz Yılmaz')
     await page.getByLabel('Ödeme durumu').selectOption({ label: 'Ödendi' })
     await expect(resultCount(page)).toContainText('1–3 / 3 kayıt')
     await expectEveryRow(bodyRows(page), ['Deniz Yılmaz', 'Ödendi'])
 
-    // Yenileme ve geri/ileri durumu korur.
-    await page.reload()
+    // Başka sayfaya gidip geri dönmek aramayı ve süzgeci geri getirir (ADR 0009: arama bellekte).
+    await page
+      .getByRole('navigation', { name: 'Menü' })
+      .getByRole('link', { name: 'Genel Bakış' })
+      .click()
+    await expect(page).toHaveURL(/\/yonetici\/dashboard$/)
+    await page.goBack()
     await expect(page.getByLabel('Tabloda ara')).toHaveValue('Deniz Yılmaz')
     await expect(page.getByLabel('Ödeme durumu')).toHaveValue('odendi')
     await expect(resultCount(page)).toContainText('1–3 / 3 kayıt')
+    await page.goForward()
+    await expect(page).toHaveURL(/\/yonetici\/dashboard$/)
+    await page.goBack()
+    await expect(page.getByLabel('Tabloda ara')).toHaveValue('Deniz Yılmaz')
+    await expect(resultCount(page)).toContainText('1–3 / 3 kayıt')
+
+    // Yenileme süzgeci korur; arama metninin yenilemede kalması beklenmez (ADR 0009).
+    await page.reload()
+    await expect(page.getByLabel('Ödeme durumu')).toHaveValue('odendi')
+    await expectEveryRow(bodyRows(page), 'Ödendi')
 
     await page.getByRole('button', { name: 'Aramayı ve filtreleri temizle' }).first().click()
     await expect(resultCount(page)).toContainText('/ 1920 kayıt')

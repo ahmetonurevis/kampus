@@ -1704,6 +1704,39 @@ describe('aday uçları', () => {
     })
   })
 
+  test('DOM-KAY-010, ON-116: son yeri tutan planlanmış yenileme varken kesin kayıt 422 class_capacity_full', async () => {
+    const students = SAMPLE.students ?? []
+    const classes = SAMPLE.classes?.map((item) => ({ ...item, capacity: students.length + 1 }))
+    const renewal = {
+      id: 'renewal-test-on116',
+      studentId: 'test-renewing-student',
+      fromClassId: 'test-lower-class',
+      targetClassId: 'c1',
+      year: 2027,
+      mode: 'renew',
+      amount: 0,
+      status: 'Planlandı',
+    }
+    const a = await institution({}, { ...SAMPLE, classes: classes ?? [], renewals: [renewal] })
+    await publishTariff(a.adminCookie)
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(a.adminCookie, 'pr1', ENROLLMENT, version),
+        422,
+        'class_capacity_full',
+      )
+    })
+    // Yenileme uygulanmışsa yer tutmaz; aynı sınıfa kayıt yazılır.
+    const b = await institution(
+      {},
+      { ...SAMPLE, classes: classes ?? [], renewals: [{ ...renewal, status: 'Uygulandı' }] },
+    )
+    await publishTariff(b.adminCookie)
+    const done = await enroll(b.adminCookie, 'pr1', ENROLLMENT, await versionOf(b.id, 'pr1'))
+    assert.equal(done.statusCode, 201, done.body)
+  })
+
   test('DOM-KAY-012: başlıklar ve gövde doğrulanır; geçersiz kimlik, serbest tutar, eski yakınlık değeri ve bilinmeyen alan 400', async () => {
     const a = await pricedInstitution()
     const cookie = await frontDesk(a.id)

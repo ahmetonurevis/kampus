@@ -253,6 +253,8 @@ describe('işlem çalıştırıcı', () => {
     'parents',
     'invoices',
     'contracts',
+    // Kontenjan planlanmış yenilemeleri de sayar (DOM-KAY-010, ON-116).
+    'renewals',
   ] as const satisfies readonly CollectionName[]
   const prospect = seed.prospects.find((item) => !item.studentId && item.stage !== 'Kayıt oldu')
   const target = seed.classes.find(

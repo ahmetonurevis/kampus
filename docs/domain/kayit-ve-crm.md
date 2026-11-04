@@ -121,7 +121,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Nakil ve düzey MEB kayıt kurallarına tabidir; naklen gelenin dönem puanı önceki okulun puanlarıyla hesaplanır.
 - **Kaynak:** OKY md. 52 (naklen gelenlerin dönem puanı).
 - **Kurum türü:** `school`
-- **Kodda:** yok — kayıt formu sınıfı serbest seçer, nakil bilgisi yok.
+- **Kodda:** kısmen — kesin kayıt formu adayın ilgi metnindeki düzeyi okur ("7. Sınıf · Ortaokul" → 7; `pages/crm/enrollment-form.ts` `interestGrade`), o düzeydeki sınıfları listenin başına alır ve "önerilen" diye işaretler; başka düzeyde sınıf seçilirse uyarır, engellemez (ON-120). Adayda yapısal hedef düzey olmadığı için sunucu denetimi yok; 9. sınıf diploma bilgisi ve naklen kayıtta önceki okul/nakil tarihi tutulmaz.
 
 ### DOM-KAY-015 · Kaydın e-Okul/e-Özel karşılığı
 

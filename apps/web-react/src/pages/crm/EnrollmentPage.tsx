@@ -62,8 +62,11 @@ import {
   enrollmentFieldForCode,
   enrollmentServerError,
   guardianModeFor,
+  interestGrade,
   paymentPlanHref,
   prospectChangeValues,
+  seatsTaken,
+  suggestedClassOrder,
 } from './enrollment-form.ts'
 import { awardablePrograms, programValueLabel } from '../finance/scholarship-forms.ts'
 
@@ -265,8 +268,17 @@ function EnrollmentForm({
   const campusName = (id: string) => branches.data?.find((row) => row.id === id)?.record.name ?? ''
   const occupancy = useCoreCounts('students', OCCUPANCY_QUERY)
   const occupied = (classId: string) =>
-    occupancy.data?.groups.find((group) => group.value === classId)?.count ?? 0
+    seatsTaken(
+      classId,
+      occupancy.data?.groups.find((group) => group.value === classId)?.count ?? 0,
+      (plannedRenewals.data ?? []).map((row) => row.record),
+    )
+  // Adayın ilgi metnindeki düzeye uyan sınıflar önce gelir (DOM-KAY-014, ON-120); yalnız okulda.
+  const targetGrade = institutionType === 'school' ? interestGrade(prospect?.record.interest) : null
+  const classOptions = suggestedClassOrder(activeClasses, targetGrade)
   const room = activeClasses.find((row) => row.id === values.classId)
+  const gradeMismatch =
+    targetGrade !== null && room !== undefined && room.record.grade !== targetGrade
   // Veli seçimleri doğum tarihine göre: "kendisi" yalnız kursta 18 yaş ve üstünde (DOM-KAY-012).
   const guardianModes = allowedGuardianModes(institutionType, values.birthDate)
   // Kurs adayının yaş grubu doğum tarihiyle uyuşmazsa sunucu 422 `birth_date_minor_mismatch`
@@ -278,6 +290,12 @@ function EnrollmentForm({
   )
   const otherCampus = Boolean(room && branchId && room.record.branchId !== branchId)
   const { session } = useAuth()
+  // Planlanmış yenilemeler de yer tutar (DOM-KAY-010, ON-116); yenileme modülü kapalıysa plan yoktur.
+  const plannedRenewals = useCoreAll(
+    'renewals',
+    { filters: { status: ['Planlandı'] } },
+    { enabled: session?.modules.renewal === true },
+  )
   // Bursu yalnız yönetici atar (DOM-FIN-052); ön büroya seçenek gösterilmez.
   const scholarshipPrograms = useScholarshipPrograms(
     {
@@ -486,7 +504,7 @@ function EnrollmentForm({
                     })}
                   >
                     <NativeSelectOption value="">Sınıf seçin</NativeSelectOption>
-                    {activeClasses.map((row) => (
+                    {classOptions.map((row) => (
                       <NativeSelectOption
                         key={row.id}
                         value={row.id}
@@ -495,11 +513,20 @@ function EnrollmentForm({
                         {row.record.name}
                         {values.allCampuses ? ` · ${campusName(row.record.branchId)}` : ''} (
                         {occupied(row.id)}/{row.record.capacity})
+                        {targetGrade !== null && row.record.grade === targetGrade
+                          ? ' · önerilen'
+                          : ''}
                       </NativeSelectOption>
                     ))}
                   </NativeSelect>
                 )}
               </FormField>
+              {gradeMismatch ? (
+                <p role="note" className="text-sm text-muted-foreground">
+                  Seçilen sınıf adayın ilgilendiği düzeyden ({targetGrade}. sınıf) farklı; naklen ya
+                  da farklı düzeye kayıt değilse önerilen sınıflardan birini seçin.
+                </p>
+              ) : null}
               <label className="flex min-h-6 items-center gap-2 text-sm">
                 <input
                   type="checkbox"

@@ -25,6 +25,8 @@ const custodial = { custody: 'full', contactRestricted: false } as const
 const joint = { custody: 'joint', contactRestricted: false } as const
 const noCustody = { custody: 'none', contactRestricted: false } as const
 const restricted = { custody: 'none', contactRestricted: true } as const
+/** Velayetli ama iletişimi kısıtlı (mahkeme kararı vb.): kısıt velayeti ezer (DOM-ILT-070). */
+const custodialRestricted = { custody: 'full', contactRestricted: true } as const
 
 function input(actor: HealthActor, birthDate: string | undefined = MINOR_BIRTH): HealthAccessInput {
   return {
@@ -83,6 +85,13 @@ describe('healthAccessFor ve canWriteHealthProfile (IST-020, DOM-ILT-035)', () =
         false,
       ],
       ['kısıtlı veli erişemez', { role: 'veli', bonds: [restricted] }, MINOR_BIRTH, 'none', false],
+      [
+        'velayetli ama iletişimi kısıtlı veli erişemez',
+        { role: 'veli', bonds: [custodialRestricted] },
+        MINOR_BIRTH,
+        'none',
+        false,
+      ],
       ['bağı olmayan veli erişemez', { role: 'veli', bonds: [] }, MINOR_BIRTH, 'none', false],
       [
         'yetişkin öğrencinin velisi erişemez',
@@ -163,6 +172,11 @@ describe('requireHealthRead ve requireHealthWrite', () => {
       () => requireHealthRead(input({ role: 'veli', bonds: [restricted] })),
       isDomainError('student_not_found', 'not_found'),
     )
+    for (const write of [requireHealthRead, requireHealthWrite])
+      assert.throws(
+        () => write(input({ role: 'veli', bonds: [custodialRestricted] })),
+        isDomainError('student_not_found', 'not_found'),
+      )
     assert.throws(
       () => requireHealthRead(input({ role: 'ogrenci', self: false })),
       isDomainError('student_not_found', 'not_found'),

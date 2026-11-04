@@ -119,7 +119,7 @@ worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame
 - Yeni alan eklerken sınıfı şema dosyasında yorumla belirtilir (`// kvkk: Ö`). Sınıfı belirtilmemiş kişisel alan incelemede reddedilir.
 - En az veri: ihtiyaç gerekçelendirilemeyen alan toplanmaz (ör. yemek modülü için tam sağlık geçmişi değil, yalnız alerji listesi).
 - Ö sınıfı veriler `records.data` içinde tutulmaz; normalleştirme ölçütü 5 gereği ayrı tabloda, uygulama düzeyinde AES-256-GCM ile şifreli kolonda tutulur (anahtar ortamdan, kurum başına türetilmiş).
-- Alan şifreleme `apps/api/src/lib/field-crypto.ts`'tedir: kurum anahtarı `FIELD_ENCRYPTION_KEY` ana anahtarından HKDF ile türetilir (salt kurum kimliği, bilgi alanı `key_version`'ı içerir); AAD satıra bağlıdır (kurum, öğrenci, tablo, kolon), şifreli değer başka satıra kopyalanırsa çözülmez. İlk kullanım `student_health_profiles` (IST-020); okuma ve yazma denetimi `DOM-YTK-052`.
+- Alan şifreleme `apps/api/src/lib/field-crypto.ts`'tedir: kurum anahtarı `FIELD_ENCRYPTION_KEY` ana anahtarından HKDF ile türetilir (salt kurum kimliği, bilgi alanı `key_version`'ı içerir); AAD satıra bağlıdır (kurum, satır kimliği, öğrenci, hukuki dayanak, tablo, kolon, anahtar sürümü); şifreli değer başka satıra kopyalanırsa ya da dayanak kodu ham satırda değiştirilirse çözülmez. İlk kullanım `student_health_profiles` (IST-020); okuma ve yazma denetimi `DOM-YTK-052`.
 - Ses ve konuşma kayıtları kimlik tespiti için kullanılmaz; kullanılırsa biyometrik sayılır ve ayrı ADR ister.
 
 ## 9. Açık rıza ve aydınlatma

@@ -206,7 +206,7 @@ Migration `0034_create_cefr_decisions`; şema `apps/api/src/db/schema/cefr.ts`, 
 
 Migration `0060_student_health_profiles`; şema `apps/api/src/db/schema/student-health-profiles.ts`, depo `apps/api/src/db/health-profiles.ts`, kural core `lib/health-profile.ts` (DOM-ILT-035, DOM-YTK-052). Özel nitelikli veri (Ö) ölçüt 5 gereği `records`'ta değildir.
 
-- `student_health_profiles`: birincil anahtar `(institution_id, id)`; öğrenci (`student_id`) `records`'tadır (yabancı anahtar yok). İçerik tek şifreli kolondadır (`content_ciphertext`, AES-256-GCM, AAD kurum, öğrenci, tablo ve kolona bağlı); `key_version` anahtar sürümüdür, hukuki dayanak (`legal_basis`) şifresiz kısa koddur. Öğrenci başına tek etkin satır `student_health_profiles_student_key` (arşivli hariç). Şifreleme `src/lib/field-crypto.ts` (`guvenlik-kvkk.md` §8, §12).
+- `student_health_profiles`: birincil anahtar `(institution_id, id)`; öğrenci (`student_id`) `records`'tadır (yabancı anahtar yok). İçerik tek şifreli kolondadır (`content_ciphertext`, AES-256-GCM, AAD kurum, satır kimliği, öğrenci, hukuki dayanak, tablo ve kolona bağlı); `key_version` anahtar sürümüdür, hukuki dayanak (`legal_basis`) şifresiz kısa koddur. Öğrenci başına tek etkin satır `student_health_profiles_student_key` (arşivli hariç). Şifreleme `src/lib/field-crypto.ts` (`guvenlik-kvkk.md` §8, §12).
 
 ## 5. Migration kuralları
 

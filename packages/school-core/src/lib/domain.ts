@@ -5,6 +5,7 @@ import type { Role } from '../modules/navigation.ts'
 import { dayKey } from './format.ts'
 import type { ActorLink } from './scope.ts'
 import { DomainError } from './errors.ts'
+import { studentsWithEffect } from './student-roster.ts'
 
 z.config(z.locales.tr())
 
@@ -179,7 +180,11 @@ export function recordAttendance(
   now = new Date().toISOString(),
   options: AttendanceOptions = {},
 ) {
-  const students = state.students.filter((s) => s.classId === classId && s.isActive)
+  const students = studentsWithEffect(
+    state.students.filter((s) => s.classId === classId),
+    state,
+    'attendance',
+  )
   if (!Number.isFinite(+new Date(date)))
     throw new DomainError('invalid_attendance_date', 'Geçerli bir yoklama tarihi seçin.')
   if (dayKey(date) > dayKey(now))

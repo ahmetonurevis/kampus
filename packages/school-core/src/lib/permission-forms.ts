@@ -8,6 +8,7 @@ import type { Participant } from './communication.ts'
 import type { MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { dayKey } from './format.ts'
+import { studentsWithEffect } from './student-roster.ts'
 import type { LearnerAgeFacts } from './notifications.ts'
 import type { RequestActor } from './requests.ts'
 
@@ -448,8 +449,12 @@ function resolveStudents(state: State, targets: Targets): string[] {
       throw new DomainError('record_inactive', 'Pasif sınıfa izin formu açılamaz.', {
         path: ['classIds'],
       })
-    for (const student of state.students)
-      if (student.classId === classId && student.isActive !== false) add(student.id)
+    for (const student of studentsWithEffect(
+      state.students.filter((s) => s.classId === classId),
+      state,
+      'academicNotices',
+    ))
+      add(student.id)
   }
   for (const studentId of targets.targetStudentIds) {
     const student = state.students.find((s) => s.id === studentId)
@@ -458,7 +463,7 @@ function resolveStudents(state: State, targets: Targets): string[] {
         kind: 'not_found',
         path: ['studentIds'],
       })
-    if (student.isActive === false)
+    if (studentsWithEffect([student], state, 'academicNotices').length === 0)
       throw new DomainError('student_inactive', 'Kaydı pasif öğrenciye izin formu açılamaz.', {
         path: ['studentIds'],
       })

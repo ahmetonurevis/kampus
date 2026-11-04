@@ -67,7 +67,7 @@ export const ASSESSMENT_COMMANDS = {
 export const PLATFORM_OPERATION_COMMANDS = {
   // `schedule`: geç kalma dakikası günün ders süresiyle sınırlanır (DOM-AKD-036). API yalnız
   // sınıfın derslerini yükler (`loadScope`), kurumun bütün programını değil.
-  'attendance.record': spec('academic', [...SCOPE, 'attendance', 'schedule']),
+  'attendance.record': spec('academic', [...SCOPE, 'renewals', 'attendance', 'schedule']),
   'grade.record': spec('academic', [...SCOPE, 'grades', 'quizzes', 'quizAttempts']),
   'grade.update': spec('academic', [...SCOPE, 'grades']),
   'record.archive': spec(null, [
@@ -97,6 +97,7 @@ export const PLATFORM_OPERATION_COMMANDS = {
   'teacher.save': spec(null, [...SCOPE, 'branches', 'tutorSessions']),
   'class.save': spec(null, [
     ...SCOPE,
+    'renewals',
     'branches',
     'homework',
     'submissions',
@@ -106,8 +107,14 @@ export const PLATFORM_OPERATION_COMMANDS = {
     'studyTasks',
     ...CONFLICTS,
   ]),
-  // İletişim (`lib/communication.ts`); alıcı çözümü kampüs listesini de okur.
-  'announcement.publish': spec('communication', [...SCOPE, 'branches', 'announcements']),
+  // İletişim (`lib/communication.ts`); alıcı çözümü kampüs listesini ve kayıt durumunu (dönem
+  // geçişi kayıtları, DOM-KAY-026) da okur.
+  'announcement.publish': spec('communication', [
+    ...SCOPE,
+    'renewals',
+    'branches',
+    'announcements',
+  ]),
   'announcement.revise': spec('communication', [...SCOPE, 'announcements']),
   'announcement.withdraw': spec('communication', [...SCOPE, 'announcements']),
   'announcement.read': spec('communication', [...SCOPE, 'announcements']),
@@ -161,11 +168,13 @@ export const PLATFORM_OPERATION_COMMANDS = {
   // yükler.
   'permissionForm.create': spec('communication', [
     ...SCOPE,
+    'renewals',
     'permissionForms',
     'permissionDecisions',
   ]),
   'permissionForm.update': spec('communication', [
     ...SCOPE,
+    'renewals',
     'permissionForms',
     'permissionDecisions',
   ]),

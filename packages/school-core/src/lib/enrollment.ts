@@ -127,10 +127,21 @@ export interface EnrollmentTariff {
 }
 
 /**
- * Kurs türü mü (DOM-KAY-012): okul (`school`, ortaokul ve lise) dışındaki her tür kurstur. Bugün
- * `language_school`; ileride üniversiteye hazırlık, KPSS akademisi gibi kurslar aynı kuralı alır.
+ * Kurs türü mü (DOM-KAY-012): okul (`school`, ortaokul ve lise) dışındaki her tür kurstur: dil
+ * okulu (`language_school`) ve sınav hazırlık kursu (`course_center`, ADR 0008). Core
+ * `adultEnrollsWithoutGuardian` aynı kuralı adlandırır.
  */
 export const isCourse = (institutionType: InstitutionType) => institutionType !== 'school'
+
+/**
+ * Kesin kayıtta açılan sözleşmenin başlığı (ADR 0008 karar 1). Okul ve dil okulu bugünkü başlığını
+ * korur; okul dışındaki diğer türler (kurs) mevzuattaki adıyla "özel öğretim kursu" sözleşmesidir.
+ */
+export function enrollmentContractTitle(institutionType: InstitutionType): string {
+  if (institutionType === 'school') return 'Özel okul eğitim sözleşmesi'
+  if (institutionType === 'language_school') return 'Dil kursu eğitim sözleşmesi'
+  return 'Özel öğretim kursu eğitim sözleşmesi'
+}
 
 /**
  * Kesin kayıtta veli zorunlu mu (DOM-KAY-012): okulda her yaşta (18 yaşını doldurmuş öğrencide de);
@@ -481,10 +492,7 @@ export function enrollProspectWithTariff(
       totalCents: netCents,
       count: data.installmentCount,
       startDate: data.firstDueDate,
-      contractTitle:
-        context.institutionType === 'language_school'
-          ? 'Dil kursu eğitim sözleşmesi'
-          : 'Özel okul eğitim sözleşmesi',
+      contractTitle: enrollmentContractTitle(context.institutionType),
       academicYear: context.academicYear,
       extras: price.extras,
       guardian:
@@ -857,7 +865,7 @@ type Enrollment = {
   /** Başka kampüsün sınıfı bilinçli seçildi; yoksa 422 `class_campus_mismatch`. */
   allowOtherCampus?: boolean
 }
-const SCHOOL_CONTRACT_TITLE = 'Özel okul eğitim sözleşmesi'
+const SCHOOL_CONTRACT_TITLE = enrollmentContractTitle('school')
 
 /**
  * Çevrimdışı demo girişi: `registrationSchema` (tam TL).

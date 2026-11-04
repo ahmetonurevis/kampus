@@ -5,6 +5,7 @@ import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import {
   allowedGuardianModes,
   assertRenewalWithinTariff,
+  enrollmentContractTitle,
   enrollmentFormSchema,
   enrollmentFormToBody,
   enrollProspect,
@@ -25,6 +26,10 @@ import {
   type EnrollmentTariff,
 } from '../packages/school-core/src/lib/enrollment.ts'
 import type { FeeItem } from '../packages/school-core/src/lib/fee-tariffs.ts'
+import {
+  INSTITUTION_TYPES,
+  type InstitutionType,
+} from '../packages/school-core/src/modules/collection-modules.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 const NOW = '2026-10-06T09:00:00.000Z'
@@ -333,6 +338,53 @@ test('DOM-KAY-012: veli okulda her yaşta, kursta yalnız 18 yaş altında zorun
   // Kurs: 18 yaş günü (Europe/Istanbul) dolunca veli gerekmez.
   assert.equal(guardianRequired('language_school', '2008-10-07', now), true)
   assert.equal(guardianRequired('language_school', '2008-10-06', now), false)
+})
+
+/** Okul dışındaki türler (dil okulu, kurs): yetişkin velisiz kaydolur (ADR 0008 karar 5). */
+const COURSE_TYPES = INSTITUTION_TYPES.filter((type) => type !== 'school')
+/** Paket ders saati yalnız dil okulunda girilir (DOM-FIN-006); kurs okul gibi düz ücrettir. */
+const hoursFor = (type: InstitutionType) => (type === 'language_school' ? { lessonHours: 10 } : {})
+
+test('DOM-KAY-012, ADR 0008: okul dışındaki her türde 18 yaş ve üstü kursiyer kendisi kaydolur; veli, yaş grubu ve sözleşme başlığı', () => {
+  assert.ok(COURSE_TYPES.includes('language_school'))
+  const adultIdentity = { ...INPUT.identity, birthDate: '2000-01-01' }
+  for (const type of COURSE_TYPES) {
+    const context: Partial<EnrollmentContext> = { institutionType: type }
+    assert.equal(isCourse(type), true, type)
+    assert.deepEqual(allowedGuardianModes(type, '2000-01-01', NOW), ['self'], type)
+    assert.deepEqual(allowedGuardianModes(type, '2013-03-01', NOW), ['new', 'existing'], type)
+    const { result } = enroll(
+      { ...hoursFor(type), identity: adultIdentity, guardian: null },
+      context,
+    )
+    assert.equal(result.contract.payer, 'student', type)
+    assert.equal(result.contract.title, enrollmentContractTitle(type), type)
+    assert.notEqual(result.contract.title, enrollmentContractTitle('school'), type)
+    assert.match(result.contract.title, /kurs/, type)
+    rejectsUnchanged(
+      { ...hoursFor(type), identity: adultIdentity },
+      context,
+      'guardian_not_applicable',
+    )
+    rejectsUnchanged({ ...hoursFor(type), guardian: null }, context, 'guardian_required')
+    // Ön büronun seçtiği yaş grubu doğum tarihiyle uyuşmalıdır (DOM-KAY-003).
+    for (const [overrides, minor] of [
+      [{ identity: adultIdentity, guardian: null }, true],
+      [{}, false],
+    ] as const) {
+      const state = createSeed(new Date(NOW))
+      state.prospects.find((p) => p.id === 'pr1')!.minor = minor
+      const before = JSON.stringify(state)
+      assert.throws(
+        () => enroll({ ...hoursFor(type), ...overrides }, context, state),
+        isDomainError('birth_date_minor_mismatch'),
+        type,
+      )
+      assert.equal(JSON.stringify(state), before)
+    }
+  }
+  assert.equal(enrollmentContractTitle('school'), 'Özel okul eğitim sözleşmesi')
+  assert.deepEqual(allowedGuardianModes('school', '2000-01-01', NOW), ['new', 'existing'])
 })
 
 test('DOM-KAY-012, DOM-KAY-003: okulda 18 yaşını doldurmuş öğrencide veli zorunlu; iletişim velide kalır, guardian_not_applicable dönmez', () => {

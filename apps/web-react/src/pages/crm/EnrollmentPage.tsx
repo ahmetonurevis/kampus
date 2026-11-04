@@ -58,6 +58,7 @@ import {
   prospectNoticeLabel,
 } from './enrollment-consent.ts'
 import {
+  birthDateAgeGroupMismatch,
   enrollmentFieldForCode,
   enrollmentServerError,
   guardianModeFor,
@@ -268,6 +269,13 @@ function EnrollmentForm({
   const room = activeClasses.find((row) => row.id === values.classId)
   // Veli seçimleri doğum tarihine göre: "kendisi" yalnız kursta 18 yaş ve üstünde (DOM-KAY-012).
   const guardianModes = allowedGuardianModes(institutionType, values.birthDate)
+  // Kurs adayının yaş grubu doğum tarihiyle uyuşmazsa sunucu 422 `birth_date_minor_mismatch`
+  // verir; uyarı alanda önden görünür ve sonraki adıma geçilmez (ON-126, DOM-KAY-012).
+  const ageGroupMismatch = birthDateAgeGroupMismatch(
+    institutionType,
+    prospect?.record.minor,
+    values.birthDate,
+  )
   const otherCampus = Boolean(room && branchId && room.record.branchId !== branchId)
   const { session } = useAuth()
   // Bursu yalnız yönetici atar (DOM-FIN-052); ön büroya seçenek gösterilmez.
@@ -302,6 +310,10 @@ function EnrollmentForm({
     // Hatalı ilk alan odak alır (Vue `useFormErrors`): klavye ve ekran okuyucu hatayı kaçırmaz.
     const valid = await form.trigger(ENROLLMENT_STEP_FIELDS[step] ?? [], { shouldFocus: true })
     if (!valid) return
+    if (step === 1 && ageGroupMismatch) {
+      focusAfterSubmit('birthDate')
+      return
+    }
     if (step === 0 && !prospect) {
       form.setError('prospectId', { type: 'closed', message: 'Kaydı açık bir aday seçin.' })
       focusAfterSubmit('prospectId')
@@ -442,13 +454,13 @@ function EnrollmentForm({
                   <NativeSelect
                     {...control}
                     {...form.register('prospectId', {
-                      // Başka adayın sınıfı, kampüs onayı, veli seçimi ve bilgisi yeni adaya
-                      // taşınmaz.
+                      // Başka adayın sınıfı, kampüs onayı, kimlik, doğum tarihi, veli ve iletişim
+                      // bilgisi yeni adaya taşınmaz (KVKK); alanların hataları da kalkar.
                       onChange: () => {
-                        const reset = prospectChangeValues(form.getValues(), institutionType)
-                        for (const [name, value] of Object.entries(reset))
-                          form.setValue(name as keyof typeof reset, value)
-                        form.clearErrors(['classId', 'confirmOtherCampus', 'guardianMode'])
+                        const reset = prospectChangeValues(institutionType)
+                        const names = Object.keys(reset) as (keyof typeof reset)[]
+                        for (const name of names) form.setValue(name, reset[name])
+                        form.clearErrors(names)
                       },
                     })}
                   >
@@ -560,7 +572,14 @@ function EnrollmentForm({
                     />
                   )}
                 </FormField>
-                <FormField id="kayit-dogum" label="Doğum tarihi" error={errors.birthDate}>
+                <FormField
+                  id="kayit-dogum"
+                  label="Doğum tarihi"
+                  error={
+                    errors.birthDate ??
+                    (ageGroupMismatch ? { message: ageGroupMismatch } : undefined)
+                  }
+                >
                   {(control) => (
                     <Input
                       {...control}

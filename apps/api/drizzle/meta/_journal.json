@@ -435,6 +435,13 @@
       "when": 1793775284182,
       "tag": "0061_create_contracts_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 62,
+      "version": "7",
+      "when": 1793807265780,
+      "tag": "0062_rename_parent_relationship_legal_guardian",
+      "breakpoints": true
     }
   ]
 }

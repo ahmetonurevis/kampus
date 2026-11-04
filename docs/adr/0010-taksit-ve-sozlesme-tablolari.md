@@ -1,9 +1,9 @@
 # ADR 0010 · Taksit ve sözleşme ilişkisel tablolarda
 
-- Durum: Taslak (2026-11-04; kabul proje sahiplerinindir)
+- Durum: Kabul edildi (2026-11-04; Onur'un kararı, açık soruların cevaplarıyla). Soru 3 Oğuzhan'a soruldu (#41); cevabı gelene kadar ön denetimde çıkan sözleşmesiz taksit taşınmaz, rapora yazılır.
 - Hazırlayan: Onur (ON-045); uygulama ON-046
 - Ayrıntılandırdığı: ADR 0001 karar 6 (kademeli normalleştirme), veritabani.md §4
-- Kabul edilirse geçersiz kıldığı: ADR 0006 karar 2 ("taksit ve sözleşme `records`'ta kalır"). ADR 0006'nın öteki kararları sürer.
+- Geçersiz kıldığı: ADR 0006 karar 2 ("taksit ve sözleşme `records`'ta kalır"). ADR 0006'nın öteki kararları sürer.
 
 ## Bağlam
 
@@ -331,15 +331,15 @@ Alan haritasına göre Oğuzhan'ındır; iş isteği issue'suyla (`sahip:oguzhan
 - **`invoiceIds`'i `invoices.contract_id`'den türetmek.** Ek protokolde korunan taksit iki sürüme bağlıdır, ayrılış ise onaylı sürümden taksit düşürür; bilgi kaybolur. Reddedildi.
 - **`paid_at`'i hemen dağılımlardan türetmek.** Tahsilat satırı olmadan ödenmiş görünen eski kayıtlar bozulur, sahte tahsilat üretmek ise dekont numarası tüketir. Ertelendi (açık soru 4).
 
-## Açık sorular
+## Açık soruların cevapları (2026-11-04)
 
-1. **Kurum büyüklüğü.** Pilot kurumun öğrenci sayısı ve taksit sayısı nedir? Ölçüt 1'in ne zaman karşılanacağı buna bağlıdır, karar buna bağlı değildir.
-2. **Çift yazma süresi.** API yayına girmeden ON-046 biterse 3–5. adımlar tek migration'a sıkıştırılsın mı (veritabani §4), yoksa genişlet/daralt yine de en az bir teslim boyunca mı sürsün (veritabani §5)? Öneri: veri yayında değilse sıkıştırmak; ama 4. adımın geri alınabilir commit'i ayrı kalsın.
-3. **Sözleşmesiz eski taksitler.** Ön denetimde hiçbir sözleşmeye bağlanamayan taksit çıkarsa ne yapılacak? Seçenekler: `contract_id` boş kalır (daralt `not null` olmaz), öğrencinin sözleşmesine yönetici kararıyla bağlanır ya da arşivlenir. Para kaybı riski olduğu için sahibin kararı gerekir.
-4. **`paid_at` önbelleği.** Ne zaman kalkacak, eski ödenmiş kayıtlar nasıl ele alınacak? Seçenekler: göç tahsilatı (ayrı dekont serisi) ya da "sistem öncesi ödendi" işareti. ADR 0006 karar 3'ün devamıdır.
-5. **Core dizi sırası.** Taksit sırası için `position` korunacak mı, yoksa core işlemleri `(due_date, installment, id)` sırasına mı bağlanacak? İkincisi core'da ayrı iştir.
-6. **Kesin kayıt sözleşmesinin taksitleri onaydan önce değişebilir mi?** Bugün değiştiren işlem yok; tetikleyici bunu her durumda kilitliyor. Ön büronun onaydan önce plan düzeltmesi isteniyorsa ek protokol dışında bir yol gerekir (DOM-FIN-010 yalnız onaylıyı kilitler).
-7. **Çalıştırıcı değişikliğini kim yapacak?** Oğuzhan mı yapacak (issue), yoksa Onur bu dosyalar için `alan-izni` mi alacak? Sahiplik konusu olduğu için birlikte karar verilmelidir.
+1. **Kurum büyüklüğü.** Belirleyici değil; tasarım kurum büyüklüğünden bağımsız kalır. Ön denetimdeki ölçüm yalnız rapor içindir.
+2. **Çift yazma süresi.** Sıkıştırılmaz: genişlet, kopyala ve çift yaz, okuma geçişi, daralt ayrı migration ve ayrı birleştirmelerdir (veritabani §5).
+3. **Sözleşmesiz eski taksitler.** Oğuzhan'a soruldu (#41). Cevap gelene kadar böyle taksit taşınmaz ve sayısı ön denetim raporuna yazılır; daralt adımı bu soru kapanmadan başlamaz.
+4. **`paid_at` önbelleği.** Zamanlamayı uygulayan belirler. Karar: ON-046 boyunca kolon olarak kalır (karar 5); bütün okumalar dağılımlardan türetmeye geçtikten sonra daralt adımının ardından ayrı görevle kalkar. Eski ödenmiş kayıtlar için yöntem o görevde seçilir.
+5. **Core dizi sırası.** `position` kolonu kalır; core dizi sırası değişmez.
+6. **Onaydan önce taksit düzeltmesi.** İzin verilir. Değişmezlik yalnız onaylı sürüme uygulanır: tetikleyici onaylanmamış sürümün taksitlerini kilitlemez (DOM-FIN-010). Düzeltme işlemi ve ekranı ayrı görevdir.
+7. **Oğuzhan'ın koduna dokunan kısım.** Oğuzhan izin verirse Onur yapar. İzin dosya listesiyle istenir (#42); kullanıcı izin verilen yolları kendi makinesinde `.claude/alan-izni.local` dosyasına ekler (ajan bu dosyayı yazmaz). İzin gelene kadar Onur yalnız kendi alanındaki parçaları yapar.
 
 ## ON-046 iş listesi
 

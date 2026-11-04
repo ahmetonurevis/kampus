@@ -3,7 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { createSeed } from '../../../packages/school-core/src/data/seed.ts'
 
 import { createAuth, type InstitutionType, type Role } from '../../../apps/api/src/auth.ts'
-import { loadConfig } from '../../../apps/api/src/config.ts'
+import { loadConfig, TEST_FIELD_ENCRYPTION_KEY } from '../../../apps/api/src/config.ts'
 import { feeTariffs } from '../../../apps/api/src/db/schema/fee-tariffs.ts'
 import { connectPostgres } from '../../../apps/api/src/db/client.ts'
 import {
@@ -196,6 +196,8 @@ export function createTenantFactory(): TenantFactory {
     LOG_LEVEL: 'silent',
     DATABASE_URL: e2e.databaseUrl,
     BETTER_AUTH_SECRET: randomUUID() + randomUUID(),
+    // Fabrika şifreli alan yazmaz; şema doğrulaması için gizli olmayan test anahtarı yeter.
+    FIELD_ENCRYPTION_KEY: TEST_FIELD_ENCRYPTION_KEY,
     BETTER_AUTH_URL: e2e.webOrigin,
     CORS_ORIGINS: e2e.webOrigin,
   })

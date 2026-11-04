@@ -9,6 +9,7 @@ import {
   loadConfig,
   parseConfig,
   storageDir,
+  TEST_FIELD_ENCRYPTION_KEY,
   useSecureCookies,
 } from '../src/config.ts'
 import { mailDriver } from '../src/services/mailer.ts'
@@ -17,7 +18,10 @@ const base = {
   NODE_ENV: 'development',
   DATABASE_URL: 'postgres://test@localhost:5432/test',
   BETTER_AUTH_SECRET: 'yalniz-test-icin-otuz-iki-karakter-sir',
+  FIELD_ENCRYPTION_KEY: TEST_FIELD_ENCRYPTION_KEY,
 }
+/** Üretim benzeri, yer tutucu olmayan alan anahtarı (yalnız bu testte; gizli değil). */
+const PRODUCTION_FIELD_KEY = 'x/Ze81RFCnuwFDAaKuVS9QlX60f17joBtM9H4nyNDso='
 
 describe('ortam yapılandırması', () => {
   test('varsayılanları uygular, boş değerleri tanımsız sayar', () => {
@@ -59,7 +63,51 @@ describe('ortam yapılandırması', () => {
     NODE_ENV: 'production',
     BETTER_AUTH_URL: 'https://api.kampus.example',
     BETTER_AUTH_SECRET: 'b4Jx9-uretim-icin-uretilmis-rastgele-deger-Qm2',
+    FIELD_ENCRYPTION_KEY: PRODUCTION_FIELD_KEY,
   }
+
+  test('IST-020: alan şifreleme anahtarı zorunlu, base64 ve tam 32 bayt', () => {
+    assert.equal(parseConfig(base).FIELD_ENCRYPTION_KEY, TEST_FIELD_ENCRYPTION_KEY)
+    assert.throws(
+      () => parseConfig({ ...base, FIELD_ENCRYPTION_KEY: undefined }),
+      /FIELD_ENCRYPTION_KEY/,
+    )
+    for (const key of [
+      '',
+      'bu-base64-degil!',
+      Buffer.alloc(16, 7).toString('base64'),
+      Buffer.alloc(33, 7).toString('base64'),
+      PRODUCTION_FIELD_KEY.slice(0, -1),
+    ])
+      assert.throws(
+        () => parseConfig({ ...base, FIELD_ENCRYPTION_KEY: key }),
+        (error: Error) =>
+          error.message.includes('FIELD_ENCRYPTION_KEY') &&
+          (key === '' || !error.message.includes(key)),
+        key,
+      )
+  })
+
+  test('IST-020: üretimde test, örnek ve elle yazılmış alan anahtarı reddedilir', () => {
+    assert.equal(parseConfig(production).FIELD_ENCRYPTION_KEY, PRODUCTION_FIELD_KEY)
+    for (const key of [
+      TEST_FIELD_ENCRYPTION_KEY,
+      // apps/api/.env.example değeri
+      'Q0hBTkdFX01FLWRldi1maWVsZC1rZXktMzItYnl0ZXM=',
+      Buffer.from('CHANGE_ME-baska-yer-tutucu-32bayt').subarray(0, 32).toString('base64'),
+      Buffer.alloc(32).toString('base64'),
+      Buffer.from('ab'.repeat(16)).toString('base64'),
+    ]) {
+      assert.throws(
+        () => parseConfig({ ...production, FIELD_ENCRYPTION_KEY: key }),
+        (error: Error) =>
+          error.message.includes('FIELD_ENCRYPTION_KEY') && !error.message.includes(key),
+        key,
+      )
+      // Geliştirmede örnek ve test değerleri çalışır.
+      assert.equal(loadConfig({ ...base, FIELD_ENCRYPTION_KEY: key }).FIELD_ENCRYPTION_KEY, key)
+    }
+  })
 
   test('üretimde örnek veya bilinen gizli anahtar reddedilir', () => {
     assert.equal(parseConfig(production).BETTER_AUTH_SECRET, production.BETTER_AUTH_SECRET)

@@ -31,6 +31,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
       LOG_LEVEL: 'warn',
       DATABASE_URL: e2e.databaseUrl,
       BETTER_AUTH_SECRET: process.env.E2E_AUTH_SECRET ?? randomBytes(32).toString('base64'),
+      FIELD_ENCRYPTION_KEY: randomBytes(32).toString('base64'),
       BETTER_AUTH_URL: e2e.webOrigin,
       CORS_ORIGINS: e2e.webOrigin,
       // Test istemcileri sahte `X-Forwarded-For` ile kendi hız sınırı kovasını alır (api.ts).

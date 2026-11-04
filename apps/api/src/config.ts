@@ -2,6 +2,8 @@ import { isIP } from 'node:net'
 
 import { z } from 'zod'
 
+import { decodeFieldKey } from './lib/field-crypto.ts'
+
 // Ortam değişkenleri yalnız bu dosyada okunur ve doğrulanır; eksik veya geçersizse süreç başlamaz.
 
 const csv = z
@@ -60,17 +62,33 @@ const trustProxy = z
 
 /** Örnek dosyalarda ve betiklerde geçen, gizli olmayan değerler; üretimde reddedilir. */
 export const PLACEHOLDER_SECRET_PREFIX = 'CHANGE_ME'
+/** Gizli olmayan test anahtarı (base64 "kampus-test-field-key-not-secret"); üretimde reddedilir. */
+export const TEST_FIELD_ENCRYPTION_KEY = 'a2FtcHVzLXRlc3QtZmllbGQta2V5LW5vdC1zZWNyZXQ='
 const KNOWN_PUBLIC_SECRETS = new Set([
   'degistir-en-az-32-karakter-rastgele-deger',
   'cli-schema-generation-only-not-a-secret',
   'openapi-generation-only-not-a-secret',
   'test-secret-test-secret-test-secret-0123',
+  // Alan şifreleme anahtarları (base64): test, betik ve `.env.example` değerleri.
+  TEST_FIELD_ENCRYPTION_KEY,
+  'Q0hBTkdFX01FLWRldi1maWVsZC1rZXktMzItYnl0ZXM=',
 ])
 
 function isPlaceholderSecret(secret: string): boolean {
   return (
     secret.toUpperCase().startsWith(PLACEHOLDER_SECRET_PREFIX) || KNOWN_PUBLIC_SECRETS.has(secret)
   )
+}
+
+/**
+ * Alan şifreleme anahtarı yer tutucu mu: bilinen değer, çözülmüş hali `CHANGE_ME` ile başlıyor ya
+ * da elle yazılmış gibi az çeşitli (ör. 32 sıfır bayt; rastgele 32 baytta 16'dan az farklı bayt
+ * olasılığı ihmal edilebilir).
+ */
+function isPlaceholderFieldKey(value: string): boolean {
+  const decoded = decodeFieldKey(value)
+  if (isPlaceholderSecret(value) || decoded === null) return true
+  return isPlaceholderSecret(decoded.toString('latin1')) || new Set(decoded).size < 16
 }
 
 export const configSchema = z
@@ -89,6 +107,14 @@ export const configSchema = z
     TRUST_PROXY: trustProxy,
     DATABASE_URL: databaseUrl,
     BETTER_AUTH_SECRET: z.string().min(32),
+    /**
+     * Özel nitelikli alanların (sağlık ve acil bilgi) AES-256-GCM ana anahtarı: base64, çözülünce
+     * tam 32 bayt (`openssl rand -base64 32`). Kurum anahtarı bundan türetilir (`lib/field-crypto.ts`).
+     * Verilmezse süreç başlamaz; değiştirilirse eski satırlar çözülemez (döndürme sürümlüdür).
+     */
+    FIELD_ENCRYPTION_KEY: z
+      .string()
+      .refine((value) => decodeFieldKey(value) !== null, { message: 'invalid' }),
     /** API'nin dışarıdan görünen kök adresi; üretimde zorunlu. */
     BETTER_AUTH_URL: optional(z.url()),
     /** İzinli web kökenleri (tam eşleşme). CORS ve Better Auth `trustedOrigins` aynı listeyi kullanır. */
@@ -164,6 +190,8 @@ export const configSchema = z
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_URL'], message: 'required' })
     if (isPlaceholderSecret(config.BETTER_AUTH_SECRET))
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_SECRET'], message: 'placeholder' })
+    if (isPlaceholderFieldKey(config.FIELD_ENCRYPTION_KEY))
+      ctx.addIssue({ code: 'custom', path: ['FIELD_ENCRYPTION_KEY'], message: 'placeholder' })
     if (config.FILE_SCANNER === 'off')
       ctx.addIssue({ code: 'custom', path: ['FILE_SCANNER'], message: 'not_for_production' })
   })

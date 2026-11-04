@@ -2359,6 +2359,93 @@ export async function listAwaitingScore(
   }
 }
 
+/** Açık itiraz kuyruğunun süzgeçleri; rol kapsamı servisten gelir (`AssignmentListQuery` ile aynı). */
+export interface OpenAppealQuery extends Pick<
+  AssignmentListQuery,
+  'assignedByUserId' | 'learnerTargets'
+> {
+  /** Görüntüleyen kişi; `scoredByViewer` o sürümde herhangi bir rolde puan verdiyse `true`. */
+  viewerUserId: string
+  page: number
+  pageSize: number
+}
+
+export interface OpenAppealRow {
+  appealId: string
+  filedAt: string
+  submissionId: string
+  assignmentId: string
+  versionId: string
+  versionNumber: number
+  learnerId: string
+  scoredByViewer: boolean
+}
+
+/**
+ * Karara bağlanmayı bekleyen itirazlar (DOM-BEC-025): arşivlenmemiş, kararı verilmemiş (`outcome`
+ * boş) itiraz, arşivlenmemiş teslim ve atamada; kapsam süzgeci atama listesininkidir (öğretmen:
+ * atayan veya kapsamdaki hedef; yönetici kapsamsız). En eski itiraz önce. `scoredByViewer`
+ * core `planAppealDecision` bağımsızlık kuralıyla aynı koşuldur (kişi o sürümde herhangi bir
+ * rolde puan verdi); satır başına sorgu yoktur, SQL `exists` ile gelir. Sayım aynı koşulla.
+ */
+export async function listOpenAppeals(
+  db: Database,
+  institutionId: string,
+  query: OpenAppealQuery,
+): Promise<{ rows: OpenAppealRow[]; total: number }> {
+  const ap = scoreAppeals
+  const v = submissionVersions
+  const s = taskSubmissions
+  const a = taskAssignments
+  const scopeFilter = assignmentScopeFilter(db, query)
+  const scored = sql<boolean>`exists (select 1 from ${rubricScores} rs
+    where rs.institution_id = ${ap.institutionId} and rs.submission_version_id = ${ap.submissionVersionId}
+      and rs.rater_user_id = ${query.viewerUserId})`
+  const where = and(
+    eq(ap.institutionId, institutionId),
+    isNull(ap.archivedAt),
+    isNull(ap.outcome),
+    isNull(s.archivedAt),
+    isNull(a.archivedAt),
+    ...(scopeFilter === undefined ? [] : [scopeFilter]),
+  )
+  const joinVersion = and(eq(v.institutionId, ap.institutionId), eq(v.id, ap.submissionVersionId))
+  const joinSubmission = and(eq(s.institutionId, v.institutionId), eq(s.id, v.submissionId))
+  const joinAssignment = and(eq(a.institutionId, s.institutionId), eq(a.id, s.assignmentId))
+  const [rows, [totals]] = await Promise.all([
+    db
+      .select({
+        appealId: ap.id,
+        filedAt: ap.filedAt,
+        submissionId: s.id,
+        assignmentId: s.assignmentId,
+        versionId: v.id,
+        versionNumber: v.versionNumber,
+        learnerId: s.learnerId,
+        scoredByViewer: scored,
+      })
+      .from(ap)
+      .innerJoin(v, joinVersion)
+      .innerJoin(s, joinSubmission)
+      .innerJoin(a, joinAssignment)
+      .where(where)
+      .orderBy(asc(ap.filedAt), asc(ap.id))
+      .limit(query.pageSize)
+      .offset((query.page - 1) * query.pageSize),
+    db
+      .select({ total: count() })
+      .from(ap)
+      .innerJoin(v, joinVersion)
+      .innerJoin(s, joinSubmission)
+      .innerJoin(a, joinAssignment)
+      .where(where),
+  ])
+  return {
+    rows: rows.map((row) => ({ ...row, filedAt: iso(row.filedAt) })),
+    total: totals?.total ?? 0,
+  }
+}
+
 // --- Taslak -------------------------------------------------------------------------------
 
 /** Core `planDraftSave`'in çakışma mesajı (`draft_conflict`). */

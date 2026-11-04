@@ -3856,6 +3856,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/task-appeals": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Karara bağlanmayı bekleyen itirazlar
+         * @description Öğretmenin karara bağlayacağı açık (kararı verilmemiş) itirazlar, en eski itiraz önce, sayfalı (DOM-BEC-025; OG-1010). `status` yalnız `open` (varsayılan); karara bağlanmış itiraz listede yoktur. Her satırda itiraz, teslim, atama ve sürüm kimliği, sürüm numarası, görev başlığı, öğrenci adı (öğretmende yalnız öğrenci kapsamındakiler; OG-213), açılma zamanı ve `scoredByViewer` (kişi itiraz edilen sürümü puanladıysa karar veremez: 409 `rater_not_independent`). Karar için son tarih domain'de tanımlı değildir, satırda yok. Roller: `ogretmen` atamayı gördüğü (atayan veya kapsamındaki sınıf/öğrenci hedefi; DOM-YTK-028) itirazları, `yonetici` kurumun hepsini okur (karar yalnız öğretmendedir); öğrenci, veli ve ön büro 403. Bilinmeyen parametre 400. Modül `learning`; kapalıysa 403 `module_disabled`.
+         */
+        get: operations["listTaskAppeals"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/task-submissions/{submissionId}": {
         parameters: {
             query?: never;
@@ -8354,6 +8374,8 @@ export interface components {
             dueAt: string | null;
             /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
             overdue: boolean;
+            /** @description Kişi bu sürümü herhangi bir rolde (ilk, ikinci, son) puanladı mı; öyleyse itiraz kararı 409 `rater_not_independent` alır (DOM-BEC-025). Yalnız bu kişinin kendi puanı; başkasının puanlayıp puanlamadığı sızmaz */
+            scoredByViewer: boolean;
         };
         TaskAppealInput: {
             /** Format: uuid */
@@ -8518,6 +8540,32 @@ export interface components {
                 /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
                 overdue: boolean;
             };
+        };
+        TaskAppealQueueItemInput: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            submissionId: string;
+            /** Format: uuid */
+            assignmentId: string;
+            /**
+             * Format: uuid
+             * @description İtiraz edilen teslim sürümünün kimliği
+             */
+            versionId: string;
+            versionNumber: number;
+            /** @description Atanan içerik sürümünün başlığı; sürüm bulunamazsa `null` */
+            assignmentTitle: string | null;
+            learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler; kapsam dışında `null` (OG-213) */
+            learnerName: string | null;
+            /**
+             * Format: date-time
+             * @description İtirazın açıldığı an
+             */
+            filedAt: string;
+            /** @description Kişi itiraz edilen sürümü puanladı mı; öyleyse karar veremez (409 `rater_not_independent`) */
+            scoredByViewer: boolean;
         };
         SecondRatingSampleInput: {
             /** Format: uuid */
@@ -12530,6 +12578,8 @@ export interface components {
             dueAt: string | null;
             /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
             overdue: boolean;
+            /** @description Kişi bu sürümü herhangi bir rolde (ilk, ikinci, son) puanladı mı; öyleyse itiraz kararı 409 `rater_not_independent` alır (DOM-BEC-025). Yalnız bu kişinin kendi puanı; başkasının puanlayıp puanlamadığı sızmaz */
+            scoredByViewer: boolean;
         };
         TaskAppeal: {
             /** Format: uuid */
@@ -12694,6 +12744,32 @@ export interface components {
                 /** @description Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false` */
                 overdue: boolean;
             };
+        };
+        TaskAppealQueueItem: {
+            /** Format: uuid */
+            id: string;
+            /** Format: uuid */
+            submissionId: string;
+            /** Format: uuid */
+            assignmentId: string;
+            /**
+             * Format: uuid
+             * @description İtiraz edilen teslim sürümünün kimliği
+             */
+            versionId: string;
+            versionNumber: number;
+            /** @description Atanan içerik sürümünün başlığı; sürüm bulunamazsa `null` */
+            assignmentTitle: string | null;
+            learnerId: string;
+            /** @description Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler; kapsam dışında `null` (OG-213) */
+            learnerName: string | null;
+            /**
+             * Format: date-time
+             * @description İtirazın açıldığı an
+             */
+            filedAt: string;
+            /** @description Kişi itiraz edilen sürümü puanladı mı; öyleyse karar veremez (409 `rater_not_independent`) */
+            scoredByViewer: boolean;
         };
         SecondRatingSample: {
             /** Format: uuid */
@@ -38393,6 +38469,90 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["GradingQueueItem"][];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listTaskAppeals: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Yalnız karara bağlanmayı bekleyen (açık) itirazlar (DOM-BEC-025) */
+                status?: "open";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["TaskAppealQueueItem"][];
                         meta: components["schemas"]["PageMeta"];
                     };
                 };

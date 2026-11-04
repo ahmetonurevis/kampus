@@ -75,6 +75,13 @@ export function unreadNotificationsKey() {
   return [NOTIFICATIONS_KEY_ROOT, 'unread-count'] as const
 }
 
+/** Bildirim tercihi anahtar parçası (`GET /notification-preferences`; DOM-ILT-020, -021). */
+export const NOTIFICATION_PREFERENCES_KEY_ROOT = 'notification-preferences'
+
+export function notificationPreferencesKey() {
+  return [NOTIFICATION_PREFERENCES_KEY_ROOT] as const
+}
+
 /**
  * Açık rıza anahtar parçaları (IST-017; `GET /consent-texts/{purpose}`, `/consents`,
  * `/consents/status`). Metin, satırlar ve geçerlilik sonucu ayrı alt kollardadır; rıza verme ve

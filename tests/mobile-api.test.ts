@@ -17,6 +17,7 @@ import {
   sessionExpired,
   sessionScopeKey,
   toMobileSession,
+  ownStudentId,
   type Me,
 } from '../apps/mobile/src/api/session-state.ts'
 import { API_THEME_KEY, parseStoredTheme } from '../apps/mobile/src/api/stored-theme.ts'
@@ -150,6 +151,22 @@ describe('oturum durumu', () => {
       }),
     )
     assert.deepEqual(session?.childIds, [])
+  })
+
+  test('öğrencinin kendi kaydı bağlantılardan gelir; veli ve öğretmende yoktur', () => {
+    const student = toMobileSession(
+      me({
+        activeMembership: {
+          id: 'test-mem-o',
+          role: 'ogrenci',
+          links: [{ kind: 'student', recordId: 'test-s9' }],
+        },
+      }),
+    )
+    assert.equal(student?.studentId, 'test-s9')
+    assert.equal(toMobileSession(me())?.studentId, null)
+    assert.equal(ownStudentId([{ kind: 'teacher', recordId: 'test-t1' }]), null)
+    assert.equal(ownStudentId([]), null)
   })
 
   test('etkin kurum veya üyelik yoksa oturum üretilmez', () => {

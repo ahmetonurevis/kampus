@@ -32,6 +32,7 @@ import {
   type RubricVersionData,
   type RubricVersionRow,
 } from '@kampus/school-core/skills/rubric.ts'
+import type { ExtraTimeRow } from '@kampus/school-core/skills/extra-time.ts'
 import type { ItemCheckRow } from '@kampus/school-core/skills/practice.ts'
 import type { Answers, AttemptRow, AttemptRules } from '@kampus/school-core/skills/scoring.ts'
 import type { DraftRow, VersionRow } from '@kampus/school-core/skills/submission.ts'
@@ -61,6 +62,7 @@ import {
   taskAssignments,
   taskAssignmentTargets,
   taskAttempts,
+  taskExtraTimes,
   taskSubmissions,
   type ScoreTransferRow,
   type SecondRatingSource,
@@ -553,11 +555,19 @@ export type StoredAssignment = FixedAssignment & {
    * bunlarla eşleşir (DOM-YTK-027, core `coordinatesArea`).
    */
   area: { subjectId: string | null; cefrLevel: string | null }
+  /**
+   * Kursiyerlerin bireysel ek süre kayıtları (DOM-BEC-043; `task_extra_times`), kursiyer ve sıra
+   * numarasıyla. Yalnız süreli atamada okunur; süresiz atamada boştur.
+   */
+  extraTimes: StoredExtraTime[]
   createdAt: string
   updatedAt: string
   archivedAt: string | null
   rowVersion: number
 }
+
+/** `task_extra_times` satırı: core `ExtraTimeRow` ve kursiyeri. */
+export type StoredExtraTime = ExtraTimeRow & { learnerId: string }
 
 function attemptRulesOf(row: TaskAssignmentRow): AttemptRules {
   if (row.kind === 'practice') return { kind: 'practice' }
@@ -575,6 +585,7 @@ function toAssignment(
   row: TaskAssignmentRow,
   targets: AssignmentTarget[],
   area: AssignmentArea,
+  extraTimes: StoredExtraTime[],
 ): StoredAssignment {
   return {
     id: row.id,
@@ -597,6 +608,7 @@ function toAssignment(
     assignedByUserId: row.assignedByUserId,
     targets,
     area,
+    extraTimes,
     createdAt: iso(row.createdAt),
     updatedAt: iso(row.updatedAt),
     archivedAt: isoOrNull(row.archivedAt),
@@ -661,14 +673,20 @@ export async function insertAssignment(
     )
 }
 
+/**
+ * Atamaları hedefleri ve ek süre kayıtlarıyla yükler. `extraTimesFor` verilirse yalnız bu
+ * kursiyerlerin ek süre kayıtları okunur (öğrenci ve veli yolu: başkasının kaydı yüklenmez);
+ * verilmezse atamanın bütün kayıtları gelir (personel yolu).
+ */
 async function withTargets(
   db: Database,
   institutionId: string,
   rows: readonly TaskAssignmentRow[],
+  extraTimesFor?: readonly string[],
 ): Promise<StoredAssignment[]> {
   if (rows.length === 0) return []
   const versionIds = [...new Set(rows.map((row) => row.resourceVersionId))]
-  const [targets, areas] = await Promise.all([
+  const [targets, areas, extraTimes] = await Promise.all([
     targetsOf(db, institutionId, rows),
     db
       .select({
@@ -683,13 +701,90 @@ async function withTargets(
           inArray(resourceVersions.id, versionIds),
         ),
       ),
+    loadExtraTimes(
+      db,
+      institutionId,
+      rows.filter((row) => row.timeLimitMinutes !== null).map((row) => row.id),
+      extraTimesFor,
+    ),
   ])
   const areaOf = new Map(areas.map(({ id, ...area }) => [id, area]))
+  const extraOf = new Map<string, StoredExtraTime[]>()
+  for (const { assignmentId, ...extra } of extraTimes)
+    extraOf.set(assignmentId, [...(extraOf.get(assignmentId) ?? []), extra])
   const byAssignment = new Map<string, AssignmentTarget[]>()
   for (const { assignmentId, kind, id } of targets)
     byAssignment.set(assignmentId, [...(byAssignment.get(assignmentId) ?? []), { kind, id }])
   return rows.map((row) =>
-    toAssignment(row, byAssignment.get(row.id) ?? [], areaOf.get(row.resourceVersionId) ?? NO_AREA),
+    toAssignment(
+      row,
+      byAssignment.get(row.id) ?? [],
+      areaOf.get(row.resourceVersionId) ?? NO_AREA,
+      extraOf.get(row.id) ?? [],
+    ),
+  )
+}
+
+// --- Bireysel ek süre ---------------------------------------------------------------------
+
+/**
+ * Atamaların ek süre kayıtları (DOM-BEC-043), atama, kursiyer ve sıra numarasıyla; birincil
+ * anahtarın önekiyle okunur. Kayıtlar değişmez, arşivlenmez.
+ */
+async function loadExtraTimes(
+  db: Database,
+  institutionId: string,
+  assignmentIds: readonly string[],
+  learnerIds?: readonly string[],
+): Promise<(StoredExtraTime & { assignmentId: string })[]> {
+  if (assignmentIds.length === 0 || learnerIds?.length === 0) return []
+  const t = taskExtraTimes
+  const rows = await db
+    .select()
+    .from(t)
+    .where(
+      and(
+        eq(t.institutionId, institutionId),
+        inArray(t.assignmentId, [...assignmentIds]),
+        ...(learnerIds === undefined ? [] : [inArray(t.learnerId, [...learnerIds])]),
+      ),
+    )
+    .orderBy(asc(t.assignmentId), asc(t.learnerId), asc(t.sequence))
+  return rows.map((row) => ({
+    assignmentId: row.assignmentId,
+    learnerId: row.learnerId,
+    sequence: row.sequence,
+    minutes: row.minutes,
+    reason: row.reason,
+    grantedAt: iso(row.grantedAt),
+    grantedByUserId: row.grantedByUserId,
+  }))
+}
+
+/**
+ * Yeni ek süre kaydı (core `planExtraTime`). Aynı sıra numarası eşzamanlı ikinci değişiklikte
+ * 409 `version_conflict` olur; kayıt sonradan değişmez.
+ */
+export function insertExtraTime(
+  tx: Database,
+  institutionId: string,
+  input: Omit<StoredExtraTime, 'grantedAt'> & { assignmentId: string; grantedAt: string },
+  now: Date,
+): Promise<unknown> {
+  return constraintAs(
+    tx.insert(taskExtraTimes).values({
+      institutionId,
+      assignmentId: input.assignmentId,
+      learnerId: input.learnerId,
+      sequence: input.sequence,
+      minutes: input.minutes,
+      reason: input.reason,
+      grantedByUserId: input.grantedByUserId,
+      grantedAt: new Date(input.grantedAt),
+      createdAt: now,
+      updatedAt: now,
+    }),
+    { task_extra_times_pkey: conflict('version_conflict', MESSAGES.version_conflict) },
   )
 }
 
@@ -714,11 +809,15 @@ function targetsOf(db: Database, institutionId: string, rows: readonly TaskAssig
     .orderBy(asc(taskAssignmentTargets.targetKind), asc(taskAssignmentTargets.targetId))
 }
 
-/** Atama (arşivli dahil; başka kurumun kimliği `null`). */
+/**
+ * Atama (arşivli dahil; başka kurumun kimliği `null`). `extraTimesFor` yalnız bu kursiyerlerin ek
+ * süre kayıtlarını yükler (öğrenci ve veli yolu); verilmezse hepsi gelir.
+ */
 export async function findAssignment(
   db: Database,
   institutionId: string,
   assignmentId: string,
+  extraTimesFor?: readonly string[],
 ): Promise<StoredAssignment | null> {
   const rows = await db
     .select()
@@ -726,7 +825,7 @@ export async function findAssignment(
     .where(
       and(eq(taskAssignments.institutionId, institutionId), eq(taskAssignments.id, assignmentId)),
     )
-  const [stored] = await withTargets(db, institutionId, rows)
+  const [stored] = await withTargets(db, institutionId, rows, extraTimesFor)
   return stored ?? null
 }
 

@@ -2,6 +2,8 @@
 // (aynı makinede başka bir koşu varsa farklı port/veritabanı adı verilir); gizli değer yoktur.
 import { fileURLToPath } from 'node:url'
 
+import { TEST_FIELD_ENCRYPTION_KEY } from '../../../apps/api/src/config.ts'
+
 const root = (path: string) => fileURLToPath(new URL(`../../../${path}`, import.meta.url))
 
 function port(name: string, fallback: number): number {
@@ -41,6 +43,12 @@ export const e2e = {
   /** Veritabanını oluşturan/düşüren bağlantı (bakım veritabanı `postgres`). compose.yaml değerleri. */
   adminDatabaseUrl,
   databaseUrl: databaseUrl(),
+  /**
+   * Alan şifreleme ana anahtarı: çalışan API ve veritabanına yazan fabrika aynısını kullanır
+   * (aksi halde fabrikanın yazdığı şifreli alan API'de çözülmez). Varsayılan gizli olmayan test
+   * anahtarıdır; `E2E_FIELD_KEY` ile geçersiz kılınır.
+   */
+  fieldEncryptionKey: process.env.E2E_FIELD_KEY ?? TEST_FIELD_ENCRYPTION_KEY,
   /** `db:seed` demo hesaplarının parolası (apps/api/src/db/demo-seed.ts varsayılanı). */
   password: 'Demo-Giris-2026!',
   paths: {

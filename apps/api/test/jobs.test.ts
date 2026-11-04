@@ -6,7 +6,7 @@ import { and, eq } from 'drizzle-orm'
 import { DrizzleQueryError } from 'drizzle-orm/errors'
 
 import type { App } from '../src/app.ts'
-import { jobsEnabled, parseConfig } from '../src/config.ts'
+import { jobsEnabled, parseConfig, TEST_FIELD_ENCRYPTION_KEY } from '../src/config.ts'
 import type { Database } from '../src/db/client.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { files } from '../src/db/schema/files.ts'
@@ -18,6 +18,7 @@ import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
 import { installmentRemindersJob } from '../src/jobs/installment-reminders.ts'
 import { bootJobs } from '../src/jobs/boot.ts'
 import { jobErrorInfo } from '../src/jobs/job-error.ts'
+import { attendanceWarningsJob } from '../src/jobs/attendance-warnings.ts'
 import { permissionRemindersJob } from '../src/jobs/permission-reminders.ts'
 import { INSTITUTION_JOBS, RETIRED_JOBS } from '../src/jobs/registry.ts'
 import { DAY_SECONDS, type JobDeps } from '../src/jobs/types.ts'
@@ -83,6 +84,7 @@ describe('arka plan işleri', () => {
     const base = {
       DATABASE_URL: 'postgres://test@localhost:5432/test',
       BETTER_AUTH_SECRET: 'yalniz-test-icin-otuz-iki-karakter-sir',
+      FIELD_ENCRYPTION_KEY: TEST_FIELD_ENCRYPTION_KEY,
     }
     assert.equal(jobsEnabled(parseConfig({ ...base, NODE_ENV: 'test' })), false)
     assert.equal(jobsEnabled(parseConfig({ ...base, NODE_ENV: 'development' })), true)
@@ -119,6 +121,7 @@ describe('arka plan işleri', () => {
         filesPurgeJob.name,
         filesPurgeExpiredJob.name,
         permissionRemindersJob.name,
+        attendanceWarningsJob.name,
         installmentRemindersJob.name,
       ],
     )

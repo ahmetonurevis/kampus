@@ -27,6 +27,7 @@ import {
 import { hidesPracticeResult, learnerAttemptProgress } from './task-attempts.ts'
 import { learnerSubmissionProgress, loadGrading } from './task-submissions.ts'
 import {
+  hasListeningOf,
   loadWorkPairs,
   scoringContexts,
   workPairsOf,
@@ -376,6 +377,7 @@ export async function listTaskAssignments(ctx: ServiceContext, input: TaskAssign
     total,
     items: rows.map((row) => ({
       ...learnerAssignmentView(ctx, viewer, row, refs),
+      hasListening: hasListeningOf(row, book.pairs),
       progress: progress.get(row.id) ?? [],
     })),
   }
@@ -391,5 +393,11 @@ export async function getTaskAssignment(ctx: ServiceContext, assignmentId: strin
   const view = learnerAssignmentView(ctx, viewer, assignment, refs)
   const book = await loadWork(ctx, viewer, [assignment])
   const progress = (await progressOf(ctx, viewer, book, [assignment])).get(assignment.id) ?? []
-  return { ...view, progress, ...(await learnerContent(ctx, viewer, book, assignment)) }
+  const hasListening = hasListeningOf(assignment, book.pairs)
+  return {
+    ...view,
+    hasListening,
+    progress,
+    ...(await learnerContent(ctx, viewer, book, assignment)),
+  }
 }

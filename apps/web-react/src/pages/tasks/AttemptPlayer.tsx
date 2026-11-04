@@ -12,6 +12,7 @@ import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
 import { useNow } from '@/hooks/use-now.ts'
 import { notify } from '@/lib/notify.ts'
+import { attemptExtraTimeLabel } from './extra-time-model.ts'
 import { ListeningRecording } from './ListeningRecording.tsx'
 import {
   checkView,
@@ -85,6 +86,8 @@ export function AttemptPlayer({
   const remaining = remainingAt === null ? null : remainingAt - now
   const timeOver = remaining !== null && remaining <= 0
   const clock = attemptClock({ timeLimitMinutes, dueAt, remainingMs: remaining })
+  // Bireysel ek süre (DOM-BEC-043): yalnız dakika; gerekçe öğrenciye dönmez. Kalan süre sunucuda uzar.
+  const extraTime = attemptExtraTimeLabel(attempt.extraMinutes)
 
   useEffect(() => {
     if (!timeOver) return
@@ -162,6 +165,7 @@ export function AttemptPlayer({
         </h2>
         <div className="flex flex-wrap items-center gap-2">
           <StatusBadge text={`${index + 1} / ${total} soru`} tone="purple" />
+          {extraTime ? <StatusBadge text={extraTime} tone="purple" /> : null}
           {clock ? <StatusBadge text={clock.text} tone={clock.tone} /> : null}
         </div>
       </header>

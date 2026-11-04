@@ -157,8 +157,19 @@ const attemptShape = {
     .enum(['in_progress', 'submitted', 'expired'])
     .describe('Süren, teslim edilmiş veya süresi dolmuş (kaydedilmiş cevaplarla teslim sayılır)'),
   startedAt: instant,
-  endsAt: instant.nullable().describe('Süre ve teslim kapanışından erken olanı; yoksa `null`'),
+  endsAt: instant
+    .nullable()
+    .describe(
+      'Süre (bireysel ek süre dahil) ve teslim kapanışından erken olanı; yoksa `null` (DOM-BEC-043)',
+    ),
   remainingMs: z.number().int().nullable(),
+  extraMinutes: z
+    .number()
+    .int()
+    .min(0)
+    .describe(
+      'Bu denemeye uygulanan bireysel ek süre, dakika (DOM-BEC-043); kayıt geçmişinden hesaplanır, süresiz görevde 0. Gerekçe hiçbir deneme görünümünde yoktur',
+    ),
   completedAt: instant.nullable(),
   autoSubmitted: z.boolean().describe('Süre dolduğu için kaydedilmiş cevaplarla teslim sayıldı'),
   late: z.boolean().describe('Son teslimden sonra, geç kabul süresinde tamamlandı'),

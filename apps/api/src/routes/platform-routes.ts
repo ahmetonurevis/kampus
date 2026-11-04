@@ -18,6 +18,8 @@ import { registerMembershipRoutes } from './memberships.ts'
 import { registerModuleRoutes } from './modules.ts'
 import { registerResourceCommandRoutes } from './resource-commands.ts'
 import { registerQuestionRoutes } from './questions.ts'
+import { registerNotificationPreferenceRoutes } from './notification-preferences.ts'
+import { registerHealthProfileRoutes } from './health-profiles.ts'
 import { registerNotificationRoutes } from './notifications.ts'
 import { registerPrivacyRoutes } from './privacy.ts'
 import { registerRequestRoutes } from './requests.ts'
@@ -45,6 +47,7 @@ import { registerLearningOutcomeRoutes } from './learning-outcomes.ts'
 import { registerProgressionRoutes } from './progression.ts'
 import { registerCertificateRoutes } from './certificates.ts'
 import { registerGuardianInvitationRoutes } from './guardian-invitations.ts'
+import { registerTaskExtraTimeRoutes } from './task-extra-times.ts'
 
 /**
  * Platform rota kayıtları: Onur'un kayıt ve finans uçları dışındaki her uç. Kayıt `app.ts`
@@ -104,6 +107,9 @@ export const PLATFORM_LATE_ROUTES = [
   registerProgressionRoutes,
   registerCertificateRoutes,
   registerGuardianInvitationRoutes,
+  registerTaskExtraTimeRoutes,
+  registerNotificationPreferenceRoutes,
+  registerHealthProfileRoutes,
 ] as const satisfies readonly RouteRegistrar[]
 
 /** Onur bloğundan önceki platform uçlarını kaydeder. */

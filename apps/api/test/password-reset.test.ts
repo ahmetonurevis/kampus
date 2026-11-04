@@ -510,6 +510,7 @@ describe('parola sıfırlama (IST-003)', () => {
         NODE_ENV: 'production',
         BETTER_AUTH_URL: 'https://api.kampus.example',
         BETTER_AUTH_SECRET: 'b4Jx9-uretim-icin-uretilmis-rastgele-deger-Qm2',
+        FIELD_ENCRYPTION_KEY: 'x/Ze81RFCnuwFDAaKuVS9QlX60f17joBtM9H4nyNDso=',
         WEB_URL: 'https://kampus.example',
         CORS_ORIGINS: 'https://kampus.example',
       }),

@@ -417,6 +417,7 @@ describe('beceri görevi deposu', () => {
       targets: [targets[1], targets[0]],
       // Örnek içerik sürümü ders ve seviye etiketsizdir (koordinatör alanı, DOM-YTK-027).
       area: { subjectId: null, cefrLevel: null },
+      extraTimes: [],
       createdAt: iso(FIXED_NOW),
       updatedAt: iso(FIXED_NOW),
       secondRatingSampledAt: null,

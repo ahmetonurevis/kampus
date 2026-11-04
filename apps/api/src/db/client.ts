@@ -17,6 +17,7 @@ import * as institutionSettingsSchema from './schema/institution-settings.ts'
 import * as languageGroupsSchema from './schema/language-groups.ts'
 import * as learningOutcomesSchema from './schema/learning-outcomes.ts'
 import * as membershipLinksSchema from './schema/membership-links.ts'
+import * as notificationPreferencesSchema from './schema/notification-preferences.ts'
 import * as privacySchema from './schema/privacy.ts'
 import * as recordsSchema from './schema/records.ts'
 import * as resourcesSchema from './schema/resources.ts'
@@ -42,6 +43,7 @@ export const schema = {
   ...languageGroupsSchema,
   ...cefrSchema,
   ...certificatesSchema,
+  ...notificationPreferencesSchema,
 }
 export type Schema = typeof schema
 

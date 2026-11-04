@@ -7,6 +7,19 @@ if [[ -f .env.android ]]; then
   source .env.android
   set +a
 fi
+# Yayın APK'sı kurumun API'sine bağlanır: adres derlemede pakete gömülür (`apps/mobile/src/api/config.ts`).
+# Adressiz derleme çevrimdışı demoyu açar; bu yalnız bilerek istenince (`KAMPUS_DEMO_APK=1`) yapılır.
+api_url=${EXPO_PUBLIC_API_URL:-}
+if [[ -z $api_url ]]; then
+  if [[ ${KAMPUS_DEMO_APK:-} != 1 ]]; then
+    printf '%s\n' 'EXPO_PUBLIC_API_URL tanımlı değil: APK çevrimdışı demoyla açılır. API adresini .env.android içinde verin ya da demo APK için KAMPUS_DEMO_APK=1 kullanın.' >&2
+    exit 1
+  fi
+  printf '%s\n' 'Uyarı: demo APK derleniyor (API adresi yok).' >&2
+elif [[ ! $api_url =~ ^https:// ]]; then
+  printf '%s\n' 'EXPO_PUBLIC_API_URL https ile başlamalı; yayın derlemesi http adresini kabul etmez.' >&2
+  exit 1
+fi
 export ANDROID_HOME=${ANDROID_HOME:-"$HOME/Library/Android/sdk"}
 if [[ -z ${JAVA_HOME:-} ]]; then
   java_binary=$(command -v javac)

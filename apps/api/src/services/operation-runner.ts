@@ -25,13 +25,12 @@ import {
 } from '../db/idempotency.ts'
 import { planPositions } from '../db/positions.ts'
 import {
-  loadRecords,
-  loadRecordsByIds,
   lockInstitution,
-  writeRecords,
-  type RecordFilter,
+  RECORDS_STORE,
+  type CollectionStore,
   type RecordWrite,
   type StoredRecord,
+  type StoreScope,
   type WrittenRecord,
 } from '../db/records.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
@@ -81,7 +80,20 @@ export interface AuditEntity {
  * İşlem yalnız gördüğü kayıtlarla doğru karar verebilmelidir: tekillik denetimi gibi kurallar
  * için süzgeç, kuralın baktığı bütün kayıtları kapsamalıdır (ör. aynı öğrencinin yazışmaları).
  */
-export type LoadScope = { ids: readonly string[] } | { match: readonly RecordFilter[] }
+export type LoadScope = StoreScope
+
+/**
+ * Koleksiyon → depo kaydı (ADR 0010 karar 7; ON-046b). `stores` yazma sırasıdır: bağımlı olunan
+ * depo önce yazılır (ör. tablo destekli koleksiyonun bağları `records`'tan sonra). `byCollection`'da
+ * adı geçmeyen koleksiyon `records`'tadır; kayıttaki her depo `stores`'ta olmalıdır.
+ */
+export interface StoreRegistry {
+  readonly stores: readonly CollectionStore[]
+  readonly byCollection: Readonly<Partial<Record<CollectionName, CollectionStore>>>
+}
+
+/** Çalıştırıcının depo kaydı. Bütün koleksiyonlar `records`'tadır. */
+export const OPERATION_STORES: StoreRegistry = { stores: [RECORDS_STORE], byCollection: {} }
 
 /** İşlemin State'i değiştiren saf adımı (core işlemi). */
 export type OperationRun<R> = (state: State, tools: OperationTools) => R
@@ -471,7 +483,12 @@ async function applyOperation<R>(
   // kayıt (öğrenci/video) düzeyinde kilit ya da kilitsiz yol; ölçüm sonrası karar.
   // Yüklemeden önce: aynı kurumun eşzamanlı işlemi bu görüntüyü bayatlatamaz.
   await lockInstitution(tx, ctx.institutionId)
-  const { rows, partial } = await loadOperationRecords(tx, ctx, collections, request.loadScope)
+  const { rows, partial } = await loadOperationRecords(
+    tx,
+    ctx.institutionId,
+    collections,
+    request.loadScope,
+  )
   const before = new Map<CollectionName, Map<string, StoredRecord>>(
     collections.map((collection) => [collection, new Map()]),
   )
@@ -520,7 +537,7 @@ async function applyOperation<R>(
   }
 
   const { writes, fields } = difference(collections, before, target, partial)
-  const changes = await writeRecords(tx, ctx.institutionId, writes, ctx.now)
+  const changes = await writeOperationRecords(tx, ctx.institutionId, writes, ctx.now)
   const first = changes[0]
   // `firstWriteOnly`: kayıt bu işlemde açılmadıysa (yalnız güncelleme) denetim satırı yazılmaz.
   const audited =
@@ -562,16 +579,24 @@ async function applyOperation<R>(
   return { result, changes, loaded }
 }
 
+function storeOf(registry: StoreRegistry, collection: CollectionName): CollectionStore {
+  const store = registry.byCollection[collection] ?? RECORDS_STORE
+  if (!registry.stores.includes(store))
+    throw programmingError(`store ${store.name} for ${collection} is not registered`)
+  return store
+}
+
 /**
- * İşlemin kayıtları: kısmi yükleme verilmeyen koleksiyonlar tek sorguda, kısmi olanlar kendi
- * süzgeciyle (kimlikle birincil anahtardan, süzgeçle `loadRecords`). Hepsi aynı transaction'da,
- * kurum kilidinden sonra.
+ * İşlemin kayıtları, koleksiyonun deposundan: kısmi yükleme verilmeyen koleksiyonlar depo başına
+ * tek çağrıda, kısmi olanlar kendi kapsamıyla (kimlikle ya da süzgeçle). Hepsi aynı
+ * transaction'da, kurum kilidinden sonra. `loadScope` anahtarı `collections`'ta olmalıdır.
  */
-async function loadOperationRecords(
+export async function loadOperationRecords(
   tx: Database,
-  ctx: ServiceContext,
+  institutionId: string,
   collections: readonly CollectionName[],
   loadScope: OperationBase<unknown>['loadScope'],
+  registry: StoreRegistry = OPERATION_STORES,
 ): Promise<{ rows: StoredRecord[]; partial: Set<CollectionName> }> {
   const scopes = Object.entries(loadScope ?? {})
   const partial = new Set<CollectionName>()
@@ -581,16 +606,44 @@ async function loadOperationRecords(
     partial.add(collection)
   }
   const full = collections.filter((collection) => !partial.has(collection))
-  const rows = await loadRecords(tx, ctx.institutionId, full)
+  const rows: StoredRecord[] = []
+  for (const store of registry.stores) {
+    const own = full.filter((collection) => storeOf(registry, collection) === store)
+    if (own.length > 0) rows.push(...(await store.loadAll(tx, institutionId, own)))
+  }
   for (const [collection, scope] of scopes) {
     if (!scope || !isRecordCollection(collection)) continue
-    const part =
-      'ids' in scope
-        ? await loadRecordsByIds(tx, ctx.institutionId, collection, scope.ids)
-        : await loadRecords(tx, ctx.institutionId, [collection], { match: scope.match })
-    rows.push(...part)
+    rows.push(
+      ...(await storeOf(registry, collection).loadScoped(tx, institutionId, collection, scope)),
+    )
   }
   return { rows, partial }
+}
+
+/**
+ * Farkı depolara dağıtır ve depo kaydının sırasıyla yazar (ADR 0010 karar 7); her depo kendi
+ * içindeki sırayı belirler (`records`: koleksiyon, kimlik). Yazılanlar depo sırasıyla döner.
+ */
+export async function writeOperationRecords(
+  tx: Database,
+  institutionId: string,
+  writes: readonly RecordWrite[],
+  now: Date,
+  registry: StoreRegistry = OPERATION_STORES,
+): Promise<WrittenRecord[]> {
+  const grouped = new Map<CollectionStore, RecordWrite[]>()
+  for (const write of writes) {
+    const store = storeOf(registry, write.collection)
+    const group = grouped.get(store)
+    if (group) group.push(write)
+    else grouped.set(store, [write])
+  }
+  const written: WrittenRecord[] = []
+  for (const store of registry.stores) {
+    const group = grouped.get(store)
+    if (group) written.push(...(await store.write(tx, institutionId, group, now)))
+  }
+  return written
 }
 
 function prepare(
@@ -631,7 +684,12 @@ export async function runReadOnly<R>(
   const work = ctx.db.transaction(async (tx) => {
     // İlk ifade olmalı: görüntü ilk sorguda sabitlenir.
     await tx.execute(sql`set transaction isolation level repeatable read read only`)
-    const { rows } = await loadOperationRecords(tx, ctx, collections, request.loadScope)
+    const { rows } = await loadOperationRecords(
+      tx,
+      ctx.institutionId,
+      collections,
+      request.loadScope,
+    )
     const before = new Map<CollectionName, Map<string, StoredRecord>>(
       collections.map((collection) => [collection, new Map()]),
     )

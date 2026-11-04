@@ -52,6 +52,7 @@ import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { notifyAttendanceAlerts } from './attendance-alerts.ts'
 import { commandBody } from './command-result.ts'
+import { GRADUATION_RENEWALS } from './roster-scope.ts'
 import { listActorLinks } from './memberships.ts'
 import { getInstitutionModules } from './modules.ts'
 import {
@@ -295,8 +296,11 @@ export async function recordAttendanceCommand(
       action: 'attendance.record',
       collections: OPERATION_COMMANDS['attendance.record'].collections,
       // Geç kalma sınırı yalnız bu sınıfın derslerine bakar (`lateMinutesLimit`): kurumun bütün
-      // programı kurum kilidi altında yüklenmez.
-      loadScope: { schedule: { match: [{ kind: 'equals', field: 'classId', values: [classId] }] } },
+      // programı kurum kilidi altında yüklenmez. Kayıt durumu yalnız mezuniyet kayıtlarını okur.
+      loadScope: {
+        schedule: { match: [{ kind: 'equals', field: 'classId', values: [classId] }] },
+        renewals: GRADUATION_RENEWALS,
+      },
       // İşlemin konusu sınıftır: `If-Match` sınıf kaydının okunan sürümüyle karşılaştırılır.
       ...(options.expectedVersion !== null
         ? {
@@ -468,6 +472,8 @@ export async function saveRecordCommand(
     {
       action: `${collection}.${recordId === null ? 'create' : 'update'}`,
       collections: spec.collections,
+      // Sınıf kontenjan sayımı yalnız kayıt durumuna bakar; `class.save` yenileme yazmaz.
+      ...(kind === 'class' ? { loadScope: { renewals: GRADUATION_RENEWALS } } : {}),
       ...(recordId !== null && options.expectedVersion !== null
         ? { expectedVersions: [{ collection, id: recordId, version: options.expectedVersion }] }
         : {}),

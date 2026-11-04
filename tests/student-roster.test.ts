@@ -10,10 +10,14 @@ import { recordAttendance } from '../packages/school-core/src/lib/domain.ts'
 import {
   ENROLLMENT_STATUS_EFFECTS,
   enrollmentStatus,
+  enrollmentStatuses,
+  type EnrollmentRenewal,
 } from '../packages/school-core/src/lib/enrollment-status.ts'
+import { archiveRecord, updateClass } from '../packages/school-core/src/lib/school-management.ts'
 import { createPermissionForm } from '../packages/school-core/src/lib/permission-forms.ts'
 import { runWorkflow } from '../packages/school-core/src/lib/school-workflows.ts'
 import {
+  GRADUATION_RENEWAL_MATCH,
   studentsWithEffect,
   type RosterEffect,
 } from '../packages/school-core/src/lib/student-roster.ts'
@@ -157,5 +161,81 @@ test('DOM-KAY-026, DOM-ILT-036: izin formu hedefi ayrılan öğrenciyi içermez,
   assert.throws(
     () => createPermissionForm(state, admin, { ...FORM, studentIds: ['s1'] }, makeId, NOW),
     isDomainError('student_inactive'),
+  )
+})
+
+/** API'nin yüklediği kısmi küme: `GRADUATION_RENEWAL_MATCH`'in tüm alan eşitliklerini sağlayan kayıtlar. */
+const graduationOnly = (renewals: readonly EnrollmentRenewal[]) =>
+  renewals.filter((item) =>
+    GRADUATION_RENEWAL_MATCH.every(({ field, value }) => item[field] === value),
+  )
+
+test('DOM-KAY-026: mezuniyet süzgeci kayıt durumunu değiştirmez (kısmi yükleme eşdeğeri)', () => {
+  const { state, graduate } = seedWithLeavers()
+  const base = state.renewals[0]!
+  const noise: EnrollmentRenewal[] = [
+    { ...base, id: 'test-r1', studentId: 's1', mode: 'graduate', status: 'Planlandı' },
+    { ...base, id: 'test-r2', studentId: 's1', mode: 'renew', status: 'Tamamlandı' },
+    { ...base, id: 'test-r3', studentId: 's1', mode: 'renew', status: 'Mezun' },
+    { ...base, id: 'test-r4', studentId: 's1', mode: 'graduate', status: 'İptal' },
+  ]
+  const all = [...state.renewals, ...noise] as EnrollmentRenewal[]
+  const partial = graduationOnly(all)
+  assert.ok(partial.length > 0 && partial.length < all.length)
+  assert.ok(partial.some((item) => item.studentId === graduate.id))
+  assert.deepEqual(
+    [...enrollmentStatuses(state.students, { renewals: partial })],
+    [...enrollmentStatuses(state.students, { renewals: all })],
+  )
+  for (const effect of EFFECTS)
+    assert.deepEqual(
+      studentsWithEffect(state.students, { renewals: partial }, effect).map((s) => s.id),
+      studentsWithEffect(state.students, { renewals: all }, effect).map((s) => s.id),
+    )
+})
+
+test('DOM-KAY-010, DOM-KAY-026: sınıf kontenjanı ayrılmış ve mezun öğrenciyi saymaz', () => {
+  const { state, graduate } = seedWithLeavers()
+  const rosterOf = (classId: string) =>
+    state.students.filter((s) => s.classId === classId && s.isActive !== false).length
+  for (const classId of new Set(['c1', graduate.classId])) {
+    const total = state.students.filter((s) => s.classId === classId).length
+    const active = rosterOf(classId)
+    assert.ok(total > active, `${classId}: pasif öğrenci var`)
+    // Kontenjan etkin öğrenci sayısına eşit olabilir; pasif öğrenci sayılsaydı reddedilirdi.
+    updateClass(state, classId, { capacity: active }, makeId, NOW)
+    assert.throws(
+      () => updateClass(state, classId, { capacity: active - 1 }, makeId, NOW),
+      isDomainError('capacity_below_students'),
+    )
+  }
+})
+
+test('DOM-KAY-010, DOM-KAY-026: sınıf taşımada hedef kontenjanı ayrılmış öğrenciyi saymaz', () => {
+  const { state } = seedWithLeavers()
+  const source = state.classes.find((c) => c.id === 'c1')!
+  const target = state.classes.find(
+    (c) => c.id !== source.id && c.isActive && c.grade === source.grade,
+  )!
+  const sourceActive = state.students.filter((s) => s.classId === source.id && s.isActive).length
+  const targetStudents = state.students.filter((s) => s.classId === target.id)
+  const targetActive = targetStudents.filter((s) => s.isActive !== false).length
+  // Hedefe ayrılmış öğrenci eklenir: sayılsaydı kontenjan yetmezdi.
+  state.students.push({
+    ...state.students.find((s) => s.id === 's1')!,
+    id: 'test-ayrildi-hedef',
+    classId: target.id,
+    isActive: false,
+  })
+  target.capacity = sourceActive + targetActive
+  archiveRecord(state, 'class', source.id, target.id, NOW)
+  assert.equal(
+    state.students.filter((s) => s.classId === target.id && s.isActive !== false).length,
+    sourceActive + targetActive,
+  )
+  assert.equal(
+    state.students.find((s) => s.id === 's1')!.classId,
+    'c1',
+    'ayrılmış öğrenci taşınmaz',
   )
 })

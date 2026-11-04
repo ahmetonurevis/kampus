@@ -46,6 +46,7 @@ import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { searchKey } from './collection-reads.ts'
 import { environment } from './commands.ts'
+import { GRADUATION_RENEWALS } from './roster-scope.ts'
 import { learnerFactsOf } from './learner-age.ts'
 import { getInstitutionModules } from './modules.ts'
 import { notify } from './notify.ts'
@@ -783,7 +784,11 @@ export function createPermissionFormCommand(
     ctx,
     {
       action: 'permissionForm.create',
-      loadScope: { permissionForms: NONE, permissionDecisions: NONE },
+      loadScope: {
+        renewals: GRADUATION_RENEWALS,
+        permissionForms: NONE,
+        permissionDecisions: NONE,
+      },
       expected: null,
       run: (state, by, { now, makeId }, { institutionType }) => {
         const form = createPermissionForm(state, by, input, makeId, now, { institutionType })
@@ -811,6 +816,7 @@ export function editPermissionForm(
     {
       action: 'permissionForm.update',
       loadScope: {
+        renewals: GRADUATION_RENEWALS,
         permissionForms: { ids: [target.formId] },
         permissionDecisions: decisionsOfForm(target.formId),
       },

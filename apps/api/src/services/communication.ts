@@ -50,6 +50,7 @@ import { NotFoundError, ValidationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import { GRADUATION_RENEWALS } from './roster-scope.ts'
 import {
   runCommand,
   runOperation,
@@ -420,6 +421,7 @@ export function publishAnnouncementCommand(
     {
       action: 'announcement.publish',
       subject: null,
+      loadScope: { renewals: GRADUATION_RENEWALS },
       run: (state, by, { now, makeId }, { institutionType }) => {
         const created = publishAnnouncement(state, by, input, makeId, now, { institutionType })
         return { entity: announcementEntity(created.id), statusCode: 201 }

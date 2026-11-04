@@ -83788,6 +83788,119 @@
         }
       }
     },
+    "/api/v1/consent-texts": {
+      "get": {
+        "operationId": "listConsentTexts",
+        "summary": "Yayımlanmış güncel rıza metinleri",
+        "tags": [
+          "privacy"
+        ],
+        "description": "Kurumun yayımlanmış rıza metinlerinin güncel sürümü, amaç sırasıyla, tek istekte (DOM-YTK-058, DOM-YTK-060). Her öğe `GET /consent-texts/{purpose}` yanıtıyla aynıdır; metni yayımlanmamış amaç listede yer almaz (tekil uçtaki 404 yerine \"metin yok\"), bu yüzden liste boş olabilir ve hata değildir. İsteğe bağlı `purpose` yalnız o amacı getirir. Sayfalama yoktur (en çok amaç sayısı kadar öğe). Bilinmeyen parametre ve amaç 400. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "photo_video_sharing",
+                "photo_video_website",
+                "photo_video_social_media",
+                "photo_video_print",
+                "promotional_messages",
+                "speaking_recording"
+              ]
+            },
+            "in": "query",
+            "name": "purpose",
+            "required": false,
+            "description": "Yalnız bu amacın metni; yoksa bütün amaçlar"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ConsentText"
+                      }
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/consent-texts/{purpose}": {
       "get": {
         "operationId": "getConsentText",

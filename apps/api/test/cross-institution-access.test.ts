@@ -282,6 +282,30 @@ describe('IST-002: erişim, takvim, dosya ve bildirim uçlarında başka kurum (
     assert.equal(current.text.id, own.id)
   })
 
+  test('IST-002: GET /api/v1/consent-texts: başka kurumun rıza metni listede yok', async () => {
+    const a = await tenant()
+    const b = await tenant()
+    await made(b.cookies.admin, '/api/v1/privacy-notices', consentText('photo_video_sharing'))
+    const foreign = await read<{ text: { id: string } }[]>(
+      a.cookies.parent,
+      '/api/v1/consent-texts',
+    )
+    assert.deepEqual(foreign, [])
+    const own = await made(
+      a.cookies.admin,
+      '/api/v1/privacy-notices',
+      consentText('photo_video_sharing'),
+    )
+    const current = await read<{ text: { id: string } }[]>(
+      a.cookies.parent,
+      '/api/v1/consent-texts?purpose=photo_video_sharing',
+    )
+    assert.deepEqual(
+      current.map((item) => item.text.id),
+      [own.id],
+    )
+  })
+
   // --- Eğitim yılı ----------------------------------------------------------------------------
   test('IST-002: GET /api/v1/academic-years/current: başka kurumun etkin yılı ve dönemi görünmez', async () => {
     const a = await tenant(0, false)

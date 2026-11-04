@@ -1,6 +1,10 @@
 import { randomUUID } from 'node:crypto'
 
-import type { ConsentChannel, ConsentPurpose } from '@kampus/school-core/lib/consent-purposes.ts'
+import {
+  CONSENT_PURPOSE_KEYS,
+  type ConsentChannel,
+  type ConsentPurpose,
+} from '@kampus/school-core/lib/consent-purposes.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import {
   latestNotice,
@@ -175,6 +179,22 @@ export async function currentConsentText(ctx: ServiceContext, purpose: ConsentPu
   if (text === null)
     throw new AppError(404, 'consent_text_not_found', 'Bu amaç için yayımlanmış rıza metni yok.')
   return { text: noticeView(text), minimumVersion: minimumConsentTextVersion(notices, purpose) }
+}
+
+/**
+ * Yayımlanmış rıza metinlerinin güncel sürümleri (amaç sırasıyla), tek okumada: tekil
+ * `currentConsentText` ile aynı kural ve aynı alanlar, yalnız metni olmayan amaç 404 yerine listede
+ * yoktur. `purpose` verilirse yalnız o amaç (metni yoksa boş liste).
+ */
+export async function listCurrentConsentTexts(ctx: ServiceContext, purpose?: ConsentPurpose) {
+  const notices = await listPrivacyNotices(ctx.db, ctx.institutionId)
+  const purposes = purpose === undefined ? CONSENT_PURPOSE_KEYS : [purpose]
+  return purposes.flatMap((key) => {
+    const text = latestNotice(notices, { kind: 'consent_text', purpose: key })
+    return text === null
+      ? []
+      : [{ text: noticeView(text), minimumVersion: minimumConsentTextVersion(notices, key) }]
+  })
 }
 
 type Acknowledged = { created: NoticeAcknowledgementDraft } | { existing: NoticeAcknowledgement }

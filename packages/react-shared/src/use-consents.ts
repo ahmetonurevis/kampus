@@ -1,20 +1,15 @@
-import { useQueries, type UseQueryOptions } from '@tanstack/react-query'
-
 import type { KampusClient } from '@kampus/api-client/client.ts'
-import type { ApiError } from '@kampus/api-client/errors.ts'
+import { ApiError } from '@kampus/api-client/errors.ts'
 import type { operations } from '@kampus/api-client/schema.d.ts'
 
-import { runRequest } from './api-result.ts'
 import type { CommandHeaders, CommandMessages } from './commands.ts'
-import { useKampusClient } from './kampus-context.ts'
 import {
   consentListKey,
   consentsPrefix,
   consentStatusKey,
   consentTextKey,
-  institutionKey,
+  consentTextListKey,
 } from './query-keys.ts'
-import { useActiveInstitutionId } from './use-active-institution.ts'
 import { useApiCommand } from './use-api-command.ts'
 import { useApiQuery } from './use-api-query.ts'
 
@@ -27,6 +22,8 @@ import { useApiQuery } from './use-api-query.ts'
  */
 
 type TextResponse = operations['getConsentText']['responses'][200]['content']['application/json']
+type TextListResponse =
+  operations['listConsentTexts']['responses'][200]['content']['application/json']
 type ListResponse = operations['listConsents']['responses'][200]['content']['application/json']
 type StatusResponse =
   operations['getConsentStatus']['responses'][200]['content']['application/json']
@@ -186,23 +183,82 @@ export function useConsentText(purpose: ConsentPurposeKey, options: { enabled?: 
   })
 }
 
+/** Yayımlı rıza metinlerinin tek istekle listesi (`GET /consent-texts`); yayımlanmamış amaç yoktur. */
+export function consentTextListRequest(client: KampusClient, signal?: AbortSignal) {
+  return client.GET('/api/v1/consent-texts', {
+    params: { query: {} },
+    ...(signal ? { signal } : {}),
+  })
+}
+
 /**
- * Birden çok amacın güncel metni (rıza adımı): `useConsentText` ile aynı sorgu anahtarı, ama
- * amaç listesi değişebilir. Sonuçlar `purposes` sırasındadır.
+ * Bir amacın metin durumu: `useConsentText` sorgusuyla aynı alanlar (`data`, `error`, `isError`,
+ * `isPending`, `refetch`), böylece çağıranlar amaç başına sorgu varmış gibi okur.
+ */
+export interface ConsentTextQuery {
+  data: TextResponse | undefined
+  /** Liste okundu ama amacın metni yok: `consent_text_not_found` (istemcide üretilir, ağ hatası değil). */
+  error: ApiError | null
+  isError: boolean
+  isPending: boolean
+  refetch: () => Promise<unknown>
+}
+
+/** Liste sorgusundan kullanılan alanlar (`useApiQuery` sonucunun alt kümesi). */
+export interface ConsentTextListQuery {
+  data: TextListResponse | undefined
+  error: ApiError | null
+  isError: boolean
+  isPending: boolean
+  refetch: () => Promise<unknown>
+}
+
+/**
+ * Tek liste yanıtını amaç başına durumlara açar (sıra `purposes` sırasıdır). Liste okunduysa metni
+ * olmayan amaç hata değil "metin yok"tur: tekil uçtaki 404 `consent_text_not_found` ile aynı kod,
+ * ama ek istek ve tarayıcı konsol hatası yoktur. Liste okunamadıysa her amaç aynı hatayı taşır.
+ */
+export function consentTextQueries(
+  purposes: readonly ConsentPurposeKey[],
+  list: ConsentTextListQuery,
+): ConsentTextQuery[] {
+  const byPurpose = new Map(
+    (list.data?.data ?? []).map((item) => [item.text.purpose, item] as const),
+  )
+  return purposes.map((purpose): ConsentTextQuery => {
+    const found = byPurpose.get(purpose)
+    const missing = list.data !== undefined && found === undefined
+    return {
+      data: found ? { data: found } : undefined,
+      error: missing
+        ? new ApiError({
+            status: 404,
+            code: 'consent_text_not_found',
+            message: CONSENT_MESSAGES.consent_text_not_found,
+          })
+        : list.error,
+      isError: missing || list.isError,
+      isPending: list.isPending,
+      refetch: list.refetch,
+    }
+  })
+}
+
+/**
+ * Birden çok amacın güncel metni (rıza adımı) tek istekle: `GET /consent-texts` bir kez okunur ve
+ * amaç başına durumlara açılır (`consentTextQueries`); kimse metin yayımlamamışsa 404 yağmaz.
+ * Sonuçlar `purposes` sırasındadır.
  */
 export function useConsentTexts(
   purposes: readonly ConsentPurposeKey[],
   options: { enabled?: boolean } = {},
-) {
-  const client = useKampusClient()
-  const institutionId = useActiveInstitutionId()
-  return useQueries({
-    queries: purposes.map((purpose): UseQueryOptions<TextResponse, ApiError> => ({
-      queryKey: institutionKey(institutionId, ...consentTextKey(purpose)),
-      queryFn: ({ signal }) => runRequest(() => consentTextRequest(client, purpose, signal)),
-      enabled: institutionId !== null && (options.enabled ?? true),
-    })),
+): ConsentTextQuery[] {
+  const list = useApiQuery({
+    key: consentTextListKey(),
+    request: (client, signal) => consentTextListRequest(client, signal),
+    ...(options.enabled === undefined ? {} : { enabled: options.enabled }),
   })
+  return consentTextQueries(purposes, list)
 }
 
 /**

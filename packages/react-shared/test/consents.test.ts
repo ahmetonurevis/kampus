@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
 import { createKampusClient } from '@kampus/api-client/client.ts'
-import { ApiError } from '@kampus/api-client/errors.ts'
+import { ApiError, isApiError } from '@kampus/api-client/errors.ts'
 
 import { runRequest } from '../src/api-result.ts'
 import {
@@ -16,12 +16,15 @@ import {
   consentsPrefix,
   consentStatusKey,
   consentTextKey,
+  consentTextListKey,
 } from '../src/query-keys.ts'
 import {
   CONSENT_MESSAGES,
   CONSENT_PAGE_SIZE,
   consentErrorMessage,
   consentStatusRequest,
+  consentTextListRequest,
+  consentTextQueries,
   consentTextRequest,
   giveConsentRequest,
   isConsentInlineError,
@@ -87,6 +90,84 @@ describe('açık rıza kancaları', () => {
         ['GET', '/api/v1/consents', `?page=1&pageSize=${CONSENT_PAGE_SIZE}&status=open`],
         ['GET', '/api/v1/consents/status', '?studentId=s1'],
         ['GET', '/api/v1/consents/status', ''],
+      ],
+    )
+  })
+
+  test('DOM-YTK-058: yayımlı metinler tek istekle (`GET /consent-texts`, süzgeçsiz) istenir; amaç başına istek yok', async () => {
+    const { client, sent } = fakeClient()
+    await runRequest(() => consentTextListRequest(client))
+    assert.deepEqual(
+      sent.map((item) => [item.method, item.url.pathname, item.url.search]),
+      [['GET', '/api/v1/consent-texts', '']],
+    )
+    assert.deepEqual(consentTextListKey(), ['consents', 'texts'])
+    // Rıza verilince `['consents']` önekiyle liste de tazelenir.
+    assert.deepEqual(consentTextListKey().slice(0, 1), consentsPrefix())
+  })
+
+  test('DOM-YTK-058: liste amaç başına durumlara açılır; yayımlanmamış amaç hata nesnesiyle "metin yok", ek istek yok', () => {
+    const item = (purpose: string, version: number) => ({
+      text: { id: `text-${purpose}`, purpose, version },
+      minimumVersion: 1,
+    })
+    const refetch = async () => undefined
+    const loaded = {
+      data: { data: [item('photo_video_sharing', 2), item('speaking_recording', 1)] },
+      error: null,
+      isError: false,
+      isPending: false,
+      refetch,
+    } as unknown as Parameters<typeof consentTextQueries>[1]
+    const [sharing, print, speaking] = consentTextQueries(
+      ['photo_video_sharing', 'photo_video_print', 'speaking_recording'],
+      loaded,
+    )
+    assert.equal(sharing?.data?.data.text.id, 'text-photo_video_sharing')
+    assert.equal(sharing?.isError, false)
+    assert.equal(sharing?.error, null)
+    assert.equal(speaking?.data?.data.text.version, 1)
+    assert.equal(print?.data, undefined)
+    assert.equal(print?.isError, true)
+    assert.ok(isApiError(print?.error))
+    assert.equal(print?.error.code, 'consent_text_not_found')
+    assert.equal(print?.error.status, 404)
+    assert.equal(print?.error.message, CONSENT_MESSAGES.consent_text_not_found)
+    assert.equal(print?.refetch, refetch)
+
+    // Boş liste: her amaç "metin yok".
+    const empty = consentTextQueries(['photo_video_sharing'], {
+      ...loaded,
+      data: { data: [] },
+    } as unknown as Parameters<typeof consentTextQueries>[1])
+    assert.equal(empty[0]?.error?.code, 'consent_text_not_found')
+
+    // Yükleniyor: ne veri ne hata; bekleyen sorgu gibi.
+    const pending = consentTextQueries(['photo_video_sharing'], {
+      data: undefined,
+      error: null,
+      isError: false,
+      isPending: true,
+      refetch,
+    })
+    assert.equal(pending[0]?.isPending, true)
+    assert.equal(pending[0]?.isError, false)
+    assert.equal(pending[0]?.error, null)
+
+    // Liste okunamadı: amaç "metin yok" değil, aynı okuma hatasını taşır.
+    const failure = new ApiError({ status: 500, code: 'internal_error', message: 'Hata' })
+    const failed = consentTextQueries(['photo_video_sharing', 'photo_video_print'], {
+      data: undefined,
+      error: failure,
+      isError: true,
+      isPending: false,
+      refetch,
+    })
+    assert.deepEqual(
+      failed.map((query) => [query.error?.code, query.isError]),
+      [
+        ['internal_error', true],
+        ['internal_error', true],
       ],
     )
   })

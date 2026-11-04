@@ -319,7 +319,7 @@ Model ve kurallar core'dadır (`packages/school-core/src/lib/consent-purposes.ts
 - **Gerekçe:** Rıza bilgilendirilmiş olmalıdır; kişi görmediği amaca rıza vermiş sayılmaz.
 - **Kaynak:** KVKK md. 3/1-a; guvenlik-kvkk §9. Düzeltme sürümünün yeniden rıza istemeyeceği yorumu **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — `lib/privacy-notices.ts` `minimumConsentTextVersion`; `hasValidConsent` alt sınırı çağıranın verdiği metin listesinden kendisi hesaplar (ayrı sayı almaz, unutulamaz). API `GET /api/v1/consent-texts/:purpose` güncel metni ve `minimumVersion`'ı döndürür. Yayımlanmış metin arşivlenemez ve sürüm numarası yeniden kullanılmaz (`privacy_notices` değişmez satır); yeniden rıza şartı böylece listeden düşmez.
+- **Kodda:** kısmen — `lib/privacy-notices.ts` `minimumConsentTextVersion`; `hasValidConsent` alt sınırı çağıranın verdiği metin listesinden kendisi hesaplar (ayrı sayı almaz, unutulamaz). API `GET /api/v1/consent-texts/:purpose` güncel metni ve `minimumVersion`'ı döndürür; `GET /api/v1/consent-texts` aynı öğeleri yayımlı amaçlar için tek istekte listeler (kayıt sayfası amaç başına 404 almaz). Yayımlanmış metin arşivlenemez ve sürüm numarası yeniden kullanılmaz (`privacy_notices` değişmez satır); yeniden rıza şartı böylece listeden düşmez.
 
 ### DOM-YTK-061 · Rızaya bağlı işlem geçerli rıza ister
 

@@ -151,10 +151,10 @@ test.describe('ayarlar: kullanıcılar ve işlem geçmişi', () => {
       await expect(page.getByRole('heading', { name: 'Ayarlar', level: 1 })).toBeVisible()
       await expect(page.getByRole('button', { name: 'Kullanıcı & Yetkiler' })).toHaveCount(0)
       await expect(page.getByRole('button', { name: 'İşlem Geçmişi' })).toHaveCount(0)
-      await expect(page.getByRole('table')).toHaveCount(0)
-      await expect(page.getByRole('switch')).toHaveCount(0)
-      // Bildirim tercihi için depo yok; sayfa bunu açıkça söyler. Tema düğmeleri korunur.
-      await expect(page.getByText(/Bildirim tercihleri bildirim merkeziyle gelecek/)).toBeVisible()
+      await expect(usersTable(page)).toHaveCount(0)
+      await expect(auditTable(page)).toHaveCount(0)
+      // Kişisel ayarlarda kendi bildirim tercihleri (OG-107) ve tema düğmeleri vardır.
+      await expect(page.getByRole('heading', { name: 'Bildirimler', level: 2 })).toBeVisible()
       await page.getByRole('button', { name: 'Koyu', exact: true }).click()
       await expect(page.locator('html')).toHaveAttribute('data-theme', 'dark')
       await page.getByRole('button', { name: 'Açık', exact: true }).click()
@@ -169,7 +169,8 @@ test.describe('ayarlar: kullanıcılar ve işlem geçmişi', () => {
     const teacher = await loginAs(school.user('ogretmen'))
     await teacher.goto(USERS_URL)
     await expect(teacher.getByRole('button', { name: 'Kullanıcı & Yetkiler' })).toHaveCount(0)
-    await expect(teacher.getByRole('table')).toHaveCount(0)
+    await expect(usersTable(teacher)).toHaveCount(0)
+    await expect(auditTable(teacher)).toHaveCount(0)
   })
 
   test('390 px genişlikte iki sekme de yatay taşmaz', async ({ loginAs, api, tenant }) => {

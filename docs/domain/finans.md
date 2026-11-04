@@ -112,7 +112,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Kardeş indirimi aile bağına dayanır; bağ yanlış kurulursa indirim haksız uygulanır.
 - **Kaynak:** İşletme kuralı; ilan zorunluluğu ÖÖKY md. 54/1-a.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — aynı veliye bağlı aktif kardeş denetlenir (`enrollProspectWithTariff`). "İkinci çocuk" seçimi ve yıl denetimi yok.
+- **Kodda:** kısmen — aynı veliye bağlı aktif kardeş ve "ikinci çocuk" sırası denetlenir (`requireSiblingDiscountEligible`, `lib/enrollment.ts`; kesin kayıt, yenileme ve ek protokol aynı kuralı çağırır; ON-109). Tarife sıra tanımlamadığı için varsayılan uygulanır: ücret, kardeşin son yürürlükteki sözleşmesinin ilan ücretidir (brütü olmayan eski sözleşmede tutar); en yüksek ücretli çocuk ilk çocuktur ve indirim almaz, eşit ücrette önce kaydolan öndedir, kesin kayıttaki aday eşitlikte sonradır; sözleşmesi olmayan kardeşin ücreti bilinmediğinden aday lehine öne sayılır. İlk çocuk sonradan değişirse (ör. pahalı kardeş sonra kaydolur) cari sözleşmeler kendiliğinden değişmez, indirim ek protokolle taşınır. Tarifede sıra tanımı ve yıl denetimi (kardeşin aynı eğitim yılında aktif kaydı) yok.
 
 ### DOM-FIN-023 · İndirim koşulu kalkınca
 

@@ -3,6 +3,7 @@ import { z } from 'zod'
 import type { State } from '../data/seed.ts'
 import type { InstitutionType } from '../modules/collection-modules.ts'
 import { ADULT_AGE, ageOn, isCalendarDay } from './age.ts'
+import { isContractInForce } from './contract-status.ts'
 import { daySchema, requiredText, type ContractTerms, type MakeId } from './domain.ts'
 import { installmentAmounts } from './payments.ts'
 import { DomainError } from './errors.ts'
@@ -181,6 +182,70 @@ export function itemFor(
     items.find((item) => item.kind === kind && item.level === level) ??
     items.find((item) => item.kind === kind && item.level === null)
   )
+}
+
+type SiblingState = Pick<State, 'students' | 'contracts'>
+
+/** Öğrencinin yürürlükteki sözleşmeleri, eğitim yılı ve tarihe göre eskiden yeniye. */
+function contractsInForce(state: SiblingState, studentId: string) {
+  return state.contracts
+    .filter((item) => item.studentId === studentId && isContractInForce(item, state.contracts))
+    .sort(
+      (a, b) =>
+        (a.academicYear ?? 0) - (b.academicYear ?? 0) ||
+        Date.parse(a.date) - Date.parse(b.date) ||
+        a.id.localeCompare(b.id),
+    )
+}
+
+/**
+ * Kardeş indirimi ikinci ve sonraki çocuğa uygulanır (DOM-FIN-022). Tarife sıra tanımlamadığı için
+ * varsayılan geçerlidir, ikinci çocuk ücreti düşük olandır: aynı veliye bağlı aktif çocuklardan
+ * öğrenim ücreti (son yürürlükteki sözleşmenin ilan ücreti; eski sözleşmede tutar) en yüksek olan
+ * ilk çocuktur ve indirim almaz. Eşit ücrette önce kaydolan öndedir; kesin kayıttaki aday her zaman
+ * sonradır. Sözleşmesi olmayan kardeşin ücreti bilinmediği için aday lehine öne sayılır.
+ */
+export function requireSiblingDiscountEligible(
+  state: SiblingState,
+  child: {
+    /** Kesin kayıtta henüz öğrenci yoktur: `null`. */
+    studentId: string | null
+    /** Aynı veliye bağlı aktif öteki çocuklar. */
+    siblingIds: readonly string[]
+    /** Bu çocuğun bu işlemdeki ilan öğrenim ücreti (kuruş). */
+    tuitionCents: number
+  },
+): void {
+  const siblings = state.students.filter(
+    (student) =>
+      student.isActive && student.id !== child.studentId && child.siblingIds.includes(student.id),
+  )
+  if (siblings.length === 0)
+    throw new DomainError(
+      'sibling_discount_ineligible',
+      'Kardeş indirimi için aynı veliye bağlı aktif bir öğrenci gerekir.',
+      { path: ['discounts'] },
+    )
+  const ownFirst = child.studentId === null ? null : contractsInForce(state, child.studentId)[0]
+  const ahead = siblings.some((sibling) => {
+    const contracts = contractsInForce(state, sibling.id)
+    const latest = contracts.at(-1)
+    if (latest === undefined) return true
+    const tuitionCents = latest.grossCents ?? latest.amount
+    if (tuitionCents !== child.tuitionCents) return tuitionCents > child.tuitionCents
+    const first = contracts[0]
+    if (ownFirst === null || ownFirst === undefined || first === undefined) return true
+    return (
+      Date.parse(first.date) < Date.parse(ownFirst.date) ||
+      (first.date === ownFirst.date && sibling.id < (child.studentId ?? ''))
+    )
+  })
+  if (!ahead)
+    throw new DomainError(
+      'sibling_discount_ineligible',
+      'Kardeş indirimi ailenin ilk çocuğuna uygulanmaz: öğrenim ücreti en yüksek olan (eşitse önce kaydolan) çocuk ilk sayılır, indirim ücreti düşük kardeşe verilir.',
+      { path: ['discounts'] },
+    )
 }
 
 /**
@@ -530,17 +595,6 @@ export function enrollProspectWithTariff(
       'Seçilen veli kesin kayıtta velayet sahibi ve ödeyici olarak bağlanamaz (velayeti yok ya da iletişim kısıtı var). Velayet sahibi veliyi seçin ya da yeni veli girin.',
       { path: ['guardian'] },
     )
-  if (data.discounts.includes('sibling')) {
-    const hasSibling = existing?.studentIds.some(
-      (id) => state.students.find((student) => student.id === id)?.isActive === true,
-    )
-    if (!hasSibling)
-      throw new DomainError(
-        'sibling_discount_ineligible',
-        'Kardeş indirimi için aynı veliye bağlı aktif bir öğrenci gerekir.',
-        { path: ['discounts'] },
-      )
-  }
   const cls = state.classes.find((item) => item.id === data.classId && item.isActive)
   const price = priceEnrollment(context.tariff, {
     // Okulda düzey sınıf derecesi, dil okulunda sınıfın CEFR düzeyidir (`level`).
@@ -555,6 +609,13 @@ export function enrollProspectWithTariff(
     extras: data.extras,
     canApproveCapException: context.canApproveCapException,
   })
+  // Kardeş indirimi ücreti düşük kardeşe verilir; sıra ilan ücretiyle kurulur (DOM-FIN-022).
+  if (data.discounts.includes('sibling'))
+    requireSiblingDiscountEligible(state, {
+      studentId: null,
+      siblingIds: existing?.studentIds ?? [],
+      tuitionCents: price.grossCents,
+    })
   // Burs indirim değildir, tavana girmez; indirimlerden sonra kalan neti aşamaz (DOM-FIN-021, -025).
   const program =
     data.scholarshipProgramId === undefined

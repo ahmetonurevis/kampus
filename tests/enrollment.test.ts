@@ -23,6 +23,7 @@ import {
   isValidTurkishId,
   previewEnrollment,
   priceEnrollment,
+  requireSiblingDiscountEligible,
   type EnrollmentContext,
   type EnrollmentTariff,
 } from '../packages/school-core/src/lib/enrollment.ts'
@@ -712,6 +713,66 @@ test('DOM-KAY-013, DOM-FIN-022: mevcut veliye bağlanır, yeni veli açılmaz; k
     isDomainError('sibling_discount_ineligible'),
   )
   assert.equal(JSON.stringify(lonely), snapshot)
+})
+
+test('DOM-FIN-022: kardeş indirimi ikinci çocuğa, yani ücreti düşük olana uygulanır; ilk çocuk indirim almaz', () => {
+  const seed = createSeed(new Date(NOW))
+  const parent = seed.parents[0]!
+  const family = (cents: number) => {
+    for (const contract of seed.contracts)
+      if (parent.studentIds.includes(contract.studentId)) contract.grossCents = cents
+  }
+  const body = { guardian: { existingParentId: parent.id }, discounts: ['sibling'] }
+  // Aday 7. sınıf, ilan ücreti 20.000.000; kardeşler daha düşük ücretliyse aday ilk çocuktur.
+  family(15_000_000)
+  const before = JSON.stringify(seed)
+  assert.throws(() => enroll(body, {}, seed), isDomainError('sibling_discount_ineligible'))
+  assert.equal(JSON.stringify(seed), before)
+  // Eşit ücrette önce kaydolan kardeş öndedir; aday ikinci çocuktur.
+  family(20_000_000)
+  const { result } = enroll(body, {}, seed)
+  assert.deepEqual(
+    result.contract.discounts?.map((line) => line.kind),
+    ['sibling'],
+  )
+})
+
+test('DOM-FIN-022: sıra son yürürlükteki sözleşmenin ilan ücreti, eşitlikte ilk kayıt tarihiyle kurulur', () => {
+  const state = createSeed(new Date(NOW))
+  const [elder, younger] = state.students
+  assert.ok(elder && younger)
+  const contract = (studentId: string, date: string, grossCents?: number, amount = 9_000_000) => ({
+    id: `test-c-${studentId}-${date}`,
+    studentId,
+    date,
+    amount,
+    title: 'Sözleşme',
+    ...(grossCents === undefined ? {} : { grossCents }),
+  })
+  const check = (studentId: string, tuitionCents: number) => () =>
+    requireSiblingDiscountEligible(state, {
+      studentId,
+      siblingIds: [elder.id, younger.id],
+      tuitionCents,
+    })
+  state.contracts = [
+    contract(elder.id, '2025-09-01T09:00:00.000Z', 10_000_000),
+    contract(younger.id, '2025-09-02T09:00:00.000Z', 8_000_000),
+  ]
+  assert.doesNotThrow(check(younger.id, 8_000_000))
+  assert.throws(check(elder.id, 10_000_000), isDomainError('sibling_discount_ineligible'))
+  // Eşit ücret: önce kaydolan ilk çocuktur.
+  state.contracts[1]!.grossCents = 10_000_000
+  assert.doesNotThrow(check(younger.id, 10_000_000))
+  assert.throws(check(elder.id, 10_000_000), isDomainError('sibling_discount_ineligible'))
+  // Brütü olmayan eski sözleşmede tutar kullanılır; sözleşmesiz kardeş aday lehine öne sayılır.
+  state.contracts = [contract(elder.id, '2025-09-01T09:00:00.000Z', undefined, 12_000_000)]
+  assert.doesNotThrow(check(younger.id, 11_000_000))
+  assert.throws(check(younger.id, 13_000_000), isDomainError('sibling_discount_ineligible'))
+  assert.doesNotThrow(check(elder.id, 12_000_000))
+  // Pasif kardeş sayılmaz.
+  younger.isActive = false
+  assert.throws(check(elder.id, 1), isDomainError('sibling_discount_ineligible'))
 })
 
 test('DOM-KAY-013: telefon eşleşmesi öneri döndürür, boş telefon eşleşmez', () => {

@@ -184,7 +184,7 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 - **Gerekçe:** Mali kayıt değiştirilirse mutabakat ve denetim imkânsızlaşır.
 - **Kaynak:** İşletme kuralı. Ticari defter ve belge saklama süresi (VUK) **doğrulanmalı** (M-07).
 - **Kurum türü:** ikisi
-- **Kodda:** var (API) — `POST /api/v1/payments/:paymentId/reverse` (yalnız `yonetici`, gerekçe ve `If-Match` zorunlu). `İptal edildi` ibareli dekont belgesi henüz yok.
+- **Kodda:** var (API) — `POST /api/v1/payments/:paymentId/reverse` (yalnız `yonetici`, gerekçe ve `If-Match` zorunlu). Ayrılmış öğrencide yalnız ayrılış sonrası borç tahsilatı iptal edilir (`DOM-FIN-041`). `İptal edildi` ibareli dekont belgesi henüz yok.
 
 ### DOM-FIN-034 · Gecikme durumu ve gecikme bedeli
 
@@ -224,11 +224,11 @@ Bu dosyadaki yasal sayılar (ilan ayları, %50 indirim tavanı, %10 iade kesinti
 
 ### DOM-FIN-041 · İade kaydı ve atomikliği
 
-- **Kural:** İade ayrı bir kayıttır: hesap dökümü (girdi, profil sürümü, kesinti kalemleri), onaylayan yönetici, ödeme tarihi, hedef banka hesabı (IBAN, hesap sahibi ödeyici olmalı). Ayrılış onayı, açık taksitlerin iptali ve iade kaydının oluşması tek işlemde yazılır; biri başarısızsa hiçbiri yazılmaz. İade ödendikten sonra hesap değiştirilemez.
+- **Kural:** İade ayrı bir kayıttır: hesap dökümü (girdi, profil sürümü, kesinti kalemleri), onaylayan yönetici, ödeme tarihi, hedef banka hesabı (IBAN, hesap sahibi ödeyici olmalı). Ayrılış onayı, açık taksitlerin iptali ve iade kaydının oluşması tek işlemde yazılır; biri başarısızsa hiçbiri yazılmaz. İade ödendikten sonra hesap değiştirilemez. Ayrılış hesabına giren (ayrılıştan önceki) tahsilat iptal edilemez, çünkü iade ya da kalan borç ona dayanır; ayrılışta kalan borç için açılan taksite sonradan alınan tahsilat `DOM-FIN-033` ile iptal edilebilir ve borç taksiti yeniden açılır.
 - **Gerekçe:** Kısmi yazım, iade edilmiş ama hâlâ borçlu görünen veli üretir.
 - **Kaynak:** İşletme kuralı; ADR 0001 (tek veritabanı işlemi).
 - **Kurum türü:** ikisi
-- **Kodda:** var (API) — `POST /api/v1/students/:studentId/withdraw` ve `POST /api/v1/withdrawals/:withdrawalId/pay-refund` (`student_withdrawals`, ADR 0006 karar 10). İade ödemesi aynı transaction'da `refund_paid` bildirimi yazar (IST-110): yalnız ayrılış kimliği, tutar, IBAN ve hesap sahibi yok; alıcı kuralı `DOM-FIN-035`'teki gibidir, ayrılan yetişkin kursiyere gider. Ayrılışın kendisi bildirim üretmez.
+- **Kodda:** var (API) — `POST /api/v1/students/:studentId/withdraw` ve `POST /api/v1/withdrawals/:withdrawalId/pay-refund` (`student_withdrawals`, ADR 0006 karar 10). İade ödemesi aynı transaction'da `refund_paid` bildirimi yazar (IST-110): yalnız ayrılış kimliği, tutar, IBAN ve hesap sahibi yok; alıcı kuralı `DOM-FIN-035`'teki gibidir, ayrılan yetişkin kursiyere gider. Ayrılışın kendisi bildirim üretmez. Tahsilat iptali (`reversePayment`, `lib/payments.ts`) ayrılmış öğrencide yalnız bütünüyle borç taksitine dağıtılmış tahsilatı kabul eder; borç taksitinin kimliği ayrılış dökümünde saklanır (`breakdown.debtInvoiceId`), bu alanı olmayan eski kayıtta bütün tahsilatlar 409 `payment_student_withdrawn` alır (ON-108). İade ödemesinin `Idempotency-Key` kaydı (24 saat) maskeli IBAN ve hesap sahibini saklamaz; tekrar yanıtı bu alanları iade kaydından ekler (`services/withdrawals.ts`, ON-108).
 
 ### DOM-FIN-042 · Uzaktan satışta cayma hakkı
 

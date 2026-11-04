@@ -10,6 +10,7 @@ import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
 import { studentWithdrawals } from '../src/db/schema/withdrawals.ts'
 import {
   buildTestApp,
@@ -417,5 +418,71 @@ describe('ayrılış ve iade uçları', () => {
       a.cookie,
     )
     assert.equal(row.json().data.refundCents, withdrawn.json().data.refundCents)
+  })
+
+  test('DOM-FIN-041, guvenlik-kvkk: iade idempotency kaydında IBAN ve hesap sahibi yok; tekrar aynı yanıtı verir', async () => {
+    const a = await institution()
+    assert.equal((await pay(a.cookie, NET / 2, 'TR-K1')).statusCode, 201)
+    const { id, version } = (await withdraw(a.cookie)).json().data
+    const headers = { 'if-match': `"${String(version)}"`, ...key() }
+    const url = `/api/v1/withdrawals/${String(id)}/pay-refund`
+    const first = await send('POST', url, a.cookie, REFUND, headers)
+    assert.equal(first.statusCode, 200, first.body)
+    assert.equal(first.json().data.maskedIban, 'TR** **** 1326')
+    assert.equal(first.json().data.refundAccountHolder, PARENT_NAME)
+
+    const stored = await db
+      .select({ body: idempotencyKeys.responseBody })
+      .from(idempotencyKeys)
+      .where(
+        and(
+          eq(idempotencyKeys.institutionId, a.id),
+          eq(idempotencyKeys.key, headers['idempotency-key']),
+        ),
+      )
+    assert.equal(stored.length, 1)
+    const text = JSON.stringify(stored[0]?.body)
+    for (const secret of [IBAN, '1326', PARENT_NAME, 'maskedIban', 'refundAccountHolder'])
+      assert.equal(text.includes(secret), false, secret)
+    assert.equal(text.includes(String(id)), true)
+
+    const replay = await send('POST', url, a.cookie, REFUND, headers)
+    assert.equal(replay.statusCode, 200, replay.body)
+    assert.equal(replay.headers['idempotent-replayed'], 'true')
+    assert.deepEqual(replay.json(), first.json())
+  })
+
+  test('DOM-FIN-041, DOM-FIN-033: ayrılıştan sonra kalan borca alınan tahsilat iptal edilir, ayrılış öncesi edilemez', async () => {
+    const a = await institution()
+    const early = await pay(a.cookie, 1_000_000, 'TR-D1')
+    assert.equal(early.statusCode, 201, early.body)
+    const withdrawn = await withdraw(a.cookie)
+    assert.equal(withdrawn.statusCode, 201, withdrawn.body)
+    assert.equal(withdrawn.json().data.debtCents, 1_000_000)
+    const reverse = (payment: { id: string; version: number }) =>
+      send(
+        'POST',
+        `/api/v1/payments/${payment.id}/reverse`,
+        a.cookie,
+        { reason: 'Yanlış tutar girildi' },
+        { 'if-match': `"${String(payment.version)}"`, ...key() },
+      )
+    assertError(await reverse(early.json().data), 409, 'payment_student_withdrawn')
+
+    const late = await pay(a.cookie, 1_000_000, 'TR-D2')
+    assert.equal(late.statusCode, 201, late.body)
+    const [debt] = await loadRecords(db, a.id, ['invoices'])
+    assert.equal(debt?.data.amount, 1_000_000)
+    assert.notEqual(debt?.data.paidAt, null)
+    const reversed = await reverse(late.json().data)
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    const reopened = await findRecord(db, a.id, 'invoices', debt?.id ?? '')
+    assert.equal(reopened?.data.paidAt, null)
+    const row = await send(
+      'GET',
+      `/api/v1/withdrawals/${String(withdrawn.json().data.id)}`,
+      a.cookie,
+    )
+    assert.equal(row.json().data.debtCents, 1_000_000)
   })
 })

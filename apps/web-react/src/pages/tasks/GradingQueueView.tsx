@@ -10,9 +10,16 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { SubmissionGradingModal } from './SubmissionGradingModal.tsx'
 import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
-import { dateTimeLabel, isStaffAssignment, learnerLabel, submissionStatus } from './task-model.ts'
+import {
+  AWAITING_OPTIONS,
+  isAwaitingFilter,
+  queueAction,
+  queueStatus,
+  type QueuePhase,
+} from './second-rating-model.ts'
+import { dateTimeLabel, isStaffAssignment, learnerLabel } from './task-model.ts'
 
-const URL_FILTERS = { assignmentId: 'atama' }
+const URL_FILTERS = { assignmentId: 'atama', awaiting: 'bekleyen' }
 const NO_SORT: readonly string[] = []
 const MOBILE_COLUMNS = ['learner', 'status', 'submittedAt']
 
@@ -21,7 +28,8 @@ interface QueueRow extends Record<string, unknown> {
   learner: string
   assignment: string
   status: string
-  statusTone: ReturnType<typeof submissionStatus>['tone']
+  statusTone: ReturnType<typeof queueStatus>['tone']
+  phase: QueuePhase
   versions: number
   submittedAt: string
   words: string
@@ -31,16 +39,20 @@ interface QueueRow extends Record<string, unknown> {
  * Puanlama kuyruğu (`GET /task-submissions/grading-queue`): puanlanmayı bekleyen yazma teslimleri,
  * sunucu sayfalı. Kapsam sunucudadır: öğretmen atamayı gören (atayan olmasa da) teslimleri görür
  * (DOM-YTK-028). Satırdan puanlama penceresi `?puanla=` ile açılır; puan verilince teslim kuyruktan
- * düşer. Atama adı atama listesinden eşlenir.
+ * düşer. İkinci puanı bekleyen teslim ayrı görünür ve aynı pencerede kör puanlanır (OG-210;
+ * DOM-BEC-024); `bekleyen` süzgeci ilk ya da ikinci puan bekleyenleri ayırır. Atama adı atama listesinden eşlenir.
  */
 export function GradingQueueView() {
   const list = useListState('puanlama', { urlFilters: URL_FILTERS, urlPrefix: 'pk-' })
   const assignmentId =
     typeof list.state.filters.assignmentId === 'string' ? list.state.filters.assignmentId : ''
+  const rawAwaiting = list.state.filters.awaiting
+  const awaiting = isAwaitingFilter(rawAwaiting) ? rawAwaiting : ''
   const queue = useGradingQueue({
     page: list.state.page,
     pageSize: list.state.pageSize,
     ...(assignmentId ? { assignmentId } : {}),
+    ...(awaiting ? { awaiting } : {}),
   })
   const assignments = useTaskAssignments({ page: 1, pageSize: 100 })
   const titles = useMemo(
@@ -57,16 +69,15 @@ export function GradingQueueView() {
     () =>
       queue.data?.data.map((item: GradingQueueItem) => {
         // İki puanı ayrışan teslim koordinatörün son puanını bekler (DOM-BEC-024); öğretmen burada
-        // yeniden puanlayamaz, durum bunu söyler.
-        const status = item.grading.awaitingResolution
-          ? { label: 'Son puan bekliyor', tone: 'amber' as const }
-          : submissionStatus(item.status)
+        // yeniden puanlayamaz, durum bunu söyler. İkinci puan bekleyen satır kör puanlanır.
+        const status = queueStatus(item)
         return {
           id: item.id,
           learner: learnerLabel(item),
           assignment: titles.get(item.assignmentId)?.title ?? item.assignmentTitle ?? 'Görev',
           status: status.label,
           statusTone: status.tone,
+          phase: status.phase,
           versions: item.versionCount,
           submittedAt: dateTimeLabel(item.latestVersion?.submittedAt),
           words: item.latestVersion?.wordCount ? String(item.latestVersion.wordCount.count) : '—',
@@ -84,7 +95,7 @@ export function GradingQueueView() {
           <button
             type="button"
             onClick={() => openGrading(row.id)}
-            aria-label={`${row.learner} teslimini puanla`}
+            aria-label={queueAction(row.phase, row.learner).ariaLabel}
             className="record-link max-w-[240px] truncate text-left font-medium text-primary hover:underline"
           >
             {row.learner}
@@ -103,17 +114,20 @@ export function GradingQueueView() {
       {
         key: 'actions',
         label: 'İşlemler',
-        cell: (row) => (
-          <Button
-            variant="secondary"
-            size="sm"
-            aria-label={`${row.learner} teslimini puanla`}
-            onClick={() => openGrading(row.id)}
-          >
-            <Icon name="ClipboardCheck" size={15} aria-hidden="true" />
-            Puanla
-          </Button>
-        ),
+        cell: (row) => {
+          const action = queueAction(row.phase, row.learner)
+          return (
+            <Button
+              variant="secondary"
+              size="sm"
+              aria-label={action.ariaLabel}
+              onClick={() => openGrading(row.id)}
+            >
+              <Icon name="ClipboardCheck" size={15} aria-hidden="true" />
+              {action.label}
+            </Button>
+          )
+        },
       },
     ],
     [openGrading],
@@ -152,25 +166,46 @@ export function GradingQueueView() {
           ) : undefined
         }
         onRowClick={(row) => openGrading(row.id)}
-        externalActive={assignmentId !== ''}
-        externalLabel={`Görev: ${titles.get(assignmentId)?.title ?? 'Seçili görev'}`}
-        onReset={() => list.dispatch({ type: 'filter', key: 'assignmentId', value: '' })}
+        externalActive={assignmentId !== '' || awaiting !== ''}
+        externalLabel={[
+          assignmentId ? `Görev: ${titles.get(assignmentId)?.title ?? 'Seçili görev'}` : '',
+          awaiting ? (AWAITING_OPTIONS.find((item) => item.value === awaiting)?.label ?? '') : '',
+        ]
+          .filter(Boolean)
+          .join(' · ')}
+        onReset={() => list.dispatch({ type: 'filters', filters: {} })}
         toolbar={
-          <NativeSelect
-            aria-label="Görev"
-            value={assignmentId}
-            onChange={(event) =>
-              list.dispatch({ type: 'filter', key: 'assignmentId', value: event.target.value })
-            }
-            className="min-h-9 text-sm"
-          >
-            <NativeSelectOption value="">Tüm görevler</NativeSelectOption>
-            {assignmentOptions.map((item) => (
-              <NativeSelectOption key={item.id} value={item.id}>
-                {item.title}
-              </NativeSelectOption>
-            ))}
-          </NativeSelect>
+          <>
+            <NativeSelect
+              aria-label="Görev"
+              value={assignmentId}
+              onChange={(event) =>
+                list.dispatch({ type: 'filter', key: 'assignmentId', value: event.target.value })
+              }
+              className="min-h-9 text-sm"
+            >
+              <NativeSelectOption value="">Tüm görevler</NativeSelectOption>
+              {assignmentOptions.map((item) => (
+                <NativeSelectOption key={item.id} value={item.id}>
+                  {item.title}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+            <NativeSelect
+              aria-label="Bekleyen puan"
+              value={awaiting}
+              onChange={(event) =>
+                list.dispatch({ type: 'filter', key: 'awaiting', value: event.target.value })
+              }
+              className="min-h-9 text-sm"
+            >
+              {AWAITING_OPTIONS.map((item) => (
+                <NativeSelectOption key={item.value} value={item.value}>
+                  {item.label}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </>
         }
       />
       <SubmissionGradingModal submissionId={grading.selectedId} onClose={grading.close} />

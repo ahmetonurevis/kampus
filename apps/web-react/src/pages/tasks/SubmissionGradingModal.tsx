@@ -20,6 +20,9 @@ import {
   recordingTitle,
   versionRecording,
 } from './recording-review-model.ts'
+import { BlindSecondScoring } from './BlindSecondScoring.tsx'
+import { SecondRatingRequestSection } from './SecondRatingSection.tsx'
+import { secondScoringState } from './second-rating-model.ts'
 import { ResubmissionForm } from './ResubmissionForm.tsx'
 import { RubricScoreForm } from './RubricScoreForm.tsx'
 import {
@@ -97,6 +100,18 @@ function GradingBody({
   }
   const status = submissionStatus(submission.status)
   const latest = submission.versions[submission.versions.length - 1] ?? null
+  // İkinci puan bekleyen sürüm kör puanlanır: sürüm kartları ve puan çizilmez (DOM-BEC-024).
+  const secondScoring = secondScoringState(latest?.grading ?? null)
+  if (secondScoring.kind === 'blind') {
+    return (
+      <BlindSecondScoring
+        submission={submission}
+        assignmentTitle={staff?.title}
+        rubric={rubric}
+        noRubric={staff !== null && staff.rubricVersionId === null}
+      />
+    )
+  }
   const latestScore = latest?.score ?? null
   const speaking = isSpeakingSubmission(submission.versions)
   const gradedNote = speaking ? gradedVersionNote(submission.versions) : null
@@ -194,6 +209,18 @@ function GradingBody({
           canDecide={session?.role === 'ogretmen'}
           scoredByViewer={appealScoredByViewer(submission, appeal.appeal.id)}
           focusOnMount={focusAppeal}
+        />
+      ) : null}
+
+      {secondScoring.kind === 'own' ? (
+        <p className="rounded-card border bg-surface-soft p-4 text-sm">{secondScoring.text}</p>
+      ) : null}
+
+      {latest && staff !== null && staff.rubricVersionId !== null ? (
+        <SecondRatingRequestSection
+          submission={submission}
+          versionNumber={latest.number}
+          grading={latest.grading}
         />
       ) : null}
 

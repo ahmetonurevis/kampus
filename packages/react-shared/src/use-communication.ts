@@ -451,13 +451,19 @@ export interface OpenAccessInput {
 /**
  * Yöneticinin gerekçeli erişimi (`POST /conversations/:id/access`): 30 dakika geçerli, denetim
  * kaydına yazılır. Yanıtın `expiresAt` değeri ekranda kalan süre için kullanılır.
+ * `Idempotency-Key` gider (aynı anahtarla tekrar tek denetim kaydı yazar); `If-Match` yoktur,
+ * erişim yazışmayı değiştirmez.
  */
 export function openAccessRequest(
   client: KampusClient,
   { conversationId, reason }: OpenAccessInput,
+  headers: CommandHeaders,
 ) {
   return client.POST('/api/v1/conversations/{conversationId}/access', {
-    params: { path: { conversationId } },
+    params: {
+      path: { conversationId },
+      header: { 'idempotency-key': headers['idempotency-key'] },
+    },
     body: { reason },
   })
 }

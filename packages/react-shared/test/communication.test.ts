@@ -202,11 +202,18 @@ describe('yazışma komutları', () => {
     )
     await runRequest(() => readConversationRequest(client, 'conv-1'))
     const access = await runRequest(() =>
-      openAccessRequest(client, { conversationId: 'conv-1', reason: 'Şikayet incelemesi' }),
+      openAccessRequest(
+        client,
+        { conversationId: 'conv-1', reason: 'Şikayet incelemesi' },
+        commandHeaders('key-12345'),
+      ),
     )
     assert.equal(sent[0]?.path, '/api/v1/conversations/conv-1/read')
     assert.equal(sent[1]?.path, '/api/v1/conversations/conv-1/access')
     assert.deepEqual(sent[1]?.body, { reason: 'Şikayet incelemesi' })
+    // OG-231: erişim `Idempotency-Key` taşır; `If-Match` yoktur (yazışma değişmez).
+    assert.equal(sent[1]?.headers.get('idempotency-key'), 'key-12345')
+    assert.equal(sent[1]?.headers.get('if-match'), null)
     assert.equal(access.data.expiresAt, '2026-10-30T09:00:00.000Z')
   })
 

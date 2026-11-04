@@ -684,6 +684,37 @@ describe('iletişim uçları', () => {
       }
     })
 
+    test('DOM-YTK-052: gerekçeli erişim Idempotency-Key ile tekrarlanınca tek denetim kaydı yazar (OG-231)', async () => {
+      const a = await institution()
+      const id = await studentConversation(a.id)
+      const admin = a.adminCookie
+      const url = `/api/v1/conversations/${id}/access`
+      const headers = key()
+
+      const first = await send('POST', url, admin, { reason: REASON }, headers)
+      assert.equal(first.statusCode, 200, first.body)
+      assert.equal(first.headers['idempotent-replayed'], undefined)
+      const second = await send('POST', url, admin, { reason: REASON }, headers)
+      assert.equal(second.statusCode, 200, second.body)
+      assert.equal(second.headers['idempotent-replayed'], 'true')
+      assert.deepEqual(second.json(), first.json())
+      assert.equal((await audits(a.id, 'conversation.access')).length, 1)
+
+      // Aynı anahtar başka gerekçeyle 422; ikinci kayıt yazılmaz.
+      assertError(
+        await send('POST', url, admin, { reason: 'Başka bir gerekçe metni' }, headers),
+        422,
+        'idempotency_key_reused',
+      )
+      assert.equal((await audits(a.id, 'conversation.access')).length, 1)
+
+      // Anahtarsız istek bugünkü gibi çalışır: her çağrı kendi denetim kaydını yazar.
+      const plain = await send('POST', url, admin, { reason: REASON })
+      assert.equal(plain.statusCode, 200, plain.body)
+      assert.equal(plain.headers['idempotent-replayed'], undefined)
+      assert.equal((await audits(a.id, 'conversation.access')).length, 2)
+    })
+
     test('DOM-ILT-011: gerekçeli yönetici erişimi veli yazışmasında kapalıdır; denetim kaydı yazılmaz', async () => {
       const a = await institution()
       const teacherCookie = await teacher(a.id)

@@ -53,8 +53,8 @@ import { environment, type CommandOptions } from './commands.ts'
 import { GRADUATION_RENEWALS } from './roster-scope.ts'
 import {
   runCommand,
-  runOperation,
   type CommandResponse,
+  type IdempotencyRequest,
   type LoadScope,
   type OperationTools,
 } from './operation-runner.ts'
@@ -622,44 +622,55 @@ export function readMessagesCommand(
  * Yöneticinin gerekçeli erişimi (DOM-YTK-052, DOM-ILT-011): core `openConversationAccess`
  * gerekçeyi ve yazışmanın varlığını doğrular, erişim `audit_log`'a gerekçesiyle yazılır. Okuma
  * (`listConversationMessages`) son `CONVERSATION_ACCESS_MINUTES` dakikadaki kayda bakar.
+ * `Idempotency-Key` isteğe bağlıdır; aynı anahtar ilk yanıtı tekrarlar ve ikinci denetim kaydı
+ * yazmaz. `If-Match` yoktur: erişim State'e yazmaz, korunacak sürüm yoktur.
  */
 export async function openConversationAccessCommand(
   ctx: ServiceContext,
   conversationId: string,
   input: unknown,
-): Promise<{ conversationId: string; expiresAt: string }> {
+  idempotency: IdempotencyRequest | null,
+): Promise<CommandResponse> {
   const spec = OPERATION_COMMANDS['conversation.access']
-  const { result } = await runOperation(ctx, {
-    action: 'conversation.access',
-    collections: spec.collections,
-    loadScope: { conversations: { ids: [conversationId] } },
-    entity: { type: 'conversations', id: conversationId },
-    load: async (tx) => {
-      const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
-      return {
-        scalars,
-        run: (state, { now }) => {
-          const access = openConversationAccess(state, actor, conversationId, input, now, {
-            institutionType,
-          })
-          // Erişim State değiştirmez; denetim kaydı aynı transaction'da yazılır.
-          return access
-        },
-      }
+  return runCommand(
+    ctx,
+    {
+      action: 'conversation.access',
+      collections: spec.collections,
+      loadScope: { conversations: { ids: [conversationId] } },
+      entity: { type: 'conversations', id: conversationId },
+      load: async (tx) => {
+        const { actor, institutionType, scalars } = await environment(tx, ctx, spec)
+        return {
+          scalars,
+          run: (state, { now }) => {
+            const access = openConversationAccess(state, actor, conversationId, input, now, {
+              institutionType,
+            })
+            // Erişim State değiştirmez; denetim kaydı aynı transaction'da yazılır.
+            return access
+          },
+        }
+      },
+      after: async (tx, access) => {
+        await tx.insert(auditLog).values({
+          institutionId: ctx.institutionId,
+          actorUserId: ctx.actor.userId,
+          actorRole: ctx.actor.role,
+          action: 'conversation.access',
+          entityType: 'conversations',
+          entityId: conversationId,
+          // kvkk: K — gerekçe yalnız `reason` kolonunda tutulur; `changes` boş kalır (DOM-YTK-052).
+          reason: access.reason,
+          createdAt: ctx.now,
+        })
+      },
     },
-    after: async (tx, access) => {
-      await tx.insert(auditLog).values({
-        institutionId: ctx.institutionId,
-        actorUserId: ctx.actor.userId,
-        actorRole: ctx.actor.role,
-        action: 'conversation.access',
-        entityType: 'conversations',
-        entityId: conversationId,
-        // kvkk: K — gerekçe yalnız `reason` kolonunda tutulur; `changes` boş kalır (DOM-YTK-052).
-        reason: access.reason,
-        createdAt: ctx.now,
-      })
-    },
-  })
-  return { conversationId: result.conversationId, expiresAt: result.expiresAt }
+    // Yanıt saklanır: aynı anahtarla tekrar `after`'a girmez, ikinci denetim kaydı yazılmaz.
+    ({ result }) => ({
+      statusCode: 200,
+      body: { data: { conversationId: result.conversationId, expiresAt: result.expiresAt } },
+    }),
+    idempotency,
+  )
 }

@@ -28,6 +28,7 @@ import {
 import {
   countScholarshipAwards,
   findScholarshipProgram,
+  hasStudentScholarshipAward,
   insertScholarshipAward,
 } from '../db/finance-scholarships.ts'
 import { loadRecordsByIds } from '../db/records.ts'
@@ -58,7 +59,7 @@ const PRICE_INDEX = 'price_index_rates'
 async function renewalContext(
   tx: Database,
   ctx: ServiceContext,
-  input: { academicYear: number; scholarshipProgramId?: string | undefined },
+  input: { studentId: string; academicYear: number; scholarshipProgramId?: string | undefined },
 ): Promise<RenewalContext> {
   const [tariff, previousTariff, priceIndexes] = await Promise.all([
     findPublishedTariff(tx, ctx.institutionId, input.academicYear),
@@ -75,6 +76,13 @@ async function renewalContext(
       : {
           scholarshipProgram: await findScholarshipProgram(tx, ctx.institutionId, programId),
           scholarshipAwardedCount: await countScholarshipAwards(tx, ctx.institutionId, programId),
+          // Öğrenci yılda en çok bir burs alır; kısıta çarpmadan özgül kodla reddedilir.
+          scholarshipStudentAwarded: await hasStudentScholarshipAward(
+            tx,
+            ctx.institutionId,
+            input.studentId,
+            input.academicYear,
+          ),
         }),
   }
 }
@@ -128,6 +136,7 @@ export function planRenewalCommand(
       load: async (tx) => {
         const { session, scalars } = await environment(tx, ctx, SPEC)
         const context = await renewalContext(tx, ctx, {
+          studentId: data.studentId,
           academicYear: data.academicYear,
           ...(data.mode === 'renew' ? { scholarshipProgramId: data.scholarshipProgramId } : {}),
         })

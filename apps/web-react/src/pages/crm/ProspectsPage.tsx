@@ -62,10 +62,11 @@ const ALL = 'all'
 const STAGE_COUNTS = { groupBy: 'stage' } as const
 
 /**
- * Aday Öğrenciler (ön büro, Vue `Crm.vue` `adaylar`): sunucu sayfalı tablo; arama (ad, telefon,
- * ilgi), aşama, kaynak ve kampüs süzgeci, sıralama ve sayfa adreste tutulur. Aşama sekmeleri
- * (Vue "Aday aşaması") aşama süzgecinin kısayoludur ve kurum genelindeki sayıları gösterir; kayıt
- * tarihi aralığı sunucuda `createdAt` gününe göre süzülür (aralık bellektedir, adrese yazılmaz).
+ * Aday Öğrenciler (ön büro, Vue `Crm.vue` `adaylar`): sunucu sayfalı tablo; aşama, kaynak ve
+ * kampüs süzgeci, sıralama ve sayfa adreste tutulur; arama (ad, telefon, ilgi) yalnız bellektedir
+ * (ADR 0009). Aşama sekmeleri (Vue "Aday aşaması") aşama süzgecinin kısayoludur ve kurum
+ * genelindeki sayıları gösterir; kayıt tarihi aralığı sunucuda `createdAt` gününe göre süzülür
+ * (aralık bellektedir, adrese yazılmaz).
  * Aday adı detay sayfasına (`/onburo/aday/:id`) götürür; "Yeni aday ekle" sağ panelde açılır
  * (`?aday-form=yeni`). CSV tüm filtrelenmiş sonucu içerir.
  */
@@ -74,7 +75,7 @@ export function ProspectsPage({ page }: { page: NavPage }) {
   const { session } = useAuth()
   const role = session?.role ?? 'onburo'
   const type = session?.institution.type ?? 'school'
-  const list = useListState('adaylar', { urlFilters: URL_FILTERS, searchInUrl: false })
+  const list = useListState('adaylar', { urlFilters: URL_FILTERS })
   const search = useDebouncedValue(list.state.query)
   const branches = useCoreAll('branches')
   const lookups = useMemo(

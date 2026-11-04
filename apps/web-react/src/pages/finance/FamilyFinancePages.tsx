@@ -162,17 +162,18 @@ function NextInstallment({ childId }: { childId: string }) {
         indirebilirsiniz. Ödeme için okulla iletişime geçin.
       </p>
       {summary}
+      {/* Bağlantılar metin satırı kadar (17 px) kalmasın: dokunma hedefi en az 24 px (WCAG 2.5.8). */}
       <div className="flex flex-wrap gap-3 text-sm font-medium">
         <Link
           to={CONTACT_PATH}
-          className="inline-flex items-center gap-1.5 text-primary hover:underline"
+          className="inline-flex min-h-(--target-min) items-center gap-1.5 text-primary hover:underline"
         >
           <Icon name="MessagesSquare" size={16} aria-hidden="true" />
           Okulla iletişime geçin
         </Link>
         <Link
           to="/veli/finans"
-          className="inline-flex items-center gap-1.5 text-primary hover:underline"
+          className="inline-flex min-h-(--target-min) items-center gap-1.5 text-primary hover:underline"
         >
           <Icon name="ReceiptText" size={16} aria-hidden="true" />
           Ödeme planını görüntüleyin

@@ -132,6 +132,50 @@ export const healthProfileInputSchema = healthProfileContentSchema.extend({
 export type HealthProfileInput = z.input<typeof healthProfileInputSchema>
 export type HealthProfileWrite = z.output<typeof healthProfileInputSchema>
 
+const contentFields = healthProfileContentSchema.shape
+const CONTENT_FIELD_KEYS = Object.keys(contentFields) as (keyof HealthProfileContent)[]
+
+/**
+ * Kısmi güncelleme girdisi (API `PATCH`): içerik alanlarının varsayılansız hali; gönderilmeyen
+ * alan "değişmez" demektir (boş liste göndermek listeyi boşaltır). `legalBasis` gönderilmezse
+ * mevcut dayanak kalır; `version` zorunludur. En az bir içerik alanı gerekir. Birleşmiş sonuç
+ * `applyHealthProfilePatch` ile tam şemada doğrulanır.
+ */
+export const healthProfilePatchSchema = z
+  .strictObject({
+    allergies: contentFields.allergies.removeDefault().optional(),
+    chronicConditions: contentFields.chronicConditions.removeDefault().optional(),
+    medications: contentFields.medications.removeDefault().optional(),
+    supportNeeds: contentFields.supportNeeds.removeDefault().optional(),
+    emergencyInstructions: contentFields.emergencyInstructions.removeDefault().optional(),
+    legalBasis: healthProfileInputSchema.shape.legalBasis.optional(),
+    version: healthProfileInputSchema.shape.version,
+  })
+  .refine((patch) => CONTENT_FIELD_KEYS.some((key) => patch[key] !== undefined), {
+    message: 'En az bir sağlık bilgisi alanı gönderin.',
+    path: ['allergies'],
+  })
+export type HealthProfilePatchInput = z.input<typeof healthProfilePatchSchema>
+export type HealthProfilePatch = z.output<typeof healthProfilePatchSchema>
+
+/**
+ * Kısmi güncellemeyi mevcut profille birleştirir ve sonucu tam yazma şemasında doğrular (Zod
+ * hatası 400): gönderilen alan değişir, gönderilmeyen aynen kalır. Kayıt yoksa (`current: null`)
+ * gönderilmeyen alanlar boştur ve `legalBasis` zorunludur.
+ */
+export function applyHealthProfilePatch(
+  current: { content: HealthProfileContent; legalBasis: HealthLegalBasis } | null,
+  patch: HealthProfilePatch,
+): HealthProfileWrite {
+  const merged: Record<string, unknown> = {
+    ...(current?.content ?? {}),
+    legalBasis: patch.legalBasis ?? current?.legalBasis,
+    version: patch.version,
+  }
+  for (const key of CONTENT_FIELD_KEYS) if (patch[key] !== undefined) merged[key] = patch[key]
+  return healthProfileInputSchema.parse(merged)
+}
+
 /** Acil müdahale için gereken alanlar: alerji adı ve şiddeti, acil talimat (DOM-ILT-035). */
 export type HealthEmergencyView = {
   allergies: { name: string; severity: AllergySeverity }[]

@@ -95,7 +95,8 @@ export function requiredChannels(topic: NotificationTopic): readonly Notificatio
 const sorted = (channels: readonly NotificationChannel[]): NotificationChannel[] =>
   NOTIFICATION_CHANNELS.filter((channel) => channels.includes(channel))
 
-const TOPIC_LABELS: Readonly<Record<NotificationTopic, string>> = {
+/** Konu etiketleri (tek kaynak; web ve mobil bunu gösterir). */
+export const TOPIC_LABELS: Readonly<Record<NotificationTopic, string>> = {
   homework: 'Ödev ve sınav',
   grade: 'Not',
   attendance: 'Devamsızlık',

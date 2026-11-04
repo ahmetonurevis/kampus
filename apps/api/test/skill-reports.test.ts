@@ -2,15 +2,18 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
+import { and, eq } from 'drizzle-orm'
+
 import type { ResourceVersionInput } from '@kampus/school-core/content/resource.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
+import { records } from '../src/db/schema/records.ts'
 import { coordinatorDuties } from '../src/db/schema/coordinator-duties.ts'
 import { levelDecisions } from '../src/db/schema/cefr.ts'
-import { languageGroupMembers } from '../src/db/schema/language-groups.ts'
-import { rubrics, rubricVersions } from '../src/db/schema/skills.ts'
+import { languageGroupMembers, languageGroups } from '../src/db/schema/language-groups.ts'
+import { rubrics, rubricVersions, taskAttempts } from '../src/db/schema/skills.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -128,7 +131,9 @@ describe('beceri ve CEFR raporu ucu', () => {
   /**
    * Dil okulu. Öğretmen Selin `B1 Akşam` grubunun (B1) öğretmenidir: Deniz (`k-1`), Ece (`k-2`) ve
    * pasif Fatma (`k-5`) üyedir. Öğretmen Can `A2 Sabah` (A2, Can'ın öğrencisi `k-3`) ve
-   * `B1 Hafta Sonu` (B1, `k-4`, hiç görev yapmadı) gruplarının öğretmenidir.
+   * `B1 Hafta Sonu` (B1, `k-4`, hiç görev yapmadı) gruplarının öğretmenidir. Öğretmenler kendi
+   * sınıf kayıtlarına (`t-selin`, `t-can`) bağlıdır: atamayı görmeleri sınıf hedefi ile olur
+   * (DOM-BEC-035), yani rapor yalnız kendi sınıflarına yapılmış atamaların sonucunu sayar.
    */
   async function tenant(options: { learning?: boolean } = {}) {
     clientIp = `10.100.${(tenantCount += 1)}.1`
@@ -138,10 +143,20 @@ describe('beceri ve CEFR raporu ucu', () => {
     })
     // Görev hedefi dil okulunda sınıf kaydıdır (`group` türü); kursiyerin `classId`'si onu seçer.
     const classes = { evening: 'B1-E', morning: 'A2-S', weekend: 'B1-W' }
+    const teacherOf = {
+      [classes.evening]: 't-selin',
+      [classes.morning]: 't-can',
+      [classes.weekend]: 't-can',
+    }
     await insertMissingRecords(
       db,
       institution.id,
       [
+        ...['t-selin', 't-can'].map((id) => ({
+          collection: 'teachers' as const,
+          id,
+          data: { id, name: id, subjectId: 'ingilizce', branchId: 'b-1' },
+        })),
         ...Object.entries({
           [classes.evening]: 'B1',
           [classes.morning]: 'A2',
@@ -149,7 +164,7 @@ describe('beceri ve CEFR raporu ucu', () => {
         }).map(([id, level]) => ({
           collection: 'classes' as const,
           id,
-          data: { id, grade: 0, level, branchId: 'b-1', teacherId: 't-x' },
+          data: { id, grade: 0, level, branchId: 'b-1', teacherId: teacherOf[id] },
         })),
         ...[
           ['k-1', 'Deniz Yılmaz', true, classes.evening],
@@ -166,8 +181,12 @@ describe('beceri ve CEFR raporu ucu', () => {
       FIXED_NOW,
     )
     const users = {
-      selin: await createMember(app, institution.id, 'ogretmen'),
-      can: await createMember(app, institution.id, 'ogretmen'),
+      selin: await createMember(app, institution.id, 'ogretmen', [
+        { kind: 'teacher', recordId: 't-selin' },
+      ]),
+      can: await createMember(app, institution.id, 'ogretmen', [
+        { kind: 'teacher', recordId: 't-can' },
+      ]),
     }
     const student = (recordId: string) =>
       createMember(app, institution.id, 'ogrenci', [{ kind: 'student', recordId }])
@@ -436,7 +455,7 @@ describe('beceri ve CEFR raporu ucu', () => {
     await decide(t, 'k-1', 'B1', new Date(FIXED_NOW.getTime() - 10 * day))
     await decide(t, 'k-2', 'B2', new Date(FIXED_NOW.getTime() - 5 * day), 'reading')
     await decide(t, 'k-3', 'A2', new Date(FIXED_NOW.getTime() - 5 * day))
-    return { writing: writing as number }
+    return { writing: writing as number, readingA2 }
   }
 
   test('IST-118 DOM-BEC-037 uç: oturumsuz 401; öğrenci, veli ve ön büro 403', async () => {
@@ -608,6 +627,109 @@ describe('beceri ve CEFR raporu ucu', () => {
       (data.groups as Json[]).map((group) => group.name),
       ['A2 Sabah', 'B1 Akşam', 'B1 Hafta Sonu'],
     )
+  })
+
+  test('IST-118 DOM-BEC-037 kanıt seviye önerisiyle aynı pencereden okunur: pencere dışı eski sonuç sayılmaz', async () => {
+    const t = await tenant()
+    await populate(t)
+    const before = await ok(await report(t.cookies.admin))
+    assert.equal(skillOf(before.groups[1], 'reading').evidenceCount, 2)
+
+    // Ece'nin okuma sonucu pencerenin (120 gün + 30 gün pay) çok dışında kalır.
+    const old = new Date(FIXED_NOW.getTime() - 400 * 24 * 60 * 60_000)
+    await db
+      .update(taskAttempts)
+      .set({ startedAt: old, submittedAt: old })
+      .where(
+        and(eq(taskAttempts.institutionId, t.institution.id), eq(taskAttempts.learnerId, 'k-2')),
+      )
+    const data = await ok(await report(t.cookies.admin))
+    const evening = (data.groups as Json[]).find((group) => group.id === t.groups.evening)!
+    // Yalnız Deniz'in %100'ü kalır; Ece kursiyer olarak sayılır ama kanıtı yoktur.
+    assert.equal(evening.studentCount, 2)
+    assert.deepEqual(
+      [skillOf(evening, 'reading').average, skillOf(evening, 'reading').evidenceCount],
+      [100, 1],
+    )
+    assert.equal(skillOf(data.totals, 'reading').evidenceCount, 2)
+  })
+
+  test('IST-118 DOM-BEC-037 yalnız etkin gruplar sayılır: tamamlanmış ve iptal edilmiş grup rapora girmez, planlı ve açık grup girer', async () => {
+    const t = await tenant()
+    await populate(t)
+    const groupRow = (id: string) =>
+      and(eq(languageGroups.institutionId, t.institution.id), eq(languageGroups.id, id))
+    // A2 Sabah: bugünden önce biten açık grup (görünen durum `completed`).
+    await db
+      .update(languageGroups)
+      .set({
+        state: 'open',
+        openedAt: FIXED_NOW,
+        startDate: '2026-08-03',
+        endDate: '2026-09-25',
+      })
+      .where(groupRow(t.groups.morning))
+    // B1 Hafta Sonu: iptal edilmiş grup.
+    await db
+      .update(languageGroups)
+      .set({ state: 'cancelled', cancelledAt: FIXED_NOW, cancelReason: 'Kur açılmadı.' })
+      .where(groupRow(t.groups.weekend))
+    // B1 Akşam: açık ve süren grup.
+    await db
+      .update(languageGroups)
+      .set({
+        state: 'open',
+        openedAt: FIXED_NOW,
+        startDate: '2026-10-01',
+        endDate: '2026-12-31',
+      })
+      .where(groupRow(t.groups.evening))
+
+    const data = await ok(await report(t.cookies.admin))
+    assert.deepEqual(
+      (data.groups as Json[]).map((group) => group.name),
+      ['B1 Akşam'],
+    )
+    assert.equal(data.totals.studentCount, 2)
+    assert.equal(skillOf(data.totals, 'reading').evidenceCount, 2)
+    const byLevel = await ok(await report(t.cookies.admin, '?groupBy=level'))
+    assert.deepEqual(
+      (byLevel.groups as Json[]).map((group) => group.id),
+      ['B1'],
+    )
+  })
+
+  test('IST-118 DOM-BEC-037 öğretmenin kanıt kümesi kendi panosunun gördüğüyle sınırlıdır: başka öğretmenin atamasından alınan puan öğretmen raporuna girmez, yönetici raporuna girer', async () => {
+    const t = await tenant()
+    const { readingA2 } = await populate(t)
+    // Deniz önce Can'ın A2 Sabah sınıfındaydı ve onun sınıfına yapılan atamayı çözdü; sonra Selin'in
+    // B1 Akşam sınıfına geçti (kayıtlı sınıfı ve grup üyeliği Selin'in grubundadır).
+    const classOf = (classId: string) =>
+      db
+        .update(records)
+        .set({ data: { id: 'k-1', name: 'Deniz Yılmaz', isActive: true, classId } })
+        .where(
+          and(
+            eq(records.institutionId, t.institution.id),
+            eq(records.collection, 'students'),
+            eq(records.id, 'k-1'),
+          ),
+        )
+    await classOf(t.classes.morning)
+    await solve(t, t.cookies.deniz, readingA2, 0)
+    await classOf(t.classes.evening)
+
+    // Yönetici Deniz'in iki okuma sonucunu da görür: kursiyer ortalaması (%100 + %0) / 2.
+    const admin = await ok(await report(t.cookies.admin))
+    const adminEvening = (admin.groups as Json[]).find((group) => group.id === t.groups.evening)!
+    assert.equal(skillOf(adminEvening, 'reading').evidenceCount, 3)
+    assert.equal(skillOf(adminEvening, 'reading').average, 50)
+
+    // Selin A2 Sabah atamasını göremez; puan ortalamaya ve kanıt sayısına girmez.
+    const selin = await ok(await report(t.cookies.selin))
+    assert.equal(skillOf(selin.groups[0], 'reading').evidenceCount, 2)
+    assert.equal(skillOf(selin.groups[0], 'reading').average, 75)
+    assert.equal(skillOf(selin.totals, 'reading').evidenceCount, 2)
   })
 
   test('IST-118 DOM-BEC-037 başka kurumun grubu, kursiyeri ve sonucu görünmez; boş kurum boş rapor alır', async () => {

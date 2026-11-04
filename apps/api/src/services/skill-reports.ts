@@ -5,7 +5,11 @@ import {
   type ReportGrouping,
   type ReportGroup,
 } from '@kampus/school-core/cefr/skill-report.ts'
-import { canReadGroup } from '@kampus/school-core/lib/language-groups.ts'
+import {
+  canReadGroup,
+  groupStatus,
+  isGroupClosed,
+} from '@kampus/school-core/lib/language-groups.ts'
 
 import { listOverallLevelDecisions } from '../db/cefr.ts'
 import { loadCourses } from '../db/courses.ts'
@@ -13,15 +17,18 @@ import { loadGroupMembers, loadGroups } from '../db/language-groups.ts'
 import { loadRecordsByIds } from '../db/records.ts'
 import {
   loadAssignmentsByIds,
-  loadLearnersAllAttempts,
-  loadLearnersAllSubmissions,
+  loadReportAttempts,
+  loadReportSubmissions,
   type StoredAttempt,
+  type StoredSubmissionWork,
 } from '../db/skills.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { groupReaderOf } from './cefr.ts'
+import { evidenceActiveSince } from './cefr-evidence.ts'
+import { viewerOf } from './task-assignments.ts'
 import { attemptScoring, countedAttemptResult } from './task-attempts.ts'
 import { loadGrading, settledSubmissionResult } from './task-submissions.ts'
-import { loadWorkPairs } from './task-work.ts'
+import { canReadLearner, loadWorkPairs, readableLearners } from './task-work.ts'
 
 /**
  * Beceri ve CEFR raporu (OG-100; IST-118; docs/domain/beceri-gelisimi.md DOM-BEC-037). Kural core
@@ -29,19 +36,23 @@ import { loadWorkPairs } from './task-work.ts'
  * toplu okunması ve deneme/teslim uçlarının puan kuralları vardır. Rapor saklanmaz, her okumada
  * hesaplanır; yanıtta kişi adı ya da kişi puanı yoktur.
  *
- * Puan görünümü personeldir (`cefr-evidence.ts` `staff` ile aynı): yönetici ve öğretmen aynı
- * rakamı görür (DOM-BEC-030), atamanın kimin tarafından verildiğine ya da görünürlüğüne bakılmaz.
- * Kapsam grup düzeyindedir (core `canReadGroup`, DOM-YTK-028): öğretmen kendi grubunu ve koordinatörü
- * olduğu seviyenin gruplarını görür. Log: kimlik ve başlık yazılmaz, yalnız atama kimliğiyle veri
- * bütünlüğü uyarısı.
+ * Puan görünümü personeldir (`cefr-evidence.ts` `staff` ile aynı): kesinleşmemiş puan sayılmaz.
+ * Kanıt kümesi kişinin kendi ilerleme panosunda gördüğüyle sınırlıdır (DOM-BEC-035; `canReadLearner`):
+ * yönetici bütün atamaları, öğretmen yalnız atamasını gördüğü görevlerin sonuçlarını sayar; böylece
+ * rapor öğretmene başka öğretmenin atamasının puanını ortalama yoluyla sızdırmaz (DOM-BEC-037).
+ * Kanıt, seviye önerisiyle aynı pencereden okunur (`evidenceActiveSince`; DOM-BEC-031). Kapsam
+ * grup düzeyindedir (core `canReadGroup`, DOM-YTK-028): öğretmen kendi grubunu ve koordinatörü
+ * olduğu seviyenin gruplarını görür; kapanmış (tamamlanmış ya da iptal) grup raporda yoktur. Log:
+ * kimlik ve başlık yazılmaz, yalnız atama kimliğiyle veri bütünlüğü uyarısı.
  *
  * TODO(rapor-ogretmen): öğretmen bazında kırılım (OG-147).
- * TODO(rapor-donem): dönem penceresi ve karşılaştırma (OG-147); şimdilik tüm geçmiş sayılır.
+ * TODO(rapor-donem): seçilebilir dönem ve karşılaştırma (OG-147); şimdilik sabit kanıt penceresi
+ * (seviye önerisiyle aynı) sayılır.
  */
 
 const levelRank = (level: CefrLevel) => CEFR_LEVELS[level].rank
 
-/** Raporun satırları: okunabilir, iptal edilmemiş grupların etkin ve geçerli kursiyerleri. */
+/** Raporun satırları: okunabilir, kapanmamış (planlı, açık, süren) grupların etkin ve geçerli kursiyerleri. */
 async function reportGroups(
   ctx: ServiceContext,
   groupBy: ReportGrouping,
@@ -53,10 +64,11 @@ async function reportGroups(
     groupReaderOf(ctx.db, ctx),
   ])
   const courseOf = new Map(courses.map((course) => [course.id, course]))
+  const today = ctx.now.toISOString()
   const readable = groups.filter((group) => {
     const course = courseOf.get(group.courseId)
     return (
-      group.state !== 'cancelled' &&
+      !isGroupClosed(groupStatus(group, today)) &&
       course !== undefined &&
       canReadGroup(reader, group, course, members)
     )
@@ -112,16 +124,24 @@ async function learnerResults(
   ctx: ServiceContext,
   learnerIds: readonly string[],
 ): Promise<LearnerSkillResult[]> {
-  const [attempts, submissions] = await Promise.all([
-    loadLearnersAllAttempts(ctx.db, ctx.institutionId, learnerIds),
-    loadLearnersAllSubmissions(ctx.db, ctx.institutionId, learnerIds),
+  const activeSince = evidenceActiveSince(ctx.now)
+  const [viewer, attempts, submissions] = await Promise.all([
+    viewerOf(ctx),
+    loadReportAttempts(ctx.db, ctx.institutionId, learnerIds, { activeSince }),
+    loadReportSubmissions(ctx.db, ctx.institutionId, learnerIds, { activeSince }),
   ])
   const assignments = (
     await loadAssignmentsByIds(ctx.db, ctx.institutionId, [
       ...attempts.map((attempt) => attempt.assignmentId),
       ...submissions.map((work) => work.submission.assignmentId),
     ])
-  ).filter((assignment) => assignment.kind === 'evaluation' && assignment.archivedAt === null)
+  ).filter(
+    (assignment) =>
+      assignment.kind === 'evaluation' &&
+      assignment.archivedAt === null &&
+      // Kişinin ilerleme panosunda göremediği atama kanıt değildir (öğretmen, DOM-BEC-035).
+      readableLearners(viewer, assignment).kind !== 'none',
+  )
   const known = new Set(assignments.map((assignment) => assignment.id))
   const [pairs, book] = await Promise.all([
     loadWorkPairs(ctx.db, ctx.institutionId, assignments),
@@ -134,18 +154,21 @@ async function learnerResults(
     ),
   ])
 
-  // Kursiyer ve atama başına deneme listesi; sayılan deneme kursiyerin kendi denemelerinden seçilir.
-  const attemptsOf = new Map<string, StoredAttempt[]>()
+  // Atama başına kursiyerin denemeleri ve teslimi: iş yükü atama × kursiyer değil, sonuç sayısıdır.
+  const attemptsOf = new Map<string, Map<string, StoredAttempt[]>>()
   for (const attempt of attempts) {
-    const key = `${attempt.learnerId}\u0000${attempt.assignmentId}`
-    attemptsOf.set(key, [...(attemptsOf.get(key) ?? []), attempt])
+    const byLearner = attemptsOf.get(attempt.assignmentId) ?? new Map<string, StoredAttempt[]>()
+    const own = byLearner.get(attempt.learnerId) ?? []
+    own.push(attempt)
+    byLearner.set(attempt.learnerId, own)
+    attemptsOf.set(attempt.assignmentId, byLearner)
   }
-  const workOf = new Map(
-    submissions.map((work) => [
-      `${work.submission.learnerId}\u0000${work.submission.assignmentId}`,
-      work,
-    ]),
-  )
+  const worksOf = new Map<string, StoredSubmissionWork[]>()
+  for (const work of submissions) {
+    const list = worksOf.get(work.submission.assignmentId) ?? []
+    list.push(work)
+    worksOf.set(work.submission.assignmentId, list)
+  }
 
   const results: LearnerSkillResult[] = []
   for (const assignment of assignments) {
@@ -160,8 +183,8 @@ async function learnerResults(
       removed: false,
       cancelled: false,
     }
-    let context: ReturnType<typeof attemptScoring>['context'] = null
     if (assignment.scoringMode === 'auto') {
+      let context: ReturnType<typeof attemptScoring>['context']
       try {
         context = attemptScoring(assignment, pairs).context
       } catch (error) {
@@ -174,12 +197,8 @@ async function learnerResults(
         continue
       }
       if (context === null) continue
-    }
-    for (const learnerId of new Set(learnerIds)) {
-      const key = `${learnerId}\u0000${assignment.id}`
-      if (context !== null) {
-        const own = attemptsOf.get(key)
-        if (own === undefined) continue
+      for (const [learnerId, own] of attemptsOf.get(assignment.id) ?? []) {
+        if (!canReadLearner(viewer, assignment, learnerId)) continue
         const counted = countedAttemptResult(assignment, context, own, ctx.now)
         if (counted === null) continue
         results.push({
@@ -190,10 +209,12 @@ async function learnerResults(
           performedAt: counted.completedAt,
           percent: counted.percent,
         })
-        continue
       }
-      const work = workOf.get(key)
-      if (work === undefined) continue
+      continue
+    }
+    for (const work of worksOf.get(assignment.id) ?? []) {
+      const learnerId = work.submission.learnerId
+      if (!canReadLearner(viewer, assignment, learnerId)) continue
       const settled = settledSubmissionResult(ctx, { kind: 'admin' }, book, work)
       if (settled === null) continue
       results.push({

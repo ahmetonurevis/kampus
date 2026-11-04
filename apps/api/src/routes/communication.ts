@@ -33,7 +33,7 @@ import {
   startConversationCommand,
   withdrawAnnouncementCommand,
 } from '../services/communication.ts'
-import { sendCommand } from './command-support.ts'
+import { idempotencyOf, sendCommand } from './command-support.ts'
 import { captureInput, options, rejectIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema, commandResponseSchema } from './commands.schemas.ts'
 import {
@@ -366,19 +366,24 @@ export function registerCommunicationRoutes(app: FastifyInstance) {
         operationId: 'openConversationAccess',
         tags: ['communication'],
         summary: 'Yazışmayı gerekçeyle aç',
-        description: `Yöneticinin şikâyet veya soruşturma gerekçesiyle yazışmayı açması (core \`openConversationAccess\`, DOM-YTK-052, DOM-ILT-011). Yalnız öğrenci–öğretmen yazışmasında geçerlidir: veli tarafı yazışma gerekçeyle de açılmaz (403 \`conversation_access_student_only\`). Gerekçe en az 10 karakter, yoksa 422 \`access_reason_required\`. Erişim gerekçesiyle \`audit_log\`'a (\`conversation.access\`) yazılır ve 30 dakika geçerlidir; bu sürede \`GET /conversations/{id}/messages\` açıktır. Yazışma yoksa 404. Roller: ${rolesOf('conversation.access')}.`,
+        description: `Yöneticinin şikâyet veya soruşturma gerekçesiyle yazışmayı açması (core \`openConversationAccess\`, DOM-YTK-052, DOM-ILT-011). Yalnız öğrenci–öğretmen yazışmasında geçerlidir: veli tarafı yazışma gerekçeyle de açılmaz (403 \`conversation_access_student_only\`). Gerekçe en az 10 karakter, yoksa 422 \`access_reason_required\`. Erişim gerekçesiyle \`audit_log\`'a (\`conversation.access\`) yazılır ve 30 dakika geçerlidir; bu sürede \`GET /conversations/{id}/messages\` açıktır. Yazışma yoksa 404. \`Idempotency-Key\` isteğe bağlıdır; aynı anahtarla tekrar tek denetim kaydı yazar. \`If-Match\` yoktur: erişim yazışmayı değiştirmez. Roller: ${rolesOf('conversation.access')}.`,
+        headers: commandHeadersSchema('optional', { ifMatch: false }),
         params: conversationParamsSchema,
         body: conversationAccessSchema,
         response: { 200: conversationAccessResponseSchema, ...commandErrors },
       },
     },
-    async (request) => ({
-      data: await openConversationAccessCommand(
+    async (request, reply) => {
+      const result = await openConversationAccessCommand(
         contextOf(request),
         request.params.conversationId,
         input(request),
-      ),
-    }),
+        idempotencyOf(request, false),
+      )
+      if (result.replayed) reply.header('idempotent-replayed', 'true')
+      // Saklı yanıt veritabanından gelir: şemayla yeniden okunur.
+      return conversationAccessResponseSchema.parse(result.body)
+    },
   )
 
   typed.get(

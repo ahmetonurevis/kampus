@@ -1807,7 +1807,7 @@ export interface paths {
         put?: never;
         /**
          * Yazışmayı gerekçeyle aç
-         * @description Yöneticinin şikâyet veya soruşturma gerekçesiyle yazışmayı açması (core `openConversationAccess`, DOM-YTK-052, DOM-ILT-011). Yalnız öğrenci–öğretmen yazışmasında geçerlidir: veli tarafı yazışma gerekçeyle de açılmaz (403 `conversation_access_student_only`). Gerekçe en az 10 karakter, yoksa 422 `access_reason_required`. Erişim gerekçesiyle `audit_log`'a (`conversation.access`) yazılır ve 30 dakika geçerlidir; bu sürede `GET /conversations/{id}/messages` açıktır. Yazışma yoksa 404. Roller: `yonetici`.
+         * @description Yöneticinin şikâyet veya soruşturma gerekçesiyle yazışmayı açması (core `openConversationAccess`, DOM-YTK-052, DOM-ILT-011). Yalnız öğrenci–öğretmen yazışmasında geçerlidir: veli tarafı yazışma gerekçeyle de açılmaz (403 `conversation_access_student_only`). Gerekçe en az 10 karakter, yoksa 422 `access_reason_required`. Erişim gerekçesiyle `audit_log`'a (`conversation.access`) yazılır ve 30 dakika geçerlidir; bu sürede `GET /conversations/{id}/messages` açıktır. Yazışma yoksa 404. `Idempotency-Key` isteğe bağlıdır; aynı anahtarla tekrar tek denetim kaydı yazar. `If-Match` yoktur: erişim yazışmayı değiştirmez. Roller: `yonetici`.
          */
         post: operations["openConversationAccess"];
         delete?: never;
@@ -24581,7 +24581,10 @@ export interface operations {
     openConversationAccess: {
         parameters: {
             query?: never;
-            header?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
             path: {
                 /** @description Yazışma kimliği */
                 conversationId: string;

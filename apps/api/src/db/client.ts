@@ -23,6 +23,7 @@ import * as recordsSchema from './schema/records.ts'
 import * as resourcesSchema from './schema/resources.ts'
 import * as skillsSchema from './schema/skills.ts'
 import * as studentGuardiansSchema from './schema/student-guardians.ts'
+import * as studentHealthProfilesSchema from './schema/student-health-profiles.ts'
 
 export const schema = {
   ...authSchema,
@@ -44,6 +45,7 @@ export const schema = {
   ...cefrSchema,
   ...certificatesSchema,
   ...notificationPreferencesSchema,
+  ...studentHealthProfilesSchema,
 }
 export type Schema = typeof schema
 

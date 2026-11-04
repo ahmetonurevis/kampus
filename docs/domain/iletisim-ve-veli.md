@@ -88,7 +88,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Veli konu bazında seçebilmeli; ama güvenlik ve devam bilgisi kaçırılamamalıdır.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** kısmen — uygulama içi kanal (F6a): core `packages/school-core/src/lib/notifications.ts` tür kaydı (`NOTIFICATION_KINDS`, konu ve zorunluluk işaretiyle; listede olmayan `enrollment` konusu kesin kayıt bildirimi için eklendi), API `GET /api/v1/notifications`, `GET /notifications/unread-count`, `POST /notifications/:id/read`, `POST /notifications/read-all` (`communication` modülü), react-shared `use-notifications.ts`. Uygulama içi kanal tercihle kapanmaz. Tercih ekranı, e-posta/SMS/anlık bildirim gönderimi yok (`TODO(F6-anlik-bildirim)`); Vue demosu tercihleri yalnız saklar (`apps/web/src/views/Settings.vue:16-26,193-254`).
+- **Kodda:** kısmen — uygulama içi kanal (F6a): core `packages/school-core/src/lib/notifications.ts` tür kaydı (`NOTIFICATION_KINDS`, konu ve zorunluluk işaretiyle; listede olmayan `enrollment` konusu kesin kayıt bildirimi için eklendi), API `GET /api/v1/notifications`, `GET /notifications/unread-count`, `POST /notifications/:id/read`, `POST /notifications/read-all` (`communication` modülü), react-shared `use-notifications.ts`. Uygulama içi kanal tercihle kapanmaz. Tercih (OG-107 adım 1): core `lib/notification-preferences.ts` (konu × kanal şeması, veli için çocuk kırılımı, zorunlu konuda `in_app` + `push` tabanı kapatılamaz → `notification_channel_required`, `deliveryDecision`), tablo `notification_preferences` (migration 0059, sürümlü), API `GET`/`PATCH /api/v1/notification-preferences` (`communication` modülü; kendi tercihi). Tercih ekranı ve e-posta/SMS/anlık bildirim gönderimi yok (`TODO(F6-anlik-bildirim)`, `TODO(bildirim-tercihleri-teslim)` `services/notify.ts`); Vue demosu tercihleri yalnız saklar (`apps/web/src/views/Settings.vue:16-26,193-254`).
 
 ### DOM-ILT-021 · Sessiz saatler
 
@@ -96,7 +96,7 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 - **Gerekçe:** Gece bildirimi hem veli hem öğretmen için iletişimi aşındırır; acil durum ise beklemez.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** yok.
+- **Kodda:** kısmen — sessiz saat tercihi saklanır (OG-107 adım 1): core `lib/notification-preferences.ts` (`HH:MM` şeması, gece yarısını aşan aralık, varsayılan 21:00–08:00, kurum sınırı `quietWithin`/`effectiveQuietHours`, `isQuietNow`, `deliveryDecision`: sessiz saatte `push` ve `sms` `defer`, acil `urgent` deler) ve `PATCH /api/v1/notification-preferences`. Kurumun en geniş aralık ayarı yok (`TODO(bildirim-tercihleri-kurum-siniri)`); sessiz saatin gönderimde uygulanması ve özet yok (`TODO(bildirim-tercihleri-teslim)`); mesajda karşı tarafın sessiz saati henüz uygulanmaz.
 
 ### DOM-ILT-022 · Hizmet bildirimi ve ticari ileti ayrımı
 

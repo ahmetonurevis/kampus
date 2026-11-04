@@ -274,6 +274,12 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'absence-approval.test.ts',
     'başka kurum 404 ve değişmez',
   ),
+  'GET /api/v1/notification-preferences': yok(
+    'oturum sahibinin kendi tercihi; kayıt kullanıcı ve kurum çiftine bağlı, kurum oturumdan',
+  ),
+  'PATCH /api/v1/notification-preferences': yok(
+    'oturum sahibinin kendi tercihi; kayıt kullanıcı ve kurum çiftine bağlı, kurum oturumdan',
+  ),
   'GET /api/v1/notifications': kayit('notifications.test.ts', 'başka kurumun bildirimi 404'),
   'POST /api/v1/notifications/:notificationId/read': kayit(
     'notifications.test.ts',

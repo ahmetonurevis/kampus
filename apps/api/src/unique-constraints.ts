@@ -92,6 +92,10 @@ export const UNIQUE_CONSTRAINTS = {
     'Bu görev öğretmene zaten verilmiş.',
   ),
 
+  // --- Bildirim tercihi (DOM-ILT-020) --------------------------------------------------------
+  // İlk yazım yarışı: `onConflictDoNothing` 409'a çevirir; kısıt hata olarak yükselmez.
+  notification_preferences_pkey: RETRY,
+
   // --- Kazanım kataloğu (DOM-KYN-011, migration 0050) ----------------------------------------
   platform_learning_outcomes_pkey: RETRY,
   learning_outcomes_pkey: rule(

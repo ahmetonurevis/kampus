@@ -5676,6 +5676,30 @@ export interface paths {
         patch: operations["changeTaskExtraTime"];
         trace?: never;
     };
+    "/api/v1/notification-preferences": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bildirim tercihlerim
+         * @description Oturum sahibinin konu × kanal tercihi ve sessiz saati (DOM-ILT-020, -021). Kayıt yoksa varsayılan ve `version: 1` döner. Uygulama içi kanal her konuda açıktır; zorunlu konularda (devamsızlık, etkinlik onayı) anlık bildirim de kapatılamaz. Modül `communication`. Roller: bütün roller.
+         */
+        get: operations["getNotificationPreferences"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Bildirim tercihlerimi güncelle
+         * @description Kısmi güncelleme: `topics` konu bazında birleştirilir, `quietHours` ve `children` verilirse bütün olarak yerini alır. `version` okunan sürümdür; tutmazsa 409 `version_conflict`. Zorunlu konuda taban kanal (uygulama içi, anlık bildirim) çıkarılırsa 422 `notification_channel_required`; sessiz saatte başlangıç ile bitiş aynıysa 422 `quiet_hours_invalid`. `children` yalnız `veli` rolü içindir (çocuğa göre tercih). Başka kullanıcının tercihi bu uçtan okunmaz ya da yazılmaz. Modül `communication`. Roller: bütün roller.
+         */
+        patch: operations["patchNotificationPreferences"];
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -6881,6 +6905,79 @@ export interface components {
             affectedCopyIds: string[];
             /** @description Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri */
             affectedContainerVersionIds: string[];
+        };
+        PatchNotificationPreferencesBodyInput: {
+            topics?: {
+                homework?: ("in_app" | "push" | "email" | "sms")[];
+                grade?: ("in_app" | "push" | "email" | "sms")[];
+                attendance?: ("in_app" | "push" | "email" | "sms")[];
+                payment?: ("in_app" | "push" | "email" | "sms")[];
+                announcement?: ("in_app" | "push" | "email" | "sms")[];
+                message?: ("in_app" | "push" | "email" | "sms")[];
+                appointment?: ("in_app" | "push" | "email" | "sms")[];
+                consent?: ("in_app" | "push" | "email" | "sms")[];
+                bulletin?: ("in_app" | "push" | "email" | "sms")[];
+                enrollment?: ("in_app" | "push" | "email" | "sms")[];
+            };
+            quietHours?: {
+                enabled: boolean;
+                start: string;
+                end: string;
+            };
+            children?: {
+                [key: string]: {
+                    homework?: ("in_app" | "push" | "email" | "sms")[];
+                    grade?: ("in_app" | "push" | "email" | "sms")[];
+                    attendance?: ("in_app" | "push" | "email" | "sms")[];
+                    payment?: ("in_app" | "push" | "email" | "sms")[];
+                    announcement?: ("in_app" | "push" | "email" | "sms")[];
+                    message?: ("in_app" | "push" | "email" | "sms")[];
+                    appointment?: ("in_app" | "push" | "email" | "sms")[];
+                    consent?: ("in_app" | "push" | "email" | "sms")[];
+                    bulletin?: ("in_app" | "push" | "email" | "sms")[];
+                    enrollment?: ("in_app" | "push" | "email" | "sms")[];
+                };
+            };
+            /** @description Okunan tercih sürümü; tutmazsa 409 */
+            version: number;
+        };
+        NotificationPreferencesInput: {
+            /** @description Etkin tercih; kayıt yoksa varsayılan (21:00–08:00 sessiz saat, uygulama içi ve anlık bildirim) */
+            preferences: {
+                topics: {
+                    homework: ("in_app" | "push" | "email" | "sms")[];
+                    grade: ("in_app" | "push" | "email" | "sms")[];
+                    attendance: ("in_app" | "push" | "email" | "sms")[];
+                    payment: ("in_app" | "push" | "email" | "sms")[];
+                    announcement: ("in_app" | "push" | "email" | "sms")[];
+                    message: ("in_app" | "push" | "email" | "sms")[];
+                    appointment: ("in_app" | "push" | "email" | "sms")[];
+                    consent: ("in_app" | "push" | "email" | "sms")[];
+                    bulletin: ("in_app" | "push" | "email" | "sms")[];
+                    enrollment: ("in_app" | "push" | "email" | "sms")[];
+                };
+                quietHours: {
+                    enabled: boolean;
+                    start: string;
+                    end: string;
+                };
+                children: {
+                    [key: string]: {
+                        homework?: ("in_app" | "push" | "email" | "sms")[];
+                        grade?: ("in_app" | "push" | "email" | "sms")[];
+                        attendance?: ("in_app" | "push" | "email" | "sms")[];
+                        payment?: ("in_app" | "push" | "email" | "sms")[];
+                        announcement?: ("in_app" | "push" | "email" | "sms")[];
+                        message?: ("in_app" | "push" | "email" | "sms")[];
+                        appointment?: ("in_app" | "push" | "email" | "sms")[];
+                        consent?: ("in_app" | "push" | "email" | "sms")[];
+                        bulletin?: ("in_app" | "push" | "email" | "sms")[];
+                        enrollment?: ("in_app" | "push" | "email" | "sms")[];
+                    };
+                };
+            };
+            /** @description Sonraki PATCH için sürüm; kayıt yoksa 1 */
+            version: number;
         };
         NotificationInput: {
             id: string;
@@ -10840,6 +10937,79 @@ export interface components {
             affectedCopyIds: string[];
             /** @description Kaldırılan soruyu içeren quiz/alıştırma seti sürümleri */
             affectedContainerVersionIds: string[];
+        };
+        PatchNotificationPreferencesBody: {
+            topics?: {
+                homework?: ("in_app" | "push" | "email" | "sms")[];
+                grade?: ("in_app" | "push" | "email" | "sms")[];
+                attendance?: ("in_app" | "push" | "email" | "sms")[];
+                payment?: ("in_app" | "push" | "email" | "sms")[];
+                announcement?: ("in_app" | "push" | "email" | "sms")[];
+                message?: ("in_app" | "push" | "email" | "sms")[];
+                appointment?: ("in_app" | "push" | "email" | "sms")[];
+                consent?: ("in_app" | "push" | "email" | "sms")[];
+                bulletin?: ("in_app" | "push" | "email" | "sms")[];
+                enrollment?: ("in_app" | "push" | "email" | "sms")[];
+            };
+            quietHours?: {
+                enabled: boolean;
+                start: string;
+                end: string;
+            };
+            children?: {
+                [key: string]: {
+                    homework?: ("in_app" | "push" | "email" | "sms")[];
+                    grade?: ("in_app" | "push" | "email" | "sms")[];
+                    attendance?: ("in_app" | "push" | "email" | "sms")[];
+                    payment?: ("in_app" | "push" | "email" | "sms")[];
+                    announcement?: ("in_app" | "push" | "email" | "sms")[];
+                    message?: ("in_app" | "push" | "email" | "sms")[];
+                    appointment?: ("in_app" | "push" | "email" | "sms")[];
+                    consent?: ("in_app" | "push" | "email" | "sms")[];
+                    bulletin?: ("in_app" | "push" | "email" | "sms")[];
+                    enrollment?: ("in_app" | "push" | "email" | "sms")[];
+                };
+            };
+            /** @description Okunan tercih sürümü; tutmazsa 409 */
+            version: number;
+        };
+        NotificationPreferences: {
+            /** @description Etkin tercih; kayıt yoksa varsayılan (21:00–08:00 sessiz saat, uygulama içi ve anlık bildirim) */
+            preferences: {
+                topics: {
+                    homework: ("in_app" | "push" | "email" | "sms")[];
+                    grade: ("in_app" | "push" | "email" | "sms")[];
+                    attendance: ("in_app" | "push" | "email" | "sms")[];
+                    payment: ("in_app" | "push" | "email" | "sms")[];
+                    announcement: ("in_app" | "push" | "email" | "sms")[];
+                    message: ("in_app" | "push" | "email" | "sms")[];
+                    appointment: ("in_app" | "push" | "email" | "sms")[];
+                    consent: ("in_app" | "push" | "email" | "sms")[];
+                    bulletin: ("in_app" | "push" | "email" | "sms")[];
+                    enrollment: ("in_app" | "push" | "email" | "sms")[];
+                };
+                quietHours: {
+                    enabled: boolean;
+                    start: string;
+                    end: string;
+                };
+                children: {
+                    [key: string]: {
+                        homework?: ("in_app" | "push" | "email" | "sms")[];
+                        grade?: ("in_app" | "push" | "email" | "sms")[];
+                        attendance?: ("in_app" | "push" | "email" | "sms")[];
+                        payment?: ("in_app" | "push" | "email" | "sms")[];
+                        announcement?: ("in_app" | "push" | "email" | "sms")[];
+                        message?: ("in_app" | "push" | "email" | "sms")[];
+                        appointment?: ("in_app" | "push" | "email" | "sms")[];
+                        consent?: ("in_app" | "push" | "email" | "sms")[];
+                        bulletin?: ("in_app" | "push" | "email" | "sms")[];
+                        enrollment?: ("in_app" | "push" | "email" | "sms")[];
+                    };
+                };
+            };
+            /** @description Sonraki PATCH için sürüm; kayıt yoksa 1 */
+            version: number;
         };
         Notification: {
             id: string;
@@ -50601,6 +50771,198 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["TaskExtraTimeLearner"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getNotificationPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NotificationPreferences"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    patchNotificationPreferences: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PatchNotificationPreferencesBodyInput"];
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["NotificationPreferences"];
                     };
                 };
             };

@@ -221,11 +221,9 @@ export interface UploadInput {
 /**
  * Yüklemede tutulmayacak nesneyi siler. Silme hatası asıl hatayı (413, 422, veritabanı hatası)
  * örtmez; anahtarla loglanır (anahtar kişisel veri taşımaz, karar 4) ve nesne satırsız kalır.
- * TODO(F3c2-orphans): satırsız nesneler (silme hatası ya da nesne yazımıyla satır yazımı arasında
- * süreç çökmesi) yalnız satırları tarayan `purgeUnattachedFiles` ile bulunmaz. Sürücüye
- * `list(prefix)` eklenip kurum öneki (`<kurum>/`) altında satırı olmayan ve 24 saatten eski
- * nesneler periyodik işte (`src/jobs`, kurum başına) silinir (karar 5); KVKK silme başvurusu da bu
- * taramaya dayanır.
+ * Satırsız kalan nesneyi (silme hatası ya da nesne yazımıyla satır yazımı arasında süreç çökmesi)
+ * satırları tarayan `purgeUnattachedFiles` bulmaz; günlük `files.purge-orphans` işi kurum önekini
+ * listeleyip 24 saatten eski satırsız nesneyi siler (OG-093, `services/file-orphans.ts`).
  */
 async function discardObject(storage: StorageDriver, key: string, log: FastifyBaseLogger) {
   try {
@@ -639,7 +637,7 @@ export async function detachFile(
  * yalnız kimliklerle loglanır ve asıl hata olduğu gibi fırlatılır (yutulmaz; çağıran iş hatayı
  * görür). Aynı dosya için ret yeniden bildirilirse (iş yeniden denemesi) durum ve denetim
  * değişmeden yalnız nesne silme yeniden çalışır; `ready` bildirimi 409 `file_already_checked`
- * kalır. Hiç yeniden denenmeyen nesne `TODO(F3c2-orphans)` taramasıyla silinir.
+ * kalır. Hiç yeniden denenmeyen nesneyi `files.purge-orphans` yetim taraması siler (OG-093).
  * Reddedilen seste dönüşmüş çıktı da özgün nesne de silinir (OG-988: tarama dönüşümden sonra
  * bitebilir); izdeki özgün nesne silinemezse `releaseSupersededObject` izi bırakır, temizlik siler.
  * Çağıranlar: `file.scan` (`services/file-scan.ts`, ClamAV; OG-092) ve ses dönüşümünün reddi.
@@ -869,7 +867,7 @@ export async function purgeUnattachedFiles(input: {
  * teslim sürümünün konuşma kaydı); bekletilen dosya sayılır, dokunulmaz. Sıra ve hata davranışı
  * `purgeUnattachedFiles` ile aynıdır: satır kilitlenip saklama sonu yeniden denetlenir, `deleted`
  * yazılır, transaction bitince nesne silinir; nesne silinemezse satır `deleted` kalır ve hata
- * yalnız kimliklerle loglanır (nesne `TODO(F3c2-orphans)` taramasına kalır). En çok `limit`
+ * yalnız kimliklerle loglanır (nesneyi `files.purge-orphans` yetim taraması siler). En çok `limit`
  * dosyaya `after` imlecinden sonra bakar; sayfa doluysa `next` sonraki sayfanın imlecidir.
  * Günlük `files.purge-expired` işi (`src/jobs/files-purge-expired.ts`) kurum başına çağırır.
  */

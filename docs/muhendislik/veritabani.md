@@ -274,3 +274,14 @@ create index audit_log_actor_idx on audit_log (institution_id, actor_user_id, cr
 - `changes` önceki/sonraki değer değil, değişen alan adlarını tutar (`{ "fields": ["status", "feedback"] }`). Değer gerekiyorsa yalnız sınıflandırması "genel" olan alanların değeri yazılır.
 - `reason` serbest metin gerekçedir (`kvkk: K`): yalnız gerekçeli hassas okumada (yöneticinin öğrenci–öğretmen yazışması erişimi, `conversation.access`, DOM-YTK-052) dolar, diğer kayıtlarda boştur; en çok 500 karakter (`audit_log_reason_check`). Gerekçe `changes`'e yazılmaz. Denetim kaydı görünürlüğünde (DOM-YTK-053) `reason` yalnız `yonetici`ye ve yalnız kendi kurumu için döner. Migration `0008` eski kayıtlardaki `changes.reason` değerini bu kolona taşır.
 - Denetim kaydı imleçli sayfalamayla yalnız `yonetici` rolüne açılır.
+
+## 9. Yedekten geri dönüş
+
+Veritabanı yedekten geri dönerse `files` satırları yedeğin zamanına gider, dosya deposu ise daha yeni kalır: yedekten sonra yüklenen (satırı geri dönüşte kaybolan) nesneler depoda satırsız görünür ve 24 saati aşınca `files.purge-orphans` (OG-093) onları siler; veri geri dönüşte kurtarılamaz hale gelir. Bu yüzden geri dönüş sırası:
+
+1. Geri dönüşten önce `files.purge-orphans` işini durdur (API'nin arka plan işlerini kapat: `JOBS_ENABLED=false`; öteki dosya imha işleri de aynı anahtarla durur).
+2. Veritabanını yedekten döndür.
+3. Depoyu veritabanıyla eşitle: yedekten sonra depoya yazılan nesneleri ayır ya da deponun da aynı zamana ait yedeğini döndür; kurtarılacak nesneler varsa işler açılmadan önce tamamla.
+4. Depo ile veritabanı eşitlenene kadar `files.purge-orphans` işini açma; eşitlenince işleri yeniden aç.
+
+`audit_log` da yedeğin zamanına gideceğinden, durdurulan sürede yapılan imhalar ayrıca not edilir (guvenlik-kvkk §10: silinen veri yedek dönüşünde yeniden silinir).

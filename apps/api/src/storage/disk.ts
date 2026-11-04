@@ -1,13 +1,25 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import { createReadStream, createWriteStream } from 'node:fs'
-import { mkdir, rename, rm, stat } from 'node:fs/promises'
-import { dirname, resolve, sep } from 'node:path'
+import { lstat, mkdir, opendir, realpath, rename, rm, stat } from 'node:fs/promises'
+import { dirname, join, resolve, sep } from 'node:path'
 import type { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
 
 import { z } from 'zod'
 
-import { assertStorageKey, type SignedGetOptions, type StorageDriver } from './storage.ts'
+import {
+  assertStorageKey,
+  assertStoragePrefix,
+  STORAGE_KEY_PATTERN,
+  STORAGE_KEY_SEGMENT,
+  type SignedGetOptions,
+  type StorageLog,
+  type StorageDriver,
+  type StoredObjectInfo,
+} from './storage.ts'
+
+/** Anahtarın bölüm sayısı (`<kurum>/<amaç>/<yyyy>/<mm>/<kimlik>`). */
+const KEY_SEGMENTS = 5
 
 /**
  * `disk` sürücüsü (ADR 0003 karar 1): birim/API testleri ve S3 sunucusu kurmak istemeyen yerel
@@ -100,6 +112,68 @@ export class DiskStorage implements StorageDriver {
 
   async delete(key: string): Promise<void> {
     await rm(this.#path(key), { force: true })
+  }
+
+  /**
+   * Önek klasörünü derinlemesine dolaşır (`opendir`: klasör girdileri parça parça okunur, liste
+   * bellekte toplanmaz). Son değişiklik zamanı dosyanın `mtime`'ıdır: yazım geçici dosyada bitip
+   * yeniden adlandırıldığı için yazımın bittiği andır. Geçici `.part` dosyaları, sembolik bağlar ve
+   * anahtar biçimine uymayan girdiler atlanır; olmayan önek boş listedir. Önek yolunda sembolik bağ
+   * varsa ve gerçek yol (`realpath`) kök altındaki önek yolu değilse (kök dışı, kökün kendisi ya da
+   * başka klasör) liste boştur ve `log.warn` yazılır: tarama kök dışındaki dosyaları görüp
+   * sildirmez (OG-093).
+   */
+  async *list(prefix: string, log?: StorageLog): AsyncIterable<StoredObjectInfo> {
+    assertStoragePrefix(prefix)
+    const directory = resolve(this.#root, prefix)
+    if (!directory.startsWith(this.#root + sep)) throw new Error('storage prefix escapes root')
+    let real: string
+    let realRoot: string
+    try {
+      real = await realpath(directory)
+      realRoot = await realpath(this.#root)
+    } catch (error) {
+      if (isMissing(error)) return
+      throw error
+    }
+    // Beklenen gerçek yol kök altındaki önektir; bağ kök dışını, köke kendisini ya da başka
+    // kurumun klasörünü gösteriyorsa eşleşmez.
+    if (real !== resolve(realRoot, prefix)) {
+      // Önek (kurum kimliği) kişisel veri değildir; gerçek yol loglanmaz.
+      log?.warn({ event: 'storage.list_outside_root', prefix })
+      return
+    }
+    yield* this.#walk(directory, prefix, prefix.split('/').length - 1)
+  }
+
+  async *#walk(directory: string, prefix: string, depth: number): AsyncIterable<StoredObjectInfo> {
+    let handle
+    try {
+      handle = await opendir(directory)
+    } catch (error) {
+      if (isMissing(error)) return
+      throw error
+    }
+    // `for await` klasör tanıtıcısını bitişte ve erken bırakmada kapatır.
+    for await (const entry of handle) {
+      if (!STORAGE_KEY_SEGMENT.test(entry.name)) continue
+      const key = `${prefix}${entry.name}`
+      const path = join(directory, entry.name)
+      if (depth + 1 < KEY_SEGMENTS) {
+        if (entry.isDirectory()) yield* this.#walk(path, `${key}/`, depth + 1)
+        continue
+      }
+      if (!entry.isFile() || !STORAGE_KEY_PATTERN.test(key)) continue
+      let info
+      try {
+        info = await lstat(path)
+      } catch (error) {
+        // Okuma sırasında silinen nesne listeye girmez.
+        if (isMissing(error)) continue
+        throw error
+      }
+      if (info.isFile()) yield { key, lastModified: info.mtime }
+    }
   }
 
   async signedGetUrl(key: string, options: SignedGetOptions): Promise<string> {

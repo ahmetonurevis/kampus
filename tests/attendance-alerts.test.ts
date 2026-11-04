@@ -51,7 +51,13 @@ test('DOM-ILT-052: devamsızlık türleri zorunlu hizmet bildirimidir ve akademi
       crm: true,
       finance: true,
     }),
-    ['absence_recorded', 'absence_corrected', 'absence_decided'],
+    [
+      'absence_recorded',
+      'absence_corrected',
+      'absence_decided',
+      'attendance_threshold_warning',
+      'attendance_threshold_exceeded',
+    ],
   )
 })
 

@@ -1,11 +1,12 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 
-import { eq } from 'drizzle-orm'
+import { and, eq } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { notificationPreferences } from '../src/db/schema/notification-preferences.ts'
+import { studentGuardians } from '../src/db/schema/student-guardians.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -49,6 +50,7 @@ describe('bildirim tercihi uçları', () => {
       admin: await signInAs(app, institution.admin),
       parent: await signInAs(app, parentUser),
       parentUserId: parentUser.id,
+      membershipId: parentUser.membershipId,
     }
   }
 
@@ -208,5 +210,116 @@ describe('bildirim tercihi uçları', () => {
     const stored = await rows(a.institution.id)
     assert.equal(stored.length, 1)
     assert.equal(stored[0]?.userId, a.parentUserId)
+  })
+
+  test('eksik konulu ve bozuk jsonb satırı varsayılanla okunur ve güncellenir', async () => {
+    const { parent, institution, parentUserId } = await tenant()
+    const defaults = (await call('GET', parent)).json().data.preferences as Json
+    const missing = Object.fromEntries(
+      Object.entries(defaults.topics).filter(([topic]) => topic !== 'grade'),
+    )
+    await db.insert(notificationPreferences).values({
+      institutionId: institution.id,
+      userId: parentUserId,
+      preferences: { ...defaults, topics: missing },
+      version: 4,
+    })
+    const read = (await call('GET', parent)).json() as Json
+    assert.equal(read.data.version, 4)
+    assert.deepEqual(read.data.preferences.topics.grade, ['in_app', 'push'])
+    const patched = await call('PATCH', parent, { version: 4, topics: { payment: ['in_app'] } })
+    assert.equal(patched.statusCode, 200, patched.body)
+    assert.deepEqual(patched.json().data.preferences.topics.grade, ['in_app', 'push'])
+
+    await db
+      .update(notificationPreferences)
+      .set({ preferences: { topics: 'bozuk', quietHours: 7 } as never, version: 9 })
+      .where(eq(notificationPreferences.institutionId, institution.id))
+    const broken = (await call('GET', parent)).json() as Json
+    assert.equal(broken.data.version, 9)
+    assert.deepEqual(broken.data.preferences, defaults)
+    const fixed = await call('PATCH', parent, { version: 9, topics: { grade: ['in_app', 'sms'] } })
+    assert.equal(fixed.statusCode, 200, fixed.body)
+    assert.equal(fixed.json().data.version, 10)
+  })
+
+  test('DOM-ILT-020: bağlı olmayan çocuk 404 ve kayıt değişmez; bağı kalkan anahtar görünmez', async () => {
+    const { parent, institution, membershipId } = await tenant()
+    const denied = await call('PATCH', parent, {
+      version: 1,
+      children: { 's-1': { grade: ['in_app', 'sms'] }, 'baskasinin-cocugu': {} },
+    })
+    assert.equal(denied.statusCode, 404)
+    assert.equal(denied.json().code, 'not_found')
+    assert.deepEqual(await rows(institution.id), [])
+    const ok = await call('PATCH', parent, {
+      version: 1,
+      children: { 's-1': { grade: ['in_app', 'sms'] } },
+    })
+    assert.equal(ok.statusCode, 200, ok.body)
+    await db
+      .delete(studentGuardians)
+      .where(
+        and(
+          eq(studentGuardians.institutionId, institution.id),
+          eq(studentGuardians.membershipId, membershipId),
+        ),
+      )
+    const after = (await call('GET', parent)).json() as Json
+    assert.deepEqual(after.data.preferences.children, {})
+  })
+
+  test('409: aynı sürümle iki eşzamanlı güncellemeden yalnız biri yazılır', async () => {
+    for (const startVersion of [1, 2]) {
+      const { parent, institution } = await tenant()
+      if (startVersion === 2)
+        await call('PATCH', parent, { version: 1, topics: { grade: ['in_app', 'sms'] } })
+      const [a, b] = await Promise.all([
+        call('PATCH', parent, { version: startVersion, topics: { bulletin: ['in_app', 'sms'] } }),
+        call('PATCH', parent, { version: startVersion, topics: { bulletin: ['in_app', 'email'] } }),
+      ])
+      assert.deepEqual([a.statusCode, b.statusCode].sort(), [200, 409])
+      assert.equal((await rows(institution.id))[0]?.version, startVersion + 1)
+    }
+  })
+
+  test('aynı kurumdaki ikinci veli birincinin tercihini okuyamaz ya da yazamaz', async () => {
+    const { institution, parent } = await tenant()
+    const otherUser = await createMember(app, institution.id, 'veli', [
+      { kind: 'child', recordId: 's-2' } as never,
+    ])
+    const other = await signInAs(app, otherUser)
+    await call('PATCH', parent, { version: 1, topics: { grade: ['in_app', 'sms'] } })
+    const view = (await call('GET', other)).json() as Json
+    assert.equal(view.data.version, 1)
+    assert.deepEqual(view.data.preferences.topics.grade, ['in_app', 'push'])
+    const written = await call('PATCH', other, {
+      version: 1,
+      topics: { grade: ['in_app', 'email'] },
+    })
+    assert.equal(written.statusCode, 200, written.body)
+    const mine = (await call('GET', parent)).json() as Json
+    assert.deepEqual(mine.data.preferences.topics.grade, ['in_app', 'sms'])
+    assert.equal(mine.data.version, 2)
+    assert.equal((await rows(institution.id)).length, 2)
+  })
+
+  test('DOM-ILT-020: 21 çocuk anahtarı 422 notification_children_limit', async () => {
+    const institution = await createInstitution(app)
+    const ids = Array.from({ length: 21 }, (_, index) => `c-${index}`)
+    const user = await createMember(
+      app,
+      institution.id,
+      'veli',
+      ids.map((recordId) => ({ kind: 'child', recordId }) as never),
+    )
+    const cookie = await signInAs(app, user)
+    const response = await call('PATCH', cookie, {
+      version: 1,
+      children: Object.fromEntries(ids.map((id) => [id, {}])),
+    })
+    assert.equal(response.statusCode, 422, response.body)
+    assert.equal(response.json().code, 'notification_children_limit')
+    assert.deepEqual(await rows(institution.id), [])
   })
 })

@@ -10,9 +10,9 @@ import {
   loadNotificationPreferences,
   saveNotificationPreferences,
 } from '../db/notification-preferences.ts'
-import { lockInstitution } from '../db/records.ts'
-import { ConflictError, RuleViolationError } from '../errors.ts'
+import { ConflictError, NotFoundError, RuleViolationError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { listMembershipLinks } from './memberships.ts'
 import { mapOperationError } from './operation-runner.ts'
 
 /**
@@ -29,12 +29,40 @@ export type NotificationPreferencesView = {
 // kurum ayarı gelince buradan okunur (core `InstitutionQuietLimit`).
 const institutionLimit: InstitutionQuietLimit = null
 
+/** Velinin etkin (velayetli, kısıtsız) bağlı çocukları; veli dışı rolde boş. */
+async function linkedChildIds(db: ServiceContext['db'], ctx: ServiceContext): Promise<Set<string>> {
+  if (ctx.actor.role !== 'veli') return new Set()
+  const links = await listMembershipLinks(db, ctx.institutionId, ctx.actor.membershipId)
+  return new Set(links.filter((link) => link.kind === 'child').map((link) => link.recordId))
+}
+
+/** Bağı kalkmış çocukların anahtarlarını ayıklar. */
+function keepLinked(
+  preferences: NotificationPreferences,
+  linked: ReadonlySet<string>,
+): NotificationPreferences {
+  return {
+    ...preferences,
+    children: Object.fromEntries(
+      Object.entries(preferences.children).filter(([childId]) => linked.has(childId)),
+    ),
+  }
+}
+
 export async function notificationPreferencesFor(
   ctx: ServiceContext,
 ): Promise<NotificationPreferencesView> {
-  const stored = await loadNotificationPreferences(ctx.db, ctx.institutionId, ctx.actor.userId)
+  const stored = await loadNotificationPreferences(
+    ctx.db,
+    ctx.institutionId,
+    ctx.actor.userId,
+    ctx.log,
+  )
   return {
-    preferences: stored.preferences ?? defaultNotificationPreferences(),
+    preferences: keepLinked(
+      stored.preferences ?? defaultNotificationPreferences(),
+      await linkedChildIds(ctx.db, ctx),
+    ),
     version: stored.version,
   }
 }
@@ -52,11 +80,20 @@ export async function patchNotificationPreferences(
     )
   try {
     return await ctx.db.transaction(async (tx) => {
-      await lockInstitution(tx, ctx.institutionId)
-      const stored = await loadNotificationPreferences(tx, ctx.institutionId, ctx.actor.userId)
+      // Atomiklik koşullu `UPDATE ... WHERE version` ve `onConflictDoNothing` ile sağlanır.
+      const stored = await loadNotificationPreferences(
+        tx,
+        ctx.institutionId,
+        ctx.actor.userId,
+        ctx.log,
+      )
       if (stored.version !== version) throw new ConflictError()
+      const linked = await linkedChildIds(tx, ctx)
+      // Bağlı olmayan çocuk kimliği 404: kimliğin varlığı sorgulanamaz.
+      if (Object.keys(patch.children ?? {}).some((childId) => !linked.has(childId)))
+        throw new NotFoundError()
       const next = applyNotificationPreferencesPatch(
-        stored.preferences ?? defaultNotificationPreferences(),
+        keepLinked(stored.preferences ?? defaultNotificationPreferences(), linked),
         patch,
         institutionLimit,
       )

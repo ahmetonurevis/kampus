@@ -30,6 +30,7 @@ import {
   scheduleTrialLesson,
 } from '../packages/school-core/src/lib/prospects.ts'
 import { visibleRecords } from '../packages/school-core/src/lib/scope.ts'
+import { INSTITUTION_TYPES } from '../packages/school-core/src/modules/collection-modules.ts'
 import type { Role } from '../packages/school-core/src/modules/navigation.ts'
 
 // 2026-10-06 salıdır. Seed: pr1 Alara Güven (b1, Yeni aday), pr2 (b2, İletişime geçildi),
@@ -343,6 +344,41 @@ test('DOM-KAY-009, DOM-KAY-012: dil okulunda yaş seçimi zorunlu; yetişkinde v
   const child = languageProspect(state, { phone: '05559990004', name: 'Çocuk Aday' })
   assert.equal(child.minor, true)
   assert.equal(child.guardianName, 'Test Veli')
+})
+
+test('DOM-KAY-009, ADR 0008: okul dışındaki her türde (dil okulu, kurs) yaş grubu sorulur; yetişkinde veli adı saklanmaz', () => {
+  assert.equal(prospects.prospectAgeGroupRequired('school'), false)
+  const courseTypes = INSTITUTION_TYPES.filter((type) => type !== 'school')
+  assert.ok(courseTypes.includes('language_school'))
+  for (const institutionType of courseTypes) {
+    const state = seed()
+    assert.equal(prospects.prospectAgeGroupRequired(institutionType), true, institutionType)
+    unchangedOnFailure(
+      state,
+      () => createProspect(state, front, input(), id, now, { institutionType }),
+      fails('prospect_age_required', 'rule', ['minor']),
+    )
+    const adult = createProspect(
+      state,
+      front,
+      input({ minor: false, guardianName: 'Gönderilen Veli', phone: '05559990021' }),
+      id,
+      now,
+      { institutionType },
+    )
+    assert.equal(adult.minor, false)
+    assert.equal('guardianName' in adult, false, institutionType)
+    const child = createProspect(
+      state,
+      front,
+      input({ minor: true, phone: '05559990022', name: 'Çocuk Kursiyer' }),
+      id,
+      now,
+      { institutionType },
+    )
+    assert.equal(child.minor, true)
+    assert.equal(child.guardianName, 'Test Veli')
+  }
 })
 
 test('DOM-KAY-009: kampüs aktif olmalıdır', () => {

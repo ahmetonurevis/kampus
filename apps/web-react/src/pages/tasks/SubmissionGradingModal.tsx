@@ -7,9 +7,12 @@ import {
 import { useRubricVersion, type RubricVersion } from '@kampus/react-shared/use-rubrics.ts'
 import type { TaskScore } from '@kampus/react-shared/use-task-grading.ts'
 import { resubmissionRoundText } from '@kampus/react-shared/writing-model.ts'
+import { useAuth } from '@/auth/use-auth.ts'
 import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
+import { AppealDecisionSection } from './AppealDecisionSection.tsx'
+import { latestAppeal } from './appeal-model.ts'
 import { FeedbackAudioPlayer, RecordingPlayer } from './RecordingPlayer.tsx'
 import {
   gradedVersionNote,
@@ -74,6 +77,7 @@ function GradingBody({ submissionId }: { submissionId: string }) {
     error: rubricQuery.error,
   }
   const [stale, setStale] = useState(false)
+  const { session } = useAuth()
 
   if (detail.error) return <QueryError error={detail.error} onRetry={() => void detail.refetch()} />
   if (!submission) {
@@ -88,6 +92,7 @@ function GradingBody({ submissionId }: { submissionId: string }) {
   const latestScore = latest?.score ?? null
   const speaking = isSpeakingSubmission(submission.versions)
   const gradedNote = speaking ? gradedVersionNote(submission.versions) : null
+  const appeal = latestAppeal(submission)
   const resubmission =
     submission.resubmission && latest && submission.resubmission.versionNumber === latest.number
       ? submission.resubmission
@@ -171,6 +176,16 @@ function GradingBody({ submissionId }: { submissionId: string }) {
           })
         )}
       </section>
+
+      {appeal ? (
+        <AppealDecisionSection
+          submission={submission}
+          appeal={appeal.appeal}
+          versionNumber={appeal.versionNumber}
+          rubric={{ version: rubric.version, loading: rubric.loading }}
+          canDecide={session?.role === 'ogretmen'}
+        />
+      ) : null}
 
       {latest && latestScore === null ? (
         <section aria-labelledby="puan-formu" className="grid gap-3 border-t pt-5">

@@ -246,7 +246,12 @@ function SubmissionSummary({ submissionId }: { submissionId: string }) {
       <h3 id="veli-teslim-baslik" className="font-semibold">
         Gönderilen sürümler
       </h3>
-      <SubmissionVersions versions={submission.versions} audience="parent" headingLevel={4} />
+      <SubmissionVersions
+        submissionId={submission.id}
+        versions={submission.versions}
+        audience="parent"
+        headingLevel={4}
+      />
     </section>
   )
 }

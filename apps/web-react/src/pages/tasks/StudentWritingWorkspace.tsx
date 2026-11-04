@@ -266,7 +266,7 @@ export function StudentWritingWorkspace({
             >
               Gönderdikleriniz
             </h2>
-            <SubmissionVersions versions={detail.versions} />
+            <SubmissionVersions submissionId={detail.id} versions={detail.versions} />
           </section>
         ) : null}
       </div>

@@ -196,17 +196,19 @@ describe('OG-992: velinin dili ve salt okurluk', () => {
     assert.match(result, /responseLabel\(audience\)/)
   })
 
-  test('veli bölümü yazma kancası, çalışma alanı ya da itiraz kullanmaz', () => {
+  test('veli bölümü yazma kancası ve çalışma alanı kullanmaz; itiraz (DOM-BEC-025) yalnız sürüm listesindedir', () => {
     const source = readFileSync(
       new URL('../src/pages/tasks/ParentTaskSection.tsx', import.meta.url),
       'utf8',
     )
     for (const forbidden of [
-      /useStart|useSubmit|useSave|useApiCommand|Appeal|Resubmission/,
+      /useStart|useSubmit|useSave|useApiCommand|useFileTaskAppeal|useDecideTaskAppeal|Resubmission/,
       /QUIZ_PARAM|WRITING_PARAM|StudentQuizWorkspace|StudentWritingWorkspace/,
       /AttemptPlayer|WritingEditor|SpeakingRecorder/,
     ])
       assert.doesNotMatch(source, forbidden)
+    // Veli itiraz eder (API `fileTaskAppeal` veliye izinli); düğme ve form SubmissionVersions'tadır.
+    assert.match(source, /submissionId=\{submission\.id\}/)
     assert.match(source, /audience="parent"/g)
     assert.equal(source.match(/audience="parent"/g)?.length, 2)
     assert.match(source, /Bu çocuğa atanmış görev yok\./)

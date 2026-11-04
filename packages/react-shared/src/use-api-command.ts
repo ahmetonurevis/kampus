@@ -32,6 +32,11 @@ export interface ApiCommandOptions<TVariables, TResult extends ApiResult> {
    * eklenir (ör. `collectionKeyPrefix('invoices')`).
    */
   invalidates: readonly (readonly unknown[])[]
+  /**
+   * `false`: başarıda sorgular yeniden okunmaz (yanıt `onSuccess`te önbelleğe yazılır); 409
+   * çakışmada yine tazelenir. Her okuması denetim satırı olan uçlar için.
+   */
+  invalidateOnSuccess?: boolean
   /** Konu kaydın okunan sürümü; verilirse `If-Match` gönderilir, tutmazsa 409 `version_conflict`. */
   version?: (variables: TVariables) => number | null | undefined
   /** 409 dışında sorguları tazeleyen hata (`CommandSteps.refreshOn`). */
@@ -65,7 +70,7 @@ export function useApiCommand<TVariables, TResult extends ApiResult>(
 
   const mutation = useApiMutation<{ variables: TVariables; headers: CommandHeaders }, TResult>({
     request: (client, { variables, headers }) => options.request(client, variables, headers),
-    invalidates: options.invalidates,
+    invalidates: options.invalidateOnSuccess === false ? [] : options.invalidates,
     onSuccess: (data, { variables }) => options.onSuccess?.(data, variables),
   })
 

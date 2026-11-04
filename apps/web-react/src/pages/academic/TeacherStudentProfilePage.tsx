@@ -18,6 +18,7 @@ import { AttendanceView } from './AttendanceView.tsx'
 import { ExamResultsSection } from './ExamResultsSection.tsx'
 import { GradeAnalysis } from './GradeAnalysis.tsx'
 import { GradesView } from './GradesView.tsx'
+import { HealthProfileSection } from './HealthProfileSection.tsx'
 import { ParentContactSection } from './ParentContactSection.tsx'
 import {
   ProfileGoals,
@@ -44,6 +45,8 @@ type Student = CoreRecord<'students'>
  * sonuçları, hedef ve rehberlik. Öğrenci tek kayıt ucundan okunur; öğretmenin ders vermediği ya da
  * danışmanı olmadığı sınıfın öğrencisi sunucuda 404'tür ve "bulunamadı" gösterilir (DOM-YTK-022).
  * Kimlik no, doğum tarihi ve finans bilgisi sunucudan hiç gelmez; rehberlik iç notu profilde yoktur.
+ * Sağlık ve acil bilgi bölümü düzeye göre görünür: danışman tam bilgiyi, derse giren öğretmen yalnız
+ * acil bilgiyi okur (DOM-ILT-035); erişimi olmayanda bölüm çizilmez.
  * Menüde ayrı girdisi yoktur; Sınıflarım'daki sınıf özetinden "Profili aç" ile açılır.
  */
 export function TeacherStudentProfilePage({ page }: { page: NavPage }) {
@@ -172,6 +175,7 @@ function Profile({ student, back, page }: { student: Student; back: ReactNode; p
           />
         </section>
       </div>
+      <HealthProfileSection studentId={student.id} />
       <div className="mb-6">
         <LineTabs
           label="Öğrenci profili bölümleri"

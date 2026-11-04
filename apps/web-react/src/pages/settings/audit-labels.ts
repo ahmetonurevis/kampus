@@ -16,6 +16,8 @@ export const ENTITY_LABELS: Readonly<Record<string, string>> = {
   branches: 'Kampüs',
   teachers: 'Öğretmen',
   students: 'Öğrenci',
+  // Sağlık ve acil bilgi denetim satırları (OG-090): tekil `student`; süzgeçte `students`tan ayrışsın.
+  student: 'Öğrenci sağlık kaydı',
   parents: 'Veli',
   studentGoals: 'Öğrenci hedefi',
   guidanceCases: 'Rehberlik kaydı',
@@ -62,6 +64,9 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   'parent_contact.reveal': 'Veli iletişim bilgisi açıldı',
   'message.send': 'Mesaj gönderildi',
   'message.read': 'Mesaj okundu',
+  'health_profile.read': 'Sağlık bilgisi görüntülendi',
+  'health_profile.read_emergency': 'Acil bilgi görüntülendi',
+  'health_profile.update': 'Sağlık bilgisi güncellendi',
   'workflow.guidance': 'Rehberlik kaydı değişti',
   'request.open': 'Talep açıldı',
   'request.update': 'Talep güncellendi',

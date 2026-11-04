@@ -28,6 +28,7 @@ import { genRequestId, registerRequestContext } from './plugins/request-context.
 import { registerPlatformLateRoutes, registerPlatformRoutes } from './routes/platform-routes.ts'
 import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 // Onur: kayıt ve finans
+import { registerEnrollmentFunnelRoutes } from './routes/enrollment-funnel.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
@@ -395,6 +396,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)
+  registerEnrollmentFunnelRoutes(app)
   // Onur: kayıt ve finans sonu
   registerPlatformLateRoutes(app, storage)
 

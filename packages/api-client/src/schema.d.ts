@@ -3112,6 +3112,26 @@ export interface paths {
         patch: operations["updateProspectDetails"];
         trace?: never;
     };
+    "/api/v1/prospects/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıt hunisi
+         * @description Aday → görüşme → deneme dersi (yalnız dil okulu) → kesin kayıt dönüşümü; toplam, kaynak ve danışman kırılımıyla (core `enrollmentFunnel`, DOM-KAY-040, IST-117). Kohort adayın açılış günüdür (`dateFrom`/`dateTo`, Europe/Istanbul, iki uç dahil; verilmezse bütün adaylar). Huni birikimlidir: ileri adıma ulaşan aday önceki adımları geçmiş sayılır. Oranlar yüzde, bir ondalık; payda 0 ise `null`. Danışman adayı açan personeldir; adı yalnız kurum üyesi için döner. Arşivlenen aday sayılmaz. Yanıt aday adı, iletişim bilgisi ve aday kimliği taşımaz. Bitiş başlangıçtan önceyse ya da bilinmeyen parametre varsa 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getProspectFunnel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -10075,6 +10095,70 @@ export interface components {
             canManage: boolean;
             learners: components["schemas"]["TaskExtraTimeLearnerInput"][];
         };
+        EnrollmentFunnelStepInput: {
+            /**
+             * @description Huni adımı; `trial` yalnız dil okulunda
+             * @enum {string}
+             */
+            step: "prospect" | "meeting" | "trial" | "enrolled";
+            /** @description Bu adıma ulaşan aday (birikimli) */
+            count: number;
+            /** @description Önceki adıma göre yüzde (bir ondalık); ilk adımda ve önceki adım 0 iken `null` */
+            rate: number | null;
+        };
+        EnrollmentFunnelStageInput: {
+            /** @enum {string} */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi" | "Kayıt oldu" | "Vazgeçti";
+            count: number;
+        };
+        EnrollmentFunnelRowInput: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStepInput"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStageInput"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+        };
+        EnrollmentFunnelSourceRowInput: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStepInput"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStageInput"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Aday kaynağı (DOM-KAY-007); kaynaksız eski aday `null` */
+            source: string | null;
+        };
+        EnrollmentFunnelCounselorRowInput: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStepInput"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStageInput"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Adayı açan personelin kullanıcı kimliği; bilinmiyorsa `null` */
+            counselorId: string | null;
+            /** @description Danışmanın görünen adı; kurum üyesi değilse ya da bilinmiyorsa `null` */
+            counselorName: string | null;
+        };
+        EnrollmentFunnelInput: {
+            /**
+             * @description Adımları belirleyen kurum türü
+             * @enum {string}
+             */
+            institutionType: "school" | "language_school";
+            total: components["schemas"]["EnrollmentFunnelRowInput"];
+            /** @description Bilinen kaynaklar sıfır olsa da liste sırasıyla, sonra tanınmayan eski kaynaklar, en son kaynaksız */
+            bySource: components["schemas"]["EnrollmentFunnelSourceRowInput"][];
+            /** @description Adayı olan danışmanlar aday sayısına göre çoktan aza; bilinmeyen en sonda */
+            byCounselor: components["schemas"]["EnrollmentFunnelCounselorRowInput"][];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -14279,6 +14363,70 @@ export interface components {
             /** @description Kişi ek süre verebilir mi (atayan öğretmen veya yönetici) */
             canManage: boolean;
             learners: components["schemas"]["TaskExtraTimeLearner"][];
+        };
+        EnrollmentFunnelStep: {
+            /**
+             * @description Huni adımı; `trial` yalnız dil okulunda
+             * @enum {string}
+             */
+            step: "prospect" | "meeting" | "trial" | "enrolled";
+            /** @description Bu adıma ulaşan aday (birikimli) */
+            count: number;
+            /** @description Önceki adıma göre yüzde (bir ondalık); ilk adımda ve önceki adım 0 iken `null` */
+            rate: number | null;
+        };
+        EnrollmentFunnelStage: {
+            /** @enum {string} */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi" | "Kayıt oldu" | "Vazgeçti";
+            count: number;
+        };
+        EnrollmentFunnelRow: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStep"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStage"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+        };
+        EnrollmentFunnelSourceRow: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStep"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStage"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Aday kaynağı (DOM-KAY-007); kaynaksız eski aday `null` */
+            source: string | null;
+        };
+        EnrollmentFunnelCounselorRow: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStep"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStage"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Adayı açan personelin kullanıcı kimliği; bilinmiyorsa `null` */
+            counselorId: string | null;
+            /** @description Danışmanın görünen adı; kurum üyesi değilse ya da bilinmiyorsa `null` */
+            counselorName: string | null;
+        };
+        EnrollmentFunnel: {
+            /**
+             * @description Adımları belirleyen kurum türü
+             * @enum {string}
+             */
+            institutionType: "school" | "language_school";
+            total: components["schemas"]["EnrollmentFunnelRow"];
+            /** @description Bilinen kaynaklar sıfır olsa da liste sırasıyla, sonra tanınmayan eski kaynaklar, en son kaynaksız */
+            bySource: components["schemas"]["EnrollmentFunnelSourceRow"][];
+            /** @description Adayı olan danışmanlar aday sayısına göre çoktan aza; bilinmeyen en sonda */
+            byCounselor: components["schemas"]["EnrollmentFunnelCounselorRow"][];
         };
     };
     responses: never;
@@ -33346,6 +33494,87 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectFunnel: {
+        parameters: {
+            query?: {
+                /** @description Adayın açılış günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Adayın açılış günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EnrollmentFunnel"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

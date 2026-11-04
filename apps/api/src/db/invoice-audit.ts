@@ -5,6 +5,8 @@ import { eq, inArray } from 'drizzle-orm'
 
 import { loadDatabaseUrl } from '../config.ts'
 import { connectPostgres, type Database } from './client.ts'
+import { contractRecordSchema } from './contract-store.ts'
+import { invoiceRecordSchema } from './invoice-store.ts'
 import { loadRecords, type StoredRecord } from './records.ts'
 import { institutions } from './schema/auth.ts'
 import { PAYMENT_METHOD_KEYS, paymentAllocations } from './schema/payments.ts'
@@ -88,6 +90,11 @@ export interface FinanceRecordAudit {
   invalidContractFields: number
   /** Saklanmaması gereken `paidCents` alanını taşıyan taksit. */
   storedPaidCents: number
+  /**
+   * Tablo deposunun şemasına (`invoice-store.ts`, `contract-store.ts`) uymayan kayıt: kopyalamada
+   * programlama hatası verir, önce çözülmelidir (ADR 0010 karar 3).
+   */
+  storeShapeMismatches: { invoices: number; contracts: number }
 }
 
 const isText = (value: unknown): value is string => typeof value === 'string' && value.length > 0
@@ -251,6 +258,10 @@ export async function auditFinanceRecords(
     invalidInvoiceFields: count(invoices, (row) => !invoiceFieldsValid(row.data)),
     invalidContractFields: count(contracts, (row) => !contractFieldsValid(row.data)),
     storedPaidCents: count(invoices, (row) => row.data.paidCents !== undefined),
+    storeShapeMismatches: {
+      invoices: count(invoices, (row) => !invoiceRecordSchema.safeParse(row.data).success),
+      contracts: count(contracts, (row) => !contractRecordSchema.safeParse(row.data).success),
+    },
   }
 }
 

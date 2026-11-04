@@ -133,6 +133,7 @@ describe('ON-046a: taksit ve sözleşme ön denetimi', () => {
       invalidInvoiceFields: 0,
       invalidContractFields: 0,
       storedPaidCents: 0,
+      storeShapeMismatches: { invoices: 0, contracts: 0 },
     })
   })
 
@@ -208,6 +209,9 @@ describe('ON-046a: taksit ve sözleşme ön denetimi', () => {
     // c1 (tarife grubu tam, uuid değil ama alan geçerli) geçerli; c3 yarım grup ve sürüm.
     assert.equal(report.invalidContractFields, 1)
     assert.equal(report.storedPaidCents, 1)
+    // Depo şeması: gün vadesi, sıfır tutar, demo yöntemi, yarım ödeme, öğlen vadesi, paidCents;
+    // uuid olmayan tarife ve yarım tarife grubu.
+    assert.deepEqual(report.storeShapeMismatches, { invoices: 6, contracts: 2 })
   })
 
   test('kurum listesi verilmezse bütün kurumlar, verilirse yalnız onlar; başka kurum karışmaz', async () => {

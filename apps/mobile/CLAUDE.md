@@ -30,7 +30,8 @@ React Native ve Expo. Beş rol, mevcut modüller, çevrimdışı ortak örnek ve
   - Duyuru/yazışma/bildirim/soru/randevu modelleri web ile `@kampus/react-shared` içinde ortaktır; davranışı mobilde değil orada değiştirin. Mesaj yalnız öğretmen/öğrenci/veli içindir (yönetici ve ön büro mesajı telefonda yok).
   - Veli takip ekranları (`ParentTracking`) salt okurdur; kapsamı sunucu uygular, ekran `studentId`/`classId` ister. Kapalı modülün sekmesi çizilmez.
   - Öğretmen yoklaması `If-Match` sınıf sürümünü pencere açılırken sabitler (`pinnedClassVersion`); yoklama geçmişi salt okurdur (geçmiş günü yalnız yönetici düzeltir, DOM-AKD-035). Not girişinde puanlar sırayla, her biri tek istekle gider; ağ/5xx belirsizliğinde kalanlar gönderilmez.
-  - Soru fotoğrafı (DOM-ILT-094), quiz görevleri (soru bankası görevleri), konuşma görevi ve veli/öğretmen randevusu telefonda yoktur.
+  - Soru fotoğrafı (DOM-ILT-094) ve veli/öğretmen randevusu telefonda yoktur. Konuşma görevi telefonda kaydedilir (`speaking-sheet.tsx`, `use-phone-recorder.ts`): rıza yoksa kayıt kapalı, kayıt yalnız cihaz önbelleğinde.
+  - Dinleme kaydı içerebilecek görev telefonda açılmaz (`hasListening`, Sabah kararı 92); dinlemesiz quiz görevi `student-quiz-task.ts` kararıyla çözülür.
 
 ## Performans ve kayıt bütünlüğü
 

@@ -92,6 +92,15 @@ export const UNIQUE_CONSTRAINTS = {
     'Bu görev öğretmene zaten verilmiş.',
   ),
 
+  // --- Bildirim tercihi (DOM-ILT-020) --------------------------------------------------------
+  // İlk yazım yarışı: `onConflictDoNothing` 409'a çevirir; kısıt hata olarak yükselmez.
+  notification_preferences_pkey: RETRY,
+
+  // --- Sağlık ve acil bilgi (IST-020, migration 0060) ----------------------------------------
+  // İlk yazım yarışı: `onConflictDoNothing` 409'a çevirir; kısıt hata olarak yükselmez.
+  student_health_profiles_pkey: RETRY,
+  student_health_profiles_student_key: RETRY,
+
   // --- Kazanım kataloğu (DOM-KYN-011, migration 0050) ----------------------------------------
   platform_learning_outcomes_pkey: RETRY,
   learning_outcomes_pkey: rule(
@@ -231,6 +240,8 @@ export const UNIQUE_CONSTRAINTS = {
     'attempt_in_progress',
     'Süren bir denemeniz var; ona devam edin.',
   ),
+  // Bireysel ek süre kaydı (OG-248): aynı sıraya eşzamanlı yazma depoda 409 `version_conflict`.
+  task_extra_times_pkey: RETRY,
   attempt_media_plays_pkey: RETRY,
   attempt_media_plays_attempt_file_number_key: RETRY,
   attempt_item_checks_pkey: RETRY,

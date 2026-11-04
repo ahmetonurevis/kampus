@@ -185,6 +185,11 @@ const learnerShape = {
   learnerIds: z
     .array(z.string())
     .describe('Görevin hedeflediği kişinin kendisi veya velinin çocukları'),
+  hasListening: z
+    .boolean()
+    .describe(
+      'Görev dinleme kaydı ya da dinleme içeriği taşıyabilir mi (DOM-BEC-005, IST-045): sabitlenen sürüm birincil becerisi dinleme olan içerik ya da dinleme kaydına bağlı quiz/alıştırma seti; tek soruda `false`. Sunucuda hesaplanır, saklanmaz; telefonda açılabilirliği belirler.',
+    ),
   progress: z.array(learnerProgressSchema).describe('`learnerIds` sırasıyla her kişinin durumu'),
 }
 

@@ -17,7 +17,11 @@ import {
   processingOutcome,
   type FeedbackAudioValue,
 } from './feedback-audio-model.ts'
-import { clockLabel, durationLabel, elapsedMs } from './speaking-recorder-model.ts'
+import {
+  clockLabel,
+  durationLabel,
+  elapsedMs,
+} from '@kampus/react-shared/speaking-recorder-model.ts'
 import { useObjectUrlSource, useSpeakingRecorder } from './use-speaking-recorder.ts'
 
 type Props = {

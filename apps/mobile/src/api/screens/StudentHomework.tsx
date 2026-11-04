@@ -7,7 +7,7 @@ import { useApiSession } from '../auth.tsx'
 import { canOpenScreen } from '../pages.ts'
 import { ListLoading, QueryError } from '../QueryState.tsx'
 import { HomeworkList } from './homework-list.tsx'
-import { StudentWritingTasks } from './writing-tasks.tsx'
+import { StudentTasks } from './student-tasks.tsx'
 
 type StudentRecord = State['students'][number]
 
@@ -41,8 +41,8 @@ function ClassHomework() {
  * Sınıf ödevlerinde öğrenci kaydı kapsamdan gelir (öğrencide tek kayıt döner); ödevler öğrencinin
  * sınıfından istenir, sunucu yine yalnız kendi sınıfının ödevlerini döndürür (DOM-AKD-074). Durum ve
  * puan salt okunur; teslim ayrıntı penceresindedir (`homework-submission.tsx`). Görevler sekmesi
- * (`writing-tasks.tsx`) web'deki "Atanan yazma ve konuşma görevleri" bölümüdür; yazma görevi
- * telefonda yazılır, taslağı kaydedilir ve teslim edilir (IST-047, IST-124).
+ * (`student-tasks.tsx`) web'deki görev bölümleridir; yazma görevi telefonda yazılır, taslağı
+ * kaydedilir ve teslim edilir (IST-047); dinlemesiz quiz görevi çözülür ve teslim edilir (IST-051, IST-124).
  */
 export default function StudentHomework() {
   const session = useApiSession()
@@ -59,7 +59,7 @@ export default function StudentHomework() {
     <Screen>
       <T muted>Ödevlerin, yazma görevlerin, son tarihleri ve değerlendirmeleri.</T>
       <Tabs value={tab} onChange={setTab} options={TABS} />
-      {tab === 'odevler' ? <ClassHomework /> : <StudentWritingTasks />}
+      {tab === 'odevler' ? <ClassHomework /> : <StudentTasks />}
     </Screen>
   )
 }

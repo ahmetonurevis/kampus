@@ -18,11 +18,7 @@ import {
 
 import { FILE_PURPOSES } from '@kampus/school-core/content/taxonomy.ts'
 import { GRADE_TYPES, type GradeType } from '@kampus/school-core/lib/grades.ts'
-import {
-  TARGET_KINDS,
-  type FixedAssignment,
-  type TargetKind,
-} from '@kampus/school-core/skills/assignment.ts'
+import { TARGET_KINDS, type TargetKind } from '@kampus/school-core/skills/assignment.ts'
 import {
   APPEAL_OUTCOMES,
   RATER_ROLES,
@@ -41,9 +37,11 @@ import {
   ATTEMPT_LIMITS,
   COUNT_POLICIES,
   LATE_ACCEPTANCE_MAX_DAYS,
+  SCORING_MODES,
   TASK_KINDS,
   type Answers,
   type CountPolicy,
+  type ScoringMode,
   type TaskKind,
   type TaskResponse,
 } from '@kampus/school-core/skills/scoring.ts'
@@ -96,15 +94,6 @@ const required = requiredColumns
 const SUBMISSION_KINDS = submissionSettingsSchema.options.map(
   (option) => option.shape.submissionKind.value,
 )
-
-/**
- * TODO(core-scoring-modes): core'da puanlama kipi sabiti yok; değerler `scoringModeFor` dönüş
- * tipindedir (`FixedAssignment['scoringMode']`). Sabit eklenince buradan türetilir.
- */
-const SCORING_MODES = [
-  'auto',
-  'teacher',
-] as const satisfies readonly FixedAssignment['scoringMode'][]
 
 /**
  * Serbest metin sınırları core şemalarıyla aynıdır (`skills/rubric.ts`: başlık 200, genel yorum
@@ -225,7 +214,7 @@ export const taskAssignments = pgTable(
     /** Puanlamanın okunduğu sürüm; başta `resource_version_id`'dir (karar 4). */
     scoringVersionId: uuid('scoring_version_id').notNull(),
     rubricVersionId: uuid('rubric_version_id'),
-    scoringMode: text('scoring_mode').$type<FixedAssignment['scoringMode']>().notNull(),
+    scoringMode: text('scoring_mode').$type<ScoringMode>().notNull(),
     kind: text('kind').$type<TaskKind>().notNull(),
     maxAttempts: integer('max_attempts'),
     countPolicy: text('count_policy').$type<CountPolicy>(),

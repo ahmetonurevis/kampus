@@ -24,6 +24,7 @@ import {
   type AttemptRules,
   type Deadline,
   type ScoringItem,
+  type ScoringMode,
   type TaskKind,
 } from './scoring.ts'
 import { submissionSettingsSchema, type SubmissionRow, type VersionRow } from './submission.ts'
@@ -126,7 +127,7 @@ export type FixedAssignment = {
   /** Puanlamanın okunduğu sürüm; başta içerik sürümüdür, yalnız `planRescore` değiştirir. */
   scoringVersionId: string
   rubricVersionId: string | null
-  scoringMode: 'auto' | 'teacher'
+  scoringMode: ScoringMode
   kind: TaskKind
   attempts: AttemptRules
   deadline: Deadline

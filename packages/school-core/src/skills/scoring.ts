@@ -194,8 +194,15 @@ export function assertSubmissionOpen(deadline: Deadline, now: Instant): void {
 /** Otomatik puanlanan soru türleri (DOM-BEC-002). Soru bankasındaki bütün türler otomatiktir. */
 export const AUTO_SCORED_QUESTION_TYPES = enumKeys(QUESTION_TYPES) as readonly QuestionType[]
 
+/**
+ * Görevin puanlama yolu (DOM-BEC-002, 023): `auto` cevap anahtarıyla, `teacher` rubrikle öğretmen
+ * puanı. Atamaya sabitlenir; API kolon kısıtı da bu listeden türetilir.
+ */
+export const SCORING_MODES = ['auto', 'teacher'] as const
+export type ScoringMode = (typeof SCORING_MODES)[number]
+
 /** Görev olarak atanabilen içerik türünün puanlama yolu (DOM-BEC-002, 023); görev değilse `null`. */
-export function scoringModeFor(contentType: ContentType): 'auto' | 'teacher' | null {
+export function scoringModeFor(contentType: ContentType): ScoringMode | null {
   switch (contentType) {
     case 'question':
     case 'quiz':

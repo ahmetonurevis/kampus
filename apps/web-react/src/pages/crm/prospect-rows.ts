@@ -60,14 +60,19 @@ export const SOURCE_FILTER: FilterField = {
 /** Kayıt tarihi aralığı (Vue "Kayıt tarihi" süzgeci); sunucuda `dateField=createdAt` ile süzülür. */
 export const CREATED_FILTER: FilterField = { key: 'createdAt', label: 'Kayıt tarihi', type: 'date' }
 
+/** Aday listesinde gün aralığıyla süzülebilen tarih alanları (API `DATE_FIELDS.prospects`). */
+export type ProspectDateField = 'createdAt' | 'trialAt' | 'trialLesson.date'
+
 /**
- * Liste sorgusuna kayıt tarihi aralığını ekler (`dateField=createdAt`, `dateFrom`/`dateTo`;
- * Europe/Istanbul günü, uçlar dahil). Tek uç açık aralıktır; biçimsiz uç ve bitişi başlangıçtan
- * önce olan aralık gönderilmez (hata süzgeç alanının altında görünür, sunucu 400 vermez).
+ * Liste sorgusuna bir tarih alanının gün aralığını ekler (`dateField`, `dateFrom`/`dateTo`;
+ * Europe/Istanbul günü, uçlar dahil). Alan sunucunun izin listesindedir (`ProspectDateField`).
+ * Tek uç açık aralıktır; biçimsiz uç ve bitişi başlangıçtan önce
+ * olan aralık gönderilmez (hata süzgeç alanının altında görünür, sunucu 400 vermez).
  */
-export function withCreatedRange<Q extends Pick<CollectionQuery, 'filters'>>(
+export function withDayRange<Q extends Pick<CollectionQuery, 'filters'>>(
   query: Q,
   value: FilterValue,
+  field: ProspectDateField,
 ): Q {
   if (typeof value !== 'object' || value === null) return query
   const from = isDayKey(value.min) ? value.min : ''
@@ -75,12 +80,18 @@ export function withCreatedRange<Q extends Pick<CollectionQuery, 'filters'>>(
   if (!from && !to) return query
   if (from && to && to < from) return query
   const range: CollectionFilters = {
-    dateField: 'createdAt',
+    dateField: field,
     ...(from ? { dateFrom: from } : {}),
     ...(to ? { dateTo: to } : {}),
   }
   return { ...query, filters: { ...query.filters, ...range } }
 }
+
+/** Kayıt tarihi aralığı (Vue "Kayıt tarihi" süzgeci): `withDayRange` alanı `createdAt`. */
+export const withCreatedRange = <Q extends Pick<CollectionQuery, 'filters'>>(
+  query: Q,
+  value: FilterValue,
+): Q => withDayRange(query, value, 'createdAt')
 
 export const ALL_STAGES = 'all'
 

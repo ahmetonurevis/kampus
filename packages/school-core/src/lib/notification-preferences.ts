@@ -239,6 +239,8 @@ export function effectiveQuietHours(
   quiet: QuietHours,
   institutionLimit: InstitutionQuietLimit = null,
 ): QuietHours {
+  // TODO(bildirim-tercihleri-kurum-siniri): eşit uçlu kurum aralığının (span 0) anlamı belirsiz:
+  // `quietWithin` yalnız 0 dakikalık kullanıcı aralığını sığdırır; kurum ayarı gelince karar verilir.
   if (!quiet.enabled || !institutionLimit || quietWithin(quiet, institutionLimit)) return quiet
   return { enabled: true, start: institutionLimit.start, end: institutionLimit.end }
 }
@@ -292,6 +294,8 @@ export function deliveryDecision(input: {
   institutionLimit?: InstitutionQuietLimit
 }): DeliveryDecision {
   if (input.channel === 'in_app') return 'send'
+  // TODO(bildirim-tercihleri-teslim): acil duyuru (urgent) kanal tercihinden bağımsız push ile
+  // gider (DOM-ILT-050); teslim katmanı yazılınca urgent için `skip` push'a çevrilir.
   const topic = notificationSpec(input.kind).topic
   if (!channelsFor(input.preferences, topic, input.studentId).includes(input.channel)) return 'skip'
   if (input.urgent === true || !QUIET_DEFERRED_CHANNELS.includes(input.channel)) return 'send'

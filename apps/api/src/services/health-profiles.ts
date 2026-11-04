@@ -55,7 +55,9 @@ export type HealthProfileFullView = HealthProfileContent & {
 
 export type HealthProfileView =
   | { level: 'full'; profile: HealthProfileFullView; version: number }
-  | { level: 'emergency'; profile: HealthEmergencyView; version: number }
+  // Acil düzeyde sürüm yok: yazma yetkisi olmayan okuyucu kaydın varlığını ya da güncelleme
+  // sayısını çıkaramaz (sürüm yalnız yazabilenin iyimser kilidi içindir).
+  | { level: 'emergency'; profile: HealthEmergencyView }
 
 const ENTITY = 'student'
 
@@ -185,11 +187,7 @@ export async function getHealthProfile(
       const stored = await loadHealthProfile(tx, ctx.institutionId, studentId, deps.cipher)
       if (level === 'emergency') {
         await audit(ctx, tx, deps, 'health_profile.read_emergency', studentId, EMERGENCY_FIELDS)
-        return {
-          level,
-          profile: emergencyView(stored?.content ?? emptyContent()),
-          version: stored?.version ?? 1,
-        }
+        return { level, profile: emergencyView(stored?.content ?? emptyContent()) }
       }
       await audit(ctx, tx, deps, 'health_profile.read', studentId, FULL_FIELDS)
       return fullView(stored)
@@ -204,6 +202,12 @@ export async function getHealthProfile(
  * tam şemasında doğrulanır (400), `version` ile iyimser kilit (tutmazsa 409). Yazma ve
  * `health_profile.update` denetim satırı (yalnız değişen alan adları) tek transaction'dır; biri
  * başarısızsa hiçbiri yazılmaz. Yanıt yazanın tam görünümüdür (yazabilen herkes tam okur).
+ *
+ * İçerik ve dayanak değişmiyorsa (aynı değerlerin yeniden gönderilmesi) yazılmaz: sürüm artmaz,
+ * `updatedAt` ve `updatedByUserId` oynamaz, boş alan listeli denetim satırı açılmaz; mevcut görünüm
+ * 200 ile döner. Kayıt varken yalnız `legalBasis` gönderilebilir (rıza geri çekme, dayanak
+ * değişikliği); depo içeriği yeni dayanağa bağlı olarak yeniden şifreler. Kayıt yokken içerik
+ * alanı olmadan boş profil açılmaz (core `applyHealthProfilePatch`, 400).
  */
 export async function updateHealthProfile(
   ctx: ServiceContext,
@@ -212,11 +216,19 @@ export async function updateHealthProfile(
   patch: HealthProfilePatch,
 ): Promise<HealthProfileView> {
   try {
+    // TODO(IST-020-yetki-islem): erişim kararı aşağıdaki transaction'dan önce, ayrı okumalarla
+    // verilir. Karar ile yazma arasında velayet ya da iletişim kısıtı değişirse tek istek eski
+    // yetkiyle geçebilir. Etki düşük: bağlar ayrı uçlardan (öğrenci-veli bağı, kısıt) değişir ve
+    // sonraki istek yeni durumu görür; kararı transaction içine almak kapsam kaynağını
+    // (`readScope`/`readSource`) transaction'a bağlamayı gerektirir.
     requireHealthWrite(await accessInput(ctx, studentId))
     return await ctx.db.transaction(async (tx) => {
       const before = await loadHealthProfile(tx, ctx.institutionId, studentId, deps.cipher)
       if ((before?.version ?? 1) !== patch.version) throw new ConflictError()
       const { version, legalBasis, ...content } = applyHealthProfilePatch(before, patch)
+      const fields: string[] = changedHealthFields(before?.content ?? null, content)
+      if (before?.legalBasis !== legalBasis) fields.push('legalBasis')
+      if (before !== null && fields.length === 0) return fullView(before)
       const saved = await saveHealthProfile(
         tx,
         ctx.institutionId,
@@ -231,8 +243,6 @@ export async function updateHealthProfile(
         deps.cipher,
       )
       if (saved === null) throw new ConflictError()
-      const fields: string[] = changedHealthFields(before?.content ?? null, saved.content)
-      if (before?.legalBasis !== legalBasis) fields.push('legalBasis')
       await audit(ctx, tx, deps, 'health_profile.update', studentId, fields)
       return fullView(saved)
     })

@@ -5709,7 +5709,7 @@ export interface paths {
         };
         /**
          * Öğrencinin sağlık ve acil bilgisi
-         * @description Öğrencinin yapılandırılmış sağlık ve acil bilgisi (DOM-ILT-035). Düzey okuyana göredir; acil düzeyde tam alanlar yanıtta yoktur. Kayıt yoksa boş profil ve `version: 1` döner. Her başarılı okuma, kayıt olmasa da, denetim kaydına yazılır (`health_profile.read`, acil düzeyde `health_profile.read_emergency`; yalnız alan adları, DOM-YTK-052); denetim yazılamazsa yanıt dönmez. Tam görünüm: yönetici, öğrencinin sınıfının rehber öğretmeni, 18 yaş altı öğrencinin velayetli ve iletişim kısıtı olmayan velisi, 18 yaşını doldurmuş öğrencinin kendisi. Yalnız acil görünüm (`level: emergency`; alerji ve acil talimat): öğrencinin sınıfına derse giren öğretmen. Ön büro ve reşit olmayan öğrencinin kendisi 403 `health_profile_forbidden`; yetişkin öğrencinin velisi 403. Kapsam dışı öğrenci (ilgisiz öğretmen, bağı olmayan, velayetsiz ya da kısıtlı veli, başka öğrenci), olmayan, arşivli ya da başka kurumun öğrencisi 404. Modülsüz. Roller: `yonetici`, `ogretmen`, `veli`, `ogrenci`; ön büro 403.
+         * @description Öğrencinin yapılandırılmış sağlık ve acil bilgisi (DOM-ILT-035). Düzey okuyana göredir; acil düzeyde tam alanlar yanıtta yoktur. Kayıt yoksa boş profil ve `version: 1` döner; `version` yalnız tam görünümde vardır (acil düzeyde yok). Her başarılı okuma, kayıt olmasa da, denetim kaydına yazılır (`health_profile.read`, acil düzeyde `health_profile.read_emergency`; yalnız alan adları, DOM-YTK-052); denetim yazılamazsa yanıt dönmez. Tam görünüm: yönetici, öğrencinin sınıfının rehber öğretmeni, 18 yaş altı öğrencinin velayetli ve iletişim kısıtı olmayan velisi, 18 yaşını doldurmuş öğrencinin kendisi. Yalnız acil görünüm (`level: emergency`; alerji ve acil talimat): öğrencinin sınıfına derse giren öğretmen. Ön büro ve reşit olmayan öğrencinin kendisi 403 `health_profile_forbidden`; yetişkin öğrencinin velisi 403. Kapsam dışı öğrenci (ilgisiz öğretmen, bağı olmayan, velayetsiz ya da kısıtlı veli, başka öğrenci), olmayan, arşivli ya da başka kurumun öğrencisi 404. Modülsüz. Roller: `yonetici`, `ogretmen`, `veli`, `ogrenci`; ön büro 403.
          */
         get: operations["getStudentHealthProfile"];
         put?: never;
@@ -5719,7 +5719,7 @@ export interface paths {
         head?: never;
         /**
          * Öğrencinin sağlık ve acil bilgisini güncelle
-         * @description Kısmi güncelleme (core `healthProfilePatchSchema`): yalnız gönderilen içerik alanları değişir, gönderilmeyen alan aynen kalır (boş liste göndermek listeyi boşaltır); en az bir içerik alanı gerekir. `legalBasis` gönderilmezse mevcut dayanak kalır, kayıt yokken zorunludur. Birleşmiş profil tam şemada doğrulanır (400). `version` okunan sürümdür (kayıt yoksa 1); tutmazsa 409 `version_conflict`. Yazma ve denetim kaydı (`health_profile.update`, yalnız değişen alan adları) tek transaction içindedir. Yazabilenler: yönetici, 18 yaş altı öğrencinin velayetli ve kısıtsız velisi, 18 yaşını doldurmuş öğrencinin kendisi; diğerleri 403 `health_profile_write_forbidden` (öğretmen ve ön büro rol süzgecinde 403), kapsam dışı ya da başka kurumun öğrencisi 404. İçerik şifreli saklanır. Modülsüz. Roller: `yonetici`, `veli`, `ogrenci`.
+         * @description Kısmi güncelleme (core `healthProfilePatchSchema`): yalnız gönderilen içerik alanları değişir, gönderilmeyen alan aynen kalır (boş liste göndermek listeyi boşaltır); en az bir içerik alanı ya da `legalBasis` gerekir (kayıt varken yalnız `legalBasis` gönderilebilir; kayıt yokken `legalBasis` zorunludur ve içerik alanı olmadan boş profil açılmaz, 400). Değişiklik yoksa yazılmaz: sürüm artmaz, denetim satırı açılmaz, mevcut görünüm döner. `legalBasis` gönderilmezse mevcut dayanak kalır. Birleşmiş profil tam şemada doğrulanır (400). `version` okunan sürümdür (kayıt yoksa 1); tutmazsa 409 `version_conflict`. Yazma ve denetim kaydı (`health_profile.update`, yalnız değişen alan adları) tek transaction içindedir. Yazabilenler: yönetici, 18 yaş altı öğrencinin velayetli ve kısıtsız velisi, 18 yaşını doldurmuş öğrencinin kendisi; diğerleri 403 `health_profile_write_forbidden` (öğretmen ve ön büro rol süzgecinde 403), kapsam dışı ya da başka kurumun öğrencisi 404. İçerik şifreli saklanır. Modülsüz. Roller: `yonetici`, `veli`, `ogrenci`.
          */
         patch: operations["updateStudentHealthProfile"];
         trace?: never;
@@ -7074,7 +7074,7 @@ export interface components {
              */
             level: "full";
             profile: components["schemas"]["HealthFullProfileInput"];
-            /** @description Sonraki PATCH için sürüm; kayıt yoksa 1 */
+            /** @description Sonraki PATCH için sürüm; kayıt yoksa 1. Yalnız tam görünümde (acil düzeyde yok) */
             version: number;
         } | {
             /**
@@ -7083,8 +7083,6 @@ export interface components {
              */
             level: "emergency";
             profile: components["schemas"]["HealthEmergencyProfileInput"];
-            /** @description Sonraki PATCH için sürüm; kayıt yoksa 1 */
-            version: number;
         };
         NotificationInput: {
             id: string;
@@ -11189,7 +11187,7 @@ export interface components {
              */
             level: "full";
             profile: components["schemas"]["HealthFullProfile"];
-            /** @description Sonraki PATCH için sürüm; kayıt yoksa 1 */
+            /** @description Sonraki PATCH için sürüm; kayıt yoksa 1. Yalnız tam görünümde (acil düzeyde yok) */
             version: number;
         } | {
             /**
@@ -11198,8 +11196,6 @@ export interface components {
              */
             level: "emergency";
             profile: components["schemas"]["HealthEmergencyProfile"];
-            /** @description Sonraki PATCH için sürüm; kayıt yoksa 1 */
-            version: number;
         };
         Notification: {
             id: string;

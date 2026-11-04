@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { after, before, describe, test } from 'node:test'
 
-import { and, eq, like } from 'drizzle-orm'
+import { and, eq, like, sql } from 'drizzle-orm'
 
 import { MODULE_KEYS } from '@kampus/school-core/modules/collection-modules.ts'
 
@@ -285,6 +285,9 @@ describe('sağlık ve acil bilgi uçları', () => {
     const data = await ok(response)
     assert.equal(data.level, 'emergency')
     assert.deepEqual(Object.keys(data.profile).sort(), ['allergies', 'emergencyInstructions'])
+    // Yazma yetkisi olmayan okuyucu kaydın varlığını ya da güncelleme sayısını çıkaramaz.
+    assert.deepEqual(Object.keys(data).sort(), ['level', 'profile'])
+    assert.ok(!('version' in data), 'acil yanıtta version olmamalı')
     assert.deepEqual(data.profile.allergies, [{ name: 'Fıstık', severity: 'severe' }])
     assert.equal(data.profile.emergencyInstructions, PROFILE.emergencyInstructions)
     for (const hidden of ['Astım', 'Salbutamol', 'Asansör', 'legalBasis', 'chronicConditions'])
@@ -335,7 +338,6 @@ describe('sağlık ve acil bilgi uçları', () => {
       {},
       { version: 2 },
       { emergencyInstructions: 'x' },
-      { legalBasis: 'vital_interest', version: 2 },
       { emergencyInstructions: 'x', version: 0 },
       { emergencyInstructions: 'x', version: 2, notes: 'Ailede kalp hastalığı' },
       { emergencyInstructions: 'x', version: 2, institutionId: 'baska-kurum' },
@@ -400,6 +402,157 @@ describe('sağlık ve acil bilgi uçları', () => {
     )
     assert.equal(basis.profile.legalBasis, 'vital_interest')
     assert.deepEqual(basis.profile.medications, PROFILE.medications)
+  })
+
+  test('DOM-ILT-035 400: kayıt yokken yalnız dayanakla boş profil açılmaz', async () => {
+    const t = await tenant()
+    fails(
+      await write(t.cookies.mother, { legalBasis: 'explicit_consent', version: 1 }),
+      400,
+      'validation_failed',
+    )
+    assert.equal((await profileRows(t.institution.id)).length, 0)
+    assert.equal((await audits(t.institution.id)).length, 0)
+  })
+
+  test('DOM-ILT-035 kayıt varken yalnız dayanak değişir; içerik aynen kalır ve yeni dayanakla okunur', async () => {
+    const t = await tenant()
+    await seed(t)
+    const [rawBefore] = await profileRows(t.institution.id)
+    const data = await ok(
+      await write(t.cookies.mother, { legalBasis: 'vital_interest', version: 2 }),
+    )
+    assert.equal(data.version, 3)
+    assert.equal(data.profile.legalBasis, 'vital_interest')
+    assert.deepEqual(data.profile.allergies, PROFILE.allergies)
+    assert.deepEqual(data.profile.medications, PROFILE.medications)
+    assert.equal(data.profile.emergencyInstructions, PROFILE.emergencyInstructions)
+    // Şifreleme dayanağa bağlıdır (AAD): içerik yeniden şifrelenir, yeni dayanakla çözülür.
+    const [raw] = await profileRows(t.institution.id)
+    assert.equal(raw!.legalBasis, 'vital_interest')
+    assert.notEqual(raw!.contentCiphertext, rawBefore!.contentCiphertext)
+    assert.deepEqual(await ok(await read(t.cookies.admin)), data)
+    const updates = (await audits(t.institution.id)).filter(
+      (row) => row.action === 'health_profile.update',
+    )
+    // Sıra belirsiz: ilk yazım (6 alan) ve dayanak değişikliği (yalnız `legalBasis`).
+    assert.equal(updates.length, 2)
+    assert.ok(updates.some((row) => JSON.stringify(row.changes) === '{"fields":["legalBasis"]}'))
+  })
+
+  test('DOM-ILT-035 değişiklik yoksa yazılmaz: sürüm artmaz, satır ve denetim aynı kalır', async () => {
+    const t = await tenant()
+    const seeded = await seed(t)
+    const rawBefore = await profileRows(t.institution.id)
+    const auditsBefore = await audits(t.institution.id)
+    // Aynı içerik ve aynı dayanak yeniden gönderilir.
+    const same = await ok(
+      await write(t.cookies.mother, {
+        emergencyInstructions: PROFILE.emergencyInstructions,
+        allergies: PROFILE.allergies,
+        legalBasis: 'explicit_consent',
+        version: 2,
+      }),
+    )
+    assert.deepEqual(same, seeded)
+    const onlyBasis = await ok(
+      await write(t.cookies.admin, { legalBasis: 'explicit_consent', version: 2 }),
+    )
+    assert.deepEqual(onlyBasis, seeded)
+    // Şifreleme her seferinde yeni nonce üretir; aynı bayt dizisi satırın hiç yazılmadığını gösterir.
+    assert.deepEqual(await profileRows(t.institution.id), rawBefore)
+    assert.deepEqual(await audits(t.institution.id), auditsBefore)
+    // Sürüm 2 hâlâ geçerlidir: gerçek bir değişiklik 3'e çıkarır.
+    const changed = await ok(await write(t.cookies.admin, { allergies: [], version: 2 }))
+    assert.equal(changed.version, 3)
+  })
+
+  /** `health_profile.*` denetim satırının yazımını bozar: işlem geri alınmalıdır. */
+  async function withFailingHealthAudit(institutionId: string, action: () => Promise<void>) {
+    await db.execute(sql`
+      create function test_fail_health_audit() returns trigger language plpgsql as $$
+      begin raise exception 'test failure'; end $$`)
+    await db.execute(
+      sql.raw(`
+      create trigger test_fail_health_audit before insert on audit_log for each row
+      when (new.action like 'health_profile.%' and new.institution_id = '${institutionId}')
+      execute function test_fail_health_audit()`),
+    )
+    try {
+      await action()
+    } finally {
+      await db.execute(sql`drop trigger test_fail_health_audit on audit_log`)
+      await db.execute(sql`drop function test_fail_health_audit()`)
+    }
+  }
+
+  test('DOM-YTK-052 denetim satırı yazılamazsa okuma 500 döner ve yanıtta içerik yoktur', async () => {
+    const t = await tenant()
+    await seed(t)
+    const auditsBefore = await audits(t.institution.id)
+    await withFailingHealthAudit(t.institution.id, async () => {
+      for (const cookie of [t.cookies.admin, t.cookies.teaching]) {
+        const response = await read(cookie)
+        fails(response, 500, 'internal_error')
+        for (const secret of SECRETS)
+          assert.ok(!response.body.includes(secret), `500 gövdesinde ${secret} var`)
+        assert.ok(!response.body.includes('"profile"'), '500 gövdesinde profil var')
+      }
+    })
+    assert.deepEqual(await audits(t.institution.id), auditsBefore)
+    // Bozukluk giderilince aynı okuma çalışır.
+    assert.equal((await ok(await read(t.cookies.admin))).level, 'full')
+  })
+
+  test('DOM-YTK-052 denetim satırı yazılamazsa yazma 500 döner ve satır değişmez', async () => {
+    const t = await tenant()
+    await seed(t)
+    const rawBefore = await profileRows(t.institution.id)
+    const auditsBefore = await audits(t.institution.id)
+    await withFailingHealthAudit(t.institution.id, async () => {
+      const response = await write(t.cookies.mother, {
+        emergencyInstructions: 'Hiç yazılmamalı',
+        version: 2,
+      })
+      fails(response, 500, 'internal_error')
+      assert.ok(!response.body.includes('Hiç yazılmamalı'))
+    })
+    // Satır (içerik, dayanak, sürüm, şifreli değer) ve denetim aynen kalır.
+    assert.deepEqual(await profileRows(t.institution.id), rawBefore)
+    assert.deepEqual(await audits(t.institution.id), auditsBefore)
+    const data = await ok(await read(t.cookies.admin))
+    assert.equal(data.version, 2)
+    assert.equal(data.profile.emergencyInstructions, PROFILE.emergencyInstructions)
+  })
+
+  test('DOM-ILT-035 aynı sürümle eşzamanlı iki PATCH: biri 200, öteki 409, sürüm bir artar', async () => {
+    const t = await tenant()
+    await seed(t)
+    // Not: test veritabanı PGlite'tır, tek bağlantıdır; transaction'lar sıraya girer. Bu yüzden
+    // test gerçek bir satır yarışını değil, iyimser kilidin sonucunu kanıtlar: aynı `version` ile
+    // gelen iki isteğin yalnız biri yazılır, ikincisi 409 alır ve sürüm tam bir artar. Gerçek
+    // eşzamanlı yarış (koşullu UPDATE'in `null` dönmesi ve 23505 yeniden deneme sınıfı) PostgreSQL
+    // 16 takımının (`test:pg`) işidir.
+    const [a, b] = await Promise.all([
+      write(t.cookies.mother, { emergencyInstructions: 'Anne yazdı', version: 2 }),
+      write(t.cookies.admin, { emergencyInstructions: 'Yönetici yazdı', version: 2 }),
+    ])
+    assert.deepEqual([a.statusCode, b.statusCode].sort(), [200, 409])
+    const winner = a.statusCode === 200 ? a : b
+    const loser = a.statusCode === 200 ? b : a
+    assert.equal(loser.json().code, 'version_conflict')
+    assert.equal(winner.json().data.version, 3)
+    const [row] = await profileRows(t.institution.id)
+    assert.equal(row!.version, 3)
+    const data = await ok(await read(t.cookies.admin))
+    assert.equal(
+      data.profile.emergencyInstructions,
+      winner.json().data.profile.emergencyInstructions,
+    )
+    const updates = (await audits(t.institution.id)).filter(
+      (item) => item.action === 'health_profile.update',
+    )
+    assert.equal(updates.length, 2, 'ilk yazım ve kazanan yazım; kaybeden denetim yazmaz')
   })
 
   test('DOM-ILT-035 yönetici, veli ve yetişkin öğrenci yazar; yazma kalıcıdır, yanıt tam görünümdür', async () => {

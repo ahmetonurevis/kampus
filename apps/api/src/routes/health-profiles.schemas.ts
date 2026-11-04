@@ -75,7 +75,10 @@ const fullProfile = z
   })
   .meta({ id: 'HealthFullProfile' })
 
-const version = z.number().int().describe('Sonraki PATCH için sürüm; kayıt yoksa 1')
+const version = z
+  .number()
+  .int()
+  .describe('Sonraki PATCH için sürüm; kayıt yoksa 1. Yalnız tam görünümde (acil düzeyde yok)')
 
 export const healthProfileResponseSchema = dataResponse(
   z
@@ -88,7 +91,6 @@ export const healthProfileResponseSchema = dataResponse(
       z.object({
         level: z.literal('emergency').describe('Yalnız acil müdahale bilgisi'),
         profile: emergencyProfile,
-        version,
       }),
     ])
     .meta({ id: 'HealthProfile' }),

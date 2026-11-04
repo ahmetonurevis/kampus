@@ -18,6 +18,7 @@ import { idempotencyPurgeJob } from '../src/jobs/idempotency-purge.ts'
 import { installmentRemindersJob } from '../src/jobs/installment-reminders.ts'
 import { bootJobs } from '../src/jobs/boot.ts'
 import { jobErrorInfo } from '../src/jobs/job-error.ts'
+import { attendanceWarningsJob } from '../src/jobs/attendance-warnings.ts'
 import { permissionRemindersJob } from '../src/jobs/permission-reminders.ts'
 import { INSTITUTION_JOBS, RETIRED_JOBS } from '../src/jobs/registry.ts'
 import { DAY_SECONDS, type JobDeps } from '../src/jobs/types.ts'
@@ -119,6 +120,7 @@ describe('arka plan işleri', () => {
         filesPurgeJob.name,
         filesPurgeExpiredJob.name,
         permissionRemindersJob.name,
+        attendanceWarningsJob.name,
         installmentRemindersJob.name,
       ],
     )

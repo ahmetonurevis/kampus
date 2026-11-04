@@ -200,4 +200,42 @@ export const PLATFORM_NOTIFICATION_TYPES = {
       parent: '{öğrenci} için izin/mazeret bildirimi sonuçlandı.',
     },
   }),
+  /**
+   * Devam şartı eşiğine yaklaşıldı (IST-080, DOM-DIL-060): devamsızlık kur hakkının %80'ine
+   * ulaştı (`cefr/attendance-warning.ts`). 18 yaş altında veliye, yetişkin kursiyerde kendisine
+   * (DOM-ILT-037). Devamsızlık bildirimidir, kapatılamaz (DOM-ILT-020). Saat sayısı ve kur
+   * bildirimde yoktur (DOM-ILT-023). Aynı eşik için bir kez yazılır (`dedupeKey`).
+   */
+  attendance_threshold_warning: defineNotificationType({
+    topic: 'attendance',
+    category: 'service',
+    mandatory: true,
+    module: 'academic',
+    audiences: { minor: ['parent'], adult: ['student'] },
+    subjectType: 'course_enrollment',
+    data: z.strictObject({ enrollmentId: notificationId }),
+    subjectId: (data) => data.enrollmentId,
+    titles: {
+      student: 'Devam durumun kur şartına yaklaşıyor.',
+      parent: '{öğrenci} için devam durumu kur şartına yaklaşıyor.',
+    },
+  }),
+  /**
+   * Devamsızlık hakkı aşıldı (DOM-DIL-060): devam şartı sağlanamaz, kur sonunda `devamsızlıktan
+   * tamamlamadı` kararı önerilir (DOM-DIL-070). Uyarıdan ayrı bildirimdir.
+   */
+  attendance_threshold_exceeded: defineNotificationType({
+    topic: 'attendance',
+    category: 'service',
+    mandatory: true,
+    module: 'academic',
+    audiences: { minor: ['parent'], adult: ['student'] },
+    subjectType: 'course_enrollment',
+    data: z.strictObject({ enrollmentId: notificationId }),
+    subjectId: (data) => data.enrollmentId,
+    titles: {
+      student: 'Devam şartı için izin verilen devamsızlık aşıldı.',
+      parent: '{öğrenci} için devam şartında izin verilen devamsızlık aşıldı.',
+    },
+  }),
 } as const

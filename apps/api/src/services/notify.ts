@@ -234,6 +234,10 @@ export async function notify<T extends NotificationType>(
       )
     }
   }
+  // TODO(bildirim-tercihleri-teslim): uygulama içi kayıt her zaman anında düşer (DOM-ILT-020); anlık,
+  // e-posta ve SMS kanalları gelince burada alıcı kullanıcının tercihi (`notification_preferences`,
+  // core `deliveryDecision`) uygulanır: seçilmeyen kanal atlanır, sessiz saatte anlık ve SMS
+  // ertelenip bitişte tek özet gider, acil duyuru sessiz saati deler (DOM-ILT-021, -050).
   result.created = await IN_APP.deliver(tx, ctx, drafts)
   result.deduplicated = drafts.length - result.created.length
   const [first] = drafts

@@ -77,6 +77,24 @@ export async function listGroupEnrollments(
     .orderBy(asc(languageGroupMembers.joinedAt), asc(languageGroupMembers.studentId))
 }
 
+/** Kurumun arşivlenmemiş aktif kur kayıtları (tüm gruplar), katılım sırasıyla; günlük iş tek okur. */
+export async function listActiveEnrollments(
+  db: Database,
+  institutionId: string,
+): Promise<StoredEnrollment[]> {
+  return db
+    .select(enrollmentColumns)
+    .from(languageGroupMembers)
+    .where(
+      and(
+        eq(languageGroupMembers.institutionId, institutionId),
+        eq(languageGroupMembers.status, 'active'),
+        isNull(languageGroupMembers.archivedAt),
+      ),
+    )
+    .orderBy(asc(languageGroupMembers.joinedAt), asc(languageGroupMembers.studentId))
+}
+
 // --- Kur içi ölçme ------------------------------------------------------------------------
 
 /** jsonb'deki beceri satırları core sırasıyla doğrulanır; bozuk satır beklenmeyen hatadır. */

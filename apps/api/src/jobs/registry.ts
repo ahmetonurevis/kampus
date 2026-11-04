@@ -1,3 +1,4 @@
+import { attendanceWarningsJob } from './attendance-warnings.ts'
 import { filesPurgeExpiredJob } from './files-purge-expired.ts'
 import { filesPurgeJob } from './files-purge.ts'
 import { idempotencyPurgeJob } from './idempotency-purge.ts'
@@ -13,6 +14,7 @@ export const INSTITUTION_JOBS: readonly AnyInstitutionJob[] = [
   filesPurgeJob,
   filesPurgeExpiredJob,
   permissionRemindersJob,
+  attendanceWarningsJob,
   // Onur (ON-026, #29): taksit vade ve gecikme bildirimi taraması.
   installmentRemindersJob,
 ]

@@ -47,6 +47,11 @@ import {
   type TaskKind,
   type TaskResponse,
 } from '@kampus/school-core/skills/scoring.ts'
+import {
+  EXTRA_TIME_LIMITS,
+  EXTRA_TIME_REASONS,
+  type ExtraTimeReason,
+} from '@kampus/school-core/skills/extra-time.ts'
 import { ITEM_CHECK_LIMIT } from '@kampus/school-core/skills/practice.ts'
 import {
   submissionSettingsSchema,
@@ -374,9 +379,7 @@ export const taskAssignmentTargets = pgTable(
  * Otomatik görevin denemesi (karar 6; DOM-BEC-042, 043). Başlangıç ve teslim sunucu saatidir;
  * süre dolup teslim edilmemiş deneme `submitted_at` boş kalır, durumu core `attemptState`
  * hesaplar. Puan saklanmaz.
- *
- * TODO(F4b-ek-sure): Bireysel ek süre (DOM-BEC-043, `extraTimeSchema`) için tablo ADR 0004'te yok;
- * gerekçeli ek süre ayrı karar ve migration'la gelir. O zamana kadar ek süre 0'dır.
+ * Kursiyerin bireysel ek süresi `task_extra_times` kayıt geçmişinden hesaplanır (DOM-BEC-043).
  */
 export const taskAttempts = pgTable(
   'task_attempts',
@@ -428,6 +431,62 @@ export const taskAttempts = pgTable(
     // Kursiyerin bütün atamalardaki denemeleri (beceri ilerleme panosu, DOM-BEC-035;
     // `loadLearnerAttempts`): tekil indeks atamayla başladığından kursiyer süzgecine yaramaz.
     index('task_attempts_learner_idx').on(table.institutionId, table.learnerId),
+  ],
+)
+
+/**
+ * Bireysel ek süre (DOM-BEC-043; OG-248; core `skills/extra-time.ts`): kursiyerin bir atamadaki ek
+ * süre değişiklikleri. Verme, değiştirme ve kaldırma (`minutes = 0`) yeni satırdır; güncel ek süre
+ * en büyük `sequence`'tır, ek sürenin sürümü de odur. Denemenin ek süresi ve bitiş anı saklanmaz,
+ * bu geçmişten hesaplanır (core `attemptExtraMinutes`).
+ *
+ * - Birincil anahtar (kurum, atama, kursiyer, sıra) eşzamanlı iki değişiklikten birini reddeder ve
+ *   atama yabancı anahtarının indeksidir.
+ * - Gerekçe kategoridir (`EXTRA_TIME_REASONS`); serbest metin ve sağlık bilgisi tutulmaz.
+ * - Satır değişmezdir: `task_extra_times_immutable_trigger` her `update`/`delete`/`truncate`'i
+ *   reddeder; yalnız imha işi silebilir.
+ */
+export const taskExtraTimes = pgTable(
+  'task_extra_times',
+  {
+    institutionId: text('institution_id')
+      .notNull()
+      .references(() => institutions.id),
+    assignmentId: uuid('assignment_id').notNull(),
+    // kvkk: K
+    learnerId: text('learner_id').notNull(),
+    sequence: integer('sequence').notNull(),
+    // kvkk: Ç (kursiyere tanınan uyarlamanın süresi)
+    minutes: integer('minutes').notNull(),
+    // kvkk: Ç (özel gereksinim kategorisi; ayrıntı tutulmaz, loglanmaz)
+    reason: text('reason').$type<ExtraTimeReason>(),
+    // kvkk: K
+    grantedByUserId: text('granted_by_user_id').notNull(),
+    grantedAt: timestamp('granted_at', { withTimezone: true }).notNull(),
+    ...required(),
+  },
+  (table) => [
+    primaryKey({
+      name: 'task_extra_times_pkey',
+      columns: [table.institutionId, table.assignmentId, table.learnerId, table.sequence],
+    }),
+    foreignKey({
+      name: 'task_extra_times_assignment_fkey',
+      columns: [table.institutionId, table.assignmentId],
+      foreignColumns: [taskAssignments.institutionId, taskAssignments.id],
+    }),
+    check('task_extra_times_sequence_check', sql`${table.sequence} >= 1`),
+    check(
+      'task_extra_times_minutes_check',
+      sql`${table.minutes} between 0 and ${sql.raw(String(EXTRA_TIME_LIMITS.max))}`,
+    ),
+    check('task_extra_times_reason_check', oneOf(table.reason, keys(EXTRA_TIME_REASONS))),
+    // Kaldırma gerekçesizdir; verme ve değiştirme gerekçelidir.
+    check(
+      'task_extra_times_removal_check',
+      sql`(${table.minutes} = 0) = (${table.reason} is null)`,
+    ),
+    check('task_extra_times_version_check', firstVersion(table)),
   ],
 )
 

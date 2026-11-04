@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import {
   answerKeyReleased,
+  attemptExtraMinutes,
   attemptState,
   countedAttempt,
   isClosed,
@@ -47,7 +48,7 @@ import { attemptContentGate, contentRemoved } from './learner-content.ts'
 import { listeningSummary } from './listening-plays.ts'
 import { loadLearnerNames } from './task-learner-names.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
-import { viewerOf, visible, type Viewer } from './task-assignments.ts'
+import { ownExtraTimeLearners, viewerOf, visible, type Viewer } from './task-assignments.ts'
 import {
   assertWorkOpen,
   auditWork,
@@ -93,9 +94,8 @@ export function completedOf(
   attempts: readonly StoredAttempt[],
   now: string,
 ): CompletedAttempt[] {
-  const timing = timingOf(assignment)
   return attempts.flatMap((attempt) => {
-    const { completedAt } = attemptState(attempt, timing, now)
+    const { completedAt } = attemptState(attempt, timingOf(assignment, attempt.learnerId), now)
     return completedAt === null
       ? []
       : [{ id: attempt.id, completedAt, score: scoreAttempt(context.items, attempt.answers) }]
@@ -165,7 +165,7 @@ function attemptView(
   checks: readonly ItemCheckRow[],
 ) {
   const { context } = scoring
-  const timing = timingOf(assignment)
+  const timing = timingOf(assignment, attempt.learnerId)
   const state = attemptState(attempt, timing, now)
   const completed = state.completedAt !== null
   const counted =
@@ -211,6 +211,7 @@ function attemptView(
     startedAt: attempt.startedAt,
     endsAt: state.endsAt,
     remainingMs: state.remainingMs,
+    extraMinutes: assignment.timeLimitMinutes === null ? 0 : attemptExtraMinutes(attempt, timing),
     completedAt: state.completedAt,
     autoSubmitted: state.autoSubmitted,
     late: state.completedAt !== null && isLate(state.completedAt, assignment.deadline),
@@ -268,9 +269,11 @@ export function learnerAttemptProgress(
   hideScore: boolean,
 ) {
   const at = now.toISOString()
-  const timing = timingOf(assignment)
   const states = attempts
-    .map((attempt) => ({ attempt, state: attemptState(attempt, timing, at) }))
+    .map((attempt) => ({
+      attempt,
+      state: attemptState(attempt, timingOf(assignment, attempt.learnerId), at),
+    }))
     .sort((a, b) => a.attempt.attemptNumber - b.attempt.attemptNumber)
   const running = states.findLast(({ state }) => state.status === 'in_progress')
   const completed = states.filter(({ state }) => state.completedAt !== null)
@@ -368,8 +371,9 @@ export function countedAttemptResult(
 
 /** Kursiyerin bu atamada süren denemesi var mı (içerik kapısının süren işi; Sabah kararı 47). */
 function hasRunning(assignment: StoredAssignment, attempts: readonly StoredAttempt[], now: string) {
-  const timing = timingOf(assignment)
-  return attempts.some((own) => attemptState(own, timing, now).status === 'in_progress')
+  return attempts.some(
+    (own) => attemptState(own, timingOf(assignment, own.learnerId), now).status === 'in_progress',
+  )
 }
 
 /** Anahtar ve açıklaması içeriğin parçasıdır: kapalı içerikte dönmez; madde sonucu ve puan kalır. */
@@ -489,7 +493,12 @@ export interface TaskAttemptListInput {
  */
 export async function listTaskAttempts(ctx: ServiceContext, input: TaskAttemptListInput) {
   const viewer = await viewerOf(ctx)
-  const assignment = await findAssignment(ctx.db, ctx.institutionId, input.assignmentId)
+  const assignment = await findAssignment(
+    ctx.db,
+    ctx.institutionId,
+    input.assignmentId,
+    ownExtraTimeLearners(viewer),
+  )
   if (!assignment) throw new NotFoundError()
   const readable = readableLearners(viewer, assignment)
   if (readable.kind === 'none') throw new NotFoundError()
@@ -563,7 +572,13 @@ export async function getTaskAttempt(ctx: ServiceContext, attemptId: string) {
   const viewer = await viewerOf(ctx)
   const attempt = await findAttempt(ctx.db, ctx.institutionId, attemptId)
   const assignment =
-    attempt && (await findAssignment(ctx.db, ctx.institutionId, attempt.assignmentId))
+    attempt &&
+    (await findAssignment(
+      ctx.db,
+      ctx.institutionId,
+      attempt.assignmentId,
+      ownExtraTimeLearners(viewer),
+    ))
   if (!attempt || !assignment || !canReadLearner(viewer, assignment, attempt.learnerId))
     throw new NotFoundError()
   return detailView(ctx.db, ctx, viewer, assignment, attempt)
@@ -619,7 +634,12 @@ export async function startTaskAttempt(
       collections: [],
       entity: { type: ENTITY, id: attemptId },
       load: async (tx) => {
-        const assignment = await findAssignment(tx, ctx.institutionId, assignmentId)
+        const assignment = await findAssignment(
+          tx,
+          ctx.institutionId,
+          assignmentId,
+          ownExtraTimeLearners(viewer),
+        )
         // Kapsam (404): olmayan, başka kurumun, arşivli veya öğrenciyi hedeflemeyen atama.
         if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
         const learnerId = targetedLearner(viewer, assignment)
@@ -635,7 +655,7 @@ export async function startTaskAttempt(
             learnerId,
             plan: planAttemptStart({
               rules: assignment.attempts,
-              timing: timingOf(assignment),
+              timing: timingOf(assignment, learnerId),
               attempts,
               now: tools.now,
             }),
@@ -694,7 +714,12 @@ async function ownedAttempt(
 ): Promise<Owned> {
   const attempt = await findAttempt(tx, ctx.institutionId, input.attemptId)
   if (!attempt) throw new NotFoundError()
-  const assignment = await findAssignment(tx, ctx.institutionId, attempt.assignmentId)
+  const assignment = await findAssignment(
+    tx,
+    ctx.institutionId,
+    attempt.assignmentId,
+    ownExtraTimeLearners(viewer),
+  )
   if (!assignment || assignment.archivedAt !== null) throw new NotFoundError()
   ownRecord(viewer, attempt.learnerId)
   if (attempt.rowVersion !== input.expectedVersion) throw new ConflictError()
@@ -740,7 +765,7 @@ export async function saveTaskAttemptAnswers(
             const answers = withLockedAnswers(
               planAnswerSave({
                 attempt: owned.attempt,
-                timing: timingOf(owned.assignment),
+                timing: timingOf(owned.assignment, owned.attempt.learnerId),
                 items: owned.context.items,
                 answers: input.answers,
                 now: tools.now,
@@ -787,7 +812,7 @@ export async function submitTaskAttempt(
           run: (_state, tools) => {
             const planned = planAttemptSubmit({
               attempt: owned.attempt,
-              timing: timingOf(owned.assignment),
+              timing: timingOf(owned.assignment, owned.attempt.learnerId),
               items: owned.context.items,
               ...(input.answers === undefined ? {} : { answers: input.answers }),
               now: tools.now,
@@ -844,7 +869,7 @@ export async function checkTaskAttemptItem(
             plan: planItemCheck({
               kind: owned.assignment.kind,
               attempt: owned.attempt,
-              timing: timingOf(owned.assignment),
+              timing: timingOf(owned.assignment, owned.attempt.learnerId),
               items: owned.context.items,
               checks: owned.checks,
               check: input.check,

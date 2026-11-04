@@ -66,6 +66,10 @@ const COURSE = kayit('courses.test.ts', 'başka kurumun kuru 404, listede görü
 const CONSENT = kayit('consents.test.ts', 'başka kurum: kayıt ve metin 404, B değişmez')
 const DUTY = kayit('coordinator-duties.test.ts', 'başka kurumun yöneticisi 404')
 const GUARDIAN = kayit('student-guardians.test.ts', 'başka kurum: öğrenci ve bağ 404, B değişmez')
+const HEALTH_PROFILE = kayit(
+  'health-profiles-routes.test.ts',
+  'başka kurum: öğrenci 404, B değişmez',
+)
 const YEAR = kayit('academic-years.test.ts', 'başka kurum: yılı 404, yazma B yılını değiştirmez')
 const LESSON_READ = kayit('lessons.test.ts', 'başka kurumun dersi listede yok ve 404')
 const LESSON_WRITE = kayit(
@@ -88,6 +92,9 @@ const RESOURCE_WRITE = kayit(
 )
 const RUBRIC = kayit('rubrics.test.ts', 'başka kurumun rubriği okuma ve yazmada 404')
 const ASSIGNMENT = kayit('task-assignments.test.ts', 'kurumlar arası: B kurumunun atamasına')
+const EXTRA_TIME = kayit('task-extra-times.test.ts', 'atamayı görmeyen öğretmen ve başka kurum 404')
+const EXTRA_TIME_COMMAND = (marker: string) =>
+  kayit('task-extra-times.test.ts', 'atamayı görmeyen öğretmen ve başka kurum 404', marker)
 const GRADING = kayit('task-grading.test.ts', 'atamayı görmeyen öğretmen ve başka kurum 404')
 const tutoring = (marker: string) =>
   kayit('assessment.test.ts', 'başka kurumun uygunluğu ve etüdü 404, B değişmez', marker)
@@ -271,6 +278,12 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'absence-approval.test.ts',
     'başka kurum 404 ve değişmez',
   ),
+  'GET /api/v1/notification-preferences': yok(
+    'oturum sahibinin kendi tercihi; kayıt kullanıcı ve kurum çiftine bağlı, kurum oturumdan',
+  ),
+  'PATCH /api/v1/notification-preferences': yok(
+    'oturum sahibinin kendi tercihi; kayıt kullanıcı ve kurum çiftine bağlı, kurum oturumdan',
+  ),
   'GET /api/v1/notifications': kayit('notifications.test.ts', 'başka kurumun bildirimi 404'),
   'POST /api/v1/notifications/:notificationId/read': kayit(
     'notifications.test.ts',
@@ -397,6 +410,12 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'task-attempts.test.ts',
     'hedeflenmeyen öğrenci ve başka kurum 404',
   ),
+  'GET /api/v1/task-assignments/:assignmentId/extra-times': EXTRA_TIME,
+  'POST /api/v1/task-assignments/:assignmentId/extra-times': EXTRA_TIME,
+  'PATCH /api/v1/task-assignments/:assignmentId/extra-times/:learnerId':
+    EXTRA_TIME_COMMAND('change('),
+  'DELETE /api/v1/task-assignments/:assignmentId/extra-times/:learnerId':
+    EXTRA_TIME_COMMAND('remove('),
   'GET /api/v1/task-submissions/grading-queue': GRADING,
   'POST /api/v1/task-submissions/:submissionId/scores': GRADING,
   'POST /api/v1/task-submissions/:submissionId/resubmission-requests': GRADING,
@@ -442,6 +461,8 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'POST /api/v1/students/:studentId/guardians': GUARDIAN,
   'PATCH /api/v1/students/:studentId/guardians/:linkId': GUARDIAN,
   'DELETE /api/v1/students/:studentId/guardians/:linkId': GUARDIAN,
+  'GET /api/v1/students/:studentId/health-profile': HEALTH_PROFILE,
+  'PATCH /api/v1/students/:studentId/health-profile': HEALTH_PROFILE,
 
   // --- Kur programı ---------------------------------------------------------------------------
   'GET /api/v1/courses': COURSE,

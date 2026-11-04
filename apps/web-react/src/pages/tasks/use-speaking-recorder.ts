@@ -4,12 +4,14 @@ import {
   canRerecord,
   canStart,
   initialRecorderState,
-  mediaErrorReason,
-  pickRecordingMime,
   recorderReducer,
-  recordingFileName,
   type RecorderEvent,
   type SpeakingLimits,
+} from '@kampus/react-shared/speaking-recorder-model.ts'
+import {
+  mediaErrorReason,
+  pickRecordingMime,
+  recordingFileName,
 } from './speaking-recorder-model.ts'
 
 /** Tarayıcı kayıt yapabiliyor mu ve hangi biçimde (güvenli bağlam, mikrofon, MediaRecorder). */
@@ -34,7 +36,7 @@ const stopStream = (stream: MediaStream | null) => {
  * `Idempotency-Key`'i alsın diye adı ve zamanı kayda özgüdür (`fileIdentity`).
  */
 export function useSpeakingRecorder(limits: SpeakingLimits) {
-  const [state, dispatch] = useReducer(recorderReducer, initialRecorderState)
+  const [state, dispatch] = useReducer(recorderReducer<Blob>, initialRecorderState)
   const [mimeType] = useState(recordingMime)
   const stream = useRef<MediaStream | null>(null)
   const recorder = useRef<MediaRecorder | null>(null)

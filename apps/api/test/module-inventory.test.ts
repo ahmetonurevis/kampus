@@ -98,6 +98,7 @@ const MODULELESS: Readonly<Record<string, string>> = {
   'POST /api/v1/privacy-notices': 'KVKK',
   'GET /api/v1/privacy-notices/current': 'KVKK',
   'POST /api/v1/privacy-notices/:noticeId/acknowledge': 'KVKK',
+  'GET /api/v1/consent-texts': 'KVKK',
   'GET /api/v1/consent-texts/:purpose': 'KVKK',
   'GET /api/v1/consents': 'KVKK',
   'GET /api/v1/consents/status': 'KVKK',

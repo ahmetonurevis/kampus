@@ -11,6 +11,7 @@ import {
   acknowledgeNotice,
   currentConsentText,
   currentNotice,
+  listCurrentConsentTexts,
   listNotices,
   publishNotice,
 } from '../services/privacy-notices.ts'
@@ -27,6 +28,8 @@ import {
   consentResponseSchema,
   consentStatusQuerySchema,
   consentStatusResponseSchema,
+  consentTextListQuerySchema,
+  consentTextListResponseSchema,
   consentTextParamsSchema,
   consentTextResponseSchema,
   currentNoticeQuerySchema,
@@ -155,6 +158,24 @@ export function registerPrivacyRoutes(app: FastifyInstance) {
         acknowledgementResponseSchema,
       )
     },
+  )
+
+  typed.get(
+    '/api/v1/consent-texts',
+    {
+      preValidation: role('consent.status'),
+      schema: {
+        operationId: 'listConsentTexts',
+        tags: ['privacy'],
+        summary: 'Yayımlanmış güncel rıza metinleri',
+        description: `Kurumun yayımlanmış rıza metinlerinin güncel sürümü, amaç sırasıyla, tek istekte (DOM-YTK-058, DOM-YTK-060). Her öğe \`GET /consent-texts/{purpose}\` yanıtıyla aynıdır; metni yayımlanmamış amaç listede yer almaz (tekil uçtaki 404 yerine "metin yok"), bu yüzden liste boş olabilir ve hata değildir. İsteğe bağlı \`purpose\` yalnız o amacı getirir. Sayfalama yoktur (en çok amaç sayısı kadar öğe). Bilinmeyen parametre ve amaç 400. Roller: ${rolesOf('consent.status')}.`,
+        querystring: consentTextListQuerySchema,
+        response: { 200: consentTextListResponseSchema, ...readErrors },
+      },
+    },
+    async (request) => ({
+      data: await listCurrentConsentTexts(contextOf(request), request.query.purpose),
+    }),
   )
 
   typed.get(

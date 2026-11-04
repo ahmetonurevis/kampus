@@ -756,6 +756,10 @@ const ACCESS: Readonly<Record<string, Proof>> = {
     'cross-institution-access.test.ts',
     'GET /api/v1/privacy-notices/current: başka kurumun metni görünmez',
   ),
+  'GET /api/v1/consent-texts': liste(
+    'cross-institution-access.test.ts',
+    'GET /api/v1/consent-texts: başka kurumun rıza metni listede yok',
+  ),
   'GET /api/v1/consent-texts/:purpose': liste(
     'cross-institution-access.test.ts',
     'GET /api/v1/consent-texts/:purpose: başka kurumun rıza metni',

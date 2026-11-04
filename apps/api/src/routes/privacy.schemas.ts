@@ -98,18 +98,22 @@ export const acknowledgementResponseSchema = dataResponse(
 )
 
 export const consentTextParamsSchema = z.object({ purpose: purposeSchema })
-export const consentTextResponseSchema = dataResponse(
-  z
-    .object({
-      text: privacyNoticeSchema,
-      minimumVersion: z
-        .number()
-        .int()
-        .min(1)
-        .describe('Geçerli rıza için gereken en düşük metin sürümü (DOM-YTK-060)'),
-    })
-    .meta({ id: 'ConsentText' }),
-)
+const consentTextSchema = z
+  .object({
+    text: privacyNoticeSchema,
+    minimumVersion: z
+      .number()
+      .int()
+      .min(1)
+      .describe('Geçerli rıza için gereken en düşük metin sürümü (DOM-YTK-060)'),
+  })
+  .meta({ id: 'ConsentText' })
+export const consentTextResponseSchema = dataResponse(consentTextSchema)
+
+export const consentTextListQuerySchema = z.strictObject({
+  purpose: purposeSchema.optional().describe('Yalnız bu amacın metni; yoksa bütün amaçlar'),
+})
+export const consentTextListResponseSchema = dataResponse(z.array(consentTextSchema))
 
 export const consentSchema = z
   .object({

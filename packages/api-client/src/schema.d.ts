@@ -4164,6 +4164,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/consent-texts": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yayımlanmış güncel rıza metinleri
+         * @description Kurumun yayımlanmış rıza metinlerinin güncel sürümü, amaç sırasıyla, tek istekte (DOM-YTK-058, DOM-YTK-060). Her öğe `GET /consent-texts/{purpose}` yanıtıyla aynıdır; metni yayımlanmamış amaç listede yer almaz (tekil uçtaki 404 yerine "metin yok"), bu yüzden liste boş olabilir ve hata değildir. İsteğe bağlı `purpose` yalnız o amacı getirir. Sayfalama yoktur (en çok amaç sayısı kadar öğe). Bilinmeyen parametre ve amaç 400. Roller: `yonetici`, `onburo`, `ogretmen`, `ogrenci`, `veli`.
+         */
+        get: operations["listConsentTexts"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/consent-texts/{purpose}": {
         parameters: {
             query?: never;
@@ -40066,6 +40086,85 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listConsentTexts: {
+        parameters: {
+            query?: {
+                /** @description Yalnız bu amacın metni; yoksa bütün amaçlar */
+                purpose?: "photo_video_sharing" | "photo_video_website" | "photo_video_social_media" | "photo_video_print" | "promotional_messages" | "speaking_recording";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["ConsentText"][];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

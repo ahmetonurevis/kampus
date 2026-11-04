@@ -14,6 +14,7 @@
 // kaydedilmez (öğrenci ödemeleri telefonda gösterilmez). Kapalı modül kartı ve ekranı `pages.ts`
 // kapatır; ekran yine `canOpenScreen(session, '<Ekran>')` ile "Modül kullanıma kapalı" gösterir.
 import type { ComponentType } from 'react'
+import { CONTRACT_APPROVAL_SCREEN } from './contract-screen.ts'
 import type { MemberRole } from './session-state.ts'
 
 /** Ekranın açıldığı menü sayfası; başlık/açıklama telefonda kısalacaksa geçersiz kılınır. */
@@ -191,7 +192,7 @@ export const OGUZHAN_SCREENS = [
 //
 // Ekran kabuk yardımcılarını `./shell.ts`'ten alır (oturum, `canOpenScreen`, seçili çocuk, liste
 // belleği, toast). Öğrenciye (`ogrenci`) ödeme ekranı kaydedilmez; test reddeder.
-export const ONUR_SCREENS = [] as const satisfies readonly ScreenEntry[]
+export const ONUR_SCREENS = [CONTRACT_APPROVAL_SCREEN] as const satisfies readonly ScreenEntry[]
 // Onur: kayıt ve finans sonu
 
 /** Bütün kayıtlar (önce Oğuzhan, sonra Onur bloğu). */

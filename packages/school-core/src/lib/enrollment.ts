@@ -15,6 +15,7 @@ import {
 import {
   adultPayerSchema,
   attachAdultPayer,
+  contractParty,
   resolveAdultPayer,
   type PayerParentBond,
 } from './finance-payers.ts'
@@ -371,16 +372,39 @@ type ProspectLike = {
 }
 
 /** Veli kaydının kurumdaki etkin veli–öğrenci bağı (`student_guardians`); servis yükler. */
-export type ParentBond = Pick<GuardianLink, 'parentId' | 'custody' | 'contactRestricted'>
+export type ParentBond = Pick<GuardianLink, 'parentId' | 'custody' | 'contactRestricted'> & {
+  isPayer?: boolean | undefined
+  /**
+   * Bağın öğrencisi 18 yaş altında mı (core `isMinorLearner`); servis yalnız ödeyici bağlarda
+   * doldurur. Verilmezse 18 yaş altı sayılır (kapalı başarısız).
+   */
+  learnerMinor?: boolean | undefined
+}
+
+/**
+ * Yetişkin kursiyerin yalnız ödeyici bağı mı (ON-124): velayetsiz, ödeyici, kısıtsız ve öğrencisi
+ * 18 yaş ve üstü. Yetişkinin velayeti olmadığı için bu bağın velayetsizliği kişinin velayetinin
+ * kaldırıldığını göstermez (kullanıcı kararı 2026-11-04).
+ */
+export const isAdultPayerOnlyBond = (bond: ParentBond): boolean =>
+  bond.custody === 'none' &&
+  bond.isPayer === true &&
+  !bond.contactRestricted &&
+  bond.learnerMinor === false
 
 /**
  * Veli kaydının bir öğrencisinde velayeti yok ya da iletişim kısıtı var mı (DOM-ILT-070, -074,
  * -075). Kesin kayıt bağı velayet sahibi ve ödeyici olarak kurar (`guardianBond`); kısıtlı veli
  * velayetli ya da ödeyici kaydedilemez, velayetsiz velinin velayeti belge olmadan kesin kayıtla
  * verilmez (DOM-ILT-071). Böyle veli kardeşe önerilmez ve seçilirse `parent_not_guardian`.
+ * Yetişkin kursiyerin yalnız ödeyici bağı (`isAdultPayerOnlyBond`) ret nedeni değildir: yetişkin
+ * çocuğun ücretini ödeyen anne küçük kardeşin velisi olarak seçilir ve önerilir (2026-11-04).
+ * 18 yaş altındaki öğrencinin velayetsiz ödeyicisi (K-04) yine reddedilir.
  */
 export function hasNonCustodialBond(parentId: string, bonds: readonly ParentBond[]): boolean {
-  return bonds.some((bond) => bond.parentId === parentId && !isCustodial(bond))
+  return bonds.some(
+    (bond) => bond.parentId === parentId && !isCustodial(bond) && !isAdultPayerOnlyBond(bond),
+  )
 }
 
 /** Yetişkin kursiyerin kendi kaydı için açılan veli satırının yakınlığı (DOM-KAY-012). */
@@ -694,7 +718,8 @@ export function enrollProspectWithTariff(
         discounts: price.discounts,
         extras: price.extras,
         approvedByUserId: context.approvedByUserId,
-        payer: data.guardian === null ? 'student' : 'guardian',
+        // Sözleşmenin tarafı: veli, yetişkinin ayrı ödeyicisi ya da kursiyer (2026-11-04).
+        payer: contractParty({ minor: !adult, separatePayer: payer !== null }).payer,
         ...(program === null
           ? {}
           : { scholarship: { programId: program.id, amountCents: scholarshipCents } }),
@@ -707,6 +732,9 @@ export function enrollProspectWithTariff(
     now,
   )
   // Öğrenci yeni olduğu için bağ kümesi boştur; yeni ödeyicinin veli kaydı burada açılır.
+  // Yetişkinin ödeyicisi öğrencinin veli kaydı olur; kursiyerin bu işlemde açılan kendi satırı
+  // gereksizleşir ve yazılmaz (sözleşme tarafı ödeyicidir, kullanıcı kararı 2026-11-04).
+  const selfParentId = result.student.parentId
   const payerBond =
     payer === null
       ? null
@@ -716,6 +744,10 @@ export function enrollProspectWithTariff(
           links: [],
           makeId,
         })
+  const selfIndex = state.parents.findIndex(
+    (parent) => parent.id === selfParentId && parent.relationship === SELF_RELATIONSHIP,
+  )
+  if (payerBond !== null && selfIndex >= 0) state.parents.splice(selfIndex, 1)
   return {
     ...result,
     identity: data.identity,

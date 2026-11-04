@@ -5,7 +5,7 @@ import { and, eq } from 'drizzle-orm'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
-import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
+import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import {
   archiveGuardianLink,
@@ -215,6 +215,101 @@ describe('yetişkin kursiyerin ayrı ödeyicisi (ON-124)', () => {
     assert.deepEqual(await studentsIn(payer.cookie, 'grades'), [])
     assert.deepEqual(await studentsIn(payer.cookie, 'attendance'), [])
     assert.equal((await get(payer.cookie, '/api/v1/collections/students/s1')).statusCode, 404)
+  })
+
+  /** Kursiyerin ödeyicisiz sözleşmesi (`payer: 'student'`); `approve` verilirse onaylanır. */
+  async function learnerContract(
+    institutionId: string,
+    admin: string,
+    id: string,
+    approve: boolean,
+  ) {
+    await insertMissingRecords(
+      db,
+      institutionId,
+      [
+        {
+          collection: 'contracts' as const,
+          id,
+          data: {
+            id,
+            studentId: 's1',
+            date: '2026-09-01T09:00:00.000Z',
+            amount: 10_000,
+            title: 'Dil kursu eğitim sözleşmesi',
+            invoiceIds: [],
+            academicYear: 2026,
+            grossCents: 10_000,
+            netCents: 10_000,
+            discounts: [],
+            extras: [],
+            payer: 'student',
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    await contractCommand(institutionId, admin, id, 'signatory', {
+      name: 'Test Kurucu',
+      role: 'founder',
+    })
+    if (approve) await contractCommand(institutionId, admin, id, 'approve', { accepted: true })
+  }
+  async function contractCommand(
+    institutionId: string,
+    cookie: string,
+    id: string,
+    verb: string,
+    body: unknown,
+  ) {
+    const row = await findRecord(db, institutionId, 'contracts', id)
+    assert.ok(row)
+    const response = await app.inject({
+      method: 'POST',
+      url: `/api/v1/finance/contracts/${id}/${verb}`,
+      headers: {
+        origin: TEST_ORIGIN,
+        cookie,
+        'content-type': 'application/json',
+        'if-match': `"${String(row.version)}"`,
+        'idempotency-key': `test-on124-${String(++serial).padStart(5, '0')}`,
+      },
+      payload: JSON.stringify(body),
+    })
+    assert.equal(response.statusCode, 200, response.body)
+  }
+
+  test('DOM-FIN-010 DOM-FIN-051 ON-124 sonradan eklenen ödeyici onaylanmamış sözleşmenin tarafı ve onaylayanı olur; onaylı sözleşme değişmez (2026-11-04)', async () => {
+    const { institution, admin } = await world({ type: 'language_school' })
+    await learnerContract(institution.id, admin, 'test-on124-c-open', false)
+    await learnerContract(institution.id, admin, 'test-on124-c-done', true)
+    const approvedBefore = await findRecord(db, institution.id, 'contracts', 'test-on124-c-done')
+    const created = await addPayer(admin, 's1', PAYER)
+    assert.equal(created.statusCode, 201, created.body)
+    const open = await findRecord(db, institution.id, 'contracts', 'test-on124-c-open')
+    assert.equal(open?.data.payer, 'guardian')
+    // Onaylı sürüm donmuştur: taraf kursiyer kalır, değişiklik ek protokolle yapılır.
+    const approvedAfter = await findRecord(db, institution.id, 'contracts', 'test-on124-c-done')
+    assert.deepEqual(approvedAfter?.data, approvedBefore?.data)
+    // Öğrencinin veli kaydı ödeyicidir; onay isteği ödeyicinin (veli) kitlesine yeniden yazılır.
+    const student = await findRecord(db, institution.id, 'students', 's1')
+    assert.equal(student?.data.parentId, created.json().data.parentId)
+    const requests = (await loadRecords(db, institution.id, ['notifications']))
+      .map((row) => row.data)
+      .filter(
+        (item) =>
+          item.kind === 'contract_approval_requested' &&
+          (item.subject as { id: string }).id === 'test-on124-c-open',
+      )
+      .map((item) => item.audience)
+      .sort()
+    assert.deepEqual(requests, ['parent', 'student'])
+    // Görevli ödeyicinin ıslak imzasını işler; onayda taraf ödeyicinin adıdır.
+    await contractCommand(institution.id, admin, 'test-on124-c-open', 'approve', {
+      accepted: true,
+    })
+    const approved = await findRecord(db, institution.id, 'contracts', 'test-on124-c-open')
+    assert.equal((approved?.data.approval as { payerName: string }).payerName, PAYER.name)
   })
 
   test('DOM-KAY-012 ON-124 okulda ve 18 yaş altında ayrı ödeyici 422; kısıtlı kişi ve kursiyerin kendi satırı 422; bağ yazılmaz', async () => {

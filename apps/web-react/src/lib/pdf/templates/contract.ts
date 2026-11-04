@@ -9,6 +9,7 @@ import {
   SIGNATORY_ROLE_LABELS,
   type ContractPlanLine,
 } from '@kampus/school-core/lib/contract-status.ts'
+import { contractParty, type ContractPartyKind } from '@kampus/school-core/lib/finance-payers.ts'
 import { money, timeLabel } from '@kampus/school-core/lib/format.ts'
 import type { DocumentDataMap } from '@kampus/school-core/lib/document-data.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
@@ -34,6 +35,12 @@ export type ContractTemplateOptions = TemplateOptions & {
    * (ADR 0008 karar 1). Verilmezse okul metni kullanılır.
    */
   institutionType?: InstitutionType
+  /**
+   * Kursiyer 18 yaş altında mı (core `isMinorLearner`). `false` verilirse ve sözleşmenin tarafı
+   * ödeyici bağıysa (`payer: 'guardian'`) taraf "Ödeyici" yazılır (yetişkinin ayrı ödeyicisi,
+   * kullanıcı kararı 2026-11-04); verilmezse "Veli".
+   */
+  learnerMinor?: boolean
 }
 
 const LABELS: Readonly<Record<string, string>> = { ...FEE_ITEM_KIND_LABELS }
@@ -71,10 +78,26 @@ function planRows(contract: Contract, data: ContractData): (readonly string[])[]
   ])
 }
 
-/** Sözleşmenin tarafı: veli ya da 18 yaş ve üstü kursiyer (DOM-KAY-012). */
-function payerLabel(contract: Contract, data: ContractData): string {
-  if (contract.payer === 'student') return `Kursiyer · ${data.student.name}`
-  return `Veli · ${contract.approval?.payerName || data.parent?.name || 'Ad soyad'}`
+const PARTY_LABELS: Readonly<Record<ContractPartyKind, string>> = {
+  guardian: 'Veli',
+  payer: 'Ödeyici',
+  learner: 'Kursiyer',
+}
+
+/**
+ * Sözleşmenin tarafı (core `contractParty`; DOM-KAY-012, kullanıcı kararı 2026-11-04): veli,
+ * yetişkin kursiyerin ayrı ödeyicisi ya da 18 yaş ve üstü kursiyerin kendisi. Ödeyicinin adı
+ * öğrencinin veli kaydındandır (`students.parentId`).
+ */
+function partyOf(contract: Contract, options: ContractTemplateOptions): ContractPartyKind {
+  if (contract.payer === 'student') return 'learner'
+  return contractParty({ minor: options.learnerMinor, separatePayer: true }).kind
+}
+
+function payerLabel(contract: Contract, data: ContractData, options: ContractTemplateOptions) {
+  const kind = partyOf(contract, options)
+  if (kind === 'learner') return `${PARTY_LABELS.learner} · ${data.student.name}`
+  return `${PARTY_LABELS[kind]} · ${contract.approval?.payerName || data.parent?.name || 'Ad soyad'}`
 }
 
 /** İmza yetkilisi: kurucu ya da kurucu temsilcisi (ÖÖKY m.31/4); işlenmediyse boş imza yeri. */
@@ -172,7 +195,7 @@ export function contractDocument(
       ]),
       ['Tarife sürümü', String(contract.tariffVersion ?? '—')],
       // Öğrenci ödeyici yalnız kursta olur (DOM-KAY-012); imza satırıyla aynı terim kullanılır.
-      ['Ödeyici', contract.payer === 'student' ? 'Kursiyer' : 'Veli'],
+      ['Ödeyici', PARTY_LABELS[partyOf(contract, options)]],
     ])
   const rows = planRows(contract, data)
   doc.paragraph(
@@ -205,7 +228,7 @@ export function contractDocument(
     9,
     COLORS.muted,
   )
-  doc.signatures(payerLabel(contract, data), signatoryLabel(contract))
+  doc.signatures(payerLabel(contract, data, options), signatoryLabel(contract))
   doc.newPage()
   doc.heading(
     'Ek 1 / Ödeme planı',

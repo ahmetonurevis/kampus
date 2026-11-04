@@ -1,8 +1,8 @@
 import { randomUUID } from 'node:crypto'
 
-import { isNotGuardian } from '@kampus/school-core/lib/enrollment.ts'
+import { isNotGuardian, type ParentBond } from '@kampus/school-core/lib/enrollment.ts'
 import {
-  attachAdultPayer,
+  addAdultPayer,
   resolveAdultPayer,
   type AdultPayerInput,
 } from '@kampus/school-core/lib/finance-payers.ts'
@@ -77,11 +77,16 @@ export function addAdultPayerCommand(
 ): Promise<CommandResponse> {
   const id = randomUUID()
   const out: { body?: unknown } = {}
-  return runCommand<GuardianDraft>(
+  // Yalnız bu öğrencinin kaydı ve sözleşmeleri yüklenir; veliler ve adaylar kural için bütündür.
+  const ofStudent = {
+    match: [{ kind: 'equals' as const, field: 'studentId', values: [studentId] }],
+  }
+  return runCommand<{ bond: GuardianDraft; contractIds: string[]; awaiting: string[] }>(
     ctx,
     {
       action: 'student.payer.link',
-      collections: ['parents', 'prospects'],
+      collections: ['parents', 'prospects', 'students', 'contracts'],
+      loadScope: { students: { ids: [studentId] }, contracts: ofStudent },
       entity: { type: ENTITY, id },
       load: async (tx) => {
         if ((await findRecord(tx, ctx.institutionId, 'students', studentId)) === null)
@@ -101,13 +106,28 @@ export function addAdultPayerCommand(
               parentBonds,
               isSelfRecord: (parent) => isNotGuardian(parent, state.prospects),
             })
-            return attachAdultPayer(state, payer, { studentId, minor, links, makeId })
+            const added = addAdultPayer(state, payer, { studentId, minor, links, makeId })
+            // İmza yetkilisi işlenmiş, onay bekleyen sözleşmenin onay isteği ödeyiciye gider.
+            const awaiting = added.contractIds.filter(
+              (contractId) =>
+                state.contracts.find((contract) => contract.id === contractId)?.signatory !==
+                undefined,
+            )
+            return { ...added, awaiting }
           },
         }
       },
-      after: async (tx, draft) => {
-        await insertGuardianLink(tx, ctx.institutionId, { id, ...draft }, ctx.now)
-        await auditWork(tx, ctx, 'guardian.link', { type: ENTITY, id }, Object.keys(draft))
+      after: async (tx, { bond, awaiting }) => {
+        await insertGuardianLink(tx, ctx.institutionId, { id, ...bond }, ctx.now)
+        await auditWork(tx, ctx, 'guardian.link', { type: ENTITY, id }, Object.keys(bond))
+        for (const contractId of awaiting)
+          await notify(tx, ctx, {
+            type: 'contract_approval_requested',
+            recipients: { studentIds: [studentId], minor: new Map([[studentId, true]]) },
+            audiences: ['parent'],
+            data: { contractId },
+            dedupeKey: contractId,
+          })
         out.body = { data: await payerView(tx, ctx, studentId, id) }
       },
     },
@@ -153,4 +173,31 @@ export async function notifyFinance<T extends NotificationType>(
     created: [...result.created, ...extra.created],
     deduplicated: result.deduplicated + extra.deduplicated,
   }
+}
+
+/**
+ * Veli kaydının bağlarına, yalnız ödeyici bağlarda, bağın öğrencisinin yaşını ekler (ON-124;
+ * core `isAdultPayerOnlyBond`, kullanıcı kararı 2026-11-04): yetişkin kursiyerin yalnız ödeyici
+ * bağı velayetsizliği nedeniyle kişiyi küçük kardeşin veliliğinden çıkarmaz. Yaş kimlik satırındaki
+ * doğum tarihinden, yoksa adayın yaş grubundandır (`learnerMinor`); okulda her öğrenci 18 yaş
+ * altıdır. Diğer bağlar olduğu gibi döner.
+ */
+export async function withLearnerAge<B extends ParentBond & { studentId: string }>(
+  db: Database,
+  ctx: NotifyContext,
+  bonds: readonly B[],
+): Promise<B[]> {
+  const payerOnly = (bond: B) =>
+    bond.isPayer === true && bond.custody === 'none' && !bond.contactRestricted
+  if (!bonds.some(payerOnly)) return [...bonds]
+  const institution = await getInstitutionModules(db, ctx.institutionId)
+  if (institution === null) return [...bonds]
+  const out: B[] = []
+  for (const bond of bonds)
+    out.push(
+      payerOnly(bond)
+        ? { ...bond, learnerMinor: await learnerMinor(db, ctx, institution.type, bond.studentId) }
+        : bond,
+    )
+  return out
 }

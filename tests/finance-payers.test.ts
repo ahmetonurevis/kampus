@@ -5,11 +5,17 @@ import { createSeed } from '../packages/school-core/src/data/seed.ts'
 import {
   enrollProspectSchema,
   enrollProspectWithTariff,
+  findParentMatches,
+  hasNonCustodialBond,
+  isAdultPayerOnlyBond,
   type EnrollmentContext,
 } from '../packages/school-core/src/lib/enrollment.ts'
 import {
+  addAdultPayer,
   adultPayerSchema,
   attachAdultPayer,
+  contractParty,
+  contractsMovingToPayer,
   newPayerParent,
   payerRelationshipOf,
   planAdultPayerLink,
@@ -27,6 +33,7 @@ import {
 } from '../packages/school-core/src/lib/guardianship.ts'
 import { isMinorLearner } from '../packages/school-core/src/lib/notifications.ts'
 import { financeStudentIds, scopeFor } from '../packages/school-core/src/lib/scope.ts'
+import { payerNameOf } from '../packages/school-core/src/lib/withdrawals.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 /**
@@ -124,9 +131,11 @@ const payerBond = (over: Partial<GuardianLink> = {}): GuardianLink => ({
 })
 
 describe('yetişkin kursiyerin ayrı ödeyicisi (ON-124)', () => {
-  test('DOM-KAY-012 ON-124 kesin kayıtta yeni kişi yetişkin kursiyerin velayetsiz ödeyicisi olur; sözleşmenin tarafı kursiyer kalır', () => {
+  test('DOM-KAY-012 ON-124 kesin kayıtta yeni kişi yetişkin kursiyerin velayetsiz ödeyicisi ve sözleşmenin tarafı olur (2026-11-04)', () => {
     const { state, result } = enroll({ payer: PAYER })
-    assert.equal(result.contract.payer, 'student')
+    // Sözleşmenin tarafı ödeyicidir; ödeyici yoksa kursiyer (kullanıcı kararı 2026-11-04).
+    assert.equal(result.contract.payer, 'guardian')
+    assert.equal(enroll({}).result.contract.payer, 'student')
     assert.equal(result.guardianBond, null)
     const created = state.parents.find((parent) => parent.id === result.payerBond?.parentId)
     assert.ok(created)
@@ -135,10 +144,14 @@ describe('yetişkin kursiyerin ayrı ödeyicisi (ON-124)', () => {
     assert.equal(created.relationship, 'mother')
     // Öğrenci ödeyicinin veli kaydı öğrencilerine yazılmaz: öğretmen ve kursiyer onu veli görmez.
     assert.deepEqual(created.studentIds, [])
-    // Kursiyerin kendi satırı yerinde kalır; ödeyici o satır değildir.
-    const self = state.parents.find((parent) => parent.id === result.student.parentId)
-    assert.equal(self?.relationship, 'self')
-    assert.notEqual(self?.id, created.id)
+    // Öğrencinin veli kaydı ödeyicidir; kursiyerin kendi satırı açılmaz.
+    assert.equal(result.student.parentId, created.id)
+    assert.equal(payerNameOf(state, result.contract.id), 'Test Ödeyici')
+    assert.ok(
+      !state.parents.some(
+        (parent) => parent.relationship === 'self' && parent.studentIds.includes(result.student.id),
+      ),
+    )
     assert.deepEqual(result.payerBond, {
       studentId: result.student.id,
       parentId: created.id,
@@ -163,7 +176,120 @@ describe('yetişkin kursiyerin ayrı ödeyicisi (ON-124)', () => {
       result.payerBond?.relationship,
       payerRelationshipOf({ existingParentId: 'p1' }, parent),
     )
-    assert.equal(result.contract.payer, 'student')
+    assert.equal(result.contract.payer, 'guardian')
+    assert.equal(result.student.parentId, 'p1')
+    assert.equal(payerNameOf(state, result.contract.id), parent.name)
+  })
+
+  test('DOM-KAY-012 DOM-FIN-010 ON-124 sözleşmenin tarafı: veli, ayrı ödeyici ya da kursiyer (contractParty)', () => {
+    assert.deepEqual(contractParty({ minor: true, separatePayer: false }), {
+      payer: 'guardian',
+      kind: 'guardian',
+    })
+    assert.deepEqual(contractParty({ minor: undefined, separatePayer: false }), {
+      payer: 'guardian',
+      kind: 'guardian',
+    })
+    assert.deepEqual(contractParty({ minor: false, separatePayer: true }), {
+      payer: 'guardian',
+      kind: 'payer',
+    })
+    assert.deepEqual(contractParty({ minor: false, separatePayer: false }), {
+      payer: 'student',
+      kind: 'learner',
+    })
+    const contracts = [
+      { id: 'a', studentId: 's1', payer: 'student' },
+      { id: 'b', studentId: 's1', payer: 'student', approval: { approvedAt: NOW } },
+      { id: 'c', studentId: 's1', payer: 'student', cancelledAt: NOW },
+      { id: 'd', studentId: 's2', payer: 'student' },
+      { id: 'e', studentId: 's1', payer: 'guardian' },
+    ]
+    assert.deepEqual(
+      contractsMovingToPayer(contracts, 's1').map((item) => item.id),
+      ['a'],
+    )
+  })
+
+  test('DOM-FIN-010 ON-124 sonradan eklenen ödeyici onaylanmamış sözleşmenin tarafı olur; onaylı sözleşme değişmez', () => {
+    const { state, result } = enroll({})
+    const draft = result.contract
+    const approved = { ...draft, id: 'test-on124-approved', approval: { approvedAt: NOW } }
+    state.contracts.push(approved as typeof draft)
+    const before = JSON.stringify(approved)
+    const resolved = resolveAdultPayer(state.parents, PAYER, {
+      minor: false,
+      parentBonds: [],
+      isSelfRecord: () => false,
+    })
+    const added = addAdultPayer(state, resolved, {
+      studentId: result.student.id,
+      minor: false,
+      links: [],
+      makeId: () => 'test-on124-p3',
+    })
+    assert.deepEqual(added.contractIds, [draft.id])
+    assert.equal(state.contracts.find((item) => item.id === draft.id)?.payer, 'guardian')
+    assert.equal(JSON.stringify(state.contracts.find((item) => item.id === approved.id)), before)
+    assert.equal(
+      state.students.find((item) => item.id === result.student.id)?.parentId,
+      'test-on124-p3',
+    )
+    assert.equal(payerNameOf(state, draft.id), PAYER.name)
+  })
+
+  test('DOM-KAY-013 ON-124 yetişkin kursiyerin yalnız ödeyici bağı veliliğe engel değil; kısıtlı ve 18 yaş altının velayetsiz ödeyicisi engeldir', () => {
+    const adultPayer = {
+      parentId: 'p1',
+      custody: 'none',
+      contactRestricted: false,
+      isPayer: true,
+      learnerMinor: false,
+    } as const
+    assert.equal(isAdultPayerOnlyBond(adultPayer), true)
+    assert.equal(hasNonCustodialBond('p1', [adultPayer]), false)
+    for (const blocked of [
+      { ...adultPayer, learnerMinor: true },
+      { ...adultPayer, learnerMinor: undefined },
+      { ...adultPayer, isPayer: false },
+      { ...adultPayer, contactRestricted: true },
+    ])
+      assert.equal(hasNonCustodialBond('p1', [blocked]), true, JSON.stringify(blocked))
+    // Önerilir ve seçilince velayetli veli olarak bağlanır.
+    const seed = createSeed(new Date(NOW))
+    seed.parents.find((item) => item.id === 'p1')!.phone = '05559990003'
+    const matches = findParentMatches(seed, '05559990003', { bonds: [adultPayer] })
+    assert.ok(matches.some((match) => match.parentId === 'p1'))
+    const minor = enrollProspectWithTariff(
+      seed,
+      'pr1',
+      {
+        ...ADULT,
+        identity: { ...ADULT.identity, birthDate: '2013-03-01' },
+        guardian: { existingParentId: 'p1' },
+      },
+      (prefix) => `${prefix}-test-minor`,
+      NOW,
+      { ...CONTEXT, guardianBonds: [adultPayer] },
+    )
+    assert.equal(minor.contract.payer, 'guardian')
+    assert.equal(minor.guardianBond?.parentId, 'p1')
+    assert.throws(
+      () =>
+        enrollProspectWithTariff(
+          createSeed(new Date(NOW)),
+          'pr1',
+          {
+            ...ADULT,
+            identity: { ...ADULT.identity, birthDate: '2013-03-01' },
+            guardian: { existingParentId: 'p1' },
+          },
+          (prefix) => `${prefix}-test-minor`,
+          NOW,
+          { ...CONTEXT, guardianBonds: [{ ...adultPayer, learnerMinor: true }] },
+        ),
+      isDomainError('parent_not_guardian'),
+    )
   })
 
   test('DOM-KAY-012 ON-124 okulda ve 18 yaş altında ayrı ödeyici 422 payer_not_applicable; kayıt yazılmaz', () => {
@@ -310,16 +436,16 @@ describe('yetişkin kursiyerin ayrı ödeyicisi (ON-124)', () => {
     assert.throws(
       () =>
         attachAdultPayer(state, resolved, {
-          studentId: 'test-on124-s',
+          studentId: 's1',
           minor: false,
-          links: [payerBond({ parentId: 'test-baska' })],
+          links: [payerBond({ studentId: 's1', parentId: 'test-baska' })],
           makeId: () => 'test-on124-p2',
         }),
       isDomainError('guardian_payer_exists', 'conflict'),
     )
     assert.equal(JSON.stringify(state.parents), before)
     const draft = attachAdultPayer(state, resolved, {
-      studentId: 'test-on124-s',
+      studentId: 's1',
       minor: false,
       links: [],
       makeId: () => 'test-on124-p2',
@@ -332,7 +458,7 @@ describe('yetişkin kursiyerin ayrı ödeyicisi (ON-124)', () => {
     const count = state.parents.length
     assert.equal(
       attachAdultPayer(state, existing, {
-        studentId: 'test-on124-s',
+        studentId: 's1',
         minor: false,
         links: [],
         makeId: () => 'kullanilmaz',

@@ -48,6 +48,7 @@ import { insertGuardianLink } from '../db/student-guardians.ts'
 import { archiveStudentIdentity } from '../db/withdrawals.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { withLearnerAge } from './finance-payers.ts'
 import { notify } from './notify.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
@@ -301,7 +302,11 @@ export function enrollProspectCommand(
         const guardianBonds =
           existingParentId === null
             ? []
-            : await loadParentBonds(tx, ctx.institutionId, [existingParentId])
+            : await withLearnerAge(
+                tx,
+                ctx,
+                await loadParentBonds(tx, ctx.institutionId, [existingParentId]),
+              )
         const payerBonds =
           payerParentId === null
             ? []
@@ -464,10 +469,15 @@ export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string
   // iletişim kısıtlı veli önerilmez (DOM-ILT-070, -073, -074).
   const candidates = findParentMatches(state, phone, { prospectId })
   if (candidates.length === 0) return candidates
-  const bonds = await loadParentBonds(
+  // Yetişkin kursiyerin yalnız ödeyici bağı öneriyi engellemez (ON-124, 2026-11-04).
+  const bonds = await withLearnerAge(
     ctx.db,
-    ctx.institutionId,
-    candidates.map((match) => match.parentId),
+    ctx,
+    await loadParentBonds(
+      ctx.db,
+      ctx.institutionId,
+      candidates.map((match) => match.parentId),
+    ),
   )
   return findParentMatches(state, phone, { prospectId, bonds })
 }

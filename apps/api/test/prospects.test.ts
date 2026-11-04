@@ -1742,9 +1742,10 @@ describe('aday uçları', () => {
     assert.equal(done.statusCode, 201, done.body)
     const studentId = done.json().data.entity.id as string
     const rows = await enrollmentRows(a.id)
-    // Sözleşmenin tarafı kursiyerdir; ödeyici yalnız bağla görünür.
-    assert.equal(rows.contracts.at(-1)?.data.payer, 'student')
-    assert.equal(rows.parents.length, parentsBefore + 2)
+    // Sözleşmenin tarafı ödeyicidir (kullanıcı kararı 2026-11-04); öğrencinin veli kaydı ödeyicinin
+    // kaydıdır, kursiyerin kendi satırı açılmaz.
+    assert.equal(rows.contracts.at(-1)?.data.payer, 'guardian')
+    assert.equal(rows.parents.length, parentsBefore + 1)
     const bonds = await loadStudentGuardians(db, a.id, studentId)
     assert.equal(bonds.length, 1)
     const [bond] = bonds
@@ -1758,11 +1759,54 @@ describe('aday uçları', () => {
     assert.equal(payerRow?.data.name, 'Test Ödeyici Anne')
     // Öğrenci ödeyicinin veli kaydı öğrencilerine yazılmaz (öğretmen ve kursiyer onu görmez).
     assert.deepEqual(payerRow?.data.studentIds, [])
+    const learner = rows.students.find((row) => row.id === studentId)
+    assert.equal(learner?.data.parentId, bond?.parentId)
+
+    // Anne hem ödeyici hem veli (2026-11-04): yetişkin çocuğun yalnız ödeyicisi olan kişi küçük
+    // kardeşin kaydında önerilir, seçilir ve velayetli veli olarak bağlanır.
+    const sibling = await created(cookie, {
+      ...PROSPECT,
+      name: 'Test Küçük Kardeş',
+      phone: payer.phone,
+      email: '',
+      minor: true,
+    })
+    const matches = await a_get(cookie, `/api/v1/prospects/${sibling.id}/guardian-matches`)
+    assert.equal(matches.statusCode, 200, matches.body)
+    assert.deepEqual(
+      matches.json().data.map((item: { parentId: string }) => item.parentId),
+      [bond?.parentId],
+    )
+    const second = await enroll(
+      cookie,
+      sibling.id,
+      {
+        ...ENROLLMENT,
+        lessonHours: 10,
+        identity: { ...ENROLLMENT.identity, number: '11111111110' },
+        guardian: { existingParentId: bond?.parentId },
+      },
+      sibling.version,
+    )
+    assert.equal(second.statusCode, 201, second.body)
+    const minorId = second.json().data.entity.id as string
+    const after = await enrollmentRows(a.id)
+    assert.equal(after.contracts.at(-1)?.data.payer, 'guardian')
+    assert.equal(after.students.find((row) => row.id === minorId)?.data.parentId, bond?.parentId)
+    const [minorBond] = await loadStudentGuardians(db, a.id, minorId)
+    assert.equal(minorBond?.custody, 'full')
+    assert.equal(minorBond?.isPayer, true)
+    assert.equal(minorBond?.parentId, bond?.parentId)
+    // Yetişkin çocuğun bağı değişmez: yalnız ödeyici.
+    const [adultBond] = await loadStudentGuardians(db, a.id, studentId)
+    assert.equal(adultBond?.custody, 'none')
+    assert.equal(adultBond?.isPayer, true)
     const linkAudit = await db
       .select()
       .from(auditLog)
       .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'guardian.link')))
-    assert.equal(linkAudit.length, 1)
+    // Ödeyici bağı ve kardeşin veli bağı; denetimde telefon yok.
+    assert.equal(linkAudit.length, 2)
     assert.ok(!JSON.stringify(linkAudit).includes('05559990077'))
 
     // Okulda 18 yaş üstünde de veli ödeyicidir; ayrı ödeyici reddedilir.

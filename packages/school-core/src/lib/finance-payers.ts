@@ -20,9 +20,12 @@ import type { GuardianDraft, GuardianLink } from './guardianship.ts'
  *   almaz. Velayetli veli kuralı (en az bir velayetli bağ, DOM-ILT-075) yalnız 18 yaş altındaki
  *   öğrencinin bağ kümesidir; yetişkin kursiyerin ödeyici bağı ondan muaftır.
  * - Okulda (`school`) ve 18 yaş altında ödeyici velidir; ayrı ödeyici 422 `payer_not_applicable`.
- * - Sözleşmenin `payer` alanı `student` kalır: borcun ve onayın tarafı kursiyerdir, sözleşme onayı
- *   ve sözleşme bildirimleri (ON-044) kursiyere gider. Ödeyici taksit, tahsilat ve iade
- *   bildirimini veli kitlesinden alır.
+ * - Sözleşmenin tarafı ve onaylayanı ödeyicidir (kullanıcı kararı 2026-11-04; `contractParty`):
+ *   sözleşmenin `payer` alanı `guardian` olur, öğrencinin veli kaydı (`students.parentId`) ödeyicinin
+ *   kaydıdır; onay (ON-028), sözleşme bildirimleri (ON-044) ve PDF tarafı (ON-029) ödeyicidir.
+ *   Ödeyici sonradan eklenirse yalnız onaylanmamış sözleşmenin tarafı ödeyiciye geçer; onaylı
+ *   sözleşme değişmez, değişiklik ek protokoldür (DOM-FIN-010). Ödeyici taksit, tahsilat ve iade
+ *   bildirimini de veli kitlesinden alır.
  *
  * Fonksiyonlar saftır; öğrencinin yaşı (`minor`, core `isMinorLearner`) ve bağları servisçe
  * yüklenir.
@@ -157,6 +160,49 @@ export function newPayerParent(
   }
 }
 
+/** Sözleşme tarafının türü: veli (18 yaş altı, okul), yetişkinin ayrı ödeyicisi ya da kursiyer. */
+export type ContractPartyKind = 'guardian' | 'payer' | 'learner'
+
+/**
+ * Sözleşmenin tarafı kimdir (kullanıcı kararı 2026-11-04; DOM-KAY-012, DOM-FIN-010, -051). 18 yaş
+ * altında ve okulda veli (`minor` core `isMinorLearner`; bilinmiyorsa 18 yaş altı sayılır);
+ * yetişkin kursiyerde ödeyici bağı varsa ödeyici, yoksa kursiyerin kendisi. `payer` sözleşme
+ * kaydına yazılan değerdir (`ContractTerms.payer`): veli ve ayrı ödeyici `guardian`'dır, çünkü onay
+ * (`payerOf`), bildirim kitlesi (`contractPayerIsGuardian`) ve ad (`students.parentId` kaydı) ödeyici
+ * bağından okunur. Kesin kayıt, sonradan ödeyici ekleme ve sözleşme PDF'i bu fonksiyonu çağırır.
+ */
+export function contractParty(input: { minor: boolean | undefined; separatePayer: boolean }): {
+  payer: 'guardian' | 'student'
+  kind: ContractPartyKind
+} {
+  if (input.minor !== false) return { payer: 'guardian', kind: 'guardian' }
+  return input.separatePayer
+    ? { payer: 'guardian', kind: 'payer' }
+    : { payer: 'student', kind: 'learner' }
+}
+
+/**
+ * Ödeyici sonradan eklenince tarafı ödeyiciye geçecek sözleşmeler: öğrencinin onaylanmamış ve
+ * iptal edilmemiş, tarafı kursiyer olan sürümleri. Onaylı sözleşme değişmez (DOM-FIN-010); ek
+ * protokol taslağı da onaylanmamış sürümdür ve geçer.
+ */
+export function contractsMovingToPayer<
+  C extends {
+    studentId: string
+    payer?: string | undefined
+    approval?: unknown
+    cancelledAt?: unknown
+  },
+>(contracts: readonly C[], studentId: string): C[] {
+  return contracts.filter(
+    (contract) =>
+      contract.studentId === studentId &&
+      contract.payer === 'student' &&
+      contract.approval === undefined &&
+      contract.cancelledAt === undefined,
+  )
+}
+
 /** Doğrulanmış ödeyici kişi: mevcut veli kaydı ya da açılacak yeni kayıt. */
 export type ResolvedPayer =
   | { kind: 'existing'; parentId: string; relationship: AdultPayerRelationship }
@@ -192,13 +238,18 @@ export function resolveAdultPayer<P extends PayerParent>(
 
 /**
  * Doğrulanmış ödeyiciyi öğrenciye bağlar: bağ kuralı (`planAdultPayerLink`) yazmadan önce
- * çalışır; geçerse yeni kişinin veli kaydı `parents`'a eklenir. Ret durumunda State değişmez.
+ * çalışır; geçerse yeni kişinin veli kaydı `parents`'a eklenir ve öğrencinin veli kaydı
+ * (`students.parentId`) ödeyicinin kaydı olur. Ödeyicinin kaydına öğrenci yazılmaz
+ * (`newPayerParent`). Ret durumunda State değişmez.
  */
 export function attachAdultPayer(
-  state: Pick<State, 'parents'>,
+  state: Pick<State, 'parents' | 'students'>,
   payer: ResolvedPayer,
   input: { studentId: string; minor: boolean; links: readonly GuardianLink[]; makeId: MakeId },
 ): GuardianDraft {
+  const student = state.students.find((item) => item.id === input.studentId)
+  if (student === undefined)
+    throw new DomainError('student_not_found', 'Öğrenci bulunamadı.', { kind: 'not_found' })
   const created = payer.kind === 'new' ? newPayerParent(input.makeId('p'), payer) : null
   const draft = planAdultPayerLink({
     studentId: input.studentId,
@@ -208,5 +259,25 @@ export function attachAdultPayer(
     links: input.links,
   })
   if (created !== null) state.parents.push(created)
+  // Sözleşme tarafının adı (`payerNameOf`, PDF) öğrencinin veli kaydından okunur (2026-11-04).
+  if (draft.parentId !== null) student.parentId = draft.parentId
   return draft
+}
+
+/**
+ * Kayıttan sonra eklenen ödeyici (ON-124): bağı kurar (`attachAdultPayer`) ve onaylanmamış
+ * sözleşmelerin tarafını ödeyiciye geçirir (`contractsMovingToPayer`, kullanıcı kararı
+ * 2026-11-04). Dönen `contractIds` tarafı değişen sürümlerdir; servis onay isteğini ödeyiciye
+ * yeniden bildirir.
+ */
+export function addAdultPayer(
+  state: Pick<State, 'parents' | 'students' | 'contracts'>,
+  payer: ResolvedPayer,
+  input: { studentId: string; minor: boolean; links: readonly GuardianLink[]; makeId: MakeId },
+): { bond: GuardianDraft; contractIds: string[] } {
+  const bond = attachAdultPayer(state, payer, input)
+  const { payer: party } = contractParty({ minor: input.minor, separatePayer: true })
+  const moved = contractsMovingToPayer(state.contracts, input.studentId)
+  for (const contract of moved) contract.payer = party
+  return { bond, contractIds: moved.map((contract) => contract.id) }
 }

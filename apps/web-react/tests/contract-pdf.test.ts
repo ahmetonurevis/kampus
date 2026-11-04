@@ -137,6 +137,28 @@ test('DOM-FIN-025, DOM-KAY-012: burs ayrı kalemdir, tam bursta taksit yok; kurs
   assert.ok(all.some((text) => text.includes(`Kursiyer · ${student.name}`)))
 })
 
+test('DOM-KAY-012 ON-124: yetişkin kursiyerin ayrı ödeyicisi taraf ve imza satırında "Ödeyici" yazılır (2026-11-04)', () => {
+  const { state, contract } = fixture()
+  Object.assign(contract, { payer: 'guardian' })
+  const student = state.students.find((item) => item.id === contract.studentId)!
+  const parent = state.parents.find((item) => item.id === student.parentId)!
+  const adult = allTexts(
+    contractDocument(measurer, documentData(state, 'contract', contract.id), {
+      ...OPTIONS,
+      institutionType: 'language_school',
+      learnerMinor: false,
+    }),
+  )
+  assert.ok(adult.some((text) => text.includes(`Ödeyici · ${parent.name}`)))
+  assert.equal(
+    adult.some((text) => text.includes(`Veli · ${parent.name}`)),
+    false,
+  )
+  // Yaş bilinmiyorsa ya da 18 yaş altındaysa taraf velidir (eski davranış).
+  const minor = render(state, contract.id)
+  assert.ok(minor.some((text) => text.includes(`Veli · ${parent.name}`)))
+})
+
 test('ADR 0008, DOM-KAY-012: okul dışındaki türde sözleşme metni "kursiyer" der; okulda "öğrenci" kalır', () => {
   const { state, contract } = fixture()
   Object.assign(contract, { payer: 'student' })

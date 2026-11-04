@@ -1,7 +1,9 @@
 // Kayıt yenileme ekranının saf mantığı (IST-100; DOM-FIN-002, -005, -020, -023, -025; DOM-KAY-020):
 // form değerleri, gövde dönüşümü, hedef sınıf seçenekleri, ücret özeti satırları ve ÜFE/TÜFE formu.
-// Ücretin kendisi sunucuda hesaplanır (önizleme ucu); ekran yalnız biçimler.
+// Ücretin kendisi sunucuda hesaplanır (önizleme ucu); ekran yalnız biçimler. Dil okulunda teklifin
+// kur sonu kararı dayanağı da önizlemeden gelir (DOM-DIL-070).
 import { z } from 'zod'
+import { PROGRESSION_OUTCOMES } from '@kampus/school-core/cefr/progression.ts'
 import { dateLabel, money } from '@kampus/school-core/lib/format.ts'
 import {
   FEE_DISCOUNT_KIND_LABELS,
@@ -14,6 +16,10 @@ import {
 import { parseAmountInput } from '@kampus/school-core/lib/payments.ts'
 import { createPriceIndexSchema } from '@kampus/school-core/lib/renewals.ts'
 import type { RenewalCeiling } from '@kampus/school-core/lib/renewal-ceiling.ts'
+import {
+  COURSE_OFFER_MESSAGES,
+  type RenewalCourseOffer,
+} from '@kampus/school-core/lib/renewal-course-offer.ts'
 
 export const RENEWAL_MODES = ['renew', 'graduate'] as const
 export type RenewalMode = (typeof RENEWAL_MODES)[number]
@@ -185,6 +191,25 @@ export type RenewalQuoteView = {
   netCents: number
   extras: readonly { kind: string; amountCents: number }[]
   installments: readonly number[]
+  /** Dil okulunda kur sonu kararı dayanağı; okulda `null`. */
+  courseOffer?: RenewalCourseOffer | null
+}
+
+/**
+ * Teklifin kur sonu kararı notu (DOM-DIL-070). `blocking`: karar onaylı değil, plan yazılmaz;
+ * sunucu da 422 ile reddeder. Okulda not yok.
+ */
+export function courseOfferNotice(
+  offer: RenewalCourseOffer | null | undefined,
+): { blocking: boolean; text: string } | null {
+  if (!offer) return null
+  if (offer.status !== 'ready') return { blocking: true, text: COURSE_OFFER_MESSAGES[offer.status] }
+  const outcome = offer.outcome === null ? '' : PROGRESSION_OUTCOMES[offer.outcome].label
+  const target =
+    offer.outcome === 'passed'
+      ? `teklif ${offer.level ?? ''} seviyesine açılır`
+      : `teklif aynı seviyede (${offer.level ?? ''}) kalır`
+  return { blocking: false, text: `Kur sonu kararı: ${outcome}; ${target}.` }
 }
 
 const discountLabel = (kind: string) =>

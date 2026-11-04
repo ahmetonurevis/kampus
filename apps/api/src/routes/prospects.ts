@@ -3,7 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
 import { WRITE_ACTION_ROLES, type WriteAction } from '@kampus/school-core/lib/authorize.ts'
-import { enrollProspectSchema } from '@kampus/school-core/lib/enrollment.ts'
+import { enrollProspectSchema, PARENT_MATCH_KINDS } from '@kampus/school-core/lib/enrollment.ts'
 import {
   addProspectNoteSchema,
   changeProspectStageSchema,
@@ -270,7 +270,7 @@ export function registerProspectRoutes(app: FastifyInstance) {
         tags: ['prospects'],
         summary: 'Adayla eşleşen velileri öner',
         description:
-          'Adayın telefonuyla eşleşen mevcut velileri önerir; ön büro seçerse `existingParentId` ile bağlanır, otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon taşımaz. Roller: `yonetici`, `onburo`.',
+          'Adayın telefonuyla ya da kardeş adayının (`siblingOfId`) kesin kaydıyla eşleşen mevcut velileri önerir; kardeş eşleşmesi (`match: sibling`) listenin başındadır. Ön büro seçerse `existingParentId` ile bağlanır, yeni veli açılmaz; otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon ve e-posta taşımaz. Roller: `yonetici`, `onburo`.',
         params: prospectParamsSchema,
         response: {
           200: dataResponse(
@@ -279,6 +279,7 @@ export function registerProspectRoutes(app: FastifyInstance) {
                 parentId: z.string(),
                 name: z.string(),
                 studentCount: z.number().int(),
+                match: z.enum(PARENT_MATCH_KINDS),
               }),
             ),
           ),

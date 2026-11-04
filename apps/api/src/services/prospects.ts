@@ -396,12 +396,18 @@ const PARENT_MATCH = z.object({
 })
 const STUDENT_MATCH = z.object({ id: z.string(), phone: z.string().optional() })
 const PROSPECT_MATCH = z.object({
+  // Kardeş adayın kesin kayıtta bağlandığı veli için (`siblingOfId`, DOM-KAY-031).
+  id: z.string(),
+  siblingOfId: z.string().optional(),
   studentId: z.string().nullable().optional(),
   phone: z.string().optional(),
   minor: z.boolean().optional(),
 })
 
-/** Adayın telefonuyla eşleşen veliler; ön büroya öneridir, birleştirmez (DOM-KAY-013). */
+/**
+ * Adayın telefonuyla ya da kardeş adayının kesin kaydıyla eşleşen veliler; ön büroya öneridir,
+ * birleştirmez (DOM-KAY-013).
+ */
 export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string) {
   const prospect = await findRecord(ctx.db, ctx.institutionId, 'prospects', prospectId)
   if (prospect === null) throw new NotFoundError()
@@ -420,6 +426,7 @@ export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string
       prospects: only('prospects', PROSPECT_MATCH),
     },
     phone,
+    { prospectId },
   )
 }
 

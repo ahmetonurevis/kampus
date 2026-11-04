@@ -273,7 +273,13 @@ type ParentLike = {
   email?: string
   relationship?: string
 }
-type ProspectLike = { studentId?: string | null; phone?: string; minor?: boolean }
+type ProspectLike = {
+  id?: string
+  studentId?: string | null
+  phone?: string
+  minor?: boolean
+  siblingOfId?: string
+}
 
 /** Yetişkin kursiyerin kendi kaydı için açılan veli satırının yakınlığı (DOM-KAY-012). */
 export const SELF_RELATIONSHIP = 'self'
@@ -295,11 +301,48 @@ export function isNotGuardian(
   return linked.length > 0 && linked.every((prospect) => prospect.minor === false)
 }
 
+/** Önerinin kaynağı: telefon eşleşmesi ya da kardeş adayın kesin kaydı (DOM-KAY-013). */
+export const PARENT_MATCH_KINDS = ['sibling', 'phone'] as const
+export type ParentMatchKind = (typeof PARENT_MATCH_KINDS)[number]
+
 /**
- * Telefonu eşleşen veliler; ön büroya önerilir, otomatik birleştirilmez (DOM-KAY-013). Eşleşme
+ * Adayın kardeşlik ağındaki (`siblingOfId` iki yönde, zincir boyunca; DOM-KAY-031) öteki adayların
+ * kesin kayıtla açılmış öğrencileri. Aday listesinde olmayan aday boş küme verir.
+ */
+function siblingStudentIds(prospects: readonly ProspectLike[], prospectId: string): Set<string> {
+  const byId = new Map(prospects.flatMap((item) => (item.id ? [[item.id, item] as const] : [])))
+  const linked = new Map<string, string[]>()
+  const connect = (from: string, to: string) => linked.set(from, [...(linked.get(from) ?? []), to])
+  for (const item of prospects)
+    if (item.id && item.siblingOfId && byId.has(item.siblingOfId)) {
+      connect(item.id, item.siblingOfId)
+      connect(item.siblingOfId, item.id)
+    }
+  const seen = new Set([prospectId])
+  const queue = [prospectId]
+  for (let id = queue.shift(); id !== undefined; id = queue.shift())
+    for (const next of linked.get(id) ?? [])
+      if (!seen.has(next)) {
+        seen.add(next)
+        queue.push(next)
+      }
+  seen.delete(prospectId)
+  return new Set(
+    [...seen].flatMap((id) => {
+      const studentId = byId.get(id)?.studentId
+      return studentId ? [studentId] : []
+    }),
+  )
+}
+
+/**
+ * Adayla eşleşen veliler; ön büroya önerilir, otomatik birleştirilmez (DOM-KAY-013). Eşleşme
  * velinin, öğrencisinin ya da öğrencisine dönüşmüş adayın telefonudur: 18 yaş altı öğrencinin
- * telefonu boş kaldığından (DOM-KAY-003) kardeşin aday kaydındaki aile telefonu da aranır.
- * Yetişkin kursiyerin kendi satırı ve eski yer tutucu önerilmez (`isNotGuardian`).
+ * telefonu boş kaldığından (DOM-KAY-003) kardeşin aday kaydındaki aile telefonu da aranır. Aday
+ * kimliği (`prospectId`) verilirse kardeş adayın (`siblingOfId`, DOM-KAY-031) kesin kayıtta
+ * bağlandığı veli telefon farklı olsa da önerilir (`match: 'sibling'`) ve listenin başına gelir.
+ * Yetişkin kursiyerin kendi satırı ve eski yer tutucu önerilmez (`isNotGuardian`). Yanıt ad ve
+ * öğrenci sayısı taşır; telefon ve e-posta dönmez (DOM-ILT-073).
  */
 export function findParentMatches(
   state: {
@@ -308,30 +351,44 @@ export function findParentMatches(
     prospects?: readonly ProspectLike[]
   },
   phone: string,
-): { parentId: string; name: string; studentCount: number }[] {
-  if (phone === '') return []
+  options: { prospectId?: string } = {},
+): { parentId: string; name: string; studentCount: number; match: ParentMatchKind }[] {
   const prospects = state.prospects ?? []
+  const siblings =
+    options.prospectId === undefined
+      ? new Set<string>()
+      : siblingStudentIds(prospects, options.prospectId)
   const enrolled = new Set(
-    prospects.flatMap((prospect) =>
-      prospect.phone === phone && prospect.studentId ? [prospect.studentId] : [],
-    ),
+    phone === ''
+      ? []
+      : prospects.flatMap((prospect) =>
+          prospect.phone === phone && prospect.studentId ? [prospect.studentId] : [],
+        ),
   )
+  const phoneOf = new Map(state.students.map((student) => [student.id, student.phone]))
+  const kindOf = (parent: ParentLike): ParentMatchKind | null => {
+    if (parent.studentIds.some((id) => siblings.has(id))) return 'sibling'
+    if (phone === '') return null
+    return parent.phone === phone ||
+      parent.studentIds.some((id) => enrolled.has(id) || phoneOf.get(id) === phone)
+      ? 'phone'
+      : null
+  }
   return state.parents
-    .filter(
-      (parent) =>
-        !isNotGuardian(parent, prospects) &&
-        (parent.phone === phone ||
-          parent.studentIds.some(
-            (id) =>
-              enrolled.has(id) ||
-              state.students.find((student) => student.id === id)?.phone === phone,
-          )),
-    )
-    .map((parent) => ({
-      parentId: parent.id,
-      name: parent.name,
-      studentCount: parent.studentIds.length,
-    }))
+    .flatMap((parent) => {
+      const match = isNotGuardian(parent, prospects) ? null : kindOf(parent)
+      return match === null
+        ? []
+        : [
+            {
+              parentId: parent.id,
+              name: parent.name,
+              studentCount: parent.studentIds.length,
+              match,
+            },
+          ]
+    })
+    .sort((a, b) => PARENT_MATCH_KINDS.indexOf(a.match) - PARENT_MATCH_KINDS.indexOf(b.match))
 }
 
 export interface EnrollmentContext {

@@ -68943,7 +68943,7 @@
         "tags": [
           "prospects"
         ],
-        "description": "Adayın telefonuyla eşleşen mevcut velileri önerir; ön büro seçerse `existingParentId` ile bağlanır, otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon taşımaz. Roller: `yonetici`, `onburo`.",
+        "description": "Adayın telefonuyla ya da kardeş adayının (`siblingOfId`) kesin kaydıyla eşleşen mevcut velileri önerir; kardeş eşleşmesi (`match: sibling`) listenin başındadır. Ön büro seçerse `existingParentId` ile bağlanır, yeni veli açılmaz; otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon ve e-posta taşımaz. Roller: `yonetici`, `onburo`.",
         "parameters": [
           {
             "schema": {
@@ -68980,12 +68980,20 @@
                             "type": "integer",
                             "minimum": -9007199254740991,
                             "maximum": 9007199254740991
+                          },
+                          "match": {
+                            "type": "string",
+                            "enum": [
+                              "sibling",
+                              "phone"
+                            ]
                           }
                         },
                         "required": [
                           "parentId",
                           "name",
-                          "studentCount"
+                          "studentCount",
+                          "match"
                         ],
                         "additionalProperties": false
                       }

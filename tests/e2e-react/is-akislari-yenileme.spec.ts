@@ -236,6 +236,77 @@ test.describe('kayıt yenileme', () => {
     expect((await renewalOf(client, 's4'))?.status).toBe('Tamamlandı')
   })
 
+  test('IST-100, DOM-FIN-005: yeni dönem sözleşmesi Ek 2 ücret kararında tavan hesabını ve oran kaynağını yazar', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s3'],
+      collections: ['renewals'],
+      tariffYears: ['current', 'next'],
+    })
+    const client = await api(school.user('yonetici'))
+    const year = await renewalYear(client)
+    const rates = await client.post(
+      `${RENEWALS}/price-indexes`,
+      {
+        academicYear: year,
+        ppiBasisPoints: 4000,
+        cpiBasisPoints: 3000,
+        source: 'TÜİK bülteni 53607',
+        bulletinDate: nextDay(-30),
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(rates.status, JSON.stringify(rates.body)).toBe(201)
+    const body = { studentId: 's3', targetClassId: 'c1', academicYear: year, installmentCount: 6 }
+    const quote = await client.post(`${RENEWALS}/quote`, body)
+    expect(quote.status).toBe(200)
+    const quoted = (quote.body as { data: { tariffId: string; ceiling: { status: string } } }).data
+    expect(quoted.ceiling.status).toBe('applied')
+    const created = await client.post(
+      RENEWALS,
+      { ...body, mode: 'renew', tariffId: quoted.tariffId, firstDueDate: nextDay(30) },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(created.status).toBe(201)
+
+    const page = await loginAs(school.user('yonetici'))
+    await page.goto('/yonetici/kayit-yenileme')
+    await page.getByLabel('Tabloda ara').fill('Zeynep Demir')
+    await page.getByRole('button', { name: 'Zeynep Demir' }).click()
+    const opener = page
+      .getByRole('dialog', { name: 'Zeynep Demir' })
+      .getByRole('button', { name: 'Yeni dönem sözleşmesi' })
+    await opener.click()
+
+    const preview = page.getByRole('dialog', { name: 'Eğitim sözleşmesi · Önizleme' })
+    const viewer = preview.getByLabel('PDF sayfa görünümü')
+    await expect(viewer).toContainText('YENİLEME SÖZLEŞMESİ')
+    const status = preview.getByRole('status').filter({ hasText: /^Sayfa 1 \/ \d+$/ })
+    const total = Number((await status.textContent())?.split('/')[1]?.trim())
+    expect(total).toBeGreaterThanOrEqual(3)
+    // Sayfa metni altbilgideki "k / N" ile o sayfanın olduğu doğrulanınca okunur.
+    const pages: string[] = [(await viewer.textContent()) ?? '']
+    for (let current = 2; current <= total; current += 1) {
+      await preview.getByRole('button', { name: 'Sonraki PDF sayfası' }).click()
+      await expect(viewer).toContainText(`${String(current)} / ${String(total)}`)
+      pages.push((await viewer.textContent()) ?? '')
+    }
+    const appendix = pages.findIndex((text) => text.includes('Ek 2 / Yenileme ücret kararı'))
+    expect(appendix).toBeGreaterThan(pages.findIndex((text) => text.includes('Ek 1 / Ödeme planı')))
+    const decision = pages.slice(appendix).join(' ')
+    expect(decision).toContain('Artış tavanı')
+    expect(decision).toContain('Son sözleşmenin indirimsiz ücreti')
+    expect(decision).toContain('TÜİK bülteni 53607')
+
+    await page.keyboard.press('Escape')
+    await expect(preview).toBeHidden()
+    await expect(opener).toBeFocused()
+  })
+
   test('veli yenileme işlemi göremez; liste kapsamına daralır', async ({ loginAs }) => {
     const page = await loginAs('veli')
     await page.goto('/veli/kayit-yenileme?cocuk=s1')

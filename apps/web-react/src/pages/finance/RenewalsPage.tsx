@@ -29,7 +29,6 @@ import { FormField } from '@/components/FormField.tsx'
 import { Icon } from '@/components/Icon.tsx'
 import { Modal } from '@/components/Modal.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
-import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { SidePanel } from '@/components/SidePanel.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
@@ -72,6 +71,7 @@ import {
   type RenewalFormValues,
   type RenewalQuoteView,
 } from './renewal-forms.ts'
+import { RenewalContractPdfButton } from './RenewalContractPdfButton.tsx'
 import { awardablePrograms } from './scholarship-forms.ts'
 
 type RenewalRow = {
@@ -358,11 +358,22 @@ function RenewalDetail({
           ) : null}
           {data.contractId ? (
             <section aria-label="Belgeler" className="flex flex-wrap gap-2 border-t pt-4">
-              <PdfButton
-                type="contract"
-                recordId={data.contractId}
-                studentId={data.studentId}
+              <RenewalContractPdfButton
                 label="Yeni dönem sözleşmesi"
+                request={{
+                  renewalId: data.id,
+                  version: data.version,
+                  contractId: data.contractId,
+                  studentId: data.studentId,
+                  canReadRates: canAct,
+                  context: {
+                    academicYear: data.academicYear,
+                    status: data.status,
+                    fromClassName: data.fromClassName,
+                    targetClassName: data.targetClassName,
+                    pricing: data.pricing,
+                  },
+                }}
               />
             </section>
           ) : null}

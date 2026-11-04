@@ -16,6 +16,8 @@ export const ENTITY_LABELS: Readonly<Record<string, string>> = {
   branches: 'Kampüs',
   teachers: 'Öğretmen',
   students: 'Öğrenci',
+  // Sağlık ve acil bilgi denetim satırları (OG-090): tekil `student`; süzgeçte `students`tan ayrışsın.
+  student: 'Öğrenci sağlık kaydı',
   parents: 'Veli',
   studentGoals: 'Öğrenci hedefi',
   guidanceCases: 'Rehberlik kaydı',

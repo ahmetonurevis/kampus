@@ -1,6 +1,8 @@
 import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 
+import { QueryClient } from '@tanstack/react-query'
+
 import { createKampusClient } from '@kampus/api-client/client.ts'
 import { ApiError } from '@kampus/api-client/errors.ts'
 
@@ -18,8 +20,13 @@ import {
   type HealthFullData,
   type HealthProfileData,
 } from '../src/health-profile-model.ts'
-import { healthProfileKey } from '../src/query-keys.ts'
-import { healthProfileRequest, patchHealthProfileRequest } from '../src/use-health-profile.ts'
+import { healthProfileKey, institutionKey } from '../src/query-keys.ts'
+import {
+  HEALTH_PROFILE_QUERY_POLICY,
+  forgetHealthProfile,
+  healthProfileRequest,
+  patchHealthProfileRequest,
+} from '../src/use-health-profile.ts'
 
 // OG-090: sağlık ve acil bilgi ekranı modeli (DOM-ILT-035; okuma denetimi DOM-YTK-052).
 const full = (over: Partial<HealthFullData['profile']> = {}): HealthFullData => ({
@@ -276,5 +283,27 @@ describe('DOM-ILT-035: istek ve hata geri bildirimi', () => {
     )
     assert.equal(feedback.refresh, false)
     assert.equal(feedback.message, 'Sağlık ve acil bilgiyi değiştirme yetkiniz yok.')
+  })
+})
+
+describe('isteğe bağlı yükleme (DOM-YTK-052, DOM-ILT-035)', () => {
+  test('okuma ilkesi: önbellekte tutma yok, odak ve yeniden bağlanmada otomatik okuma yok', () => {
+    assert.deepEqual(HEALTH_PROFILE_QUERY_POLICY, {
+      gcTime: 0,
+      refetchOnWindowFocus: false,
+      refetchOnReconnect: false,
+    })
+  })
+
+  test('gizle yalnız o öğrencinin sağlık verisini önbellekten atar', () => {
+    const queryClient = new QueryClient()
+    const mine = institutionKey('i1', ...healthProfileKey('s1'))
+    const other = institutionKey('i1', ...healthProfileKey('s2'))
+    queryClient.setQueryData(mine, { data: full() })
+    queryClient.setQueryData(other, { data: full() })
+    forgetHealthProfile(queryClient, 'i1', 's1')
+    assert.equal(queryClient.getQueryData(mine), undefined)
+    assert.notEqual(queryClient.getQueryData(other), undefined)
+    queryClient.clear()
   })
 })

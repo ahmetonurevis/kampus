@@ -1,6 +1,8 @@
 import { useId, useState } from 'react'
 import {
+  HEALTH_CLOSED_NOTE,
   HEALTH_EMERGENCY_NOTE,
+  HEALTH_NO_ACCESS,
   HEALTH_PRIVACY_NOTE,
   HEALTH_SECTION_TITLE,
   canEditHealthProfile,
@@ -12,7 +14,7 @@ import {
   type HealthViewSection,
 } from '@kampus/react-shared/health-profile-model.ts'
 import {
-  useHealthProfile,
+  useHealthProfileReveal,
   useUpdateHealthProfile,
 } from '@kampus/react-shared/use-health-profile.ts'
 import { useAuth } from '@/auth/use-auth.ts'
@@ -25,12 +27,15 @@ import { notify } from '@/lib/notify.ts'
 import { HealthProfileForm } from './HealthProfileForm.tsx'
 
 /**
- * Öğrencinin sağlık ve acil bilgisi (OG-090; DOM-ILT-035, DOM-YTK-052). Düzeyi sunucu belirler:
- * `emergency` (derse giren öğretmen) yalnız alerjiler ve acil talimattan oluşan salt okunur kısa
- * karttır; `full` okuma görünümüdür ve yazma yetkisi olan rolde (yönetici, veli, 18+ öğrenci)
- * düzenlenir. 403/404'te (ön büro, ilgisiz öğretmen, kısıtlı veli, reşit olmayan öğrencinin kendisi)
- * bölüm hiç çizilmez ve hata toast'u çıkmaz. Veri yalnız sorgu önbelleğinde durur; kalıcı depoya
- * ve adrese yazılmaz (kvkk: Ö). Her görüntüleme sunucuda denetim kaydına yazılır.
+ * Öğrencinin sağlık ve acil bilgisi (OG-090; DOM-ILT-035, DOM-YTK-052). Her okuma sunucuda bir
+ * denetim satırıdır ve erişim ihtiyaç bazlıdır: bölüm kapalı başlar, sayfa açılışında veri
+ * okunmaz; "Sağlık bilgisini göster" tek okuma yapar, "Gizle" veriyi bellekten atar. Seçili
+ * öğrenci değişince yeniden kapanır. Düzeyi sunucu belirler: `emergency` (derse giren öğretmen)
+ * yalnız alerjiler ve acil talimattan oluşan salt okunur kısa karttır; `full` okuma görünümüdür
+ * ve yazma yetkisi olan rolde (yönetici, veli, 18+ öğrenci) düzenlenir. Düğme metni düzeye göre
+ * değişmez (düzey yanıttan öğrenilir). 403/404'te (ön büro, ilgisiz öğretmen, kısıtlı veli,
+ * reşit olmayan öğrencinin kendisi) kısa nötr metin çıkar, hata toast'u çıkmaz. Veri yalnız sorgu
+ * önbelleğinde durur; kalıcı depoya ve adrese yazılmaz (kvkk: Ö).
  */
 export function HealthProfileSection({
   studentId,
@@ -41,17 +46,38 @@ export function HealthProfileSection({
   studentName?: string
 }) {
   const { session } = useAuth()
-  const query = useHealthProfile(studentId)
+  const { revealed, query, show, hide } = useHealthProfileReveal(studentId)
+  const title = studentName ? `${HEALTH_SECTION_TITLE} — ${studentName}` : HEALTH_SECTION_TITLE
+  if (!revealed)
+    return (
+      <SectionFrame title={title}>
+        <p className="mb-3 text-sm text-muted-foreground">{HEALTH_CLOSED_NOTE}</p>
+        <Button type="button" variant="secondary" onClick={show}>
+          <Icon name="Eye" size={16} aria-hidden="true" />
+          Sağlık bilgisini göster
+        </Button>
+      </SectionFrame>
+    )
   const state = healthSectionState({
     data: query.data,
     error: query.error,
     isPending: query.isPending,
   })
-  if (state === 'hidden') return null
-  const title = studentName ? `${HEALTH_SECTION_TITLE} — ${studentName}` : HEALTH_SECTION_TITLE
   return (
-    <SectionFrame title={title}>
-      {state === 'loading' ? (
+    <SectionFrame
+      title={title}
+      action={
+        <Button type="button" variant="ghost" size="sm" onClick={hide}>
+          <Icon name="EyeOff" size={16} aria-hidden="true" />
+          Gizle
+        </Button>
+      }
+    >
+      {state === 'hidden' ? (
+        <p role="status" className="text-sm text-muted-foreground">
+          {HEALTH_NO_ACCESS}
+        </p>
+      ) : state === 'loading' ? (
         <p role="status" className="text-sm text-muted-foreground">
           Sağlık bilgisi yükleniyor…
         </p>
@@ -72,11 +98,11 @@ export function HealthProfileSection({
 function SectionFrame({
   title,
   children,
-  note,
+  action,
 }: {
   title: string
   children: React.ReactNode
-  note?: React.ReactNode
+  action?: React.ReactNode
 }) {
   const headingId = useId()
   return (
@@ -84,14 +110,16 @@ function SectionFrame({
       aria-labelledby={headingId}
       className="panel mb-6 rounded-card border bg-surface px-6 py-5 max-[650px]:px-4"
     >
-      <h2
-        id={headingId}
-        className="mb-3 flex items-center gap-2 text-md font-semibold [overflow-wrap:anywhere]"
-      >
-        <Icon name="ShieldAlert" size={18} aria-hidden="true" />
-        {title}
-      </h2>
-      {note}
+      <div className="mb-3 flex flex-wrap items-center justify-between gap-2">
+        <h2
+          id={headingId}
+          className="flex items-center gap-2 text-md font-semibold [overflow-wrap:anywhere]"
+        >
+          <Icon name="ShieldAlert" size={18} aria-hidden="true" />
+          {title}
+        </h2>
+        {action}
+      </div>
       {children}
     </section>
   )

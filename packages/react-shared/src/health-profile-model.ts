@@ -24,6 +24,9 @@ export type HealthProfilePatchBody =
   operations['updateStudentHealthProfile']['requestBody']['content']['application/json']
 
 export const HEALTH_SECTION_TITLE = 'Sağlık ve acil bilgi'
+export const HEALTH_CLOSED_NOTE =
+  'Sağlık bilgisi özel nitelikli kişisel veridir; yalnız gerektiğinde açın. Her görüntüleme kayıt altına alınır.'
+export const HEALTH_NO_ACCESS = 'Bu bilgiyi görme yetkiniz yok.'
 export const HEALTH_EMERGENCY_NOTE = 'Yalnız acil müdahale bilgisi'
 export const HEALTH_PRIVACY_NOTE =
   'Bu bilgi özel nitelikli kişisel veridir; her görüntüleme ve değişiklik kayıt altına alınır.'
@@ -44,8 +47,8 @@ export function canEditHealthProfile(role: string): boolean {
 export type HealthSectionState = 'loading' | 'hidden' | 'error' | 'ready'
 
 /**
- * Bölümün durumu. 403 (rol ya da düzey yetmiyor) ve 404 (kapsam dışı öğrenci) bölümü hiç
- * göstermez: hata toast'u ve boş başlık yoktur. Başka hata yeniden denemeyle gösterilir.
+ * Bölümün durumu. 403 (rol ya da düzey yetmiyor) ve 404 (kapsam dışı öğrenci) `hidden`:
+ * kullanıcı "göster" dediği için kısa nötr metin (`HEALTH_NO_ACCESS`) çıkar, hata toast'u yoktur. Başka hata yeniden denemeyle gösterilir.
  */
 export function healthSectionState(query: {
   data: unknown

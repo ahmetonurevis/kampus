@@ -37,9 +37,13 @@ function ToastView({ toast, onClose }: { toast: Toast; onClose: () => void }) {
     >
       <Pressable
         accessibilityRole="alert"
+        accessibilityHint="Kapatmak için dokunun"
         onPress={onClose}
         style={{
           backgroundColor: toast.type === 'error' ? c.redSoft : c.primarySoft,
+          // Dokunarak kapanır: kısa metinde de en az 48 dp dokunma hedefi (erişilebilirlik).
+          minHeight: 48,
+          justifyContent: 'center',
           padding: 16,
           borderRadius: 14,
           borderWidth: 1,

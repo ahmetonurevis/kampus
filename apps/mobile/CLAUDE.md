@@ -1,6 +1,6 @@
 # Kampüs Android
 
-React Native ve Expo. Beş rol, mevcut modüller, çevrimdışı ortak örnek veri ve AsyncStorage kalıcılığı. Gerçek ödeme, uzaktan bildirim ve web–telefon senkronizasyonu yoktur.
+React Native ve Expo; iki mod vardır (`src/api/config.ts`). `EXPO_PUBLIC_API_URL` verilmişse API modu: Better Auth oturumu, yalnız API'ye taşınmış ekranlar (`src/api/`, `ApiStackParamList`), veri sunucudadır. Verilmemişse çevrimdışı demo: beş rol, ortak örnek veri ve AsyncStorage kalıcılığı; API geçişi bitince silinir (OG-074). Adres verilmiş ama geçersizse demo sessizce açılmaz, yapılandırma hatası gösterilir. İki modda da gerçek ödeme ve uzaktan (push) bildirim yoktur.
 
 - TypeScript: mobil kodun tamamı TypeScript'tir (`strict`, `allowJs` kapalı; `pnpm --filter @kampus/mobile typecheck`): `src/model`, `src/lib`, `src/store`, `src/ui`, `src/screens`, `AppRoot`, `App`, `index`. Yeni `.js`/`.jsx` dosyası eklenmez. Gezinme parametre tipleri `src/route-types.ts` içindedir (`RootStackParamList`, `ScreenProps<'Ad'>`); yüklü veri ve rol gerektiren ekranlar `useActiveSchool()` kullanır (veri ve rol dolu gelir).
 - Klasör haritası, kategori/gezinme uygulaması (`ModuleHub`, `CategoryScreen`), sürüm bazlı uygulama notları ve derleme ayrıntısı `docs/mobil/uygulama-notlari.md` içindedir.

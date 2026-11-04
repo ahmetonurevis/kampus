@@ -64,6 +64,11 @@ const trustProxy = z
 export const PLACEHOLDER_SECRET_PREFIX = 'CHANGE_ME'
 /** Gizli olmayan test anahtarı (base64 "kampus-test-field-key-not-secret"); üretimde reddedilir. */
 export const TEST_FIELD_ENCRYPTION_KEY = 'a2FtcHVzLXRlc3QtZmllbGQta2V5LW5vdC1zZWNyZXQ='
+/**
+ * Geliştirme ve testte `FIELD_ENCRYPTION_KEY` verilmezse kullanılan bilinen anahtar (`.env.example`
+ * değeri, base64 "CHANGE_ME-dev-field-key-32-bytes"). Gizli değildir; üretimde reddedilir.
+ */
+export const DEVELOPMENT_FIELD_ENCRYPTION_KEY = 'Q0hBTkdFX01FLWRldi1maWVsZC1rZXktMzItYnl0ZXM='
 const KNOWN_PUBLIC_SECRETS = new Set([
   'degistir-en-az-32-karakter-rastgele-deger',
   'cli-schema-generation-only-not-a-secret',
@@ -71,7 +76,7 @@ const KNOWN_PUBLIC_SECRETS = new Set([
   'test-secret-test-secret-test-secret-0123',
   // Alan şifreleme anahtarları (base64): test, betik ve `.env.example` değerleri.
   TEST_FIELD_ENCRYPTION_KEY,
-  'Q0hBTkdFX01FLWRldi1maWVsZC1rZXktMzItYnl0ZXM=',
+  DEVELOPMENT_FIELD_ENCRYPTION_KEY,
 ])
 
 function isPlaceholderSecret(secret: string): boolean {
@@ -110,11 +115,13 @@ export const configSchema = z
     /**
      * Özel nitelikli alanların (sağlık ve acil bilgi) AES-256-GCM ana anahtarı: base64, çözülünce
      * tam 32 bayt (`openssl rand -base64 32`). Kurum anahtarı bundan türetilir (`lib/field-crypto.ts`).
-     * Verilmezse süreç başlamaz; değiştirilirse eski satırlar çözülemez (döndürme sürümlüdür).
+     * Üretimde zorunludur ve yer tutucu reddedilir; geliştirme ve testte verilmezse bilinen
+     * `DEVELOPMENT_FIELD_ENCRYPTION_KEY` kullanılır (aşağıdaki `transform`; ayrıştırılmış alan her
+     * zaman doludur). Değiştirilirse eski satırlar çözülemez (döndürme sürümlüdür).
      */
-    FIELD_ENCRYPTION_KEY: z
-      .string()
-      .refine((value) => decodeFieldKey(value) !== null, { message: 'invalid' }),
+    FIELD_ENCRYPTION_KEY: optional(
+      z.string().refine((value) => decodeFieldKey(value) !== null, { message: 'invalid' }),
+    ),
     /** API'nin dışarıdan görünen kök adresi; üretimde zorunlu. */
     BETTER_AUTH_URL: optional(z.url()),
     /** İzinli web kökenleri (tam eşleşme). CORS ve Better Auth `trustedOrigins` aynı listeyi kullanır. */
@@ -190,11 +197,18 @@ export const configSchema = z
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_URL'], message: 'required' })
     if (isPlaceholderSecret(config.BETTER_AUTH_SECRET))
       ctx.addIssue({ code: 'custom', path: ['BETTER_AUTH_SECRET'], message: 'placeholder' })
-    if (isPlaceholderFieldKey(config.FIELD_ENCRYPTION_KEY))
+    if (!config.FIELD_ENCRYPTION_KEY)
+      ctx.addIssue({ code: 'custom', path: ['FIELD_ENCRYPTION_KEY'], message: 'required' })
+    else if (isPlaceholderFieldKey(config.FIELD_ENCRYPTION_KEY))
       ctx.addIssue({ code: 'custom', path: ['FIELD_ENCRYPTION_KEY'], message: 'placeholder' })
     if (config.FILE_SCANNER === 'off')
       ctx.addIssue({ code: 'custom', path: ['FILE_SCANNER'], message: 'not_for_production' })
   })
+  // Üretimde anahtar yukarıda zorunlu kılındı; başka ortamda bilinen geliştirme anahtarına düşer.
+  .transform((config) => ({
+    ...config,
+    FIELD_ENCRYPTION_KEY: config.FIELD_ENCRYPTION_KEY ?? DEVELOPMENT_FIELD_ENCRYPTION_KEY,
+  }))
 
 export type Config = z.infer<typeof configSchema>
 

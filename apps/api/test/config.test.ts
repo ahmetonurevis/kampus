@@ -3,6 +3,7 @@ import { describe, test } from 'node:test'
 
 import {
   DEFAULT_STORAGE_DIR,
+  DEVELOPMENT_FIELD_ENCRYPTION_KEY,
   DISK_STORAGE_IN_PRODUCTION_MESSAGE,
   fileScannerDriver,
   isDevelopmentLike,
@@ -12,6 +13,7 @@ import {
   TEST_FIELD_ENCRYPTION_KEY,
   useSecureCookies,
 } from '../src/config.ts'
+import { decodeFieldKey } from '../src/lib/field-crypto.ts'
 import { mailDriver } from '../src/services/mailer.ts'
 
 const base = {
@@ -66,14 +68,26 @@ describe('ortam yapılandırması', () => {
     FIELD_ENCRYPTION_KEY: PRODUCTION_FIELD_KEY,
   }
 
-  test('IST-020: alan şifreleme anahtarı zorunlu, base64 ve tam 32 bayt', () => {
+  test('IST-020: geliştirme ve testte anahtar yoksa bilinen geliştirme anahtarına düşer', () => {
+    for (const NODE_ENV of ['development', 'test'])
+      for (const FIELD_ENCRYPTION_KEY of [undefined, '']) {
+        const config = loadConfig({ ...base, NODE_ENV, FIELD_ENCRYPTION_KEY })
+        assert.equal(config.FIELD_ENCRYPTION_KEY, DEVELOPMENT_FIELD_ENCRYPTION_KEY)
+        assert.equal(decodeFieldKey(config.FIELD_ENCRYPTION_KEY)?.length, 32)
+      }
+  })
+
+  test('IST-020: üretimde alan şifreleme anahtarı yoksa reddedilir', () => {
+    for (const FIELD_ENCRYPTION_KEY of [undefined, ''])
+      assert.throws(
+        () => parseConfig({ ...production, FIELD_ENCRYPTION_KEY }),
+        /FIELD_ENCRYPTION_KEY/,
+      )
+  })
+
+  test('IST-020: verilen alan anahtarı base64 ve tam 32 bayt olmalı', () => {
     assert.equal(parseConfig(base).FIELD_ENCRYPTION_KEY, TEST_FIELD_ENCRYPTION_KEY)
-    assert.throws(
-      () => parseConfig({ ...base, FIELD_ENCRYPTION_KEY: undefined }),
-      /FIELD_ENCRYPTION_KEY/,
-    )
     for (const key of [
-      '',
       'bu-base64-degil!',
       Buffer.alloc(16, 7).toString('base64'),
       Buffer.alloc(33, 7).toString('base64'),
@@ -82,8 +96,7 @@ describe('ortam yapılandırması', () => {
       assert.throws(
         () => parseConfig({ ...base, FIELD_ENCRYPTION_KEY: key }),
         (error: Error) =>
-          error.message.includes('FIELD_ENCRYPTION_KEY') &&
-          (key === '' || !error.message.includes(key)),
+          error.message.includes('FIELD_ENCRYPTION_KEY') && !error.message.includes(key),
         key,
       )
   })
@@ -92,8 +105,7 @@ describe('ortam yapılandırması', () => {
     assert.equal(parseConfig(production).FIELD_ENCRYPTION_KEY, PRODUCTION_FIELD_KEY)
     for (const key of [
       TEST_FIELD_ENCRYPTION_KEY,
-      // apps/api/.env.example değeri
-      'Q0hBTkdFX01FLWRldi1maWVsZC1rZXktMzItYnl0ZXM=',
+      DEVELOPMENT_FIELD_ENCRYPTION_KEY, // apps/api/.env.example değeri
       Buffer.from('CHANGE_ME-baska-yer-tutucu-32bayt').subarray(0, 32).toString('base64'),
       Buffer.alloc(32).toString('base64'),
       Buffer.from('ab'.repeat(16)).toString('base64'),

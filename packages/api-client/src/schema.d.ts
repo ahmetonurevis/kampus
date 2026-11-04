@@ -8356,6 +8356,8 @@ export interface components {
             missing: ("first" | "second") | null;
             /** @description Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında mı */
             secondRatingRequested: boolean;
+            /** @description Teslim için ikinci puanlama istemi yapıldı mı (sürümden bağımsız; istem teslim başına bir, DOM-BEC-024). Yeniden teslimle gelen sürüm kapsamda değilken de `true` kalır; elle istem bu durumda 409 `second_rating_exists` olur */
+            secondRatingRequestUsed: boolean;
             /** @description Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına ve kapsamındaki koordinatöre görünür. Son puanı koordinatör verir (`final-scores`); o zamana kadar sonuç kursiyere kapalıdır */
             disagreementCriterionIds: string[];
             /** @description Kişinin görebildiği puanlar rolleriyle (core `scoresVisibleToRater`): öğretmen ve yönetici kendi puanını ve kesinleşen puanı; atamanın dersinin/seviyesinin koordinatörü hepsini, ama sürümü kendisi puanladıysa yalnız kendininkini (kör puanlama; DOM-BEC-024, DOM-YTK-027) */
@@ -12560,6 +12562,8 @@ export interface components {
             missing: ("first" | "second") | null;
             /** @description Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında mı */
             secondRatingRequested: boolean;
+            /** @description Teslim için ikinci puanlama istemi yapıldı mı (sürümden bağımsız; istem teslim başına bir, DOM-BEC-024). Yeniden teslimle gelen sürüm kapsamda değilken de `true` kalır; elle istem bu durumda 409 `second_rating_exists` olur */
+            secondRatingRequestUsed: boolean;
             /** @description Uyuşmazlık kriterleri; bantlar yine yalnız kendi puanlayıcısına ve kapsamındaki koordinatöre görünür. Son puanı koordinatör verir (`final-scores`); o zamana kadar sonuç kursiyere kapalıdır */
             disagreementCriterionIds: string[];
             /** @description Kişinin görebildiği puanlar rolleriyle (core `scoresVisibleToRater`): öğretmen ve yönetici kendi puanını ve kesinleşen puanı; atamanın dersinin/seviyesinin koordinatörü hepsini, ama sürümü kendisi puanladıysa yalnız kendininkini (kör puanlama; DOM-BEC-024, DOM-YTK-027) */

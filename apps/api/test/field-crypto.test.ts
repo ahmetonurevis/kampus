@@ -16,7 +16,8 @@ const binding: FieldBinding = {
   institutionId: 'inst-a',
   table: 'student_health_profiles',
   column: 'content_ciphertext',
-  rowKey: 'stu-1',
+  rowKey: 'row-1',
+  context: ['stu-1', 'explicit_consent'],
 }
 const PLAIN = JSON.stringify({ allergies: [{ name: 'Fıstık', severity: 'severe' }] })
 const isDecryptionError = (error: unknown) =>
@@ -36,11 +37,15 @@ describe('alan şifreleme (IST-020, AES-256-GCM)', () => {
     assert.notEqual(cipher.encrypt(binding, PLAIN).ciphertext, field.ciphertext)
   })
 
-  test('DOM-ILT-035: başka kurum, öğrenci, tablo ya da kolona kopyalanan değer çözülmez', () => {
+  test('DOM-ILT-035: başka kurum, satır, bağlı alan, tablo ya da kolona kopyalanan değer çözülmez', () => {
     const field = cipher.encrypt(binding, PLAIN)
     for (const other of [
       { ...binding, institutionId: 'inst-b' },
-      { ...binding, rowKey: 'stu-2' },
+      { ...binding, rowKey: 'row-2' },
+      { ...binding, context: ['stu-2', 'explicit_consent'] },
+      { ...binding, context: ['stu-1', 'vital_interest'] },
+      { ...binding, context: ['stu-1'] },
+      { ...binding, context: undefined },
       { ...binding, table: 'other_table' },
       { ...binding, column: 'other_column' },
     ])

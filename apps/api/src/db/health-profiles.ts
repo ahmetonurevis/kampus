@@ -36,14 +36,23 @@ export class HealthProfileIntegrityError extends Error {
   }
 }
 
-const binding = (institutionId: string, studentId: string): FieldBinding => ({
+/**
+ * Şifreli içerik satırın kimliğine (`id`), öğrenciye ve hukuki dayanağa bağlıdır: başka satırın
+ * değeri kopyalanırsa ya da ham satırda dayanak kodu değiştirilirse çözülmez.
+ */
+const binding = (
+  institutionId: string,
+  row: { id: string; studentId: string; legalBasis: string },
+): FieldBinding => ({
   institutionId,
   table: 'student_health_profiles',
   column: 'content_ciphertext',
-  rowKey: studentId,
+  rowKey: row.id,
+  context: [row.studentId, row.legalBasis],
 })
 
 const columns = {
+  id: studentHealthProfiles.id,
   contentCiphertext: studentHealthProfiles.contentCiphertext,
   keyVersion: studentHealthProfiles.keyVersion,
   legalBasis: studentHealthProfiles.legalBasis,
@@ -61,7 +70,7 @@ function decode(
 ): StoredHealthProfile {
   let content: HealthProfileContent
   try {
-    const plain = cipher.decrypt(binding(institutionId, studentId), {
+    const plain = cipher.decrypt(binding(institutionId, { ...row, studentId }), {
       ciphertext: row.contentCiphertext,
       keyVersion: row.keyVersion,
     })
@@ -123,32 +132,47 @@ export async function saveHealthProfile(
   cipher: FieldCipher,
 ): Promise<StoredHealthProfile | null> {
   const content = healthProfileContentSchema.parse(input.content)
-  const encrypted = cipher.encrypt(binding(institutionId, studentId), JSON.stringify(content))
-  const values = {
+  const plaintext = JSON.stringify(content)
+  const encrypt = (id: string) =>
+    cipher.encrypt(
+      binding(institutionId, { id, studentId, legalBasis: input.legalBasis }),
+      plaintext,
+    )
+  const values = (encrypted: ReturnType<typeof encrypt>) => ({
     contentCiphertext: encrypted.ciphertext,
     keyVersion: encrypted.keyVersion,
     legalBasis: input.legalBasis,
     updatedByUserId: input.actorUserId,
     updatedAt: input.now,
+  })
+  // Satır kimliği şifrelemeden önce bilinmeli (AAD'ye girer) ve güncellemede değişmez.
+  const [existing] = await tx
+    .select({ id: studentHealthProfiles.id })
+    .from(studentHealthProfiles)
+    .where(activeRow(institutionId, studentId))
+    .limit(1)
+  if (existing) {
+    const [updated] = await tx
+      .update(studentHealthProfiles)
+      .set({ ...values(encrypt(existing.id)), version: sql`${studentHealthProfiles.version} + 1` })
+      .where(
+        and(
+          activeRow(institutionId, studentId),
+          eq(studentHealthProfiles.id, existing.id),
+          eq(studentHealthProfiles.version, input.expectedVersion),
+        ),
+      )
+      .returning(columns)
+    return updated ? decode(cipher, institutionId, studentId, updated) : null
   }
-  const [updated] = await tx
-    .update(studentHealthProfiles)
-    .set({ ...values, version: sql`${studentHealthProfiles.version} + 1` })
-    .where(
-      and(
-        activeRow(institutionId, studentId),
-        eq(studentHealthProfiles.version, input.expectedVersion),
-      ),
-    )
-    .returning(columns)
-  if (updated) return decode(cipher, institutionId, studentId, updated)
   if (input.expectedVersion !== 1) return null
+  const id = randomUUID()
   const [created] = await tx
     .insert(studentHealthProfiles)
     .values({
-      ...values,
+      ...values(encrypt(id)),
       institutionId,
-      id: randomUUID(),
+      id,
       studentId,
       version: 2,
       createdAt: input.now,

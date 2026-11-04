@@ -139,6 +139,89 @@ describe('sağlık bilgisi deposu (IST-020, DOM-ILT-035)', () => {
     }
   })
 
+  test("DOM-ILT-035: aynı öğrencinin başka satırından kopyalanan şifreli içerik çözülmez (satır kimliği AAD'de)", async () => {
+    const inst = await institution()
+    await save(inst, 'test-s1')
+    const [old] = await db
+      .select()
+      .from(studentHealthProfiles)
+      .where(eq(studentHealthProfiles.institutionId, inst))
+    assert.ok(old)
+    await db
+      .update(studentHealthProfiles)
+      .set({ archivedAt: FIXED_NOW })
+      .where(eq(studentHealthProfiles.id, old.id))
+    await save(inst, 'test-s1')
+    const [active] = await db
+      .select()
+      .from(studentHealthProfiles)
+      .where(
+        and(
+          eq(studentHealthProfiles.institutionId, inst),
+          sql`${studentHealthProfiles.archivedAt} is null`,
+        ),
+      )
+    assert.ok(active)
+    assert.notEqual(active.id, old.id)
+    // Aynı kurum, öğrenci ve dayanak; yalnız satır kimliği farklı.
+    assert.equal(active.legalBasis, old.legalBasis)
+    await db
+      .update(studentHealthProfiles)
+      .set({ contentCiphertext: old.contentCiphertext })
+      .where(eq(studentHealthProfiles.id, active.id))
+    await assert.rejects(
+      loadHealthProfile(db, inst, 'test-s1', cipher),
+      (error: unknown) => error instanceof HealthProfileIntegrityError,
+    )
+  })
+
+  test('DOM-ILT-035: ham satırda hukuki dayanak değiştirilirse içerik çözülmez', async () => {
+    const inst = await institution()
+    await save(inst, 'test-s1')
+    await db
+      .update(studentHealthProfiles)
+      .set({ legalBasis: 'legal_obligation' })
+      .where(eq(studentHealthProfiles.institutionId, inst))
+    await assert.rejects(
+      loadHealthProfile(db, inst, 'test-s1', cipher),
+      (error: unknown) =>
+        error instanceof HealthProfileIntegrityError && !error.message.includes(ALLERGEN),
+    )
+  })
+
+  test('DOM-ILT-035: güncellemede satır kimliği değişmez, dayanak değişince içerik yeniden şifrelenir ve çözülür', async () => {
+    const inst = await institution()
+    await save(inst, 'test-s1')
+    const rowOf = async () => {
+      const [row] = await db
+        .select()
+        .from(studentHealthProfiles)
+        .where(eq(studentHealthProfiles.institutionId, inst))
+      assert.ok(row)
+      return row
+    }
+    const before = await rowOf()
+    const next = await saveHealthProfile(
+      db,
+      inst,
+      'test-s1',
+      {
+        content,
+        legalBasis: 'vital_interest',
+        expectedVersion: 2,
+        actorUserId: 'test-u-admin',
+        now: FIXED_NOW,
+      },
+      cipher,
+    )
+    assert.equal(next?.legalBasis, 'vital_interest')
+    const after = await rowOf()
+    assert.equal(after.id, before.id)
+    assert.equal(after.legalBasis, 'vital_interest')
+    assert.notEqual(after.contentCiphertext, before.contentCiphertext)
+    assert.deepEqual((await loadHealthProfile(db, inst, 'test-s1', cipher))?.content, content)
+  })
+
   test('DOM-ILT-035: sürüm çakışması null döner ve satırı değiştirmez', async () => {
     const inst = await institution()
     const first = await save(inst, 'test-s1')

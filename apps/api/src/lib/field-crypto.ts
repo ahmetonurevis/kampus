@@ -5,7 +5,7 @@ import { createCipheriv, createDecipheriv, hkdfSync, randomBytes } from 'node:cr
  * IST-020). AES-256-GCM; anahtar ortamdaki ana anahtardan (`FIELD_ENCRYPTION_KEY`) kurum ve
  * sürüm başına HKDF-SHA256 ile türetilir, böylece bir kurumun türetilmiş anahtarı başka kurumun
  * verisini açmaz. Her şifrelemede rastgele 12 baytlık IV. Ek doğrulanmış veri (AAD) değeri
- * satıra bağlar (kurum, tablo, kolon, satır anahtarı, anahtar sürümü): şifreli değer başka
+ * satıra bağlar (kurum, tablo, kolon, satır kimliği, satırdaki bağlı alanlar, anahtar sürümü): şifreli değer başka
  * öğrencinin ya da kurumun satırına kopyalanırsa çözülmez.
  *
  * Saklama biçimi tek pakettir: base64(IV ‖ etiket ‖ şifreli metin) ve ayrı `key_version` kolonu.
@@ -27,8 +27,13 @@ export type FieldBinding = {
   institutionId: string
   table: string
   column: string
-  /** Satırın kurum içindeki kimliği (ör. öğrenci kimliği). */
+  /** Satırın kurum içindeki kimliği (satır `id`'si; yazmadan önce bilinmeli). */
   rowKey: string
+  /**
+   * Değere ayrıca bağlanan, aynı satırdaki diğer alanlar (ör. öğrenci kimliği, hukuki dayanak);
+   * sıra sabittir. Ham satırda biri değiştirilirse değer çözülmez.
+   */
+  context?: readonly string[]
 }
 
 export type EncryptedField = {
@@ -70,6 +75,7 @@ function associatedData(binding: FieldBinding, keyVersion: number): Buffer {
       binding.column,
       binding.institutionId,
       binding.rowKey,
+      ...(binding.context ?? []),
     ]),
     'utf8',
   )

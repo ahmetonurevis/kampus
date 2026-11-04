@@ -14,7 +14,7 @@ import { keys, oneOf, requiredColumns } from './columns.ts'
  * `lib/health-profile.ts`). Özel nitelikli veri (KVKK m.6, sınıf Ö): normalleştirme ölçütü 5
  * gereği `records.data` yerine ayrı tablodadır ve içerik uygulama düzeyinde şifrelidir
  * (AES-256-GCM, kurum anahtarı `FIELD_ENCRYPTION_KEY`'den türetilir; `src/lib/field-crypto.ts`).
- * Şifreli değer kurum, öğrenci, tablo ve kolona bağlıdır; başka satıra kopyalanırsa çözülmez.
+ * Şifreli değer kurum, satır kimliği (`id`), öğrenci, hukuki dayanak, tablo ve kolona bağlıdır; başka satıra kopyalanırsa ya da dayanak kodu değiştirilirse çözülmez. Satır kimliği uygulamada üretilir (yazmadan önce bilinmeli; veritabanı varsayılanı yok).
  * Hukuki dayanak kısa koddur, şifresizdir (rapor ve imha için). Öğrenci kaydı `records`'tadır
  * (yabancı anahtar yok). Kaldırma arşivdir; kurum içinde öğrenci başına bir etkin satır.
  *
@@ -32,8 +32,11 @@ export const studentHealthProfiles = pgTable(
     studentId: text('student_id').notNull(),
     // kvkk: Ö — şifreli içerik: base64(IV ‖ GCM etiketi ‖ şifreli JSON); düz metin tutulmaz
     contentCiphertext: text('content_ciphertext').notNull(),
+    // Kişisel veri değil: yalnız anahtar sürümü (kvkk sınıfı gerekmez).
     keyVersion: integer('key_version').notNull(),
-    // kvkk: Ö — işlemenin hukuki dayanağı (kod; sağlık içeriği taşımaz)
+    // kvkk: K — işleme dayanağı kodu, sağlık verisinin kendisi değil; satırın varlığı zaten sağlık
+    // kaydı olduğunu gösterir, içerik şifreli kolondadır. AAD'ye girer (ham satırda değişirse
+    // içerik çözülmez).
     legalBasis: text('legal_basis').$type<HealthLegalBasis>().notNull(),
     // kvkk: K — son yazan kullanıcı (silinen hesabın izi denetim kaydındadır; yabancı anahtar yok)
     updatedByUserId: text('updated_by_user_id').notNull(),

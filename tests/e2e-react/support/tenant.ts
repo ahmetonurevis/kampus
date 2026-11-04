@@ -196,6 +196,8 @@ export function createTenantFactory(): TenantFactory {
     LOG_LEVEL: 'silent',
     DATABASE_URL: e2e.databaseUrl,
     BETTER_AUTH_SECRET: randomUUID() + randomUUID(),
+    // Çalışan API ile aynı anahtar (`env.ts`): fabrikanın yazacağı şifreli alan API'de çözülür.
+    FIELD_ENCRYPTION_KEY: e2e.fieldEncryptionKey,
     BETTER_AUTH_URL: e2e.webOrigin,
     CORS_ORIGINS: e2e.webOrigin,
   })

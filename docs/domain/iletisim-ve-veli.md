@@ -166,11 +166,11 @@ Bugünkü kodda duyurular yalnız okunur örnek veridir, mesajlar öğrenci + ö
 
 ### DOM-ILT-035 · Sağlık ve özel nitelikli veri
 
-- **Kural:** Öğrencinin alerjisi, kronik hastalığı, düzenli ilacı, engellilik durumu gibi bilgiler yalnız yapılandırılmış "sağlık ve acil bilgi" alanında, açık rıza veya kanuni dayanakla tutulur; serbest not, duyuru, mesaj ve bültende tutulmaz. Erişim ihtiyaç bazlıdır: yönetici, sınıf rehber öğretmeni, ilgili etkinlik/servis sorumlusu ve yalnız acil müdahale bilgisi (ör. "fıstık alerjisi, adrenalin oto-enjektörü çantada"). Her okuma denetim kaydına yazılır (`DOM-YTK-052`). Yemek menüsündeki alerjen bilgisi genel bilgidir, öğrenci verisi değildir.
+- **Kural:** Öğrencinin alerjisi, kronik hastalığı, düzenli ilacı, engellilik durumu gibi bilgiler yalnız yapılandırılmış "sağlık ve acil bilgi" alanında, açık rıza veya kanuni dayanakla tutulur; serbest not, duyuru, mesaj ve bültende tutulmaz. Erişim ihtiyaç bazlıdır. Tam okuma: yönetici, sınıf rehber öğretmeni, velayetli ve iletişimi kısıtsız veli (öğrenci 18 yaşından küçükse) ve 18+ öğrencinin kendisi. Yalnız acil müdahale bilgisi (ör. "fıstık alerjisi, adrenalin oto-enjektörü çantada"): sınıfa derse giren öğretmen ve (modeli gelince) ilgili etkinlik/servis sorumlusu. Yazma: yönetici, velayetli kısıtsız veli (18 yaşından küçükse) ve 18+ öğrenci. Ön büro, sınıfa bağı olmayan öğretmen ve reşit olmayan öğrenci erişemez. Her okuma denetim kaydına yazılır (`DOM-YTK-052`). Yemek menüsündeki alerjen bilgisi genel bilgidir, öğrenci verisi değildir.
 - **Gerekçe:** Sağlık verisi özel nitelikli veridir; işlenmesi yasaktır, istisnalar sınırlıdır ve Kurul önlemleri zorunludur.
 - **Kaynak:** KVKK md. 6/1, 6/3-a, 6/3-c (hayat ve beden bütünlüğü), 6/4. Kurul'un "yeterli önlemler" kararının güncel metni **doğrulanmalı**.
 - **Kurum türü:** ikisi
-- **Kodda:** yok — öğrenci sağlık alanı yok.
+- **Kodda:** kısmen — core kuralı (`packages/school-core/src/lib/health-profile.ts`: yapılandırılmış alanlar, hukuki dayanak, rol ve ilişkiye göre acil/tam erişim düzeyi), şifreli tablo `student_health_profiles` (migration 0060) ve depo `apps/api/src/db/health-profiles.ts`; API ucu, okuma denetimi ve ekran sonraki adımdadır. Yetişkin (18+) öğrencinin velisi sağlık bilgisine erişemez: velayet 18'de biter (`DOM-ILT-037` ile aynı yetişkinlik kuralı).
 
 ### DOM-ILT-036 · İzin formu konu türlüdür ve hedefi açılışta çözülür
 

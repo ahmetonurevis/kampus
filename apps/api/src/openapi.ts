@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 import { drizzle } from 'drizzle-orm/node-postgres'
 
 import { buildApp } from './app.ts'
-import { loadConfig } from './config.ts'
+import { loadConfig, TEST_FIELD_ENCRYPTION_KEY } from './config.ts'
 import { schema } from './db/client.ts'
 
 // Betik: `pnpm --filter @kampus/api openapi` belgeyi yazar, `openapi:check` farkı denetler.
@@ -16,6 +16,7 @@ const config = loadConfig({
   LOG_LEVEL: 'silent',
   DATABASE_URL: 'postgres://openapi@localhost:5432/openapi',
   BETTER_AUTH_SECRET: 'openapi-generation-only-not-a-secret',
+  FIELD_ENCRYPTION_KEY: TEST_FIELD_ENCRYPTION_KEY,
   BETTER_AUTH_URL: 'http://localhost:3000',
 })
 const app = await buildApp({ config, db: drizzle.mock({ schema }) })

@@ -96,6 +96,11 @@ export const UNIQUE_CONSTRAINTS = {
   // İlk yazım yarışı: `onConflictDoNothing` 409'a çevirir; kısıt hata olarak yükselmez.
   notification_preferences_pkey: RETRY,
 
+  // --- Sağlık ve acil bilgi (IST-020, migration 0060) ----------------------------------------
+  // İlk yazım yarışı: `onConflictDoNothing` 409'a çevirir; kısıt hata olarak yükselmez.
+  student_health_profiles_pkey: RETRY,
+  student_health_profiles_student_key: RETRY,
+
   // --- Kazanım kataloğu (DOM-KYN-011, migration 0050) ----------------------------------------
   platform_learning_outcomes_pkey: RETRY,
   learning_outcomes_pkey: rule(

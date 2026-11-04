@@ -112,13 +112,44 @@ function withEnrollment(pages: NavigationPage[]): NavigationPage[] {
   const at = before >= 0 ? before : pages.length
   return [...pages.slice(0, at), ENROLLMENT_PAGE, ...pages.slice(at)]
 }
+
+/**
+ * Öğretmenin deneme dersi sonucu sayfası (ON-279; IST-079, DOM-DIL-031, DOM-YTK-080): kendi
+ * gruplarının derslerine katılan adaylar ve seviye uygunluğu formu. Deneme dersi yalnız dil
+ * okulundadır (okulda öğretmen aday koleksiyonuna erişemez); uçlar `crm` modülündedir, kapalıysa
+ * sayfa gizlenir. Vue demosunda karşılığı yoktur (`apiOnly`). AKADEMİK kategorisinde dil okulu
+ * sayfalarından (kur, grup, seviye tespiti …) hemen önce, yoksa kategorinin sonuna; kategori
+ * yoksa RAPORLAR'dan (yoksa SİSTEM'den) önce girer.
+ */
+export const TRIAL_RESULTS_PAGE: NavigationPage = {
+  path: 'deneme-sonuclari',
+  title: 'Deneme Dersleri',
+  icon: 'CalendarCheck2',
+  module: 'crm',
+  view: 'Crm',
+  description: 'Gruplarınızın derslerine katılan adayların seviye uygunluğunu yazın.',
+  group: 'AKADEMİK',
+  apiOnly: true,
+  institutionTypes: ['language_school'],
+}
+
+function withTrialResults(pages: NavigationPage[]): NavigationPage[] {
+  if (pages.some((page) => page.path === TRIAL_RESULTS_PAGE.path)) return pages
+  const group = TRIAL_RESULTS_PAGE.group
+  const languagePages = pages.findIndex((page) => page.group === group && page.institutionTypes)
+  const last = pages.findLastIndex((page) => page.group === group)
+  const before = pages.findIndex((page) => page.group === 'RAPORLAR' || page.group === 'SİSTEM')
+  const at =
+    languagePages >= 0 ? languagePages : last >= 0 ? last + 1 : before >= 0 ? before : pages.length
+  return [...pages.slice(0, at), TRIAL_RESULTS_PAGE, ...pages.slice(at)]
+}
 // Onur: kayıt ve finans sonu
 
 // Anahtar sırası temel menüdekiyle aynıdır.
 export const navigation: Record<Role, NavigationPage[]> = {
   yonetici: withEnrollment(withCommunication('yonetici')),
   onburo: withCommunication('onburo'),
-  ogretmen: withCommunication('ogretmen'),
+  ogretmen: withTrialResults(withCommunication('ogretmen')),
   ogrenci: withCommunication('ogrenci'),
   veli: withCommunication('veli'),
 }

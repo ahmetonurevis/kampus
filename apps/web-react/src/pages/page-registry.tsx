@@ -41,6 +41,10 @@ const MeetingsPage = lazy(async () => ({
 const EnrollmentPage = lazy(async () => ({
   default: (await import('./crm/EnrollmentPage.tsx')).EnrollmentPage,
 }))
+// Öğretmenin deneme dersi sonucu ekranı (dil okulu; DOM-DIL-031, DOM-YTK-080).
+const TrialResultsPage = lazy(async () => ({
+  default: (await import('./crm/TrialResultsPage.tsx')).TrialResultsPage,
+}))
 const RenewalsPage = lazy(async () => ({
   default: (await import('./finance/RenewalsPage.tsx')).RenewalsPage,
 }))
@@ -72,6 +76,8 @@ function renderOnurPage(role: RoleKey, page: NavPage): ReactNode {
     case 'onburo/aday':
     case 'yonetici/aday':
       return <ProspectDetailPage page={page} />
+    case 'ogretmen/deneme-sonuclari':
+      return <TrialResultsPage page={page} />
     case 'yonetici/kayit-yenileme':
     case 'onburo/kayit-yenileme':
     case 'veli/kayit-yenileme':

@@ -806,6 +806,131 @@ test.describe('dil okulu deneme dersi', () => {
   })
 })
 
+test.describe('öğretmenin deneme dersi sonucu (ON-279)', () => {
+  /** Öğretmen t1'in grubu (c1, 7-A) dersine planlanmış deneme; ön büro planlamış gibi kurulur. */
+  const trialLesson = (lessonId: string, date: string) => ({
+    lessonId,
+    classId: 'c1',
+    date,
+    duration: 40,
+    guardianConsentAt: null,
+    scheduledAt: at(-5, 9),
+    by: { role: 'onburo', userId: 'e2e-onburo' },
+  })
+
+  test('öğretmen kendi grubunun deneme adayını iletişim bilgisi olmadan görür ve sonucu yazar; aşama değişmez (DOM-DIL-031, DOM-YTK-080)', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      type: 'language_school',
+      roles: ['ogretmen'],
+      records: [
+        prospect({
+          id: 'e2e-pr-sonuc',
+          name: 'Ece Tan',
+          phone: '05550300110',
+          interest: 'B1 genel İngilizce',
+          stage: 'Görüşme planlandı',
+          minor: false,
+          trialLesson: trialLesson('e2e-lesson-held', at(-1, 10)),
+        }),
+        prospect({
+          id: 'e2e-pr-yakinda',
+          name: 'Kaan Er',
+          phone: '05550300111',
+          interest: 'A2 genel İngilizce',
+          stage: 'Görüşme planlandı',
+          minor: false,
+          trialLesson: trialLesson('e2e-lesson-soon', at(3, 10)),
+        }),
+        prospect({ id: 'e2e-pr-denemesiz', name: 'Selin Ak', phone: '05550300112' }),
+        lesson('e2e-lesson-held', at(-1, 10)),
+        lesson('e2e-lesson-soon', at(3, 10)),
+      ],
+    })
+    await loginAs(school.user('ogretmen'))
+    await page.goto('/ogretmen/deneme-sonuclari')
+    await expect(page.getByRole('heading', { name: 'Deneme Dersleri', level: 1 })).toBeVisible()
+    const rows = bodyRows(page, 'Deneme dersi adayları')
+    await expect(rows).toHaveCount(2)
+    // Denemesi olmayan aday ve adayın telefonu öğretmene dönmez.
+    await expect(page.getByText('Selin Ak')).toHaveCount(0)
+    await expect(page.getByText('05550300110')).toHaveCount(0)
+    const held = rows.filter({ hasText: 'Ece Tan' })
+    await expect(held).toContainText('7-A')
+    await expect(held).toContainText('Sonuç bekliyor')
+    await expect(rows.filter({ hasText: 'Kaan Er' })).toContainText('Ders bekleniyor')
+
+    // Ders başlamadan form kilitlidir.
+    await page.getByRole('button', { name: 'Kaan Er deneme sonucunu yaz' }).click()
+    const panel = page.getByRole('dialog', { name: 'Deneme dersi sonucu' })
+    await expect(panel.getByText(/Deneme dersi henüz yapılmadı/)).toBeVisible()
+    await expect(panel.getByRole('button', { name: 'Sonucu kaydet' })).toBeDisabled()
+    await panel.getByRole('button', { name: 'Vazgeç' }).click()
+    await expect(panel).toBeHidden()
+
+    await page.getByRole('button', { name: 'Ece Tan deneme sonucunu yaz' }).click()
+    await panel.getByRole('button', { name: 'Sonucu kaydet' }).click()
+    await expect(panel.getByText('Seviye uygunluğunu seçin.')).toBeVisible()
+    await panel.getByRole('radio', { name: 'Alt kur önerilir' }).check()
+    await panel.getByLabel('Kısa not (isteğe bağlı)').fill('Konuşmada alt kur daha rahat eder.')
+    await panel.getByRole('button', { name: 'Sonucu kaydet' }).click()
+    await expect(toast(page, 'Deneme dersi sonucu kaydedildi.')).toBeVisible()
+    await expect(panel).toBeHidden()
+    await expect(held).toContainText('Alt kur önerilir')
+
+    // Kalıcılık API'den: sonuç yazıldı, aşama değişmedi.
+    const stored = await (
+      await api(school.user('yonetici'))
+    ).get('/api/v1/collections/prospects/e2e-pr-sonuc')
+    expect(stored.status).toBe(200)
+    const record = (
+      stored.body as {
+        data: { record: { stage: string; trialLesson: { result?: object } } }
+      }
+    ).data.record
+    expect(record.stage).toBe('Görüşme planlandı')
+    expect(record.trialLesson.result).toMatchObject({
+      fit: 'lower_level',
+      note: 'Konuşmada alt kur daha rahat eder.',
+    })
+
+    // Yeniden açılan form önceki kararla gelir; karar düzeltilebilir.
+    await page.getByRole('button', { name: 'Ece Tan deneme sonucunu düzelt' }).click()
+    await expect(panel.getByRole('radio', { name: 'Alt kur önerilir' })).toBeChecked()
+    await expect(panel.getByLabel('Kısa not (isteğe bağlı)')).toHaveValue(
+      'Konuşmada alt kur daha rahat eder.',
+    )
+    await panel.getByRole('button', { name: 'Vazgeç' }).click()
+    await expect(panel).toBeHidden()
+
+    // 390 px genişlikte liste yatay taşmaz.
+    await page.setViewportSize({ width: 390, height: 844 })
+    await expect(page.getByRole('heading', { name: 'Deneme Dersleri', level: 1 })).toBeVisible()
+    await expectNoHorizontalOverflow(page)
+  })
+
+  test('okul kurumunda Deneme Dersleri bulunmaz; dil okulunda ön büro kendi ana sayfasına döner (DOM-YTK-080)', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['ogretmen'], records: [] })
+    await loginAs(school.user('ogretmen'))
+    await page.goto('/ogretmen/deneme-sonuclari')
+    await expect(
+      page.getByRole('heading', { name: 'Bu sayfa kampüste bulunamadı.', level: 1 }),
+    ).toBeVisible()
+    const language = await tenant({ type: 'language_school', roles: ['onburo'], records: [] })
+    await loginAs(language.user('onburo'))
+    await page.goto('/ogretmen/deneme-sonuclari')
+    await expect(page).toHaveURL(/\/onburo\/dashboard/)
+  })
+})
+
 test.describe('inceleme bulguları', () => {
   test('başka kurumun aday adresi "Kayıt bulunamadı" gösterir; kapsam dışı kayıt sızmaz (DOM-KAY-007)', async ({
     page,

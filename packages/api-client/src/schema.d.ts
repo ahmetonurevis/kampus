@@ -5744,6 +5744,26 @@ export interface paths {
         patch: operations["updateStudentHealthProfile"];
         trace?: never;
     };
+    "/api/v1/reports/skills": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Beceri ve CEFR raporu
+         * @description Dil grubu (`groupBy=class`) ya da kur seviyesi (`groupBy=level`) başına etkin kursiyer sayısı, okuma/dinleme/yazma/konuşma ortalaması, kanıt sayısı ve güncel genel seviye dağılımı (IST-118, DOM-BEC-037). Beceri puanı ilerleme panosunun kanıt kümesidir (değerlendirme türü, sayılan deneme ya da kesinleşmiş puanlı teslim); her kursiyer eşit ağırlıklıdır, kanıtsız beceri `null`. Her okumada hesaplanır, saklanmaz; kişi adı ya da puanı içermez. Kanıta inmek için grup kimliğiyle grup listesi ve kursiyerin CEFR profili kullanılır. Roller: `yonetici` kurum geneli, `ogretmen` yalnız kendi grubu ve koordinatörü olduğu seviyenin grupları; diğer roller 403. Yalnız dil okulunda (okulda 404); modül `learning`, kapalıysa 403 `module_disabled`. Bilinmeyen sorgu parametresi 400.
+         */
+        get: operations["getSkillReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -9761,6 +9781,70 @@ export interface components {
                 /** @description Eğilim: son nokta, önceki en çok üç noktanın ortalamasına göre (±5 puan) */
                 trend: ("up" | "down" | "steady") | null;
             }[];
+        };
+        SkillReportInput: {
+            /** @enum {string} */
+            groupBy: "class" | "level";
+            /** Format: date-time */
+            computedAt: string;
+            groups: {
+                /** @description `class`: dil grubu kimliği; `level`: seviye anahtarı */
+                id: string;
+                name: string;
+                /** @description Grubun kur seviyesi; seviye satırında satırın kendisi */
+                level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @description Etkin kursiyer sayısı */
+                studentCount: number;
+                /** @description Okuma, dinleme, yazma ve konuşma; her zaman dördü */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking";
+                    label: string;
+                    /** @description Kanıtı olan kursiyer ortalamalarının ortalaması, bir ondalık; kanıt yoksa `null` */
+                    average: number | null;
+                    /** @description Sayılan görev sonucu sayısı */
+                    evidenceCount: number;
+                    /** @description Bu beceride kanıtı olan kursiyer sayısı */
+                    studentCount: number;
+                }[];
+                /** @description Güncel seviye dağılımı, seviye sırasıyla */
+                levels: {
+                    /** @enum {string} */
+                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    label: string;
+                    /** @description Güncel genel seviyesi bu olan kursiyer sayısı */
+                    count: number;
+                }[];
+                /** @description Genel seviye kararı olmayan kursiyer sayısı */
+                noLevelCount: number;
+            }[];
+            /** @description Raporun bütün kursiyerleri; her kursiyer bir kez sayılır */
+            totals: {
+                /** @description Etkin kursiyer sayısı */
+                studentCount: number;
+                /** @description Okuma, dinleme, yazma ve konuşma; her zaman dördü */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking";
+                    label: string;
+                    /** @description Kanıtı olan kursiyer ortalamalarının ortalaması, bir ondalık; kanıt yoksa `null` */
+                    average: number | null;
+                    /** @description Sayılan görev sonucu sayısı */
+                    evidenceCount: number;
+                    /** @description Bu beceride kanıtı olan kursiyer sayısı */
+                    studentCount: number;
+                }[];
+                /** @description Güncel seviye dağılımı, seviye sırasıyla */
+                levels: {
+                    /** @enum {string} */
+                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    label: string;
+                    /** @description Güncel genel seviyesi bu olan kursiyer sayısı */
+                    count: number;
+                }[];
+                /** @description Genel seviye kararı olmayan kursiyer sayısı */
+                noLevelCount: number;
+            };
         };
         PracticeGradebookInput: {
             /** @description Not defterine giren alıştırma atamaları, en yeni önce */
@@ -13872,6 +13956,70 @@ export interface components {
                 /** @description Eğilim: son nokta, önceki en çok üç noktanın ortalamasına göre (±5 puan) */
                 trend: ("up" | "down" | "steady") | null;
             }[];
+        };
+        SkillReport: {
+            /** @enum {string} */
+            groupBy: "class" | "level";
+            /** Format: date-time */
+            computedAt: string;
+            groups: {
+                /** @description `class`: dil grubu kimliği; `level`: seviye anahtarı */
+                id: string;
+                name: string;
+                /** @description Grubun kur seviyesi; seviye satırında satırın kendisi */
+                level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                /** @description Etkin kursiyer sayısı */
+                studentCount: number;
+                /** @description Okuma, dinleme, yazma ve konuşma; her zaman dördü */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking";
+                    label: string;
+                    /** @description Kanıtı olan kursiyer ortalamalarının ortalaması, bir ondalık; kanıt yoksa `null` */
+                    average: number | null;
+                    /** @description Sayılan görev sonucu sayısı */
+                    evidenceCount: number;
+                    /** @description Bu beceride kanıtı olan kursiyer sayısı */
+                    studentCount: number;
+                }[];
+                /** @description Güncel seviye dağılımı, seviye sırasıyla */
+                levels: {
+                    /** @enum {string} */
+                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    label: string;
+                    /** @description Güncel genel seviyesi bu olan kursiyer sayısı */
+                    count: number;
+                }[];
+                /** @description Genel seviye kararı olmayan kursiyer sayısı */
+                noLevelCount: number;
+            }[];
+            /** @description Raporun bütün kursiyerleri; her kursiyer bir kez sayılır */
+            totals: {
+                /** @description Etkin kursiyer sayısı */
+                studentCount: number;
+                /** @description Okuma, dinleme, yazma ve konuşma; her zaman dördü */
+                skills: {
+                    /** @enum {string} */
+                    skill: "reading" | "listening" | "writing" | "speaking";
+                    label: string;
+                    /** @description Kanıtı olan kursiyer ortalamalarının ortalaması, bir ondalık; kanıt yoksa `null` */
+                    average: number | null;
+                    /** @description Sayılan görev sonucu sayısı */
+                    evidenceCount: number;
+                    /** @description Bu beceride kanıtı olan kursiyer sayısı */
+                    studentCount: number;
+                }[];
+                /** @description Güncel seviye dağılımı, seviye sırasıyla */
+                levels: {
+                    /** @enum {string} */
+                    level: "Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2";
+                    label: string;
+                    /** @description Güncel genel seviyesi bu olan kursiyer sayısı */
+                    count: number;
+                }[];
+                /** @description Genel seviye kararı olmayan kursiyer sayısı */
+                noLevelCount: number;
+            };
         };
         PracticeGradebook: {
             /** @description Not defterine giren alıştırma atamaları, en yeni önce */
@@ -51478,6 +51626,85 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getSkillReport: {
+        parameters: {
+            query?: {
+                /** @description Satırlar: `class` dil grubu, `level` kur seviyesi (CEFR) */
+                groupBy?: "class" | "level";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["SkillReport"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

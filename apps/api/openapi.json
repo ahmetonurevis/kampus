@@ -16510,6 +16510,294 @@
           "skills"
         ]
       },
+      "SkillReportInput": {
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "class",
+              "level"
+            ]
+          },
+          "computedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "`class`: dil grubu kimliği; `level`: seviye anahtarı"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "level": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Grubun kur seviyesi; seviye satırında satırın kendisi"
+                },
+                "studentCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Etkin kursiyer sayısı"
+                },
+                "skills": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "skill": {
+                        "type": "string",
+                        "enum": [
+                          "reading",
+                          "listening",
+                          "writing",
+                          "speaking"
+                        ]
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "average": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Kanıtı olan kursiyer ortalamalarının ortalaması, bir ondalık; kanıt yoksa `null`"
+                      },
+                      "evidenceCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Sayılan görev sonucu sayısı"
+                      },
+                      "studentCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Bu beceride kanıtı olan kursiyer sayısı"
+                      }
+                    },
+                    "required": [
+                      "skill",
+                      "label",
+                      "average",
+                      "evidenceCount",
+                      "studentCount"
+                    ]
+                  },
+                  "description": "Okuma, dinleme, yazma ve konuşma; her zaman dördü"
+                },
+                "levels": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991,
+                        "description": "Güncel genel seviyesi bu olan kursiyer sayısı"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "label",
+                      "count"
+                    ]
+                  },
+                  "description": "Güncel seviye dağılımı, seviye sırasıyla"
+                },
+                "noLevelCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Genel seviye kararı olmayan kursiyer sayısı"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "level",
+                "studentCount",
+                "skills",
+                "levels",
+                "noLevelCount"
+              ]
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "studentCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Etkin kursiyer sayısı"
+              },
+              "skills": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "average": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Kanıtı olan kursiyer ortalamalarının ortalaması, bir ondalık; kanıt yoksa `null`"
+                    },
+                    "evidenceCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Sayılan görev sonucu sayısı"
+                    },
+                    "studentCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Bu beceride kanıtı olan kursiyer sayısı"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "label",
+                    "average",
+                    "evidenceCount",
+                    "studentCount"
+                  ]
+                },
+                "description": "Okuma, dinleme, yazma ve konuşma; her zaman dördü"
+              },
+              "levels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "level": {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991,
+                      "description": "Güncel genel seviyesi bu olan kursiyer sayısı"
+                    }
+                  },
+                  "required": [
+                    "level",
+                    "label",
+                    "count"
+                  ]
+                },
+                "description": "Güncel seviye dağılımı, seviye sırasıyla"
+              },
+              "noLevelCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Genel seviye kararı olmayan kursiyer sayısı"
+              }
+            },
+            "required": [
+              "studentCount",
+              "skills",
+              "levels",
+              "noLevelCount"
+            ],
+            "description": "Raporun bütün kursiyerleri; her kursiyer bir kez sayılır"
+          }
+        },
+        "required": [
+          "groupBy",
+          "computedAt",
+          "groups",
+          "totals"
+        ]
+      },
       "PracticeGradebookInput": {
         "type": "object",
         "properties": {
@@ -34073,6 +34361,301 @@
           "studentId",
           "computedAt",
           "skills"
+        ],
+        "additionalProperties": false
+      },
+      "SkillReport": {
+        "type": "object",
+        "properties": {
+          "groupBy": {
+            "type": "string",
+            "enum": [
+              "class",
+              "level"
+            ]
+          },
+          "computedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "groups": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "description": "`class`: dil grubu kimliği; `level`: seviye anahtarı"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "level": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    {
+                      "type": "null"
+                    }
+                  ],
+                  "description": "Grubun kur seviyesi; seviye satırında satırın kendisi"
+                },
+                "studentCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Etkin kursiyer sayısı"
+                },
+                "skills": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "skill": {
+                        "type": "string",
+                        "enum": [
+                          "reading",
+                          "listening",
+                          "writing",
+                          "speaking"
+                        ]
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "average": {
+                        "anyOf": [
+                          {
+                            "type": "number",
+                            "minimum": 0,
+                            "maximum": 100
+                          },
+                          {
+                            "type": "null"
+                          }
+                        ],
+                        "description": "Kanıtı olan kursiyer ortalamalarının ortalaması, bir ondalık; kanıt yoksa `null`"
+                      },
+                      "evidenceCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Sayılan görev sonucu sayısı"
+                      },
+                      "studentCount": {
+                        "type": "integer",
+                        "minimum": 0,
+                        "maximum": 9007199254740991,
+                        "description": "Bu beceride kanıtı olan kursiyer sayısı"
+                      }
+                    },
+                    "required": [
+                      "skill",
+                      "label",
+                      "average",
+                      "evidenceCount",
+                      "studentCount"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Okuma, dinleme, yazma ve konuşma; her zaman dördü"
+                },
+                "levels": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "level": {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      },
+                      "label": {
+                        "type": "string"
+                      },
+                      "count": {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 9007199254740991,
+                        "description": "Güncel genel seviyesi bu olan kursiyer sayısı"
+                      }
+                    },
+                    "required": [
+                      "level",
+                      "label",
+                      "count"
+                    ],
+                    "additionalProperties": false
+                  },
+                  "description": "Güncel seviye dağılımı, seviye sırasıyla"
+                },
+                "noLevelCount": {
+                  "type": "integer",
+                  "minimum": 0,
+                  "maximum": 9007199254740991,
+                  "description": "Genel seviye kararı olmayan kursiyer sayısı"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "level",
+                "studentCount",
+                "skills",
+                "levels",
+                "noLevelCount"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "studentCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Etkin kursiyer sayısı"
+              },
+              "skills": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "skill": {
+                      "type": "string",
+                      "enum": [
+                        "reading",
+                        "listening",
+                        "writing",
+                        "speaking"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "average": {
+                      "anyOf": [
+                        {
+                          "type": "number",
+                          "minimum": 0,
+                          "maximum": 100
+                        },
+                        {
+                          "type": "null"
+                        }
+                      ],
+                      "description": "Kanıtı olan kursiyer ortalamalarının ortalaması, bir ondalık; kanıt yoksa `null`"
+                    },
+                    "evidenceCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Sayılan görev sonucu sayısı"
+                    },
+                    "studentCount": {
+                      "type": "integer",
+                      "minimum": 0,
+                      "maximum": 9007199254740991,
+                      "description": "Bu beceride kanıtı olan kursiyer sayısı"
+                    }
+                  },
+                  "required": [
+                    "skill",
+                    "label",
+                    "average",
+                    "evidenceCount",
+                    "studentCount"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Okuma, dinleme, yazma ve konuşma; her zaman dördü"
+              },
+              "levels": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "level": {
+                      "type": "string",
+                      "enum": [
+                        "Pre-A1",
+                        "A1",
+                        "A2",
+                        "A2+",
+                        "B1",
+                        "B1+",
+                        "B2",
+                        "B2+",
+                        "C1",
+                        "C2"
+                      ]
+                    },
+                    "label": {
+                      "type": "string"
+                    },
+                    "count": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 9007199254740991,
+                      "description": "Güncel genel seviyesi bu olan kursiyer sayısı"
+                    }
+                  },
+                  "required": [
+                    "level",
+                    "label",
+                    "count"
+                  ],
+                  "additionalProperties": false
+                },
+                "description": "Güncel seviye dağılımı, seviye sırasıyla"
+              },
+              "noLevelCount": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 9007199254740991,
+                "description": "Genel seviye kararı olmayan kursiyer sayısı"
+              }
+            },
+            "required": [
+              "studentCount",
+              "skills",
+              "levels",
+              "noLevelCount"
+            ],
+            "additionalProperties": false,
+            "description": "Raporun bütün kursiyerleri; her kursiyer bir kez sayılır"
+          }
+        },
+        "required": [
+          "groupBy",
+          "computedAt",
+          "groups",
+          "totals"
         ],
         "additionalProperties": false
       },
@@ -106142,6 +106725,113 @@
             }
           },
           "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/reports/skills": {
+      "get": {
+        "operationId": "getSkillReport",
+        "summary": "Beceri ve CEFR raporu",
+        "tags": [
+          "learning"
+        ],
+        "description": "Dil grubu (`groupBy=class`) ya da kur seviyesi (`groupBy=level`) başına etkin kursiyer sayısı, okuma/dinleme/yazma/konuşma ortalaması, kanıt sayısı ve güncel genel seviye dağılımı (IST-118, DOM-BEC-037). Beceri puanı ilerleme panosunun kanıt kümesidir (değerlendirme türü, sayılan deneme ya da kesinleşmiş puanlı teslim); her kursiyer eşit ağırlıklıdır, kanıtsız beceri `null`. Her okumada hesaplanır, saklanmaz; kişi adı ya da puanı içermez. Kanıta inmek için grup kimliğiyle grup listesi ve kursiyerin CEFR profili kullanılır. Roller: `yonetici` kurum geneli, `ogretmen` yalnız kendi grubu ve koordinatörü olduğu seviyenin grupları; diğer roller 403. Yalnız dil okulunda (okulda 404); modül `learning`, kapalıysa 403 `module_disabled`. Bilinmeyen sorgu parametresi 400.",
+        "parameters": [
+          {
+            "schema": {
+              "default": "class",
+              "type": "string",
+              "enum": [
+                "class",
+                "level"
+              ]
+            },
+            "in": "query",
+            "name": "groupBy",
+            "required": false,
+            "description": "Satırlar: `class` dil grubu, `level` kur seviyesi (CEFR)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/SkillReport"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
             "description": "Default Response",
             "content": {
               "application/json": {

@@ -5,6 +5,7 @@ import { requiredText, type MakeId } from './domain.ts'
 import { appointmentHoldsTime } from './appointment-status.ts'
 import { tutorConflict, type Interval } from './tutor-conflicts.ts'
 import { DomainError } from './errors.ts'
+import { studentsWithEffect } from './student-roster.ts'
 import { isOpenQuestion } from './questions.ts'
 import { assertDutiesFitBranch, type CoordinatorDutyRow } from './coordinator-duties.ts'
 
@@ -181,7 +182,11 @@ export function saveClass(
     throw new DomainError('class_not_found', 'Düzenlenecek aktif sınıf bulunamadı.', {
       kind: 'not_found',
     })
-  const count = state.students.filter((s) => s.isActive && s.classId === recordId).length
+  const count = studentsWithEffect(
+    state.students.filter((s) => s.classId === recordId),
+    state,
+    'roster',
+  ).length
   if (count > data.capacity)
     throw new DomainError(
       'capacity_below_students',
@@ -244,9 +249,11 @@ export function saveClass(
         teacherId: teacher,
         room: data.room,
         branchId: data.branchId,
-        studentIds: state.students
-          .filter((s) => s.isActive && s.classId === recordId)
-          .map((s) => s.id),
+        studentIds: studentsWithEffect(
+          state.students.filter((s) => s.classId === recordId),
+          state,
+          'roster',
+        ).map((s) => s.id),
       },
     )
     if (reason) throw new DomainError('tutor_schedule_conflict', reason, { kind: 'conflict' })
@@ -525,7 +532,11 @@ export function archiveRecord(
     }
   }
   if (kind === 'class' && classRecord) {
-    const students = state.students.filter((s) => s.isActive && s.classId === recordId)
+    const students = studentsWithEffect(
+      state.students.filter((s) => s.classId === recordId),
+      state,
+      'roster',
+    )
     const renewals = (state.renewals || []).filter(
       (r) => r.status === 'Planlandı' && r.targetClassId === recordId,
     )
@@ -538,7 +549,11 @@ export function archiveRecord(
         )
       if (
         students.length +
-          state.students.filter((s) => s.isActive && s.classId === replacementId).length >
+          studentsWithEffect(
+            state.students.filter((s) => s.classId === replacementId),
+            state,
+            'roster',
+          ).length >
         destination.capacity
       )
         throw new DomainError(

@@ -12,6 +12,7 @@ import {
 import type { MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { scopeFor, type Actor, type Scope } from './scope.ts'
+import { studentsWithEffect } from './student-roster.ts'
 
 /**
  * İletişim: duyuru ve birebir mesaj (docs/domain/iletisim-ve-veli.md). Saf işlemler; önce bütün
@@ -180,7 +181,7 @@ export type AnnouncementFields = {
 }
 type Announcement = State['announcements'][number]
 
-type RecipientSource = Pick<State, 'students' | 'classes' | 'teachers' | 'assignments'>
+type RecipientSource = Pick<State, 'students' | 'classes' | 'teachers' | 'assignments' | 'renewals'>
 
 /**
  * Hedef kitleyi alıcı listesine çözer. Sınıf eşleşmesi konum seçicilerinin birleşimidir;
@@ -208,9 +209,11 @@ export function resolveRecipients(
       )
       .map((c) => c.id),
   )
-  const students = source.students
-    .filter((s) => s.isActive !== false && classIds.has(s.classId))
-    .map((s) => s.id)
+  const students = studentsWithEffect(
+    source.students.filter((s) => classIds.has(s.classId)),
+    source,
+    'academicNotices',
+  ).map((s) => s.id)
   const activeTeachers = source.teachers.filter((t) => t.isActive !== false && !t.deletedAt)
   let teacherIds: string[] = []
   if (target.roles.includes('ogretmen')) {

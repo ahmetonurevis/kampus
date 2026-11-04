@@ -6,6 +6,7 @@ import type {
 } from '@kampus/react-shared/use-task-assignments.ts'
 import type { TaskSubmission } from '@kampus/react-shared/use-task-submissions.ts'
 import { CONTENT_TYPES } from '@kampus/school-core/content/taxonomy.ts'
+import { canManageAssignment } from '@kampus/school-core/skills/assignment-access.ts'
 import { RESUBMISSION_MAX_DAYS } from '@kampus/school-core/skills/assignment.ts'
 import {
   BAND_SCALE,
@@ -141,13 +142,18 @@ export function assignmentScopeNote(role: string): string {
     : 'Atadıklarınız ve sınıflarınızı hedefleyenler'
 }
 
-/** Atamayı yalnız atayan değiştirir (DOM-YTK-028); yönetici de değiştirebilir. */
+/**
+ * Atamayı yalnız atayan değiştirir (DOM-YTK-028); yönetici de değiştirebilir. Kural core
+ * `canManageAssignment`'tadır; sunucu da aynısını uygular, burada yalnız düğme görünürlüğü içindir.
+ */
 export function canChangeAssignment(
   item: Pick<TaskAssignmentStaff, 'assignedByUserId'>,
   userId: string,
   role: string,
 ): boolean {
-  return role === 'yonetici' || item.assignedByUserId === userId
+  if (role === 'yonetici') return canManageAssignment({ kind: 'admin' }, item)
+  if (role === 'ogretmen') return canManageAssignment({ kind: 'teacher', userId }, item)
+  return false
 }
 
 // --- Teslim durumu -------------------------------------------------------------------------

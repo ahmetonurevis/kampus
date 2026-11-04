@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { seededRandom } from '@kampus/school-core/content/resource.ts'
 import { coordinatorScopeOf } from '@kampus/school-core/lib/coordinator-duties.ts'
+import { canGradeAssignment } from '@kampus/school-core/skills/assignment-access.ts'
 import {
   deadlineForVersion,
   planResubmissionRequest,
@@ -101,29 +102,19 @@ import { auditWork, canReadLearner } from './task-work.ts'
  * gerekçesi ve öğrenci kimliği loglanmaz; denetime yalnız alan adları yazılır.
  */
 
-// TODO(core-atama-yetki): "Atamayı gören öğretmen veya yönetici puanlar" kuralı core yetki
-// tablosunda (`lib/authorize.ts`) yok; web ve mobil aynı kuralı çalıştırsın diye core'a taşınır.
 // TODO(beceri-yeniden-puanlama): Yeniden puanlama ve anahtar düzeltmesi (DOM-BEC-011) ve not
 // aktarımı bu servise eklenmedi.
 
 const ENTITY = 'task_submission'
 
 /**
- * Puanlayan kişi: yönetici ya da atamayı gören öğretmen. Öğretmen atamayı görmüyorsa 404
- * (kapsam; varlık sızmaz); öğrenci ve veli 403 (rota da reddeder; servis tek başına güvenli).
+ * Puanlayan kişi: yönetici ya da atamayı gören öğretmen (core `canGradeAssignment`). Öğretmen
+ * atamayı görmüyorsa 404 (kapsam; varlık sızmaz); öğrenci ve veli 403 (rota da reddeder; servis
+ * tek başına güvenli).
  */
 function assertGrader(viewer: Viewer, assignment: StoredAssignment) {
-  switch (viewer.kind) {
-    case 'admin':
-      return
-    case 'teacher':
-      if (!visible(viewer, assignment)) throw new NotFoundError()
-      return
-    case 'learner':
-      throw new ForbiddenError()
-    default:
-      return viewer satisfies never
-  }
+  if (viewer.kind === 'learner') throw new ForbiddenError()
+  if (!canGradeAssignment(viewer, assignment)) throw new NotFoundError()
 }
 
 type Graded = { work: StoredSubmissionWork; assignment: StoredAssignment; grading: Grading }

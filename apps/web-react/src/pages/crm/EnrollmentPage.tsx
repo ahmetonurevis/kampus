@@ -442,13 +442,13 @@ function EnrollmentForm({
                   <NativeSelect
                     {...control}
                     {...form.register('prospectId', {
-                      // Başka adayın sınıfı, kampüs onayı, veli seçimi ve bilgisi yeni adaya
-                      // taşınmaz.
+                      // Başka adayın sınıfı, kampüs onayı, kimlik, doğum tarihi, veli ve iletişim
+                      // bilgisi yeni adaya taşınmaz (KVKK); alanların hataları da kalkar.
                       onChange: () => {
-                        const reset = prospectChangeValues(form.getValues(), institutionType)
-                        for (const [name, value] of Object.entries(reset))
-                          form.setValue(name as keyof typeof reset, value)
-                        form.clearErrors(['classId', 'confirmOtherCampus', 'guardianMode'])
+                        const reset = prospectChangeValues(institutionType)
+                        const names = Object.keys(reset) as (keyof typeof reset)[]
+                        for (const name of names) form.setValue(name, reset[name])
+                        form.clearErrors(names)
                       },
                     })}
                   >

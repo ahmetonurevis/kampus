@@ -544,6 +544,50 @@ test.describe('Kayıt İşlemleri', () => {
     expect(saved.record.stage).toBe('Kayıt oldu')
   })
 
+  test('ON-125, DOM-KAY-012: aday değişince önceki adayın kimlik no, doğum tarihi ve veli bilgisi formda kalmaz', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: ['onburo'],
+      tariffYears: ['current'],
+      records: [
+        prospect('e2e-kyt-onceki', 'Önceki Aday', { guardianName: 'Önceki Velisi' }),
+        prospect('e2e-kyt-sonraki', 'Sonraki Aday', {
+          phone: '05551230125',
+          guardianName: 'Sonraki Velisi',
+        }),
+      ],
+    })
+    await loginAs(school.user('onburo'))
+    const proceed = page.getByRole('button', { name: 'Devam et' })
+    const identity = page.getByLabel('Kimlik numarası')
+    const birthDate = page.getByLabel('Doğum tarihi')
+
+    await page.goto(`${LIST_URL}?aday=e2e-kyt-onceki`)
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+    await proceed.click()
+    await page.getByLabel('Kimlik türü').selectOption('foreign')
+    await identity.fill('YK1250001')
+    await birthDate.fill('2013-03-01')
+    await page.getByLabel('Veli adı soyadı').fill('Önceki Velisi Düzeltilmiş')
+    await page.getByLabel('Yakınlık derecesi').selectOption('father')
+    await page.getByRole('button', { name: 'Geri' }).click()
+
+    await page.getByLabel('Aday öğrenci').selectOption('e2e-kyt-sonraki')
+    await page.getByLabel('Sınıf', { exact: true }).selectOption({ index: 1 })
+    await proceed.click()
+    // KVKK: önceki adayın kimliği, doğum tarihi ve yakınlığı yeni adayın formuna taşınmaz; veli
+    // adı ve telefonu yeni adaydan dolar.
+    await expect(identity).toHaveValue('')
+    await expect(page.getByLabel('Kimlik türü')).toHaveValue('tc')
+    await expect(birthDate).toHaveValue('')
+    await expect(page.getByLabel('Yakınlık derecesi')).toHaveValue('mother')
+    await expect(page.getByLabel('Veli adı soyadı')).toHaveValue('Sonraki Velisi')
+    await expect(page.getByLabel('Veli telefonu')).toHaveValue('05551230125')
+  })
+
   test('IST-017, DOM-YTK-057: ön büro rıza almaz, form kilitlenmez; kayıttan sonra beklenen rıza ve yeri yazılır', async ({
     page,
     loginAs,

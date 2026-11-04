@@ -25,33 +25,45 @@ export function guardianModeFor(
   return allowed.includes(current) ? current : (allowed[0] ?? 'new')
 }
 
-/**
- * Aday değişince sıfırlanan alanlar: önceki adayın sınıfı, başka kampüs onayı, veli seçimi ve
- * bilgisi yeni adaya taşınmaz (A'nın onayı B'ye `allowOtherCampus` olarak gitmez). Veli seçimi
- * girilmiş doğum tarihine göre varsayılana döner.
- */
-export function prospectChangeValues(
-  values: Pick<EnrollmentFormValues, 'birthDate'>,
-  institutionType: InstitutionType,
-  now: string | number | Date = new Date(),
-): Pick<
+/** Aday değişince sıfırlanan alanlar (`prospectChangeValues`). */
+export type ProspectChangeValues = Pick<
   EnrollmentFormValues,
   | 'classId'
   | 'confirmOtherCampus'
+  | 'identityKind'
+  | 'identityNumber'
+  | 'birthDate'
   | 'existingParentId'
   | 'guardianName'
   | 'guardianPhone'
+  | 'relationship'
   | 'guardianMode'
   | 'studentPhone'
   | 'studentEmail'
-> {
+>
+
+/**
+ * Aday değişince sıfırlanan alanlar: önceki adayın sınıfı, başka kampüs onayı, kimlik türü ve
+ * numarası, doğum tarihi, veli seçimi, yakınlığı ve iletişimi, kursiyerin kendi iletişimi yeni
+ * adaya taşınmaz (KVKK: başka kişinin kişisel verisi formda kalmaz, yanlış öğrenciye yazılmaz;
+ * A'nın onayı B'ye `allowOtherCampus` olarak gitmez). Doğum tarihi boşaldığı için veli seçimi
+ * veli zorunlu varsayılana döner (DOM-KAY-012).
+ */
+export function prospectChangeValues(
+  institutionType: InstitutionType,
+  now: string | number | Date = new Date(),
+): ProspectChangeValues {
   return {
     classId: '',
     confirmOtherCampus: false,
+    identityKind: 'tc',
+    identityNumber: '',
+    birthDate: '',
     existingParentId: '',
     guardianName: '',
     guardianPhone: '',
-    guardianMode: guardianModeFor('new', institutionType, values.birthDate, now),
+    relationship: 'mother',
+    guardianMode: guardianModeFor('new', institutionType, '', now),
     studentPhone: '',
     studentEmail: '',
   }

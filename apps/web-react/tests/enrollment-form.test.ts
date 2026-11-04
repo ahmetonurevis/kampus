@@ -42,13 +42,17 @@ const FORM: EnrollmentFormValues = {
 }
 
 test('class_campus_mismatch, DOM-KAY-013: aday değişince sınıf, kampüs onayı ve veli seçimi sıfırlanır', () => {
-  const reset = prospectChangeValues(FORM, 'school', NOW)
+  const reset = prospectChangeValues('school', NOW)
   assert.deepEqual(reset, {
     classId: '',
     confirmOtherCampus: false,
+    identityKind: 'tc',
+    identityNumber: '',
+    birthDate: '',
     existingParentId: '',
     guardianName: '',
     guardianPhone: '',
+    relationship: 'mother',
     guardianMode: 'new',
     studentPhone: '',
     studentEmail: '',
@@ -56,12 +60,44 @@ test('class_campus_mismatch, DOM-KAY-013: aday değişince sınıf, kampüs onay
   // A adayının başka kampüs onayı B adayının gövdesine `allowOtherCampus` olarak gitmez.
   const next = { ...FORM, ...reset, prospectId: 'pr-b', classId: 'c1' }
   assert.equal('allowOtherCampus' in enrollmentFormToBody(next, 'tarife'), false)
-  // Girilmiş doğum tarihi yetişkin kursiyeri gösteriyorsa varsayılan "kendisi"dir (DOM-KAY-012).
-  assert.equal(
-    prospectChangeValues({ birthDate: ADULT }, 'language_school', NOW).guardianMode,
-    'self',
-  )
-  assert.equal(prospectChangeValues({ birthDate: ADULT }, 'school', NOW).guardianMode, 'new')
+})
+
+test('ON-125, DOM-KAY-012: aday değişince önceki adayın kimlik no, doğum tarihi ve kişisel alanları formda kalmaz', () => {
+  // A adayı yetişkin kursiyer olarak dolduruldu: yabancı kimlik, doğum tarihi, kendi iletişimi.
+  const adultA: EnrollmentFormValues = {
+    ...FORM,
+    identityKind: 'foreign',
+    identityNumber: 'YK123456',
+    birthDate: ADULT,
+    guardianMode: 'self',
+    relationship: 'father',
+  }
+  for (const type of ['school', 'language_school'] as const) {
+    const next = { ...adultA, ...prospectChangeValues(type, NOW), prospectId: 'pr-b' }
+    // KVKK: A'nın kimliği, doğum tarihi, veli ve iletişim bilgisi B'nin formunda yoktur.
+    assert.equal(next.identityNumber, '', type)
+    assert.equal(next.identityKind, 'tc', type)
+    assert.equal(next.birthDate, '', type)
+    assert.equal(next.guardianName, '', type)
+    assert.equal(next.guardianPhone, '', type)
+    assert.equal(next.relationship, 'mother', type)
+    assert.equal(next.existingParentId, '', type)
+    assert.equal(next.studentPhone, '', type)
+    assert.equal(next.studentEmail, '', type)
+    // Doğum tarihi boşalınca A'nın "kendisi" seçimi kalmaz; veli zorunlu varsayılana döner.
+    assert.equal(next.guardianMode, 'new', type)
+    for (const value of Object.values(next))
+      assert.ok(
+        !['YK123456', ADULT, 'A Velisi', '05551112233', '05551112244', 'p-a'].includes(
+          String(value),
+        ),
+        `${type}: A adayının değeri formda kaldı (${String(value)})`,
+      )
+  }
+  // Adaydan bağımsız alanlar (ücret ve taksit seçimi) sıfırlama listesinde değildir.
+  const reset = prospectChangeValues('school', NOW)
+  for (const name of ['lessonHours', 'installmentCount', 'firstDueDate', 'allCampuses'])
+    assert.equal(name in reset, false, name)
 })
 
 test('DOM-KAY-012: doğum tarihi değişince veli seçimi yaşa ve kurum türüne uyar', () => {

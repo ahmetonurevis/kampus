@@ -52,6 +52,16 @@ z.config(z.locales.tr())
 
 export const API_VERSION = '0.1.0'
 
+/** Sağlık ve acil bilgi içeriğinin alan adları (`healthProfileContentSchema`) ve şifreli paketi. */
+const HEALTH_FIELDS = [
+  'allergies',
+  'chronicConditions',
+  'medications',
+  'supportNeeds',
+  'emergencyInstructions',
+  'contentCiphertext',
+] as const
+
 /**
  * Logda asla görünmemesi gereken alanlar (docs/muhendislik/kod-yazim.md §6,
  * guvenlik-kvkk.md §13). Yeni hassas alan aynı committe buraya eklenir.
@@ -171,6 +181,9 @@ export const REDACTED_PATHS = [
   '*.emergencyInstructions',
   'contentCiphertext',
   '*.contentCiphertext',
+  // Sağlık alanları iç içe nesnede de maskelenir (ör. `profile.content.allergies`,
+  // `req.body.allergies`, `data.profile.content.allergies`).
+  ...HEALTH_FIELDS.flatMap((field) => [`*.*.${field}`, `*.*.*.${field}`]),
   '*.cookie',
   '*.authorization',
 ]
@@ -278,6 +291,10 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
     genReqId: genRequestId,
     bodyLimit: 1024 * 1024,
   })
+  if (config.fieldEncryptionKeyIsDevelopmentDefault && config.NODE_ENV !== 'test')
+    app.log.warn(
+      'FIELD_ENCRYPTION_KEY verilmedi: herkesçe bilinen geliştirme anahtarı kullanılıyor; gerçek veri için openssl rand -base64 32 ile anahtar üretin.',
+    )
   app.setValidatorCompiler(validatorCompiler)
   app.setSerializerCompiler(serializerCompiler)
 

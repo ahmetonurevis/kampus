@@ -205,9 +205,12 @@ export const configSchema = z
       ctx.addIssue({ code: 'custom', path: ['FILE_SCANNER'], message: 'not_for_production' })
   })
   // Üretimde anahtar yukarıda zorunlu kılındı; başka ortamda bilinen geliştirme anahtarına düşer.
+  // Düşüş sessiz kalmasın diye bayrakla işaretlenir; uygulama başlarken bir kez uyarı yazar
+  // (`app.ts`; anahtar değeri loga girmez).
   .transform((config) => ({
     ...config,
     FIELD_ENCRYPTION_KEY: config.FIELD_ENCRYPTION_KEY ?? DEVELOPMENT_FIELD_ENCRYPTION_KEY,
+    fieldEncryptionKeyIsDevelopmentDefault: config.FIELD_ENCRYPTION_KEY === undefined,
   }))
 
 export type Config = z.infer<typeof configSchema>

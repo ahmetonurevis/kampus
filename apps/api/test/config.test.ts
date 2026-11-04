@@ -74,7 +74,10 @@ describe('ortam yapılandırması', () => {
         const config = loadConfig({ ...base, NODE_ENV, FIELD_ENCRYPTION_KEY })
         assert.equal(config.FIELD_ENCRYPTION_KEY, DEVELOPMENT_FIELD_ENCRYPTION_KEY)
         assert.equal(decodeFieldKey(config.FIELD_ENCRYPTION_KEY)?.length, 32)
+        assert.equal(config.fieldEncryptionKeyIsDevelopmentDefault, true)
       }
+    // Anahtar verilmişse (geliştirme anahtarı elle yazılsa bile) düşüş sayılmaz.
+    assert.equal(parseConfig(base).fieldEncryptionKeyIsDevelopmentDefault, false)
   })
 
   test('IST-020: üretimde alan şifreleme anahtarı yoksa reddedilir', () => {

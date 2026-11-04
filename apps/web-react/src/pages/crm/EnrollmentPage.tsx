@@ -670,7 +670,7 @@ function EnrollmentForm({
                   id="kayit-veli-mevcut"
                   label="Mevcut veli"
                   error={errors.existingParentId}
-                  description="Adayın telefonuyla eşleşen veliler önerilir."
+                  description="Kardeş adayın velisi ve adayın telefonuyla eşleşen veliler önerilir."
                 >
                   {(control) => (
                     <NativeSelect {...control} {...form.register('existingParentId')}>
@@ -679,7 +679,8 @@ function EnrollmentForm({
                       </NativeSelectOption>
                       {(matches.data?.data ?? []).map((match) => (
                         <NativeSelectOption key={match.parentId} value={match.parentId}>
-                          {match.name} ({match.studentCount} öğrenci)
+                          {match.name} ({match.studentCount} öğrenci
+                          {match.match === 'sibling' ? ', kardeş adayın velisi' : ''})
                         </NativeSelectOption>
                       ))}
                     </NativeSelect>

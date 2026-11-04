@@ -2981,7 +2981,7 @@ export interface paths {
         };
         /**
          * Adayla eşleşen velileri öner
-         * @description Adayın telefonuyla eşleşen mevcut velileri önerir; ön büro seçerse `existingParentId` ile bağlanır, otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon taşımaz. Roller: `yonetici`, `onburo`.
+         * @description Adayın telefonuyla ya da kardeş adayının (`siblingOfId`) kesin kaydıyla eşleşen mevcut velileri önerir; kardeş eşleşmesi (`match: sibling`) listenin başındadır; yetişkin kursiyerin kendi satırı ve bir öğrencisinde velayetsiz ya da iletişim kısıtlı veli önerilmez (seçilirse kesin kayıt 422 `parent_not_guardian`). Ön büro seçerse `existingParentId` ile bağlanır, yeni veli açılmaz; otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon ve e-posta taşımaz. Roller: `yonetici`, `onburo`.
          */
         get: operations["listGuardianMatches"];
         put?: never;
@@ -32640,6 +32640,8 @@ export interface operations {
                             parentId: string;
                             name: string;
                             studentCount: number;
+                            /** @enum {string} */
+                            match: "sibling" | "phone";
                         }[];
                     };
                 };

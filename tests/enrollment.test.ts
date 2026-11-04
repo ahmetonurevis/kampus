@@ -16,6 +16,7 @@ import {
   GUARDIAN_RELATIONSHIPS,
   GUARDIAN_REQUIRED_FORM_MESSAGE,
   guardianRequired,
+  hasNonCustodialBond,
   isCourse,
   isNotGuardian,
   isValidTurkishId,
@@ -689,6 +690,61 @@ test('DOM-KAY-013, DOM-KAY-003: 18 yaş altı kardeşin telefonu öğrenciye yaz
   )
 })
 
+test('DOM-KAY-013, DOM-KAY-031: kardeş adayın kesin kayıtta bağlandığı veli telefon farklı olsa da önerilir; seçilince yeni veli açılmaz', () => {
+  const { state, result } = enroll()
+  const parentId = result.student.parentId
+  const younger = state.prospects.find((item) => item.id === 'pr2')!
+  const youngest = state.prospects.find((item) => item.id === 'pr3')!
+  younger.siblingOfId = 'pr1'
+  // Kardeşler aynı kampüse kaydolur (sınıf `c1` pr1'in kampüsündedir).
+  younger.branchId = state.prospects.find((item) => item.id === 'pr1')!.branchId
+  // Zincir: pr3 pr2'nin kardeşidir; pr1'in velisi ikisine de önerilir.
+  youngest.siblingOfId = 'pr2'
+  assert.notEqual(younger.phone, state.prospects.find((item) => item.id === 'pr1')!.phone)
+  const expected = [{ parentId, name: 'Test Veli', studentCount: 1, match: 'sibling' }]
+  assert.deepEqual(findParentMatches(state, younger.phone, { prospectId: 'pr2' }), expected)
+  assert.deepEqual(findParentMatches(state, youngest.phone, { prospectId: 'pr3' }), expected)
+  // Aday kimliği verilmezse yalnız telefon aranır.
+  assert.deepEqual(findParentMatches(state, younger.phone), [])
+  // Kardeş ağında olmayan aday kardeş eşleşmesi almaz.
+  assert.deepEqual(
+    findParentMatches(state, state.prospects.find((item) => item.id === 'pr4')!.phone, {
+      prospectId: 'pr4',
+    }),
+    [],
+  )
+
+  // Telefonla da eşleşen veli varsa kardeş eşleşmesi listenin başındadır.
+  const other = state.parents[0]!
+  const otherPhone = state.students.find((student) => student.id === other.studentIds[0])!.phone
+  const both = findParentMatches(state, otherPhone, { prospectId: 'pr2' })
+  assert.equal(both[0]?.parentId, parentId)
+  assert.equal(both[0]?.match, 'sibling')
+  assert.ok(both.some((match) => match.parentId === other.id && match.match === 'phone'))
+
+  const parentCount = state.parents.length
+  let n = 0
+  const second = enrollProspectWithTariff(
+    state,
+    'pr2',
+    {
+      ...INPUT,
+      identity: { kind: 'tc', number: '11111111110', birthDate: '2014-03-01' },
+      guardian: { existingParentId: parentId },
+    },
+    (prefix) => `${prefix}-test2-${n++}`,
+    NOW,
+    CONTEXT,
+  )
+  assert.equal(state.parents.length, parentCount)
+  assert.equal(second.student.parentId, parentId)
+  assert.equal(second.guardianBond?.parentId, parentId)
+  assert.deepEqual(state.parents.find((parent) => parent.id === parentId)?.studentIds, [
+    result.student.id,
+    second.student.id,
+  ])
+})
+
 test('DOM-KAY-013, parent_not_guardian: yetişkin kursiyerin kendi satırı 18 yaş altı kardeşe veli olarak verilmez ve önerilmez', () => {
   const state = createSeed(new Date(NOW))
   const language = { ...CONTEXT, institutionType: 'language_school' as const }
@@ -716,6 +772,9 @@ test('DOM-KAY-013, parent_not_guardian: yetişkin kursiyerin kendi satırı 18 y
   assert.equal(isNotGuardian(self, state.prospects), true)
   // Yetişkinin telefonu öğrenci kaydındadır; yine de veli olarak önerilmez.
   assert.deepEqual(findParentMatches(state, adult.phone), [])
+  // Kardeş bağı da yetişkinin kendi satırını öneriye sokmaz.
+  young.siblingOfId = 'pr4'
+  assert.deepEqual(findParentMatches(state, young.phone, { prospectId: 'pr1' }), [])
 
   const before = JSON.stringify(state)
   assert.throws(
@@ -763,6 +822,52 @@ test('DOM-KAY-013, parent_not_guardian: eski yer tutucu (iletişimsiz, adayları
     isDomainError('parent_not_guardian'),
   )
   assert.equal(JSON.stringify(state), before)
+})
+
+test('DOM-ILT-070, DOM-ILT-074, parent_not_guardian: bir öğrencisinde iletişim kısıtlı ya da velayetsiz veli önerilmez ve kesin kayıtta bağlanamaz', () => {
+  const restricted = { parentId: 'p1', custody: 'none', contactRestricted: true } as const
+  const noCustody = { parentId: 'p1', custody: 'none', contactRestricted: false } as const
+  const joint = { parentId: 'p1', custody: 'joint', contactRestricted: false } as const
+  assert.equal(hasNonCustodialBond('p1', [restricted]), true)
+  assert.equal(hasNonCustodialBond('p1', [joint, noCustody]), true)
+  assert.equal(hasNonCustodialBond('p1', [joint]), false)
+  // Başka velinin bağı bu veliyi etkilemez.
+  assert.equal(hasNonCustodialBond('p2', [restricted]), false)
+  assert.equal(hasNonCustodialBond('p1', []), false)
+
+  const state = createSeed(new Date(NOW))
+  const parent = state.parents[0]!
+  const phone = state.students.find((student) => student.id === parent.studentIds[0])!.phone
+  const own = (bond: { custody: 'full' | 'joint' | 'none'; contactRestricted: boolean }) => [
+    { ...bond, parentId: parent.id },
+  ]
+  const suggested = (bonds: ReturnType<typeof own>) =>
+    findParentMatches(state, phone, { bonds }).some((match) => match.parentId === parent.id)
+  assert.equal(suggested(own({ custody: 'full', contactRestricted: false })), true)
+  assert.equal(suggested(own({ custody: 'none', contactRestricted: true })), false)
+  assert.equal(suggested(own({ custody: 'none', contactRestricted: false })), false)
+
+  const before = JSON.stringify(state)
+  for (const bond of [restricted, noCustody])
+    assert.throws(
+      () =>
+        enroll({ guardian: { existingParentId: parent.id } }, { guardianBonds: own(bond) }, state),
+      (error: unknown) =>
+        isDomainError('parent_not_guardian')(error) &&
+        JSON.stringify((error as { path?: unknown }).path) === JSON.stringify(['guardian']),
+    )
+  assert.equal(JSON.stringify(state), before)
+  const { result } = enroll(
+    { guardian: { existingParentId: parent.id } },
+    {
+      guardianBonds: [
+        ...own({ custody: 'joint', contactRestricted: false }),
+        { ...restricted, parentId: 'p-baska' },
+      ],
+    },
+    state,
+  )
+  assert.equal(result.guardianBond?.parentId, parent.id)
 })
 
 test('DOM-KAY-011: kimliğin sahibi pasifse veya kayıt yoksa yeni kayıt açılır, eski kimlik bildirilir', () => {

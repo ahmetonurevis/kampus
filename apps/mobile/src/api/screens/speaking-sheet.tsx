@@ -49,6 +49,7 @@ import {
   speakingUploadInput,
   type PhoneTake,
 } from '../student-speaking-task.ts'
+import { useApiSession } from '../auth.tsx'
 import { useNotify } from '../toast.tsx'
 import { usePhoneRecorder } from '../use-phone-recorder.ts'
 
@@ -74,7 +75,10 @@ export function SpeakingSheet({
   const listQuery = useTaskSubmissions(learnerSubmissionsQuery(assignmentId))
   const summary = listQuery.data?.data[0]
   const detailQuery = useTaskSubmission(summary?.id ?? '')
-  const consent = useConsentStatus(undefined)
+  const session = useApiSession()
+  // Rıza öğrencinin kendi kaydına bağlıdır; kimlik yoksa sorgulanmaz ve kayıt açılmaz.
+  const studentId = session.studentId
+  const consent = useConsentStatus(studentId ?? undefined, { enabled: studentId !== null })
   const now = useNow()
   // Kayıt açıkken üst pencere kapatılırken sorulur; kayıt bileşeni durumunu buraya bildirir.
   const [unsent, setUnsent] = useState(false)
@@ -125,7 +129,12 @@ export function SpeakingSheet({
       ) : (
         <>
           <Brief assignment={assignment} progress={progress} />
-          {!settings ? (
+          {studentId === null ? (
+            <Notice
+              title="Öğrenci kaydı bulunamadı"
+              text="Hesabın bir öğrenci kaydına bağlı değil; kayıt yapılamaz."
+            />
+          ) : !settings ? (
             <Notice title="Telefonda açılmıyor" text="Bu görev ses kaydıyla teslim edilmiyor." />
           ) : recordingConsent && !recordingConsent.valid ? (
             <ConsentMissing grantor={recordingConsent.grantor} />

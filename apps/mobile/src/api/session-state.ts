@@ -17,6 +17,8 @@ export type MobileSession = {
   modules: Record<string, boolean>
   /** Veli hesabının bağlı çocuklarının kayıt kimlikleri (diğer rollerde boş). */
   childIds: string[]
+  /** Öğrenci hesabının kendi öğrenci kaydı (rıza, konuşma kaydı); diğer rollerde `null`. */
+  studentId: string | null
   memberships: MemberInstitution[]
 }
 
@@ -33,6 +35,11 @@ export type ApiAuthState =
 
 const ME_FAILED_MESSAGE = 'Hesap bilgileri alınamadı. Lütfen tekrar deneyin.'
 
+/** Üyelik bağlantılarından öğrencinin kendi kayıt kimliği (web `SpeakingRecorder` ile aynı kaynak). */
+export function ownStudentId(links: readonly { kind: string; recordId: string }[]): string | null {
+  return links.find((link) => link.kind === 'student')?.recordId ?? null
+}
+
 export function toMobileSession(me: Me): MobileSession | null {
   const institution = me.activeInstitution
   const membership = me.activeMembership
@@ -47,6 +54,7 @@ export function toMobileSession(me: Me): MobileSession | null {
       membership.role === 'veli'
         ? membership.links.filter((link) => link.kind === 'child').map((link) => link.recordId)
         : [],
+    studentId: ownStudentId(membership.links),
     memberships: me.memberships,
   }
 }

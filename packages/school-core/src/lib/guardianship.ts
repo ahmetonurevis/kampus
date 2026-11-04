@@ -3,7 +3,7 @@ import { z } from 'zod'
 import type { Role } from '../modules/navigation.ts'
 import type { GuardianBond } from './consents.ts'
 import { DomainError } from './errors.ts'
-import { FINANCE_NOTIFICATION_TYPES } from './finance-notifications.ts'
+import { CONTRACT_NOTIFICATION_TYPES, FINANCE_NOTIFICATION_TYPES } from './finance-notifications.ts'
 
 /**
  * Veli–öğrenci bağı (IST-019; docs/domain/iletisim-ve-veli.md DOM-ILT-070…075). Bir öğrencinin
@@ -234,12 +234,14 @@ export function scopedActorLinks<L extends { kind: string; recordId: string }>(
 
 /**
  * Ödeyici bağının alıcı yaptığı bildirim türleri: finans türleri (`lib/finance-notifications.ts`;
- * taksit vadesi yaklaştı/geçti, tahsilat, iade). Velayeti olmayan ödeyici veli yalnız bunların
- * veli (`parent`) bildirimini görür; diğer türlerin alıcısı velayet bağlantısıdır (K-04).
+ * taksit vadesi yaklaştı/geçti, tahsilat, iade) ve sözleşme onay türleri (`contract_approval_requested`,
+ * `contract_approved`; kitle sözleşmenin ödeyicisidir, ON-044, K-04). Velayeti olmayan ödeyici veli
+ * yalnız bunların veli (`parent`) bildirimini görür; diğer türlerin alıcısı velayet bağlantısıdır.
  */
-export type PayerNotificationKind = keyof typeof FINANCE_NOTIFICATION_TYPES
+const PAYER_NOTIFICATION_TYPES = { ...FINANCE_NOTIFICATION_TYPES, ...CONTRACT_NOTIFICATION_TYPES }
+export type PayerNotificationKind = keyof typeof PAYER_NOTIFICATION_TYPES
 export const PAYER_NOTIFICATION_KINDS = Object.keys(
-  FINANCE_NOTIFICATION_TYPES,
+  PAYER_NOTIFICATION_TYPES,
 ) as PayerNotificationKind[]
 const PAYER_KINDS: ReadonlySet<string> = new Set(PAYER_NOTIFICATION_KINDS)
 export const isPayerNotificationKind = (kind: string | undefined): boolean =>

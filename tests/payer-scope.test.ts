@@ -2,7 +2,10 @@ import test, { describe } from 'node:test'
 import assert from 'node:assert/strict'
 import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
 import { requireConsentAuthority } from '../packages/school-core/src/lib/consents.ts'
-import { FINANCE_NOTIFICATION_TYPES } from '../packages/school-core/src/lib/finance-notifications.ts'
+import {
+  CONTRACT_NOTIFICATION_TYPES,
+  FINANCE_NOTIFICATION_TYPES,
+} from '../packages/school-core/src/lib/finance-notifications.ts'
 import {
   guardedActorLinks,
   guardianBondsFor,
@@ -233,20 +236,28 @@ describe('ödeyici velinin finans bildirimi (OG-1002, K-04)', () => {
   const payer = veli(...links('payer', 's1'))
   const custodial = veli(...links('child', 's1'))
 
-  test('DOM-ILT-074 ödeyici bildirim türleri yalnız finans türleridir; devamsızlık türleri karışmaz (DOM-ILT-052)', () => {
+  test('DOM-ILT-074 DOM-FIN-010 ödeyici bildirim türleri finans ve sözleşme onay türleridir; akademik ve iletişim türleri karışmaz (DOM-ILT-052)', () => {
     assert.deepEqual([...PAYER_NOTIFICATION_KINDS].sort(), [
+      'contract_approval_requested',
+      'contract_approved',
       'installment_due',
       'installment_overdue',
       'payment_received',
       'refund_paid',
     ])
-    assert.deepEqual(PAYER_NOTIFICATION_KINDS, Object.keys(FINANCE_NOTIFICATION_TYPES))
+    assert.deepEqual(PAYER_NOTIFICATION_KINDS, [
+      ...Object.keys(FINANCE_NOTIFICATION_TYPES),
+      ...Object.keys(CONTRACT_NOTIFICATION_TYPES),
+    ])
+    for (const kind of NOTIFICATION_KIND_NAMES)
+      if (!PAYER_NOTIFICATION_KINDS.includes(kind as never))
+        assert.equal(isPayerNotificationKind(kind), false, kind)
     for (const kind of ['absence_recorded', 'absence_corrected', 'absence_decided'])
       assert.equal(isPayerNotificationKind(kind), false, kind)
     assert.equal(isPayerNotificationKind(undefined), false)
   })
 
-  test('DOM-ILT-074 velayetsiz ödeyici veli yalnız finans türlerinin veli bildirimini görür', () => {
+  test('DOM-ILT-074 velayetsiz ödeyici veli yalnız finans ve sözleşme onay türlerinin veli bildirimini görür', () => {
     for (const kind of NOTIFICATION_KIND_NAMES) {
       const finance = isPayerNotificationKind(kind)
       assert.equal(canSeeNotification(payer, notification(kind)), finance, kind)

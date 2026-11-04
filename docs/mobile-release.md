@@ -67,7 +67,7 @@ Node.js 24, pnpm 11, JDK 21 ve Android SDK 36 kullanılır. `ANDROID_HOME` ve `J
 
 ## API modu (geliştirme)
 
-Varsayılan derleme çevrimdışı demodur. `EXPO_PUBLIC_API_URL` verilince uygulama gerçek API'ye bağlanır; değer derlemede pakete gömülür ve yalnız API kök adresidir (sır yazılmaz). Örnek: `apps/mobile/.env.example`; yerel değer `apps/mobile/.env.local` dosyasına yazılır (git dışı).
+Geliştirmede varsayılan çevrimdışı demodur; `pnpm build:apk` ise adressiz derlemeyi reddeder (yayın APK'sı demoyla açılmaz): `EXPO_PUBLIC_API_URL` `https` adresi olarak `.env.android` ya da shell'de verilir, bilerek demo APK isteniyorsa `KAMPUS_DEMO_APK=1`. `EXPO_PUBLIC_API_URL` verilince uygulama gerçek API'ye bağlanır; değer derlemede pakete gömülür ve yalnız API kök adresidir (sır yazılmaz). Örnek: `apps/mobile/.env.example`; yerel değer `apps/mobile/.env.local` dosyasına yazılır (git dışı).
 
 ```bash
 docker compose up -d && pnpm --filter @kampus/api db:migrate && pnpm --filter @kampus/api db:seed

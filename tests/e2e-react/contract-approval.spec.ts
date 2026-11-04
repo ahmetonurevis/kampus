@@ -189,6 +189,14 @@ test.describe('IST-092 sözleşme onayı', () => {
     const panel = panelOf(page)
     await expect(panel).toContainText('Onaylandı')
     await expect(panel).toContainText('Islak imza')
+    // ON-063: kimlik açılışta okunmaz; "Kimliği göster" okur, kesin kaydı olmayan örnek öğrencide
+    // kimlik kaydı yoktur.
+    const identity = panel.getByRole('region', { name: 'Kimlik bilgisi' })
+    await expect(identity).toContainText('her görüntüleme denetim kaydına yazılır')
+    await identity.getByRole('button', { name: 'Kimliği göster' }).click()
+    await expect(identity).toContainText('Bu öğrenci için kimlik kaydı yok')
+    await identity.getByRole('button', { name: 'Gizle' }).click()
+    await expect(identity.getByRole('button', { name: 'Kimliği göster' })).toBeVisible()
     // İmza yetkilisini yalnız yönetici işler.
     await expect(panel.getByRole('button', { name: /İmza yetkilisini/ })).toHaveCount(0)
     await panel.getByRole('button', { name: 'Ek protokol hazırla' }).click()

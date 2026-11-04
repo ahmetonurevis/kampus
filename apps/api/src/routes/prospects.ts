@@ -301,7 +301,7 @@ export function registerProspectRoutes(app: FastifyInstance) {
         tags: ['prospects'],
         summary: 'Öğrencinin kimlik özeti',
         description:
-          'Kimlik numarası yalnız maskeli döner (`*******1234`). Kaydı olmayan veya başka kurumun öğrencisi 404. Modül `crm`. Roller: `yonetici`, `onburo`.',
+          'Kimlik numarası yalnız maskeli döner (`*******1234`). Her başarılı okuma denetim kaydına `student_identity.read` olarak yazılır (yalnız alan adları; DOM-YTK-052). Kaydı olmayan veya başka kurumun öğrencisi 404. Modül `crm`. Roller: `yonetici`, `onburo`.',
         params: z.object({ studentId: z.string().min(1).max(200).describe('Öğrenci kimliği') }),
         response: {
           200: dataResponse(

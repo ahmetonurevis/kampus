@@ -459,16 +459,32 @@ export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string
   return findParentMatches(state, phone, { prospectId, bonds })
 }
 
-/** Kimlik yalnız personele ve maskeli döner (guvenlik-kvkk.md Ç sınıfı). */
+const IDENTITY_READ_FIELDS = ['kind', 'maskedNumber', 'birthDate', 'academicYear']
+
+/**
+ * Kimlik yalnız personele ve maskeli döner (guvenlik-kvkk.md Ç sınıfı). Her başarılı okuma aynı
+ * transaction'da denetime yazılır (`student_identity.read`, ON-063; DOM-YTK-052): kimi, hangi
+ * öğrencinin kimliğine baktı. Denetime numara ve doğum tarihi değil, dönen alanların adları gider;
+ * denetim yazılamazsa yanıt dönmez.
+ */
 export async function studentIdentityFor(ctx: ServiceContext, studentId: string) {
-  const row = await findStudentIdentity(ctx.db, ctx.institutionId, studentId)
-  if (row === null) throw new NotFoundError()
-  return {
-    kind: row.kind,
-    maskedNumber: `*******${row.number.slice(-4)}`,
-    birthDate: row.birthDate,
-    academicYear: row.academicYear,
-  }
+  return ctx.db.transaction(async (tx) => {
+    const row = await findStudentIdentity(tx, ctx.institutionId, studentId)
+    if (row === null) throw new NotFoundError()
+    await auditWork(
+      tx,
+      ctx,
+      'student_identity.read',
+      { type: 'students', id: studentId },
+      IDENTITY_READ_FIELDS,
+    )
+    return {
+      kind: row.kind,
+      maskedNumber: `*******${row.number.slice(-4)}`,
+      birthDate: row.birthDate,
+      academicYear: row.academicYear,
+    }
+  })
 }
 
 /** Dil okulunda deneme dersi planlar (DOM-DIL-030, DOM-KAY-034). 200. */

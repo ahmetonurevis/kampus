@@ -208,6 +208,8 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'POST /api/v1/requests': ['communication'],
   'PATCH /api/v1/requests/:requestId': ['communication'],
   'GET /api/v1/notifications': ['communication'],
+  'GET /api/v1/notification-preferences': ['communication'],
+  'PATCH /api/v1/notification-preferences': ['communication'],
   'GET /api/v1/notifications/unread-count': ['communication'],
   'POST /api/v1/notifications/read-all': ['communication'],
   'POST /api/v1/notifications/:notificationId/read': ['communication'],

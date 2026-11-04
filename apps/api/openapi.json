@@ -4613,6 +4613,664 @@
           "affectedContainerVersionIds"
         ]
       },
+      "PatchNotificationPreferencesBodyInput": {
+        "type": "object",
+        "properties": {
+          "topics": {
+            "type": "object",
+            "properties": {
+              "homework": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "grade": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "attendance": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "payment": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "announcement": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "message": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "appointment": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "consent": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "bulletin": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "enrollment": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "quietHours": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "start": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "end": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              }
+            },
+            "required": [
+              "enabled",
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          },
+          "children": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "homework": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "grade": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "attendance": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "payment": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "announcement": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "message": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "appointment": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "consent": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "bulletin": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "enrollment": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Okunan tercih sürümü; tutmazsa 409"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationPreferencesInput": {
+        "type": "object",
+        "properties": {
+          "preferences": {
+            "type": "object",
+            "properties": {
+              "topics": {
+                "type": "object",
+                "properties": {
+                  "homework": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "grade": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "attendance": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "payment": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "announcement": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "message": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "appointment": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "consent": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "bulletin": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "enrollment": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "homework",
+                  "grade",
+                  "attendance",
+                  "payment",
+                  "announcement",
+                  "message",
+                  "appointment",
+                  "consent",
+                  "bulletin",
+                  "enrollment"
+                ],
+                "additionalProperties": false
+              },
+              "quietHours": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "start": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                  },
+                  "end": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "start",
+                  "end"
+                ],
+                "additionalProperties": false
+              },
+              "children": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "homework": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "grade": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "attendance": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "payment": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "announcement": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "message": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "appointment": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "consent": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "bulletin": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "enrollment": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "topics",
+              "quietHours",
+              "children"
+            ],
+            "additionalProperties": false,
+            "description": "Etkin tercih; kayıt yoksa varsayılan (21:00–08:00 sessiz saat, uygulama içi ve anlık bildirim)"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Sonraki PATCH için sürüm; kayıt yoksa 1"
+          }
+        },
+        "required": [
+          "preferences",
+          "version"
+        ]
+      },
       "NotificationInput": {
         "type": "object",
         "properties": {
@@ -20954,6 +21612,665 @@
           "versionIds",
           "affectedCopyIds",
           "affectedContainerVersionIds"
+        ],
+        "additionalProperties": false
+      },
+      "PatchNotificationPreferencesBody": {
+        "type": "object",
+        "properties": {
+          "topics": {
+            "type": "object",
+            "properties": {
+              "homework": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "grade": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "attendance": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "payment": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "announcement": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "message": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "appointment": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "consent": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "bulletin": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              },
+              "enrollment": {
+                "maxItems": 4,
+                "type": "array",
+                "items": {
+                  "type": "string",
+                  "enum": [
+                    "in_app",
+                    "push",
+                    "email",
+                    "sms"
+                  ]
+                }
+              }
+            },
+            "additionalProperties": false
+          },
+          "quietHours": {
+            "type": "object",
+            "properties": {
+              "enabled": {
+                "type": "boolean"
+              },
+              "start": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "end": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              }
+            },
+            "required": [
+              "enabled",
+              "start",
+              "end"
+            ],
+            "additionalProperties": false
+          },
+          "children": {
+            "type": "object",
+            "propertyNames": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "additionalProperties": {
+              "type": "object",
+              "properties": {
+                "homework": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "grade": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "attendance": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "payment": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "announcement": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "message": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "appointment": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "consent": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "bulletin": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                },
+                "enrollment": {
+                  "maxItems": 4,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "in_app",
+                      "push",
+                      "email",
+                      "sms"
+                    ]
+                  }
+                }
+              },
+              "additionalProperties": false
+            }
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991,
+            "description": "Okunan tercih sürümü; tutmazsa 409"
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "NotificationPreferences": {
+        "type": "object",
+        "properties": {
+          "preferences": {
+            "type": "object",
+            "properties": {
+              "topics": {
+                "type": "object",
+                "properties": {
+                  "homework": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "grade": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "attendance": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "payment": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "announcement": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "message": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "appointment": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "consent": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "bulletin": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  },
+                  "enrollment": {
+                    "maxItems": 4,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "in_app",
+                        "push",
+                        "email",
+                        "sms"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "homework",
+                  "grade",
+                  "attendance",
+                  "payment",
+                  "announcement",
+                  "message",
+                  "appointment",
+                  "consent",
+                  "bulletin",
+                  "enrollment"
+                ],
+                "additionalProperties": false
+              },
+              "quietHours": {
+                "type": "object",
+                "properties": {
+                  "enabled": {
+                    "type": "boolean"
+                  },
+                  "start": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                  },
+                  "end": {
+                    "type": "string",
+                    "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                  }
+                },
+                "required": [
+                  "enabled",
+                  "start",
+                  "end"
+                ],
+                "additionalProperties": false
+              },
+              "children": {
+                "type": "object",
+                "propertyNames": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 200
+                },
+                "additionalProperties": {
+                  "type": "object",
+                  "properties": {
+                    "homework": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "grade": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "attendance": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "payment": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "announcement": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "message": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "appointment": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "consent": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "bulletin": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    },
+                    "enrollment": {
+                      "maxItems": 4,
+                      "type": "array",
+                      "items": {
+                        "type": "string",
+                        "enum": [
+                          "in_app",
+                          "push",
+                          "email",
+                          "sms"
+                        ]
+                      }
+                    }
+                  },
+                  "additionalProperties": false
+                }
+              }
+            },
+            "required": [
+              "topics",
+              "quietHours",
+              "children"
+            ],
+            "additionalProperties": false,
+            "description": "Etkin tercih; kayıt yoksa varsayılan (21:00–08:00 sessiz saat, uygulama içi ve anlık bildirim)"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "description": "Sonraki PATCH için sürüm; kayıt yoksa 1"
+          }
+        },
+        "required": [
+          "preferences",
+          "version"
         ],
         "additionalProperties": false
       },
@@ -103527,6 +104844,236 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/TaskExtraTimeLearner"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/notification-preferences": {
+      "get": {
+        "operationId": "getNotificationPreferences",
+        "summary": "Bildirim tercihlerim",
+        "tags": [
+          "notifications"
+        ],
+        "description": "Oturum sahibinin konu × kanal tercihi ve sessiz saati (DOM-ILT-020, -021). Kayıt yoksa varsayılan ve `version: 1` döner. Uygulama içi kanal her konuda açıktır; zorunlu konularda (devamsızlık, etkinlik onayı) anlık bildirim de kapatılamaz. Modül `communication`. Roller: bütün roller.",
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NotificationPreferences"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "patchNotificationPreferences",
+        "summary": "Bildirim tercihlerimi güncelle",
+        "tags": [
+          "notifications"
+        ],
+        "description": "Kısmi güncelleme: `topics` konu bazında birleştirilir, `quietHours` ve `children` verilirse bütün olarak yerini alır. `version` okunan sürümdür; tutmazsa 409 `version_conflict`. Zorunlu konuda taban kanal (uygulama içi, anlık bildirim) çıkarılırsa 422 `notification_channel_required`; sessiz saatte başlangıç ile bitiş aynıysa 422 `quiet_hours_invalid`. `children` yalnız `veli` rolü içindir (çocuğa göre tercih). Başka kullanıcının tercihi bu uçtan okunmaz ya da yazılmaz. Modül `communication`. Roller: bütün roller.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchNotificationPreferencesBodyInput"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/NotificationPreferences"
                     }
                   },
                   "required": [

@@ -87,6 +87,8 @@ export const UNIQUE_CONSTRAINTS = {
 
   // --- Koordinatör görevi ---------------------------------------------------------------------
   coordinator_duties_pkey: RETRY,
+  // İlk yazım yarışı: `onConflictDoNothing` 409'a çevirir; kısıt hata olarak yükselmez.
+  notification_preferences_pkey: RETRY,
   coordinator_duties_membership_kind_scope_key: rule(
     'coordinator_duty_exists',
     'Bu görev öğretmene zaten verilmiş.',

@@ -8,6 +8,7 @@ import {
   type PriceIndexRates,
 } from './fee-tariffs.ts'
 import { money } from './format.ts'
+import { renewalCourseOfferSchema } from './renewal-course-offer.ts'
 
 /**
  * Yenilemenin artış tavanı (docs/domain/finans.md DOM-FIN-005, DOM-FIN-023; ÖÖKY md. 53/1). Baz ve
@@ -62,6 +63,8 @@ export const renewalPricingSchema = z.object({
   discounts: z.array(lineSchema),
   extras: z.array(lineSchema),
   scholarship: z.object({ programId: z.string(), amountCents: z.number().int() }).nullable(),
+  /** Dil okulunda teklifin başladığı kur sonu kararı (DOM-DIL-070); okulda yok. */
+  courseOffer: renewalCourseOfferSchema.optional(),
 })
 export type RenewalPricing = z.output<typeof renewalPricingSchema>
 

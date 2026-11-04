@@ -38,6 +38,7 @@ import {
   listAwaitingScore,
   listOpenAppeals as listOpenAppealRows,
   listSubmittedIds,
+  loadAssignmentsByIds,
   markSecondRatingSampled,
   touchSubmission,
   type StoredAssignment,
@@ -974,6 +975,19 @@ export interface GradingQueueInput {
 }
 
 /**
+ * Sayfadaki atamalar kimlik → atama haritası olarak tek toplu yüklemeyle (OG-1011): hedefler, alan
+ * ve ek süre kayıtları da kimlik listesiyle gelir, atama başına sorgu atılmaz (`findAssignment`
+ * ile aynı şekil; arşivli dahil, başka kurumun kimliği haritada yoktur).
+ */
+async function assignmentsOf(
+  ctx: ServiceContext,
+  assignmentIds: readonly string[],
+): Promise<Map<string, StoredAssignment>> {
+  const stored = await loadAssignmentsByIds(ctx.db, ctx.institutionId, assignmentIds)
+  return new Map(stored.map((assignment) => [assignment.id, assignment]))
+}
+
+/**
  * Puanlanmayı bekleyen teslimler (öğretmen puanlama kuyruğu; DOM-BEC-021, 024, 025): kişinin
  * gördüğü (DOM-YTK-028) arşivsiz, rubrikli atamaların son sürümü ilk puanı ya da istenmiş ikinci
  * puanı almamış teslimleri ve iki puanı uyuşmayıp koordinatörü bekleyenler, en eski gönderim önce.
@@ -1006,11 +1020,10 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
     page: input.page,
     pageSize: input.pageSize,
   })
-  const assignments = new Map<string, StoredAssignment>()
-  for (const assignmentId of new Set(rows.map((row) => row.submission.assignmentId))) {
-    const assignment = await findAssignment(ctx.db, ctx.institutionId, assignmentId)
-    if (assignment) assignments.set(assignmentId, assignment)
-  }
+  const assignments = await assignmentsOf(
+    ctx,
+    rows.map((row) => row.submission.assignmentId),
+  )
   const book = await loadGrading(
     ctx.db,
     ctx,
@@ -1126,11 +1139,10 @@ export async function listOpenAppeals(ctx: ServiceContext, input: OpenAppealsInp
     page: input.page,
     pageSize: input.pageSize,
   })
-  const assignments = new Map<string, StoredAssignment>()
-  for (const assignmentId of new Set(rows.map((row) => row.assignmentId))) {
-    const assignment = await findAssignment(ctx.db, ctx.institutionId, assignmentId)
-    if (assignment) assignments.set(assignmentId, assignment)
-  }
+  const assignments = await assignmentsOf(
+    ctx,
+    rows.map((row) => row.assignmentId),
+  )
   const shown = rows.filter((row) => {
     const assignment = assignments.get(row.assignmentId)
     return assignment !== undefined && visible(viewer, assignment)

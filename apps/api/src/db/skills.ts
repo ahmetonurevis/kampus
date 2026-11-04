@@ -2383,7 +2383,7 @@ export interface OpenAppealRow {
 
 /**
  * Karara bağlanmayı bekleyen itirazlar (DOM-BEC-025): arşivlenmemiş, kararı verilmemiş (`outcome`
- * boş) itiraz, arşivlenmemiş teslim ve atamada; kapsam süzgeci atama listesininkidir (öğretmen:
+ * boş) itiraz, arşivlenmemiş sürüm, teslim ve atamada (`loadAppealsBySubmission` ile aynı); kapsam süzgeci atama listesininkidir (öğretmen:
  * atayan veya kapsamdaki hedef; yönetici kapsamsız). En eski itiraz önce. `scoredByViewer`
  * core `planAppealDecision` bağımsızlık kuralıyla aynı koşuldur (kişi o sürümde herhangi bir
  * rolde puan verdi); satır başına sorgu yoktur, SQL `exists` ile gelir. Sayım aynı koşulla.
@@ -2405,6 +2405,7 @@ export async function listOpenAppeals(
     eq(ap.institutionId, institutionId),
     isNull(ap.archivedAt),
     isNull(ap.outcome),
+    isNull(v.archivedAt),
     isNull(s.archivedAt),
     isNull(a.archivedAt),
     ...(scopeFilter === undefined ? [] : [scopeFilter]),

@@ -1,6 +1,6 @@
 import { createHmac, randomUUID, timingSafeEqual } from 'node:crypto'
 import { createReadStream, createWriteStream } from 'node:fs'
-import { lstat, mkdir, opendir, rename, rm, stat } from 'node:fs/promises'
+import { lstat, mkdir, opendir, realpath, rename, rm, stat } from 'node:fs/promises'
 import { dirname, join, resolve, sep } from 'node:path'
 import type { Readable } from 'node:stream'
 import { pipeline } from 'node:stream/promises'
@@ -13,6 +13,7 @@ import {
   STORAGE_KEY_PATTERN,
   STORAGE_KEY_SEGMENT,
   type SignedGetOptions,
+  type StorageLog,
   type StorageDriver,
   type StoredObjectInfo,
 } from './storage.ts'
@@ -117,12 +118,31 @@ export class DiskStorage implements StorageDriver {
    * Önek klasörünü derinlemesine dolaşır (`opendir`: klasör girdileri parça parça okunur, liste
    * bellekte toplanmaz). Son değişiklik zamanı dosyanın `mtime`'ıdır: yazım geçici dosyada bitip
    * yeniden adlandırıldığı için yazımın bittiği andır. Geçici `.part` dosyaları, sembolik bağlar ve
-   * anahtar biçimine uymayan girdiler atlanır; olmayan önek boş listedir.
+   * anahtar biçimine uymayan girdiler atlanır; olmayan önek boş listedir. Önek yolunda sembolik bağ
+   * varsa ve gerçek yol (`realpath`) kök altındaki önek yolu değilse (kök dışı, kökün kendisi ya da
+   * başka klasör) liste boştur ve `log.warn` yazılır: tarama kök dışındaki dosyaları görüp
+   * sildirmez (OG-093).
    */
-  async *list(prefix: string): AsyncIterable<StoredObjectInfo> {
+  async *list(prefix: string, log?: StorageLog): AsyncIterable<StoredObjectInfo> {
     assertStoragePrefix(prefix)
     const directory = resolve(this.#root, prefix)
     if (!directory.startsWith(this.#root + sep)) throw new Error('storage prefix escapes root')
+    let real: string
+    let realRoot: string
+    try {
+      real = await realpath(directory)
+      realRoot = await realpath(this.#root)
+    } catch (error) {
+      if (isMissing(error)) return
+      throw error
+    }
+    // Beklenen gerçek yol kök altındaki önektir; bağ kök dışını, köke kendisini ya da başka
+    // kurumun klasörünü gösteriyorsa eşleşmez.
+    if (real !== resolve(realRoot, prefix)) {
+      // Önek (kurum kimliği) kişisel veri değildir; gerçek yol loglanmaz.
+      log?.warn({ event: 'storage.list_outside_root', prefix })
+      return
+    }
     yield* this.#walk(directory, prefix, prefix.split('/').length - 1)
   }
 

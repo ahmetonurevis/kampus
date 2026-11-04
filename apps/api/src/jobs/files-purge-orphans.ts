@@ -7,7 +7,9 @@ import { DAY_SECONDS, type InstitutionJob } from './types.ts'
  * (`services/file-orphans.ts`). Satırlı dosyaları silen işler (`files.purge-unattached`,
  * `files.purge-expired`) nesneyi silemezse ya da yükleme satır yazılmadan çökerse nesne buraya
  * kalır. Günde bir çalışır (04:45, Europe/Istanbul; saklama sonu imhasının 04:15 turundan sonra),
- * kurum başına en çok `ORPHAN_PURGE_LIMIT` silme dener; kalan yetimler ertesi gün silinir. İptal
+ * kurum başına en çok `ORPHAN_PURGE_LIMIT` nesne siler (hatalar bu sınırı doldurmaz; ayrı
+ * `ORPHAN_FAILURE_LIMIT`, taramada `ORPHAN_SCAN_LIMIT` sınırı vardır); kalan yetimler ertesi gün
+ * silinir. En az bir silme varsa kuruma tek toplu `file.orphans_purge` denetim satırı düşer. İptal
  * edilen iş (pg-boss `job.signal`) taramayı bırakır. İdempotenttir: silinen nesne yeniden
  * listelenmez, satırlı nesneye dokunulmaz.
  */
@@ -17,7 +19,7 @@ export const filesPurgeOrphansJob: InstitutionJob<{
   purged: number
   failed: number
   recent: number
-  stopped: 'limit' | 'aborted' | null
+  stopped: 'limit' | 'failures' | 'scan_limit' | 'aborted' | null
 }> = {
   name: 'files.purge-orphans',
   cron: '45 4 * * *',

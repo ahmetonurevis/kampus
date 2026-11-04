@@ -27,7 +27,13 @@ export const auditLog = pgTable(
     ipHash: text('ip_hash'),
     // `reason` burada yalnız teknik hata kodudur (ör. giriş hatası); serbest metin gerekçe `reason` kolonundadır.
     // `studentId` yalnız veli iletişimi açılışında (DOM-YTK-055): hangi öğrencinin velisi açıldı.
-    changes: jsonb('changes').$type<{ fields?: string[]; reason?: string; studentId?: string }>(),
+    // `counts` yalnız toplu sistem eyleminde (yetim nesne temizliği, OG-093): adsız sayaçlar.
+    changes: jsonb('changes').$type<{
+      fields?: string[]
+      reason?: string
+      studentId?: string
+      counts?: Record<string, number>
+    }>(),
     // kvkk: K — serbest metin gerekçe; `changes`'e yazılmaz, görünürlüğü yalnız yöneticidir.
     reason: text('reason'),
     createdAt: timestamp('created_at', { withTimezone: true }).notNull().defaultNow(),

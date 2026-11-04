@@ -67,6 +67,7 @@ const ACTION_LABELS: Readonly<Record<string, string>> = {
   'health_profile.read': 'Sağlık bilgisi görüntülendi',
   'health_profile.read_emergency': 'Acil bilgi görüntülendi',
   'health_profile.update': 'Sağlık bilgisi güncellendi',
+  'file.orphans_purge': 'Yetim dosyalar temizlendi',
   'workflow.guidance': 'Rehberlik kaydı değişti',
   'request.open': 'Talep açıldı',
   'request.update': 'Talep güncellendi',

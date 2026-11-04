@@ -31,16 +31,22 @@ export interface StorageDriver {
    * Sıra tanımsızdır ve liste bellekte toplanmaz: tüketici erken bırakınca (`break`) sürücü açık
    * kaynakları kapatır. Yalnız anahtar biçimine (`STORAGE_KEY_PATTERN`) uyan tamamlanmış nesneler
    * verilir; yazımı süren geçici nesne listeye girmez. Tarama sırasında silinen ya da eklenen nesne
-   * listede görünebilir de görünmeyebilir de.
+   * listede görünebilir de görünmeyebilir de. Sürücü listelemeyi reddederse (ör. disk sürücüsünde
+   * kurum klasörü kök dışına işaret eden sembolik bağ) boş liste verir ve `log.warn` ile bildirir.
    * TODO(F3c2-s3): S3'te `ListObjectsV2` (`Prefix`, `ContinuationToken`, sayfa başına en çok 1000)
    * sayfa sayfa okunur; `Key` ve `LastModified` verilir.
    */
-  list(prefix: string): AsyncIterable<StoredObjectInfo>
+  list(prefix: string, log?: StorageLog): AsyncIterable<StoredObjectInfo>
   /**
    * Kısa ömürlü, imzalı GET bağlantısı (karar 6); disposition imzaya dahildir. Bağlantı özgün adı
    * taşımaz (KVKK); ad ve tür indirmede `files` satırından gelir.
    */
   signedGetUrl(key: string, options: SignedGetOptions): Promise<string>
+}
+
+/** Sürücünün uyarı yazdığı en küçük günlükçü arayüzü (Fastify/pino günlükçüsü uyar). */
+export interface StorageLog {
+  warn(object: Record<string, unknown>): void
 }
 
 /** Listelenen nesne: anahtar ve son değişiklik (yazım) zamanı. */

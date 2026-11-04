@@ -33,7 +33,6 @@ export const ONUR_MIGRATED: readonly string[] = [
   'yonetici/kayit-yenileme',
   'onburo/kayit-yenileme',
   'veli/kayit-yenileme',
-  'ogretmen/deneme-sonuclari',
 ]
 // Onur: kayıt ve finans sonu
 

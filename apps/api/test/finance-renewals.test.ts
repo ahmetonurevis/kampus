@@ -5,6 +5,10 @@ import { after, before, describe, test } from 'node:test'
 import { and, eq } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
+import {
+  INSTITUTION_TYPES,
+  moduleAvailableFor,
+} from '@kampus/school-core/modules/collection-modules.ts'
 
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
@@ -227,6 +231,35 @@ describe('IST-100: kayıt yenileme uçları', () => {
     }
     const language = await institution({ type: 'language_school' })
     assertError(await get(BASE, language.admin), 404)
+  })
+
+  test('DOM-YTK-012, ADR 0008: yenileme türde yoksa (dil okulu, kurs) uçlar 404, menüde modül kapalı', async () => {
+    const withoutRenewal = INSTITUTION_TYPES.filter((type) => !moduleAvailableFor('renewal', type))
+    assert.ok(withoutRenewal.includes('language_school'))
+    assert.equal(withoutRenewal.includes('school'), false)
+    for (const type of withoutRenewal) {
+      const closed = await institution({ type })
+      await publish(closed.id)
+      assertError(await get(BASE, closed.admin), 404)
+      assertError(await get(INDEXES, closed.admin), 404)
+      assertError(await post(`${BASE}/quote`, closed.admin, QUOTE), 404)
+      assertError(await post(BASE, closed.admin, {}, key()), 404)
+      assertError(await post(INDEXES, closed.admin, INDEX), 404)
+      const workflow = await post(
+        '/api/v1/workflows/renewal',
+        closed.admin,
+        { studentId: 's3', targetClassId: 'c1', mode: 'renew', total: 1_000_000 },
+        key(),
+      )
+      assert.equal(workflow.statusCode, 404, workflow.body)
+      assert.equal(await count(closed.id, 'renewals'), 0)
+      const me = await get('/api/v1/me', closed.admin)
+      assert.equal(me.statusCode, 200, me.body)
+      const modules = me.json<{
+        data: { activeInstitution: { enabledModules: Record<string, boolean> } }
+      }>().data.activeInstitution.enabledModules
+      assert.equal(modules.renewal ?? false, false, type)
+    }
   })
 
   test('DOM-FIN-005: ÜFE/TÜFE oranı bir kez girilir, If-Match ile düzeltilir; biçim hatası 400 ve satır değişmez', async () => {

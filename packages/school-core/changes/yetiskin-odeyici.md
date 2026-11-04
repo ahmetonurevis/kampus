@@ -1,0 +1,6 @@
+---
+etki: minor
+---
+
+- Yetişkin kursiyere ayrı ödeyici eklendi (ON-124; DOM-KAY-012, DOM-ILT-074, ADR 0008 karar 5; kullanıcı kararı 2 Kasım 2026): `lib/finance-payers.ts` (`adultPayerSchema`, `planAdultPayerLink`, `requireSeparatePayerAllowed`, `requireEligiblePayerParent`, `newPayerParent`). Kursta 18 yaş ve üstü kursiyere ücreti ödeyen kişi velayetsiz (`custody: 'none'`) ödeyici bağıyla (`isPayer: true`) bağlanır; velayetli veli sayılmaz, rıza veremez, not ve devamı görmez, finansı (fatura, sözleşme, tahsilat ve dekont, bakiye, ekstre) ve finans bildirimini görür. Okulda ve 18 yaş altında ayrı ödeyici 422 `payer_not_applicable`; kursiyerin kendi satırı ya da iletişim kısıtlı kişi 422 `payer_not_eligible`; ikinci ödeyici ve aynı kişi 409 (`guardian_payer_exists`, `guardian_link_exists`); vasi yakınlığı ödeyici gövdesinde yoktur (400).
+- `enrollProspectSchema` isteğe bağlı `payer` (`{ existingParentId }` ya da `{ name, phone, relationship }`) alır; `enrollProspectWithTariff` sonucu `payerBond` taşır, `EnrollmentContext` isteğe bağlı `payerBonds` alır. Yeni ödeyicinin veli kaydı açılır ama öğrenci kaydın `studentIds`'ine yazılmaz (öğretmen ve kursiyer ödeyiciyi veli olarak görmez). Sözleşmenin `payer` alanı `student` kalır: borcun ve sözleşme onayının tarafı kursiyerdir.

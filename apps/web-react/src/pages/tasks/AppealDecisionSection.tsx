@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch, type Control, type Resolver } from 'react-hook-form'
 import type { FieldErrors, UseFormRegister } from 'react-hook-form'
@@ -13,11 +13,13 @@ import { Textarea } from '@/components/ui/textarea'
 import { notify } from '@/lib/notify.ts'
 import { RootError } from '../management/FormParts.tsx'
 import {
+  APPEAL_NOT_INDEPENDENT_TEXT,
   APPEAL_OUTCOME_OPTIONS,
   APPEAL_STALE_TEXT,
   appealDecisionBody,
   appealDecisionFieldFor,
   appealDecisionFormSchema,
+  showsAppealNotIndependent,
   showsAppealStaleNotice,
   type AppealDecisionFormValues,
 } from './appeal-model.ts'
@@ -52,6 +54,9 @@ export function AppealDecisionSection({
   canDecide,
 }: Props) {
   const [stale, setStale] = useState(false)
+  // Sunucu bu itirazda puanlayıcı bağımsızlığını reddettiyse (409) form bırakılır; sürümü puanlayan
+  // kişi yanıt şemasından anlaşılamadığı için bilgi ilk reddedişte öğrenilir.
+  const [blockedAppealId, setBlockedAppealId] = useState<string | null>(null)
   const pending = appeal.outcome === null
   return (
     <section aria-labelledby="itiraz-karti" className="grid gap-3 border-t pt-5">
@@ -86,14 +91,19 @@ export function AppealDecisionSection({
             <span className="text-muted-foreground"> · {dateTimeLabel(appeal.decidedAt)}</span>
           ) : null}
         </p>
+      ) : canDecide && blockedAppealId === appeal.id ? (
+        <p role="status" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
+          {APPEAL_NOT_INDEPENDENT_TEXT}
+        </p>
       ) : canDecide ? (
         <DecisionForm
-          // Rubrik gelince ya da sürüm değişince alanlar baştan kurulur.
-          key={`${appeal.id}-${rubric.version?.id ?? 'rubriksiz'}`}
+          // Yalnız itiraz değişince form baştan kurulur; rubrik geç gelirse gerekçe korunur.
+          key={appeal.id}
           submission={submission}
           appeal={appeal}
           rubric={rubric}
           onStaleChange={setStale}
+          onNotIndependent={() => setBlockedAppealId(appeal.id)}
         />
       ) : (
         <p className="text-sm text-muted-foreground">
@@ -109,8 +119,10 @@ function DecisionForm({
   appeal,
   rubric,
   onStaleChange,
+  onNotIndependent,
 }: Pick<Props, 'submission' | 'appeal' | 'rubric'> & {
   onStaleChange: (stale: boolean) => void
+  onNotIndependent: () => void
 }) {
   const decide = useDecideTaskAppeal()
   const form = useForm<AppealDecisionFormValues>({
@@ -128,6 +140,19 @@ function DecisionForm({
       overallComment: '',
     },
   })
+  // Rubrik sonradan yüklenirse yalnız kriter alanları kurulur; gerekçe ve karar seçimi kalır.
+  const rubricVersion = rubric.version
+  const { resetField } = form
+  useEffect(() => {
+    if (!rubricVersion) return
+    resetField('criteria', {
+      defaultValue: rubricVersion.criteria.map((criterion) => ({
+        criterionId: criterion.id,
+        band: null,
+        comment: '',
+      })),
+    })
+  }, [rubricVersion, resetField])
   const outcome = useWatch({ control: form.control, name: 'outcome' })
   const errors = form.formState.errors
   const busy = decide.isPending || form.formState.isSubmitting
@@ -145,13 +170,14 @@ function DecisionForm({
         decision: appealDecisionBody(values),
       },
       {
-        silent: showsAppealStaleNotice,
+        silent: (error) => showsAppealStaleNotice(error) || showsAppealNotIndependent(error),
         setError: (name, error) => form.setError(appealDecisionFieldFor(name) as 'reason', error),
       },
     )
     if (result.status === 'success') notify.success('İtiraz karara bağlandı.')
-    else if (result.status === 'failed' && showsAppealStaleNotice(result.error)) {
-      onStaleChange(true)
+    else if (result.status === 'failed') {
+      if (showsAppealStaleNotice(result.error)) onStaleChange(true)
+      else if (showsAppealNotIndependent(result.error)) onNotIndependent()
     }
   })
 

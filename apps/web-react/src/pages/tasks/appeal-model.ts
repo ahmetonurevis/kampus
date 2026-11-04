@@ -165,10 +165,25 @@ export function appealDecisionFieldFor(path: string): string {
   return DECISION_FIELD.test(name) ? name : 'root.server'
 }
 
-/** Son sürümün itirazı; pencerede karar formu yalnız bunun için açılır. */
+/**
+ * Öğretmen penceresinde gösterilen itiraz (DOM-BEC-025). Önce karar bekleyen en son itiraz, hangi
+ * sürümde olursa olsun: sunucu, itirazı bekleyen sürümden sonra yeni sürüm gönderilmesini
+ * engellemez (yeniden teslim turu açılabilir), bu yüzden eski sürümün açık itirazı son sürüme
+ * bakınca gözden kaçar ve hiç karara bağlanamaz. Bekleyen yoksa karara bağlanmış en son itiraz
+ * salt okunur gösterilir. Karar gövdesi itirazın kendi kimliğiyle gider; sürüm yalnız etikettir.
+ */
 export function latestAppeal(
   submission: Pick<TaskSubmissionDetail, 'versions'>,
 ): { appeal: TaskAppeal; versionNumber: number } | null {
-  const version = submission.versions.at(-1)
-  return version?.appeal ? { appeal: version.appeal, versionNumber: version.number } : null
+  const withAppeal = submission.versions.flatMap((version) =>
+    version.appeal ? [{ appeal: version.appeal, versionNumber: version.number }] : [],
+  )
+  return withAppeal.findLast((item) => item.appeal.outcome === null) ?? withAppeal.at(-1) ?? null
 }
+
+/** Karar sunucuda puanlayıcı bağımsızlığına takılırsa (409) kart formu bırakır, bilgi metni gösterir. */
+export const showsAppealNotIndependent = (error: { code: string }) =>
+  error.code === 'rater_not_independent'
+
+export const APPEAL_NOT_INDEPENDENT_TEXT =
+  'Bu sürümü siz puanladınız; itirazı başka bir öğretmen karara bağlar.'

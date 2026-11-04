@@ -2,6 +2,7 @@ import assert from 'node:assert/strict'
 import { describe, test } from 'node:test'
 import type { TaskAppeal } from '@kampus/react-shared/use-task-grading.ts'
 import {
+  APPEAL_NOT_INDEPENDENT_TEXT,
   APPEAL_OUTCOME_OPTIONS,
   appealBody,
   appealDecisionBody,
@@ -11,6 +12,7 @@ import {
   appealFormSchema,
   latestAppeal,
   learnerAppealState,
+  showsAppealNotIndependent,
   showsAppealStaleNotice,
   type AppealDecisionFormValues,
 } from '../src/pages/tasks/appeal-model.ts'
@@ -206,24 +208,55 @@ describe('OG-211 / DOM-BEC-025: öğretmenin karar formu', () => {
     assert.equal(showsAppealStaleNotice({ code: 'rater_not_independent' }), false)
     assert.equal(showsAppealStaleNotice({ code: 'forbidden' }), false)
   })
+
+  test('bağımsızlık hatası (409 rater_not_independent) itiraza özgü bilgi metnine çevrilir', () => {
+    assert.equal(showsAppealNotIndependent({ code: 'rater_not_independent' }), true)
+    assert.equal(showsAppealNotIndependent({ code: 'version_conflict' }), false)
+    assert.match(APPEAL_NOT_INDEPENDENT_TEXT, /başka bir öğretmen karara bağlar/)
+  })
 })
 
-describe('OG-211 / DOM-BEC-025: öğretmen penceresinde son sürümün itirazı', () => {
-  test('yalnız son sürümün itirazı döner; numarası ile birlikte', () => {
-    const versions = [
-      { number: 1, appeal: appeal({ id: 'eski' }) },
-      { number: 2, appeal: appeal({ id: 'yeni' }) },
-    ] as never
-    const found = latestAppeal({ versions })
+describe('OG-211 / DOM-BEC-025: öğretmen penceresinde gösterilen itiraz', () => {
+  test('sunucu yeni sürümü engellemez: eski sürümün bekleyen itirazı, sonuçlanmış yeni itirazın önüne geçer', () => {
+    const found = latestAppeal({
+      versions: [
+        { number: 1, appeal: appeal({ id: 'v1-bekliyor' }) },
+        { number: 2, appeal: appeal({ id: 'v2-karar', outcome: 'rejected' }) },
+        { number: 3, appeal: null },
+      ] as never,
+    })
+    assert.equal(found?.appeal.id, 'v1-bekliyor')
+    assert.equal(found?.versionNumber, 1)
+  })
+
+  test('birden çok bekleyen itirazdan en son sürümünki döner; numarası ile birlikte', () => {
+    const found = latestAppeal({
+      versions: [
+        { number: 1, appeal: appeal({ id: 'eski' }) },
+        { number: 2, appeal: appeal({ id: 'yeni' }) },
+      ] as never,
+    })
     assert.equal(found?.appeal.id, 'yeni')
     assert.equal(found?.versionNumber, 2)
   })
 
-  test('son sürümde itiraz yoksa ya da sürüm yoksa null', () => {
+  test('bekleyen yoksa en son itiraz salt okunur sonuç olarak döner', () => {
+    const found = latestAppeal({
+      versions: [
+        { number: 1, appeal: appeal({ id: 'a', outcome: 'upheld' }) },
+        { number: 2, appeal: appeal({ id: 'b', outcome: 'rejected' }) },
+        { number: 3, appeal: null },
+      ] as never,
+    })
+    assert.equal(found?.appeal.id, 'b')
+    assert.equal(found?.versionNumber, 2)
+  })
+
+  test('hiçbir sürümde itiraz yoksa ya da sürüm yoksa null', () => {
     assert.equal(
       latestAppeal({
         versions: [
-          { number: 1, appeal: appeal() },
+          { number: 1, appeal: null },
           { number: 2, appeal: null },
         ] as never,
       }),

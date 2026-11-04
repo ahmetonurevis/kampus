@@ -190,6 +190,11 @@ const versionGradingSchema = z
     secondRatingRequested: z
       .boolean()
       .describe('Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında mı'),
+    secondRatingRequestUsed: z
+      .boolean()
+      .describe(
+        'Teslim için ikinci puanlama istemi yapıldı mı (sürümden bağımsız; istem teslim başına bir, DOM-BEC-024). Yeniden teslimle gelen sürüm kapsamda değilken de `true` kalır; elle istem bu durumda 409 `second_rating_exists` olur',
+      ),
     disagreementCriterionIds: z
       .array(z.string())
       .describe(

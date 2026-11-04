@@ -10646,6 +10646,10 @@
             "type": "boolean",
             "description": "Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında mı"
           },
+          "secondRatingRequestUsed": {
+            "type": "boolean",
+            "description": "Teslim için ikinci puanlama istemi yapıldı mı (sürümden bağımsız; istem teslim başına bir, DOM-BEC-024). Yeniden teslimle gelen sürüm kapsamda değilken de `true` kalır; elle istem bu durumda 409 `second_rating_exists` olur"
+          },
           "disagreementCriterionIds": {
             "type": "array",
             "items": {
@@ -10709,6 +10713,7 @@
           "status",
           "missing",
           "secondRatingRequested",
+          "secondRatingRequestUsed",
           "disagreementCriterionIds",
           "raterScores",
           "canResolve",
@@ -28480,6 +28485,10 @@
             "type": "boolean",
             "description": "Sürüm ikinci puanlama isteğinin (örneklem veya elle) kapsamında mı"
           },
+          "secondRatingRequestUsed": {
+            "type": "boolean",
+            "description": "Teslim için ikinci puanlama istemi yapıldı mı (sürümden bağımsız; istem teslim başına bir, DOM-BEC-024). Yeniden teslimle gelen sürüm kapsamda değilken de `true` kalır; elle istem bu durumda 409 `second_rating_exists` olur"
+          },
           "disagreementCriterionIds": {
             "type": "array",
             "items": {
@@ -28544,6 +28553,7 @@
           "status",
           "missing",
           "secondRatingRequested",
+          "secondRatingRequestUsed",
           "disagreementCriterionIds",
           "raterScores",
           "canResolve",

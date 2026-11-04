@@ -66,21 +66,35 @@ export const sampleDrawnText = (
 // --- Elle istem (teslim düzeyi) -------------------------------------------------------------
 
 export type RequestState =
-  { kind: 'requested'; text: string } | { kind: 'available'; text: string } | { kind: 'closed' }
+  | { kind: 'requested'; text: string }
+  | { kind: 'used'; text: string }
+  | { kind: 'available'; text: string }
+  | { kind: 'closed' }
 
 /**
  * Teslimin ikinci puanlama isteği durumu (`TaskVersionGrading`): istek varsa durum yazılır, henüz
  * puanlanmamış sürümde (`unscored`) düğme açılır; puanı oluşmuş sürüm için istek sunucuda
  * `second_rating_too_late` olur, bölüm gizlenir. Pencerenin kapanıp kapanmadığını sunucu söyler.
+ * İstem teslim başına birdir: sürüm kapsamda değilken istem kullanılmışsa (yeniden teslimle gelen
+ * sürüm) düğme açılmaz, çünkü sunucu `second_rating_exists` 409 der; yerine bilgi yazılır.
  */
 export function requestState(
-  grading: Pick<TaskVersionGrading, 'status' | 'secondRatingRequested'> | null,
+  grading: Pick<
+    TaskVersionGrading,
+    'status' | 'secondRatingRequested' | 'secondRatingRequestUsed'
+  > | null,
 ): RequestState {
   if (grading === null) return { kind: 'closed' }
   if (grading.secondRatingRequested) {
     return {
       kind: 'requested',
       text: 'Bu sürüm için ikinci puanlama istendi; ikinci puanlayıcı ilk puanı görmeden puanlar.',
+    }
+  }
+  if (grading.secondRatingRequestUsed) {
+    return {
+      kind: 'used',
+      text: 'Bu teslim için ikinci puanlama daha önce istendi; yeni sürüm ikinci puanlama beklemez.',
     }
   }
   if (grading.status === 'unscored') {

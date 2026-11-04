@@ -749,6 +749,9 @@ function gradingView(
     status: resolution.status,
     missing: resolution.status === 'pending' ? resolution.missing : null,
     secondRatingRequested: secondRatingFor(grading, version),
+    // İstem teslim başına bir satırdır; yeniden teslimle gelen sürüm kapsamda olmasa da istem
+    // kullanılmıştır (elle istem `second_rating_exists` 409 verir). Puan taşımaz.
+    secondRatingRequestUsed: grading.secondRatingRequestedAt !== null,
     disagreementCriterionIds: resolution.status === 'disagreement' ? resolution.criterionIds : [],
     dueAt: deadline === null ? null : gradingDueAt(deadline, version),
     overdue: deadline !== null && gradingOverdue({ deadline, version, resolution, now: ctx.now }),

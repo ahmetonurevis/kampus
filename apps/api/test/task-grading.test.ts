@@ -1848,6 +1848,60 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
     assert.deepEqual(await feedbackNotices(t.cookies.parent), [['parent', 's-1', id]])
   })
 
+  test('OG-1012, DOM-BEC-024: secondRatingRequestUsed istemden önce false, sonra true; yeniden teslimle gelen sürüm kapsamda değilken de true kalır ve elle istem 409 second_rating_exists; kursiyer ve veliye grading null', async () => {
+    const { t, assignmentId, submission } = await setup()
+    const id = submission.id as string
+    const usedOf = async (cookie: string) =>
+      (await ok(await detail(id, cookie))).versions.map((v: Json) => [
+        v.grading.secondRatingRequested,
+        v.grading.secondRatingRequestUsed,
+      ])
+    for (const cookie of [t.cookies.teacher, t.cookies.admin])
+      assert.deepEqual(await usedOf(cookie), [[false, false]])
+
+    const requested = await ok(await requestSecond(id, t.cookies.admin, 1), 201)
+    assert.deepEqual(
+      [
+        requested.versions[0].grading.secondRatingRequested,
+        requested.versions[0].grading.secondRatingRequestUsed,
+      ],
+      [true, true],
+    )
+    // Puanlama yanıtı da aynı alanı taşır.
+    const scored = await ok(await score(id, t.cookies.teacher, 2), 201)
+    assert.equal(scored.versions[0].grading.secondRatingRequestUsed, true)
+    await ok(await secondScore(id, t.cookies.colleague, 3), 201)
+
+    // Sürüm 1 kesinleşti; yeniden teslim istenir, sürüm 2 gelir.
+    await ok(
+      await requestResubmission(id, t.cookies.teacher, 4, {
+        versionNumber: 1,
+        dueAt: new Date(now.getTime() + 3 * DAY).toISOString(),
+      }),
+      201,
+    )
+    // Sabit saatte sürüm 2 istemle aynı anda gelirdi; gerçekte sonradan gelir ve kapsam dışıdır.
+    now = new Date(now.getTime() + 3_600_000)
+    await ok(await resubmit(assignmentId, 'Second version.'), 201)
+    for (const cookie of [t.cookies.teacher, t.cookies.admin])
+      assert.deepEqual(await usedOf(cookie), [
+        [true, true],
+        [false, true],
+      ])
+    const staff = await ok(await detail(id, t.cookies.admin))
+    fails(
+      await requestSecond(id, t.cookies.admin, staff.rowVersion, { versionNumber: 2 }),
+      409,
+      'second_rating_exists',
+    )
+
+    for (const cookie of [t.cookies.student, t.cookies.parent]) {
+      const seen = await ok(await detail(id, cookie))
+      for (const version of seen.versions) assert.equal(version.grading, null)
+      assert.ok(!(await detail(id, cookie)).body.includes('secondRatingRequestUsed'))
+    }
+  })
+
   test('DOM-BEC-045, DOM-BEC-024: uyuşmayan ikinci puan geri bildirimi açmaz ve bildirim üretmez; ilk açılış koordinatör puanındadır (F4b3b2b)', async () => {
     const { t, submission } = await setup()
     const id = submission.id as string

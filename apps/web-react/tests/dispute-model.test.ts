@@ -41,6 +41,7 @@ const grading = (extra: Partial<TaskVersionGrading> = {}): TaskVersionGrading =>
   status: 'disagreement',
   missing: null,
   secondRatingRequested: true,
+  secondRatingRequestUsed: true,
   disagreementCriterionIds: ['task'],
   raterScores: [
     { raterRole: 'first', score: score({ task: 5, grammar: 3 }) },

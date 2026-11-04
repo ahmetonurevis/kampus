@@ -66,17 +66,45 @@ describe('sampleState (OG-210; DOM-BEC-024)', () => {
 
 describe('requestState', () => {
   test('puanlanmamış sürümde istem açılır', () => {
-    const state = requestState({ status: 'unscored', secondRatingRequested: false })
+    const state = requestState({
+      status: 'unscored',
+      secondRatingRequested: false,
+      secondRatingRequestUsed: false,
+    })
     assert.equal(state.kind, 'available')
   })
 
   test('istenmiş sürümde durum yazılır, düğme yok', () => {
-    const state = requestState({ status: 'pending', secondRatingRequested: true })
+    const state = requestState({
+      status: 'pending',
+      secondRatingRequested: true,
+      secondRatingRequestUsed: true,
+    })
     assert.equal(state.kind, 'requested')
   })
 
+  test('OG-1012, DOM-BEC-024: istem kullanılmış ama sürüm kapsamda değilse düğme yok, bilgi metni var', () => {
+    const state = requestState({
+      status: 'unscored',
+      secondRatingRequested: false,
+      secondRatingRequestUsed: true,
+    })
+    assert.equal(state.kind, 'used')
+    assert.equal(
+      state.kind === 'used' && state.text,
+      'Bu teslim için ikinci puanlama daha önce istendi; yeni sürüm ikinci puanlama beklemez.',
+    )
+  })
+
   test('puanı oluşmuş ya da ayrıntısız sürümde bölüm kapalı', () => {
-    assert.equal(requestState({ status: 'settled', secondRatingRequested: false }).kind, 'closed')
+    assert.equal(
+      requestState({
+        status: 'settled',
+        secondRatingRequested: false,
+        secondRatingRequestUsed: false,
+      }).kind,
+      'closed',
+    )
     assert.equal(requestState(null).kind, 'closed')
   })
 })

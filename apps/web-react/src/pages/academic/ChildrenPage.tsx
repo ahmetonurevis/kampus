@@ -12,6 +12,7 @@ import { ViewScopeContext } from '@/layout/view-scope.ts'
 import { withChildParam } from '@/lib/child-selection.ts'
 import { pageHref, type NavPage } from '@/lib/navigation.ts'
 import { LookupError } from './AcademicParts.tsx'
+import { HealthProfileSection } from './HealthProfileSection.tsx'
 import {
   attendanceCounts,
   overallAverage,
@@ -23,12 +24,16 @@ import { useAcademicLookups } from './use-academic-lookups.ts'
 /**
  * Çocuklarım (veli, Vue `cocuk-secici`): kapsamdaki çocukların kartları; ortalama ve devamsızlık
  * kayıtlardan hesaplanır. Kart, çocuğu seçip Akademik Takip'i açar (seçim adreste `?cocuk=`).
+ * Altta seçili çocuğun sağlık ve acil bilgisi (DOM-ILT-035) görünür ve velayetli veli tarafından
+ * düzenlenir; erişim yoksa (kısıtlı veli, 18+ öğrenci) bölüm çizilmez.
  */
 export function ChildrenPage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const data = useAcademicLookups()
   const selected = use(ViewScopeContext)
   const children = data.sources.students.map((item) => item.record)
+  // Sağlık ve acil bilgi seçili çocuk içindir; seçim yoksa ilk çocuk.
+  const healthChild = children.find((child) => child.id === selected) ?? children[0]
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
@@ -53,6 +58,11 @@ export function ChildrenPage({ page }: { page: NavPage }) {
           ))}
         </ul>
       )}
+      {healthChild ? (
+        <div className="mt-6">
+          <HealthProfileSection studentId={healthChild.id} studentName={healthChild.name} />
+        </div>
+      ) : null}
     </>
   )
 }

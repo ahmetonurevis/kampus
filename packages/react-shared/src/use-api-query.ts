@@ -19,6 +19,15 @@ export interface ApiQueryOptions<TResult extends ApiResult> {
   staleTime?: number
   /** Açık ekranın tazeleme aralığı (ms); arka plan sekmesinde çalışmaz. */
   refetchInterval?: number
+  /**
+   * Hiçbir bileşen izlemediğinde önbellekte kalma süresi (ms). Özel nitelikli veri için `0`
+   * (kvkk: Ö); verilmezse TanStack varsayılanı.
+   */
+  gcTime?: number
+  /** `false`: pencere odağına dönünce otomatik yeniden okuma yok (her okuma denetim satırı olan uçlar). */
+  refetchOnWindowFocus?: boolean
+  /** `false`: bağlantı geri gelince otomatik yeniden okuma yok. */
+  refetchOnReconnect?: boolean
 }
 
 /**
@@ -48,5 +57,12 @@ export function useApiQuery<TResult extends ApiResult>(
     enabled: scopeReady && (options.enabled ?? true),
     ...(options.staleTime !== undefined ? { staleTime: options.staleTime } : {}),
     ...(options.refetchInterval !== undefined ? { refetchInterval: options.refetchInterval } : {}),
+    ...(options.gcTime !== undefined ? { gcTime: options.gcTime } : {}),
+    ...(options.refetchOnWindowFocus !== undefined
+      ? { refetchOnWindowFocus: options.refetchOnWindowFocus }
+      : {}),
+    ...(options.refetchOnReconnect !== undefined
+      ? { refetchOnReconnect: options.refetchOnReconnect }
+      : {}),
   })
 }

@@ -83,6 +83,16 @@ export function notificationPreferencesKey() {
 }
 
 /**
+ * Öğrencinin sağlık ve acil bilgisi anahtar parçası (OG-090; `GET /students/{id}/health-profile`).
+ * Özel nitelikli veridir (kvkk: Ö): yalnız bellekteki sorgu önbelleğinde durur, kalıcı depoya yazılmaz.
+ */
+export const HEALTH_PROFILE_KEY_ROOT = 'health-profile'
+
+export function healthProfileKey(studentId: string) {
+  return [HEALTH_PROFILE_KEY_ROOT, studentId] as const
+}
+
+/**
  * Açık rıza anahtar parçaları (IST-017; `GET /consent-texts/{purpose}`, `/consents`,
  * `/consents/status`). Metin, satırlar ve geçerlilik sonucu ayrı alt kollardadır; rıza verme ve
  * geri çekme sonrası `['consents']` önekiyle üçü birlikte tazelenir (yeni metin sürümü de aynı

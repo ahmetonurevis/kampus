@@ -273,18 +273,12 @@ export async function teacherReaches(
   ctx: ServiceContext,
   studentId: string,
 ): Promise<boolean> {
-  const [memberships, groups, courses, duties] = await Promise.all([
+  const [memberships, groups, courses, reader] = await Promise.all([
     loadMembershipsOfStudents(db, ctx.institutionId, [studentId]),
     loadGroups(db, ctx.institutionId),
     loadCourses(db, ctx.institutionId),
-    activeDutiesOf(db, ctx.institutionId, ctx.actor.membershipId),
+    groupReaderOf(db, ctx),
   ])
-  const reader = {
-    role: ctx.actor.role,
-    membershipId: ctx.actor.membershipId,
-    coordination: duties.length === 0 ? NO_COORDINATOR_SCOPE : coordinatorScopeOf(duties),
-    studentIds: [] as string[],
-  }
   const members = memberships.filter((member) => member.status === 'active')
   const courseOf = new Map(courses.map((course) => [course.id, course]))
   return members.some((member) => {
@@ -294,6 +288,21 @@ export async function teacherReaches(
       group !== undefined && course !== undefined && canReadGroup(reader, group, course, members)
     )
   })
+}
+
+/**
+ * Grup okuyucusu (core `canReadGroup` girdisi): oturumdaki rol, üyelik ve etkin koordinatörlük
+ * görevleri. Öğretmenin grup kapsamı hem kursiyer kapsamında hem raporlarda (IST-118) bununla
+ * kurulur; kapsam kuralı core'dadır, burada ikinci kez yazılmaz.
+ */
+export async function groupReaderOf(db: Database, ctx: ServiceContext) {
+  const duties = await activeDutiesOf(db, ctx.institutionId, ctx.actor.membershipId)
+  return {
+    role: ctx.actor.role,
+    membershipId: ctx.actor.membershipId,
+    coordination: duties.length === 0 ? NO_COORDINATOR_SCOPE : coordinatorScopeOf(duties),
+    studentIds: [] as string[],
+  }
 }
 
 /**

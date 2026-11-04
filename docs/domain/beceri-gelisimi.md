@@ -179,6 +179,14 @@
 - **Kurum türü:** ikisi
 - **Kodda:** core `packages/school-core/src/skills/content-results.ts` (`tallyOutcomes`); API `GET /api/v1/resources/:resourceId/assignment-results` (`apps/api/src/services/content-results.ts`, `routes/task-assignments.ts`); kanca `packages/react-shared/src/use-content-assignments.ts`; web içerik ayrıntısı "Atamalar ve sonuçlar" bölümü (`apps/web-react/src/pages/content/ContentAssignmentResults.tsx`).
 
+### DOM-BEC-037 · Beceri ve CEFR raporu
+
+- **Kural:** Dil okulunda yönetici ve öğretmen, dil grubu (`groupBy=class`) ya da kur seviyesi (`groupBy=level`) başına rapor okur (IST-118): öğrenci sayısı, dört beceri için ortalama, kanıt sayısı ve kanıtı olan öğrenci sayısı, ayrıca öğrencilerin güncel genel seviye kararlarının dağılımı (seviye kararı olmayanlar ayrı sayılır) ve toplam. Kursiyerler okunabilir, iptal edilmemiş grupların etkin üyeleridir (arşivli ve pasif öğrenci hariç); öğretmen yalnız okuma kapsamındaki grupları görür (`DOM-YTK-028`: kendi grubu ve koordinatörü olduğu seviye). Beceri puanı ilerleme panosunun kanıt kümesidir (`DOM-BEC-035`: değerlendirme türü, dört beceri, puanı açık, içeriği kaldırılmamış, iptal edilmemiş sonuç; otomatikte sayılan deneme `DOM-BEC-042`, öğretmen puanlıda kesinleşmiş puan `DOM-BEC-021`). Her kursiyerin beceri ortalaması eşit ağırlıklıdır; grup ortalaması kursiyer ortalamalarının ortalamasıdır, yuvarlama yalnız sonda bir ondalıkla yapılır; kanıtsız beceri `null`dır (sıfır değil). Aynı kursiyer ve atama bir kez sayılır. Rapor her okumada hesaplanır, saklanmaz; kişi adı ya da kişi puanı içermez. Okul türünde rapor yoktur (404), `learning` modülü kapalıysa 403.
+- **Gerekçe:** Koordinatör ve yönetici grupları ve kurları karşılaştırıp zayıf beceriyi görmeli; kişi puanı rapora sızmamalı ve her kursiyer ortalamayı eşit etkilemeli (kalabalık gruptaki tek öğrenci ortalamayı kaydırmasın).
+- **Kaynak:** İşletme kuralı (IST-118); proje kuralı (hesaplanabilen değer saklanmaz).
+- **Kurum türü:** dil okulu
+- **Kodda:** core `packages/school-core/src/cefr/skill-report.ts` (`skillReport`, `REPORT_GROUPINGS`); API `GET /api/v1/reports/skills` (`apps/api/src/services/skill-reports.ts`, `routes/skill-reports.ts`); testler `tests/skill-report.test.ts`, `apps/api/test/skill-reports.test.ts`. `TODO(rapor-ogretmen)`: öğretmen bazında kırılım (OG-147). `TODO(rapor-donem)`: dönem penceresi ve karşılaştırma (OG-147); şimdilik tüm geçmiş sayılır. Kanıta inme grup kimliğiyle grup listesi ve `/students/:id/cefr-profile` üzerindendir.
+
 ## Teslim kuralları
 
 ### DOM-BEC-040 · Tek teslim, değişmez sürümler

@@ -1387,6 +1387,35 @@ export async function loadLearnerAttempts(
 }
 
 /**
+ * Verilen kursiyerlerin bütün atamalardaki arşivlenmemiş denemeleri, tek sorguda (beceri ve CEFR
+ * raporu, IST-118). `loadLearnerAttempts` gibi kayıt sahipliğine bakar: sınıf değiştiren kursiyerin
+ * eski denemeleri de gelir. Sayılan deneme atamanın bütün denemelerinden seçildiği için süzgeç yok.
+ */
+export async function loadLearnersAllAttempts(
+  db: Database,
+  institutionId: string,
+  learnerIds: readonly string[],
+): Promise<StoredAttempt[]> {
+  if (learnerIds.length === 0) return []
+  const rows = await db
+    .select()
+    .from(taskAttempts)
+    .where(
+      and(
+        eq(taskAttempts.institutionId, institutionId),
+        inArray(taskAttempts.learnerId, [...new Set(learnerIds)]),
+        isNull(taskAttempts.archivedAt),
+      ),
+    )
+    .orderBy(
+      asc(taskAttempts.learnerId),
+      asc(taskAttempts.assignmentId),
+      asc(taskAttempts.attemptNumber),
+    )
+  return rows.map(toAttempt)
+}
+
+/**
  * İçerik sürümüne sabitlenmiş, arşivlenmemiş atamalar, sınırlı ve sınırsız dinleme hakkıyla
  * (DOM-BEC-005). Dinleme kaydının bağlantısı istendiğinde hakkın hangi denemeden düşeceği bunlardan
  * bulunur; sınırsız atamanın süren denemesi de karara girer (`services/listening-plays.ts`).
@@ -2021,6 +2050,30 @@ export async function loadLearnerSubmissions(
       ),
     )
     .orderBy(asc(taskSubmissions.assignmentId))
+  return withVersions(db, institutionId, rows)
+}
+
+/**
+ * Verilen kursiyerlerin bütün atamalardaki arşivlenmemiş teslimleri, sürümleriyle, tek sorguda
+ * (beceri ve CEFR raporu, IST-118; `loadLearnerSubmissions`'ın çok kursiyerli hâli).
+ */
+export async function loadLearnersAllSubmissions(
+  db: Database,
+  institutionId: string,
+  learnerIds: readonly string[],
+): Promise<StoredSubmissionWork[]> {
+  if (learnerIds.length === 0) return []
+  const rows = await db
+    .select()
+    .from(taskSubmissions)
+    .where(
+      and(
+        eq(taskSubmissions.institutionId, institutionId),
+        inArray(taskSubmissions.learnerId, [...new Set(learnerIds)]),
+        isNull(taskSubmissions.archivedAt),
+      ),
+    )
+    .orderBy(asc(taskSubmissions.learnerId), asc(taskSubmissions.assignmentId))
   return withVersions(db, institutionId, rows)
 }
 

@@ -17,8 +17,21 @@ import {
   contractStatus,
   isContractInForce,
 } from '../packages/school-core/src/lib/contract-status.ts'
-import type { GuardianLink } from '../packages/school-core/src/lib/guardianship.ts'
+import {
+  CONTRACT_NOTIFICATION_TYPES,
+  contractPayerIsGuardian,
+} from '../packages/school-core/src/lib/finance-notifications.ts'
+import {
+  isPayerNotificationKind,
+  type GuardianLink,
+} from '../packages/school-core/src/lib/guardianship.ts'
 import { quoteWithdrawal, withdrawStudent } from '../packages/school-core/src/lib/withdrawals.ts'
+import {
+  notificationAudiences,
+  notificationSubject,
+  notificationTitle,
+} from '../packages/school-core/src/lib/notifications.ts'
+import { NOTIFICATION_TYPES } from '../packages/school-core/src/modules/notification-types.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 const NOW = '2026-10-06T09:00:00.000Z'
@@ -737,4 +750,35 @@ test('IST-092: ek protokol şeması gerekçe ve taksit sayısını sınırlar', 
   assert.equal(amendContractSchema.safeParse({ ...AMEND, reason: '' }).success, false)
   assert.equal(amendContractSchema.safeParse({ ...AMEND, installmentCount: 13 }).success, false)
   assert.equal(amendContractSchema.safeParse({ ...AMEND, netCents: 1 }).success, false)
+})
+
+test('IST-092, DOM-ILT-023: sözleşme bildirimleri yalnız sözleşme kimliği taşır; başlıkta tutar yok, kitle ödeyiciden seçilir', () => {
+  for (const [type, spec] of Object.entries(CONTRACT_NOTIFICATION_TYPES)) {
+    assert.equal(NOTIFICATION_TYPES[type as keyof typeof NOTIFICATION_TYPES], spec, type)
+    assert.equal(spec.category, 'service', type)
+    assert.equal(spec.module, 'finance', type)
+    assert.equal(spec.subjectType, 'contracts', type)
+    assert.deepEqual(notificationSubject(type, { contractId: 'c-1' }).subject, {
+      type: 'contracts',
+      id: 'c-1',
+    })
+    assert.throws(() => notificationSubject(type, { contractId: 'c-1', amountCents: 100 }))
+    for (const title of Object.values(spec.titles)) assert.doesNotMatch(title, /\d|₺/, type)
+    // Ödeyici veli (velayetli) `parent`, yetişkin kursiyer `student` kitlesini alır.
+    assert.deepEqual(notificationAudiences(type as keyof typeof NOTIFICATION_TYPES, true), [
+      'parent',
+    ])
+    assert.deepEqual(notificationAudiences(type as keyof typeof NOTIFICATION_TYPES, false), [
+      'student',
+    ])
+    // Ödeyici bağı (velayetsiz) bugün yalnız taksit, tahsilat ve iadeyi açar (K-04).
+    assert.equal(isPayerNotificationKind(type), false, type)
+  }
+  assert.equal(
+    notificationTitle({ kind: 'contract_approval_requested', audience: 'parent' }, 'Deniz Yılmaz'),
+    'Deniz için sözleşme onayınızı bekliyor.',
+  )
+  assert.equal(contractPayerIsGuardian({ payer: 'guardian' }), true)
+  assert.equal(contractPayerIsGuardian({}), true)
+  assert.equal(contractPayerIsGuardian({ payer: 'student' }), false)
 })

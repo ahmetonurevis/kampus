@@ -3,6 +3,7 @@ import type {
   TaskAppeal,
   TaskAppealBody,
   TaskAppealDecisionBody,
+  TaskAppealQueueItem,
 } from '@kampus/react-shared/use-task-grading.ts'
 import type { TaskSubmissionDetail } from '@kampus/react-shared/use-task-submissions.ts'
 import {
@@ -187,3 +188,51 @@ export const showsAppealNotIndependent = (error: { code: string }) =>
 
 export const APPEAL_NOT_INDEPENDENT_TEXT =
   'Bu sürümü siz puanladınız; itirazı başka bir öğretmen karara bağlar.'
+
+/**
+ * Kişi itiraz edilen sürümü puanladı mı (sunucunun sürüm başına `grading.scoredByViewer`'ı; ilk,
+ * ikinci ya da son puan, yalnız kendi puanı). Öyleyse karar formu açılmaz, çünkü sunucu zaten
+ * 409 `rater_not_independent` verir. Sürüm ya da ek bilgi yoksa `false`: karar denenir, sunucu
+ * reddederse `showsAppealNotIndependent` yolu aynı metni gösterir.
+ */
+export function appealScoredByViewer(
+  submission: Pick<TaskSubmissionDetail, 'versions'>,
+  appealId: string,
+): boolean {
+  const version = submission.versions.find((item) => item.appeal?.id === appealId)
+  return version?.grading?.scoredByViewer ?? false
+}
+
+// --- Açık itirazlar sekmesi (OG-1010) ---------------------------------------------------------
+
+export interface AppealQueueRow extends Record<string, unknown> {
+  /** İtirazın kimliği (tablo satır anahtarı). */
+  id: string
+  /** Açılacak puanlama penceresinin teslim kimliği. */
+  submissionId: string
+  assignment: string
+  learner: string
+  version: string
+  filedAt: string
+  scoredByViewer: boolean
+}
+
+/**
+ * Açık itiraz satırı (`GET /task-appeals`): görev başlığı sürüm bulunamazsa "Görev", öğrenci adı
+ * kapsam dışında `null` olduğundan "—" (OG-213). Sıra sunucunundur (en eski itiraz önce).
+ */
+export function appealQueueRow(item: TaskAppealQueueItem): AppealQueueRow {
+  return {
+    id: item.id,
+    submissionId: item.submissionId,
+    assignment: item.assignmentTitle ?? 'Görev',
+    learner: item.learnerName ?? '—',
+    version: `Sürüm ${item.versionNumber}`,
+    filedAt: dateTimeLabel(item.filedAt),
+    scoredByViewer: item.scoredByViewer,
+  }
+}
+
+/** Sekme başlığının altındaki toplam metni; arama ve süzgeç sunucuda yoktur. */
+export const appealQueueSummary = (total: number): string =>
+  `${total} açık itiraz · Karara bağlanmayı bekleyen itirazlar, en eskisi önce`

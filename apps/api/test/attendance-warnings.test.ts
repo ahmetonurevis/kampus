@@ -9,7 +9,7 @@ import type { Database } from '../src/db/client.ts'
 import { insertLessonHourAttendances } from '../src/db/progression.ts'
 import { loadRecords } from '../src/db/records.ts'
 import { lessonHourAttendances } from '../src/db/schema/cefr.ts'
-import { languageGroupMembers } from '../src/db/schema/language-groups.ts'
+import { languageGroupMembers, languageGroups } from '../src/db/schema/language-groups.ts'
 import { records } from '../src/db/schema/records.ts'
 import { studentIdentities } from '../src/db/schema/student-identities.ts'
 import { attendanceWarningsJob } from '../src/jobs/attendance-warnings.ts'
@@ -160,6 +160,36 @@ describe('devam şartı izleme uyarısı işi', () => {
       { userId: t.teacherUserId, at: FIXED_NOW },
     )
   }
+  /** Aynı gruba ikinci kursiyer (yetişkin) ekler; kur kaydı kimliğini döner. */
+  async function addLearner(t: Tenant, studentId: string) {
+    await db.insert(records).values({
+      institutionId: t.institution.id,
+      collection: 'students',
+      id: studentId,
+      data: { id: studentId },
+      position: 2,
+    })
+    await db.insert(studentIdentities).values({
+      institutionId: t.institution.id,
+      studentId,
+      academicYear: 2026,
+      identityKind: 'foreign',
+      identityNumber: `YK2-${t.institution.id}`,
+      birthDate: ADULT_BIRTH,
+      createdAt: FIXED_NOW,
+      updatedAt: FIXED_NOW,
+    })
+    const id = randomUUID()
+    await db.insert(languageGroupMembers).values({
+      institutionId: t.institution.id,
+      id,
+      groupId: t.groupId,
+      studentId,
+      status: 'active',
+      joinedAt: FIXED_NOW,
+    })
+    return { id, groupId: t.groupId, studentId }
+  }
   const sent = async (institutionId: string) =>
     (await loadRecords(db, institutionId, ['notifications']))
       .map((row) => row.data)
@@ -273,5 +303,104 @@ describe('devam şartı izleme uyarısı işi', () => {
     const result = await run(t.institution.id, new Date('2026-10-06T02:00:00.000Z'))
     assert.equal(result.skipped, 'before_morning')
     assert.deepEqual(await sent(t.institution.id), [])
+  })
+
+  test('yoklaması kısmen alınmış kursiyer uyarılmaz: alınmamış saat devamsızlık sayılmaz', async () => {
+    const t = await tenant()
+    await insertLessonHourAttendances(
+      db,
+      t.institution.id,
+      { id: t.enrollmentId, groupId: t.groupId, studentId: 's-deniz' },
+      [
+        { lessonHourId: 'ders-1', status: 'absent' },
+        { lessonHourId: 'ders-2', status: 'present' },
+        { lessonHourId: 'ders-3', status: 'present' },
+      ],
+      { userId: t.teacherUserId, at: FIXED_NOW },
+    )
+    const result = await run(t.institution.id)
+    assert.equal(result.created, 0)
+    assert.deepEqual(await sent(t.institution.id), [])
+  })
+
+  test('iptal edilmiş (kapanmış) grup atlanır', async () => {
+    const t = await tenant()
+    await attend(t, 3)
+    await db
+      .update(languageGroups)
+      .set({ state: 'cancelled', cancelledAt: FIXED_NOW, cancelReason: 'Yetersiz kayıt' })
+      .where(eq(languageGroups.id, t.groupId))
+    const result = await run(t.institution.id)
+    assert.deepEqual(
+      { enrollments: result.enrollments, created: result.created },
+      {
+        enrollments: 0,
+        created: 0,
+      },
+    )
+    assert.deepEqual(await sent(t.institution.id), [])
+  })
+
+  test('aktif olmayan kur kaydı atlanır', async () => {
+    const t = await tenant()
+    await attend(t, 3)
+    await db
+      .update(languageGroupMembers)
+      .set({ status: 'frozen' })
+      .where(eq(languageGroupMembers.id, t.enrollmentId))
+    const result = await run(t.institution.id)
+    assert.deepEqual(
+      { enrollments: result.enrollments, created: result.created },
+      {
+        enrollments: 0,
+        created: 0,
+      },
+    )
+    assert.deepEqual(await sent(t.institution.id), [])
+  })
+
+  test('18 yaş altında hak aşılınca bildirim veliye gider', async () => {
+    const t = await tenant({ birthDate: MINOR_BIRTH })
+    await attend(t, 3)
+    await run(t.institution.id)
+    assert.deepEqual(
+      (await sent(t.institution.id)).map((item) => [item.kind, item.audience]),
+      [[EXCEEDED, 'parent']],
+    )
+  })
+
+  test('bozuk yoklama satırlı kursiyer işi düşürmez, diğer kursiyer uyarısını alır', async () => {
+    const t = await tenant()
+    // Kur 12 saat; 13 satır bozuk veridir (attendance_exceeds_course).
+    await insertLessonHourAttendances(
+      db,
+      t.institution.id,
+      { id: t.enrollmentId, groupId: t.groupId, studentId: 's-deniz' },
+      Array.from({ length: 13 }, (_, index) => ({
+        lessonHourId: `ders-${index + 1}`,
+        status: 'present' as const,
+      })),
+      { userId: t.teacherUserId, at: FIXED_NOW },
+    )
+    const other = await addLearner(t, 's-ece')
+    await insertLessonHourAttendances(
+      db,
+      t.institution.id,
+      other,
+      Array.from({ length: 12 }, (_, index) => ({
+        lessonHourId: `ders-${index + 1}`,
+        status: index < 2 ? ('absent' as const) : ('present' as const),
+      })),
+      { userId: t.teacherUserId, at: FIXED_NOW },
+    )
+    const result = await run(t.institution.id)
+    assert.deepEqual(
+      { skipped: result.skippedEnrollments, warnings: result.warnings, created: result.created },
+      { skipped: 1, warnings: 1, created: 1 },
+    )
+    assert.deepEqual(
+      (await sent(t.institution.id)).map((item) => item.studentId),
+      ['s-ece'],
+    )
   })
 })

@@ -1,13 +1,17 @@
 import type { FastifyBaseLogger } from 'fastify'
 
-import { attendanceWarningOf } from '@kampus/school-core/cefr/attendance-warning.ts'
+import {
+  attendanceWarningOf,
+  type AttendanceWarningLevel,
+} from '@kampus/school-core/cefr/attendance-warning.ts'
+import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { groupStatus, isGroupClosed } from '@kampus/school-core/lib/language-groups.ts'
 import { notificationEnabled } from '@kampus/school-core/lib/notifications.ts'
 
 import type { Database } from '../db/client.ts'
 import { loadCourses } from '../db/courses.ts'
 import { loadGroups } from '../db/language-groups.ts'
-import { listGroupEnrollments, listLessonHourAttendances } from '../db/progression.ts'
+import { listActiveEnrollments, listLessonHourAttendances } from '../db/progression.ts'
 import { lockInstitution } from '../db/records.ts'
 import { getInstitutionModules } from './modules.ts'
 import { notify } from './notify.ts'
@@ -30,6 +34,8 @@ export type AttendanceWarningResult = {
   exceeded: number
   created: number
   deduplicated: number
+  /** Bozuk yoklama verisi yüzünden atlanan kur kaydı sayısı. */
+  skippedEnrollments: number
   skipped: string | null
 }
 
@@ -46,6 +52,7 @@ export async function sendAttendanceWarnings(input: {
     exceeded: 0,
     created: 0,
     deduplicated: 0,
+    skippedEnrollments: 0,
     skipped: null,
   }
   return input.db.transaction(async (tx) => {
@@ -62,37 +69,50 @@ export async function sendAttendanceWarnings(input: {
     ])
     const hoursOf = new Map(courses.map((course) => [course.id, course.totalHours]))
     const ctx = { institutionId, now, log, actor: null }
+    const openGroups = new Map<string, number>()
     for (const group of groups) {
       if (isGroupClosed(groupStatus(group, now.toISOString()))) continue
       const totalHours = hoursOf.get(group.courseId) ?? 0
-      if (totalHours < 1) continue
-      const enrollments = (await listGroupEnrollments(tx, institutionId, group.id)).filter(
-        (item) => item.status === 'active',
-      )
-      const attendance = await listLessonHourAttendances(
-        tx,
-        institutionId,
-        enrollments.map((item) => item.id),
-      )
-      for (const enrollment of enrollments) {
-        result.enrollments += 1
-        const { level } = attendanceWarningOf({
-          totalHours,
+      if (totalHours >= 1) openGroups.set(group.id, totalHours)
+    }
+    const enrollments = (await listActiveEnrollments(tx, institutionId)).filter((item) =>
+      openGroups.has(item.groupId),
+    )
+    const attendance = await listLessonHourAttendances(
+      tx,
+      institutionId,
+      enrollments.map((item) => item.id),
+    )
+    for (const enrollment of enrollments) {
+      result.enrollments += 1
+      let level: AttendanceWarningLevel
+      try {
+        ;({ level } = attendanceWarningOf({
+          totalHours: openGroups.get(enrollment.groupId) ?? 0,
           rows: attendance.get(enrollment.id) ?? [],
-        })
-        if (level === 'ok') continue
-        if (level === 'warning') result.warnings += 1
-        else result.exceeded += 1
-        const sent = await notify(tx, ctx, {
-          type:
-            level === 'warning' ? 'attendance_threshold_warning' : 'attendance_threshold_exceeded',
-          recipients: { studentIds: [enrollment.studentId] },
-          data: { enrollmentId: enrollment.id },
-          dedupeKey: enrollment.id,
-        })
-        result.created += sent.created.length
-        result.deduplicated += sent.deduplicated
+        }))
+      } catch (error) {
+        // Bozuk yoklama verisi tek kursiyeri atlatır; kurumun diğer bildirimleri geri alınmaz.
+        if (!(error instanceof DomainError)) throw error
+        result.skippedEnrollments += 1
+        log.warn(
+          { enrollmentId: enrollment.id, code: error.code },
+          'attendance warning skipped: invalid attendance data',
+        )
+        continue
       }
+      if (level === 'ok') continue
+      if (level === 'warning') result.warnings += 1
+      else result.exceeded += 1
+      const sent = await notify(tx, ctx, {
+        type:
+          level === 'warning' ? 'attendance_threshold_warning' : 'attendance_threshold_exceeded',
+        recipients: { studentIds: [enrollment.studentId] },
+        data: { enrollmentId: enrollment.id },
+        dedupeKey: enrollment.id,
+      })
+      result.created += sent.created.length
+      result.deduplicated += sent.deduplicated
     }
     return result
   })

@@ -15,6 +15,7 @@ export const attendanceWarningsJob: InstitutionJob<{
   exceeded: number
   created: number
   deduplicated: number
+  skippedEnrollments: number
   skipped: string | null
 }> = {
   name: 'attendance.warn',
@@ -28,6 +29,7 @@ export const attendanceWarningsJob: InstitutionJob<{
           exceeded: 0,
           created: 0,
           deduplicated: 0,
+          skippedEnrollments: 0,
           skipped: 'before_morning',
         }
       : sendAttendanceWarnings({ db, institutionId, now, log }),

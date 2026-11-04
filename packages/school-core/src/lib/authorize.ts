@@ -291,7 +291,11 @@ function decide(
       return ALLOWED
     case 'contract.approve':
       // Kapsam dışı öğrencinin sözleşmesi yok sayılır; varlığı sızmaz (DOM-YTK-025, DOM-FIN-052).
-      return actor.role !== 'veli' || scope.studentIds.has(request.target.studentId)
+      // Yetişkin kursiyerin velayetsiz ödeyicisi sözleşmenin tarafıdır ve onaylar (ON-124,
+      // kullanıcı kararı 2026-11-04); hangi velinin onaylayacağını core sözleşme kuralı belirler.
+      return actor.role !== 'veli' ||
+        scope.studentIds.has(request.target.studentId) ||
+        scope.payerStudentIds.has(request.target.studentId)
         ? ALLOWED
         : deny('contract_not_found', 'Sözleşme bulunamadı.', 'DOM-YTK-025', 'not_found')
     case 'invoice.payOnline': {

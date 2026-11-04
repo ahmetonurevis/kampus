@@ -12,6 +12,7 @@ import {
   type Actor,
   type ActorLink,
 } from '../packages/school-core/src/lib/scope.ts'
+import { authorize } from '../packages/school-core/src/lib/authorize.ts'
 import { isDomainError } from './support/domain-error.ts'
 
 /**
@@ -152,4 +153,16 @@ describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {
     })
     assert.deepEqual(readable.sort(), ['contracts', 'invoices'])
   })
+})
+
+test('ON-124: velayetsiz ödeyici veli yalnız ödediği öğrencinin sözleşmesini onaylayabilir', () => {
+  const state = seed()
+  const payer = veli(...links('payer', 's1'))
+  const decision = (actor: Actor, studentId: string) =>
+    authorize(actor, 'contract.approve', { studentId }, state, { now })
+  assert.equal(decision(payer, 's1').allowed, true)
+  const other = decision(payer, 's2')
+  assert.equal(other.allowed, false)
+  assert.equal(other.allowed ? '' : other.code, 'contract_not_found')
+  assert.equal(decision(veli(), 's1').allowed, false)
 })

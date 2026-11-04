@@ -25,6 +25,7 @@ import {
 } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { OPEN_PROSPECT_STAGES } from '@kampus/school-core/lib/prospects.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { useFeeTariffs } from '@kampus/react-shared/use-fee-tariffs.ts'
 import {
   useEnrollProspect,
@@ -193,7 +194,7 @@ function EnrollmentForm({
   onDone,
 }: {
   tariff: EnrollmentTariff
-  institutionType: 'school' | 'language_school'
+  institutionType: InstitutionType
   onDone: (done: Done) => void
 }) {
   const [params] = useSearchParams()

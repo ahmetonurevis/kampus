@@ -1,6 +1,13 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import {
+  INSTITUTION_TYPES,
+  MODULE_KEYS,
+  moduleAvailableFor,
+  type InstitutionType,
+} from '@kampus/school-core/modules/collection-modules.ts'
+import { visiblePages } from '../src/lib/navigation.ts'
+import {
   ceilingLines,
   parseRateInput,
   priceIndexBody,
@@ -15,6 +22,22 @@ import {
   studentOptions,
   targetClassOptions,
 } from '../src/pages/finance/renewal-forms.ts'
+
+/** API `/me` etkin modül haritası gibi: türde açılabilen her modül açık, diğerleri kapalı. */
+const modulesOf = (type: InstitutionType) =>
+  Object.fromEntries(MODULE_KEYS.map((key) => [key, moduleAvailableFor(key, type)]))
+
+test('DOM-YTK-012, ADR 0008: kayıt yenileme ekranı yalnız okulda görünür; dil okulu ve kursta menüde yok', () => {
+  const roles = ['yonetici', 'onburo', 'veli'] as const
+  const paths = (type: InstitutionType, role: (typeof roles)[number]) =>
+    visiblePages(role, modulesOf(type), type).map((page) => page.path)
+  for (const role of roles) assert.ok(paths('school', role).includes('kayit-yenileme'), role)
+  const withoutRenewal = INSTITUTION_TYPES.filter((type) => !moduleAvailableFor('renewal', type))
+  assert.ok(withoutRenewal.includes('language_school'))
+  for (const type of withoutRenewal)
+    for (const role of roles)
+      assert.equal(paths(type, role).includes('kayit-yenileme'), false, `${type} ${role}`)
+})
 
 const VALUES = {
   ...renewalDefaults(),

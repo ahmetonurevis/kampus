@@ -17,7 +17,8 @@ import { intervalsOverlap, tutorConflict } from './tutor-conflicts.ts'
  *
  * - Aday en az veriyle açılır: ad, kampüs, ilgi (hedef düzey/seviye), kaynak, telefon ve gösterilen
  *   aydınlatma metninin sürümü; e-posta isteğe bağlıdır. 18 yaş altı adayda iletişim bilgisi veliye
- *   aittir ve veli adı zorunludur; okul adayı her zaman 18 yaş altı sayılır (DOM-KAY-003, -009).
+ *   aittir ve veli adı zorunludur; okul adayı her zaman 18 yaş altı sayılır, kurs türlerinde (dil
+ *   okulu ve kurs) yaş grubu açıkça seçilir (DOM-KAY-003, -009).
  * - Ticari ileti onayı kanal bazında saklanır; hizmet iletisi onaya bağlı değildir (DOM-KAY-004,
  *   DOM-ILT-022).
  * - Aynı telefon veya e-postayla açık ikinci aday açılmaz; iletişimi paylaşan farklı adlı aday
@@ -75,6 +76,15 @@ export function prospectStageLabel(
     ? 'Seviye tespiti / deneme dersi planlandı'
     : (stage ?? '')
 }
+
+/**
+ * Adayda yaş grubu (`minor`) açıkça sorulur mu (DOM-KAY-009; ADR 0008 karar 5). Okul dışındaki her
+ * tür kurstur (`lib/enrollment.ts` `isCourse`, core `adultEnrollsWithoutGuardian` ile aynı kural):
+ * dil okulu ve kursta 18 yaş ve üstü kişi velisiz kaydolabildiği için seçim zorunludur. Okul adayı
+ * her zaman 18 yaş altı sayılır, seçim sorulmaz.
+ */
+export const prospectAgeGroupRequired = (institutionType: InstitutionType) =>
+  institutionType !== 'school'
 
 /** Kaynaklar (DOM-KAY-007); saklanan değer Türkçe etikettir. */
 export const PROSPECT_SOURCES = [
@@ -515,9 +525,10 @@ export function createProspect(
     throw new DomainError('branch_unavailable', 'Seçilen kampüs kullanılamıyor.', {
       path: ['branchId'],
     })
-  // Okul adayı ortaokul/lise öğrencisidir; sözleşme tarafı velidir (DOM-KAY-012). Dil okulunda
-  // yaş bilgisi alınmadan veli kuralı uygulanamayacağı için seçim zorunludur.
-  if (institutionType === 'school' && data.minor === false)
+  // Okul adayı ortaokul/lise öğrencisidir; sözleşme tarafı velidir (DOM-KAY-012). Dil okulunda ve
+  // kursta yaş bilgisi alınmadan veli kuralı uygulanamayacağı için seçim zorunludur (DOM-KAY-009).
+  const asksAgeGroup = prospectAgeGroupRequired(institutionType)
+  if (!asksAgeGroup && data.minor === false)
     throw new DomainError(
       'prospect_guardian_required',
       'Okul adayları için veli bilgisi gerekir.',
@@ -525,7 +536,7 @@ export function createProspect(
         path: ['minor'],
       },
     )
-  if (institutionType === 'language_school' && data.minor === undefined)
+  if (asksAgeGroup && data.minor === undefined)
     throw new DomainError('prospect_age_required', '18 yaş altı olup olmadığını seçin.', {
       path: ['minor'],
     })

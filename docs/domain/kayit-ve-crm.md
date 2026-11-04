@@ -86,7 +86,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Mevzuat azami sınıf mevcudu koyar; planlanmış yenilemeler de yer tutar.
 - **Kaynak:** ÖÖKY md. 48/1 (RG 3/8/2022 değişikliği: okul öncesi 20, diğer okullar 30).
 - **Kurum türü:** `school` (dil okulu grup kapasitesi için `DOM-DIL-040`)
-- **Kodda:** çelişiyor — kontenjan denetimi var (`packages/school-core/src/lib/domain.ts:289`) ama planlanmış yenilemeleri saymaz; sınıf kapasitesi 40'a kadar girilebiliyor (`packages/school-core/src/lib/school-management.js:23`).
+- **Kodda:** kısmen — kesin kayıt (`applyEnrollment`, `lib/enrollment.ts`) aktif öğrencileri ve aynı sınıfa planlanmış (`Planlandı`) yenilemeleri birlikte sayar, aynı öğrenci bir kez sayılır; uygulanmış yenileme yer tutmaz (ON-116). Kesin kayıt komutu bu yüzden `renewals` koleksiyonunu yükler (`modules/commands.ts`). Çelişen kalan: sınıf kapasitesi 40'a kadar girilebiliyor (`packages/school-core/src/lib/school-management.ts` `classSchema`; 30 tavanı iş isteğiyle).
 
 ### DOM-KAY-011 · Bir aday tek kesin kayıt
 
@@ -255,9 +255,9 @@ Aday uçları (`apps/api/src/routes/prospects.ts`) core işlemlerinin varsaydı�
 
 ## Mevcut kodla farklar
 
-| Kural       | Fark                                                                                                                                                                                                                      |
-| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| DOM-KAY-006 | Çevrimdışı demoda tanışma görüşmesi çakışması yalnız aynı başlangıç anını yakalar (`apps/web/src/views/Crm.vue:198-203`); core (`lib/prospects.ts`) süreyi ve oda/görevliyi denetler.                                     |
-| DOM-KAY-010 | Sınıf kapasitesi 40'a kadar girilebilir (`packages/school-core/src/lib/school-management.js:23`), ÖÖKY tavanı 30; kesin kayıt planlanmış yenilemeleri kontenjandan düşmez (`packages/school-core/src/lib/domain.ts:338`). |
-| DOM-KAY-021 | Sınıf tekrarı için aynı düzeyde yenileme yapılamaz (`packages/school-core/src/lib/school-workflows.js:779`).                                                                                                              |
-| DOM-KAY-022 | 8. sınıf çıkışı/mezuniyeti tanımlı değil (`packages/school-core/src/lib/school-workflows.js:758`).                                                                                                                        |
+| Kural       | Fark                                                                                                                                                                                  |
+| ----------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| DOM-KAY-006 | Çevrimdışı demoda tanışma görüşmesi çakışması yalnız aynı başlangıç anını yakalar (`apps/web/src/views/Crm.vue:198-203`); core (`lib/prospects.ts`) süreyi ve oda/görevliyi denetler. |
+| DOM-KAY-010 | Sınıf kapasitesi 40'a kadar girilebilir (`packages/school-core/src/lib/school-management.ts` `classSchema`), ÖÖKY tavanı 30.                                                          |
+| DOM-KAY-021 | Sınıf tekrarı için aynı düzeyde yenileme yapılamaz (`packages/school-core/src/lib/school-workflows.js:779`).                                                                          |
+| DOM-KAY-022 | 8. sınıf çıkışı/mezuniyeti tanımlı değil (`packages/school-core/src/lib/school-workflows.js:758`).                                                                                    |

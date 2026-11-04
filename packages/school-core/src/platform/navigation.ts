@@ -262,6 +262,21 @@ const certificatesPage = (group: string, title: string, description: string): Na
   module: 'academic',
 })
 
+// Beceri ve CEFR raporu (OG-100; IST-118, DOM-BEC-037): dil grubu ya da kur seviyesi başına beceri
+// ortalaması ve seviye dağılımı. Uç `learning` modülündedir (kapalıysa menüden ve rotadan kalkar),
+// yalnız dil okulunda vardır (okulda 404) ve yalnız yönetici ile öğretmene açıktır; öğretmen
+// okuyabildiği grupları görür. Ön büro, öğrenci ve veli uçta 403 aldığından menüde yoktur.
+const skillReportPage = (group: string, description: string): NavigationPage => ({
+  ...languageSchoolPage(
+    'beceri-raporu',
+    'Beceri Raporu',
+    'ChartNoAxesCombined',
+    description,
+    group,
+  ),
+  module: 'learning',
+})
+
 export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> = {
   yonetici: [
     coursesPage('YÖNETİM', 'Kur programını tanımlayın, etkinleştirin ve e-Özel kaydını izleyin.'),
@@ -272,6 +287,10 @@ export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> 
       'Başarı Belgeleri',
       'Kur sonunda geçen kursiyerlere kurum başarı belgesi düzenleyin, MEBBİS izini tutun.',
     ),
+    skillReportPage(
+      'RAPORLAR',
+      'Grup ve kur bazında okuma, dinleme, yazma, konuşma ortalamalarını ve seviye dağılımını izleyin.',
+    ),
   ],
   onburo: [
     coursesPage('KAYIT & SATIŞ', 'Etkin kurları ve kapasitelerini inceleyin.'),
@@ -281,6 +300,10 @@ export const API_LANGUAGE_SCHOOL_PAGES: Record<Role, readonly NavigationPage[]> 
     coursesPage('AKADEMİK', 'Koordinatörü olduğunuz seviyelerin kurlarını yönetin.'),
     groupsPage('AKADEMİK', 'Gruplarınızın takvimini ve doluluğunu izleyin.'),
     placementPage('AKADEMİK', 'Kursiyer ve adayların seviye tespitini yürütün.'),
+    skillReportPage(
+      'AKADEMİK',
+      'Gruplarınızın beceri ortalamalarını ve seviye dağılımını izleyin.',
+    ),
     certificatesPage(
       'AKADEMİK',
       'Başarı Belgeleri',

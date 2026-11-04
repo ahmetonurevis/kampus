@@ -13,15 +13,12 @@ import {
 } from './finance-scholarships.ts'
 import {
   adultPayerSchema,
-  newPayerParent,
-  payerRelationshipOf,
-  planAdultPayerLink,
-  requireEligiblePayerParent,
-  requireSeparatePayerAllowed,
+  attachAdultPayer,
+  resolveAdultPayer,
   type PayerParentBond,
 } from './finance-payers.ts'
 import { dayKey } from './format.ts'
-import { isCustodial, type GuardianDraft, type GuardianLink } from './guardianship.ts'
+import { isCustodial, type GuardianLink } from './guardianship.ts'
 import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 import { assertWithinCeiling, renewalCeiling, type PriceIndexEntry } from './renewal-ceiling.ts'
 import { renewalQuote, workflowSchemas } from './school-workflows.ts'
@@ -523,23 +520,14 @@ export function enrollProspectWithTariff(
       { path: ['guardian'] },
     )
   // Ayrı ödeyici yalnız yetişkin kursiyerde; okulda ve 18 yaş altında ödeyici velidir (ON-124).
-  const payerInput = data.payer
-  if (payerInput !== undefined) requireSeparatePayerAllowed(!adult)
-  const payerParent =
-    payerInput !== undefined && 'existingParentId' in payerInput
-      ? state.parents.find((parent) => parent.id === payerInput.existingParentId)
-      : undefined
-  if (payerInput !== undefined && 'existingParentId' in payerInput) {
-    if (!payerParent)
-      throw new DomainError('parent_not_found', 'Ödeyici olarak seçilen kayıt bulunamadı.', {
-        kind: 'not_found',
-        path: ['payer'],
-      })
-    requireEligiblePayerParent(
-      context.payerBonds ?? [],
-      isNotGuardian(payerParent, state.prospects),
-    )
-  }
+  const payer =
+    data.payer === undefined
+      ? null
+      : resolveAdultPayer(state.parents, data.payer, {
+          minor: !adult,
+          parentBonds: context.payerBonds ?? [],
+          isSelfRecord: (parent) => isNotGuardian(parent, state.prospects),
+        })
   const existingParentId =
     data.guardian !== null && 'existingParentId' in data.guardian
       ? data.guardian.existingParentId
@@ -657,7 +645,16 @@ export function enrollProspectWithTariff(
     makeId,
     now,
   )
-  const payerBond = adultPayerBond(state, result.student.id, payerInput, payerParent, makeId)
+  // Öğrenci yeni olduğu için bağ kümesi boştur; yeni ödeyicinin veli kaydı burada açılır.
+  const payerBond =
+    payer === null
+      ? null
+      : attachAdultPayer(state, payer, {
+          studentId: result.student.id,
+          minor: !adult,
+          links: [],
+          makeId,
+        })
   return {
     ...result,
     identity: data.identity,
@@ -686,29 +683,6 @@ export function enrollProspectWithTariff(
      */
     payerBond,
   }
-}
-
-/**
- * Ayrı ödeyicinin bağı: yeni kişi için veli kaydı açılır (öğrenci `studentIds`'e yazılmaz,
- * `newPayerParent`), mevcut kayıt olduğu gibi kalır. Öğrenci yeni olduğu için bağ kümesi boştur.
- */
-function adultPayerBond(
-  state: State,
-  studentId: string,
-  input: z.infer<typeof adultPayerSchema> | undefined,
-  existing: { id: string; relationship?: string | undefined } | undefined,
-  makeId: MakeId,
-): GuardianDraft | null {
-  if (input === undefined) return null
-  const relationship = payerRelationshipOf(input, existing)
-  let parentId = existing?.id
-  if ('name' in input) {
-    const created = newPayerParent(makeId('p'), { ...input, relationship })
-    state.parents.push(created)
-    parentId = created.id
-  }
-  if (parentId === undefined) return null
-  return planAdultPayerLink({ studentId, parentId, relationship, minor: false, links: [] })
 }
 
 /**

@@ -1,6 +1,7 @@
 import { z } from 'zod'
 
-import { requiredText } from './domain.ts'
+import type { State } from '../data/seed.ts'
+import { requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
 import type { GuardianDraft, GuardianLink } from './guardianship.ts'
 
@@ -154,4 +155,58 @@ export function newPayerParent(
     phone: input.phone,
     relationship: input.relationship,
   }
+}
+
+/** Doğrulanmış ödeyici kişi: mevcut veli kaydı ya da açılacak yeni kayıt. */
+export type ResolvedPayer =
+  | { kind: 'existing'; parentId: string; relationship: AdultPayerRelationship }
+  | { kind: 'new'; name: string; phone: string; relationship: AdultPayerRelationship }
+
+/**
+ * Gövdedeki ödeyiciyi doğrular, hiçbir şey yazmaz: ayrı ödeyici yalnız yetişkin kursiyerde
+ * (`payer_not_applicable`), mevcut kayıt kurumda olmalı (404 `parent_not_found`) ve ödeyici
+ * olabilmeli (`payer_not_eligible`). `isSelfRecord` veli kaydının gerçekte bir kişi olarak veli
+ * olmadığını (yetişkin kursiyerin kendi satırı ya da eski yer tutucu; `lib/enrollment.ts`
+ * `isNotGuardian`) söyler; `parentBonds` mevcut kaydın kurumdaki etkin bağlarıdır.
+ */
+export function resolveAdultPayer<P extends PayerParent>(
+  parents: readonly P[],
+  input: z.infer<typeof adultPayerSchema>,
+  options: {
+    minor: boolean
+    parentBonds: readonly PayerParentBond[]
+    isSelfRecord: (parent: P) => boolean
+  },
+): ResolvedPayer {
+  requireSeparatePayerAllowed(options.minor)
+  if ('name' in input) return { kind: 'new', ...input }
+  const parent = parents.find((item) => item.id === input.existingParentId)
+  if (parent === undefined)
+    throw new DomainError('parent_not_found', 'Ödeyici olarak seçilen kayıt bulunamadı.', {
+      kind: 'not_found',
+      path: ['payer'],
+    })
+  requireEligiblePayerParent(options.parentBonds, options.isSelfRecord(parent))
+  return { kind: 'existing', parentId: parent.id, relationship: payerRelationshipOf(input, parent) }
+}
+
+/**
+ * Doğrulanmış ödeyiciyi öğrenciye bağlar: bağ kuralı (`planAdultPayerLink`) yazmadan önce
+ * çalışır; geçerse yeni kişinin veli kaydı `parents`'a eklenir. Ret durumunda State değişmez.
+ */
+export function attachAdultPayer(
+  state: Pick<State, 'parents'>,
+  payer: ResolvedPayer,
+  input: { studentId: string; minor: boolean; links: readonly GuardianLink[]; makeId: MakeId },
+): GuardianDraft {
+  const created = payer.kind === 'new' ? newPayerParent(input.makeId('p'), payer) : null
+  const draft = planAdultPayerLink({
+    studentId: input.studentId,
+    parentId: created?.id ?? (payer.kind === 'existing' ? payer.parentId : ''),
+    relationship: payer.relationship,
+    minor: input.minor,
+    links: input.links,
+  })
+  if (created !== null) state.parents.push(created)
+  return draft
 }

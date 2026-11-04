@@ -9,11 +9,13 @@ import {
 } from '../packages/school-core/src/lib/enrollment.ts'
 import {
   adultPayerSchema,
+  attachAdultPayer,
   newPayerParent,
   payerRelationshipOf,
   planAdultPayerLink,
   requireEligiblePayerParent,
   requireSeparatePayerAllowed,
+  resolveAdultPayer,
 } from '../packages/school-core/src/lib/finance-payers.ts'
 import {
   guardedActorLinks,
@@ -295,5 +297,68 @@ describe('yetişkin kursiyerin ayrı ödeyicisi (ON-124)', () => {
     assert.deepEqual(guardianBondsFor([bond], 'm-odeyici'), [
       { studentId: 's1', verified: true, custody: false },
     ])
+  })
+
+  test('DOM-ILT-074 ON-124 sonradan ekleme: ödeyici doğrulanır, bağ reddedilirse yeni kişi yazılmaz', () => {
+    const notSelf = () => false
+    const options = { minor: false, parentBonds: [], isSelfRecord: notSelf }
+    const state = createSeed(new Date(NOW))
+    const resolved = resolveAdultPayer(state.parents, PAYER, options)
+    assert.deepEqual(resolved, { kind: 'new', ...PAYER })
+    const before = JSON.stringify(state.parents)
+    // Öğrencinin ödeyicisi varken yeni kişi açılmaz.
+    assert.throws(
+      () =>
+        attachAdultPayer(state, resolved, {
+          studentId: 'test-on124-s',
+          minor: false,
+          links: [payerBond({ parentId: 'test-baska' })],
+          makeId: () => 'test-on124-p2',
+        }),
+      isDomainError('guardian_payer_exists', 'conflict'),
+    )
+    assert.equal(JSON.stringify(state.parents), before)
+    const draft = attachAdultPayer(state, resolved, {
+      studentId: 'test-on124-s',
+      minor: false,
+      links: [],
+      makeId: () => 'test-on124-p2',
+    })
+    assert.equal(draft.parentId, 'test-on124-p2')
+    assert.equal(state.parents.at(-1)?.id, 'test-on124-p2')
+    // Mevcut kayıt: yakınlık kayıttan, kayıt değişmez; olmayan kayıt 404, okulda/18 altında 422.
+    const existing = resolveAdultPayer(state.parents, { existingParentId: 'p1' }, options)
+    assert.equal(existing.kind, 'existing')
+    const count = state.parents.length
+    assert.equal(
+      attachAdultPayer(state, existing, {
+        studentId: 'test-on124-s',
+        minor: false,
+        links: [],
+        makeId: () => 'kullanilmaz',
+      }).parentId,
+      'p1',
+    )
+    assert.equal(state.parents.length, count)
+    assert.throws(
+      () => resolveAdultPayer(state.parents, { existingParentId: 'yok' }, options),
+      isDomainError('parent_not_found', 'not_found'),
+    )
+    assert.throws(
+      () => resolveAdultPayer(state.parents, PAYER, { ...options, minor: true }),
+      isDomainError('payer_not_applicable'),
+    )
+    assert.throws(
+      () =>
+        resolveAdultPayer(
+          state.parents,
+          { existingParentId: 'p1' },
+          {
+            ...options,
+            isSelfRecord: () => true,
+          },
+        ),
+      isDomainError('payer_not_eligible'),
+    )
   })
 })

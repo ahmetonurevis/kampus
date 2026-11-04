@@ -234,7 +234,10 @@ describe('sözleşme onayı bildirimleri', () => {
     ])
     assert.deepEqual(await seen(learner.cookie, APPROVED), [])
     const text = logs.slice(from).join('')
-    assert.ok(!text.includes(SIGNATORY.name) && !text.includes(String(NET)))
+    // Tutar yalnız tam sayı olarak aranır; süre gibi alanlar aynı rakam dizisini rastlantıyla
+    // içerebilir (#40).
+    const amount = new RegExp(`(?<![\\d.])${String(NET)}(?![\\d.])`)
+    assert.ok(!text.includes(SIGNATORY.name) && !amount.test(text))
   })
 
   test('IST-092: imza yetkilisi düzeltmesi ve aynı Idempotency-Key ikinci onay isteği yazmaz; ek protokol yeni sürüm olarak yeni istek alır', async () => {

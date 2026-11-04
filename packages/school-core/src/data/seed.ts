@@ -153,6 +153,8 @@ function buildSeed(now: Date) {
     classes,
   })
   // Onur: kayıt ve finans
+  // Her öğrencinin tek sözleşmesi vardır; sözleşme kendi taksitlerini `invoiceIds` ile listeler
+  // (DOM-FIN-012). Taksitte `contractId` yalnız işlemlerin açtığı kayıtlarda bulunur.
   const invoices = students.flatMap((s, i) =>
     Array.from({ length: 8 }, (_, n) => {
       const paid = n < 3 || (n === 3 && i % 4 !== 0)
@@ -168,6 +170,12 @@ function buildSeed(now: Date) {
       }
     }),
   )
+  const invoicesByStudent = new Map<string, typeof invoices>()
+  for (const invoice of invoices) {
+    const own = invoicesByStudent.get(invoice.studentId)
+    if (own) own.push(invoice)
+    else invoicesByStudent.set(invoice.studentId, [invoice])
+  }
   const prospects = [
     'Alara Güven',
     'Ömer Faruk',
@@ -288,13 +296,17 @@ function buildSeed(now: Date) {
     permissionForms: [],
     permissionDecisions: [],
     // Onur: kayıt ve finans
-    contracts: students.map((s) => ({
-      id: `contract-${s.id}`,
-      studentId: s.id,
-      date: s.joinedAt,
-      amount: invoices.filter((x) => x.studentId === s.id).reduce((a, x) => a + x.amount, 0),
-      title: 'Özel okul eğitim sözleşmesi',
-    })),
+    contracts: students.map((s) => {
+      const own = invoicesByStudent.get(s.id) ?? []
+      return {
+        id: `contract-${s.id}`,
+        studentId: s.id,
+        date: s.joinedAt,
+        amount: own.reduce((a, x) => a + x.amount, 0),
+        title: 'Özel okul eğitim sözleşmesi',
+        invoiceIds: own.map((x) => x.id),
+      }
+    }),
     // Onur: kayıt ve finans sonu
     preferences: {},
     modules: { crm: true, finance: true, academic: true, learning: true, communication: true },
@@ -330,10 +342,10 @@ type OnurStatePatches = {
   // DOM-KAY-012); örnek veri taşımaz.
   // kvkk: K — veli telefonu, e-postası ve yakınlık derecesi.
   parents: (SeedItem<'parents'> & { phone?: string; email?: string; relationship?: string })[]
-  contracts: (SeedItem<'contracts'> & {
+  // Örnek veri bağı taşır; eski kayıtlarda `invoiceIds` olmayabilir.
+  contracts: (Patch<SeedItem<'contracts'>, { invoiceIds?: string[] }> & {
     classId?: string
     academicYear?: number
-    invoiceIds?: string[]
   } & Partial<ContractTerms> &
     ContractLifecycle)[]
   // Aday işlemlerinin alanları ve notu yazan kişi; örnek veri ve eski kayıtlar taşımaz

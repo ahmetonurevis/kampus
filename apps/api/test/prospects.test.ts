@@ -11,11 +11,13 @@ import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { memberships } from '../src/db/schema/auth.ts'
 import { institutionSettings } from '../src/db/schema/institution-settings.ts'
+import { membershipLinks } from '../src/db/schema/membership-links.ts'
 import { records } from '../src/db/schema/records.ts'
 import { studentGuardians } from '../src/db/schema/student-guardians.ts'
 import { studentIdentities } from '../src/db/schema/student-identities.ts'
-import { loadStudentGuardians } from '../src/db/student-guardians.ts'
+import { attachGuardianAccount, loadStudentGuardians } from '../src/db/student-guardians.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
 import { addProspectNoteCommand } from '../src/services/prospects.ts'
@@ -146,6 +148,19 @@ describe('aday uçları', () => {
     return { ...user, cookie: await signInAs(app, user) }
   }
   const frontDesk = async (institutionId: string) => (await member(institutionId, 'onburo')).cookie
+  /** Davetle açılmış veli hesabı: büyük çocuğa bağlantısı var, bağı kesin kayıttaki bağdır. */
+  async function parentAccount(institutionId: string, studentId: string) {
+    const account = await createMember(app, institutionId, 'veli')
+    await db
+      .insert(membershipLinks)
+      .values({
+        institutionId,
+        membershipId: account.membershipId,
+        kind: 'child',
+        recordId: studentId,
+      })
+    return account
+  }
 
   function send(
     method: 'POST' | 'PATCH',
@@ -1413,6 +1428,107 @@ describe('aday uçları', () => {
     assertError(
       await a_get((await member(a.id, 'veli')).cookie, `/api/v1/prospects/pr2/guardian-matches`),
       403,
+    )
+  })
+
+  test('DOM-KAY-013, ON-128: hesabı olan veliye bağlanan kardeş hesapta da görünür', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const phone = String((await findRecord(db, a.id, 'prospects', 'pr1'))?.data.phone)
+    const sibling = await created(cookie, {
+      ...PROSPECT,
+      name: 'Test Kardeş',
+      phone,
+      email: '',
+      siblingOfId: 'pr1',
+    })
+    const first = await enroll(cookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(first.statusCode, 201, first.body)
+    const elderId = String(first.json().data.entity.id)
+    const parentId = String((await findRecord(db, a.id, 'students', elderId))?.data.parentId)
+    // Veli hesabı davetle açılmış gibi: üyelik büyük çocuğa bağlı, bağ hesaba yazılmış (DOM-YTK-071).
+    const account = await parentAccount(a.id, elderId)
+    const [elderBond] = await loadStudentGuardians(db, a.id, elderId)
+    assert.ok(elderBond)
+    assert.equal(
+      await attachGuardianAccount(db, a.id, [elderBond.id], account.membershipId, FIXED_NOW),
+      true,
+    )
+    const parentCookie = await signInAs(app, account)
+
+    const second = await enroll(
+      cookie,
+      sibling.id,
+      {
+        ...ENROLLMENT,
+        identity: { ...ENROLLMENT.identity, number: '11111111110' },
+        guardian: { existingParentId: parentId },
+      },
+      sibling.version,
+    )
+    assert.equal(second.statusCode, 201, second.body)
+    const youngerId = String(second.json().data.entity.id)
+    const [bond] = await loadStudentGuardians(db, a.id, youngerId)
+    assert.equal(bond?.parentId, parentId)
+    assert.equal(bond?.membershipId, account.membershipId)
+    const links = await db
+      .select({ recordId: membershipLinks.recordId })
+      .from(membershipLinks)
+      .where(eq(membershipLinks.membershipId, account.membershipId))
+    assert.deepEqual(links.map((row) => row.recordId).sort(), [elderId, youngerId].sort())
+    // Veli yeni çocuğu ayrıca bağlanmadan görür; büyük çocuk da görünmeye devam eder.
+    for (const studentId of [elderId, youngerId]) {
+      const read = await a_get(parentCookie, `/api/v1/collections/students/${studentId}`)
+      assert.equal(read.statusCode, 200, read.body)
+    }
+  })
+
+  test('ON-128: devre dışı hesaplı veliye bağlanan kardeşte hesap bağı kurulmaz', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const phone = String((await findRecord(db, a.id, 'prospects', 'pr1'))?.data.phone)
+    const sibling = await created(cookie, {
+      ...PROSPECT,
+      name: 'Test Kardeş',
+      phone,
+      email: '',
+      siblingOfId: 'pr1',
+    })
+    const first = await enroll(cookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(first.statusCode, 201, first.body)
+    const elderId = String(first.json().data.entity.id)
+    const parentId = String((await findRecord(db, a.id, 'students', elderId))?.data.parentId)
+    const account = await parentAccount(a.id, elderId)
+    const [elderBond] = await loadStudentGuardians(db, a.id, elderId)
+    assert.ok(elderBond)
+    await attachGuardianAccount(db, a.id, [elderBond.id], account.membershipId, FIXED_NOW)
+    await db
+      .update(memberships)
+      .set({ deactivatedAt: FIXED_NOW })
+      .where(eq(memberships.id, account.membershipId))
+
+    const second = await enroll(
+      cookie,
+      sibling.id,
+      {
+        ...ENROLLMENT,
+        identity: { ...ENROLLMENT.identity, number: '11111111110' },
+        guardian: { existingParentId: parentId },
+      },
+      sibling.version,
+    )
+    assert.equal(second.statusCode, 201, second.body)
+    const youngerId = String(second.json().data.entity.id)
+    const [bond] = await loadStudentGuardians(db, a.id, youngerId)
+    assert.equal(bond?.parentId, parentId)
+    assert.equal(bond?.membershipId, null)
+    const links = await db
+      .select({ recordId: membershipLinks.recordId })
+      .from(membershipLinks)
+      .where(eq(membershipLinks.membershipId, account.membershipId))
+    assert.deepEqual(
+      links.map((row) => row.recordId),
+      [elderId],
     )
   })
 

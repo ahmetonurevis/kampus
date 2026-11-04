@@ -336,3 +336,36 @@ export function meetingWeek(
 /** Hafta başlığı: "19 Eki – 25 Eki 2026". */
 export const meetingWeekTitle = (start: string) =>
   `${dateLabel(`${start}T12:00:00.000Z`)} – ${dateLabel(`${addDays(start, 6)}T12:00:00.000Z`, { year: 'numeric' })}`
+
+/**
+ * Haftalık görüşme takviminin sunucu sorguları (ON-111): açık adaylardan tanışma görüşmesi
+ * (`trialAt`) ve dil okulunda deneme dersi (`trialLesson.date`) haftanın günlerine düşenler. Sunucu
+ * bir sorguda tek tarih alanı süzer; iki sorgunun adayları `mergeProspectPages` ile birleşir.
+ */
+export function meetingWeekQueries(
+  start: string,
+  type: InstitutionType,
+): { field: ProspectDateField; query: { filters: CollectionFilters } }[] {
+  const fields: ProspectDateField[] =
+    type === 'language_school' ? ['trialAt', 'trialLesson.date'] : ['trialAt']
+  return fields.map((field) => ({
+    field,
+    query: {
+      filters: {
+        stage: [...OPEN_PROSPECT_STAGES],
+        dateField: field,
+        dateFrom: start,
+        dateTo: addDays(start, 6),
+      },
+    },
+  }))
+}
+
+/** Aynı aday iki sorguda da gelirse (görüşmesi ve deneme dersi aynı hafta) bir kez sayılır. */
+export function mergeProspectPages<T extends { id: string }>(
+  pages: readonly (readonly T[] | undefined)[],
+): T[] {
+  const seen = new Map<string, T>()
+  for (const page of pages) for (const item of page ?? []) seen.set(item.id, item)
+  return [...seen.values()]
+}

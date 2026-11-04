@@ -29,7 +29,7 @@ const PROGRAM: ScholarshipProgram = {
   capacity: 2,
   notifiedDate: '2026-09-01',
 }
-const CONTEXT = { academicYear: 2026, awardedCount: 0, canApprove: true }
+const CONTEXT = { academicYear: 2026, awardedCount: 0, canApprove: true, studentAwarded: false }
 
 test('DOM-FIN-025: program oran ya da tutarla açılır, ikisi birden ya da hiçbiri olmaz', () => {
   assert.equal(createScholarshipProgramSchema.safeParse(INPUT).success, true)
@@ -133,5 +133,21 @@ test('DOM-FIN-025, DOM-FIN-052: atama yönetici onayı, doğru yıl, bildirim ve
   assert.throws(
     () => requireAwardableProgram(PROGRAM, { ...CONTEXT, awardedCount: 2 }),
     isDomainError('scholarship_capacity_full', 'conflict'),
+  )
+})
+
+test('DOM-FIN-025: öğrenciye aynı eğitim yılında ikinci burs atanmaz; özgül kod kontenjandan önce gelir', () => {
+  assert.throws(
+    () => requireAwardableProgram(PROGRAM, { ...CONTEXT, studentAwarded: true }),
+    isDomainError('scholarship_already_awarded', 'conflict'),
+  )
+  assert.throws(
+    () => requireAwardableProgram(PROGRAM, { ...CONTEXT, studentAwarded: true, awardedCount: 2 }),
+    isDomainError('scholarship_already_awarded', 'conflict'),
+  )
+  // Onay ve program denetimleri önce gelir: yetkisiz kullanıcı başka öğrencinin bursunu öğrenmez.
+  assert.throws(
+    () => requireAwardableProgram(PROGRAM, { ...CONTEXT, studentAwarded: true, canApprove: false }),
+    isDomainError('scholarship_approval_required'),
   )
 })

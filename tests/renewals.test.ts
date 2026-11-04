@@ -315,7 +315,13 @@ test('DOM-FIN-025: burs bildirilmiş programdan, yalnız yönetici onayıyla ata
     ADMIN,
     'conflict',
   )
-  const made = plan(state, input, context)
+  blocked(
+    'scholarship_already_awarded',
+    { ...context, scholarshipStudentAwarded: true },
+    ADMIN,
+    'conflict',
+  )
+  const made = plan(state, input, { ...context, scholarshipStudentAwarded: false })
   assert.deepEqual(made.scholarshipAward, { programId: PROGRAM.id, amountCents: 2_500_000 })
   assert.equal(made.renewal.amount, 7_500_000)
   const contract = state.contracts.find((c) => c.id === made.contractId)

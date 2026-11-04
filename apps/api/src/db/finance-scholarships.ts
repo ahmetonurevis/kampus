@@ -159,6 +159,30 @@ export async function countScholarshipAwards(
   return row?.total ?? 0
 }
 
+/**
+ * Öğrencinin bu eğitim yılında arşivlenmemiş ataması var mı (DOM-FIN-025). Servis kurum kilidi
+ * altında sorar; `scholarship_awards_student_year_key` yalnız kilitsiz yarışta tetiklenir.
+ */
+export async function hasStudentScholarshipAward(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+  academicYear: number,
+): Promise<boolean> {
+  const [row] = await db
+    .select({ id: scholarshipAwards.id })
+    .from(scholarshipAwards)
+    .where(
+      and(
+        activeAward(institutionId),
+        eq(scholarshipAwards.studentId, studentId),
+        eq(scholarshipAwards.academicYear, academicYear),
+      ),
+    )
+    .limit(1)
+  return row !== undefined
+}
+
 export async function insertScholarshipAward(
   tx: Database,
   institutionId: string,

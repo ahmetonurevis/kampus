@@ -68,6 +68,7 @@ test('Temel menüde zaten olan iletişim sayfaları apiOnly işaretlenmez', () =
       'kurlar',
       'gruplar',
       'seviye-tespiti',
+      'beceri-raporu',
       'basari-belgeleri',
       'icerik-havuzu',
       'rubrik-kutuphanesi',
@@ -144,8 +145,9 @@ test('Kur ve grup sayfaları yalnız dil okulunda, personelde ve kategorisinin s
     assert.ok(
       navigation[role].every(
         (p) =>
-          ['kurlar', 'gruplar', 'seviye-tespiti', 'basari-belgeleri'].includes(p.path) ||
-          pageAvailableFor(p, 'school'),
+          ['kurlar', 'gruplar', 'seviye-tespiti', 'basari-belgeleri', 'beceri-raporu'].includes(
+            p.path,
+          ) || pageAvailableFor(p, 'school'),
       ),
       role,
     )
@@ -260,6 +262,34 @@ test('İçerik Havuzu yalnız yönetici ve öğretmende, learning modülüne ba�
   assert.equal(teacher[teacher.indexOf('sorular') + 1], 'icerik-havuzu')
   const admin = navigation.yonetici.map((p) => p.path)
   assert.ok(admin.indexOf('icerik-havuzu') < admin.indexOf('kayit-raporlari'))
+})
+
+test('OG-100 IST-118 DOM-BEC-037: Beceri Raporu yalnız dil okulunda, learning modülünde, yönetici (RAPORLAR) ve öğretmende (AKADEMİK)', () => {
+  const expected: Record<Role, string | null> = {
+    yonetici: 'RAPORLAR',
+    onburo: null,
+    ogretmen: 'AKADEMİK',
+    ogrenci: null,
+    veli: null,
+  }
+  for (const role of roleKeys) {
+    const page = navigation[role].find((p) => p.path === 'beceri-raporu')
+    if (expected[role] === null) {
+      assert.equal(page, undefined, `${role} beceri raporunu görmemeli`)
+      continue
+    }
+    assert.ok(page, role)
+    assert.deepEqual(
+      [page.title, page.group, page.module, page.apiOnly],
+      ['Beceri Raporu', expected[role], 'learning', true],
+    )
+    assert.equal(pageAvailableFor(page, 'school'), false)
+    assert.equal(pageAvailableFor(page, 'language_school'), true)
+    assert.equal(
+      demoNavigation[role].some((p: { path: string }) => p.path === 'beceri-raporu'),
+      false,
+    )
+  }
 })
 
 test('IST-048: Rubrik Kütüphanesi yalnız yönetici ve öğretmende, learning modülünde ve içerik havuzunun ardından (OG-083)', () => {

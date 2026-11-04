@@ -307,17 +307,26 @@ describe('kısmi güncelleme (IST-020, DOM-ILT-035)', () => {
     assert.deepEqual(merged.medications, current.content.medications)
   })
 
-  test('DOM-ILT-035: en az bir içerik alanı olmayan gövde ve bilinmeyen alan reddedilir', () => {
+  test('DOM-ILT-035: içerik alanı da dayanak da olmayan gövde ve bilinmeyen alan reddedilir', () => {
     assert.throws(() => healthProfilePatchSchema.parse({ version: 1 }), ZodError)
-    assert.throws(
-      () => healthProfilePatchSchema.parse({ legalBasis: 'explicit_consent', version: 1 }),
-      ZodError,
-    )
     assert.throws(() => healthProfilePatchSchema.parse({ allergies: [] }), ZodError)
     assert.throws(
       () => healthProfilePatchSchema.parse({ allergies: [], notes: 'x', version: 1 }),
       ZodError,
     )
+  })
+
+  test('DOM-ILT-035: kayıt varken yalnız dayanak gönderilebilir, içerik aynen kalır', () => {
+    const patch = healthProfilePatchSchema.parse({ legalBasis: 'vital_interest', version: 2 })
+    const merged = applyHealthProfilePatch(current, patch)
+    assert.equal(merged.legalBasis, 'vital_interest')
+    assert.deepEqual(merged.allergies, current.content.allergies)
+    assert.equal(merged.emergencyInstructions, current.content.emergencyInstructions)
+  })
+
+  test('DOM-ILT-035: kayıt yokken yalnız dayanakla boş profil açılmaz', () => {
+    const patch = healthProfilePatchSchema.parse({ legalBasis: 'explicit_consent', version: 1 })
+    assert.throws(() => applyHealthProfilePatch(null, patch), ZodError)
   })
 
   test('DOM-ILT-035: kayıt yokken dayanak zorunlu, gönderilmeyen alan boş', () => {

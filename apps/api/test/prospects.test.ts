@@ -151,14 +151,12 @@ describe('aday uçları', () => {
   /** Davetle açılmış veli hesabı: büyük çocuğa bağlantısı var, bağı kesin kayıttaki bağdır. */
   async function parentAccount(institutionId: string, studentId: string) {
     const account = await createMember(app, institutionId, 'veli')
-    await db
-      .insert(membershipLinks)
-      .values({
-        institutionId,
-        membershipId: account.membershipId,
-        kind: 'child',
-        recordId: studentId,
-      })
+    await db.insert(membershipLinks).values({
+      institutionId,
+      membershipId: account.membershipId,
+      kind: 'child',
+      recordId: studentId,
+    })
     return account
   }
 

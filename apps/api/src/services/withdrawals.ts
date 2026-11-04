@@ -26,7 +26,7 @@ import {
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
-import { notify } from './notify.ts'
+import { notifyFinance } from './finance-payers.ts'
 import {
   runCommand,
   runReadOnly,
@@ -224,7 +224,7 @@ export function payRefundCommand(
         const row = await findWithdrawal(tx, ctx.institutionId, withdrawalId)
         if (row === null) throw new NotFoundError()
         result = view(row)
-        await notify(tx, ctx, {
+        await notifyFinance(tx, ctx, {
           type: 'refund_paid',
           recipients: { studentIds: [row.studentId] },
           data: { withdrawalId },

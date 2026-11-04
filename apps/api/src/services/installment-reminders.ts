@@ -11,7 +11,8 @@ import { allocatedTotals } from '../db/payments.ts'
 import { loadRecords, loadRecordsByIds, lockInstitution } from '../db/records.ts'
 import { invoiceStatusFilter } from './list-filters.ts'
 import { getInstitutionModules } from './modules.ts'
-import { dedupedNotificationId, notify } from './notify.ts'
+import { notifyFinance } from './finance-payers.ts'
+import { dedupedNotificationId } from './notify.ts'
 
 /**
  * Vade ve gecikme taraması (IST-109; docs/domain/finans.md DOM-FIN-034, DOM-FIN-035; işi
@@ -90,7 +91,7 @@ export function sendInstallmentReminders(input: {
         result.deduplicated += 1
         continue
       }
-      const sent = await notify(tx, ctx, {
+      const sent = await notifyFinance(tx, ctx, {
         type: item.type,
         recipients: { studentIds: [item.studentId] },
         data: { invoiceId: item.invoiceId },

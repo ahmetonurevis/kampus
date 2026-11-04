@@ -263,11 +263,14 @@ export function enrollProspectCommand(
   options: CommandOptions,
 ): Promise<CommandResponse> {
   const spec = OPERATION_COMMANDS['prospect.enroll']
-  const { identity, scholarshipProgramId, guardian } = enrollProspectSchema.parse(input)
+  const { identity, scholarshipProgramId, guardian, payer } = enrollProspectSchema.parse(input)
   // Seçilen mevcut velinin bağları: kısıtlı ya da velayetsiz veli kesin kayıtta bağlanamaz
   // (core `parent_not_guardian`; DOM-ILT-070, -074).
   const existingParentId =
     guardian !== null && 'existingParentId' in guardian ? guardian.existingParentId : null
+  // Yetişkin kursiyerin ödeyicisi olarak seçilen mevcut kayıt: kısıtlı kişi ödeyici olamaz (ON-124).
+  const payerParentId =
+    payer !== undefined && 'existingParentId' in payer ? payer.existingParentId : null
   return runCommand(
     ctx,
     {
@@ -299,6 +302,10 @@ export function enrollProspectCommand(
           existingParentId === null
             ? []
             : await loadParentBonds(tx, ctx.institutionId, [existingParentId])
+        const payerBonds =
+          payerParentId === null
+            ? []
+            : await loadParentBonds(tx, ctx.institutionId, [payerParentId])
         // Kontenjan kurum kilidi altında sayılır: iki eşzamanlı kayıt son yeri birlikte alamaz.
         const [scholarshipProgram, scholarshipAwardedCount] =
           scholarshipProgramId === undefined
@@ -322,6 +329,7 @@ export function enrollProspectCommand(
               scholarshipProgram,
               scholarshipAwardedCount,
               guardianBonds,
+              payerBonds,
             })
           },
         }
@@ -379,6 +387,24 @@ export function enrollProspectCommand(
             'guardian.link',
             { type: 'student_guardian', id: linkId },
             Object.keys(draft),
+          )
+        }
+        // Yetişkin kursiyerin ayrı ödeyicisi (ON-124): velayetsiz ödeyici bağı; kuralı core
+        // `attachAdultPayer` verdi (yeni öğrencinin bağ kümesi boş).
+        if (result.payerBond !== null) {
+          const linkId = randomUUID()
+          await insertGuardianLink(
+            tx,
+            ctx.institutionId,
+            { id: linkId, ...result.payerBond },
+            ctx.now,
+          )
+          await auditWork(
+            tx,
+            ctx,
+            'guardian.link',
+            { type: 'student_guardian', id: linkId },
+            Object.keys(result.payerBond),
           )
         }
         // Kitleyi kimlik kaydındaki doğum tarihi belirler: 18 altında veli, yetişkinde kursiyer.

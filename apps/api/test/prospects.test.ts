@@ -1688,6 +1688,101 @@ describe('aday uçları', () => {
     assert.equal(linkAudit.length, 0)
   })
 
+  test('DOM-KAY-012 DOM-ILT-074 ON-124: yetişkin kursiyere ayrı ödeyici velayetsiz bağla yazılır; okulda ve 18 yaş altında 422', async () => {
+    const lessonTariff = {
+      items: [{ ...TUITION, unit: 'lesson_hour', amountCents: 50_000, announcedAmountCents: null }],
+    }
+    const a = await pricedInstitution({ type: 'language_school' }, lessonTariff)
+    const cookie = await frontDesk(a.id)
+    const payer = { name: 'Test Ödeyici Anne', phone: '05559990077', relationship: 'mother' }
+    const adult = {
+      ...ENROLLMENT,
+      lessonHours: 10,
+      identity: { ...ENROLLMENT.identity, birthDate: '2000-01-01' },
+      guardian: null,
+    }
+    // 18 yaş altında ödeyici velidir: ayrı ödeyici reddedilir, hiçbir kayıt yazılmaz.
+    const minorVersion = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      const refused = await enroll(
+        cookie,
+        'pr1',
+        { ...ENROLLMENT, lessonHours: 10, payer },
+        minorVersion,
+      )
+      assertError(refused, 422, 'payer_not_applicable')
+      assert.deepEqual(refused.json().issues?.[0]?.path, ['payer'])
+      // Yetişkine veli verilirse eski kural önce çalışır.
+      assertError(
+        await enroll(
+          cookie,
+          'pr1',
+          { ...adult, guardian: ENROLLMENT.guardian, payer },
+          minorVersion,
+        ),
+        422,
+        'guardian_not_applicable',
+      )
+      assertError(
+        await enroll(cookie, 'pr1', { ...adult, payer: { existingParentId: 'yok' } }, minorVersion),
+        404,
+      )
+      assertError(
+        await enroll(
+          cookie,
+          'pr1',
+          { ...adult, payer: { ...payer, relationship: 'legal_guardian' } },
+          minorVersion,
+        ),
+        400,
+      )
+    })
+    const parentsBefore = (await enrollmentRows(a.id)).parents.length
+    const done = await enroll(cookie, 'pr1', { ...adult, payer }, minorVersion)
+    assert.equal(done.statusCode, 201, done.body)
+    const studentId = done.json().data.entity.id as string
+    const rows = await enrollmentRows(a.id)
+    // Sözleşmenin tarafı kursiyerdir; ödeyici yalnız bağla görünür.
+    assert.equal(rows.contracts.at(-1)?.data.payer, 'student')
+    assert.equal(rows.parents.length, parentsBefore + 2)
+    const bonds = await loadStudentGuardians(db, a.id, studentId)
+    assert.equal(bonds.length, 1)
+    const [bond] = bonds
+    assert.equal(bond?.custody, 'none')
+    assert.equal(bond?.isPayer, true)
+    assert.equal(bond?.contactRestricted, false)
+    assert.equal(bond?.canPickUp, false)
+    assert.equal(bond?.membershipId, null)
+    assert.equal(bond?.relationship, 'mother')
+    const payerRow = rows.parents.find((row) => row.id === bond?.parentId)
+    assert.equal(payerRow?.data.name, 'Test Ödeyici Anne')
+    // Öğrenci ödeyicinin veli kaydı öğrencilerine yazılmaz (öğretmen ve kursiyer onu görmez).
+    assert.deepEqual(payerRow?.data.studentIds, [])
+    const linkAudit = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'guardian.link')))
+    assert.equal(linkAudit.length, 1)
+    assert.ok(!JSON.stringify(linkAudit).includes('05559990077'))
+
+    // Okulda 18 yaş üstünde de veli ödeyicidir; ayrı ödeyici reddedilir.
+    const school = await pricedInstitution()
+    const schoolCookie = await frontDesk(school.id)
+    const schoolVersion = await versionOf(school.id, 'pr1')
+    await noEnrollment(school.id, 'pr1', async () => {
+      assertError(
+        await enroll(
+          schoolCookie,
+          'pr1',
+          { ...ENROLLMENT, identity: adult.identity, payer: { existingParentId: 'p1' } },
+          schoolVersion,
+        ),
+        422,
+        'payer_not_applicable',
+      )
+    })
+  })
+
   test('DOM-KAY-012: dil okulunda yetişkin kursiyere veli verilmez (422); yaş grubu seçimiyle uyuşmayan doğum tarihi 422', async () => {
     const a = await pricedInstitution(
       { type: 'language_school' },

@@ -40,7 +40,7 @@ import { auditLog } from '../db/schema/audit-log.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
-import { notify } from './notify.ts'
+import { notifyFinance } from './finance-payers.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { readScope } from './read-scope.ts'
 
@@ -183,7 +183,7 @@ export function recordPaymentCommand(
           'allocations',
         ])
         stored = (await findPayment(tx, ctx.institutionId, id)) ?? undefined
-        await notify(tx, ctx, {
+        await notifyFinance(tx, ctx, {
           type: 'payment_received',
           recipients: { studentIds: [plan.studentId] },
           data: { paymentId: id },

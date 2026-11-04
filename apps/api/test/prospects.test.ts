@@ -13,6 +13,7 @@ import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { institutionSettings } from '../src/db/schema/institution-settings.ts'
 import { records } from '../src/db/schema/records.ts'
+import { studentGuardians } from '../src/db/schema/student-guardians.ts'
 import { studentIdentities } from '../src/db/schema/student-identities.ts'
 import { loadStudentGuardians } from '../src/db/student-guardians.ts'
 import { AppError } from '../src/errors.ts'
@@ -1461,6 +1462,61 @@ describe('aday uçları', () => {
       links.map((link) => [link.parentId, link.custody, link.isPayer]),
       [[parentId, 'full', true]],
     )
+  })
+
+  test('DOM-ILT-070, DOM-ILT-074, parent_not_guardian: kardeşinde iletişim kısıtlı ya da velayetsiz veli önerilmez; seçilirse 422 ve kayıt yazılmaz', async () => {
+    const a = await pricedInstitution()
+    const cookie = await frontDesk(a.id)
+    const phone = String((await findRecord(db, a.id, 'prospects', 'pr1'))?.data.phone)
+    const sibling = await created(cookie, {
+      ...PROSPECT,
+      name: 'Test Kısıtlı Kardeş',
+      phone,
+      email: '',
+      siblingOfId: 'pr1',
+    })
+    const first = await enroll(cookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(first.statusCode, 201, first.body)
+    const elderId = String(first.json().data.entity.id)
+    const parentId = String((await findRecord(db, a.id, 'students', elderId))?.data.parentId)
+    const setBond = (fields: Partial<typeof studentGuardians.$inferInsert>) =>
+      db
+        .update(studentGuardians)
+        .set(fields)
+        .where(
+          and(eq(studentGuardians.institutionId, a.id), eq(studentGuardians.studentId, elderId)),
+        )
+    const matchIds = async () => {
+      const response = await a_get(cookie, `/api/v1/prospects/${sibling.id}/guardian-matches`)
+      assert.equal(response.statusCode, 200, response.body)
+      return response.json().data.map((item: { parentId: string }) => item.parentId)
+    }
+    const body = {
+      ...ENROLLMENT,
+      identity: { ...ENROLLMENT.identity, number: '11111111110' },
+      guardian: { existingParentId: parentId },
+    }
+    const refused = async () =>
+      noEnrollment(a.id, sibling.id, async () => {
+        const response = await enroll(cookie, sibling.id, body, sibling.version)
+        assertError(response, 422, 'parent_not_guardian')
+        assert.deepEqual(response.json().issues?.[0]?.path, ['guardian'])
+        assert.equal(response.body.includes(elderId), false)
+      })
+
+    // Koruma kararı: kısıtlı veli velayetli ve ödeyici olamaz (DOM-ILT-074).
+    await setBond({ isContactRestricted: true, custody: 'none', isPayer: false })
+    assert.deepEqual(await matchIds(), [])
+    await refused()
+    // Velayeti yok: velayet kesin kayıtla, belgesiz verilmez (DOM-ILT-070, DOM-ILT-071).
+    await setBond({ isContactRestricted: false, custody: 'none' })
+    assert.deepEqual(await matchIds(), [])
+    await refused()
+    // Ortak velayet tam veli yetkisidir; öneri ve bağlama yeniden açılır.
+    await setBond({ custody: 'joint', isPayer: true })
+    assert.deepEqual(await matchIds(), [parentId])
+    const done = await enroll(cookie, sibling.id, body, sibling.version)
+    assert.equal(done.statusCode, 201, done.body)
   })
 
   test('DOM-FIN-010: form açıkken tarife değiştiyse 409 tariff_changed; kayıt yazılmaz', async () => {

@@ -16,6 +16,7 @@ import {
   GUARDIAN_RELATIONSHIPS,
   GUARDIAN_REQUIRED_FORM_MESSAGE,
   guardianRequired,
+  hasNonCustodialBond,
   isCourse,
   isNotGuardian,
   isValidTurkishId,
@@ -821,6 +822,52 @@ test('DOM-KAY-013, parent_not_guardian: eski yer tutucu (iletişimsiz, adayları
     isDomainError('parent_not_guardian'),
   )
   assert.equal(JSON.stringify(state), before)
+})
+
+test('DOM-ILT-070, DOM-ILT-074, parent_not_guardian: bir öğrencisinde iletişim kısıtlı ya da velayetsiz veli önerilmez ve kesin kayıtta bağlanamaz', () => {
+  const restricted = { parentId: 'p1', custody: 'none', contactRestricted: true } as const
+  const noCustody = { parentId: 'p1', custody: 'none', contactRestricted: false } as const
+  const joint = { parentId: 'p1', custody: 'joint', contactRestricted: false } as const
+  assert.equal(hasNonCustodialBond('p1', [restricted]), true)
+  assert.equal(hasNonCustodialBond('p1', [joint, noCustody]), true)
+  assert.equal(hasNonCustodialBond('p1', [joint]), false)
+  // Başka velinin bağı bu veliyi etkilemez.
+  assert.equal(hasNonCustodialBond('p2', [restricted]), false)
+  assert.equal(hasNonCustodialBond('p1', []), false)
+
+  const state = createSeed(new Date(NOW))
+  const parent = state.parents[0]!
+  const phone = state.students.find((student) => student.id === parent.studentIds[0])!.phone
+  const own = (bond: { custody: 'full' | 'joint' | 'none'; contactRestricted: boolean }) => [
+    { ...bond, parentId: parent.id },
+  ]
+  const suggested = (bonds: ReturnType<typeof own>) =>
+    findParentMatches(state, phone, { bonds }).some((match) => match.parentId === parent.id)
+  assert.equal(suggested(own({ custody: 'full', contactRestricted: false })), true)
+  assert.equal(suggested(own({ custody: 'none', contactRestricted: true })), false)
+  assert.equal(suggested(own({ custody: 'none', contactRestricted: false })), false)
+
+  const before = JSON.stringify(state)
+  for (const bond of [restricted, noCustody])
+    assert.throws(
+      () =>
+        enroll({ guardian: { existingParentId: parent.id } }, { guardianBonds: own(bond) }, state),
+      (error: unknown) =>
+        isDomainError('parent_not_guardian')(error) &&
+        JSON.stringify((error as { path?: unknown }).path) === JSON.stringify(['guardian']),
+    )
+  assert.equal(JSON.stringify(state), before)
+  const { result } = enroll(
+    { guardian: { existingParentId: parent.id } },
+    {
+      guardianBonds: [
+        ...own({ custody: 'joint', contactRestricted: false }),
+        { ...restricted, parentId: 'p-baska' },
+      ],
+    },
+    state,
+  )
+  assert.equal(result.guardianBond?.parentId, parent.id)
 })
 
 test('DOM-KAY-011: kimliğin sahibi pasifse veya kayıt yoksa yeni kayıt açılır, eski kimlik bildirilir', () => {

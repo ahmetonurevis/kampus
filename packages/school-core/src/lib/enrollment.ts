@@ -12,6 +12,7 @@ import {
   type ScholarshipProgram,
 } from './finance-scholarships.ts'
 import { dayKey } from './format.ts'
+import { isCustodial, type GuardianLink } from './guardianship.ts'
 import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 import { assertWithinCeiling, renewalCeiling, type PriceIndexEntry } from './renewal-ceiling.ts'
 import { renewalQuote, workflowSchemas } from './school-workflows.ts'
@@ -281,6 +282,19 @@ type ProspectLike = {
   siblingOfId?: string
 }
 
+/** Veli kaydının kurumdaki etkin veli–öğrenci bağı (`student_guardians`); servis yükler. */
+export type ParentBond = Pick<GuardianLink, 'parentId' | 'custody' | 'contactRestricted'>
+
+/**
+ * Veli kaydının bir öğrencisinde velayeti yok ya da iletişim kısıtı var mı (DOM-ILT-070, -074,
+ * -075). Kesin kayıt bağı velayet sahibi ve ödeyici olarak kurar (`guardianBond`); kısıtlı veli
+ * velayetli ya da ödeyici kaydedilemez, velayetsiz velinin velayeti belge olmadan kesin kayıtla
+ * verilmez (DOM-ILT-071). Böyle veli kardeşe önerilmez ve seçilirse `parent_not_guardian`.
+ */
+export function hasNonCustodialBond(parentId: string, bonds: readonly ParentBond[]): boolean {
+  return bonds.some((bond) => bond.parentId === parentId && !isCustodial(bond))
+}
+
 /** Yetişkin kursiyerin kendi kaydı için açılan veli satırının yakınlığı (DOM-KAY-012). */
 export const SELF_RELATIONSHIP = 'self'
 
@@ -341,8 +355,10 @@ function siblingStudentIds(prospects: readonly ProspectLike[], prospectId: strin
  * telefonu boş kaldığından (DOM-KAY-003) kardeşin aday kaydındaki aile telefonu da aranır. Aday
  * kimliği (`prospectId`) verilirse kardeş adayın (`siblingOfId`, DOM-KAY-031) kesin kayıtta
  * bağlandığı veli telefon farklı olsa da önerilir (`match: 'sibling'`) ve listenin başına gelir.
- * Yetişkin kursiyerin kendi satırı ve eski yer tutucu önerilmez (`isNotGuardian`). Yanıt ad ve
- * öğrenci sayısı taşır; telefon ve e-posta dönmez (DOM-ILT-073).
+ * Yetişkin kursiyerin kendi satırı ve eski yer tutucu önerilmez (`isNotGuardian`); `bonds`
+ * verilirse bir öğrencisinde velayetsiz ya da iletişim kısıtlı veli de önerilmez
+ * (`hasNonCustodialBond`). Yanıt ad ve öğrenci sayısı taşır; telefon ve e-posta dönmez
+ * (DOM-ILT-073).
  */
 export function findParentMatches(
   state: {
@@ -351,7 +367,7 @@ export function findParentMatches(
     prospects?: readonly ProspectLike[]
   },
   phone: string,
-  options: { prospectId?: string } = {},
+  options: { prospectId?: string; bonds?: readonly ParentBond[] } = {},
 ): { parentId: string; name: string; studentCount: number; match: ParentMatchKind }[] {
   const prospects = state.prospects ?? []
   const siblings =
@@ -376,7 +392,10 @@ export function findParentMatches(
   }
   return state.parents
     .flatMap((parent) => {
-      const match = isNotGuardian(parent, prospects) ? null : kindOf(parent)
+      const match =
+        isNotGuardian(parent, prospects) || hasNonCustodialBond(parent.id, options.bonds ?? [])
+          ? null
+          : kindOf(parent)
       return match === null
         ? []
         : [
@@ -403,6 +422,11 @@ export interface EnrollmentContext {
   /** Gövdedeki burs programı ve atanmış burslu sayısı; servis yükler (DOM-FIN-025). */
   scholarshipProgram?: ScholarshipProgram | null
   scholarshipAwardedCount?: number
+  /**
+   * Gövdede seçilen mevcut velinin (`existingParentId`) etkin bağları; servis `student_guardians`'tan
+   * yükler (DOM-ILT-070, -074). Velayetsiz ya da kısıtlı bağ varsa 422 `parent_not_guardian`.
+   */
+  guardianBonds?: readonly ParentBond[]
 }
 
 /**
@@ -485,6 +509,14 @@ export function enrollProspectWithTariff(
     throw new DomainError(
       'parent_not_guardian',
       'Seçilen kayıt bir veli değil (yetişkin kursiyerin kendi kaydı); veliyi yeni veli olarak girin.',
+      { path: ['guardian'] },
+    )
+  // Kesin kayıt bağı velayet sahibi ve ödeyici olarak kurar; kısıtlı ya da velayetsiz veli olamaz
+  // (DOM-ILT-070, -071, -074). Kısıtın hangi öğrencide olduğu iletide söylenmez.
+  if (existing && hasNonCustodialBond(existing.id, context.guardianBonds ?? []))
+    throw new DomainError(
+      'parent_not_guardian',
+      'Seçilen veli kesin kayıtta velayet sahibi ve ödeyici olarak bağlanamaz (velayeti yok ya da iletişim kısıtı var). Velayet sahibi veliyi seçin ya da yeni veli girin.',
       { path: ['guardian'] },
     )
   if (data.discounts.includes('sibling')) {

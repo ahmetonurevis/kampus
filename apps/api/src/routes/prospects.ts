@@ -270,7 +270,7 @@ export function registerProspectRoutes(app: FastifyInstance) {
         tags: ['prospects'],
         summary: 'Adayla eşleşen velileri öner',
         description:
-          'Adayın telefonuyla ya da kardeş adayının (`siblingOfId`) kesin kaydıyla eşleşen mevcut velileri önerir; kardeş eşleşmesi (`match: sibling`) listenin başındadır. Ön büro seçerse `existingParentId` ile bağlanır, yeni veli açılmaz; otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon ve e-posta taşımaz. Roller: `yonetici`, `onburo`.',
+          'Adayın telefonuyla ya da kardeş adayının (`siblingOfId`) kesin kaydıyla eşleşen mevcut velileri önerir; kardeş eşleşmesi (`match: sibling`) listenin başındadır; yetişkin kursiyerin kendi satırı ve bir öğrencisinde velayetsiz ya da iletişim kısıtlı veli önerilmez (seçilirse kesin kayıt 422 `parent_not_guardian`). Ön büro seçerse `existingParentId` ile bağlanır, yeni veli açılmaz; otomatik birleştirme yapılmaz (DOM-KAY-013). Yanıt telefon ve e-posta taşımaz. Roller: `yonetici`, `onburo`.',
         params: prospectParamsSchema,
         response: {
           200: dataResponse(

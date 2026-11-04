@@ -5,6 +5,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { useTheme } from '@/hooks/use-theme.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { useAuth } from '@/auth/use-auth.ts'
+import { ChildNoticeSection } from './ChildNoticeSection.tsx'
 import { ConsentsSection } from './ConsentsSection.tsx'
 
 /**
@@ -59,6 +60,7 @@ export function PersonalSettingsPage({ page }: { page: NavPage }) {
             saklanmıyor.
           </p>
         </section>
+        {session?.role === 'ogrenci' ? <ChildNoticeSection session={session} /> : null}
         {session ? <ConsentsSection session={session} /> : null}
       </div>
     </>

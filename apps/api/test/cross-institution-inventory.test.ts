@@ -417,6 +417,7 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'DELETE /api/v1/task-assignments/:assignmentId/extra-times/:learnerId':
     EXTRA_TIME_COMMAND('remove('),
   'GET /api/v1/task-submissions/grading-queue': GRADING,
+  'GET /api/v1/task-appeals': GRADING,
   'POST /api/v1/task-submissions/:submissionId/scores': GRADING,
   'POST /api/v1/task-submissions/:submissionId/resubmission-requests': GRADING,
   'POST /api/v1/task-assignments/:assignmentId/second-rating-sample': kayit(

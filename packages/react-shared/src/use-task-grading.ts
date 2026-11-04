@@ -52,10 +52,36 @@ export type TaskResubmissionBody = JsonBody<'requestTaskResubmission'>
 export type GradingQueueItem = components['schemas']['GradingQueueItem']
 export type TaskVersionGrading = components['schemas']['TaskVersionGrading']
 export type TaskAppeal = components['schemas']['TaskAppeal']
+export type TaskAppealQuery = NonNullable<operations['listTaskAppeals']['parameters']['query']>
+export type TaskAppealQueueItem = components['schemas']['TaskAppealQueueItem']
 export type SecondRatingSample = components['schemas']['SecondRatingSample']
 export type SecondRatingRequestBody = JsonBody<'requestSecondRating'>
 export type TaskAppealBody = JsonBody<'fileTaskAppeal'>
 export type TaskAppealDecisionBody = JsonBody<'decideTaskAppeal'>
+
+/**
+ * Karara bağlanmayı bekleyen itirazlar (sayfalı; DOM-BEC-025, OG-1010). Anahtar teslim önekinin
+ * altındadır: itiraz açılınca ya da karara bağlanınca (`TASK_GRADING_INVALIDATES`) kuyruk da
+ * tazelenir. Sorgu değişirken önceki sayfa ekranda kalır.
+ */
+export function taskAppealsRequest(
+  client: KampusClient,
+  query: TaskAppealQuery,
+  signal: AbortSignal,
+) {
+  return client.GET('/api/v1/task-appeals', { params: { query }, signal })
+}
+
+export function useTaskAppeals(query: TaskAppealQuery) {
+  const client = useKampusClient()
+  const institutionId = useActiveInstitutionId()
+  return useQuery({
+    queryKey: institutionKey(institutionId, TASK_SUBMISSIONS_KEY, 'appeals', query),
+    queryFn: ({ signal }) => runRequest(() => taskAppealsRequest(client, query, signal)),
+    enabled: institutionId !== null,
+    placeholderData: keepPreviousData,
+  })
+}
 
 /** Örneklem atamayı ve teslimleri değiştirir. */
 export const SECOND_RATING_SAMPLE_INVALIDATES = [

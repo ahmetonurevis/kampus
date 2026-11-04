@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { Controller, useForm, useWatch, type Control, type Resolver } from 'react-hook-form'
 import type { FieldErrors, UseFormRegister } from 'react-hook-form'
@@ -35,6 +35,10 @@ type Props = {
   rubric: { version: RubricVersion | null; loading: boolean }
   /** Yalnız öğretmen karar verir; yönetici itirazı okur, karar veremez (sunucu 403). */
   canDecide: boolean
+  /** Kişi itiraz edilen sürümü puanladı mı (sunucunun `grading.scoredByViewer`'ı). */
+  scoredByViewer: boolean
+  /** Açık itirazlar sekmesinden açıldıysa pencere yüklenince kart odaklanır. */
+  focusOnMount?: boolean
 }
 
 /**
@@ -43,8 +47,9 @@ type Props = {
  * yeni rubrik puanı ister (ilk puan kayıt geçmişinde kalır); ret yalnız gerekçe ister. Kararı
  * o sürümü puanlamamış öğretmen verir (409 `rater_not_independent`); `If-Match` teslimin
  * `rowVersion`'ıdır. Teslim başka yerde değiştiyse güncel hâl yüklenir ve uyarı kartta görünür.
- * TODO(itiraz-kuyrugu): OG-1010 sunucu itiraz kuyruğu ucu ve liste sekmesi; o zamana kadar
- * karar bekleyen itirazlar teslim ayrıntısından bulunur.
+ * Sürümü kendisi puanlayan öğretmene form hiç açılmaz, bilgi metni görünür (`scoredByViewer`;
+ * OG-1010); sunucu yine de reddederse (409) aynı metin gösterilir. Karar bekleyen itirazlar
+ * "Açık itirazlar" sekmesinden de bulunur; oradan gelinen pencerede `focusOnMount` kartı odaklar.
  */
 export function AppealDecisionSection({
   submission,
@@ -52,14 +57,27 @@ export function AppealDecisionSection({
   versionNumber,
   rubric,
   canDecide,
+  scoredByViewer,
+  focusOnMount = false,
 }: Props) {
+  const cardRef = useRef<HTMLElement>(null)
+  useEffect(() => {
+    if (!focusOnMount) return
+    cardRef.current?.scrollIntoView?.({ block: 'center' })
+    cardRef.current?.focus({ preventScroll: true })
+  }, [focusOnMount, appeal.id])
   const [stale, setStale] = useState(false)
   // Sunucu bu itirazda puanlayıcı bağımsızlığını reddettiyse (409) form bırakılır; sürümü puanlayan
   // kişi yanıt şemasından anlaşılamadığı için bilgi ilk reddedişte öğrenilir.
   const [blockedAppealId, setBlockedAppealId] = useState<string | null>(null)
   const pending = appeal.outcome === null
   return (
-    <section aria-labelledby="itiraz-karti" className="grid gap-3 border-t pt-5">
+    <section
+      ref={cardRef}
+      tabIndex={-1}
+      aria-labelledby="itiraz-karti"
+      className="grid gap-3 border-t pt-5 outline-none focus-visible:ring-2 focus-visible:ring-ring"
+    >
       <div className="flex flex-wrap items-center gap-2">
         <h3 id="itiraz-karti" className="text-md font-semibold">
           İtiraz · Sürüm {versionNumber}
@@ -91,7 +109,7 @@ export function AppealDecisionSection({
             <span className="text-muted-foreground"> · {dateTimeLabel(appeal.decidedAt)}</span>
           ) : null}
         </p>
-      ) : canDecide && blockedAppealId === appeal.id ? (
+      ) : canDecide && (scoredByViewer || blockedAppealId === appeal.id) ? (
         <p role="status" className="rounded-card border bg-warning-soft p-4 text-sm font-medium">
           {APPEAL_NOT_INDEPENDENT_TEXT}
         </p>

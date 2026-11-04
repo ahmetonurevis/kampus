@@ -12,7 +12,7 @@ import { Modal } from '@/components/Modal.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { AppealDecisionSection } from './AppealDecisionSection.tsx'
-import { latestAppeal } from './appeal-model.ts'
+import { appealScoredByViewer, latestAppeal } from './appeal-model.ts'
 import { FeedbackAudioPlayer, RecordingPlayer } from './RecordingPlayer.tsx'
 import {
   gradedVersionNote,
@@ -37,6 +37,8 @@ type Props = {
   /** `''` kapalı; aksi hâlde puanlanan teslimin kimliği. */
   submissionId: string
   onClose: () => void
+  /** Açık itirazlar sekmesinden açılırsa itiraz kartı odaklanır (OG-1010). */
+  focusAppeal?: boolean
 }
 
 /**
@@ -49,7 +51,7 @@ type Props = {
  * karşılaştırması yerine her sürümün kaydı dinlenir (`RecordingPlayer`; imzalı bağlantı yalnız
  * dinleyince istenir, DOM-BEC-053) ve birden çok denemede hangi kaydın puanlandığı yazılır.
  */
-export function SubmissionGradingModal({ submissionId, onClose }: Props) {
+export function SubmissionGradingModal({ submissionId, onClose, focusAppeal = false }: Props) {
   return (
     <Modal
       open={submissionId !== ''}
@@ -57,12 +59,18 @@ export function SubmissionGradingModal({ submissionId, onClose }: Props) {
       title="Teslimi puanla"
       size="wide"
     >
-      {submissionId ? <GradingBody submissionId={submissionId} /> : null}
+      {submissionId ? <GradingBody submissionId={submissionId} focusAppeal={focusAppeal} /> : null}
     </Modal>
   )
 }
 
-function GradingBody({ submissionId }: { submissionId: string }) {
+function GradingBody({
+  submissionId,
+  focusAppeal,
+}: {
+  submissionId: string
+  focusAppeal: boolean
+}) {
   const detail = useTaskSubmission(submissionId)
   const submission = detail.data?.data
   const assignmentQuery = useTaskAssignment(submission?.assignmentId ?? '')
@@ -184,6 +192,8 @@ function GradingBody({ submissionId }: { submissionId: string }) {
           versionNumber={appeal.versionNumber}
           rubric={{ version: rubric.version, loading: rubric.loading }}
           canDecide={session?.role === 'ogretmen'}
+          scoredByViewer={appealScoredByViewer(submission, appeal.appeal.id)}
+          focusOnMount={focusAppeal}
         />
       ) : null}
 

@@ -2,12 +2,14 @@ import assert from 'node:assert/strict'
 import { randomUUID } from 'node:crypto'
 import { after, before, describe, test } from 'node:test'
 
+import { PGlite } from '@electric-sql/pglite'
 import { and, eq, sql } from 'drizzle-orm'
+import { drizzle } from 'drizzle-orm/pglite'
 
 import type { ResourceVersionInput } from '@kampus/school-core/content/resource.ts'
 
 import type { App } from '../src/app.ts'
-import type { Database } from '../src/db/client.ts'
+import { schema, type Database } from '../src/db/client.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
@@ -23,7 +25,12 @@ import {
 import { insertRubricScore, insertSecondRatingRequest } from '../src/db/skills.ts'
 import { AppError } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
-import { requestTaskResubmission, scoreTaskSubmission } from '../src/services/task-grading.ts'
+import {
+  listGradingQueue,
+  listOpenAppeals,
+  requestTaskResubmission,
+  scoreTaskSubmission,
+} from '../src/services/task-grading.ts'
 import {
   buildTestApp,
   createInstitution,
@@ -2056,5 +2063,250 @@ describe('yazma tesliminin öğretmen puanlaması', () => {
       (await noticeRows(other.institution.id)).filter(([kind]) => kind === 'appeal_decided').length,
       2,
     )
+  })
+
+  // --- Açık itiraz kuyruğu (OG-1010; DOM-BEC-025) ---------------------------------------------
+
+  const appealQueue = (cookie: string, query = 'page=1&pageSize=20') =>
+    call('GET', `/task-appeals?${query}`, cookie)
+
+  /**
+   * İkinci rubrikli atama (varsayılan hedef 9-B) ve `s-3`'ün teslimi; puanlanmaz. Birinci
+   * atamadan (9-A) ayrı bir kapsamdır; aynı içerikle çakışmamak için içerik verilebilir.
+   */
+  async function submittedInOtherClass(
+    t: Tenant,
+    options: { targets?: { kind: string; id: string }[]; resourceVersionId?: string } = {},
+  ) {
+    const assignment = await ok(
+      await call(
+        'POST',
+        '/task-assignments',
+        t.cookies.admin,
+        {
+          resourceVersionId: options.resourceVersionId ?? t.homeworkId,
+          settings: {
+            deadline: { dueAt: DUE },
+            submission: { submissionKind: 'text', maxVersions: 1 },
+            rubricVersionId: t.rubricVersionId,
+          },
+          targets: options.targets ?? [{ kind: 'class', id: '9-B' }],
+        },
+        key(),
+      ),
+      201,
+    )
+    const made = await ok(
+      await call(
+        'POST',
+        `/task-assignments/${assignment.id}/submissions`,
+        t.cookies.otherStudent,
+        { submissionKind: 'text', body: SECRET_TEXT },
+        key(),
+      ),
+      201,
+    )
+    return { assignmentId: assignment.id as string, submissionId: made.id as string }
+  }
+
+  /** Başka bir yayımlanmış ödev içeriği (aynı içerikle atama çakışması olmasın diye). */
+  async function anotherHomework(t: Tenant) {
+    return (
+      await seedResource(db, t.institution.id, {
+        ownerUserId: t.teacher.id,
+        versions: [{ status: 'published', input: homework() }],
+      })
+    ).versions[0]!.id
+  }
+
+  /** `s-3` teslim eder, `t-mat` puanlar, `s-3` itiraz eder: `t-eng` onu görmez, `t-mat` ilkini görmez. */
+  async function appealedInOtherClass(t: Tenant, resourceVersionId?: string) {
+    const { submissionId } = await submittedInOtherClass(
+      t,
+      resourceVersionId === undefined ? {} : { resourceVersionId },
+    )
+    await ok(await score(submissionId, t.cookies.otherTeacher, 1), 201)
+    const filed = await ok(await appeal(submissionId, t.cookies.otherStudent), 201)
+    return { submissionId, appealId: filed.versions[0].appeal.id as string }
+  }
+
+  /** Servis çağrısındaki veritabanı sorgularını sayan bağlam (aynı PGlite istemcisi, sayaçlı günlükçü). */
+  function countingContext(t: Tenant) {
+    const counter = { queries: 0 }
+    const counted = drizzle({
+      client: (db as unknown as { $client: PGlite }).$client,
+      schema,
+      logger: {
+        logQuery: () => {
+          counter.queries += 1
+        },
+      },
+    }) as unknown as Database
+    const ctx: ServiceContext = {
+      db: counted,
+      institutionId: t.institution.id,
+      actor: {
+        userId: t.institution.admin.id,
+        role: 'yonetici',
+        membershipId: t.institution.adminMembershipId,
+      },
+      now,
+      log: app.log,
+    }
+    return { counter, ctx }
+  }
+
+  test('DOM-BEC-025, DOM-YTK-028: açık itiraz kuyruğu 401; öğrenci, veli ve ön büro 403; modül kapalıyken 403; bilinmeyen ve geçersiz sorgu 400', async () => {
+    const { t } = await setup()
+    fails(await appealQueue(''), 401, 'unauthenticated')
+    for (const cookie of [
+      t.cookies.student,
+      t.cookies.parent,
+      t.cookies.otherStudent,
+      t.cookies.frontDesk,
+    ])
+      fails(await appealQueue(cookie), 403, 'forbidden')
+    for (const query of [
+      'status=decided',
+      'status=open&sort=filedAt',
+      'institutionId=x',
+      'pageSize=101',
+      'page=0',
+    ])
+      fails(await appealQueue(t.cookies.admin, query), 400, 'validation_failed')
+    const closed = await createInstitution(app, { enabledModules: { learning: false } })
+    fails(await appealQueue(await signInAs(app, closed.admin)), 403, 'module_disabled')
+  })
+
+  test('DOM-BEC-025, DOM-YTK-028: öğretmen yalnız kapsamındaki açık itirazları görür, yönetici kurumun hepsini; satırda görev başlığı, öğrenci adı, açılma zamanı ve kimlikler var; yanıtta gerekçe yok; sayfalama', async () => {
+    const { t, submission } = await setup()
+    const { appealId } = await appealed(t, submission.id as string)
+    const second = await appealedInOtherClass(t)
+    const rows = async (cookie: string) => (await ok(await appealQueue(cookie))) as Json[]
+    const ids = async (cookie: string) => (await rows(cookie)).map((row) => row.id)
+    assert.deepEqual(await ids(t.cookies.teacher), [appealId])
+    assert.deepEqual(await ids(t.cookies.colleague), [appealId])
+    assert.deepEqual(await ids(t.cookies.otherTeacher), [second.appealId])
+    // İki itiraz aynı anda açıldı (sabit saat): sıra `filedAt`, eşitte kimlik; yalnız küme sınanır.
+    assert.deepEqual((await ids(t.cookies.admin)).sort(), [appealId, second.appealId].sort())
+    const [row] = await rows(t.cookies.teacher)
+    assert.deepEqual(
+      [row?.submissionId, row?.assignmentTitle, row?.learnerName, row?.versionNumber],
+      [submission.id, 'Hafta sonu yazısı', 'Deniz Yılmaz', 1],
+    )
+    assert.equal(row?.filedAt, FIXED_NOW.toISOString())
+    assert.ok(row?.assignmentId && row?.versionId && row?.learnerId)
+    const body = (await appealQueue(t.cookies.admin)).body
+    for (const text of [APPEAL_REASON, FEEDBACK, SECRET_TEXT]) assert.ok(!body.includes(text))
+    // Eşit zamanda sıra kimliğe göredir (rastgele UUID): sayfalar sıralı kimlik dizisini izler.
+    const order = [appealId, second.appealId].sort()
+    const paged = (await appealQueue(t.cookies.admin, 'page=2&pageSize=1')).json()
+    assert.deepEqual(paged.meta, { page: 2, pageSize: 1, total: 2 })
+    assert.deepEqual(
+      paged.data.map((item: Json) => item.id),
+      [order[1]],
+    )
+    const first = (await appealQueue(t.cookies.admin, 'page=1&pageSize=1')).json()
+    assert.deepEqual(
+      first.data.map((item: Json) => item.id),
+      [order[0]],
+    )
+    const beyond = (await appealQueue(t.cookies.admin, 'page=3&pageSize=1')).json()
+    assert.deepEqual([beyond.data, beyond.meta.total], [[], 2])
+  })
+
+  test('DOM-BEC-025: karara bağlanmış itiraz status=open listesinden çıkar ve toplam düşer; başka kurumun itirazı görünmez ve etkilenmez', async () => {
+    const { t, submission } = await setup()
+    const id = submission.id as string
+    const { appealId, rowVersion } = await appealed(t, id)
+    const { t: other, submission: otherSubmission } = await setup()
+    const otherAppeal = await appealed(other, otherSubmission.id as string)
+    for (const cookie of [t.cookies.admin, t.cookies.colleague]) {
+      const response = (await appealQueue(cookie)).json()
+      assert.deepEqual(
+        response.data.map((row: Json) => row.id),
+        [appealId],
+      )
+      assert.equal(response.meta.total, 1)
+    }
+    assert.ok(!(await appealQueue(t.cookies.admin)).body.includes(otherAppeal.appealId))
+    await ok(await decide(id, appealId, t.cookies.colleague, rowVersion, REJECTED))
+    for (const cookie of [t.cookies.admin, t.cookies.colleague, t.cookies.teacher]) {
+      const response = (await appealQueue(cookie, 'status=open&page=1&pageSize=20')).json()
+      assert.deepEqual([response.data, response.meta.total], [[], 0])
+    }
+    assert.deepEqual(
+      ((await ok(await appealQueue(other.cookies.admin))) as Json[]).map((row) => row.id),
+      [otherAppeal.appealId],
+    )
+  })
+
+  test('DOM-BEC-025: scoredByViewer itirazlı sürümü puanlayan öğretmende true, diğer öğretmen ve yöneticide false (kuyruk ve teslim ayrıntısı); kursiyer ve veliye gitmez; true olan karar verirse 409 rater_not_independent', async () => {
+    const { t, submission } = await setup()
+    const id = submission.id as string
+    const { appealId, rowVersion } = await appealed(t, id)
+    const flag = async (cookie: string) =>
+      ((await ok(await appealQueue(cookie))) as Json[])[0]?.scoredByViewer
+    assert.equal(await flag(t.cookies.teacher), true)
+    assert.equal(await flag(t.cookies.colleague), false)
+    assert.equal(await flag(t.cookies.admin), false)
+    const gradingOf = async (cookie: string) =>
+      (await ok(await detail(id, cookie))).versions[0].grading.scoredByViewer
+    assert.equal(await gradingOf(t.cookies.teacher), true)
+    assert.equal(await gradingOf(t.cookies.colleague), false)
+    assert.equal(await gradingOf(t.cookies.admin), false)
+    for (const cookie of [t.cookies.student, t.cookies.parent])
+      assert.equal((await ok(await detail(id, cookie))).versions[0].grading, null)
+    fails(
+      await decide(id, appealId, t.cookies.teacher, rowVersion, REJECTED),
+      409,
+      'rater_not_independent',
+    )
+    await ok(await decide(id, appealId, t.cookies.colleague, rowVersion, REJECTED))
+  })
+
+  test('DOM-YTK-027, OG-213: öğretmen kapsamı dışındaki öğrencinin itirazında learnerName null; yönetici ve kapsamındaki öğrencide ad gelir', async () => {
+    const t = await tenant()
+    // 9-A ve 9-B hedefli tek atama: `t-eng` atamayı 9-A yüzünden görür ama `s-3` onun öğrencisi değil.
+    const { submissionId: other } = await submittedInOtherClass(t, {
+      targets: [
+        { kind: 'class', id: '9-A' },
+        { kind: 'class', id: '9-B' },
+      ],
+    })
+    await ok(await score(other, t.cookies.otherTeacher, 1), 201)
+    const filed = await ok(await appeal(other, t.cookies.otherStudent), 201)
+    const otherAppeal = filed.versions[0].appeal.id as string
+    const names = async (cookie: string) =>
+      Object.fromEntries(
+        ((await ok(await appealQueue(cookie))) as Json[]).map((row) => [row.id, row.learnerName]),
+      )
+    assert.deepEqual(await names(t.cookies.teacher), { [otherAppeal]: null })
+    assert.deepEqual(await names(t.cookies.admin), { [otherAppeal]: 'Can Arslan' })
+    assert.ok(!(await appealQueue(t.cookies.teacher)).body.includes('Can Arslan'))
+  })
+
+  test('OG-1011: itiraz ve puanlama kuyruğu sayfadaki atamaları toplu yükler; sorgu sayısı atama sayısına bağlı değil', async () => {
+    const { t } = await setup()
+    // Birinci atama (9-A): `s-1` teslimi puanlanmamış, puanlama kuyruğunda. İkinci (9-B): itirazlı.
+    await appealedInOtherClass(t)
+    const { counter, ctx } = countingContext(t)
+    const measure = async () => {
+      counter.queries = 0
+      const appeals = await listOpenAppeals(ctx, { page: 1, pageSize: 20 })
+      const appealQueries = counter.queries
+      counter.queries = 0
+      const grading = await listGradingQueue(ctx, { page: 1, pageSize: 20 })
+      return { appeals, grading, appealQueries, gradingQueries: counter.queries }
+    }
+    const one = await measure()
+    assert.deepEqual([one.appeals.items.length, one.grading.items.length], [1, 1])
+    // Üçüncü atama itirazlı, dördüncüsü puanlanmamış: her kuyrukta iki ayrı atama.
+    await appealedInOtherClass(t, await anotherHomework(t))
+    await submittedInOtherClass(t, { resourceVersionId: await anotherHomework(t) })
+    const many = await measure()
+    assert.deepEqual([many.appeals.items.length, many.grading.items.length], [2, 2])
+    assert.equal(many.appealQueries, one.appealQueries)
+    assert.equal(many.gradingQueries, one.gradingQueries)
   })
 })

@@ -741,6 +741,11 @@ function gradingView(
     // Son puanı bu kişi verebilir mi (DOM-BEC-024): uyuşmazlık var, kapsamındaki koordinatör ve
     // iki puanlayıcıdan biri değil (`planRubricScore` aynı kuralı yazmada uygular).
     canResolve: canResolveFinal(viewer, ctx.actor.userId, assignment, resolution),
+    // Kişi bu sürümü herhangi bir rolde puanladı mı: itiraz kararı `rater_not_independent` ile
+    // reddedilir (core `planAppealDecision`); ekran karar düğmesini baştan kapatır (OG-1010).
+    scoredByViewer: grading.scores.some(
+      (score) => score.submissionVersionId === version.id && score.raterUserId === ctx.actor.userId,
+    ),
     status: resolution.status,
     missing: resolution.status === 'pending' ? resolution.missing : null,
     secondRatingRequested: secondRatingFor(grading, version),

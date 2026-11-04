@@ -222,6 +222,11 @@ const versionGradingSchema = z
     overdue: z
       .boolean()
       .describe('Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false`'),
+    scoredByViewer: z
+      .boolean()
+      .describe(
+        'Kişi bu sürümü herhangi bir rolde (ilk, ikinci, son) puanladı mı; öyleyse itiraz kararı 409 `rater_not_independent` alır (DOM-BEC-025). Yalnız bu kişinin kendi puanı; başkasının puanlayıp puanlamadığı sızmaz',
+      ),
   })
   .meta({ id: 'TaskVersionGrading' })
   .describe('Personelin gördüğü puanlama durumu (DOM-BEC-024, 025); kursiyer ve veliye `null`')
@@ -401,6 +406,42 @@ const gradingQueueItemSchema = z
   })
   .meta({ id: 'GradingQueueItem' })
 
+export const taskAppealListQuerySchema = pageQuerySchema
+  .extend({
+    status: z
+      .enum(['open'])
+      .default('open')
+      .describe('Yalnız karara bağlanmayı bekleyen (açık) itirazlar (DOM-BEC-025)'),
+  })
+  .strict()
+
+const taskAppealQueueItemSchema = z
+  .object({
+    id,
+    submissionId: id,
+    assignmentId: id,
+    versionId: id.describe('İtiraz edilen teslim sürümünün kimliği'),
+    versionNumber: z.number().int().min(1),
+    assignmentTitle: z
+      .string()
+      .nullable()
+      .describe('Atanan içerik sürümünün başlığı; sürüm bulunamazsa `null`'),
+    learnerId: z.string(),
+    learnerName: z
+      .string()
+      .nullable()
+      .describe(
+        'Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler; kapsam dışında `null` (OG-213)',
+      ),
+    filedAt: instant.describe('İtirazın açıldığı an'),
+    scoredByViewer: z
+      .boolean()
+      .describe(
+        'Kişi itiraz edilen sürümü puanladı mı; öyleyse karar veremez (409 `rater_not_independent`)',
+      ),
+  })
+  .meta({ id: 'TaskAppealQueueItem' })
+
 export const secondRatingRequestBodySchema = z.strictObject({
   versionNumber: z
     .number()
@@ -445,6 +486,7 @@ export const taskAppealDecisionBodySchema = z.discriminatedUnion('outcome', [
 
 export const taskSubmissionListResponseSchema = pageResponse(taskSubmissionSchema)
 export const gradingQueueResponseSchema = pageResponse(gradingQueueItemSchema)
+export const taskAppealListResponseSchema = pageResponse(taskAppealQueueItemSchema)
 export const taskSubmissionDetailResponseSchema = dataResponse(taskSubmissionDetailSchema)
 export const taskDraftResponseSchema = dataResponse(taskDraftSchema)
 export const taskDraftReadResponseSchema = dataResponse(

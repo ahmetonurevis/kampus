@@ -36,7 +36,9 @@ import {
   insertRubricScore,
   insertSecondRatingRequest,
   listAwaitingScore,
+  listOpenAppeals as listOpenAppealRows,
   listSubmittedIds,
+  loadAssignmentsByIds,
   markSecondRatingSampled,
   touchSubmission,
   type StoredAssignment,
@@ -68,6 +70,7 @@ import {
   type Grading,
 } from './task-submissions.ts'
 import { attachFeedbackAudio, extendVersionRecordingRetention } from './task-submission-files.ts'
+import { loadLearnerNames } from './task-learner-names.ts'
 import { auditWork, canReadLearner } from './task-work.ts'
 
 /**
@@ -972,6 +975,19 @@ export interface GradingQueueInput {
 }
 
 /**
+ * Sayfadaki atamalar kimlik → atama haritası olarak tek toplu yüklemeyle (OG-1011): hedefler, alan
+ * ve ek süre kayıtları da kimlik listesiyle gelir, atama başına sorgu atılmaz (`findAssignment`
+ * ile aynı şekil; arşivli dahil, başka kurumun kimliği haritada yoktur).
+ */
+async function assignmentsOf(
+  ctx: ServiceContext,
+  assignmentIds: readonly string[],
+): Promise<Map<string, StoredAssignment>> {
+  const stored = await loadAssignmentsByIds(ctx.db, ctx.institutionId, assignmentIds)
+  return new Map(stored.map((assignment) => [assignment.id, assignment]))
+}
+
+/**
  * Puanlanmayı bekleyen teslimler (öğretmen puanlama kuyruğu; DOM-BEC-021, 024, 025): kişinin
  * gördüğü (DOM-YTK-028) arşivsiz, rubrikli atamaların son sürümü ilk puanı ya da istenmiş ikinci
  * puanı almamış teslimleri ve iki puanı uyuşmayıp koordinatörü bekleyenler, en eski gönderim önce.
@@ -1004,11 +1020,10 @@ export async function listGradingQueue(ctx: ServiceContext, input: GradingQueueI
     page: input.page,
     pageSize: input.pageSize,
   })
-  const assignments = new Map<string, StoredAssignment>()
-  for (const assignmentId of new Set(rows.map((row) => row.submission.assignmentId))) {
-    const assignment = await findAssignment(ctx.db, ctx.institutionId, assignmentId)
-    if (assignment) assignments.set(assignmentId, assignment)
-  }
+  const assignments = await assignmentsOf(
+    ctx,
+    rows.map((row) => row.submission.assignmentId),
+  )
   const book = await loadGrading(
     ctx.db,
     ctx,
@@ -1086,5 +1101,82 @@ function queueGrading(
     dueAt: deadline === null ? null : gradingDueAt(deadline, latest),
     overdue:
       deadline !== null && gradingOverdue({ deadline, version: latest, resolution, now: ctx.now }),
+  }
+}
+
+// --- Açık itiraz kuyruğu --------------------------------------------------------------------
+
+export interface OpenAppealsInput {
+  page: number
+  pageSize: number
+}
+
+/**
+ * Karara bağlanmayı bekleyen itirazlar (DOM-BEC-025; OG-1010): öğretmen atamayı gördüğü
+ * (DOM-YTK-028: atayan veya kapsamındaki hedef) itirazları, yönetici kurumun hepsini okur;
+ * öğrenci ve veli 403 (rota da reddeder). Kapsam SQL'dedir (`assignmentScopeFilter`) ve satır
+ * yine `visible` ile doğrulanır; uyuşmazlık hatadır, satır düşer ve sayıdan da çıkar. Öğrenci adı
+ * yalnız öğretmenin öğrenci kapsamındaysa gelir (OG-213). `scoredByViewer` kişi o sürümü
+ * puanladıysa `true`: karar `rater_not_independent` ile reddedilir (yönetici karar veremez ama
+ * okur). İtiraz kararı için son tarih domain'de tanımlı değil, satırda yok.
+ */
+export async function listOpenAppeals(ctx: ServiceContext, input: OpenAppealsInput) {
+  const viewer = await viewerOf(ctx)
+  if (viewer.kind === 'learner') throw new ForbiddenError()
+  const scope =
+    viewer.kind === 'teacher'
+      ? {
+          assignedByUserId: viewer.userId,
+          learnerTargets: {
+            studentIds: [...viewer.studentIds],
+            classIds: [...viewer.classIds],
+          },
+        }
+      : {}
+  const { rows, total } = await listOpenAppealRows(ctx.db, ctx.institutionId, {
+    ...scope,
+    viewerUserId: ctx.actor.userId,
+    page: input.page,
+    pageSize: input.pageSize,
+  })
+  const assignments = await assignmentsOf(
+    ctx,
+    rows.map((row) => row.assignmentId),
+  )
+  const shown = rows.filter((row) => {
+    const assignment = assignments.get(row.assignmentId)
+    return assignment !== undefined && visible(viewer, assignment)
+  })
+  const dropped = rows.length - shown.length
+  if (dropped > 0) ctx.log.warn({ event: 'task_appeal.visibility_mismatch', dropped })
+  const [refs, names] = await Promise.all([
+    assignmentContentRefs(
+      ctx.db,
+      ctx.institutionId,
+      [...assignments.values()].map((assignment) => assignment.resourceVersionId),
+    ),
+    loadLearnerNames(
+      ctx,
+      viewer,
+      shown.map((row) => row.learnerId),
+    ),
+  ])
+  return {
+    total: total - dropped,
+    items: shown.map((row) => {
+      const assignment = assignments.get(row.assignmentId)
+      return {
+        id: row.appealId,
+        submissionId: row.submissionId,
+        assignmentId: row.assignmentId,
+        versionId: row.versionId,
+        versionNumber: row.versionNumber,
+        assignmentTitle: (assignment && refs.get(assignment.resourceVersionId)?.title) ?? null,
+        learnerId: row.learnerId,
+        learnerName: names.get(row.learnerId) ?? null,
+        filedAt: row.filedAt,
+        scoredByViewer: row.scoredByViewer,
+      }
+    }),
   }
 }

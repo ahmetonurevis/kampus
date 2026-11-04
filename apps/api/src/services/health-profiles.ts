@@ -1,4 +1,5 @@
 import {
+  applyHealthProfilePatch,
   changedHealthFields,
   emergencyView,
   healthProfileContentSchema,
@@ -9,7 +10,7 @@ import {
   type HealthEmergencyView,
   type HealthLegalBasis,
   type HealthProfileContent,
-  type HealthProfileWrite,
+  type HealthProfilePatch,
 } from '@kampus/school-core/lib/health-profile.ts'
 
 import type { Database } from '../db/client.ts'
@@ -199,22 +200,23 @@ export async function getHealthProfile(
 }
 
 /**
- * Yazma (DOM-ILT-035): bütün profil ve hukuki dayanak, `version` ile iyimser kilit (tutmazsa 409).
- * Yazma ve `health_profile.update` denetim satırı (yalnız değişen alan adları) tek transaction'dır;
- * biri başarısızsa hiçbiri yazılmaz. Yanıt yazanın tam görünümüdür (yazabilen herkes tam okur).
+ * Kısmi yazma (DOM-ILT-035): gönderilen alanlar yüklenmiş profille birleşir, birleşmiş sonuç core
+ * tam şemasında doğrulanır (400), `version` ile iyimser kilit (tutmazsa 409). Yazma ve
+ * `health_profile.update` denetim satırı (yalnız değişen alan adları) tek transaction'dır; biri
+ * başarısızsa hiçbiri yazılmaz. Yanıt yazanın tam görünümüdür (yazabilen herkes tam okur).
  */
 export async function updateHealthProfile(
   ctx: ServiceContext,
   deps: HealthProfileDeps,
   studentId: string,
-  input: HealthProfileWrite,
+  patch: HealthProfilePatch,
 ): Promise<HealthProfileView> {
   try {
     requireHealthWrite(await accessInput(ctx, studentId))
-    const { version, legalBasis, ...content } = input
     return await ctx.db.transaction(async (tx) => {
       const before = await loadHealthProfile(tx, ctx.institutionId, studentId, deps.cipher)
-      if ((before?.version ?? 1) !== version) throw new ConflictError()
+      if ((before?.version ?? 1) !== patch.version) throw new ConflictError()
+      const { version, legalBasis, ...content } = applyHealthProfilePatch(before, patch)
       const saved = await saveHealthProfile(
         tx,
         ctx.institutionId,

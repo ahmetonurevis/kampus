@@ -119,6 +119,10 @@ const MODULELESS: Readonly<Record<string, string>> = {
   'POST /api/v1/students/:studentId/guardians': 'çekirdek kayıt',
   'PATCH /api/v1/students/:studentId/guardians/:linkId': 'çekirdek kayıt',
   'DELETE /api/v1/students/:studentId/guardians/:linkId': 'çekirdek kayıt',
+  'GET /api/v1/students/:studentId/health-profile':
+    'çekirdek kayıt; acil bilgi modülle kapanmaz (DOM-ILT-035, Sabah kararı 100)',
+  'PATCH /api/v1/students/:studentId/health-profile':
+    'çekirdek kayıt; acil bilgi modülle kapanmaz (DOM-ILT-035, Sabah kararı 100)',
   // Dosyanın modülü amacından gelir ve serviste denetlenir (yükleme, bilgi ve bağlantı; kurum
   // belgesi modülsüz; `files.test.ts`). İndirme imzalı kısa ömürlü bağlantıdır, oturum istemez.
   'POST /api/v1/files': 'dosya amacına göre serviste',

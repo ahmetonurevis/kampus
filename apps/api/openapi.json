@@ -5271,6 +5271,333 @@
           "version"
         ]
       },
+      "UpdateHealthProfileBodyInput": {
+        "type": "object",
+        "properties": {
+          "allergies": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "mild",
+                    "moderate",
+                    "severe"
+                  ]
+                }
+              },
+              "required": [
+                "name",
+                "severity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "chronicConditions": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "medications": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "schedule": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "atSchool": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "supportNeeds": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "emergencyInstructions": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "legalBasis": {
+            "type": "string",
+            "enum": [
+              "explicit_consent",
+              "vital_interest",
+              "legal_obligation"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "HealthEmergencyProfileInput": {
+        "type": "object",
+        "properties": {
+          "allergies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "mild",
+                    "moderate",
+                    "severe"
+                  ],
+                  "description": "Şiddet: `mild`, `moderate`, `severe`"
+                }
+              },
+              "required": [
+                "name",
+                "severity"
+              ]
+            }
+          },
+          "emergencyInstructions": {
+            "type": "string",
+            "description": "Acil müdahale talimatı; yoksa boş"
+          }
+        },
+        "required": [
+          "allergies",
+          "emergencyInstructions"
+        ]
+      },
+      "HealthFullProfileInput": {
+        "type": "object",
+        "properties": {
+          "allergies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "mild",
+                    "moderate",
+                    "severe"
+                  ],
+                  "description": "Şiddet: `mild`, `moderate`, `severe`"
+                }
+              },
+              "required": [
+                "name",
+                "severity"
+              ]
+            }
+          },
+          "chronicConditions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "medications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "schedule": {
+                  "description": "Kullanım düzeni",
+                  "type": "string"
+                },
+                "atSchool": {
+                  "type": "boolean",
+                  "description": "Okulda verilmesi gerekiyor mu"
+                }
+              },
+              "required": [
+                "name",
+                "atSchool"
+              ]
+            }
+          },
+          "supportNeeds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ]
+            }
+          },
+          "emergencyInstructions": {
+            "type": "string",
+            "description": "Acil müdahale talimatı; yoksa boş"
+          },
+          "legalBasis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "explicit_consent",
+                  "vital_interest",
+                  "legal_obligation"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "İşlemenin hukuki dayanağı (KVKK m.6/3); kayıt yoksa `null`"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Son güncelleme; kayıt yoksa `null`"
+          }
+        },
+        "required": [
+          "allergies",
+          "chronicConditions",
+          "medications",
+          "supportNeeds",
+          "emergencyInstructions",
+          "legalBasis",
+          "updatedAt"
+        ]
+      },
+      "HealthProfileInput": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "const": "full",
+                "description": "Tam görünüm"
+              },
+              "profile": {
+                "$ref": "#/components/schemas/HealthFullProfileInput"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Sonraki PATCH için sürüm; kayıt yoksa 1"
+              }
+            },
+            "required": [
+              "level",
+              "profile",
+              "version"
+            ]
+          },
+          {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "const": "emergency",
+                "description": "Yalnız acil müdahale bilgisi"
+              },
+              "profile": {
+                "$ref": "#/components/schemas/HealthEmergencyProfileInput"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Sonraki PATCH için sürüm; kayıt yoksa 1"
+              }
+            },
+            "required": [
+              "level",
+              "profile",
+              "version"
+            ]
+          }
+        ]
+      },
       "NotificationInput": {
         "type": "object",
         "properties": {
@@ -22275,6 +22602,343 @@
           "version"
         ],
         "additionalProperties": false
+      },
+      "UpdateHealthProfileBody": {
+        "type": "object",
+        "properties": {
+          "allergies": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "mild",
+                    "moderate",
+                    "severe"
+                  ]
+                }
+              },
+              "required": [
+                "name",
+                "severity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "chronicConditions": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "medications": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "schedule": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                },
+                "atSchool": {
+                  "default": false,
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "name",
+                "atSchool"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "supportNeeds": {
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 80
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "emergencyInstructions": {
+            "type": "string",
+            "maxLength": 500
+          },
+          "legalBasis": {
+            "type": "string",
+            "enum": [
+              "explicit_consent",
+              "vital_interest",
+              "legal_obligation"
+            ]
+          },
+          "version": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "version"
+        ],
+        "additionalProperties": false
+      },
+      "HealthEmergencyProfile": {
+        "type": "object",
+        "properties": {
+          "allergies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "mild",
+                    "moderate",
+                    "severe"
+                  ],
+                  "description": "Şiddet: `mild`, `moderate`, `severe`"
+                }
+              },
+              "required": [
+                "name",
+                "severity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "emergencyInstructions": {
+            "type": "string",
+            "description": "Acil müdahale talimatı; yoksa boş"
+          }
+        },
+        "required": [
+          "allergies",
+          "emergencyInstructions"
+        ],
+        "additionalProperties": false
+      },
+      "HealthFullProfile": {
+        "type": "object",
+        "properties": {
+          "allergies": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "severity": {
+                  "type": "string",
+                  "enum": [
+                    "mild",
+                    "moderate",
+                    "severe"
+                  ],
+                  "description": "Şiddet: `mild`, `moderate`, `severe`"
+                }
+              },
+              "required": [
+                "name",
+                "severity"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "chronicConditions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "medications": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                },
+                "schedule": {
+                  "description": "Kullanım düzeni",
+                  "type": "string"
+                },
+                "atSchool": {
+                  "type": "boolean",
+                  "description": "Okulda verilmesi gerekiyor mu"
+                }
+              },
+              "required": [
+                "name",
+                "atSchool"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "supportNeeds": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "name"
+              ],
+              "additionalProperties": false
+            }
+          },
+          "emergencyInstructions": {
+            "type": "string",
+            "description": "Acil müdahale talimatı; yoksa boş"
+          },
+          "legalBasis": {
+            "anyOf": [
+              {
+                "type": "string",
+                "enum": [
+                  "explicit_consent",
+                  "vital_interest",
+                  "legal_obligation"
+                ]
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "İşlemenin hukuki dayanağı (KVKK m.6/3); kayıt yoksa `null`"
+          },
+          "updatedAt": {
+            "anyOf": [
+              {
+                "type": "string",
+                "format": "date-time",
+                "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Son güncelleme; kayıt yoksa `null`"
+          }
+        },
+        "required": [
+          "allergies",
+          "chronicConditions",
+          "medications",
+          "supportNeeds",
+          "emergencyInstructions",
+          "legalBasis",
+          "updatedAt"
+        ],
+        "additionalProperties": false
+      },
+      "HealthProfile": {
+        "oneOf": [
+          {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "const": "full",
+                "description": "Tam görünüm"
+              },
+              "profile": {
+                "$ref": "#/components/schemas/HealthFullProfile"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Sonraki PATCH için sürüm; kayıt yoksa 1"
+              }
+            },
+            "required": [
+              "level",
+              "profile",
+              "version"
+            ],
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "properties": {
+              "level": {
+                "type": "string",
+                "const": "emergency",
+                "description": "Yalnız acil müdahale bilgisi"
+              },
+              "profile": {
+                "$ref": "#/components/schemas/HealthEmergencyProfile"
+              },
+              "version": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991,
+                "description": "Sonraki PATCH için sürüm; kayıt yoksa 1"
+              }
+            },
+            "required": [
+              "level",
+              "profile",
+              "version"
+            ],
+            "additionalProperties": false
+          }
+        ]
       },
       "Notification": {
         "type": "object",
@@ -105078,6 +105742,242 @@
                   "properties": {
                     "data": {
                       "$ref": "#/components/schemas/NotificationPreferences"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/students/{studentId}/health-profile": {
+      "get": {
+        "operationId": "getStudentHealthProfile",
+        "summary": "Öğrencinin sağlık ve acil bilgisi",
+        "tags": [
+          "institution"
+        ],
+        "description": "Öğrencinin yapılandırılmış sağlık ve acil bilgisi (DOM-ILT-035). Düzey okuyana göredir; acil düzeyde tam alanlar yanıtta yoktur. Kayıt yoksa boş profil ve `version: 1` döner. Her başarılı okuma, kayıt olmasa da, denetim kaydına yazılır (`health_profile.read`, acil düzeyde `health_profile.read_emergency`; yalnız alan adları, DOM-YTK-052); denetim yazılamazsa yanıt dönmez. Tam görünüm: yönetici, öğrencinin sınıfının rehber öğretmeni, 18 yaş altı öğrencinin velayetli ve iletişim kısıtı olmayan velisi, 18 yaşını doldurmuş öğrencinin kendisi. Yalnız acil görünüm (`level: emergency`; alerji ve acil talimat): öğrencinin sınıfına derse giren öğretmen. Ön büro ve reşit olmayan öğrencinin kendisi 403 `health_profile_forbidden`; yetişkin öğrencinin velisi 403. Kapsam dışı öğrenci (ilgisiz öğretmen, bağı olmayan, velayetsiz ya da kısıtlı veli, başka öğrenci), olmayan, arşivli ya da başka kurumun öğrencisi 404. Modülsüz. Roller: `yonetici`, `ogretmen`, `veli`, `ogrenci`; ön büro 403.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/HealthProfile"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateStudentHealthProfile",
+        "summary": "Öğrencinin sağlık ve acil bilgisini güncelle",
+        "tags": [
+          "institution"
+        ],
+        "description": "Kısmi güncelleme (core `healthProfilePatchSchema`): yalnız gönderilen içerik alanları değişir, gönderilmeyen alan aynen kalır (boş liste göndermek listeyi boşaltır); en az bir içerik alanı gerekir. `legalBasis` gönderilmezse mevcut dayanak kalır, kayıt yokken zorunludur. Birleşmiş profil tam şemada doğrulanır (400). `version` okunan sürümdür (kayıt yoksa 1); tutmazsa 409 `version_conflict`. Yazma ve denetim kaydı (`health_profile.update`, yalnız değişen alan adları) tek transaction içindedir. Yazabilenler: yönetici, 18 yaş altı öğrencinin velayetli ve kısıtsız velisi, 18 yaşını doldurmuş öğrencinin kendisi; diğerleri 403 `health_profile_write_forbidden` (öğretmen ve ön büro rol süzgecinde 403), kapsam dışı ya da başka kurumun öğrencisi 404. İçerik şifreli saklanır. Modülsüz. Roller: `yonetici`, `veli`, `ogrenci`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateHealthProfileBodyInput"
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "studentId",
+            "required": true,
+            "description": "Öğrenci kimliği"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/HealthProfile"
                     }
                   },
                   "required": [

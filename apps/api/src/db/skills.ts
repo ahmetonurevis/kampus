@@ -1321,6 +1321,34 @@ export async function loadAssignmentsAttempts(
 const recentAttempts = alias(taskAttempts, 'recent_attempts')
 
 /**
+ * Denemenin pencerede etkin olma koşulu (`recentAttempts` takma adı ve `taskAssignments` birleşimi
+ * ister): teslim edilmişse teslim anı, edilmemişse başlangıç anı ya da son teslim ve geç kabul
+ * gününün sonu `since`'den yeni olmalı (deneme teslimde ya da süre dolunca tamamlanır).
+ */
+function attemptActiveSince(since: Date) {
+  return or(
+    gte(recentAttempts.submittedAt, since),
+    and(
+      isNull(recentAttempts.submittedAt),
+      or(
+        gte(recentAttempts.startedAt, since),
+        sql`${taskAssignments.dueAt} + make_interval(days => ${taskAssignments.lateAcceptanceDays}) >= ${since.toISOString()}::timestamptz`,
+      ),
+    ),
+  )
+}
+
+/** `inArray` listesi parçası: PostgreSQL tek sorguda en çok 65535 parametre alır. */
+const IN_LIST_CHUNK = 5000
+
+function chunked<T>(list: readonly T[], size = IN_LIST_CHUNK): T[][] {
+  const chunks: T[][] = []
+  for (let start = 0; start < list.length; start += size)
+    chunks.push(list.slice(start, start + size))
+  return chunks
+}
+
+/**
  * Kursiyerin bütün atamalardaki arşivlenmemiş denemeleri (beceri ilerleme panosu, DOM-BEC-035):
  * deneme okuması kayıt sahipliğine bakar, sınıf değiştiren öğrencinin eski denemeleri de gelir.
  *
@@ -1358,16 +1386,7 @@ export async function loadLearnerAttempts(
                 eq(recentAttempts.institutionId, institutionId),
                 eq(recentAttempts.learnerId, learnerId),
                 isNull(recentAttempts.archivedAt),
-                or(
-                  gte(recentAttempts.submittedAt, since),
-                  and(
-                    isNull(recentAttempts.submittedAt),
-                    or(
-                      gte(recentAttempts.startedAt, since),
-                      sql`${taskAssignments.dueAt} + make_interval(days => ${taskAssignments.lateAcceptanceDays}) >= ${since.toISOString()}::timestamptz`,
-                    ),
-                  ),
-                ),
+                attemptActiveSince(since),
               ),
             ),
         )
@@ -1384,6 +1403,63 @@ export async function loadLearnerAttempts(
     )
     .orderBy(asc(taskAttempts.assignmentId), asc(taskAttempts.attemptNumber))
   return rows.map(toAttempt)
+}
+
+/**
+ * Verilen kursiyerlerin arşivlenmemiş denemeleri (beceri ve CEFR raporu, IST-118). Okuma
+ * `loadLearnerAttempts`'in `activeSince` süzgeciyle aynıdır, çok kursiyerlidir: kursiyerin
+ * penceresinde etkin denemesi bulunan atamasının bütün denemeleri gelir (sayılan deneme süzgeçsiz
+ * okumayla aynı kalır); kayıt sahipliğine bakar, sınıf değiştiren kursiyerin eski denemeleri de
+ * gelir. Kimlik listesi parçalanır (65535 parametre sınırı).
+ */
+export async function loadReportAttempts(
+  db: Database,
+  institutionId: string,
+  learnerIds: readonly string[],
+  options: { activeSince: Date },
+): Promise<StoredAttempt[]> {
+  const since = options.activeSince
+  const pages = await Promise.all(
+    chunked([...new Set(learnerIds)]).map((learners) =>
+      db
+        .select()
+        .from(taskAttempts)
+        .where(
+          and(
+            eq(taskAttempts.institutionId, institutionId),
+            inArray(taskAttempts.learnerId, learners),
+            isNull(taskAttempts.archivedAt),
+            exists(
+              db
+                .select({ id: recentAttempts.id })
+                .from(recentAttempts)
+                .innerJoin(
+                  taskAssignments,
+                  and(
+                    eq(taskAssignments.institutionId, recentAttempts.institutionId),
+                    eq(taskAssignments.id, recentAttempts.assignmentId),
+                  ),
+                )
+                .where(
+                  and(
+                    eq(recentAttempts.institutionId, taskAttempts.institutionId),
+                    eq(recentAttempts.learnerId, taskAttempts.learnerId),
+                    eq(recentAttempts.assignmentId, taskAttempts.assignmentId),
+                    isNull(recentAttempts.archivedAt),
+                    attemptActiveSince(since),
+                  ),
+                ),
+            ),
+          ),
+        )
+        .orderBy(
+          asc(taskAttempts.learnerId),
+          asc(taskAttempts.assignmentId),
+          asc(taskAttempts.attemptNumber),
+        ),
+    ),
+  )
+  return pages.flat().map(toAttempt)
 }
 
 /**
@@ -1760,31 +1836,41 @@ async function withVersions(
   rows: readonly (typeof taskSubmissions.$inferSelect)[],
 ): Promise<StoredSubmissionWork[]> {
   if (rows.length === 0) return []
-  const ids = rows.map((row) => row.id)
-  const [versions, requests] = await Promise.all([
-    db
-      .select()
-      .from(submissionVersions)
-      .where(
-        and(
-          eq(submissionVersions.institutionId, institutionId),
-          inArray(submissionVersions.submissionId, ids),
-          isNull(submissionVersions.archivedAt),
-        ),
-      )
-      .orderBy(asc(submissionVersions.submissionId), asc(submissionVersions.versionNumber)),
-    db
-      .select()
-      .from(resubmissionRequests)
-      .where(
-        and(
-          eq(resubmissionRequests.institutionId, institutionId),
-          inArray(resubmissionRequests.submissionId, ids),
-          isNull(resubmissionRequests.archivedAt),
-        ),
-      )
-      .orderBy(asc(resubmissionRequests.submissionId), asc(resubmissionRequests.versionNumber)),
+  const idChunks = chunked(rows.map((row) => row.id))
+  const [versionPages, requestPages] = await Promise.all([
+    Promise.all(
+      idChunks.map((ids) =>
+        db
+          .select()
+          .from(submissionVersions)
+          .where(
+            and(
+              eq(submissionVersions.institutionId, institutionId),
+              inArray(submissionVersions.submissionId, ids),
+              isNull(submissionVersions.archivedAt),
+            ),
+          )
+          .orderBy(asc(submissionVersions.submissionId), asc(submissionVersions.versionNumber)),
+      ),
+    ),
+    Promise.all(
+      idChunks.map((ids) =>
+        db
+          .select()
+          .from(resubmissionRequests)
+          .where(
+            and(
+              eq(resubmissionRequests.institutionId, institutionId),
+              inArray(resubmissionRequests.submissionId, ids),
+              isNull(resubmissionRequests.archivedAt),
+            ),
+          )
+          .orderBy(asc(resubmissionRequests.submissionId), asc(resubmissionRequests.versionNumber)),
+      ),
+    ),
   ])
+  const versions = versionPages.flat()
+  const requests = requestPages.flat()
   return rows.map((row) => {
     const resubmissions = requests
       .filter((r) => r.submissionId === row.id)
@@ -2022,6 +2108,48 @@ export async function loadLearnerSubmissions(
     )
     .orderBy(asc(taskSubmissions.assignmentId))
   return withVersions(db, institutionId, rows)
+}
+
+/**
+ * Verilen kursiyerlerin arşivlenmemiş teslimleri, sürümleriyle (beceri ve CEFR raporu, IST-118;
+ * `loadLearnerSubmissions`'ın çok kursiyerli hâli): yalnız `activeSince`'den sonra teslim edilmiş
+ * sürümü olan teslimler gelir, bütün sürümleriyle. Kimlik listesi parçalanır.
+ */
+export async function loadReportSubmissions(
+  db: Database,
+  institutionId: string,
+  learnerIds: readonly string[],
+  options: { activeSince: Date },
+): Promise<StoredSubmissionWork[]> {
+  const pages = await Promise.all(
+    chunked([...new Set(learnerIds)]).map((learners) =>
+      db
+        .select()
+        .from(taskSubmissions)
+        .where(
+          and(
+            eq(taskSubmissions.institutionId, institutionId),
+            inArray(taskSubmissions.learnerId, learners),
+            isNull(taskSubmissions.archivedAt),
+            exists(
+              db
+                .select({ id: submissionVersions.id })
+                .from(submissionVersions)
+                .where(
+                  and(
+                    eq(submissionVersions.institutionId, taskSubmissions.institutionId),
+                    eq(submissionVersions.submissionId, taskSubmissions.id),
+                    isNull(submissionVersions.archivedAt),
+                    gte(submissionVersions.submittedAt, options.activeSince),
+                  ),
+                ),
+            ),
+          ),
+        )
+        .orderBy(asc(taskSubmissions.learnerId), asc(taskSubmissions.assignmentId)),
+    ),
+  )
+  return withVersions(db, institutionId, pages.flat())
 }
 
 /**

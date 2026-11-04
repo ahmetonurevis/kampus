@@ -561,6 +561,13 @@ const ROUTES: Readonly<Record<string, Proof>> = {
     'skill-progress',
   ),
 
+  // --- Beceri ve CEFR raporu (OG-100; IST-118, DOM-BEC-037) -----------------------------------
+  'GET /api/v1/reports/skills': liste(
+    'skill-reports.test.ts',
+    'başka kurumun grubu, kursiyeri ve sonucu görünmez',
+    'reports/skills',
+  ),
+
   // --- İçerikten toplu atama ve sonuç özeti (OG-089; IST-034, DOM-BEC-049, 036) ---------------
   'POST /api/v1/task-assignments/batches': govde(
     'content-assignments.test.ts',

@@ -316,6 +316,36 @@ export async function listLevelDecisions(
 }
 
 /**
+ * Kursiyerlerin genel seviye kararları (`skill` boş), en yeniden eskiye (beceri ve CEFR raporu,
+ * IST-118). Güncel seviye en yeni genel karardır; beceri bazlı kararlar okunmaz.
+ */
+export async function listOverallLevelDecisions(
+  db: Database,
+  institutionId: string,
+  studentIds: readonly string[],
+): Promise<Pick<StoredLevelDecision, 'learnerId' | 'level' | 'decidedAt'>[]> {
+  if (studentIds.length === 0) return []
+  const rows = await db
+    .select({
+      learnerId: levelDecisions.learnerId,
+      level: levelDecisions.level,
+      decidedAt: levelDecisions.decidedAt,
+    })
+    .from(levelDecisions)
+    .where(
+      and(
+        eq(levelDecisions.institutionId, institutionId),
+        eq(levelDecisions.learnerKind, 'student'),
+        inArray(levelDecisions.learnerId, [...new Set(studentIds)]),
+        isNull(levelDecisions.skill),
+        isNull(levelDecisions.archivedAt),
+      ),
+    )
+    .orderBy(desc(levelDecisions.decidedAt), desc(levelDecisions.id))
+  return rows.map((row) => ({ ...row, decidedAt: row.decidedAt.toISOString() }))
+}
+
+/**
  * Kararı verenlerin adları (OG-079; IST-060 "kim tarafından"). Karar veren kurum üyeliğine
  * yabancı anahtarla bağlıdır (`level_decisions_decided_by_fkey`), bu yüzden ad kurumun
  * üyeliğinden okunur; başka kurumun kullanıcısı dönmez.

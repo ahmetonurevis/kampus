@@ -61,13 +61,16 @@ const DAY = 24 * 60 * 60_000
  */
 export const EVIDENCE_READ_DAYS = Math.max(...Object.values(EVIDENCE_WINDOW_DAYS)) + 30
 
+/** Okuma penceresinin başlangıcı; seviye önerisi ve beceri raporu (IST-118) aynı kanıtı okusun diye tek yerde. */
+export const evidenceActiveSince = (now: Date) => new Date(now.getTime() - EVIDENCE_READ_DAYS * DAY)
+
 export async function loadTaskEvidence(
   db: Database,
   ctx: ServiceContext,
   studentId: string,
   audience: EvidenceAudience,
 ): Promise<{ candidates: EvidenceCandidate[]; links: Map<string, TaskEvidenceLink> }> {
-  const activeSince = new Date(ctx.now.getTime() - EVIDENCE_READ_DAYS * DAY)
+  const activeSince = evidenceActiveSince(ctx.now)
   const [attempts, submissions] = await Promise.all([
     loadLearnerAttempts(db, ctx.institutionId, studentId, { activeSince }),
     loadLearnerSubmissions(db, ctx.institutionId, studentId, { activeSince }),

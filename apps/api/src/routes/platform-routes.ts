@@ -42,6 +42,7 @@ import { registerPermissionFormRoutes } from './permission-forms.ts'
 import { registerVideoProgressRoutes } from './video-progress.ts'
 import { registerCefrRoutes } from './cefr.ts'
 import { registerSkillProgressRoutes } from './skill-progress.ts'
+import { registerSkillReportRoutes } from './skill-reports.ts'
 import { registerPracticeGradebookRoutes } from './practice-gradebook.ts'
 import { registerLearningOutcomeRoutes } from './learning-outcomes.ts'
 import { registerProgressionRoutes } from './progression.ts'
@@ -110,6 +111,7 @@ export const PLATFORM_LATE_ROUTES = [
   registerTaskExtraTimeRoutes,
   registerNotificationPreferenceRoutes,
   registerHealthProfileRoutes,
+  registerSkillReportRoutes,
 ] as const satisfies readonly RouteRegistrar[]
 
 /** Onur bloğundan önceki platform uçlarını kaydeder. */

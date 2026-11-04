@@ -321,6 +321,7 @@ const PLATFORM_MODULES: Readonly<Record<string, Expected>> = {
   'GET /api/v1/task-submissions': ['learning'],
   'GET /api/v1/task-submissions/grading-queue': ['learning'],
   'GET /api/v1/students/:studentId/skill-progress': ['learning'],
+  'GET /api/v1/reports/skills': ['learning'],
   'GET /api/v1/task-submissions/:submissionId': ['learning'],
   'GET /api/v1/task-assignments/:assignmentId/draft': ['learning'],
   'PATCH /api/v1/task-assignments/:assignmentId/draft': ['learning'],

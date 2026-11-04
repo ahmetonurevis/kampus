@@ -1,5 +1,6 @@
 // Eğitim sözleşmesi ve Ek 1 ödeme planı; imza yetkilisi, ödeyici onayı ve ek protokol sürümüyle
-// (IST-092; DOM-FIN-010, DOM-FIN-051).
+// (IST-092; DOM-FIN-010, DOM-FIN-051). Yenileme sözleşmesi dönem geçişini Ek 1'de, plan anındaki
+// ücret kararını (artış tavanı, oranlar, indirim kaybı) Ek 2'de yazar (IST-100; DOM-FIN-005, -023).
 import {
   CONTRACT_APPROVAL_METHOD_LABELS,
   CONTRACT_STATUS_LABELS,
@@ -16,7 +17,18 @@ import {
 } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { COLORS, date, DocumentLayout, type PdfDocument, type TextMeasurer } from '../layout.ts'
 import { INSTALLMENT_COLUMNS, studentFields } from './finance-shared.ts'
+import {
+  renewalAppendix,
+  renewalPlanNote,
+  renewalPlanSubtitle,
+  type RenewalContractContext,
+} from './renewal-contract.ts'
 import type { TemplateOptions } from './shared.ts'
+
+export type ContractTemplateOptions = TemplateOptions & {
+  /** Yenileme ayrıntısından açıldıysa dönem geçişi ve plan anındaki ücret kararı (IST-100). */
+  renewal?: RenewalContractContext
+}
 
 const LABELS: Readonly<Record<string, string>> = { ...FEE_ITEM_KIND_LABELS }
 const DISCOUNT_LABELS: Readonly<Record<string, string>> = { ...FEE_DISCOUNT_KIND_LABELS }
@@ -71,16 +83,22 @@ function signatoryLabel(contract: Contract): string {
 export function contractDocument(
   measurer: TextMeasurer,
   data: ContractData,
-  options: TemplateOptions,
+  options: ContractTemplateOptions,
 ): PdfDocument {
   const { contract } = data
+  const { renewal } = options
+  const pricing = renewal?.pricing ?? null
   if (!contract) throw new Error('Sözleşme kaydı bulunamadı.')
   // Belge yalnız kendi sürümünü bilir; yerini ek protokole bıraktığını sürüm listesi gösterir.
   const status = contractStatus(contract, [contract])
   const revision = contract.revision ?? 1
   const approval = contract.approval
   const doc = new DocumentLayout(measurer, {
-    label: contract.amendsContractId ? 'EK PROTOKOL' : 'EĞİTİM SÖZLEŞMESİ',
+    label: contract.amendsContractId
+      ? 'EK PROTOKOL'
+      : renewal
+        ? 'YENİLEME SÖZLEŞMESİ'
+        : 'EĞİTİM SÖZLEŞMESİ',
     badge: 'SÖZLEŞME',
     institution: options.institution,
     generatedAt: options.generatedAt ?? new Date(),
@@ -123,7 +141,12 @@ export function contractDocument(
   // Tarifeli sözleşme karar anının kopyasını taşır (DOM-FIN-010); eski kayıtta yoktur.
   if (contract.grossCents !== undefined)
     doc.fields([
-      ['İlan ücreti', money(contract.grossCents)],
+      // Yenilemede indirimsiz ücret ilan ile artış tavanının küçüğüdür (DOM-FIN-005); ilan Ek 2'de.
+      // Metin sayfası büyümesin diye alan sayısı aynı kalır.
+      [
+        pricing ? 'Öğrenim ücreti (ilan ve tavana göre)' : 'İlan ücreti',
+        money(contract.grossCents),
+      ],
       ...(contract.discounts ?? []).map((line): [string, string] => [
         `${discountLabel(line.kind)} indirimi`,
         `-${money(line.amountCents)}`,
@@ -142,9 +165,11 @@ export function contractDocument(
     ])
   const rows = planRows(contract, data)
   doc.paragraph(
-    rows.length === 0
-      ? `Toplam eğitim bedeli ${money(contract.amount)} olarak kaydedilmiştir; tam bursta öğrenim taksiti açılmaz.`
-      : `Toplam eğitim bedeli ${money(contract.amount)}; ${String(rows.length)} satırlık ödeme planı Ek 1'dedir.`,
+    `${
+      rows.length === 0
+        ? `Toplam eğitim bedeli ${money(contract.amount)} olarak kaydedilmiştir; tam bursta öğrenim taksiti açılmaz.`
+        : `Toplam eğitim bedeli ${money(contract.amount)}; ${String(rows.length)} satırlık ödeme planı Ek 1'dedir.`
+    }${pricing ? " Ücret kararı Ek 2'dedir." : ''}`,
   )
   // Bursluya burs belgeleri dışında maddi yükümlülük doğuran belge düzenlenmez (DOM-FIN-025).
   if (contract.scholarship)
@@ -171,7 +196,12 @@ export function contractDocument(
   )
   doc.signatures(payerLabel(contract, data), signatoryLabel(contract))
   doc.newPage()
-  doc.heading('Ek 1 / Ödeme planı', `${data.student.name} · ${data.classroom?.name || ''}`)
+  doc.heading(
+    'Ek 1 / Ödeme planı',
+    renewal
+      ? renewalPlanSubtitle(data, renewal)
+      : `${data.student.name} · ${data.classroom?.name || ''}`,
+  )
   doc.highlight(
     'SÖZLEŞME EĞİTİM BEDELİ',
     money(contract.amount),
@@ -198,5 +228,7 @@ export function contractDocument(
     9,
     COLORS.muted,
   )
+  if (renewal) renewalPlanNote(doc, renewal)
+  if (renewal && pricing) renewalAppendix(doc, data, renewal, pricing)
   return doc.finish()
 }

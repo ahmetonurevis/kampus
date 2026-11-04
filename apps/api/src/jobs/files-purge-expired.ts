@@ -13,7 +13,7 @@ const MAX_ROUNDS = 20
  * gün sonuna yazıldığından dosya en geç ertesi sabah silinir. Puanı kesinleşmemiş ya da itirazı
  * açık teslim sürümünün kaydı bekletilir (`held`; DOM-BEC-052). Kurum başına sayfa sayfa
  * (`PURGE_BATCH_SIZE`, imleçle; bekletilen satırlar sonrakileri tıkamaz) ilerler. İdempotenttir: silinmiş dosya
- * taramaya girmez. Satırı olmayan nesneler bu işin kapsamı dışındadır (`TODO(F3c2-orphans)`).
+ * taramaya girmez. Silinemeyip kalan nesneyi ve satırı olmayan nesneleri `files.purge-orphans` siler (OG-093).
  */
 export const filesPurgeExpiredJob: InstitutionJob<{
   purged: number

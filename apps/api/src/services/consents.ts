@@ -302,8 +302,8 @@ export function giveConsent(
  * `src/jobs/files-purge-expired.ts`; services/files.ts `purgeExpiredFiles`) girdisidir: işaretli
  * dosyanın nesnesi en geç ertesi sabah silinir, satırı `deleted` kalır. Bağlanmamış kayıt ayrıca 24 saatlik bağlanmamış dosya
  * temizliğiyle (karar 5) silinir; işaretli kayıt yeni rızadan sonra da bağlanamaz (`attachFile`
- * 422 `file_unavailable`; rıza yoksa 403 `consent_required`). Satırı olmayan nesneler bu işlerin
- * dışındadır (`TODO(F3c2-orphans)`).
+ * 422 `file_unavailable`; rıza yoksa 403 `consent_required`). Satırı olmayan ya da silinemeyip
+ * kalan nesneleri günlük `files.purge-orphans` yetim taraması siler (OG-093).
  */
 export function withdrawConsent(
   ctx: ServiceContext,

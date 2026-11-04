@@ -2423,7 +2423,7 @@ export interface paths {
         put?: never;
         /**
          * Kayıt yenileme planla
-         * @description Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005), indirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); tarife sürümü değiştiyse 409 `tariff_changed`. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         * @description Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005), indirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); tarife sürümü değiştiyse 409 `tariff_changed`. Dil okulunda son kurun onaylı kur sonu kararı gerekir (DOM-DIL-070): onay bekleyen karar 422 `course_decision_pending`, karar yok 422 `course_decision_missing`, üst seviye yok 422 `course_next_level_missing`; teklif dayanağı `pricing.courseOffer`ta kalır. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
          */
         post: operations["planRenewal"];
         delete?: never;
@@ -2443,7 +2443,7 @@ export interface paths {
         put?: never;
         /**
          * Yenileme ücretini önizle
-         * @description Hiçbir kayıt yazmaz; planla aynı kuralları çalıştırır. İlan edilen ücret, artış tavanı (ara sınıfta `baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100)`, DOM-FIN-005), indirimler, burs, net ve taksitler döner. Yayımlı tarife yoksa 422 `tariff_not_published`, oran yoksa 422 `price_index_missing`, ilan aşılırsa 422 `renewal_above_tariff`, tavan aşılırsa 422 `renewal_above_ceiling`. Kardeş indirimi koşulu kalktıysa gerekçesi `ceiling.discountLoss`te gelir (DOM-FIN-023). Baz bulunamazsa `ceiling.status` `no_base`. Roller: `yonetici`, `onburo`.
+         * @description Hiçbir kayıt yazmaz; planla aynı kuralları çalıştırır. İlan edilen ücret, artış tavanı (ara sınıfta `baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100)`, DOM-FIN-005), indirimler, burs, net ve taksitler döner. Yayımlı tarife yoksa 422 `tariff_not_published`, oran yoksa 422 `price_index_missing`, ilan aşılırsa 422 `renewal_above_tariff`, tavan aşılırsa 422 `renewal_above_ceiling`. Kardeş indirimi koşulu kalktıysa gerekçesi `ceiling.discountLoss`te gelir (DOM-FIN-023). Baz bulunamazsa `ceiling.status` `no_base`. Dil okulunda `courseOffer` son kurun kur sonu kararını taşır (DOM-DIL-070): `ready` teklifin seviyesi ve kurudur; onay bekleyen karar (`pending`), karar yok (`missing`) ya da üst seviye yok (`no_next_level`) önizlemeyi engellemez, uyarıdır. Okulda `courseOffer` `null`. Roller: `yonetici`, `onburo`.
          */
         post: operations["quoteRenewal"];
         delete?: never;
@@ -28390,6 +28390,20 @@ export interface operations {
                                     programId: string;
                                     amountCents: number;
                                 } | null;
+                                courseOffer?: {
+                                    /** @enum {string} */
+                                    status: "ready" | "pending" | "missing" | "no_next_level";
+                                    decisionId: string | null;
+                                    /** @description Geçerli kararın sonucu; onaylı karar yoksa yok */
+                                    outcome: ("passed" | "repeat" | "incomplete_attendance") | null;
+                                    /** @description Kursiyerin son kuru */
+                                    fromCourseId: string | null;
+                                    fromLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    /** @description Teklif edilen kur: geçtiyse sonraki kur, tekrarda aynı kur; zincirsiz kurda yok */
+                                    courseId: string | null;
+                                    /** @description Teklif edilen seviye; yalnız `ready` durumunda dolu */
+                                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                };
                             } | null;
                         }[];
                         meta: components["schemas"]["PageMeta"];
@@ -28708,6 +28722,21 @@ export interface operations {
                             }[];
                             /** @description Öğrenim taksitleri, kuruş */
                             installments: number[];
+                            /** @description Dil okulunda teklifin kur sonu kararı dayanağı (DOM-DIL-070); `ready` dışında plan 422 ile reddedilir. Okulda yok */
+                            courseOffer: {
+                                /** @enum {string} */
+                                status: "ready" | "pending" | "missing" | "no_next_level";
+                                decisionId: string | null;
+                                /** @description Geçerli kararın sonucu; onaylı karar yoksa yok */
+                                outcome: ("passed" | "repeat" | "incomplete_attendance") | null;
+                                /** @description Kursiyerin son kuru */
+                                fromCourseId: string | null;
+                                fromLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                /** @description Teklif edilen kur: geçtiyse sonraki kur, tekrarda aynı kur; zincirsiz kurda yok */
+                                courseId: string | null;
+                                /** @description Teklif edilen seviye; yalnız `ready` durumunda dolu */
+                                level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                            } | null;
                         };
                     };
                 };
@@ -29218,6 +29247,20 @@ export interface operations {
                                     programId: string;
                                     amountCents: number;
                                 } | null;
+                                courseOffer?: {
+                                    /** @enum {string} */
+                                    status: "ready" | "pending" | "missing" | "no_next_level";
+                                    decisionId: string | null;
+                                    /** @description Geçerli kararın sonucu; onaylı karar yoksa yok */
+                                    outcome: ("passed" | "repeat" | "incomplete_attendance") | null;
+                                    /** @description Kursiyerin son kuru */
+                                    fromCourseId: string | null;
+                                    fromLevel: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                    /** @description Teklif edilen kur: geçtiyse sonraki kur, tekrarda aynı kur; zincirsiz kurda yok */
+                                    courseId: string | null;
+                                    /** @description Teklif edilen seviye; yalnız `ready` durumunda dolu */
+                                    level: ("Pre-A1" | "A1" | "A2" | "A2+" | "B1" | "B1+" | "B2" | "B2+" | "C1" | "C2") | null;
+                                };
                             } | null;
                             invoices: {
                                 id: string;

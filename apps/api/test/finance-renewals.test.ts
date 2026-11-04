@@ -275,7 +275,7 @@ describe('IST-100: kayıt yenileme uçları', () => {
     ])
   })
 
-  test('DOM-FIN-005: önizleme tavanı hesaplar, kayıt yazmaz; oran yoksa 422 price_index_missing', async () => {
+  test('DOM-FIN-005, DOM-DIL-070: önizleme tavanı hesaplar, kayıt yazmaz; oran yoksa 422 price_index_missing; okulda kur dayanağı yok', async () => {
     const a = await institution()
     await publish(a.id)
     assertError(await post(`${BASE}/quote`, a.admin, QUOTE), 422, 'price_index_missing')
@@ -292,6 +292,8 @@ describe('IST-100: kayıt yenileme uçları', () => {
     assert.equal(data.discountCents, 300_000)
     assert.equal(data.netCents, 2_500_000)
     assert.deepEqual(data.installments, [625_000, 625_000, 625_000, 625_000])
+    // Okul yenilemesi kur sonu kararından bağımsızdır (DOM-DIL-070 yalnız dil okulu).
+    assert.equal(data.courseOffer, null)
     assert.equal(await count(a.id, 'renewals'), before)
   })
 
@@ -357,6 +359,7 @@ describe('IST-100: kayıt yenileme uçları', () => {
     assert.equal(data.targetClassName, '7-A')
     assert.equal(data.netCents, CEILING_CENTS)
     assert.equal(data.pricing.ceiling.ceilingCents, CEILING_CENTS)
+    assert.equal('courseOffer' in data.pricing, false)
     assert.deepEqual(
       data.invoices.map((item: { installment: number; feeKind: string }) => [
         item.installment,

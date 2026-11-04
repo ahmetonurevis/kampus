@@ -3,6 +3,7 @@ import { randomUUID } from 'node:crypto'
 import { z } from 'zod'
 
 import { dayKey } from '@kampus/school-core/lib/format.ts'
+import { renewalCourseOffer } from '@kampus/school-core/lib/renewal-course-offer.ts'
 import { renewalPricingSchema } from '@kampus/school-core/lib/renewal-ceiling.ts'
 import {
   createPriceIndexSchema,
@@ -16,7 +17,9 @@ import {
 } from '@kampus/school-core/lib/renewals.ts'
 import { WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
+import { listProgressionDecisions } from '../db/cefr.ts'
 import type { Database } from '../db/client.ts'
+import { loadCourses } from '../db/courses.ts'
 import {
   allPriceIndexes,
   findPriceIndex,
@@ -31,11 +34,13 @@ import {
   insertScholarshipAward,
 } from '../db/finance-scholarships.ts'
 import { loadRecordsByIds } from '../db/records.ts'
+import { listStudentCourseEnrollments } from '../db/renewal-course-offer.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { getCollectionItem, listCollection, type CollectionItem } from './collection-reads.ts'
 import { commandBody } from './command-result.ts'
 import { environment } from './commands.ts'
+import { getInstitution } from './memberships.ts'
 import {
   runCommand,
   runReadOnly,
@@ -48,28 +53,52 @@ import { auditWork } from './task-work.ts'
  * Tarifeye bağlı kayıt yenileme servisi (docs/domain/finans.md DOM-FIN-002, -005, -023, -025;
  * kayit-ve-crm.md DOM-KAY-020, -021; IST-100). Kural core `lib/renewals.ts`'tedir. Plan, sözleşme,
  * taksit ve burs ataması tek transaction'da yazılır; ücret ve kontenjan kurum kilidi altında
- * denetlenir. Sınıf geçişi ayrı işlemdir (iş akışı köprüsünün `renewal-activate` çekirdeği).
+ * denetlenir. Sınıf geçişi ayrı işlemdir (iş akışı köprüsünün `renewal-activate` çekirdeği). Dil
+ * okulunda teklif son kurun kur sonu kararından başlar (dil-okulu.md DOM-DIL-070; core
+ * `lib/renewal-course-offer.ts`); karar onaylanmadan plan 422 ile reddedilir.
  */
 
 const SPEC = WORKFLOW_COMMANDS.renewal
 const PRICE_INDEX = 'price_index_rates'
 
+/**
+ * Dil okulunda öğrencinin son kurundaki kur sonu kararı (DOM-DIL-070): kur kayıtları, kurlar ve
+ * kararlar kurum kapsamında okunur; hesap core `renewalCourseOffer`'dadır. Okulda `null`: okul
+ * yenilemesi kurdan bağımsızdır.
+ */
+export async function renewalCourseOfferFor(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+) {
+  const institution = await getInstitution(db, institutionId)
+  if (institution?.type !== 'language_school') return null
+  const [enrollments, courses, decisions] = await Promise.all([
+    listStudentCourseEnrollments(db, institutionId, studentId),
+    loadCourses(db, institutionId),
+    listProgressionDecisions(db, institutionId, { learnerId: studentId }),
+  ])
+  return renewalCourseOffer({ studentId, enrollments, courses, decisions })
+}
+
 /** Fiyatı etkileyen satırları işlemin içinde okur: önizleme ve plan aynı girdiyle hesaplar. */
 async function renewalContext(
   tx: Database,
   ctx: ServiceContext,
-  input: { academicYear: number; scholarshipProgramId?: string | undefined },
+  input: { studentId: string; academicYear: number; scholarshipProgramId?: string | undefined },
 ): Promise<RenewalContext> {
-  const [tariff, previousTariff, priceIndexes] = await Promise.all([
+  const [tariff, previousTariff, priceIndexes, courseOffer] = await Promise.all([
     findPublishedTariff(tx, ctx.institutionId, input.academicYear),
     findPublishedTariff(tx, ctx.institutionId, input.academicYear - 1),
     allPriceIndexes(tx, ctx.institutionId),
+    renewalCourseOfferFor(tx, ctx.institutionId, input.studentId),
   ])
   const programId = input.scholarshipProgramId
   return {
     tariff,
     previousTariff,
     priceIndexes,
+    courseOffer,
     ...(programId === undefined
       ? {}
       : {
@@ -128,6 +157,7 @@ export function planRenewalCommand(
       load: async (tx) => {
         const { session, scalars } = await environment(tx, ctx, SPEC)
         const context = await renewalContext(tx, ctx, {
+          studentId: data.studentId,
           academicYear: data.academicYear,
           ...(data.mode === 'renew' ? { scholarshipProgramId: data.scholarshipProgramId } : {}),
         })

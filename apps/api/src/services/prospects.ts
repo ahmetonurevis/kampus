@@ -29,7 +29,7 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
-import { loadParentBonds } from '../db/enrollment-bonds.ts'
+import { findParentAccount, linkChildToAccount, loadParentBonds } from '../db/enrollment-bonds.ts'
 import { findPublishedTariff } from '../db/fee-tariffs.ts'
 import {
   countScholarshipAwards,
@@ -268,6 +268,8 @@ export function enrollProspectCommand(
   // (core `parent_not_guardian`; DOM-ILT-070, -074).
   const existingParentId =
     guardian !== null && 'existingParentId' in guardian ? guardian.existingParentId : null
+  // Yükleme kurum kilidi altında okur, kayıt sonrası yazma (`after`) aynı işlemde kullanır.
+  let parentAccountId: string | null = null
   return runCommand(
     ctx,
     {
@@ -299,6 +301,11 @@ export function enrollProspectCommand(
           existingParentId === null
             ? []
             : await loadParentBonds(tx, ctx.institutionId, [existingParentId])
+        // Veli kaydının hesabı varsa yeni çocuk aynı hesaba bağlanır (DOM-KAY-013, ON-128).
+        parentAccountId =
+          existingParentId === null
+            ? null
+            : await findParentAccount(tx, ctx.institutionId, existingParentId)
         // Kontenjan kurum kilidi altında sayılır: iki eşzamanlı kayıt son yeri birlikte alamaz.
         const [scholarshipProgram, scholarshipAwardedCount] =
           scholarshipProgramId === undefined
@@ -360,12 +367,16 @@ export function enrollProspectCommand(
         // yetişkin kursiyerin kendisi veli değildir, bağ yazılmaz. Kuralı core `planGuardianLink`
         // verir; yeni öğrencinin başka bağı olmadığı için değişmezler boş kümeye uygulanır.
         if (result.guardianBond !== null) {
+          // Hesap yalnız mevcut veli kaydından gelir; yeni veli kaydının hesabı henüz yoktur.
+          const accountId =
+            result.guardianBond.parentId === existingParentId ? parentAccountId : null
           const draft = planGuardianLink({
             studentId: result.student.id,
             links: [],
-            account: null,
+            account: accountId === null ? null : { role: 'veli' },
             input: {
               parentId: result.guardianBond.parentId,
+              ...(accountId === null ? {} : { membershipId: accountId }),
               relationship: result.guardianBond.relationship,
               custody: 'full',
               isPayer: result.guardianBond.isPayer,
@@ -380,6 +391,8 @@ export function enrollProspectCommand(
             { type: 'student_guardian', id: linkId },
             Object.keys(draft),
           )
+          if (accountId !== null)
+            await linkChildToAccount(tx, ctx.institutionId, accountId, result.student.id, ctx.now)
         }
         // Kitleyi kimlik kaydındaki doğum tarihi belirler: 18 altında veli, yetişkinde kursiyer.
         await notify(tx, ctx, {

@@ -11,6 +11,7 @@ import {
   fileAppeal,
   finalScoreTaskSubmission,
   listGradingQueue,
+  listOpenAppeals,
   requestSecondRating,
   requestTaskResubmission,
   scoreTaskSubmission,
@@ -49,6 +50,8 @@ import {
   taskAppealBodySchema,
   taskAppealDecisionBodySchema,
   taskAppealParamsSchema,
+  taskAppealListQuerySchema,
+  taskAppealListResponseSchema,
 } from './task-submissions.schemas.ts'
 
 /**
@@ -71,6 +74,8 @@ const APPELLANTS: readonly Role[] = ['ogrenci', 'veli']
 const GRADERS: readonly Role[] = ['yonetici', 'ogretmen']
 /** İtiraz kararı yalnız öğretmendedir (DOM-BEC-025); yönetici okur ama karar vermez. */
 const APPEAL_DECIDERS: readonly Role[] = ['ogretmen']
+/** Açık itiraz kuyruğunu okuyanlar: kararı verecek öğretmen ve okuyan yönetici (DOM-BEC-025). */
+const APPEAL_READERS: readonly Role[] = ['yonetici', 'ogretmen']
 /** Son puan yalnız koordinatör görevli öğretmendedir (DOM-YTK-027); yönetici koordinatör sayılmaz. */
 const FINALIZERS: readonly Role[] = ['ogretmen']
 const READ_ACCESS =
@@ -99,6 +104,7 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
   const write = [app.requireModule(MODULE), app.requireRole(WRITERS)]
   const grade = [app.requireModule(MODULE), app.requireRole(GRADERS)]
   const appeal = [app.requireModule(MODULE), app.requireRole(APPELLANTS)]
+  const appealReader = [app.requireModule(MODULE), app.requireRole(APPEAL_READERS)]
   const appealDecider = [app.requireModule(MODULE), app.requireRole(APPEAL_DECIDERS)]
   const finalizer = [app.requireModule(MODULE), app.requireRole(FINALIZERS)]
 
@@ -142,6 +148,26 @@ export function registerTaskSubmissionRoutes(app: FastifyInstance) {
         ...query,
         overdue: overdue === undefined ? undefined : overdue === 'true',
       })
+      return { data: result.items, meta: { page, pageSize, total: result.total } }
+    },
+  )
+
+  typed.get(
+    '/api/v1/task-appeals',
+    {
+      preValidation: appealReader,
+      schema: {
+        operationId: 'listTaskAppeals',
+        tags: ['task-submissions'],
+        summary: 'Karara bağlanmayı bekleyen itirazlar',
+        description: `Öğretmenin karara bağlayacağı açık (kararı verilmemiş) itirazlar, en eski itiraz önce, sayfalı (DOM-BEC-025; OG-1010). \`status\` yalnız \`open\` (varsayılan); karara bağlanmış itiraz listede yoktur. Her satırda itiraz, teslim, atama ve sürüm kimliği, sürüm numarası, görev başlığı, öğrenci adı (öğretmende yalnız öğrenci kapsamındakiler; OG-213), açılma zamanı ve \`scoredByViewer\` (kişi itiraz edilen sürümü puanladıysa karar veremez: 409 \`rater_not_independent\`). Karar için son tarih domain'de tanımlı değildir, satırda yok. Roller: \`ogretmen\` atamayı gördüğü (atayan veya kapsamındaki sınıf/öğrenci hedefi; DOM-YTK-028) itirazları, \`yonetici\` kurumun hepsini okur (karar yalnız öğretmendedir); öğrenci, veli ve ön büro 403. Bilinmeyen parametre 400. Modül \`learning\`; kapalıysa 403 \`module_disabled\`.`,
+        querystring: taskAppealListQuerySchema,
+        response: { 200: taskAppealListResponseSchema, ...readErrors },
+      },
+    },
+    async (request) => {
+      const { page, pageSize } = request.query
+      const result = await listOpenAppeals(contextOf(request), { page, pageSize })
       return { data: result.items, meta: { page, pageSize, total: result.total } }
     },
   )

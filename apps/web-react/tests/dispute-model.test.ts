@@ -49,6 +49,7 @@ const grading = (extra: Partial<TaskVersionGrading> = {}): TaskVersionGrading =>
   canResolve: true,
   dueAt: '2026-11-10T20:59:59.000Z',
   overdue: false,
+  scoredByViewer: false,
   ...extra,
 })
 

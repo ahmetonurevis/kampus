@@ -10699,6 +10699,10 @@
           "overdue": {
             "type": "boolean",
             "description": "Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false`"
+          },
+          "scoredByViewer": {
+            "type": "boolean",
+            "description": "Kişi bu sürümü herhangi bir rolde (ilk, ikinci, son) puanladı mı; öyleyse itiraz kararı 409 `rater_not_independent` alır (DOM-BEC-025). Yalnız bu kişinin kendi puanı; başkasının puanlayıp puanlamadığı sızmaz"
           }
         },
         "required": [
@@ -10709,7 +10713,8 @@
           "raterScores",
           "canResolve",
           "dueAt",
-          "overdue"
+          "overdue",
+          "scoredByViewer"
         ]
       },
       "TaskAppealInput": {
@@ -11430,6 +11435,76 @@
           "rowVersion",
           "assignmentTitle",
           "grading"
+        ]
+      },
+      "TaskAppealQueueItemInput": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "submissionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "İtiraz edilen teslim sürümünün kimliği"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "assignmentTitle": {
+            "description": "Atanan içerik sürümünün başlığı; sürüm bulunamazsa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "learnerId": {
+            "type": "string"
+          },
+          "learnerName": {
+            "description": "Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler; kapsam dışında `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "İtirazın açıldığı an"
+          },
+          "scoredByViewer": {
+            "type": "boolean",
+            "description": "Kişi itiraz edilen sürümü puanladı mı; öyleyse karar veremez (409 `rater_not_independent`)"
+          }
+        },
+        "required": [
+          "id",
+          "submissionId",
+          "assignmentId",
+          "versionId",
+          "versionNumber",
+          "assignmentTitle",
+          "learnerId",
+          "learnerName",
+          "filedAt",
+          "scoredByViewer"
         ]
       },
       "SecondRatingSampleInput": {
@@ -28459,6 +28534,10 @@
           "overdue": {
             "type": "boolean",
             "description": "Puanlama süresi aşıldı mı (core `gradingOverdue`); süre yokken `false`"
+          },
+          "scoredByViewer": {
+            "type": "boolean",
+            "description": "Kişi bu sürümü herhangi bir rolde (ilk, ikinci, son) puanladı mı; öyleyse itiraz kararı 409 `rater_not_independent` alır (DOM-BEC-025). Yalnız bu kişinin kendi puanı; başkasının puanlayıp puanlamadığı sızmaz"
           }
         },
         "required": [
@@ -28469,7 +28548,8 @@
           "raterScores",
           "canResolve",
           "dueAt",
-          "overdue"
+          "overdue",
+          "scoredByViewer"
         ],
         "additionalProperties": false
       },
@@ -29203,6 +29283,77 @@
           "rowVersion",
           "assignmentTitle",
           "grading"
+        ],
+        "additionalProperties": false
+      },
+      "TaskAppealQueueItem": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "submissionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "assignmentId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+          },
+          "versionId": {
+            "type": "string",
+            "format": "uuid",
+            "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$",
+            "description": "İtiraz edilen teslim sürümünün kimliği"
+          },
+          "versionNumber": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "assignmentTitle": {
+            "description": "Atanan içerik sürümünün başlığı; sürüm bulunamazsa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "learnerId": {
+            "type": "string"
+          },
+          "learnerName": {
+            "description": "Öğrencinin adı: yöneticide her öğrenci, öğretmende yalnız öğrenci kapsamındakiler; kapsam dışında `null` (OG-213)",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "filedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "description": "İtirazın açıldığı an"
+          },
+          "scoredByViewer": {
+            "type": "boolean",
+            "description": "Kişi itiraz edilen sürümü puanladı mı; öyleyse karar veremez (409 `rater_not_independent`)"
+          }
+        },
+        "required": [
+          "id",
+          "submissionId",
+          "assignmentId",
+          "versionId",
+          "versionNumber",
+          "assignmentTitle",
+          "learnerId",
+          "learnerName",
+          "filedAt",
+          "scoredByViewer"
         ],
         "additionalProperties": false
       },
@@ -81341,6 +81492,143 @@
                       "type": "array",
                       "items": {
                         "$ref": "#/components/schemas/GradingQueueItem"
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/task-appeals": {
+      "get": {
+        "operationId": "listTaskAppeals",
+        "summary": "Karara bağlanmayı bekleyen itirazlar",
+        "tags": [
+          "task-submissions"
+        ],
+        "description": "Öğretmenin karara bağlayacağı açık (kararı verilmemiş) itirazlar, en eski itiraz önce, sayfalı (DOM-BEC-025; OG-1010). `status` yalnız `open` (varsayılan); karara bağlanmış itiraz listede yoktur. Her satırda itiraz, teslim, atama ve sürüm kimliği, sürüm numarası, görev başlığı, öğrenci adı (öğretmende yalnız öğrenci kapsamındakiler; OG-213), açılma zamanı ve `scoredByViewer` (kişi itiraz edilen sürümü puanladıysa karar veremez: 409 `rater_not_independent`). Karar için son tarih domain'de tanımlı değildir, satırda yok. Roller: `ogretmen` atamayı gördüğü (atayan veya kapsamındaki sınıf/öğrenci hedefi; DOM-YTK-028) itirazları, `yonetici` kurumun hepsini okur (karar yalnız öğretmendedir); öğrenci, veli ve ön büro 403. Bilinmeyen parametre 400. Modül `learning`; kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "default": "open",
+              "type": "string",
+              "enum": [
+                "open"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "Yalnız karara bağlanmayı bekleyen (açık) itirazlar (DOM-BEC-025)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/TaskAppealQueueItem"
                       }
                     },
                     "meta": {

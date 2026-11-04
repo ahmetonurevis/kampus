@@ -13,6 +13,12 @@ import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { SCOPE_SOURCE_COLLECTIONS, type Actor } from '@kampus/school-core/lib/scope.ts'
 import type { ResourceContent } from '@kampus/school-core/content/resource.ts'
 import {
+  canManageAssignment,
+  canReadAssignment,
+  targetedLearners,
+  teacherReachesTarget,
+} from '@kampus/school-core/skills/assignment-access.ts'
+import {
   planAssignment,
   planAssignmentBatch,
   planAssignmentChange,
@@ -102,14 +108,7 @@ import { contentReader } from './resources.ts'
 // TODO(F4b-atama-arsiv): Atama arşivi veya iptali için core planı yok; açık teslim ve denemeler
 // varken ne olacağı domain'de tanımlı değil. Core kuralı gelince `DELETE /task-assignments/:id`.
 
-/** Atamanın sınıf/grup hedefi `classes` kaydıdır (core `TARGET_KINDS`). */
-const CLASS_TARGETS = new Set(['class', 'group'])
-
 // --- Okuyucu ------------------------------------------------------------------------------
-
-// TODO(core-atama-yetki): Okuma kapsamı (`visible`, `listFilter`) ve "atayan veya yönetici
-// değiştirir" kuralı burada; core'da `canReadAssignment`/`canManageAssignment` yok. Web ve mobil
-// aynı kuralı çalıştırsın diye core'a taşınır (semver + CHANGELOG); bu görevin kapsamı dışında.
 
 export type Viewer =
   | { kind: 'admin' }
@@ -179,55 +178,18 @@ export async function viewerOf(ctx: ServiceContext): Promise<Viewer> {
   }
 }
 
-/**
- * Atamanın kapsamdaki kursiyerleri (öğrenci hedefi veya güncel sınıfı/grubu hedefte). Sınıf/şube
- * hedefli atama o sınıfın güncel öğrencilerine görünür: sınıf değiştiren öğrenci yeni sınıfının
- * atamalarını görür, eski sınıfınınkini görmez (ADR 0004 karar 4 uygulama notu, F4b2b). Eski
- * sınıfta yaptığı denemeyi, teslimi ve puanı görmeye devam eder: deneme ve teslim okuması hedefe
- * değil kayıt sahipliğine bakar; personel atamayı görüyorsa atamanın bütün deneme ve teslimlerini
- * görür (`services/task-work.ts` `readableLearners`, F4b3a). Yeni deneme ve teslim yalnız
- * hedeflenen kursiyere açıktır.
- */
-export function targetedLearners(
-  classOf: ReadonlyMap<string, string>,
-  assignment: StoredAssignment,
-) {
-  const students = new Set(assignment.targets.filter((t) => t.kind === 'student').map((t) => t.id))
-  const classes = new Set(
-    assignment.targets.filter((t) => CLASS_TARGETS.has(t.kind)).map((t) => t.id),
-  )
-  return [...classOf]
-    .filter(([studentId, classId]) => students.has(studentId) || classes.has(classId))
-    .map(([studentId]) => studentId)
-    .sort()
-}
+// Atamanın kapsamdaki kursiyerleri (`targetedLearners`) core'dadır; sınıf/şube hedefli atama o
+// sınıfın güncel öğrencilerine görünür: sınıf değiştiren öğrenci yeni sınıfının atamalarını
+// görür, eski sınıfınınkini görmez (ADR 0004 karar 4 uygulama notu, F4b2b). Eski sınıfta yaptığı
+// denemeyi, teslimi ve puanı görmeye devam eder: deneme ve teslim okuması hedefe değil kayıt
+// sahipliğine bakar; personel atamayı görüyorsa atamanın bütün deneme ve teslimlerini görür
+// (`services/task-work.ts` `readableLearners`, F4b3a). Yeni deneme ve teslim yalnız hedeflenen
+// kursiyere açıktır. Eski içe aktarma yolu için yeniden dışa aktarılır.
+export { targetedLearners }
 
-/** Hedef öğretmenin kapsamında mı: sınıf/grup hedefi kapsamdaki sınıf, öğrenci hedefi öğrencisi. */
-export function teacherReaches(
-  viewer: Extract<Viewer, { kind: 'teacher' }>,
-  target: StoredAssignment['targets'][number],
-): boolean {
-  return CLASS_TARGETS.has(target.kind)
-    ? viewer.classIds.has(target.id)
-    : viewer.studentIds.has(target.id)
-}
-
+/** Atamayı görür mü: kural core `canReadAssignment`'tadır (DOM-YTK-028). */
 export function visible(viewer: Viewer, assignment: StoredAssignment): boolean {
-  switch (viewer.kind) {
-    case 'admin':
-      return true
-    case 'teacher':
-      return (
-        assignment.assignedByUserId === viewer.userId ||
-        assignment.targets.some((target) => teacherReaches(viewer, target))
-      )
-    case 'learner':
-      return (
-        assignment.archivedAt === null && targetedLearners(viewer.classOf, assignment).length > 0
-      )
-    default:
-      return viewer satisfies never
-  }
+  return canReadAssignment(viewer, assignment)
 }
 
 /**
@@ -238,6 +200,10 @@ export function coordinates(viewer: Viewer, assignment: StoredAssignment): boole
   return viewer.kind === 'teacher' && coordinatesArea(viewer.coordination, assignment.area)
 }
 
+/**
+ * Core `canReadAssignment` kuralının SQL karşılığı (liste süzgeci); kural değişince ikisi birlikte
+ * değişir. Kesin karar `visible`'dadır: sayfa satırları ayrıca onunla süzülür.
+ */
 function listFilter(
   viewer: Viewer,
 ): Pick<AssignmentListQuery, 'assignedByUserId' | 'learnerTargets'> {
@@ -326,10 +292,11 @@ function staffViewOf(
   assignment: StoredAssignment,
   content: AssignmentContentRef,
 ) {
-  if (viewer.kind === 'admin' || assignment.assignedByUserId === viewer.userId)
+  // `admin` kontrolü yalnız tip daraltması içindir; karar `canManageAssignment`'tadır.
+  if (viewer.kind === 'admin' || canManageAssignment(viewer, assignment))
     return staffView(assignment, content)
   // Atayan olmayan öğretmen kapsamı dışındaki sınıf ve öğrenci kimliklerini görmez (DOM-YTK-022).
-  const targets = assignment.targets.filter((target) => teacherReaches(viewer, target))
+  const targets = assignment.targets.filter((target) => teacherReachesTarget(viewer, target))
   return staffView({ ...assignment, targets }, content)
 }
 
@@ -826,10 +793,8 @@ export async function updateTaskAssignment(
         return {
           run: (_state, tools) => {
             // Yetki (403): görünür ama değiştiremeyen kişi (yalnız atayan ve yönetici).
-            const manages =
-              viewer.kind === 'admin' ||
-              (viewer.kind === 'teacher' && assignment.assignedByUserId === viewer.userId)
-            if (!manages) throw new ForbiddenError()
+            if (viewer.kind === 'learner' || !canManageAssignment(viewer, assignment))
+              throw new ForbiddenError()
             // Sürüm (409).
             if (assignment.rowVersion !== input.expectedVersion) throw new ConflictError()
             const { deadline } = planAssignmentChange({

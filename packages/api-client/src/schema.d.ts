@@ -5700,6 +5700,30 @@ export interface paths {
         patch: operations["patchNotificationPreferences"];
         trace?: never;
     };
+    "/api/v1/students/{studentId}/health-profile": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Öğrencinin sağlık ve acil bilgisi
+         * @description Öğrencinin yapılandırılmış sağlık ve acil bilgisi (DOM-ILT-035). Düzey okuyana göredir; acil düzeyde tam alanlar yanıtta yoktur. Kayıt yoksa boş profil ve `version: 1` döner; `version` yalnız tam görünümde vardır (acil düzeyde yok). Her başarılı okuma, kayıt olmasa da, denetim kaydına yazılır (`health_profile.read`, acil düzeyde `health_profile.read_emergency`; yalnız alan adları, DOM-YTK-052); denetim yazılamazsa yanıt dönmez. Tam görünüm: yönetici, öğrencinin sınıfının rehber öğretmeni, 18 yaş altı öğrencinin velayetli ve iletişim kısıtı olmayan velisi, 18 yaşını doldurmuş öğrencinin kendisi. Yalnız acil görünüm (`level: emergency`; alerji ve acil talimat): öğrencinin sınıfına derse giren öğretmen. Ön büro ve reşit olmayan öğrencinin kendisi 403 `health_profile_forbidden`; yetişkin öğrencinin velisi 403. Kapsam dışı öğrenci (ilgisiz öğretmen, bağı olmayan, velayetsiz ya da kısıtlı veli, başka öğrenci), olmayan, arşivli ya da başka kurumun öğrencisi 404. Modülsüz. Roller: `yonetici`, `ogretmen`, `veli`, `ogrenci`; ön büro 403.
+         */
+        get: operations["getStudentHealthProfile"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Öğrencinin sağlık ve acil bilgisini güncelle
+         * @description Kısmi güncelleme (core `healthProfilePatchSchema`): yalnız gönderilen içerik alanları değişir, gönderilmeyen alan aynen kalır (boş liste göndermek listeyi boşaltır); en az bir içerik alanı ya da `legalBasis` gerekir (kayıt varken yalnız `legalBasis` gönderilebilir; kayıt yokken `legalBasis` zorunludur ve içerik alanı olmadan boş profil açılmaz, 400). Değişiklik yoksa yazılmaz: sürüm artmaz, denetim satırı açılmaz, mevcut görünüm döner. `legalBasis` gönderilmezse mevcut dayanak kalır. Birleşmiş profil tam şemada doğrulanır (400). `version` okunan sürümdür (kayıt yoksa 1); tutmazsa 409 `version_conflict`. Yazma ve denetim kaydı (`health_profile.update`, yalnız değişen alan adları) tek transaction içindedir. Yazabilenler: yönetici, 18 yaş altı öğrencinin velayetli ve kısıtsız velisi, 18 yaşını doldurmuş öğrencinin kendisi; diğerleri 403 `health_profile_write_forbidden` (öğretmen ve ön büro rol süzgecinde 403), kapsam dışı ya da başka kurumun öğrencisi 404. İçerik şifreli saklanır. Modülsüz. Roller: `yonetici`, `veli`, `ogrenci`.
+         */
+        patch: operations["updateStudentHealthProfile"];
+        trace?: never;
+    };
     "/api/v1/files": {
         parameters: {
             query?: never;
@@ -6978,6 +7002,87 @@ export interface components {
             };
             /** @description Sonraki PATCH için sürüm; kayıt yoksa 1 */
             version: number;
+        };
+        UpdateHealthProfileBodyInput: {
+            allergies?: {
+                name: string;
+                /** @enum {string} */
+                severity: "mild" | "moderate" | "severe";
+            }[];
+            chronicConditions?: {
+                name: string;
+            }[];
+            medications?: {
+                name: string;
+                schedule?: string;
+                /** @default false */
+                atSchool: boolean;
+            }[];
+            supportNeeds?: {
+                name: string;
+            }[];
+            emergencyInstructions?: string;
+            /** @enum {string} */
+            legalBasis?: "explicit_consent" | "vital_interest" | "legal_obligation";
+            version: number;
+        };
+        HealthEmergencyProfileInput: {
+            allergies: {
+                name: string;
+                /**
+                 * @description Şiddet: `mild`, `moderate`, `severe`
+                 * @enum {string}
+                 */
+                severity: "mild" | "moderate" | "severe";
+            }[];
+            /** @description Acil müdahale talimatı; yoksa boş */
+            emergencyInstructions: string;
+        };
+        HealthFullProfileInput: {
+            allergies: {
+                name: string;
+                /**
+                 * @description Şiddet: `mild`, `moderate`, `severe`
+                 * @enum {string}
+                 */
+                severity: "mild" | "moderate" | "severe";
+            }[];
+            chronicConditions: {
+                name: string;
+            }[];
+            medications: {
+                name: string;
+                /** @description Kullanım düzeni */
+                schedule?: string;
+                /** @description Okulda verilmesi gerekiyor mu */
+                atSchool: boolean;
+            }[];
+            supportNeeds: {
+                name: string;
+            }[];
+            /** @description Acil müdahale talimatı; yoksa boş */
+            emergencyInstructions: string;
+            /** @description İşlemenin hukuki dayanağı (KVKK m.6/3); kayıt yoksa `null` */
+            legalBasis: ("explicit_consent" | "vital_interest" | "legal_obligation") | null;
+            /** @description Son güncelleme; kayıt yoksa `null` */
+            updatedAt: string | null;
+        };
+        HealthProfileInput: {
+            /**
+             * @description Tam görünüm
+             * @constant
+             */
+            level: "full";
+            profile: components["schemas"]["HealthFullProfileInput"];
+            /** @description Sonraki PATCH için sürüm; kayıt yoksa 1. Yalnız tam görünümde (acil düzeyde yok) */
+            version: number;
+        } | {
+            /**
+             * @description Yalnız acil müdahale bilgisi
+             * @constant
+             */
+            level: "emergency";
+            profile: components["schemas"]["HealthEmergencyProfileInput"];
         };
         NotificationInput: {
             id: string;
@@ -11010,6 +11115,87 @@ export interface components {
             };
             /** @description Sonraki PATCH için sürüm; kayıt yoksa 1 */
             version: number;
+        };
+        UpdateHealthProfileBody: {
+            allergies?: {
+                name: string;
+                /** @enum {string} */
+                severity: "mild" | "moderate" | "severe";
+            }[];
+            chronicConditions?: {
+                name: string;
+            }[];
+            medications?: {
+                name: string;
+                schedule?: string;
+                /** @default false */
+                atSchool: boolean;
+            }[];
+            supportNeeds?: {
+                name: string;
+            }[];
+            emergencyInstructions?: string;
+            /** @enum {string} */
+            legalBasis?: "explicit_consent" | "vital_interest" | "legal_obligation";
+            version: number;
+        };
+        HealthEmergencyProfile: {
+            allergies: {
+                name: string;
+                /**
+                 * @description Şiddet: `mild`, `moderate`, `severe`
+                 * @enum {string}
+                 */
+                severity: "mild" | "moderate" | "severe";
+            }[];
+            /** @description Acil müdahale talimatı; yoksa boş */
+            emergencyInstructions: string;
+        };
+        HealthFullProfile: {
+            allergies: {
+                name: string;
+                /**
+                 * @description Şiddet: `mild`, `moderate`, `severe`
+                 * @enum {string}
+                 */
+                severity: "mild" | "moderate" | "severe";
+            }[];
+            chronicConditions: {
+                name: string;
+            }[];
+            medications: {
+                name: string;
+                /** @description Kullanım düzeni */
+                schedule?: string;
+                /** @description Okulda verilmesi gerekiyor mu */
+                atSchool: boolean;
+            }[];
+            supportNeeds: {
+                name: string;
+            }[];
+            /** @description Acil müdahale talimatı; yoksa boş */
+            emergencyInstructions: string;
+            /** @description İşlemenin hukuki dayanağı (KVKK m.6/3); kayıt yoksa `null` */
+            legalBasis: ("explicit_consent" | "vital_interest" | "legal_obligation") | null;
+            /** @description Son güncelleme; kayıt yoksa `null` */
+            updatedAt: string | null;
+        };
+        HealthProfile: {
+            /**
+             * @description Tam görünüm
+             * @constant
+             */
+            level: "full";
+            profile: components["schemas"]["HealthFullProfile"];
+            /** @description Sonraki PATCH için sürüm; kayıt yoksa 1. Yalnız tam görünümde (acil düzeyde yok) */
+            version: number;
+        } | {
+            /**
+             * @description Yalnız acil müdahale bilgisi
+             * @constant
+             */
+            level: "emergency";
+            profile: components["schemas"]["HealthEmergencyProfile"];
         };
         Notification: {
             id: string;
@@ -50963,6 +51149,186 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["NotificationPreferences"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getStudentHealthProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HealthProfile"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    updateStudentHealthProfile: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateHealthProfileBodyInput"];
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["HealthProfile"];
                     };
                 };
             };

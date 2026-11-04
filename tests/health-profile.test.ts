@@ -3,9 +3,11 @@ import assert from 'node:assert/strict'
 import {
   canWriteHealthProfile,
   changedHealthFields,
+  applyHealthProfilePatch,
   emergencyView,
   healthAccessFor,
   healthProfileContentSchema,
+  healthProfilePatchSchema,
   parseHealthProfileInput,
   requireHealthRead,
   requireHealthWrite,
@@ -265,5 +267,89 @@ describe('sağlık bilgisi şeması (DOM-ILT-035)', () => {
       'supportNeeds',
       'emergencyInstructions',
     ])
+  })
+})
+
+describe('kısmi güncelleme (IST-020, DOM-ILT-035)', () => {
+  const current = {
+    content: healthProfileContentSchema.parse({
+      allergies: [{ name: 'Fıstık', severity: 'severe' }],
+      chronicConditions: [{ name: 'Astım' }],
+      medications: [{ name: 'Salbutamol', schedule: 'gerektiğinde', atSchool: true }],
+      supportNeeds: [{ name: 'Asansör' }],
+      emergencyInstructions: 'Adrenalin oto-enjektörü çantada.',
+    }),
+    legalBasis: 'explicit_consent',
+  } as const
+
+  test('DOM-ILT-035: gönderilmeyen alan değişmez, gönderilen değişir', () => {
+    const patch = healthProfilePatchSchema.parse({
+      emergencyInstructions: 'Yeni talimat',
+      version: 3,
+    })
+    const merged = applyHealthProfilePatch(current, patch)
+    assert.equal(merged.emergencyInstructions, 'Yeni talimat')
+    assert.deepEqual(merged.allergies, current.content.allergies)
+    assert.deepEqual(merged.medications, current.content.medications)
+    assert.equal(merged.legalBasis, 'explicit_consent')
+    assert.equal(merged.version, 3)
+  })
+
+  test('DOM-ILT-035: boş liste göndermek listeyi boşaltır, dayanak ayrıca değişebilir', () => {
+    const patch = healthProfilePatchSchema.parse({
+      allergies: [],
+      legalBasis: 'vital_interest',
+      version: 2,
+    })
+    const merged = applyHealthProfilePatch(current, patch)
+    assert.deepEqual(merged.allergies, [])
+    assert.equal(merged.legalBasis, 'vital_interest')
+    assert.deepEqual(merged.medications, current.content.medications)
+  })
+
+  test('DOM-ILT-035: içerik alanı da dayanak da olmayan gövde ve bilinmeyen alan reddedilir', () => {
+    assert.throws(() => healthProfilePatchSchema.parse({ version: 1 }), ZodError)
+    assert.throws(() => healthProfilePatchSchema.parse({ allergies: [] }), ZodError)
+    assert.throws(
+      () => healthProfilePatchSchema.parse({ allergies: [], notes: 'x', version: 1 }),
+      ZodError,
+    )
+  })
+
+  test('DOM-ILT-035: kayıt varken yalnız dayanak gönderilebilir, içerik aynen kalır', () => {
+    const patch = healthProfilePatchSchema.parse({ legalBasis: 'vital_interest', version: 2 })
+    const merged = applyHealthProfilePatch(current, patch)
+    assert.equal(merged.legalBasis, 'vital_interest')
+    assert.deepEqual(merged.allergies, current.content.allergies)
+    assert.equal(merged.emergencyInstructions, current.content.emergencyInstructions)
+  })
+
+  test('DOM-ILT-035: kayıt yokken yalnız dayanakla boş profil açılmaz', () => {
+    const patch = healthProfilePatchSchema.parse({ legalBasis: 'explicit_consent', version: 1 })
+    assert.throws(() => applyHealthProfilePatch(null, patch), ZodError)
+  })
+
+  test('DOM-ILT-035: kayıt yokken dayanak zorunlu, gönderilmeyen alan boş', () => {
+    const patch = healthProfilePatchSchema.parse({ emergencyInstructions: 'Talimat', version: 1 })
+    assert.throws(() => applyHealthProfilePatch(null, patch), ZodError)
+    const withBasis = healthProfilePatchSchema.parse({
+      emergencyInstructions: 'Talimat',
+      legalBasis: 'vital_interest',
+      version: 1,
+    })
+    const merged = applyHealthProfilePatch(null, withBasis)
+    assert.deepEqual(merged.allergies, [])
+    assert.equal(merged.emergencyInstructions, 'Talimat')
+  })
+
+  test('DOM-ILT-035: birleşmiş sonuç tam şemada doğrulanır (tekrarlı ad)', () => {
+    const patch = healthProfilePatchSchema.parse({
+      allergies: [
+        { name: 'Fıstık', severity: 'mild' },
+        { name: 'fıstık', severity: 'severe' },
+      ],
+      version: 1,
+    })
+    assert.throws(() => applyHealthProfilePatch(current, patch), ZodError)
   })
 })

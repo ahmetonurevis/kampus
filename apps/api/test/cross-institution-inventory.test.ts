@@ -66,6 +66,10 @@ const COURSE = kayit('courses.test.ts', 'başka kurumun kuru 404, listede görü
 const CONSENT = kayit('consents.test.ts', 'başka kurum: kayıt ve metin 404, B değişmez')
 const DUTY = kayit('coordinator-duties.test.ts', 'başka kurumun yöneticisi 404')
 const GUARDIAN = kayit('student-guardians.test.ts', 'başka kurum: öğrenci ve bağ 404, B değişmez')
+const HEALTH_PROFILE = kayit(
+  'health-profiles-routes.test.ts',
+  'başka kurum: öğrenci 404, B değişmez',
+)
 const YEAR = kayit('academic-years.test.ts', 'başka kurum: yılı 404, yazma B yılını değiştirmez')
 const LESSON_READ = kayit('lessons.test.ts', 'başka kurumun dersi listede yok ve 404')
 const LESSON_WRITE = kayit(
@@ -457,6 +461,8 @@ const ROUTES: Readonly<Record<string, Proof>> = {
   'POST /api/v1/students/:studentId/guardians': GUARDIAN,
   'PATCH /api/v1/students/:studentId/guardians/:linkId': GUARDIAN,
   'DELETE /api/v1/students/:studentId/guardians/:linkId': GUARDIAN,
+  'GET /api/v1/students/:studentId/health-profile': HEALTH_PROFILE,
+  'PATCH /api/v1/students/:studentId/health-profile': HEALTH_PROFILE,
 
   // --- Kur programı ---------------------------------------------------------------------------
   'GET /api/v1/courses': COURSE,

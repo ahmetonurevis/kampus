@@ -53,6 +53,9 @@ export function usePaymentList(query: {
   q?: string
   mebbis?: 'pending'
   method?: PaymentMethodValue
+  /** Ödeme günü aralığı (Europe/Istanbul, `YYYY-MM-DD`, uçlar dahil; ON-118). */
+  dateFrom?: string
+  dateTo?: string
 }) {
   return useApiQuery({
     key: [...PAYMENTS_KEY, 'list', query],

@@ -370,6 +370,9 @@ export async function listPayments(
     mebbisPending?: boolean
     /** Yalnız bu ödeme yöntemiyle alınanlar. */
     method?: PaymentMethod | undefined
+    /** Ödeme anı aralığı: başlangıç dahil, bitiş hariç (Europe/Istanbul günlerinden çevrilmiş). */
+    paidFrom?: Date | undefined
+    paidBefore?: Date | undefined
     page: number
     pageSize: number
   },
@@ -382,6 +385,8 @@ export async function listPayments(
       ? and(isNull(payments.mebbisRecordedAt), isNull(payments.reversedAt))
       : undefined,
     query.method === undefined ? undefined : eq(payments.method, PAYMENT_METHOD_KEYS[query.method]),
+    query.paidFrom === undefined ? undefined : gte(payments.paidAt, query.paidFrom),
+    query.paidBefore === undefined ? undefined : lt(payments.paidAt, query.paidBefore),
     query.q === undefined
       ? undefined
       : sql`(strpos(${foldSql(sql`${records.data} ->> 'name'`)}, ${foldSearch(query.q)}) > 0 or strpos(${foldSql(payments.reference)}, ${foldSearch(query.q)}) > 0)`,

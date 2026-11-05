@@ -32,6 +32,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll } from '@/hooks/use-core-collection.ts'
+import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
 import { useListState } from '@/hooks/use-list-state.ts'
 import { ACTIONS_KEY } from '@/lib/list-view.ts'
 import { notify } from '@/lib/notify.ts'
@@ -64,9 +65,22 @@ const REFUND_FORM = 'iade-formu'
  * iade önce gelir. Yönetici hesabı önizler, onaylar ve iadeyi ödenmiş işaretler; ön büro yalnız
  * listeyi görür. Onay ve ödeme taze oturum ister: oturum eskiyse parola sorulup işlem tekrarlanır.
  */
+const isRefundStatus = (value: unknown): value is keyof typeof STATUS_LABELS =>
+  typeof value === 'string' && Object.hasOwn(STATUS_LABELS, value)
+
 export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
   const list = useListState('ayrilislar')
-  const withdrawals = useWithdrawals({ page: list.state.page, pageSize: list.state.pageSize })
+  // Öğrenci adı araması ve iade durumu sunucuda süzülür (ON-118).
+  const search = useDebouncedValue(list.state.query)
+  const refundStatus = isRefundStatus(list.state.filters.refundStatus)
+    ? list.state.filters.refundStatus
+    : null
+  const withdrawals = useWithdrawals({
+    page: list.state.page,
+    pageSize: list.state.pageSize,
+    ...(search.trim().length >= 2 ? { q: search.trim() } : {}),
+    ...(refundStatus ? { refundStatus } : {}),
+  })
   const [starting, setStarting] = useState(false)
   const [paying, setPaying] = useState<WithdrawalRow | null>(null)
   const [viewing, setViewing] = useState<WithdrawalRow | null>(null)
@@ -162,6 +176,22 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
           <p className="text-sm text-muted-foreground">
             {total} kayıt · İade, ayrılıştan en geç bir ay sonra yapılır.
           </p>
+          <label className="mt-3 grid w-full max-w-xs gap-1 text-sm font-medium">
+            İade durumu
+            <NativeSelect
+              value={refundStatus ?? ''}
+              onChange={(event) =>
+                list.dispatch({ type: 'filter', key: 'refundStatus', value: event.target.value })
+              }
+            >
+              <NativeSelectOption value="">Tümü</NativeSelectOption>
+              {Object.entries(STATUS_LABELS).map(([value, label]) => (
+                <NativeSelectOption key={value} value={value}>
+                  {label}
+                </NativeSelectOption>
+              ))}
+            </NativeSelect>
+          </label>
         </div>
         {canManage ? <Button onClick={() => setStarting(true)}>Ayrılış başlat</Button> : null}
       </header>
@@ -173,7 +203,6 @@ export function WithdrawalsSection({ canManage }: { canManage: boolean }) {
         columns={columns}
         mobileColumns={MOBILE_COLUMNS}
         caption="Ayrılış ve iade kayıtları"
-        search={false}
         loading={withdrawals.isPending}
         fetching={withdrawals.isFetching && !withdrawals.isPending}
         error={

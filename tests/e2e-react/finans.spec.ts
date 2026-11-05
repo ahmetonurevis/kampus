@@ -377,6 +377,56 @@ test.describe('Finans: tahsilat', () => {
     await expect(table).toContainText('Banka havalesi')
   })
 
+  test('ON-118: tahsilat geçmişi ödeme gününe göre sunucuda süzülür; ters aralık uyarır', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s19'] })
+    const client = await api(school.user('yonetici'))
+    await payThroughApi(client, 'inv-s19-5', 'Kredi kartı')
+    const day = (offset: number) =>
+      new Intl.DateTimeFormat('en-CA', { timeZone: 'Europe/Istanbul' }).format(
+        Date.now() + offset * 24 * 60 * 60 * 1000,
+      )
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=tahsilatlar`)
+    const table = page.getByRole('table', { name: 'Tahsilat geçmişi' })
+    await expect(table).toContainText('Kredi kartı')
+
+    await page.getByLabel('Ödeme günü (başlangıç)').fill(day(1))
+    await expect(table).not.toContainText('Kredi kartı')
+    await page.getByLabel('Ödeme günü (başlangıç)').fill(day(0))
+    await expect(table).toContainText('Kredi kartı')
+    await page.getByLabel('Ödeme günü (bitiş)').fill(day(-1))
+    await expect(page.getByRole('alert').filter({ hasText: 'Bitiş günü' })).toBeVisible()
+  })
+
+  test('ON-118: ayrılış ve iade listesi öğrenci adıyla aranır ve iade durumuyla süzülür', async ({
+    page,
+    loginAs,
+  }) => {
+    await loginAs('yonetici')
+    await page.goto(`${ADMIN_URL}?gorunum=ayrilis`)
+    const table = page.getByRole('table', { name: 'Ayrılış ve iade kayıtları' })
+    await expect(table).toBeVisible()
+    const requests: string[] = []
+    page.on('request', (request) => {
+      const url = new URL(request.url())
+      if (url.pathname === '/api/v1/withdrawals') requests.push(url.search)
+    })
+    await page.getByLabel('İade durumu').selectOption({ label: 'Ödendi' })
+    await expect
+      .poll(() => requests.some((q) => new URLSearchParams(q).get('refundStatus') === 'paid'))
+      .toBe(true)
+    await page.getByLabel('Tabloda ara').fill('zzzz-yok')
+    await expect
+      .poll(() => requests.some((q) => new URLSearchParams(q).get('q') === 'zzzz-yok'))
+      .toBe(true)
+    await expect(page.getByText('Aramanızla eşleşen kayıt bulunamadı.')).toBeVisible()
+  })
+
   test('DOM-FIN-033: yönetici tahsilatı gerekçeyle iptal eder, taksit açılır, satır kalır', async ({
     page,
     loginAs,

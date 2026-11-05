@@ -8,6 +8,7 @@ import {
   createPriceIndexSchema,
   planPriceIndexCreate,
   planPriceIndexUpdate,
+  outstandingTuitionCents,
   planRenewal,
   quoteRenewal,
   renewalPlanSchema,
@@ -32,6 +33,7 @@ import {
   insertScholarshipAward,
 } from '../db/finance-scholarships.ts'
 import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
+import { allocatedForInvoices } from '../db/payments.ts'
 import { loadRecordsByIds } from '../db/records.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -57,22 +59,55 @@ import { auditWork } from './task-work.ts'
 const SPEC = WORKFLOW_COMMANDS.renewal
 const PRICE_INDEX = 'price_index_rates'
 
+const debtInvoice = z.object({
+  id: z.string(),
+  amount: z.number().int(),
+  paidAt: z.string().nullable().optional(),
+  feeKind: z.string().optional(),
+  academicYear: z.number().int().optional(),
+  dueDate: z.string(),
+})
+
+/**
+ * Öğrencinin önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025, ON-057): taksitler tablodan,
+ * kısmi ödemeler iptal edilmemiş dağılımlardan okunur; hesap core `outstandingTuitionCents`.
+ */
+async function tuitionDebtOf(
+  tx: Database,
+  ctx: ServiceContext,
+  studentId: string,
+  academicYear: number,
+): Promise<number> {
+  const rows = await loadFinanceRecords(tx, ctx.institutionId, 'invoices', {
+    match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
+  })
+  const invoices = rows.map((row) => debtInvoice.parse({ ...row.data, id: row.id }))
+  const allocated = await allocatedForInvoices(
+    tx,
+    ctx.institutionId,
+    invoices.map((invoice) => invoice.id),
+  )
+  return outstandingTuitionCents(invoices, allocated, academicYear, dayKey(ctx.now))
+}
+
 /** Fiyatı etkileyen satırları işlemin içinde okur: önizleme ve plan aynı girdiyle hesaplar. */
 async function renewalContext(
   tx: Database,
   ctx: ServiceContext,
   input: { studentId: string; academicYear: number; scholarshipProgramId?: string | undefined },
 ): Promise<RenewalContext> {
-  const [tariff, previousTariff, priceIndexes] = await Promise.all([
+  const [tariff, previousTariff, priceIndexes, debtCents] = await Promise.all([
     findPublishedTariff(tx, ctx.institutionId, input.academicYear),
     findPublishedTariff(tx, ctx.institutionId, input.academicYear - 1),
     allPriceIndexes(tx, ctx.institutionId),
+    tuitionDebtOf(tx, ctx, input.studentId, input.academicYear),
   ])
   const programId = input.scholarshipProgramId
   return {
     tariff,
     previousTariff,
     priceIndexes,
+    outstandingTuitionCents: debtCents,
     ...(programId === undefined
       ? {}
       : {

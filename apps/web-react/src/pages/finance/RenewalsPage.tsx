@@ -489,6 +489,10 @@ function PlanModal({
     defaultValues: renewalDefaults(),
   })
   const [studentId, mode] = useWatch({ control: form.control, name: ['studentId', 'mode'] })
+  // Önceki yıldan öğrenim ücreti borcu (DOM-KAY-025, ON-057): plan yöneticinin açık onayını ister.
+  const [debtApproved, setDebtApproved] = useState(false)
+  const debtCents = preview !== null && preview !== 'graduate' ? preview.outstandingTuitionCents : 0
+  const debtBlocked = debtCents > 0 && (!canAward || !debtApproved)
   const busy = quote.isPending || plan.isPending || form.formState.isSubmitting
   const locked = busy || preview !== null
   const errors = form.formState.errors
@@ -523,13 +527,16 @@ function PlanModal({
       return
     }
     const outcome = await quote.submit(renewalQuoteBody(values, academicYear), fields)
-    if (outcome.status === 'success') setPreview(outcome.data.data)
+    if (outcome.status === 'success') {
+      setDebtApproved(false)
+      setPreview(outcome.data.data)
+    }
   })
 
   async function confirm() {
     const tariffId = preview !== null && preview !== 'graduate' ? preview.tariffId : null
     const outcome = await plan.submit(
-      renewalPlanBody(form.getValues(), academicYear, tariffId),
+      renewalPlanBody(form.getValues(), academicYear, tariffId, debtCents > 0 && debtApproved),
       fields,
     )
     if (outcome.status === 'success') {
@@ -567,7 +574,11 @@ function PlanModal({
             <Button variant="secondary" disabled={busy} onClick={() => setPreview(null)}>
               Bilgileri düzenle
             </Button>
-            <Button disabled={busy} aria-busy={busy || undefined} onClick={() => void confirm()}>
+            <Button
+              disabled={busy || debtBlocked}
+              aria-busy={busy || undefined}
+              onClick={() => void confirm()}
+            >
               Onayla ve kaydet
             </Button>
           </>
@@ -769,6 +780,31 @@ function PlanModal({
               {line}
             </p>
           ))}
+          {debtCents > 0 ? (
+            <div role="note" className="mt-2 grid gap-2 rounded-md border bg-warning-soft p-3">
+              <p className="text-sm">
+                Öğrencinin önceki yıldan {money(debtCents)} ödenmemiş öğrenim ücreti var. Yenileme
+                yalnız yöneticinin açık onayıyla planlanır; borç karne ve belgeye erişimi
+                engellemez.
+              </p>
+              {canAward ? (
+                <label className="flex min-h-6 items-center gap-2 text-sm">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={debtApproved}
+                    disabled={busy}
+                    onChange={(event) => setDebtApproved(event.target.checked)}
+                  />
+                  Borca rağmen yenilemeyi onaylıyorum
+                </label>
+              ) : (
+                <p className="text-sm text-muted-foreground">
+                  Bu öğrencinin yenilemesini yönetici planlar.
+                </p>
+              )}
+            </div>
+          ) : null}
         </section>
       ) : preview === 'graduate' ? (
         <p role="status" className="mt-4 text-sm text-muted-foreground">

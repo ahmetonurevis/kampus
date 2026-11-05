@@ -94,6 +94,7 @@ export function renewalPlanBody(
   values: RenewalFormValues,
   academicYear: number,
   tariffId: string | null,
+  debtApproved = false,
 ) {
   if (values.mode === 'graduate')
     return { mode: 'graduate' as const, studentId: values.studentId, academicYear }
@@ -102,6 +103,8 @@ export function renewalPlanBody(
     mode: 'renew' as const,
     tariffId: tariffId ?? '',
     firstDueDate: values.firstDueDate,
+    // Borçlu öğrencide yöneticinin açık onayı (DOM-KAY-025, ON-057); borç yokken gönderilmez.
+    ...(debtApproved ? { debtApproved: true } : {}),
   }
 }
 
@@ -185,6 +188,8 @@ export type RenewalQuoteView = {
   netCents: number
   extras: readonly { kind: string; amountCents: number }[]
   installments: readonly number[]
+  /** Önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025); sıfırdan büyükse yönetici onayı. */
+  outstandingTuitionCents: number
 }
 
 const discountLabel = (kind: string) =>

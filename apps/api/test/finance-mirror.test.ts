@@ -10,6 +10,8 @@ import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import type { RecordData } from '../src/db/collections.ts'
 import { mirrorFinanceRecords } from '../src/db/finance-mirror-store.ts'
+import { auditFinanceRecords } from '../src/db/invoice-audit.ts'
+import { loadInvoices } from '../src/db/invoice-store.ts'
 import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { contractInvoices } from '../src/db/schema/contract-invoices.ts'
 import { contracts } from '../src/db/schema/contracts.ts'
@@ -277,6 +279,66 @@ describe('ON-046e: taksit ve sözleşme çift yazması', () => {
       ]),
       2,
     )
+  })
+
+  test('ON-046f okuma geçişi ön koşulu: örnek veri ve core biçimli fikstürde 046a şema uyumsuzluğu 0, ayna birebir', async () => {
+    const ctx = await institution([
+      {
+        collection: 'contracts',
+        id: 'test-precheck',
+        data: {
+          id: 'test-precheck',
+          studentId: 's4',
+          date: at(1, 10),
+          amount: 2_000_000,
+          title: 'Kayıt sözleşmesi',
+          academicYear: 2026,
+          invoiceIds: ['test-precheck-1'],
+        },
+      },
+      {
+        collection: 'invoices',
+        id: 'test-precheck-1',
+        data: {
+          id: 'test-precheck-1',
+          studentId: 's4',
+          contractId: 'test-precheck',
+          academicYear: 2026,
+          installment: 1,
+          amount: 2_000_000,
+          dueDate: at(11),
+          paidAt: at(5, 12),
+          method: 'Banka havalesi',
+          reminderAt: null,
+          feeKind: 'tuition',
+          createdAt: at(1, 10),
+          updatedAt: at(5, 12),
+        },
+      },
+    ])
+    const report = await auditFinanceRecords(db, ctx.institutionId)
+    assert.deepEqual(report.storeShapeMismatches, { invoices: 0, contracts: 0 })
+    await assertFinanceMirror(db, [ctx.institutionId])
+  })
+
+  test('ON-046f: gevşek biçimli kaynak kaydı (gün başı vadesi, eksik alan) aynaya girmez; tablo satırı core kaydına hatasız döner', async () => {
+    const lenient = {
+      id: 'test-lenient',
+      studentId: 's1',
+      installment: 9,
+      amount: 10_000,
+      dueDate: '2026-11-15T00:00:00.000Z',
+      paidAt: null,
+      method: null,
+    }
+    const ctx = await institution([{ collection: 'invoices', id: lenient.id, data: lenient }])
+    const report = await auditFinanceRecords(db, ctx.institutionId)
+    assert.deepEqual(report.storeShapeMismatches, { invoices: 1, contracts: 0 })
+    const [, invoiceRows] = await tables(ctx.institutionId)
+    assert.ok(!invoiceRows.some((row) => row.id === lenient.id))
+    await assertFinanceMirror(db, [ctx.institutionId])
+    const loaded = await loadInvoices(db, ctx.institutionId, { includeArchived: true })
+    assert.equal(loaded.length, seed.invoices.length)
   })
 
   test('DOM-FIN-010: onaylı sözleşmenin taksit koşulunu değiştiren yazma aynada 55000 alır; records de geri alınır', async () => {

@@ -893,10 +893,14 @@ export async function insertMissingRecords(
     }
     // Çift yazma süresince (ADR 0010 adım 3; ON-046e, daralt 046h'de kalkar) taksit ve sözleşme
     // tablolarda da tutulur: tohumun eklediği ya da sırasını düzelttiği kayıtlar aynı
-    // transaction'da kaynaktan eşitlenir (migration 0063 `kampus_mirror_finance_records`,
-    // idempotent; tabloya sığmayan kayıt atlanır).
-    if (collections.some((collection) => FINANCE_MIRRORED.has(collection)))
-      await tx.execute(sql`select kampus_mirror_finance_records(${institutionId})`)
+    // transaction'da kaynaktan eşitlenir (`finance-mirror-store.ts` `mirrorFinanceIds`: depo
+    // şemasına uyan kayıtlar, idempotent). Kurumun bütün taksit ve sözleşmeleri eşitlenir: ayrı
+    // tohum çağrısıyla sonradan gelen sözleşme, önce gelen taksitinin bağını da açar. Depo bu
+    // dosyayı içe aktardığı için içe aktarma dinamiktir (döngüsel yükleme yok).
+    if (collections.some((collection) => FINANCE_MIRRORED.has(collection))) {
+      const { mirrorFinanceIds } = await import('./finance-mirror-store.ts')
+      await mirrorFinanceIds(tx, institutionId, 'all')
+    }
     return inserted
   })
   return withDatabaseErrors(work)

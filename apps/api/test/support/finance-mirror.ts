@@ -18,8 +18,8 @@ import { loadRecords, type StoredRecord } from '../../src/db/records.ts'
  *   önceki sürüm veya sözleşme tabloda yoktur ya da taksit numarası zincirde yinelenir. Sığan kayıt
  *   atlanmışsa ayna hatalıdır ve kaydın kimliğiyle raporlanır.
  * - depo şemasının reddettiği kaynak kaydı (eski ya da bozuk biçim: yarım tarife grubu, gün vadesi,
- *   eksik alan; 046a `storeShapeMismatches`) eşlik dışıdır: SQL aynası onu atlayabilir ya da
- *   gevşek biçimde taşıyabilir. Okuma geçişinden (046f) önce bu kayıtlar ayıklanır.
+ *   eksik alan; 046a `storeShapeMismatches`) aynada yoktur (ON-046f): tablodaki her satır core
+ *   kaydına hatasız döner.
  *
  * Finans servis testleri her testten sonra çağırır (`checkFinanceMirrorAfterEach`).
  */
@@ -130,8 +130,11 @@ export async function assertFinanceMirror(
       const seen = new Set(all.map((row) => row.id))
       for (const id of mirrored.keys())
         if (!seen.has(id)) problems.push(`${collection}/${id}: tabloda var, kaynakta yok`)
-      // Depo şemasının reddettiği eski ya da bozuk kayıt eşlik dışıdır.
+      // Depo şemasının reddettiği eski ya da bozuk kayıt aynaya girmez (ON-046f).
       const own = all.filter((row) => !rejects(() => parse(row.data)))
+      for (const row of all)
+        if (mirrored.has(row.id) && !own.includes(row))
+          problems.push(`${collection}/${row.id}: şemaya uymayan kayıt aynada`)
       for (const row of own) {
         const twin = mirrored.get(row.id)
         if (twin === undefined) {

@@ -11,6 +11,7 @@ import {
   planTariffUpdate,
   tariffFormToBody,
   tariffItemExceedsAnnounced,
+  nextYearTariffForm,
   tariffToForm,
   tuitionAfterDiscountLoss,
   tuitionIncreaseCeiling,
@@ -173,6 +174,28 @@ test('IST-104: tarife formu kuruşa çevrilir, kayıtlı tarife forma kayıpsız
   assert.equal(form.discounts[0]?.value, '12,50')
   assert.equal(feeTariffFormSchema.safeParse(form).success, true)
   assert.deepEqual(tariffFormToBody(form), stored)
+})
+
+test('ON-055, DOM-FIN-002: sonraki yıl taslağı kalemleri ve indirimleri taşır, yılı artırır, ilan tutarını boşaltır', () => {
+  const stored = {
+    academicYear: 2026,
+    items: [tuition, meal],
+    discounts: [{ kind: 'sibling', percentBasisPoints: 1_000, amountCents: null }] as const,
+  }
+  const before = JSON.stringify(stored)
+  const form = nextYearTariffForm(stored)
+  assert.equal(form.academicYear, '2027')
+  assert.deepEqual(
+    form.items.map((item) => [item.kind, item.amount, item.announcedAmount]),
+    [
+      ['tuition', '300000,00', ''],
+      ['meal', '40000,00', ''],
+    ],
+  )
+  assert.deepEqual(form.discounts, tariffToForm(stored).discounts)
+  assert.equal(feeTariffFormSchema.safeParse(form).success, true)
+  assert.equal(tariffFormToBody(form).academicYear, 2027)
+  assert.equal(JSON.stringify(stored), before)
 })
 
 test('IST-104: tarife formu geçersiz tutar, oran ve yılı reddeder', () => {

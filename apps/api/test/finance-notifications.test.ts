@@ -23,6 +23,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { contractTerms, insertTestTariff } from './support/finance-terms.ts'
 
 /**
  * Tahsilat alındı ve iade ödendi bildirimleri (ON-027; IST-106, IST-110; docs/domain/finans.md
@@ -85,6 +86,7 @@ describe('tahsilat ve iade bildirimleri', () => {
   ) {
     const created = await createInstitution(app, overrides)
     assert.ok(STUDENT)
+    await insertTestTariff(db, created.id)
     await insertMissingRecords(
       db,
       created.id,
@@ -108,10 +110,9 @@ describe('tahsilat ve iade bildirimleri', () => {
             studentId: SID,
             date: '2026-01-01T09:00:00.000Z',
             amount: NET,
-            netCents: NET,
             title: 'Sözleşme',
             invoiceIds: ['test-inv-1', 'test-inv-2'],
-            payer: 'guardian',
+            ...contractTerms({ grossCents: NET, netCents: NET }),
             ...contractExtra,
           },
         },

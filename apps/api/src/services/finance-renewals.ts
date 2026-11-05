@@ -31,6 +31,7 @@ import {
   hasStudentScholarshipAward,
   insertScholarshipAward,
 } from '../db/finance-scholarships.ts'
+import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import { loadRecordsByIds } from '../db/records.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -42,6 +43,7 @@ import {
   runReadOnly,
   type CommandResponse,
   type IdempotencyRequest,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
@@ -104,6 +106,7 @@ export function quoteRenewalFor(ctx: ServiceContext, input: unknown) {
   return runReadOnly(ctx, {
     action: 'renewal.quote',
     collections: SPEC.collections,
+    stores: FINANCE_TABLE_STORES,
     loadScope: scopeOf(data.studentId),
     load: async (tx) => {
       const { session, scalars } = await environment(tx, ctx, SPEC)
@@ -128,6 +131,7 @@ export function planRenewalCommand(
     {
       action: 'renewal.plan',
       collections: SPEC.collections,
+      stores: FINANCE_TABLE_STORES,
       loadScope: scopeOf(data.studentId),
       entity: (result: { renewal: { id: string } }) => ({
         type: 'renewals',
@@ -317,9 +321,13 @@ export async function getRenewalFor(ctx: ServiceContext, id: string) {
   const [contract] =
     record.contractId === undefined
       ? []
-      : await loadRecordsByIds(ctx.db, ctx.institutionId, 'contracts', [record.contractId])
+      : await loadFinanceRecords(ctx.db, ctx.institutionId, 'contracts', {
+          ids: [record.contractId],
+        })
   const invoiceIds = z.array(z.string()).catch([]).parse(contract?.data.invoiceIds)
-  const invoices = await loadRecordsByIds(ctx.db, ctx.institutionId, 'invoices', invoiceIds)
+  const invoices = await loadFinanceRecords(ctx.db, ctx.institutionId, 'invoices', {
+    ids: invoiceIds,
+  })
   return {
     ...renewalView(item, record, names),
     invoices: invoices

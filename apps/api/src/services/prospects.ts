@@ -57,6 +57,7 @@ import {
   type CommandResponse,
   type LoadScope,
   type OperationTools,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 
 /**
@@ -275,6 +276,7 @@ export function enrollProspectCommand(
     {
       action: 'prospect.enroll',
       collections: spec.collections,
+      stores: FINANCE_TABLE_STORES,
       loadScope: { invoices: APPEND_ONLY, contracts: APPEND_ONLY },
       ...(options.expectedVersion !== null
         ? {

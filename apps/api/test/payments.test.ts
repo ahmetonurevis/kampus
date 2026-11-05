@@ -8,6 +8,7 @@ import { createSeed } from '@kampus/school-core/data/seed.ts'
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
+import { loadInvoices } from '../src/db/invoice-store.ts'
 import { findRecord, insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { paymentAllocations, payments } from '../src/db/schema/payments.ts'
@@ -22,6 +23,12 @@ import {
   type InstitutionOverrides,
 } from './support/app.ts'
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
+import {
+  contractTerms,
+  insertTestScholarshipProgram,
+  insertTestTariff,
+  TEST_SCHOLARSHIP_PROGRAM_ID,
+} from './support/finance-terms.ts'
 
 /**
  * Tahsilat uçları (ADR 0006; docs/domain/finans.md DOM-FIN-030…033, DOM-FIN-052). Her test kendi
@@ -48,6 +55,7 @@ describe('tahsilat uçları', () => {
   let close: () => Promise<void>
   let app: App
   let serial = 0
+  const logs: string[] = []
   const key = () => ({ 'idempotency-key': `test-pay-${String(++serial).padStart(5, '0')}` })
   // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
   checkFinanceMirrorAfterEach(() => db)
@@ -56,7 +64,7 @@ describe('tahsilat uçları', () => {
     assert.ok(STUDENT)
     assert.ok(OTHER)
     ;({ db, close } = await createTestDatabase())
-    app = await buildTestApp(db, { clock: () => FIXED_NOW })
+    app = await buildTestApp(db, { clock: () => FIXED_NOW, logs })
   })
   after(async () => {
     await app.close()
@@ -422,6 +430,9 @@ describe('tahsilat uçları', () => {
     assert.equal(stored?.method, 'promissory_note')
     assert.equal(stored?.bankAccountId, null)
 
+    // Burs tarifeli sözleşmeye bağlıdır (core biçimi; ON-046f): tarife ve burs programı kurumdadır.
+    await insertTestTariff(db, a.id)
+    await insertTestScholarshipProgram(db, a.id)
     await insertMissingRecords(
       db,
       a.id,
@@ -432,10 +443,11 @@ describe('tahsilat uçları', () => {
           data: {
             id: 'test-contract-burslu',
             studentId: STUDENT?.id,
-            date: '2026-09-01',
+            date: '2026-09-01T09:00:00.000Z',
             amount: 60_000,
             title: 'Özel okul eğitim sözleşmesi',
-            scholarship: { programId: 'test-program', amountCents: 10_000 },
+            ...contractTerms({ grossCents: 70_000, netCents: 60_000 }),
+            scholarship: { programId: TEST_SCHOLARSHIP_PROGRAM_ID, amountCents: 10_000 },
           },
         },
       ],
@@ -489,6 +501,41 @@ describe('tahsilat uçları', () => {
   })
 
   // --- İptal ------------------------------------------------------------------------------------
+
+  test('ON-046f, ADR 0010 ölçüt 4: tahsilat ve iptal yalnız öğrencinin taksit ve sözleşmelerini yükler', async () => {
+    const a = await institution()
+    // Başka öğrencinin açık taksiti kurumdadır; tahsilat ve iptal onu yüklemez, ona yazmaz.
+    await insertMissingRecords(
+      db,
+      a.id,
+      [
+        {
+          collection: 'invoices',
+          id: 'test-inv-other',
+          data: { ...INVOICES[0], id: 'test-inv-other', studentId: OTHER?.id },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const loaded = (from: number) =>
+      logs
+        .slice(from)
+        .map((line) => JSON.parse(line) as { event?: string; loaded?: unknown })
+        .filter((entry) => entry.event === 'operation.applied')
+        .map((entry) => entry.loaded)
+    const from = logs.length
+    const paid = await record(a.adminCookie, payment(10_000))
+    assert.equal(paid.statusCode, 201, paid.body)
+    const reversed = await reverse(a.adminCookie, paid.json().data.id, paid.json().data.version)
+    assert.equal(reversed.statusCode, 200, reversed.body)
+    const [onPay, onReverse] = loaded(from)
+    assert.equal((onPay as Record<string, number>).invoices, INVOICES.length)
+    assert.equal((onPay as Record<string, number>).contracts, 0)
+    assert.equal((onReverse as Record<string, number>).invoices, INVOICES.length)
+    const [other] = await loadInvoices(db, a.id, { ids: ['test-inv-other'] })
+    assert.equal(other?.version, 1)
+    assert.equal(other?.data.paidAt, null)
+  })
 
   test('DOM-FIN-033: iptal gerekçeyle yazılır, taksit açılır, referans yeniden kullanılır; ikinci iptal 409', async () => {
     const a = await institution()

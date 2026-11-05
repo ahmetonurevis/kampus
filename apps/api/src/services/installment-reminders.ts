@@ -8,7 +8,8 @@ import {
 
 import type { Database } from '../db/client.ts'
 import { allocatedTotals } from '../db/payments.ts'
-import { loadRecords, loadRecordsByIds, lockInstitution } from '../db/records.ts'
+import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
+import { loadRecordsByIds, lockInstitution } from '../db/records.ts'
 import { invoiceStatusFilter } from './list-filters.ts'
 import { getInstitutionModules } from './modules.ts'
 import { dedupedNotificationId, notify } from './notify.ts'
@@ -55,7 +56,7 @@ export function sendInstallmentReminders(input: {
     if (!notificationEnabled('installment_due', institution.modules))
       return { ...result, skipped: 'module_disabled' }
 
-    const open = await loadRecords(tx, institutionId, ['invoices'], {
+    const open = await loadFinanceRecords(tx, institutionId, 'invoices', {
       match: [invoiceStatusFilter(['Gecikmiş', 'Yaklaşan'], now)],
     })
     const allocated = await allocatedTotals(tx, institutionId)

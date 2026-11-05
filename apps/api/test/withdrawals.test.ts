@@ -8,6 +8,7 @@ import { createSeed } from '@kampus/school-core/data/seed.ts'
 import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
+import { loadInvoices } from '../src/db/invoice-store.ts'
 import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { idempotencyKeys } from '../src/db/schema/idempotency-keys.ts'
@@ -23,6 +24,12 @@ import {
   type InstitutionOverrides,
 } from './support/app.ts'
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
+import {
+  contractTerms,
+  insertTestScholarshipProgram,
+  insertTestTariff,
+  TEST_SCHOLARSHIP_PROGRAM_ID,
+} from './support/finance-terms.ts'
 
 /**
  * Ayrılış ve iade uçları (ADR 0006 karar 10; DOM-FIN-040, -041; DOM-KAY-024; IST-110). Her test
@@ -59,6 +66,7 @@ describe('ayrılış ve iade uçları', () => {
   let close: () => Promise<void>
   let app: App
   let serial = 0
+  const logs: string[] = []
   const key = () => ({ 'idempotency-key': `test-wd-${String(++serial).padStart(5, '0')}` })
   // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
   checkFinanceMirrorAfterEach(() => db)
@@ -66,7 +74,7 @@ describe('ayrılış ve iade uçları', () => {
   before(async () => {
     assert.ok(STUDENT)
     ;({ db, close } = await createTestDatabase())
-    app = await buildTestApp(db, { clock: () => FIXED_NOW })
+    app = await buildTestApp(db, { clock: () => FIXED_NOW, logs })
   })
   after(async () => {
     await app.close()
@@ -79,6 +87,8 @@ describe('ayrılış ve iade uçları', () => {
   ) {
     const created = await createInstitution(app, overrides)
     assert.ok(STUDENT)
+    await insertTestTariff(db, created.id)
+    await insertTestScholarshipProgram(db, created.id)
     const rows = [
       {
         collection: 'classes' as const,
@@ -99,10 +109,9 @@ describe('ayrılış ve iade uçları', () => {
           studentId: STUDENT.id,
           date: '2026-01-01T09:00:00.000Z',
           amount: NET,
-          netCents: NET,
           title: 'Sözleşme',
           invoiceIds: ['test-inv-1', 'test-inv-2'],
-          payer: 'guardian',
+          ...contractTerms({ grossCents: NET, netCents: NET }),
           ...contractExtra,
         },
       },
@@ -237,7 +246,7 @@ describe('ayrılış ve iade uçları', () => {
 
     const a = await institution(
       {},
-      { scholarship: { programId: 'test-program', amountCents: 100_000 } },
+      { scholarship: { programId: TEST_SCHOLARSHIP_PROGRAM_ID, amountCents: 100_000 } },
     )
     const read = await quote(a.cookie)
     assert.equal(read.statusCode, 200, read.body)
@@ -267,6 +276,37 @@ describe('ayrılış ve iade uçları', () => {
       'attended_exceeds_total',
     )
     assertError(await quote(a.cookie, { ...QUOTE, x: 1 }), 400, 'validation_failed')
+  })
+
+  test('ON-046f, ADR 0010 ölçüt 4: ayrılış yalnız öğrencinin taksit ve sözleşmelerini yükler; başka öğrencininki değişmez', async () => {
+    const a = await institution()
+    const other = SEED.students.find((item) => item.classId === 'c1' && item.id !== STUDENT?.id)
+    assert.ok(other)
+    await insertMissingRecords(
+      db,
+      a.id,
+      [
+        { collection: 'students', id: other.id, data: { ...other } },
+        {
+          collection: 'invoices',
+          id: 'test-inv-other',
+          data: { ...invoice('test-inv-other', 1), studentId: other.id },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const from = logs.length
+    const response = await withdraw(a.cookie)
+    assert.equal(response.statusCode, 201, response.body)
+    const [loaded] = logs
+      .slice(from)
+      .map((line) => JSON.parse(line) as { event?: string; loaded?: Record<string, number> })
+      .filter((entry) => entry.event === 'operation.applied')
+      .map((entry) => entry.loaded)
+    assert.equal(loaded?.invoices, 2)
+    assert.equal(loaded?.contracts, 1)
+    const [untouched] = await loadInvoices(db, a.id, { ids: ['test-inv-other'] })
+    assert.equal(untouched?.version, 1)
   })
 
   test('DOM-FIN-041, DOM-KAY-024: ayrılış tek işlemde yazılır; 201, Location, döküm, denetim kaydı', async () => {

@@ -41,7 +41,7 @@ import {
   paymentsOfStudent,
   paymentsTouchingPeriod,
 } from '../db/payments.ts'
-import { loadRecords } from '../db/records.ts'
+import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import {
   loadFinanceExportProfile,
   saveFinanceExportProfile,
@@ -56,6 +56,7 @@ import {
   runReadOnly,
   type CommandResponse,
   type IdempotencyRequest,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 import { assertReadable, readScope } from './read-scope.ts'
 
@@ -73,6 +74,7 @@ function linesOf(ctx: ServiceContext, period: FinancePeriod) {
   return runReadOnly(ctx, {
     action: 'finance.export',
     collections: ['students', 'invoices'],
+    stores: FINANCE_TABLE_STORES,
     load: async (tx) => {
       const [payments, refunds, allocated] = [
         await paymentsTouchingPeriod(
@@ -105,6 +107,7 @@ export function financeTotalsFor(ctx: ServiceContext): Promise<FinanceTotals> {
   return runReadOnly(ctx, {
     action: 'finance.totals',
     collections: ['invoices'],
+    stores: FINANCE_TABLE_STORES,
     load: async (tx) => {
       const allocated = await allocatedTotals(tx, ctx.institutionId)
       return { run: (state) => financeTotals(state.invoices, allocated, dayKey(ctx.now)) }
@@ -128,6 +131,7 @@ export function financeOverviewFor(
   return runReadOnly(ctx, {
     action: 'finance.overview',
     collections: ['invoices'],
+    stores: FINANCE_TABLE_STORES,
     load: async (tx) => {
       const [payments, allocated] = [
         await paymentsTouchingPeriod(
@@ -175,7 +179,7 @@ export async function studentBalanceFor(
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, 'invoices')
   if (!financeStudentIds(scope).has(studentId)) throw new NotFoundError()
-  const rows = await loadRecords(ctx.db, ctx.institutionId, ['invoices'], {
+  const rows = await loadFinanceRecords(ctx.db, ctx.institutionId, 'invoices', {
     match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
   })
   const invoices = rows.map((row) => {
@@ -206,7 +210,7 @@ export async function studentStatementFor(
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, 'invoices')
   if (!financeStudentIds(scope).has(studentId)) throw new NotFoundError()
-  const rows = await loadRecords(ctx.db, ctx.institutionId, ['invoices'], {
+  const rows = await loadFinanceRecords(ctx.db, ctx.institutionId, 'invoices', {
     match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
   })
   const invoices = rows.map((row) => {

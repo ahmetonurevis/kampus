@@ -13,7 +13,7 @@ import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
 import { findFeeTariff } from '../db/fee-tariffs.ts'
 import { allocatedByInvoice } from '../db/payments.ts'
-import { findRecord } from '../db/records.ts'
+import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import { loadStudentGuardians } from '../db/student-guardians.ts'
 import { NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -25,6 +25,7 @@ import {
   type CommandResponse,
   type LoadScope,
   type OperationRun,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 
 /**
@@ -46,7 +47,9 @@ type ContractNotice = 'contract_approval_requested' | 'contract_approved'
  * kimliği sözleşmede değişmediği için kurum kilidinden önce okunabilir. Yok ya da başka kurum 404.
  */
 async function studentOfContract(ctx: ServiceContext, contractId: string): Promise<string> {
-  const record = await findRecord(ctx.db, ctx.institutionId, COLLECTION, contractId)
+  const [record] = await loadFinanceRecords(ctx.db, ctx.institutionId, COLLECTION, {
+    ids: [contractId],
+  })
   const studentId = record?.data.studentId
   if (typeof studentId !== 'string') throw new NotFoundError()
   return studentId
@@ -112,6 +115,7 @@ function execute(ctx: ServiceContext, command: ContractCommand): Promise<Command
     {
       action: command.auditAction ?? command.action,
       collections: spec.collections,
+      stores: FINANCE_TABLE_STORES,
       loadScope: loadScopeFor(command.action, studentId),
       ...(options.expectedVersion === null
         ? {}
@@ -220,7 +224,9 @@ export async function amendContractCommand(
   options: CommandOptions,
 ): Promise<CommandResponse> {
   const { discounts } = amendContractSchema.parse(input)
-  const source = await findRecord(ctx.db, ctx.institutionId, COLLECTION, contractId)
+  const [source] = await loadFinanceRecords(ctx.db, ctx.institutionId, COLLECTION, {
+    ids: [contractId],
+  })
   const studentId = source?.data.studentId
   if (typeof studentId !== 'string') throw new NotFoundError()
   const tariffId = source?.data.tariffId

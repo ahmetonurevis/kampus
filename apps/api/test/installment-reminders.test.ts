@@ -416,14 +416,17 @@ describe('vade ve gecikme taraması', () => {
   })
 
   test('IST-109: biçimi bozuk taksit taramayı durdurmaz, kimlik loglanmaz', async () => {
+    // ON-046f: tarama taksit tablosunu okur. Bozuk kayıt depo şemasına uymadığı için tabloya hiç
+    // girmez (yalnız records'ta kalır); tablo satırı her zaman core biçimindedir, geçersiz sayılmaz.
     const a = await institution([invoice('bad', 'dün'), invoice('good', at(1))])
     const from = logs.length
     const result = await run(a.id)
     assert.deepEqual([result.invoices, result.created], [1, 1])
     assert.deepEqual((await stored(a.id)).map(subjectOf), ['good'])
     const lines = logs.slice(from).join('')
-    assert.ok(lines.includes('installment_reminder.invalid_invoice'))
+    assert.ok(!lines.includes('installment_reminder.invalid_invoice'))
     assert.ok(!lines.includes(`"${SID}"`))
+    assert.ok(!lines.includes('"bad"'))
   })
 
   test('DOM-ILT-021: sessiz saatte iş okumaz ve yazmaz; 08:00 ile 20:59 arası çalışır', async () => {

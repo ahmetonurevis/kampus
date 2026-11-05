@@ -71,6 +71,8 @@ type OnurWriteTargets = {
   // Kesin kayıt (`enrollProspect`, `lib/enrollment.ts`); işlem yetkiyi kendisi denetlemez, çağıran
   // önce `requireAuthorized` çalıştırır.
   'prospect.enroll': Record<string, never>
+  // Kayıt sonrası veli bilgisi düzeltme (ON-117, DOM-KAY-012); kurum kapsamlıdır.
+  'parent.update': Record<string, never>
 }
 // Onur: kayıt ve finans sonu
 
@@ -140,6 +142,9 @@ export const ONUR_WRITE_ACTION_ROLES = {
   'prospect.trialResult': ['ogretmen'],
   // Kesin kayıt (aday → öğrenci, sözleşme ve taksit) yönetici ve ön büronundur (DOM-KAY-011).
   'prospect.enroll': ['yonetici', 'onburo'],
+  // Veli bilgisini kesin kaydı yapan yönetici ve ön büro düzeltir; veli kendi kaydını düzeltmez
+  // (hesap bilgisi ayrıdır), öğretmen veli kaydına yazmaz (ON-117).
+  'parent.update': ['yonetici', 'onburo'],
 } as const satisfies Record<keyof typeof ONUR_OPERATION_COMMANDS, readonly Actor['role'][]>
 // Onur: kayıt ve finans sonu
 
@@ -561,6 +566,7 @@ function decide(
     case 'prospect.meeting':
     case 'prospect.trial':
     case 'prospect.enroll':
+    case 'parent.update':
     case 'notification.read':
     case 'notification.read_all':
       return ALLOWED

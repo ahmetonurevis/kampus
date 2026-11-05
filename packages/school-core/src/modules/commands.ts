@@ -109,6 +109,8 @@ export const ONUR_OPERATION_COMMANDS = {
     // Kontenjan planlanmış yenilemeleri de sayar (DOM-KAY-010).
     'renewals',
   ]),
+  // Veli bilgisi düzeltme (ON-117, `lib/registration-records.ts`).
+  'parent.update': spec('crm', [...SCOPE, 'parents']),
 } as const satisfies Record<string, CommandSpec>
 // Onur: kayıt ve finans sonu
 

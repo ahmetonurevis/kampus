@@ -42,6 +42,7 @@ import {
   runReadOnly,
   type CommandResponse,
   type IdempotencyRequest,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
@@ -104,6 +105,7 @@ export function quoteRenewalFor(ctx: ServiceContext, input: unknown) {
   return runReadOnly(ctx, {
     action: 'renewal.quote',
     collections: SPEC.collections,
+    stores: FINANCE_TABLE_STORES,
     loadScope: scopeOf(data.studentId),
     load: async (tx) => {
       const { session, scalars } = await environment(tx, ctx, SPEC)
@@ -128,6 +130,7 @@ export function planRenewalCommand(
     {
       action: 'renewal.plan',
       collections: SPEC.collections,
+      stores: FINANCE_TABLE_STORES,
       loadScope: scopeOf(data.studentId),
       entity: (result: { renewal: { id: string } }) => ({
         type: 'renewals',

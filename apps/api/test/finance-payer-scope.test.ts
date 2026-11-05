@@ -37,9 +37,10 @@ const OPEN_INVOICES = ['s1', 's2'].map((studentId) => ({
   studentId,
   installment: 9,
   amount: 10_000,
-  dueDate: '2026-11-15T00:00:00.000Z',
+  dueDate: '2026-11-15T09:00:00.000Z',
   paidAt: null,
   method: null,
+  reminderAt: null,
 }))
 
 describe('ödeyici velinin finans okuması (ON-291, K-04)', () => {

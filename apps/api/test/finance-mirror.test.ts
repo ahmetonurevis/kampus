@@ -12,19 +12,22 @@ import type { RecordData } from '../src/db/collections.ts'
 import { mirrorFinanceRecords } from '../src/db/finance-mirror-store.ts'
 import { auditFinanceRecords } from '../src/db/invoice-audit.ts'
 import { loadInvoices } from '../src/db/invoice-store.ts'
+import { POSITION_STEP } from '../src/db/positions.ts'
 import { insertMissingRecords, loadRecords } from '../src/db/records.ts'
 import { contractInvoices } from '../src/db/schema/contract-invoices.ts'
 import { contracts } from '../src/db/schema/contracts.ts'
 import { invoices } from '../src/db/schema/invoices.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
-import { runOperation } from '../src/services/operation-runner.ts'
+import { FINANCE_TABLE_STORES, runOperation } from '../src/services/operation-runner.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
 import { assertFinanceMirror } from './support/finance-mirror.ts'
 
 /**
- * Taksit ve sözleşmenin çift yazması (ON-046e; ADR 0010 adım 3, karar 4; DOM-FIN-010, -012):
- * kaynak `records`, ayna tablolar. Tohum ve çalıştırıcı yazması aynayı aynı transaction'da
- * eşitler; tabloya sığmayan kaynak kaydı işlemi durdurmaz, onaylı sözleşme değişmezliği durdurur.
+ * Taksit ve sözleşmenin çift yazması (ON-046e/f; ADR 0010 adım 3–4, karar 4; DOM-FIN-010, -012).
+ * Tohum `records`'a yazar ve tabloları aynı transaction'da eşitler. Çalıştırıcının kaynağı
+ * tablolardır (046f): yükleme tablodan, yazma önce tablolara, sonra ayna olarak `records`'a; iki
+ * yazmanın sonucu ayrışırsa 500. Tabloya sığmayan eski kayıt yalnız `records`'ta kalır, işlem onu
+ * görmez; onaylı sözleşme değişmezliği yazmayı durdurur.
  */
 
 const LATER = new Date('2026-10-06T10:00:00.000Z')
@@ -34,7 +37,7 @@ const at = (day: number, hour = 9) => new Date(Date.UTC(2026, 9, day, hour)).toI
 const items = (collection: 'invoices' | 'contracts', list: readonly RecordData[]) =>
   list.map((data) => ({ collection, id: String(data.id), data }))
 
-describe('ON-046e: taksit ve sözleşme çift yazması', () => {
+describe('ON-046e/f: taksit ve sözleşme çift yazması', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
@@ -211,7 +214,7 @@ describe('ON-046e: taksit ve sözleşme çift yazması', () => {
     assert.ok(dropLink?.archivedAt)
   })
 
-  test('tabloya sığmayan kaynak kaydı işlemi durdurmaz, aynada yer almaz; öteki kayıtlar eşitlenir', async () => {
+  test('varsayılan yol (records kaynağı): tabloya sığmayan kaynak kaydı işlemi durdurmaz, aynada yer almaz', async () => {
     // Tarifesi yarım (kısıt) sözleşme ve taksit numarası olmayan bozuk eski taksit.
     const broken = [
       {
@@ -278,6 +281,158 @@ describe('ON-046e: taksit ve sözleşme çift yazması', () => {
         },
       ]),
       2,
+    )
+  })
+
+  test('ON-046f: çalıştırıcı tablodan yükler; tabloya sığmayan eski kayıt yalnız records tablosunda kalır, işlem onu görmez', async () => {
+    // Tarifesi yarım (kısıt) sözleşme ve taksit numarası olmayan bozuk eski taksit.
+    const broken = [
+      {
+        collection: 'contracts' as const,
+        id: 'test-broken-contract',
+        data: {
+          id: 'test-broken-contract',
+          studentId: 's2',
+          date: at(1),
+          amount: 1,
+          title: 'Bozuk',
+          payer: 'guardian',
+        },
+      },
+      {
+        collection: 'invoices' as const,
+        id: 'test-broken-invoice',
+        data: {
+          id: 'test-broken-invoice',
+          studentId: 's2',
+          amount: 1,
+          dueDate: at(9),
+          paidAt: null,
+          method: null,
+          reminderAt: null,
+        },
+      },
+    ]
+    const ctx = await institution(broken)
+    const [contractRows, invoiceRows] = await tables(ctx.institutionId)
+    assert.equal(contractRows.length, seed.contracts.length)
+    assert.equal(invoiceRows.length, seed.invoices.length)
+    assert.ok(!invoiceRows.some((row) => row.id === 'test-broken-invoice'))
+
+    const unpaid = seed.invoices.find((invoice) => !invoice.paidAt)
+    assert.ok(unpaid)
+    const outcome = await runOperation(ctx, {
+      action: 'invoice.touch',
+      entity: { type: 'invoices', id: unpaid.id },
+      collections: ['invoices', 'contracts'],
+      stores: FINANCE_TABLE_STORES,
+      run: (state, { now }) => {
+        assert.ok(!state.invoices.some((invoice) => invoice.id === 'test-broken-invoice'))
+        assert.ok(!state.contracts.some((contract) => contract.id === 'test-broken-contract'))
+        assert.equal(state.invoices.length, seed.invoices.length)
+        payInvoice(state, unpaid.id, 'Nakit', now)
+      },
+    })
+    assert.deepEqual(outcome.changes, [
+      { kind: 'update', collection: 'invoices', id: unpaid.id, version: 2 },
+    ])
+    assert.deepEqual(outcome.loaded, {
+      invoices: seed.invoices.length,
+      contracts: seed.contracts.length,
+    })
+    const source = await loadRecords(db, ctx.institutionId, ['invoices'])
+    assert.equal(source.find((row) => row.id === 'test-broken-invoice')?.version, 1)
+    assert.equal(source.find((row) => row.id === unpaid.id)?.data.method, 'Nakit')
+    const [paid] = await db
+      .select({ method: invoices.paymentMethod, version: invoices.version })
+      .from(invoices)
+      .where(and(eq(invoices.institutionId, ctx.institutionId), eq(invoices.id, unpaid.id)))
+    assert.deepEqual(paid, { method: 'cash', version: 2 })
+    await assertFinanceMirror(db, [ctx.institutionId])
+    assert.equal(
+      await mirrorFinanceRecords(db, ctx.institutionId, [
+        { kind: 'archive', collection: 'invoices', id: 'test-broken-invoice', expectedVersion: 1 },
+        {
+          kind: 'archive',
+          collection: 'contracts',
+          id: 'test-broken-contract',
+          expectedVersion: 1,
+        },
+      ]),
+      2,
+    )
+  })
+
+  test('ON-046f: yeni taksit tablonun verdiği sırayla aynaya yazılır; yalnız records tablosundaki kayıt sırayı kaydırmaz', async () => {
+    // Yalnız records'taki eski kayıt records sırasının sonundadır; tablo sırası onu bilmez.
+    const legacy = {
+      collection: 'invoices' as const,
+      id: 'test-legacy-invoice',
+      data: { id: 'test-legacy-invoice', studentId: 's2', amount: 1, dueDate: 'dün' },
+    }
+    const ctx = await institution([legacy])
+    const outcome = await runOperation(ctx, {
+      action: 'invoice.add',
+      entity: { type: 'invoices', id: 'test-inv-new' },
+      collections: ['invoices'],
+      loadScope: { invoices: { ids: [] } },
+      stores: FINANCE_TABLE_STORES,
+      run: (state) => {
+        state.invoices.push({
+          id: 'test-inv-new',
+          studentId: 's1',
+          installment: 1,
+          amount: 1_000,
+          dueDate: at(20),
+          paidAt: null,
+          method: null,
+          reminderAt: null,
+        } as (typeof state.invoices)[number])
+      },
+    })
+    assert.deepEqual(outcome.changes, [
+      { kind: 'insert', collection: 'invoices', id: 'test-inv-new', version: 1 },
+    ])
+    const [table] = await loadInvoices(db, ctx.institutionId, { ids: ['test-inv-new'] })
+    const source = await loadRecords(db, ctx.institutionId, ['invoices'])
+    const legacyRow = source.find((row) => row.id === legacy.id)
+    const mirrored = source.find((row) => row.id === 'test-inv-new')
+    assert.ok(table && legacyRow && mirrored)
+    assert.equal(mirrored.position, table.position)
+    // Yalnız records'a ekleme sırayı records'un sonundan (eski kaydın ardından) verirdi.
+    assert.ok(mirrored.position < legacyRow.position + POSITION_STEP)
+    await assertFinanceMirror(db, [ctx.institutionId])
+  })
+
+  test('ON-046f: records aynası tablodan ayrışmışsa yazma 500 olur, iki depo da değişmez', async () => {
+    const ctx = await institution()
+    const unpaid = seed.invoices.find((invoice) => !invoice.paidAt)
+    assert.ok(unpaid)
+    // Ayna bayat: records satırının sürümü tablodan ileride (ör. tablosuz doğrudan yazma).
+    await db.execute(
+      sql`update records set version = version + 1 where institution_id = ${ctx.institutionId} and collection = 'invoices' and id = ${unpaid.id}`,
+    )
+    const before = await Promise.all([
+      loadRecords(db, ctx.institutionId, ['invoices'], { includeArchived: true }),
+      tables(ctx.institutionId),
+    ])
+    await assert.rejects(
+      runOperation(ctx, {
+        action: 'invoice.pay',
+        entity: { type: 'invoices', id: unpaid.id },
+        collections: ['invoices'],
+        stores: FINANCE_TABLE_STORES,
+        run: (state, { now }) => payInvoice(state, unpaid.id, 'Nakit', now),
+      }),
+      (error: { statusCode?: number; code?: string }) =>
+        error.statusCode === 500 && error.code === 'internal_error',
+    )
+    assert.deepEqual(
+      await Promise.all([
+        loadRecords(db, ctx.institutionId, ['invoices'], { includeArchived: true }),
+        tables(ctx.institutionId),
+      ]),
+      before,
     )
   })
 

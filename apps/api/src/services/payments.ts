@@ -41,7 +41,12 @@ import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
 import { notify } from './notify.ts'
-import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
+import {
+  runCommand,
+  type CommandResponse,
+  type IdempotencyRequest,
+  FINANCE_TABLE_STORES,
+} from './operation-runner.ts'
 import { readScope } from './read-scope.ts'
 import { dayRange } from './list-filters.ts'
 
@@ -138,6 +143,7 @@ export function recordPaymentCommand(
     {
       action: 'payment.invoices',
       collections: SPEC.collections,
+      stores: FINANCE_TABLE_STORES,
       entity: { type: 'payments', id },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
@@ -215,6 +221,7 @@ export function reversePaymentCommand(
     {
       action: 'payment.invoices',
       collections: spec.collections,
+      stores: FINANCE_TABLE_STORES,
       entity: { type: 'payments', id: paymentId },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, spec)

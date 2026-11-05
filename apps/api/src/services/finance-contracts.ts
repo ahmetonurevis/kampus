@@ -25,6 +25,7 @@ import {
   type CommandResponse,
   type LoadScope,
   type OperationRun,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 
 /**
@@ -112,6 +113,7 @@ function execute(ctx: ServiceContext, command: ContractCommand): Promise<Command
     {
       action: command.auditAction ?? command.action,
       collections: spec.collections,
+      stores: FINANCE_TABLE_STORES,
       loadScope: loadScopeFor(command.action, studentId),
       ...(options.expectedVersion === null
         ? {}

@@ -18,7 +18,7 @@ import {
   type ScalarStateKey,
 } from '../db/collections.ts'
 import type { Database } from '../db/client.ts'
-import { FINANCE_MIRROR_STORE } from '../db/finance-mirror-store.ts'
+import { FINANCE_MIRROR_STORE, FINANCE_TABLE_STORE } from '../db/finance-mirror-store.ts'
 import {
   findIdempotentResponse,
   saveIdempotentResponse,
@@ -94,12 +94,25 @@ export interface StoreRegistry {
 }
 
 /**
- * Çalıştırıcının depo kaydı. Taksit ve sözleşme çift yazılır (ADR 0010 adım 3; ON-046e): kaynak
- * `records`, ayna tablolar (`FINANCE_MIRROR_STORE`). Öteki koleksiyonlar yalnız `records`'tadır.
+ * Çalıştırıcının varsayılan depo kaydı. Taksit ve sözleşme çift yazılır (ADR 0010 adım 3; ON-046e):
+ * kaynak `records`, ayna tablolar (`FINANCE_MIRROR_STORE`). Öteki koleksiyonlar yalnız
+ * `records`'tadır. İsteğin `stores`'u vermediği her işlem bunu kullanır.
  */
 export const OPERATION_STORES: StoreRegistry = {
   stores: [RECORDS_STORE, FINANCE_MIRROR_STORE],
   byCollection: { invoices: FINANCE_MIRROR_STORE, contracts: FINANCE_MIRROR_STORE },
+}
+
+/**
+ * Taksit ve sözleşmenin kaynağı tablolardır (ADR 0010 adım 4; ON-046f): yükleme tablolardan, yazma
+ * önce tablolara, sonra ayna olarak `records`'a (`FINANCE_TABLE_STORE`). Okuma geçişi kademelidir:
+ * finans servisleri (tahsilat, ayrılış, sözleşme, yenileme, kesin kayıt, finans okumaları) bunu
+ * isteğin `stores`'u olarak seçer; öteki yollar varsayılanda kalır ve 046g'de geçer. İki kayıt da
+ * iki depoya yazdığı için birlikte kullanılabilir.
+ */
+export const FINANCE_TABLE_STORES: StoreRegistry = {
+  stores: [RECORDS_STORE, FINANCE_TABLE_STORE],
+  byCollection: { invoices: FINANCE_TABLE_STORE, contracts: FINANCE_TABLE_STORE },
 }
 
 /** İşlemin State'i değiştiren saf adımı (core işlemi). */
@@ -146,6 +159,11 @@ interface OperationBase<R> {
    * mesajları) işlemin yalnız gereken kayıtları kurum kilidi altında yüklemesi içindir.
    */
   loadScope?: Partial<Record<CollectionName, LoadScope>>
+  /**
+   * İşlemin depo kaydı; verilmezse `OPERATION_STORES`. Taksit ve sözleşmeyi tablodan okuyan finans
+   * işlemi `FINANCE_TABLE_STORES` verir (ADR 0010 adım 4; ON-046f).
+   */
+  stores?: StoreRegistry
   /** İstemcinin okuduğu sürümler (gövdedeki `version`); tutmazsa 409, kayıt yoksa 404. */
   expectedVersions?: readonly ExpectedVersion[]
   /**
@@ -490,11 +508,13 @@ async function applyOperation<R>(
   // kayıt (öğrenci/video) düzeyinde kilit ya da kilitsiz yol; ölçüm sonrası karar.
   // Yüklemeden önce: aynı kurumun eşzamanlı işlemi bu görüntüyü bayatlatamaz.
   await lockInstitution(tx, ctx.institutionId)
+  const registry = request.stores ?? OPERATION_STORES
   const { rows, partial } = await loadOperationRecords(
     tx,
     ctx.institutionId,
     collections,
     request.loadScope,
+    registry,
   )
   const before = new Map<CollectionName, Map<string, StoredRecord>>(
     collections.map((collection) => [collection, new Map()]),
@@ -544,7 +564,7 @@ async function applyOperation<R>(
   }
 
   const { writes, fields } = difference(collections, before, target, partial)
-  const changes = await writeOperationRecords(tx, ctx.institutionId, writes, ctx.now)
+  const changes = await writeOperationRecords(tx, ctx.institutionId, writes, ctx.now, registry)
   const first = changes[0]
   // `firstWriteOnly`: kayıt bu işlemde açılmadıysa (yalnız güncelleme) denetim satırı yazılmaz.
   const audited =
@@ -682,6 +702,8 @@ export interface ReadOnlyOperationRequest<R> {
   action: string
   collections: readonly CollectionName[]
   loadScope?: OperationBase<R>['loadScope']
+  /** Depo kaydı; verilmezse `OPERATION_STORES` (`OperationBase.stores`). */
+  stores?: StoreRegistry
   load: (tx: Database) => Promise<LoadedOperation<R>>
 }
 
@@ -705,6 +727,7 @@ export async function runReadOnly<R>(
       ctx.institutionId,
       collections,
       request.loadScope,
+      request.stores,
     )
     const before = new Map<CollectionName, Map<string, StoredRecord>>(
       collections.map((collection) => [collection, new Map()]),

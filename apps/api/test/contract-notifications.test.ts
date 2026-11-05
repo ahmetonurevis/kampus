@@ -21,6 +21,7 @@ import {
   type InstitutionOverrides,
 } from './support/app.ts'
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
+import { contractTerms, insertTestTariff } from './support/finance-terms.ts'
 
 /**
  * Sözleşme onay isteği ve onay tamamlandı bildirimleri (ON-044; IST-092; docs/domain/finans.md
@@ -84,6 +85,7 @@ describe('sözleşme onayı bildirimleri', () => {
   ) {
     const created = await createInstitution(app, overrides)
     assert.ok(STUDENT)
+    await insertTestTariff(db, created.id)
     await insertMissingRecords(
       db,
       created.id,
@@ -110,11 +112,7 @@ describe('sözleşme onayı bildirimleri', () => {
             title: 'Özel okul eğitim sözleşmesi',
             invoiceIds: ['test-inv-1', 'test-inv-2'],
             academicYear: 2026,
-            grossCents: NET,
-            netCents: NET,
-            discounts: [],
-            extras: [],
-            payer: 'guardian',
+            ...contractTerms({ grossCents: NET, netCents: NET }),
             ...contractExtra,
           },
         },

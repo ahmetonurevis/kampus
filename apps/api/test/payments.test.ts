@@ -22,6 +22,12 @@ import {
   type InstitutionOverrides,
 } from './support/app.ts'
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
+import {
+  contractTerms,
+  insertTestScholarshipProgram,
+  insertTestTariff,
+  TEST_SCHOLARSHIP_PROGRAM_ID,
+} from './support/finance-terms.ts'
 
 /**
  * Tahsilat uçları (ADR 0006; docs/domain/finans.md DOM-FIN-030…033, DOM-FIN-052). Her test kendi
@@ -422,6 +428,9 @@ describe('tahsilat uçları', () => {
     assert.equal(stored?.method, 'promissory_note')
     assert.equal(stored?.bankAccountId, null)
 
+    // Burs tarifeli sözleşmeye bağlıdır (core biçimi; ON-046f): tarife ve burs programı kurumdadır.
+    await insertTestTariff(db, a.id)
+    await insertTestScholarshipProgram(db, a.id)
     await insertMissingRecords(
       db,
       a.id,
@@ -432,10 +441,11 @@ describe('tahsilat uçları', () => {
           data: {
             id: 'test-contract-burslu',
             studentId: STUDENT?.id,
-            date: '2026-09-01',
+            date: '2026-09-01T09:00:00.000Z',
             amount: 60_000,
             title: 'Özel okul eğitim sözleşmesi',
-            scholarship: { programId: 'test-program', amountCents: 10_000 },
+            ...contractTerms({ grossCents: 70_000, netCents: 60_000 }),
+            scholarship: { programId: TEST_SCHOLARSHIP_PROGRAM_ID, amountCents: 10_000 },
           },
         },
       ],

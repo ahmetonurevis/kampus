@@ -69,7 +69,6 @@ const SAMPLE: Partial<Record<CollectionName, readonly Record<string, unknown>[]>
       amount: BASE_CENTS,
       title: 'Özel okul eğitim sözleşmesi',
       academicYear: 2026,
-      grossCents: BASE_CENTS,
     },
   ],
 }

@@ -32,6 +32,7 @@ import {
   runReadOnly,
   type CommandResponse,
   type IdempotencyRequest,
+  FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 
 /**
@@ -123,6 +124,7 @@ export function quoteWithdrawalFor(ctx: ServiceContext, studentId: string, input
   return runReadOnly(ctx, {
     action: 'student.withdraw.quote',
     collections: SPEC.collections,
+    stores: FINANCE_TABLE_STORES,
     load: async (tx) => {
       const { institutionType, scalars } = await environment(tx, ctx, SPEC)
       const payments = await paymentContext(tx, ctx, studentId)
@@ -149,6 +151,7 @@ export function withdrawStudentCommand(
     {
       action: 'student.withdraw.records',
       collections: SPEC.collections,
+      stores: FINANCE_TABLE_STORES,
       entity: { type: 'student_withdrawals', id },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
@@ -216,6 +219,7 @@ export async function payRefundCommand(
     {
       action: 'student.withdraw.refund',
       collections: SPEC.collections,
+      stores: FINANCE_TABLE_STORES,
       entity: { type: 'student_withdrawals', id: withdrawalId },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)

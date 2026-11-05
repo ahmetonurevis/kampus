@@ -10,6 +10,7 @@ import type { App } from '../src/app.ts'
 import type { Role } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
+import { mirrorFinanceIds } from '../src/db/finance-mirror-store.ts'
 import { allocatedByInvoice } from '../src/db/payments.ts'
 import { findRecord, insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
@@ -25,6 +26,7 @@ import {
   TEST_ORIGIN,
 } from './support/app.ts'
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
+import { contractTerms, insertTestTariff } from './support/finance-terms.ts'
 
 /**
  * Sözleşme onayı ve ek protokol uçları (IST-092; DOM-FIN-010, -012, -051). Her test kendi kurumunu
@@ -72,11 +74,7 @@ const SAMPLE: Partial<Record<CollectionName, readonly Record<string, unknown>[]>
       title: 'Özel okul eğitim sözleşmesi',
       invoiceIds: ['test-inv-1', 'test-inv-2'],
       academicYear: 2026,
-      grossCents: 10_000_000,
-      netCents: 10_000_000,
-      discounts: [],
-      extras: [],
-      payer: 'guardian',
+      ...contractTerms({ grossCents: 10_000_000, netCents: 10_000_000 }),
     },
   ],
 }
@@ -99,6 +97,7 @@ describe('sözleşme onayı ve ek protokol uçları', () => {
 
   async function tenant(overrides: Parameters<typeof createInstitution>[1] = {}) {
     const institution = await createInstitution(app, overrides)
+    await insertTestTariff(db, institution.id)
     await insertMissingRecords(
       db,
       institution.id,
@@ -495,34 +494,8 @@ describe('sözleşme onayı ve ek protokol uçları', () => {
   })
 
   test('DOM-FIN-020: ek protokolde indirim sözleşmenin tarifesinden hesaplanır', async () => {
+    // Fikstür sözleşmesi kurumun tarifesine bağlıdır (`insertTestTariff`: %10 erken kayıt).
     const t = await tenant()
-    const draft = await post(
-      '/api/v1/fee-tariffs',
-      t.admin,
-      {
-        academicYear: 2026,
-        items: [
-          {
-            kind: 'tuition',
-            level: null,
-            amountCents: 10_000_000,
-            unit: 'year',
-            vatBasisPoints: 1000,
-            vatEffectiveDate: '2026-01-01',
-            announcedAmountCents: 10_000_000,
-          },
-        ],
-        discounts: [{ kind: 'early_registration', percentBasisPoints: 1_000, amountCents: null }],
-      },
-      null,
-    )
-    assert.equal(draft.statusCode, 201, draft.body)
-    const tariffId: string = draft.json().data.id
-    const row = await contractOf(t.id)
-    await db
-      .update(records)
-      .set({ data: { ...row.data, tariffId, tariffVersion: 1 } })
-      .where(and(eq(records.institutionId, t.id), eq(records.id, CONTRACT_ID)))
     const previous = await approve(t)
     const created = await post(
       url(CONTRACT_ID, 'amendments'),
@@ -557,11 +530,16 @@ describe('sözleşme onayı ve ek protokol uçları', () => {
       (error: { cause?: { code?: string }; code?: string }) =>
         (error.cause?.code ?? error.code) === '55000',
     )
-    // Ayrılış ve sınıf arşivi yalnız bu iki bağı yazar (`withdrawStudent`, `archiveRecord`).
+    // Ayrılış ve sınıf arşivi yalnız bu iki bağı yazar (`withdrawStudent`, `archiveRecord`). Doğrudan
+    // yazılan kaynak tablolara da eşitlenir (ON-046f): tablonun değişmezlik tetikleyicisi de geçirir.
     await db
       .update(records)
-      .set({ data: { ...row.data, invoiceIds: ['test-inv-1'], classId: 'c2' } })
+      .set({
+        data: { ...row.data, invoiceIds: ['test-inv-1'], classId: 'c2' },
+        version: row.version + 1,
+      })
       .where(target)
+    assert.equal(await mirrorFinanceIds(db, t.id, { contracts: [CONTRACT_ID], invoices: [] }), 0)
     const stored = await db.execute(
       sql`select data->>'classId' as class_id from ${records} where ${target}`,
     )

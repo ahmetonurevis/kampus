@@ -23,6 +23,12 @@ import {
   type InstitutionOverrides,
 } from './support/app.ts'
 import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
+import {
+  contractTerms,
+  insertTestScholarshipProgram,
+  insertTestTariff,
+  TEST_SCHOLARSHIP_PROGRAM_ID,
+} from './support/finance-terms.ts'
 
 /**
  * Ayrılış ve iade uçları (ADR 0006 karar 10; DOM-FIN-040, -041; DOM-KAY-024; IST-110). Her test
@@ -79,6 +85,8 @@ describe('ayrılış ve iade uçları', () => {
   ) {
     const created = await createInstitution(app, overrides)
     assert.ok(STUDENT)
+    await insertTestTariff(db, created.id)
+    await insertTestScholarshipProgram(db, created.id)
     const rows = [
       {
         collection: 'classes' as const,
@@ -99,10 +107,9 @@ describe('ayrılış ve iade uçları', () => {
           studentId: STUDENT.id,
           date: '2026-01-01T09:00:00.000Z',
           amount: NET,
-          netCents: NET,
           title: 'Sözleşme',
           invoiceIds: ['test-inv-1', 'test-inv-2'],
-          payer: 'guardian',
+          ...contractTerms({ grossCents: NET, netCents: NET }),
           ...contractExtra,
         },
       },
@@ -237,7 +244,7 @@ describe('ayrılış ve iade uçları', () => {
 
     const a = await institution(
       {},
-      { scholarship: { programId: 'test-program', amountCents: 100_000 } },
+      { scholarship: { programId: TEST_SCHOLARSHIP_PROGRAM_ID, amountCents: 100_000 } },
     )
     const read = await quote(a.cookie)
     assert.equal(read.statusCode, 200, read.body)

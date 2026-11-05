@@ -5,6 +5,7 @@ import type { Download, Locator, Page, Request } from '@playwright/test'
 
 import type { ApiClient } from './support/api.ts'
 import { e2e } from './support/env.ts'
+import { seedScholarshipContract } from './support/finance-terms.ts'
 import { expect, test } from './support/fixtures.ts'
 import {
   expectContentInsideCards,
@@ -1365,22 +1366,14 @@ test.describe('Finans: sunucu retleri', () => {
     api,
     tenant,
   }) => {
-    const school = await tenant({
-      roles: [],
-      students: ['s20'],
-      records: [
-        {
-          collection: 'contracts',
-          data: {
-            id: 'e2e-burs-sozlesme',
-            studentId: 's20',
-            date: new Date().toISOString(),
-            amount: 1_000_000,
-            title: 'Özel okul eğitim sözleşmesi',
-            scholarship: { programId: 'e2e-burs', amountCents: 500_000 },
-          },
-        },
-      ],
+    const school = await tenant({ roles: [], students: ['s20'] })
+    // Burs tarifeli sözleşmeye bağlıdır; sözleşme taksit tablolarına core biçiminde girer (ON-046f).
+    await seedScholarshipContract({
+      institutionId: school.institutionId,
+      studentId: 's20',
+      contractId: 'e2e-burs-sozlesme',
+      amountCents: 1_000_000,
+      scholarshipCents: 500_000,
     })
     await loginAs(school.user('yonetici'))
     const client = await api(school.user('yonetici'))

@@ -31,6 +31,7 @@ import {
   hasStudentScholarshipAward,
   insertScholarshipAward,
 } from '../db/finance-scholarships.ts'
+import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import { loadRecordsByIds } from '../db/records.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
@@ -320,9 +321,13 @@ export async function getRenewalFor(ctx: ServiceContext, id: string) {
   const [contract] =
     record.contractId === undefined
       ? []
-      : await loadRecordsByIds(ctx.db, ctx.institutionId, 'contracts', [record.contractId])
+      : await loadFinanceRecords(ctx.db, ctx.institutionId, 'contracts', {
+          ids: [record.contractId],
+        })
   const invoiceIds = z.array(z.string()).catch([]).parse(contract?.data.invoiceIds)
-  const invoices = await loadRecordsByIds(ctx.db, ctx.institutionId, 'invoices', invoiceIds)
+  const invoices = await loadFinanceRecords(ctx.db, ctx.institutionId, 'invoices', {
+    ids: invoiceIds,
+  })
   return {
     ...renewalView(item, record, names),
     invoices: invoices

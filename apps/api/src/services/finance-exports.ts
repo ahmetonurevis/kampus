@@ -41,7 +41,7 @@ import {
   paymentsOfStudent,
   paymentsTouchingPeriod,
 } from '../db/payments.ts'
-import { loadRecords } from '../db/records.ts'
+import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
 import {
   loadFinanceExportProfile,
   saveFinanceExportProfile,
@@ -179,7 +179,7 @@ export async function studentBalanceFor(
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, 'invoices')
   if (!financeStudentIds(scope).has(studentId)) throw new NotFoundError()
-  const rows = await loadRecords(ctx.db, ctx.institutionId, ['invoices'], {
+  const rows = await loadFinanceRecords(ctx.db, ctx.institutionId, 'invoices', {
     match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
   })
   const invoices = rows.map((row) => {
@@ -210,7 +210,7 @@ export async function studentStatementFor(
   const scope = await readScope(ctx)
   assertReadable(ctx, scope, 'invoices')
   if (!financeStudentIds(scope).has(studentId)) throw new NotFoundError()
-  const rows = await loadRecords(ctx.db, ctx.institutionId, ['invoices'], {
+  const rows = await loadFinanceRecords(ctx.db, ctx.institutionId, 'invoices', {
     match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
   })
   const invoices = rows.map((row) => {

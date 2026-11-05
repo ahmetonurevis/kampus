@@ -32,6 +32,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /**
  * Aday/CRM yazma uçları (docs/domain/kayit-ve-crm.md DOM-KAY-001…009, DOM-KAY-030…034; deneme
@@ -118,6 +119,8 @@ describe('aday uçları', () => {
   let app: App
   let serial = 0
   const key = () => ({ 'idempotency-key': `test-pr-${String(++serial).padStart(5, '0')}` })
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     assert.ok(LESSON, 'örnek veride 7-A’nın gelecek dersi yok')

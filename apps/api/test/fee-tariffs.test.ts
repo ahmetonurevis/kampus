@@ -17,6 +17,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /** Ücret tarifesi uçları (ADR 0006 karar 8; DOM-FIN-002, -004, -006; IST-104). */
 
@@ -36,6 +37,8 @@ describe('ücret tarifesi uçları', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())

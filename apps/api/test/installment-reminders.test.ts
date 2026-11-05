@@ -22,6 +22,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 import { tempStorage } from './support/files-sample.ts'
 
 /**
@@ -60,6 +61,8 @@ describe('vade ve gecikme taraması', () => {
   let serial = 0
   const logs: string[] = []
   const key = () => `test-remind-${String(++serial).padStart(5, '0')}`
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     assert.ok(STUDENT)

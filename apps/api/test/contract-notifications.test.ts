@@ -20,6 +20,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /**
  * Sözleşme onay isteği ve onay tamamlandı bildirimleri (ON-044; IST-092; docs/domain/finans.md
@@ -64,6 +65,8 @@ describe('sözleşme onayı bildirimleri', () => {
   let serial = 0
   const logs: string[] = []
   const key = () => `test-cn-${String(++serial).padStart(5, '0')}`
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     assert.ok(STUDENT)

@@ -17,6 +17,7 @@ import {
   signInAs,
   TEST_ORIGIN,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /** Burs programı uçları (DOM-FIN-025). Atama senaryoları `prospects.test.ts`'tedir. */
 
@@ -35,6 +36,8 @@ describe('burs programı uçları', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())

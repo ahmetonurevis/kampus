@@ -24,6 +24,7 @@ import {
   signInAs,
   TEST_ORIGIN,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /**
  * Sözleşme onayı ve ek protokol uçları (IST-092; DOM-FIN-010, -012, -051). Her test kendi kurumunu
@@ -84,6 +85,8 @@ describe('sözleşme onayı ve ek protokol uçları', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())

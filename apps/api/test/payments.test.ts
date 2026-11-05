@@ -21,6 +21,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /**
  * Tahsilat uçları (ADR 0006; docs/domain/finans.md DOM-FIN-030…033, DOM-FIN-052). Her test kendi
@@ -48,6 +49,8 @@ describe('tahsilat uçları', () => {
   let app: App
   let serial = 0
   const key = () => ({ 'idempotency-key': `test-pay-${String(++serial).padStart(5, '0')}` })
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     assert.ok(STUDENT)

@@ -8,6 +8,7 @@ import type { Database } from './client.ts'
 import { records } from './schema/records.ts'
 import { studentIdentities } from './schema/student-identities.ts'
 import { studentWithdrawals } from './schema/withdrawals.ts'
+import { foldSearch, foldSql } from './text-search.ts'
 
 /** Ayrılış ve iade deposu (ADR 0006 karar 10). IBAN ve döküm loglanmaz. */
 
@@ -116,13 +117,26 @@ function statusFilter(status: RefundStatus | undefined): SQL | undefined {
 export async function listWithdrawals(
   db: Database,
   institutionId: string,
-  query: { refundStatus?: RefundStatus | undefined; page: number; pageSize: number },
+  query: {
+    refundStatus?: RefundStatus | undefined
+    /** Öğrenci adında arama (Türkçe harf ve aksan duyarsız). */
+    q?: string | undefined
+    page: number
+    pageSize: number
+  },
 ): Promise<{ items: StoredWithdrawal[]; total: number }> {
   const where = and(
     eq(studentWithdrawals.institutionId, institutionId),
     statusFilter(query.refundStatus),
+    query.q === undefined
+      ? undefined
+      : sql`strpos(${foldSql(sql`${records.data} ->> 'name'`)}, ${foldSearch(query.q)}) > 0`,
   )
-  const [totalRow] = await db.select({ total: count() }).from(studentWithdrawals).where(where)
+  const [totalRow] = await db
+    .select({ total: count() })
+    .from(studentWithdrawals)
+    .leftJoin(records, STUDENT_JOIN)
+    .where(where)
   const items = await db
     .select(COLUMNS)
     .from(studentWithdrawals)

@@ -9,16 +9,29 @@ export const paymentParamsSchema = z.object({
   paymentId: z.uuid('Tahsilat kimliği geçersiz.').describe('Tahsilat kimliği'),
 })
 
-export const paymentListQuerySchema = z.strictObject({
-  ...pageQuerySchema.shape,
-  studentId: z.string().min(1).max(200).optional().describe('Yalnız bu öğrencinin tahsilatları'),
-  q: z.string().trim().min(2).max(100).optional().describe('Öğrenci adı veya işlem referansı'),
-  mebbis: z
-    .enum(['pending'])
-    .optional()
-    .describe("Yalnız MEBBİS'e işlenmemiş geçerli tahsilatlar (personel)"),
-  method: z.enum(PAYMENT_METHODS).optional().describe('Yalnız bu ödeme yöntemiyle alınanlar'),
-})
+export const paymentListQuerySchema = z
+  .strictObject({
+    ...pageQuerySchema.shape,
+    studentId: z.string().min(1).max(200).optional().describe('Yalnız bu öğrencinin tahsilatları'),
+    q: z.string().trim().min(2).max(100).optional().describe('Öğrenci adı veya işlem referansı'),
+    mebbis: z
+      .enum(['pending'])
+      .optional()
+      .describe("Yalnız MEBBİS'e işlenmemiş geçerli tahsilatlar (personel)"),
+    method: z.enum(PAYMENT_METHODS).optional().describe('Yalnız bu ödeme yöntemiyle alınanlar'),
+    dateFrom: z.iso
+      .date()
+      .optional()
+      .describe('Ödeme günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil)'),
+    dateTo: z.iso
+      .date()
+      .optional()
+      .describe('Ödeme günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil)'),
+  })
+  .refine((query) => !query.dateFrom || !query.dateTo || query.dateFrom <= query.dateTo, {
+    path: ['dateTo'],
+    message: 'Bitiş günü başlangıç gününden önce olamaz.',
+  })
 
 const paymentSchema = z.object({
   id: z.string(),

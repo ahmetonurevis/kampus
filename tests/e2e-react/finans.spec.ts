@@ -544,12 +544,35 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: /taslağını düzenle/ })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /yeni sürüm aç/ })).toBeVisible()
 
+    // ON-055: yayımlanmış tarife sonraki eğitim yılının taslağını başlatır; ilan tutarı boş gelir.
+    const year = Number(
+      await table
+        .locator('tbody tr')
+        .first()
+        .locator('td')
+        .first()
+        .innerText()
+        .then((text) => text.match(/\d{4}/)?.[0] ?? '0'),
+    )
+    await page.getByRole('button', { name: /sonraki eğitim yılına taşı/ }).click()
+    const nextYear = page.getByRole('dialog', { name: 'Sonraki yıl tarifesi' })
+    await expect(nextYear.getByLabel('MEBBİS onaylı tutar (₺)')).toHaveValue('')
+    await expect(nextYear.getByLabel('Tutar (₺)', { exact: true })).toHaveValue('300000,00')
+    await nextYear.getByRole('button', { name: 'Taslağı kaydet' }).click()
+    await expect(page.getByText('Tarife kaydedildi.')).toBeVisible()
+    await expect(table).toContainText(String(year + 1))
+    await expect(table).toContainText('Taslak')
+
     await loginAs(school.user('onburo'))
     await page.goto('/onburo/tahsilat-takip?gorunum=tarife')
     await expect(page.getByRole('table', { name: 'Ücret tarifeleri' })).toContainText('Yayında')
     await expect(page.getByRole('button', { name: 'Yeni tarife' })).toHaveCount(0)
     await expect(page.getByRole('button', { name: /yeni sürüm aç/ })).toHaveCount(0)
-    await page.getByRole('button', { name: /tarifesini görüntüle/ }).click()
+    await expect(page.getByRole('button', { name: /sonraki eğitim yılına taşı/ })).toHaveCount(0)
+    await page
+      .getByRole('button', { name: /tarifesini görüntüle/ })
+      .first()
+      .click()
     await expect(page.getByRole('dialog')).toContainText('Öğrenim ücreti')
   })
 

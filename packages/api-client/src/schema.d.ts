@@ -3001,7 +3001,7 @@ export interface paths {
         };
         /**
          * Öğrencinin kimlik özeti
-         * @description Kimlik numarası yalnız maskeli döner (`*******1234`). Kaydı olmayan veya başka kurumun öğrencisi 404. Modül `crm`. Roller: `yonetici`, `onburo`.
+         * @description Kimlik numarası yalnız maskeli döner (`*******1234`). Her başarılı okuma denetim kaydına `student_identity.read` olarak yazılır (yalnız alan adları; DOM-YTK-052). Kaydı olmayan veya başka kurumun öğrencisi 404. Modül `crm`. Roller: `yonetici`, `onburo`.
          */
         get: operations["getStudentIdentity"];
         put?: never;

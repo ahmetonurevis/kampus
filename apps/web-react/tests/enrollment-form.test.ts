@@ -16,6 +16,9 @@ import {
   guardianModeFor,
   paymentPlanHref,
   prospectChangeValues,
+  interestGrade,
+  seatsTaken,
+  suggestedClassOrder,
 } from '../src/pages/crm/enrollment-form.ts'
 
 const NOW = '2026-10-06T09:00:00.000Z'
@@ -229,4 +232,43 @@ test('ON-126, DOM-KAY-012: kurs adayının yaş grubu doğum tarihiyle uyuşmazs
   assert.equal(birthDateAgeGroupMismatch('language_school', undefined, ADULT, NOW), null)
   assert.equal(birthDateAgeGroupMismatch('language_school', true, '', NOW), null)
   assert.equal(birthDateAgeGroupMismatch('language_school', true, '2001-02-30', NOW), null)
+})
+
+test('ON-120, DOM-KAY-014: ilgi metninden hedef düzey okunur; düzeysiz metin null', () => {
+  assert.equal(interestGrade('7. Sınıf · Ortaokul'), 7)
+  assert.equal(interestGrade('9. sınıf Anadolu Lisesi'), 9)
+  assert.equal(interestGrade('12 Sınıf'), 12)
+  assert.equal(interestGrade('B1 İngilizce'), null)
+  assert.equal(interestGrade('15. sınıf'), null)
+  assert.equal(interestGrade(undefined), null)
+})
+
+test('ON-120: hedef düzeydeki sınıflar önce gelir, kalanlar özgün sırasıyla; düzey yoksa liste aynı', () => {
+  const rows = [
+    { id: 'a', record: { grade: 6 } },
+    { id: 'b', record: { grade: 7 } },
+    { id: 'c', record: { grade: 8 } },
+    { id: 'd', record: { grade: 7 } },
+  ]
+  assert.deepEqual(
+    suggestedClassOrder(rows, 7).map((row) => row.id),
+    ['b', 'd', 'a', 'c'],
+  )
+  assert.deepEqual(
+    suggestedClassOrder(rows, null).map((row) => row.id),
+    ['a', 'b', 'c', 'd'],
+  )
+})
+
+test('ON-116, ON-120: dolu yer aktif öğrenciler ve sınıfa planlanmış yenilemelerdir', () => {
+  const renewals = [
+    { targetClassId: 'c8', fromClassId: 'c7' },
+    { targetClassId: 'c8', fromClassId: 'c7b' },
+    { targetClassId: 'c9', fromClassId: 'c8' },
+    // Sınıf tekrarı: öğrenci zaten aktif sayımda.
+    { targetClassId: 'c8', fromClassId: 'c8' },
+  ]
+  assert.equal(seatsTaken('c8', 20, renewals), 22)
+  assert.equal(seatsTaken('c9', 0, renewals), 1)
+  assert.equal(seatsTaken('c1', 5, []), 5)
 })

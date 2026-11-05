@@ -12,12 +12,30 @@ import { runWorkflow } from '@kampus/school-core/lib/school-workflows.ts'
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
-import { findRecord, insertMissingRecords, loadRecords } from '../src/db/records.ts'
+import {
+  findRecord,
+  insertMissingRecords,
+  loadRecords,
+  loadRecordsByIds,
+  RECORDS_STORE,
+  writeRecords,
+  type CollectionStore,
+  type RecordWrite,
+} from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { records } from '../src/db/schema/records.ts'
-import { AppError, mapDatabaseError, MESSAGES } from '../src/errors.ts'
+import { AppError, ConflictError, mapDatabaseError, MESSAGES } from '../src/errors.ts'
 import type { ServiceContext } from '../src/plugins/authenticate.ts'
-import { mapOperationError, runOperation } from '../src/services/operation-runner.ts'
+import {
+  loadOperationRecords,
+  mapOperationError,
+  OPERATION_STORES,
+  runOperation,
+  writeOperationRecords,
+  type LoadScope,
+  type StoreRegistry,
+} from '../src/services/operation-runner.ts'
+import { GRADUATION_RENEWALS } from '../src/services/roster-scope.ts'
 import { buildTestApp, createInstitution, createTestDatabase, FIXED_NOW } from './support/app.ts'
 
 const LATER = new Date('2026-10-06T10:00:00.000Z')
@@ -235,6 +253,8 @@ describe('işlem çalıştırıcı', () => {
     'parents',
     'invoices',
     'contracts',
+    // Kontenjan planlanmış yenilemeleri de sayar (DOM-KAY-010, ON-116).
+    'renewals',
   ] as const satisfies readonly CollectionName[]
   const prospect = seed.prospects.find((item) => !item.studentId && item.stage !== 'Kayıt oldu')
   const target = seed.classes.find(
@@ -855,6 +875,269 @@ describe('işlem çalıştırıcı', () => {
           run: () => undefined,
         }),
         hasStatus(500, 'internal_error'),
+      )
+      assert.deepEqual(await snapshot(ctx.institutionId), before)
+    })
+  })
+
+  describe('depo kaydı (ADR 0010 karar 7; ON-046b)', () => {
+    /** Kurumdan bağımsız karşılaştırma: kurum kimliği atılır, gerisi aynen. */
+    async function rowsOf(institutionId: string) {
+      const [rows] = await snapshot(institutionId)
+      return rows.map((row) => ({ ...row, institutionId: null }))
+    }
+
+    /** Mezuniyet süzgecine (`GRADUATION_RENEWALS`) uyan ve uymayan yenileme kayıtları. */
+    const renewalItems = [
+      { id: 'test-ren-graduate', studentId: 's1', mode: 'graduate', status: 'Mezun' },
+      { id: 'test-ren-promote', studentId: 's2', mode: 'promote', status: 'Planlandı' },
+      { id: 'test-ren-pending', studentId: 's3', mode: 'graduate', status: 'Planlandı' },
+    ].map((data) => ({ collection: 'renewals' as const, id: data.id, data }))
+
+    async function scenario() {
+      const ctx = await institution(['invoices', 'contracts', 'students'])
+      await insertMissingRecords(db, ctx.institutionId, renewalItems, FIXED_NOW)
+      return ctx
+    }
+
+    /** Depoyu sarar, çağrıları sırasıyla kaydeder. */
+    function spy(name: string, calls: string[], inner: CollectionStore = RECORDS_STORE) {
+      const store: CollectionStore = {
+        name,
+        loadAll: (tx, institutionId, collections) => {
+          calls.push(`${name}.loadAll ${collections.join(',')}`)
+          return inner.loadAll(tx, institutionId, collections)
+        },
+        loadScoped: (tx, institutionId, collection, scope) => {
+          calls.push(`${name}.loadScoped ${collection}`)
+          return inner.loadScoped(tx, institutionId, collection, scope)
+        },
+        write: (tx, institutionId, writes, now) => {
+          calls.push(`${name}.write ${[...new Set(writes.map((w) => w.collection))].join(',')}`)
+          return inner.write(tx, institutionId, writes, now)
+        },
+      }
+      return store
+    }
+
+    test('records varsayılanı: kayıtta yalnız records deposu var, her koleksiyon ona düşer', () => {
+      assert.deepEqual(OPERATION_STORES, { stores: [RECORDS_STORE], byCollection: {} })
+      assert.equal(RECORDS_STORE.write, writeRecords)
+    })
+
+    test('records varsayılanı: loadScope biçimleri doğrudan depo çağrılarıyla aynı kayıtları yükler', async () => {
+      const ctx = await scenario()
+      const { institutionId } = ctx
+      const [first, second] = seed.invoices
+      assert.ok(first && second)
+      // Servislerin bugün verdiği kapsam biçimleri: tam yükleme, kimlik listesi, boş kimlik listesi
+      // (`APPEND_ONLY`, kesin kayıt), `equals` süzgeci (`GRADUATION_RENEWALS`), `in` süzgeci.
+      const cases: {
+        scope: Partial<Record<CollectionName, LoadScope>>
+        expected: () => Promise<unknown>
+      }[] = [
+        {
+          scope: {},
+          expected: () => loadRecords(db, institutionId, ['invoices', 'contracts', 'renewals']),
+        },
+        {
+          scope: { invoices: { ids: [second.id, first.id] } },
+          expected: async () => [
+            ...(await loadRecords(db, institutionId, ['contracts', 'renewals'])),
+            ...(await loadRecordsByIds(db, institutionId, 'invoices', [second.id, first.id])),
+          ],
+        },
+        {
+          scope: { invoices: { ids: [] }, contracts: { ids: [] } },
+          expected: () => loadRecords(db, institutionId, ['renewals']),
+        },
+        {
+          scope: { renewals: GRADUATION_RENEWALS },
+          expected: async () => [
+            ...(await loadRecords(db, institutionId, ['invoices', 'contracts'])),
+            ...(await loadRecords(db, institutionId, ['renewals'], {
+              match: GRADUATION_RENEWALS.match,
+            })),
+          ],
+        },
+        {
+          scope: {
+            invoices: { match: [{ field: 'studentId', values: [unpaid.studentId] }] },
+            renewals: GRADUATION_RENEWALS,
+          },
+          expected: async () => [
+            ...(await loadRecords(db, institutionId, ['contracts'])),
+            ...(await loadRecords(db, institutionId, ['invoices'], {
+              match: [{ field: 'studentId', values: [unpaid.studentId] }],
+            })),
+            ...(await loadRecords(db, institutionId, ['renewals'], {
+              match: GRADUATION_RENEWALS.match,
+            })),
+          ],
+        },
+      ]
+      for (const { scope, expected } of cases) {
+        const loaded = await db.transaction((tx) =>
+          loadOperationRecords(tx, institutionId, ['invoices', 'contracts', 'renewals'], scope),
+        )
+        assert.deepEqual(loaded.rows, await expected(), JSON.stringify(scope))
+        assert.deepEqual([...loaded.partial].sort(), Object.keys(scope).sort())
+      }
+      const graduation = await db.transaction((tx) =>
+        loadOperationRecords(tx, institutionId, ['renewals'], { renewals: GRADUATION_RENEWALS }),
+      )
+      assert.deepEqual(
+        graduation.rows.map((row) => row.id),
+        ['test-ren-graduate'],
+      )
+    })
+
+    test('records varsayılanı: yazma writeRecords ile aynı sürümleri, sırayı ve satırları üretir', async () => {
+      const [viaRunner, direct] = [await scenario(), await scenario()]
+      const loaded = await loadRecords(db, viaRunner.institutionId, ['invoices', 'renewals'])
+      const invoice = loaded.find((row) => row.id === unpaid.id)
+      const archived = loaded.find((row) => row.collection === 'invoices' && row.id !== unpaid.id)
+      const renewal = loaded.find((row) => row.id === 'test-ren-promote')
+      assert.ok(invoice && archived && renewal)
+      const writes: RecordWrite[] = [
+        {
+          kind: 'insert',
+          collection: 'renewals',
+          id: 'test-ren-new',
+          data: { id: 'test-ren-new' },
+        },
+        {
+          kind: 'update',
+          collection: 'invoices',
+          id: invoice.id,
+          data: { ...invoice.data, paidAt: LATER.toISOString(), method: 'Nakit' },
+          expectedVersion: invoice.version,
+        },
+        { kind: 'archive', collection: 'invoices', id: archived.id, expectedVersion: 1 },
+        {
+          kind: 'move',
+          collection: 'renewals',
+          id: renewal.id,
+          position: renewal.position + 1,
+          expectedVersion: 1,
+        },
+        {
+          kind: 'insert',
+          collection: 'invoices',
+          id: 'test-inv-new',
+          data: { ...invoice.data, id: 'test-inv-new' },
+        },
+      ]
+      const viaStores = await db.transaction((tx) =>
+        writeOperationRecords(tx, viaRunner.institutionId, writes, LATER),
+      )
+      const plain = await writeRecords(db, direct.institutionId, writes, LATER)
+      assert.deepEqual(viaStores, plain)
+      assert.deepEqual(await rowsOf(viaRunner.institutionId), await rowsOf(direct.institutionId))
+    })
+
+    test('kayıtlı depo kendi koleksiyonunu yükler ve yazar; depolar kayıt sırasıyla yazılır', async () => {
+      const ctx = await scenario()
+      const calls: string[] = []
+      const table = spy('table', calls)
+      // Tablo destekli depo records'tan önce: yazılanlar da depo sırasıyla döner.
+      const registry: StoreRegistry = {
+        stores: [table, RECORDS_STORE],
+        byCollection: { invoices: table, contracts: table },
+      }
+      const loaded = await db.transaction((tx) =>
+        loadOperationRecords(
+          tx,
+          ctx.institutionId,
+          ['invoices', 'contracts', 'renewals', 'students'],
+          { contracts: { ids: [] }, renewals: GRADUATION_RENEWALS },
+          registry,
+        ),
+      )
+      assert.deepEqual(calls, ['table.loadAll invoices', 'table.loadScoped contracts'])
+      assert.equal(
+        loaded.rows.filter((row) => row.collection === 'invoices').length,
+        seed.invoices.length,
+      )
+      assert.equal(loaded.rows.filter((row) => row.collection === 'students').length, 240)
+
+      calls.length = 0
+      const writes: RecordWrite[] = [
+        { kind: 'insert', collection: 'renewals', id: 'test-ren-a', data: { id: 'test-ren-a' } },
+        {
+          kind: 'insert',
+          collection: 'invoices',
+          id: 'test-inv-a',
+          data: { ...unpaid, id: 'test-inv-a' },
+        },
+      ]
+      const written = await db.transaction((tx) =>
+        writeOperationRecords(tx, ctx.institutionId, writes, LATER, registry),
+      )
+      assert.deepEqual(calls, ['table.write invoices'])
+      assert.deepEqual(
+        written.map((change) => change.collection),
+        ['invoices', 'renewals'],
+      )
+    })
+
+    test('kayıtsız depo programlama hatasıdır (500); sonraki depo hata verirse önceki yazma geri alınır', async () => {
+      const ctx = await scenario()
+      const before = await snapshot(ctx.institutionId)
+      const orphan = spy('orphan', [])
+      const unregistered: StoreRegistry = {
+        stores: [RECORDS_STORE],
+        byCollection: { invoices: orphan },
+      }
+      await assert.rejects(
+        db.transaction((tx) =>
+          loadOperationRecords(tx, ctx.institutionId, ['invoices'], undefined, unregistered),
+        ),
+        hasStatus(500, 'internal_error'),
+      )
+      await assert.rejects(
+        db.transaction((tx) =>
+          writeOperationRecords(
+            tx,
+            ctx.institutionId,
+            [{ kind: 'archive', collection: 'invoices', id: unpaid.id, expectedVersion: 1 }],
+            LATER,
+            unregistered,
+          ),
+        ),
+        hasStatus(500, 'internal_error'),
+      )
+
+      const failing: CollectionStore = {
+        ...RECORDS_STORE,
+        name: 'failing',
+        write: async () => {
+          throw new ConflictError()
+        },
+      }
+      const registry: StoreRegistry = {
+        stores: [RECORDS_STORE, failing],
+        byCollection: { invoices: failing },
+      }
+      await assert.rejects(
+        db.transaction((tx) =>
+          writeOperationRecords(
+            tx,
+            ctx.institutionId,
+            [
+              {
+                kind: 'archive',
+                collection: 'renewals',
+                id: 'test-ren-promote',
+                expectedVersion: 1,
+              },
+              { kind: 'archive', collection: 'invoices', id: unpaid.id, expectedVersion: 1 },
+            ],
+            LATER,
+            registry,
+          ),
+        ),
+        hasStatus(409, 'version_conflict'),
       )
       assert.deepEqual(await snapshot(ctx.institutionId), before)
     })

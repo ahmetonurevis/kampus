@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-import { createSeed } from '../packages/school-core/src/data/seed.ts'
+import { createSeed, type State } from '../packages/school-core/src/data/seed.ts'
 import {
   allowedGuardianModes,
   assertRenewalWithinTariff,
@@ -533,6 +533,44 @@ test('class_campus_mismatch: kampüs denetimi kontenjandan önce çalışır', (
     () => enroll({ classId: other.id, allowOtherCampus: true }, {}, state),
     isDomainError('class_capacity_full'),
   )
+})
+
+test('DOM-KAY-010, ON-116: kontenjan aynı sınıfa planlanmış yenilemeleri de sayar; uygulanmış yenileme sayılmaz', () => {
+  const fresh = () => {
+    const state = createSeed(new Date(NOW))
+    const cls = state.classes.find((item) => item.id === INPUT.classId)!
+    const active = state.students.filter((s) => s.classId === cls.id && s.isActive)
+    cls.capacity = active.length + 1
+    const outsider = state.students.find((s) => s.classId !== cls.id && s.isActive)!
+    const renewal = (status: string, studentId = outsider.id) =>
+      state.renewals.push({
+        id: `renewal-test-${state.renewals.length}`,
+        studentId,
+        fromClassId: outsider.classId,
+        targetClassId: cls.id,
+        year: 2027,
+        mode: 'renew',
+        amount: 0,
+        status,
+        createdAt: NOW,
+        updatedAt: NOW,
+      } as State['renewals'][number])
+    return { state, renewal, active }
+  }
+  // Son boş yeri planlanmış yenileme tutar.
+  const planned = fresh()
+  planned.renewal('Planlandı')
+  const before = JSON.stringify(planned.state)
+  assert.throws(() => enroll({}, {}, planned.state), isDomainError('class_capacity_full'))
+  assert.equal(JSON.stringify(planned.state), before)
+  // Uygulanmış ya da iptal edilmiş yenileme yer tutmaz.
+  const applied = fresh()
+  applied.renewal('Uygulandı')
+  assert.equal(enroll({}, {}, applied.state).result.student.classId, INPUT.classId)
+  // Sınıfta zaten aktif olan öğrencinin planı ikinci kez sayılmaz.
+  const same = fresh()
+  same.renewal('Planlandı', same.active[0]!.id)
+  assert.equal(enroll({}, {}, same.state).result.student.classId, INPUT.classId)
 })
 
 test('class_campus_mismatch: çevrimdışı demo her kampüsün sınıfını eski davranışla kabul eder', () => {

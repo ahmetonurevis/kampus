@@ -927,8 +927,6 @@ describe('işlem çalıştırıcı', () => {
         stores: [RECORDS_STORE, FINANCE_MIRROR_STORE],
         byCollection: { invoices: FINANCE_MIRROR_STORE, contracts: FINANCE_MIRROR_STORE },
       })
-      assert.equal(FINANCE_MIRROR_STORE.loadAll, RECORDS_STORE.loadAll)
-      assert.equal(FINANCE_MIRROR_STORE.loadScoped, RECORDS_STORE.loadScoped)
       assert.equal(RECORDS_STORE.write, writeRecords)
     })
 

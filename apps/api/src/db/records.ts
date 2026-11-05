@@ -891,7 +891,16 @@ export async function insertMissingRecords(
         .returning({ id: records.id })
       inserted += rows.length
     }
+    // Çift yazma süresince (ADR 0010 adım 3; ON-046e, daralt 046h'de kalkar) taksit ve sözleşme
+    // tablolarda da tutulur: tohumun eklediği ya da sırasını düzelttiği kayıtlar aynı
+    // transaction'da kaynaktan eşitlenir (migration 0063 `kampus_mirror_finance_records`,
+    // idempotent; tabloya sığmayan kayıt atlanır).
+    if (collections.some((collection) => FINANCE_MIRRORED.has(collection)))
+      await tx.execute(sql`select kampus_mirror_finance_records(${institutionId})`)
     return inserted
   })
   return withDatabaseErrors(work)
 }
+
+/** Tablolara da kopyalanan koleksiyonlar (`db/finance-mirror-store.ts`). */
+const FINANCE_MIRRORED: ReadonlySet<CollectionName> = new Set(['invoices', 'contracts'])

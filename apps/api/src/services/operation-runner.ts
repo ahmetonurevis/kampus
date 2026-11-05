@@ -18,6 +18,7 @@ import {
   type ScalarStateKey,
 } from '../db/collections.ts'
 import type { Database } from '../db/client.ts'
+import { FINANCE_MIRROR_STORE } from '../db/finance-mirror-store.ts'
 import {
   findIdempotentResponse,
   saveIdempotentResponse,
@@ -92,8 +93,14 @@ export interface StoreRegistry {
   readonly byCollection: Readonly<Partial<Record<CollectionName, CollectionStore>>>
 }
 
-/** Çalıştırıcının depo kaydı. Bütün koleksiyonlar `records`'tadır. */
-export const OPERATION_STORES: StoreRegistry = { stores: [RECORDS_STORE], byCollection: {} }
+/**
+ * Çalıştırıcının depo kaydı. Taksit ve sözleşme çift yazılır (ADR 0010 adım 3; ON-046e): kaynak
+ * `records`, ayna tablolar (`FINANCE_MIRROR_STORE`). Öteki koleksiyonlar yalnız `records`'tadır.
+ */
+export const OPERATION_STORES: StoreRegistry = {
+  stores: [RECORDS_STORE, FINANCE_MIRROR_STORE],
+  byCollection: { invoices: FINANCE_MIRROR_STORE, contracts: FINANCE_MIRROR_STORE },
+}
 
 /** İşlemin State'i değiştiren saf adımı (core işlemi). */
 export type OperationRun<R> = (state: State, tools: OperationTools) => R
@@ -611,6 +618,8 @@ export async function loadOperationRecords(
     const own = full.filter((collection) => storeOf(registry, collection) === store)
     if (own.length > 0) rows.push(...(await store.loadAll(tx, institutionId, own)))
   }
+  // Tek depodaki tek sorgunun sırası (koleksiyon, sonra deponun sırası) depolar arasında da korunur.
+  rows.sort((left, right) => compareText(left.collection, right.collection))
   for (const [collection, scope] of scopes) {
     if (!scope || !isRecordCollection(collection)) continue
     rows.push(
@@ -643,8 +652,15 @@ export async function writeOperationRecords(
     const group = grouped.get(store)
     if (group) written.push(...(await store.write(tx, institutionId, group, now)))
   }
-  return written
+  // Yazılanlar `writeRecords`'un sırasıyla (koleksiyon, kimlik) döner; depo sayısından bağımsız.
+  return written.sort(
+    (left, right) =>
+      compareText(left.collection, right.collection) || compareText(left.id, right.id),
+  )
 }
+
+/** Kod birimi karşılaştırması (`records.ts` `compareKeys` ile aynı). */
+const compareText = (left: string, right: string) => (left < right ? -1 : left > right ? 1 : 0)
 
 function prepare(
   ctx: ServiceContext,

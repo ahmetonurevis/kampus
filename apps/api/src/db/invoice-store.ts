@@ -21,8 +21,9 @@ import { PAYMENT_METHOD_KEYS } from './schema/payments.ts'
  * Taksit deposu (ADR 0010 karar 3, 8; ON-046d): `invoices` satırı ↔ core taksit kaydı
  * (`State['invoices'][number]`) dönüşümü, `loadScope` süzgeçlerinin kolon koşuluna çevrilmesi ve
  * yükleme. Yazma, sözleşme ve bağ satırlarıyla birlikte bağımlılık sırasıyla
- * `contract-store.ts` `writeContractsAndInvoices`'tadır. Henüz çalıştırıcıya bağlı değildir
- * (ON-046b); kaynak `records`'tır.
+ * `contract-store.ts` `writeContractsAndInvoices`'tadır. Çift yazma süresince (ON-046e) kaynak
+ * `records`'tır ve ayna SQL'de eşitlenir (`finance-mirror-store.ts`); bu depo okuma geçişinde
+ * (046f) çalıştırıcıya bağlanır.
  *
  * Dönüşüm birebirdir: core kaydı → satır → core kaydı aynı kayıttır (alanların varlığı dahil).
  * Şemaya uymayan kayıt programlama hatasıdır (500, işlem geri alınır); `paidCents` gibi okumada

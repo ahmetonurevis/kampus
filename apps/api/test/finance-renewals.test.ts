@@ -30,6 +30,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /**
  * Tarifeye bağlı kayıt yenileme uçları (IST-100; DOM-FIN-002, -005, -023, -025; DOM-KAY-020, -021).
@@ -77,6 +78,8 @@ describe('IST-100: kayıt yenileme uçları', () => {
   let db: Database
   let close: () => Promise<void>
   let app: App
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     ;({ db, close } = await createTestDatabase())

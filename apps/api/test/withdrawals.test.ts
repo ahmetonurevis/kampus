@@ -22,6 +22,7 @@ import {
   TEST_ORIGIN,
   type InstitutionOverrides,
 } from './support/app.ts'
+import { checkFinanceMirrorAfterEach } from './support/finance-mirror.ts'
 
 /**
  * Ayrılış ve iade uçları (ADR 0006 karar 10; DOM-FIN-040, -041; DOM-KAY-024; IST-110). Her test
@@ -59,6 +60,8 @@ describe('ayrılış ve iade uçları', () => {
   let app: App
   let serial = 0
   const key = () => ({ 'idempotency-key': `test-wd-${String(++serial).padStart(5, '0')}` })
+  // ON-046e: her testten sonra taksit ve sözleşme aynası kaynakla aynıdır.
+  checkFinanceMirrorAfterEach(() => db)
 
   before(async () => {
     assert.ok(STUDENT)

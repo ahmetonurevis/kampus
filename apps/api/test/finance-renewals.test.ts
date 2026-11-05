@@ -331,6 +331,51 @@ describe('IST-100: kayıt yenileme uçları', () => {
     assert.equal(await count(a.id, 'renewals'), before)
   })
 
+  test('DOM-KAY-025, ON-057: önceki yıldan borçlu öğrencide önizleme borcu gösterir; plan yönetici onayı ister', async () => {
+    const a = await ready()
+    await insertMissingRecords(
+      db,
+      a.id,
+      [
+        {
+          collection: 'invoices',
+          id: 'test-debt-s3',
+          data: {
+            id: 'test-debt-s3',
+            studentId: 's3',
+            installment: 1,
+            amount: 150_000,
+            dueDate: '2026-06-15T09:00:00.000Z',
+            feeKind: 'tuition',
+            academicYear: 2026,
+            paidAt: null,
+            method: null,
+            reminderAt: null,
+            createdAt: FIXED_NOW.toISOString(),
+            updatedAt: FIXED_NOW.toISOString(),
+          },
+        },
+      ],
+      FIXED_NOW,
+    )
+    const quote = await post(`${BASE}/quote`, a.admin, QUOTE)
+    assert.equal(quote.statusCode, 200, quote.body)
+    assert.equal(quote.json().data.outstandingTuitionCents, 150_000)
+
+    const body = await planBody(a.admin)
+    const before = await count(a.id, 'renewals')
+    assertError(await post(BASE, a.admin, body, key()), 422, 'renewal_debt_unapproved')
+    const desk = await member(a.id, 'onburo')
+    assertError(
+      await post(BASE, desk, { ...body, debtApproved: true }, key()),
+      403,
+      'renewal_debt_approval_forbidden',
+    )
+    assert.equal(await count(a.id, 'renewals'), before)
+    const planned = await post(BASE, a.admin, { ...body, debtApproved: true }, key())
+    assert.equal(planned.statusCode, 201, planned.body)
+  })
+
   test('DOM-FIN-002: hedef yılın tarifesi yoksa 422 tariff_not_published', async () => {
     const a = await institution()
     await publish(a.id, 2026)

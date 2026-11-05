@@ -160,6 +160,7 @@ test('ödeme özeti net tutarı ve taksiti verir; tam bursta taksit açılmaz', 
     netCents: 2_500_000,
     extras: [{ kind: 'meal', amountCents: 500_000 }],
     installments: [1_250_000, 1_250_000],
+    outstandingTuitionCents: 0,
   }
   const lines = quoteLines(base)
   assert.equal(lines.net, 'Net eğitim bedeli: 25.000,00 ₺')
@@ -217,4 +218,11 @@ test('DOM-FIN-005: ÜFE/TÜFE yüzde olarak girilir, on binde birliğe çevrilir
       bulletinDate: '2026-02-03',
     },
   )
+})
+
+test('ON-057, DOM-KAY-025: borç onayı yalnız işaretlenince plan gövdesine girer', () => {
+  const approved = renewalPlanBody(VALUES, 2027, 't-1', true)
+  assert.equal('debtApproved' in approved && approved.debtApproved, true)
+  assert.equal('debtApproved' in renewalPlanBody(VALUES, 2027, 't-1'), false)
+  assert.equal('debtApproved' in renewalPlanBody(VALUES, 2027, 't-1', false), false)
 })

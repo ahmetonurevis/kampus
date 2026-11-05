@@ -11,6 +11,7 @@ import {
   type ExtraLine,
 } from './enrollment.ts'
 import { DomainError } from './errors.ts'
+import { dayKey } from './format.ts'
 import { FEE_DISCOUNT_KINDS, FEE_ITEM_KINDS } from './fee-tariffs.ts'
 import {
   requireAwardableProgram,
@@ -66,6 +67,11 @@ export const renewalPlanSchema = z.discriminatedUnion('mode', [
     /** Önizlemenin hesapladığı tarife; yayımdaki sürüm değiştiyse plan yazılmaz. */
     tariffId: requiredText,
     firstDueDate: daySchema,
+    /**
+     * Önceki yıldan öğrenim ücreti borcu olan öğrencinin yenilemesi için yöneticinin açık onayı
+     * (DOM-KAY-025); borç yokken etkisizdir.
+     */
+    debtApproved: z.boolean().optional(),
   }),
   z.strictObject({
     mode: z.literal('graduate'),
@@ -84,6 +90,11 @@ export interface RenewalContext {
   scholarshipAwardedCount?: number
   /** Öğrencinin yenileme yılında arşivlenmemiş burs ataması var mı; servis yükler (DOM-FIN-025). */
   scholarshipStudentAwarded?: boolean
+  /**
+   * Önceki eğitim yıllarından ödenmemiş öğrenim ücreti (kuruş; DOM-KAY-025). Ödeme dağılımları
+   * State dışında olduğu için servis `outstandingTuitionCents` ile hesaplar; verilmezse 0.
+   */
+  outstandingTuitionCents?: number
 }
 
 export interface RenewalPrice {
@@ -103,6 +114,8 @@ export interface RenewalPrice {
   netCents: number
   extras: ExtraLine[]
   installments: number[]
+  /** Önceki yıllardan ödenmemiş öğrenim ücreti; sıfırdan büyükse plan yönetici onayı ister. */
+  outstandingTuitionCents: number
 }
 
 function requireRenewalRole(session: Session): void {
@@ -211,8 +224,61 @@ function priceRenewal(
     extras: price.extras,
     // Tam bursta öğrenim taksiti açılmaz.
     installments: netCents === 0 ? [] : installmentAmounts(netCents, data.installmentCount),
+    outstandingTuitionCents: context.outstandingTuitionCents ?? 0,
   }
   return { student, oldClass, target, price: result }
+}
+
+/**
+ * Önceki eğitim yıllarından ödenmemiş öğrenim ücreti (DOM-KAY-025): yenileme yılından önceki
+ * yıla ait, vadesi geçmiş öğrenim taksitlerinin açık kalanı. Vadesi gelmemiş taksit borç değildir
+ * (yenileme yıl içinde planlanır); yılı olmayan eski taksit önceki yıl sayılır. Ek hizmet (yemek,
+ * servis) borcu öğrenim ücreti değildir. Ödenmiş işaretli taksit kapalıdır, kısmi ödeme
+ * dağılımdan düşülür. `today` Europe/Istanbul günüdür.
+ */
+export function outstandingTuitionCents(
+  invoices: readonly {
+    id: string
+    amount: number
+    paidAt?: string | null
+    feeKind?: string
+    academicYear?: number
+    dueDate: string
+  }[],
+  allocated: ReadonlyMap<string, number>,
+  renewalYear: number,
+  today: string,
+): number {
+  let total = 0
+  for (const invoice of invoices) {
+    if ((invoice.feeKind ?? 'tuition') !== 'tuition') continue
+    if (dayKey(invoice.dueDate) >= today) continue
+    if (invoice.academicYear !== undefined && invoice.academicYear >= renewalYear) continue
+    if (invoice.paidAt) continue
+    total += Math.max(invoice.amount - (allocated.get(invoice.id) ?? 0), 0)
+  }
+  return total
+}
+
+/**
+ * Borçlu öğrencinin yenilemesi yöneticinin açık onayını ister (DOM-KAY-025, ÖÖKY md. 55/2): onay
+ * yoksa 422 `renewal_debt_unapproved`, onayı yönetici dışındaki rol verirse 403. Borç akademik
+ * kayıtlara erişimi engellemez; yalnız yenileme kararına girer.
+ */
+function requireDebtDecision(session: Session, debtCents: number, approved: boolean) {
+  if (debtCents <= 0) return
+  if (!approved)
+    throw new DomainError(
+      'renewal_debt_unapproved',
+      'Öğrencinin önceki yıldan ödenmemiş öğrenim ücreti borcu var; yenileme yöneticinin açık onayıyla planlanır.',
+      { path: ['debtApproved'] },
+    )
+  if (session.role !== 'yonetici')
+    throw new DomainError(
+      'renewal_debt_approval_forbidden',
+      'Borçlu öğrencinin yenilemesini yalnız yönetici onaylar.',
+      { kind: 'forbidden', path: ['debtApproved'] },
+    )
 }
 
 /** Formun ücret özeti: planla aynı kurallar, hiçbir kayıt değişmez. */
@@ -282,8 +348,9 @@ export function planRenewal(
     state.renewals.unshift(entry)
     return { renewal: entry, contractId: null, scholarshipAward: null }
   }
-  const { mode, tariffId, firstDueDate, ...quoteFields } = data
+  const { mode, tariffId, firstDueDate, debtApproved, ...quoteFields } = data
   const { student, oldClass, target, price } = priceRenewal(state, session, quoteFields, context)
+  requireDebtDecision(session, price.outstandingTuitionCents, debtApproved === true)
   if (tariffId !== price.tariffId)
     throw new DomainError(
       'tariff_changed',

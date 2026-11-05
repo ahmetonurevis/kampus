@@ -8,6 +8,7 @@ import type { ScholarshipProgram } from '../packages/school-core/src/lib/finance
 import {
   planPriceIndexCreate,
   planPriceIndexUpdate,
+  outstandingTuitionCents,
   planRenewal,
   quoteRenewal,
   type RenewalContext,
@@ -506,4 +507,57 @@ test('DOM-FIN-005: ÜFE/TÜFE satırı yıl başına tektir, gelecek bülten tar
     isDomainError('price_index_date_future'),
   )
   assert.throws(() => planPriceIndexUpdate({}, '2026-10-06'))
+})
+
+test('DOM-KAY-025, ON-057: önceki yıllardan vadesi geçmiş açık öğrenim ücreti dağılımlar düşülerek hesaplanır', () => {
+  const past = '2026-06-15T09:00:00.000Z'
+  const future = '2027-03-15T09:00:00.000Z'
+  const today = '2026-11-04'
+  const invoices = [
+    {
+      id: 'i1',
+      amount: 1_000,
+      paidAt: null,
+      feeKind: 'tuition',
+      academicYear: YEAR - 1,
+      dueDate: past,
+    },
+    { id: 'i2', amount: 1_000, paidAt: past, academicYear: YEAR - 1, dueDate: past },
+    { id: 'i3', amount: 500, paidAt: null, feeKind: 'meal', academicYear: YEAR - 1, dueDate: past },
+    {
+      id: 'i4',
+      amount: 2_000,
+      paidAt: null,
+      feeKind: 'tuition',
+      academicYear: YEAR,
+      dueDate: past,
+    },
+    { id: 'i5', amount: 700, paidAt: null, dueDate: past },
+    { id: 'i6', amount: 900, paidAt: null, academicYear: YEAR - 1, dueDate: future },
+  ]
+  const allocated = new Map([['i1', 400]])
+  assert.equal(outstandingTuitionCents(invoices, allocated, YEAR, today), 600 + 700)
+  assert.equal(outstandingTuitionCents(invoices, new Map([['i1', 5_000]]), YEAR, today), 700)
+  assert.equal(outstandingTuitionCents([], allocated, YEAR, today), 0)
+})
+
+test('DOM-KAY-025, ON-057: borçlu öğrencinin yenilemesi yönetici onayı olmadan planlanmaz; ön büro onaylayamaz', () => {
+  const debt = { ...CONTEXT, outstandingTuitionCents: 150_000 }
+  const quote = quoteRenewal(seeded(), DESK, QUOTE, debt)
+  assert.equal(quote.outstandingTuitionCents, 150_000)
+  unchangedOnFailure(seeded(), () => plan(seeded(), PLAN, debt), 'renewal_debt_unapproved')
+  const state = seeded()
+  unchangedOnFailure(state, () => plan(state, PLAN, debt), 'renewal_debt_unapproved')
+  const desk = seeded()
+  unchangedOnFailure(
+    desk,
+    () => plan(desk, { ...PLAN, debtApproved: true }, debt, DESK),
+    'renewal_debt_approval_forbidden',
+    'forbidden',
+  )
+  const approved = plan(seeded(), { ...PLAN, debtApproved: true }, debt)
+  assert.equal(approved.renewal.studentId, 's3')
+  // Borç yokken onay alanı etkisizdir; ön büro planlar.
+  assert.equal(plan(seeded(), PLAN, CONTEXT, DESK).renewal.studentId, 's3')
+  assert.equal(quoteRenewal(seeded(), DESK, QUOTE, CONTEXT).outstandingTuitionCents, 0)
 })

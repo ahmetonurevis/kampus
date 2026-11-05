@@ -179,7 +179,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Mevzuat yenilememe hakkı verir; belge/karne alıkoyma hakkı vermez.
 - **Kaynak:** ÖÖKY md. 55/2 (yenilememe ve resmî okula nakil); karne/belge alıkoyma yasağı işletme yorumu — **doğrulanmalı** (H-23).
 - **Kurum türü:** `school`
-- **Kodda:** yok — yenileme borç denetimi yapmaz.
+- **Kodda:** var (API) — tarifeli yenileme planı (`lib/renewals.ts` `planRenewal`, `POST /api/v1/finance/renewals`) önceki eğitim yıllarından vadesi geçmiş ödenmemiş öğrenim ücretini taksit tablosu ve ödeme dağılımlarından hesaplar (`outstandingTuitionCents`; ek hizmet borcu sayılmaz, vadesi gelmemiş taksit borç değildir). Borç varsa `debtApproved: true` olmadan 422 `renewal_debt_unapproved`, onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`; önizleme borcu `outstandingTuitionCents` ile döner, web formu uyarı ve yöneticiye onay kutusu gösterir (ON-057). Eski iş akışı köprüsü (`runWorkflow('renewal')`) bu denetimi yapmaz.
 
 ### DOM-KAY-026 · Kayıt durumu türetilir, geçişler olaydır
 

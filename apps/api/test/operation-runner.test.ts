@@ -12,6 +12,7 @@ import { runWorkflow } from '@kampus/school-core/lib/school-workflows.ts'
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
 import { recordKey, type CollectionName } from '../src/db/collections.ts'
+import { FINANCE_MIRROR_STORE } from '../src/db/finance-mirror-store.ts'
 import {
   findRecord,
   insertMissingRecords,
@@ -918,8 +919,14 @@ describe('işlem çalıştırıcı', () => {
       return store
     }
 
-    test('records varsayılanı: kayıtta yalnız records deposu var, her koleksiyon ona düşer', () => {
-      assert.deepEqual(OPERATION_STORES, { stores: [RECORDS_STORE], byCollection: {} })
+    test('records varsayılanı: taksit ve sözleşme dışındaki her koleksiyon records deposundadır', () => {
+      // ON-046e: yalnız taksit ve sözleşme çift yazılır (kaynak records, ayna tablolar).
+      assert.deepEqual(OPERATION_STORES, {
+        stores: [RECORDS_STORE, FINANCE_MIRROR_STORE],
+        byCollection: { invoices: FINANCE_MIRROR_STORE, contracts: FINANCE_MIRROR_STORE },
+      })
+      assert.equal(FINANCE_MIRROR_STORE.loadAll, RECORDS_STORE.loadAll)
+      assert.equal(FINANCE_MIRROR_STORE.loadScoped, RECORDS_STORE.loadScoped)
       assert.equal(RECORDS_STORE.write, writeRecords)
     })
 
@@ -1038,10 +1045,12 @@ describe('işlem çalıştırıcı', () => {
       const ctx = await scenario()
       const calls: string[] = []
       const table = spy('table', calls)
-      // Tablo destekli depo records'tan önce: yazılanlar da depo sırasıyla döner.
+      const plain = spy('records', calls)
+      // Yazma depo kaydının sırasıyladır (burada tablo deposu önce); yazılanlar depo sayısından
+      // bağımsız olarak `writeRecords` sırasıyla (koleksiyon, kimlik) döner.
       const registry: StoreRegistry = {
-        stores: [table, RECORDS_STORE],
-        byCollection: { invoices: table, contracts: table },
+        stores: [table, plain, RECORDS_STORE],
+        byCollection: { invoices: table, contracts: table, renewals: plain },
       }
       const loaded = await db.transaction((tx) =>
         loadOperationRecords(
@@ -1052,7 +1061,16 @@ describe('işlem çalıştırıcı', () => {
           registry,
         ),
       )
-      assert.deepEqual(calls, ['table.loadAll invoices', 'table.loadScoped contracts'])
+      assert.deepEqual(calls, [
+        'table.loadAll invoices',
+        'table.loadScoped contracts',
+        'records.loadScoped renewals',
+      ])
+      // Tam yüklemeler depolar arasında da koleksiyon sırasıyla gelir (tek sorgu gibi).
+      assert.deepEqual(
+        [...new Set(loaded.rows.map((row) => row.collection))],
+        ['invoices', 'students', 'renewals'],
+      )
       assert.equal(
         loaded.rows.filter((row) => row.collection === 'invoices').length,
         seed.invoices.length,
@@ -1072,7 +1090,7 @@ describe('işlem çalıştırıcı', () => {
       const written = await db.transaction((tx) =>
         writeOperationRecords(tx, ctx.institutionId, writes, LATER, registry),
       )
-      assert.deepEqual(calls, ['table.write invoices'])
+      assert.deepEqual(calls, ['table.write invoices', 'records.write renewals'])
       assert.deepEqual(
         written.map((change) => change.collection),
         ['invoices', 'renewals'],

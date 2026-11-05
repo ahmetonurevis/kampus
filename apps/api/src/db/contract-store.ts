@@ -26,8 +26,9 @@ import { invoices } from './schema/invoices.ts'
 /**
  * Sözleşme deposu (ADR 0010 karar 3, 7, 8; ON-046d): `contracts` + `contract_invoices` satırları ↔
  * core sözleşme kaydı (`State['contracts'][number]`), süzgeç çevirisi, yükleme ve iki koleksiyonun
- * bağımlılık sırasıyla yazılması (sözleşme → taksit → bağ). Henüz çalıştırıcıya bağlı değildir
- * (ON-046b); kaynak `records`'tır.
+ * bağımlılık sırasıyla yazılması (sözleşme → taksit → bağ). Çift yazma süresince (ON-046e) kaynak
+ * `records`'tır ve ayna SQL'de eşitlenir (`finance-mirror-store.ts`); bu depo okuma geçişinde
+ * (046f) çalıştırıcıya bağlanır.
  *
  * Dönüşüm birebirdir: `invoiceIds` sırası `contract_invoices.position`'dır, alanı olmayan eski kayıt
  * `has_invoice_list = false`'tur. İlk sürümde core `revision` alanı yoktur (kolon 1).

@@ -51,8 +51,9 @@ function allOrNone(columns: readonly AnyPgColumn[]): SQL {
  * protokol yeni satırdır ve önceki sürüme `amends_contract_id` ile bağlanır. Kimlik `records`
  * kimliğidir (`text`, ADR 0004 `uuid` kuralına bilinçli istisna). `student_id` ve `class_id`
  * `records` kimlikleridir, yabancı anahtar değildir. Onaylı ya da iptal edilmiş satırın koşulları
- * tetikleyiciyle donar (migration 0061). Taksit bağı `contract_invoices`'tadır. ON-046e'ye kadar
- * hiçbir kod bu tabloya yazmaz ya da onu okumaz.
+ * tetikleyiciyle donar (migration 0061). Taksit bağı `contract_invoices`'tadır. ON-046e'den beri
+ * `records`'un aynasıdır (migration 0063, `db/finance-mirror-store.ts`); okuma geçişine (046f) kadar
+ * uygulama bu tablodan okumaz.
  */
 export const contracts = pgTable(
   'contracts',

@@ -23,8 +23,8 @@ import { PAYMENT_METHOD_KEYS } from './payments.ts'
  * `payment_method` geçiş önbelleğidir (ADR 0006 karar 3, ADR 0010 karar 5); tahsilatın kaynağı
  * `payment_allocations`'tır. Onaylı sözleşme sürümüne bağlı taksitin koşulları tetikleyiciyle donar;
  * onaylanmamış sürümün taksiti düzeltilebilir (ADR 0010 cevap 6). `student_id` `records`
- * kimliğidir, yabancı anahtar değildir. ON-046e'ye kadar hiçbir kod bu tabloya yazmaz ya da onu
- * okumaz.
+ * kimliğidir, yabancı anahtar değildir. ON-046e'den beri `records`'un aynasıdır (migration 0063,
+ * `db/finance-mirror-store.ts`); okuma geçişine (046f) kadar uygulama bu tablodan okumaz.
  */
 export const invoices = pgTable(
   'invoices',

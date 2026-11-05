@@ -1,3 +1,4 @@
+import { useState } from 'react'
 import { Link, useParams } from 'react-router'
 import { useAuth } from '@/auth/use-auth.ts'
 import { Avatar } from '@/components/Avatar.tsx'
@@ -15,6 +16,7 @@ import { prospectStageLabel } from '@kampus/school-core/lib/prospects.ts'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
 import { canManageGuardianAccounts, isGuardianRecord } from './enrollment-guardian-account.ts'
 import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
+import { ParentEditPanel } from './ParentEditPanel.tsx'
 import { ProspectNoteForm } from './ProspectNoteForm.tsx'
 import { ProspectPlanPanel } from './ProspectPlanPanel.tsx'
 import { ProspectConsentPanel } from './ProspectConsentPanel.tsx'
@@ -362,13 +364,27 @@ function EnrolledGuardianAccount({ studentId }: { studentId: string }) {
   const student = useCoreItem('students', studentId)
   const parentId = student.data?.record.parentId
   const parent = useCoreItem('parents', parentId ?? null)
+  const [editing, setEditing] = useState(false)
   if (!student.data || !parentId || !parent.data || !isGuardianRecord(parent.data.record))
     return null
   return (
-    <GuardianAccountAction
-      studentId={studentId}
-      studentName={student.data.record.name}
-      parentId={parentId}
-    />
+    <>
+      <GuardianAccountAction
+        studentId={studentId}
+        studentName={student.data.record.name}
+        parentId={parentId}
+      />
+      {/* Kayıt sonrası veli bilgisi düzeltme (ON-117, DOM-KAY-012). */}
+      <Button type="button" variant="outline" onClick={() => setEditing(true)}>
+        <Icon name="Pencil" size={17} aria-hidden="true" />
+        Veli bilgisini düzelt
+      </Button>
+      <ParentEditPanel
+        open={editing}
+        parent={parent.data.record}
+        version={parent.data.version}
+        onClose={() => setEditing(false)}
+      />
+    </>
   )
 }

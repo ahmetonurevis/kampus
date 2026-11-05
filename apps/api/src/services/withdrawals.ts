@@ -34,6 +34,7 @@ import {
   type IdempotencyRequest,
   FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
+import { studentFinanceScope } from './payments.ts'
 
 /**
  * Ayrılış ve iade servisi (ADR 0006 karar 10; docs/domain/finans.md DOM-FIN-040, -041; IST-110).
@@ -152,6 +153,11 @@ export function withdrawStudentCommand(
       action: 'student.withdraw.records',
       collections: SPEC.collections,
       stores: FINANCE_TABLE_STORES,
+      // Ayrılış yalnız öğrencinin sözleşme zincirine ve taksitlerine dokunur (DOM-FIN-040, -041).
+      loadScope: {
+        invoices: studentFinanceScope(studentId),
+        contracts: studentFinanceScope(studentId),
+      },
       entity: { type: 'student_withdrawals', id },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)

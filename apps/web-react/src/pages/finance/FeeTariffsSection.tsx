@@ -14,6 +14,7 @@ import {
   isOutsideAnnouncementPeriod,
   tariffFormToBody,
   tariffItemExceedsAnnounced,
+  nextYearTariffForm,
   tariffToForm,
   type FeeDiscount,
   type FeeItem,
@@ -58,7 +59,8 @@ const MOBILE_COLUMNS = ['yearLabel', 'versionNumber', 'statusLabel']
 const EDITOR_FORM = 'tarife-formu'
 const PUBLISH_FORM = 'tarife-yayim-formu'
 
-type Editor = { mode: 'new'; from?: TariffRecord } | { mode: 'edit'; tariff: TariffRecord }
+type Editor =
+  { mode: 'new'; from?: TariffRecord; nextYear?: boolean } | { mode: 'edit'; tariff: TariffRecord }
 
 /**
  * Ücret tarifesi (ADR 0006 karar 8; DOM-FIN-002, -004, -006; IST-104): eğitim yılı başına sürümlü.
@@ -147,6 +149,16 @@ export function FeeTariffsSection({
                   onClick={() => setEditor({ mode: 'new', from: row })}
                 >
                   Yeni sürüm
+                </Button>
+              ) : null}
+              {canManage && row.status === 'published' ? (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  aria-label={`${name} tarifesini sonraki eğitim yılına taşı`}
+                  onClick={() => setEditor({ mode: 'new', from: row, nextYear: true })}
+                >
+                  Sonraki yıla taşı
                 </Button>
               ) : null}
             </span>
@@ -266,7 +278,11 @@ function TariffEditor({
   const source = editor.mode === 'edit' ? editor.tariff : editor.from
   const form = useForm<FeeTariffFormValues>({
     resolver: zodResolver(feeTariffFormSchema),
-    defaultValues: source ? tariffToForm(source) : emptyTariffForm(academicYear, dayKey()),
+    defaultValues: source
+      ? editor.mode === 'new' && editor.nextYear === true
+        ? nextYearTariffForm(source)
+        : tariffToForm(source)
+      : emptyTariffForm(academicYear, dayKey()),
   })
   const items = useFieldArray({ control: form.control, name: 'items' })
   const discounts = useFieldArray({ control: form.control, name: 'discounts' })
@@ -302,7 +318,13 @@ function TariffEditor({
       open
       size="wide"
       onOpenChange={(open) => (open ? undefined : onClose())}
-      title={editor.mode === 'edit' ? 'Tarife taslağını düzenle' : 'Yeni tarife'}
+      title={
+        editor.mode === 'edit'
+          ? 'Tarife taslağını düzenle'
+          : editor.nextYear === true
+            ? 'Sonraki yıl tarifesi'
+            : 'Yeni tarife'
+      }
       description="Yalnız sabit listedeki kalemlerle borç açılır; KDV oranı kalemde tarihli tutulur."
       footer={
         <>

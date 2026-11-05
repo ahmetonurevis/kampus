@@ -106,6 +106,8 @@ export const ONUR_OPERATION_COMMANDS = {
     'parents',
     'invoices',
     'contracts',
+    // Kontenjan planlanmış yenilemeleri de sayar (DOM-KAY-010).
+    'renewals',
   ]),
 } as const satisfies Record<string, CommandSpec>
 // Onur: kayıt ve finans sonu

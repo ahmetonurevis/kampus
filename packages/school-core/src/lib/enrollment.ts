@@ -1086,7 +1086,15 @@ export function applyEnrollment(state: State, data: Enrollment, makeId: MakeId, 
       'Seçilen sınıf adayın kampüsünde değil; başka kampüsün sınıfı için seçimi onaylayın.',
       { path: ['classId'] },
     )
-  if (state.students.filter((s) => s.classId === cls.id && s.isActive).length >= cls.capacity)
+  // Kontenjan aktif öğrenciler ve aynı sınıfa planlanmış (uygulanmamış) yenilemelerle dolar
+  // (DOM-KAY-010, ON-116); yenileme denetimiyle aynı sayım, aynı öğrenci bir kez sayılır.
+  const occupants = new Set(
+    state.students.filter((s) => s.classId === cls.id && s.isActive).map((s) => s.id),
+  )
+  for (const renewal of state.renewals)
+    if (renewal.targetClassId === cls.id && renewal.status === 'Planlandı')
+      occupants.add(renewal.studentId)
+  if (occupants.size >= cls.capacity)
     throw new DomainError('class_capacity_full', 'Seçilen sınıfın kontenjanı dolu.')
   const guardian = data.guardian
   const existingParent =

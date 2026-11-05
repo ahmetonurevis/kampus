@@ -2629,7 +2629,7 @@ export interface paths {
         };
         /**
          * Tahsilatları listele
-         * @description Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız finans kapsamındaki öğrencileri görür (veli velayetli çocuğunu ve velayeti olmasa da ödeyicisi olduğu öğrenciyi; K-04, DOM-ILT-074); iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer; `method` ödeme yöntemine göre süzer. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.
+         * @description Tahsilatları dağılımlarıyla, en yeni ödeme önce listeler. Yönetici ve ön büro kurumun tamamını, veli ve öğrenci yalnız finans kapsamındaki öğrencileri görür (veli velayetli çocuğunu ve velayeti olmasa da ödeyicisi olduğu öğrenciyi; K-04, DOM-ILT-074); iptal gerekçesi yalnız personele döner (DOM-FIN-052). `q` öğrenci adı ve işlem referansında arar (Türkçe harf duyarsız); `mebbis=pending` personelde MEBBİS kaydı işlenmemiş geçerli tahsilatları süzer; `method` ödeme yöntemine göre süzer; `dateFrom`/`dateTo` ödeme gününü (Europe/Istanbul, uçlar dahil) süzer, ters aralık 400. Sayfalıdır, `pageSize` en çok 100; bilinmeyen parametre 400.
          */
         get: operations["listPayments"];
         put?: never;
@@ -2821,7 +2821,7 @@ export interface paths {
         };
         /**
          * Ayrılış ve iadeleri listele
-         * @description Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.
+         * @description Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.
          */
         get: operations["listWithdrawals"];
         put?: never;
@@ -3001,7 +3001,7 @@ export interface paths {
         };
         /**
          * Öğrencinin kimlik özeti
-         * @description Kimlik numarası yalnız maskeli döner (`*******1234`). Kaydı olmayan veya başka kurumun öğrencisi 404. Modül `crm`. Roller: `yonetici`, `onburo`.
+         * @description Kimlik numarası yalnız maskeli döner (`*******1234`). Her başarılı okuma denetim kaydına `student_identity.read` olarak yazılır (yalnız alan adları; DOM-YTK-052). Kaydı olmayan veya başka kurumun öğrencisi 404. Modül `crm`. Roller: `yonetici`, `onburo`.
          */
         get: operations["getStudentIdentity"];
         put?: never;
@@ -30033,6 +30033,10 @@ export interface operations {
                 mebbis?: "pending";
                 /** @description Yalnız bu ödeme yöntemiyle alınanlar */
                 method?: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                /** @description Ödeme günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Ödeme günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
             };
             header?: never;
             path?: never;
@@ -31567,6 +31571,8 @@ export interface operations {
                 pageSize?: number;
                 /** @description İade durumu */
                 refundStatus?: "none" | "pending" | "paid";
+                /** @description Öğrenci adında arama */
+                q?: string;
             };
             header?: never;
             path?: never;

@@ -20,6 +20,7 @@ import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { Textarea } from '@/components/ui/textarea'
 import { useDebouncedValue } from '@/hooks/use-debounced-value.ts'
@@ -59,18 +60,28 @@ function isPaymentMethod(value: unknown): value is PaymentMethod {
  * yöntem tahsilatındır). İptal yalnız yöneticide ve gerekçelidir; iptal edilen satır silinmez,
  * "İptal edildi" olarak kalır.
  */
+/** Süzgeç değeri `YYYY-MM-DD` ise gün, değilse yok. */
+const dayFilter = (value: unknown) =>
+  typeof value === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(value) ? value : null
+
 export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
   const setMebbis = useSetPaymentMebbis()
   const list = useListState('tahsilatlar')
   const search = useDebouncedValue(list.state.query)
   const mebbisPending = list.state.filters.mebbis === 'pending'
   const method = isPaymentMethod(list.state.filters.method) ? list.state.filters.method : null
+  // Ödeme günü aralığı (ON-118): sunucu Europe/Istanbul günüyle süzer; ters aralık gönderilmez.
+  const paidFrom = dayFilter(list.state.filters.paidFrom)
+  const paidTo = dayFilter(list.state.filters.paidTo)
+  const reversedRange = paidFrom !== null && paidTo !== null && paidTo < paidFrom
   const payments = usePaymentList({
     page: list.state.page,
     pageSize: list.state.pageSize,
     ...(search.trim().length >= 2 ? { q: search.trim() } : {}),
     ...(mebbisPending ? { mebbis: 'pending' as const } : {}),
     ...(method ? { method } : {}),
+    ...(paidFrom && !reversedRange ? { dateFrom: paidFrom } : {}),
+    ...(paidTo && !reversedRange ? { dateTo: paidTo } : {}),
   })
   const [reversing, setReversing] = useState<PaymentRow | null>(null)
 
@@ -224,6 +235,33 @@ export function PaymentsSection({ canReverse }: { canReverse: boolean }) {
               <NativeSelectOption value="pending">İşlenmemiş</NativeSelectOption>
             </NativeSelect>
           </label>
+          <label className="grid gap-1 text-sm font-medium">
+            Ödeme günü (başlangıç)
+            <Input
+              type="date"
+              value={paidFrom ?? ''}
+              onChange={(event) =>
+                list.dispatch({ type: 'filter', key: 'paidFrom', value: event.target.value })
+              }
+            />
+          </label>
+          <label className="grid gap-1 text-sm font-medium">
+            Ödeme günü (bitiş)
+            <Input
+              type="date"
+              value={paidTo ?? ''}
+              aria-invalid={reversedRange || undefined}
+              aria-describedby={reversedRange ? 'tahsilat-gun-hata' : undefined}
+              onChange={(event) =>
+                list.dispatch({ type: 'filter', key: 'paidTo', value: event.target.value })
+              }
+            />
+          </label>
+          {reversedRange ? (
+            <p id="tahsilat-gun-hata" role="alert" className="self-end text-sm text-destructive">
+              Bitiş günü başlangıç gününden önce olamaz.
+            </p>
+          ) : null}
         </div>
       </header>
       <ServerDataTable

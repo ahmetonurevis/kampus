@@ -279,7 +279,12 @@ export async function payRefundCommand(
 
 export async function listWithdrawalsFor(
   ctx: ServiceContext,
-  query: { refundStatus?: RefundStatus | undefined; page: number; pageSize: number },
+  query: {
+    refundStatus?: RefundStatus | undefined
+    q?: string | undefined
+    page: number
+    pageSize: number
+  },
 ): Promise<{ items: WithdrawalView[]; total: number }> {
   const { items, total } = await listWithdrawals(ctx.db, ctx.institutionId, query)
   return { items: items.map(view), total }

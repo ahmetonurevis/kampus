@@ -605,6 +605,26 @@ describe('tahsilat uçları', () => {
     assert.equal(other.json().meta.total, 0)
   })
 
+  test('ON-118: dateFrom/dateTo ödeme gününü Europe/Istanbul günüyle süzer; uçlar dahil, ters aralık 400', async () => {
+    const a = await institution()
+    // Saat FIXED_NOW: 2026-10-06T09:00Z, İstanbul'da 6 Ekim 12:00.
+    assert.equal((await record(a.adminCookie, payment(1_000))).statusCode, 201)
+    const total = async (query: string) => {
+      const response = await send('GET', `/api/v1/payments?${query}`, a.adminCookie)
+      assert.equal(response.statusCode, 200, response.body)
+      return response.json().meta.total as number
+    }
+    assert.equal(await total('dateFrom=2026-10-06&dateTo=2026-10-06'), 1)
+    assert.equal(await total('dateFrom=2026-10-01'), 1)
+    assert.equal(await total('dateTo=2026-10-05'), 0)
+    assert.equal(await total('dateFrom=2026-10-07'), 0)
+    assertError(
+      await send('GET', '/api/v1/payments?dateFrom=2026-10-07&dateTo=2026-10-06', a.adminCookie),
+      400,
+    )
+    assertError(await send('GET', '/api/v1/payments?dateFrom=06.10.2026', a.adminCookie), 400)
+  })
+
   test('ON-036, DOM-FIN-030: method ödeme yöntemine göre süzer, q ile birleşir; bilinmeyen yöntem 400', async () => {
     const a = await institution()
     const bank = await record(a.adminCookie, payment(1_000, { reference: 'TR-YONTEM-1' }))

@@ -43,6 +43,7 @@ import { environment, type CommandOptions } from './commands.ts'
 import { notify } from './notify.ts'
 import { runCommand, type CommandResponse, type IdempotencyRequest } from './operation-runner.ts'
 import { readScope } from './read-scope.ts'
+import { dayRange } from './list-filters.ts'
 
 /**
  * Tahsilat servisi (ADR 0006; docs/domain/finans.md DOM-FIN-030…033, DOM-FIN-052). Kural core
@@ -416,14 +417,20 @@ export async function listPaymentsFor(
     q?: string | undefined
     mebbis?: 'pending' | undefined
     method?: PaymentMethod | undefined
+    dateFrom?: string | undefined
+    dateTo?: string | undefined
     page: number
     pageSize: number
   },
 ): Promise<{ items: PaymentView[]; total: number }> {
   const studentIds = await visibleStudents(ctx)
   if (studentIds !== null && studentIds.length === 0) return { items: [], total: 0 }
+  // Gün aralığı Europe/Istanbul günüdür; uçlar dahil (ON-118).
+  const range = dayRange('paidAt', query.dateFrom, query.dateTo)
   const { items, total } = await listPayments(ctx.db, ctx.institutionId, {
     ...query,
+    paidFrom: range?.fromInstant ? new Date(range.fromInstant) : undefined,
+    paidBefore: range?.toInstant ? new Date(range.toInstant) : undefined,
     studentIds,
     // MEBBİS takibi personelindir: veli ve öğrencide süzgeç bilgi sızdırmasın diye yok sayılır.
     mebbisPending: query.mebbis === 'pending' && studentIds === null,

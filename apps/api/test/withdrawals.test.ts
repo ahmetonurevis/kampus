@@ -379,6 +379,14 @@ describe('ayrılış ve iade uçları', () => {
       assert.equal(other.json().meta.total, 0)
     }
     assertError(await send('GET', '/api/v1/withdrawals?x=1', desk), 400)
+    // ON-118: q öğrenci adında Türkçe harf duyarsız arar; tek harf 400.
+    const name = STUDENT?.name ?? ''
+    const search = async (q: string) =>
+      (await send('GET', `/api/v1/withdrawals?q=${encodeURIComponent(q)}`, desk)).json().meta
+        .total as number
+    assert.equal(await search(name.toLocaleUpperCase('tr').slice(0, 4)), 1)
+    assert.equal(await search('olmayan-ogrenci'), 0)
+    assertError(await send('GET', '/api/v1/withdrawals?q=a', desk), 400)
   })
 
   test('DOM-YTK-001: başka kurumun öğrencisi ve ayrılışı 404; öteki kurum değişmez', async () => {

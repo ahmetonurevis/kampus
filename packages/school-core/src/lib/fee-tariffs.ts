@@ -363,6 +363,24 @@ export function tariffToForm(tariff: {
   }
 }
 
+/**
+ * Yayımlanmış tarifeden bir sonraki eğitim yılının taslak formu (ON-055, DOM-FIN-002): kalemler,
+ * birimler, KDV ve indirimler başlangıç olarak taşınır; MEBBİS'te onaylanan ilan tutarı yıla
+ * özgü olduğu için boşaltılır ve yeni yılın ilanıyla girilir. Kayıtlı tarife değişmez.
+ */
+export function nextYearTariffForm(tariff: {
+  academicYear: number
+  items: readonly FeeItem[]
+  discounts: readonly FeeDiscount[]
+}): FeeTariffFormValues {
+  const form = tariffToForm(tariff)
+  return {
+    ...form,
+    academicYear: String(tariff.academicYear + 1),
+    items: form.items.map((item) => ({ ...item, announcedAmount: '' })),
+  }
+}
+
 /** Doğrulanmış form değerlerini API gövdesine çevirir. */
 export function tariffFormToBody(values: FeeTariffFormValues): {
   academicYear: number

@@ -10,6 +10,7 @@ import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import { exportCsv } from '@/lib/download.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { combineStates, ListCard, ShareBar } from '../dashboard/DashboardParts.tsx'
+import { EnrollmentFunnelSection } from './EnrollmentFunnelSection.tsx'
 import {
   ENROLLED_STAGE,
   funnelSteps,
@@ -100,6 +101,7 @@ export function EnrollmentReportsPage({ page }: { page: NavPage }) {
           ))}
         </ol>
       </ListCard>
+      <EnrollmentFunnelSection />
       <section
         aria-labelledby="kanal-donusumu"
         className="panel overflow-hidden rounded-card border bg-surface"

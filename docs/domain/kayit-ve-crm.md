@@ -249,7 +249,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Pazarlama bütçesi kaynak bazlı dönüşümle ölçülür (`DOM-KAY-007`); açılış tarihine göre kohort, adayın farklı dönem raporlarında iki kez sayılmasını önler. Birikimli sayım, atlanan aşama yüzünden sonraki adımın öncekinden büyük görünmesini engeller.
 - **Kaynak:** İşletme kuralı; IST-117.
 - **Kurum türü:** ikisi (deneme adımı yalnız `language_school`)
-- **Kodda:** var — `packages/school-core/src/lib/enrollment-funnel.ts` (`enrollmentFunnel`, `funnelSteps`, `funnelStepLabel`, `ENROLLMENT_FUNNEL_ROLES`); API `GET /api/v1/prospects/funnel` (`apps/api/src/routes/enrollment-funnel.ts`, `services/enrollment-funnel.ts`; `dateFrom`/`dateTo`). Ekran ON-052. Danışman ataması (adayın sorumlusunu açan kişiden ayrı seçmek) yoktur (`TODO(crm-counselor)`).
+- **Kodda:** var — `packages/school-core/src/lib/enrollment-funnel.ts` (`enrollmentFunnel`, `funnelSteps`, `funnelStepLabel`, `ENROLLMENT_FUNNEL_ROLES`); API `GET /api/v1/prospects/funnel` (`apps/api/src/routes/enrollment-funnel.ts`, `services/enrollment-funnel.ts`; `dateFrom`/`dateTo`). Ekran: Kayıt Raporları sayfasında "Dönem hunisi" bölümü (`apps/web-react/src/pages/management/EnrollmentFunnelSection.tsx`, ON-052): başlangıç–bitiş günü, adım sayıları ve önceki adıma oran, danışman tablosu; kanal tablosu ve güncel aşama hunisi sayım uçlarından gelmeye devam eder. Danışman ataması (adayın sorumlusunu açan kişiden ayrı seçmek) yoktur (`TODO(crm-counselor)`).
 
 ## API uygulama notları
 

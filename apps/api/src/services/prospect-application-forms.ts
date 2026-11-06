@@ -1,4 +1,4 @@
-import { randomBytes } from 'node:crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 
 import { eq } from 'drizzle-orm'
 import type { FastifyBaseLogger } from 'fastify'
@@ -10,12 +10,15 @@ import {
   isHoneypotFilled,
   submitProspectApplication,
   type ProspectApplicationOutcome,
+  type ProspectApplicationState,
 } from '@kampus/school-core/lib/prospect-application-form.ts'
 import { DomainError } from '@kampus/school-core/lib/errors.ts'
 import { latestNotice, type PrivacyNotice } from '@kampus/school-core/lib/privacy-notices.ts'
 import { prospectAgeGroupRequired } from '@kampus/school-core/lib/prospects.ts'
 
 import type { Database } from '../db/client.ts'
+import type { RecordData } from '../db/collections.ts'
+import { planPositions } from '../db/positions.ts'
 import { listPrivacyNotices } from '../db/privacy.ts'
 import {
   findApplicationForm,
@@ -24,12 +27,17 @@ import {
   updateApplicationFormRow,
   type ApplicationFormRow,
 } from '../db/prospect-application-forms.ts'
-import { lockInstitution, loadRecords } from '../db/records.ts'
+import { lockInstitution, loadRecords, type RecordWrite, type StoredRecord } from '../db/records.ts'
+import { auditLog } from '../db/schema/audit-log.ts'
 import { institutions } from '../db/schema/auth.ts'
 import { AppError, ConflictError, MESSAGES, NotFoundError, withDatabaseErrors } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { getInstitutionModules } from './modules.ts'
-import { mapOperationError, runOperation } from './operation-runner.ts'
+import {
+  loadOperationRecords,
+  mapOperationError,
+  writeOperationRecords,
+} from './operation-runner.ts'
 import { auditWork } from './task-work.ts'
 
 /**
@@ -40,17 +48,15 @@ import { auditWork } from './task-work.ts'
  * okunmaz. Biçimi bozuk anahtar, yenilenmiş ya da bilinmeyen anahtar, kapalı form, kapalı `crm`
  * modülü, yayımlanmış aday aydınlatması ya da aktif kampüs olmaması dışarıdan aynı 404'tür.
  *
- * Yazma, ön büronun aday açmasıyla aynı yoldan gider (`runOperation`: kurum kilidi, bütün adayları
- * yükleme, tek transaction, denetim satırı). Denetimde kullanıcı olmadığı için aktör sabit
- * `APPLICATION_FORM_ACTOR`'dır; telefon, e-posta ve ad log ve denetime girmez (alan adları).
+ * Yazma, ön büronun aday açmasıyla aynı kuralları izler (kurum kilidi, bütün adayları yükleme, tek
+ * transaction, sürümlü yazma, denetim satırı), ama `runOperation`'dan geçmez: çalıştırıcı denetim
+ * aktörünü üyeliği olan bir kullanıcı olarak alır, burada ise kullanıcı yoktur. Denetimde
+ * `actor_user_id` boştur (işlem geçmişinde "Sistem") ve rol `APPLICATION_FORM_ACTOR_ROLE`'dür;
+ * telefon, e-posta ve ad log ve denetime girmez (alan adları).
  */
 
-/** Açık uçtan gelen yazmanın denetim aktörü; `audit_log.actor_user_id` kullanıcıya bağlı değildir. */
-export const APPLICATION_FORM_ACTOR = {
-  userId: 'web-basvuru-formu',
-  role: 'onburo',
-  membershipId: '',
-} as const
+/** Açık uçtan gelen yazmanın denetim rolü; hiçbir üyelik rolü bu işlemi yapmış görünmez. */
+export const APPLICATION_FORM_ACTOR_ROLE = 'system'
 
 const ENTITY = 'prospect_application_form'
 
@@ -232,9 +238,44 @@ export interface PublicApplicationContext {
   log: FastifyBaseLogger
 }
 
+/** Kayıt düzeyinde fark: adaylarda yalnız başvurunun dokunduğu kayıt yazılır (ve yer değişenler). */
+function applicationWrites(
+  outcome: ProspectApplicationOutcome,
+  prospects: ProspectApplicationState['prospects'],
+  stored: ReadonlyMap<string, StoredRecord>,
+): { writes: RecordWrite[]; fields: string[] } {
+  if (outcome.kind === 'ignored') return { writes: [], fields: [] }
+  const prospect = prospects.find((item) => item.id === outcome.prospectId)
+  if (prospect === undefined) return { writes: [], fields: [] }
+  const collection = 'prospects'
+  const id = prospect.id
+  // Çalıştırıcıdaki gibi JSON biçimi: `undefined` alan ne yazılır ne denetime girer.
+  const data = JSON.parse(JSON.stringify(prospect)) as RecordData
+  if (outcome.kind === 'noted') {
+    const old = stored.get(id)
+    if (old === undefined) return { writes: [], fields: [] }
+    return {
+      writes: [{ kind: 'update', collection, id, data, expectedVersion: old.version }],
+      fields: ['notes', 'updatedAt'],
+    }
+  }
+  // Core yeni adayı başa koyar; yerinde kalan kayıtlara yazılmaz, sığmazsa sıra yeniden dağılır.
+  const positions = planPositions(prospects.map((item) => stored.get(item.id)?.position ?? null))
+  const writes = prospects.flatMap((item, index): RecordWrite[] => {
+    const position = positions[index] ?? 0
+    if (item.id === id) return [{ kind: 'insert', collection, id, data, position }]
+    const old = stored.get(item.id)
+    return old === undefined || old.position === position
+      ? []
+      : [{ kind: 'move', collection, id: item.id, position, expectedVersion: old.version }]
+  })
+  return { writes, fields: Object.keys(data).sort() }
+}
+
 /**
  * Başvuruyu işler (DOM-KAY-002, -003, -009). Dönen sonuç yanıta girmez: yeni aday, mükerrer not ve
  * gizli alan dışarıdan aynıdır. Gizli alan doluysa kurum kilidi alınmaz, bütün adaylar yüklenmez.
+ * Yazılacak bir şey yoksa (gizli alan, yinelenen not) denetim satırı da yoktur.
  */
 export async function submitApplication(
   context: PublicApplicationContext,
@@ -245,34 +286,52 @@ export async function submitApplication(
   if (form === null) throw new NotFoundError()
   if (isHoneypotFilled(input.website)) return { kind: 'ignored' }
   const { institutionId } = form.row
-  const ctx: ServiceContext = {
-    db: context.db,
-    institutionId,
-    actor: APPLICATION_FORM_ACTOR,
-    now: context.now,
-    log: context.log,
-  }
-  const { result } = await runOperation(ctx, {
-    action: 'prospect.application',
-    collections: ['branches', 'prospects'],
-    entity: (outcome: ProspectApplicationOutcome) => ({
-      type: 'prospects',
-      id: outcome.kind === 'ignored' ? '' : outcome.prospectId,
-    }),
-    load: async (tx) => {
-      // Metin kilit altında okunur: eşzamanlı yayımdan sonra eski sürüm kabul edilmez.
-      const notice = await currentCandidateNotice(tx, institutionId)
-      if (notice === null) throw new NotFoundError()
-      return {
-        run: (state, { now, makeId }) =>
-          submitProspectApplication(state, input, {
-            institutionType: form.institutionType,
-            noticeVersion: notice.version,
-            makeId,
-            now,
-          }),
-      }
-    },
+  const work = context.db.transaction(async (tx) => {
+    await lockInstitution(tx, institutionId)
+    const { rows } = await loadOperationRecords(tx, institutionId, ['branches', 'prospects'], {})
+    // Metin kilit altında okunur: eşzamanlı yayımdan sonra eski sürüm kabul edilmez.
+    const notice = await currentCandidateNotice(tx, institutionId)
+    if (notice === null) throw new NotFoundError()
+    const stored = new Map(
+      rows.filter((row) => row.collection === 'prospects').map((row) => [row.id, row]),
+    )
+    const dataOf = <K extends keyof ProspectApplicationState>(collection: K) =>
+      rows
+        .filter((row) => row.collection === collection)
+        .map((row) => structuredClone(row.data) as ProspectApplicationState[K][number])
+    const state = { branches: dataOf('branches'), prospects: dataOf('prospects') }
+    let outcome: ProspectApplicationOutcome
+    try {
+      outcome = submitProspectApplication(state, input, {
+        institutionType: form.institutionType,
+        noticeVersion: notice.version,
+        makeId: (prefix) => `${prefix}-${randomUUID()}`,
+        now: context.now.toISOString(),
+      })
+    } catch (error) {
+      throw mapOperationError(error)
+    }
+    const { writes, fields } = applicationWrites(outcome, state.prospects, stored)
+    await writeOperationRecords(tx, institutionId, writes, context.now)
+    if (outcome.kind !== 'ignored' && writes.length > 0)
+      await tx.insert(auditLog).values({
+        institutionId,
+        actorUserId: null,
+        actorRole: APPLICATION_FORM_ACTOR_ROLE,
+        action: 'prospect.application',
+        entityType: 'prospects',
+        entityId: outcome.prospectId,
+        changes: { fields },
+        createdAt: context.now,
+      })
+    context.log.info({
+      event: 'operation.applied',
+      action: 'prospect.application',
+      inserted: writes.filter((write) => write.kind === 'insert').length,
+      updated: writes.filter((write) => write.kind === 'update').length,
+      moved: writes.filter((write) => write.kind === 'move').length,
+    })
+    return outcome
   })
-  return result
+  return withDatabaseErrors(work)
 }

@@ -525,7 +525,7 @@ function requireSibling(state: State, prospect: ProspectRecord, siblingOfId: str
  * bağlı değildir, bu yüzden açık başvuru formunda reddi kişi varlığını belli etmez (ON-133).
  */
 export function requireValidNewProspect(
-  state: State,
+  state: Pick<State, 'branches' | 'students'>,
   data: z.output<typeof createProspectSchema>,
   institutionType: InstitutionType,
 ): { minor: boolean; email: string } {

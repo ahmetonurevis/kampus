@@ -113,6 +113,9 @@ export const isHoneypotFilled = (website: string | undefined) => (website ?? '')
 /** Sürüm `privacy_notices.notice_version`'dan metne çevrilip aday kaydına yazılır (DOM-KAY-003). */
 export const applicationNoticeVersion = (version: number) => String(version)
 
+/** Başvurunun gördüğü State: yalnız kampüsler ve adaylar; API de yalnız bunları yükler. */
+export type ProspectApplicationState = Pick<State, 'branches' | 'prospects'>
+
 export type ProspectApplicationOutcome =
   | { kind: 'created'; prospectId: string }
   | { kind: 'noted'; prospectId: string }
@@ -170,7 +173,7 @@ function addRepeatNote(
  * zaman ret ya da farklı sonuç olarak dışarı çıkmaz (sonucun türü yalnız denetim ve testler içindir).
  */
 export function submitProspectApplication(
-  state: State,
+  state: ProspectApplicationState,
   input: unknown,
   options: ProspectApplicationOptions,
 ): ProspectApplicationOutcome {
@@ -183,7 +186,12 @@ export function submitProspectApplication(
       { kind: 'conflict', path: ['privacyNoticeVersion'] },
     )
   const data = createProspectSchema.parse({ ...fields, source: APPLICATION_FORM_SOURCE })
-  const { minor, email } = requireValidNewProspect(state, data, options.institutionType)
+  // Formda referans alanı yoktur; kural öğrenci listesine hiç bakmaz.
+  const { minor, email } = requireValidNewProspect(
+    { branches: state.branches, students: [] },
+    data,
+    options.institutionType,
+  )
   const duplicate = findProspectDuplicate(state.prospects, { ...data, email })
   if (duplicate !== null) {
     const prospect = state.prospects.find((item) => item.id === duplicate.prospectId)

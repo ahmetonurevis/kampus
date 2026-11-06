@@ -360,6 +360,34 @@ describe('Ön başvuru formu (ON-133)', () => {
     assert.equal(again.statusCode, 202)
     const after = await findRecord(db, institution.id, 'prospects', seed.id)
     assert.equal((after?.data.notes as Json[]).length, notes.length)
+
+    // Denetim: not satırı sistem aktörüyle; yazmayan tekrar gönderimin satırı yoktur.
+    const audit = await db
+      .select()
+      .from(auditLog)
+      .where(
+        and(
+          eq(auditLog.institutionId, institution.id),
+          eq(auditLog.action, 'prospect.application'),
+          eq(auditLog.entityId, seed.id),
+        ),
+      )
+    assert.equal(audit.length, 1)
+    assert.equal(audit[0]?.actorUserId, null)
+    assert.deepEqual(audit[0]?.changes, { fields: ['notes', 'updatedAt'] })
+  })
+
+  test('yeni aday core sırasıyla başa yazılır, mevcut adayın sürümü değişmez', async () => {
+    const { institution, form } = await world()
+    const seed = SEED.prospects[0]
+    assert.ok(seed)
+    const before = await findRecord(db, institution.id, 'prospects', seed.id)
+    assert.equal((await submit(form.formKey, application())).statusCode, 202)
+    const rows = await prospectsOf(institution.id)
+    assert.equal(rows[0]?.phone, SECRET_PHONE)
+    assert.equal(rows[1]?.id, seed.id)
+    const after = await findRecord(db, institution.id, 'prospects', seed.id)
+    assert.equal(after?.version, before?.version)
   })
 
   test('IST-145: gizli alan dolu gönderim aynı yanıtı alır, hiçbir şey yazmaz', async () => {
@@ -509,18 +537,24 @@ describe('Ön başvuru formu (ON-133)', () => {
         ),
       )
     assert.equal(audit.length, 1)
-    assert.equal(audit[0]?.actorUserId, 'web-basvuru-formu')
+    // Aktör sistemdir: hiçbir kullanıcıya ve üyelik rolüne bağlanmaz.
+    assert.equal(audit[0]?.actorUserId, null)
+    assert.equal(audit[0]?.actorRole, 'system')
+    assert.ok(audit[0]?.changes?.fields?.includes('phone'))
     for (const secret of [SECRET_PHONE, SECRET_EMAIL, SECRET_NAME, SECRET_GUARDIAN])
       assert.equal(JSON.stringify(audit[0]).includes(secret), false, secret)
   })
 
-  test('denetim ekranı kullanıcısı olmayan form aktörünü okuyabilir', async () => {
+  test('denetim ekranı form gönderimini sistem aktörüyle gösterir', async () => {
     const { admin, form } = await world()
     assert.equal((await submit(form.formKey, application())).statusCode, 202)
     const response = await adminCall('GET', '/api/v1/audit-events', admin)
     assert.equal(response.statusCode, 200, response.body)
     const rows = response.json().data as Json[]
-    assert.ok(rows.some((row) => row.action === 'prospect.application'))
+    const row = rows.find((item) => item.action === 'prospect.application')
+    assert.ok(row)
+    // `null` aktör ekranda "Sistem"dir; ön büro yapmış görünmez.
+    assert.equal(row.actor, null)
   })
 
   // --- Çerçeve politikası -----------------------------------------------------------------------

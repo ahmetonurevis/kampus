@@ -488,6 +488,7 @@ export function findParentMatches(
 
 export interface EnrollmentContext {
   institutionType: InstitutionType
+  /** Sözleşmeye esas tarife; servis `resolveEffectiveTariff` ile çözer (DOM-FIN-002, K-11). */
   tariff: EnrollmentTariff | null
   academicYear: number
   /** Bu kimliğin arşivlenmemiş satırının öğrencisi; yoksa `null`. */

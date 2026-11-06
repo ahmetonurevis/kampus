@@ -151,6 +151,7 @@ test('DOM-FIN-005, -023: tavan özeti bazı, oranları ve indirim kaybının ger
 
 test('ödeme özeti net tutarı ve taksiti verir; tam bursta taksit açılmaz', () => {
   const base = {
+    tariffCarriedOverFromYear: null,
     announcedCents: 3_000_000,
     ceiling: { status: 'no_base' as const },
     tuitionCents: 3_000_000,
@@ -172,6 +173,25 @@ test('ödeme özeti net tutarı ve taksiti verir; tam bursta taksit açılmaz', 
     quoteLines({ ...base, netCents: 0, installments: [] }).installments,
     'Tam burs: öğrenim taksiti açılmaz',
   )
+})
+
+test('DOM-FIN-002, K-11: önceki yılın tarifesi uygulanınca ödeme özeti bunu kaynak yılıyla yazar', () => {
+  const base = {
+    tariffCarriedOverFromYear: null,
+    announcedCents: 3_000_000,
+    ceiling: { status: 'no_base' as const },
+    tuitionCents: 3_000_000,
+    discounts: [],
+    discountCents: 0,
+    scholarship: null,
+    netCents: 3_000_000,
+    extras: [],
+    installments: [3_000_000],
+    outstandingTuitionCents: 0,
+  }
+  assert.ok(!quoteLines(base).pricing.some((line) => line.includes('tarifesi uygulanır')))
+  const [first] = quoteLines({ ...base, tariffCarriedOverFromYear: 2026 }).pricing
+  assert.match(first ?? '', /önceki yılın \(2026–2027\) tarifesi uygulanır/)
 })
 
 test('sunucu alanları form alanına eşlenir', () => {

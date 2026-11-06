@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import type { ApiClient } from './support/api.ts'
+import { seedCarriedOverTariff } from './support/finance-terms.ts'
 import { expect, test } from './support/fixtures.ts'
 
 // Kayıt yenileme (IST-100): ücret yayımlı tarifeden ve artış tavanından hesaplanır, yenileme
@@ -144,6 +145,66 @@ test.describe('kayıt yenileme', () => {
     await expect(detail.getByText(/^1\. taksit/)).toBeVisible()
     await expect(detail.getByText(/^Artış tavanı: /)).toBeVisible()
     await expect(detail.getByRole('button', { name: 'Dönem geçişini uygula' })).toBeVisible()
+  })
+
+  test('DOM-FIN-002, K-11: süresinde ilan yoksa önceki yılın tarifesiyle yenilenir; form, ücret özeti ve ayrıntı bunu söyler', async ({
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({
+      roles: ['yonetici'],
+      students: ['s3'],
+      collections: ['renewals'],
+    })
+    // Yenileme yılı geçen yıldır: ilan dönemi her gün bitmiştir, karar gerçek saate bağlı değildir.
+    const target = new Date().getFullYear() - 1
+    const tariffYear = target - 1
+    await seedCarriedOverTariff({
+      institutionId: school.institutionId,
+      academicYear: tariffYear,
+      tariffYear,
+      amountCents: 12_000_000,
+    })
+    const page = await loginAs(school.user('yonetici'))
+    const client = await api(school.user('yonetici'))
+    const index = await client.post(
+      `${RENEWALS}/price-indexes`,
+      {
+        academicYear: target,
+        ppiBasisPoints: 4000,
+        cpiBasisPoints: 3000,
+        source: 'TÜİK bülteni 53607',
+        bulletinDate: nextDay(-30),
+      },
+      { 'idempotency-key': randomUUID() },
+    )
+    expect(index.status, JSON.stringify(index.body)).toBe(201)
+
+    await page.goto('/yonetici/kayit-yenileme')
+    await page.getByRole('button', { name: 'Kayıt yenile' }).click()
+    const form = page.getByRole('dialog', { name: 'Kayıt yenile' })
+    const note = `önceki yılın (${String(tariffYear)}–${String(tariffYear + 1)}) tarifesi uygulanır`
+    await expect(form.getByRole('note').filter({ hasText: note })).toBeVisible()
+    await form.getByLabel('Öğrenci', { exact: true }).selectOption({ label: 'Zeynep Demir · 6-A' })
+    await form.getByLabel('Yeni sınıf').selectOption({ label: '7-A · Kadıköy Kampüsü' })
+    await form.getByLabel('Taksit sayısı').fill('4')
+    await form.getByLabel('İlk taksit tarihi').fill(nextDay(30))
+    await form.getByRole('button', { name: 'Kontrol et' }).click()
+
+    const summary = form.getByRole('region', { name: 'Yeni dönem ödeme özeti' })
+    await expect(summary.getByText(note, { exact: false })).toBeVisible()
+    await expect(summary.getByText('İlan edilen ücret: 120.000,00 ₺')).toBeVisible()
+    await form.getByRole('button', { name: 'Onayla ve kaydet' }).click()
+    await expect(form).toBeHidden()
+
+    await expect.poll(async () => (await renewalOf(client, 's3'))?.status).toBe('Planlandı')
+    const renewal = await renewalOf(client, 's3')
+    expect(renewal?.academicYear).toBe(target)
+    await page.getByLabel('Tabloda ara').fill('Zeynep Demir')
+    await page.getByRole('button', { name: 'Zeynep Demir' }).click()
+    const detail = page.getByRole('dialog', { name: 'Zeynep Demir' })
+    await expect(detail.getByText(note, { exact: false })).toBeVisible()
   })
 
   test('DOM-FIN-002, renewal_above_tariff: ilan edilen ücreti aşan bedel reddedilir; ileti görünür, yenileme yazılmaz', async ({

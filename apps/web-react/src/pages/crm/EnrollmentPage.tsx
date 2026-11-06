@@ -19,6 +19,7 @@ import {
   type EnrollmentTariff,
 } from '@kampus/school-core/lib/enrollment.ts'
 import {
+  carriedOverTariffNote,
   FEE_DISCOUNT_KIND_LABELS,
   FEE_ITEM_KIND_LABELS,
   FEE_ITEM_KINDS,
@@ -26,7 +27,7 @@ import {
 import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { OPEN_PROSPECT_STAGES } from '@kampus/school-core/lib/prospects.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
-import { useFeeTariffs } from '@kampus/react-shared/use-fee-tariffs.ts'
+import { useEffectiveFeeTariff } from '@kampus/react-shared/use-fee-tariffs.ts'
 import {
   useEnrollProspect,
   useGuardianMatches,
@@ -94,13 +95,16 @@ type Done = {
   adult: boolean
   /** Veli hesabı açılacak veli kaydı (ON-290); kursiyerin kendisi seçildiyse yok. */
   parentId: string | null
+  /** Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002, K-11); sunucu yanıtından. */
+  tariffCarriedOverFromYear: number | null
 }
 
 /**
  * Kayıt İşlemleri (ön büro `/kayit-islemleri`; DOM-KAY-001, -011…-013, -035, DOM-FIN-002, -003,
  * -010, -011, -020…-022): adımlı kesin kayıt. Tutar girilmez, yayındaki tarifeden hesaplanır;
  * önizleme sunucuyla aynı core kuralıdır, kesin hesabı sunucu yapar. Kimlik yanıtta ve listelerde
- * dönmez. Yayımlanmış tarife yoksa form açılmaz. Rıza alınmaz: personel rıza veremez, kayıttan
+ * dönmez. Süresinde ilan yoksa önceki yılın tarifesi geçerlidir ve ekranda yazar (K-11); geçerli
+ * tarife yoksa form açılmaz. Rıza alınmaz: personel rıza veremez, kayıttan
  * sonra beklenen rızalar bildirilir (IST-017, DOM-YTK-057).
  */
 export function EnrollmentPage({ page }: { page: NavPage }) {
@@ -109,17 +113,21 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
   const { session } = useAuth()
   const institutionType = session?.institution.type ?? 'school'
   const year = session?.institution.academicYear ?? Number(dayKey().slice(0, 4))
-  const tariffs = useFeeTariffs({ page: 1, pageSize: TARIFF_PAGE_SIZE, academicYear: year })
+  const tariffs = useEffectiveFeeTariff({
+    academicYear: year,
+    institutionType,
+    pageSize: TARIFF_PAGE_SIZE,
+  })
   const paymentsHref = paymentPlanHref(session?.role)
   const [done, setDone] = useState<Done | null>(null)
   const [round, setRound] = useState(0)
-  const published = tariffs.data?.data.find((tariff) => tariff.status === 'published')
+  const published = tariffs.tariff
 
   return (
     <>
       <PageHeading title={page.title} description={page.description} />
       {tariffs.error ? (
-        <QueryError error={tariffs.error} onRetry={() => void tariffs.refetch()} />
+        <QueryError error={tariffs.error} onRetry={tariffs.refetch} />
       ) : tariffs.isPending ? (
         <SummaryLoading />
       ) : !published ? (
@@ -138,6 +146,11 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
           <p className="text-sm text-muted-foreground">
             Öğrenci, veli, sözleşme ve taksit planı oluşturuldu.
           </p>
+          {done.tariffCarriedOverFromYear === null ? null : (
+            <p role="note" className="rounded-md border bg-warning-soft p-3 text-sm">
+              {carriedOverTariffNote(done.tariffCarriedOverFromYear)}
+            </p>
+          )}
           {done.studentId ? (
             <EnrollmentConsentNotice studentId={done.studentId} adult={done.adult} />
           ) : (
@@ -183,6 +196,7 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
         <EnrollmentForm
           key={round}
           tariff={published}
+          carriedOverFromYear={tariffs.carriedOverFromYear}
           institutionType={institutionType}
           onDone={setDone}
         />
@@ -194,10 +208,13 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
 
 function EnrollmentForm({
   tariff,
+  carriedOverFromYear,
   institutionType,
   onDone,
 }: {
   tariff: EnrollmentTariff
+  /** Önceki yılın tarifesi uygulanıyorsa o yıl (DOM-FIN-002, K-11). */
+  carriedOverFromYear: number | null
   institutionType: InstitutionType
   onDone: (done: Done) => void
 }) {
@@ -402,6 +419,7 @@ function EnrollmentForm({
           data.existingParentId,
           outcome.data.data.records,
         ),
+        tariffCarriedOverFromYear: outcome.data.data.tariffCarriedOverFromYear ?? null,
       })
     }
   })
@@ -452,6 +470,11 @@ function EnrollmentForm({
         <h2 id="kayit-formu" className="mb-3 text-lg font-semibold">
           Öğrenci kayıt bilgileri
         </h2>
+        {carriedOverFromYear === null ? null : (
+          <p role="note" className="mb-3 rounded-md border bg-warning-soft p-3 text-sm">
+            {carriedOverTariffNote(carriedOverFromYear)}
+          </p>
+        )}
         <FormSteps steps={STEPS} current={step} onBack={goToStep} />
         <form
           noValidate
@@ -873,6 +896,12 @@ function EnrollmentForm({
             Ödeme planı önizlemesi
           </h2>
           <dl className="grid gap-1 text-sm">
+            {carriedOverFromYear === null ? null : (
+              <Line
+                label="Uygulanan tarife"
+                value={`${String(carriedOverFromYear)}–${String(carriedOverFromYear + 1)} (önceki yıl)`}
+              />
+            )}
             <Line label="İlan ücreti" value={money(preview.price.grossCents)} />
             {preview.price.discounts.map((line) => (
               <Line

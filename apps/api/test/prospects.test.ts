@@ -1074,10 +1074,10 @@ describe('aday uçları', () => {
     )
     assert.equal(published.statusCode, 200, published.body)
   }
-  async function publishTariffForYear(cookie: string, academicYear: number) {
+  async function publishTariffForYear(cookie: string, academicYear: number, unit = 'year') {
     const draft = await send('POST', '/api/v1/fee-tariffs', cookie, {
       academicYear,
-      items: [TUITION],
+      items: [{ ...TUITION, unit }],
     })
     assert.equal(draft.statusCode, 201, draft.body)
     tariffId = draft.json().data.id
@@ -1172,6 +1172,65 @@ describe('aday uçları', () => {
         'tariff_not_published',
       )
     })
+  })
+
+  test('DOM-FIN-002, K-11: süresinde ilan yoksa önceki yılın tarifesiyle kayıt yapılır; sözleşme o tarifeyi taşır, yıl hedef yıl kalır, yanıt kaynak yılı söyler', async () => {
+    const year = FIXED_NOW.getUTCFullYear()
+    const a = await institution()
+    await publishTariffForYear(a.adminCookie, year - 1)
+    const carriedTariffId = tariffId
+    const response = await enroll(a.adminCookie, 'pr1', ENROLLMENT, await versionOf(a.id, 'pr1'))
+    assert.equal(response.statusCode, 201, response.body)
+    assert.equal(response.json().data.tariffCarriedOverFromYear, year - 1)
+    const { contracts, invoices } = await enrollmentRows(a.id)
+    const contract = contracts.find((row) => row.data.studentId === response.json().data.entity.id)
+    assert.equal(contract?.data.tariffId, carriedTariffId)
+    assert.equal(contract?.data.tariffVersion, 1)
+    assert.equal(contract?.data.grossCents, TUITION.amountCents)
+    assert.equal(contract?.data.academicYear, year)
+    assert.ok(invoices.some((row) => row.data.academicYear === year))
+  })
+
+  test('DOM-FIN-002, K-11: hedef yılın tarifesi sonradan yayımlanınca önceki yılın tarifesiyle gelen istek 409, kendi tarifesiyle yanıtta taşınma yok', async () => {
+    const year = FIXED_NOW.getUTCFullYear()
+    const a = await institution()
+    await publishTariffForYear(a.adminCookie, year - 1)
+    const carriedTariffId = tariffId
+    await publishTariffForYear(a.adminCookie, year)
+    const version = await versionOf(a.id, 'pr1')
+    await noEnrollment(a.id, 'pr1', async () => {
+      assertError(
+        await enroll(a.adminCookie, 'pr1', { ...ENROLLMENT, tariffId: carriedTariffId }, version),
+        409,
+        'tariff_changed',
+      )
+    })
+    const response = await enroll(a.adminCookie, 'pr1', ENROLLMENT, version)
+    assert.equal(response.statusCode, 201, response.body)
+    assert.equal('tariffCarriedOverFromYear' in response.json().data, false)
+  })
+
+  test('DOM-FIN-002, K-11: ilan dönemi sürüyorsa, önceki yılın tarifesi yoksa ya da dil okuluysa önceki tarife taşınmaz, 422', async () => {
+    const year = FIXED_NOW.getUTCFullYear()
+    // 2027–2028'in ilan dönemi 2027 mayıs sonunda biter; FIXED_NOW 2026 ekimidir.
+    const ongoing = await institution({ academicYear: year + 1 })
+    await publishTariffForYear(ongoing.adminCookie, year)
+    // İki yıl önceki tarife taşınmaz; yalnız bir önceki yıla bakılır.
+    const gap = await institution()
+    await publishTariffForYear(gap.adminCookie, year - 2)
+    // Dil okulunda ilan dönemi yoktur (DOM-FIN-002).
+    const language = await institution({ type: 'language_school' })
+    await publishTariffForYear(language.adminCookie, year - 1, 'lesson_hour')
+    for (const target of [ongoing, gap, language]) {
+      const version = await versionOf(target.id, 'pr1')
+      await noEnrollment(target.id, 'pr1', async () => {
+        assertError(
+          await enroll(target.adminCookie, 'pr1', ENROLLMENT, version),
+          422,
+          'tariff_not_published',
+        )
+      })
+    }
   })
 
   test('DOM-KAY-001, DOM-FIN-010, DOM-FIN-011, DOM-FIN-012: ön büro kesin kayıt yapar; tutar tarifeden, taksit toplamı nete eşit', async () => {

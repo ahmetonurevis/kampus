@@ -2,6 +2,7 @@ import { randomUUID } from 'node:crypto'
 
 import { z } from 'zod'
 
+import { resolveEffectiveTariff } from '@kampus/school-core/lib/fee-tariffs.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import { renewalPricingSchema } from '@kampus/school-core/lib/renewal-ceiling.ts'
 import {
@@ -15,6 +16,7 @@ import {
   renewalQuoteSchema,
   type RenewalContext,
 } from '@kampus/school-core/lib/renewals.ts'
+import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { WORKFLOW_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
@@ -40,6 +42,7 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { getCollectionItem, listCollection, type CollectionItem } from './collection-reads.ts'
 import { commandBody } from './command-result.ts'
 import { environment } from './commands.ts'
+import { withTariffCarryOver } from './fee-tariffs.ts'
 import {
   runCommand,
   runReadOnly,
@@ -94,17 +97,28 @@ async function tuitionDebtOf(
 async function renewalContext(
   tx: Database,
   ctx: ServiceContext,
+  institutionType: InstitutionType,
   input: { studentId: string; academicYear: number; scholarshipProgramId?: string | undefined },
 ): Promise<RenewalContext> {
-  const [tariff, previousTariff, priceIndexes, debtCents] = await Promise.all([
+  const [published, previousTariff, priceIndexes, debtCents] = await Promise.all([
     findPublishedTariff(tx, ctx.institutionId, input.academicYear),
     findPublishedTariff(tx, ctx.institutionId, input.academicYear - 1),
     allPriceIndexes(tx, ctx.institutionId),
     tuitionDebtOf(tx, ctx, input.studentId, input.academicYear),
   ])
   const programId = input.scholarshipProgramId
+  // Süresinde ilan yoksa önceki yılın tarifesi geçerli kalır (DOM-FIN-002, K-11); `previousTariff`
+  // tavanın bazı olarak aynen kalır (DOM-FIN-005).
+  const effective = resolveEffectiveTariff({
+    academicYear: input.academicYear,
+    institutionType,
+    published,
+    previousPublished: previousTariff,
+    now: ctx.now,
+  })
   return {
-    tariff,
+    tariff: effective?.tariff ?? null,
+    tariffCarriedOverFromYear: effective?.carriedOverFromYear ?? null,
     previousTariff,
     priceIndexes,
     outstandingTuitionCents: debtCents,
@@ -144,8 +158,8 @@ export function quoteRenewalFor(ctx: ServiceContext, input: unknown) {
     stores: FINANCE_TABLE_STORES,
     loadScope: scopeOf(data.studentId),
     load: async (tx) => {
-      const { session, scalars } = await environment(tx, ctx, SPEC)
-      const context = await renewalContext(tx, ctx, data)
+      const { session, scalars, institutionType } = await environment(tx, ctx, SPEC)
+      const context = await renewalContext(tx, ctx, institutionType, data)
       return { scalars, run: (state) => quoteRenewal(state, session, input, context) }
     },
   })
@@ -173,8 +187,8 @@ export function planRenewalCommand(
         id: result.renewal.id,
       }),
       load: async (tx) => {
-        const { session, scalars } = await environment(tx, ctx, SPEC)
-        const context = await renewalContext(tx, ctx, {
+        const { session, scalars, institutionType } = await environment(tx, ctx, SPEC)
+        const context = await renewalContext(tx, ctx, institutionType, {
           studentId: data.studentId,
           academicYear: data.academicYear,
           ...(data.mode === 'renew' ? { scholarshipProgramId: data.scholarshipProgramId } : {}),
@@ -208,11 +222,14 @@ export function planRenewalCommand(
       },
     },
     (outcome) =>
-      commandBody(
-        { collection: 'renewals', id: outcome.result.renewal.id },
-        outcome.changes,
-        201,
-        outcome.result.contractId === null ? {} : { contractId: outcome.result.contractId },
+      withTariffCarryOver(
+        commandBody(
+          { collection: 'renewals', id: outcome.result.renewal.id },
+          outcome.changes,
+          201,
+          outcome.result.contractId === null ? {} : { contractId: outcome.result.contractId },
+        ),
+        outcome.result.renewal.pricing?.tariffCarriedOverFromYear,
       ),
     idempotency,
   )

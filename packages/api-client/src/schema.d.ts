@@ -2423,7 +2423,7 @@ export interface paths {
         put?: never;
         /**
          * Kayıt yenileme planla
-         * @description Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005), indirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); tarife sürümü değiştiyse 409 `tariff_changed`. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Önceki yıldan ödenmemiş öğrenim ücreti borcu olan öğrencide (DOM-KAY-025) `debtApproved: true` yoksa 422 `renewal_debt_unapproved`; onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`. Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         * @description Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005); süresinde ilan yapılmadıysa önceki yılın tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, `academicYear` hedef yıl kalır, yanıtta `tariffCarriedOverFromYear` döner. İndirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); gövdedeki `tariffId` geçerli tarifeden farklıysa (yeni sürüm ya da hedef yılın tarifesi sonradan yayımlandı) 409 `tariff_changed`. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Önceki yıldan ödenmemiş öğrenim ücreti borcu olan öğrencide (DOM-KAY-025) `debtApproved: true` yoksa 422 `renewal_debt_unapproved`; onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`. Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
          */
         post: operations["planRenewal"];
         delete?: never;
@@ -2443,7 +2443,7 @@ export interface paths {
         put?: never;
         /**
          * Yenileme ücretini önizle
-         * @description Hiçbir kayıt yazmaz; planla aynı kuralları çalıştırır. İlan edilen ücret, artış tavanı (ara sınıfta `baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100)`, DOM-FIN-005), indirimler, burs, net ve taksitler döner. Yayımlı tarife yoksa 422 `tariff_not_published`, oran yoksa 422 `price_index_missing`, ilan aşılırsa 422 `renewal_above_tariff`, tavan aşılırsa 422 `renewal_above_ceiling`. Kardeş indirimi koşulu kalktıysa gerekçesi `ceiling.discountLoss`te gelir (DOM-FIN-023). Baz bulunamazsa `ceiling.status` `no_base`. Roller: `yonetici`, `onburo`.
+         * @description Hiçbir kayıt yazmaz; planla aynı kuralları çalıştırır. İlan edilen ücret, artış tavanı (ara sınıfta `baz × (1 + ((ÜFE + TÜFE) / 2 + 5) / 100)`, DOM-FIN-005), indirimler, burs, net ve taksitler döner. Hedef yılın yayımlı tarifesi yoksa ve ilan dönemi bittiyse (okulda eğitim yılının başladığı yılın mayıs sonu) önceki yılın yayımlı tarifesi uygulanır, `tariffCarriedOverFromYear` o yılı söyler (DOM-FIN-002); dönem sürüyorsa ya da önceki yılın da tarifesi yoksa 422 `tariff_not_published`. Oran yoksa 422 `price_index_missing`, ilan aşılırsa 422 `renewal_above_tariff`, tavan aşılırsa 422 `renewal_above_ceiling`. Kardeş indirimi koşulu kalktıysa gerekçesi `ceiling.discountLoss`te gelir (DOM-FIN-023). Baz bulunamazsa `ceiling.status` `no_base`. Roller: `yonetici`, `onburo`.
          */
         post: operations["quoteRenewal"];
         delete?: never;
@@ -2963,7 +2963,7 @@ export interface paths {
         put?: never;
         /**
          * Adayı kesin kayda al
-         * @description Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithTariff`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002): tarife yoksa 422 `tariff_not_published`, düzeyin ücreti yoksa 422 `tariff_tuition_missing`. Dil okulunda `lessonHours` zorunlu (422 `lesson_hours_required`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 `discount_not_in_tariff`, toplam %50'yi aşarsa 422 `discount_cap_exceeded`, personel çocuğu istisnası yalnız yönetici (422 `discount_approval_required`), kardeş indirimi mevcut veli ve aktif kardeş ister, ücreti düşük çocuğa uygulanır: adayın ilan ücreti kardeşlerinkinden yüksekse aday ilk çocuktur (422 `sibling_discount_ineligible`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 `extra_not_in_tariff` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aktif öğrencide kayıtlı kimlik 409 `student_identity_duplicate`, pasif kaydın kimliği yeniden kullanılır. Veli zorunlu (422 `guardian_required`); 18 yaş doğum tarihinden, İstanbul gününe göre hesaplanır. Dil okulunda 18 yaş üstü kursiyerde `guardian: null` kursiyeri ödeyici yapar, veli verilirse 422 `guardian_not_applicable`; adayın yaş grubu seçimi doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (DOM-KAY-012). Okulda veli her yaşta zorunludur; kursta 18 yaş ve üstü kursiyer kendi ödeyicisidir. `existingParentId` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Modüller `crm` ve `finance` (taksit ve sözleşme yazılır); biri kapalıysa 403 `module_disabled`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`.
+         * @description Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithTariff`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002). O yılın tarifesi yoksa ve ilan dönemi bittiyse (okulda eğitim yılının başladığı yılın mayıs sonu; dil okulu ve kursta ilan dönemi yoktur) önceki yılın yayımlı tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, eğitim yılı değişmez, yanıtta `tariffCarriedOverFromYear` döner. Dönem sürüyorsa ya da önceki yılın da tarifesi yoksa 422 `tariff_not_published`. Gövdedeki `tariffId` geçerli tarifeden farklıysa 409 `tariff_changed`. Düzeyin ücreti yoksa 422 `tariff_tuition_missing`. Dil okulunda `lessonHours` zorunlu (422 `lesson_hours_required`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 `discount_not_in_tariff`, toplam %50'yi aşarsa 422 `discount_cap_exceeded`, personel çocuğu istisnası yalnız yönetici (422 `discount_approval_required`), kardeş indirimi mevcut veli ve aktif kardeş ister, ücreti düşük çocuğa uygulanır: adayın ilan ücreti kardeşlerinkinden yüksekse aday ilk çocuktur (422 `sibling_discount_ineligible`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 `extra_not_in_tariff` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aktif öğrencide kayıtlı kimlik 409 `student_identity_duplicate`, pasif kaydın kimliği yeniden kullanılır. Veli zorunlu (422 `guardian_required`); 18 yaş doğum tarihinden, İstanbul gününe göre hesaplanır. Dil okulunda 18 yaş üstü kursiyerde `guardian: null` kursiyeri ödeyici yapar, veli verilirse 422 `guardian_not_applicable`; adayın yaş grubu seçimi doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (DOM-KAY-012). Okulda veli her yaşta zorunludur; kursta 18 yaş ve üstü kursiyer kendi ödeyicisidir. `existingParentId` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Modüller `crm` ve `finance` (taksit ve sözleşme yazılır); biri kapalıysa 403 `module_disabled`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`.
          */
         post: operations["enrollProspect"];
         delete?: never;
@@ -28346,6 +28346,8 @@ export interface operations {
                             pricing: {
                                 tariffId: string;
                                 tariffVersion: number;
+                                /** @description Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002) */
+                                tariffCarriedOverFromYear?: number | null;
                                 announcedCents: number;
                                 ceiling: {
                                     /** @enum {string} */
@@ -28542,6 +28544,8 @@ export interface operations {
                             }[];
                             /** @description Açılan sözleşme; mezuniyette yoktur */
                             contractId?: string;
+                            /** @description Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); aksi halde yoktur */
+                            tariffCarriedOverFromYear?: number;
                         };
                     };
                 };
@@ -28655,6 +28659,8 @@ export interface operations {
                         data: {
                             tariffId: string;
                             tariffVersion: number;
+                            /** @description Hedef yılın tarifesi süresinde ilan edilmediği için önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); hedef yılın kendi tarifesinde `null` */
+                            tariffCarriedOverFromYear: number | null;
                             /** @description İlan edilen öğrenim ücreti */
                             announcedCents: number;
                             ceiling: {
@@ -29177,6 +29183,8 @@ export interface operations {
                             pricing: {
                                 tariffId: string;
                                 tariffVersion: number;
+                                /** @description Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002) */
+                                tariffCarriedOverFromYear?: number | null;
                                 announcedCents: number;
                                 ceiling: {
                                     /** @enum {string} */
@@ -32548,7 +32556,34 @@ export interface operations {
                 };
                 content: {
                     "application/json": {
-                        data: components["schemas"]["CommandResult"];
+                        data: {
+                            /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
+                            entity: {
+                                /** @description İşlemin konusu olan kaydın koleksiyonu */
+                                collection: string;
+                                /** @description İşlemin konusu olan kaydın kimliği (yeni kayıtta üretilen) */
+                                id: string;
+                            } | null;
+                            /** @description Değişen kayıt sayıları (yalnız sıra değişikliği sayılmaz) */
+                            changes: {
+                                inserted: number;
+                                updated: number;
+                                archived: number;
+                                restored: number;
+                            };
+                            /** @description Yazılan kayıtlar; güncel veri koleksiyon okuma uçlarından alınır */
+                            records: {
+                                /** @description school-core State koleksiyonu */
+                                collection: string;
+                                id: string;
+                                /** @description Kaydın yeni sürümü (`If-Match` için) */
+                                version: number;
+                                /** @enum {string} */
+                                change: "insert" | "update" | "archive" | "restore" | "move";
+                            }[];
+                            /** @description Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); aksi halde yoktur */
+                            tariffCarriedOverFromYear?: number;
+                        };
                     };
                 };
             };

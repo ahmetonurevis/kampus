@@ -77,6 +77,17 @@ const render = ({ state, contract }: Fixture, renewal?: RenewalContractContext) 
 const pageOf = (document: ReturnType<typeof render>, text: string) =>
   document.pages.findIndex((page) => texts(page).includes(text))
 
+test('DOM-FIN-002, K-11: önceki yılın tarifesi uygulandıysa Ek 2 kaynak yılı yazar; hedef yılın tarifesinde satır yok', () => {
+  const setup = fixture()
+  const own = render(setup, setup.renewal)
+  assert.equal(pageOf(own, 'Uygulanan tarife'), -1)
+  const carried = render(setup, {
+    ...setup.renewal,
+    pricing: { ...setup.renewal.pricing!, tariffCarriedOverFromYear: 2026 },
+  })
+  assert.notEqual(pageOf(carried, '2026–2027 (önceki yıl)'), -1)
+})
+
 test('IST-100: yenileme sözleşmesi metin sayfasını büyütmez; dönem geçişi Ek 1, ücret kararı Ek 2', () => {
   const setup = fixture()
   const document = render(setup, setup.renewal)

@@ -57,6 +57,13 @@ export type DiscountLoss = NonNullable<
 export const renewalPricingSchema = z.object({
   tariffId: z.string(),
   tariffVersion: z.number().int(),
+  /** Süresinde ilan yapılmadıysa tarifenin taşındığı yıl (DOM-FIN-002); eski kayıtta yoktur. */
+  tariffCarriedOverFromYear: z
+    .number()
+    .int()
+    .nullable()
+    .optional()
+    .describe('Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002)'),
   announcedCents: z.number().int(),
   ceiling: renewalCeilingSchema,
   discounts: z.array(lineSchema),

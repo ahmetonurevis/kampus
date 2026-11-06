@@ -30,7 +30,6 @@ import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 import type { Database } from '../db/client.ts'
 import type { CollectionName } from '../db/collections.ts'
 import { findParentAccount, linkChildToAccount, loadParentBonds } from '../db/enrollment-bonds.ts'
-import { findPublishedTariff } from '../db/fee-tariffs.ts'
 import {
   countScholarshipAwards,
   findScholarshipProgram,
@@ -51,6 +50,7 @@ import type { ServiceContext } from '../plugins/authenticate.ts'
 import { notify } from './notify.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import { loadEffectiveTariff, withTariffCarryOver } from './fee-tariffs.ts'
 import { auditWork } from './task-work.ts'
 import {
   runCommand,
@@ -271,6 +271,7 @@ export function enrollProspectCommand(
     guardian !== null && 'existingParentId' in guardian ? guardian.existingParentId : null
   // Yükleme kurum kilidi altında okur, kayıt sonrası yazma (`after`) aynı işlemde kullanır.
   let parentAccountId: string | null = null
+  let tariffCarriedOverFromYear: number | null = null
   return runCommand(
     ctx,
     {
@@ -297,7 +298,9 @@ export function enrollProspectCommand(
           .where(eq(institutionSettings.institutionId, ctx.institutionId))
           .limit(1)
         const academicYear = settings?.academicYear ?? Number(dayKey(ctx.now).slice(0, 4))
-        const tariff = await findPublishedTariff(tx, ctx.institutionId, academicYear)
+        // Süresinde ilan yoksa önceki yılın tarifesi geçerli kalır (DOM-FIN-002, K-11).
+        const effective = await loadEffectiveTariff(tx, ctx, academicYear, institutionType)
+        tariffCarriedOverFromYear = effective?.carriedOverFromYear ?? null
         const identityHolderId = await findIdentityHolder(tx, ctx.institutionId, identity.number)
         const guardianBonds =
           existingParentId === null
@@ -322,7 +325,7 @@ export function enrollProspectCommand(
             requireAuthorized(actor, 'prospect.enroll', {}, state, { now, institutionType })
             return enrollProspectWithTariff(state, prospectId, input, makeId, now, {
               institutionType,
-              tariff,
+              tariff: effective?.tariff ?? null,
               academicYear,
               identityHolderId,
               approvedByUserId: ctx.actor.userId,
@@ -405,7 +408,14 @@ export function enrollProspectCommand(
       },
     },
     (outcome) =>
-      commandBody({ collection: 'students', id: outcome.result.student.id }, outcome.changes, 201),
+      withTariffCarryOver(
+        commandBody(
+          { collection: 'students', id: outcome.result.student.id },
+          outcome.changes,
+          201,
+        ),
+        tariffCarriedOverFromYear,
+      ),
     options.idempotency,
   )
 }

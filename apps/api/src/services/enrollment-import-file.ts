@@ -42,10 +42,33 @@ function decodeText(bytes: Uint8Array): string {
   }
 }
 
+/** Excel'in sayı hücresinde gösterdiği anlamlı basamak sayısı. */
+const EXCEL_SIGNIFICANT_DIGITS = 15
+
 /**
- * Sayı hücresi metin olarak gelir (`parseNumber`): kimlik ve kuruşta kayan nokta kaybı olmaz.
+ * Excel `1250,10`'u dosyaya ikili karşılığıyla yazar (`1250.0999999999999`). Bu fazlalık kullanıcının
+ * girdiği değer değildir: Excel'in gördüğü 15 basamağa rakam metni üzerinde indirilir, kayan noktaya
+ * geçilmez. Daha az basamaklı değer dokunulmadan kalır; `1250.125` satır doğrulamasında reddedilir.
+ */
+function excelDecimalText(value: string): string {
+  const match = /^(\d+)\.(\d+)$/.exec(value)
+  if (match === null) return value
+  const fraction = match[2] ?? ''
+  const digits = `${match[1] ?? ''}${fraction}`
+  const dropped = digits.replace(/^0+/, '').length - EXCEL_SIGNIFICANT_DIGITS
+  if (dropped <= 0) return value
+  const unit = 10n ** BigInt(dropped)
+  const rounded = ((BigInt(digits) + unit / 2n) / unit) * unit
+  const text = String(rounded).padStart(digits.length, '0')
+  const whole = text.slice(0, text.length - fraction.length)
+  const kept = text.slice(text.length - fraction.length).replace(/0+$/, '')
+  return kept === '' ? whole : `${whole}.${kept}`
+}
+
+/**
+ * Sayı hücresi metin olarak gelir (`parseNumber`): kimlik ve tutarda kayan nokta kaybı olmaz.
  * Bazı yazıcılar tamsayıyı `1.2345678901E10` ya da `125000.0` diye yazar; yalnız tam sayı olan
- * değer sadeleşir, ondalıklı değer olduğu gibi kalır ve satır doğrulaması reddeder.
+ * değer sadeleşir, ondalıklı değer olduğu gibi kalır ve satır doğrulaması karar verir.
  */
 function numericText(value: string): string {
   if (/^\d+\.0+$/.test(value)) return value.slice(0, value.indexOf('.'))
@@ -60,7 +83,7 @@ function cellText(cell: unknown): string {
   if (cell === null || cell === undefined) return ''
   // Tarih hücresi UTC gece yarısıdır; gün olarak okunur.
   if (cell instanceof Date) return cell.toISOString().slice(0, 10)
-  if (typeof cell === 'string') return numericText(cell.trim())
+  if (typeof cell === 'string') return excelDecimalText(numericText(cell.trim()))
   if (typeof cell === 'number' || typeof cell === 'boolean') return String(cell)
   throw unreadableExcel()
 }

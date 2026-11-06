@@ -6,6 +6,7 @@ import {
   applyInstallmentImport,
   INSTALLMENT_IMPORT_SAMPLE,
   parseInstallmentImport,
+  parseTlAmount,
   planInstallmentImport,
   type InstallmentImportContext,
   type InstallmentImportRow,
@@ -37,6 +38,7 @@ const row = (overrides: Partial<InstallmentImportRow> = {}): InstallmentImportRo
   identityNumber: TC,
   studentName: '',
   installment: '1',
+  amount: '',
   amountCents: '1250000',
   dueDate: '15.11.2026',
   paidDate: '',
@@ -79,10 +81,20 @@ describe('parseInstallmentImport (ON-061)', () => {
   test('örnek dosya ayrıştırılır, başlık zorunludur, satır sınırı 5.000', () => {
     const rows = parseInstallmentImport(INSTALLMENT_IMPORT_SAMPLE)
     assert.equal(rows.length, 2)
-    assert.equal(rows[0]?.amountCents, '1250000')
+    assert.equal(rows[0]?.amount, '12.500,00')
+    assert.equal(rows[0]?.amountCents, '')
     assert.throws(
-      () => parseInstallmentImport('kimlik no;taksit no;tutar;vade\n1;1;1;2026-01-01'),
+      () => parseInstallmentImport('kimlik no;taksit no;bedel;vade\n1;1;1;2026-01-01'),
       (error: DomainError) => error.code === 'csv_unknown_column',
+    )
+    assert.throws(
+      () => parseInstallmentImport('kimlik no;taksit no;vade\n1;1;2026-01-01'),
+      (error: DomainError) =>
+        error.code === 'csv_missing_column' && error.message.includes('tutar ya da tutar kuruş'),
+    )
+    assert.equal(
+      parseInstallmentImport('kimlik no;taksit no;tutar;vade\n1;1;1.234,56;2026-01-01')[0]?.amount,
+      '1.234,56',
     )
     const header = 'kimlik no;taksit no;tutar kuruş;vade'
     assert.throws(
@@ -92,6 +104,60 @@ describe('parseInstallmentImport (ON-061)', () => {
         ),
       (error: DomainError) => error.code === 'csv_too_many_rows',
     )
+  })
+})
+
+describe('parseTlAmount (ON-061, DOM-FIN-014)', () => {
+  test('kabul edilen biçimler kuruşa tam çevrilir', () => {
+    const cases: readonly (readonly [string, number])[] = [
+      ['1.234,56', 123_456],
+      ['1234.56', 123_456],
+      ['1234,56', 123_456],
+      ['12.500,00', 1_250_000],
+      ['1.234.567,89', 123_456_789],
+      ['1234', 123_400],
+      ['1234,5', 123_450],
+      ['1234.5', 123_450],
+      ['0,01', 1],
+      ['0.07', 7],
+      ['0,12', 12],
+      ['1.234,56 ₺', 123_456],
+      ['1234.56 TL', 123_456],
+      [' 1234.56 ', 123_456],
+      ['1234.500', 123_450],
+      // Kayan noktada 1.1 * 100 = 110.00000000000001 olur; rakam metni tam verir.
+      ['1.10', 110],
+      ['4.35', 435],
+      ['1000000,00', 100_000_000],
+      ['100000000,00', 10_000_000_000],
+    ]
+    for (const [cell, cents] of cases) assert.deepEqual(parseTlAmount(cell), { cents }, cell)
+  })
+
+  test('belirsiz biçim tahmin edilmez', () => {
+    for (const cell of ['1.234', '1,234', '123.456', '999,999', '1.000', '1,234.56', '1.234.567'])
+      assert.deepEqual(parseTlAmount(cell), { problem: 'ambiguous' }, cell)
+  })
+
+  test('kesirli kuruş yuvarlanmaz', () => {
+    for (const cell of ['1234.567', '1234,567', '1.234,567', '12,3456', '0.125', '0,005'])
+      assert.deepEqual(parseTlAmount(cell), { problem: 'fraction' }, cell)
+  })
+
+  test('geçersiz, sıfır ve sınır üstü reddedilir', () => {
+    for (const cell of [
+      '',
+      'abc',
+      '-5',
+      '-1.234,56',
+      '1e5',
+      '12 500',
+      '0',
+      '0,00',
+      '100000000,01',
+      '99999999999999999999',
+    ])
+      assert.deepEqual(parseTlAmount(cell), { problem: 'invalid' }, cell)
   })
 })
 
@@ -127,6 +193,48 @@ describe('planInstallmentImport (ON-061, DOM-FIN-001)', () => {
         ['amount_invalid'],
         amountCents,
       )
+  })
+
+  test('DOM-FIN-014: tutar TL ya da kuruş; TL kuruşa tam çevrilir', () => {
+    const plan = planInstallmentImport(
+      state(),
+      [
+        row({ amount: '1.234,56', amountCents: '' }),
+        row({ installment: '2', amount: '1234.56', amountCents: '' }),
+        row({ installment: '3', amount: '', amountCents: '123456' }),
+        row({ installment: '4', amount: '1.234,56', amountCents: '123456' }),
+      ],
+      context(),
+    )
+    assert.deepEqual(plan.issues, [])
+    assert.deepEqual(
+      plan.installments.map((item) => item.amount),
+      [123_456, 123_456, 123_456, 123_456],
+    )
+    assert.equal(plan.rows[0]?.amountCents, 123_456)
+    assert.equal(plan.totalCents, 493_824)
+  })
+
+  test('DOM-FIN-014: tutar satır hataları; ikisi tutmazsa hata, hiçbiri yazılmaz', () => {
+    const cases: readonly (readonly [Partial<InstallmentImportRow>, string, string])[] = [
+      [{ amount: '', amountCents: '' }, 'amount', 'amount_missing'],
+      [{ amount: '1.234', amountCents: '' }, 'amount', 'tl_amount_ambiguous'],
+      [{ amount: '1234.567', amountCents: '' }, 'amount', 'tl_amount_fraction'],
+      [{ amount: 'abc', amountCents: '' }, 'amount', 'tl_amount_invalid'],
+      [{ amount: '1.234,56', amountCents: '123457' }, 'amount', 'amount_mismatch'],
+      [{ amount: '1234.56', amountCents: '1234.56' }, 'amountCents', 'amount_invalid'],
+      [{ amount: '1.234', amountCents: '123400' }, 'amount', 'tl_amount_ambiguous'],
+    ]
+    for (const [cells, field, code] of cases) {
+      const plan = planInstallmentImport(state(), [row(cells)], context())
+      assert.deepEqual(codes(plan), [code], JSON.stringify(cells))
+      assert.equal(plan.issues[0]?.field, field)
+      assert.equal(plan.rows[0]?.amountCents, null)
+      assert.deepEqual(plan.installments, [])
+      // Satır sorunu hücre değeri taşımaz; belirsiz biçim iletisindeki örnek sabit metindir.
+      if (cells.amount && cells.amount !== '1.234')
+        assert.ok(!plan.issues[0]?.message.includes(cells.amount), 'ileti değer taşımaz')
+    }
   })
 
   test('hücre sorunları ayrı madde ve ileti değer taşımaz', () => {

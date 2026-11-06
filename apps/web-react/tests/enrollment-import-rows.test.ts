@@ -92,7 +92,7 @@ describe('önizleme satırları (ON-060, ON-061)', () => {
 
   test('taksit satırı: tutar TL, ödeme durumu, sözleşme bağı', () => {
     const open = installmentImportRow(installmentRow())
-    assert.match(open.amount, /12\.500,00/)
+    assert.match(open.amount, /^12\.500,00\s₺$/)
     assert.equal(open.paid, 'Açık')
     assert.equal(open.contract, 'Sözleşmesiz')
     const paid = installmentImportRow(

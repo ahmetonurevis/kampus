@@ -65,7 +65,8 @@ export function InstallmentImportSection() {
         help={
           <>
             Başlık satırı zorunludur: <code>kimlik no</code>, <code>taksit no</code>,{' '}
-            <code>tutar kuruş</code> (12.500,00 ₺ için 1250000), <code>vade</code>; isteğe bağlı{' '}
+            <code>tutar</code> (TL: 12.500,00 ya da 12500.00; 1.234 gibi belirsiz yazım hatadır) ya
+            da <code>tutar kuruş</code> (1250000), <code>vade</code>; isteğe bağlı{' '}
             <code>öğrenci adı</code>, <code>ödeme tarihi</code> ve <code>ödeme yöntemi</code>{' '}
             (birlikte), <code>eğitim yılı</code>. En çok 5.000 satır. Öğrencinin tek sözleşmesi
             varsa taksit ona bağlanır, yoksa sözleşmesiz yazılır. Kayıtlı taksit atlanır. Ödenmiş

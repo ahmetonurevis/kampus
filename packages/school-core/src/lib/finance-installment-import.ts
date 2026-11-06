@@ -1,7 +1,8 @@
 import type { State } from '../data/seed.ts'
 import { contractStatus } from './contract-status.ts'
-import { csvTable, foldHeader, type CsvColumn } from './delimited-input.ts'
+import { csvTable, delimitedRecords, foldHeader, type CsvColumn } from './delimited-input.ts'
 import type { MakeId } from './domain.ts'
+import { DomainError } from './errors.ts'
 import {
   normalizeImportIdentity,
   parseImportDay,
@@ -19,9 +20,10 @@ import { maskNationalId } from './scope.ts'
  * doğrulanmadan hiçbir kayıt yazılmaz, sorunlar dosyadaki satır numarasıyla döner.
  *
  * Öğrenci kimlik numarasıyla bulunur (`student_identities`); ad verilirse eşleşmelidir, kimlik
- * yanlış yazılınca borç başka çocuğa yazılmasın. Tutar yalnız tamsayı kuruştur: sütun adı birimi
- * söyler, TL yazan dosya sütun adında reddedilir (100 katı hata olmasın). Vade günün 09:00Z anı,
- * `paidAt` ve `method` birlikte (core ve `invoices` tablosu biçimi).
+ * yanlış yazılınca borç başka çocuğa yazılmasın. Tutar `tutar` (TL) ya da `tutar kuruş` sütunundan
+ * okunur; sütun adı birimi söyler, ikisi birden doluysa tutmak zorundadır (100 katı hata olmasın).
+ * TL metni kayan noktaya çevrilmez, yuvarlanmaz (`parseTlAmount`). Vade günün 09:00Z anı, `paidAt`
+ * ve `method` birlikte (core ve `invoices` tablosu biçimi).
  *
  * Sözleşmeye bağlama ADR 0010 cevap 3'tedir: öğrencinin tek sözleşmesi varsa taksit ona bağlanır,
  * birden çok ya da hiç sözleşmesi yoksa bağ boş kalır. Ek koşullar: sözleşmenin yılı farklıysa bağ
@@ -46,7 +48,9 @@ export const INSTALLMENT_IMPORT_COLUMNS = {
   },
   studentName: { aliases: ['öğrenci adı', 'öğrenci', 'ad soyad'], required: false },
   installment: { aliases: ['taksit no', 'taksit'], required: true },
-  amountCents: { aliases: ['tutar kuruş', 'tutar (kuruş)', 'kuruş'], required: true },
+  // İkisinden biri zorunlu: `parseInstallmentImport` denetler, tablo yalnız tek sütunu bilir.
+  amount: { aliases: ['tutar', 'tutar tl', 'tutar (tl)', 'tutar (₺)'], required: false },
+  amountCents: { aliases: ['tutar kuruş', 'tutar (kuruş)', 'kuruş'], required: false },
   dueDate: { aliases: ['vade', 'vade tarihi'], required: true },
   paidDate: { aliases: ['ödeme tarihi', 'ödendiği tarih'], required: false },
   method: { aliases: ['ödeme yöntemi', 'yöntem'], required: false },
@@ -55,11 +59,11 @@ export const INSTALLMENT_IMPORT_COLUMNS = {
 
 export type InstallmentImportField = keyof typeof INSTALLMENT_IMPORT_COLUMNS
 
-/** İndirilebilir örnek dosya: açık ve ödenmiş taksit; kimlik örnektir, tutar kuruştur. */
+/** İndirilebilir örnek dosya: açık ve ödenmiş taksit; kimlik örnektir, tutar TL'dir. */
 export const INSTALLMENT_IMPORT_SAMPLE = [
-  'kimlik no;öğrenci adı;taksit no;tutar kuruş;vade;ödeme tarihi;ödeme yöntemi;eğitim yılı',
-  '10000000146;Ece Demir;1;1250000;15.09.2026;14.09.2026;Banka havalesi;2026',
-  '10000000146;Ece Demir;2;1250000;15.10.2026;;;2026',
+  'kimlik no;öğrenci adı;taksit no;tutar;vade;ödeme tarihi;ödeme yöntemi;eğitim yılı',
+  '10000000146;Ece Demir;1;12.500,00;15.09.2026;14.09.2026;Banka havalesi;2026',
+  '10000000146;Ece Demir;2;12.500,00;15.10.2026;;;2026',
 ].join('\n')
 
 export interface InstallmentImportRow {
@@ -67,6 +71,7 @@ export interface InstallmentImportRow {
   identityNumber: string
   studentName: string
   installment: string
+  amount: string
   amountCents: string
   dueDate: string
   paidDate: string
@@ -75,15 +80,66 @@ export interface InstallmentImportRow {
   extraCells: boolean
 }
 
+const AMOUNT_HEADERS: ReadonlySet<string> = new Set(
+  [
+    ...INSTALLMENT_IMPORT_COLUMNS.amount.aliases,
+    ...INSTALLMENT_IMPORT_COLUMNS.amountCents.aliases,
+  ].map(foldHeader),
+)
+
 /** Metni satırlara ayırır; dosya düzeyindeki sorun `DomainError` (satır sınırı dahil). */
 export function parseInstallmentImport(raw: string): InstallmentImportRow[] {
-  return readImportTable(() =>
-    csvTable(raw, INSTALLMENT_IMPORT_COLUMNS, INSTALLMENT_IMPORT_MAX_ROWS).map((row) => ({
-      line: row.line,
-      ...row.values,
-      extraCells: row.extraCells,
-    })),
-  )
+  return readImportTable(() => {
+    const rows = csvTable(raw, INSTALLMENT_IMPORT_COLUMNS, INSTALLMENT_IMPORT_MAX_ROWS)
+    const hasAmount = delimitedRecords(raw)[0]?.cells.some((cell) =>
+      AMOUNT_HEADERS.has(foldHeader(cell)),
+    )
+    if (!hasAmount)
+      throw new DomainError(
+        'csv_missing_column',
+        'Başlıkta zorunlu sütun eksik: tutar ya da tutar kuruş.',
+      )
+    return rows.map((row) => ({ line: row.line, ...row.values, extraCells: row.extraCells }))
+  })
+}
+
+export type TlAmountProblem = 'invalid' | 'ambiguous' | 'fraction'
+export type TlAmount = { cents: number } | { problem: TlAmountProblem }
+
+/** Tek gruplu `1.234` ve `1,234` iki türlü okunur: binlik mi, ondalık mı olduğu belli değildir. */
+const looksLikeThousands = (whole: string, fraction: string) =>
+  fraction.length === 3 && whole.length <= 3 && !whole.startsWith('0')
+
+/**
+ * TL hücresi → kuruş (DOM-FIN-014). Kabul: `1.234,56`, `1234,56`, `1234.56`, `1234`; sonda `₺` ya da
+ * `TL` olabilir. `1.234` ve `1,234` belirsizdir, `1,234.56` ve `1.234.567` kabul edilen biçim
+ * değildir: tahminle okunmaz (`ambiguous`). Kuruştan küçük kesir yuvarlanmaz (`fraction`). Kuruş
+ * rakam metninden kurulur; kayan noktalı sayıdan geçmez.
+ */
+export function parseTlAmount(cell: string): TlAmount {
+  const value = cell
+    .trim()
+    .replace(/\s*(?:₺|TL)$/i, '')
+    .trim()
+  let whole: string
+  let fraction = ''
+  const grouped = /^([1-9]\d{0,2}(?:\.\d{3})+),(\d+)$/.exec(value)
+  const decimal = /^(\d+)[.,](\d+)$/.exec(value)
+  if (/^\d+$/.test(value)) whole = value
+  else if (grouped) {
+    whole = (grouped[1] ?? '').replaceAll('.', '')
+    fraction = grouped[2] ?? ''
+  } else if (decimal) {
+    whole = decimal[1] ?? ''
+    fraction = decimal[2] ?? ''
+    if (looksLikeThousands(whole, fraction)) return { problem: 'ambiguous' }
+  } else return { problem: /^[\d.,]+$/.test(value) ? 'ambiguous' : 'invalid' }
+  if (/[1-9]/.test(fraction.slice(2))) return { problem: 'fraction' }
+  const digits = `${whole}${fraction.slice(0, 2).padEnd(2, '0')}`.replace(/^0+(?=\d)/, '')
+  // Sınır uzunluktan da denetlenir: uzun rakam dizisi `Number`'da kesinliğini yitirir.
+  if (digits.length > String(INSTALLMENT_IMPORT_MAX_CENTS).length) return { problem: 'invalid' }
+  const cents = Number(digits)
+  return cents > 0 && cents <= INSTALLMENT_IMPORT_MAX_CENTS ? { cents } : { problem: 'invalid' }
 }
 
 export const INSTALLMENT_IMPORT_MESSAGES = {
@@ -94,7 +150,13 @@ export const INSTALLMENT_IMPORT_MESSAGES = {
   student_inactive: 'Bu öğrenci ayrılmış; ayrılan öğrencinin taksiti aktarılmaz.',
   student_name_mismatch: 'Öğrenci adı kimlik numarasındaki kayıtla uyuşmuyor.',
   installment_invalid: 'Taksit numarası 1 ya da daha büyük bir tam sayı olmalı.',
-  amount_invalid: 'Tutarı kuruş olarak tam sayı girin (12.500,00 ₺ için 1250000).',
+  amount_missing: 'Tutar ya da tutar kuruş sütununu doldurun.',
+  amount_invalid: 'Tutar kuruş sütununa tam sayı girin (12.500,00 ₺ için 1250000).',
+  amount_mismatch: 'Tutar ve tutar kuruş sütunları birbirini tutmuyor.',
+  tl_amount_invalid: 'Tutarı sıfırdan büyük, 1.234,56 ya da 1234.56 biçiminde girin.',
+  tl_amount_ambiguous:
+    'Tutar biçimi belirsiz: 1.234 binlik de ondalık da olabilir. 1.234,56 ya da 1234.56 biçiminde, kuruşuyla girin.',
+  tl_amount_fraction: 'Tutarda kuruştan küçük kesir olamaz; tutar yuvarlanmaz.',
   due_date_invalid: 'Vadeyi GG.AA.YYYY ya da YYYY-AA-GG biçiminde girin.',
   paid_date_invalid: 'Ödeme tarihini GG.AA.YYYY ya da YYYY-AA-GG biçiminde girin.',
   paid_date_future: 'Ödeme tarihi bugünden sonra olamaz.',
@@ -176,6 +238,12 @@ function parseAcademicYear(cell: string, fallback: number): number | null {
   return match ? Number(match[1]) : null
 }
 
+const TL_PROBLEM_CODES = {
+  invalid: 'tl_amount_invalid',
+  ambiguous: 'tl_amount_ambiguous',
+  fraction: 'tl_amount_fraction',
+} as const satisfies Record<TlAmountProblem, keyof typeof INSTALLMENT_IMPORT_MESSAGES>
+
 function parsePositiveInt(cell: string): number | null {
   const value = cell.trim()
   if (!/^[1-9]\d*$/.test(value)) return null
@@ -190,6 +258,43 @@ type Contract = InstallmentImportState['contracts'][number]
 function contractInvoices(contract: Contract, invoices: readonly Invoice[]): Invoice[] {
   const listed = new Set(contract.invoiceIds ?? [])
   return invoices.filter((invoice) => invoice.contractId === contract.id || listed.has(invoice.id))
+}
+
+/**
+ * Satırın tutarı, kuruş: `tutar` ya da `tutar kuruş`; ikisi doluysa aynı değer olmalıdır, biri
+ * ötekini düzeltmez. Sorun ilgili sütuna yazılır, tutar `null` döner.
+ */
+function resolveAmount(
+  row: InstallmentImportRow,
+  add: (field: InstallmentImportField, code: keyof typeof INSTALLMENT_IMPORT_MESSAGES) => void,
+): number | null {
+  const tlCell = row.amount.trim()
+  const centsCell = row.amountCents.trim()
+  if (tlCell === '' && centsCell === '') {
+    add('amount', 'amount_missing')
+    return null
+  }
+  let fromCents: number | null = null
+  if (centsCell !== '') {
+    fromCents = parsePositiveInt(centsCell)
+    if (fromCents === null || fromCents > INSTALLMENT_IMPORT_MAX_CENTS) {
+      add('amountCents', 'amount_invalid')
+      fromCents = null
+    }
+  }
+  if (tlCell === '') return fromCents
+  const parsed = parseTlAmount(tlCell)
+  if ('problem' in parsed) {
+    add('amount', TL_PROBLEM_CODES[parsed.problem])
+    return null
+  }
+  if (centsCell === '') return parsed.cents
+  if (fromCents === null) return null
+  if (fromCents !== parsed.cents) {
+    add('amount', 'amount_mismatch')
+    return null
+  }
+  return parsed.cents
 }
 
 /**
@@ -245,9 +350,7 @@ export function planInstallmentImport(
 
     const installment = parsePositiveInt(row.installment)
     if (installment === null) add('installment', 'installment_invalid')
-    const amount = parsePositiveInt(row.amountCents)
-    const validAmount = amount !== null && amount <= INSTALLMENT_IMPORT_MAX_CENTS
-    if (!validAmount) add('amountCents', 'amount_invalid')
+    const amount = resolveAmount(row, add)
     const dueDay = parseImportDay(row.dueDate)
     if (dueDay === null) add('dueDate', 'due_date_invalid')
     const academicYear = parseAcademicYear(row.academicYear, context.academicYear)
@@ -292,7 +395,7 @@ export function planInstallmentImport(
       )
       if (existing !== undefined) {
         const sameTerms =
-          validAmount &&
+          amount !== null &&
           existing.amount === amount &&
           dueDay !== null &&
           existing.dueDate.slice(0, 10) === dueDay

@@ -232,15 +232,107 @@ describe('pilot aktarımı: taksitler (ON-061, IST-007)', () => {
     assert.deepEqual(await invoiceRows(institution.id), [])
   })
 
-  test('DOM-FIN-001: TL sütunu reddedilir; tutar yalnız kuruş sütunundan okunur', async () => {
-    const { cookie, tc } = await kurum()
+  test('DOM-FIN-014: tutar TL sütunundan kuruşa tam yazılır, önizleme aynı değeri verir', async () => {
+    const { institution, cookie, tc } = await kurum()
+    const file = base64(
+      [
+        'kimlik no;taksit no;tutar;tutar kuruş;vade',
+        `${tc};1;1.234,56;;2026-11-15`,
+        `${tc};2;1234.56;;2026-12-15`,
+        `${tc};3;;123456;2027-01-15`,
+        `${tc};4;1.234,56;123456;2027-02-15`,
+      ].join('\n'),
+    )
+    const preview = await upload(cookie, file, { dryRun: true })
+    assert.equal(preview.statusCode, 200, preview.body)
+    const data = preview.json().data as Result
+    assert.deepEqual(
+      data.rows.map((row) => row.amountCents),
+      [123_456, 123_456, 123_456, 123_456],
+    )
+    assert.equal(data.totalCents, 493_824)
+    const saved = await upload(cookie, file)
+    assert.equal(saved.statusCode, 201, saved.body)
+    assert.deepEqual(
+      (await invoiceRows(institution.id)).map((row) => row.amountCents),
+      [123_456, 123_456, 123_456, 123_456],
+    )
+  })
+
+  test('DOM-FIN-014: belirsiz, kesirli ve tutmayan tutar satır hatasıdır, hiçbir kayıt yazılmaz', async () => {
+    const { institution, cookie, tc } = await kurum()
     const response = await upload(
       cookie,
-      base64(`kimlik no;taksit no;tutar;vade\n${tc};1;12500;2026-11-15`),
-      { dryRun: true },
+      base64(
+        [
+          'kimlik no;taksit no;tutar;tutar kuruş;vade',
+          `${tc};1;1.234;;2026-11-15`,
+          `${tc};2;1234.567;;2026-12-15`,
+          `${tc};3;1.234,56;123457;2027-01-15`,
+          `${tc};4;;;2027-02-15`,
+          `${tc};5;1.234,56;;2027-03-15`,
+        ].join('\n'),
+      ),
     )
+    assert.equal(response.statusCode, 422, response.body)
+    const issues = response.json().issues as { path: unknown[]; code: string }[]
+    assert.deepEqual(
+      issues.map((issue) => [issue.path[1], issue.path[2], issue.code]),
+      [
+        [2, 'amount', 'tl_amount_ambiguous'],
+        [3, 'amount', 'tl_amount_fraction'],
+        [4, 'amount', 'amount_mismatch'],
+        [5, 'amount', 'amount_missing'],
+      ],
+    )
+    assert.deepEqual(await invoiceRows(institution.id), [])
+  })
+
+  test('DOM-FIN-014: başlıkta tutar sütunu yoksa dosya reddedilir', async () => {
+    const { cookie, tc } = await kurum()
+    const response = await upload(cookie, base64(`kimlik no;taksit no;vade\n${tc};1;2026-11-15`), {
+      dryRun: true,
+    })
     assert.equal(response.statusCode, 422)
-    assert.equal(response.json().code, 'csv_unknown_column')
+    assert.equal(response.json().code, 'csv_missing_column')
+  })
+
+  test('DOM-FIN-014: Excel sayı hücresi TL olarak tam okunur; ikili fazlalık kesir sayılmaz', async () => {
+    const { institution, cookie, tc } = await kurum()
+    const response = await upload(
+      cookie,
+      base64(
+        xlsxFile([
+          ['kimlik no', 'taksit no', 'tutar', 'vade'],
+          [Number(tc), 1, 1234.56, { date: '2026-11-15' }],
+          // Excel `1250,10`'u dosyaya böyle yazar.
+          [Number(tc), 2, 1250.0999999999999, { date: '2026-12-15' }],
+          [Number(tc), 3, 12500, { date: '2027-01-15' }],
+          [Number(tc), 4, '1.234,56', { date: '2027-02-15' }],
+        ]),
+      ),
+    )
+    assert.equal(response.statusCode, 201, response.body)
+    assert.deepEqual(
+      (await invoiceRows(institution.id)).map((row) => row.amountCents),
+      [123_456, 125_010, 1_250_000, 123_456],
+    )
+  })
+
+  test('DOM-FIN-014: Excel sayı hücresinde gerçek kesirli kuruş reddedilir', async () => {
+    const { institution, cookie, tc } = await kurum()
+    const response = await upload(
+      cookie,
+      base64(
+        xlsxFile([
+          ['kimlik no', 'taksit no', 'tutar', 'vade'],
+          [Number(tc), 1, 1250.125, { date: '2026-11-15' }],
+        ]),
+      ),
+    )
+    assert.equal(response.statusCode, 422, response.body)
+    assert.equal(response.json().issues[0].code, 'tl_amount_fraction')
+    assert.deepEqual(await invoiceRows(institution.id), [])
   })
 
   test('IST-007: tek hatalı satırda onay 422, satır numaralı sorun ve hiçbir kayıt yazılmaz', async () => {

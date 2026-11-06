@@ -129,7 +129,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-FIN-040`; ADR 0006 "Sonuçlar".
 - **Soru:** Ayrılışta %10 kesinti ve okunan süre payı, sözleşmenin indirimler düşüldükten sonraki net ücreti üzerinden mi, yoksa ilan edilen indirimsiz yıllık ücret üzerinden mi hesaplanır?
 - **Bugünkü varsayım:** Net ücret üzerinden hesaplanır (veli lehine).
-- **Kodda:** `quoteWithdrawal` tabanı `contract.netCents`'tir (`lib/withdrawals.ts`); döküm `student_withdrawals.breakdown`'da saklanır.
+- **Kodda:** `quoteWithdrawal` tabanı `contract.netCents`'tir (`lib/withdrawals.ts`), paket satışında da saat payı net üzerinden işler; döküm `student_withdrawals.breakdown`'da saklanır.
 - **Cevap değişirse:** Kesinti tabanı ve iade dökümü PDF'i değişir; geçmiş dökümler kendi kopyasıyla kalır.
 - **Cevap:** bekleniyor
 
@@ -165,7 +165,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-FIN-042`; ister listesi §4.3 "Mesafeli kayıt".
 - **Soru:** Dil okulu paketinin kurum binasına gelinmeden tamamen çevrim içi satılması mesafeli sözleşme sayılır mı; sayılırsa cayma süresi, istisnalar ve ÖÖKY'deki iade kuralıyla ilişkisi nedir (6502 sayılı Kanun, Mesafeli Sözleşmeler Yönetmeliği)?
 - **Bugünkü varsayım:** Sayılabilir; kurum bu kanalı açarsa cayma süresi sözleşmede yazılır ve süre içindeki ayrılışta kesinti yapılmaz. Süre ister listesindeki genel 14 gündür, sözleşme gününden sayılır ve son gün dahildir.
-- **Kodda:** Çevrim içi paket satışı yok. Kural, süre ve ön bilgilendirme verisi saf fonksiyondur (`distanceSaleWithdrawal`, `distanceSalePreInformation`, `lib/finance-distance-sale.ts`); ON-059 ve ON-072 çağıracak.
+- **Kodda:** Çevrim içi paket satışı yok; paket yalnız yönetici ve ön büro tarafından satılır (`POST /api/v1/finance/package-sales`, ON-058, K-07). Kural, süre ve ön bilgilendirme verisi saf fonksiyondur (`distanceSaleWithdrawal`, `distanceSalePreInformation`, `lib/finance-distance-sale.ts`); K-07 çevrim içi satışı kapattığı için çağıran yok, kanal açılırsa ekran o işle yazılır.
 - **Cevap değişirse:** Çevrim içi satışta ön bilgilendirme ve cayma metni ile cayma süresi içindeki kesintisiz iade yolu eklenir (IST-078).
 - **Cevap:** bekleniyor
 
@@ -183,7 +183,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-DIL-051`.
 - **Soru:** Paketin kullanım süresi dolduğunda kullanılmayan ders saatlerinin silinmesi ("saat yanar" koşulu) 6502 sayılı Kanun açısından geçerli olabilir mi?
 - **Bugünkü varsayım:** Geçerli değildir; kullanılmayan saatler silinmez, kursiyerin seçimine göre süre uzatılır ya da iade hesabına girer (ÖÖKY md. 56/3-b ve 4).
-- **Kodda:** Yok; paket ve saat bakiyesi yok.
+- **Kodda:** Saat silinmez: son kullanma günü geçince `packageSaleStatus` `expired` döner, `remainingHours` aynı kalır; yeni tüketim durur (`package_expired`), süre `POST /api/v1/finance/package-sales/:saleId/extend` ile uzatılır (`lib/finance-packages.ts`, ON-058). Süre dolumunda otomatik iade hesabı yok.
 - **Cevap değişirse:** Paket kuralına süre dolumu seçeneği eklenir.
 - **Cevap:** bekleniyor
 

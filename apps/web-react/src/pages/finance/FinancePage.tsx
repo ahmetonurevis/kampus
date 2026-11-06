@@ -17,6 +17,7 @@ import { InvoiceRemindButton } from './InvoiceRemindButton.tsx'
 import { InvoicesSection } from './InvoicesSection.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
 import { PaymentPanel } from './PaymentPanel.tsx'
+import { PackagesSection } from './PackagesSection.tsx'
 import { PaymentsSection } from './PaymentsSection.tsx'
 import { ContractsSection } from './ContractsSection.tsx'
 import { WithdrawalsSection } from './WithdrawalsSection.tsx'
@@ -28,6 +29,7 @@ const VIEWS = {
   payments: { label: 'Tahsilat geçmişi', param: 'tahsilatlar' },
   contracts: { label: 'Sözleşmeler', param: 'sozlesmeler' },
   tariffs: { label: 'Ücret tarifesi', param: 'tarife' },
+  packages: { label: 'Paketler', param: 'paket' },
   scholarships: { label: 'Burslar', param: 'burs' },
   withdrawals: { label: 'Ayrılış ve iade', param: 'ayrilis' },
   exports: { label: 'Muhasebe aktarımı', param: 'aktarim' },
@@ -37,9 +39,11 @@ const VIEW_OPTIONS = Object.entries(VIEWS).map(([value, view]) => ({
   value: value as FinanceView,
   label: view.label,
 }))
-const viewOf = (param: string | null): FinanceView =>
-  VIEW_OPTIONS.find(({ value }) => param !== null && VIEWS[value].param === param)?.value ??
-  'invoices'
+/** Paket satışı yalnız dil okulundadır (IST-078): okulda sekme yok, adresi taksitlere düşer. */
+const viewOptionsFor = (languageSchool: boolean) =>
+  languageSchool ? VIEW_OPTIONS : VIEW_OPTIONS.filter(({ value }) => value !== 'packages')
+const viewOf = (param: string | null, options: typeof VIEW_OPTIONS): FinanceView =>
+  options.find(({ value }) => param !== null && VIEWS[value].param === param)?.value ?? 'invoices'
 
 /**
  * Finans & Tahsilat (yönetici `/finans`, ön büro `/tahsilat-takip`; Vue `Finance.vue`): görünümler
@@ -52,7 +56,8 @@ export function FinancePage({ page }: { page: NavPage }) {
   useDocumentTitle(page.title)
   const { session } = useAuth()
   const [params, setParams] = useSearchParams()
-  const tab = viewOf(params.get(VIEW_PARAM))
+  const viewOptions = viewOptionsFor(session?.institution?.type === 'language_school')
+  const tab = viewOf(params.get(VIEW_PARAM), viewOptions)
   const isManager = session?.role === 'yonetici'
   const totalsQuery = useFinanceTotals()
   const totals = totalsQuery.data?.data
@@ -90,7 +95,7 @@ export function FinancePage({ page }: { page: NavPage }) {
       <LineTabs
         label="Finans görünümü"
         value={tab}
-        options={VIEW_OPTIONS}
+        options={viewOptions}
         onChange={(next) =>
           setParams(
             next === 'invoices' ? new URLSearchParams() : { [VIEW_PARAM]: VIEWS[next].param },
@@ -101,6 +106,12 @@ export function FinancePage({ page }: { page: NavPage }) {
       {tab === 'contracts' ? <ContractsSection /> : null}
       {tab === 'tariffs' ? (
         <FeeTariffsSection
+          canManage={isManager}
+          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+        />
+      ) : null}
+      {tab === 'packages' ? (
+        <PackagesSection
           canManage={isManager}
           academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
         />

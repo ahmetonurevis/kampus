@@ -942,6 +942,29 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'enrollment-funnel.test.ts',
     'başka kurumun adayı huniye girmez',
   ),
+  ...Object.fromEntries(
+    (
+      [
+        ['liste', 'GET /api/v1/finance/packages', 'get(PACKAGES, a.admin)'],
+        ['gövde', 'POST /api/v1/finance/packages', "name: 'Yeni', institutionId: b.id"],
+        ['kayıt', 'GET /api/v1/finance/packages/:packageId', 'get(bPackage, a.admin)'],
+        ['kayıt', 'PATCH /api/v1/finance/packages/:packageId', "send('PATCH', bPackage"],
+        ['kayıt', 'DELETE /api/v1/finance/packages/:packageId', "send('DELETE', bPackage"],
+        ['gövde', 'POST /api/v1/finance/package-sales/quote', 'a.quote, institutionId: b.id'],
+        ['gövde', 'POST /api/v1/finance/package-sales', 'a.sale, institutionId: b.id'],
+        ['liste', 'GET /api/v1/finance/package-sales', 'get(SALES, a.admin)'],
+        ['kayıt', 'GET /api/v1/finance/package-sales/:saleId', 'get(bSaleUrl, a.admin)'],
+        ['kayıt', 'POST /api/v1/finance/package-sales/:saleId/extend', '`${bSaleUrl}/extend`'],
+      ] as const
+    ).map(([kind, key, marker]) => [
+      key,
+      proof(kind)(
+        'finance-packages.test.ts',
+        'başka kurumun paketi ve satışı 404, B değişmez',
+        marker,
+      ),
+    ]),
+  ),
 }
 
 /**

@@ -61297,6 +61297,2888 @@
         }
       }
     },
+    "/api/v1/finance/packages": {
+      "get": {
+        "operationId": "listLessonPackages",
+        "summary": "Paketleri listele",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Etkin paketler, ada göre (DOM-DIL-050). `q` adda arar, `kind` ve `courseId` süzer; arşivli paket görünmez. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Paket adında arama"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "course",
+                "hours",
+                "private"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "courseId",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "course",
+                              "hours",
+                              "private"
+                            ],
+                            "description": "`course` kur ücreti, `hours` saat, `private` özel ders"
+                          },
+                          "name": {
+                            "type": "string"
+                          },
+                          "courseId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "level": {
+                            "description": "Tarife düzeyi; kura bağlı pakette kurdan okunur",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "lessonHours": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Kur ücreti paketinde saat kurdan okunur"
+                          },
+                          "hourlyCents": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "İlan altı saat ücreti, kuruş; boşsa tarifenin saat ücreti"
+                          },
+                          "validityDays": {
+                            "anyOf": [
+                              {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ],
+                            "description": "Kullanım süresi, gün; boşsa süresiz"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "kind",
+                          "name",
+                          "courseId",
+                          "level",
+                          "lessonHours",
+                          "hourlyCents",
+                          "validityDays",
+                          "version"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "operationId": "createLessonPackage",
+        "summary": "Paket tanımla",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Kur ücreti, saat paketi ya da özel ders paketi (IST-078). Paket tutar taşımaz: fiyat satışta yayımlı tarifeden hesaplanır; `hourlyCents` yalnız ilan altı saat ücretidir (DOM-DIL-050). Kur ücretinde saat ve seviye kurdan gelir (DOM-DIL-006). `validityDays` kullanım süresidir, boşsa son kullanma tarihi yoktur (DOM-DIL-051). Aynı ad 409 `package_name_exists`; olmayan kur 404, arşivli kur 422 `package_course_inactive`. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "kind": {
+                    "type": "string",
+                    "enum": [
+                      "course",
+                      "hours",
+                      "private"
+                    ]
+                  },
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "courseId": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "format": "uuid",
+                        "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "level": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lessonHours": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 2000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "hourlyCents": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 100000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "validityDays": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1825
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "required": [
+                  "kind",
+                  "name"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "hours",
+                            "private"
+                          ],
+                          "description": "`course` kur ücreti, `hours` saat, `private` özel ders"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "courseId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "level": {
+                          "description": "Tarife düzeyi; kura bağlı pakette kurdan okunur",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lessonHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kur ücreti paketinde saat kurdan okunur"
+                        },
+                        "hourlyCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İlan altı saat ücreti, kuruş; boşsa tarifenin saat ücreti"
+                        },
+                        "validityDays": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kullanım süresi, gün; boşsa süresiz"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "name",
+                        "courseId",
+                        "level",
+                        "lessonHours",
+                        "hourlyCents",
+                        "validityDays",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/packages/{packageId}": {
+      "get": {
+        "operationId": "getLessonPackage",
+        "summary": "Paket ayrıntısı",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Olmayan, arşivli ya da başka kurumun paketi 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "packageId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "hours",
+                            "private"
+                          ],
+                          "description": "`course` kur ücreti, `hours` saat, `private` özel ders"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "courseId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "level": {
+                          "description": "Tarife düzeyi; kura bağlı pakette kurdan okunur",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lessonHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kur ücreti paketinde saat kurdan okunur"
+                        },
+                        "hourlyCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İlan altı saat ücreti, kuruş; boşsa tarifenin saat ücreti"
+                        },
+                        "validityDays": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kullanım süresi, gün; boşsa süresiz"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "name",
+                        "courseId",
+                        "level",
+                        "lessonHours",
+                        "hourlyCents",
+                        "validityDays",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "updateLessonPackage",
+        "summary": "Paketi düzelt",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Yalnız sonraki satışları etkiler; satış satırı kopyadır. Tür ve kur bağı değişmez. Kur ücreti paketinde saat 422 `package_hours_from_course`, kura bağlı pakette seviye 422 `package_level_from_course`. Olmayan paket 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "name": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 120
+                  },
+                  "level": {
+                    "anyOf": [
+                      {
+                        "type": "string",
+                        "enum": [
+                          "Pre-A1",
+                          "A1",
+                          "A2",
+                          "A2+",
+                          "B1",
+                          "B1+",
+                          "B2",
+                          "B2+",
+                          "C1",
+                          "C2"
+                        ]
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "lessonHours": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 2000
+                  },
+                  "hourlyCents": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "exclusiveMinimum": 0,
+                        "maximum": 100000000
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "validityDays": {
+                    "anyOf": [
+                      {
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1825
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  }
+                },
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "packageId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "hours",
+                            "private"
+                          ],
+                          "description": "`course` kur ücreti, `hours` saat, `private` özel ders"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "courseId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "level": {
+                          "description": "Tarife düzeyi; kura bağlı pakette kurdan okunur",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "lessonHours": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kur ücreti paketinde saat kurdan okunur"
+                        },
+                        "hourlyCents": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "İlan altı saat ücreti, kuruş; boşsa tarifenin saat ücreti"
+                        },
+                        "validityDays": {
+                          "anyOf": [
+                            {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Kullanım süresi, gün; boşsa süresiz"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "kind",
+                        "name",
+                        "courseId",
+                        "level",
+                        "lessonHours",
+                        "hourlyCents",
+                        "validityDays",
+                        "version"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "operationId": "archiveLessonPackage",
+        "summary": "Paketi arşivle",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Arşivli paket satılamaz; geçmiş satışlar ve bakiyeleri kalır. Olmayan paket 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "packageId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/package-sales/quote": {
+      "post": {
+        "operationId": "quotePackageSale",
+        "summary": "Paket satışını önizle",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Hiçbir kayıt yazmaz; satışla aynı kuralları çalıştırır (DOM-DIL-050). Saat × saat ücreti − ilanlı indirimler, taksitler, ödeme koşulu ve son kullanma günü döner. İlanda olmayan taksit sayısı 422 `payment_term_not_in_tariff`, peşin koşulu dışında peşin indirimi 422 `early_payment_requires_upfront` (DOM-FIN-013). Yayımlı tarife yoksa 422 `tariff_not_published`, ilan üstü saat ücreti 422 `package_above_tariff`, indirim ve ilan altı fiyat toplamı %50'yi aşarsa 422 `discount_cap_exceeded`, kur etkin değilse 422 `package_course_inactive`. Olmayan paket ya da öğrenci 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "packageId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000
+                  },
+                  "installmentCount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "discounts": {
+                    "default": [],
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "sibling",
+                        "early_payment",
+                        "early_registration",
+                        "referral",
+                        "corporate",
+                        "staff_child"
+                      ]
+                    }
+                  },
+                  "extras": {
+                    "default": [],
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "tuition",
+                        "breakfast",
+                        "meal",
+                        "transport",
+                        "dormitory",
+                        "stationery",
+                        "uniform",
+                        "tutoring"
+                      ]
+                    }
+                  }
+                },
+                "required": [
+                  "packageId",
+                  "studentId",
+                  "installmentCount"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "packageId": {
+                          "type": "string"
+                        },
+                        "tariffId": {
+                          "type": "string"
+                        },
+                        "tariffVersion": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "level": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "purchasedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "announcedHourlyCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tarifenin saat ücreti, kuruş"
+                        },
+                        "hourlyCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uygulanan saat ücreti, kuruş"
+                        },
+                        "announcedCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Saat × tarife saat ücreti"
+                        },
+                        "grossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Saat × uygulanan saat ücreti"
+                        },
+                        "discounts": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          }
+                        },
+                        "discountCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İndirimden sonra öğrenim ücreti"
+                        },
+                        "extras": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "kind": {
+                                "type": "string"
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              }
+                            },
+                            "required": [
+                              "kind",
+                              "amountCents"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Ayrı borç kalemleri (DOM-FIN-003)"
+                        },
+                        "installments": {
+                          "type": "array",
+                          "items": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "description": "Öğrenim taksitleri, kuruş"
+                        },
+                        "paymentTerm": {
+                          "anyOf": [
+                            {
+                              "type": "object",
+                              "properties": {
+                                "kind": {
+                                  "type": "string",
+                                  "enum": [
+                                    "upfront",
+                                    "installment"
+                                  ]
+                                },
+                                "minInstallments": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 12
+                                },
+                                "maxInstallments": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 12
+                                },
+                                "discountPercentBasisPoints": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "minimum": 1,
+                                      "maximum": 10000
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "discountAmountCents": {
+                                  "anyOf": [
+                                    {
+                                      "type": "integer",
+                                      "exclusiveMinimum": 0,
+                                      "maximum": 100000000
+                                    },
+                                    {
+                                      "type": "null"
+                                    }
+                                  ]
+                                },
+                                "installmentCount": {
+                                  "type": "integer",
+                                  "minimum": 1,
+                                  "maximum": 12
+                                }
+                              },
+                              "required": [
+                                "kind",
+                                "minInstallments",
+                                "maxInstallments",
+                                "discountPercentBasisPoints",
+                                "discountAmountCents",
+                                "installmentCount"
+                              ],
+                              "additionalProperties": false
+                            },
+                            {
+                              "type": "null"
+                            }
+                          ],
+                          "description": "Taksit sayısının ilanlı koşulu (DOM-FIN-013); koşulsuz eski tarifede boş"
+                        },
+                        "expiresDate": {
+                          "description": "Son kullanma günü; boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "packageId",
+                        "tariffId",
+                        "tariffVersion",
+                        "level",
+                        "purchasedHours",
+                        "announcedHourlyCents",
+                        "hourlyCents",
+                        "announcedCents",
+                        "grossCents",
+                        "discounts",
+                        "discountCents",
+                        "netCents",
+                        "extras",
+                        "installments",
+                        "paymentTerm",
+                        "expiresDate"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/package-sales": {
+      "post": {
+        "operationId": "sellPackage",
+        "summary": "Paket sat",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Satış satırını, sözleşmeyi ve taksitleri tek işlemde yazar (IST-078, DOM-FIN-010). Tutar girdi değildir, yayımlı tarifeden hesaplanır (DOM-FIN-002); saat ve seviye satışa kopyalanır (DOM-DIL-006). Ek kalem ayrı taksittir (DOM-FIN-003). Son kullanma günü paketin kullanım süresinden çıkar. Tarife değiştiyse 409 `tariff_changed`, pasif kursiyer 422 `student_inactive`; öteki ret kodları önizlemeyle aynıdır. Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "packageId": {
+                    "type": "string",
+                    "format": "uuid",
+                    "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+                  },
+                  "studentId": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000
+                  },
+                  "installmentCount": {
+                    "type": "integer",
+                    "minimum": 1,
+                    "maximum": 12
+                  },
+                  "discounts": {
+                    "default": [],
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "sibling",
+                        "early_payment",
+                        "early_registration",
+                        "referral",
+                        "corporate",
+                        "staff_child"
+                      ]
+                    }
+                  },
+                  "extras": {
+                    "default": [],
+                    "maxItems": 10,
+                    "type": "array",
+                    "items": {
+                      "type": "string",
+                      "enum": [
+                        "tuition",
+                        "breakfast",
+                        "meal",
+                        "transport",
+                        "dormitory",
+                        "stationery",
+                        "uniform",
+                        "tutoring"
+                      ]
+                    }
+                  },
+                  "tariffId": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 2000
+                  },
+                  "firstDueDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  }
+                },
+                "required": [
+                  "packageId",
+                  "studentId",
+                  "installmentCount",
+                  "tariffId",
+                  "firstDueDate"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          }
+        ],
+        "responses": {
+          "201": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "packageId": {
+                          "type": "string"
+                        },
+                        "packageName": {
+                          "type": "string",
+                          "description": "Satış anındaki ad"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "hours",
+                            "private"
+                          ]
+                        },
+                        "courseId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "level": {
+                          "description": "Satış anındaki seviye",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "contractId": {
+                          "type": "string",
+                          "description": "Satışın açtığı sözleşme"
+                        },
+                        "tariffId": {
+                          "type": "string"
+                        },
+                        "tariffVersion": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "hourlyCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uygulanan saat ücreti; iade bu ücretle hesaplanır"
+                        },
+                        "grossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "purchasedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Satın alınan saat"
+                        },
+                        "consumedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tüketilen saat"
+                        },
+                        "refundedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İade edilen saat"
+                        },
+                        "remainingHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051)"
+                        },
+                        "expiresDate": {
+                          "description": "Son kullanma günü; boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "expired",
+                            "depleted"
+                          ],
+                          "description": "`expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir."
+                        },
+                        "soldAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "packageId",
+                        "packageName",
+                        "kind",
+                        "courseId",
+                        "level",
+                        "studentId",
+                        "contractId",
+                        "tariffId",
+                        "tariffVersion",
+                        "hourlyCents",
+                        "grossCents",
+                        "netCents",
+                        "purchasedHours",
+                        "consumedHours",
+                        "refundedHours",
+                        "remainingHours",
+                        "expiresDate",
+                        "status",
+                        "soldAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "get": {
+        "operationId": "listPackageSales",
+        "summary": "Paket satışlarını listele",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Satın alınan, tüketilen, iade edilen ve kalan saatle (DOM-DIL-051); yeni satış önce. Yönetici ve ön büro kurum geneli; veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini görür (DOM-FIN-052). `studentId` ve `packageId` süzer; kapsam dışı öğrenci boş liste verir. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "query",
+            "name": "studentId",
+            "required": false,
+            "description": "Öğrenci; kapsamı daraltır"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "query",
+            "name": "packageId",
+            "required": false
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "id": {
+                            "type": "string"
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için kayıt sürümü"
+                          },
+                          "packageId": {
+                            "type": "string"
+                          },
+                          "packageName": {
+                            "type": "string",
+                            "description": "Satış anındaki ad"
+                          },
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "course",
+                              "hours",
+                              "private"
+                            ]
+                          },
+                          "courseId": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "level": {
+                            "description": "Satış anındaki seviye",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "studentId": {
+                            "type": "string"
+                          },
+                          "contractId": {
+                            "type": "string",
+                            "description": "Satışın açtığı sözleşme"
+                          },
+                          "tariffId": {
+                            "type": "string"
+                          },
+                          "tariffVersion": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "hourlyCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Uygulanan saat ücreti; iade bu ücretle hesaplanır"
+                          },
+                          "grossCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "netCents": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991
+                          },
+                          "purchasedHours": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Satın alınan saat"
+                          },
+                          "consumedHours": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Tüketilen saat"
+                          },
+                          "refundedHours": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "İade edilen saat"
+                          },
+                          "remainingHours": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051)"
+                          },
+                          "expiresDate": {
+                            "description": "Son kullanma günü; boşsa süresiz",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "status": {
+                            "type": "string",
+                            "enum": [
+                              "active",
+                              "expired",
+                              "depleted"
+                            ],
+                            "description": "`expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir."
+                          },
+                          "soldAt": {
+                            "type": "string"
+                          },
+                          "studentName": {
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          }
+                        },
+                        "required": [
+                          "id",
+                          "version",
+                          "packageId",
+                          "packageName",
+                          "kind",
+                          "courseId",
+                          "level",
+                          "studentId",
+                          "contractId",
+                          "tariffId",
+                          "tariffVersion",
+                          "hourlyCents",
+                          "grossCents",
+                          "netCents",
+                          "purchasedHours",
+                          "consumedHours",
+                          "refundedHours",
+                          "remainingHours",
+                          "expiresDate",
+                          "status",
+                          "soldAt",
+                          "studentName"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/package-sales/{saleId}": {
+      "get": {
+        "operationId": "getPackageSale",
+        "summary": "Paket satışı ayrıntısı",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Satın alınan, kullanılan ve kalan saat, son kullanma günü ve sözleşmenin yalnız kendi taksitleri (IST-078, DOM-FIN-012). Süre dolsa da kalan saat silinmez (`status: expired`; DOM-DIL-051, H-19 doğrulanmalı). Kapsam listeyle aynıdır; kapsam dışı, olmayan ya da başka kurumun satışı 404. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`, `veli`, `ogrenci`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "saleId",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "packageId": {
+                          "type": "string"
+                        },
+                        "packageName": {
+                          "type": "string",
+                          "description": "Satış anındaki ad"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "hours",
+                            "private"
+                          ]
+                        },
+                        "courseId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "level": {
+                          "description": "Satış anındaki seviye",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "contractId": {
+                          "type": "string",
+                          "description": "Satışın açtığı sözleşme"
+                        },
+                        "tariffId": {
+                          "type": "string"
+                        },
+                        "tariffVersion": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "hourlyCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uygulanan saat ücreti; iade bu ücretle hesaplanır"
+                        },
+                        "grossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "purchasedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Satın alınan saat"
+                        },
+                        "consumedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tüketilen saat"
+                        },
+                        "refundedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İade edilen saat"
+                        },
+                        "remainingHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051)"
+                        },
+                        "expiresDate": {
+                          "description": "Son kullanma günü; boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "expired",
+                            "depleted"
+                          ],
+                          "description": "`expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir."
+                        },
+                        "soldAt": {
+                          "type": "string"
+                        },
+                        "studentName": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "invoices": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "id": {
+                                "type": "string"
+                              },
+                              "installment": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "amountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991
+                              },
+                              "dueDate": {
+                                "type": "string"
+                              },
+                              "paidAt": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              },
+                              "feeKind": {
+                                "type": [
+                                  "string",
+                                  "null"
+                                ]
+                              }
+                            },
+                            "required": [
+                              "id",
+                              "installment",
+                              "amountCents",
+                              "dueDate",
+                              "paidAt",
+                              "feeKind"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "packageId",
+                        "packageName",
+                        "kind",
+                        "courseId",
+                        "level",
+                        "studentId",
+                        "contractId",
+                        "tariffId",
+                        "tariffVersion",
+                        "hourlyCents",
+                        "grossCents",
+                        "netCents",
+                        "purchasedHours",
+                        "consumedHours",
+                        "refundedHours",
+                        "remainingHours",
+                        "expiresDate",
+                        "status",
+                        "soldAt",
+                        "studentName",
+                        "invoices"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/package-sales/{saleId}/extend": {
+      "post": {
+        "operationId": "extendPackageSale",
+        "summary": "Son kullanma tarihini uzat",
+        "tags": [
+          "finance-packages"
+        ],
+        "description": "Kursiyerin seçimiyle kullanım süresini uzatır (DOM-DIL-051); gerekçe yalnız denetim kaydına yazılır. Süresiz paket 422 `package_no_expiry`, saati biten paket 422 `package_depleted`, mevcut günden sonra olmayan ya da geçmiş gün 422 `package_extension_not_later`. Olmayan ya da başka kurumun satışı 404, sürüm tutmazsa 409 `version_conflict`. `If-Match` zorunlu. Yalnız dil okulunda (`language_school`); öteki türlerde her rol için 404, rol denetiminden önce. Roller: `yonetici`, `onburo`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "expiresDate": {
+                    "type": "string",
+                    "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                  },
+                  "reason": {
+                    "type": "string",
+                    "minLength": 2,
+                    "maxLength": 500
+                  }
+                },
+                "required": [
+                  "expiresDate",
+                  "reason"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "uuid",
+              "pattern": "^([0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-8][0-9a-fA-F]{3}-[89abAB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}|00000000-0000-0000-0000-000000000000|ffffffff-ffff-ffff-ffff-ffffffffffff)$"
+            },
+            "in": "path",
+            "name": "saleId",
+            "required": true
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": false,
+            "description": "İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "`If-Match` için kayıt sürümü"
+                        },
+                        "packageId": {
+                          "type": "string"
+                        },
+                        "packageName": {
+                          "type": "string",
+                          "description": "Satış anındaki ad"
+                        },
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "course",
+                            "hours",
+                            "private"
+                          ]
+                        },
+                        "courseId": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "level": {
+                          "description": "Satış anındaki seviye",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "studentId": {
+                          "type": "string"
+                        },
+                        "contractId": {
+                          "type": "string",
+                          "description": "Satışın açtığı sözleşme"
+                        },
+                        "tariffId": {
+                          "type": "string"
+                        },
+                        "tariffVersion": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "hourlyCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Uygulanan saat ücreti; iade bu ücretle hesaplanır"
+                        },
+                        "grossCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "netCents": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "purchasedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Satın alınan saat"
+                        },
+                        "consumedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Tüketilen saat"
+                        },
+                        "refundedHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "İade edilen saat"
+                        },
+                        "remainingHours": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Kalan saat; hesaplanır, saklanmaz (DOM-DIL-051)"
+                        },
+                        "expiresDate": {
+                          "description": "Son kullanma günü; boşsa süresiz",
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        },
+                        "status": {
+                          "type": "string",
+                          "enum": [
+                            "active",
+                            "expired",
+                            "depleted"
+                          ],
+                          "description": "`expired`: süre doldu, kalan saat silinmez; `depleted`: saat bitti. Türetilir."
+                        },
+                        "soldAt": {
+                          "type": "string"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "version",
+                        "packageId",
+                        "packageName",
+                        "kind",
+                        "courseId",
+                        "level",
+                        "studentId",
+                        "contractId",
+                        "tariffId",
+                        "tariffVersion",
+                        "hourlyCents",
+                        "grossCents",
+                        "netCents",
+                        "purchasedHours",
+                        "consumedHours",
+                        "refundedHours",
+                        "remainingHours",
+                        "expiresDate",
+                        "status",
+                        "soldAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/invoices/{invoiceId}/remind": {
       "post": {
         "operationId": "remindInstallment",
@@ -69783,6 +72665,127 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "payer",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -69805,11 +72808,46 @@
                             "debtCents"
                           ],
                           "additionalProperties": false
+                        },
+                        "payersDiffer": {
+                          "type": "boolean",
+                          "description": "Hesaba giren sözleşmelerin ödeyicileri farklı mı; iade varsa ayrılış yöneticinin kararını ister (K-12)"
+                        },
+                        "payers": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "contractId": {
+                                "type": "string"
+                              },
+                              "payer": {
+                                "type": "string",
+                                "enum": [
+                                  "guardian",
+                                  "student"
+                                ]
+                              },
+                              "payerName": {
+                                "type": "string",
+                                "description": "Ödeyicinin adı; iletişim bilgisi dönmez"
+                              }
+                            },
+                            "required": [
+                              "contractId",
+                              "payer",
+                              "payerName"
+                            ],
+                            "additionalProperties": false
+                          },
+                          "description": "Sözleşme başına ödeyici"
                         }
                       },
                       "required": [
                         "contractId",
-                        "breakdown"
+                        "breakdown",
+                        "payersDiffer",
+                        "payers"
                       ],
                       "additionalProperties": false
                     }
@@ -69960,6 +72998,34 @@
                         "type": "string",
                         "minLength": 2,
                         "maxLength": 200
+                      },
+                      {
+                        "type": "null"
+                      }
+                    ]
+                  },
+                  "payerDecision": {
+                    "default": null,
+                    "anyOf": [
+                      {
+                        "type": "object",
+                        "properties": {
+                          "payer": {
+                            "type": "string",
+                            "minLength": 1,
+                            "maxLength": 200
+                          },
+                          "reason": {
+                            "type": "string",
+                            "minLength": 2,
+                            "maxLength": 500
+                          }
+                        },
+                        "required": [
+                          "payer",
+                          "reason"
+                        ],
+                        "additionalProperties": false
                       },
                       {
                         "type": "null"
@@ -70170,6 +73236,127 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "payer",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -70360,7 +73547,7 @@
         "tags": [
           "withdrawals"
         ],
-        "description": "Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.",
+        "description": "Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Roller: `yonetici`, `onburo`.",
         "parameters": [
           {
             "schema": {
@@ -70582,6 +73769,127 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "contracts": {
+                                "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "contractId": {
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "payer": {
+                                      "type": "string",
+                                      "enum": [
+                                        "guardian",
+                                        "student"
+                                      ],
+                                      "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                    },
+                                    "packageSaleId": {
+                                      "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                      "type": "string"
+                                    },
+                                    "attendedUnits": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                    },
+                                    "totalUnits": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                    },
+                                    "returnedHours": {
+                                      "description": "Pakette iade edilen kalan saat",
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "scholarshipExempt": {
+                                      "type": "boolean"
+                                    },
+                                    "baseCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "deductionCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "usageCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "entitledCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "paidCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "extraBalanceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "balanceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                    }
+                                  },
+                                  "required": [
+                                    "contractId",
+                                    "title",
+                                    "payer",
+                                    "attendedUnits",
+                                    "totalUnits",
+                                    "scholarshipExempt",
+                                    "baseCents",
+                                    "deductionCents",
+                                    "usageCents",
+                                    "entitledCents",
+                                    "paidCents",
+                                    "extraBalanceCents",
+                                    "balanceCents"
+                                  ],
+                                  "additionalProperties": false
+                                }
+                              },
+                              "payerDecision": {
+                                "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                                "type": "object",
+                                "properties": {
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ]
+                                  },
+                                  "reason": {
+                                    "description": "Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)",
+                                    "type": "string"
+                                  }
+                                },
+                                "required": [
+                                  "payer"
+                                ],
+                                "additionalProperties": false
                               }
                             },
                             "required": [
@@ -70777,7 +74085,7 @@
         "tags": [
           "withdrawals"
         ],
-        "description": "Hesap dökümüyle birlikte döner; IBAN maskelidir. Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.",
+        "description": "Hesap dökümüyle birlikte döner; IBAN maskelidir. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.",
         "parameters": [
           {
             "schema": {
@@ -70958,6 +74266,127 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "payer",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [
@@ -71379,6 +74808,127 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "payer": {
+                                    "type": "string",
+                                    "enum": [
+                                      "guardian",
+                                      "student"
+                                    ],
+                                    "description": "Sözleşmenin ödeyicisi; ad yalnız önizlemenin `payers` alanında"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "payer",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
+                            },
+                            "payerDecision": {
+                              "description": "Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)",
+                              "type": "object",
+                              "properties": {
+                                "payer": {
+                                  "type": "string",
+                                  "enum": [
+                                    "guardian",
+                                    "student"
+                                  ]
+                                },
+                                "reason": {
+                                  "description": "Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)",
+                                  "type": "string"
+                                }
+                              },
+                              "required": [
+                                "payer"
+                              ],
+                              "additionalProperties": false
                             }
                           },
                           "required": [

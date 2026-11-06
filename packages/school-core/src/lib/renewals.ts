@@ -330,7 +330,7 @@ export function quoteRenewal(
 }
 
 /** Ay sonunu aşan gün ayın son gününe çekilir (kesin kayıtla aynı plan). */
-function dueDateOf(start: Date, index: number): string {
+export function dueDateOf(start: Date, index: number): string {
   const lastDay = new Date(
     Date.UTC(start.getUTCFullYear(), start.getUTCMonth() + index + 1, 0),
   ).getUTCDate()

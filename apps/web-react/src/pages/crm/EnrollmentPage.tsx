@@ -43,6 +43,7 @@ import { useAuth } from '@/auth/use-auth.ts'
 import { EmptyState } from '@/components/EmptyState.tsx'
 import { FormField } from '@/components/FormField.tsx'
 import { FormSteps } from '@/components/FormSteps.tsx'
+import { Icon } from '@/components/Icon.tsx'
 import { PageHeading } from '@/components/PageHeading.tsx'
 import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -50,12 +51,14 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useCoreAll, useCoreCounts } from '@/hooks/use-core-collection.ts'
+import { useDetailPanel } from '@/hooks/use-detail-panel.ts'
 import { useDocumentTitle } from '@/hooks/use-document-title.ts'
 import type { NavPage } from '@/lib/navigation.ts'
 import { notify } from '@/lib/notify.ts'
 import { STAFF_CONSENT_INFO } from '@/components/consent/consent-model.ts'
 import { useFocusAfterSubmit } from '../management/FormParts.tsx'
 import { SummaryLoading } from '../management/SummaryParts.tsx'
+import { APPLICATION_FORM_PANEL, ApplicationFormPanel } from './ApplicationFormPanel.tsx'
 import { EnrollmentConsentNotice } from './EnrollmentConsentNotice.tsx'
 import { GuardianAccountAction } from './GuardianAccountPanel.tsx'
 import { GuardianInvitationsSection } from './GuardianInvitationsSection.tsx'
@@ -129,10 +132,25 @@ export function EnrollmentPage({ page }: { page: NavPage }) {
   const [done, setDone] = useState<Done | null>(null)
   const [round, setRound] = useState(0)
   const published = tariffs.tariff
+  const webForm = useDetailPanel('web-formu')
 
   return (
     <>
-      <PageHeading title={page.title} description={page.description} />
+      <PageHeading
+        title={page.title}
+        description={page.description}
+        actions={
+          session?.role === 'yonetici' ? (
+            <Button variant="secondary" onClick={() => webForm.open(APPLICATION_FORM_PANEL)}>
+              <Icon name="Globe" size={17} aria-hidden="true" />
+              Web başvuru formu
+            </Button>
+          ) : undefined
+        }
+      />
+      {session?.role === 'yonetici' ? (
+        <ApplicationFormPanel open={webForm.selectedId !== ''} onClose={webForm.close} />
+      ) : null}
       {tariffs.error ? (
         <QueryError error={tariffs.error} onRetry={tariffs.refetch} />
       ) : tariffs.isPending ? (

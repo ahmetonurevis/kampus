@@ -68,7 +68,7 @@ Kimlik doğrulama ve oturum **Better Auth** iledir (ADR 0002 karar 3; ADR 0001 k
 
 ## 5. CORS, CSRF, CSP ve güvenlik başlıkları
 
-- CORS (`@fastify/cors`): izinli kaynaklar `CORS_ORIGINS` ortam değişkeninden tam eşleşmeyle, `credentials: true`; `*` yok. Aynı liste Better Auth `trustedOrigins`'e verilir. Mobil yerel istemci CORS'a tabi değildir.
+- CORS (`@fastify/cors`): izinli kaynaklar `CORS_ORIGINS` ortam değişkeninden tam eşleşmeyle, `credentials: true`; `*` yok. Aynı liste Better Auth `trustedOrigins`'e verilir. Mobil yerel istemci CORS'a tabi değildir. Siteye gömülen ön başvuru formu (ON-133) bu listeyi genişletmez: sayfa kendi kökenimizde iframe içinde çalışır, istek aynı köktendir; kurum sitesinden doğrudan gönderim 403 `csrf_rejected`. Başvuru sayfasının `frame-ancestors` değeri `GET /api/v1/prospects/application-forms/:formKey/frame-policy`'den okunur.
 - CSRF: oturum çerezde olduğu için durum değiştiren (`POST`, `PATCH`, `DELETE`) uygulama isteklerinde `Sec-Fetch-Site: cross-site` veya izinli listede olmayan `Origin` 403 `csrf_rejected` alır. `GET` yan etkisizdir. Kimlik uçlarında bu denetimi Better Auth yapar.
 - API (`@fastify/helmet`): `Strict-Transport-Security: max-age=31536000; includeSubDomains`, `X-Content-Type-Options: nosniff`, `Referrer-Policy: no-referrer`, `Cache-Control: no-store` (kişisel veri içeren yanıtlarda).
 - Web CSP (statik sunucuda başlık olarak; uygulanan hâli `deploy/site.conf`, OG-203):
@@ -124,7 +124,7 @@ worker-src 'self'; object-src 'none'; base-uri 'self'; form-action 'self'; frame
 
 ## 9. Açık rıza ve aydınlatma
 
-- **Aydınlatma** (KVKK m.10) her durumda yapılır: ilk girişte ve hesap menüsünde, rol bazlı (veli, öğrenci, personel) sürümlü metin. Gösterim kaydı `notice_acknowledgements` tablosunda (kullanıcı, metin sürümü, zaman). Aydınlatma rıza değildir; "okudum" işareti rıza yerine geçmez. Aday (`DOM-KAY-003`) ayrı `aday` kitlesidir: oturum açmaz, metni ön büro ekranında aday formunda görür; gösterim kaydı açılmaz, gösterilen sürümü aday kaydı saklar.
+- **Aydınlatma** (KVKK m.10) her durumda yapılır: ilk girişte ve hesap menüsünde, rol bazlı (veli, öğrenci, personel) sürümlü metin. Gösterim kaydı `notice_acknowledgements` tablosunda (kullanıcı, metin sürümü, zaman). Aydınlatma rıza değildir; "okudum" işareti rıza yerine geçmez. Aday (`DOM-KAY-003`) ayrı `aday` kitlesidir: oturum açmaz, metni ön büro ekranında aday formunda görür; gösterim kaydı açılmaz, gösterilen sürümü aday kaydı saklar. Siteye gömülen ön başvuru formunda (ON-133) metni başvuranın kendisi görür; aynı kural geçerlidir.
 - **İşleme şartı** her veri kategorisi ve amaç için belirlenir (sözleşme, hukuki yükümlülük, meşru menfaat, açık rıza). Açık rıza yalnız başka şart yoksa kullanılır (**doğrulanmalı**).
 - **Açık rıza** gerekiyorsa: belirli amaca özgü, ayrı onay kutusu, önceden işaretli değil, hizmet şartına bağlanmamış; reddetmek temel eğitim hizmetini engellemez. Reşit olmayan için veli verir.
 - Rıza kaydı: `consents` (kurum, veri sahibi, veren kullanıcı, amaç kodu, metin sürümü, kanal, `given_at`, `withdrawn_at`). Geri çekme verildiği kadar kolaydır (aynı ekranda tek işlem) ve ilgili işleme hemen durur.

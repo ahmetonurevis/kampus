@@ -113,7 +113,7 @@ Oturum ve kimlik yapılandırması için bir kez (uç başına değil, `auth.tes
 - Giriş hız sınırı devreye girer (429); parola sıfırlama yanıtı kayıtlı ve kayıtsız e-postada aynıdır; 12 karakterden kısa ve yaygın listedeki parola reddedilir; açık kayıt kapalıdır.
 - Kimlik olayları `audit_log`'a yazılır; loglarda çerez ve parola görünmez.
 
-Genel güvenlik ağı: `onRoute` kancasıyla toplanan bütün rotalar tek testte gezilir; açık uç listesinde (`/api/v1/auth/*` Better Auth uçları, `/api/v1/health`) olmayan her rota kimliksiz istekte 401 dönmelidir. Yeni açık uç bu listeye gerekçeyle eklenir.
+Genel güvenlik ağı: `onRoute` kancasıyla toplanan bütün rotalar tek testte gezilir; açık uç listesinde (`/api/v1/auth/*` Better Auth uçları, `/api/v1/health`) olmayan her rota kimliksiz istekte 401 dönmelidir. Yeni açık uç bu listeye gerekçeyle eklenir. Ön başvuru formunun üç ucu (`/api/v1/prospects/application-forms/:formKey`, `/submissions`, `/frame-policy`; ON-133) oturumsuzdur, kurum form anahtarından çözülür.
 
 ### Çapraz kurum envanteri (IST-002)
 

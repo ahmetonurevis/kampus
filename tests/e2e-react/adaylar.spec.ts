@@ -1,9 +1,11 @@
 import { randomUUID } from 'node:crypto'
+import { readFileSync } from 'node:fs'
 import { readFile } from 'node:fs/promises'
 
-import type { Page } from '@playwright/test'
+import type { Browser, Page } from '@playwright/test'
 
-import type { ApiClient } from './support/api.ts'
+import { apiRequest, type ApiClient } from './support/api.ts'
+import { e2e } from './support/env.ts'
 import { expect, test } from './support/fixtures.ts'
 import type { Tenant, TenantOptions, TenantUser } from './support/tenant.ts'
 import { expectEveryRow, expectNoHorizontalOverflow } from './support/ui.ts'
@@ -1205,5 +1207,135 @@ test.describe('Vue eşitliği: ön büro panosu aday sayaçları (ON-035)', () =
     await card('Toplam kesin kayıt').getByRole('link').click()
     await expect(page).toHaveURL(/\/onburo\/adaylar\?asama=/)
     await expect(resultCount(page)).toContainText('1–1 / 1 kayıt')
+  })
+})
+
+// Siteye gömülen ön başvuru formu (ON-133; DOM-KAY-003, -004, -009; IST-145). Yönetici kayıt
+// sayfasından anahtarı üretir, formu açar ve gömme kodunu alır.
+const SITE = 'https://okul.example'
+const WEB_FORM_URL = '/yonetici/kayit-islemleri?web-formu=ayarlar'
+const NOTICE = {
+  kind: 'notice',
+  audience: 'aday',
+  title: 'Aday aydınlatması',
+  body: 'E2E aydınlatma metni.',
+}
+
+async function publishCandidateNotice(client: ApiClient) {
+  const response = await client.post('/api/v1/privacy-notices', NOTICE, {
+    'idempotency-key': randomUUID(),
+  })
+  expect(response.status).toBe(201)
+}
+
+test.describe('Web başvuru formu (ON-133)', () => {
+  test('yönetici anahtarı üretir, formu açar, site adresini yazar; ön büro düğmeyi görmez', async ({
+    tenant,
+    loginAs,
+    api,
+    page,
+  }: Fixtures) => {
+    const school = await tenant({ roles: ['yonetici', 'onburo'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(WEB_FORM_URL)
+    const dialog = page.getByRole('dialog', { name: 'Web başvuru formu' })
+    await dialog.getByRole('button', { name: 'Form bağlantısı oluştur' }).click()
+
+    await expect(dialog.getByRole('status')).toContainText('aday aydınlatma metnini yayımlayın')
+    await expect(dialog.getByRole('button', { name: 'Formu aç' })).toBeDisabled()
+
+    await publishCandidateNotice(await api(school.user('yonetici')))
+    await page.reload()
+    await expect(dialog.getByText('sürüm 1')).toBeVisible()
+
+    await dialog.getByRole('button', { name: 'Formu aç' }).click()
+    await expect(dialog.getByRole('button', { name: 'Formu kapat' })).toBeVisible()
+    await expect(toast(page, 'Form açıldı.')).toBeVisible()
+
+    const site = dialog.getByLabel('Kurum sitesinin adresi')
+    await site.fill('http://okul.example')
+    await dialog.getByRole('button', { name: 'Adresi kaydet' }).click()
+    await expect(dialog.getByText('https://okul.example biçiminde')).toBeVisible()
+    await expect(site).toHaveAttribute('aria-invalid', 'true')
+    await site.fill(SITE)
+    await dialog.getByRole('button', { name: 'Adresi kaydet' }).click()
+    await expect(toast(page, 'Site adresi kaydedildi.')).toBeVisible()
+
+    const code = dialog.getByLabel('Sitenize yapıştıracağınız kod')
+    await expect(dialog.getByText(`Kod yalnız ${SITE} üzerinde çalışır.`)).toBeVisible()
+    const first = await code.inputValue()
+    expect(first).toMatch(/^<iframe src="http[^"]+\/basvuru\/[A-Za-z0-9_-]{32}"/)
+    expect(first).not.toContain('<script')
+
+    await dialog.getByRole('button', { name: 'Anahtarı yenile' }).click()
+    await page.getByRole('alertdialog').getByRole('button', { name: 'Anahtarı yenile' }).click()
+    await expect(toast(page, 'Anahtar yenilendi')).toBeVisible()
+    await expect.poll(() => code.inputValue()).not.toBe(first)
+
+    await dialog.getByRole('button', { name: 'Formu kapat' }).click()
+    await expect(dialog.getByRole('button', { name: 'Formu aç' })).toBeVisible()
+
+    const frontDesk = await loginAs(school.user('onburo'))
+    await frontDesk.goto('/onburo/kayit-islemleri')
+    await expect(frontDesk.getByRole('heading', { level: 1 })).toBeVisible()
+    await expect(frontDesk.getByRole('button', { name: 'Web başvuru formu' })).toHaveCount(0)
+  })
+
+  test('DOM-KAY-003: başvuran önce aydınlatmayı görür, başvuru aday listesine düşer; aynı başvuru aynı yanıtı alır', async ({
+    tenant,
+    loginAs,
+    api,
+    browser,
+    page,
+  }: Fixtures & { browser: Browser }) => {
+    // Rota Oğuzhan'ın `routes.tsx`'inde; satır girince bu test kendiliğinden açılır.
+    test.fixme(
+      !readFileSync(
+        new URL('../../apps/web-react/src/routes.tsx', import.meta.url),
+        'utf8',
+      ).includes('APPLICATION_FORM_ROUTE'),
+      'ON-133: /basvuru/:formKey rota satırı bekleniyor',
+    )
+    const school = await tenant({ roles: ['yonetici', 'onburo'] })
+    const admin = await api(school.user('yonetici'))
+    await publishCandidateNotice(admin)
+    const created = await admin.post('/api/v1/prospects/application-form/rotate-key')
+    const { formKey, version } = (created.body as { data: { formKey: string; version: number } })
+      .data
+    const opened = await apiRequest(
+      admin.context,
+      'PATCH',
+      '/api/v1/prospects/application-form',
+      { enabled: true, siteOrigin: SITE },
+      { 'if-match': `"${version}"` },
+    )
+    expect(opened.status).toBe(200)
+
+    const visitor = await browser.newContext({ baseURL: e2e.webOrigin })
+    const form = await visitor.newPage()
+    const submit = async () => {
+      await form.goto(`/basvuru/${formKey}`)
+      await expect(
+        form.getByRole('heading', { name: 'Aydınlatma metni', exact: true }),
+      ).toBeVisible()
+      await expect(form.getByText(NOTICE.body)).toBeVisible()
+      await form.getByRole('button', { name: 'Okudum, başvuruya geç' }).click()
+      await form.getByLabel('Aday adı soyadı').fill('Web Başvuran')
+      await form.getByLabel('Veli adı soyadı').fill('Web Veli')
+      await form.getByLabel('Velinin telefonu').fill('05550999001')
+      await form.getByLabel('İlgilendiğiniz program').fill('7. sınıf')
+      await form.getByRole('button', { name: 'Başvuruyu gönder' }).click()
+      await expect(form.getByRole('heading', { name: 'Başvurunuz alındı' })).toBeVisible()
+    }
+    await submit()
+    expect(await form.evaluate(() => document.cookie)).toBe('')
+    await expectNoHorizontalOverflow(form)
+    await submit()
+    await visitor.close()
+
+    await loginAs(school.user('onburo'))
+    await page.goto(LIST_URL)
+    await expect(resultCount(page)).toContainText('1 kayıt')
+    await expectEveryRow(bodyRows(page, 'Aday öğrenciler'), 'Web Başvuran')
   })
 })

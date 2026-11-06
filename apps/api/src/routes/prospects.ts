@@ -26,6 +26,7 @@ import {
   createProspectCommand,
   enrollProspectCommand,
   guardianMatchesFor,
+  prospectLossBreakdownFor,
   scheduleProspectMeetingCommand,
   recordTrialResultCommand,
   revertProspectStageCommand,
@@ -38,7 +39,7 @@ import { sendCommand } from './command-support.ts'
 import { captureInput, options, rejectIfMatch, requireIfMatch } from './commands.ts'
 import { commandErrors, commandHeadersSchema, commandResponseSchema } from './commands.schemas.ts'
 import { dataResponse } from './common.schemas.ts'
-import { prospectParamsSchema } from './prospects.schemas.ts'
+import { prospectLossBreakdownSchema, prospectParamsSchema } from './prospects.schemas.ts'
 
 /**
  * Aday/CRM yazma uçları (docs/domain/kayit-ve-crm.md DOM-KAY-001…011, DOM-KAY-030…035; deneme
@@ -162,7 +163,7 @@ export function registerProspectRoutes(app: FastifyInstance) {
         operationId: 'changeProspectStage',
         tags: ['prospects'],
         summary: 'Adayın aşamasını değiştir',
-        description: `Açık aşamalar arasında yalnız ileri gidilir, aşama atlanabilir (core \`changeProspectStage\`, DOM-KAY-005, DOM-KAY-030). Geri dönüş 422 \`prospect_stage_backward\`; \`Görüşme planlandı\` yalnız planlamayla (422 \`prospect_meeting_required\`), \`Kayıt oldu\` yalnız kesin kayıtla girilir (422 \`prospect_enroll_required\`). \`Vazgeçti\` nedenle girilir (422 \`prospect_lost_reason_required\`) ve ileri tarihli görüşmeyi ve deneme dersini kaldırır. Vazgeçen aday yalnız \`İletişime geçildi\` ile yeniden açılır ve tekillik denetiminden geçer (409 \`prospect_duplicate\`, \`prospect_contact_shared\`); iletişimi paylaşan açık aday varsa \`siblingOfId\` ile kardeş seçilir (DOM-KAY-031, 422 \`sibling_not_found\`). Aynı aşama 409 \`prospect_stage_unchanged\`, kayıtlı aday 409 \`prospect_enrolled\`. ${ifMatchNote} Roller: ${rolesOf('prospect.stage')}.`,
+        description: `Açık aşamalar arasında yalnız ileri gidilir, aşama atlanabilir (core \`changeProspectStage\`, DOM-KAY-005, DOM-KAY-030). Geri dönüş 422 \`prospect_stage_backward\`; \`Görüşme planlandı\` yalnız planlamayla (422 \`prospect_meeting_required\`), \`Kayıt oldu\` yalnız kesin kayıtla girilir (422 \`prospect_enroll_required\`). \`Vazgeçti\` nedenle girilir (422 \`prospect_lost_reason_required\`) ve ileri tarihli görüşmeyi ve deneme dersini kaldırır. Vazgeçen aday yalnız \`İletişime geçildi\` ile yeniden açılır ve tekillik denetiminden geçer (409 \`prospect_duplicate\`, \`prospect_contact_shared\`); iletişimi paylaşan açık aday varsa \`siblingOfId\` ile kardeş seçilir (DOM-KAY-031, 422 \`sibling_not_found\`). İsteğe bağlı \`lostToInstitution\` tercih edilen kurumdur (en çok 120 karakter, yalnız \`Vazgeçti\`te, yeniden açılışta silinir, loglanmaz). Aynı aşama 409 \`prospect_stage_unchanged\`, kayıtlı aday 409 \`prospect_enrolled\`. ${ifMatchNote} Roller: ${rolesOf('prospect.stage')}.`,
         headers: commandHeadersSchema('optional', { ifMatch: 'required' }),
         params: prospectParamsSchema,
         body: changeProspectStageSchema,
@@ -269,6 +270,23 @@ export function registerProspectRoutes(app: FastifyInstance) {
       if (entity) reply.header('location', location(entity.id, 'students'))
       return body
     },
+  )
+
+  typed.get(
+    '/api/v1/prospects/loss-breakdown',
+    {
+      preValidation: [app.authenticate, app.requireModule('crm'), app.requireRole(STAFF)],
+      schema: {
+        operationId: 'getProspectLossBreakdown',
+        tags: ['prospects'],
+        summary: 'Kayıp aday kırılımı',
+        description:
+          'Vazgeçen adayların neden ve tercih ettiği kurum kırılımı (IST-117, DOM-KAY-005). Yalnız sayı ve kurum adı döner, aday kimliği dönmez; kurum adı serbest metindir, loglanmaz. Roller: `yonetici`, `onburo`.',
+        querystring: z.strictObject({}),
+        response: { 200: dataResponse(prospectLossBreakdownSchema), ...commandErrors },
+      },
+    },
+    async (request) => ({ data: await prospectLossBreakdownFor(contextOf(request)) }),
   )
 
   typed.get(

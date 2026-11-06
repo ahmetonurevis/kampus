@@ -40,11 +40,11 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 
 ### DOM-KAY-005 · Aşama geçişleri
 
-- **Kural:** `Kayıt oldu` aşamasına yalnız kesin kayıt işlemi geçirir; elle seçilemez. `Kayıt oldu` olan adayın aşaması değişmez. `Vazgeçti` seçilirken neden (fiyat, ulaşım, başka okul, akademik uygunsuzluk, diğer) zorunludur.
+- **Kural:** `Kayıt oldu` aşamasına yalnız kesin kayıt işlemi geçirir; elle seçilemez. `Kayıt oldu` olan adayın aşaması değişmez. `Vazgeçti` seçilirken neden (fiyat, ulaşım, başka okul, akademik uygunsuzluk, diğer) zorunludur; adayın tercih ettiği kurum isteğe bağlı yazılır (en çok 120 karakter). Kayıt raporu neden ve kurum kırılımı verir (IST-117).
 - **Gerekçe:** Dönüşüm raporu kayıtla tutarlı olmalı; kayıp nedeni satış stratejisinin girdisidir.
 - **Kaynak:** İşletme kuralı.
 - **Kurum türü:** ikisi
-- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/enrollment.ts`) yazar; yalnız açık aday kayda alınır (`DOM-KAY-035`). API `PATCH /api/v1/prospects/:prospectId` (`If-Match` zorunlu). Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
+- **Kodda:** var — `packages/school-core/src/lib/prospects.ts` (`changeProspectStage`, `nextProspectStages`, `PROSPECT_LOST_REASONS`; ayrıntı `DOM-KAY-030`); `Kayıt oldu` yalnız `enrollProspect` (`packages/school-core/src/lib/enrollment.ts`) yazar; yalnız açık aday kayda alınır (`DOM-KAY-035`). API `PATCH /api/v1/prospects/:prospectId` (`If-Match` zorunlu). Tercih edilen kurum `lostToInstitution`: serbest metin kişi adı taşıyabildiği için `// kvkk: K`, uzunluk sınırlı, pino `redact` listesinde, denetime yalnız alan adı düşer, öğretmene kapalı, aday yeniden açılınca silinir (ON-140). Kırılım core `prospectLossBreakdown` ve API `GET /api/v1/prospects/loss-breakdown` (yönetici, ön büro; yalnız sayı ve kurum adı, yazım farkı aynı kurum, en çok 50 kurum); web Kayıt Raporları `EnrollmentLossBreakdown`, aday detayında neden ve kurum. Kurum adı henüz kapalı aday imhasına (`DOM-KAY-008`) bağlı değil: imha işi kodda yok. Çevrimdışı demo `apps/web/src/views/Crm.vue:174-186` vazgeçme nedeni sormaz.
 
 ### DOM-KAY-006 · Tanışma görüşmesi / deneme dersi çakışması
 

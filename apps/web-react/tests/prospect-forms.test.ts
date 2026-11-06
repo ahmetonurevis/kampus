@@ -315,3 +315,19 @@ test('DOM-KAY-003: 18 yaş altında dolu veli adı boş bırakılamaz, yetişkin
   const renamed = editFormSchema.parse({ ...editDefaults(adult), name: 'Can D. Demir' })
   assert.deepEqual(editBody(renamed, adult), { ok: true, body: { name: 'Can D. Demir' } })
 })
+
+test('DOM-KAY-005: tercih edilen kurum yazılırsa gövdeye girer, boşsa gitmez; aşama değişince gitmez', () => {
+  const lost = { stage: 'Vazgeçti', lostReason: 'other_school' as const }
+  assert.deepEqual(
+    stageBody({ ...lost, lostToInstitution: ' Rakip Koleji ' }, { reopening: false }),
+    { ok: true, body: { ...lost, lostToInstitution: 'Rakip Koleji' } },
+  )
+  assert.deepEqual(stageBody({ ...lost, lostToInstitution: '  ' }, { reopening: false }), {
+    ok: true,
+    body: lost,
+  })
+  assert.deepEqual(
+    stageBody({ stage: 'Teklif verildi', lostToInstitution: 'Rakip' }, { reopening: false }),
+    { ok: true, body: { stage: 'Teklif verildi' } },
+  )
+})

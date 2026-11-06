@@ -91,6 +91,9 @@ export const REDACTED_PATHS = [
   '*.phone',
   'guardianName',
   '*.guardianName',
+  // kvkk: K — vazgeçen adayın tercih ettiği kurum, serbest metin (DOM-KAY-005).
+  'lostToInstitution',
+  '*.lostToInstitution',
   // kvkk: Ç — kesin kayıtta öğrencinin kimliği, kimlik numarası ve doğum tarihi (DOM-KAY-012).
   'identity',
   '*.identity',

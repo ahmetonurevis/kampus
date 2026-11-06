@@ -68,6 +68,7 @@ interface ProspectData {
   guardianName?: string
   notes?: object[]
   lostReason?: string
+  lostToInstitution?: string
 }
 
 /** Kurulum kaydı; seed'deki aday biçimi (`notes` dizisi, kampüs b1). */
@@ -863,6 +864,46 @@ test.describe('inceleme bulguları', () => {
     const reopened = saved.find((item) => item.id === 'e2e-pr-lost')
     expect(reopened?.record.stage).toBe('İletişime geçildi')
     expect(reopened?.record.siblingOfId).toBe('e2e-pr-open')
+  })
+
+  test('ON-140, DOM-KAY-005, IST-117: vazgeçen adayda neden ve tercih edilen kurum yazılır, raporda kırılımda görünür', async ({
+    page,
+    loginAs,
+    tenant,
+  }: Fixtures) => {
+    const school = await tenant({
+      roles: [],
+      records: [
+        prospect({ id: 'e2e-pr-kayip', name: 'Mina Kaya', phone: '05550300140' }),
+        prospect({
+          id: 'e2e-pr-kayip-2',
+          name: 'Nehir Sezer',
+          phone: '05550300141',
+          stage: 'Vazgeçti',
+          lostReason: 'other_school',
+          lostToInstitution: 'rakip  koleji',
+        }),
+      ],
+    })
+    await loginAs(school.user('yonetici'))
+    await page.goto(detailUrl('yonetici', 'e2e-pr-kayip'))
+    await page.getByLabel('Kayıt aşaması').selectOption('Vazgeçti')
+    await page.getByLabel('Vazgeçme nedeni').selectOption('other_school')
+    await page.getByLabel('Tercih ettiği kurum').fill('Rakip Koleji')
+    await page.getByRole('button', { name: 'Aşamayı güncelle' }).click()
+    await expect(toast(page, 'Aday aşaması güncellendi.')).toBeVisible()
+    const facts = page.getByRole('complementary', { name: 'Aday bilgileri' })
+    await expect(facts).toContainText('Başka okul')
+    await expect(facts).toContainText('Rakip Koleji')
+
+    await page.goto('/yonetici/kayit-raporlari')
+    const institutions = page.getByRole('list', { name: 'Tercih edilen kurumlar' })
+    const reasons = page.getByRole('list', { name: 'Vazgeçme nedenleri' })
+    await expect(institutions.getByRole('listitem')).toHaveCount(1)
+    await expect(institutions.getByRole('listitem')).toContainText(/rakip\s+koleji/i)
+    await expect(institutions.getByRole('listitem')).toContainText('%100')
+    await expect(reasons.getByRole('listitem').filter({ hasText: 'Başka okul' })).toContainText('2')
+    await expect(page.getByLabel('Tabloda ara')).toHaveCount(1)
   })
 
   test('kart bu arada başka biri tarafından değişince aşama güncellemesi uyarı verir ve kart yenilenir (If-Match 409)', async ({

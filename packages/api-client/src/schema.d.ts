@@ -3112,6 +3112,26 @@ export interface paths {
         patch: operations["updateProspectDetails"];
         trace?: never;
     };
+    "/api/v1/prospects/student-imports": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Öğrenci ve veliyi dosyadan aktar
+         * @description Okul canlıya geçerken mevcut öğrenci ve velileri CSV ya da Excel (.xlsx, ilk sayfa) dosyasıyla yükler (IST-007, DOM-KAY-012, DOM-KAY-013). `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır. En çok 1.000 veri satırı. Sütunlar: `öğrenci adı`, `sınıf`, `kimlik no`, `doğum tarihi`, `veli adı`, `veli telefonu`, `yakınlık`; isteğe bağlı `kampüs`, `kimlik türü`, `öğrenci telefonu`. `dryRun: true` önizlemedir: 200 ve satır bazında sorun ve bilgi döner, hiçbir şey yazmaz; kimlik ve telefon maskelidir. Onayda bütün satırlar kurum kilidi altında yeniden doğrulanır: hata varsa 422 `student_import_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir kayıt yazılmaz, başarı 201. Öğrenci, veli, `student_identities` ve `student_guardians` tek transaction'da yazılır. Aynı telefon ve aynı veli adı kardeşleri aynı veli kaydına bağlar; önizleme eşleşmeyi gösterir, onay öneriyi kabul eder (DOM-KAY-013). Telefon aynı, ad farklıysa satır hatalıdır (`guardian_phone_conflict`). Kurumda kayıtlı kimlikte aynı adlı etkin öğrencinin satırı atlanır (`skipped`): ikinci yükleme mükerrer kayıt açmaz. Dosya düzeyindeki sorun 422 ve sorunun kodu (ör. `csv_too_many_rows`, `import_file_legacy_excel`). `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; dosyadaki değerler yalnız bu kurumda aranır. Dosya saklanmaz, içerik loglanmaz; denetim kaydına yalnız alan adları ve sayılar yazılır.
+         */
+        post: operations["importStudents"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/questions": {
         parameters: {
             query?: never;
@@ -10075,6 +10095,56 @@ export interface components {
             canManage: boolean;
             learners: components["schemas"]["TaskExtraTimeLearnerInput"][];
         };
+        ImportIssueInput: {
+            line: number;
+            field: string | null;
+            code: string;
+            message: string;
+        };
+        ImportNoticeInput: {
+            code: string;
+            message: string;
+        };
+        StudentImportRowInput: {
+            /** @description Dosyadaki satır (başlık 1. satırdır) */
+            line: number;
+            /**
+             * @description `ready` yazılacak, `skipped` zaten kayıtlı
+             * @enum {string}
+             */
+            status: "ready" | "skipped" | "invalid";
+            name: string;
+            className: string;
+            campus: string;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            guardianName: string;
+            /** @description Veli telefonu maskeli */
+            guardianPhoneMasked: string;
+            relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+            /** @description `new` yeni veli, `file` dosyanın önceki satırıyla aynı veli, `existing` kurumda kayıtlı veli (DOM-KAY-013), `self` yetişkin kursiyerin kendisi */
+            guardianMatch: ("new" | "file" | "existing" | "self") | null;
+            issues: components["schemas"]["ImportIssueInput"][];
+            notices: components["schemas"]["ImportNoticeInput"][];
+        };
+        StudentImportResultInput: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Yazılacak (onayda yazılan) öğrenci sayısı */
+            readyCount: number;
+            /** @description Kimliği kayıtlı olduğu için atlanan satır sayısı */
+            skippedCount: number;
+            /** @description Hatalı satır sayısı */
+            invalidCount: number;
+            /** @description Açılacak yeni veli kaydı sayısı */
+            newGuardianCount: number;
+            /** @description Bağlanılacak mevcut veli kaydı sayısı */
+            existingGuardianCount: number;
+            /** @description Yalnız önizlemede dolu; satırlar maskeli */
+            rows: components["schemas"]["StudentImportRowInput"][];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -14279,6 +14349,56 @@ export interface components {
             /** @description Kişi ek süre verebilir mi (atayan öğretmen veya yönetici) */
             canManage: boolean;
             learners: components["schemas"]["TaskExtraTimeLearner"][];
+        };
+        ImportIssue: {
+            line: number;
+            field: string | null;
+            code: string;
+            message: string;
+        };
+        ImportNotice: {
+            code: string;
+            message: string;
+        };
+        StudentImportRow: {
+            /** @description Dosyadaki satır (başlık 1. satırdır) */
+            line: number;
+            /**
+             * @description `ready` yazılacak, `skipped` zaten kayıtlı
+             * @enum {string}
+             */
+            status: "ready" | "skipped" | "invalid";
+            name: string;
+            className: string;
+            campus: string;
+            /** @description Kimlik numarasının yalnız son dört hanesi görünür */
+            identityMasked: string;
+            guardianName: string;
+            /** @description Veli telefonu maskeli */
+            guardianPhoneMasked: string;
+            relationship: ("mother" | "father" | "legal_guardian" | "other") | null;
+            /** @description `new` yeni veli, `file` dosyanın önceki satırıyla aynı veli, `existing` kurumda kayıtlı veli (DOM-KAY-013), `self` yetişkin kursiyerin kendisi */
+            guardianMatch: ("new" | "file" | "existing" | "self") | null;
+            issues: components["schemas"]["ImportIssue"][];
+            notices: components["schemas"]["ImportNotice"][];
+        };
+        StudentImportResult: {
+            /** @description `true`: yalnız doğrulandı, hiçbir kayıt yazılmadı */
+            dryRun: boolean;
+            /** @description Dosyadaki veri satırı sayısı */
+            rowCount: number;
+            /** @description Yazılacak (onayda yazılan) öğrenci sayısı */
+            readyCount: number;
+            /** @description Kimliği kayıtlı olduğu için atlanan satır sayısı */
+            skippedCount: number;
+            /** @description Hatalı satır sayısı */
+            invalidCount: number;
+            /** @description Açılacak yeni veli kaydı sayısı */
+            newGuardianCount: number;
+            /** @description Bağlanılacak mevcut veli kaydı sayısı */
+            existingGuardianCount: number;
+            /** @description Yalnız önizlemede dolu; satırlar maskeli */
+            rows: components["schemas"]["StudentImportRow"][];
         };
     };
     responses: never;
@@ -33340,6 +33460,122 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    importStudents: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    fileBase64: string;
+                    /** @default false */
+                    dryRun?: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StudentImportResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["StudentImportResult"];
                     };
                 };
             };

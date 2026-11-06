@@ -1316,6 +1316,7 @@ test.describe('Finans: liste', () => {
     ['tahsilatlar', 'Tahsilat geçmişi'],
     ['tarife', 'Ücret tarifeleri'],
     ['ayrilis', 'Ayrılış ve iade kayıtları'],
+    ['gunsonu', 'Gün sonu'],
   ] as const)
     test(`320 ve 390 px genişlikte ${view} sekmesi yatay taşmaz`, async ({ page }) => {
       for (const width of [390, 320]) {
@@ -1457,6 +1458,108 @@ test.describe('Finans: sunucu retleri', () => {
     await publish.getByRole('button', { name: 'Vazgeç' }).click()
     await expect(table).toContainText('Taslak')
     await expect(table).not.toContainText('Yayında')
+  })
+})
+
+test.describe('Finans: gün sonu', () => {
+  const dayPanel = (page: Page) => page.getByRole('group', { name: 'Gün kapanışı' })
+
+  /** Arayüzden geçmeden nakit tahsilat; yanıt durumu döner (kapalı günde 422). */
+  async function payCash(client: ApiClient, studentId: string, amountCents: number) {
+    const response = await client.context.fetch('/api/v1/payments', {
+      method: 'POST',
+      data: { studentId, amountCents, method: 'Nakit' },
+      headers: { 'idempotency-key': randomUUID() },
+      failOnStatusCode: false,
+    })
+    return { status: response.status(), body: (await response.json()) as { code?: string } }
+  }
+
+  test('IST-113, DOM-FIN-036: ön büro kasayı sayar, farkı açıklar ve kapatır; kapalı güne tahsilat girilemez', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s21'] })
+    const admin = await api(school.user('yonetici'))
+    await setCashPayments(admin, true)
+    expect((await payCash(admin, 's21', 30_000)).status).toBe(201)
+    await payThroughApi(admin, 'inv-s21-5', 'Kredi kartı')
+
+    await loginAs(school.user('onburo'))
+    await page.goto(`${FRONT_OFFICE_URL}?gorunum=gunsonu`)
+    const methods = page.getByRole('table', { name: 'Ödeme yöntemine göre gün özeti' })
+    await expect(methods.getByRole('row', { name: /Nakit/ })).toContainText('300,00')
+    await expect(page.getByRole('table', { name: 'Günün tahsilatları' })).toContainText('Nakit')
+    await expect(dayPanel(page)).toContainText('Açık')
+
+    await dayPanel(page).getByRole('button', { name: 'Günü kapat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Günü kapat' })
+    await dialog.getByLabel('Sayılan nakit (₺)').fill('250,00')
+    await expect(dialog.getByText(/50,00 ₺ eksik/)).toBeVisible()
+    await dialog.getByRole('button', { name: 'Günü kapat' }).click()
+    await expect(dialog.getByText('Kasa farkını açıklayın.')).toBeVisible()
+    await dialog.getByLabel('Açıklama').fill('Para üstü eksik verildi')
+    await dialog.getByRole('button', { name: 'Günü kapat' }).click()
+    await expect(page.getByText('Gün kapatıldı.')).toBeVisible()
+    await expect(dialog).toBeHidden()
+
+    const panel = dayPanel(page)
+    await expect(panel).toContainText('Kapatıldı')
+    await expect(panel).toContainText('Para üstü eksik verildi')
+    await expect(panel).toContainText(/50,00 ₺ eksik/)
+    // Yeniden açma yöneticinindir (DOM-FIN-052).
+    await expect(panel.getByRole('button', { name: 'Günü yeniden aç' })).toHaveCount(0)
+    await expect(panel.getByRole('button', { name: 'Günü kapat' })).toHaveCount(0)
+
+    const denied = await payCash(admin, 's21', 1_000)
+    expect(denied.status).toBe(422)
+    expect(denied.body.code).toBe('finance_day_closed')
+    await expectNoHorizontalOverflow(page)
+  })
+
+  test('DOM-FIN-036: yönetici gerekçeyle yeniden açar, eski kapanış kayıtta kalır; PDF tıklamada yüklenir', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: [], students: ['s22'] })
+    const pdfCode: string[] = []
+    page.on('request', (request) => {
+      if (/jspdf/i.test(request.url())) pdfCode.push(request.url())
+    })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=gunsonu`)
+    await dayPanel(page).getByRole('button', { name: 'Günü kapat' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Günü kapat' })
+    // Nakit kapalı ve hareketsiz gün: kasa sayımı istenmez (DOM-FIN-032).
+    await expect(dialog.getByLabel('Sayılan nakit (₺)')).toHaveCount(0)
+    await dialog.getByRole('button', { name: 'Günü kapat' }).click()
+    await expect(page.getByText('Gün kapatıldı.')).toBeVisible()
+    await expect(dayPanel(page)).toContainText('Kapatıldı')
+
+    expect(pdfCode, 'jsPDF tıklamadan önce yüklenmez').toEqual([])
+    await page.getByRole('button', { name: 'Gün sonu PDF' }).click()
+    const preview = page.getByRole('dialog', { name: 'Gün sonu raporu · Önizleme' })
+    const downloading = page.waitForEvent('download')
+    await preview.getByRole('button', { name: 'PDF’yi indir' }).click()
+    expect((await downloading).suggestedFilename()).toMatch(/^gun-sonu-\d{4}-\d{2}-\d{2}\.pdf$/)
+    expect(pdfCode.length, 'jsPDF tıklamada yüklenir').toBeGreaterThan(0)
+    await page.keyboard.press('Escape')
+    await expect(preview).toBeHidden()
+    await expect(page.getByRole('button', { name: 'Gün sonu PDF' })).toBeFocused()
+
+    await dayPanel(page).getByRole('button', { name: 'Günü yeniden aç' }).click()
+    const reopen = page.getByRole('dialog', { name: 'Günü yeniden aç' })
+    await reopen.getByRole('button', { name: 'Günü yeniden aç' }).click()
+    await expect(reopen.getByText(/gerekçesi en az 5/)).toBeVisible()
+    await reopen.getByLabel('Yeniden açma gerekçesi').fill('Sayım yanlış girildi')
+    await reopen.getByRole('button', { name: 'Günü yeniden aç' }).click()
+    await expect(page.getByText('Gün yeniden açıldı.')).toBeVisible()
+    await expect(dayPanel(page)).toContainText('Açık')
+    await expect(page.getByRole('heading', { name: 'Önceki kapanışlar' })).toBeVisible()
+    await expect(page.getByText(/Gerekçe: Sayım yanlış girildi/)).toBeVisible()
   })
 })
 

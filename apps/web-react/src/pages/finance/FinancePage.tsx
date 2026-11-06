@@ -76,7 +76,14 @@ export function FinancePage({ page }: { page: NavPage }) {
               value: money(totals.totalCents),
               note: 'Tüm ödeme planları',
             },
-            { label: 'Tahsil edilen', value: money(totals.paidCents) },
+            {
+              label: 'Tahsil edilen',
+              // Dosyadan aktarılan geçmiş ödeme borcu kapatır, tahsilat değildir (DOM-FIN-014).
+              value: money(totals.paidCents - totals.openingImportCents),
+              ...(totals.openingImportCents > 0
+                ? { note: `Ayrıca ${money(totals.openingImportCents)} açılış aktarımı` }
+                : {}),
+            },
             {
               label: 'Kalan bakiye',
               value: money(totals.remainingCents),

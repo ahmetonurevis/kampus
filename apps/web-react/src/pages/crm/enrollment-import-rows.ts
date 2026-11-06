@@ -167,6 +167,6 @@ export function installmentImportSummary(result: InstallmentImportResult): strin
   const totals =
     result.invalidCount > 0
       ? ''
-      : ` · toplam ${money(result.totalCents)}, ödenmiş ${money(result.paidCents)}, ${result.linkedCount} taksit sözleşmeye bağlanacak`
+      : ` · toplam ${money(result.totalCents)}, ödenmiş ${money(result.paidCents)} (açılış aktarımı), ${result.linkedCount} taksit sözleşmeye bağlanacak`
   return `${countSummary(result, 'taksit yazılacak')}${totals}`
 }

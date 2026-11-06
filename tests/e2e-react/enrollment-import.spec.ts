@@ -101,7 +101,7 @@ test.describe('Pilot aktarımı', () => {
     await expect(page.getByRole('button', { name: 'Öğrenci ve veli aktar' })).toHaveCount(0)
   })
 
-  test('ON-061, DOM-FIN-011: önizleme toplamı gösterir, onay taksiti yazar, ikinci yükleme atlanır', async ({
+  test('ON-061, DOM-FIN-011, DOM-FIN-014: önizleme ₺ gösterir, onay taksiti yazar, ikinci yükleme atlanır', async ({
     page,
     loginAs,
     api,
@@ -126,9 +126,9 @@ test.describe('Pilot aktarımı', () => {
     expect(students.status).toBe(201)
 
     const file = csv('taksitler.csv', [
-      'kimlik no;taksit no;tutar kuruş;vade;ödeme tarihi;ödeme yöntemi',
-      '10000000146;71;1250000;15.09.2025;14.09.2025;Nakit',
-      '10000000146;72;1250000;15.10.2025;;',
+      'kimlik no;taksit no;tutar;vade;ödeme tarihi;ödeme yöntemi',
+      '10000000146;71;12.500,00;15.09.2025;14.09.2025;Nakit',
+      '10000000146;72;12500.00;15.10.2025;;',
     ])
     await page.goto(FINANCE_URL)
     await page.getByRole('button', { name: 'Taksit aktar' }).click()
@@ -141,9 +141,10 @@ test.describe('Pilot aktarımı', () => {
     await expect(dialog.getByRole('status').filter({ hasText: ' satır · ' })).toContainText(
       '25.000,00',
     )
-    await expect(dialog.getByRole('table', { name: 'Aktarım önizlemesi' })).toContainText(
-      'Ece Taksit',
-    )
+    const preview = dialog.getByRole('table', { name: 'Aktarım önizlemesi' })
+    await expect(preview).toContainText('Ece Taksit')
+    await expect(preview).toContainText('12.500,00 ₺')
+    await expect(preview).toContainText('Açılış aktarımı')
 
     await dialog.getByRole('button', { name: '2 taksit aktar' }).click()
     await expect(toast(page, '2 taksit aktarıldı.')).toBeVisible()
@@ -154,6 +155,12 @@ test.describe('Pilot aktarımı', () => {
     const imported = invoices.filter((item) => item.installment >= 71)
     expect(imported.length).toBe(2)
     expect(imported.filter((item) => item.paidAt !== null).length).toBe(1)
+    const payments = await client.get('/api/v1/payments')
+    expect((payments.body as { data: unknown[] }).data).toEqual([])
+    await expect(page.getByRole('cell', { name: 'Açılış aktarımı', exact: true })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: 'Ece Taksit 71. taksit dekontunu görüntüle' }),
+    ).toHaveCount(0)
 
     await page.getByRole('button', { name: 'Taksit aktar' }).click()
     await dialog.getByLabel('Aktarım dosyası').setInputFiles(file)

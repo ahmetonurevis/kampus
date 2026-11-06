@@ -110,7 +110,11 @@ export function FinanceExportSection({ canDownload }: { canDownload: boolean }) 
             {
               label: 'Vadesi dönemde olan taksit',
               value: money(data.invoices.totalCents),
-              note: `${String(data.invoices.count)} taksit · ${money(data.invoices.paidCents)} ödendi`,
+              note: `${String(data.invoices.count)} taksit · ${money(data.invoices.paidCents)} ödendi${
+                data.invoices.openingImportCents > 0
+                  ? `, ${money(data.invoices.openingImportCents)} açılış aktarımı`
+                  : ''
+              }`,
             },
           ]}
         />

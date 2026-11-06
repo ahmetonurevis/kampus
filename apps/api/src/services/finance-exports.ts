@@ -164,6 +164,7 @@ const balanceInvoice = z.object({
   amount: z.number().int(),
   paidAt: z.string().nullable().optional(),
   dueDate: z.string(),
+  method: z.string().nullable().optional(),
 })
 
 /**
@@ -194,10 +195,7 @@ export async function studentBalanceFor(
   return studentBalance(studentId, invoices, allocated, dayKey(ctx.now))
 }
 
-const statementInvoice = balanceInvoice.extend({
-  installment: z.number().int(),
-  method: z.string().nullable().optional(),
-})
+const statementInvoice = balanceInvoice.extend({ installment: z.number().int() })
 
 /**
  * Cari ekstre (`GET /finance/students/:id/statement`, IST-107). Kapsam bakiyeyle aynıdır; hesap

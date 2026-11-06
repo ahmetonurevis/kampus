@@ -41,7 +41,7 @@ import { loadActorAdmin } from './staff-accounts.ts'
  * bütün taksitlerine bakar, öğrenciler de dosyadan çözülür; aktarım nadir yapılır.
  *
  * Geçmiş ödeme `payments`'a yazılmaz, kasa ve dönem tahsilatı değişmez; `paid_at` önbelleğindedir
- * (ADR 0010 karar 5). Dosya saklanmaz; içerik ve tutar loglanmaz, denetime yalnız alan adları ve
+ * (ADR 0010 karar 5), yöntemi `opening_import`'tur (DOM-FIN-014). Dosya saklanmaz; içerik ve tutar loglanmaz, denetime yalnız alan adları ve
  * sayılar yazılır; saklanan yanıt satır taşımaz.
  */
 

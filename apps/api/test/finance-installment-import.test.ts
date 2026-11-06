@@ -4,15 +4,21 @@ import { after, before, describe, test } from 'node:test'
 
 import { and, count, eq, isNull } from 'drizzle-orm'
 
+import { statementLineLabel } from '@kampus/school-core/lib/finance-statement.ts'
+
 import type { App } from '../src/app.ts'
 import { SESSION_FRESH_AGE_SECONDS } from '../src/auth.ts'
 import type { Database } from '../src/db/client.ts'
+import { mirrorFinanceIds } from '../src/db/finance-mirror-store.ts'
+import { auditFinanceRecords } from '../src/db/invoice-audit.ts'
+import { rowToInvoice } from '../src/db/invoice-store.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
 import { contractInvoices } from '../src/db/schema/contract-invoices.ts'
 import { contracts } from '../src/db/schema/contracts.ts'
 import { invoices } from '../src/db/schema/invoices.ts'
 import { paymentAllocations, payments } from '../src/db/schema/payments.ts'
+import { records } from '../src/db/schema/records.ts'
 import { studentIdentities } from '../src/db/schema/student-identities.ts'
 import {
   buildTestApp,
@@ -214,8 +220,8 @@ describe('pilot aktarımı: taksitler (ON-061, IST-007)', () => {
     const data = response.json().data as Result
     assert.equal(data.dryRun, true)
     assert.equal(data.rowCount, 9)
-    assert.equal(data.invalidCount, 7)
-    assert.equal(data.readyCount, 2)
+    assert.equal(data.invalidCount, 6)
+    assert.equal(data.readyCount, 3)
     const codes = (index: number) => data.rows[index]?.issues.map((issue) => issue.code)
     assert.equal(data.rows[0]?.status, 'ready')
     assert.equal(data.rows[0]?.amountCents, 1_250_000)
@@ -224,9 +230,9 @@ describe('pilot aktarımı: taksitler (ON-061, IST-007)', () => {
     assert.ok(!JSON.stringify(data.rows).includes(tc), 'tam kimlik yanıtta olmamalı')
     assert.deepEqual(codes(2), ['amount_invalid'])
     assert.deepEqual(codes(3), ['due_date_invalid'])
-    assert.deepEqual(codes(4), ['payment_fields_incomplete'])
+    assert.deepEqual(codes(4), [], 'yöntemsiz ödeme tarihi geçerlidir (DOM-FIN-014)')
     assert.deepEqual(codes(5), ['paid_date_future'])
-    assert.deepEqual(codes(6), ['payment_fields_incomplete', 'payment_method_invalid'])
+    assert.deepEqual(codes(6), ['payment_fields_incomplete'])
     assert.deepEqual(codes(7), ['student_not_found'])
     assert.deepEqual(codes(8), ['duplicate_installment'])
     assert.deepEqual(await invoiceRows(institution.id), [])
@@ -372,7 +378,7 @@ describe('pilot aktarımı: taksitler (ON-061, IST-007)', () => {
     assert.equal(paid?.contractId, null)
     assert.equal(paid?.dueDate, '2026-09-15')
     assert.equal(paid?.paidAt?.toISOString(), '2026-09-14T09:00:00.000Z')
-    assert.equal(paid?.paymentMethod, 'bank_transfer')
+    assert.equal(paid?.paymentMethod, 'opening_import')
     assert.equal(paid?.amountCents, 1_250_000)
     assert.equal(paid?.feeKind, 'tuition')
     assert.equal(open?.paidAt, null)
@@ -388,7 +394,7 @@ describe('pilot aktarımı: taksitler (ON-061, IST-007)', () => {
       list.json().data as { record: { installment: number; dueDate: string; method: string } }[]
     ).find((item) => item.record.installment === 1)
     assert.equal(record?.record.dueDate, '2026-09-15T09:00:00.000Z')
-    assert.equal(record?.record.method, 'Banka havalesi')
+    assert.equal(record?.record.method, 'Açılış aktarımı')
     const [paymentCount] = await db
       .select({ total: count() })
       .from(payments)
@@ -543,8 +549,145 @@ describe('pilot aktarımı: taksitler (ON-061, IST-007)', () => {
     const [row] = await invoiceRows(institution.id)
     assert.equal(row?.amountCents, 1_250_000)
     assert.equal(row?.dueDate, '2026-11-15')
-    assert.equal(row?.paymentMethod, 'cash')
+    assert.equal(row?.paymentMethod, 'opening_import')
     assert.equal(row?.academicYear, 2026)
+  })
+
+  describe('DOM-FIN-014: açılış aktarımı', () => {
+    async function imported() {
+      const school = await kurum()
+      const response = await upload(
+        school.cookie,
+        csv(
+          `${school.tc};1;1250000;15.09.2026;14.09.2026;Banka havalesi;2026`,
+          `${school.tc};2;1250000;15.10.2026;;;2026`,
+        ),
+      )
+      assert.equal(response.statusCode, 201, response.body)
+      return school
+    }
+
+    const get = (cookie: string, url: string, headers: Record<string, string> = {}) =>
+      app.inject({ method: 'GET', url, headers: { cookie, origin: TEST_ORIGIN, ...headers } })
+
+    test('tahsilat satırı açılmaz, kasa ve dönem tahsilatı değişmez', async () => {
+      const { institution, cookie } = await imported()
+      const written = await db
+        .select({ id: payments.id })
+        .from(payments)
+        .where(eq(payments.institutionId, institution.id))
+      assert.deepEqual(written, [])
+      const period = 'from=2026-09-01&to=2026-10-31'
+      const overview = (await get(cookie, `/api/v1/finance/overview?${period}`)).json().data
+      assert.equal(overview.collectedCents, 0)
+      const summary = (await get(cookie, `/api/v1/finance/summary?${period}`)).json().data
+      assert.equal(summary.payments.count, 0)
+      assert.equal(summary.payments.totalCents, 0)
+      assert.equal(summary.invoices.paidCents, 1_250_000)
+      assert.equal(summary.invoices.openingImportCents, 1_250_000)
+    })
+
+    test('bakiye ve toplamlar ödendi sayar, tahsilattan ayırır', async () => {
+      const { cookie } = await imported()
+      const balance = (await get(cookie, '/api/v1/finance/students/s-1/balance')).json().data
+      assert.equal(balance.paidCents, 1_250_000)
+      assert.equal(balance.openingImportCents, 1_250_000)
+      assert.equal(balance.openCents, 1_250_000)
+      const totals = (await get(cookie, '/api/v1/finance/totals')).json().data
+      assert.equal(totals.paidCents, 1_250_000)
+      assert.equal(totals.openingImportCents, 1_250_000)
+      assert.equal(totals.remainingCents, 1_250_000)
+    })
+
+    test('ekstre satırı Açılış aktarımı yazar, tahsilat ve dekont taşımaz', async () => {
+      const { cookie } = await imported()
+      const response = await get(cookie, '/api/v1/finance/students/s-1/statement')
+      assert.equal(response.statusCode, 200, response.body)
+      const statement = response.json().data
+      const line = statement.lines.find((item: { kind: string }) => item.kind === 'opening_import')
+      assert.equal(line.creditCents, 1_250_000)
+      assert.equal(line.receiptNumber, null)
+      assert.equal(line.paymentId, null)
+      assert.equal(statementLineLabel(line), 'Açılış aktarımı · 1. taksit')
+      assert.equal(
+        statement.lines.some((item: { kind: string }) => item.kind === 'payment'),
+        false,
+      )
+      assert.equal(statement.openingImportCents, 1_250_000)
+    })
+
+    test('taksit dosyası ödendi ve etiket yazar, tahsilat dosyası boştur', async () => {
+      const { cookie } = await imported()
+      const url = (kind: string) =>
+        `/api/v1/finance/exports?from=2026-09-01&to=2026-10-31&kind=${kind}`
+      const invoicesFile = await get(cookie, url('invoices'), { accept: 'text/csv' })
+      assert.equal(invoicesFile.statusCode, 200, invoicesFile.body)
+      const [, opening, open] = invoicesFile.body.replace(/^\uFEFF/, '').split('\r\n')
+      assert.match(opening ?? '', /"Ödendi";12500,00;12500,00;"Açılış aktarımı"$/)
+      assert.match(open ?? '', /"Açık";12500,00;0,00;""$/)
+      const paymentsFile = await get(cookie, url('payments'), { accept: 'text/csv' })
+      assert.equal(paymentsFile.statusCode, 200, paymentsFile.body)
+      assert.equal(paymentsFile.body.replace(/^\uFEFF/, '').split('\r\n').length, 1)
+    })
+
+    test('kayıt depolar arasında işaretini korur; ayna ve denetim bilinmeyen saymaz', async () => {
+      const { institution } = await imported()
+      const [before] = (await invoiceRows(institution.id)).filter((row) => row.installment === 1)
+      assert.equal(rowToInvoice(before!).method, 'Açılış aktarımı')
+      const [source] = await db
+        .select({ data: records.data })
+        .from(records)
+        .where(and(eq(records.institutionId, institution.id), eq(records.id, before!.id)))
+      assert.equal((source?.data as { method: string }).method, 'Açılış aktarımı')
+      await db
+        .update(invoices)
+        .set({ version: before!.version + 1 })
+        .where(and(eq(invoices.institutionId, institution.id), eq(invoices.id, before!.id)))
+      await mirrorFinanceIds(db, institution.id, 'all')
+      const [after] = (await invoiceRows(institution.id)).filter((row) => row.installment === 1)
+      assert.equal(after?.version, before!.version, 'ayna satırı yeniden yazdı')
+      assert.equal(after?.paymentMethod, 'opening_import')
+      const audit = await auditFinanceRecords(db, institution.id)
+      assert.equal(audit.unknownMethods, 0)
+      assert.equal(audit.paidMethodMismatch, 0)
+    })
+
+    test('yöntem tahsilatta kabul edilmez, payments tablosu kısıtla reddeder', async () => {
+      const { institution, cookie } = await imported()
+      const body = JSON.stringify({
+        studentId: 's-1',
+        amountCents: 1000,
+        method: 'Açılış aktarımı',
+        reference: 'TR-AKTARIM',
+      })
+      const refused = await app.inject({
+        method: 'POST',
+        url: '/api/v1/payments',
+        headers: {
+          cookie,
+          origin: TEST_ORIGIN,
+          'content-type': 'application/json',
+          'idempotency-key': randomUUID(),
+        },
+        payload: body,
+      })
+      assert.equal(refused.statusCode, 400, refused.body)
+      await assert.rejects(
+        db.insert(payments).values({
+          institutionId: institution.id,
+          id: randomUUID(),
+          studentId: 's-1',
+          amountCents: 1000,
+          method: 'opening_import',
+          paidAt: FIXED_NOW,
+          recordedByUserId: institution.admin.id,
+          receiptYear: 2026,
+          receiptNumber: 1,
+        } as typeof payments.$inferInsert),
+        (error: { cause?: { code?: string }; code?: string }) =>
+          (error.cause?.code ?? error.code) === '23514',
+      )
+    })
   })
 
   test('IST-002: başka kurumun öğrencisi ve sözleşmesi bu kurumu etkilemez, institutionId gövdede 400', async () => {

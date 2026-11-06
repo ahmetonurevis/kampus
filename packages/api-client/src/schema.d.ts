@@ -2333,7 +2333,7 @@ export interface paths {
         };
         /**
          * Öğrencinin cari ekstresi
-         * @description Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.
+         * @description Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Dosyadan aktarılan geçmiş ödeme `opening_import` satırıdır: borcu kapatır, tahsilat değildir, dekontu yoktur (DOM-FIN-014). Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.
          */
         get: operations["getStudentStatement"];
         put?: never;
@@ -3143,7 +3143,7 @@ export interface paths {
         put?: never;
         /**
          * Taksitleri dosyadan aktar
-         * @description Okul canlıya geçerken açık ve ödenmiş taksitleri CSV ya da Excel (.xlsx, ilk sayfa) dosyasıyla yükler (IST-007, DOM-FIN-011, DOM-FIN-012, ADR 0010). `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır. En çok 5.000 veri satırı. Sütunlar: `kimlik no`, `taksit no`, `tutar` (TL; `1.234,56` ya da `1234.56`, belirsiz biçim ve kuruştan küçük kesir satır hatasıdır, yuvarlanmaz) ya da `tutar kuruş` (tamsayı kuruş), ikisi birden doluysa tutmalıdır (`amount_mismatch`), `vade`; isteğe bağlı `öğrenci adı` (verilirse kayıtla eşleşmeli), `ödeme tarihi` ve `ödeme yöntemi` (birlikte), `eğitim yılı` (boşsa kurumun etkin yılı). `dryRun: true` önizlemedir: 200 ve satır bazında sorun ve bilgi döner, hiçbir şey yazmaz. Onayda bütün satırlar kurum kilidi altında yeniden doğrulanır: hata varsa 422 `installment_import_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir kayıt yazılmaz, başarı 201. Öğrencinin tek sözleşmesi varsa taksit ona bağlanır; birden çok ya da hiç sözleşmesi yoksa ya da sözleşmenin yılı farklıysa bağ boş kalır (ADR 0010 cevap 3). Onaylı sözleşmenin planına taksit eklenmez (`contract_approved`), plan toplamı sözleşmeyi aşamaz (`contract_total_exceeded`). Aynı öğrenci, yıl ve taksit numarası kayıtlıysa ve koşulları aynıysa satır atlanır (`skipped`): ikinci yükleme mükerrer kayıt açmaz; farklıysa satır hatalıdır. Ödenmiş taksit tahsilat satırı yazmaz: kasa ve dönem tahsilatı değişmez. `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; dosyadaki değerler yalnız bu kurumda aranır. Dosya saklanmaz, içerik loglanmaz; denetim kaydına yalnız alan adları ve sayılar yazılır.
+         * @description Okul canlıya geçerken açık ve ödenmiş taksitleri CSV ya da Excel (.xlsx, ilk sayfa) dosyasıyla yükler (IST-007, DOM-FIN-011, DOM-FIN-012, ADR 0010). `fileBase64`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır. En çok 5.000 veri satırı. Sütunlar: `kimlik no`, `taksit no`, `tutar` (TL; `1.234,56` ya da `1234.56`, belirsiz biçim ve kuruştan küçük kesir satır hatasıdır, yuvarlanmaz) ya da `tutar kuruş` (tamsayı kuruş), ikisi birden doluysa tutmalıdır (`amount_mismatch`), `vade`; isteğe bağlı `öğrenci adı` (verilirse kayıtla eşleşmeli), `ödeme tarihi`, `ödeme yöntemi` (kabul edilir, saklanmaz), `eğitim yılı` (boşsa kurumun etkin yılı). `dryRun: true` önizlemedir: 200 ve satır bazında sorun ve bilgi döner, hiçbir şey yazmaz. Onayda bütün satırlar kurum kilidi altında yeniden doğrulanır: hata varsa 422 `installment_import_invalid` (`issues` yolu `['rows', satır, alan]`) ve hiçbir kayıt yazılmaz, başarı 201. Öğrencinin tek sözleşmesi varsa taksit ona bağlanır; birden çok ya da hiç sözleşmesi yoksa ya da sözleşmenin yılı farklıysa bağ boş kalır (ADR 0010 cevap 3). Onaylı sözleşmenin planına taksit eklenmez (`contract_approved`), plan toplamı sözleşmeyi aşamaz (`contract_total_exceeded`). Aynı öğrenci, yıl ve taksit numarası kayıtlıysa ve koşulları aynıysa satır atlanır (`skipped`): ikinci yükleme mükerrer kayıt açmaz; farklıysa satır hatalıdır. Ödenmiş taksit tahsilat satırı yazmaz, kasa ve dönem tahsilatı değişmez: yöntemi `Açılış aktarımı`dır (`invoices.payment_method = opening_import`), ekstre ve dışa aktarım ödendi gösterip bu etiketle ayırır (DOM-FIN-014). `Idempotency-Key` zorunlu (önizlemede saklanmaz). Yalnız yönetici (diğer roller 403; rol ve pasiflik kurum kilidi altında yeniden doğrulanır); taze oturum ister (15 dakikadan eski oturum 403 `reauthentication_required`). Kurum oturumdan gelir; dosyadaki değerler yalnız bu kurumda aranır. Dosya saklanmaz, içerik loglanmaz; denetim kaydına yalnız alan adları ve sayılar yazılır.
          */
         post: operations["importInstallments"];
         delete?: never;
@@ -10184,7 +10184,8 @@ export interface components {
             dueDate: string | null;
             /** @description Ödeme günü, `YYYY-MM-DD`; açık taksitte `null` */
             paidDate: string | null;
-            method: ("Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet") | null;
+            /** @description Ödenmiş satırın işareti; tahsilat yöntemi değildir, açık satırda `null` */
+            method: "Açılış aktarımı" | null;
             academicYear: number | null;
             /** @description Taksit öğrencinin sözleşmesine bağlanacak mı */
             contractLinked: boolean;
@@ -14485,7 +14486,8 @@ export interface components {
             dueDate: string | null;
             /** @description Ödeme günü, `YYYY-MM-DD`; açık taksitte `null` */
             paidDate: string | null;
-            method: ("Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet") | null;
+            /** @description Ödenmiş satırın işareti; tahsilat yöntemi değildir, açık satırda `null` */
+            method: "Açılış aktarımı" | null;
             academicYear: number | null;
             /** @description Taksit öğrencinin sözleşmesine bağlanacak mı */
             contractLinked: boolean;
@@ -27584,6 +27586,8 @@ export interface operations {
                         data: {
                             totalCents: number;
                             paidCents: number;
+                            /** @description `paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014) */
+                            openingImportCents: number;
                             remainingCents: number;
                             overdueCents: number;
                         };
@@ -27807,6 +27811,8 @@ export interface operations {
                             studentId: string;
                             totalCents: number;
                             paidCents: number;
+                            /** @description `paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014) */
+                            openingImportCents: number;
                             openCents: number;
                             overdueCents: number;
                             overdueCount: number;
@@ -27915,6 +27921,8 @@ export interface operations {
                             studentId: string;
                             totalCents: number;
                             paidCents: number;
+                            /** @description `paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014) */
+                            openingImportCents: number;
                             openCents: number;
                             overdueCents: number;
                             overdueCount: number;
@@ -27930,10 +27938,10 @@ export interface operations {
                             unappliedCents: number;
                             lines: {
                                 /**
-                                 * @description Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme
+                                 * @description Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme, dosyadan aktarılan geçmiş ödeme (tahsilat değildir)
                                  * @enum {string}
                                  */
-                                kind: "installment" | "payment" | "payment_reversal" | "legacy_payment";
+                                kind: "installment" | "payment" | "payment_reversal" | "legacy_payment" | "opening_import";
                                 /** @description İşlem günü (YYYY-MM-DD, Europe/Istanbul) */
                                 date: string;
                                 /** @description Borç (kuruş) */
@@ -28068,6 +28076,8 @@ export interface operations {
                                 count: number;
                                 totalCents: number;
                                 paidCents: number;
+                                /** @description `paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014) */
+                                openingImportCents: number;
                             };
                         };
                     };

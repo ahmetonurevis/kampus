@@ -6,7 +6,7 @@ import {
   importFileInputSchema,
   IMPORT_ROW_STATUSES,
 } from '@kampus/school-core/lib/enrollment-import-cells.ts'
-import { PAYMENT_METHODS } from '@kampus/school-core/lib/payments.ts'
+import { OPENING_IMPORT_METHOD } from '@kampus/school-core/lib/payments.ts'
 
 import { contextOf } from '../plugins/authenticate.ts'
 import { importInstallments } from '../services/finance-installment-import.ts'
@@ -30,7 +30,10 @@ const installmentImportRowSchema = z
     amountCents: z.number().int().nullable().describe('Tutar, kuruş'),
     dueDate: z.string().nullable().describe('Vade, `YYYY-MM-DD`'),
     paidDate: z.string().nullable().describe('Ödeme günü, `YYYY-MM-DD`; açık taksitte `null`'),
-    method: z.enum(PAYMENT_METHODS).nullable(),
+    method: z
+      .literal(OPENING_IMPORT_METHOD)
+      .nullable()
+      .describe('Ödenmiş satırın işareti; tahsilat yöntemi değildir, açık satırda `null`'),
     academicYear: z.number().int().nullable(),
     contractLinked: z.boolean().describe('Taksit öğrencinin sözleşmesine bağlanacak mı'),
     issues: z.array(importIssueResponseSchema),
@@ -74,7 +77,7 @@ export function registerFinanceInstallmentImportRoutes(app: FastifyInstance) {
         operationId: 'importInstallments',
         tags: ['finance'],
         summary: 'Taksitleri dosyadan aktar',
-        description: `Okul canlıya geçerken açık ve ödenmiş taksitleri CSV ya da Excel (.xlsx, ilk sayfa) dosyasıyla yükler (IST-007, DOM-FIN-011, DOM-FIN-012, ADR 0010). \`fileBase64\`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır. En çok 5.000 veri satırı. Sütunlar: \`kimlik no\`, \`taksit no\`, \`tutar\` (TL; \`1.234,56\` ya da \`1234.56\`, belirsiz biçim ve kuruştan küçük kesir satır hatasıdır, yuvarlanmaz) ya da \`tutar kuruş\` (tamsayı kuruş), ikisi birden doluysa tutmalıdır (\`amount_mismatch\`), \`vade\`; isteğe bağlı \`öğrenci adı\` (verilirse kayıtla eşleşmeli), \`ödeme tarihi\` ve \`ödeme yöntemi\` (birlikte), \`eğitim yılı\` (boşsa kurumun etkin yılı). \`dryRun: true\` önizlemedir: 200 ve satır bazında sorun ve bilgi döner, hiçbir şey yazmaz. Onayda bütün satırlar kurum kilidi altında yeniden doğrulanır: hata varsa 422 \`installment_import_invalid\` (\`issues\` yolu \`['rows', satır, alan]\`) ve hiçbir kayıt yazılmaz, başarı 201. Öğrencinin tek sözleşmesi varsa taksit ona bağlanır; birden çok ya da hiç sözleşmesi yoksa ya da sözleşmenin yılı farklıysa bağ boş kalır (ADR 0010 cevap 3). Onaylı sözleşmenin planına taksit eklenmez (\`contract_approved\`), plan toplamı sözleşmeyi aşamaz (\`contract_total_exceeded\`). Aynı öğrenci, yıl ve taksit numarası kayıtlıysa ve koşulları aynıysa satır atlanır (\`skipped\`): ikinci yükleme mükerrer kayıt açmaz; farklıysa satır hatalıdır. Ödenmiş taksit tahsilat satırı yazmaz: kasa ve dönem tahsilatı değişmez. \`Idempotency-Key\` zorunlu (önizlemede saklanmaz). ${IMPORT_ACCESS}`,
+        description: `Okul canlıya geçerken açık ve ödenmiş taksitleri CSV ya da Excel (.xlsx, ilk sayfa) dosyasıyla yükler (IST-007, DOM-FIN-011, DOM-FIN-012, ADR 0010). \`fileBase64\`: dosyanın base64'ü, en çok 5 MB; tür içerikten anlaşılır. En çok 5.000 veri satırı. Sütunlar: \`kimlik no\`, \`taksit no\`, \`tutar\` (TL; \`1.234,56\` ya da \`1234.56\`, belirsiz biçim ve kuruştan küçük kesir satır hatasıdır, yuvarlanmaz) ya da \`tutar kuruş\` (tamsayı kuruş), ikisi birden doluysa tutmalıdır (\`amount_mismatch\`), \`vade\`; isteğe bağlı \`öğrenci adı\` (verilirse kayıtla eşleşmeli), \`ödeme tarihi\`, \`ödeme yöntemi\` (kabul edilir, saklanmaz), \`eğitim yılı\` (boşsa kurumun etkin yılı). \`dryRun: true\` önizlemedir: 200 ve satır bazında sorun ve bilgi döner, hiçbir şey yazmaz. Onayda bütün satırlar kurum kilidi altında yeniden doğrulanır: hata varsa 422 \`installment_import_invalid\` (\`issues\` yolu \`['rows', satır, alan]\`) ve hiçbir kayıt yazılmaz, başarı 201. Öğrencinin tek sözleşmesi varsa taksit ona bağlanır; birden çok ya da hiç sözleşmesi yoksa ya da sözleşmenin yılı farklıysa bağ boş kalır (ADR 0010 cevap 3). Onaylı sözleşmenin planına taksit eklenmez (\`contract_approved\`), plan toplamı sözleşmeyi aşamaz (\`contract_total_exceeded\`). Aynı öğrenci, yıl ve taksit numarası kayıtlıysa ve koşulları aynıysa satır atlanır (\`skipped\`): ikinci yükleme mükerrer kayıt açmaz; farklıysa satır hatalıdır. Ödenmiş taksit tahsilat satırı yazmaz, kasa ve dönem tahsilatı değişmez: yöntemi \`Açılış aktarımı\`dır (\`invoices.payment_method = opening_import\`), ekstre ve dışa aktarım ödendi gösterip bu etiketle ayırır (DOM-FIN-014). \`Idempotency-Key\` zorunlu (önizlemede saklanmaz). ${IMPORT_ACCESS}`,
         body: importFileInputSchema,
         headers: commandHeadersSchema('required', { ifMatch: false }),
         response: {

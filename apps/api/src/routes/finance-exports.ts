@@ -38,7 +38,15 @@ const summarySchema = dataResponse(
     payments: totals.describe('Tahsilat: iptaller eksi satır olarak düşer'),
     refunds: totals.describe('Ödenmiş iadeler'),
     invoices: totals
-      .extend({ paidCents: z.number().int() })
+      .extend({
+        paidCents: z.number().int(),
+        openingImportCents: z
+          .number()
+          .int()
+          .describe(
+            '`paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014)',
+          ),
+      })
       .describe('Vadesi dönemde olan taksitler'),
   }),
 )
@@ -94,6 +102,12 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
             z.object({
               totalCents: z.number().int(),
               paidCents: z.number().int(),
+              openingImportCents: z
+                .number()
+                .int()
+                .describe(
+                  '`paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014)',
+                ),
               remainingCents: z.number().int(),
               overdueCents: z.number().int(),
             }),
@@ -143,6 +157,12 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
               studentId: z.string(),
               totalCents: z.number().int(),
               paidCents: z.number().int(),
+              openingImportCents: z
+                .number()
+                .int()
+                .describe(
+                  '`paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014)',
+                ),
               openCents: z.number().int(),
               overdueCents: z.number().int(),
               overdueCount: z.number().int(),
@@ -171,7 +191,7 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
         tags: ['finance-exports'],
         summary: 'Öğrencinin cari ekstresi',
         description:
-          'Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.',
+          'Taksit borçlarını ve tahsilatları tarih sırasıyla, yürüyen bakiyeyle döner (IST-107). Özet alanları `/balance` ile aynı kuraldadır; borç ve alacak toplamının farkı açık tutara eşittir. İptal edilen tahsilat ters kayıtla kalır; taksite dağıtılmayan tutar `unappliedCents` alanındadır ve bakiyeyi düşürmez. Dosyadan aktarılan geçmiş ödeme `opening_import` satırıdır: borcu kapatır, tahsilat değildir, dekontu yoktur (DOM-FIN-014). Kapsam bakiyeyle aynıdır: veli bağlı çocuğunu ve ödeyicisi olduğu öğrenciyi, öğrenci kendisini okur. Başka öğrenci veya başka kurum 404, öğretmen 403, modül kapalı 403.',
         params: z.object({ studentId: z.string().min(1).max(200).describe('Öğrenci kimliği') }),
         response: {
           200: dataResponse(
@@ -179,6 +199,12 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
               studentId: z.string(),
               totalCents: z.number().int(),
               paidCents: z.number().int(),
+              openingImportCents: z
+                .number()
+                .int()
+                .describe(
+                  '`paidCents`in dosyadan aktarılan, tahsilat olmayan kısmı (kuruş; DOM-FIN-014)',
+                ),
               openCents: z.number().int(),
               overdueCents: z.number().int(),
               overdueCount: z.number().int(),
@@ -192,8 +218,16 @@ export function registerFinanceExportRoutes(app: FastifyInstance) {
               lines: z.array(
                 z.object({
                   kind: z
-                    .enum(['installment', 'payment', 'payment_reversal', 'legacy_payment'])
-                    .describe('Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme'),
+                    .enum([
+                      'installment',
+                      'payment',
+                      'payment_reversal',
+                      'legacy_payment',
+                      'opening_import',
+                    ])
+                    .describe(
+                      'Taksit borcu, tahsilat, iptal ters kaydı, kayıtsız eski ödeme, dosyadan aktarılan geçmiş ödeme (tahsilat değildir)',
+                    ),
                   date: z.string().describe('İşlem günü (YYYY-MM-DD, Europe/Istanbul)'),
                   debitCents: z.number().int().describe('Borç (kuruş)'),
                   creditCents: z.number().int().describe('Alacak (kuruş)'),

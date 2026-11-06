@@ -163,11 +163,7 @@ describe('parseTlAmount (ON-061, DOM-FIN-014)', () => {
 
 describe('planInstallmentImport (ON-061, DOM-FIN-001)', () => {
   test('core biçimi: vade 09:00Z, paidAt ve yöntem birlikte, yıl boşsa kurumun yılı', () => {
-    const plan = planInstallmentImport(
-      state(),
-      [row({ paidDate: '01.10.2026', method: 'banka havalesi' })],
-      context(),
-    )
+    const plan = planInstallmentImport(state(), [row({ paidDate: '01.10.2026' })], context())
     assert.deepEqual(plan.issues, [])
     assert.deepEqual(plan.installments[0], {
       line: plan.rows[0]?.line,
@@ -176,7 +172,7 @@ describe('planInstallmentImport (ON-061, DOM-FIN-001)', () => {
       amount: 1_250_000,
       dueDate: '2026-11-15T09:00:00.000Z',
       paidAt: '2026-10-01T09:00:00.000Z',
-      method: 'Banka havalesi',
+      method: 'Açılış aktarımı',
       academicYear: 2026,
       contractId: null,
     })
@@ -246,7 +242,6 @@ describe('planInstallmentImport (ON-061, DOM-FIN-001)', () => {
           dueDate: 'dün',
           academicYear: 'geçen yıl',
           paidDate: 'x',
-          method: 'Çek',
           extraCells: true,
         }),
       ],
@@ -258,18 +253,36 @@ describe('planInstallmentImport (ON-061, DOM-FIN-001)', () => {
       'extra_cells',
       'installment_invalid',
       'paid_date_invalid',
-      'payment_method_invalid',
     ])
     assert.equal(JSON.stringify(plan.issues).includes('geçen yıl'), false)
     assert.deepEqual(plan.installments, [])
     assert.equal(plan.totalCents, 0)
   })
 
-  test('ödeme tarihi ve yöntemi birlikte; gelecek ödeme reddedilir', () => {
-    assert.deepEqual(
-      codes(planInstallmentImport(state(), [row({ paidDate: '01.10.2026' })], context())),
-      ['payment_fields_incomplete'],
+  test('DOM-FIN-014: geçmiş ödeme açılış aktarımıdır; dosyadaki yöntem saklanmaz, bilgi düşer', () => {
+    const plan = planInstallmentImport(
+      state(),
+      [row({ paidDate: '01.10.2026', method: 'Çek' }), row({ installment: '2' })],
+      context(),
     )
+    assert.deepEqual(plan.issues, [])
+    assert.equal(plan.installments[0]?.method, 'Açılış aktarımı')
+    assert.equal(plan.rows[0]?.method, 'Açılış aktarımı')
+    assert.deepEqual(
+      plan.rows[0]?.notices.map((notice) => notice.code),
+      ['no_contract', 'opening_method_not_stored'],
+    )
+    assert.equal(plan.installments[1]?.paidAt, null)
+    assert.equal(plan.installments[1]?.method, null)
+    assert.equal(plan.rows[1]?.method, null)
+    assert.equal(plan.paidCents, 1_250_000)
+    const target = { invoices: [] as InstallmentImportState['invoices'], contracts: [] }
+    applyInstallmentImport(target, plan.installments, (prefix) => `${prefix}-1`)
+    assert.equal(target.invoices[0]?.method, 'Açılış aktarımı')
+    assert.equal(target.invoices[0]?.paidAt, '2026-10-01T09:00:00.000Z')
+  })
+
+  test('yöntem yazılıysa ödeme tarihi zorunlu; gelecek ödeme reddedilir', () => {
     assert.deepEqual(codes(planInstallmentImport(state(), [row({ method: 'Nakit' })], context())), [
       'payment_fields_incomplete',
     ])
@@ -466,7 +479,7 @@ describe('applyInstallmentImport (ON-061)', () => {
     assert.equal(target.invoices[0]?.contractId, 'contract-1')
     assert.equal(target.invoices[0]?.feeKind, 'tuition')
     assert.equal(target.invoices[0]?.reminderAt, null)
-    assert.equal(target.invoices[1]?.method, 'Nakit')
+    assert.equal(target.invoices[1]?.method, 'Açılış aktarımı')
     assert.deepEqual(
       target.contracts[0]?.invoiceIds,
       target.invoices.map((item) => item.id),

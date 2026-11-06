@@ -96,9 +96,9 @@ describe('önizleme satırları (ON-060, ON-061)', () => {
     assert.equal(open.paid, 'Açık')
     assert.equal(open.contract, 'Sözleşmesiz')
     const paid = installmentImportRow(
-      installmentRow({ paidDate: '2026-10-01', method: 'Nakit', contractLinked: true }),
+      installmentRow({ paidDate: '2026-10-01', method: 'Açılış aktarımı', contractLinked: true }),
     )
-    assert.match(paid.paid, /Nakit$/)
+    assert.match(paid.paid, /Açılış aktarımı$/)
     assert.equal(paid.contract, 'Bağlanacak')
     const bad = installmentImportRow(
       installmentRow({

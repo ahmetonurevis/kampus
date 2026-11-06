@@ -1,6 +1,7 @@
 import { useMemo } from 'react'
 import { Link } from 'react-router'
 import { dateLabel, dayKey, INVOICE_STATUS_LABELS, money } from '@kampus/school-core/lib/format.ts'
+import { isOpeningImport, OPENING_IMPORT_METHOD } from '@kampus/school-core/lib/payments.ts'
 import { ServerDataTable, type DataColumn } from '@/components/DataTable.tsx'
 import { PdfButton } from '@/components/PdfButton.tsx'
 import { QueryError } from '@/components/QueryError.tsx'
@@ -127,7 +128,9 @@ export function FamilyInvoicesView({ audience, studentId, receiptsOnly = false, 
         key: ACTIONS_KEY,
         label: 'İşlemler',
         cell: (row) =>
-          row.paidAt ? (
+          isOpeningImport(row) ? (
+            OPENING_IMPORT_METHOD
+          ) : row.paidAt ? (
             <PdfButton
               type="receipt"
               recordId={row.id}

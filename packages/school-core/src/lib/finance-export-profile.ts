@@ -42,6 +42,7 @@ const INVOICE_SOURCES = {
   status: { label: 'Durum', kind: 'text', read: (line) => line.status },
   amount: { label: 'Tutar (₺)', kind: 'amount', read: (line) => line.amountCents },
   paid: { label: 'Ödenen (₺)', kind: 'amount', read: (line) => line.paidCents },
+  note: { label: 'Açıklama', kind: 'text', read: (line) => line.note },
 } as const satisfies Record<string, Source<InvoiceLine>>
 
 export const FIXED_COLUMN_SOURCE = 'fixed'

@@ -2,7 +2,7 @@ import { and, asc, eq, inArray, isNull, sql, type SQL } from 'drizzle-orm'
 import type { AnyPgColumn } from 'drizzle-orm/pg-core'
 import { z } from 'zod'
 
-import { PAYMENT_METHODS, type PaymentMethod } from '@kampus/school-core/lib/payments.ts'
+import { INVOICE_METHODS, type InvoiceMethod } from '@kampus/school-core/lib/payments.ts'
 
 import { AppError, MESSAGES } from '../errors.ts'
 import type { Database } from './client.ts'
@@ -15,7 +15,7 @@ import type {
   StoredRecord,
 } from './records.ts'
 import { invoices } from './schema/invoices.ts'
-import { PAYMENT_METHOD_KEYS } from './schema/payments.ts'
+import { INVOICE_METHOD_KEYS } from './schema/payments.ts'
 
 /**
  * Taksit deposu (ADR 0010 karar 3, 8; ON-046d): `invoices` satırı ↔ core taksit kaydı
@@ -66,7 +66,7 @@ export const invoiceRecordSchema = z
     amount: z.number().int().positive(),
     dueDate: dueDateSchema,
     paidAt: instantSchema.nullable(),
-    method: z.enum(PAYMENT_METHODS).nullable(),
+    method: z.enum(INVOICE_METHODS).nullable(),
     reminderAt: instantSchema.nullable(),
     feeKind: z.string().min(1).optional(),
     contractId: idSchema.optional(),
@@ -86,8 +86,8 @@ export type InvoiceColumns = Omit<
   'institutionId' | 'position' | 'createdAt' | 'updatedAt' | 'archivedAt' | 'version' | 'currency'
 >
 
-const METHOD_LABELS = new Map<string, PaymentMethod>(
-  Object.entries(PAYMENT_METHOD_KEYS).map(([label, key]) => [key, label as PaymentMethod]),
+const METHOD_LABELS = new Map<string, InvoiceMethod>(
+  Object.entries(INVOICE_METHOD_KEYS).map(([label, key]) => [key, label as InvoiceMethod]),
 )
 
 /** Core kaydını doğrular; uymayan kayıt programlama hatasıdır. */
@@ -116,7 +116,7 @@ export function invoiceToColumns(data: RecordData, rootContractId: string | null
     amountCents: invoice.amount,
     dueDate: invoice.dueDate.slice(0, 10),
     paidAt: invoice.paidAt === null ? null : new Date(invoice.paidAt),
-    paymentMethod: invoice.method === null ? null : PAYMENT_METHOD_KEYS[invoice.method],
+    paymentMethod: invoice.method === null ? null : INVOICE_METHOD_KEYS[invoice.method],
     reminderAt: invoice.reminderAt === null ? null : new Date(invoice.reminderAt),
     coreCreatedAt: invoice.createdAt === undefined ? null : new Date(invoice.createdAt),
     coreUpdatedAt: invoice.updatedAt === undefined ? null : new Date(invoice.updatedAt),

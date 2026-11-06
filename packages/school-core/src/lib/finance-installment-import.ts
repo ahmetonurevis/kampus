@@ -11,7 +11,7 @@ import {
   type ImportNotice,
   type ImportRowStatus,
 } from './enrollment-import-cells.ts'
-import { PAYMENT_METHODS, type PaymentMethod } from './payments.ts'
+import { OPENING_IMPORT_METHOD } from './payments.ts'
 import { maskNationalId } from './scope.ts'
 
 /**
@@ -33,8 +33,10 @@ import { maskNationalId } from './scope.ts'
  * Mükerrer: aynı öğrenci, eğitim yılı ve taksit numarası kayıtlıysa ve tutar, vade ve ödeme durumu
  * aynıysa satır atlanır (ikinci yükleme mükerrer kayıt açmaz); bir farkı varsa satır hatalıdır,
  * sessizce değiştirilmez. Tahsilat satırı (`payments`) yazılmaz: geçmiş ödeme kasayı ve dönem
- * tahsilatını değiştirmesin; ödendi bilgisi `paid_at` önbelleğindedir (ADR 0010 karar 5). Kısmi
- * ödeme yoktur: satır ya açık ya tamamen ödenmiştir.
+ * tahsilatını değiştirmesin; ödendi bilgisi `paid_at` önbelleğindedir (ADR 0010 karar 5) ve yöntemi
+ * `OPENING_IMPORT_METHOD`'dur, ekstre ve dışa aktarım bundan "Açılış aktarımı" diye ayırır. Dosyanın
+ * `ödeme yöntemi` sütunu kabul edilir ama saklanmaz (satıra bilgi düşer). Kısmi ödeme yoktur: satır
+ * ya açık ya tamamen ödenmiştir.
  */
 
 export const INSTALLMENT_IMPORT_MAX_ROWS = 5000
@@ -160,8 +162,7 @@ export const INSTALLMENT_IMPORT_MESSAGES = {
   due_date_invalid: 'Vadeyi GG.AA.YYYY ya da YYYY-AA-GG biçiminde girin.',
   paid_date_invalid: 'Ödeme tarihini GG.AA.YYYY ya da YYYY-AA-GG biçiminde girin.',
   paid_date_future: 'Ödeme tarihi bugünden sonra olamaz.',
-  payment_method_invalid: `Ödeme yöntemi ${PAYMENT_METHODS.join(', ')} olmalı.`,
-  payment_fields_incomplete: 'Ödeme tarihi ve ödeme yöntemi birlikte girilir.',
+  payment_fields_incomplete: 'Ödeme yöntemi yazılı satırda ödeme tarihi de girilir.',
   academic_year_invalid: 'Eğitim yılını 2026 ya da 2026-2027 biçiminde girin.',
   installment_conflict:
     'Bu öğrencinin bu yıl ve taksit numarasında farklı tutarlı ya da vadeli kaydı var.',
@@ -172,6 +173,8 @@ export const INSTALLMENT_IMPORT_MESSAGES = {
   contract_total_exceeded: 'Taksitlerin toplamı öğrencinin sözleşme tutarını aşıyor.',
   already_imported: 'Bu taksit kayıtlı; satır atlanır, mükerrer kayıt açılmaz.',
   no_contract: 'Öğrencinin bu taksite bağlanacak tek sözleşmesi yok; taksit sözleşmesiz yazılır.',
+  opening_method_not_stored:
+    'Geçmiş ödemenin yöntemi saklanmaz; taksit Açılış aktarımı olarak işaretlenir.',
 } as const
 
 /** Planın gördüğü kurum durumu; API kurum kilidi altında (önizlemede tek görüntüde) okur. */
@@ -193,7 +196,7 @@ export interface PlannedInstallment {
   amount: number
   dueDate: string
   paidAt: string | null
-  method: PaymentMethod | null
+  method: typeof OPENING_IMPORT_METHOD | null
   academicYear: number
   contractId: string | null
 }
@@ -208,7 +211,7 @@ export interface InstallmentImportPreviewRow {
   amountCents: number | null
   dueDate: string | null
   paidDate: string | null
-  method: PaymentMethod | null
+  method: typeof OPENING_IMPORT_METHOD | null
   academicYear: number | null
   contractLinked: boolean
   issues: ImportIssue[]
@@ -224,10 +227,6 @@ export interface InstallmentImportPlan {
   totalCents: number
   paidCents: number
 }
-
-const METHODS = new Map<string, PaymentMethod>(
-  PAYMENT_METHODS.map((method) => [foldHeader(method), method]),
-)
 
 const nineOClock = (day: string) => `${day}T09:00:00.000Z`
 
@@ -359,18 +358,13 @@ export function planInstallmentImport(
     const paidCell = row.paidDate.trim()
     const methodCell = row.method.trim()
     let paidDay: string | null = null
-    let method: PaymentMethod | null = null
-    if (paidCell !== '' && methodCell === '') add('method', 'payment_fields_incomplete')
     if (paidCell === '' && methodCell !== '') add('paidDate', 'payment_fields_incomplete')
     if (paidCell !== '') {
       paidDay = parseImportDay(paidCell)
       if (paidDay === null) add('paidDate', 'paid_date_invalid')
       else if (paidDay > context.today) add('paidDate', 'paid_date_future')
     }
-    if (methodCell !== '') {
-      method = METHODS.get(foldHeader(methodCell)) ?? null
-      if (method === null) add('method', 'payment_method_invalid')
-    }
+    const method = paidDay === null ? null : OPENING_IMPORT_METHOD
 
     let skip = false
     let contractId: string | null = null
@@ -438,6 +432,11 @@ export function planInstallmentImport(
       notices.push({
         code: 'already_imported',
         message: INSTALLMENT_IMPORT_MESSAGES.already_imported,
+      })
+    else if (method !== null && methodCell !== '')
+      notices.push({
+        code: 'opening_method_not_stored',
+        message: INSTALLMENT_IMPORT_MESSAGES.opening_method_not_stored,
       })
 
     allIssues.push(...issues)

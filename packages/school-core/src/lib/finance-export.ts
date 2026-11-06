@@ -6,6 +6,7 @@ import { daySchema } from './domain.ts'
 import { DomainError } from './errors.ts'
 import { FEE_ITEM_KIND_LABELS } from './fee-tariffs.ts'
 import { dayKey } from './format.ts'
+import { isOpeningImport, OPENING_IMPORT_METHOD } from './payments.ts'
 
 /**
  * Muhasebe dışa aktarımı (IST-111; docs/domain/finans.md DOM-FIN-030, -033, -041). Kampüs fatura
@@ -175,9 +176,14 @@ export interface InvoiceLine {
   status: 'Ödendi' | 'Kısmi' | 'Açık'
   amountCents: number
   paidCents: number
+  /** Dosyadan aktarılan geçmiş ödeme etiketi; öteki satırlarda boş (DOM-FIN-014). */
+  note: typeof OPENING_IMPORT_METHOD | ''
 }
 
-/** Taksitler vade gününe göre aktarılır; ödenen tutar dağılımlardan hesaplanır (DOM-FIN-030). */
+/**
+ * Taksitler vade gününe göre aktarılır; ödenen tutar dağılımlardan hesaplanır (DOM-FIN-030). Dosyadan
+ * aktarılan geçmiş ödeme "Ödendi" yazar ve etiketini taşır; tahsilat dosyasına hiç girmez.
+ */
 export function invoiceLines(
   invoices: State['invoices'],
   allocated: ReadonlyMap<string, number>,
@@ -201,6 +207,7 @@ export function invoiceLines(
           status: invoice.paidAt ? 'Ödendi' : paidCents > 0 ? 'Kısmi' : 'Açık',
           amountCents: invoice.amount,
           paidCents,
+          note: isOpeningImport(invoice) ? OPENING_IMPORT_METHOD : '',
         },
       ]
     })
@@ -210,7 +217,13 @@ export function invoiceLines(
 export interface FinanceSummary {
   payments: { count: number; totalCents: number }
   refunds: { count: number; totalCents: number }
-  invoices: { count: number; totalCents: number; paidCents: number }
+  invoices: {
+    count: number
+    totalCents: number
+    paidCents: number
+    /** `paidCents`'in dosyadan aktarılan, tahsilat olmayan kısmı (DOM-FIN-014). */
+    openingImportCents: number
+  }
 }
 
 const sum = (lines: readonly { amountCents: number }[]) =>
@@ -228,6 +241,10 @@ export function financeSummary(
       count: invoices.length,
       totalCents: sum(invoices),
       paidCents: invoices.reduce((total, line) => total + line.paidCents, 0),
+      openingImportCents: invoices.reduce(
+        (total, line) => total + (line.note === '' ? 0 : line.paidCents),
+        0,
+      ),
     },
   }
 }
@@ -278,7 +295,17 @@ export function refundsCsv(lines: readonly RefundLine[]): string {
 
 export function invoicesCsv(lines: readonly InvoiceLine[]): string {
   return csv(
-    ['Vade', 'Öğrenci', 'Okul no', 'Taksit', 'Kalem', 'Durum', 'Tutar (₺)', 'Ödenen (₺)'],
+    [
+      'Vade',
+      'Öğrenci',
+      'Okul no',
+      'Taksit',
+      'Kalem',
+      'Durum',
+      'Tutar (₺)',
+      'Ödenen (₺)',
+      'Açıklama',
+    ],
     lines.map((line) => [
       csvCell(line.date),
       csvCell(line.studentName),
@@ -288,6 +315,7 @@ export function invoicesCsv(lines: readonly InvoiceLine[]): string {
       csvCell(line.status),
       csvAmount(line.amountCents),
       csvAmount(line.paidCents),
+      csvCell(line.note),
     ]),
   )
 }
@@ -296,18 +324,25 @@ export interface FinanceTotals {
   totalCents: number
   /** Tam ödenen taksitler ve açık taksitlere dağıtılmış kısmi ödemeler (DOM-FIN-030). */
   paidCents: number
+  /** `paidCents`'in dosyadan aktarılan, tahsilat olmayan kısmı (DOM-FIN-014). */
+  openingImportCents: number
   remainingCents: number
   overdueCents: number
 }
 
+type TotalsInvoice = Pick<State['invoices'][number], 'id' | 'amount' | 'paidAt' | 'dueDate'> & {
+  method?: string | null
+}
+
 /** Finans ekranı kartları: kurum geneli; gecikmiş tutar kalan kısımdır, taksitin tamamı değil. */
 export function financeTotals(
-  invoices: readonly Pick<State['invoices'][number], 'id' | 'amount' | 'paidAt' | 'dueDate'>[],
+  invoices: readonly TotalsInvoice[],
   allocated: ReadonlyMap<string, number>,
   today: string,
 ): FinanceTotals {
   let totalCents = 0
   let paidCents = 0
+  let openingImportCents = 0
   let overdueCents = 0
   for (const invoice of invoices) {
     const paid = invoice.paidAt
@@ -315,9 +350,16 @@ export function financeTotals(
       : Math.min(allocated.get(invoice.id) ?? 0, invoice.amount)
     totalCents += invoice.amount
     paidCents += paid
+    if (isOpeningImport(invoice)) openingImportCents += paid
     if (dayKey(invoice.dueDate) < today) overdueCents += invoice.amount - paid
   }
-  return { totalCents, paidCents, remainingCents: totalCents - paidCents, overdueCents }
+  return {
+    totalCents,
+    paidCents,
+    openingImportCents,
+    remainingCents: totalCents - paidCents,
+    overdueCents,
+  }
 }
 
 /** Varsayılan özet dönemi: içinde bulunulan ay dahil son altı takvim ayı, bugüne kadar. */
@@ -462,6 +504,8 @@ export interface StudentBalance {
   studentId: string
   totalCents: number
   paidCents: number
+  /** `paidCents`'in dosyadan aktarılan, tahsilat olmayan kısmı (DOM-FIN-014). */
+  openingImportCents: number
   /** Bugün kalan borç; kısmi ödemede yalnız kalan kısım (`financeTotals` ile aynı kural). */
   openCents: number
   overdueCents: number
@@ -478,7 +522,7 @@ export interface StudentBalance {
  */
 export function studentBalance(
   studentId: string,
-  invoices: readonly Pick<State['invoices'][number], 'id' | 'amount' | 'paidAt' | 'dueDate'>[],
+  invoices: readonly TotalsInvoice[],
   allocated: ReadonlyMap<string, number>,
   today: string,
 ): StudentBalance {
@@ -499,6 +543,7 @@ export function studentBalance(
     studentId,
     totalCents: totals.totalCents,
     paidCents: totals.paidCents,
+    openingImportCents: totals.openingImportCents,
     openCents: totals.remainingCents,
     overdueCents: totals.overdueCents,
     overdueCount,

@@ -126,11 +126,41 @@ export interface RenewalPrice {
   outstandingTuitionCents: number
 }
 
-function requireRenewalRole(session: Session): void {
+export function requireRenewalRole(session: Session): void {
   if (!mayRun(session, 'renewal'))
     throw new DomainError('permission_denied', 'Bu işlem için rolünüzün yetkisi yok.', {
       kind: 'forbidden',
     })
+}
+
+/**
+ * Hedef düzeyin artış tavanı ve uygulanabilecek en yüksek ücreti (DOM-FIN-002, -005). Plan, önizleme
+ * ve yeni yıl listesi aynı hesabı çalıştırır (`lib/renewal-bulk.ts`).
+ */
+export function renewalTuitionLimit(
+  state: State,
+  input: { studentId: string; targetGrade: number; year: number; announcedCents: number },
+  context: Pick<RenewalContext, 'previousTariff' | 'priceIndexes'>,
+): { ceiling: RenewalCeiling; maxTuitionCents: number } {
+  const previous = context.previousTariff
+    ? itemFor(context.previousTariff.items, 'tuition', String(input.targetGrade))
+    : undefined
+  const ceiling = renewalCeiling(state, {
+    studentId: input.studentId,
+    targetGrade: input.targetGrade,
+    year: input.year,
+    previousAnnouncedCents: previous
+      ? (previous.announcedAmountCents ?? previous.amountCents)
+      : null,
+    priceIndexes: context.priceIndexes,
+  })
+  return {
+    ceiling,
+    maxTuitionCents:
+      ceiling.status === 'applied'
+        ? Math.min(input.announcedCents, ceiling.ceilingCents)
+        : input.announcedCents,
+  }
 }
 
 /** Plan ve önizlemenin ortak fiyatı; State değişmez. */
@@ -163,21 +193,17 @@ function priceRenewal(
     extras: data.extras,
     canApproveCapException: canApprove,
   })
-  const previous = context.previousTariff
-    ? itemFor(context.previousTariff.items, 'tuition', level)
-    : undefined
-  const ceiling = renewalCeiling(state, {
-    studentId: student.id,
-    targetGrade: target.grade,
-    year: data.academicYear,
-    previousAnnouncedCents: previous
-      ? (previous.announcedAmountCents ?? previous.amountCents)
-      : null,
-    priceIndexes: context.priceIndexes,
-  })
   const announcedCents = price.grossCents
-  const maxTuitionCents =
-    ceiling.status === 'applied' ? Math.min(announcedCents, ceiling.ceilingCents) : announcedCents
+  const { ceiling, maxTuitionCents } = renewalTuitionLimit(
+    state,
+    {
+      studentId: student.id,
+      targetGrade: target.grade,
+      year: data.academicYear,
+      announcedCents,
+    },
+    context,
+  )
   const tuitionCents = data.tuitionCents ?? maxTuitionCents
   if (tuitionCents > announcedCents)
     throw new DomainError('renewal_above_tariff', 'Eğitim bedeli ilan edilen ücreti aşamaz.', {

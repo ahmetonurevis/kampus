@@ -13,6 +13,12 @@ import {
   renewalPricingSchema,
 } from '@kampus/school-core/lib/renewal-ceiling.ts'
 import {
+  RENEWAL_BULK_LIMIT,
+  RENEWAL_PLAN_STATUSES,
+  renewalBulkPlanSchema,
+  renewalBulkPreviewSchema,
+} from '@kampus/school-core/lib/renewal-bulk.ts'
+import {
   createPriceIndexSchema,
   renewalPlanSchema,
   renewalQuoteSchema,
@@ -24,6 +30,11 @@ import { mayRun } from '@kampus/school-core/lib/school-workflows.ts'
 import { ROLES } from '../auth.ts'
 import { contextOf } from '../plugins/authenticate.ts'
 import { executeWorkflowCommand } from '../services/commands.ts'
+import {
+  bulkPlanRenewalsCommand,
+  listRenewalCandidatesFor,
+  previewRenewalBulkFor,
+} from '../services/finance-renewal-bulk.ts'
 import {
   createPriceIndexCommand,
   getRenewalFor,
@@ -51,6 +62,8 @@ const WRITE_ROLES = ROLES.filter((role) => mayRun({ role }, 'renewal'))
 const ACTIVATE_ROLES = ROLES.filter((role) => mayRun({ role }, 'renewal-activate'))
 const READ_ROLES = ['yonetici', 'onburo', 'veli'] as const
 const INDEX_READ_ROLES = ['yonetici', 'onburo'] as const
+const CANDIDATE_ROLES = ['yonetici', 'onburo'] as const
+const BULK_PLAN_ROLES = ['yonetici'] as const
 
 const lineSchema = z.object({ kind: z.string(), amountCents: z.number().int() })
 const scholarshipSchema = renewalPricingSchema.shape.scholarship
@@ -153,6 +166,97 @@ const listQuerySchema = z.strictObject({
   order: z.enum(['asc', 'desc']).optional(),
 })
 
+const problemSchema = z
+  .object({ code: z.string(), message: z.string() })
+  .describe('Kuralın kodu ve Türkçe iletisi; borçlu öğrencide `renewal_debt_unapproved`')
+const candidateSchema = z.object({
+  studentId: z.string(),
+  studentName: z.string().nullable(),
+  classId: z.string(),
+  className: z.string().nullable(),
+  grade: z.number().int(),
+  targetClassId: z
+    .string()
+    .nullable()
+    .describe('Önerilen hedef sınıf: aynı kampüs ve şube; birden çok aday varsa `null`'),
+  targetClassName: z.string().nullable(),
+  previousContract: z
+    .object({ academicYear: z.number().int(), tuitionCents: z.number().int() })
+    .nullable()
+    .describe('Hedef yıldan önceki son sözleşmenin yılı ve indirimsiz ücreti'),
+  announcedCents: z.number().int().nullable().describe('Hedef düzeyin ilan edilen ücreti'),
+  ceiling: renewalCeilingSchema.nullable().describe('Artış tavanı kararı (DOM-FIN-005)'),
+  suggestedTuitionCents: z
+    .number()
+    .int()
+    .nullable()
+    .describe('Önerilen ücret: ilan ve tavanın küçüğü'),
+  outstandingTuitionCents: z
+    .number()
+    .int()
+    .describe('Önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025)'),
+  planStatus: z.enum(RENEWAL_PLAN_STATUSES),
+  renewalId: z.string().nullable(),
+  renewalNetCents: z.number().int().nullable(),
+  problem: problemSchema.nullable().describe('Ücret hesaplanamıyorsa nedeni'),
+})
+const candidatesQuerySchema = z.strictObject({
+  ...pageQuerySchema.shape,
+  academicYear: z.coerce.number('Eğitim yılı geçersiz.').int().min(2000).max(2100),
+  classId: z.string().min(1).max(200).optional().describe('Şimdiki sınıf'),
+  planStatus: z.enum(RENEWAL_PLAN_STATUSES).optional().describe('Yeni yılın plan durumu'),
+  q: z.string().trim().min(2).max(100).optional().describe('Öğrenci adında arama'),
+})
+const bulkPreviewSchema = z.object({
+  academicYear: z.number().int(),
+  tariff: z
+    .object({
+      id: z.string().describe('Onayda `tariffId` olarak gönderilir'),
+      versionNumber: z.number().int(),
+      carriedOverFromYear: z.number().int().nullable(),
+    })
+    .nullable()
+    .describe('Uygulanacak yayımlı tarife; yoksa `null`'),
+  summary: z.object({
+    ready: z.number().int(),
+    skipped: z.number().int(),
+    failed: z.number().int(),
+  }),
+  rows: z.array(
+    z.object({
+      studentId: z.string(),
+      studentName: z.string().nullable(),
+      targetClassId: z.string(),
+      targetClassName: z.string().nullable(),
+      outcome: z.enum(['ready', 'skipped', 'failed']),
+      price: quoteSchema.nullable(),
+      problem: problemSchema.nullable(),
+    }),
+  ),
+})
+const bulkPlanResponse = dataResponse(
+  z.object({
+    academicYear: z.number().int(),
+    summary: z.object({
+      planned: z.number().int(),
+      skipped: z.number().int(),
+      failed: z.number().int(),
+    }),
+    rows: z.array(
+      z.object({
+        studentId: z.string(),
+        studentName: z.string().nullable(),
+        outcome: z.enum(['planned', 'skipped', 'failed']),
+        problem: problemSchema.nullable(),
+        renewalId: z.string().nullable(),
+        contractId: z.string().nullable(),
+        netCents: z.number().int().nullable(),
+        installments: z.array(z.number().int()).describe('Öğrenim taksitleri; toplamı nettir'),
+      }),
+    ),
+  }),
+)
+
 function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
   if (result.replayed) reply.header('idempotent-replayed', 'true')
   reply.status(result.statusCode)
@@ -215,6 +319,74 @@ export function registerFinanceRenewalRoutes(app: FastifyInstance) {
         descending: order === 'desc',
       })
       return { data: items, meta: { page, pageSize, total } }
+    },
+  )
+
+  typed.get(
+    '/api/v1/finance/renewals/candidates',
+    {
+      preValidation: guarded(CANDIDATE_ROLES),
+      schema: {
+        operationId: 'listRenewalCandidates',
+        tags: ['finance-renewals'],
+        summary: 'Yeni yılın yenilenecek öğrencilerini listele',
+        description:
+          'Hedef yıl için etkin ve son düzeyde olmayan öğrenciler (IST-105): sınıf, önerilen hedef sınıf, önceki sözleşme, ilan ücreti, artış tavanı, önerilen ücret, borç ve plan durumu; hiçbir şey yazmaz. Ücret tek öğrenci planıyla aynı kuraldan gelir. Tavan oranı ya da tarife eksikse satır düşmez, `problem` nedenini söyler. Mezuniyet ve yenileme daveti bu listede yoktur. Geçmiş yıl 422 `renewal_year_invalid`. Modüller `finance` ve `renewal`. Roller: `yonetici`, `onburo`.',
+        querystring: candidatesQuerySchema,
+        response: {
+          200: z.object({ data: z.array(candidateSchema), meta: pageMetaSchema }),
+          ...commandErrors,
+        },
+      },
+    },
+    async (request) => {
+      const { page, pageSize } = request.query
+      const { items, total } = await listRenewalCandidatesFor(contextOf(request), request.query)
+      return { data: items, meta: { page, pageSize, total } }
+    },
+  )
+
+  typed.post(
+    '/api/v1/finance/renewals/bulk-preview',
+    {
+      preValidation: [...guarded(CANDIDATE_ROLES), captureInput()],
+      schema: {
+        operationId: 'previewRenewalBulk',
+        tags: ['finance-renewals'],
+        summary: 'Toplu yenileme planını önizle',
+        description: `Hiçbir kayıt yazmaz. Her satır tek öğrenci önizleme ve planını sırayla çalıştırır: tavan (DOM-FIN-005), ödeme koşulu (DOM-FIN-013), indirim (DOM-FIN-020…-022), burs (DOM-FIN-025) ve kuruş dağıtımı aynı kuraldır; öndeki satır sınıf ve burs kontenjanını doldurur. Bir satırın reddi öteki satırı etkilemez: \`outcome\` \`ready\`, \`skipped\` (borçlu öğrenci "yönetici onayı gerekir", ya da planı zaten var) ya da \`failed\`, neden \`problem\`te. En çok ${String(RENEWAL_BULK_LIMIT)} öğrenci; aşılırsa, öğrenci yinelenirse ya da \`debtApproved\` gönderilirse 400. Roller: \`yonetici\`, \`onburo\`.`,
+        body: renewalBulkPreviewSchema,
+        response: { 200: dataResponse(bulkPreviewSchema), ...commandErrors },
+      },
+    },
+    async (request) => ({
+      data: await previewRenewalBulkFor(contextOf(request), request.commandInput),
+    }),
+  )
+
+  typed.post(
+    '/api/v1/finance/renewals/bulk-plan',
+    {
+      preValidation: [...guarded(BULK_PLAN_ROLES), rejectIfMatch(), captureInput()],
+      schema: {
+        operationId: 'bulkPlanRenewals',
+        tags: ['finance-renewals'],
+        summary: 'Toplu yenileme planını onayla',
+        description: `Seçili öğrenciler için tek öğrenci planını çalıştırır; her öğrenci kendi işlemindedir, biri reddedilirse öteki geri alınmaz ve rapor satır satır söyler (\`planned\`, \`skipped\`, \`failed\`). Yanıt kısmi başarıda da 200'dür. Borçlu öğrenci atlanır, kod \`renewal_debt_unapproved\`, ileti "yönetici onayı gerekir"; toplu yolda borç onayı yoktur, karar \`POST /api/v1/finance/renewals\` \`debtApproved\` ile verilir (DOM-KAY-025). Planı olan öğrenci \`renewal_already_exists\` ile atlanır. Tarife değiştiyse satır kodu \`tariff_changed\` olur. \`Idempotency-Key\` zorunludur: aynı anahtar + aynı gövde ilk raporu döner, yarıda kalan istek planlananları yinelemez, farklı gövde 422 \`idempotency_key_reused\`. En çok ${String(RENEWAL_BULK_LIMIT)} öğrenci. Roller: \`yonetici\`.`,
+        headers: commandHeadersSchema('required', { ifMatch: false }),
+        body: renewalBulkPlanSchema,
+        response: { 200: bulkPlanResponse, ...commandErrors },
+      },
+    },
+    async (request, reply) => {
+      const { idempotency } = options(request, 'required')
+      if (idempotency === null) throw new Error('Idempotency guard did not run')
+      const result = await bulkPlanRenewalsCommand(
+        contextOf(request),
+        request.commandInput,
+        idempotency,
+      )
+      return bulkPlanResponse.parse(sendBody(reply, result))
     },
   )
 

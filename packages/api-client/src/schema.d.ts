@@ -2397,9 +2397,49 @@ export interface paths {
         };
         /**
          * Muhasebe aktarım dosyası
-         * @description `kind` ile tahsilat, iade veya taksit satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.
+         * @description `kind` ile tahsilat, iade veya taksit satırlarını döner. `format=csv` (varsayılan): `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı. `format=xlsx`: Excel dosyası (ikili gövde); metin alanları formül çalıştırmayan metin hücresi, tutar `#,##0.00` biçimli sayı hücresi, tarih Europe/Istanbul günü olarak profilin tarih biçimiyle tarih hücresidir; sütun adı ve sırası kurumun profilinden gelir, ayırıcı ve ondalık işareti yalnız CSV içindir. Belirli bir muhasebe programına uyum iddiası, hesap kodu ve KDV dökümü yoktur. Önceki dönem tahsilatının iptali iptal gününde eksi satırdır. Yalnız ödenmiş iade yer alır, IBAN maskelidir. Dosya toplamı `GET /finance/summary` toplamına eşittir. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Dönem kuralları özet ucuyla aynıdır. Rol: `yonetici`.
          */
         get: operations["exportFinance"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yıl sonu mutabakatı
+         * @description Seçilen eğitim yılının öğrenci bazında mutabakatı (ON-085, IST-111; DOM-FIN-056). Formül: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade = kapanış. Kapanış taksit ve dağılımlardan, beklenen kapanış hareketlerden hesaplanır; `differenceCents` sıfırdan farklı olan öğrenci tutmaz. Tahakkuk, tahsilat − iptal ve iade toplamları aynı dönemin `/finance/summary` toplamlarına eşittir. Burs ve indirim sözleşmenin eğitim yılından okunur, formüle girmez. Dönem kurumun eğitim yılı aralığıdır, kayıt yoksa 1 Eylül – 31 Ağustos; süren yılda bitiş bugündür. Başlamamış yıl 422 `reconciliation_year_not_started`. `totals` süzgeçten bağımsızdır; `status=mismatch` satırları tutmayanlarla sınırlar. Hesap kodu ve KDV dökümü üretmez. Yıl kapatmaz, kayıt değiştirmez. Rol: `yonetici`.
+         */
+        get: operations["getFinanceReconciliation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/reconciliation/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yıl sonu mutabakat dosyası
+         * @description Mutabakatın öğrenci satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; kurumun aktarım profili varsa onun biçimi ve sütunları. Satır ve toplam kuralı `GET /finance/reconciliation` ile aynıdır. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Rol: `yonetici`.
+         */
+        get: operations["exportFinanceReconciliation"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2544,6 +2584,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/invoices/{invoiceId}/remind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gecikmiş taksiti elle hatırlat
+         * @description Gecikmiş taksitte veliye (yetişkin kursiyerde kendisine) `installment_overdue` bildirimi yazar ve taksitin `reminderAt` alanını günceller (DOM-FIN-035). Aynı taksite günde en çok bir hatırlatma gider: bugün elle hatırlatıldıysa ya da tarama bugün gönderdiyse yeni bildirim yazılmaz, yanıt 200 `reminder: already_sent`. Tam ödenmiş taksit 422 `invoice_already_paid`, vadesi geçmemiş taksit 422 `invoice_not_overdue`, arşivlenmiş öğrenci 422 `invoice_student_archived`, bildirim merkezi kapalıysa 422 `notifications_disabled`. Başka kurumun taksiti 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["remindInstallment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/renewals": {
         parameters: {
             query?: never;
@@ -2562,6 +2622,66 @@ export interface paths {
          * @description Yeni yılın sözleşmesini ve taksitlerini tek işlemde yazar; öğrencinin sınıfı değişmez, sınıf geçişi ayrı uçtur (DOM-KAY-020). Ücret yayımlı tarifeden ve artış tavanından çıkar (DOM-FIN-002, -005); süresinde ilan yapılmadıysa önceki yılın tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, `academicYear` hedef yıl kalır, yanıtta `tariffCarriedOverFromYear` döner. İndirim tarifedeki türden (DOM-FIN-020), burs yalnız bildirilmiş programdan ve yönetici onayıyla (DOM-FIN-025; 422 `scholarship_approval_required`, `scholarship_program_not_notified`, 409 `scholarship_capacity_full`). Tam bursta öğrenim taksiti açılmaz; ek hizmet ayrı taksittir (DOM-FIN-003). Aynı yıla ikinci yenileme 409 `renewal_already_exists`, açık plan 409 `transition_planned_exists` (DOM-KAY-021); gövdedeki `tariffId` geçerli tarifeden farklıysa (yeni sürüm ya da hedef yılın tarifesi sonradan yayımlandı) 409 `tariff_changed`. Mezuniyet (`mode: graduate`) borç açmaz (DOM-KAY-022). Önceki yıldan ödenmemiş öğrenim ücreti borcu olan öğrencide (DOM-KAY-025) `debtApproved: true` yoksa 422 `renewal_debt_unapproved`; onayı yönetici dışındaki rol verirse 403 `renewal_debt_approval_forbidden`. Kapsam dışı ya da olmayan kayıt 404. `Idempotency-Key` zorunludur. Başarı 201 ve `Location`. Roller: `yonetici`, `onburo`. Taksit sayısı yayımlı tarifenin ödeme koşullarından çıkar: ilanda olmayan sayı 422 `payment_term_not_in_tariff`, peşin indirimi peşin koşulu dışında 422 `early_payment_requires_upfront`; koşulsuz eski tarifede sınır yoktur (DOM-FIN-013).
          */
         post: operations["planRenewal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/renewals/candidates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yeni yılın yenilenecek öğrencilerini listele
+         * @description Hedef yıl için etkin ve son düzeyde olmayan öğrenciler (IST-105): sınıf, önerilen hedef sınıf, önceki sözleşme, ilan ücreti, artış tavanı, önerilen ücret, borç ve plan durumu; hiçbir şey yazmaz. Ücret tek öğrenci planıyla aynı kuraldan gelir. Tavan oranı ya da tarife eksikse satır düşmez, `problem` nedenini söyler. Mezuniyet ve yenileme daveti bu listede yoktur. Geçmiş yıl 422 `renewal_year_invalid`. Modüller `finance` ve `renewal`. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listRenewalCandidates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/renewals/bulk-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toplu yenileme planını önizle
+         * @description Hiçbir kayıt yazmaz. Her satır tek öğrenci önizleme ve planını sırayla çalıştırır: tavan (DOM-FIN-005), ödeme koşulu (DOM-FIN-013), indirim (DOM-FIN-020…-022), burs (DOM-FIN-025) ve kuruş dağıtımı aynı kuraldır; öndeki satır sınıf ve burs kontenjanını doldurur. Bir satırın reddi öteki satırı etkilemez: `outcome` `ready`, `skipped` (borçlu öğrenci "yönetici onayı gerekir", ya da planı zaten var) ya da `failed`, neden `problem`te. En çok 100 öğrenci; aşılırsa, öğrenci yinelenirse ya da `debtApproved` gönderilirse 400. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["previewRenewalBulk"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/renewals/bulk-plan": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Toplu yenileme planını onayla
+         * @description Seçili öğrenciler için tek öğrenci planını çalıştırır; her öğrenci kendi işlemindedir, biri reddedilirse öteki geri alınmaz ve rapor satır satır söyler (`planned`, `skipped`, `failed`). Yanıt kısmi başarıda da 200'dür. Borçlu öğrenci atlanır, kod `renewal_debt_unapproved`, ileti "yönetici onayı gerekir"; toplu yolda borç onayı yoktur, karar `POST /api/v1/finance/renewals` `debtApproved` ile verilir (DOM-KAY-025). Planı olan öğrenci `renewal_already_exists` ile atlanır. Tarife değiştiyse satır kodu `tariff_changed` olur. `Idempotency-Key` zorunludur: aynı anahtar + aynı gövde ilk raporu döner, yarıda kalan istek planlananları yinelemez, farklı gövde 422 `idempotency_key_reused`. En çok 100 öğrenci. Roller: `yonetici`.
+         */
+        post: operations["bulkPlanRenewals"];
         delete?: never;
         options?: never;
         head?: never;
@@ -3043,7 +3163,7 @@ export interface paths {
         head?: never;
         /**
          * Adayın aşamasını değiştir
-         * @description Açık aşamalar arasında yalnız ileri gidilir, aşama atlanabilir (core `changeProspectStage`, DOM-KAY-005, DOM-KAY-030). Geri dönüş 422 `prospect_stage_backward`; `Görüşme planlandı` yalnız planlamayla (422 `prospect_meeting_required`), `Kayıt oldu` yalnız kesin kayıtla girilir (422 `prospect_enroll_required`). `Vazgeçti` nedenle girilir (422 `prospect_lost_reason_required`) ve ileri tarihli görüşmeyi ve deneme dersini kaldırır. Vazgeçen aday yalnız `İletişime geçildi` ile yeniden açılır ve tekillik denetiminden geçer (409 `prospect_duplicate`, `prospect_contact_shared`); iletişimi paylaşan açık aday varsa `siblingOfId` ile kardeş seçilir (DOM-KAY-031, 422 `sibling_not_found`). Aynı aşama 409 `prospect_stage_unchanged`, kayıtlı aday 409 `prospect_enrolled`. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Roller: `yonetici`, `onburo`.
+         * @description Açık aşamalar arasında yalnız ileri gidilir, aşama atlanabilir (core `changeProspectStage`, DOM-KAY-005, DOM-KAY-030). Geri dönüş 422 `prospect_stage_backward`; `Görüşme planlandı` yalnız planlamayla (422 `prospect_meeting_required`), `Kayıt oldu` yalnız kesin kayıtla girilir (422 `prospect_enroll_required`). `Vazgeçti` nedenle girilir (422 `prospect_lost_reason_required`) ve ileri tarihli görüşmeyi ve deneme dersini kaldırır. Vazgeçen aday yalnız `İletişime geçildi` ile yeniden açılır ve tekillik denetiminden geçer (409 `prospect_duplicate`, `prospect_contact_shared`); iletişimi paylaşan açık aday varsa `siblingOfId` ile kardeş seçilir (DOM-KAY-031, 422 `sibling_not_found`). İsteğe bağlı `lostToInstitution` tercih edilen kurumdur (en çok 120 karakter, yalnız `Vazgeçti`te, yeniden açılışta silinir, loglanmaz). Aynı aşama 409 `prospect_stage_unchanged`, kayıtlı aday 409 `prospect_enrolled`. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Roller: `yonetici`, `onburo`.
          */
         patch: operations["changeProspectStage"];
         trace?: never;
@@ -3102,6 +3222,26 @@ export interface paths {
          * @description Açık aşamadaki adayı öğrenci, veli, taksit planı ve sözleşmeyle birlikte tek işlemde kayda alır; aday `Kayıt oldu` olur (core `enrollProspectWithTariff`, DOM-KAY-001, DOM-KAY-011, DOM-KAY-012, DOM-KAY-035). Tutar girilmez, eğitim yılının yayımlanmış tarifesinden hesaplanır (DOM-FIN-002). O yılın tarifesi yoksa ve ilan dönemi bittiyse (okulda eğitim yılının başladığı yılın mayıs sonu; dil okulu ve kursta ilan dönemi yoktur) önceki yılın yayımlı tarifesi uygulanır: sözleşme o tarifenin kimlik ve sürümünü taşır, eğitim yılı değişmez, yanıtta `tariffCarriedOverFromYear` döner. Dönem sürüyorsa ya da önceki yılın da tarifesi yoksa 422 `tariff_not_published`. Gövdedeki `tariffId` geçerli tarifeden farklıysa 409 `tariff_changed`. Düzeyin ücreti yoksa 422 `tariff_tuition_missing`. Dil okulunda `lessonHours` zorunlu (422 `lesson_hours_required`, DOM-FIN-006). İndirimler tarifedeki türlerden seçilir ve ilan ücretinden hesaplanır: ilansız 422 `discount_not_in_tariff`, toplam %50'yi aşarsa 422 `discount_cap_exceeded`, personel çocuğu istisnası yalnız yönetici (422 `discount_approval_required`), kardeş indirimi mevcut veli ve aktif kardeş ister, ücreti düşük çocuğa uygulanır: adayın ilan ücreti kardeşlerinkinden yüksekse aday ilk çocuktur (422 `sibling_discount_ineligible`) (DOM-FIN-020…022). Ek hizmet ayrı borç kalemidir; ilansız 422 `extra_not_in_tariff` (DOM-FIN-003). Kimlik ayrı tabloda tutulur, yanıtta ve genel okumada yer almaz; aktif öğrencide kayıtlı kimlik 409 `student_identity_duplicate`, pasif kaydın kimliği yeniden kullanılır. Veli zorunlu (422 `guardian_required`); 18 yaş doğum tarihinden, İstanbul gününe göre hesaplanır. Dil okulunda 18 yaş üstü kursiyerde `guardian: null` kursiyeri ödeyici yapar, veli verilirse 422 `guardian_not_applicable`; adayın yaş grubu seçimi doğum tarihiyle uyuşmazsa 422 `birth_date_minor_mismatch` (DOM-KAY-012). Okulda veli her yaşta zorunludur; kursta 18 yaş ve üstü kursiyer kendi ödeyicisidir. `existingParentId` mevcut veliye bağlar, olmayan veli 404. Taksit toplamı kuruşu kuruşuna net tutara eşittir (DOM-FIN-011). Olmayan veya başka kurumun adayı, olmayan veya pasif sınıf ya da kampüs 404 `not_found`; kayıtlı aday 409 `prospect_already_enrolled`, vazgeçmiş aday 409 `prospect_closed`; dolu sınıf 422 `class_capacity_full`. İşlem kurum kilidi altındadır; aynı adayı eşzamanlı kayda alan iki istekten yalnız biri yazılır, öteki 409 alır. Modüller `crm` ve `finance` (taksit ve sözleşme yazılır); biri kapalıysa 403 `module_disabled`. `Idempotency-Key` zorunludur: aynı anahtarla yinelenen istek ikinci borç açmaz, ilk yanıtı döner. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Başarı 201 ve `Location` (öğrenci kaydı). Roller: `yonetici`, `onburo`. Taksit sayısı yayımlı tarifenin ödeme koşullarından çıkar: ilanda olmayan sayı 422 `payment_term_not_in_tariff`, peşin indirimi peşin koşulu dışında 422 `early_payment_requires_upfront`; koşulsuz eski tarifede sınır yoktur (DOM-FIN-013).
          */
         post: operations["enrollProspect"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/prospects/loss-breakdown": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıp aday kırılımı
+         * @description Vazgeçen adayların neden ve tercih ettiği kurum kırılımı (IST-117, DOM-KAY-005). Yalnız sayı ve kurum adı döner, aday kimliği dönmez; kurum adı serbest metindir, loglanmaz. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getProspectLossBreakdown"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -3246,6 +3386,26 @@ export interface paths {
          * @description Adayın adını, telefonunu, e-postasını, ilgisini ve 18 yaş altında veli adını düzeltir (core `updateProspectDetails`, DOM-KAY-003, KVKK md. 11 düzeltme hakkı). Yalnız gönderilen alanlar değişir; hiçbiri farklı değilse 409 `prospect_unchanged`. Açık adayda ad, telefon ve e-posta mükerrer denetiminden yeniden geçer (409 `prospect_duplicate`, `prospect_contact_shared`; kardeş seçilmiş adayda ortak iletişim kabul edilir). Onayı verilmiş e-posta silinemez (422 `consent_contact_in_use`), yetişkin adayda veli adı 422 `guardian_not_applicable`. Aşamayı ve ticari ileti onayını değiştirmez; kayda yalnız düzeltilen alan adları yazılır, denetim kaydına iletişim yazılmaz. Kesin kayda dönmüş adayın düzeltmesi öğrenci ve veli kaydına yansımaz. `If-Match` zorunludur (adayın sürümü): eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. Olmayan veya başka kurumun adayı sürüm ne olursa olsun 404. Roller: `yonetici`, `onburo`.
          */
         patch: operations["updateProspectDetails"];
+        trace?: never;
+    };
+    "/api/v1/prospects/funnel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kayıt hunisi
+         * @description Aday → görüşme → deneme dersi (yalnız dil okulu) → kesin kayıt dönüşümü; toplam, kaynak ve danışman kırılımıyla (core `enrollmentFunnel`, DOM-KAY-040, IST-117). Kohort adayın açılış günüdür (`dateFrom`/`dateTo`, Europe/Istanbul, iki uç dahil; verilmezse bütün adaylar). Huni birikimlidir: ileri adıma ulaşan aday önceki adımları geçmiş sayılır. Oranlar yüzde, bir ondalık; payda 0 ise `null`. Danışman adayı açan personeldir; adı yalnız kurum üyesi için döner. Arşivlenen aday sayılmaz. Yanıt aday adı, iletişim bilgisi ve aday kimliği taşımaz. Bitiş başlangıçtan önceyse ya da bilinmeyen parametre varsa 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.
+         */
+        get: operations["getProspectFunnel"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/api/v1/questions": {
@@ -10211,6 +10371,70 @@ export interface components {
             canManage: boolean;
             learners: components["schemas"]["TaskExtraTimeLearnerInput"][];
         };
+        EnrollmentFunnelStepInput: {
+            /**
+             * @description Huni adımı; `trial` yalnız dil okulunda
+             * @enum {string}
+             */
+            step: "prospect" | "meeting" | "trial" | "enrolled";
+            /** @description Bu adıma ulaşan aday (birikimli) */
+            count: number;
+            /** @description Önceki adıma göre yüzde (bir ondalık); ilk adımda ve önceki adım 0 iken `null` */
+            rate: number | null;
+        };
+        EnrollmentFunnelStageInput: {
+            /** @enum {string} */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi" | "Kayıt oldu" | "Vazgeçti";
+            count: number;
+        };
+        EnrollmentFunnelRowInput: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStepInput"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStageInput"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+        };
+        EnrollmentFunnelSourceRowInput: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStepInput"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStageInput"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Aday kaynağı (DOM-KAY-007); kaynaksız eski aday `null` */
+            source: string | null;
+        };
+        EnrollmentFunnelCounselorRowInput: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStepInput"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStageInput"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Adayı açan personelin kullanıcı kimliği; bilinmiyorsa `null` */
+            counselorId: string | null;
+            /** @description Danışmanın görünen adı; kurum üyesi değilse ya da bilinmiyorsa `null` */
+            counselorName: string | null;
+        };
+        EnrollmentFunnelInput: {
+            /**
+             * @description Adımları belirleyen kurum türü
+             * @enum {string}
+             */
+            institutionType: "school" | "language_school";
+            total: components["schemas"]["EnrollmentFunnelRowInput"];
+            /** @description Bilinen kaynaklar sıfır olsa da liste sırasıyla, sonra tanınmayan eski kaynaklar, en son kaynaksız */
+            bySource: components["schemas"]["EnrollmentFunnelSourceRowInput"][];
+            /** @description Adayı olan danışmanlar aday sayısına göre çoktan aza; bilinmeyen en sonda */
+            byCounselor: components["schemas"]["EnrollmentFunnelCounselorRowInput"][];
+        };
         ErrorResponse: {
             /** @description Kararlı, İngilizce, snake_case hata kodu */
             code: string;
@@ -14415,6 +14639,70 @@ export interface components {
             /** @description Kişi ek süre verebilir mi (atayan öğretmen veya yönetici) */
             canManage: boolean;
             learners: components["schemas"]["TaskExtraTimeLearner"][];
+        };
+        EnrollmentFunnelStep: {
+            /**
+             * @description Huni adımı; `trial` yalnız dil okulunda
+             * @enum {string}
+             */
+            step: "prospect" | "meeting" | "trial" | "enrolled";
+            /** @description Bu adıma ulaşan aday (birikimli) */
+            count: number;
+            /** @description Önceki adıma göre yüzde (bir ondalık); ilk adımda ve önceki adım 0 iken `null` */
+            rate: number | null;
+        };
+        EnrollmentFunnelStage: {
+            /** @enum {string} */
+            stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi" | "Kayıt oldu" | "Vazgeçti";
+            count: number;
+        };
+        EnrollmentFunnelRow: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStep"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStage"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+        };
+        EnrollmentFunnelSourceRow: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStep"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStage"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Aday kaynağı (DOM-KAY-007); kaynaksız eski aday `null` */
+            source: string | null;
+        };
+        EnrollmentFunnelCounselorRow: {
+            /** @description Aralıkta açılan aday sayısı */
+            prospects: number;
+            /** @description Kurum türünün adımları sırasıyla */
+            steps: components["schemas"]["EnrollmentFunnelStep"][];
+            /** @description Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok */
+            stages: components["schemas"]["EnrollmentFunnelStage"][];
+            /** @description Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null` */
+            conversionRate: number | null;
+            /** @description Adayı açan personelin kullanıcı kimliği; bilinmiyorsa `null` */
+            counselorId: string | null;
+            /** @description Danışmanın görünen adı; kurum üyesi değilse ya da bilinmiyorsa `null` */
+            counselorName: string | null;
+        };
+        EnrollmentFunnel: {
+            /**
+             * @description Adımları belirleyen kurum türü
+             * @enum {string}
+             */
+            institutionType: "school" | "language_school";
+            total: components["schemas"]["EnrollmentFunnelRow"];
+            /** @description Bilinen kaynaklar sıfır olsa da liste sırasıyla, sonra tanınmayan eski kaynaklar, en son kaynaksız */
+            bySource: components["schemas"]["EnrollmentFunnelSourceRow"][];
+            /** @description Adayı olan danışmanlar aday sayısına göre çoktan aza; bilinmeyen en sonda */
+            byCounselor: components["schemas"]["EnrollmentFunnelCounselorRow"][];
         };
     };
     responses: never;
@@ -28154,6 +28442,11 @@ export interface operations {
                                         header: string;
                                         value?: string;
                                     }[];
+                                    reconciliation?: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
                                 };
                             } | null;
                             /** @description `If-Match` için profil sürümü */
@@ -28274,6 +28567,11 @@ export interface operations {
                                 header: string;
                                 value?: string;
                             }[];
+                            reconciliation?: {
+                                source: string;
+                                header: string;
+                                value?: string;
+                            }[];
                         };
                     } | null;
                 };
@@ -28308,6 +28606,11 @@ export interface operations {
                                         value?: string;
                                     }[];
                                     invoices: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
+                                    reconciliation?: {
                                         source: string;
                                         header: string;
                                         value?: string;
@@ -28400,6 +28703,273 @@ export interface operations {
                 from: string;
                 to: string;
                 kind: "payments" | "refunds" | "invoices";
+                format?: "csv" | "xlsx";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV metni ya da `.xlsx` dosyası */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceReconciliation: {
+        parameters: {
+            query: {
+                year: number;
+                status?: "all" | "mismatch";
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Eğitim yılının başladığı yıl */
+                            year: number;
+                            /** @description Dönem başı (YYYY-MM-DD, Europe/Istanbul) */
+                            from: string;
+                            /** @description Dönem sonu; süren yılda bugün */
+                            to: string;
+                            totals: {
+                                /** @description Dönem başı bakiye: açık borç − alacak */
+                                openingCents: number;
+                                /** @description Vadesi dönemde olan taksitler */
+                                accruedCents: number;
+                                /** @description Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi */
+                                withdrawalAdjustmentCents: number;
+                                /** @description Ödeme günü dönemde olan tahsilatlar (brüt) */
+                                collectedCents: number;
+                                /** @description İptal günü dönemde olan tahsilatlar */
+                                reversedCents: number;
+                                /** @description Ödeme günü dönemde olan iadeler */
+                                refundedCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı, formüle girmez */
+                                scholarshipCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı, formüle girmez */
+                                discountCents: number;
+                                /** @description Dönem sonu bakiye: açık borç − alacak */
+                                closingCents: number;
+                                /** @description Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade */
+                                expectedClosingCents: number;
+                                /** @description Kapanış − beklenen kapanış */
+                                differenceCents: number;
+                                /** @description Dönem sonunda vadesi gelmiş açık taksit tutarı */
+                                openDebtCents: number;
+                                /** @description Dağıtılmamış tahsilat, avans ve ödenmemiş iade */
+                                creditCents: number;
+                            };
+                            studentCount: number;
+                            /** @description Toplamları tutmayan öğrenci sayısı */
+                            mismatchCount: number;
+                            rows: {
+                                /** @description Dönem başı bakiye: açık borç − alacak */
+                                openingCents: number;
+                                /** @description Vadesi dönemde olan taksitler */
+                                accruedCents: number;
+                                /** @description Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi */
+                                withdrawalAdjustmentCents: number;
+                                /** @description Ödeme günü dönemde olan tahsilatlar (brüt) */
+                                collectedCents: number;
+                                /** @description İptal günü dönemde olan tahsilatlar */
+                                reversedCents: number;
+                                /** @description Ödeme günü dönemde olan iadeler */
+                                refundedCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı, formüle girmez */
+                                scholarshipCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı, formüle girmez */
+                                discountCents: number;
+                                /** @description Dönem sonu bakiye: açık borç − alacak */
+                                closingCents: number;
+                                /** @description Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade */
+                                expectedClosingCents: number;
+                                /** @description Kapanış − beklenen kapanış */
+                                differenceCents: number;
+                                /** @description Dönem sonunda vadesi gelmiş açık taksit tutarı */
+                                openDebtCents: number;
+                                /** @description Dağıtılmamış tahsilat, avans ve ödenmemiş iade */
+                                creditCents: number;
+                                studentId: string;
+                                studentName: string;
+                                studentNumber: string;
+                                mismatchReason: ("unrecorded_payment" | "other") | null;
+                            }[];
+                        };
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    exportFinanceReconciliation: {
+        parameters: {
+            query: {
+                year: number;
             };
             header?: never;
             path?: never;
@@ -29819,6 +30389,140 @@ export interface operations {
             };
         };
     };
+    remindInstallment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Taksit kimliği */
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
+                            entity: {
+                                /** @description İşlemin konusu olan kaydın koleksiyonu */
+                                collection: string;
+                                /** @description İşlemin konusu olan kaydın kimliği (yeni kayıtta üretilen) */
+                                id: string;
+                            } | null;
+                            /** @description Değişen kayıt sayıları (yalnız sıra değişikliği sayılmaz) */
+                            changes: {
+                                inserted: number;
+                                updated: number;
+                                archived: number;
+                                restored: number;
+                            };
+                            /** @description Yazılan kayıtlar; güncel veri koleksiyon okuma uçlarından alınır */
+                            records: {
+                                /** @description school-core State koleksiyonu */
+                                collection: string;
+                                id: string;
+                                /** @description Kaydın yeni sürümü (`If-Match` için) */
+                                version: number;
+                                /** @enum {string} */
+                                change: "insert" | "update" | "archive" | "restore" | "move";
+                            }[];
+                            /**
+                             * @description `already_sent`: bugün zaten hatırlatıldı, yeni bildirim yazılmadı
+                             * @enum {string}
+                             */
+                            reminder: "sent" | "already_sent";
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
     listRenewals: {
         parameters: {
             query?: {
@@ -30083,6 +30787,522 @@ export interface operations {
                             contractId?: string;
                             /** @description Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); aksi halde yoktur */
                             tariffCarriedOverFromYear?: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listRenewalCandidates: {
+        parameters: {
+            query: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                academicYear: number;
+                /** @description Şimdiki sınıf */
+                classId?: string;
+                /** @description Yeni yılın plan durumu */
+                planStatus?: "not_planned" | "planned" | "completed" | "cancelled";
+                /** @description Öğrenci adında arama */
+                q?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            studentId: string;
+                            studentName: string | null;
+                            classId: string;
+                            className: string | null;
+                            grade: number;
+                            /** @description Önerilen hedef sınıf: aynı kampüs ve şube; birden çok aday varsa `null` */
+                            targetClassId: string | null;
+                            targetClassName: string | null;
+                            /** @description Hedef yıldan önceki son sözleşmenin yılı ve indirimsiz ücreti */
+                            previousContract: {
+                                academicYear: number;
+                                tuitionCents: number;
+                            } | null;
+                            /** @description Hedef düzeyin ilan edilen ücreti */
+                            announcedCents: number | null;
+                            /** @description Artış tavanı kararı (DOM-FIN-005) */
+                            ceiling: ({
+                                /** @enum {string} */
+                                status: "entry_grade";
+                            } | {
+                                /** @enum {string} */
+                                status: "no_base";
+                            } | {
+                                /** @enum {string} */
+                                status: "applied";
+                                /** @description Baz ücret, kuruş */
+                                baseCents: number;
+                                /** @enum {string} */
+                                baseSource: "contract" | "enrollment_contract" | "previous_tariff";
+                                baseYear: number;
+                                rates: {
+                                    /** @description Oranın sınırladığı ücret yılı */
+                                    academicYear: number;
+                                    /** @description ÜFE ortalaması, on binde birlik */
+                                    ppiBasisPoints: number;
+                                    /** @description TÜFE ortalaması, on binde birlik */
+                                    cpiBasisPoints: number;
+                                }[];
+                                extraBasisPoints: number;
+                                /** @description Artış tavanı, kuruş */
+                                ceilingCents: number;
+                                /** @description İndirim koşulu kalktıysa gerekçesi (DOM-FIN-023) */
+                                discountLoss: {
+                                    kinds: string[];
+                                    reason: string;
+                                } | null;
+                            }) | null;
+                            /** @description Önerilen ücret: ilan ve tavanın küçüğü */
+                            suggestedTuitionCents: number | null;
+                            /** @description Önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025) */
+                            outstandingTuitionCents: number;
+                            /** @enum {string} */
+                            planStatus: "not_planned" | "planned" | "completed" | "cancelled";
+                            renewalId: string | null;
+                            renewalNetCents: number | null;
+                            /** @description Ücret hesaplanamıyorsa nedeni */
+                            problem: {
+                                code: string;
+                                message: string;
+                            } | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    previewRenewalBulk: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    academicYear: number;
+                    installmentCount: number;
+                    firstDueDate: string;
+                    /** @default [] */
+                    discounts?: ("sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child")[];
+                    /** @default [] */
+                    extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
+                    /** Format: uuid */
+                    scholarshipProgramId?: string;
+                    rows: {
+                        studentId: string;
+                        targetClassId: string;
+                    }[];
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            academicYear: number;
+                            /** @description Uygulanacak yayımlı tarife; yoksa `null` */
+                            tariff: {
+                                /** @description Onayda `tariffId` olarak gönderilir */
+                                id: string;
+                                versionNumber: number;
+                                carriedOverFromYear: number | null;
+                            } | null;
+                            summary: {
+                                ready: number;
+                                skipped: number;
+                                failed: number;
+                            };
+                            rows: {
+                                studentId: string;
+                                studentName: string | null;
+                                targetClassId: string;
+                                targetClassName: string | null;
+                                /** @enum {string} */
+                                outcome: "ready" | "skipped" | "failed";
+                                price: {
+                                    tariffId: string;
+                                    tariffVersion: number;
+                                    /** @description Hedef yılın tarifesi süresinde ilan edilmediği için önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); hedef yılın kendi tarifesinde `null` */
+                                    tariffCarriedOverFromYear: number | null;
+                                    /** @description İlan edilen öğrenim ücreti */
+                                    announcedCents: number;
+                                    ceiling: {
+                                        /** @enum {string} */
+                                        status: "entry_grade";
+                                    } | {
+                                        /** @enum {string} */
+                                        status: "no_base";
+                                    } | {
+                                        /** @enum {string} */
+                                        status: "applied";
+                                        /** @description Baz ücret, kuruş */
+                                        baseCents: number;
+                                        /** @enum {string} */
+                                        baseSource: "contract" | "enrollment_contract" | "previous_tariff";
+                                        baseYear: number;
+                                        rates: {
+                                            /** @description Oranın sınırladığı ücret yılı */
+                                            academicYear: number;
+                                            /** @description ÜFE ortalaması, on binde birlik */
+                                            ppiBasisPoints: number;
+                                            /** @description TÜFE ortalaması, on binde birlik */
+                                            cpiBasisPoints: number;
+                                        }[];
+                                        extraBasisPoints: number;
+                                        /** @description Artış tavanı, kuruş */
+                                        ceilingCents: number;
+                                        /** @description İndirim koşulu kalktıysa gerekçesi (DOM-FIN-023) */
+                                        discountLoss: {
+                                            kinds: string[];
+                                            reason: string;
+                                        } | null;
+                                    };
+                                    /** @description Uygulanabilecek en yüksek ücret */
+                                    maxTuitionCents: number;
+                                    /** @description Sözleşmenin indirimsiz öğrenim ücreti */
+                                    tuitionCents: number;
+                                    discounts: {
+                                        kind: string;
+                                        amountCents: number;
+                                    }[];
+                                    discountCents: number;
+                                    scholarship: {
+                                        programId: string;
+                                        amountCents: number;
+                                    } | null;
+                                    /** @description İndirim ve burstan sonra kalan öğrenim ücreti */
+                                    netCents: number;
+                                    extras: {
+                                        kind: string;
+                                        amountCents: number;
+                                    }[];
+                                    /** @description Öğrenim taksitleri, kuruş */
+                                    installments: number[];
+                                    /** @description Planın dayandığı ilanlı ödeme koşulu (DOM-FIN-013); koşulsuz eski tarifede `null`, ilanda olmayan taksit sayısı 422 `payment_term_not_in_tariff` */
+                                    paymentTerm: {
+                                        /** @enum {string} */
+                                        kind: "upfront" | "installment";
+                                        minInstallments: number;
+                                        maxInstallments: number;
+                                        discountPercentBasisPoints: number | null;
+                                        discountAmountCents: number | null;
+                                        installmentCount: number;
+                                    } | null;
+                                    /** @description Önceki yıllardan ödenmemiş öğrenim ücreti (kuruş, DOM-KAY-025); sıfırdan büyükse plan `debtApproved: true` ve yönetici ister */
+                                    outstandingTuitionCents: number;
+                                } | null;
+                                problem: {
+                                    code: string;
+                                    message: string;
+                                } | null;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    bulkPlanRenewals: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    academicYear: number;
+                    installmentCount: number;
+                    firstDueDate: string;
+                    /** @default [] */
+                    discounts?: ("sibling" | "early_payment" | "early_registration" | "referral" | "corporate" | "staff_child")[];
+                    /** @default [] */
+                    extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
+                    /** Format: uuid */
+                    scholarshipProgramId?: string;
+                    rows: {
+                        studentId: string;
+                        targetClassId: string;
+                    }[];
+                    tariffId: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            academicYear: number;
+                            summary: {
+                                planned: number;
+                                skipped: number;
+                                failed: number;
+                            };
+                            rows: {
+                                studentId: string;
+                                studentName: string | null;
+                                /** @enum {string} */
+                                outcome: "planned" | "skipped" | "failed";
+                                problem: {
+                                    code: string;
+                                    message: string;
+                                } | null;
+                                renewalId: string | null;
+                                contractId: string | null;
+                                netCents: number | null;
+                                /** @description Öğrenim taksitleri; toplamı nettir */
+                                installments: number[];
+                            }[];
                         };
                     };
                 };
@@ -33742,6 +34962,7 @@ export interface operations {
                     stage: "Yeni aday" | "İletişime geçildi" | "Görüşme planlandı" | "Teklif verildi" | "Kayıt oldu" | "Vazgeçti";
                     /** @enum {string} */
                     lostReason?: "price" | "transport" | "other_school" | "academic_fit" | "other";
+                    lostToInstitution?: string;
                     siblingOfId?: string;
                 };
             };
@@ -34140,6 +35361,118 @@ export interface operations {
                             }[];
                             /** @description Önceki yılın tarifesi uygulandıysa o yıl (DOM-FIN-002); aksi halde yoktur */
                             tariffCarriedOverFromYear?: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectLossBreakdown: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Vazgeçen aday sayısı */
+                            total: number;
+                            /** @description Neden başına aday sayısı, çoktan aza */
+                            reasons: {
+                                /** @description Vazgeçme nedeni; nedeni olmayan eski kayıtta `null` */
+                                reason: ("price" | "transport" | "other_school" | "academic_fit" | "other") | null;
+                                count: number;
+                            }[];
+                            /** @description Tercih edilen kurum başına aday sayısı, çoktan aza, en çok 50 satır; yazım farkı aynı kurum sayılır */
+                            institutions: {
+                                name: string;
+                                count: number;
+                            }[];
+                            /** @description Listeye sığmayan kurumlara giden aday sayısı */
+                            otherInstitutions: number;
+                            /** @description Tercih ettiği kurum yazılmamış aday sayısı */
+                            unnamed: number;
                         };
                     };
                 };
@@ -34947,6 +36280,87 @@ export interface operations {
             };
             /** @description Default Response */
             422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getProspectFunnel: {
+        parameters: {
+            query?: {
+                /** @description Adayın açılış günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Adayın açılış günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: components["schemas"]["EnrollmentFunnel"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
                 headers: {
                     [name: string]: unknown;
                 };

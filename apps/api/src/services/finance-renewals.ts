@@ -64,6 +64,7 @@ const PRICE_INDEX = 'price_index_rates'
 
 const debtInvoice = z.object({
   id: z.string(),
+  studentId: z.string(),
   amount: z.number().int(),
   paidAt: z.string().nullable().optional(),
   feeKind: z.string().optional(),
@@ -72,17 +73,18 @@ const debtInvoice = z.object({
 })
 
 /**
- * Öğrencinin önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025, ON-057): taksitler tablodan,
- * kısmi ödemeler iptal edilmemiş dağılımlardan okunur; hesap core `outstandingTuitionCents`.
+ * Öğrencilerin önceki yıllardan ödenmemiş öğrenim ücreti (DOM-KAY-025, ON-057): taksitler tablodan,
+ * kısmi ödemeler iptal edilmemiş dağılımlardan okunur; hesap core `outstandingTuitionCents`. Toplu
+ * yol sayfa başına tek sorguyla okur. Borcu olmayan öğrenci sonuçta yoktur.
  */
-async function tuitionDebtOf(
+export async function tuitionDebts(
   tx: Database,
   ctx: ServiceContext,
-  studentId: string,
+  studentIds: readonly string[],
   academicYear: number,
-): Promise<number> {
+): Promise<Map<string, number>> {
   const rows = await loadFinanceRecords(tx, ctx.institutionId, 'invoices', {
-    match: [{ kind: 'equals', field: 'studentId', values: [studentId] }],
+    match: [{ kind: 'equals', field: 'studentId', values: studentIds }],
   })
   const invoices = rows.map((row) => debtInvoice.parse({ ...row.data, id: row.id }))
   const allocated = await allocatedForInvoices(
@@ -90,25 +92,35 @@ async function tuitionDebtOf(
     ctx.institutionId,
     invoices.map((invoice) => invoice.id),
   )
-  return outstandingTuitionCents(invoices, allocated, academicYear, dayKey(ctx.now))
+  const byStudent = new Map<string, (typeof invoices)[number][]>()
+  for (const invoice of invoices)
+    byStudent.set(invoice.studentId, [...(byStudent.get(invoice.studentId) ?? []), invoice])
+  const today = dayKey(ctx.now)
+  const debts = new Map<string, number>()
+  for (const [studentId, own] of byStudent) {
+    const debt = outstandingTuitionCents(own, allocated, academicYear, today)
+    if (debt > 0) debts.set(studentId, debt)
+  }
+  return debts
 }
 
-/** Fiyatı etkileyen satırları işlemin içinde okur: önizleme ve plan aynı girdiyle hesaplar. */
-async function renewalContext(
+/**
+ * Öğrenciden bağımsız fiyat girdileri; önizleme, plan ve toplu yol aynısını okur. Süresinde ilan
+ * yoksa önceki yılın tarifesi geçerli kalır (DOM-FIN-002, K-11); `previousTariff` tavanın bazı olarak
+ * aynen kalır (DOM-FIN-005).
+ */
+export async function sharedRenewalContext(
   tx: Database,
   ctx: ServiceContext,
   institutionType: InstitutionType,
-  input: { studentId: string; academicYear: number; scholarshipProgramId?: string | undefined },
-): Promise<RenewalContext> {
-  const [published, previousTariff, priceIndexes, debtCents] = await Promise.all([
+  input: { academicYear: number; scholarshipProgramId?: string | undefined },
+) {
+  const [published, previousTariff, priceIndexes] = await Promise.all([
     findPublishedTariff(tx, ctx.institutionId, input.academicYear),
     findPublishedTariff(tx, ctx.institutionId, input.academicYear - 1),
     allPriceIndexes(tx, ctx.institutionId),
-    tuitionDebtOf(tx, ctx, input.studentId, input.academicYear),
   ])
   const programId = input.scholarshipProgramId
-  // Süresinde ilan yoksa önceki yılın tarifesi geçerli kalır (DOM-FIN-002, K-11); `previousTariff`
-  // tavanın bazı olarak aynen kalır (DOM-FIN-005).
   const effective = resolveEffectiveTariff({
     academicYear: input.academicYear,
     institutionType,
@@ -121,12 +133,32 @@ async function renewalContext(
     tariffCarriedOverFromYear: effective?.carriedOverFromYear ?? null,
     previousTariff,
     priceIndexes,
-    outstandingTuitionCents: debtCents,
     ...(programId === undefined
       ? {}
       : {
           scholarshipProgram: await findScholarshipProgram(tx, ctx.institutionId, programId),
           scholarshipAwardedCount: await countScholarshipAwards(tx, ctx.institutionId, programId),
+        }),
+  }
+}
+
+/** Fiyatı etkileyen satırları işlemin içinde okur: önizleme ve plan aynı girdiyle hesaplar. */
+async function renewalContext(
+  tx: Database,
+  ctx: ServiceContext,
+  institutionType: InstitutionType,
+  input: { studentId: string; academicYear: number; scholarshipProgramId?: string | undefined },
+): Promise<RenewalContext> {
+  const [shared, debts] = await Promise.all([
+    sharedRenewalContext(tx, ctx, institutionType, input),
+    tuitionDebts(tx, ctx, [input.studentId], input.academicYear),
+  ])
+  return {
+    ...shared,
+    outstandingTuitionCents: debts.get(input.studentId) ?? 0,
+    ...(input.scholarshipProgramId === undefined
+      ? {}
+      : {
           // Öğrenci yılda en çok bir burs alır; kısıta çarpmadan özgül kodla reddedilir.
           scholarshipStudentAwarded: await hasStudentScholarshipAward(
             tx,
@@ -142,10 +174,10 @@ async function renewalContext(
  * Öğrencinin sözleşmeleri tavanın bazıdır; taksitler okunmaz, yeni kayıtlar sona eklenir. Kurumun
  * bütün finans kaydı her yenilemede yüklenmez.
  */
-const scopeOf = (studentId: string) => ({
+export const renewalLoadScope = (contractStudentIds: readonly string[]) => ({
   invoices: { ids: [] },
   contracts: {
-    match: [{ kind: 'equals' as const, field: 'studentId', values: [studentId] }],
+    match: [{ kind: 'equals' as const, field: 'studentId', values: contractStudentIds }],
   },
 })
 
@@ -156,7 +188,7 @@ export function quoteRenewalFor(ctx: ServiceContext, input: unknown) {
     action: 'renewal.quote',
     collections: SPEC.collections,
     stores: FINANCE_TABLE_STORES,
-    loadScope: scopeOf(data.studentId),
+    loadScope: renewalLoadScope([data.studentId]),
     load: async (tx) => {
       const { session, scalars, institutionType } = await environment(tx, ctx, SPEC)
       const context = await renewalContext(tx, ctx, institutionType, data)
@@ -181,7 +213,7 @@ export function planRenewalCommand(
       action: 'renewal.plan',
       collections: SPEC.collections,
       stores: FINANCE_TABLE_STORES,
-      loadScope: scopeOf(data.studentId),
+      loadScope: renewalLoadScope([data.studentId]),
       entity: (result: { renewal: { id: string } }) => ({
         type: 'renewals',
         id: result.renewal.id,

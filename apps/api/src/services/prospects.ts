@@ -17,6 +17,7 @@ import {
   addProspectNote,
   changeProspectStage,
   createProspect,
+  prospectLossBreakdown,
   scheduleProspectMeeting,
   recordTrialResult,
   revertProspectStage,
@@ -443,6 +444,14 @@ const PROSPECT_MATCH = z.object({
  * Adayın telefonuyla ya da kardeş adayının kesin kaydıyla eşleşen veliler; ön büroya öneridir,
  * birleştirmez (DOM-KAY-013).
  */
+/** Kayıp aday kırılımı (IST-117, DOM-KAY-005); arşivlenen aday sayılmaz, rol denetimi rotadadır. */
+export async function prospectLossBreakdownFor(ctx: ServiceContext) {
+  const lost = await loadRecords(ctx.db, ctx.institutionId, ['prospects'], {
+    match: [{ kind: 'equals', field: 'stage', values: ['Vazgeçti'] }],
+  })
+  return prospectLossBreakdown(lost.map((row) => row.data))
+}
+
 export async function guardianMatchesFor(ctx: ServiceContext, prospectId: string) {
   const prospect = await findRecord(ctx.db, ctx.institutionId, 'prospects', prospectId)
   if (prospect === null) throw new NotFoundError()

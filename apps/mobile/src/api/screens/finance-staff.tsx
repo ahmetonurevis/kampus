@@ -7,18 +7,20 @@ import { DetailPair, Screen, Section, Tabs } from '../../ui/SchoolLayout.tsx'
 import { canOpenFinanceStaff, financeTotalRows } from '../finance-staff.ts'
 import { ListLoading, QueryError, useApiSession } from '../shell.ts'
 import { useServerToday } from '../use-server-today.ts'
+import { FinanceContracts } from './contract-staff.tsx'
 import { FinanceInvoices } from './finance-invoices.tsx'
 import { FinancePayments } from './finance-payments.tsx'
 
-type FinanceView = 'invoices' | 'payments'
+type FinanceView = 'invoices' | 'payments' | 'contracts'
 const VIEWS: readonly { value: FinanceView; label: string }[] = [
   { value: 'invoices', label: 'Taksitler' },
   { value: 'payments', label: 'Tahsilat geçmişi' },
+  { value: 'contracts', label: 'Sözleşmeler' },
 ]
 
 /**
  * Finans & Tahsilat (yönetici `finans`, ön büro `tahsilat-takip`; web `FinancePage` eşi): kurum geneli
- * toplamlar, taksitler ve tahsilat kaydı, tahsilat geçmişi. Veriler sunucudadır, cihaza yazılmaz.
+ * toplamlar, taksitler ve tahsilat kaydı, tahsilat geçmişi, sözleşmeler. Veriler sunucudadır, cihaza yazılmaz.
  * "Bugün" sunucudan gelir; alınamazsa cihaz günü yalnız ekran durumunda kullanılır, ileri tarihli
  * tahsilatı sunucu reddeder. Tarife, burs, ayrılış-iade ve muhasebe aktarımı web'dedir.
  */
@@ -52,6 +54,8 @@ function FinanceBody({ view }: { view: FinanceView }) {
       return <FinanceInvoices today={day} />
     case 'payments':
       return <FinancePayments role={session.role} />
+    case 'contracts':
+      return <FinanceContracts today={day} />
     default:
       return view satisfies never
   }

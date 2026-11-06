@@ -48,6 +48,7 @@ import {
   type IdempotencyRequest,
   type LoadScope,
 } from './operation-runner.ts'
+import { earnReferralRewardOnPayment, revertReferralRewardOnReversal } from './finance-referrals.ts'
 import { readScope } from './read-scope.ts'
 import { dayRange } from './list-filters.ts'
 
@@ -212,6 +213,7 @@ export function recordPaymentCommand(
           data: { paymentId: id },
           dedupeKey: id,
         })
+        await earnReferralRewardOnPayment(tx, ctx, plan.studentId)
       },
     },
     () => {
@@ -283,6 +285,7 @@ export async function reversePaymentCommand(
         const payment = await findPayment(tx, ctx.institutionId, paymentId)
         if (payment === null) throw new NotFoundError()
         view = paymentView(payment, true)
+        await revertReferralRewardOnReversal(tx, ctx, payment.studentId)
       },
     },
     () => {

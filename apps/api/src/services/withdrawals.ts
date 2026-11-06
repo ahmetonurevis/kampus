@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto'
 
 import { requireAuthorized } from '@kampus/school-core/lib/authorize.ts'
+import { cancelledRenewalContractIds } from '@kampus/school-core/lib/finance-referrals.ts'
 import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   payerNameOf,
@@ -26,6 +27,7 @@ import {
 import { ConflictError, NotFoundError } from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
 import { environment, type CommandOptions } from './commands.ts'
+import { applyWithdrawalToReferralRewards } from './finance-referrals.ts'
 import { notify } from './notify.ts'
 import {
   runCommand,
@@ -166,11 +168,12 @@ export function withdrawStudentCommand(
           scalars,
           run: (state, { now, makeId }) => {
             requireAuthorized(actor, 'student.withdraw', {}, state, { now, institutionType })
-            return withdrawStudent(state, studentId, input, makeId, {
+            const plan = withdrawStudent(state, studentId, input, makeId, {
               institutionType,
               ...payments,
               now,
             })
+            return { ...plan, cancelledContractIds: cancelledRenewalContractIds(state, studentId) }
           },
         }
       },
@@ -188,6 +191,7 @@ export function withdrawStudentCommand(
           now: ctx.now,
         })
         await archiveStudentIdentity(tx, ctx.institutionId, plan.studentId, ctx.now)
+        await applyWithdrawalToReferralRewards(tx, ctx, plan)
         await audit(tx, ctx, 'student.withdraw', id, [
           'withdrawalDate',
           'reason',

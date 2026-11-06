@@ -275,6 +275,14 @@ function repricedTerms(
   const lines = discountLines(context.tariff.discounts, source.grossCents, discounts, {
     canApproveCapException: context.canApproveCapException,
   })
+  // Referans kalemi yalnız kullanılan bir hakla gelir (DOM-FIN-024); ek protokolde hak işaretlenmez,
+  // bu yüzden yeni eklenemez. Sözleşmede zaten olan kalem kalabilir.
+  if (discounts.includes('referral') && !source.discounts?.some((d) => d.kind === 'referral'))
+    throw new DomainError(
+      'referral_reward_required',
+      'Referans indirimi ek protokolle eklenmez; kesin kayıtta ya da yenilemede referans hakkıyla kullanılır.',
+      { path: ['discounts'] },
+    )
   const total = lines.reduce((sum, line) => sum + line.amountCents, 0)
   const netCents = source.grossCents - total - (source.scholarship?.amountCents ?? 0)
   if (netCents < 0)

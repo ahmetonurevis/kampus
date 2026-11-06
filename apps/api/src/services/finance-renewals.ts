@@ -35,6 +35,7 @@ import {
   insertScholarshipAward,
 } from '../db/finance-scholarships.ts'
 import { loadFinanceRecords } from '../db/finance-mirror-store.ts'
+import { findReferralReward } from '../db/finance-referrals.ts'
 import { allocatedForInvoices } from '../db/payments.ts'
 import { loadRecordsByIds } from '../db/records.ts'
 import { ConflictError, NotFoundError } from '../errors.ts'
@@ -43,6 +44,7 @@ import { getCollectionItem, listCollection, type CollectionItem } from './collec
 import { commandBody } from './command-result.ts'
 import { environment } from './commands.ts'
 import { withTariffCarryOver } from './fee-tariffs.ts'
+import { useReferralReward } from './finance-referrals.ts'
 import {
   runCommand,
   runReadOnly,
@@ -98,7 +100,12 @@ async function renewalContext(
   tx: Database,
   ctx: ServiceContext,
   institutionType: InstitutionType,
-  input: { studentId: string; academicYear: number; scholarshipProgramId?: string | undefined },
+  input: {
+    studentId: string
+    academicYear: number
+    scholarshipProgramId?: string | undefined
+    referralRewardId?: string | undefined
+  },
 ): Promise<RenewalContext> {
   const [published, previousTariff, priceIndexes, debtCents] = await Promise.all([
     findPublishedTariff(tx, ctx.institutionId, input.academicYear),
@@ -122,6 +129,11 @@ async function renewalContext(
     previousTariff,
     priceIndexes,
     outstandingTuitionCents: debtCents,
+    ...(input.referralRewardId === undefined
+      ? {}
+      : {
+          referralReward: await findReferralReward(tx, ctx.institutionId, input.referralRewardId),
+        }),
     ...(programId === undefined
       ? {}
       : {
@@ -191,7 +203,12 @@ export function planRenewalCommand(
         const context = await renewalContext(tx, ctx, institutionType, {
           studentId: data.studentId,
           academicYear: data.academicYear,
-          ...(data.mode === 'renew' ? { scholarshipProgramId: data.scholarshipProgramId } : {}),
+          ...(data.mode === 'renew'
+            ? {
+                scholarshipProgramId: data.scholarshipProgramId,
+                referralRewardId: data.referralRewardId,
+              }
+            : {}),
         })
         return {
           scalars,
@@ -203,6 +220,13 @@ export function planRenewalCommand(
         }
       },
       after: async (tx, result) => {
+        // Tek kullanım aynı işlemdedir; yarışı kaybeden 409 alır, sözleşme de yazılmaz (DOM-FIN-024).
+        if (result.referralUse !== null && result.contractId !== null)
+          await useReferralReward(tx, ctx, {
+            ...result.referralUse,
+            contractId: result.contractId,
+            studentId: result.renewal.studentId,
+          })
         if (result.scholarshipAward === null) return
         const awardId = randomUUID()
         await insertScholarshipAward(tx, ctx.institutionId, {

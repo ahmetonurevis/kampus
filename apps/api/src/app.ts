@@ -31,6 +31,7 @@ import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
+import { registerFinanceReferralRoutes } from './routes/finance-referrals.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
 import { registerPaymentRoutes } from './routes/payments.ts'
@@ -392,6 +393,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   registerFinanceExportRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)
+  registerFinanceReferralRoutes(app)
   registerPaymentRoutes(app)
   registerWithdrawalRoutes(app)
   registerProspectRoutes(app)

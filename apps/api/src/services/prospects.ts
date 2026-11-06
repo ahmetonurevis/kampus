@@ -35,6 +35,7 @@ import {
   findScholarshipProgram,
   insertScholarshipAward,
 } from '../db/finance-scholarships.ts'
+import { findReferralReward } from '../db/finance-referrals.ts'
 import { findRecord, loadRecords } from '../db/records.ts'
 import { users } from '../db/schema/auth.ts'
 import { institutionSettings } from '../db/schema/institution-settings.ts'
@@ -51,6 +52,7 @@ import { notify } from './notify.ts'
 import { commandBody } from './command-result.ts'
 import { environment, type CommandOptions } from './commands.ts'
 import { loadEffectiveTariff, withTariffCarryOver } from './fee-tariffs.ts'
+import { settleEnrollmentReferral } from './finance-referrals.ts'
 import { auditWork } from './task-work.ts'
 import {
   runCommand,
@@ -264,7 +266,8 @@ export function enrollProspectCommand(
   options: CommandOptions,
 ): Promise<CommandResponse> {
   const spec = OPERATION_COMMANDS['prospect.enroll']
-  const { identity, scholarshipProgramId, guardian } = enrollProspectSchema.parse(input)
+  const { identity, scholarshipProgramId, guardian, referralRewardId } =
+    enrollProspectSchema.parse(input)
   // Seçilen mevcut velinin bağları: kısıtlı ya da velayetsiz veli kesin kayıtta bağlanamaz
   // (core `parent_not_guardian`; DOM-ILT-070, -074).
   const existingParentId =
@@ -319,6 +322,10 @@ export function enrollProspectCommand(
                 await findScholarshipProgram(tx, ctx.institutionId, scholarshipProgramId),
                 await countScholarshipAwards(tx, ctx.institutionId, scholarshipProgramId),
               ]
+        const referralReward =
+          referralRewardId === undefined
+            ? null
+            : await findReferralReward(tx, ctx.institutionId, referralRewardId)
         return {
           scalars,
           run: (state, { now, makeId }) => {
@@ -333,6 +340,7 @@ export function enrollProspectCommand(
               today: dayKey(ctx.now),
               scholarshipProgram,
               scholarshipAwardedCount,
+              referralReward,
               guardianBonds,
             })
           },
@@ -368,6 +376,7 @@ export function enrollProspectCommand(
             ['programId', 'studentId', 'amountCents'],
           )
         }
+        await settleEnrollmentReferral(tx, ctx, result)
         // Veli–öğrenci bağı: veli velayet sahibi ve ödeyici olarak kurulur (DOM-ILT-070, -074);
         // yetişkin kursiyerin kendisi veli değildir, bağ yazılmaz. Kuralı core `planGuardianLink`
         // verir; yeni öğrencinin başka bağı olmadığı için değişmezler boş kümeye uygulanır.

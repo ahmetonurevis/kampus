@@ -2620,6 +2620,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/referral-rewards": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Referans indirimi haklarını listele
+         * @description Yeni hak önce (DOM-FIN-024). `status`, `parentId` (hak sahibi veli) ve `familyOfStudentId` (öğrencinin velisinin hakları) süzer. Roller: `yonetici` ve `onburo` kurum geneli; `veli` ve `ogrenci` yalnız finans kapsamındaki öğrencinin hakkını görür, yanıtta aday ve referansla gelen öğrenci bulunmaz, doğmamış hak listelenmez.
+         */
+        get: operations["listReferralRewards"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/payments": {
         parameters: {
             query?: never;
@@ -7150,7 +7170,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -11357,7 +11377,7 @@ export interface components {
              * @description Bildirim türü (core `NOTIFICATION_KINDS`)
              * @enum {string}
              */
-            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved";
+            kind: "feedback_released" | "appeal_decided" | "homework_graded" | "permission_form_opened" | "permission_form_reconsent" | "permission_form_cancelled" | "permission_form_reminder" | "absence_recorded" | "absence_corrected" | "absence_decided" | "attendance_threshold_warning" | "attendance_threshold_exceeded" | "enrollment_completed" | "installment_due" | "installment_overdue" | "payment_received" | "refund_paid" | "contract_approval_requested" | "contract_approved" | "referral_reward_earned";
             /**
              * @description Konu (DOM-ILT-020)
              * @enum {string}
@@ -28498,6 +28518,8 @@ export interface operations {
                     extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
                     /** Format: uuid */
                     scholarshipProgramId?: string;
+                    /** Format: uuid */
+                    referralRewardId?: string;
                     tariffId: string;
                     firstDueDate: string;
                     debtApproved?: boolean;
@@ -28645,6 +28667,8 @@ export interface operations {
                     extras?: ("tuition" | "breakfast" | "meal" | "transport" | "dormitory" | "stationery" | "uniform" | "tutoring")[];
                     /** Format: uuid */
                     scholarshipProgramId?: string;
+                    /** Format: uuid */
+                    referralRewardId?: string;
                 };
             };
         };
@@ -29952,6 +29976,138 @@ export interface operations {
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
                         };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listReferralRewards: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                status?: "pending" | "available" | "used" | "cancelled";
+                parentId?: string;
+                familyOfStudentId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            /** @description Referansla gelen kaydın eğitim yılı */
+                            academicYear: number;
+                            /** @enum {string} */
+                            status: "pending" | "available" | "used" | "cancelled";
+                            /** @description Referans veren öğrenci */
+                            referrerStudentId: string;
+                            referrerStudentName: string | null;
+                            /** @description Kayıt yılı tarifesindeki oran, on binde birlik */
+                            percentBasisPoints: number | null;
+                            /** @description Kayıt yılı tarifesindeki tutar, kuruş */
+                            amountCents: number | null;
+                            /** @description İlk taksitin ödenmesiyle hakkın doğduğu an */
+                            earnedAt: string | null;
+                            usedAt: string | null;
+                            /** @description Sözleşmeye uygulanan tutar, kuruş */
+                            usedAmountCents: number | null;
+                            cancelledAt: string | null;
+                            /** @description Aday; yalnız personele döner */
+                            prospectId: string | null;
+                            /** @description Referansla gelen öğrenci; yalnız personele */
+                            referredStudentId: string | null;
+                            /** @description Yalnız personele döner */
+                            referredStudentName: string | null;
+                            /** @description Hakkın sahibi veli; yalnız personele */
+                            referrerParentId: string | null;
+                            /** @description İptal gerekçesi; yalnız personele döner */
+                            cancelReason: ("refunded_before_start" | "withdrawn_before_earned") | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
                     };
                 };
             };
@@ -32545,6 +32701,8 @@ export interface operations {
                     allowOtherCampus?: boolean;
                     /** Format: uuid */
                     scholarshipProgramId?: string;
+                    /** Format: uuid */
+                    referralRewardId?: string;
                 };
             };
         };

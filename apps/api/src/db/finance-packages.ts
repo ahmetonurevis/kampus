@@ -7,6 +7,7 @@ import {
   type PackageKind,
   type PackageSaleDraft,
 } from '@kampus/school-core/lib/finance-packages.ts'
+import type { WithdrawalPackageSale } from '@kampus/school-core/lib/withdrawals.ts'
 
 import type { Database } from './client.ts'
 import { foldSearch, foldSql } from './text-search.ts'
@@ -320,6 +321,48 @@ export async function loadPackageHourEntries(
     else grouped.set(saleId, [entry])
   }
   return grouped
+}
+
+/**
+ * Öğrencinin satışları ve tarihli saat hareketleri: ayrılış hesabının girdisi (DOM-FIN-040,
+ * DOM-DIL-051). Kurum kilidi altında okunur, sayfalanmaz.
+ */
+export async function loadWithdrawalPackageSales(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+): Promise<WithdrawalPackageSale[]> {
+  const sales = await db
+    .select({
+      id: lessonPackageSales.id,
+      contractId: lessonPackageSales.contractId,
+      purchasedHours: lessonPackageSales.purchasedHours,
+    })
+    .from(lessonPackageSales)
+    .where(and(activeSale(institutionId), eq(lessonPackageSales.studentId, studentId)))
+  if (sales.length === 0) return []
+  const rows = await db
+    .select({
+      saleId: lessonPackageHourEntries.saleId,
+      kind: lessonPackageHourEntries.kind,
+      hours: lessonPackageHourEntries.hours,
+      occurredDate: lessonPackageHourEntries.occurredDate,
+    })
+    .from(lessonPackageHourEntries)
+    .where(
+      and(
+        eq(lessonPackageHourEntries.institutionId, institutionId),
+        isNull(lessonPackageHourEntries.archivedAt),
+        inArray(
+          lessonPackageHourEntries.saleId,
+          sales.map((sale) => sale.id),
+        ),
+      ),
+    )
+  return sales.map((sale) => ({
+    ...sale,
+    entries: rows.filter((row) => row.saleId === sale.id),
+  }))
 }
 
 export async function insertPackageHourEntry(

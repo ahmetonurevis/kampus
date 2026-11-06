@@ -129,7 +129,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-FIN-040`; ADR 0006 "Sonuçlar".
 - **Soru:** Ayrılışta %10 kesinti ve okunan süre payı, sözleşmenin indirimler düşüldükten sonraki net ücreti üzerinden mi, yoksa ilan edilen indirimsiz yıllık ücret üzerinden mi hesaplanır?
 - **Bugünkü varsayım:** Net ücret üzerinden hesaplanır (veli lehine).
-- **Kodda:** `quoteWithdrawal` tabanı `contract.netCents`'tir (`lib/withdrawals.ts`); döküm `student_withdrawals.breakdown`'da saklanır.
+- **Kodda:** `quoteWithdrawal` tabanı `contract.netCents`'tir (`lib/withdrawals.ts`), paket satışında da saat payı net üzerinden işler; döküm `student_withdrawals.breakdown`'da saklanır.
 - **Cevap değişirse:** Kesinti tabanı ve iade dökümü PDF'i değişir; geçmiş dökümler kendi kopyasıyla kalır.
 - **Cevap:** bekleniyor
 

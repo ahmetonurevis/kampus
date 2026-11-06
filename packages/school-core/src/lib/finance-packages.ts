@@ -251,7 +251,10 @@ export interface PackagePrice {
   purchasedHours: number
   /** Tarifenin saat ücreti. */
   announcedHourlyCents: number
-  /** Satışta uygulanan saat ücreti; iade bu ücretle hesaplanır (DOM-FIN-006). */
+  /**
+   * Satışta uygulanan saat ücreti (DOM-FIN-006). İade payı net ücretten saat oranıyla hesaplanır
+   * (`quoteWithdrawal`); indirimsiz satışta bu ücretin kendisidir (H-13, **doğrulanmalı**).
+   */
   hourlyCents: number
   /** Saat × tarife saat ücreti. */
   announcedCents: number

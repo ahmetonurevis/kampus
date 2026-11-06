@@ -7,11 +7,13 @@ import {
   planRefundPayment,
   quoteWithdrawal,
   withdrawStudent,
+  type WithdrawalBreakdown,
   type WithdrawalContext,
 } from '@kampus/school-core/lib/withdrawals.ts'
 import { OPERATION_COMMANDS } from '@kampus/school-core/modules/commands.ts'
 
 import type { Database } from '../db/client.ts'
+import { insertPackageHourEntry, loadWithdrawalPackageSales } from '../db/finance-packages.ts'
 import { allocatedByInvoice, paymentTotal } from '../db/payments.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import {
@@ -35,12 +37,14 @@ import {
   FINANCE_TABLE_STORES,
 } from './operation-runner.ts'
 import { studentFinanceScope } from './payments.ts'
+import { auditWork } from './task-work.ts'
 
 /**
  * Ayrılış ve iade servisi (ADR 0006 karar 10; docs/domain/finans.md DOM-FIN-040, -041; IST-110).
- * Kural core `lib/withdrawals.ts`'tedir. Öğrenci, taksit, bağlı kayıt, iade kaydı ve kimlik arşivi
- * tek transaction'dadır. Döküm, IBAN ve gerekçe loglanmaz; denetime yalnız alan adları düşer. İade
- * ödendi bildirimi (`refund_paid`) ödemeyle aynı transaction'dadır, yalnız ayrılış kimliğini taşır.
+ * Kural core `lib/withdrawals.ts`'tedir. Öğrenci, taksit, bağlı kayıt, kalan paket saatinin iade
+ * hareketi, iade kaydı ve kimlik arşivi tek transaction'dadır. Döküm, IBAN ve gerekçe loglanmaz;
+ * denetime yalnız alan adları düşer. İade ödendi bildirimi (`refund_paid`) ödemeyle aynı
+ * transaction'dadır, yalnız ayrılış kimliğini taşır.
  */
 
 const SPEC = OPERATION_COMMANDS['student.withdraw']
@@ -108,16 +112,50 @@ async function audit(
   })
 }
 
-/** Dağılım ve dağıtılmamış tahsilat; kurum kilidi altında veya tek görüntüden okunur. */
-async function paymentContext(
+/** Dağılım, dağıtılmamış tahsilat ve paket satışları; kurum kilidi altında veya tek görüntüden okunur. */
+async function accountContext(
   tx: Database,
   ctx: ServiceContext,
   studentId: string,
-): Promise<Pick<WithdrawalContext, 'allocated' | 'creditCents'>> {
+): Promise<Pick<WithdrawalContext, 'allocated' | 'creditCents' | 'packageSales'>> {
   const allocated = await allocatedByInvoice(tx, ctx.institutionId, studentId)
   const total = await paymentTotal(tx, ctx.institutionId, studentId)
   const distributed = [...allocated.values()].reduce((sum, value) => sum + value, 0)
-  return { allocated, creditCents: Math.max(total - distributed, 0) }
+  const packageSales = await loadWithdrawalPackageSales(tx, ctx.institutionId, studentId)
+  return { allocated, creditCents: Math.max(total - distributed, 0), packageSales }
+}
+
+/**
+ * Kalan paket saatini iade edilmiş yazar (DOM-DIL-051): bakiye sıfırlanır, yoklama köprüsü sonradan
+ * saat düşemez. Kaynak ayrılış kaydıdır; öğrenci pasifleştiği için ayrılış yinelenmez.
+ */
+async function returnPackageHours(
+  tx: Database,
+  ctx: ServiceContext,
+  withdrawal: { id: string; date: string; breakdown: WithdrawalBreakdown },
+): Promise<void> {
+  for (const line of withdrawal.breakdown.contracts ?? []) {
+    if (line.packageSaleId === undefined || !line.returnedHours) continue
+    const id = randomUUID()
+    await insertPackageHourEntry(tx, ctx.institutionId, {
+      id,
+      saleId: line.packageSaleId,
+      kind: 'refunded',
+      hours: line.returnedHours,
+      occurredDate: withdrawal.date,
+      sourceType: 'withdrawal',
+      sourceId: withdrawal.id,
+      recordedByUserId: ctx.actor.userId,
+      now: ctx.now,
+    })
+    await auditWork(tx, ctx, 'package.hours', { type: 'lesson_package_hour_entries', id }, [
+      'kind',
+      'hours',
+      'occurredDate',
+      'sourceType',
+      'sourceId',
+    ])
+  }
 }
 
 /** Hesabı yazmadan gösterir (DOM-FIN-040, IST-110). */
@@ -128,11 +166,11 @@ export function quoteWithdrawalFor(ctx: ServiceContext, studentId: string, input
     stores: FINANCE_TABLE_STORES,
     load: async (tx) => {
       const { institutionType, scalars } = await environment(tx, ctx, SPEC)
-      const payments = await paymentContext(tx, ctx, studentId)
+      const account = await accountContext(tx, ctx, studentId)
       return {
         scalars,
         run: (state, { now }) =>
-          quoteWithdrawal(state, studentId, input, { institutionType, ...payments, now }),
+          quoteWithdrawal(state, studentId, input, { institutionType, ...account, now }),
       }
     },
   })
@@ -161,14 +199,14 @@ export function withdrawStudentCommand(
       entity: { type: 'student_withdrawals', id },
       load: async (tx) => {
         const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
-        const payments = await paymentContext(tx, ctx, studentId)
+        const account = await accountContext(tx, ctx, studentId)
         return {
           scalars,
           run: (state, { now, makeId }) => {
             requireAuthorized(actor, 'student.withdraw', {}, state, { now, institutionType })
             return withdrawStudent(state, studentId, input, makeId, {
               institutionType,
-              ...payments,
+              ...account,
               now,
             })
           },
@@ -186,6 +224,11 @@ export function withdrawStudentCommand(
           refundDueDate: plan.refundDueDate,
           approvedByUserId: ctx.actor.userId,
           now: ctx.now,
+        })
+        await returnPackageHours(tx, ctx, {
+          id,
+          date: plan.withdrawalDate,
+          breakdown: plan.breakdown,
         })
         await archiveStudentIdentity(tx, ctx.institutionId, plan.studentId, ctx.now)
         await audit(tx, ctx, 'student.withdraw', id, [
@@ -241,6 +284,9 @@ export async function payRefundCommand(
                 refundCents: row.refundCents,
                 refundPaidDate: row.refundPaidDate,
                 payerName: payerNameOf(state, row.contractId),
+                otherPayerNames: (row.breakdown.contracts ?? [])
+                  .filter((line) => line.contractId !== row.contractId)
+                  .map((line) => payerNameOf(state, line.contractId)),
               },
               input,
               dayKey(ctx.now),

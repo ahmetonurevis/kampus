@@ -68925,6 +68925,97 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "required": [
@@ -69312,6 +69403,97 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "required": [
@@ -69724,6 +69906,97 @@
                                 "type": "integer",
                                 "minimum": -9007199254740991,
                                 "maximum": 9007199254740991
+                              },
+                              "contracts": {
+                                "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "contractId": {
+                                      "type": "string"
+                                    },
+                                    "title": {
+                                      "type": "string"
+                                    },
+                                    "packageSaleId": {
+                                      "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                      "type": "string"
+                                    },
+                                    "attendedUnits": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                    },
+                                    "totalUnits": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                    },
+                                    "returnedHours": {
+                                      "description": "Pakette iade edilen kalan saat",
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "scholarshipExempt": {
+                                      "type": "boolean"
+                                    },
+                                    "baseCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "deductionCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "usageCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "entitledCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "paidCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "extraBalanceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991
+                                    },
+                                    "balanceCents": {
+                                      "type": "integer",
+                                      "minimum": -9007199254740991,
+                                      "maximum": 9007199254740991,
+                                      "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                    }
+                                  },
+                                  "required": [
+                                    "contractId",
+                                    "title",
+                                    "attendedUnits",
+                                    "totalUnits",
+                                    "scholarshipExempt",
+                                    "baseCents",
+                                    "deductionCents",
+                                    "usageCents",
+                                    "entitledCents",
+                                    "paidCents",
+                                    "extraBalanceCents",
+                                    "balanceCents"
+                                  ],
+                                  "additionalProperties": false
+                                }
                               }
                             },
                             "required": [
@@ -70100,6 +70373,97 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "required": [
@@ -70521,6 +70885,97 @@
                               "type": "integer",
                               "minimum": -9007199254740991,
                               "maximum": 9007199254740991
+                            },
+                            "contracts": {
+                              "description": "Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok",
+                              "type": "array",
+                              "items": {
+                                "type": "object",
+                                "properties": {
+                                  "contractId": {
+                                    "type": "string"
+                                  },
+                                  "title": {
+                                    "type": "string"
+                                  },
+                                  "packageSaleId": {
+                                    "description": "Paket satışı; öğrenim sözleşmesinde yok",
+                                    "type": "string"
+                                  },
+                                  "attendedUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde girilen görülen birim, pakette kullanılan saat"
+                                  },
+                                  "totalUnits": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Öğrenimde toplam birim, pakette satın alınan saat"
+                                  },
+                                  "returnedHours": {
+                                    "description": "Pakette iade edilen kalan saat",
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "scholarshipExempt": {
+                                    "type": "boolean"
+                                  },
+                                  "baseCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "deductionCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "usageCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "entitledCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "paidCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "extraBalanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991
+                                  },
+                                  "balanceCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç"
+                                  }
+                                },
+                                "required": [
+                                  "contractId",
+                                  "title",
+                                  "attendedUnits",
+                                  "totalUnits",
+                                  "scholarshipExempt",
+                                  "baseCents",
+                                  "deductionCents",
+                                  "usageCents",
+                                  "entitledCents",
+                                  "paidCents",
+                                  "extraBalanceCents",
+                                  "balanceCents"
+                                ],
+                                "additionalProperties": false
+                              }
                             }
                           },
                           "required": [

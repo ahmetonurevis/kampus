@@ -32772,6 +32772,28 @@ export interface operations {
                                 }[];
                                 refundCents: number;
                                 debtCents: number;
+                                /** @description Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok */
+                                contracts?: {
+                                    contractId: string;
+                                    title: string;
+                                    /** @description Paket satışı; öğrenim sözleşmesinde yok */
+                                    packageSaleId?: string;
+                                    /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
+                                    attendedUnits: number;
+                                    /** @description Öğrenimde toplam birim, pakette satın alınan saat */
+                                    totalUnits: number;
+                                    /** @description Pakette iade edilen kalan saat */
+                                    returnedHours?: number;
+                                    scholarshipExempt: boolean;
+                                    baseCents: number;
+                                    deductionCents: number;
+                                    usageCents: number;
+                                    entitledCents: number;
+                                    paidCents: number;
+                                    extraBalanceCents: number;
+                                    /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
+                                    balanceCents: number;
+                                }[];
                             };
                         };
                     };
@@ -32929,6 +32951,28 @@ export interface operations {
                                 }[];
                                 refundCents: number;
                                 debtCents: number;
+                                /** @description Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok */
+                                contracts?: {
+                                    contractId: string;
+                                    title: string;
+                                    /** @description Paket satışı; öğrenim sözleşmesinde yok */
+                                    packageSaleId?: string;
+                                    /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
+                                    attendedUnits: number;
+                                    /** @description Öğrenimde toplam birim, pakette satın alınan saat */
+                                    totalUnits: number;
+                                    /** @description Pakette iade edilen kalan saat */
+                                    returnedHours?: number;
+                                    scholarshipExempt: boolean;
+                                    baseCents: number;
+                                    deductionCents: number;
+                                    usageCents: number;
+                                    entitledCents: number;
+                                    paidCents: number;
+                                    extraBalanceCents: number;
+                                    /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
+                                    balanceCents: number;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -33086,6 +33130,28 @@ export interface operations {
                                 }[];
                                 refundCents: number;
                                 debtCents: number;
+                                /** @description Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok */
+                                contracts?: {
+                                    contractId: string;
+                                    title: string;
+                                    /** @description Paket satışı; öğrenim sözleşmesinde yok */
+                                    packageSaleId?: string;
+                                    /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
+                                    attendedUnits: number;
+                                    /** @description Öğrenimde toplam birim, pakette satın alınan saat */
+                                    totalUnits: number;
+                                    /** @description Pakette iade edilen kalan saat */
+                                    returnedHours?: number;
+                                    scholarshipExempt: boolean;
+                                    baseCents: number;
+                                    deductionCents: number;
+                                    usageCents: number;
+                                    entitledCents: number;
+                                    paidCents: number;
+                                    extraBalanceCents: number;
+                                    /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
+                                    balanceCents: number;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -33237,6 +33303,28 @@ export interface operations {
                                 }[];
                                 refundCents: number;
                                 debtCents: number;
+                                /** @description Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok */
+                                contracts?: {
+                                    contractId: string;
+                                    title: string;
+                                    /** @description Paket satışı; öğrenim sözleşmesinde yok */
+                                    packageSaleId?: string;
+                                    /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
+                                    attendedUnits: number;
+                                    /** @description Öğrenimde toplam birim, pakette satın alınan saat */
+                                    totalUnits: number;
+                                    /** @description Pakette iade edilen kalan saat */
+                                    returnedHours?: number;
+                                    scholarshipExempt: boolean;
+                                    baseCents: number;
+                                    deductionCents: number;
+                                    usageCents: number;
+                                    entitledCents: number;
+                                    paidCents: number;
+                                    extraBalanceCents: number;
+                                    /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
+                                    balanceCents: number;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;
@@ -33400,6 +33488,28 @@ export interface operations {
                                 }[];
                                 refundCents: number;
                                 debtCents: number;
+                                /** @description Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok */
+                                contracts?: {
+                                    contractId: string;
+                                    title: string;
+                                    /** @description Paket satışı; öğrenim sözleşmesinde yok */
+                                    packageSaleId?: string;
+                                    /** @description Öğrenimde girilen görülen birim, pakette kullanılan saat */
+                                    attendedUnits: number;
+                                    /** @description Öğrenimde toplam birim, pakette satın alınan saat */
+                                    totalUnits: number;
+                                    /** @description Pakette iade edilen kalan saat */
+                                    returnedHours?: number;
+                                    scholarshipExempt: boolean;
+                                    baseCents: number;
+                                    deductionCents: number;
+                                    usageCents: number;
+                                    entitledCents: number;
+                                    paidCents: number;
+                                    extraBalanceCents: number;
+                                    /** @description Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç */
+                                    balanceCents: number;
+                                }[];
                             };
                             refundCents: number;
                             debtCents: number;

@@ -62,6 +62,33 @@ const breakdownSchema = z.object({
   ),
   refundCents: z.number().int(),
   debtCents: z.number().int(),
+  contracts: z
+    .array(
+      z.object({
+        contractId: z.string(),
+        title: z.string(),
+        packageSaleId: z.string().optional().describe('Paket satışı; öğrenim sözleşmesinde yok'),
+        attendedUnits: z
+          .number()
+          .int()
+          .describe('Öğrenimde girilen görülen birim, pakette kullanılan saat'),
+        totalUnits: z.number().int().describe('Öğrenimde toplam birim, pakette satın alınan saat'),
+        returnedHours: z.number().int().optional().describe('Pakette iade edilen kalan saat'),
+        scholarshipExempt: z.boolean(),
+        baseCents: z.number().int(),
+        deductionCents: z.number().int(),
+        usageCents: z.number().int(),
+        entitledCents: z.number().int(),
+        paidCents: z.number().int(),
+        extraBalanceCents: z.number().int(),
+        balanceCents: z
+          .number()
+          .int()
+          .describe('Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariç'),
+      }),
+    )
+    .optional()
+    .describe('Hesaba giren sözleşmeler, eskiden yeniye (K-06); eski kayıtta yok'),
 })
 
 const withdrawalSchema = z.object({

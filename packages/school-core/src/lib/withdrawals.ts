@@ -5,13 +5,16 @@ import type { InstitutionType } from '../modules/collection-modules.ts'
 import { isContractInForce } from './contract-status.ts'
 import { daySchema, requiredText, type MakeId } from './domain.ts'
 import { DomainError } from './errors.ts'
+import { packageHourBalance, type PackageHourKind } from './finance-packages.ts'
 import { dayKey } from './format.ts'
 
 /**
  * Ayrılış ve iade (docs/domain/finans.md DOM-FIN-040, -041; kayit-ve-crm.md DOM-KAY-024; IST-110;
- * ADR 0006 karar 10). Öğretim takvimi kaynağı olmadığı için görülen ve toplam birim (ders günü veya
- * ders saati) yönetici tarafından girilir. Yuvarlama ödeyici lehinedir: kesinti aşağı yuvarlanır.
- * Oranlar ve hesap tabanı mevzuat metninde açık değildir, **doğrulanmalı** (DOM-FIN-040).
+ * ADR 0006 karar 10). Bütün yürürlükteki sözleşmeler hesaba girer (K-06). Öğretim takvimi kaynağı
+ * olmadığı için öğrenim sözleşmesinde görülen ve toplam birim (ders günü veya ders saati) yönetici
+ * tarafından girilir; paket satışında kullanılan saat kayıttan gelir (DOM-DIL-051). Yuvarlama ödeyici
+ * lehinedir: kesinti aşağı yuvarlanır. Oranlar ve hesap tabanı mevzuat metninde açık değildir,
+ * **doğrulanmalı** (DOM-FIN-040).
  */
 
 /** Kesinti oranı; on binde birlik, %10 (ÖÖKY md. 56/3). Hesap dökümüne kopyalanır. */
@@ -100,6 +103,28 @@ export interface WithdrawalExtraLine {
   usedCents: number
 }
 
+/** Bir sözleşmenin dökümü; toplam döküm bu satırların toplamıdır. */
+export interface WithdrawalContractLine {
+  contractId: string
+  title: string
+  /** Paket satışı; öğrenim sözleşmesinde yoktur. */
+  packageSaleId?: string
+  /** Pakette kullanılan ve satın alınan saat; öğrenim sözleşmesinde girilen birim. */
+  attendedUnits: number
+  totalUnits: number
+  /** Ayrılışla iade edilmiş yazılacak kalan saat (DOM-DIL-051); yalnız pakette. */
+  returnedHours?: number
+  scholarshipExempt: boolean
+  baseCents: number
+  deductionCents: number
+  usageCents: number
+  entitledCents: number
+  paidCents: number
+  extraBalanceCents: number
+  /** Artıysa bu sözleşmeden iade, eksiyse borç; dağıtılmamış tahsilat hariçtir. */
+  balanceCents: number
+}
+
 /** Hesap dökümü: iade kaydında aynen saklanır, sonradan değişmez (DOM-FIN-041). */
 export interface WithdrawalBreakdown {
   institutionType: InstitutionType
@@ -127,6 +152,19 @@ export interface WithdrawalBreakdown {
    * (DOM-FIN-041, `reversePayment`).
    */
   debtInvoiceId?: string
+  /**
+   * Hesaba giren sözleşmeler, eskiden yeniye (K-06). Üstteki tutarlar bunların toplamıdır. Eski
+   * kayıtta yoktur. Kayıt `contract_id`'si yalnız son sözleşmeyi tutar; öteki kimlikler buradadır.
+   */
+  contracts?: WithdrawalContractLine[]
+}
+
+/** Hesaba giren paket satışı ve saat hareketleri (`lesson_package_sales`, DOM-DIL-051). */
+export interface WithdrawalPackageSale {
+  id: string
+  contractId: string
+  purchasedHours: number
+  entries: readonly { kind: PackageHourKind; hours: number; occurredDate: string }[]
 }
 
 export interface WithdrawalContext {
@@ -135,6 +173,8 @@ export interface WithdrawalContext {
   allocated: ReadonlyMap<string, number>
   /** Taksitlere dağıtılmamış tahsilat tutarı (iade alacağı, DOM-FIN-030). */
   creditCents: number
+  /** Öğrencinin paket satışları; dil okulu dışında boştur. */
+  packageSales?: readonly WithdrawalPackageSale[]
   now: string
 }
 
@@ -149,27 +189,6 @@ function plannedRenewalContractIds(state: State, studentId: string): Set<string>
   )
 }
 
-/** Yürürlükteki sözleşme: planlanmış yenileme dışındaki en yeni sözleşme. */
-function currentContract(state: State, studentId: string): Contract {
-  const planned = plannedRenewalContractIds(state, studentId)
-  // Onaylanmamış ek protokol ve yerini ek protokole bırakan sürüm iadenin tabanı olamaz (DOM-FIN-012).
-  const contract = state.contracts
-    .filter(
-      (item) =>
-        item.studentId === studentId &&
-        !planned.has(item.id) &&
-        isContractInForce(item, state.contracts),
-    )
-    .reduce<Contract | undefined>(
-      (latest, item) =>
-        latest === undefined || Date.parse(item.date) >= Date.parse(latest.date) ? item : latest,
-      undefined,
-    )
-  if (!contract)
-    throw new DomainError('withdrawal_contract_missing', 'Öğrencinin sözleşmesi bulunamadı.')
-  return contract
-}
-
 /** Sözleşmenin kendi taksitleri (DOM-FIN-012); alanı olmayan eski kayıtta öğrencinin taksitleri. */
 export function invoicesOf(state: State, contract: Contract): Invoice[] {
   return state.invoices.filter((invoice) =>
@@ -181,6 +200,146 @@ export function invoicesOf(state: State, contract: Contract): Invoice[] {
 
 const paidOf = (invoice: Invoice, allocated: ReadonlyMap<string, number>) =>
   invoice.paidAt ? invoice.amount : (allocated.get(invoice.id) ?? 0)
+
+interface AccountContract {
+  contract: Contract
+  invoices: Invoice[]
+  sale: WithdrawalPackageSale | undefined
+}
+
+/** Satış ilk sürüme bağlıdır; ek protokol zinciri satışın sözleşmesine kadar geri okunur. */
+function saleFinder(state: State, sales: readonly WithdrawalPackageSale[]) {
+  const saleByContract = new Map(sales.map((sale) => [sale.contractId, sale]))
+  const contractById = new Map(state.contracts.map((item) => [item.id, item]))
+  return (contract: Contract) => {
+    const seen = new Set<string>()
+    let current: Contract | undefined = contract
+    while (current && !seen.has(current.id)) {
+      seen.add(current.id)
+      const sale = saleByContract.get(current.id)
+      if (sale) return sale
+      current = current.amendsContractId ? contractById.get(current.amendsContractId) : undefined
+    }
+    return undefined
+  }
+}
+
+/**
+ * Hesaba giren sözleşmeler (K-06, DOM-FIN-040), eskiden yeniye; son eleman ayrılış kaydının
+ * sözleşmesidir. Onaylanmamış ek protokol ve yerini ek protokole bırakan sürüm girmez (DOM-FIN-012),
+ * planlanmış yenileme ayrı iptal yoluyla işlenir. Yeni yıla geçilince geçen yılın öğrenim sözleşmesi
+ * yürürlükte görünür ama hizmeti bitmiştir: görülen birim bu yıla aittir, o sözleşmeye uygulanırsa
+ * alınmış hizmet iade edilir. Paket satışının saati yıl geçse de yanmadığı için her zaman girer
+ * (DOM-DIL-051).
+ */
+function withdrawalAccount(
+  state: State,
+  studentId: string,
+  sales: readonly WithdrawalPackageSale[],
+): AccountContract[] {
+  const planned = plannedRenewalContractIds(state, studentId)
+  const saleOf = saleFinder(state, sales)
+  const inForce = state.contracts.filter(
+    (item) =>
+      item.studentId === studentId &&
+      !planned.has(item.id) &&
+      isContractInForce(item, state.contracts),
+  )
+  const latestYear = Math.max(
+    ...inForce.filter((item) => !saleOf(item)).map((item) => item.academicYear ?? 0),
+  )
+  const contracts = inForce
+    .filter((item) => saleOf(item) !== undefined || (item.academicYear ?? 0) === latestYear)
+    .sort((a, b) => Date.parse(a.date) - Date.parse(b.date))
+  if (contracts.length === 0)
+    throw new DomainError('withdrawal_contract_missing', 'Öğrencinin sözleşmesi bulunamadı.')
+
+  // Taksit bir kez sayılır. Listesi olmayan eski sözleşme yalnız hiçbir sözleşmenin listesinde
+  // bulunmayan taksitleri alır; aynı taksit iki sözleşmede görünürse yeni sözleşmede kalır.
+  const listed = new Set(
+    state.contracts
+      .filter((item) => item.studentId === studentId)
+      .flatMap((item) => item.invoiceIds ?? []),
+  )
+  const counted = new Set<string>()
+  const newestFirst = [...contracts].reverse().map((contract) => {
+    const own = contract.invoiceIds
+      ? invoicesOf(state, contract)
+      : state.invoices.filter((item) => item.studentId === studentId && !listed.has(item.id))
+    const invoices = own.filter((item) => !counted.has(item.id))
+    for (const item of invoices) counted.add(item.id)
+    return { contract, invoices, sale: saleOf(contract) }
+  })
+  return newestFirst.reverse()
+}
+
+/** Bir sözleşmenin hesabı: öğrenimde girilen birim, pakette kayıtlı saat (DOM-FIN-040, DOM-DIL-051). */
+function quoteContract(
+  { contract, invoices, sale }: AccountContract,
+  data: z.output<typeof withdrawalQuoteSchema>,
+  started: boolean,
+  allocated: ReadonlyMap<string, number>,
+): { line: WithdrawalContractLine; extras: WithdrawalExtraLine[] } {
+  // Ayrılıştan sonraki ders kayıtlı olunan süreye girmez (DOM-DIL-051).
+  const usedHours = sale?.entries
+    .filter((entry) => entry.kind === 'consumed' && entry.occurredDate <= data.withdrawalDate)
+    .reduce((sum, entry) => sum + entry.hours, 0)
+  const attendedUnits = usedHours ?? data.attendedUnits
+  const totalUnits = sale?.purchasedHours ?? data.totalUnits
+  const isTuition = (invoice: Invoice) => !invoice.feeKind || invoice.feeKind === 'tuition'
+  const share = (amount: number) => Math.floor((amount * attendedUnits) / totalUnits)
+
+  const baseCents = contract.netCents ?? contract.amount
+  const deductionCents = data.publicSchoolExemption
+    ? 0
+    : Math.floor((baseCents * REFUND_DEDUCTION_BASIS_POINTS) / BASIS)
+  // Paket saati gerçekleşmiş kayıttır: dönem başlangıcı girdisinden bağımsız kullanılmış sayılır.
+  // İndirimli pakette de taban net ücrettir, saat payı net üzerinden işler (H-13, **doğrulanmalı**).
+  const usageCents = sale || started ? share(baseCents) : 0
+  const paidCents = invoices
+    .filter(isTuition)
+    .reduce((sum, invoice) => sum + paidOf(invoice, allocated), 0)
+  const scholarshipExempt = contract.scholarship !== undefined
+  const computedCents = Math.min(baseCents, deductionCents + usageCents)
+  // Burs öğrenim ücretini kapsar: ek hizmetin kullanılan payı bursludan da istenir.
+  const entitledCents = scholarshipExempt ? Math.min(computedCents, paidCents) : computedCents
+  const extras = invoices
+    .filter((invoice) => !isTuition(invoice))
+    .map((invoice): WithdrawalExtraLine => ({
+      invoiceId: invoice.id,
+      kind: invoice.feeKind ?? '',
+      amountCents: invoice.amount,
+      paidCents: paidOf(invoice, allocated),
+      usedCents: share(invoice.amount),
+    }))
+  const extraBalanceCents = extras.reduce((sum, line) => sum + line.paidCents - line.usedCents, 0)
+  return {
+    extras,
+    line: {
+      contractId: contract.id,
+      title: contract.title,
+      ...(sale
+        ? {
+            packageSaleId: sale.id,
+            returnedHours: Math.max(
+              packageHourBalance(sale.purchasedHours, sale.entries).remainingHours,
+              0,
+            ),
+          }
+        : {}),
+      attendedUnits,
+      totalUnits,
+      scholarshipExempt,
+      baseCents,
+      deductionCents,
+      usageCents,
+      entitledCents,
+      paidCents,
+      extraBalanceCents,
+      balanceCents: paidCents - entitledCents + extraBalanceCents,
+    },
+  }
+}
 
 function assertUnits(data: z.output<typeof withdrawalQuoteSchema>, today: string): boolean {
   if (data.withdrawalDate > today)
@@ -207,7 +366,8 @@ function studentOf(state: State, studentId: string) {
 }
 
 /**
- * İade hesabı (DOM-FIN-040). Taban sözleşmenin net ücretidir. Kesinti `taban × %10`, kullanım
+ * İade hesabı (DOM-FIN-040, K-06): her sözleşme kendi tabanı ve kullanımıyla hesaplanır, toplam döküm
+ * satırların toplamıdır. Taban sözleşmenin net ücretidir. Kesinti `taban × %10`, kullanım
  * `taban × görülen / toplam`; hak edilen tabanı aşamaz. Ek hizmetler ayrı hesaplanır: kullanılmayan
  * süre iade edilir. Saf işlemdir, State değişmez.
  */
@@ -226,42 +386,19 @@ export function quoteWithdrawal(
       'Kesintisiz iade yalnız okulda, öğretim yılı başlamadan uygulanır.',
       { path: ['publicSchoolExemption'] },
     )
-  const contract = currentContract(state, studentId)
-  const invoices = invoicesOf(state, contract)
-  const isTuition = (invoice: Invoice) => !invoice.feeKind || invoice.feeKind === 'tuition'
-  const share = (amount: number) => Math.floor((amount * data.attendedUnits) / data.totalUnits)
-
-  const baseCents = contract.netCents ?? contract.amount
-  const deductionCents = data.publicSchoolExemption
-    ? 0
-    : Math.floor((baseCents * REFUND_DEDUCTION_BASIS_POINTS) / BASIS)
-  const usageCents = started ? share(baseCents) : 0
-  const paidCents = invoices
-    .filter(isTuition)
-    .reduce((sum, invoice) => sum + paidOf(invoice, context.allocated), 0)
-  const scholarshipExempt = contract.scholarship !== undefined
-  const computedCents = Math.min(baseCents, deductionCents + usageCents)
-  // Burs öğrenim ücretini kapsar: ek hizmetin kullanılan payı bursludan da istenir.
-  const entitledCents = scholarshipExempt ? Math.min(computedCents, paidCents) : computedCents
-
-  const extras = invoices
-    .filter((invoice) => !isTuition(invoice))
-    .map((invoice): WithdrawalExtraLine => ({
-      invoiceId: invoice.id,
-      kind: invoice.feeKind ?? '',
-      amountCents: invoice.amount,
-      paidCents: paidOf(invoice, context.allocated),
-      usedCents: share(invoice.amount),
-    }))
-  // Öğrenim, ek hizmet ve dağıtılmamış tahsilat tek bakiyede netleşir: iade ve borç birlikte
+  const account = withdrawalAccount(state, studentId, context.packageSales ?? [])
+  const latest = account.at(-1)
+  if (!latest)
+    throw new DomainError('withdrawal_contract_missing', 'Öğrencinin sözleşmesi bulunamadı.')
+  const quotes = account.map((item) => quoteContract(item, data, started, context.allocated))
+  const lines = quotes.map((quote) => quote.line)
+  const total = (pick: (line: WithdrawalContractLine) => number) =>
+    lines.reduce((sum, line) => sum + pick(line), 0)
+  // Sözleşmeler, ek hizmet ve dağıtılmamış tahsilat tek bakiyede netleşir: iade ve borç birlikte
   // oluşmaz (DOM-FIN-040: ödenen hak edilenden azsa iade sıfırdır).
-  const balance =
-    paidCents -
-    entitledCents +
-    extras.reduce((sum, line) => sum + line.paidCents - line.usedCents, 0) +
-    context.creditCents
+  const balance = total((line) => line.balanceCents) + context.creditCents
   return {
-    contractId: contract.id,
+    contractId: latest.contract.id,
     breakdown: {
       institutionType: context.institutionType,
       withdrawalDate: data.withdrawalDate,
@@ -270,19 +407,32 @@ export function quoteWithdrawal(
       attendedUnits: data.attendedUnits,
       totalUnits: data.totalUnits,
       publicSchoolExemption: data.publicSchoolExemption,
-      scholarshipExempt,
+      scholarshipExempt: lines.some((line) => line.scholarshipExempt),
       deductionBasisPoints: REFUND_DEDUCTION_BASIS_POINTS,
-      baseCents,
-      deductionCents,
-      usageCents,
-      entitledCents,
-      paidCents,
+      baseCents: total((line) => line.baseCents),
+      deductionCents: total((line) => line.deductionCents),
+      usageCents: total((line) => line.usageCents),
+      entitledCents: total((line) => line.entitledCents),
+      paidCents: total((line) => line.paidCents),
       creditCents: context.creditCents,
-      extras,
+      extras: quotes.flatMap((quote) => quote.extras),
       refundCents: Math.max(balance, 0),
       debtCents: Math.max(-balance, 0),
+      contracts: lines,
     },
   }
+}
+
+/**
+ * Sözleşme sözleşme gösterilecek satırlar: birden çok sözleşmede ve pakette toplam satırı kullanımı
+ * anlatamaz (pakette saat kayıttan gelir). Tek öğrenim sözleşmesinde ve eski kayıtta boştur, döküm
+ * toplam satırlarıyla okunur.
+ */
+export function contractLinesToShow<T extends { packageSaleId?: string | undefined }>(
+  lines: readonly T[] | undefined,
+): readonly T[] {
+  if (!lines) return []
+  return lines.length > 1 || lines.some((line) => line.packageSaleId !== undefined) ? lines : []
 }
 
 /** Ayrılıştan bir ay sonrası; o gün yoksa ayın son günü (DOM-FIN-040). */
@@ -295,9 +445,10 @@ export function refundDueDate(withdrawalDate: string): string {
 }
 
 /**
- * Ayrılışı uygular (DOM-FIN-041, DOM-KAY-024): öğrenci pasifleşir, açık taksitler iptal edilir
- * (listeden çıkan kayıt arşivlenir), borç kalırsa tek taksit açılır, ileri tarihli etüt, servis ve
- * kulüp kayıtları sonlanır, planlanmış yenileme iptal edilir. Bütün denetimler yazımdan öncedir.
+ * Ayrılışı uygular (DOM-FIN-041, DOM-KAY-024): öğrenci pasifleşir, hesaba giren bütün sözleşmelerin
+ * açık taksitleri iptal edilir (listeden çıkan kayıt arşivlenir), borç kalırsa tek taksit açılır,
+ * ileri tarihli etüt, servis ve kulüp kayıtları sonlanır, planlanmış yenileme iptal edilir. Kalan
+ * paket saatinin iade hareketini servis yazar (`returnedHours`). Bütün denetimler yazımdan öncedir.
  */
 export function withdrawStudent(
   state: State,
@@ -324,7 +475,7 @@ export function withdrawStudent(
     },
     context,
   )
-  const contract = currentContract(state, studentId)
+  const account = withdrawalAccount(state, studentId, context.packageSales ?? [])
 
   const planned = state.renewals.filter(
     (item) => item.studentId === studentId && item.status === 'Planlandı',
@@ -340,9 +491,10 @@ export function withdrawStudent(
       { kind: 'conflict' },
     )
 
-  const kept = invoicesOf(state, contract).filter((invoice) => invoice.paidAt)
+  const paidIn = (invoices: readonly Invoice[]) => invoices.filter((invoice) => invoice.paidAt)
+  const kept = paidIn(account.find((item) => item.contract.id === contractId)?.invoices ?? [])
   const cancelled = new Set(
-    [...invoicesOf(state, contract), ...renewalInvoices]
+    [...account.flatMap((item) => item.invoices), ...renewalInvoices]
       .filter((invoice) => !invoice.paidAt)
       .map((invoice) => invoice.id),
   )
@@ -364,7 +516,12 @@ export function withdrawStudent(
           contractId,
         }
   if (debt) state.invoices.push(debt)
-  contract.invoiceIds = [...kept.map((invoice) => invoice.id), ...(debt ? [debt.id] : [])]
+  // Borç tek bakiyeden doğar, tek taksittir; ayrılış kaydının sözleşmesine yazılır.
+  for (const { contract, invoices } of account)
+    contract.invoiceIds = [
+      ...paidIn(invoices).map((invoice) => invoice.id),
+      ...(debt && contract.id === contractId ? [debt.id] : []),
+    ]
 
   for (const renewal of planned) renewal.status = 'İptal'
   student.isActive = false
@@ -408,7 +565,13 @@ const normalizedName = (value: string) => value.trim().replace(/\s+/g, ' ').toLo
  * denetimdir, yazımı servis yapar.
  */
 export function planRefundPayment(
-  withdrawal: { refundCents: number; refundPaidDate: string | null; payerName: string },
+  withdrawal: {
+    refundCents: number
+    refundPaidDate: string | null
+    payerName: string
+    /** Hesaba giren öteki sözleşmelerin ödeyicileri (K-06). */
+    otherPayerNames?: readonly string[]
+  },
   input: unknown,
   today: string,
 ): { paidDate: string; iban: string; accountHolder: string } {
@@ -421,7 +584,8 @@ export function planRefundPayment(
     throw new DomainError('refund_date_in_future', 'Ödeme tarihi ileri bir gün olamaz.', {
       path: ['paidDate'],
     })
-  if (normalizedName(data.accountHolder) !== normalizedName(withdrawal.payerName))
+  const payers = [withdrawal.payerName, ...(withdrawal.otherPayerNames ?? [])]
+  if (!payers.some((name) => normalizedName(name) === normalizedName(data.accountHolder)))
     throw new DomainError(
       'refund_holder_mismatch',
       'Hesap sahibi sözleşmedeki ödeyici olmalıdır.',

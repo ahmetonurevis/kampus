@@ -320,6 +320,31 @@ describe('ayrılış ve iade uçları', () => {
     assert.equal(paid.json().data.refundAccountHolder, STUDENT?.name)
   })
 
+  test('K-13, DOM-FIN-040: karar gerekçesi liste ve ayrıntıda yalnız yöneticiye döner; ön büro ödeyici türünü görür', async () => {
+    const a = await twoPayers()
+    const created = await withdraw(a.cookie, { ...WITHDRAW, payerDecision: DECISION })
+    assert.equal(created.statusCode, 201, created.body)
+    const { id } = created.json().data
+    const detailUrl = `/api/v1/withdrawals/${String(id)}`
+
+    const adminDetail = await send('GET', detailUrl, a.cookie)
+    assert.equal(adminDetail.statusCode, 200, adminDetail.body)
+    assert.deepEqual(adminDetail.json().data.breakdown.payerDecision, DECISION)
+    const adminList = await send('GET', '/api/v1/withdrawals', a.cookie)
+    assert.equal(adminList.statusCode, 200, adminList.body)
+    assert.deepEqual(adminList.json().data[0].breakdown.payerDecision, DECISION)
+
+    const desk = await member(a.id, 'onburo')
+    const deskDetail = await send('GET', detailUrl, desk)
+    assert.equal(deskDetail.statusCode, 200, deskDetail.body)
+    assert.deepEqual(deskDetail.json().data.breakdown.payerDecision, { payer: DECISION.payer })
+    assert.equal(deskDetail.body.includes('Gizli-gerekce-K12'), false)
+    const deskList = await send('GET', '/api/v1/withdrawals', desk)
+    assert.equal(deskList.statusCode, 200, deskList.body)
+    assert.deepEqual(deskList.json().data[0].breakdown.payerDecision, { payer: DECISION.payer })
+    assert.equal(deskList.body.includes('Gizli-gerekce-K12'), false)
+  })
+
   test('K-12: iadesi sıfır olan ve ödeyicisi aynı olan ayrılış karar istemez', async () => {
     const debtor = await institution()
     await insertMissingRecords(

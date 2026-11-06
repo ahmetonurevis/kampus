@@ -65,7 +65,7 @@ const ACCOUNT_FIELDS: ReadonlySet<string> = new Set<keyof RefundAccount>([
 
 /**
  * Komut yanıtı idempotency kaydında saklanır: karar gerekçesi (K-12, serbest metin) ona girmez,
- * yalnız ayrılış kaydında durur ve kayıt okumalarında döner.
+ * yalnız ayrılış kaydında durur ve yalnız yöneticinin kayıt okumalarında döner (K-13).
  */
 function withoutDecisionReason(row: WithdrawalView): WithdrawalView {
   const decision = row.breakdown.payerDecision
@@ -103,6 +103,12 @@ function view(row: StoredWithdrawal): WithdrawalView {
     maskedIban: refundIban === null ? null : `TR** **** ${refundIban.slice(-4)}`,
     refundStatus: row.refundPaidDate !== null ? 'paid' : row.refundCents === 0 ? 'none' : 'pending',
   }
+}
+
+/** Kayıt okuması: yönetici dışındaki rol kararın ödeyici türünü görür, gerekçeyi görmez (K-13). */
+function readView(ctx: ServiceContext, row: StoredWithdrawal): WithdrawalView {
+  const withdrawal = view(row)
+  return ctx.actor.role === 'yonetici' ? withdrawal : withoutDecisionReason(withdrawal)
 }
 
 async function audit(
@@ -353,11 +359,11 @@ export async function listWithdrawalsFor(
   },
 ): Promise<{ items: WithdrawalView[]; total: number }> {
   const { items, total } = await listWithdrawals(ctx.db, ctx.institutionId, query)
-  return { items: items.map(view), total }
+  return { items: items.map((row) => readView(ctx, row)), total }
 }
 
 export async function getWithdrawalFor(ctx: ServiceContext, id: string): Promise<WithdrawalView> {
   const row = await findWithdrawal(ctx.db, ctx.institutionId, id)
   if (row === null) throw new NotFoundError()
-  return view(row)
+  return readView(ctx, row)
 }

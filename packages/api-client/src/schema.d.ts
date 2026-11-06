@@ -2957,7 +2957,7 @@ export interface paths {
         };
         /**
          * Ayrılış ve iadeleri listele
-         * @description Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.
+         * @description Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Roller: `yonetici`, `onburo`.
          */
         get: operations["listWithdrawals"];
         put?: never;
@@ -2977,7 +2977,7 @@ export interface paths {
         };
         /**
          * Ayrılış ve iade ayrıntısı
-         * @description Hesap dökümüyle birlikte döner; IBAN maskelidir. Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.
+         * @description Hesap dökümüyle birlikte döner; IBAN maskelidir. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.
          */
         get: operations["getWithdrawal"];
         put?: never;
@@ -32803,7 +32803,7 @@ export interface operations {
                                 payerDecision?: {
                                     /** @enum {string} */
                                     payer: "guardian" | "student";
-                                    /** @description Karar gerekçesi; komut yanıtında yok, kayıtta döner */
+                                    /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
                                     reason?: string;
                                 };
                             };
@@ -33009,7 +33009,7 @@ export interface operations {
                                 payerDecision?: {
                                     /** @enum {string} */
                                     payer: "guardian" | "student";
-                                    /** @description Karar gerekçesi; komut yanıtında yok, kayıtta döner */
+                                    /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
                                     reason?: string;
                                 };
                             };
@@ -33200,7 +33200,7 @@ export interface operations {
                                 payerDecision?: {
                                     /** @enum {string} */
                                     payer: "guardian" | "student";
-                                    /** @description Karar gerekçesi; komut yanıtında yok, kayıtta döner */
+                                    /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
                                     reason?: string;
                                 };
                             };
@@ -33385,7 +33385,7 @@ export interface operations {
                                 payerDecision?: {
                                     /** @enum {string} */
                                     payer: "guardian" | "student";
-                                    /** @description Karar gerekçesi; komut yanıtında yok, kayıtta döner */
+                                    /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
                                     reason?: string;
                                 };
                             };
@@ -33582,7 +33582,7 @@ export interface operations {
                                 payerDecision?: {
                                     /** @enum {string} */
                                     payer: "guardian" | "student";
-                                    /** @description Karar gerekçesi; komut yanıtında yok, kayıtta döner */
+                                    /** @description Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13) */
                                     reason?: string;
                                 };
                             };

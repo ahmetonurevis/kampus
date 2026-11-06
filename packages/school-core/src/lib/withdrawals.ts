@@ -197,7 +197,7 @@ export interface WithdrawalBreakdown {
   contracts?: WithdrawalContractLine[]
   /**
    * Yöneticinin iade kararı (K-12): yalnız ödeyiciler farklı ve iade varken bulunur. Gerekçe komut
-   * yanıtına girmez (`services/withdrawals.ts`), kayıt okumalarında döner.
+   * yanıtına girmez (`services/withdrawals.ts`), yalnız yöneticinin kayıt okumalarında döner (K-13).
    */
   payerDecision?: {
     payer: WithdrawalPayer

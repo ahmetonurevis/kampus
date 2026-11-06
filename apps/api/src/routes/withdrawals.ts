@@ -97,7 +97,12 @@ const breakdownSchema = z.object({
   payerDecision: z
     .object({
       payer: payerSchema,
-      reason: z.string().optional().describe('Karar gerekçesi; komut yanıtında yok, kayıtta döner'),
+      reason: z
+        .string()
+        .optional()
+        .describe(
+          'Karar gerekçesi; yalnız `yonetici` rolünün liste ve ayrıntı okumasında döner, `onburo` ve komut yanıtında alan yoktur (K-13)',
+        ),
     })
     .optional()
     .describe('Ödeyiciler farklı ve iade varken yöneticinin kararı: iadeyi alacak ödeyici (K-12)'),
@@ -235,7 +240,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iadeleri listele',
         description:
-          'Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Roller: `yonetici`, `onburo`.',
+          'Son günü en yakın iade önce gelir (DOM-FIN-040). `refundStatus` iade durumuna, `q` öğrenci adına (Türkçe harf duyarsız) göre süzer; sayfalıdır, bilinmeyen parametre 400. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Roller: `yonetici`, `onburo`.',
         querystring: listQuerySchema,
         response: {
           200: z.object({ data: z.array(withdrawalSchema), meta: pageMetaSchema }),
@@ -259,7 +264,7 @@ export function registerWithdrawalRoutes(app: FastifyInstance) {
         tags: ['withdrawals'],
         summary: 'Ayrılış ve iade ayrıntısı',
         description:
-          'Hesap dökümüyle birlikte döner; IBAN maskelidir. Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.',
+          'Hesap dökümüyle birlikte döner; IBAN maskelidir. Ödeyici kararının gerekçesi yalnız `yonetici` rolüne döner (K-13). Başka kurumun kaydı 404. Roller: `yonetici`, `onburo`.',
         params: withdrawalParams,
         response: { 200: withdrawalResponseSchema, ...commandErrors },
       },

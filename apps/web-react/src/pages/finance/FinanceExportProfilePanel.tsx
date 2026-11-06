@@ -7,8 +7,8 @@ import {
   financeExportProfileSchema,
   FIXED_COLUMN_SOURCE,
   type FinanceExportProfile,
+  type FinanceExportProfileKind,
 } from '@kampus/school-core/lib/finance-export-profile.ts'
-import type { FinanceExportKind } from '@kampus/school-core/lib/finance-export.ts'
 import {
   useFinanceExportProfile,
   useSetFinanceExportProfile,
@@ -23,11 +23,25 @@ import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { notify } from '@/lib/notify.ts'
 
 const FORM_ID = 'aktarim-profili-formu'
-const KINDS: readonly { kind: FinanceExportKind; label: string }[] = [
+const KINDS: readonly { kind: FinanceExportProfileKind; label: string }[] = [
   { kind: 'payments', label: 'Tahsilat dosyası' },
   { kind: 'refunds', label: 'İade dosyası' },
   { kind: 'invoices', label: 'Taksit dosyası' },
+  { kind: 'reconciliation', label: 'Mutabakat dosyası' },
 ]
+
+/** ON-085'ten önce kaydedilen profilde mutabakat sütunu yoktur; form standart sütunlarla açılır. */
+function formValues(profile: FinanceExportProfile | null): FinanceExportProfile {
+  const standard = defaultFinanceExportProfile()
+  if (profile === null) return standard
+  return {
+    ...profile,
+    columns: {
+      ...profile.columns,
+      reconciliation: profile.columns.reconciliation ?? standard.columns.reconciliation ?? [],
+    },
+  }
+}
 
 /**
  * Muhasebe aktarım profili (ON-024, IST-111): kurum hangi programı kullanıyorsa dosyanın sütun
@@ -92,7 +106,7 @@ function ProfileForm({
   const save = useSetFinanceExportProfile()
   const form = useForm<FinanceExportProfile>({
     resolver: zodResolver(financeExportProfileSchema),
-    defaultValues: profile ?? defaultFinanceExportProfile(),
+    defaultValues: formValues(profile),
   })
   const busy = save.isPending || form.formState.isSubmitting
   const errors = form.formState.errors
@@ -198,7 +212,7 @@ function ColumnList({
   errors,
   busy,
 }: {
-  kind: FinanceExportKind
+  kind: FinanceExportProfileKind
   label: string
   control: Control<FinanceExportProfile>
   register: ReturnType<typeof useForm<FinanceExportProfile>>['register']
@@ -214,7 +228,7 @@ function ColumnList({
       <legend className="px-1 font-semibold">{label}</legend>
       {columns.fields.map((field, index) => {
         const rowErrors = listError?.[index]
-        const isFixed = values[index]?.source === FIXED_COLUMN_SOURCE
+        const isFixed = values?.[index]?.source === FIXED_COLUMN_SOURCE
         const position = `${label} ${String(index + 1)}. sütun`
         return (
           <div

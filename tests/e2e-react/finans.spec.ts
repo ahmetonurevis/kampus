@@ -610,6 +610,39 @@ test.describe('Finans: tahsilat', () => {
     await expect(page.getByRole('button', { name: 'Dosya sütunları' })).toHaveCount(0)
   })
 
+  test('IST-111 ON-085: yıl sonu mutabakatı toplamı, tutmayan öğrenci ve dosya; ön büroda yok', async ({
+    page,
+    loginAs,
+    tenant,
+  }) => {
+    // Seed taksitlerinin ilk üçü tahsilat kaydı olmadan ödenmiştir: eğitim yılında tutmayan satırdır.
+    const school = await tenant({ roles: ['onburo'], students: ['s22'] })
+    await loginAs(school.user('yonetici'))
+    await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
+    const section = page.getByRole('region', { name: 'Yıl sonu mutabakatı' })
+    await expect(section.getByLabel('Mutabakat toplamları')).toContainText('Kapanış')
+    await expect(section.getByRole('status').first()).toBeVisible()
+
+    const table = section.getByRole('table', { name: 'Öğrenci bazında mutabakat' })
+    await section.getByLabel('Gösterilecek öğrenciler').selectOption('mismatch')
+    await expect
+      .poll(async () => (await table.getByText('Tutuyor', { exact: true }).count()) === 0)
+      .toBe(true)
+
+    const downloading = page.waitForEvent('download')
+    await section.getByRole('button', { name: 'Mutabakat dosyası' }).click()
+    const file = await downloading
+    expect(file.suggestedFilename()).toMatch(/^mutabakat-\d{4}\.csv$/)
+    const body = await readFile(await file.path(), 'utf8')
+    expect(body.charCodeAt(0)).toBe(0xfeff)
+    expect(body).toContain('"Beklenen kapanış (₺)"')
+
+    await loginAs(school.user('onburo'))
+    await page.goto('/onburo/tahsilat-takip?gorunum=aktarim')
+    await expect(page.getByRole('heading', { name: 'Muhasebe aktarımı' })).toBeVisible()
+    await expect(page.getByRole('region', { name: 'Yıl sonu mutabakatı' })).toHaveCount(0)
+  })
+
   test('IST-111: dönem toplamı dosya toplamına eşittir; dosya yöneticiye iner, ön büro indiremez', async ({
     page,
     loginAs,
@@ -1332,6 +1365,8 @@ test.describe('Finans: liste', () => {
     await page.setViewportSize({ width: 320, height: 844 })
     await page.goto(`${ADMIN_URL}?gorunum=aktarim`)
     await expect(page.getByRole('heading', { name: 'Muhasebe aktarımı' })).toBeVisible()
+    await expect(page.getByRole('heading', { name: 'Yıl sonu mutabakatı' })).toBeVisible()
+    await expect(page.getByLabel('Mutabakat toplamları')).toBeVisible()
     await expectNoHorizontalOverflow(page)
   })
 })

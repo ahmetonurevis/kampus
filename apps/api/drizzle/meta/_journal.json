@@ -449,6 +449,13 @@
       "when": 1793829455744,
       "tag": "0063_copy_contracts_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1793975005188,
+      "tag": "0064_create_e_ozel_records",
+      "breakpoints": true
     }
   ]
 }

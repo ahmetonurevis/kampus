@@ -2264,6 +2264,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/e-ozel/items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * e-Özel'e işlenecek kayıtlar
+         * @description e-Özel'e elle girilecek kursiyer, ücret/dekont, devamsızlık ve kurs sonu satırları (IST-085, DOM-KAY-015); varsayılan yalnız işlenmemişler. Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Kimlik numarası yalnız maskeli döner; bu bilgiyi içeren sayfa denetime yazılır (`finance.e_ozel_read`, yalnız alan adları). Devamsızlık ve kurs sonu `academic` modülünün verisidir: modül kapalıyken genel listede yer almaz, `kind` ile istenirse 403 `module_disabled`. `crm` kapalıyken kimlik alanları boş döner. Ters gün aralığı ve bilinmeyen parametre 400. Sayfalıdır, `pageSize` en çok 100. Okulda 404. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["listEOzelItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/e-ozel/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * e-Özel işlem listesi dosyası
+         * @description Listeyle aynı süzgeçle bütün satırları CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı (IST-085). Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Tam kimlik numarası dosyaya yazılmaz. Her aktarım denetime yazılır (`finance.e_ozel_export`, DOM-YTK-052). Taze oturum ister: eskiyse 403 `reauthentication_required`; kullanıcı başına 10/dk. Okulda 404. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["exportEOzelItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/e-ozel/items/{kind}/{sourceId}/record": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * e-Özel "işlendi" işaretini yaz ya da geri al
+         * @description `recorded: true` satırı işlendi olarak işaretler, kim ve ne zaman saklanır; `false` işareti geri alır (IST-085, DOM-KAY-015). Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Ücret satırı tahsilatın MEBBİS işaretidir, ikisi aynı kayıttır (DOM-FIN-032). İşlenmiş satırı yeniden işlemek 409 `e_ozel_already_recorded`, işlenmemiş satırın işaretini kaldırmak 409 `e_ozel_not_recorded`, sürüm tutmazsa 409. Olmayan, listeye girmeyen (iptal edilmiş tahsilat, düzeltilmiş yoklama, eski karar) ya da başka kurumun kaydı 404. Denetime yalnız alan adı düşer. `If-Match` ve `Idempotency-Key` zorunludur. Okulda 404. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["setEOzelMark"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/totals": {
         parameters: {
             query?: never;
@@ -27256,6 +27316,386 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    listEOzelItems: {
+        parameters: {
+            query?: {
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+                /** @description Yalnız bu tür */
+                kind?: "learner" | "fee" | "attendance" | "course_end";
+                /** @description `pending` işlenmemiş (varsayılan), `recorded` işlenmiş, `all` hepsi */
+                status?: "pending" | "recorded" | "all";
+                /** @description Kursiyer adı, dekont no veya işlem referansı */
+                q?: string;
+                /** @description Satır günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Satır günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            kind: "learner" | "fee" | "attendance" | "course_end";
+                            /** @description Kaynak kaydın kimliği; işaret ucunun yol parametresi */
+                            sourceId: string;
+                            learnerId: string;
+                            learnerName: string;
+                            /** @description Satır günü (YYYY-MM-DD, Europe/Istanbul) */
+                            date: string | null;
+                            /** @description `If-Match` için sürüm; işareti olmayan satırda 1 */
+                            version: number;
+                            /** @description İşlendi olarak işaretlendiği an (ISO 8601 UTC) */
+                            recordedAt: string | null;
+                            /** @description İşaretleyen personel */
+                            recordedByName: string | null;
+                            learner: {
+                                identityKind: string | null;
+                                /** @description Yalnız maskeli (`*******1234`) */
+                                maskedIdentity: string | null;
+                                birthDate: string | null;
+                                /**
+                                 * @description Kayıt durumu: aktif ya da kayıt iptal
+                                 * @enum {string}
+                                 */
+                                status: "active" | "cancelled";
+                            } | null;
+                            fee: {
+                                /** @description Tutar (kuruş) */
+                                amountCents: number;
+                                /** @description Kurum dekont numarası */
+                                receipt: string;
+                                method: string;
+                                reference: string | null;
+                            } | null;
+                            attendance: {
+                                /** @description Kur grubu ya da sınıf adı */
+                                groupName: string | null;
+                                courseName: string | null;
+                                /** @description Ders saati; gün bazlı yoklamada boş */
+                                lessonHourId: string | null;
+                                excused: boolean;
+                            } | null;
+                            courseEnd: {
+                                /** @description Kur grubu ya da sınıf adı */
+                                groupName: string | null;
+                                courseName: string | null;
+                                /** @enum {string} */
+                                outcome: "passed" | "repeat" | "incomplete_attendance";
+                                /** @description MEBBİS belge izi varsa belge no */
+                                certificateNumber: string | null;
+                            } | null;
+                        }[];
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    exportEOzelItems: {
+        parameters: {
+            query?: {
+                /** @description Yalnız bu tür */
+                kind?: "learner" | "fee" | "attendance" | "course_end";
+                /** @description `pending` işlenmemiş (varsayılan), `recorded` işlenmiş, `all` hepsi */
+                status?: "pending" | "recorded" | "all";
+                /** @description Kursiyer adı, dekont no veya işlem referansı */
+                q?: string;
+                /** @description Satır günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
+                dateFrom?: string;
+                /** @description Satır günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil) */
+                dateTo?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV dosyası */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    setEOzelMark: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Satır türü */
+                kind: "learner" | "fee" | "attendance" | "course_end";
+                /** @description Kaynak kaydın kimliği */
+                sourceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    recorded: boolean;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @enum {string} */
+                            kind: "learner" | "fee" | "attendance" | "course_end";
+                            sourceId: string;
+                            version: number;
+                            recordedAt: string | null;
+                        };
                     };
                 };
             };

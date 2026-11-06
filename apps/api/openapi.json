@@ -57772,6 +57772,827 @@
         }
       }
     },
+    "/api/v1/finance/e-ozel/items": {
+      "get": {
+        "operationId": "listEOzelItems",
+        "summary": "e-Özel'e işlenecek kayıtlar",
+        "tags": [
+          "finance-exports"
+        ],
+        "description": "e-Özel'e elle girilecek kursiyer, ücret/dekont, devamsızlık ve kurs sonu satırları (IST-085, DOM-KAY-015); varsayılan yalnız işlenmemişler. Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Kimlik numarası yalnız maskeli döner; bu bilgiyi içeren sayfa denetime yazılır (`finance.e_ozel_read`, yalnız alan adları). Devamsızlık ve kurs sonu `academic` modülünün verisidir: modül kapalıyken genel listede yer almaz, `kind` ile istenirse 403 `module_disabled`. `crm` kapalıyken kimlik alanları boş döner. Ters gün aralığı ve bilinmeyen parametre 400. Sayfalıdır, `pageSize` en çok 100. Okulda 404. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "learner",
+                "fee",
+                "attendance",
+                "course_end"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Yalnız bu tür"
+          },
+          {
+            "schema": {
+              "default": "pending",
+              "type": "string",
+              "enum": [
+                "pending",
+                "recorded",
+                "all"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`pending` işlenmemiş (varsayılan), `recorded` işlenmiş, `all` hepsi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Kursiyer adı, dekont no veya işlem referansı"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "description": "Satır günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "description": "Satır günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "type": "object",
+                        "properties": {
+                          "kind": {
+                            "type": "string",
+                            "enum": [
+                              "learner",
+                              "fee",
+                              "attendance",
+                              "course_end"
+                            ]
+                          },
+                          "sourceId": {
+                            "type": "string",
+                            "description": "Kaynak kaydın kimliği; işaret ucunun yol parametresi"
+                          },
+                          "learnerId": {
+                            "type": "string"
+                          },
+                          "learnerName": {
+                            "type": "string"
+                          },
+                          "date": {
+                            "description": "Satır günü (YYYY-MM-DD, Europe/Istanbul)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "version": {
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "`If-Match` için sürüm; işareti olmayan satırda 1"
+                          },
+                          "recordedAt": {
+                            "description": "İşlendi olarak işaretlendiği an (ISO 8601 UTC)",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "recordedByName": {
+                            "description": "İşaretleyen personel",
+                            "type": [
+                              "string",
+                              "null"
+                            ]
+                          },
+                          "learner": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "identityKind": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "maskedIdentity": {
+                                    "description": "Yalnız maskeli (`*******1234`)",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "birthDate": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "status": {
+                                    "type": "string",
+                                    "enum": [
+                                      "active",
+                                      "cancelled"
+                                    ],
+                                    "description": "Kayıt durumu: aktif ya da kayıt iptal"
+                                  }
+                                },
+                                "required": [
+                                  "identityKind",
+                                  "maskedIdentity",
+                                  "birthDate",
+                                  "status"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "fee": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "amountCents": {
+                                    "type": "integer",
+                                    "minimum": -9007199254740991,
+                                    "maximum": 9007199254740991,
+                                    "description": "Tutar (kuruş)"
+                                  },
+                                  "receipt": {
+                                    "type": "string",
+                                    "description": "Kurum dekont numarası"
+                                  },
+                                  "method": {
+                                    "type": "string"
+                                  },
+                                  "reference": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "amountCents",
+                                  "receipt",
+                                  "method",
+                                  "reference"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "attendance": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "groupName": {
+                                    "description": "Kur grubu ya da sınıf adı",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "courseName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "lessonHourId": {
+                                    "description": "Ders saati; gün bazlı yoklamada boş",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "excused": {
+                                    "type": "boolean"
+                                  }
+                                },
+                                "required": [
+                                  "groupName",
+                                  "courseName",
+                                  "lessonHourId",
+                                  "excused"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          },
+                          "courseEnd": {
+                            "anyOf": [
+                              {
+                                "type": "object",
+                                "properties": {
+                                  "groupName": {
+                                    "description": "Kur grubu ya da sınıf adı",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "courseName": {
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  },
+                                  "outcome": {
+                                    "type": "string",
+                                    "enum": [
+                                      "passed",
+                                      "repeat",
+                                      "incomplete_attendance"
+                                    ]
+                                  },
+                                  "certificateNumber": {
+                                    "description": "MEBBİS belge izi varsa belge no",
+                                    "type": [
+                                      "string",
+                                      "null"
+                                    ]
+                                  }
+                                },
+                                "required": [
+                                  "groupName",
+                                  "courseName",
+                                  "outcome",
+                                  "certificateNumber"
+                                ],
+                                "additionalProperties": false
+                              },
+                              {
+                                "type": "null"
+                              }
+                            ]
+                          }
+                        },
+                        "required": [
+                          "kind",
+                          "sourceId",
+                          "learnerId",
+                          "learnerName",
+                          "date",
+                          "version",
+                          "recordedAt",
+                          "recordedByName",
+                          "learner",
+                          "fee",
+                          "attendance",
+                          "courseEnd"
+                        ],
+                        "additionalProperties": false
+                      }
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/e-ozel/export": {
+      "get": {
+        "operationId": "exportEOzelItems",
+        "summary": "e-Özel işlem listesi dosyası",
+        "tags": [
+          "finance-exports"
+        ],
+        "description": "Listeyle aynı süzgeçle bütün satırları CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı (IST-085). Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Tam kimlik numarası dosyaya yazılmaz. Her aktarım denetime yazılır (`finance.e_ozel_export`, DOM-YTK-052). Taze oturum ister: eskiyse 403 `reauthentication_required`; kullanıcı başına 10/dk. Okulda 404. Roller: `yonetici`, `onburo`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "learner",
+                "fee",
+                "attendance",
+                "course_end"
+              ]
+            },
+            "in": "query",
+            "name": "kind",
+            "required": false,
+            "description": "Yalnız bu tür"
+          },
+          {
+            "schema": {
+              "default": "pending",
+              "type": "string",
+              "enum": [
+                "pending",
+                "recorded",
+                "all"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false,
+            "description": "`pending` işlenmemiş (varsayılan), `recorded` işlenmiş, `all` hepsi"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 2,
+              "maxLength": 100
+            },
+            "in": "query",
+            "name": "q",
+            "required": false,
+            "description": "Kursiyer adı, dekont no veya işlem referansı"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "description": "Satır günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "description": "Satır günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV dosyası",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "description": "CSV dosyası"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/e-ozel/items/{kind}/{sourceId}/record": {
+      "post": {
+        "operationId": "setEOzelMark",
+        "summary": "e-Özel \"işlendi\" işaretini yaz ya da geri al",
+        "tags": [
+          "finance-exports"
+        ],
+        "description": "`recorded: true` satırı işlendi olarak işaretler, kim ve ne zaman saklanır; `false` işareti geri alır (IST-085, DOM-KAY-015). Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Ücret satırı tahsilatın MEBBİS işaretidir, ikisi aynı kayıttır (DOM-FIN-032). İşlenmiş satırı yeniden işlemek 409 `e_ozel_already_recorded`, işlenmemiş satırın işaretini kaldırmak 409 `e_ozel_not_recorded`, sürüm tutmazsa 409. Olmayan, listeye girmeyen (iptal edilmiş tahsilat, düzeltilmiş yoklama, eski karar) ya da başka kurumun kaydı 404. Denetime yalnız alan adı düşer. `If-Match` ve `Idempotency-Key` zorunludur. Okulda 404. Roller: `yonetici`, `onburo`.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "properties": {
+                  "recorded": {
+                    "type": "boolean"
+                  }
+                },
+                "required": [
+                  "recorded"
+                ],
+                "additionalProperties": false
+              }
+            }
+          }
+        },
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "enum": [
+                "learner",
+                "fee",
+                "attendance",
+                "course_end"
+              ]
+            },
+            "in": "path",
+            "name": "kind",
+            "required": true,
+            "description": "Satır türü"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "minLength": 1,
+              "maxLength": 200
+            },
+            "in": "path",
+            "name": "sourceId",
+            "required": true,
+            "description": "Kaynak kaydın kimliği"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{8,128}$"
+            },
+            "in": "header",
+            "name": "idempotency-key",
+            "required": true,
+            "description": "Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır."
+          },
+          {
+            "schema": {
+              "type": "string",
+              "pattern": "^(W\\/)?\"?\\d{1,9}\"?$"
+            },
+            "in": "header",
+            "name": "if-match",
+            "required": true,
+            "description": "Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `\"4\"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`."
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "kind": {
+                          "type": "string",
+                          "enum": [
+                            "learner",
+                            "fee",
+                            "attendance",
+                            "course_end"
+                          ]
+                        },
+                        "sourceId": {
+                          "type": "string"
+                        },
+                        "version": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "recordedAt": {
+                          "type": [
+                            "string",
+                            "null"
+                          ]
+                        }
+                      },
+                      "required": [
+                        "kind",
+                        "sourceId",
+                        "version",
+                        "recordedAt"
+                      ],
+                      "additionalProperties": false
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/v1/finance/totals": {
       "get": {
         "operationId": "getFinanceTotals",

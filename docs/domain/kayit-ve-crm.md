@@ -129,7 +129,7 @@ Aşamalar: `Yeni aday → İletişime geçildi → Görüşme planlandı → Tek
 - **Gerekçe:** Öğrenci, ücret ve burs bilgisi MEBBİS/e-Okul/e-Özel modüllerine işlenmek zorundadır; platform bu yükümlülüğü takip eder, devralmaz.
 - **Kaynak:** ÖÖKY md. 55/3, 59/4, 63/3.
 - **Kurum türü:** ikisi (dil okulu MEB lisanslıysa e-Özel)
-- **Kodda:** yok.
+- **Kodda:** kısmen — dil okulu ve kurs için e-Özel işlem listesi (IST-085, ON-083): `packages/school-core/src/lib/finance-e-ozel.ts`, `GET /api/v1/finance/e-ozel/items`, `GET /api/v1/finance/e-ozel/export`, `POST /api/v1/finance/e-ozel/items/:kind/:sourceId/record`, tablo `e_ozel_records`, web "Finans > e-Özel işlem listesi". Kursiyer, ücret/dekont, devamsızlık ve kurs sonu satırları listelenir; işaret kim/ne zaman bilgisini tutar, geri alınır, ücret satırının işareti tahsilatın MEBBİS işaretidir (`DOM-FIN-032`). e-Özel'e bağlantı yoktur. Satır bilgileri ister listesindeki kılavuz özetinden alınmıştır; e-Özel ekranıyla birebir eşleşmesi **doğrulanmalı**. Okulda (e-Okul) uç 404'tür; okul tarafı ayrı iştir.
 
 ## Yenileme, dönem geçişi, ayrılış
 

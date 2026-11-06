@@ -2408,6 +2408,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/invoices/{invoiceId}/remind": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Gecikmiş taksiti elle hatırlat
+         * @description Gecikmiş taksitte veliye (yetişkin kursiyerde kendisine) `installment_overdue` bildirimi yazar ve taksitin `reminderAt` alanını günceller (DOM-FIN-035). Aynı taksite günde en çok bir hatırlatma gider: bugün elle hatırlatıldıysa ya da tarama bugün gönderdiyse yeni bildirim yazılmaz, yanıt 200 `reminder: already_sent`. Tam ödenmiş taksit 422 `invoice_already_paid`, vadesi geçmemiş taksit 422 `invoice_not_overdue`, arşivlenmiş öğrenci 422 `invoice_student_archived`, bildirim merkezi kapalıysa 422 `notifications_disabled`. Başka kurumun taksiti 404. `Idempotency-Key` isteğe bağlı. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["remindInstallment"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/renewals": {
         parameters: {
             query?: never;
@@ -28216,6 +28236,140 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    remindInstallment: {
+        parameters: {
+            query?: never;
+            header?: {
+                /** @description İsteğe bağlı. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); aynı anahtar + aynı istek ilk yanıtı tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key"?: string;
+            };
+            path: {
+                /** @description Taksit kimliği */
+                invoiceId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": Record<string, never>;
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description İşlemin konusu; yalnız toplu işlemlerde `null` */
+                            entity: {
+                                /** @description İşlemin konusu olan kaydın koleksiyonu */
+                                collection: string;
+                                /** @description İşlemin konusu olan kaydın kimliği (yeni kayıtta üretilen) */
+                                id: string;
+                            } | null;
+                            /** @description Değişen kayıt sayıları (yalnız sıra değişikliği sayılmaz) */
+                            changes: {
+                                inserted: number;
+                                updated: number;
+                                archived: number;
+                                restored: number;
+                            };
+                            /** @description Yazılan kayıtlar; güncel veri koleksiyon okuma uçlarından alınır */
+                            records: {
+                                /** @description school-core State koleksiyonu */
+                                collection: string;
+                                id: string;
+                                /** @description Kaydın yeni sürümü (`If-Match` için) */
+                                version: number;
+                                /** @enum {string} */
+                                change: "insert" | "update" | "archive" | "restore" | "move";
+                            }[];
+                            /**
+                             * @description `already_sent`: bugün zaten hatırlatıldı, yeni bildirim yazılmadı
+                             * @enum {string}
+                             */
+                            reminder: "sent" | "already_sent";
+                        };
+                    };
                 };
             };
             /** @description Default Response */

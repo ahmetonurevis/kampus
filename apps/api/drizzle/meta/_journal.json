@@ -449,6 +449,13 @@
       "when": 1793829455744,
       "tag": "0063_copy_contracts_invoices",
       "breakpoints": true
+    },
+    {
+      "idx": 64,
+      "version": "7",
+      "when": 1793968404020,
+      "tag": "0064_create_finance_day_closings",
+      "breakpoints": true
     }
   ]
 }

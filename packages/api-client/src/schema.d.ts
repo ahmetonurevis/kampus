@@ -2264,6 +2264,66 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/day-closings/{closingDate}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Gün sonu raporu
+         * @description Günün tahsilatları yöntem bazında, iptaller, net tutar ve kasa bilgisi (IST-113, DOM-FIN-036). Gün Europe/Istanbul günüdür. Tahsilat ödeme gününe, iptal iptal gününe yazılır; geçmiş günün tahsilatı bugün iptal edilirse bugünün raporunda görünür, kapatılmış gün değişmez. Kapalı günde özet kapanış anındaki kayıttır. İleri gün 422 `finance_day_in_future`. Başka kurumun tahsilat ve kapanışı görünmez. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getFinanceDayReport"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/day-closings/{closingDate}/close": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Günü kapat
+         * @description Günün raporunu kim ve ne zaman bilgisiyle mühürler (IST-113, DOM-FIN-036). Kapanıştan sonra o güne tahsilat girilemez (422 `finance_day_closed`). `reportStamp` raporun döndürdüğü damgadır; rapor değiştiyse 409 `finance_day_report_changed`. Nakit açıksa ya da o gün nakit hareketi olduysa `countedCashCents` zorunludur (422 `cash_count_required`). Kasa farkı varsa ya da açılış kasası önceki kapanıştan farklıysa `note` zorunludur (422 `cash_difference_note_required`, `opening_cash_note_required`). Kapalı gün 409 `finance_day_already_closed`, ileri gün 422 `finance_day_in_future`. Gövde katıdır. `Idempotency-Key` zorunludur. Başarı 201. Roller: `yonetici`, `onburo`.
+         */
+        post: operations["closeFinanceDay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/day-closings/{closingDate}/reopen": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Kapatılmış günü yeniden aç
+         * @description Gün yeniden açılır, eski kapanış gerekçesiyle kayıtta kalır ve silinmez; yeni kapanış yeni kayıttır (IST-113, DOM-FIN-036). Kapanışı hiç olmayan gün ve başka kurumun günü 404; daha önce yeniden açılmış gün 409 `finance_day_not_closed`. `If-Match` kapanış sürümüdür: eksikse 400 `if_match_required`, tutmazsa 409 `version_conflict`. `Idempotency-Key` zorunludur. Rol: `yonetici`.
+         */
+        post: operations["reopenFinanceDay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/totals": {
         parameters: {
             query?: never;
@@ -27256,6 +27316,593 @@ export interface operations {
                 content: {
                     "application/json": {
                         data: components["schemas"]["CommandResult"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceDayReport: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Gün sonu günü (Europe/Istanbul, `YYYY-MM-DD`) */
+                closingDate: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            closingDate: string;
+                            /** @enum {string} */
+                            status: "open" | "closed";
+                            /** @description Kapalı günde kapanış anının özeti, açık günde tahsilatlardan hesaplanan özet */
+                            summary: {
+                                /** @description Her yöntem hareket olmasa da yer alır */
+                                methods: {
+                                    /** @enum {string} */
+                                    method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                    /** @description Tahsilat adedi */
+                                    collectedCount: number;
+                                    /** @description Tahsilat toplamı (kuruş) */
+                                    collectedCents: number;
+                                    /** @description O gün yapılan iptal adedi */
+                                    reversedCount: number;
+                                    /** @description O gün yapılan iptal toplamı (kuruş) */
+                                    reversedCents: number;
+                                    /** @description Tahsilat eksi iptal (kuruş) */
+                                    netCents: number;
+                                }[];
+                                collectedCount: number;
+                                collectedCents: number;
+                                reversedCount: number;
+                                reversedCents: number;
+                                netCents: number;
+                            };
+                            /** @description Kapatırken geri gönderilir; rapor değiştiyse 409 */
+                            reportStamp: string;
+                            /** @description Günün net nakit hareketi (kuruş) */
+                            cashNetCents: number;
+                            /** @description Kapanışta nakit sayımı zorunlu mu */
+                            cashCountRequired: boolean;
+                            /** @description Önceki kapanışta sayılan nakit; hiç kapanış yoksa boş */
+                            suggestedOpeningCents: number | null;
+                            /** @description O gün ödeme tarihli tahsilatlar */
+                            collected: {
+                                paymentId: string;
+                                receiptYear: number;
+                                receiptNumber: number;
+                                studentName: string | null;
+                                amountCents: number;
+                                /** @enum {string} */
+                                method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                reference: string | null;
+                                bankAccountLabel: string | null;
+                                paidAt: string;
+                                reversedAt: string | null;
+                                reversalReason: string | null;
+                            }[];
+                            /** @description O gün yapılan iptaller; tahsilatın günü başka olabilir */
+                            reversed: {
+                                paymentId: string;
+                                receiptYear: number;
+                                receiptNumber: number;
+                                studentName: string | null;
+                                amountCents: number;
+                                /** @enum {string} */
+                                method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                reference: string | null;
+                                bankAccountLabel: string | null;
+                                paidAt: string;
+                                reversedAt: string | null;
+                                reversalReason: string | null;
+                            }[];
+                            /** @description Geçerli kapanış; gün açıksa boş */
+                            closing: {
+                                id: string;
+                                closingDate: string;
+                                /** @description Kapanış anının özeti */
+                                summary: {
+                                    /** @description Her yöntem hareket olmasa da yer alır */
+                                    methods: {
+                                        /** @enum {string} */
+                                        method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                        /** @description Tahsilat adedi */
+                                        collectedCount: number;
+                                        /** @description Tahsilat toplamı (kuruş) */
+                                        collectedCents: number;
+                                        /** @description O gün yapılan iptal adedi */
+                                        reversedCount: number;
+                                        /** @description O gün yapılan iptal toplamı (kuruş) */
+                                        reversedCents: number;
+                                        /** @description Tahsilat eksi iptal (kuruş) */
+                                        netCents: number;
+                                    }[];
+                                    collectedCount: number;
+                                    collectedCents: number;
+                                    reversedCount: number;
+                                    reversedCents: number;
+                                    netCents: number;
+                                };
+                                /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
+                                cash: {
+                                    /** @description Açılış kasası (kuruş) */
+                                    openingCents: number;
+                                    /** @description Sayılan nakit (kuruş) */
+                                    countedCents: number;
+                                    /** @description Açılış artı günün net nakdi (kuruş) */
+                                    expectedCents: number;
+                                    /** @description Sayılan eksi beklenen (kuruş) */
+                                    differenceCents: number;
+                                } | null;
+                                /** @description Kapatanın açıklaması */
+                                note: string | null;
+                                /** @description Kapanış anı (ISO 8601 UTC) */
+                                closedAt: string;
+                                /** @description Kapatan kişi */
+                                closedByName: string | null;
+                                /** @description Yeniden açılma anı; geçerli kapanışta boş */
+                                reopenedAt: string | null;
+                                /** @description Yeniden açan yönetici */
+                                reopenedByName: string | null;
+                                /** @description Yeniden açma gerekçesi */
+                                reopenReason: string | null;
+                                /** @description `If-Match` için kapanış sürümü */
+                                version: number;
+                            } | null;
+                            /** @description Yeniden açılmış eski kapanışlar, en yeni önce */
+                            history: {
+                                id: string;
+                                closingDate: string;
+                                /** @description Kapanış anının özeti */
+                                summary: {
+                                    /** @description Her yöntem hareket olmasa da yer alır */
+                                    methods: {
+                                        /** @enum {string} */
+                                        method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                        /** @description Tahsilat adedi */
+                                        collectedCount: number;
+                                        /** @description Tahsilat toplamı (kuruş) */
+                                        collectedCents: number;
+                                        /** @description O gün yapılan iptal adedi */
+                                        reversedCount: number;
+                                        /** @description O gün yapılan iptal toplamı (kuruş) */
+                                        reversedCents: number;
+                                        /** @description Tahsilat eksi iptal (kuruş) */
+                                        netCents: number;
+                                    }[];
+                                    collectedCount: number;
+                                    collectedCents: number;
+                                    reversedCount: number;
+                                    reversedCents: number;
+                                    netCents: number;
+                                };
+                                /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
+                                cash: {
+                                    /** @description Açılış kasası (kuruş) */
+                                    openingCents: number;
+                                    /** @description Sayılan nakit (kuruş) */
+                                    countedCents: number;
+                                    /** @description Açılış artı günün net nakdi (kuruş) */
+                                    expectedCents: number;
+                                    /** @description Sayılan eksi beklenen (kuruş) */
+                                    differenceCents: number;
+                                } | null;
+                                /** @description Kapatanın açıklaması */
+                                note: string | null;
+                                /** @description Kapanış anı (ISO 8601 UTC) */
+                                closedAt: string;
+                                /** @description Kapatan kişi */
+                                closedByName: string | null;
+                                /** @description Yeniden açılma anı; geçerli kapanışta boş */
+                                reopenedAt: string | null;
+                                /** @description Yeniden açan yönetici */
+                                reopenedByName: string | null;
+                                /** @description Yeniden açma gerekçesi */
+                                reopenReason: string | null;
+                                /** @description `If-Match` için kapanış sürümü */
+                                version: number;
+                            }[];
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    closeFinanceDay: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+            };
+            path: {
+                /** @description Gün sonu günü (Europe/Istanbul, `YYYY-MM-DD`) */
+                closingDate: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reportStamp: string;
+                    openingCashCents?: number;
+                    countedCashCents?: number;
+                    note?: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            closingDate: string;
+                            /** @description Kapanış anının özeti */
+                            summary: {
+                                /** @description Her yöntem hareket olmasa da yer alır */
+                                methods: {
+                                    /** @enum {string} */
+                                    method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                    /** @description Tahsilat adedi */
+                                    collectedCount: number;
+                                    /** @description Tahsilat toplamı (kuruş) */
+                                    collectedCents: number;
+                                    /** @description O gün yapılan iptal adedi */
+                                    reversedCount: number;
+                                    /** @description O gün yapılan iptal toplamı (kuruş) */
+                                    reversedCents: number;
+                                    /** @description Tahsilat eksi iptal (kuruş) */
+                                    netCents: number;
+                                }[];
+                                collectedCount: number;
+                                collectedCents: number;
+                                reversedCount: number;
+                                reversedCents: number;
+                                netCents: number;
+                            };
+                            /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
+                            cash: {
+                                /** @description Açılış kasası (kuruş) */
+                                openingCents: number;
+                                /** @description Sayılan nakit (kuruş) */
+                                countedCents: number;
+                                /** @description Açılış artı günün net nakdi (kuruş) */
+                                expectedCents: number;
+                                /** @description Sayılan eksi beklenen (kuruş) */
+                                differenceCents: number;
+                            } | null;
+                            /** @description Kapatanın açıklaması */
+                            note: string | null;
+                            /** @description Kapanış anı (ISO 8601 UTC) */
+                            closedAt: string;
+                            /** @description Kapatan kişi */
+                            closedByName: string | null;
+                            /** @description Yeniden açılma anı; geçerli kapanışta boş */
+                            reopenedAt: string | null;
+                            /** @description Yeniden açan yönetici */
+                            reopenedByName: string | null;
+                            /** @description Yeniden açma gerekçesi */
+                            reopenReason: string | null;
+                            /** @description `If-Match` için kapanış sürümü */
+                            version: number;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    reopenFinanceDay: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description Zorunlu. Kullanıcı eylemi başına bir kez üretilen anahtar (UUID önerilir); yoksa 400 `idempotency_key_required`. Aynı anahtar + aynı istek ilk yanıtı `Idempotent-Replayed: true` ile tekrarlar, farklı istek 422 `idempotency_key_reused`. 24 saat saklanır. */
+                "idempotency-key": string;
+                /** @description Zorunlu iyimser kilit: işlemin konusu olan kaydın okunan `version` değeri (ör. `"4"`); yoksa 400 `if_match_required`, tutmazsa 409 `version_conflict`. */
+                "if-match": string;
+            };
+            path: {
+                /** @description Gün sonu günü (Europe/Istanbul, `YYYY-MM-DD`) */
+                closingDate: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": {
+                    reason: string;
+                };
+            };
+        };
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            id: string;
+                            closingDate: string;
+                            /** @description Kapanış anının özeti */
+                            summary: {
+                                /** @description Her yöntem hareket olmasa da yer alır */
+                                methods: {
+                                    /** @enum {string} */
+                                    method: "Banka havalesi" | "Nakit" | "Kredi kartı" | "Senet";
+                                    /** @description Tahsilat adedi */
+                                    collectedCount: number;
+                                    /** @description Tahsilat toplamı (kuruş) */
+                                    collectedCents: number;
+                                    /** @description O gün yapılan iptal adedi */
+                                    reversedCount: number;
+                                    /** @description O gün yapılan iptal toplamı (kuruş) */
+                                    reversedCents: number;
+                                    /** @description Tahsilat eksi iptal (kuruş) */
+                                    netCents: number;
+                                }[];
+                                collectedCount: number;
+                                collectedCents: number;
+                                reversedCount: number;
+                                reversedCents: number;
+                                netCents: number;
+                            };
+                            /** @description Kasa sayımı; nakit kapalı ve hareketsiz günde boş olabilir */
+                            cash: {
+                                /** @description Açılış kasası (kuruş) */
+                                openingCents: number;
+                                /** @description Sayılan nakit (kuruş) */
+                                countedCents: number;
+                                /** @description Açılış artı günün net nakdi (kuruş) */
+                                expectedCents: number;
+                                /** @description Sayılan eksi beklenen (kuruş) */
+                                differenceCents: number;
+                            } | null;
+                            /** @description Kapatanın açıklaması */
+                            note: string | null;
+                            /** @description Kapanış anı (ISO 8601 UTC) */
+                            closedAt: string;
+                            /** @description Kapatan kişi */
+                            closedByName: string | null;
+                            /** @description Yeniden açılma anı; geçerli kapanışta boş */
+                            reopenedAt: string | null;
+                            /** @description Yeniden açan yönetici */
+                            reopenedByName: string | null;
+                            /** @description Yeniden açma gerekçesi */
+                            reopenReason: string | null;
+                            /** @description `If-Match` için kapanış sürümü */
+                            version: number;
+                        };
                     };
                 };
             };

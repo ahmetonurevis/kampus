@@ -30,6 +30,7 @@ import { requireMarkedHeaders } from './routes/commands.schemas.ts'
 // Onur: kayıt ve finans
 import { registerFeeTariffRoutes } from './routes/fee-tariffs.ts'
 import { registerFinanceContractRoutes } from './routes/finance-contracts.ts'
+import { registerFinanceDayClosingRoutes } from './routes/finance-day-closings.ts'
 import { registerFinanceExportRoutes } from './routes/finance-exports.ts'
 import { registerFinanceRenewalRoutes } from './routes/finance-renewals.ts'
 import { registerFinanceScholarshipRoutes } from './routes/finance-scholarships.ts'
@@ -110,6 +111,9 @@ export const REDACTED_PATHS = [
   '*.targetSchool',
   'reversalReason',
   '*.reversalReason',
+  // kvkk: Ç — kapatılmış günü yeniden açma gerekçesi (DOM-FIN-036); kapanış açıklaması `note`'tadır.
+  'reopenReason',
+  '*.reopenReason',
   // kvkk: K — sözleşmenin imza yetkilisi ve ödeyici adı; ek protokol gerekçesi serbest metindir.
   'signatory',
   '*.signatory',
@@ -389,6 +393,7 @@ export async function buildApp(options: BuildAppOptions): Promise<App> {
   // Onur: kayıt ve finans
   registerFeeTariffRoutes(app)
   registerFinanceContractRoutes(app)
+  registerFinanceDayClosingRoutes(app)
   registerFinanceExportRoutes(app)
   registerFinanceRenewalRoutes(app)
   registerFinanceScholarshipRoutes(app)

@@ -938,6 +938,10 @@ const FINANCE: Readonly<Record<string, Proof>> = {
       ),
     ]),
   ),
+  'GET /api/v1/prospects/funnel': liste(
+    'enrollment-funnel.test.ts',
+    'başka kurumun adayı huniye girmez',
+  ),
 }
 
 /**

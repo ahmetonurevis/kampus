@@ -3,7 +3,9 @@ import { test } from 'node:test'
 import {
   PROSPECT_STAGES,
   UNKNOWN_SOURCE,
+  counselorRows,
   funnelSteps,
+  rateLabel,
   sourceRows,
 } from '../src/pages/management/enrollment-report-rows.ts'
 
@@ -101,4 +103,36 @@ test('sourceRows: kanalı boş ya da yok aday "Belirtilmemiş" satırında topla
   )
   assert.deepEqual(sourceRows(undefined, undefined), [])
   assert.deepEqual(sourceRows(counts([]), counts([])), [])
+})
+
+test('ON-052: oran bir ondalıklı yüzde, oran yoksa tire', () => {
+  assert.equal(rateLabel(null), '—')
+  assert.equal(rateLabel(33.3), '%33,3')
+  assert.equal(rateLabel(100), '%100')
+})
+
+test('ON-052, DOM-KAY-040: danışman satırı kesin kayıt adımını ve oranı taşır; adı bilinmeyen Belirtilmemiş', () => {
+  const steps = (prospect: number, enrolled: number) => [
+    { step: 'prospect' as const, count: prospect, rate: null },
+    { step: 'meeting' as const, count: prospect, rate: 100 },
+    {
+      step: 'enrolled' as const,
+      count: enrolled,
+      rate: prospect ? (enrolled / prospect) * 100 : null,
+    },
+  ]
+  const rows = counselorRows([
+    {
+      counselorId: 'u1',
+      counselorName: 'Selin Kaya',
+      prospects: 4,
+      steps: steps(4, 1),
+      conversionRate: 25,
+    },
+    { counselorId: null, counselorName: null, prospects: 2, steps: steps(2, 0), conversionRate: 0 },
+  ])
+  assert.deepEqual(rows, [
+    { id: 'u1', counselor: 'Selin Kaya', prospects: 4, enrolled: 1, conversion: '%25' },
+    { id: 'bilinmeyen-1', counselor: UNKNOWN_SOURCE, prospects: 2, enrolled: 0, conversion: '%0' },
+  ])
 })

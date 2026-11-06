@@ -17577,6 +17577,262 @@
           "learners"
         ]
       },
+      "EnrollmentFunnelStepInput": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "string",
+            "enum": [
+              "prospect",
+              "meeting",
+              "trial",
+              "enrolled"
+            ],
+            "description": "Huni adımı; `trial` yalnız dil okulunda"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Bu adıma ulaşan aday (birikimli)"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Önceki adıma göre yüzde (bir ondalık); ilk adımda ve önceki adım 0 iken `null`"
+          }
+        },
+        "required": [
+          "step",
+          "count",
+          "rate"
+        ]
+      },
+      "EnrollmentFunnelStageInput": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi",
+              "Kayıt oldu",
+              "Vazgeçti"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "stage",
+          "count"
+        ]
+      },
+      "EnrollmentFunnelRowInput": {
+        "type": "object",
+        "properties": {
+          "prospects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Aralıkta açılan aday sayısı"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStepInput"
+            },
+            "description": "Kurum türünün adımları sırasıyla"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStageInput"
+            },
+            "description": "Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok"
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null`"
+          }
+        },
+        "required": [
+          "prospects",
+          "steps",
+          "stages",
+          "conversionRate"
+        ]
+      },
+      "EnrollmentFunnelSourceRowInput": {
+        "type": "object",
+        "properties": {
+          "prospects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Aralıkta açılan aday sayısı"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStepInput"
+            },
+            "description": "Kurum türünün adımları sırasıyla"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStageInput"
+            },
+            "description": "Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok"
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null`"
+          },
+          "source": {
+            "description": "Aday kaynağı (DOM-KAY-007); kaynaksız eski aday `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "prospects",
+          "steps",
+          "stages",
+          "conversionRate",
+          "source"
+        ]
+      },
+      "EnrollmentFunnelCounselorRowInput": {
+        "type": "object",
+        "properties": {
+          "prospects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Aralıkta açılan aday sayısı"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStepInput"
+            },
+            "description": "Kurum türünün adımları sırasıyla"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStageInput"
+            },
+            "description": "Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok"
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null`"
+          },
+          "counselorId": {
+            "description": "Adayı açan personelin kullanıcı kimliği; bilinmiyorsa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counselorName": {
+            "description": "Danışmanın görünen adı; kurum üyesi değilse ya da bilinmiyorsa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "prospects",
+          "steps",
+          "stages",
+          "conversionRate",
+          "counselorId",
+          "counselorName"
+        ]
+      },
+      "EnrollmentFunnelInput": {
+        "type": "object",
+        "properties": {
+          "institutionType": {
+            "type": "string",
+            "enum": [
+              "school",
+              "language_school"
+            ],
+            "description": "Adımları belirleyen kurum türü"
+          },
+          "total": {
+            "$ref": "#/components/schemas/EnrollmentFunnelRowInput"
+          },
+          "bySource": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelSourceRowInput"
+            },
+            "description": "Bilinen kaynaklar sıfır olsa da liste sırasıyla, sonra tanınmayan eski kaynaklar, en son kaynaksız"
+          },
+          "byCounselor": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelCounselorRowInput"
+            },
+            "description": "Adayı olan danışmanlar aday sayısına göre çoktan aza; bilinmeyen en sonda"
+          }
+        },
+        "required": [
+          "institutionType",
+          "total",
+          "bySource",
+          "byCounselor"
+        ]
+      },
       "ErrorResponse": {
         "type": "object",
         "properties": {
@@ -35534,6 +35790,268 @@
           "timeLimitMinutes",
           "canManage",
           "learners"
+        ],
+        "additionalProperties": false
+      },
+      "EnrollmentFunnelStep": {
+        "type": "object",
+        "properties": {
+          "step": {
+            "type": "string",
+            "enum": [
+              "prospect",
+              "meeting",
+              "trial",
+              "enrolled"
+            ],
+            "description": "Huni adımı; `trial` yalnız dil okulunda"
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Bu adıma ulaşan aday (birikimli)"
+          },
+          "rate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Önceki adıma göre yüzde (bir ondalık); ilk adımda ve önceki adım 0 iken `null`"
+          }
+        },
+        "required": [
+          "step",
+          "count",
+          "rate"
+        ],
+        "additionalProperties": false
+      },
+      "EnrollmentFunnelStage": {
+        "type": "object",
+        "properties": {
+          "stage": {
+            "type": "string",
+            "enum": [
+              "Yeni aday",
+              "İletişime geçildi",
+              "Görüşme planlandı",
+              "Teklif verildi",
+              "Kayıt oldu",
+              "Vazgeçti"
+            ]
+          },
+          "count": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "stage",
+          "count"
+        ],
+        "additionalProperties": false
+      },
+      "EnrollmentFunnelRow": {
+        "type": "object",
+        "properties": {
+          "prospects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Aralıkta açılan aday sayısı"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStep"
+            },
+            "description": "Kurum türünün adımları sırasıyla"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStage"
+            },
+            "description": "Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok"
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null`"
+          }
+        },
+        "required": [
+          "prospects",
+          "steps",
+          "stages",
+          "conversionRate"
+        ],
+        "additionalProperties": false
+      },
+      "EnrollmentFunnelSourceRow": {
+        "type": "object",
+        "properties": {
+          "prospects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Aralıkta açılan aday sayısı"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStep"
+            },
+            "description": "Kurum türünün adımları sırasıyla"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStage"
+            },
+            "description": "Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok"
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null`"
+          },
+          "source": {
+            "description": "Aday kaynağı (DOM-KAY-007); kaynaksız eski aday `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "prospects",
+          "steps",
+          "stages",
+          "conversionRate",
+          "source"
+        ],
+        "additionalProperties": false
+      },
+      "EnrollmentFunnelCounselorRow": {
+        "type": "object",
+        "properties": {
+          "prospects": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 9007199254740991,
+            "description": "Aralıkta açılan aday sayısı"
+          },
+          "steps": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStep"
+            },
+            "description": "Kurum türünün adımları sırasıyla"
+          },
+          "stages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelStage"
+            },
+            "description": "Güncel aşama sayıları, aşama sırasıyla; tanınmayan eski aşama burada yok"
+          },
+          "conversionRate": {
+            "anyOf": [
+              {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "description": "Kesin kaydın aday sayısına oranı, yüzde (bir ondalık); aday yoksa `null`"
+          },
+          "counselorId": {
+            "description": "Adayı açan personelin kullanıcı kimliği; bilinmiyorsa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "counselorName": {
+            "description": "Danışmanın görünen adı; kurum üyesi değilse ya da bilinmiyorsa `null`",
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        },
+        "required": [
+          "prospects",
+          "steps",
+          "stages",
+          "conversionRate",
+          "counselorId",
+          "counselorName"
+        ],
+        "additionalProperties": false
+      },
+      "EnrollmentFunnel": {
+        "type": "object",
+        "properties": {
+          "institutionType": {
+            "type": "string",
+            "enum": [
+              "school",
+              "language_school"
+            ],
+            "description": "Adımları belirleyen kurum türü"
+          },
+          "total": {
+            "$ref": "#/components/schemas/EnrollmentFunnelRow"
+          },
+          "bySource": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelSourceRow"
+            },
+            "description": "Bilinen kaynaklar sıfır olsa da liste sırasıyla, sonra tanınmayan eski kaynaklar, en son kaynaksız"
+          },
+          "byCounselor": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/EnrollmentFunnelCounselorRow"
+            },
+            "description": "Adayı olan danışmanlar aday sayısına göre çoktan aza; bilinmeyen en sonda"
+          }
+        },
+        "required": [
+          "institutionType",
+          "total",
+          "bySource",
+          "byCounselor"
         ],
         "additionalProperties": false
       }
@@ -73593,6 +74111,121 @@
             }
           },
           "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/prospects/funnel": {
+      "get": {
+        "operationId": "getProspectFunnel",
+        "summary": "Kayıt hunisi",
+        "tags": [
+          "prospects"
+        ],
+        "description": "Aday → görüşme → deneme dersi (yalnız dil okulu) → kesin kayıt dönüşümü; toplam, kaynak ve danışman kırılımıyla (core `enrollmentFunnel`, DOM-KAY-040, IST-117). Kohort adayın açılış günüdür (`dateFrom`/`dateTo`, Europe/Istanbul, iki uç dahil; verilmezse bütün adaylar). Huni birikimlidir: ileri adıma ulaşan aday önceki adımları geçmiş sayılır. Oranlar yüzde, bir ondalık; payda 0 ise `null`. Danışman adayı açan personeldir; adı yalnız kurum üyesi için döner. Arşivlenen aday sayılmaz. Yanıt aday adı, iletişim bilgisi ve aday kimliği taşımaz. Bitiş başlangıçtan önceyse ya da bilinmeyen parametre varsa 400. Roller: `yonetici`, `onburo` (diğerleri 403); `crm` modülü kapalıysa 403 `module_disabled`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateFrom",
+            "required": false,
+            "description": "Adayın açılış günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil)"
+          },
+          {
+            "schema": {
+              "type": "string",
+              "format": "date",
+              "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))$"
+            },
+            "in": "query",
+            "name": "dateTo",
+            "required": false,
+            "description": "Adayın açılış günü (Europe/Istanbul) için bitiş (`YYYY-MM-DD`, dahil)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "$ref": "#/components/schemas/EnrollmentFunnel"
+                    }
+                  },
+                  "required": [
+                    "data"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
             "description": "Default Response",
             "content": {
               "application/json": {

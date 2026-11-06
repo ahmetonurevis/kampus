@@ -16,7 +16,6 @@ import { QueryError } from '@/components/QueryError.tsx'
 import { StatusBadge } from '@/components/StatusBadge.tsx'
 import { NativeSelect, NativeSelectOption } from '@/components/ui/native-select'
 import { useListState } from '@/hooks/use-list-state.ts'
-import { referralValueLabel } from './referral-forms.ts'
 
 const NO_SORT: readonly string[] = []
 const STAFF_MOBILE = ['referrer', 'status', 'value']
@@ -36,8 +35,8 @@ const usedCell = (row: ReferralReward) =>
 
 /**
  * Personelin referans hakkı listesi (Finans "Referans hakları"; DOM-FIN-024). Hak kesin kayıtta
- * açılır, ilk taksitle doğar, kesin kayıt ya da yenileme formunda kullanılır; burada yalnız izlenir.
- * Nakit ya da para iadesi karşılığı yoktur.
+ * açılır ve değeri o an sabitlenir, ilk taksitle doğar, kesin kayıt ya da yenileme formunda
+ * kullanılır; burada yalnız izlenir. Nakit ya da para iadesi karşılığı yoktur.
  */
 export function ReferralRewardsSection() {
   const [status, setStatus] = useState<ReferralRewardStatus | ''>('')
@@ -52,7 +51,7 @@ export function ReferralRewardsSection() {
       { key: 'referrer', label: 'Referans veren', cell: (row) => row.referrerStudentName ?? '—' },
       { key: 'referred', label: 'Referansla gelen', cell: (row) => row.referredStudentName ?? '—' },
       { key: 'academicYear', label: 'Eğitim yılı' },
-      { key: 'value', label: 'Tarife değeri', cell: referralValueLabel },
+      { key: 'value', label: 'Hak değeri', cell: (row) => money(row.amountCents) },
       { key: 'status', label: 'Durum', cell: statusCell },
       { key: 'used', label: 'Kullanılan tutar', cell: usedCell },
       {

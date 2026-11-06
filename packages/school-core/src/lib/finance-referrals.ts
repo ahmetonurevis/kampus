@@ -2,7 +2,7 @@ import { z } from 'zod'
 
 import type { State } from '../data/seed.ts'
 import { DomainError } from './errors.ts'
-import type { FeeDiscount, FeeDiscountKind } from './fee-tariffs.ts'
+import { discountRuleAmount, type FeeDiscount, type FeeDiscountKind } from './fee-tariffs.ts'
 
 /**
  * Referans indirimi hakkı (docs/domain/finans.md DOM-FIN-024; kayit-ve-crm.md DOM-KAY-007; ON-139).
@@ -10,8 +10,9 @@ import type { FeeDiscount, FeeDiscountKind } from './fee-tariffs.ts'
  * sorusu M-08 açık). Satır kesin kayıtta `pending` açılır, referansla gelen öğrencinin ilk taksiti
  * ödenince `available` olur, sonraki sözleşmede bir kez `used` olur. Kullanılmış hak geri istenmez.
  * Kayıt `referral_rewards` tablosundadır, State dışındadır: bu dosya servisin yüklediği satırlarla
- * çalışır. Değer tarifedendir: satırdaki oran ya da tutar kayıt anının kopyasıdır, indirimin kendisi
- * kullanıldığı sözleşmenin tarifesinden hesaplanır (DOM-FIN-020, -021).
+ * çalışır. Hakkın değeri kesin kayıt anında o yılın tarifesinden kuruş olarak sabitlenir (K-14) ve
+ * sonraki yılların tarifesinden etkilenmez; sözleşmeye uygulanan tutar bundan tavanı aşan kısım
+ * düşülerek çıkar (DOM-FIN-021).
  */
 
 export const REFERRAL_REWARD_STATUSES = ['pending', 'available', 'used', 'cancelled'] as const
@@ -46,9 +47,10 @@ export interface ReferralRewardDraft {
   referrerParentId: string
   referredStudentId: string
   academicYear: number
+  /** Değerin alındığı tarife. */
   tariffId: string
-  percentBasisPoints: number | null
-  amountCents: number | null
+  /** Kayıt anında sabitlenen hak değeri, kuruş. */
+  amountCents: number
 }
 
 /** Kullanım denetiminin gerektirdiği alanlar; servis kurum kilidi altında yükler. */
@@ -56,6 +58,17 @@ export interface ReferralRewardFacts {
   id: string
   status: ReferralRewardStatus
   referrerParentId: string
+  /** Kayıt anında sabitlenen hak değeri, kuruş. */
+  amountCents: number
+}
+
+/** Referans kalemi hakkın kendi tutarıyla gelir; hak seçilmeden kalem fiyatlanmaz (DOM-FIN-024). */
+export function referralRewardRequiredError(): DomainError {
+  return new DomainError(
+    'referral_reward_required',
+    'Referans indirimi için kullanılabilir bir referans hakkı seçin.',
+    { path: ['referralRewardId'] },
+  )
 }
 
 /**
@@ -63,7 +76,9 @@ export interface ReferralRewardFacts {
  * gelmiş olmalı, indirim o yılın tarifesinde ilan edilmiş olmalı, referans veren ile yeni öğrenci
  * aynı aile olmamalıdır: kişi kendi çocuğu için referans olamaz, kardeş kaydı kardeş indirimidir
  * (DOM-FIN-022). Aile yeni veli satırıyla girildiyse kardeş adayı bağı ve velinin telefonu da
- * aynı aileyi gösterir. `applyEnrollment` sonrasındaki State'le çağrılır.
+ * aynı aileyi gösterir. Değer bu kaydın tarifesinden ve ilan ücretinden sabitlenir (DOM-FIN-020,
+ * K-14): oranlı kuralda ilan ücretinin oranı, sabit kuralda tutarın kendisi; sıfır kuruşa düşen hak
+ * açılmaz. `applyEnrollment` sonrasındaki State'le çağrılır.
  */
 export function referralRewardDraft(
   state: Pick<State, 'prospects' | 'students' | 'parents'>,
@@ -72,6 +87,8 @@ export function referralRewardDraft(
     studentId: string
     academicYear: number
     tariff: { id: string; discounts: readonly FeeDiscount[] }
+    /** Bu kaydın ilan ücreti; indirim ve bursla değişmez. */
+    grossCents: number
   },
 ): ReferralRewardDraft | null {
   const prospect = state.prospects.find((item) => item.id === input.prospectId)
@@ -85,6 +102,8 @@ export function referralRewardDraft(
   const phoneOf = (id: string) => state.parents.find((item) => item.id === id)?.phone
   const phone = phoneOf(parentId)
   if (phone && phone === phoneOf(referrerParentId)) return null
+  const amountCents = discountRuleAmount(rule, input.grossCents)
+  if (amountCents <= 0) return null
   return {
     prospectId: prospect.id,
     referrerStudentId: prospect.referrerStudentId,
@@ -92,31 +111,29 @@ export function referralRewardDraft(
     referredStudentId: input.studentId,
     academicYear: input.academicYear,
     tariffId: input.tariff.id,
-    percentBasisPoints: rule.percentBasisPoints,
-    amountCents: rule.amountCents,
+    amountCents,
   }
 }
 
 /**
  * `referral` kalemi yalnız kullanılabilir bir hakla seçilir, hak da yalnız sahibinin ailesinin
- * sözleşmesinde kullanılır (DOM-FIN-024). Kalem tarifede yoksa fiyatlama daha önce reddeder
- * (`discount_not_in_tariff`). Dönen kimlik servisçe aynı işlemde `used` işaretlenir.
+ * sözleşmesinde kullanılır (DOM-FIN-024). Hak sabit değerini taşısa da kalem kullanıldığı yılın
+ * tarifesinde ilan edilmiş olmalıdır; değilse hak denetlenmez, fiyatlama `discount_not_in_tariff`
+ * ile reddeder. Dönen hakkın tutarı fiyatlamaya girer, kimliği servisçe aynı işlemde `used` olur.
  */
 export function requireUsableReferralReward(request: {
   kinds: readonly FeeDiscountKind[]
+  /** Sözleşmenin tarifesindeki indirimler. */
+  rules: readonly FeeDiscount[]
   rewardId: string | undefined
   reward: ReferralRewardFacts | null
   /** Sözleşmenin velisi; yeni veliyle kesin kayıtta `null` (henüz hakkı olamaz). */
   ownerParentId: string | null
-}): string | null {
+}): ReferralRewardFacts | null {
   const wanted = request.kinds.includes('referral')
+  if (wanted && !request.rules.some((item) => item.kind === 'referral')) return null
   if (request.rewardId === undefined) {
-    if (wanted)
-      throw new DomainError(
-        'referral_reward_required',
-        'Referans indirimi için kullanılabilir bir referans hakkı seçin.',
-        { path: ['referralRewardId'] },
-      )
+    if (wanted) throw referralRewardRequiredError()
     return null
   }
   if (!wanted)
@@ -150,10 +167,10 @@ export function requireUsableReferralReward(request: {
       'Referans hakkı henüz doğmadı: referansla gelen kaydın ilk taksiti ödenmemiş.',
       { path: ['referralRewardId'] },
     )
-  return reward.id
+  return reward
 }
 
-/** Sözleşmenin referans kalemi: kullanılan hakkın tavandan sonra kalan tutarı (DOM-FIN-024). */
+/** Sözleşmenin referans kalemi: hakkın sabit tutarının tavandan sonra kalanı (DOM-FIN-024). */
 export function referralUseOf(
   rewardId: string | null,
   discounts: readonly { kind: FeeDiscountKind; amountCents: number }[],

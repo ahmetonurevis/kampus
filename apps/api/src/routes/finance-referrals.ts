@@ -24,15 +24,14 @@ const rewardSchema = z.object({
   status: z.enum(REFERRAL_REWARD_STATUSES),
   referrerStudentId: z.string().describe('Referans veren öğrenci'),
   referrerStudentName: z.string().nullable(),
-  percentBasisPoints: z
+  amountCents: z.number().int().describe('Kesin kayıtta sabitlenen hak değeri, kuruş'),
+  earnedAt: z.string().nullable().describe('İlk taksitin ödenmesiyle hakkın doğduğu an'),
+  usedAt: z.string().nullable(),
+  usedAmountCents: z
     .number()
     .int()
     .nullable()
-    .describe('Kayıt yılı tarifesindeki oran, on binde birlik'),
-  amountCents: z.number().int().nullable().describe('Kayıt yılı tarifesindeki tutar, kuruş'),
-  earnedAt: z.string().nullable().describe('İlk taksitin ödenmesiyle hakkın doğduğu an'),
-  usedAt: z.string().nullable(),
-  usedAmountCents: z.number().int().nullable().describe('Sözleşmeye uygulanan tutar, kuruş'),
+    .describe('Sözleşmeye uygulanan tutar, kuruş; tavanı aşan kısım düşer'),
   cancelledAt: z.string().nullable(),
   prospectId: z.string().nullable().describe('Aday; yalnız personele döner'),
   referredStudentId: z.string().nullable().describe('Referansla gelen öğrenci; yalnız personele'),

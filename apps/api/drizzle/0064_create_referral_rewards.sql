@@ -7,8 +7,7 @@ CREATE TABLE "referral_rewards" (
 	"referred_student_id" text NOT NULL,
 	"academic_year" integer NOT NULL,
 	"tariff_id" text NOT NULL,
-	"percent_basis_points" integer,
-	"amount_cents" bigint,
+	"amount_cents" bigint NOT NULL,
 	"status" text DEFAULT 'pending' NOT NULL,
 	"earned_at" timestamp with time zone,
 	"used_at" timestamp with time zone,
@@ -25,7 +24,8 @@ CREATE TABLE "referral_rewards" (
 	CONSTRAINT "referral_rewards_pkey" PRIMARY KEY("institution_id","id"),
 	CONSTRAINT "referral_rewards_status_check" CHECK ("referral_rewards"."status" in ('pending', 'available', 'used', 'cancelled')),
 	CONSTRAINT "referral_rewards_cancel_reason_check" CHECK ("referral_rewards"."cancel_reason" is null or "referral_rewards"."cancel_reason" in ('refunded_before_start', 'withdrawn_before_earned')),
-	CONSTRAINT "referral_rewards_value_check" CHECK (("referral_rewards"."percent_basis_points" is null) <> ("referral_rewards"."amount_cents" is null)),
+	CONSTRAINT "referral_rewards_amount_check" CHECK ("referral_rewards"."amount_cents" > 0),
+	CONSTRAINT "referral_rewards_used_amount_check" CHECK ("referral_rewards"."used_amount_cents" is null or "referral_rewards"."used_amount_cents" <= "referral_rewards"."amount_cents"),
 	CONSTRAINT "referral_rewards_used_check" CHECK (("referral_rewards"."status" = 'used') = ("referral_rewards"."used_contract_id" is not null)),
 	CONSTRAINT "referral_rewards_cancelled_check" CHECK (("referral_rewards"."status" = 'cancelled') = ("referral_rewards"."cancel_reason" is not null))
 );
@@ -45,15 +45,14 @@ COMMENT ON COLUMN "referral_rewards"."referrer_student_id" IS 'Adayın kaynağı
 COMMENT ON COLUMN "referral_rewards"."referrer_parent_id" IS 'Hakkın sahibi veli; kullanım yalnız bu velinin sözleşmesindedir.';--> statement-breakpoint
 COMMENT ON COLUMN "referral_rewards"."referred_student_id" IS 'Kesin kayıtla oluşan öğrenci; ilk taksiti hakkı doğurur, öğretim başlamadan iadesi iptal eder. Aileye gösterilmez.';--> statement-breakpoint
 COMMENT ON COLUMN "referral_rewards"."academic_year" IS 'Referansla gelen kaydın eğitim yılı (başlangıç yılı).';--> statement-breakpoint
-COMMENT ON COLUMN "referral_rewards"."tariff_id" IS 'Oranın ya da tutarın kopyalandığı tarife.';--> statement-breakpoint
-COMMENT ON COLUMN "referral_rewards"."percent_basis_points" IS 'Kayıt yılı tarifesindeki oran, on binde birlik; amount_cents ile birlikte dolmaz.';--> statement-breakpoint
-COMMENT ON COLUMN "referral_rewards"."amount_cents" IS 'Kayıt yılı tarifesindeki tutar, kuruş; uygulanan tutar used_amount_cents.';--> statement-breakpoint
+COMMENT ON COLUMN "referral_rewards"."tariff_id" IS 'Hak değerinin alındığı kayıt yılı tarifesi.';--> statement-breakpoint
+COMMENT ON COLUMN "referral_rewards"."amount_cents" IS 'Hak değeri, kuruş; kesin kayıtta o yılın tarifesinden ve kaydın ilan ücretinden sabitlenir, sonraki tarifeyle değişmez (K-14). Uygulanan tutar used_amount_cents.';--> statement-breakpoint
 COMMENT ON COLUMN "referral_rewards"."status" IS 'pending: ilk taksit bekleniyor; available: kullanılabilir; used: kullanıldı; cancelled: iptal.';--> statement-breakpoint
 COMMENT ON COLUMN "referral_rewards"."earned_at" IS 'İlk taksitin ödenmesiyle hakkın doğduğu an; tahsilat iptalinde boşalır.';--> statement-breakpoint
 COMMENT ON COLUMN "referral_rewards"."used_at" IS 'Hakkın sözleşmede kullanıldığı an.';--> statement-breakpoint
 COMMENT ON COLUMN "referral_rewards"."used_contract_id" IS 'Hakkın kullanıldığı sözleşme; used durumunda zorunlu.';--> statement-breakpoint
 COMMENT ON COLUMN "referral_rewards"."used_student_id" IS 'Hakkın kullanıldığı sözleşmenin öğrencisi.';--> statement-breakpoint
-COMMENT ON COLUMN "referral_rewards"."used_amount_cents" IS 'Sözleşmeye uygulanan tutar, kuruş; indirim tavanını aşan kısım düşer ve devretmez (DOM-FIN-021).';--> statement-breakpoint
+COMMENT ON COLUMN "referral_rewards"."used_amount_cents" IS 'Sözleşmeye uygulanan tutar, kuruş; amount_cents değerini aşamaz, indirim tavanını aşan kısım düşer ve devretmez (DOM-FIN-021).';--> statement-breakpoint
 COMMENT ON COLUMN "referral_rewards"."used_by_user_id" IS 'Sözleşmeyi işleyen görevli.';--> statement-breakpoint
 COMMENT ON COLUMN "referral_rewards"."cancelled_at" IS 'Hakkın iptal edildiği an.';--> statement-breakpoint
 COMMENT ON COLUMN "referral_rewards"."cancel_reason" IS 'refunded_before_start: öğretim başlamadan iade; withdrawn_before_earned: ilk taksit ödenmeden ayrılış. Aileye gösterilmez.';--> statement-breakpoint

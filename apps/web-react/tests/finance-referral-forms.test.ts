@@ -6,7 +6,7 @@ import {
   type EnrollmentFormValues,
 } from '@kampus/school-core/lib/enrollment.ts'
 import { enrollmentServerError, prospectChangeValues } from '../src/pages/crm/enrollment-form.ts'
-import { referralOptionLabel, referralValueLabel } from '../src/pages/finance/referral-forms.ts'
+import { referralOptionLabel } from '../src/pages/finance/referral-forms.ts'
 import {
   renewalDefaults,
   renewalFieldFor,
@@ -56,7 +56,7 @@ test('DOM-FIN-024: aday değişince seçili hak taşınmaz; sunucu hatası alan�
   assert.equal(error.step, 2)
 })
 
-test('DOM-FIN-024: önizleme hak seçiliyken tavanı aşan kısmı düşürür, hak yokken reddeder', () => {
+test('DOM-FIN-024, K-14: önizleme hakkın sabit tutarını gösterir, tavanı aşan kısmı düşürür, hak yokken reddeder', () => {
   const tariff = {
     id: 't1',
     versionNumber: 1,
@@ -71,15 +71,17 @@ test('DOM-FIN-024: önizleme hak seçiliyken tavanı aşan kısmı düşürür, 
         announcedAmountCents: 1_000_000,
       },
     ],
-    discounts: [{ kind: 'referral', percentBasisPoints: 6_000, amountCents: null }],
+    discounts: [{ kind: 'referral', percentBasisPoints: 1_000, amountCents: null }],
   } as Parameters<typeof previewEnrollment>[0]
   const options = { institutionType: 'school', level: '7' } as const
   const values = { lessonHours: '', discounts: ['referral'], extras: [] } as Pick<
     EnrollmentFormValues,
     'lessonHours' | 'discounts' | 'extras'
   >
-  const withReward = previewEnrollment(tariff, { ...values, referralRewardId: REWARD_ID }, options)
-  assert.equal(withReward.ok && withReward.price.netCents, 500_000)
+  const fixed = previewEnrollment(tariff, values, { ...options, referralRewardCents: 250_000 })
+  assert.equal(fixed.ok && fixed.price.netCents, 750_000)
+  const trimmed = previewEnrollment(tariff, values, { ...options, referralRewardCents: 600_000 })
+  assert.equal(trimmed.ok && trimmed.price.netCents, 500_000)
   assert.equal(previewEnrollment(tariff, values, options).ok, false)
 })
 
@@ -97,26 +99,17 @@ test('DOM-FIN-024: yenileme gövdesi hakkı yalnız referans kalemiyle gönderir
   assert.equal(renewalFieldFor('referralRewardId'), 'referralRewardId')
 })
 
-test('DOM-FIN-024: seçenek metninde aday yok; değer tarifeden', () => {
-  assert.equal(referralValueLabel({ percentBasisPoints: 1_250, amountCents: null }), '%12,5')
-  assert.match(referralValueLabel({ percentBasisPoints: null, amountCents: 150_000 }), /1\.500,00/)
-  assert.equal(referralValueLabel({ percentBasisPoints: null, amountCents: null }), '—')
-  assert.equal(
-    referralOptionLabel({
-      academicYear: 2026,
-      referrerStudentName: 'Zeynep Demir',
-      percentBasisPoints: 1_000,
-      amountCents: null,
-    }),
-    '2026 · Zeynep Demir · %10',
-  )
+test('DOM-FIN-024, K-14: seçenek metninde aday yok; değer hakkın sabit tutarı', () => {
   assert.match(
     referralOptionLabel({
       academicYear: 2026,
-      referrerStudentName: null,
-      percentBasisPoints: 1_000,
-      amountCents: null,
+      referrerStudentName: 'Zeynep Demir',
+      amountCents: 150_000,
     }),
+    /^2026 · Zeynep Demir · .*1\.500,00/,
+  )
+  assert.match(
+    referralOptionLabel({ academicYear: 2026, referrerStudentName: null, amountCents: 150_000 }),
     /Öğrenci/,
   )
 })

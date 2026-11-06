@@ -94,6 +94,11 @@ export const feeDiscountSchema = z
     message: 'İndirim için oran veya tutardan yalnız birini girin.',
   })
 export type FeeDiscount = z.output<typeof feeDiscountSchema>
+
+/** Kalemin tarifedeki değeri: ilan ücretinin oranı (aşağı yuvarlanır) ya da sabit tutar (DOM-FIN-020). */
+export function discountRuleAmount(rule: FeeDiscount, grossCents: number): number {
+  return rule.amountCents ?? Math.floor((grossCents * (rule.percentBasisPoints ?? 0)) / BASIS)
+}
 const feeDiscountsSchema = z.array(feeDiscountSchema).max(20).default([])
 
 const feeItemsSchema = z.array(feeItemSchema).min(1, 'En az bir ücret kalemi girin.').max(100)

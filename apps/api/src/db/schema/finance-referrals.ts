@@ -24,8 +24,8 @@ import { oneOf, requiredColumns } from './columns.ts'
 
 /**
  * Referans indirimi hakkı (DOM-FIN-024; ON-139). Satır kesin kayıtta açılır, ilk taksit ödenince hak
- * doğar, sonraki sözleşmede bir kez kullanılır. Bir aday yalnız bir referansa bağlanır. Oran ve tutar
- * kayıt yılının tarifesinden kopyadır; uygulanan tutar `used_amount_cents`'tir.
+ * doğar, sonraki sözleşmede bir kez kullanılır. Bir aday yalnız bir referansa bağlanır. Değer kesin
+ * kayıtta o yılın tarifesinden kuruş olarak sabitlenir (K-14); uygulanan tutar `used_amount_cents`'tir.
  */
 export const referralRewards = pgTable(
   'referral_rewards',
@@ -44,8 +44,7 @@ export const referralRewards = pgTable(
     referredStudentId: text('referred_student_id').notNull(),
     academicYear: integer('academic_year').notNull(),
     tariffId: text('tariff_id').notNull(),
-    percentBasisPoints: integer('percent_basis_points'),
-    amountCents: bigint('amount_cents', { mode: 'number' }),
+    amountCents: bigint('amount_cents', { mode: 'number' }).notNull(),
     status: text('status').$type<ReferralRewardStatus>().notNull().default('pending'),
     earnedAt: timestamp('earned_at', { withTimezone: true }),
     usedAt: timestamp('used_at', { withTimezone: true }),
@@ -66,9 +65,10 @@ export const referralRewards = pgTable(
       'referral_rewards_cancel_reason_check',
       sql`${table.cancelReason} is null or ${oneOf(table.cancelReason, REFERRAL_CANCEL_REASONS)}`,
     ),
+    check('referral_rewards_amount_check', sql`${table.amountCents} > 0`),
     check(
-      'referral_rewards_value_check',
-      sql`(${table.percentBasisPoints} is null) <> (${table.amountCents} is null)`,
+      'referral_rewards_used_amount_check',
+      sql`${table.usedAmountCents} is null or ${table.usedAmountCents} <= ${table.amountCents}`,
     ),
     check(
       'referral_rewards_used_check',

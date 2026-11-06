@@ -164,19 +164,20 @@ function priceRenewal(
     )
   const level = String(target.grade)
   const canApprove = session.role === 'yonetici'
+  const referralReward = requireUsableReferralReward({
+    kinds: data.discounts,
+    rules: context.tariff.discounts,
+    rewardId: data.referralRewardId,
+    reward: context.referralReward ?? null,
+    ownerParentId: student.parentId || null,
+  })
   const price = priceEnrollment(context.tariff, {
     level,
     institutionType: 'school',
     discounts: data.discounts,
     extras: data.extras,
     canApproveCapException: canApprove,
-    trimReferralToCap: data.referralRewardId !== undefined,
-  })
-  const referralRewardId = requireUsableReferralReward({
-    kinds: data.discounts,
-    rewardId: data.referralRewardId,
-    reward: context.referralReward ?? null,
-    ownerParentId: student.parentId || null,
+    referralRewardCents: referralReward?.amountCents,
   })
   const previous = context.previousTariff
     ? itemFor(context.previousTariff.items, 'tuition', level)
@@ -244,7 +245,7 @@ function priceRenewal(
     tuitionCents,
     discounts: price.discounts,
     discountCents,
-    referralRewardId,
+    referralRewardId: referralReward?.id ?? null,
     scholarship: program === null ? null : { programId: program.id, amountCents: scholarshipCents },
     netCents,
     extras: price.extras,

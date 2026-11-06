@@ -272,12 +272,16 @@ function repricedTerms(
         .map((item) => item.id),
       tuitionCents: source.grossCents,
     })
+  // Sözleşmedeki referans kalemi hakkın uygulanmış tutarıyla kalır, tarifeden yeniden hesaplanmaz
+  // (K-14); başka kalem tavanı aşırırsa reddedilir, kısaltılmaz.
+  const referralLine = source.discounts?.find((line) => line.kind === 'referral')
   const lines = discountLines(context.tariff.discounts, source.grossCents, discounts, {
     canApproveCapException: context.canApproveCapException,
+    referral: { amountCents: referralLine?.amountCents ?? 0, trimToCap: false },
   })
   // Referans kalemi yalnız kullanılan bir hakla gelir (DOM-FIN-024); ek protokolde hak işaretlenmez,
-  // bu yüzden yeni eklenemez. Sözleşmede zaten olan kalem kalabilir.
-  if (discounts.includes('referral') && !source.discounts?.some((d) => d.kind === 'referral'))
+  // bu yüzden yeni eklenemez.
+  if (discounts.includes('referral') && referralLine === undefined)
     throw new DomainError(
       'referral_reward_required',
       'Referans indirimi ek protokolle eklenmez; kesin kayıtta ya da yenilemede referans hakkıyla kullanılır.',

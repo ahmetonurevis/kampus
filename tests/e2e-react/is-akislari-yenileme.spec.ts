@@ -460,7 +460,7 @@ test.describe('kayıt yenileme', () => {
     const table = page.getByRole('table', { name: 'Referans hakları' })
     const row = table.locator('tbody tr').filter({ hasText: candidate })
     await expect(row).toContainText('Deniz Yılmaz')
-    await expect(row).toContainText('%10')
+    await expect(row).toContainText('10.000,00')
     await expect(row).toContainText('Kullanılabilir')
 
     await page.goto('/yonetici/kayit-yenileme')

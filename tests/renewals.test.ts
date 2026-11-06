@@ -315,13 +315,75 @@ test('DOM-FIN-020, -021, -022: indirim tarifedeki türden ve ilandan hesaplanır
   assert.equal(quote.netCents, 9_000_000)
   const withDiscounts = (discounts: string[]) => () =>
     quoteRenewal(state, ADMIN, { ...QUOTE, discounts }, CONTEXT)
-  unchangedOnFailure(state, withDiscounts(['referral']), 'discount_cap_exceeded')
+  unchangedOnFailure(state, withDiscounts(['referral']), 'referral_reward_required')
   unchangedOnFailure(state, withDiscounts(['corporate']), 'discount_not_in_tariff')
+  unchangedOnFailure(
+    state,
+    () =>
+      quoteRenewal(
+        state,
+        ADMIN,
+        { ...QUOTE, discounts: ['sibling', 'early_payment'] },
+        {
+          ...CONTEXT,
+          tariff: {
+            ...TARIFF,
+            discounts: [
+              { kind: 'early_payment', percentBasisPoints: 3_000, amountCents: null },
+              { kind: 'sibling', percentBasisPoints: 3_000, amountCents: null },
+            ],
+          },
+        },
+      ),
+    'discount_cap_exceeded',
+  )
   const student = state.students.find((s) => s.id === 's3')
   assert.ok(student)
   for (const other of state.students)
     if (other.id !== 's3' && other.parentId === student.parentId) other.isActive = false
   unchangedOnFailure(state, withDiscounts(['sibling']), 'sibling_discount_ineligible')
+})
+
+const REWARD_ID = '22222222-2222-4222-8222-222222222222'
+const withReward = (amountCents: number): RenewalContext => ({
+  ...CONTEXT,
+  referralReward: { id: REWARD_ID, status: 'available', referrerParentId: 'p3', amountCents },
+})
+const REFERRAL_QUOTE = { ...QUOTE, discounts: ['referral'], referralRewardId: REWARD_ID }
+
+test('DOM-FIN-024, K-14: yenileme önizlemesi hakkın sabit tutarını gösterir; bu yılın tarife oranı uygulanmaz', () => {
+  const state = seeded({ grossCents: 9_000_000 })
+  const quote = quoteRenewal(state, ADMIN, REFERRAL_QUOTE, withReward(300_000))
+  assert.deepEqual(quote.discounts, [{ kind: 'referral', amountCents: 300_000 }])
+  assert.equal(quote.discountCents, 300_000)
+  assert.equal(quote.referralRewardId, REWARD_ID)
+  assert.equal(quote.netCents, quote.tuitionCents - 300_000)
+})
+
+test('DOM-FIN-024, DOM-FIN-021: sözleşmeyi aşan hak değeri tavanla sınırlanır, kalan düşer; plan sözleşmeye aynı tutarı yazar', () => {
+  const state = seeded({ grossCents: 9_000_000 })
+  const applied = quoteRenewal(state, ADMIN, REFERRAL_QUOTE, withReward(50_000_000))
+  assert.equal(applied.discountCents, applied.announcedCents / 2)
+  const planned = plan(state, { ...PLAN, ...REFERRAL_QUOTE }, withReward(50_000_000))
+  assert.deepEqual(planned.referralUse, {
+    rewardId: REWARD_ID,
+    amountCents: applied.announcedCents / 2,
+  })
+  const contract = state.contracts.find((item) => item.id === planned.contractId)
+  assert.deepEqual(contract?.discounts, [
+    { kind: 'referral', amountCents: applied.announcedCents / 2 },
+  ])
+})
+
+test('DOM-FIN-024: ücret ilanın çok altındaysa net sıfırlanmaz; hak harcanmadan reddedilir', () => {
+  const state = seeded({ grossCents: 9_000_000 })
+  const { announcedCents } = quoteRenewal(state, ADMIN, QUOTE, CONTEXT)
+  const tuitionCents = Math.floor(announcedCents / 4)
+  unchangedOnFailure(
+    state,
+    () => quoteRenewal(state, ADMIN, { ...REFERRAL_QUOTE, tuitionCents }, withReward(tuitionCents)),
+    'discount_exceeds_gross',
+  )
 })
 
 test('DOM-FIN-022: yenilemede kardeş indirimi ücreti düşük kardeşe uygulanır; ilk çocuk alamaz', () => {

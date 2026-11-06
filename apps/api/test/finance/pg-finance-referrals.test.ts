@@ -144,8 +144,7 @@ describe('PostgreSQL 16: referans hakkının tek kullanımı', { skip: PG_SKIP }
       referredStudentId: 's-geçmiş',
       academicYear: YEAR,
       tariffId,
-      percentBasisPoints: 1_000,
-      amountCents: null,
+      amountCents: 300_000,
       now: FIXED_NOW,
     })
     await db
@@ -243,6 +242,39 @@ describe('PostgreSQL 16: referans hakkının tek kullanımı', { skip: PG_SKIP }
       .where(eq(referralRewards.institutionId, t.id))
     assert.equal(row?.status, 'used')
     assert.equal(row?.version, 2)
+  })
+
+  test('DOM-FIN-024, K-14: veritabanı sıfır değerli hakkı ve değerini aşan uygulamayı reddeder', async () => {
+    const t = await institution()
+    await assert.rejects(
+      insertReferralReward(db, t.id, {
+        id: randomUUID(),
+        prospectId: 'pr-sıfır',
+        referrerStudentId: REFERRER,
+        referrerParentId: REFERRER_PARENT,
+        referredStudentId: 's-sıfır',
+        academicYear: YEAR,
+        tariffId: t.tariffId,
+        amountCents: 0,
+        now: FIXED_NOW,
+      }),
+    )
+    await assert.rejects(
+      markReferralRewardUsed(db, t.id, {
+        id: t.rewardId,
+        contractId: 'c-aşan',
+        studentId: REFERRER,
+        amountCents: 300_001,
+        userId: 'test',
+        now: FIXED_NOW,
+      }),
+    )
+    const [row] = await db
+      .select()
+      .from(referralRewards)
+      .where(eq(referralRewards.institutionId, t.id))
+    assert.equal(row?.status, 'available')
+    assert.equal(row?.usedAmountCents, null)
   })
 
   test('DOM-FIN-024: kurum kilidi atlansa da depo ikinci kullanımı işaretlemez', async () => {

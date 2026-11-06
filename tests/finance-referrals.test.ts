@@ -22,6 +22,7 @@ const TARIFF = {
   discounts: [{ kind: 'referral' as const, percentBasisPoints: 1_000, amountCents: null }],
 }
 const FAMILY_PARENT = 'p3'
+const GROSS = 3_000_000
 
 function seeded() {
   const state = createSeed(NOW)
@@ -39,7 +40,7 @@ const isCode =
   (error: unknown) =>
     error instanceof DomainError && error.code === code && error.kind === kind
 
-test('DOM-FIN-024: taslak kim, hangi aday, yıl ve tarifenin oran ya da tutarını taşır', () => {
+test('DOM-FIN-024, K-14: taslak kim, hangi aday, yıl ve kayıt anında sabitlenen kuruş değerini taşır', () => {
   const { state, prospect, referred } = seeded()
   assert.deepEqual(
     referralRewardDraft(state, {
@@ -47,6 +48,7 @@ test('DOM-FIN-024: taslak kim, hangi aday, yıl ve tarifenin oran ya da tutarın
       studentId: referred.id,
       academicYear: 2026,
       tariff: TARIFF,
+      grossCents: GROSS,
     }),
     {
       prospectId: prospect.id,
@@ -55,10 +57,28 @@ test('DOM-FIN-024: taslak kim, hangi aday, yıl ve tarifenin oran ya da tutarın
       referredStudentId: referred.id,
       academicYear: 2026,
       tariffId: 'tariff-1',
-      percentBasisPoints: 1_000,
-      amountCents: null,
+      amountCents: 300_000,
     },
   )
+})
+
+test('DOM-FIN-024, K-14: değer oranlı kuralda ilan ücretinin oranı, sabit kuralda tutarın kendisidir; sıfır kuruşluk hak açılmaz', () => {
+  const { state, prospect, referred } = seeded()
+  const amountOf = (
+    rule: { percentBasisPoints: number | null; amountCents: number | null },
+    grossCents = GROSS,
+  ) =>
+    referralRewardDraft(state, {
+      prospectId: prospect.id,
+      studentId: referred.id,
+      academicYear: 2026,
+      tariff: { id: 'tariff-1', discounts: [{ kind: 'referral', ...rule }] },
+      grossCents,
+    })?.amountCents
+  assert.equal(amountOf({ percentBasisPoints: null, amountCents: 150_000 }), 150_000)
+  // Oran aşağı yuvarlanır: 1.001 kuruşun %10'u 100 kuruştur.
+  assert.equal(amountOf({ percentBasisPoints: 1_000, amountCents: null }, 1_001), 100)
+  assert.equal(amountOf({ percentBasisPoints: 1, amountCents: null }, 100), undefined)
 })
 
 test('DOM-FIN-024: ilan yoksa, referans yoksa ya da aynı aileyse hak açılmaz', () => {
@@ -69,6 +89,7 @@ test('DOM-FIN-024: ilan yoksa, referans yoksa ya da aynı aileyse hak açılmaz'
       studentId: referred.id,
       academicYear: 2026,
       tariff,
+      grossCents: GROSS,
     })
   assert.equal(draft({ ...TARIFF, discounts: [] }), null)
 
@@ -102,10 +123,16 @@ test('DOM-FIN-024: ilan yoksa, referans yoksa ya da aynı aileyse hak açılmaz'
   assert.equal(draft(), null)
 })
 
-const usable = { id: 'r1', status: 'available', referrerParentId: 'p3' } as const
+const usable = {
+  id: 'r1',
+  status: 'available',
+  referrerParentId: 'p3',
+  amountCents: 300_000,
+} as const
 const use = (overrides = {}) =>
   requireUsableReferralReward({
     kinds: ['referral'],
+    rules: TARIFF.discounts,
     rewardId: 'r1',
     reward: usable,
     ownerParentId: 'p3',
@@ -113,7 +140,7 @@ const use = (overrides = {}) =>
   })
 
 test('DOM-FIN-024: hak yalnız sahibinin ailesinde, kullanılabilir durumda ve kalemle birlikte kullanılır', () => {
-  assert.equal(use(), 'r1')
+  assert.deepEqual(use(), usable)
   assert.equal(use({ kinds: [], rewardId: undefined, reward: null }), null)
   assert.throws(() => use({ rewardId: undefined }), isCode('referral_reward_required'))
   assert.throws(() => use({ kinds: ['sibling'] }), isCode('referral_discount_required'))
@@ -138,14 +165,45 @@ test('DOM-FIN-024: hak yalnız sahibinin ailesinde, kullanılabilir durumda ve k
   )
 })
 
+test('DOM-FIN-024: kullanıldığı yılın tarifesinde ilan yoksa hak denetlenmez, fiyatlama reddeder', () => {
+  assert.equal(use({ rules: [], rewardId: undefined, reward: null }), null)
+  assert.equal(use({ rules: [] }), null)
+  assert.throws(
+    () =>
+      discountLines([], 100_000, ['referral'], {
+        canApproveCapException: false,
+        referral: { amountCents: 10_000, trimToCap: true },
+      }),
+    isCode('discount_not_in_tariff'),
+  )
+})
+
+test('DOM-FIN-024, K-14: kalemin tutarı tarifeden değil haktan gelir; hak yoksa kalem fiyatlanmaz', () => {
+  const rules = [{ kind: 'referral' as const, percentBasisPoints: 2_000, amountCents: null }]
+  assert.deepEqual(
+    discountLines(rules, 100_000, ['referral'], {
+      canApproveCapException: false,
+      referral: { amountCents: 7_500, trimToCap: true },
+    }),
+    [{ kind: 'referral', amountCents: 7_500 }],
+  )
+  assert.throws(
+    () => discountLines(rules, 100_000, ['referral'], { canApproveCapException: false }),
+    isCode('referral_reward_required'),
+  )
+})
+
 test('DOM-FIN-024: DOM-FIN-021 tavanını aşan referans kalemi düşer, kalem yoksa ya da yer yoksa kısaltılmaz', () => {
   const rules = [
-    { kind: 'referral' as const, percentBasisPoints: 6_000, amountCents: null },
+    { kind: 'referral' as const, percentBasisPoints: 1_000, amountCents: null },
     { kind: 'sibling' as const, percentBasisPoints: 5_000, amountCents: null },
     { kind: 'early_payment' as const, percentBasisPoints: 2_000, amountCents: null },
   ]
   const lines = (kinds: ('referral' | 'sibling' | 'early_payment')[], trim = true) =>
-    discountLines(rules, 100_000, kinds, { canApproveCapException: false, trimReferralToCap: trim })
+    discountLines(rules, 100_000, kinds, {
+      canApproveCapException: false,
+      referral: { amountCents: 60_000, trimToCap: trim },
+    })
   assert.deepEqual(lines(['referral']), [{ kind: 'referral', amountCents: 50_000 }])
   assert.deepEqual(lines(['early_payment', 'referral']), [
     { kind: 'early_payment', amountCents: 20_000 },
@@ -153,10 +211,41 @@ test('DOM-FIN-024: DOM-FIN-021 tavanını aşan referans kalemi düşer, kalem y
   ])
   // Yer kalmadıysa hak boşa harcanmaz, tavan reddi kalır.
   assert.throws(() => lines(['sibling', 'referral']), isCode('discount_cap_exceeded'))
-  // Hak yoksa eski davranış: reddedilir.
+  // Ek protokol hak kullanmaz: sözleşmedeki kalem kısaltılmaz, reddedilir.
   assert.throws(() => lines(['referral'], false), isCode('discount_cap_exceeded'))
   // Referans kalemi yoksa kısaltacak bir şey yoktur.
   assert.throws(() => lines(['sibling', 'early_payment']), isCode('discount_cap_exceeded'))
+})
+
+test('DOM-FIN-024, DOM-FIN-021: sözleşmeyi aşan hak değeri tavanla sınırlanır, kalan yanar; tavan dışı istisnada net sıfırlanmaz, hak harcanmaz', () => {
+  const rules = [
+    { kind: 'referral' as const, percentBasisPoints: 1_000, amountCents: null },
+    { kind: 'staff_child' as const, percentBasisPoints: 6_000, amountCents: null },
+  ]
+  // Hak değeri sözleşmeyi aşıyor: kalem ilan ücretinin yarısına iner, kalan devretmez.
+  assert.deepEqual(
+    discountLines(rules, 100_000, ['referral'], {
+      canApproveCapException: false,
+      referral: { amountCents: 250_000, trimToCap: true },
+    }),
+    [{ kind: 'referral', amountCents: 50_000 }],
+  )
+  // Personel çocuğu tavana girmez: kalan ücreti karşılayamayan hak reddedilir.
+  assert.throws(
+    () =>
+      discountLines(rules, 100_000, ['staff_child', 'referral'], {
+        canApproveCapException: true,
+        referral: { amountCents: 40_000, trimToCap: true },
+      }),
+    isCode('discount_exceeds_gross'),
+  )
+  assert.equal(
+    discountLines(rules, 100_000, ['staff_child', 'referral'], {
+      canApproveCapException: true,
+      referral: { amountCents: 39_999, trimToCap: true },
+    }).reduce((sum, line) => sum + line.amountCents, 0),
+    99_999,
+  )
 })
 
 test('DOM-FIN-024: kullanım tutarı sözleşmenin referans kalemidir', () => {

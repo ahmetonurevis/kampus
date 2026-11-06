@@ -14,6 +14,9 @@ export type ReferralRewardsQuery = NonNullable<
 export type ReferralReward =
   operations['listReferralRewards']['responses'][200]['content']['application/json']['data'][number]
 
+/** Hak sahibi süzgeci: kesin kayıtta veli, yenilemede öğrencinin velisi. */
+export type ReferralRewardOwnerQuery = Pick<ReferralRewardsQuery, 'parentId' | 'familyOfStudentId'>
+
 export function useReferralRewards(
   query: ReferralRewardsQuery = {},
   options: { enabled?: boolean } = {},
@@ -24,4 +27,16 @@ export function useReferralRewards(
     request: (client, signal) =>
       client.GET('/api/v1/finance/referral-rewards', { params: { query }, signal }),
   })
+}
+
+/**
+ * Ailenin kullanılabilir hakları: form alanı ve önizleme aynı sorguyu paylaşır, önizleme seçili hakkın
+ * sabit tutarını buradan okur (DOM-FIN-024). Sahip yoksa sorgu atılmaz.
+ */
+export function useAvailableReferralRewards(owner: ReferralRewardOwnerQuery | null) {
+  const rewards = useReferralRewards(
+    { ...owner, status: 'available', pageSize: 100 },
+    { enabled: owner !== null },
+  )
+  return { items: owner === null ? [] : (rewards.data?.data ?? []) }
 }

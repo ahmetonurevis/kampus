@@ -28,6 +28,7 @@ import { dayKey, money } from '@kampus/school-core/lib/format.ts'
 import { OPEN_PROSPECT_STAGES } from '@kampus/school-core/lib/prospects.ts'
 import type { InstitutionType } from '@kampus/school-core/modules/collection-modules.ts'
 import { useEffectiveFeeTariff } from '@kampus/react-shared/use-fee-tariffs.ts'
+import { useAvailableReferralRewards } from '@kampus/react-shared/use-finance-referrals.ts'
 import {
   useEnrollProspect,
   useGuardianMatches,
@@ -324,12 +325,22 @@ function EnrollmentForm({
     { enabled: session?.role === 'yonetici' },
   )
   const awardable = awardablePrograms(scholarshipPrograms.data?.data ?? [])
+  // Referans kalemi hakkın sabit tutarıyla önizlenir; alan da aynı sorguyu okur (DOM-FIN-024).
+  const referralOwner =
+    values.discounts?.includes('referral') &&
+    values.guardianMode === 'existing' &&
+    values.existingParentId
+      ? { parentId: values.existingParentId }
+      : null
+  const { items: referralRewards } = useAvailableReferralRewards(referralOwner)
   const preview = previewEnrollment(tariff, values, {
     institutionType,
     level:
       institutionType === 'language_school'
         ? (room?.record.level ?? '')
         : String(room?.record.grade ?? ''),
+    referralRewardCents: referralRewards.find((item) => item.id === values.referralRewardId)
+      ?.amountCents,
   })
   // Burs indirim değildir, netten düşer; kesin hesabı sunucu yapar (DOM-FIN-025).
   const selectedProgram = awardable.find((item) => item.id === values.scholarshipProgramId)
@@ -796,11 +807,7 @@ function EnrollmentForm({
               {values.discounts?.includes('referral') ? (
                 <ReferralRewardField
                   id="kayit-referans-hakki"
-                  query={
-                    values.guardianMode === 'existing' && values.existingParentId
-                      ? { parentId: values.existingParentId }
-                      : null
-                  }
+                  query={referralOwner}
                   error={errors.referralRewardId}
                   register={form.register('referralRewardId')}
                 />

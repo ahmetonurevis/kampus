@@ -1,5 +1,5 @@
 {
-  "id": "3124847a-191f-484d-9cdf-1c3586443e9e",
+  "id": "5e3ade0f-245f-4d6f-9257-ecc3fc84b9b2",
   "prevId": "f58a7c9e-ac9b-4263-a179-40ad00d6e517",
   "version": "7",
   "dialect": "postgresql",
@@ -5878,17 +5878,11 @@
           "primaryKey": false,
           "notNull": true
         },
-        "percent_basis_points": {
-          "name": "percent_basis_points",
-          "type": "integer",
-          "primaryKey": false,
-          "notNull": false
-        },
         "amount_cents": {
           "name": "amount_cents",
           "type": "bigint",
           "primaryKey": false,
-          "notNull": false
+          "notNull": true
         },
         "status": {
           "name": "status",
@@ -6116,9 +6110,13 @@
           "name": "referral_rewards_cancel_reason_check",
           "value": "\"referral_rewards\".\"cancel_reason\" is null or \"referral_rewards\".\"cancel_reason\" in ('refunded_before_start', 'withdrawn_before_earned')"
         },
-        "referral_rewards_value_check": {
-          "name": "referral_rewards_value_check",
-          "value": "(\"referral_rewards\".\"percent_basis_points\" is null) <> (\"referral_rewards\".\"amount_cents\" is null)"
+        "referral_rewards_amount_check": {
+          "name": "referral_rewards_amount_check",
+          "value": "\"referral_rewards\".\"amount_cents\" > 0"
+        },
+        "referral_rewards_used_amount_check": {
+          "name": "referral_rewards_used_amount_check",
+          "value": "\"referral_rewards\".\"used_amount_cents\" is null or \"referral_rewards\".\"used_amount_cents\" <= \"referral_rewards\".\"amount_cents\""
         },
         "referral_rewards_used_check": {
           "name": "referral_rewards_used_check",

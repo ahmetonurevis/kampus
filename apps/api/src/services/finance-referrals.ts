@@ -209,8 +209,8 @@ export interface ReferralRewardView {
   status: ReferralRewardStatus
   referrerStudentId: string
   referrerStudentName: string | null
-  percentBasisPoints: number | null
-  amountCents: number | null
+  /** Kesin kayıtta sabitlenen hak değeri, kuruş; uygulanan tutar `usedAmountCents`. */
+  amountCents: number
   earnedAt: string | null
   usedAt: string | null
   usedAmountCents: number | null
@@ -282,7 +282,6 @@ export async function listReferralRewardsFor(
       status: item.status,
       referrerStudentId: item.referrerStudentId,
       referrerStudentName: nameById.get(item.referrerStudentId) ?? null,
-      percentBasisPoints: item.percentBasisPoints,
       amountCents: item.amountCents,
       earnedAt: item.earnedAt?.toISOString() ?? null,
       usedAt: item.usedAt?.toISOString() ?? null,

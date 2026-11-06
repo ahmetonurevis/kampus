@@ -63796,31 +63796,11 @@
                               "null"
                             ]
                           },
-                          "percentBasisPoints": {
-                            "anyOf": [
-                              {
-                                "type": "integer",
-                                "minimum": -9007199254740991,
-                                "maximum": 9007199254740991
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ],
-                            "description": "Kayıt yılı tarifesindeki oran, on binde birlik"
-                          },
                           "amountCents": {
-                            "anyOf": [
-                              {
-                                "type": "integer",
-                                "minimum": -9007199254740991,
-                                "maximum": 9007199254740991
-                              },
-                              {
-                                "type": "null"
-                              }
-                            ],
-                            "description": "Kayıt yılı tarifesindeki tutar, kuruş"
+                            "type": "integer",
+                            "minimum": -9007199254740991,
+                            "maximum": 9007199254740991,
+                            "description": "Kesin kayıtta sabitlenen hak değeri, kuruş"
                           },
                           "earnedAt": {
                             "description": "İlk taksitin ödenmesiyle hakkın doğduğu an",
@@ -63846,7 +63826,7 @@
                                 "type": "null"
                               }
                             ],
-                            "description": "Sözleşmeye uygulanan tutar, kuruş"
+                            "description": "Sözleşmeye uygulanan tutar, kuruş; tavanı aşan kısım düşer"
                           },
                           "cancelledAt": {
                             "type": [
@@ -63904,7 +63884,6 @@
                           "status",
                           "referrerStudentId",
                           "referrerStudentName",
-                          "percentBasisPoints",
                           "amountCents",
                           "earnedAt",
                           "usedAt",

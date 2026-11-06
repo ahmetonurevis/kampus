@@ -18,7 +18,6 @@ const COLUMNS = {
   referrerParentId: referralRewards.referrerParentId,
   referredStudentId: referralRewards.referredStudentId,
   academicYear: referralRewards.academicYear,
-  percentBasisPoints: referralRewards.percentBasisPoints,
   amountCents: referralRewards.amountCents,
   status: referralRewards.status,
   earnedAt: referralRewards.earnedAt,
@@ -36,8 +35,7 @@ export type StoredReferralReward = {
   referrerParentId: string
   referredStudentId: string
   academicYear: number
-  percentBasisPoints: number | null
-  amountCents: number | null
+  amountCents: number
   status: ReferralRewardStatus
   earnedAt: Date | null
   usedAt: Date | null

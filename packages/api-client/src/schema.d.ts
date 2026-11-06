@@ -30086,14 +30086,12 @@ export interface operations {
                             /** @description Referans veren öğrenci */
                             referrerStudentId: string;
                             referrerStudentName: string | null;
-                            /** @description Kayıt yılı tarifesindeki oran, on binde birlik */
-                            percentBasisPoints: number | null;
-                            /** @description Kayıt yılı tarifesindeki tutar, kuruş */
-                            amountCents: number | null;
+                            /** @description Kesin kayıtta sabitlenen hak değeri, kuruş */
+                            amountCents: number;
                             /** @description İlk taksitin ödenmesiyle hakkın doğduğu an */
                             earnedAt: string | null;
                             usedAt: string | null;
-                            /** @description Sözleşmeye uygulanan tutar, kuruş */
+                            /** @description Sözleşmeye uygulanan tutar, kuruş; tavanı aşan kısım düşer */
                             usedAmountCents: number | null;
                             cancelledAt: string | null;
                             /** @description Aday; yalnız personele döner */

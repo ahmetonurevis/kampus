@@ -621,14 +621,15 @@ test('DOM-FIN-024: referans kalemi ek protokolle yeni eklenmez; sözleşmede zat
     isDomainError('referral_reward_required', 'rule'),
   )
   assert.deepEqual(state, before)
-  contract.discounts = [{ kind: 'referral', amountCents: 1_000_000 }]
+  // K-14: kalem hakkın uygulanmış tutarıyla kalır, tarife oranından yeniden hesaplanmaz.
+  contract.discounts = [{ kind: 'referral', amountCents: 777_000 }]
   const amendment = amendContract(
     state,
     'contract-1',
     { ...AMEND, discounts: ['referral'] },
     amender({ tariff, userId: 'u-admin' }),
   )
-  assert.deepEqual(amendment.discounts, [{ kind: 'referral', amountCents: 1_000_000 }])
+  assert.deepEqual(amendment.discounts, [{ kind: 'referral', amountCents: 777_000 }])
 })
 
 test('DOM-FIN-022: kardeş indirimi aynı veliye bağlı aktif öğrenci ister', () => {

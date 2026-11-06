@@ -177,7 +177,10 @@ describe('DOM-FIN-024: referans indirimi hakkı', () => {
     return id
   }
 
-  async function institution(discounts: readonly unknown[] = [REFERRAL_10]) {
+  async function institution(
+    discounts: readonly unknown[] = [REFERRAL_10],
+    nextDiscounts: readonly unknown[] = discounts,
+  ) {
     const created = await createInstitution(app)
     await insertMissingRecords(
       db,
@@ -193,7 +196,7 @@ describe('DOM-FIN-024: referans indirimi hakkı', () => {
       FIXED_NOW,
     )
     const tariffId = await publish(created.id, YEAR, discounts)
-    const nextTariffId = await publish(created.id, NEXT_YEAR, discounts)
+    const nextTariffId = await publish(created.id, NEXT_YEAR, nextDiscounts)
     await db.insert(priceIndexRates).values({
       institutionId: created.id,
       academicYear: NEXT_YEAR,
@@ -275,6 +278,14 @@ describe('DOM-FIN-024: referans indirimi hakkı', () => {
     discounts: ['referral'],
     ...(rewardId === undefined ? {} : { referralRewardId: rewardId }),
   })
+  const quoteBody = (rewardId: string) => ({
+    studentId: REFERRER,
+    targetClassId: 'c1',
+    academicYear: NEXT_YEAR,
+    installmentCount: 4,
+    discounts: ['referral'],
+    referralRewardId: rewardId,
+  })
   async function notifications(institutionId: string) {
     return loadRecords(db, institutionId, ['notifications'])
   }
@@ -324,8 +335,7 @@ describe('DOM-FIN-024: referans indirimi hakkı', () => {
     assert.equal(opened?.referrerParentId, REFERRER_PARENT)
     assert.equal(opened?.referredStudentId, referredId)
     assert.equal(opened?.academicYear, YEAR)
-    assert.equal(opened?.percentBasisPoints, 1_000)
-    assert.equal(opened?.amountCents, null)
+    assert.equal(opened?.amountCents, ANNOUNCED_CENTS / 10)
     assert.equal(opened?.tariffId, t.tariffId)
     assert.equal((await notifications(t.id)).some(isRewardNotice), false)
 
@@ -419,7 +429,7 @@ describe('DOM-FIN-024: referans indirimi hakkı', () => {
 
   // --- Kullanım ------------------------------------------------------------------------------
 
-  test('DOM-FIN-024: yenilemede kalem tarifeden hesaplanır, hak aynı işlemde tek sefer kullanılır', async () => {
+  test('DOM-FIN-024, K-14: yenilemede kalem hakkın kayıt anındaki değeridir, hak aynı işlemde tek sefer kullanılır', async () => {
     const t = await institution()
     const { rewardId } = await earned(t)
     const created = await post(RENEWALS, t.admin, renewalBody(t, rewardId))
@@ -448,6 +458,44 @@ describe('DOM-FIN-024: referans indirimi hakkı', () => {
     assert.deepEqual(await rewards(t.id), [row])
   })
 
+  test('DOM-FIN-024, K-14: değer kayıt yılının tarifesinden sabitlenir; sonraki yılın oranı önizlemeyi ve sözleşmeyi değiştirmez', async () => {
+    const t = await institution(
+      [REFERRAL_10],
+      [{ kind: 'referral', percentBasisPoints: 2_000, amountCents: null }],
+    )
+    const { rewardId } = await earned(t)
+    const frozen = ANNOUNCED_CENTS / 10
+    const quote = await post(`${RENEWALS}/quote`, t.admin, quoteBody(rewardId))
+    assert.equal(quote.statusCode, 200, quote.body)
+    assert.deepEqual(quote.json().data.discounts, [{ kind: 'referral', amountCents: frozen }])
+
+    const created = await post(RENEWALS, t.admin, renewalBody(t, rewardId))
+    assert.equal(created.statusCode, 201, created.body)
+    const [row] = await rewards(t.id)
+    assert.equal(row?.amountCents, frozen)
+    assert.equal(row?.usedAmountCents, frozen)
+    const [contract] = await loadFinanceRecords(db, t.id, 'contracts', {
+      ids: [String(created.json().data.contractId)],
+    })
+    assert.deepEqual(contract?.data.discounts, [{ kind: 'referral', amountCents: frozen }])
+  })
+
+  test('DOM-FIN-024, K-14: sabit tutarlı kural hakka olduğu gibi yazılır; kullanım yılında ilan kalkınca hak harcanmaz', async () => {
+    const t = await institution(
+      [{ kind: 'referral', percentBasisPoints: null, amountCents: 125_000 }],
+      [],
+    )
+    const { rewardId } = await earned(t)
+    const [before] = await rewards(t.id)
+    assert.equal(before?.amountCents, 125_000)
+    assertError(
+      await post(RENEWALS, t.admin, renewalBody(t, rewardId)),
+      422,
+      'discount_not_in_tariff',
+    )
+    assert.deepEqual(await rewards(t.id), [before])
+  })
+
   test('DOM-FIN-024: mükerrer istek aynı yanıtı döner, hak tek kez işaretlenir', async () => {
     const t = await institution()
     const { rewardId } = await earned(t)
@@ -465,14 +513,7 @@ describe('DOM-FIN-024: referans indirimi hakkı', () => {
   test('DOM-FIN-024: kullanım önizlemesi hakkı işaretlemez', async () => {
     const t = await institution()
     const { rewardId } = await earned(t)
-    const response = await post(`${RENEWALS}/quote`, t.admin, {
-      studentId: REFERRER,
-      targetClassId: 'c1',
-      academicYear: NEXT_YEAR,
-      installmentCount: 4,
-      discounts: ['referral'],
-      referralRewardId: rewardId,
-    })
+    const response = await post(`${RENEWALS}/quote`, t.admin, quoteBody(rewardId))
     assert.equal(response.statusCode, 200, response.body)
     assert.deepEqual(response.json().data.discounts, [
       { kind: 'referral', amountCents: ANNOUNCED_CENTS / 10 },
@@ -563,6 +604,24 @@ describe('DOM-FIN-024: referans indirimi hakkı', () => {
     assert.equal(row?.status, 'used')
   })
 
+  test('DOM-FIN-024: hak değeri sözleşmeyi aşsa da uygulanan tutar tavandadır, kalan yanar, hak tek kullanımdır', async () => {
+    const t = await institution([
+      { kind: 'referral', percentBasisPoints: null, amountCents: 2 * ANNOUNCED_CENTS },
+    ])
+    const { rewardId } = await earned(t)
+    const created = await post(RENEWALS, t.admin, renewalBody(t, rewardId))
+    assert.equal(created.statusCode, 201, created.body)
+    const [row] = await rewards(t.id)
+    assert.equal(row?.amountCents, 2 * ANNOUNCED_CENTS)
+    assert.equal(row?.usedAmountCents, ANNOUNCED_CENTS / 2)
+    assert.equal(row?.status, 'used')
+    const again = await post(RENEWALS, t.admin, {
+      ...renewalBody(t, rewardId),
+      firstDueDate: '2027-10-15',
+    })
+    assert.equal(again.statusCode, 409, again.body)
+  })
+
   // --- İptal ---------------------------------------------------------------------------------
 
   const withdraw = (t: Tenant, studentId: string, body: unknown) =>
@@ -619,6 +678,7 @@ describe('DOM-FIN-024: referans indirimi hakkı', () => {
     assert.equal(row?.status, 'available')
     assert.equal(row?.usedContractId, null)
     assert.equal(row?.usedAmountCents, null)
+    assert.equal(row?.amountCents, ANNOUNCED_CENTS / 10, 'dönen hakkın değeri değişmez')
   })
 
   // --- Okuma ---------------------------------------------------------------------------------
@@ -636,7 +696,7 @@ describe('DOM-FIN-024: referans indirimi hakkı', () => {
     assert.equal(item.referredStudentId, referredId)
     assert.equal(item.referredStudentName, BASE_PROSPECT?.name)
     assert.equal(item.referrerParentId, REFERRER_PARENT)
-    assert.equal(item.percentBasisPoints, 1_000)
+    assert.equal(item.amountCents, ANNOUNCED_CENTS / 10)
 
     const filtered = async (query: string) =>
       (await get(`${LIST}?${query}`, frontDesk)).json().meta.total

@@ -15,6 +15,7 @@ import {
 import {
   referralRewardDraft,
   referralRewardIdSchema,
+  referralRewardRequiredError,
   referralUseOf,
   requireUsableReferralReward,
   type ReferralRewardFacts,
@@ -25,6 +26,7 @@ import { OPEN_PROSPECT_STAGES } from './prospects.ts'
 import { assertWithinCeiling, renewalCeiling, type PriceIndexEntry } from './renewal-ceiling.ts'
 import { renewalQuote, workflowSchemas } from './school-workflows.ts'
 import {
+  discountRuleAmount,
   FEE_DISCOUNT_KINDS,
   FEE_ITEM_KINDS,
   type FeeDiscount,
@@ -258,8 +260,8 @@ export function requireSiblingDiscountEligible(
 }
 
 /**
- * Referans hakkının tavanı aşan kısmı düşer ve devretmez (DOM-FIN-024). Hak kalemi tamamen düşüyorsa
- * kısaltılmaz: tavan reddi hakkı boşa harcatmaz.
+ * Referans hakkının tavanı aşan kısmı düşer ve devretmez, hak tek kullanımlıktır (DOM-FIN-024). Hak
+ * kalemi tamamen düşüyorsa kısaltılmaz: tavan reddi hakkı boşa harcatmaz.
  */
 function trimReferralLine(lines: DiscountLine[], grossCents: number): void {
   const line = lines.find((item) => item.kind === 'referral')
@@ -271,14 +273,18 @@ function trimReferralLine(lines: DiscountLine[], grossCents: number): void {
 
 /**
  * İndirim kalemleri ilan ücreti üzerinden hesaplanır, zincirlenmez (DOM-FIN-020). Personel çocuğu
- * tavanın tek istisnasıdır ve yönetici onayı ister (DOM-FIN-021). Kesin kayıt ve ek protokol ortak
- * kullanır.
+ * tavanın tek istisnasıdır ve yönetici onayı ister (DOM-FIN-021). Referans kalemi tarifeden değil
+ * `referral` tutarından gelir (K-14): hak kullanımında tavanı aşan kısmı düşer, ek protokolde
+ * sözleşmedeki kalem olduğu gibi kalır. Kesin kayıt ve ek protokol ortak kullanır.
  */
 export function discountLines(
   rules: readonly FeeDiscount[],
   grossCents: number,
   kinds: readonly FeeDiscountKind[],
-  options: { canApproveCapException: boolean; trimReferralToCap?: boolean | undefined },
+  options: {
+    canApproveCapException: boolean
+    referral?: { amountCents: number; trimToCap: boolean } | undefined
+  },
 ): DiscountLine[] {
   if (new Set(kinds).size !== kinds.length)
     throw new DomainError('discount_duplicate', 'Aynı indirim iki kez seçilemez.', {
@@ -290,12 +296,12 @@ export function discountLines(
       throw new DomainError('discount_not_in_tariff', 'Bu indirim tarifede ilan edilmemiş.', {
         path: ['discounts'],
       })
-    const amountCents =
-      rule.amountCents ?? Math.floor((grossCents * (rule.percentBasisPoints ?? 0)) / BASIS)
-    return { kind, amountCents }
+    if (kind !== 'referral') return { kind, amountCents: discountRuleAmount(rule, grossCents) }
+    if (options.referral === undefined) throw referralRewardRequiredError()
+    return { kind, amountCents: options.referral.amountCents }
   })
   const exempt = kinds.includes('staff_child')
-  if (!exempt && options.trimReferralToCap === true) trimReferralLine(lines, grossCents)
+  if (!exempt && options.referral?.trimToCap === true) trimReferralLine(lines, grossCents)
   if (exempt && !options.canApproveCapException)
     throw new DomainError(
       'discount_approval_required',
@@ -328,8 +334,8 @@ export function priceEnrollment(
     discounts: readonly FeeDiscountKind[]
     extras: readonly FeeItemKind[]
     canApproveCapException: boolean
-    /** Kalem bir referans hakkından geliyor: tavanı aşan kısım düşer (DOM-FIN-024). */
-    trimReferralToCap?: boolean | undefined
+    /** Kullanılan referans hakkının sabit tutarı; tavanı aşan kısım düşer (DOM-FIN-024). */
+    referralRewardCents?: number | undefined
   },
 ): EnrollmentPrice {
   const tuition = itemFor(tariff.items, 'tuition', request.level)
@@ -349,7 +355,10 @@ export function priceEnrollment(
   }
   const discounts = discountLines(tariff.discounts, grossCents, request.discounts, {
     canApproveCapException: request.canApproveCapException,
-    trimReferralToCap: request.trimReferralToCap,
+    referral:
+      request.referralRewardCents === undefined
+        ? undefined
+        : { amountCents: request.referralRewardCents, trimToCap: true },
   })
   const total = discounts.reduce((sum, line) => sum + line.amountCents, 0)
   if (new Set(request.extras).size !== request.extras.length)
@@ -624,6 +633,13 @@ export function enrollProspectWithTariff(
       { path: ['guardian'] },
     )
   const cls = state.classes.find((item) => item.id === data.classId && item.isActive)
+  const referralReward = requireUsableReferralReward({
+    kinds: data.discounts,
+    rules: context.tariff.discounts,
+    rewardId: data.referralRewardId,
+    reward: context.referralReward ?? null,
+    ownerParentId: existing?.id ?? null,
+  })
   const price = priceEnrollment(context.tariff, {
     // Okulda düzey sınıf derecesi, dil okulunda sınıfın CEFR düzeyidir (`level`).
     level: !cls
@@ -636,13 +652,7 @@ export function enrollProspectWithTariff(
     discounts: data.discounts,
     extras: data.extras,
     canApproveCapException: context.canApproveCapException,
-    trimReferralToCap: data.referralRewardId !== undefined,
-  })
-  const referralRewardId = requireUsableReferralReward({
-    kinds: data.discounts,
-    rewardId: data.referralRewardId,
-    reward: context.referralReward ?? null,
-    ownerParentId: existing?.id ?? null,
+    referralRewardCents: referralReward?.amountCents,
   })
   // Kardeş indirimi ücreti düşük kardeşe verilir; sıra ilan ücretiyle kurulur (DOM-FIN-022).
   if (data.discounts.includes('sibling'))
@@ -725,13 +735,14 @@ export function enrollProspectWithTariff(
     scholarshipAward:
       program === null ? null : { programId: program.id, amountCents: scholarshipCents },
     /** Bu kayıtta kullanılan referans hakkı; servis aynı işlemde işaretler (DOM-FIN-024). */
-    referralUse: referralUseOf(referralRewardId, price.discounts),
+    referralUse: referralUseOf(referralReward?.id ?? null, price.discounts),
     /** Bu kaydın referans verene açtığı hak; servis aynı işlemde yazar (DOM-FIN-024). */
     referralDraft: referralRewardDraft(state, {
       prospectId,
       studentId: result.student.id,
       academicYear: context.academicYear,
       tariff: context.tariff,
+      grossCents: price.grossCents,
     }),
     /**
      * Yazılacak veli–öğrenci bağı (DOM-ILT-070, DOM-ILT-074): veli varsa sözleşmenin ödeyicisidir
@@ -941,13 +952,18 @@ export function enrollmentFormToBody(
   }
 }
 
-/** Form önizlemesi: sunucuyla aynı fiyat kuralı. Reddi hata fırlatmaz, mesaj döner. */
+/**
+ * Form önizlemesi: sunucuyla aynı fiyat kuralı. Reddi hata fırlatmaz, mesaj döner. Referans kalemi
+ * seçili hakkın sabit tutarıyla gösterilir; hak seçilmemişse sunucudaki gibi reddedilir (DOM-FIN-024).
+ */
 export function previewEnrollment(
   tariff: EnrollmentTariff,
-  values: Pick<EnrollmentFormValues, 'lessonHours' | 'discounts' | 'extras'> & {
-    referralRewardId?: string | undefined
+  values: Pick<EnrollmentFormValues, 'lessonHours' | 'discounts' | 'extras'>,
+  options: {
+    institutionType: InstitutionType
+    level: string
+    referralRewardCents?: number | undefined
   },
-  options: { institutionType: InstitutionType; level: string },
 ): { ok: true; price: EnrollmentPrice } | { ok: false; message: string } {
   try {
     const hours = Number(values.lessonHours)
@@ -962,7 +978,7 @@ export function previewEnrollment(
         extras: values.extras ?? [],
         // Yönetici onayı sunucuda denetlenir; önizleme ön büroya aynı kuralla konuşur.
         canApproveCapException: false,
-        trimReferralToCap: Boolean(values.referralRewardId),
+        referralRewardCents: options.referralRewardCents,
       }),
     }
   } catch (error) {

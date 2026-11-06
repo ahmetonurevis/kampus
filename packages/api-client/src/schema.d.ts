@@ -2635,9 +2635,29 @@ export interface paths {
         put?: never;
         /**
          * Öğrenciyi ek hizmete yaz
-         * @description Ücret eğitim yılının yayımlı tarifesinden hesaplanır, öğrenimden ayrı taksit aynı işlemde yazılır (DOM-FIN-002, -003). Aylık (`month`) kalem bitiş gününe kadar her ay, öteki birimler başlangıçta tek taksit açar; kısmi dönem oranı yoktur. Taksit sözleşmeye eklenmez, `contractId` yürürlükteki sözleşmeyi gösterir (DOM-FIN-010). Tarife yok 422 `tariff_not_published`, kalem yok 422 `extra_not_in_tariff`, aylık kalemde bitiş yok 422 `student_service_end_required`, öğrenci aktif değil 409 `student_service_student_inactive`, aynı türde açık abonelik 409 `student_service_open`, aynı yılın sözleşmesinde aynı kalem 409 `student_service_on_contract`. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
+         * @description Ücret eğitim yılının yayımlı tarifesinden hesaplanır, öğrenimden ayrı taksit aynı işlemde yazılır (DOM-FIN-002, -003). `amountCents` birim tutarı elle düzeltir: tarifenin üstüne çıkamaz (422 `student_service_amount_exceeds_tariff`), sıfırdan büyük olmalıdır (400); boşsa tarife uygulanır, düzeltme denetime `studentService.amountAdjust` ile yazılır (K-17). Aylık (`month`) kalem bitiş gününe kadar her ay bu tutarda, öteki birimler başlangıçta tek taksit açar; kısmi dönem oranı yoktur. Taksit sözleşmeye eklenmez, `contractId` yürürlükteki sözleşmeyi gösterir (DOM-FIN-010). Tarife yok 422 `tariff_not_published`, kalem yok 422 `extra_not_in_tariff`, aylık kalemde bitiş yok 422 `student_service_end_required`, öğrenci aktif değil 409 `student_service_student_inactive`, aynı türde açık abonelik 409 `student_service_open`, aynı yılın sözleşmesinde aynı kalem 409 `student_service_on_contract`. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.
          */
         post: operations["subscribeStudentService"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/student-services/quote": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Ek hizmet tutarını ve taksitlerini önizle
+         * @description Hiçbir kayıt yazmaz. Önerilen birim tutarı (öğrencinin düzeyine göre tarife kalemi) ve açılacak taksitlerin vadelerini döner; aylık (`month`) kalemde bitiş verilmezse vadeler boştur. Yazılmayla aynı denetimler: tarife yok 422 `tariff_not_published`, kalem yok 422 `extra_not_in_tariff`, öğrenci aktif değil 409 `student_service_student_inactive`, açık abonelik 409 `student_service_open`, sözleşmede aynı kalem 409 `student_service_on_contract`. Olmayan ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["quoteStudentService"];
+        put?: never;
+        post?: never;
         delete?: never;
         options?: never;
         head?: never;
@@ -30229,8 +30249,10 @@ export interface operations {
                              * @enum {string}
                              */
                             unit: "year" | "month" | "lesson_hour" | "item";
-                            /** @description Yazılma anındaki birim ücret, kuruş */
+                            /** @description Uygulanan birim ücret, kuruş; aylık kalemde bir ayın tutarı. Tarifeyi aşamaz. */
                             amountCents: number;
+                            /** @description Yazılma anında tarifedeki birim ücret, kuruş */
+                            tariffAmountCents: number;
                             /** @description Yürürlükteki sözleşme sürümü; taksit sözleşmenin planına girmez (DOM-FIN-010) */
                             contractId: string | null;
                             /** @description Başlangıç günü (YYYY-MM-DD) */
@@ -30364,6 +30386,8 @@ export interface operations {
                     startDate: string;
                     /** @default null */
                     endDate?: string | null;
+                    /** @default null */
+                    amountCents?: number | null;
                 };
             };
         };
@@ -30392,8 +30416,10 @@ export interface operations {
                              * @enum {string}
                              */
                             unit: "year" | "month" | "lesson_hour" | "item";
-                            /** @description Yazılma anındaki birim ücret, kuruş */
+                            /** @description Uygulanan birim ücret, kuruş; aylık kalemde bir ayın tutarı. Tarifeyi aşamaz. */
                             amountCents: number;
+                            /** @description Yazılma anında tarifedeki birim ücret, kuruş */
+                            tariffAmountCents: number;
                             /** @description Yürürlükteki sözleşme sürümü; taksit sözleşmenin planına girmez (DOM-FIN-010) */
                             contractId: string | null;
                             /** @description Başlangıç günü (YYYY-MM-DD) */
@@ -30428,6 +30454,119 @@ export interface operations {
                             }[];
                             /** @description `If-Match` için kayıt sürümü */
                             version: number;
+                            /** @description Tarife önceki yıldan geçerli kaldıysa o yıl (DOM-FIN-002, K-11) */
+                            tariffCarriedOverFromYear: number | null;
+                        };
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    quoteStudentService: {
+        parameters: {
+            query: {
+                /** @description Öğrenci kimliği */
+                studentId: string;
+                kind: "transport" | "meal" | "breakfast" | "club" | "tutoring" | "dormitory";
+                /** @description Eğitim yılı */
+                academicYear: number;
+                /** @description Başlangıç günü (YYYY-MM-DD) */
+                startDate: string;
+                /** @description Bitiş günü (YYYY-MM-DD); aylık kalemde ay sayısı için */
+                endDate?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Önerilen birim tutar: tarifedeki kalem, kuruş */
+                            tariffAmountCents: number;
+                            /** @enum {string} */
+                            unit: "year" | "month" | "lesson_hour" | "item";
+                            /** @description Açılacak taksitlerin vadeleri (ISO 8601); aylık kalemde bitiş yoksa boş */
+                            dueDates: string[];
                             /** @description Tarife önceki yıldan geçerli kaldıysa o yıl (DOM-FIN-002, K-11) */
                             tariffCarriedOverFromYear: number | null;
                         };
@@ -30543,8 +30682,10 @@ export interface operations {
                              * @enum {string}
                              */
                             unit: "year" | "month" | "lesson_hour" | "item";
-                            /** @description Yazılma anındaki birim ücret, kuruş */
+                            /** @description Uygulanan birim ücret, kuruş; aylık kalemde bir ayın tutarı. Tarifeyi aşamaz. */
                             amountCents: number;
+                            /** @description Yazılma anında tarifedeki birim ücret, kuruş */
+                            tariffAmountCents: number;
                             /** @description Yürürlükteki sözleşme sürümü; taksit sözleşmenin planına girmez (DOM-FIN-010) */
                             contractId: string | null;
                             /** @description Başlangıç günü (YYYY-MM-DD) */
@@ -30703,8 +30844,10 @@ export interface operations {
                              * @enum {string}
                              */
                             unit: "year" | "month" | "lesson_hour" | "item";
-                            /** @description Yazılma anındaki birim ücret, kuruş */
+                            /** @description Uygulanan birim ücret, kuruş; aylık kalemde bir ayın tutarı. Tarifeyi aşamaz. */
                             amountCents: number;
+                            /** @description Yazılma anında tarifedeki birim ücret, kuruş */
+                            tariffAmountCents: number;
                             /** @description Yürürlükteki sözleşme sürümü; taksit sözleşmenin planına girmez (DOM-FIN-010) */
                             contractId: string | null;
                             /** @description Başlangıç günü (YYYY-MM-DD) */

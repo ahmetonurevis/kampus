@@ -9,6 +9,7 @@ import {
   closeStudentServicesOnWithdrawal,
   planStudentServiceEnd,
   planStudentServiceSubscribe,
+  quoteStudentServiceSubscribe,
   STUDENT_SERVICE_KINDS,
   studentServiceBalance,
   studentServiceFormSchema,
@@ -471,12 +472,13 @@ test('ON-087: yalnız yönetici ve ön büro yazar; veli, öğrenci ve öğretme
     )
 })
 
-test('ON-087: form değeri uç gövdesine çevrilir, boş bitiş `null` olur', () => {
+test('ON-087: form değeri uç gövdesine çevrilir, boş bitiş ve tutar `null` olur', () => {
   const values = studentServiceFormSchema.parse({
     kind: 'club',
     academicYear: 2026,
     startDate: '2026-10-01',
     endDate: '',
+    amount: '',
   })
   assert.deepEqual(studentServiceFormToBody('s1', values), {
     studentId: 's1',
@@ -484,9 +486,150 @@ test('ON-087: form değeri uç gövdesine çevrilir, boş bitiş `null` olur', (
     academicYear: 2026,
     startDate: '2026-10-01',
     endDate: null,
+    amountCents: null,
   })
+  const filled = studentServiceFormToBody('s1', {
+    ...values,
+    endDate: '2026-12-01',
+    amount: '1.250,50',
+  })
+  assert.equal(filled.endDate, '2026-12-01')
+  assert.equal(filled.amountCents, 125_050)
+})
+
+test('K-17: form sıfır ve geçersiz tutarı kabul etmez', () => {
+  const values = {
+    kind: 'club',
+    academicYear: 2026,
+    startDate: '2026-10-01',
+    endDate: '',
+  }
+  for (const amount of ['0', '0,00', '-5', 'abc'])
+    assert.equal(studentServiceFormSchema.safeParse({ ...values, amount }).success, false, amount)
+})
+
+test('DOM-FIN-003, K-17: tutar verilmezse tarife uygulanır, düzeltme tarifenin altında kalır', () => {
+  const { state, studentId, context } = fixture()
+  const suggested = planStudentServiceSubscribe(state, input(studentId), context)
+  assert.equal(suggested.amountCents, 4_000_000)
+  assert.equal(suggested.tariffAmountCents, 4_000_000)
+
+  const lowered = fixture()
+  const plan = planStudentServiceSubscribe(
+    lowered.state,
+    input(lowered.studentId, { amountCents: 1_500_000 }),
+    lowered.context,
+  )
+  assert.equal(plan.amountCents, 1_500_000)
+  assert.equal(plan.tariffAmountCents, 4_000_000)
+  assert.deepEqual(
+    lowered.state.invoices.map((invoice) => invoice.amount),
+    [1_500_000],
+  )
+
+  const equal = fixture()
   assert.equal(
-    studentServiceFormToBody('s1', { ...values, endDate: '2026-12-01' }).endDate,
-    '2026-12-01',
+    planStudentServiceSubscribe(
+      equal.state,
+      input(equal.studentId, { amountCents: 4_000_000 }),
+      equal.context,
+    ).amountCents,
+    4_000_000,
+  )
+})
+
+test('K-17: tarifenin üstündeki tutar 422, sıfır ve negatif doğrulamada reddedilir; kayıt değişmez', () => {
+  const { state, studentId, context } = fixture()
+  rejectedWithout(
+    state,
+    () => planStudentServiceSubscribe(state, input(studentId, { amountCents: 4_000_001 }), context),
+    'student_service_amount_exceeds_tariff',
+  )
+  for (const amountCents of [0, -100, 10.5]) {
+    const before = structuredClone(state.invoices)
+    assert.throws(() =>
+      planStudentServiceSubscribe(state, input(studentId, { amountCents }), context),
+    )
+    assert.deepEqual(state.invoices, before)
+  }
+})
+
+test('DOM-FIN-003, K-17: aylık kalemde düzeltilen tutar kalan her ayın ayrı taksitidir, yıllıkta tek taksit', () => {
+  const { state, studentId, context } = fixture()
+  const plan = planStudentServiceSubscribe(
+    state,
+    input(studentId, {
+      kind: 'meal',
+      startDate: '2026-11-15',
+      endDate: '2027-02-20',
+      amountCents: 300_000,
+    }),
+    context,
+  )
+  assert.equal(plan.amountCents, 300_000)
+  assert.equal(plan.tariffAmountCents, 500_000)
+  assert.deepEqual(
+    state.invoices.map((invoice) => [
+      invoice.installment,
+      invoice.amount,
+      invoice.dueDate.slice(0, 10),
+    ]),
+    [
+      [1, 300_000, '2026-11-15'],
+      [2, 300_000, '2026-12-15'],
+      [3, 300_000, '2027-01-15'],
+      [4, 300_000, '2027-02-15'],
+    ],
+  )
+  // Aylık tarifenin üstü bir ayın tutarıyla karşılaştırılır, toplamla değil.
+  const over = fixture()
+  rejectedWithout(
+    over.state,
+    () =>
+      planStudentServiceSubscribe(
+        over.state,
+        input(over.studentId, { kind: 'meal', endDate: '2026-12-31', amountCents: 500_001 }),
+        over.context,
+      ),
+    'student_service_amount_exceeds_tariff',
+  )
+})
+
+test('DOM-FIN-003: önizleme tarife tutarını ve vadeleri söyler, kayıt değiştirmez, aynı denetimleri uygular', () => {
+  const { state, studentId, context } = fixture()
+  const before = structuredClone(state.invoices)
+  assert.deepEqual(quoteStudentServiceSubscribe(state, input(studentId), context), {
+    tariffAmountCents: 4_000_000,
+    unit: 'year',
+    dueDates: ['2026-10-01T09:00:00.000Z'],
+  })
+  assert.deepEqual(
+    quoteStudentServiceSubscribe(state, input(studentId, { kind: 'meal' }), context).dueDates,
+    [],
+  )
+  assert.deepEqual(
+    quoteStudentServiceSubscribe(
+      state,
+      input(studentId, { kind: 'meal', endDate: '2026-11-20' }),
+      context,
+    ).dueDates,
+    ['2026-10-01T09:00:00.000Z', '2026-11-01T09:00:00.000Z'],
+  )
+  assert.deepEqual(state.invoices, before)
+  assert.throws(
+    () => quoteStudentServiceSubscribe(state, input(studentId, { kind: 'dormitory' }), context),
+    isDomainError('extra_not_in_tariff', 'rule'),
+  )
+  assert.throws(
+    () =>
+      quoteStudentServiceSubscribe(state, input(studentId), {
+        ...context,
+        openKinds: ['transport'],
+      }),
+    isDomainError('student_service_open', 'conflict'),
+  )
+  // Önizleme tutar almaz; tutar yalnız yazılmada denetlenir.
+  assert.throws(() =>
+    quoteStudentServiceSubscribe(state, input(studentId, { amountCents: 100 }), context),
   )
 })

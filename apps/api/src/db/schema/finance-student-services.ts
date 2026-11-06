@@ -28,7 +28,8 @@ import { invoices } from './invoices.ts'
 
 /**
  * Ek hizmet aboneliği (DOM-FIN-003; ON-087). Ücret karar anının kopyasıdır: tarife sürümü, kalem
- * düzeyi, birim ve birim ücret sonradan değişmez. Aynı öğrenci ve türde tek açık abonelik kısmi
+ * düzeyi, birim, tarifedeki ücret ve uygulanan ücret sonradan değişmez; uygulanan ücret tarifenin
+ * üstüne çıkamaz (K-17). Aynı öğrenci ve türde tek açık abonelik kısmi
  * benzersiz indeksle korunur. `student_id` `records` kimliğidir, yabancı anahtar değildir.
  * `contract_id` yürürlükteki sözleşmeyi gösterir; taksit o sözleşmenin planına girmez (DOM-FIN-010).
  */
@@ -49,6 +50,7 @@ export const studentServices = pgTable(
     unit: text('unit').notNull(),
     // kvkk: Ç
     amountCents: bigint('amount_cents', { mode: 'number' }).notNull(),
+    tariffAmountCents: bigint('tariff_amount_cents', { mode: 'number' }).notNull(),
     currency: text('currency').notNull().default('TRY'),
     contractId: text('contract_id'),
     startDate: date('start_date').notNull(),
@@ -81,7 +83,10 @@ export const studentServices = pgTable(
       'student_services_end_reason_check',
       sql`${table.endReason} is null or ${oneOf(table.endReason, STUDENT_SERVICE_END_REASONS)}`,
     ),
-    check('student_services_amount_check', sql`${table.amountCents} > 0`),
+    check(
+      'student_services_amount_check',
+      sql`${table.amountCents} > 0 and ${table.amountCents} <= ${table.tariffAmountCents}`,
+    ),
     check('student_services_currency_check', sql`${table.currency} = 'TRY'`),
     check(
       'student_services_dates_check',

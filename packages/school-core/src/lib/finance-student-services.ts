@@ -7,11 +7,13 @@ import { daySchema, requiredText, type MakeId } from './domain.ts'
 import { installmentDueDate, itemFor, type EnrollmentTariff } from './enrollment.ts'
 import { DomainError } from './errors.ts'
 import { FEE_ITEM_KIND_LABELS, type FeeItemKind, type FeeUnit } from './fee-tariffs.ts'
+import { parseAmountInput } from './payments.ts'
 
 /**
  * Ek hizmet aboneliği (docs/domain/finans.md DOM-FIN-002, -003, -004, -040; ON-087): öğrencinin dönem
  * içinde servis, yemek, kulüp gibi hizmete yazılması ve çıkması. Ücret yayımlı tarifeden hesaplanır,
- * öğrenimden ayrı taksit açar. Taksit sözleşmeye eklenmez: onaylı sözleşmenin tutarı ve planı değişmez
+ * personel dönem ortasında tarifenin altına düzeltebilir (K-17), öğrenimden ayrı taksit açar. Taksit
+ * sözleşmeye eklenmez: onaylı sözleşmenin tutarı ve planı değişmez
  * (DOM-FIN-010), ek protokol yalnız imza ve onaydan sonra taksit doğurur ve öğrenim planı içindir.
  * Abonelik yürürlükteki sözleşmeyi yalnız kaynak olarak gösterir. Kurallar saftır; satırları servis
  * yükler ve yazar.
@@ -48,9 +50,23 @@ const subscribeFields = {
   /** Aylık kalemde zorunlu: kaç aylık taksit açılacağını belirler. */
   endDate: daySchema.nullable().default(null),
 }
+/** Önizleme: tutar girilmez, tarifeden gelir. */
+export const quoteStudentServiceSchema = z.strictObject({
+  studentId: requiredText.max(200),
+  ...subscribeFields,
+})
+
 export const subscribeStudentServiceSchema = z.strictObject({
   studentId: requiredText.max(200),
   ...subscribeFields,
+  /** Elle düzeltilen birim tutar (K-17); aylık kalemde bir ayın tutarı. Boşsa tarife uygulanır. */
+  amountCents: z
+    .number()
+    .int('Tutar kuruş cinsinden tam sayı olmalıdır.')
+    .positive('Tutar sıfırdan büyük olmalıdır.')
+    .max(100_000_000, 'Tutar en fazla 1.000.000 ₺ olabilir.')
+    .nullable()
+    .default(null),
 })
 export type SubscribeStudentServiceInput = z.input<typeof subscribeStudentServiceSchema>
 
@@ -63,6 +79,13 @@ export const studentServiceFormSchema = z.object({
   academicYear: yearSchema,
   startDate: daySchema,
   endDate: z.union([daySchema, z.literal('')]),
+  /** Tarifeyle dolar; boş bırakılırsa tarife uygulanır. */
+  amount: z
+    .string()
+    .refine(
+      (value) => value.trim() === '' || parseAmountInput(value) !== null,
+      'Sıfırdan büyük geçerli bir tutar girin.',
+    ),
 })
 export type StudentServiceFormValues = z.output<typeof studentServiceFormSchema>
 
@@ -75,6 +98,7 @@ export const studentServiceFormToBody = (
   academicYear: values.academicYear,
   startDate: values.startDate,
   endDate: values.endDate === '' ? null : values.endDate,
+  amountCents: values.amount.trim() === '' ? null : parseAmountInput(values.amount),
 })
 
 export const studentServiceKindLabel = (kind: StudentServiceKind) => FEE_ITEM_KIND_LABELS[kind]
@@ -110,8 +134,10 @@ export interface PlannedStudentService {
   /** Tarifedeki kalemin düzeyi; bütün düzeylere uygulanan kalemde boş. */
   feeLevel: string | null
   unit: FeeUnit
-  /** Kalemin birim ücreti; aylık kalemde bir ayın, ötekilerde tek taksitin tutarı. */
+  /** Uygulanan birim ücret; aylık kalemde bir ayın, ötekilerde tek taksitin tutarı. */
   amountCents: number
+  /** Yazılma anında tarifedeki birim ücret; `amountCents` bunun üstüne çıkamaz (K-17). */
+  tariffAmountCents: number
   startDate: string
   endDate: string | null
   /** Yürürlükteki sözleşme (varsa); taksit bu sözleşmenin planına girmez. */
@@ -129,14 +155,14 @@ function levelOf(state: State, classId: string, institutionType: InstitutionType
   return institutionType === 'school' ? String(cls.grade) : (cls.level ?? '')
 }
 
-/** Aylık kalemde başlangıçtan bitişe kadar her ayın vadesi; ötekilerde başlangıçta tek taksit. */
+/**
+ * Aylık kalemde başlangıçtan bitişe kadar her ayın vadesi; ötekilerde başlangıçta tek taksit. Aylık
+ * kalemde bitiş seçilmediyse boş: önizleme ay sayısı gösteremez, yazılma ayrıca reddeder.
+ */
 function dueDates(startDate: string, endDate: string | null, unit: FeeUnit): string[] {
   const start = new Date(`${startDate}T09:00:00.000Z`)
   if (unit !== 'month') return [start.toISOString()]
-  if (endDate === null)
-    throw new DomainError('student_service_end_required', 'Aylık hizmette bitiş günü zorunludur.', {
-      path: ['endDate'],
-    })
+  if (endDate === null) return []
   const days: string[] = []
   for (let index = 0; ; index += 1) {
     const due = installmentDueDate(start, index).toISOString()
@@ -155,17 +181,20 @@ function assertWithinYear(day: string, academicYear: number, path: string, label
     )
 }
 
+type SubscriptionRules = Pick<
+  StudentServiceSubscribeContext,
+  'institutionType' | 'tariff' | 'openKinds'
+>
+
 /**
- * Aboneliği planlar (DOM-FIN-003): taksitleri State'e ekler, bütün denetimler yazmadan öncedir. Aynı
- * yılın sözleşmesinde aynı kalem varsa borç iki kez açılmasın diye 409. Kısmi dönem için oran kuralı
- * olmadığından (DOM-FIN-040 yalnız ayrılış) tek taksitli kalem tam tutarla yazılır.
+ * Yazılma ve önizlemenin ortak denetimleri; kayıt değiştirmez. Aynı yılın sözleşmesinde aynı kalem
+ * varsa borç iki kez açılmasın diye 409.
  */
-export function planStudentServiceSubscribe(
+function resolveSubscription(
   state: State,
-  input: unknown,
-  context: StudentServiceSubscribeContext,
-): PlannedStudentService {
-  const data = subscribeStudentServiceSchema.parse(input)
+  data: z.output<typeof quoteStudentServiceSchema>,
+  context: SubscriptionRules,
+) {
   const student = state.students.find((item) => item.id === data.studentId)
   if (!student)
     throw new DomainError('student_not_found', 'Öğrenci bulunamadı.', { kind: 'not_found' })
@@ -208,11 +237,61 @@ export function planStudentServiceSubscribe(
     throw new DomainError('extra_not_in_tariff', 'Bu ek hizmet tarifede ilan edilmemiş.', {
       path: ['kind'],
     })
+  return { student, item, tariff: context.tariff, yearContracts }
+}
+
+export interface StudentServiceQuote {
+  /** Önerilen birim tutar: tarifedeki kalem. Yazılırken bunun üstüne çıkılamaz (K-17). */
+  tariffAmountCents: number
+  unit: FeeUnit
+  /** Açılacak taksitlerin vadeleri; aylık kalemde bitiş günü seçilmeden boştur. */
+  dueDates: string[]
+}
+
+/** Yazmadan önizleme: önerilen birim tutar ve taksit vadeleri. Hiçbir kayıt değişmez. */
+export function quoteStudentServiceSubscribe(
+  state: State,
+  input: unknown,
+  context: SubscriptionRules,
+): StudentServiceQuote {
+  const data = quoteStudentServiceSchema.parse(input)
+  const { item } = resolveSubscription(state, data, context)
+  return {
+    tariffAmountCents: item.amountCents,
+    unit: item.unit,
+    dueDates: dueDates(data.startDate, data.endDate, item.unit),
+  }
+}
+
+/**
+ * Aboneliği planlar (DOM-FIN-003): taksitleri State'e ekler, bütün denetimler yazmadan öncedir.
+ * Personel birim tutarı tarifenin altına düzeltebilir, üstüne çıkamaz (K-17). Aylık kalemde kalan her
+ * ay için bu tutarda ayrı taksit açılır. Kısmi dönem için oran kuralı olmadığından (DOM-FIN-040 yalnız
+ * ayrılış) tek taksitli kalem girilen tutarla yazılır.
+ */
+export function planStudentServiceSubscribe(
+  state: State,
+  input: unknown,
+  context: StudentServiceSubscribeContext,
+): PlannedStudentService {
+  const data = subscribeStudentServiceSchema.parse(input)
+  const { student, item, tariff, yearContracts } = resolveSubscription(state, data, context)
+  const amountCents = data.amountCents ?? item.amountCents
+  if (amountCents > item.amountCents)
+    throw new DomainError(
+      'student_service_amount_exceeds_tariff',
+      'Tutar tarifedeki ücretin üstüne çıkamaz.',
+      { path: ['amountCents'] },
+    )
+  if (item.unit === 'month' && data.endDate === null)
+    throw new DomainError('student_service_end_required', 'Aylık hizmette bitiş günü zorunludur.', {
+      path: ['endDate'],
+    })
   const invoices = dueDates(data.startDate, data.endDate, item.unit).map((dueDate, index) => ({
     id: context.makeId('inv'),
     studentId: student.id,
     installment: index + 1,
-    amount: item.amountCents,
+    amount: amountCents,
     dueDate,
     paidAt: null,
     method: null,
@@ -236,11 +315,12 @@ export function planStudentServiceSubscribe(
     studentId: student.id,
     kind: data.kind,
     academicYear: data.academicYear,
-    tariffId: context.tariff.id,
-    tariffVersion: context.tariff.versionNumber,
+    tariffId: tariff.id,
+    tariffVersion: tariff.versionNumber,
     feeLevel: item.level,
     unit: item.unit,
-    amountCents: item.amountCents,
+    amountCents,
+    tariffAmountCents: item.amountCents,
     startDate: data.startDate,
     endDate: data.endDate,
     contractId: contract?.id ?? null,

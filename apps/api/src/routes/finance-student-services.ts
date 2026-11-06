@@ -3,6 +3,7 @@ import type { ZodTypeProvider } from 'fastify-type-provider-zod'
 import { z } from 'zod'
 
 import { WRITE_ACTION_ROLES } from '@kampus/school-core/lib/authorize.ts'
+import { daySchema } from '@kampus/school-core/lib/domain.ts'
 import { FEE_UNITS } from '@kampus/school-core/lib/fee-tariffs.ts'
 import {
   endStudentServiceSchema,
@@ -17,6 +18,7 @@ import {
   endStudentServiceCommand,
   getStudentServiceFor,
   listStudentServicesFor,
+  quoteStudentServiceFor,
   subscribeStudentServiceCommand,
 } from '../services/finance-student-services.ts'
 import type { CommandResponse } from '../services/operation-runner.ts'
@@ -46,7 +48,11 @@ const serviceSchema = z.object({
   tariffVersion: z.number().int().describe('Ücretin alındığı tarife sürümü'),
   feeLevel: z.string().nullable().describe('Tarifedeki kalemin düzeyi'),
   unit: z.enum(FEE_UNITS).describe('Ücret birimi; `month` her ay taksit açar'),
-  amountCents: z.number().int().describe('Yazılma anındaki birim ücret, kuruş'),
+  amountCents: z
+    .number()
+    .int()
+    .describe('Uygulanan birim ücret, kuruş; aylık kalemde bir ayın tutarı. Tarifeyi aşamaz.'),
+  tariffAmountCents: z.number().int().describe('Yazılma anında tarifedeki birim ücret, kuruş'),
   contractId: z
     .string()
     .nullable()
@@ -83,6 +89,26 @@ const listQuery = z.strictObject({
   kind: z.enum(STUDENT_SERVICE_KINDS).optional(),
   academicYear: z.coerce.number().int().min(2000).max(2100).optional().describe('Eğitim yılı'),
   status: z.enum(STUDENT_SERVICE_STATUSES).optional(),
+})
+
+const quoteQuery = z.strictObject({
+  studentId: z.string().min(1).max(200).describe('Öğrenci kimliği'),
+  kind: z.enum(STUDENT_SERVICE_KINDS),
+  academicYear: z.coerce.number().int().min(2000).max(2100).describe('Eğitim yılı'),
+  startDate: daySchema.describe('Başlangıç günü (YYYY-MM-DD)'),
+  endDate: daySchema.optional().describe('Bitiş günü (YYYY-MM-DD); aylık kalemde ay sayısı için'),
+})
+const quoteSchema = z.object({
+  tariffAmountCents: z.number().int().describe('Önerilen birim tutar: tarifedeki kalem, kuruş'),
+  unit: z.enum(FEE_UNITS),
+  dueDates: z
+    .array(z.string())
+    .describe('Açılacak taksitlerin vadeleri (ISO 8601); aylık kalemde bitiş yoksa boş'),
+  tariffCarriedOverFromYear: z
+    .number()
+    .int()
+    .nullable()
+    .describe('Tarife önceki yıldan geçerli kaldıysa o yıl (DOM-FIN-002, K-11)'),
 })
 
 function sendBody(reply: FastifyReply, result: CommandResponse): unknown {
@@ -132,6 +158,29 @@ export function registerFinanceStudentServiceRoutes(app: FastifyInstance) {
   )
 
   typed.get(
+    '/api/v1/finance/student-services/quote',
+    {
+      preValidation: [
+        app.authenticate,
+        finance,
+        app.requireRole(WRITE_ACTION_ROLES['studentService.manage']),
+      ],
+      schema: {
+        operationId: 'quoteStudentService',
+        tags: ['finance-student-services'],
+        summary: 'Ek hizmet tutarını ve taksitlerini önizle',
+        description:
+          'Hiçbir kayıt yazmaz. Önerilen birim tutarı (öğrencinin düzeyine göre tarife kalemi) ve açılacak taksitlerin vadelerini döner; aylık (`month`) kalemde bitiş verilmezse vadeler boştur. Yazılmayla aynı denetimler: tarife yok 422 `tariff_not_published`, kalem yok 422 `extra_not_in_tariff`, öğrenci aktif değil 409 `student_service_student_inactive`, açık abonelik 409 `student_service_open`, sözleşmede aynı kalem 409 `student_service_on_contract`. Olmayan ya da başka kurumun öğrencisi 404. Roller: `yonetici`, `onburo`.',
+        querystring: quoteQuery,
+        response: { 200: dataResponse(quoteSchema), ...commandErrors },
+      },
+    },
+    async (request) => ({
+      data: await quoteStudentServiceFor(contextOf(request), request.query),
+    }),
+  )
+
+  typed.get(
     '/api/v1/finance/student-services/:serviceId',
     {
       preValidation: read,
@@ -159,7 +208,7 @@ export function registerFinanceStudentServiceRoutes(app: FastifyInstance) {
         tags: ['finance-student-services'],
         summary: 'Öğrenciyi ek hizmete yaz',
         description:
-          'Ücret eğitim yılının yayımlı tarifesinden hesaplanır, öğrenimden ayrı taksit aynı işlemde yazılır (DOM-FIN-002, -003). Aylık (`month`) kalem bitiş gününe kadar her ay, öteki birimler başlangıçta tek taksit açar; kısmi dönem oranı yoktur. Taksit sözleşmeye eklenmez, `contractId` yürürlükteki sözleşmeyi gösterir (DOM-FIN-010). Tarife yok 422 `tariff_not_published`, kalem yok 422 `extra_not_in_tariff`, aylık kalemde bitiş yok 422 `student_service_end_required`, öğrenci aktif değil 409 `student_service_student_inactive`, aynı türde açık abonelik 409 `student_service_open`, aynı yılın sözleşmesinde aynı kalem 409 `student_service_on_contract`. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.',
+          'Ücret eğitim yılının yayımlı tarifesinden hesaplanır, öğrenimden ayrı taksit aynı işlemde yazılır (DOM-FIN-002, -003). `amountCents` birim tutarı elle düzeltir: tarifenin üstüne çıkamaz (422 `student_service_amount_exceeds_tariff`), sıfırdan büyük olmalıdır (400); boşsa tarife uygulanır, düzeltme denetime `studentService.amountAdjust` ile yazılır (K-17). Aylık (`month`) kalem bitiş gününe kadar her ay bu tutarda, öteki birimler başlangıçta tek taksit açar; kısmi dönem oranı yoktur. Taksit sözleşmeye eklenmez, `contractId` yürürlükteki sözleşmeyi gösterir (DOM-FIN-010). Tarife yok 422 `tariff_not_published`, kalem yok 422 `extra_not_in_tariff`, aylık kalemde bitiş yok 422 `student_service_end_required`, öğrenci aktif değil 409 `student_service_student_inactive`, aynı türde açık abonelik 409 `student_service_open`, aynı yılın sözleşmesinde aynı kalem 409 `student_service_on_contract`. `Idempotency-Key` zorunlu; başarı 201 ve `Location`. Roller: `yonetici`, `onburo`.',
         headers: commandHeadersSchema('required', { ifMatch: false }),
         body: subscribeStudentServiceSchema,
         response: { 201: commandResponse, ...commandErrors },

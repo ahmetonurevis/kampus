@@ -7,3 +7,4 @@ etki: minor
 - `lib/authorize.ts` ve `modules/commands.ts`: `studentService.manage` eklendi (yönetici, ön büro; modül `finance`).
 - Tarifeli yenileme aynı yılın açık aboneliğindeki ek hizmeti `renewal_extra_has_service` ile reddeder (`openStudentServiceKinds`).
 - `reversePayment` ayrılmış öğrencide ayrılıştan sonra kaydedilen, abonelik ya da borç taksitine dağılmış tahsilatı iptal eder (ON-087; DOM-FIN-041). **Kırıcı:** `payment.recordedAt` ve `ReversalWithdrawal.recordedAt` zorunlu; abonelik taksitleri `serviceInvoiceIds` ile verilir.
+- Yazılma elle düzeltilen birim tutar alır (`amountCents`; K-17): tarifenin üstü `student_service_amount_exceeds_tariff`, sıfır ve negatif doğrulamada reddedilir; aylık kalemde her ay bu tutarda taksit açılır. `quoteStudentServiceSubscribe` önerilen tutarı ve vadeleri kayıt değiştirmeden döner; form şeması `amount` alanı alır.

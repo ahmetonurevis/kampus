@@ -28,6 +28,7 @@ const COLUMNS = {
   feeLevel: studentServices.feeLevel,
   unit: studentServices.unit,
   amountCents: studentServices.amountCents,
+  tariffAmountCents: studentServices.tariffAmountCents,
   contractId: studentServices.contractId,
   startDate: studentServices.startDate,
   endDate: studentServices.endDate,
@@ -43,6 +44,7 @@ export interface StoredStudentService extends Omit<StudentServiceRow, 'invoiceId
   feeLevel: string | null
   unit: FeeUnit
   amountCents: number
+  tariffAmountCents: number
   contractId: string | null
   endedDate: string | null
   endReason: StudentServiceEndReason | null
@@ -259,6 +261,7 @@ export async function insertStudentService(
     feeLevel: string | null
     unit: FeeUnit
     amountCents: number
+    tariffAmountCents: number
     contractId: string | null
     startDate: string
     endDate: string | null

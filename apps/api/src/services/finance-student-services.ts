@@ -5,11 +5,14 @@ import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
   planStudentServiceEnd,
   planStudentServiceSubscribe,
+  quoteStudentServiceSchema,
+  quoteStudentServiceSubscribe,
   studentServiceBalance,
   subscribeStudentServiceSchema,
   type PlannedStudentService,
   type StudentServiceClosure,
   type StudentServiceKind,
+  type StudentServiceQuote,
   type StudentServiceRow,
   type StudentServiceStatus,
 } from '@kampus/school-core/lib/finance-student-services.ts'
@@ -36,6 +39,7 @@ import { environment, type CommandOptions } from './commands.ts'
 import { loadEffectiveTariff } from './fee-tariffs.ts'
 import {
   runCommand,
+  runReadOnly,
   type CommandResponse,
   type IdempotencyRequest,
   FINANCE_TABLE_STORES,
@@ -185,8 +189,48 @@ export async function openServiceKindsOfYear(
 }
 
 /**
- * Yazılma (DOM-FIN-002, -003): ücret kurum kilidi altında yayımlı tarifeden hesaplanır, taksit ve
- * abonelik aynı transaction'dadır. 201; yanıt tarife önceki yıldan geldiyse kaynak yılı da söyler.
+ * Yazmadan önizleme (DOM-FIN-003, K-17): önerilen birim tutar ve açılacak taksitler. Öğrencinin
+ * düzeyi ve tarifenin önceki yıldan taşınması sunucudadır; form aynı kuralı ikinci kez yazmaz.
+ */
+export function quoteStudentServiceFor(
+  ctx: ServiceContext,
+  input: unknown,
+): Promise<StudentServiceQuote & { tariffCarriedOverFromYear: number | null }> {
+  const data = quoteStudentServiceSchema.parse(input)
+  return runReadOnly(ctx, {
+    action: 'studentService.quote',
+    collections: SPEC.collections,
+    stores: FINANCE_TABLE_STORES,
+    loadScope: {
+      invoices: { ids: [] },
+      contracts: studentFinanceScope(data.studentId),
+    },
+    load: async (tx) => {
+      const { actor, institutionType, scalars } = await environment(tx, ctx, SPEC)
+      const effective = await loadEffectiveTariff(tx, ctx, data.academicYear, institutionType)
+      const open = await openStudentServicesOf(tx, ctx.institutionId, data.studentId)
+      return {
+        scalars,
+        run: (state, { now }) => {
+          requireAuthorized(actor, 'studentService.manage', {}, state, { now, institutionType })
+          return {
+            ...quoteStudentServiceSubscribe(state, data, {
+              institutionType,
+              tariff: effective?.tariff ?? null,
+              openKinds: open.map((row) => row.kind),
+            }),
+            tariffCarriedOverFromYear: effective?.carriedOverFromYear ?? null,
+          }
+        },
+      }
+    },
+  })
+}
+
+/**
+ * Yazılma (DOM-FIN-002, -003): ücret kurum kilidi altında yayımlı tarifeden hesaplanır, personel
+ * tarifenin altına düzeltebilir (K-17); taksit ve abonelik aynı transaction'dadır. 201; yanıt tarife
+ * önceki yıldan geldiyse kaynak yılı da söyler.
  */
 export function subscribeStudentServiceCommand(
   ctx: ServiceContext,
@@ -243,6 +287,9 @@ export function subscribeStudentServiceCommand(
           'endDate',
           'contractId',
         ])
+        // Elle düzeltme ayrı satırdır: denetim alan adı tutar, tutarın kendisini tutmaz (K-17).
+        if (plan.amountCents !== plan.tariffAmountCents)
+          await audit(tx, ctx, 'studentService.amountAdjust', id, ['amountCents'])
         result = await reload(tx, ctx, id)
       },
     },

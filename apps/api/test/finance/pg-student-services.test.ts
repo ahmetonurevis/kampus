@@ -136,6 +136,7 @@ describe('PostgreSQL 16: ek hizmet aboneliği eşzamanlılığı', { skip: PG_SK
       tariffVersion: 1,
       unit: 'year',
       amountCents: 4_000_000,
+      tariffAmountCents: 4_000_000,
       startDate: '2026-09-15',
       createdByUserId: 'test',
     })

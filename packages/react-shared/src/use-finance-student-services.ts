@@ -39,6 +39,21 @@ export function useStudentServices(
   })
 }
 
+export type StudentServiceQuoteQuery = operations['quoteStudentService']['parameters']['query']
+
+/** Önerilen tutar ve taksit vadeleri; hiçbir kayıt yazmaz (K-17). */
+export function useStudentServiceQuote(
+  query: StudentServiceQuoteQuery,
+  options: { enabled?: boolean } = {},
+) {
+  return useApiQuery({
+    key: ['student-services', 'quote', query],
+    enabled: options.enabled ?? true,
+    request: (client, signal) =>
+      client.GET('/api/v1/finance/student-services/quote', { params: { query }, signal }),
+  })
+}
+
 export function useSubscribeStudentService() {
   return useApiCommand({
     request: (client, body: SubscribeStudentServiceBody, headers: CommandHeaders) =>

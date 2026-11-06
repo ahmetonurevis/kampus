@@ -859,6 +859,67 @@ test.describe('Finans: tahsilat', () => {
     await expect(section.getByRole('button', { name: 'Servis hizmetinden çıkar' })).toHaveCount(0)
   })
 
+  test('DOM-FIN-003, K-17: ön büro dönem ortasında aylık tutarı düşürür; ay sayısı görünür, tarifenin üstü reddedilir', async ({
+    page,
+    loginAs,
+    api,
+    tenant,
+  }) => {
+    const school = await tenant({ roles: ['onburo'], students: ['s12'] })
+    await seedStudentServiceTariff({
+      institutionId: school.institutionId,
+      academicYear: createSeed(new Date()).academicYear,
+    })
+    await loginAs(school.user('onburo'))
+    const client = await api(school.user('onburo'))
+
+    await page.goto(FRONT_OFFICE_URL)
+    await page.getByLabel('Tabloda ara').fill('Ege Öztürk')
+    const row = bodyRows(page).filter({ hasText: '6. taksit' })
+    await row.getByRole('button', { name: 'Ege Öztürk 6. taksit detayını aç' }).click()
+    const section = page
+      .getByRole('dialog', { name: 'Taksit detayı' })
+      .getByRole('region', { name: 'Ek hizmetler' })
+    await section.getByRole('button', { name: 'Ek hizmete yaz' }).click()
+    const dialog = page.getByRole('dialog', { name: 'Ek hizmete yaz' })
+
+    await dialog.getByLabel('Hizmet').selectOption({ label: 'Yemek' })
+    const amount = dialog.getByLabel('Aylık tutar (₺)')
+    await expect(amount).toHaveValue('5000,00')
+    await expect(dialog.getByText('Ay sayısı için bitiş gününü seçin.')).toBeVisible()
+
+    // Başlangıçtan en çok 62 gün sonrası her zaman üçüncü ayın vadesini kapsar, dördüncüyü kapsamaz.
+    const start = await dialog.getByLabel('Başlangıç').inputValue()
+    const end = new Date(Date.parse(`${start}T12:00:00.000Z`) + 62 * 86_400_000)
+    await dialog.getByLabel('Bitiş (isteğe bağlı)').fill(end.toISOString().slice(0, 10))
+    await expect(dialog.getByRole('status')).toContainText('3 ay için ayrı taksit')
+
+    await amount.fill('5000,01')
+    await dialog.getByRole('button', { name: 'Yaz', exact: true }).click()
+    await expect(dialog.getByText('Tutar tarifedeki ücretin üstüne çıkamaz.')).toBeVisible()
+
+    await amount.fill('3000')
+    await expect(dialog.getByRole('status')).toContainText('aylık 3.000,00')
+    await expect(dialog.getByRole('status')).toContainText('toplam 9.000,00')
+    await dialog.getByRole('button', { name: 'Yaz', exact: true }).click()
+    await expect(page.getByText('Ek hizmet taksiti yazıldı.')).toBeVisible()
+    await expect(section).toContainText('Tutar elle düzeltildi')
+
+    const listed = await client.get('/api/v1/finance/student-services?studentId=s12')
+    const service = (
+      listed.body as {
+        data: {
+          amountCents: number
+          tariffAmountCents: number
+          invoices: { amountCents: number }[]
+        }[]
+      }
+    ).data[0]
+    expect(service?.amountCents).toBe(300_000)
+    expect(service?.tariffAmountCents).toBe(500_000)
+    expect(service?.invoices.map((line) => line.amountCents)).toEqual([300_000, 300_000, 300_000])
+  })
+
   test('ön büro Tahsilat Takibi sayfasından ödeme alır', async ({ page, loginAs, api, tenant }) => {
     const school = await tenant({ roles: ['onburo'], students: ['s12'] })
     await loginAs(school.user('onburo'))

@@ -20,6 +20,7 @@ CREATE TABLE "student_services" (
 	"fee_level" text,
 	"unit" text NOT NULL,
 	"amount_cents" bigint NOT NULL,
+	"tariff_amount_cents" bigint NOT NULL,
 	"currency" text DEFAULT 'TRY' NOT NULL,
 	"contract_id" text,
 	"start_date" date NOT NULL,
@@ -38,7 +39,7 @@ CREATE TABLE "student_services" (
 	CONSTRAINT "student_services_unit_check" CHECK ("student_services"."unit" in ('year', 'month', 'lesson_hour', 'item')),
 	CONSTRAINT "student_services_status_check" CHECK ("student_services"."status" in ('active', 'ended')),
 	CONSTRAINT "student_services_end_reason_check" CHECK ("student_services"."end_reason" is null or "student_services"."end_reason" in ('request', 'withdrawal')),
-	CONSTRAINT "student_services_amount_check" CHECK ("student_services"."amount_cents" > 0),
+	CONSTRAINT "student_services_amount_check" CHECK ("student_services"."amount_cents" > 0 and "student_services"."amount_cents" <= "student_services"."tariff_amount_cents"),
 	CONSTRAINT "student_services_currency_check" CHECK ("student_services"."currency" = 'TRY'),
 	CONSTRAINT "student_services_dates_check" CHECK (("student_services"."end_date" is null or "student_services"."end_date" >= "student_services"."start_date") and ("student_services"."ended_date" is null or "student_services"."ended_date" >= "student_services"."start_date")),
 	CONSTRAINT "student_services_ended_check" CHECK (("student_services"."status" = 'ended') = ("student_services"."ended_date" is not null) and ("student_services"."ended_date" is null) = ("student_services"."end_reason" is null) and ("student_services"."ended_date" is null) = ("student_services"."ended_by_user_id" is null))
@@ -76,7 +77,9 @@ COMMENT ON COLUMN "student_services"."fee_level" IS 'Tarifedeki kalemin düzeyi;
 --> statement-breakpoint
 COMMENT ON COLUMN "student_services"."unit" IS 'Kalemin ücret birimi: aylık (month) kalem her ay taksit açar, öteki birimler başlangıçta tek taksit açar.';
 --> statement-breakpoint
-COMMENT ON COLUMN "student_services"."amount_cents" IS 'Yazılma anındaki birim ücret, kuruş; tarife sonradan değişse de kalır. Kişisel veri sınıfı Ç.';
+COMMENT ON COLUMN "student_services"."amount_cents" IS 'Uygulanan birim ücret, kuruş; aylık kalemde bir ayın tutarı. Personel tarifenin altına düzeltebilir, üstüne çıkamaz (K-17); tarife sonradan değişse de kalır. Kişisel veri sınıfı Ç.';
+--> statement-breakpoint
+COMMENT ON COLUMN "student_services"."tariff_amount_cents" IS 'Yazılma anında tarifedeki birim ücret, kuruş; önerilen tutar ve üst sınır, sonradan değişmez (K-17).';
 --> statement-breakpoint
 COMMENT ON COLUMN "student_services"."currency" IS 'Para birimi; yalnız TRY (DOM-FIN-001).';
 --> statement-breakpoint

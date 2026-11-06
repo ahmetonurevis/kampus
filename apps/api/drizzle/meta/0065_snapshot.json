@@ -1,5 +1,5 @@
 {
-  "id": "13ed8ada-e9ee-484e-96ad-55f1bc942410",
+  "id": "f345d1fe-e4e3-47a9-8186-5bd7d6bfdc00",
   "prevId": "3063c675-35a7-4d42-99cf-b280225fb99e",
   "version": "7",
   "dialect": "postgresql",
@@ -6394,6 +6394,12 @@
           "primaryKey": false,
           "notNull": true
         },
+        "tariff_amount_cents": {
+          "name": "tariff_amount_cents",
+          "type": "bigint",
+          "primaryKey": false,
+          "notNull": true
+        },
         "currency": {
           "name": "currency",
           "type": "text",
@@ -6647,7 +6653,7 @@
         },
         "student_services_amount_check": {
           "name": "student_services_amount_check",
-          "value": "\"student_services\".\"amount_cents\" > 0"
+          "value": "\"student_services\".\"amount_cents\" > 0 and \"student_services\".\"amount_cents\" <= \"student_services\".\"tariff_amount_cents\""
         },
         "student_services_currency_check": {
           "name": "student_services_currency_check",

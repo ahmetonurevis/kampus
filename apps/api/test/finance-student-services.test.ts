@@ -655,6 +655,149 @@ describe('ON-087: ek hizmet aboneliği uçları', () => {
     assertError(await subscribe(a.cookie), 409, 'student_service_student_inactive')
   })
 
+  const auditFields = (institutionId: string, action: string) =>
+    db
+      .select({ changes: auditLog.changes })
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, institutionId), eq(auditLog.action, action)))
+
+  test('DOM-FIN-003, K-17: personel tutarı düşürür; aylık tutar her ay ayrı taksittir, düzeltme denetime alan adıyla yazılır', async () => {
+    const a = await institution()
+    const made = await subscribe(a.cookie, { ...MEAL, amountCents: 300_000 })
+    assert.equal(made.statusCode, 201, made.body)
+    const { data } = made.json()
+    assert.equal(data.amountCents, 300_000)
+    assert.equal(data.tariffAmountCents, 500_000)
+    assert.equal(data.billedCents, 1_200_000)
+    assert.deepEqual(
+      data.invoices.map((line: { amountCents: number }) => line.amountCents),
+      [300_000, 300_000, 300_000, 300_000],
+    )
+    const [row] = await serviceRows(a.id)
+    assert.equal(row?.amountCents, 300_000)
+    assert.equal(row?.tariffAmountCents, 500_000)
+    assert.deepEqual(await auditFields(a.id, 'studentService.amountAdjust'), [
+      { changes: { fields: ['amountCents'] } },
+    ])
+    // Denetim tutarın kendisini tutmaz.
+    assert.equal(
+      JSON.stringify(await auditFields(a.id, 'studentService.amountAdjust')).includes('300000'),
+      false,
+    )
+  })
+
+  test('K-17: yıllık kalemde düzeltilen tutar tek taksittir; tarifedeki tutar düzeltme sayılmaz', async () => {
+    const a = await institution()
+    const lowered = await subscribe(a.cookie, { ...SUBSCRIBE, amountCents: 1_000_000 })
+    assert.equal(lowered.statusCode, 201, lowered.body)
+    assert.deepEqual(
+      lowered.json().data.invoices.map((line: { amountCents: number }) => line.amountCents),
+      [1_000_000],
+    )
+    const same = await subscribe(a.cookie, {
+      ...SUBSCRIBE,
+      kind: 'club',
+      amountCents: 200_000,
+    })
+    assert.equal(same.statusCode, 201, same.body)
+    assert.equal(same.json().data.tariffAmountCents, 200_000)
+    assert.equal((await auditFields(a.id, 'studentService.amountAdjust')).length, 1)
+  })
+
+  test('K-17: tarifenin üstü 422, sıfır ve negatif 400; kayıt değişmez', async () => {
+    const a = await institution()
+    const over = await subscribe(a.cookie, { ...MEAL, amountCents: 500_001 })
+    assertError(over, 422, 'student_service_amount_exceeds_tariff')
+    assert.deepEqual(over.json().issues?.[0]?.path, ['amountCents'])
+    for (const amountCents of [0, -1])
+      assertError(await subscribe(a.cookie, { ...SUBSCRIBE, amountCents }), 400)
+    await assertUntouched(a.id)
+    assert.equal((await auditFields(a.id, 'studentService.amountAdjust')).length, 0)
+  })
+
+  test('K-17: veritabanı tarifenin üstündeki tutarı son güvence olarak reddeder', async () => {
+    const a = await institution()
+    await subscribe(a.cookie, SUBSCRIBE)
+    const [row] = await serviceRows(a.id)
+    assert.ok(row)
+    await assert.rejects(() =>
+      db
+        .update(studentServices)
+        .set({ amountCents: row.tariffAmountCents + 1 })
+        .where(eq(studentServices.institutionId, a.id)),
+    )
+  })
+
+  const quoteUrl = (query: Record<string, string | undefined>) =>
+    `${BASE}/quote?${new URLSearchParams(
+      Object.entries(query).filter((entry): entry is [string, string] => entry[1] !== undefined),
+    ).toString()}`
+  const QUOTE = {
+    studentId: String(STUDENT?.id),
+    kind: 'meal',
+    academicYear: String(YEAR),
+    startDate: '2026-10-15',
+    endDate: '2026-12-31',
+  }
+
+  test('DOM-FIN-003, K-17: önizleme tarife tutarını ve ay sayısını döner, kayıt yazmaz', async () => {
+    const a = await institution()
+    const monthly = await send('GET', quoteUrl(QUOTE), a.cookie)
+    assert.equal(monthly.statusCode, 200, monthly.body)
+    assert.deepEqual(monthly.json().data, {
+      tariffAmountCents: 500_000,
+      unit: 'month',
+      dueDates: [
+        '2026-10-15T09:00:00.000Z',
+        '2026-11-15T09:00:00.000Z',
+        '2026-12-15T09:00:00.000Z',
+      ],
+      tariffCarriedOverFromYear: null,
+    })
+    const withoutEnd = { ...QUOTE, endDate: undefined }
+    const open = await send('GET', quoteUrl(withoutEnd), a.cookie)
+    assert.deepEqual(open.json().data.dueDates, [])
+    const yearly = await send('GET', quoteUrl({ ...withoutEnd, kind: 'transport' }), a.cookie)
+    assert.equal(yearly.json().data.dueDates.length, 1)
+    await assertUntouched(a.id)
+  })
+
+  test('DOM-FIN-052, DOM-YTK-001: önizleme oturumsuz 401; veli ve öğrenci 403; modül kapalı 403; başka kurum 404; bilinmeyen parametre 400', async () => {
+    const a = await institution()
+    const b = await createInstitution(app)
+    const bCookie = await signInAs(app, b.admin)
+    assert.equal((await send('GET', quoteUrl(QUOTE), null)).statusCode, 401)
+    for (const role of ['veli', 'ogrenci', 'ogretmen'] as const)
+      assert.equal((await send('GET', quoteUrl(QUOTE), await member(a.id, role))).statusCode, 403)
+    const closed = await institution({ enabledModules: { finance: false } })
+    assertError(await send('GET', quoteUrl(QUOTE), closed.cookie), 403, 'module_disabled')
+    assert.equal((await send('GET', quoteUrl(QUOTE), await member(a.id, 'onburo'))).statusCode, 200)
+    await publishTariff(b.id)
+    assert.equal((await send('GET', quoteUrl(QUOTE), bCookie)).statusCode, 404)
+    assert.equal(
+      (await send('GET', quoteUrl({ ...QUOTE, institutionId: b.id }), a.cookie)).statusCode,
+      400,
+    )
+  })
+
+  test('DOM-FIN-002: önizleme yazılmayla aynı denetimleri uygular', async () => {
+    const a = await institution({ tariff: false })
+    assertError(await send('GET', quoteUrl(QUOTE), a.cookie), 422, 'tariff_not_published')
+    const c = await institution()
+    assertError(
+      await send('GET', quoteUrl({ ...QUOTE, kind: 'dormitory' }), c.cookie),
+      422,
+      'extra_not_in_tariff',
+    )
+    assertError(
+      await send('GET', quoteUrl({ ...QUOTE, endDate: '2026-10-01' }), c.cookie),
+      422,
+      'student_service_end_before_start',
+    )
+    assert.equal((await subscribe(c.cookie, MEAL)).statusCode, 201)
+    assertError(await send('GET', quoteUrl(QUOTE), c.cookie), 409, 'student_service_open')
+  })
+
   const WITHDRAWAL = {
     withdrawalDate: '2026-10-01',
     termStartDate: '2026-09-07',

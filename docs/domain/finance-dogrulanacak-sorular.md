@@ -165,7 +165,7 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Kural:** `DOM-FIN-042`; ister listesi §4.3 "Mesafeli kayıt".
 - **Soru:** Dil okulu paketinin kurum binasına gelinmeden tamamen çevrim içi satılması mesafeli sözleşme sayılır mı; sayılırsa cayma süresi, istisnalar ve ÖÖKY'deki iade kuralıyla ilişkisi nedir (6502 sayılı Kanun, Mesafeli Sözleşmeler Yönetmeliği)?
 - **Bugünkü varsayım:** Sayılabilir; kurum bu kanalı açarsa cayma süresi sözleşmede yazılır ve süre içindeki ayrılışta kesinti yapılmaz. Süre ister listesindeki genel 14 gündür, sözleşme gününden sayılır ve son gün dahildir.
-- **Kodda:** Çevrim içi paket satışı yok; paket yalnız yönetici ve ön büro tarafından satılır (`POST /api/v1/finance/package-sales`, ON-058, K-07). Kural, süre ve ön bilgilendirme verisi saf fonksiyondur (`distanceSaleWithdrawal`, `distanceSalePreInformation`, `lib/finance-distance-sale.ts`); ON-059 ve ON-072 çağıracak.
+- **Kodda:** Çevrim içi paket satışı yok; paket yalnız yönetici ve ön büro tarafından satılır (`POST /api/v1/finance/package-sales`, ON-058, K-07). Kural, süre ve ön bilgilendirme verisi saf fonksiyondur (`distanceSaleWithdrawal`, `distanceSalePreInformation`, `lib/finance-distance-sale.ts`); K-07 çevrim içi satışı kapattığı için çağıran yok, kanal açılırsa ekran o işle yazılır.
 - **Cevap değişirse:** Çevrim içi satışta ön bilgilendirme ve cayma metni ile cayma süresi içindeki kesintisiz iade yolu eklenir (IST-078).
 - **Cevap:** bekleniyor
 

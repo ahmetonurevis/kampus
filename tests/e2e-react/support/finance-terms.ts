@@ -135,3 +135,67 @@ export async function seedCarriedOverTariff(input: {
     await close()
   }
 }
+
+/**
+ * Dil okulu paket satışı için yayımlı tarife (IST-078, DOM-FIN-013): saat ücreti 500 ₺, kırtasiye,
+ * peşin ve kardeş indirimi, peşin koşulu ile %3 indirimli 2–4 taksit. Tarifenin kendisi burada
+ * denenmez; doğrudan veritabanına konur.
+ */
+export async function seedPackageTariff(institutionId: string): Promise<void> {
+  const { db, close } = connectPostgres(e2e.databaseUrl)
+  const now = new Date()
+  const academicYear = createSeed(now).academicYear
+  const vat = { vatBasisPoints: 1000, vatEffectiveDate: `${String(academicYear)}-01-01` }
+  try {
+    await db.insert(feeTariffs).values({
+      institutionId,
+      id: randomUUID(),
+      academicYear,
+      versionNumber: 1,
+      status: 'published',
+      items: [
+        {
+          kind: 'tuition',
+          level: null,
+          amountCents: 50_000,
+          unit: 'lesson_hour',
+          announcedAmountCents: 50_000,
+          ...vat,
+        },
+        {
+          kind: 'stationery',
+          level: null,
+          amountCents: 75_000,
+          unit: 'item',
+          announcedAmountCents: null,
+          ...vat,
+        },
+      ],
+      discounts: [
+        { kind: 'early_payment', percentBasisPoints: 1_000, amountCents: null },
+        { kind: 'corporate', percentBasisPoints: 500, amountCents: null },
+      ],
+      paymentTerms: [
+        {
+          kind: 'upfront',
+          minInstallments: 1,
+          maxInstallments: 1,
+          discountPercentBasisPoints: null,
+          discountAmountCents: null,
+        },
+        {
+          kind: 'installment',
+          minInstallments: 2,
+          maxInstallments: 4,
+          discountPercentBasisPoints: 300,
+          discountAmountCents: null,
+        },
+      ],
+      announcedDate: `${String(academicYear)}-05-01`,
+      publishedByUserId: 'e2e',
+      publishedAt: now,
+    })
+  } finally {
+    await close()
+  }
+}

@@ -2408,6 +2408,46 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/api/v1/finance/reconciliation": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yıl sonu mutabakatı
+         * @description Seçilen eğitim yılının öğrenci bazında mutabakatı (ON-085, IST-111; DOM-FIN-056). Formül: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade = kapanış. Kapanış taksit ve dağılımlardan, beklenen kapanış hareketlerden hesaplanır; `differenceCents` sıfırdan farklı olan öğrenci tutmaz. Tahakkuk, tahsilat − iptal ve iade toplamları aynı dönemin `/finance/summary` toplamlarına eşittir. Burs ve indirim sözleşmenin eğitim yılından okunur, formüle girmez. Dönem kurumun eğitim yılı aralığıdır, kayıt yoksa 1 Eylül – 31 Ağustos; süren yılda bitiş bugündür. Başlamamış yıl 422 `reconciliation_year_not_started`. `totals` süzgeçten bağımsızdır; `status=mismatch` satırları tutmayanlarla sınırlar. Hesap kodu ve KDV dökümü üretmez. Yıl kapatmaz, kayıt değiştirmez. Rol: `yonetici`.
+         */
+        get: operations["getFinanceReconciliation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/reconciliation/export": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Yıl sonu mutabakat dosyası
+         * @description Mutabakatın öğrenci satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; kurumun aktarım profili varsa onun biçimi ve sütunları. Satır ve toplam kuralı `GET /finance/reconciliation` ile aynıdır. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Rol: `yonetici`.
+         */
+        get: operations["exportFinanceReconciliation"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/api/v1/finance/renewals": {
         parameters: {
             query?: never;
@@ -27956,6 +27996,11 @@ export interface operations {
                                         header: string;
                                         value?: string;
                                     }[];
+                                    reconciliation?: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
                                 };
                             } | null;
                             /** @description `If-Match` için profil sürümü */
@@ -28076,6 +28121,11 @@ export interface operations {
                                 header: string;
                                 value?: string;
                             }[];
+                            reconciliation?: {
+                                source: string;
+                                header: string;
+                                value?: string;
+                            }[];
                         };
                     } | null;
                 };
@@ -28110,6 +28160,11 @@ export interface operations {
                                         value?: string;
                                     }[];
                                     invoices: {
+                                        source: string;
+                                        header: string;
+                                        value?: string;
+                                    }[];
+                                    reconciliation?: {
                                         source: string;
                                         header: string;
                                         value?: string;
@@ -28202,6 +28257,272 @@ export interface operations {
                 from: string;
                 to: string;
                 kind: "payments" | "refunds" | "invoices";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description CSV dosyası */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": string;
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getFinanceReconciliation: {
+        parameters: {
+            query: {
+                year: number;
+                status?: "all" | "mismatch";
+                /** @description Sayfa numarası */
+                page?: number;
+                /** @description Sayfa boyutu (≤ 100) */
+                pageSize?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description Eğitim yılının başladığı yıl */
+                            year: number;
+                            /** @description Dönem başı (YYYY-MM-DD, Europe/Istanbul) */
+                            from: string;
+                            /** @description Dönem sonu; süren yılda bugün */
+                            to: string;
+                            totals: {
+                                /** @description Dönem başı bakiye: açık borç − alacak */
+                                openingCents: number;
+                                /** @description Vadesi dönemde olan taksitler */
+                                accruedCents: number;
+                                /** @description Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi */
+                                withdrawalAdjustmentCents: number;
+                                /** @description Ödeme günü dönemde olan tahsilatlar (brüt) */
+                                collectedCents: number;
+                                /** @description İptal günü dönemde olan tahsilatlar */
+                                reversedCents: number;
+                                /** @description Ödeme günü dönemde olan iadeler */
+                                refundedCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı, formüle girmez */
+                                scholarshipCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı, formüle girmez */
+                                discountCents: number;
+                                /** @description Dönem sonu bakiye: açık borç − alacak */
+                                closingCents: number;
+                                /** @description Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade */
+                                expectedClosingCents: number;
+                                /** @description Kapanış − beklenen kapanış */
+                                differenceCents: number;
+                                /** @description Dönem sonunda vadesi gelmiş açık taksit tutarı */
+                                openDebtCents: number;
+                                /** @description Dağıtılmamış tahsilat, avans ve ödenmemiş iade */
+                                creditCents: number;
+                            };
+                            studentCount: number;
+                            /** @description Toplamları tutmayan öğrenci sayısı */
+                            mismatchCount: number;
+                            rows: {
+                                /** @description Dönem başı bakiye: açık borç − alacak */
+                                openingCents: number;
+                                /** @description Vadesi dönemde olan taksitler */
+                                accruedCents: number;
+                                /** @description Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi */
+                                withdrawalAdjustmentCents: number;
+                                /** @description Ödeme günü dönemde olan tahsilatlar (brüt) */
+                                collectedCents: number;
+                                /** @description İptal günü dönemde olan tahsilatlar */
+                                reversedCents: number;
+                                /** @description Ödeme günü dönemde olan iadeler */
+                                refundedCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı, formüle girmez */
+                                scholarshipCents: number;
+                                /** @description Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı, formüle girmez */
+                                discountCents: number;
+                                /** @description Dönem sonu bakiye: açık borç − alacak */
+                                closingCents: number;
+                                /** @description Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade */
+                                expectedClosingCents: number;
+                                /** @description Kapanış − beklenen kapanış */
+                                differenceCents: number;
+                                /** @description Dönem sonunda vadesi gelmiş açık taksit tutarı */
+                                openDebtCents: number;
+                                /** @description Dağıtılmamış tahsilat, avans ve ödenmemiş iade */
+                                creditCents: number;
+                                studentId: string;
+                                studentName: string;
+                                studentNumber: string;
+                                mismatchReason: ("unrecorded_payment" | "other") | null;
+                            }[];
+                        };
+                        meta: components["schemas"]["PageMeta"];
+                    };
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    exportFinanceReconciliation: {
+        parameters: {
+            query: {
+                year: number;
             };
             header?: never;
             path?: never;

@@ -335,6 +335,15 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Tavan yalnız adı konmuş indirimlere uygulanır.
 - **Cevap:** bekleniyor
 
+#### M-11 · Yıl sonu mutabakatının hesap kodu ve KDV dökümü
+
+- **Kural:** `DOM-FIN-056`; `DOM-FIN-055`; IST-111.
+- **Soru:** Yıl sonu mutabakat dosyasında hangi hesap kodları (120, 340, 600 vb.) kullanılmalı, KDV dökümü istenir mi, ayrılış düzeltmesi ve ödenen iade muhasebeye nasıl yansır, eğitim yılı ile mali yıl farkı nasıl ele alınır?
+- **Bugünkü varsayım:** Sistem hesap kodu ve KDV tutarı üretmez; kurum gerekiyorsa aktarım profilinde sabit sütun ekler. Mutabakat dönemi eğitim yılıdır, mali yıl değildir.
+- **Kodda:** `lib/finance-reconciliation.ts`, `lib/finance-export-profile.ts` (mutabakat sütunları); hesap kodu ve KDV sütunu yok.
+- **Cevap değişirse:** Mutabakat dosyasına hesap kodu eşlemesi ve KDV kırılımı eklenir, dönem seçeneği genişler.
+- **Cevap:** bekleniyor
+
 ## Kararlaştırılanlar
 
 Aşağıdakiler soru değildir; proje sahibinin kararıdır ve kural belgelerine "kullanıcı kararı" olarak işlenmiştir.

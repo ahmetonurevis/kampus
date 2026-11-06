@@ -59028,6 +59028,34 @@
                                         ],
                                         "additionalProperties": false
                                       }
+                                    },
+                                    "reconciliation": {
+                                      "minItems": 1,
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "header": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 60
+                                          },
+                                          "value": {
+                                            "type": "string",
+                                            "maxLength": 100
+                                          }
+                                        },
+                                        "required": [
+                                          "source",
+                                          "header"
+                                        ],
+                                        "additionalProperties": false
+                                      }
                                     }
                                   },
                                   "required": [
@@ -59283,6 +59311,34 @@
                                   ],
                                   "additionalProperties": false
                                 }
+                              },
+                              "reconciliation": {
+                                "minItems": 1,
+                                "maxItems": 30,
+                                "type": "array",
+                                "items": {
+                                  "type": "object",
+                                  "properties": {
+                                    "source": {
+                                      "type": "string",
+                                      "minLength": 1
+                                    },
+                                    "header": {
+                                      "type": "string",
+                                      "minLength": 1,
+                                      "maxLength": 60
+                                    },
+                                    "value": {
+                                      "type": "string",
+                                      "maxLength": 100
+                                    }
+                                  },
+                                  "required": [
+                                    "source",
+                                    "header"
+                                  ],
+                                  "additionalProperties": false
+                                }
                               }
                             },
                             "required": [
@@ -59435,6 +59491,34 @@
                                       }
                                     },
                                     "invoices": {
+                                      "minItems": 1,
+                                      "maxItems": 30,
+                                      "type": "array",
+                                      "items": {
+                                        "type": "object",
+                                        "properties": {
+                                          "source": {
+                                            "type": "string",
+                                            "minLength": 1
+                                          },
+                                          "header": {
+                                            "type": "string",
+                                            "minLength": 1,
+                                            "maxLength": 60
+                                          },
+                                          "value": {
+                                            "type": "string",
+                                            "maxLength": 100
+                                          }
+                                        },
+                                        "required": [
+                                          "source",
+                                          "header"
+                                        ],
+                                        "additionalProperties": false
+                                      }
+                                    },
+                                    "reconciliation": {
                                       "minItems": 1,
                                       "maxItems": 30,
                                       "type": "array",
@@ -59628,6 +59712,550 @@
             },
             "in": "query",
             "name": "kind",
+            "required": true
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "CSV dosyası",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "string",
+                  "description": "CSV dosyası"
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/reconciliation": {
+      "get": {
+        "operationId": "getFinanceReconciliation",
+        "summary": "Yıl sonu mutabakatı",
+        "tags": [
+          "finance-exports"
+        ],
+        "description": "Seçilen eğitim yılının öğrenci bazında mutabakatı (ON-085, IST-111; DOM-FIN-056). Formül: açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade = kapanış. Kapanış taksit ve dağılımlardan, beklenen kapanış hareketlerden hesaplanır; `differenceCents` sıfırdan farklı olan öğrenci tutmaz. Tahakkuk, tahsilat − iptal ve iade toplamları aynı dönemin `/finance/summary` toplamlarına eşittir. Burs ve indirim sözleşmenin eğitim yılından okunur, formüle girmez. Dönem kurumun eğitim yılı aralığıdır, kayıt yoksa 1 Eylül – 31 Ağustos; süren yılda bitiş bugündür. Başlamamış yıl 422 `reconciliation_year_not_started`. `totals` süzgeçten bağımsızdır; `status=mismatch` satırları tutmayanlarla sınırlar. Hesap kodu ve KDV dökümü üretmez. Yıl kapatmaz, kayıt değiştirmez. Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "year",
+            "required": true
+          },
+          {
+            "schema": {
+              "default": "all",
+              "type": "string",
+              "enum": [
+                "all",
+                "mismatch"
+              ]
+            },
+            "in": "query",
+            "name": "status",
+            "required": false
+          },
+          {
+            "schema": {
+              "default": 1,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 9007199254740991
+            },
+            "in": "query",
+            "name": "page",
+            "required": false,
+            "description": "Sayfa numarası"
+          },
+          {
+            "schema": {
+              "default": 25,
+              "type": "integer",
+              "minimum": 1,
+              "maximum": 100
+            },
+            "in": "query",
+            "name": "pageSize",
+            "required": false,
+            "description": "Sayfa boyutu (≤ 100)"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "data": {
+                      "type": "object",
+                      "properties": {
+                        "year": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Eğitim yılının başladığı yıl"
+                        },
+                        "from": {
+                          "type": "string",
+                          "description": "Dönem başı (YYYY-MM-DD, Europe/Istanbul)"
+                        },
+                        "to": {
+                          "type": "string",
+                          "description": "Dönem sonu; süren yılda bugün"
+                        },
+                        "totals": {
+                          "type": "object",
+                          "properties": {
+                            "openingCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönem başı bakiye: açık borç − alacak"
+                            },
+                            "accruedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Vadesi dönemde olan taksitler"
+                            },
+                            "withdrawalAdjustmentCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi"
+                            },
+                            "collectedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ödeme günü dönemde olan tahsilatlar (brüt)"
+                            },
+                            "reversedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "İptal günü dönemde olan tahsilatlar"
+                            },
+                            "refundedCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Ödeme günü dönemde olan iadeler"
+                            },
+                            "scholarshipCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı, formüle girmez"
+                            },
+                            "discountCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı, formüle girmez"
+                            },
+                            "closingCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönem sonu bakiye: açık borç − alacak"
+                            },
+                            "expectedClosingCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade"
+                            },
+                            "differenceCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Kapanış − beklenen kapanış"
+                            },
+                            "openDebtCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dönem sonunda vadesi gelmiş açık taksit tutarı"
+                            },
+                            "creditCents": {
+                              "type": "integer",
+                              "minimum": -9007199254740991,
+                              "maximum": 9007199254740991,
+                              "description": "Dağıtılmamış tahsilat, avans ve ödenmemiş iade"
+                            }
+                          },
+                          "required": [
+                            "openingCents",
+                            "accruedCents",
+                            "withdrawalAdjustmentCents",
+                            "collectedCents",
+                            "reversedCents",
+                            "refundedCents",
+                            "scholarshipCents",
+                            "discountCents",
+                            "closingCents",
+                            "expectedClosingCents",
+                            "differenceCents",
+                            "openDebtCents",
+                            "creditCents"
+                          ],
+                          "additionalProperties": false
+                        },
+                        "studentCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991
+                        },
+                        "mismatchCount": {
+                          "type": "integer",
+                          "minimum": -9007199254740991,
+                          "maximum": 9007199254740991,
+                          "description": "Toplamları tutmayan öğrenci sayısı"
+                        },
+                        "rows": {
+                          "type": "array",
+                          "items": {
+                            "type": "object",
+                            "properties": {
+                              "openingCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönem başı bakiye: açık borç − alacak"
+                              },
+                              "accruedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Vadesi dönemde olan taksitler"
+                              },
+                              "withdrawalAdjustmentCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ayrılışta hak edilmeyen tahakkuk; iptal edilen taksite alınmış para varsa eksi"
+                              },
+                              "collectedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödeme günü dönemde olan tahsilatlar (brüt)"
+                              },
+                              "reversedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "İptal günü dönemde olan tahsilatlar"
+                              },
+                              "refundedCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Ödeme günü dönemde olan iadeler"
+                              },
+                              "scholarshipCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Eğitim yılı sözleşmelerinin bursu; bilgi amaçlı, formüle girmez"
+                              },
+                              "discountCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Eğitim yılı sözleşmelerinin indirimi; bilgi amaçlı, formüle girmez"
+                              },
+                              "closingCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönem sonu bakiye: açık borç − alacak"
+                              },
+                              "expectedClosingCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Açılış + tahakkuk − ayrılış düzeltmesi − tahsilat + iptal + iade"
+                              },
+                              "differenceCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Kapanış − beklenen kapanış"
+                              },
+                              "openDebtCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dönem sonunda vadesi gelmiş açık taksit tutarı"
+                              },
+                              "creditCents": {
+                                "type": "integer",
+                                "minimum": -9007199254740991,
+                                "maximum": 9007199254740991,
+                                "description": "Dağıtılmamış tahsilat, avans ve ödenmemiş iade"
+                              },
+                              "studentId": {
+                                "type": "string"
+                              },
+                              "studentName": {
+                                "type": "string"
+                              },
+                              "studentNumber": {
+                                "type": "string"
+                              },
+                              "mismatchReason": {
+                                "anyOf": [
+                                  {
+                                    "type": "string",
+                                    "enum": [
+                                      "unrecorded_payment",
+                                      "other"
+                                    ]
+                                  },
+                                  {
+                                    "type": "null"
+                                  }
+                                ]
+                              }
+                            },
+                            "required": [
+                              "openingCents",
+                              "accruedCents",
+                              "withdrawalAdjustmentCents",
+                              "collectedCents",
+                              "reversedCents",
+                              "refundedCents",
+                              "scholarshipCents",
+                              "discountCents",
+                              "closingCents",
+                              "expectedClosingCents",
+                              "differenceCents",
+                              "openDebtCents",
+                              "creditCents",
+                              "studentId",
+                              "studentName",
+                              "studentNumber",
+                              "mismatchReason"
+                            ],
+                            "additionalProperties": false
+                          }
+                        }
+                      },
+                      "required": [
+                        "year",
+                        "from",
+                        "to",
+                        "totals",
+                        "studentCount",
+                        "mismatchCount",
+                        "rows"
+                      ],
+                      "additionalProperties": false
+                    },
+                    "meta": {
+                      "$ref": "#/components/schemas/PageMeta"
+                    }
+                  },
+                  "required": [
+                    "data",
+                    "meta"
+                  ],
+                  "additionalProperties": false
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "403": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "429": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          },
+          "500": {
+            "description": "Default Response",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ErrorResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/v1/finance/reconciliation/export": {
+      "get": {
+        "operationId": "exportFinanceReconciliation",
+        "summary": "Yıl sonu mutabakat dosyası",
+        "tags": [
+          "finance-exports"
+        ],
+        "description": "Mutabakatın öğrenci satırlarını CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı; kurumun aktarım profili varsa onun biçimi ve sütunları. Satır ve toplam kuralı `GET /finance/reconciliation` ile aynıdır. Her aktarım denetim kaydına yazılır. Taze oturum ister: eskiyse 403 `reauthentication_required`. Rol: `yonetici`.",
+        "parameters": [
+          {
+            "schema": {
+              "type": "integer",
+              "minimum": 2000,
+              "maximum": 2100
+            },
+            "in": "query",
+            "name": "year",
             "required": true
           }
         ],

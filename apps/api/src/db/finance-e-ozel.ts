@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNull, sql } from 'drizzle-orm'
+import { and, asc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm'
 
 import { effectiveProgressionDecision } from '@kampus/school-core/cefr/progression.ts'
 import {
@@ -35,6 +35,7 @@ export async function listEOzelMarks(
       recordedAt: eOzelRecords.recordedAt,
       recordedByUserId: eOzelRecords.recordedByUserId,
       version: eOzelRecords.version,
+      fingerprint: eOzelRecords.recordedFingerprint,
     })
     .from(eOzelRecords)
     .where(and(eq(eOzelRecords.institutionId, institutionId), isNull(eOzelRecords.archivedAt)))
@@ -45,6 +46,7 @@ export async function listEOzelMarks(
         recordedAt: row.recordedAt?.toISOString() ?? null,
         recordedByUserId: row.recordedByUserId,
         version: row.version,
+        fingerprint: row.fingerprint,
       },
     ]),
   )
@@ -63,6 +65,7 @@ export async function saveEOzelMark(
     sourceId: string
     expectedVersion: number
     recordedByUserId: string | null
+    fingerprint: string | null
     now: Date
   },
 ): Promise<{ version: number } | null> {
@@ -76,6 +79,7 @@ export async function saveEOzelMark(
         sourceId: input.sourceId,
         recordedAt,
         recordedByUserId: input.recordedByUserId,
+        recordedFingerprint: input.fingerprint,
         version: E_OZEL_INITIAL_VERSION + 1,
         createdAt: input.now,
         updatedAt: input.now,
@@ -89,6 +93,7 @@ export async function saveEOzelMark(
     .set({
       recordedAt,
       recordedByUserId: input.recordedByUserId,
+      recordedFingerprint: input.fingerprint,
       version: sql`${eOzelRecords.version} + 1`,
       updatedAt: input.now,
     })
@@ -104,7 +109,10 @@ export async function saveEOzelMark(
   return updated ?? null
 }
 
-/** Arşivlenmemiş kimlikler. Numara yalnız maskeleme için okunur; loglanmaz, dışarı çıkmaz. */
+/**
+ * Arşivlenmemiş kimlikler. Numara yalnız maskeleme için okunur; loglanmaz, dışarı çıkmaz. Sürüm
+ * parmak izine girer: kimlik satırının değişimi numara özetlenmeden anlaşılır.
+ */
 export async function loadLearnerIdentities(db: Database, institutionId: string) {
   const rows = await db
     .select({
@@ -113,6 +121,7 @@ export async function loadLearnerIdentities(db: Database, institutionId: string)
       number: studentIdentities.identityNumber,
       birthDate: studentIdentities.birthDate,
       createdAt: studentIdentities.createdAt,
+      version: studentIdentities.version,
     })
     .from(studentIdentities)
     .where(
@@ -121,11 +130,40 @@ export async function loadLearnerIdentities(db: Database, institutionId: string)
   return new Map(rows.map((row) => [row.studentId, row]))
 }
 
+/**
+ * Tek kursiyerin tam kimlik numarası (satır başına "Göster", DOM-YTK-052). Arşivlenmiş kimlik listede
+ * görünmediği için burada da okunmaz. Çağıran aynı transaction'da denetime yazar.
+ */
+export async function findLearnerFullIdentity(
+  db: Database,
+  institutionId: string,
+  studentId: string,
+) {
+  const [row] = await db
+    .select({
+      identityKind: studentIdentities.identityKind,
+      identityNumber: studentIdentities.identityNumber,
+    })
+    .from(studentIdentities)
+    .where(
+      and(
+        eq(studentIdentities.institutionId, institutionId),
+        eq(studentIdentities.studentId, studentId),
+        isNull(studentIdentities.archivedAt),
+      ),
+    )
+    .limit(1)
+  return row ?? null
+}
+
 const METHOD_LABELS = new Map<string, string>(
   Object.entries(PAYMENT_METHOD_KEYS).map(([label, key]) => [key, label]),
 )
 
-/** İptal edilmemiş tahsilatlar ve MEBBİS işaretleri (DOM-FIN-032). */
+/**
+ * İptal edilmemiş tahsilatlar ve işaretliyken iptal edilenler, MEBBİS işaretleriyle (DOM-FIN-032).
+ * İşlenmiş tahsilatın iptali e-Özel'de düzeltme gerektirir, satır listede kalır.
+ */
 export async function loadFeeRows(db: Database, institutionId: string) {
   const rows = await db
     .select({
@@ -141,6 +179,7 @@ export async function loadFeeRows(db: Database, institutionId: string) {
       reversedAt: payments.reversedAt,
       mebbisRecordedAt: payments.mebbisRecordedAt,
       mebbisRecordedByUserId: payments.mebbisRecordedByUserId,
+      mebbisFingerprint: payments.mebbisFingerprint,
       version: payments.version,
     })
     .from(payments)
@@ -156,16 +195,27 @@ export async function loadFeeRows(db: Database, institutionId: string) {
     .where(
       and(
         eq(payments.institutionId, institutionId),
-        isNull(payments.reversedAt),
+        or(isNull(payments.reversedAt), isNotNull(payments.mebbisRecordedAt)),
         isNull(payments.archivedAt),
       ),
     )
   return rows.map((row) => ({ ...row, method: METHOD_LABELS.get(row.method) ?? row.method }))
 }
 
-/** `gelmedi` ders saati satırları (DOM-DIL-061); grup ve kur adıyla, yalnız okunur. */
-export async function loadAbsentLessonHours(db: Database, institutionId: string) {
-  return db
+/**
+ * `gelmedi` ders saati satırları (DOM-DIL-061) ve durumu sonradan değişmiş olabilecek işaretli
+ * satırlar; grup ve kur adıyla, yalnız okunur.
+ */
+export async function loadAbsentLessonHours(
+  db: Database,
+  institutionId: string,
+  markedIds: ReadonlySet<string>,
+) {
+  const current = and(
+    eq(lessonHourAttendances.status, 'absent'),
+    isNull(lessonHourAttendances.archivedAt),
+  )
+  const rows = await db
     .select({
       id: lessonHourAttendances.id,
       learnerId: lessonHourAttendances.learnerId,
@@ -173,6 +223,7 @@ export async function loadAbsentLessonHours(db: Database, institutionId: string)
       status: lessonHourAttendances.status,
       excused: lessonHourAttendances.excused,
       recordedAt: lessonHourAttendances.recordedAt,
+      archivedAt: lessonHourAttendances.archivedAt,
       groupName: languageGroups.name,
       courseName: courses.name,
     })
@@ -194,10 +245,13 @@ export async function loadAbsentLessonHours(db: Database, institutionId: string)
     .where(
       and(
         eq(lessonHourAttendances.institutionId, institutionId),
-        eq(lessonHourAttendances.status, 'absent'),
-        isNull(lessonHourAttendances.archivedAt),
+        // İşaretli kimliklerde gün bazlı yoklamanın uuid olmayan kimlikleri de var: metin karşılaştırılır.
+        markedIds.size === 0
+          ? current
+          : or(current, inArray(sql`${lessonHourAttendances.id}::text`, [...markedIds])),
       ),
     )
+  return rows.map(({ archivedAt, ...row }) => ({ ...row, archived: archivedAt !== null }))
 }
 
 /** Kaydın geçerli onaylı kur sonu kararları (core `effectiveProgressionDecision`), yalnız okunur. */

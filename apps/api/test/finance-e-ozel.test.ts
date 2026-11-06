@@ -11,9 +11,11 @@ import { insertProgressionDecision, saveProgressionReview } from '../src/db/cefr
 import { insertLessonHourAttendances } from '../src/db/progression.ts'
 import { insertMissingRecords } from '../src/db/records.ts'
 import { auditLog } from '../src/db/schema/audit-log.ts'
+import { lessonHourAttendances } from '../src/db/schema/cefr.ts'
 import { eOzelRecords } from '../src/db/schema/finance-e-ozel.ts'
 import { languageGroupMembers } from '../src/db/schema/language-groups.ts'
 import { payments } from '../src/db/schema/payments.ts'
+import { records } from '../src/db/schema/records.ts'
 import { studentIdentities } from '../src/db/schema/student-identities.ts'
 import {
   buildTestApp,
@@ -34,6 +36,7 @@ import {
 
 const ITEMS = '/api/v1/finance/e-ozel/items'
 const EXPORT = '/api/v1/finance/e-ozel/export'
+const FULL_IDENTITY = (studentId: string) => `/api/v1/finance/e-ozel/learners/${studentId}/identity`
 const IDENTITY = '10000000146'
 
 describe('e-Özel işlem listesi uçları', () => {
@@ -107,6 +110,8 @@ describe('e-Özel işlem listesi uçları', () => {
     sourceId: string
     learnerId: string
     version: number
+    recordStatus: string
+    sourceRemoved: boolean
     recordedAt: string | null
     recordedByName: string | null
     date: string | null
@@ -467,8 +472,9 @@ describe('e-Özel işlem listesi uçları', () => {
     assert.equal(JSON.stringify(response).includes(IDENTITY), false)
     const learner = response.data.find((item) => item.sourceId === 's1')
     assert.equal(learner?.learner?.maskedIdentity, '*******0146')
-    const cancelled = response.data.find((item) => item.sourceId === 's2:cancelled')
+    const cancelled = response.data.find((item) => item.sourceId === 's2')
     assert.equal(cancelled?.learner?.status, 'cancelled')
+    assert.equal(cancelled?.recordStatus, 'pending')
     const absent = response.data.find((item) => item.kind === 'attendance')
     assert.equal(absent?.sourceId, 'att-absent', 'yalnız devamsız gün')
     assert.equal(absent?.attendance?.groupName, 'TYT-1')
@@ -478,7 +484,7 @@ describe('e-Özel işlem listesi uçları', () => {
     assert.equal(first.meta.total, 4)
     const second = await list(a.cookie, 'page=2&pageSize=1')
     assert.notEqual(second.data[0]?.sourceId, first.data[0]?.sourceId)
-    assert.equal((await list(a.cookie, 'q=ece')).data[0]?.sourceId, 's2:cancelled')
+    assert.equal((await list(a.cookie, 'q=ece')).data[0]?.sourceId, 's2')
     assert.equal((await list(a.cookie, 'dateFrom=2026-10-01&dateTo=2026-10-01')).meta.total, 1)
   })
 
@@ -523,7 +529,7 @@ describe('e-Özel işlem listesi uçları', () => {
       'geri alınan satır yeniden işlenmemiş görünür',
     )
     fails(await mark(a.cookie, 'learner', 's1', 3, false), 409, 'e_ozel_not_recorded')
-    fails(await mark(a.cookie, 'learner', 's2', 1), 404, 'not_found')
+    fails(await mark(a.cookie, 'learner', 'yok', 1), 404, 'not_found')
     fails(await mark(a.cookie, 'attendance', 'att-present', 1), 404, 'not_found')
 
     const audits = await db
@@ -537,14 +543,327 @@ describe('e-Özel işlem listesi uçları', () => {
     }
   })
 
-  test('IST-085: ayrılan kursiyerin "kayıt iptal" satırı kendi işaretini taşır', async () => {
+  /** Kaydın `data` alanını yazar: yoklama ve kursiyer düzeltmesi başka alanın ucundan gelir. */
+  async function patchRecord(
+    institutionId: string,
+    collection: 'attendance' | 'students',
+    id: string,
+    data: Record<string, unknown>,
+  ) {
+    const where = and(
+      eq(records.institutionId, institutionId),
+      eq(records.collection, collection),
+      eq(records.id, id),
+    )
+    const [row] = await db.select({ data: records.data }).from(records).where(where)
+    assert.ok(row)
+    await db
+      .update(records)
+      .set({ data: { ...(row.data as object), ...data } })
+      .where(where)
+  }
+
+  const statusOf = async (cookie: string, kind: string, sourceId: string, status = 'all') =>
+    (await list(cookie, `kind=${kind}&status=${status}`)).data.find(
+      (item) => item.sourceId === sourceId,
+    )
+
+  test('IST-085: işlenmiş kursiyer ayrılınca satır düşmez, düzeltilmeli olur; düzeltme işaretiyle kapanır', async () => {
     const a = await institution()
-    const marked = await mark(a.cookie, 'learner', 's2:cancelled', 1)
+    const marked = await mark(a.cookie, 'learner', 's1', 1)
     assert.equal(marked.statusCode, 200, marked.body)
-    assert.equal(marked.json().data.sourceId, 's2:cancelled')
-    const [row] = (await list(a.cookie, 'kind=learner&status=recorded')).data
-    assert.equal(row?.sourceId, 's2:cancelled')
+    assert.equal((await statusOf(a.cookie, 'learner', 's1'))?.recordStatus, 'recorded')
+
+    await patchRecord(a.id, 'students', 's1', { isActive: false })
+    const row = await statusOf(a.cookie, 'learner', 's1', 'needs_correction')
+    assert.equal(row?.recordStatus, 'needs_correction')
     assert.equal(row?.learner?.status, 'cancelled')
+    assert.equal(row?.sourceRemoved, false)
+    assert.equal(
+      (await list(a.cookie, 'kind=learner')).data.some((item) => item.sourceId === 's1'),
+      true,
+      'varsayılan liste düzeltilmeliyi de gösterir',
+    )
+    assert.equal(await statusOf(a.cookie, 'learner', 's1', 'recorded'), undefined)
+
+    const corrected = await mark(a.cookie, 'learner', 's1', row.version)
+    assert.equal(corrected.statusCode, 200, corrected.body)
+    assert.equal((await statusOf(a.cookie, 'learner', 's1'))?.recordStatus, 'recorded')
+    assert.equal(
+      (await markRows(a.id))[0]?.version,
+      3,
+      'düzeltme aynı satırı günceller, ikinci satır açmaz',
+    )
+    assert.equal((await markRows(a.id)).length, 1)
+
+    await patchRecord(a.id, 'students', 's1', { name: 'Deniz Kaya' })
+    assert.equal(
+      (await statusOf(a.cookie, 'learner', 's1'))?.recordStatus,
+      'recorded',
+      "ad e-Özel'e elle girilmez, düzeltme istemez",
+    )
+  })
+
+  test('IST-085: arşivlenen işaretli kursiyer düşmez; işaretsiz arşivli kursiyer listeye girmez', async () => {
+    const a = await institution()
+    await mark(a.cookie, 'learner', 's1', 1)
+    await db
+      .update(records)
+      .set({ archivedAt: FIXED_NOW })
+      .where(and(eq(records.institutionId, a.id), eq(records.collection, 'students')))
+    const { data } = await list(a.cookie, 'kind=learner&status=all')
+    assert.deepEqual(
+      data.map((item) => [item.sourceId, item.recordStatus, item.learner?.status]),
+      [['s1', 'needs_correction', 'cancelled']],
+    )
+  })
+
+  test('DOM-FIN-033 DOM-FIN-032: işaretli tahsilat iptal edilince düzeltilmeli kalır, düzeltme kapanır, işaret kaldırılamaz', async () => {
+    const a = await institution()
+    const paymentId = await insertPayment(a.id)
+    const marked = await mark(a.cookie, 'fee', paymentId, 1)
+    assert.equal(marked.statusCode, 200, marked.body)
+    const [before] = await db.select().from(payments).where(eq(payments.id, paymentId))
+    assert.match(before?.mebbisFingerprint ?? '', /^[0-9a-f]{32}$/)
+
+    const reversal = await call(
+      'POST',
+      `/api/v1/payments/${paymentId}/reverse`,
+      a.cookie,
+      { reason: 'Yanlış öğrenciye girildi' },
+      { 'if-match': '"2"', ...key() },
+    )
+    assert.equal(reversal.statusCode, 200, reversal.body)
+
+    const row = await statusOf(a.cookie, 'fee', paymentId, 'needs_correction')
+    assert.equal(row?.recordStatus, 'needs_correction')
+    assert.equal(row?.sourceRemoved, true)
+    assert.equal(row?.version, 3)
+    assert.equal(JSON.stringify(row).includes('Yanlış öğrenciye'), false, 'iptal gerekçesi dönmez')
+    assert.equal(JSON.stringify(row).includes('ingerprint'), false, 'özet istemciye dönmez')
+
+    const file = await call('GET', `${EXPORT}?kind=fee&status=needs_correction`, a.cookie)
+    assert.equal(file.statusCode, 200, file.body)
+    assert.ok(file.body.includes(`"e-Özel'de düzeltilmeli"`))
+    assert.ok(file.body.includes('"Tahsilat iptal edildi"'))
+
+    fails(await mark(a.cookie, 'fee', paymentId, 3, false), 409, 'e_ozel_source_removed')
+    const [unchanged] = await db.select().from(payments).where(eq(payments.id, paymentId))
+    assert.equal(unchanged?.version, 3, 'ret kaydı değiştirmez')
+
+    const corrected = await mark(a.cookie, 'fee', paymentId, 3)
+    assert.equal(corrected.statusCode, 200, corrected.body)
+    const closed = await statusOf(a.cookie, 'fee', paymentId)
+    assert.equal(closed?.recordStatus, 'recorded')
+    assert.equal(closed?.sourceRemoved, true)
+    assert.equal((await list(a.cookie, 'kind=fee')).meta.total, 0, 'iş bekleyen kalmadı')
+    fails(await mark(a.cookie, 'fee', paymentId, 4, false), 409, 'e_ozel_source_removed')
+    fails(await mark(a.cookie, 'fee', paymentId, 4), 409, 'e_ozel_already_recorded')
+
+    const audits = await db
+      .select()
+      .from(auditLog)
+      .where(and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'payment.mebbis')))
+    assert.equal(audits.length, 2, 'ilk işaret ve düzeltme')
+    assert.deepEqual(audits[1]?.changes, { fields: ['mebbisRecordedAt'] })
+  })
+
+  test('DOM-FIN-032: MEBBİS ucundan işaretlenen tahsilatın iptali de düzeltilmeli olur', async () => {
+    const a = await institution()
+    const paymentId = await insertPayment(a.id)
+    const marked = await call(
+      'POST',
+      `/api/v1/payments/${paymentId}/mebbis-record`,
+      a.cookie,
+      { recorded: true },
+      { 'if-match': '"1"', ...key() },
+    )
+    assert.equal(marked.statusCode, 200, marked.body)
+    assert.equal((await statusOf(a.cookie, 'fee', paymentId))?.recordStatus, 'recorded')
+    const reversal = await call(
+      'POST',
+      `/api/v1/payments/${paymentId}/reverse`,
+      a.cookie,
+      { reason: 'Yanlış tutar girildi' },
+      { 'if-match': '"2"', ...key() },
+    )
+    assert.equal(reversal.statusCode, 200, reversal.body)
+    assert.equal((await statusOf(a.cookie, 'fee', paymentId))?.recordStatus, 'needs_correction')
+  })
+
+  test('DOM-DIL-060 DOM-DIL-061: yoklama düzeltilince işaretli satır düzeltilmeli kalır; işaretsiz satır düşer', async () => {
+    const a = await institution()
+    const dayMark = await mark(a.cookie, 'attendance', 'att-absent', 1)
+    assert.equal(dayMark.statusCode, 200, dayMark.body)
+    const [stored] = await markRows(a.id)
+    assert.match(stored?.recordedFingerprint ?? '', /^[0-9a-f]{32}$/)
+
+    await patchRecord(a.id, 'attendance', 'att-absent', { status: 'excused' })
+    const excused = await statusOf(a.cookie, 'attendance', 'att-absent', 'needs_correction')
+    assert.equal(excused?.sourceRemoved, false)
+    assert.equal(excused?.attendance?.excused, true)
+
+    await patchRecord(a.id, 'attendance', 'att-absent', { status: 'present' })
+    const removed = await statusOf(a.cookie, 'attendance', 'att-absent', 'needs_correction')
+    assert.equal(removed?.sourceRemoved, true)
+    assert.equal(removed?.learnerId, 's1')
+
+    const corrected = await mark(a.cookie, 'attendance', 'att-absent', removed?.version ?? 0)
+    assert.equal(corrected.statusCode, 200, corrected.body)
+    assert.equal((await statusOf(a.cookie, 'attendance', 'att-absent'))?.recordStatus, 'recorded')
+    assert.equal(
+      (await list(a.cookie, 'kind=attendance')).meta.total,
+      0,
+      'düzeltmesi yapılmış satır iş beklemez',
+    )
+
+    const b = await institution()
+    await patchRecord(b.id, 'attendance', 'att-absent', { status: 'present' })
+    assert.equal(
+      await statusOf(b.cookie, 'attendance', 'att-absent'),
+      undefined,
+      'işaretsiz düzeltilen yoklama listeye girmez',
+    )
+  })
+
+  test('DOM-DIL-061: arşivlenen ve durumu değişen ders saati işaretliyse düzeltilmeli kalır', async () => {
+    const a = await institution()
+    await withCourseEnd(a)
+    const hour = (await list(a.cookie, 'kind=attendance')).data.find(
+      (item) => item.attendance?.groupName === 'B1 Akşam',
+    )
+    assert.ok(hour)
+    const marked = await mark(a.cookie, 'attendance', hour.sourceId, hour.version)
+    assert.equal(marked.statusCode, 200, marked.body)
+    assert.equal((await statusOf(a.cookie, 'attendance', hour.sourceId))?.recordStatus, 'recorded')
+    await db
+      .update(lessonHourAttendances)
+      .set({ archivedAt: FIXED_NOW })
+      .where(eq(lessonHourAttendances.id, hour.sourceId))
+    const row = await statusOf(a.cookie, 'attendance', hour.sourceId, 'needs_correction')
+    assert.equal(row?.sourceRemoved, true)
+    assert.equal(row?.attendance?.groupName, 'B1 Akşam')
+  })
+
+  test('DOM-YTK-052: tam kimlik yönetici ve ön büroya döner; her görüntüleme denetime numarasız yazılır, önbelleğe alınmaz', async () => {
+    const a = await institution()
+    const desk = await member(a.id, 'onburo')
+    const reads = () =>
+      db
+        .select()
+        .from(auditLog)
+        .where(
+          and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'student_identity.read_full')),
+        )
+    for (const cookie of [a.cookie, desk]) {
+      const response = await call('GET', FULL_IDENTITY('s1'), cookie)
+      assert.equal(response.statusCode, 200, response.body)
+      assert.deepEqual(response.json().data, { identityKind: 'tc', identityNumber: IDENTITY })
+      assert.equal(response.headers['cache-control'], 'no-store')
+    }
+    const audits = await reads()
+    assert.equal(audits.length, 2, 'her görüntüleme ayrı satır')
+    for (const audit of audits) {
+      assert.deepEqual(audit.changes, { fields: ['identityKind', 'identityNumber'] })
+      assert.equal(audit.entityType, 'students')
+      assert.equal(audit.entityId, 's1')
+      assert.equal(JSON.stringify(audit).includes(IDENTITY), false)
+    }
+  })
+
+  test('DOM-YTK-052: tam kimlik loga yazılmaz; liste ve dosya maskeli kalır', async () => {
+    const logs: string[] = []
+    const logged = await buildTestApp(db, { logs, clock: () => FIXED_NOW })
+    try {
+      const a = await institution()
+      const response = await call('GET', FULL_IDENTITY('s1'), a.cookie, undefined, {}, logged)
+      assert.equal(response.statusCode, 200, response.body)
+      assert.equal(logs.join('').includes(IDENTITY), false)
+      assert.equal(logs.join('').includes('0146'), false)
+      const { data } = await list(a.cookie, 'kind=learner')
+      assert.equal(JSON.stringify(data).includes(IDENTITY), false)
+      const file = await call('GET', `${EXPORT}?kind=learner`, a.cookie)
+      assert.equal(file.body.includes(IDENTITY), false)
+    } finally {
+      await logged.close()
+    }
+  })
+
+  test('DOM-YTK-052 oturumsuz 401, diğer roller 403, denetim yazılmaz', async () => {
+    const a = await institution()
+    fails(await call('GET', FULL_IDENTITY('s1'), null), 401)
+    for (const role of ['ogretmen', 'ogrenci', 'veli'] as const)
+      fails(await call('GET', FULL_IDENTITY('s1'), await member(a.id, role)), 403, 'forbidden')
+    const audits = await db
+      .select()
+      .from(auditLog)
+      .where(
+        and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'student_identity.read_full')),
+      )
+    assert.deepEqual(audits, [])
+  })
+
+  test('IST-085 başka kurum: tam kimlik 404, numara ve varlık sızmaz, denetim yazılmaz', async () => {
+    const a = await institution()
+    const b = await institution()
+    await db
+      .update(studentIdentities)
+      .set({ studentId: 's-b', identityNumber: '20000000000' })
+      .where(eq(studentIdentities.institutionId, b.id))
+    const foreign = await call('GET', FULL_IDENTITY('s-b'), a.cookie)
+    fails(foreign, 404, 'not_found')
+    assert.equal(foreign.body.includes('20000000000'), false)
+    const missing = await call('GET', FULL_IDENTITY('yok'), a.cookie)
+    assert.equal(foreign.json().message, missing.json().message, 'varlık sızmaz')
+    fails(await call('GET', FULL_IDENTITY('s2'), a.cookie), 404, 'not_found')
+    const audits = await db
+      .select()
+      .from(auditLog)
+      .where(
+        and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'student_identity.read_full')),
+      )
+    assert.deepEqual(audits, [], 'kimliksiz ya da başka kurumun kursiyeri denetim üretmez')
+  })
+
+  test('DOM-KAY-011: arşivlenmiş kimlik listede olmadığı gibi tam okunamaz', async () => {
+    const a = await institution()
+    await db
+      .update(studentIdentities)
+      .set({ archivedAt: FIXED_NOW })
+      .where(eq(studentIdentities.institutionId, a.id))
+    fails(await call('GET', FULL_IDENTITY('s1'), a.cookie), 404, 'not_found')
+  })
+
+  test('DOM-YTK-040 ADR 0008: crm ya da finance kapalı 403, okulda 404', async () => {
+    const noCrm = await institution({ enabledModules: { crm: false } })
+    fails(await call('GET', FULL_IDENTITY('s1'), noCrm.cookie), 403, 'module_disabled')
+    const noFinance = await institution({ enabledModules: { finance: false } })
+    fails(await call('GET', FULL_IDENTITY('s1'), noFinance.cookie), 403, 'module_disabled')
+    const school = await createInstitution(app, { type: 'school' })
+    fails(await call('GET', FULL_IDENTITY('s1'), await signInAs(app, school.admin)), 404)
+  })
+
+  test('guvenlik-kvkk: eski oturumla tam kimlik 403 reauthentication_required, denetim yazılmaz', async () => {
+    const a = await institution()
+    const later = await buildTestApp(db, {
+      clock: () => new Date(Date.now() + 16 * 60 * 1000),
+    })
+    try {
+      fails(
+        await call('GET', FULL_IDENTITY('s1'), a.cookie, undefined, {}, later),
+        403,
+        'reauthentication_required',
+      )
+      const audits = await db
+        .select()
+        .from(auditLog)
+        .where(
+          and(eq(auditLog.institutionId, a.id), eq(auditLog.action, 'student_identity.read_full')),
+        )
+      assert.deepEqual(audits, [])
+    } finally {
+      await later.close()
+    }
   })
 
   test('IST-085: aynı Idempotency-Key aynı yanıtı döner, işaret bir kez yazılır', async () => {
@@ -558,6 +877,15 @@ describe('e-Özel işlem listesi uçları', () => {
     assert.equal(again.headers['idempotent-replayed'], 'true')
     assert.deepEqual(again.json(), first.json())
     assert.equal((await markRows(a.id)).length, 1)
+  })
+
+  test('DOM-YTK-040: crm kapalıyken işlenen kursiyer kimlik gizli olsa da işlendi kalır', async () => {
+    const a = await institution({ enabledModules: { crm: false } })
+    const marked = await mark(a.cookie, 'learner', 's1', 1)
+    assert.equal(marked.statusCode, 200, marked.body)
+    const row = await statusOf(a.cookie, 'learner', 's1')
+    assert.equal(row?.recordStatus, 'recorded')
+    assert.equal(row?.learner?.maskedIdentity, null)
   })
 
   test('DOM-FIN-032: ücret işareti tahsilatın MEBBİS işaretidir, tek kayıt; tablo satırı açılmaz', async () => {
@@ -604,9 +932,9 @@ describe('e-Özel işlem listesi uçları', () => {
     fails(await mark(a.cookie, 'fee', reversedId, 1), 404, 'not_found')
   })
 
-  test('DOM-DIL-061 DOM-DIL-070: ders saati ve kur sonu Oğuzhan tablolarından okunur, işaretlenir; karar düzeltilince eskisi düşer', async () => {
+  test('DOM-DIL-061 DOM-DIL-070: ders saati ve kur sonu Oğuzhan tablolarından okunur, işaretlenir; karar düzeltilince satır düzeltilmeli olur', async () => {
     const a = await institution()
-    const { decision, teacher, draft } = await withCourseEnd(a)
+    const { decision, enrollmentId, teacher, draft } = await withCourseEnd(a)
     // Bekleyen karar listeye girmez.
     assert.equal((await list(a.cookie, 'kind=course_end&status=all')).meta.total, 0)
 
@@ -637,13 +965,13 @@ describe('e-Özel işlem listesi uçları', () => {
     )
     assert.ok(approved)
     const [row] = (await list(a.cookie, 'kind=course_end')).data
-    assert.equal(row?.sourceId, decision.id)
+    assert.equal(row?.sourceId, enrollmentId)
     assert.equal(row?.courseEnd?.outcome, 'repeat')
     assert.equal(JSON.stringify(row).includes('Gizli gerekçe'), false, 'gerekçe dönmez')
-    const endMark = await mark(a.cookie, 'course_end', decision.id, 1)
+    const endMark = await mark(a.cookie, 'course_end', enrollmentId, 1)
     assert.equal(endMark.statusCode, 200, endMark.body)
 
-    // Düzeltme onaylanınca geçerli karar değişir: yeni satır işlenmemiş, eski karar 404.
+    // Düzeltme onaylanınca geçerli karar değişir: aynı satır düzeltilmeli olur, ikinci satır açılmaz.
     const later = new Date(FIXED_NOW.getTime() + 60_000).toISOString()
     const correction = await insertProgressionDecision(db, a.id, {
       ...draft({ outcome: 'passed', correctsDecisionId: decision.id, at: later }),
@@ -652,12 +980,21 @@ describe('e-Özel işlem listesi uçları', () => {
       reviewedAt: later,
     })
     const pending = (await list(a.cookie, 'kind=course_end')).data
+    assert.ok(correction.id)
     assert.deepEqual(
       pending.map((item) => item.sourceId),
-      [correction.id],
+      [enrollmentId],
     )
     assert.equal(pending[0]?.courseEnd?.outcome, 'passed')
+    assert.equal(pending[0]?.recordStatus, 'needs_correction')
+    assert.equal(pending[0]?.sourceRemoved, false)
     fails(await mark(a.cookie, 'course_end', decision.id, 2, false), 404, 'not_found')
+    const corrected = await mark(a.cookie, 'course_end', enrollmentId, 2)
+    assert.equal(corrected.statusCode, 200, corrected.body)
+    assert.equal(
+      (await list(a.cookie, 'kind=course_end&status=recorded')).data[0]?.courseEnd?.outcome,
+      'passed',
+    )
   })
 
   test('DOM-YTK-052: kimlik içeren sayfa ve dosya denetime alan adıyla yazılır, numara ve arama metni yazılmaz', async () => {

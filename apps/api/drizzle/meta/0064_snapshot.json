@@ -1,5 +1,5 @@
 {
-  "id": "c7f9a53c-2f75-469f-bd09-261e9e892056",
+  "id": "017c0fed-7f76-41ca-a35a-f59681a66ccd",
   "prevId": "f58a7c9e-ac9b-4263-a179-40ad00d6e517",
   "version": "7",
   "dialect": "postgresql",
@@ -5794,6 +5794,12 @@
           "primaryKey": false,
           "notNull": false
         },
+        "recorded_fingerprint": {
+          "name": "recorded_fingerprint",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
         "created_at": {
           "name": "created_at",
           "type": "timestamp with time zone",
@@ -5857,7 +5863,7 @@
         },
         "e_ozel_records_mark_check": {
           "name": "e_ozel_records_mark_check",
-          "value": "(\"e_ozel_records\".\"recorded_at\" is null) = (\"e_ozel_records\".\"recorded_by_user_id\" is null)"
+          "value": "(\"e_ozel_records\".\"recorded_at\" is null) = (\"e_ozel_records\".\"recorded_by_user_id\" is null) and (\"e_ozel_records\".\"recorded_at\" is null) = (\"e_ozel_records\".\"recorded_fingerprint\" is null)"
         }
       },
       "isRLSEnabled": false
@@ -8558,6 +8564,12 @@
         },
         "mebbis_recorded_by_user_id": {
           "name": "mebbis_recorded_by_user_id",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "mebbis_fingerprint": {
+          "name": "mebbis_fingerprint",
           "type": "text",
           "primaryKey": false,
           "notNull": false

@@ -2273,7 +2273,7 @@ export interface paths {
         };
         /**
          * e-Özel'e işlenecek kayıtlar
-         * @description e-Özel'e elle girilecek kursiyer, ücret/dekont, devamsızlık ve kurs sonu satırları (IST-085, DOM-KAY-015); varsayılan yalnız işlenmemişler. Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Kimlik numarası yalnız maskeli döner; bu bilgiyi içeren sayfa denetime yazılır (`finance.e_ozel_read`, yalnız alan adları). Devamsızlık ve kurs sonu `academic` modülünün verisidir: modül kapalıyken genel listede yer almaz, `kind` ile istenirse 403 `module_disabled`. `crm` kapalıyken kimlik alanları boş döner. Ters gün aralığı ve bilinmeyen parametre 400. Sayfalıdır, `pageSize` en çok 100. Okulda 404. Roller: `yonetici`, `onburo`.
+         * @description e-Özel'e elle girilecek kursiyer, ücret/dekont, devamsızlık ve kurs sonu satırları (IST-085, DOM-KAY-015); varsayılan iş bekleyenler (işlenmemiş ve düzeltilmeli). İşaretlendikten sonra kaynağı değişen satır (tahsilat iptali, yoklama düzeltmesi, kayıt iptali, kur sonu kararı düzeltmesi) listeden düşmez, `recordStatus` `needs_correction` olur; işaretlendiği anki kişisel veri içermeyen parmak izi karşılaştırılarak bulunur. Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Kimlik numarası yalnız maskeli döner; bu bilgiyi içeren sayfa denetime yazılır (`finance.e_ozel_read`, yalnız alan adları). Devamsızlık ve kurs sonu `academic` modülünün verisidir: modül kapalıyken genel listede yer almaz, `kind` ile istenirse 403 `module_disabled`. `crm` kapalıyken kimlik alanları boş döner. Ters gün aralığı ve bilinmeyen parametre 400. Sayfalıdır, `pageSize` en çok 100. Okulda 404. Roller: `yonetici`, `onburo`.
          */
         get: operations["listEOzelItems"];
         put?: never;
@@ -2293,9 +2293,29 @@ export interface paths {
         };
         /**
          * e-Özel işlem listesi dosyası
-         * @description Listeyle aynı süzgeçle bütün satırları CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı (IST-085). Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Tam kimlik numarası dosyaya yazılmaz. Her aktarım denetime yazılır (`finance.e_ozel_export`, DOM-YTK-052). Taze oturum ister: eskiyse 403 `reauthentication_required`; kullanıcı başına 10/dk. Okulda 404. Roller: `yonetici`, `onburo`.
+         * @description Listeyle aynı süzgeçle bütün satırları CSV olarak döner: `;` ayırıcı, UTF-8 BOM, ondalık virgül, formül kaçışı (IST-085). Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Düzeltilmeli satır durum ve değişiklik sütunlarında görünür. Tam kimlik numarası dosyaya yazılmaz. Her aktarım denetime yazılır (`finance.e_ozel_export`, DOM-YTK-052). Taze oturum ister: eskiyse 403 `reauthentication_required`; kullanıcı başına 10/dk. Okulda 404. Roller: `yonetici`, `onburo`.
          */
         get: operations["exportEOzelItems"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/api/v1/finance/e-ozel/learners/{studentId}/identity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Kursiyerin tam kimlik numarası
+         * @description e-Özel'e elle giriş için tek kursiyerin tam kimlik numarasını döner (IST-085). Liste ve dosya maskeli kalır. Her görüntüleme aynı transaction'da denetime yazılır (`student_identity.read_full`; numara değil alan adları, DOM-YTK-052); denetim yazılamazsa yanıt dönmez. Yanıt `Cache-Control: no-store` taşır, numara loglanmaz. Taze oturum ister: eskiyse 403 `reauthentication_required`; kullanıcı başına 30/dk. Kimlik `crm` modülünün verisidir: kapalıyken 403 `module_disabled`. Kimliği olmayan, arşivlenmiş ya da başka kurumun kursiyeri 404. Okulda 404. Roller: `yonetici`, `onburo`.
+         */
+        get: operations["getEOzelLearnerIdentity"];
         put?: never;
         post?: never;
         delete?: never;
@@ -2315,7 +2335,7 @@ export interface paths {
         put?: never;
         /**
          * e-Özel "işlendi" işaretini yaz ya da geri al
-         * @description `recorded: true` satırı işlendi olarak işaretler, kim ve ne zaman saklanır; `false` işareti geri alır (IST-085, DOM-KAY-015). Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Ücret satırı tahsilatın MEBBİS işaretidir, ikisi aynı kayıttır (DOM-FIN-032). İşlenmiş satırı yeniden işlemek 409 `e_ozel_already_recorded`, işlenmemiş satırın işaretini kaldırmak 409 `e_ozel_not_recorded`, sürüm tutmazsa 409. Olmayan, listeye girmeyen (iptal edilmiş tahsilat, düzeltilmiş yoklama, eski karar) ya da başka kurumun kaydı 404. Denetime yalnız alan adı düşer. `If-Match` ve `Idempotency-Key` zorunludur. Okulda 404. Roller: `yonetici`, `onburo`.
+         * @description `recorded: true` satırı işlendi olarak işaretler, kim ve ne zaman saklanır; `false` işareti geri alır (IST-085, DOM-KAY-015). `needs_correction` satırda `recorded: true` düzeltmenin e-Özel'de yapıldığını yazar, parmak izi yenilenir. Platform e-Özel'e bağlanmaz; satırların e-Özel alanlarıyla birebir eşleşmesi doğrulanmalıdır. Ücret satırı tahsilatın MEBBİS işaretidir, ikisi aynı kayıttır (DOM-FIN-032). İşlenmiş satırı yeniden işlemek 409 `e_ozel_already_recorded`, işlenmemiş satırın işaretini kaldırmak 409 `e_ozel_not_recorded`, kaynağı kalkmış satırın işaretini kaldırmak 409 `e_ozel_source_removed`, sürüm tutmazsa 409. Olmayan, listeye girmeyen (hiç işaretlenmemiş iptal tahsilat ya da düzeltilmiş yoklama) ya da başka kurumun kaydı 404. Denetime yalnız alan adı düşer. `If-Match` ve `Idempotency-Key` zorunludur. Okulda 404. Roller: `yonetici`, `onburo`.
          */
         post: operations["setEOzelMark"];
         delete?: never;
@@ -27402,8 +27422,8 @@ export interface operations {
                 pageSize?: number;
                 /** @description Yalnız bu tür */
                 kind?: "learner" | "fee" | "attendance" | "course_end";
-                /** @description `pending` işlenmemiş (varsayılan), `recorded` işlenmiş, `all` hepsi */
-                status?: "pending" | "recorded" | "all";
+                /** @description `pending` işlenmemiş ve düzeltilmeli (varsayılan), `needs_correction` yalnız düzeltilmeli, `recorded` işlenmiş, `all` hepsi */
+                status?: "pending" | "needs_correction" | "recorded" | "all";
                 /** @description Kursiyer adı, dekont no veya işlem referansı */
                 q?: string;
                 /** @description Satır günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
@@ -27435,6 +27455,13 @@ export interface operations {
                             date: string | null;
                             /** @description `If-Match` için sürüm; işareti olmayan satırda 1 */
                             version: number;
+                            /**
+                             * @description `pending` işlenmedi, `recorded` işlendi, `needs_correction` işaretlendikten sonra kaynağı değişti: e-Özel'de düzeltilmeli
+                             * @enum {string}
+                             */
+                            recordStatus: "pending" | "needs_correction" | "recorded";
+                            /** @description Kaynak artık listeye girmiyor (tahsilat iptal edildi, yoklama düzeltildi); satır işaretli olduğu için görünür */
+                            sourceRemoved: boolean;
                             /** @description İşlendi olarak işaretlendiği an (ISO 8601 UTC) */
                             recordedAt: string | null;
                             /** @description İşaretleyen personel */
@@ -27559,8 +27586,8 @@ export interface operations {
             query?: {
                 /** @description Yalnız bu tür */
                 kind?: "learner" | "fee" | "attendance" | "course_end";
-                /** @description `pending` işlenmemiş (varsayılan), `recorded` işlenmiş, `all` hepsi */
-                status?: "pending" | "recorded" | "all";
+                /** @description `pending` işlenmemiş ve düzeltilmeli (varsayılan), `needs_correction` yalnız düzeltilmeli, `recorded` işlenmiş, `all` hepsi */
+                status?: "pending" | "needs_correction" | "recorded" | "all";
                 /** @description Kursiyer adı, dekont no veya işlem referansı */
                 q?: string;
                 /** @description Satır günü (Europe/Istanbul) için başlangıç (`YYYY-MM-DD`, dahil) */
@@ -27581,6 +27608,108 @@ export interface operations {
                 };
                 content: {
                     "application/json": string;
+                };
+            };
+            /** @description Default Response */
+            400: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            401: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            403: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            404: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            409: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            422: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            429: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+            /** @description Default Response */
+            500: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ErrorResponse"];
+                };
+            };
+        };
+    };
+    getEOzelLearnerIdentity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                /** @description Kursiyer kimliği (satırın `learnerId` alanı) */
+                studentId: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            /** @description Default Response */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": {
+                        data: {
+                            /** @description `tc` ya da `foreign` */
+                            identityKind: string;
+                            /** @description Tam kimlik numarası; önbelleğe alınmaz, loglanmaz */
+                            identityNumber: string;
+                        };
+                    };
                 };
             };
             /** @description Default Response */

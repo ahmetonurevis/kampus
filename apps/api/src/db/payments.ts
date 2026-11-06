@@ -520,17 +520,27 @@ export async function savePaymentSettings(
   return created ?? null
 }
 
-/** MEBBİS işaretini yazar veya kaldırır; sürüm koşulu tutmazsa `null` döner (DOM-FIN-032). */
+/**
+ * MEBBİS işaretini yazar veya kaldırır; sürüm koşulu tutmazsa `null` döner (DOM-FIN-032). Parmak izini
+ * yalnız e-Özel işareti verir (IST-085); verilmezse önceki özet de silinir.
+ */
 export async function setPaymentMebbis(
   tx: Database,
   institutionId: string,
-  input: { id: string; expectedVersion: number; recordedByUserId: string | null; now: Date },
+  input: {
+    id: string
+    expectedVersion: number
+    recordedByUserId: string | null
+    fingerprint?: string | null
+    now: Date
+  },
 ): Promise<{ version: number } | null> {
   const [row] = await tx
     .update(payments)
     .set({
       mebbisRecordedAt: input.recordedByUserId === null ? null : input.now,
       mebbisRecordedByUserId: input.recordedByUserId,
+      mebbisFingerprint: input.fingerprint ?? null,
       version: sql`${payments.version} + 1`,
       updatedAt: input.now,
     })

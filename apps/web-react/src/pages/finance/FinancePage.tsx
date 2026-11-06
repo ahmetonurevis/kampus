@@ -12,6 +12,7 @@ import type { NavPage } from '@/lib/navigation.ts'
 import { FeeTariffsSection } from './FeeTariffsSection.tsx'
 import { ScholarshipsSection } from './ScholarshipsSection.tsx'
 import { FinanceExportSection } from './FinanceExportSection.tsx'
+import { FinanceReconciliationSection } from './FinanceReconciliationSection.tsx'
 import { InvoiceRemindButton } from './InvoiceRemindButton.tsx'
 import { InvoicesSection } from './InvoicesSection.tsx'
 import { InvoiceSummaryPanel } from './InvoiceSummaryPanel.tsx'
@@ -112,6 +113,11 @@ export function FinancePage({ page }: { page: NavPage }) {
       ) : null}
       {tab === 'withdrawals' ? <WithdrawalsSection canManage={isManager} /> : null}
       {tab === 'exports' ? <FinanceExportSection canDownload={isManager} /> : null}
+      {tab === 'exports' && isManager ? (
+        <FinanceReconciliationSection
+          academicYear={session?.institution?.academicYear ?? Number(today.slice(0, 4))}
+        />
+      ) : null}
       {tab === 'invoices' ? (
         <InvoicesSection onOpenInvoice={openInvoice} onOpenPayment={openPayment} />
       ) : null}

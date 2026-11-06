@@ -914,6 +914,14 @@ const FINANCE: Readonly<Record<string, Proof>> = {
     'prospects.test.ts',
     'başka kurumun vazgeçen adayı kırılımda görünmez',
   ),
+  'GET /api/v1/finance/reconciliation': liste(
+    'finance-reconciliation.test.ts',
+    'başka kurumun öğrencisi ve tutarı raporda ve dosyada yok',
+  ),
+  'GET /api/v1/finance/reconciliation/export': liste(
+    'finance-reconciliation.test.ts',
+    'başka kurumun öğrencisi ve tutarı raporda ve dosyada yok',
+  ),
 }
 
 /**

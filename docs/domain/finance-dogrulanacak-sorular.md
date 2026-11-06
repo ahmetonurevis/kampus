@@ -317,14 +317,38 @@ Bu belge hukuki görüş değildir. Mevzuat maddeleri kural belgelerinde geçti�
 - **Cevap değişirse:** Referans hakkının biçimi ve sözleşmedeki gösterimi değişir.
 - **Cevap:** bekleniyor
 
+#### M-09 · Kasa gün sonu kaydının defter niteliği
+
+- **Kural:** `DOM-FIN-033` (kasa ve gün sonu, ON-064).
+- **Soru:** Gün sonu kapanış kaydı VUK anlamında kasa defteri yerine geçer mi; kasa farkı nasıl muhasebeleşir ve kaydın saklama süresi nedir (`M-07` ile birlikte)?
+- **Bugünkü varsayım:** Kayıt iç kontrol aracıdır, yasal defter sayılmaz; fark açıklamayla tutulur, muhasebe kaydı üretmez.
+- **Kodda:** `lib/finance-day-closings.ts`, `POST /api/v1/finance/day-closings/:closingDate/close`.
+- **Cevap değişirse:** Kapanışa defter alanları ve fark için muhasebe aktarım satırı eklenir.
+- **Cevap:** bekleniyor
+
+#### M-10 · Paket satışında ilan altı fiyatın indirim tavanına sayılması
+
+- **Kural:** `DOM-FIN-001`, `DOM-DIL-050` (paket satışı, ON-058).
+- **Soru:** Dil okulu paketinde ilan edilen saat ücretinin altında satış, %50 indirim tavanı hesabında indirim sayılır mı?
+- **Bugünkü varsayım:** Sayılır (temkinli); ilan fiyatının yarısının altındaki satış reddedilir.
+- **Kodda:** ON-058 paket satışı kuralı.
+- **Cevap değişirse:** Tavan yalnız adı konmuş indirimlere uygulanır.
+- **Cevap:** bekleniyor
+
 ## Kararlaştırılanlar
 
 Aşağıdakiler soru değildir; proje sahibinin kararıdır ve kural belgelerine "kullanıcı kararı" olarak işlenmiştir.
 
-| Kimlik | Tarih      | Kural                        | Karar                                                                                    | Etkilenen yer                                                                 |
-| ------ | ---------- | ---------------------------- | ---------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
-| K-01   | 2026-11-03 | `DOM-FIN-032`                | Senet alındığı anda tahsilat sayılır ve taksiti kapatır; senedin vadesi ayrıca izlenmez. | `PAYMENT_METHODS` `Senet` (`lib/payments.ts`), ON-018                         |
-| K-02   | 2026-11-03 | `DOM-FIN-005`                | Artış tavanındaki ÜFE ve TÜFE oranları kurum başına, eğitim yılı için girilir.           | `tuitionIncreaseCeiling` (`lib/fee-tariffs.ts`); yenileme API'si (ON-030)     |
-| K-03   | 2026-11-03 | `DOM-FIN-005`                | 1, 5 ve 9. sınıf kademe başıdır; bu sınıflara yenilemede artış tavanı uygulanmaz.        | Yenileme tavan denetimi (ON-030)                                              |
-| K-04   | 2026-11-03 | `DOM-FIN-052`, `DOM-FIN-035` | Ödeyici veli, velayeti olmasa da ödeyicisi olduğu öğrencinin finans bilgisini görür.     | Finans okuma kapsamı ve bildirim alıcısı (ON-291; `DOM-ILT-074`, Oğuzhan #33) |
-| K-05   | 2026-11-03 | `DOM-KAY-012`, `DOM-KAY-013` | Veli hesabını personel açar: veli kaydı girilir, hesabın göreceği öğrenci seçilir.       | Kesin kayıttan veli hesabı açma (ON-290, ON-128; veli daveti ucu Oğuzhan #32) |
+| Kimlik | Tarih      | Kural                        | Karar                                                                                                          | Etkilenen yer                                                                 |
+| ------ | ---------- | ---------------------------- | -------------------------------------------------------------------------------------------------------------- | ----------------------------------------------------------------------------- |
+| K-01   | 2026-11-03 | `DOM-FIN-032`                | Senet alındığı anda tahsilat sayılır ve taksiti kapatır; senedin vadesi ayrıca izlenmez.                       | `PAYMENT_METHODS` `Senet` (`lib/payments.ts`), ON-018                         |
+| K-02   | 2026-11-03 | `DOM-FIN-005`                | Artış tavanındaki ÜFE ve TÜFE oranları kurum başına, eğitim yılı için girilir.                                 | `tuitionIncreaseCeiling` (`lib/fee-tariffs.ts`); yenileme API'si (ON-030)     |
+| K-03   | 2026-11-03 | `DOM-FIN-005`                | 1, 5 ve 9. sınıf kademe başıdır; bu sınıflara yenilemede artış tavanı uygulanmaz.                              | Yenileme tavan denetimi (ON-030)                                              |
+| K-04   | 2026-11-03 | `DOM-FIN-052`, `DOM-FIN-035` | Ödeyici veli, velayeti olmasa da ödeyicisi olduğu öğrencinin finans bilgisini görür.                           | Finans okuma kapsamı ve bildirim alıcısı (ON-291; `DOM-ILT-074`, Oğuzhan #33) |
+| K-05   | 2026-11-03 | `DOM-KAY-012`, `DOM-KAY-013` | Veli hesabını personel açar: veli kaydı girilir, hesabın göreceği öğrenci seçilir.                             | Kesin kayıttan veli hesabı açma (ON-290, ON-128; veli daveti ucu Oğuzhan #32) |
+| K-06   | 2026-11-06 | `DOM-FIN-040`                | Öğrenci ayrılırken bütün yürürlükteki sözleşmeleri (paket satışı dahil) iade ve borç hesabına girer.           | Ayrılış (`lib/withdrawals.ts`), ON-296                                        |
+| K-07   | 2026-11-06 | `DOM-DIL-050`                | Paket satışını yönetici ve personel (ön büro) yapar; veli kendi başına satın almaz.                            | Paket satışı (ON-058)                                                         |
+| K-08   | 2026-11-06 | `DOM-FIN-033`                | Gün sonunda iptal edilen nakit kasadan çıkmış sayılır; kasadan bankaya aktarım izlenmez, açıklama yeterlidir.  | Gün sonu (ON-064)                                                             |
+| K-09   | 2026-11-06 | `DOM-KAY-040`                | Kayıt hunisinde danışman adayı açan personeldir.                                                               | Kayıt hunisi (ON-051)                                                         |
+| K-10   | 2026-11-06 | `DOM-KAY-020`                | Yenilemeden önce veliye ayrı davet gönderilir; veli çevrim içi yanıt verir, plan ve sözleşme onayı ayrı kalır. | Yenileme daveti (ON-056)                                                      |
+| K-11   | 2026-11-06 | `DOM-FIN-002`                | Tarife süresinde ilan edilmezse önceki yılın yayımlı tarifesi geçerli kalır.                                   | Kesin kayıt ve yenileme, ON-297                                               |

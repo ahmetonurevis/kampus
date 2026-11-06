@@ -5,6 +5,7 @@ import { after, before, describe, test } from 'node:test'
 import { and, eq } from 'drizzle-orm'
 
 import { createSeed } from '@kampus/school-core/data/seed.ts'
+import { APPLICATION_DAILY_PROSPECT_LIMIT } from '@kampus/school-core/lib/prospect-application-form.ts'
 
 import type { App } from '../src/app.ts'
 import type { Database } from '../src/db/client.ts'
@@ -361,20 +362,94 @@ describe('Ön başvuru formu (ON-133)', () => {
     const after = await findRecord(db, institution.id, 'prospects', seed.id)
     assert.equal((after?.data.notes as Json[]).length, notes.length)
 
-    // Denetim: not satırı sistem aktörüyle; yazmayan tekrar gönderimin satırı yoktur.
+    // Denetim: not ayrı eylemdir (kurum tavanına girmez), sistem aktörüyle; yazmayan tekrar
+    // gönderimin satırı yoktur.
     const audit = await db
       .select()
       .from(auditLog)
       .where(
         and(
           eq(auditLog.institutionId, institution.id),
-          eq(auditLog.action, 'prospect.application'),
+          eq(auditLog.action, 'prospect.application.note'),
           eq(auditLog.entityId, seed.id),
         ),
       )
     assert.equal(audit.length, 1)
     assert.equal(audit[0]?.actorUserId, null)
     assert.deepEqual(audit[0]?.changes, { fields: ['notes', 'updatedAt'] })
+  })
+
+  // --- Kurum tavanı -----------------------------------------------------------------------------
+
+  /** Formdan aday açılmış gibi denetim satırı: tavan bu satırları sayar. */
+  const openedFromForm = (institutionId: string, length: number, createdAt: Date) =>
+    db.insert(auditLog).values(
+      Array.from({ length }, (_, index) => ({
+        institutionId,
+        actorRole: 'system',
+        action: 'prospect.application',
+        entityType: 'prospects',
+        entityId: `pr-seeded-${index}`,
+        createdAt,
+      })),
+    )
+
+  test('IST-145: günlük kurum tavanı doluysa aynı 202 döner, aday ve not yazılmaz; log yalnız kurum ve olay adı', async () => {
+    const { institution, form } = await world()
+    const seed = SEED.prospects[0]
+    assert.ok(seed)
+    const fresh = await submit(form.formKey, application({ phone: '05329990001' }))
+    assert.equal(fresh.statusCode, 202, fresh.body)
+    await openedFromForm(institution.id, APPLICATION_DAILY_PROSPECT_LIMIT - 1, FIXED_NOW)
+
+    const before = await prospectsOf(institution.id)
+    logs.length = 0
+    const blocked = await submit(form.formKey, application())
+    assert.equal(blocked.statusCode, fresh.statusCode)
+    assert.deepEqual(blocked.json(), fresh.json())
+    assert.deepEqual(Object.keys(blocked.headers).sort(), Object.keys(fresh.headers).sort())
+    const repeat = await submit(form.formKey, application({ name: seed.name, phone: seed.phone }))
+    assert.equal(repeat.statusCode, 202)
+    assert.deepEqual(await prospectsOf(institution.id), before)
+
+    const warnings = logs.filter((line) => line.includes('prospect.application.daily_limit'))
+    assert.ok(warnings.length >= 1)
+    const entry = JSON.parse(warnings[0] ?? '{}') as Json
+    assert.equal(entry.level, 40)
+    assert.equal(entry.institutionId, institution.id)
+    const text = logs.join('\n')
+    for (const secret of [SECRET_PHONE, SECRET_NAME, SECRET_GUARDIAN])
+      assert.equal(text.includes(secret), false, secret)
+  })
+
+  test('IST-145: tavan Europe/Istanbul günü ve kurum başınadır; mükerrer notlar saymaz', async () => {
+    const { institution, form } = await world()
+    const other = await world()
+    // Dün dolan tavan ve başka kurumun tavanı bugünü etkilemez.
+    await openedFromForm(
+      institution.id,
+      APPLICATION_DAILY_PROSPECT_LIMIT,
+      new Date(FIXED_NOW.getTime() - 86_400_000),
+    )
+    await openedFromForm(other.institution.id, APPLICATION_DAILY_PROSPECT_LIMIT, FIXED_NOW)
+    await db.insert(auditLog).values(
+      Array.from({ length: APPLICATION_DAILY_PROSPECT_LIMIT }, () => ({
+        institutionId: institution.id,
+        actorRole: 'system',
+        action: 'prospect.application.note',
+        createdAt: FIXED_NOW,
+      })),
+    )
+    assert.equal((await submit(form.formKey, application())).statusCode, 202)
+    const rows = await prospectsOf(institution.id)
+    assert.ok(rows.some((item) => item.phone === SECRET_PHONE))
+    // Öteki kurumun tavanı dolu: kendi formu yazmaz.
+    assert.equal((await submit(other.form.formKey, application())).statusCode, 202)
+    const otherRows = await prospectsOf(other.institution.id)
+    assert.equal(
+      otherRows.some((item) => item.phone === SECRET_PHONE),
+      false,
+    )
   })
 
   test('yeni aday core sırasıyla başa yazılır, mevcut adayın sürümü değişmez', async () => {

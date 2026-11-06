@@ -41,7 +41,8 @@ import {
  * kurum sitesi eklenmez: form kendi kökenimizdeki sayfada iframe içinde çalışır, istek aynı köktendir.
  * Bu yüzden CSRF denetimi de gevşetilmez; başka kökenden doğrudan gönderim 403 `csrf_rejected`.
  *
- * Hız sınırı IP başınadır (IPv6'da /64); gövde sınırı yalnız bu uçta daraltılır.
+ * Hız sınırı IP başınadır (IPv6'da /64); gövde sınırı yalnız bu uçta daraltılır. Proxy havuzuna karşı
+ * serviste kurum başına günlük tavan vardır.
  */
 
 const FORM_READS_PER_MINUTE = 30
@@ -170,7 +171,7 @@ export function registerProspectApplicationFormRoutes(app: FastifyInstance) {
         operationId: 'submitProspectApplication',
         tags: ['prospects'],
         summary: 'Başvuru gönder',
-        description: `Kimlik gerektirmez. Aday \`Yeni aday\` aşamasında, \`Web sitesi\` kaynağıyla açılır (DOM-KAY-001, -007, -009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, 18 yaş altında veli adı, aydınlatma sürümü ve kanal bazında ticari ileti onayı (varsayılan kapalı, DOM-KAY-004); T.C. kimlik no, doğum tarihi, adres, kaynak, referans, kardeş, kurum kimliği ve bilinmeyen alan 400. Eski aydınlatma sürümü 409 \`notice_outdated\` (DOM-KAY-003). Yanıt kişi varlığını belli etmez: aynı iletişimli açık aday varsa yeni kayıt açılmaz, adayın kartına sabit metinli temas notu düşülür (24 saatte bir, DOM-KAY-002), onay yazılmaz ve aynı 202 döner; gizli alan (\`website\`) dolu gönderim de hiçbir şey yazmadan aynı 202'yi alır. Başka kökenden gönderim 403 \`csrf_rejected\`. Gövde en çok ${SUBMISSION_BODY_LIMIT} bayt (413). IP başına ${SUBMISSION_WINDOW.replace(' minutes', ' dakikada')} ${SUBMISSIONS_PER_WINDOW} gönderim; aşılırsa 429 \`rate_limited\` ve \`Retry-After\`. Telefon, e-posta ve ad loglanmaz.`,
+        description: `Kimlik gerektirmez. Aday \`Yeni aday\` aşamasında, \`Web sitesi\` kaynağıyla açılır (DOM-KAY-001, -007, -009). Gövde katıdır: ad, telefon, isteğe bağlı e-posta, kampüs, ilgi, 18 yaş altında veli adı, aydınlatma sürümü ve kanal bazında ticari ileti onayı (varsayılan kapalı, DOM-KAY-004); T.C. kimlik no, doğum tarihi, adres, kaynak, referans, kardeş, kurum kimliği ve bilinmeyen alan 400. Eski aydınlatma sürümü 409 \`notice_outdated\` (DOM-KAY-003). Yanıt kişi varlığını belli etmez: aynı iletişimli açık aday varsa yeni kayıt açılmaz, adayın kartına temas notu düşülür (aday başına 24 saatte bir, DOM-KAY-002), onay yazılmaz ve aynı 202 döner; gizli alan (\`website\`) dolu gönderim ve kurumun günlük form tavanı doluyken gönderim de hiçbir şey yazmadan aynı 202'yi alır. Kurum kilidi 3 saniyede alınamazsa hiçbir şey yazılmaz: 409 \`conflict\`, aynı istek yeniden denenebilir. Başka kökenden gönderim 403 \`csrf_rejected\`. Gövde en çok ${SUBMISSION_BODY_LIMIT} bayt (413). IP başına ${SUBMISSION_WINDOW.replace(' minutes', ' dakikada')} ${SUBMISSIONS_PER_WINDOW} gönderim; aşılırsa 429 \`rate_limited\` ve \`Retry-After\`. Telefon, e-posta ve ad loglanmaz.`,
         params: applicationFormKeyParamsSchema,
         body: prospectApplicationSchema,
         response: { 202: applicationReceivedResponseSchema, ...applicationSubmissionErrors },

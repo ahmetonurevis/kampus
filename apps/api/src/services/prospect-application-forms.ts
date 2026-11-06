@@ -1,9 +1,11 @@
 import { randomBytes, randomUUID } from 'node:crypto'
 
-import { eq } from 'drizzle-orm'
+import { eq, sql } from 'drizzle-orm'
 import type { FastifyBaseLogger } from 'fastify'
 
+import { dayKey } from '@kampus/school-core/lib/format.ts'
 import {
+  APPLICATION_DAILY_PROSPECT_LIMIT,
   applicationFrameAncestors,
   applicationNoticeVersion,
   isApplicationFormKey,
@@ -21,6 +23,9 @@ import type { RecordData } from '../db/collections.ts'
 import { planPositions } from '../db/positions.ts'
 import { listPrivacyNotices } from '../db/privacy.ts'
 import {
+  APPLICATION_NOTE_ACTION,
+  APPLICATION_PROSPECT_ACTION,
+  countProspectsOpenedFromForm,
   findApplicationForm,
   findApplicationFormByKey,
   insertApplicationForm,
@@ -30,8 +35,17 @@ import {
 import { lockInstitution, loadRecords, type RecordWrite, type StoredRecord } from '../db/records.ts'
 import { auditLog } from '../db/schema/audit-log.ts'
 import { institutions } from '../db/schema/auth.ts'
-import { AppError, ConflictError, MESSAGES, NotFoundError, withDatabaseErrors } from '../errors.ts'
+import {
+  AppError,
+  ConflictError,
+  databaseErrorInfo,
+  MESSAGES,
+  NotFoundError,
+  TransientConflictError,
+  withDatabaseErrors,
+} from '../errors.ts'
 import type { ServiceContext } from '../plugins/authenticate.ts'
+import { dayRange } from './list-filters.ts'
 import { getInstitutionModules } from './modules.ts'
 import {
   loadOperationRecords,
@@ -57,6 +71,11 @@ import { auditWork } from './task-work.ts'
 
 /** Açık uçtan gelen yazmanın denetim rolü; hiçbir üyelik rolü bu işlemi yapmış görünmez. */
 export const APPLICATION_FORM_ACTOR_ROLE = 'system'
+
+/** Kurum kilidinde en çok bekleme: açık uç, kuyruğu uzatıp finans işlemlerini bekletemesin. */
+const APPLICATION_LOCK_TIMEOUT = sql`set local lock_timeout = '3s'`
+/** `lock_timeout` aşımının SQLSTATE'i. */
+const LOCK_NOT_AVAILABLE = '55P03'
 
 const ENTITY = 'prospect_application_form'
 
@@ -272,22 +291,54 @@ function applicationWrites(
   return { writes, fields: Object.keys(data).sort() }
 }
 
+/** Bugün (Europe/Istanbul) formdan açılan aday sayısı tavana ulaştı mı; yalnız denetim indeksi okunur. */
+async function dailyLimitReached(db: Database, institutionId: string, now: Date): Promise<boolean> {
+  const day = dayKey(now)
+  const range = dayRange('createdAt', day, day)
+  if (range?.fromInstant == null || range.toInstant == null) return false
+  const opened = await countProspectsOpenedFromForm(
+    db,
+    institutionId,
+    new Date(range.fromInstant),
+    new Date(range.toInstant),
+  )
+  return opened >= APPLICATION_DAILY_PROSPECT_LIMIT
+}
+
+/** Tavan doluyken gönderim: dış yanıt aynıdır, kişisel veri loglanmaz. */
+function limitedOutcome(context: PublicApplicationContext, institutionId: string) {
+  context.log.warn({ event: 'prospect.application.daily_limit', institutionId })
+  return { kind: 'ignored' } as const satisfies ProspectApplicationOutcome
+}
+
 /**
- * Başvuruyu işler (DOM-KAY-002, -003, -009). Dönen sonuç yanıta girmez: yeni aday, mükerrer not ve
- * gizli alan dışarıdan aynıdır. Gizli alan doluysa kurum kilidi alınmaz, bütün adaylar yüklenmez.
- * Yazılacak bir şey yoksa (gizli alan, yinelenen not) denetim satırı da yoktur.
+ * Başvuruyu işler (DOM-KAY-002, -003, -009). Dönen sonuç yanıta girmez: yeni aday, mükerrer not,
+ * gizli alan ve dolu tavan dışarıdan aynıdır. Gizli alan doluysa kurum kilidi alınmaz, bütün adaylar
+ * yüklenmez. Yazılacak bir şey yoksa (gizli alan, yinelenen not, tavan) denetim satırı da yoktur.
+ *
+ * Kilitten önceki denetimler ucuz rettir: geçersiz form ve dolu tavan kurum kuyruğuna girmez, finans
+ * işlemlerini bekletmez. Karar kilit altında yeniden verilir: kilit beklerken anahtar yenilenmiş, form
+ * kapanmış ya da tavan dolmuş olabilir. Bekleme `APPLICATION_LOCK_TIMEOUT` ile sınırlıdır; aşılırsa
+ * hiçbir şey yazılmaz, 409 `conflict` ile yeniden denenir (55P03).
  */
 export async function submitApplication(
   context: PublicApplicationContext,
   formKey: string,
   input: { website?: string | undefined },
 ): Promise<ProspectApplicationOutcome> {
-  const form = await resolveOpenForm(context.db, formKey)
-  if (form === null) throw new NotFoundError()
+  const resolved = await resolveOpenForm(context.db, formKey)
+  if (resolved === null) throw new NotFoundError()
   if (isHoneypotFilled(input.website)) return { kind: 'ignored' }
-  const { institutionId } = form.row
+  const { institutionId } = resolved.row
+  if (await dailyLimitReached(context.db, institutionId, context.now))
+    return limitedOutcome(context, institutionId)
   const work = context.db.transaction(async (tx) => {
+    await tx.execute(APPLICATION_LOCK_TIMEOUT)
     await lockInstitution(tx, institutionId)
+    const form = await resolveOpenForm(tx, formKey)
+    if (form === null) throw new NotFoundError()
+    if (await dailyLimitReached(tx, institutionId, context.now))
+      return limitedOutcome(context, institutionId)
     const { rows } = await loadOperationRecords(tx, institutionId, ['branches', 'prospects'], {})
     // Metin kilit altında okunur: eşzamanlı yayımdan sonra eski sürüm kabul edilmez.
     const notice = await currentCandidateNotice(tx, institutionId)
@@ -318,7 +369,7 @@ export async function submitApplication(
         institutionId,
         actorUserId: null,
         actorRole: APPLICATION_FORM_ACTOR_ROLE,
-        action: 'prospect.application',
+        action: outcome.kind === 'created' ? APPLICATION_PROSPECT_ACTION : APPLICATION_NOTE_ACTION,
         entityType: 'prospects',
         entityId: outcome.prospectId,
         changes: { fields },
@@ -326,12 +377,18 @@ export async function submitApplication(
       })
     context.log.info({
       event: 'operation.applied',
-      action: 'prospect.application',
+      action: APPLICATION_PROSPECT_ACTION,
       inserted: writes.filter((write) => write.kind === 'insert').length,
       updated: writes.filter((write) => write.kind === 'update').length,
       moved: writes.filter((write) => write.kind === 'move').length,
     })
     return outcome
   })
-  return withDatabaseErrors(work)
+  return withDatabaseErrors(
+    work.catch((error: unknown) => {
+      if (databaseErrorInfo(error)?.code === LOCK_NOT_AVAILABLE)
+        throw new TransientConflictError({ cause: error })
+      throw error
+    }),
+  )
 }

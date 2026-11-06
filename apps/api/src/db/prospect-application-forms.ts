@@ -1,6 +1,7 @@
-import { and, eq, isNull, sql } from 'drizzle-orm'
+import { and, count, eq, gte, isNull, lt, sql } from 'drizzle-orm'
 
 import type { Database } from './client.ts'
+import { auditLog } from './schema/audit-log.ts'
 import { prospectApplicationForms } from './schema/prospect-application-forms.ts'
 
 /**
@@ -10,6 +11,37 @@ import { prospectApplicationForms } from './schema/prospect-application-forms.ts
  */
 
 export type ApplicationFormRow = typeof prospectApplicationForms.$inferSelect
+
+/** Formdan aday açılmasının denetim eylemi; kurum tavanı bunu sayar. */
+export const APPLICATION_PROSPECT_ACTION = 'prospect.application'
+/** Mevcut adaya form notu düşmesinin denetim eylemi; tavana girmez. */
+export const APPLICATION_NOTE_ACTION = 'prospect.application.note'
+
+/**
+ * Formdan `[from, to)` aralığında açılan aday sayısı. `audit_log` yalnız eklenir: arşivlenen aday
+ * tavanı boşaltmaz; sistem aktörü `audit_log_actor_idx` ile yalnız aralığın satırlarını okur, kurumun
+ * bütün adaylarını taramaz.
+ */
+export async function countProspectsOpenedFromForm(
+  db: Database,
+  institutionId: string,
+  from: Date,
+  to: Date,
+): Promise<number> {
+  const [row] = await db
+    .select({ total: count() })
+    .from(auditLog)
+    .where(
+      and(
+        eq(auditLog.institutionId, institutionId),
+        isNull(auditLog.actorUserId),
+        gte(auditLog.createdAt, from),
+        lt(auditLog.createdAt, to),
+        eq(auditLog.action, APPLICATION_PROSPECT_ACTION),
+      ),
+    )
+  return row?.total ?? 0
+}
 
 export async function findApplicationForm(
   db: Database,
